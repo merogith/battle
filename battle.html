@@ -169,7 +169,7 @@
            Galaxy S20:   ~915 × 412px CSS viewport (DPR 3)
            Galaxy Note20: ~873 × 393px CSS viewport (DPR 3)
            Both pass: max-height 500px AND min-width 600px
-           ui-bottom: 112px  →  battle area above it: ~280–300px
+           ui-bottom: 140px  →  battle area above it: ~253–272px
         */
         @media screen and (max-height: 500px) and (min-width: 600px) {
             body { align-items: stretch; justify-content: stretch; }
@@ -182,8 +182,8 @@
                 font-size: 11px;
             }
 
-            /* Fix battle-field visual clipping: base has bottom:190px, landscape ui is 112px */
-            .battle-field { bottom: 112px !important; }
+            /* Fix battle-field visual clipping */
+            .battle-field { bottom: 140px !important; }
 
             /* ---- Info button: show in landscape ---- */
             .mob-info-btn { display: inline-flex !important; }
@@ -197,7 +197,7 @@
             }
             #player-stat-box {
                 width: 175px !important;
-                bottom: 116px !important; right: 4px !important;
+                bottom: 144px !important; right: 4px !important;
                 padding: 5px 8px !important;
                 font-size: 11px !important;
             }
@@ -210,28 +210,20 @@
             /* HP bar thinner */
             .hp-bar-container { height: 6px !important; margin-top: 3px !important; }
 
-            /* ---- Sprites: properly sized for both S20 and Note 20 ----
-               Sprites inside containers are positioned "bottom:16px" for the platform shadow,
-               so container height must be ≈ sprite_height + 16px.
-               Foe container 135px (sprite 118px + 17px = 135) → foe bottom = 4+135 = 139px from top.
-               Player container 148px (sprite 130px + 18px = 148) →
-                 S20  (412px): player top = 412-116-148 = 148px → gap = 9px ✔
-                 Note20(393px): player top = 393-116-148 = 129px → 10px Y-overlap BUT
-                   sprites are on opposite horizontal sides, so never a visual clash.
-            */
+            /* ---- Sprites ---- */
             #foe-sprite-container {
-                width: 125px !important; height: 135px !important;
+                width: 110px !important; height: 120px !important;
                 top: 4px !important; right: 8px !important;
             }
-            #foe-sprite { width: 118px !important; height: 118px !important; }
+            #foe-sprite { width: 105px !important; height: 105px !important; }
 
             #player-sprite-container {
-                width: 140px !important; height: 148px !important;
-                bottom: 116px !important; left: 8px !important;
+                width: 125px !important; height: 135px !important;
+                bottom: 144px !important; left: 8px !important;
             }
-            #player-sprite { width: 130px !important; height: 130px !important; }
+            #player-sprite { width: 120px !important; height: 120px !important; }
 
-            /* ---- Weather indicator: float in the center gap between sprite columns ---- */
+            /* ---- Weather indicator ---- */
             #weather-indicator {
                 top: 50% !important;
                 transform: translate(-50%, -50%) !important;
@@ -240,10 +232,10 @@
                 text-shadow: 0 1px 3px #000, 0 0 8px rgba(0,0,0,0.8) !important;
             }
 
-            /* ---- Gauntlet score: clear of foe-stat-box, anchored above ui-bottom ---- */
+            /* ---- Gauntlet score ---- */
             #gauntlet-score {
                 top: auto !important;
-                bottom: 118px !important;
+                bottom: 146px !important;
                 left: 8px !important;
                 font-size: 10px !important;
                 background: rgba(0,0,0,0.55) !important;
@@ -251,41 +243,51 @@
                 border-radius: 3px !important;
             }
 
-            /* ---- Bottom UI: compact 112px panel ---- */
+            /* ---- Bottom UI: 140px panel (was 112px — too short for 4 moves + BACK) ---- */
             .ui-bottom {
-                height: 112px !important;
+                height: 140px !important;
                 padding: 4px 6px !important;
                 gap: 5px !important;
             }
-            /* Battle log: 11px (was 10px) — barely readable at 10px on phone glass */
+            /* Battle log: compact */
             #battle-log {
+                flex: 1 !important;
                 font-size: 11px !important;
-                line-height: 1.5 !important;
+                line-height: 1.4 !important;
                 padding: 4px 8px !important;
             }
-            .command-grid { gap: 4px !important; }
+            /* Command and Move grids: take MORE space */
+            #command-menu, #move-menu {
+                flex: 1.2 !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+            }
+            .command-grid { gap: 3px !important; }
 
-            /* Touch targets: 44px minimum (WCAG 2.5.5) */
+            /* Touch targets: 36px minimum in landscape (tighter but tappable) */
             button {
-                font-size: 12px !important;
-                padding: 0 4px !important;
-                min-height: 44px !important;
+                font-size: 11px !important;
+                padding: 2px 4px !important;
+                min-height: 36px !important;
                 touch-action: manipulation;
                 -webkit-tap-highlight-color: transparent;
             }
+            /* FIGHT/POKEMON/BAG/RUN buttons need to be bigger */
+            #command-menu button {
+                min-height: 44px !important;
+                font-size: 13px !important;
+            }
 
-            /* Move tooltip: above ui-bottom, left-aligned to avoid right-edge clipping */
+            /* Move tooltip: above ui-bottom */
             #move-tooltip {
-                bottom: 116px !important;
+                bottom: 144px !important;
                 right: auto !important;
                 left: 8px !important;
                 width: 210px !important;
                 font-size: 11px !important;
             }
 
-            /* ---- Draft screen: header + scrollable card area + sticky party bar ----
-               Use :not(.hidden) so the ID selector's specificity cannot override
-               .hidden { display: none !important } when JS hides the screen.         */
+            /* ---- Draft screen ---- */
             #screen-draft:not(.hidden) {
                 display: flex !important;
                 flex-direction: column !important;
@@ -320,7 +322,7 @@
             }
             #draft-party-slots { gap: 8px !important; }
 
-            /* Draft cards: hide heavy stat bars for speed */
+            /* Draft cards: compact */
             .draft-card { padding: 5px !important; gap: 5px !important; }
             .draft-card-sprite { min-width: 44px !important; }
             .draft-card-sprite .mini-sprite { width: 44px !important; height: 44px !important; }
@@ -334,8 +336,14 @@
             .party-slot { padding: 7px !important; }
             .mini-sprite { width: 52px !important; height: 52px !important; }
 
-            /* Icon buttons */
-            .icon-btn { width: 30px !important; height: 30px !important; font-size: 14px !important; }
+            /* Icon buttons: bigger touch targets */
+            .icon-btn { width: 36px !important; height: 36px !important; font-size: 16px !important; }
+
+            /* Menu screen: scrollable */
+            #screen-menu:not(.hidden) {
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+            }
         }
 
         /* Mobile portrait: show rotate hint */
@@ -1108,7 +1116,8 @@
             const isPortrait = window.innerHeight > window.innerWidth;
             const isNarrow = window.innerWidth <= 900;
             // Use inline style only to show; CSS handles the default hide
-            overlay.style.display = (isPortrait && isNarrow) ? 'flex' : '';
+            // Both portrait and landscape are now fully supported
+            overlay.style.display = 'none';
         }
         window.addEventListener('resize', checkOrientation);
         window.addEventListener('orientationchange', () => setTimeout(checkOrientation, 150));
@@ -3201,19 +3210,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let ppDisplay = activeMon.dynamaxed ? '∞' : `${rawMove.pp}/${rawMove.maxPp}`;
                 let ppColor = !activeMon.dynamaxed && rawMove.pp <= 0 ? '#f44336' : (rawMove.pp <= Math.floor(rawMove.maxPp / 3) ? '#ff9800' : '#aaa');
                 let catColor = shownMove.cat === 'Physical' ? '#ff6b6b' : shownMove.cat === 'Special' ? '#6b9fff' : '#888';
-                let effLabel = eff > 1 ? `<span style="color:var(--hp-green);font-size:11px;font-weight:bold;">▲ Super Eff!</span>` : eff === 0 ? `<span style="color:#555;font-size:11px;">⊘ No Effect</span>` : eff < 1 ? `<span style="color:var(--hp-red);font-size:11px;">▼ Resisted</span>` : '';
-                btn.innerHTML = `
-                    <div style="display:flex;align-items:center;gap:6px;width:100%;margin-bottom:4px;">
-                        <span class="type-badge type-${shownMove.type}" style="font-size:9px;padding:1px 4px;">${shownMove.type}</span>
-                        <span style="font-weight:bold;font-size:13px;flex:1;text-align:left;">${shownMove.name}${dynaLabel}${zLabel}</span>
-                        <span style="color:${catColor};font-size:9px;font-weight:bold;">${shownMove.cat.toUpperCase().slice(0,4)}</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;width:100%;">
-                        <span style="color:#888;">Pow: <strong style="color:#ddd;">${shownMove.pow > 0 ? shownMove.pow : '—'}</strong></span>
-                        <span style="color:#888;">Acc: <strong style="color:#ddd;">${(shownMove.acc||0) <= 100 ? shownMove.acc+'%' : '—'}</strong></span>
-                        <span style="color:${ppColor};">PP: ${ppDisplay}</span>
-                        <span>${effLabel}</span>
-                    </div>`;
+                let effLabelShort = eff > 1 ? `<span style="color:var(--hp-green);font-weight:bold;">▲</span>` : eff === 0 ? `<span style="color:#555;">⊘</span>` : eff < 1 ? `<span style="color:var(--hp-red);">▼</span>` : '';
+                if (isMobile) {
+                    // Compact mobile layout: type | name | PP | eff arrow
+                    btn.innerHTML = `
+                        <div style="display:flex;align-items:center;gap:4px;width:100%;">
+                            <span class="type-badge type-${shownMove.type}" style="font-size:8px;padding:1px 3px;flex-shrink:0;">${shownMove.type.slice(0,4)}</span>
+                            <span style="font-weight:bold;font-size:11px;flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${shownMove.name}${dynaLabel}${zLabel}</span>
+                            <span style="color:${catColor};font-size:8px;font-weight:bold;flex-shrink:0;">${shownMove.cat.toUpperCase().slice(0,4)}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;font-size:9px;width:100%;margin-top:2px;">
+                            <span style="color:#888;">Pow: <strong style="color:#ddd;">${shownMove.pow > 0 ? shownMove.pow : '—'}</strong></span>
+                            <span style="color:${ppColor};">PP: ${ppDisplay}</span>
+                            ${effLabelShort ? `<span>${effLabelShort}</span>` : '<span></span>'}
+                        </div>`;
+                } else {
+                    let effLabel = eff > 1 ? `<span style="color:var(--hp-green);font-size:11px;font-weight:bold;">▲ Super Eff!</span>` : eff === 0 ? `<span style="color:#555;font-size:11px;">⊘ No Effect</span>` : eff < 1 ? `<span style="color:var(--hp-red);font-size:11px;">▼ Resisted</span>` : '';
+                    btn.innerHTML = `
+                        <div style="display:flex;align-items:center;gap:6px;width:100%;margin-bottom:4px;">
+                            <span class="type-badge type-${shownMove.type}" style="font-size:9px;padding:1px 4px;">${shownMove.type}</span>
+                            <span style="font-weight:bold;font-size:13px;flex:1;text-align:left;">${shownMove.name}${dynaLabel}${zLabel}</span>
+                            <span style="color:${catColor};font-size:9px;font-weight:bold;">${shownMove.cat.toUpperCase().slice(0,4)}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;width:100%;">
+                            <span style="color:#888;">Pow: <strong style="color:#ddd;">${shownMove.pow > 0 ? shownMove.pow : '—'}</strong></span>
+                            <span style="color:#888;">Acc: <strong style="color:#ddd;">${(shownMove.acc||0) <= 100 ? shownMove.acc+'%' : '—'}</strong></span>
+                            <span style="color:${ppColor};">PP: ${ppDisplay}</span>
+                            <span>${effLabel}</span>
+                        </div>`;
+                }
                 btn.onmouseenter = () => {
                     let tt = document.getElementById('move-tooltip');
                     let effString = shownMove.cat === "Status" ? "Status Move" : (eff > 1 ? "<span style='color:var(--hp-green)'>Super Effective!</span>" : (eff === 0 ? "<span style='color:#888'>No Effect.</span>" : (eff < 1 ? "<span style='color:var(--hp-red)'>Not Very Effective.</span>" : "Normal Damage")));
