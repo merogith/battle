@@ -1862,10 +1862,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return 'stat-val-low';
         }
         function getStatColor(val) {
-            if (val >= 250) return '#4caf50';
-            if (val >= 200) return '#8bc34a';
-            if (val >= 150) return '#ffc107';
-            if (val >= 100) return '#ff9800';
+            if (val >= 180) return '#4caf50';
+            if (val >= 140) return '#8bc34a';
+            if (val >= 100) return '#ffc107';
+            if (val >= 70) return '#ff9800';
             return '#f44336';
         }
         function statBarHTML(label, val) {
@@ -2814,10 +2814,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             });
             let w = getCurrentWeather(); let wUI = document.getElementById('weather-indicator');
-            if (w) { wUI.innerText = w; wUI.classList.remove('hidden'); } else { wUI.classList.add('hidden'); }
+            let weatherDisplayNames = {'Sun':'Sun','Rain':'Rain','Sandstorm':'Sandstorm','Hail':'Hail','HarshSun':'Harsh Sun','HeavyRain':'Heavy Rain','StrongWinds':'Strong Winds'};
+            if (w) { wUI.innerText = weatherDisplayNames[w] || w; wUI.classList.remove('hidden'); } else { wUI.classList.add('hidden'); }
             let wOverlay = document.getElementById('weather-overlay');
-            if (w === 'Sun') { wOverlay.className = 'weather-overlay weather-sun active'; }
-            else if (w === 'Rain') { wOverlay.className = 'weather-overlay weather-rain active'; }
+            if (w === 'Sun' || w === 'HarshSun') { wOverlay.className = 'weather-overlay weather-sun active'; }
+            else if (w === 'Rain' || w === 'HeavyRain') { wOverlay.className = 'weather-overlay weather-rain active'; }
             else if (w === 'Sandstorm') { wOverlay.className = 'weather-overlay weather-sand active'; }
             else if (w === 'Hail') { wOverlay.className = 'weather-overlay weather-hail active'; }
             else { wOverlay.className = 'weather-overlay'; }
@@ -3188,7 +3189,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             displayMoves.forEach((move, i) => {
                 let rawMove = activeMon.moves[move._origIndex];
                 // For Z-Move preview
-                let shownMove = (pending === 'ZMOVE' && !activeMon.zMoveUsed) ? buildZMove(activeMon, rawMove) : move;
+                let shownMove = (pending === 'ZMOVE' && !activeMon.zMoveUsed) ? buildZMove(activeMon, rawMove) : (activeMon.dynamaxed ? buildMaxMove(activeMon, rawMove) : move);
                 let btn = document.createElement('button'); let eff = 1; let effColor = "#fff"; let effText = "";
                 if (shownMove.cat !== "Status" && shownMove.pow > 0) {
                     eff = getMoveEffectiveness(shownMove.type, targetMon.type1, targetMon.type2);
@@ -3225,7 +3226,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let isEncored = activeMon.volatile.encore > 0 && activeMon.volatile.encoreMove !== rawMove.name;
                 let isFakeOutBlocked = rawMove.name === "Fake Out" && !activeMon.fakeOutOk;
                 let isNoConsec = (rawMove.name === "Gigaton Hammer" || rawMove.name === "Blood Moon") && activeMon.volatile.lastMoveUsed === rawMove.name;
-                if (!activeMon.dynamaxed && (rawMove.pp <= 0 || (activeMon.volatile.choiceLock && activeMon.volatile.choiceLock !== rawMove.name) || isTaunted || isEncored || isFakeOutBlocked || isNoConsec)) btn.disabled = true;
+                let isCharging = activeMon.volatile.charging && activeMon.volatile.charging !== rawMove.name;
+                let isRecharging = activeMon.volatile.recharge;
+                if (!activeMon.dynamaxed && (rawMove.pp <= 0 || isCharging || isRecharging || (activeMon.volatile.choiceLock && activeMon.volatile.choiceLock !== rawMove.name) || isTaunted || isEncored || isFakeOutBlocked || isNoConsec)) btn.disabled = true;
 
                 btn.onclick = () => {
                     document.getElementById('move-tooltip').classList.add('hidden'); menu.classList.add('hidden');
@@ -4098,6 +4101,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 runWishHealing();
                 endOfTurnEffects(state.pActive, state.fActive); endOfTurnEffects(state.fActive, state.pActive);
                 tickWeather();
+                // Dynamax turn countdown
+                if (state.pActive.dynamaxed) { state.pActive.dynamaxTurns--; if (state.pActive.dynamaxTurns <= 0) deactivateDynamax(state.pActive, true); }
+                if (state.fActive.dynamaxed) { state.fActive.dynamaxTurns--; if (state.fActive.dynamaxTurns <= 0) deactivateDynamax(state.fActive, false); }
                 // Increment turn counts for active mons
                 state.pActive.turnCount++;
                 state.fActive.turnCount++;
@@ -4124,8 +4130,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let spe = mon.stats.spe * getStageMult(mon.stages.spe);
             if (mon.item === "Choice Scarf") spe *= 1.5;
             if (mon.status === "PAR") spe *= 0.5;
-            if (mon.ability === "Chlorophyll" && weather === "Sun") spe *= 2;
-            if (mon.ability === "Swift Swim" && weather === "Rain") spe *= 2;
+            if (mon.ability === "Chlorophyll" && (weather === "Sun" || weather === "HarshSun")) spe *= 2;
+            if (mon.ability === "Swift Swim" && (weather === "Rain" || weather === "HeavyRain")) spe *= 2;
             if (mon.ability === "Sand Rush" && weather === "Sandstorm") spe *= 2;
             if (mon.ability === "Slush Rush" && weather === "Hail") spe *= 2;
             if (mon.ability === "Unburden" && mon.itemConsumed) spe *= 2;
@@ -4383,8 +4389,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _forcedTwoTurn = new Set(["Solar Beam","Solar Blade","Fly","Bounce","Dig","Dive","Phantom Force","Shadow Force","Sky Drop","Skull Bash","Sky Attack","Meteor Beam","Geomancy","Razor Wind","Electro Shot","Freeze Shock","Ice Burn"]);
             if ((move.mathEff || '').includes('two_turn_charge') || _forcedTwoTurn.has(move.name)) {
                 let _cw = getCurrentWeather();
-                let skipCharge = ((move.name === 'Solar Beam' || move.name === 'Solar Blade') && _cw === 'Sun') ||
-                                 (move.name === 'Electro Shot' && _cw === 'Rain') ||
+                let skipCharge = ((move.name === 'Solar Beam' || move.name === 'Solar Blade') && (_cw === 'Sun' || _cw === 'HarshSun')) ||
+                                 (move.name === 'Electro Shot' && (_cw === 'Rain' || _cw === 'HeavyRain')) ||
                                  (attacker.item === 'Power Herb' && !attacker.volatile.charging);
                 if (attacker.item === 'Power Herb' && skipCharge && attacker.volatile.charging !== move.name) {
                     attacker.item = null; attacker.itemConsumed = true;
@@ -4418,8 +4424,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // === STATUS MOVE HANDLING ===
             // Max Guard: functions like Protect
             if (move.isMaxGuard) {
-                let successRate = Math.pow(0.5, attacker.volatile.protectCount);
-                if (Math.random() < successRate) { attacker.volatile.protect = true; attacker.volatile.protectCount++; logMsg(`${attacker.name} protected itself with Max Guard!`); }
+                let successRate = Math.pow(0.5, attacker.volatile.protectCount || 0);
+                if (Math.random() < successRate) { attacker.volatile.protect = true; attacker.volatile.protectCount = (attacker.volatile.protectCount || 0) + 1; logMsg(`${attacker.name} protected itself with Max Guard!`); }
                 else { logMsg(`But it failed!`); } await sleep(1000); return;
             }
             if (move.name === "Protect" || move.name === "Detect" || move.name === "Endure") {
@@ -4490,8 +4496,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let _curWeather = getCurrentWeather();
             // Thunder & Hurricane: 100% in Rain, 50% in harsh Sun
             if (move.name === "Thunder" || move.name === "Hurricane") {
-                if (_curWeather === "Rain") { neverMiss = true; }
-                else if (_curWeather === "Sun") { finalAcc = 50; }
+                if (_curWeather === "Rain" || _curWeather === "HeavyRain") { neverMiss = true; }
+                else if (_curWeather === "Sun" || _curWeather === "HarshSun") { finalAcc = 50; }
             }
             // Blizzard: 100% in Hail/Snow
             if (move.name === "Blizzard" && (_curWeather === "Hail")) { neverMiss = true; }
@@ -4756,7 +4762,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Flash Fire boost
                 if (attacker.flashFireBoost && move.type === "Fire") A *= 1.5;
                 // Solar Power: SpA x1.5 in Sun (damage to self handled in endOfTurn)
-                if (attacker.ability === "Solar Power" && getCurrentWeather() === "Sun" && move.cat === "Special") A *= 1.5;
+                if (attacker.ability === "Solar Power" && (getCurrentWeather() === "Sun" || getCurrentWeather() === "HarshSun") && move.cat === "Special") A *= 1.5;
 
                 // Base power calculations
                 let basePower = move.pow;
@@ -4850,8 +4856,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 if (move.name === "Weather Ball") {
                     let ww = getCurrentWeather();
-                    if (ww === "Sun") { move = {...move, type: "Fire"}; basePower = 100; }
-                    else if (ww === "Rain") { move = {...move, type: "Water"}; basePower = 100; }
+                    if (ww === "Sun" || ww === "HarshSun") { move = {...move, type: "Fire"}; basePower = 100; }
+                    else if (ww === "Rain" || ww === "HeavyRain") { move = {...move, type: "Water"}; basePower = 100; }
                     else if (ww === "Sandstorm") { move = {...move, type: "Rock"}; basePower = 100; }
                     else if (ww === "Hail") { move = {...move, type: "Ice"}; basePower = 100; }
                 }
@@ -4953,12 +4959,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Utility Umbrella: attacker or defender holding it ignores weather power changes
                 let umbrellaActive = attacker.item === "Utility Umbrella" || defender.item === "Utility Umbrella";
                 if (!umbrellaActive) {
-                    if (w === "Sun" && move.type === "Fire") basePower = Math.floor(basePower * 1.5);
-                    if (w === "Sun" && move.type === "Water") basePower = Math.floor(basePower * 0.5);
-                    if (w === "Rain" && move.type === "Water") basePower = Math.floor(basePower * 1.5);
-                    if (w === "Rain" && move.type === "Fire") basePower = Math.floor(basePower * 0.5);
+                    if ((w === "Sun" || w === "HarshSun") && move.type === "Fire") basePower = Math.floor(basePower * 1.5);
+                    if ((w === "Sun" || w === "HarshSun") && move.type === "Water") basePower = Math.floor(basePower * 0.5);
+                    if ((w === "Rain" || w === "HeavyRain") && move.type === "Water") basePower = Math.floor(basePower * 1.5);
+                    if ((w === "Rain" || w === "HeavyRain") && move.type === "Fire") basePower = Math.floor(basePower * 0.5);
+                    // HeavyRain: Water moves can't be reduced; HarshSun: Fire moves can't be reduced
+                    // (already covered by the 1.5x/0.5x above)
                 }
-                if (move.name === "SolarBeam" && w !== "Sun") basePower = Math.floor(basePower * 0.5);
+                if (move.name === "SolarBeam" && w !== "Sun" && w !== "HarshSun") basePower = Math.floor(basePower * 0.5);
 
                 // Dry Skin: Fire moves deal 25% more to Dry Skin users
                 if (defender.ability === "Dry Skin" && move.type === "Fire") basePower = Math.floor(basePower * 1.25);
@@ -5531,6 +5539,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.ability === "Sand Stream") {
                 state.weather = "Sandstorm"; state.weatherTurns = 5;
                 logMsg(`${mon.name}'s Sand Stream whipped up a sandstorm!`, 'info');
+            }
+            if (mon.ability === "Desolate Land") {
+                state.weather = "HarshSun"; state.weatherTurns = 999;
+                logMsg(`${mon.name}'s Desolate Land turned the sunlight extremely harsh!`, 'info');
+            }
+            if (mon.ability === "Primordial Sea") {
+                state.weather = "HeavyRain"; state.weatherTurns = 999;
+                logMsg(`${mon.name}'s Primordial Sea created a heavy downpour!`, 'info');
+            }
+            if (mon.ability === "Delta Stream") {
+                state.weather = "StrongWinds"; state.weatherTurns = 999;
+                logMsg(`${mon.name}'s Delta Stream whipped up mysterious strong winds!`, 'info');
             }
             if (mon.ability === "Electric Surge") {
                 state.terrain = "Electric"; state.terrainTurns = 5;
@@ -6109,8 +6129,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let healAmt = Math.floor(attacker.maxHp / 2);
                 let w = getCurrentWeather();
                 if (["Moonlight","Morning Sun","Synthesis","Shore Up"].includes(move.name)) {
-                    if (w === "Sun") healAmt = Math.floor(attacker.maxHp * 0.667);
-                    else if (w === "Rain" || w === "Sandstorm" || w === "Hail") healAmt = Math.floor(attacker.maxHp / 4);
+                    if (w === "Sun" || w === "HarshSun") healAmt = Math.floor(attacker.maxHp * 0.667);
+                    else if (w === "Rain" || w === "HeavyRain" || w === "Sandstorm" || w === "Hail") healAmt = Math.floor(attacker.maxHp / 4);
                 }
                 let actualHeal = Math.min(attacker.maxHp - attacker.currentHp, healAmt);
                 if (actualHeal > 0) { attacker.currentHp += actualHeal; logMsg(`${attacker.name} recovered ${actualHeal} HP!`, 'heal'); updateUI(); }
@@ -6139,7 +6159,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Double Team") { changeStage(attacker, 'eva', 1); return; }
             if (move.name === "Defense Curl") { attacker.volatile.defenseCurled = true; changeStage(attacker, 'def', 1); return; }
             if (move.name === "Withdraw") { changeStage(attacker, 'def', 1); return; }
-            if (move.name === "Growth") { let stages = getCurrentWeather() === "Sun" ? 2 : 1; changeStage(attacker, 'atk', stages); changeStage(attacker, 'spa', stages); return; }
+            if (move.name === "Growth") { let gw = getCurrentWeather(); let stages = (gw === "Sun" || gw === "HarshSun") ? 2 : 1; changeStage(attacker, 'atk', stages); changeStage(attacker, 'spa', stages); return; }
             if (move.name === "Sharpen" || move.name === "Meditate" || move.name === "Howl") { changeStage(attacker, 'atk', 1); return; }
             if (move.name === "Bulk Up") { changeStage(attacker, 'atk', 1); changeStage(attacker, 'def', 1); return; }
             if (move.name === "Work Up") { changeStage(attacker, 'atk', 1); changeStage(attacker, 'spa', 1); return; }
@@ -6283,13 +6303,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.ability !== "Magic Guard" && mon.item !== "Safety Goggles" && mon.ability !== "Overcoat") {
                 // 1. Weather damage
                 let w = getCurrentWeather();
-                if (mon.ability === "Dry Skin" && w === "Sun") {
+                if (mon.ability === "Dry Skin" && (w === "Sun" || w === "HarshSun")) {
                     let dmg = Math.max(1, Math.floor(mon.maxHp / 8));
                     let actDmg = Math.min(mon.currentHp, dmg);
                     mon.currentHp -= actDmg;
                     logMsg(`${mon.name} took ${actDmg} damage from the harsh sunlight!`, 'dmg');
                 }
-                if (mon.ability === "Solar Power" && w === "Sun") {
+                if (mon.ability === "Solar Power" && (w === "Sun" || w === "HarshSun")) {
                     let dmg = Math.max(1, Math.floor(mon.maxHp / 8));
                     let actDmg = Math.min(mon.currentHp, dmg);
                     mon.currentHp -= actDmg;
@@ -6313,12 +6333,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Dry Skin rain heal / Rain Dish (weather-based healing, phase 1 extension)
             let ww = getCurrentWeather();
-            if (mon.ability === "Dry Skin" && ww === "Rain" && mon.currentHp > 0) {
+            if (mon.ability === "Dry Skin" && (ww === "Rain" || ww === "HeavyRain") && mon.currentHp > 0) {
                 let heal = Math.max(1, Math.floor(mon.maxHp / 8));
                 let actHeal = Math.min(mon.maxHp - mon.currentHp, heal);
                 if (actHeal > 0) { mon.currentHp += actHeal; logMsg(`${mon.name}'s Dry Skin restored ${actHeal} HP in the rain!`, 'heal'); }
             }
-            if (mon.ability === "Rain Dish" && ww === "Rain" && mon.currentHp > 0) {
+            if (mon.ability === "Rain Dish" && (ww === "Rain" || ww === "HeavyRain") && mon.currentHp > 0) {
                 let heal = Math.max(1, Math.floor(mon.maxHp / 16));
                 let actHeal = Math.min(mon.maxHp - mon.currentHp, heal);
                 if (actHeal > 0) { mon.currentHp += actHeal; logMsg(`${mon.name}'s Rain Dish restored ${actHeal} HP!`, 'heal'); }
