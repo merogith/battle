@@ -1141,7 +1141,7 @@
             result.push(current); return result;
         }
 
-        let baseStats = {}, movesDB = {}, builds = {}, tooltipDict = {};
+        let baseStats = {}, movesDB = {}, csvBuilds = {}, tooltipDict = {};
 
         // Convert Pokédex number to generation
         function getGenFromDexNum(num) {
@@ -1256,93 +1256,6 @@
                 console.error("Failed to load data files!", e);
             }
 
-            if (Object.keys(movesDB).length < 50) {
-                try {
-                    const movesCSV = await fetch('moves_new.csv').then(r => r.text());
-                    parseCSV(movesCSV, ';').forEach(r => { movesDB[r.name] = { type: r.type, cat: r.cat, pow: +r.pow || 0, acc: +r.acc || 0, pri: +r.pri || 0, pp: +r.pp || 5, eff: r.eff || '', prob: +r.prob || 0, mathEff: r.mathEff || '' }; });
-                } catch(e) {}
-            }
-
-            // Global helper for fetching randomized builds governed by toggles
-            window.getRandomBuildFiltered = function(name) {
-                if (!builds[name] || builds[name].length === 0) return { i: 'Leftovers', a: 'None', n: 'Hardy', m: ['Tackle','Growl','Tackle','Growl'], evs: {hp:0, atk:0, def:0, spa:0, spd:0, spe:0}, grade: 4 };
-                let allowMega = document.getElementById("mech-mega-cb") ? document.getElementById("mech-mega-cb").checked : true;
-                let allowZ = document.getElementById("mech-z-cb") ? document.getElementById("mech-z-cb").checked : true;
-                let allowTera = document.getElementById("mech-tera-cb") ? document.getElementById("mech-tera-cb").checked : true;
-                let valid = builds[name].filter(b => {
-                    if (b.isMega && !allowMega) return false;
-                    if (b.isZ && !allowZ) return false;
-                    if (b.m.includes("Tera Blast") && !allowTera) return false;
-                    return true;
-                });
-                if (valid.length === 0) valid = builds[name];
-                return { ...valid[Math.floor(Math.random() * valid.length)] };
-            };
-
-            // Load Smogon builds from gen4-gen9 JSON files (pkmn.cc format)
-            try {
-                for (let gen = 4; gen <= 9; gen++) {
-                    let resp = await fetch(`data/builds/gen${gen}.json`);
-                    if (!resp.ok) continue;
-                    let genData = await resp.json();
-                    for (const pkmn in genData) {
-                        if (!builds[pkmn]) builds[pkmn] = [];
-                        let entry = genData[pkmn]; // { tier: { setName: { moves, item, nature, evs, ability } } }
-                        for (let tier in entry) {
-                            for (let setName in entry[tier]) {
-                                let set = entry[tier][setName];
-                                let moves = (set.moves || []).slice(0, 4).map(m => Array.isArray(m) ? m[0] : m).filter(Boolean);
-                                while (moves.length < 4) moves.push("Tackle");
-                                let ability = Array.isArray(set.ability) ? set.ability[0] : (set.ability || '');
-                                if (!ability) {
-                                    let bs = baseStats[pkmn];
-                                    if (bs && bs.abilities) {
-                                        // Pick a random non-hidden ability, or hidden if none
-                                        let pool = [bs.abilities['0'], bs.abilities['1']].filter(Boolean);
-                                        if (pool.length === 0 && bs.abilities['H']) pool.push(bs.abilities['H']);
-                                        ability = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : 'None';
-                                    } else ability = 'None';
-                                }
-                                let item = Array.isArray(set.item) ? (set.item[0] || 'Leftovers') : (set.item || 'Leftovers');
-                                let nature = Array.isArray(set.nature) ? (set.nature[0] || 'Hardy') : (set.nature || 'Hardy');
-                                let evs = set.evs || {};
-                                let ivs = set.ivs || {};
-                                let isMega = !!(item && (item.endsWith('ite') || item.endsWith('ite X') || item.endsWith('ite Y')) && item !== 'Eviolite');
-                                let isZ = !!(item && item.endsWith(' Z'));
-                                let isTera = moves.includes('Tera Blast');
-
-                                let bld = {
-                                    i: item, a: ability, n: nature, m: moves,
-                                    evs: { hp: evs.hp||0, atk: evs.atk||0, def: evs.def||0, spa: evs.spa||0, spd: evs.spd||0, spe: evs.spe||0 },
-                                    ivs: ivs,
-                                    isMega: isMega, isZ: isZ, isTera: isTera,
-                                    grade: 3, _gen: gen, _tier: tier
-                                };
-
-                                if (bld.m.includes('Aurora Veil') && bld.a !== 'Snow Warning' && !bld.m.some(m => ['Snowscape','Hail','Chilly Reception'].includes(m))) {
-                                    for (let i = bld.m.length - 1; i >= 0; i--) { if (bld.m[i] !== 'Aurora Veil') { bld.m[i] = 'Snowscape'; break; } }
-                                }
-                                if (['Swift Swim','Hydration','Rain Dish'].includes(bld.a) && !bld.m.some(m => ['Rain Dance','Drizzle'].includes(m))) {
-                                    for (let i = bld.m.length - 1; i >= 0; i--) { if (!['Swift Swim','Hydration','Rain Dish'].includes(bld.m[i])) { bld.m[i] = 'Rain Dance'; break; } }
-                                }
-                                if (['Chlorophyll','Solar Power'].includes(bld.a) && !bld.m.some(m => ['Sunny Day'].includes(m))) {
-                                    for (let i = bld.m.length - 1; i >= 0; i--) { if (!['Chlorophyll','Solar Power'].includes(bld.m[i])) { bld.m[i] = 'Sunny Day'; break; } }
-                                }
-
-                                builds[pkmn].push(bld);
-                            }
-                        }
-                    }
-                    console.log(`[Builds] Loaded gen${gen}: ${Object.keys(genData).length} pokemon`);
-                }
-            } catch(e) { console.error("Error loading smogon builds", e); }
-
-            // Load legacy tooltips CSV as fallback (won't overwrite JSON-sourced descriptions)
-            try {
-                const tooltipsCSV = await fetch('tooltips_new.csv').then(r => r.text());
-                parseCSV(tooltipsCSV, ';').forEach(r => { if (!tooltipDict[r.key]) tooltipDict[r.key] = r.description; });
-            } catch(e) {}
-
             // Pre-fetch gen9 randbats (covers most competitive Pokémon from all gens)
             await fetchRandbatsForGen(9);
 
@@ -1361,7 +1274,206 @@
                     } catch(e) {}
                 }
             }
+            await loadBuildsCSV();
             computeStatScales();
+        }
+
+        async function loadBuildsCSV() {
+            try {
+                const text = await fetch('data/builds.csv').then(r => r.text());
+                const rows = parseCSV(text, ',');
+                for (const row of rows) {
+                    const name = row.name;
+                    const tag  = row.tag;
+                    if (!name || !tag) continue;
+                    if (!csvBuilds[name]) csvBuilds[name] = { regular: [], weather: [], mega: [], 'z-attack': [], tera: [] };
+                    if (!csvBuilds[name][tag]) csvBuilds[name][tag] = [];
+                    const moves = [row.move1, row.move2, row.move3, row.move4].map(m => m || 'Tackle');
+                    csvBuilds[name][tag].push({
+                        i: row.item || 'Leftovers',
+                        a: row.ability || '',
+                        n: row.nature || 'Hardy',
+                        m: moves,
+                        evs: {
+                            hp:  +row.hp_ev  || 0,
+                            atk: +row.atk_ev || 0,
+                            def: +row.def_ev || 0,
+                            spa: +row.spa_ev || 0,
+                            spd: +row.spd_ev || 0,
+                            spe: +row.spe_ev || 0
+                        }
+                    });
+                }
+                console.log(`[CSV] Loaded builds for ${Object.keys(csvBuilds).length} Pokémon`);
+            } catch(e) {
+                console.error('[CSV] Failed to load builds.csv', e);
+            }
+        }
+
+        // Weather-dependent abilities and the move setter they need
+        const WEATHER_ABILITIES = {
+            'Swift Swim':  { weather: 'Rain',      setter: 'Rain Dance' },
+            'Hydration':   { weather: 'Rain',      setter: 'Rain Dance' },
+            'Rain Dish':   { weather: 'Rain',      setter: 'Rain Dance' },
+            'Dry Skin':    { weather: 'Rain',      setter: 'Rain Dance' },
+            'Chlorophyll': { weather: 'Sun',       setter: 'Sunny Day'  },
+            'Solar Power': { weather: 'Sun',       setter: 'Sunny Day'  },
+            'Flower Gift': { weather: 'Sun',       setter: 'Sunny Day'  },
+            'Leaf Guard':  { weather: 'Sun',       setter: 'Sunny Day'  },
+            'Sand Rush':   { weather: 'Sandstorm', setter: 'Sandstorm'  },
+            'Sand Force':  { weather: 'Sandstorm', setter: 'Sandstorm'  },
+            'Sand Veil':   { weather: 'Sandstorm', setter: 'Sandstorm'  },
+            'Slush Rush':  { weather: 'Hail',      setter: 'Snowscape'  },
+            'Snow Warning':{ weather: 'Hail',      setter: null         },
+            'Ice Body':    { weather: 'Hail',      setter: 'Snowscape'  },
+        };
+        const WEATHER_SETTER_MOVES = new Set(['Rain Dance','Sunny Day','Sandstorm','Snowscape','Hail','Chilly Reception']);
+        const WEATHER_SETTER_ABILITIES = new Set(['Drizzle','Drought','Sand Stream','Snow Warning','Desolate Land','Primordial Sea','Delta Stream']);
+
+        // Replace a move slot to inject the weather setter move.
+        // Replace priority (lowest score first):
+        //   0  unknown move data
+        //   1  weak non-STAB attack (<40 effective BP)
+        //   2  coverage move (non-STAB damaging ≥40 BP)
+        //   3  status/utility move
+        //   3.x redundant STAB (when ≥2 STAB damaging moves exist, weakest first)
+        //   10+ sole STAB damaging move (last resort)
+        function replaceForWeatherSetter(b, setterMove, base) {
+            if (!setterMove || !b || !b.m) return;
+            if (b.m.includes(setterMove)) return;
+            const t1 = base.t1 || '', t2 = base.t2 || '';
+
+            const stabDamagingCount = b.m.filter(m => {
+                const mv = movesDB[m];
+                return mv && (mv.type === t1 || mv.type === t2) && mv.cat !== 'Status' && (mv.pow || 0) > 0;
+            }).length;
+
+            const candidates = b.m.map((mName, i) => {
+                const mv = movesDB[mName];
+                if (!mv) return { i, score: 0 };
+                const isSTAB     = mv.type === t1 || mv.type === t2;
+                const isDamaging = mv.cat !== 'Status' && (mv.pow || 0) > 0;
+                const eff        = (mv.pow || 0) * ((mv.acc || 100) / 100);
+                if (!isSTAB && isDamaging && eff < 40) return { i, score: 1 };
+                if (!isSTAB && isDamaging)             return { i, score: 2 };
+                if (!isDamaging)                       return { i, score: 3 };
+                if (isSTAB && stabDamagingCount >= 2)  return { i, score: 3 + 1 / (eff + 1) };
+                return { i, score: 10 + eff };
+            });
+            candidates.sort((a, b) => a.score - b.score);
+            b.m[candidates[0].i] = setterMove;
+            ensureMoveData(setterMove);
+        }
+
+        const isMegaStone = item => item && (
+            item === 'Red Orb' || item === 'Blue Orb' || item === 'Rusted Sword' || item === 'Rusted Shield' ||
+            (item !== 'Eviolite' && (item.endsWith('ite') || item.endsWith('ite X') || item.endsWith('ite Y')) && BANNED_ITEMS.has(item))
+        );
+
+        // Central build factory — used by draft, gauntlet rounds, and draw recovery
+        function makeBuild(name) {
+            const gimmick = rollGimmick(name);
+            const base    = baseStats[name] || {};
+            const entry   = csvBuilds[name] || {};
+            let b = null;
+
+            // Select pool by gimmick tag
+            let pool;
+            if (gimmick === 'MEGA') {
+                pool = entry.mega?.length ? entry.mega : [];
+            } else if (gimmick === 'ZMOVE') {
+                pool = entry['z-attack']?.length ? entry['z-attack'] : [];
+            } else if (gimmick === 'TERA') {
+                pool = entry.tera?.length ? entry.tera : [];
+            } else {
+                // STANDARD / DYNAMAX / GMAXDYNAMAX — natural tag ratio: regular + weather combined
+                pool = (entry.regular || []).concat(entry.weather || []);
+            }
+            // Fallback to regular+weather when specific tag pool is empty
+            if (!pool.length) pool = (entry.regular || []).concat(entry.weather || []);
+
+            if (pool.length) {
+                b = { ...pool[Math.floor(Math.random() * pool.length)] };
+                // Resolve move choices: "Move A/Move B" → pick one at random
+                b.m = b.m.map(m => {
+                    if (!m.includes('/')) return m;
+                    const opts = m.split('/').filter(Boolean);
+                    return opts[Math.floor(Math.random() * opts.length)];
+                });
+                b.evs = { ...b.evs };
+            }
+
+            // Fallback: randbats cache (newest gen first)
+            if (!b) {
+                for (let g = 9; g >= 4; g--) {
+                    if (_randbatsCache[g] && _randbatsCache[g][name]) {
+                        b = convertRandbatsEntry(_randbatsCache[g][name], name);
+                        break;
+                    }
+                }
+            }
+
+            // Last resort
+            if (!b) {
+                ensureMoveData('Tackle'); ensureMoveData('Growl');
+                b = { i: 'Leftovers', a: 'None', n: 'Hardy', m: ['Tackle','Growl','Tackle','Growl'], evs: { hp:0, atk:0, spa:0, def:0, spd:0, spe:0 } };
+            }
+
+            // Sanitize: strip mechanic-specific items/moves when wrong gimmick
+            if (gimmick !== 'MEGA'  && isMegaStone(b.i))       b.i = 'Leftovers';
+            if (gimmick !== 'ZMOVE' && Z_TYPE_MAP_VALUES.has(b.i)) b.i = 'Leftovers';
+            if (gimmick !== 'TERA'  && b.m) {
+                b.m = b.m.map(m => (m === 'Tera Blast' || m === 'Tera Starstorm') ? 'Tackle' : m);
+            }
+
+            // Resolve blank ability from species data
+            if (!b.a || b.a === 'None' || b.a === '') {
+                if (base.abilities) {
+                    const aPool = [base.abilities['0'], base.abilities['1']].filter(Boolean);
+                    if (!aPool.length && base.abilities['H']) aPool.push(base.abilities['H']);
+                    if (aPool.length) b.a = aPool[Math.floor(Math.random() * aPool.length)];
+                }
+                if (!b.a || b.a === '') b.a = 'None';
+            }
+
+            // Assign gimmick item and tag build
+            assignGimmickToBuild(name, b, gimmick);
+
+            // Tera type assignment
+            if (gimmick === 'TERA') {
+                b.teraType = rollTeraType(base.t1 || 'Normal', base.t2 || '');
+                if (b.teraType !== base.t1 && b.teraType !== (base.t2 || '')) {
+                    const hasSTABForTera = b.m.some(mName => {
+                        const mv = movesDB[mName];
+                        return mv && mv.type === b.teraType && mv.cat !== 'Status';
+                    });
+                    if (!b.m.includes('Tera Blast') && !hasSTABForTera) {
+                        ensureMoveData('Tera Blast');
+                        let weakIdx = -1, weakBP = Infinity;
+                        for (let i = 0; i < b.m.length; i++) {
+                            const mv = movesDB[b.m[i]];
+                            if (mv && mv.cat !== 'Status' && mv.type !== base.t1 && mv.type !== (base.t2||'') && (mv.pow||0) < weakBP) {
+                                weakBP = mv.pow||0; weakIdx = i;
+                            }
+                        }
+                        if (weakIdx >= 0) b.m[weakIdx] = 'Tera Blast';
+                    }
+                }
+            } else {
+                b.teraType = null;
+            }
+
+            // Weather move injection: if random weather is OFF, ensure weather-dep builds have their setter
+            if (!settings.randomWeather) {
+                const wInfo = WEATHER_ABILITIES[b.a];
+                if (wInfo && wInfo.setter && !WEATHER_SETTER_ABILITIES.has(b.a)) {
+                    if (!b.m.some(m => WEATHER_SETTER_MOVES.has(m))) {
+                        replaceForWeatherSetter(b, wInfo.setter, base);
+                    }
+                }
+            }
+
+            return b;
         }
 
         function computeStatScales() {
@@ -2268,242 +2380,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.querySelectorAll('.screen, .modal').forEach(el => el.classList.add('hidden'));
             document.getElementById('screen-draft').classList.remove('hidden');
 
-            // === FETCH SMOGON COMPETITIVE SETS (proper natures, EVs, items, abilities) ===
-            let smogonMap = {}; // name → array of set objects
-            for (let g = Math.max(minGen, 1); g <= Math.min(maxGen, 9); g++) {
-                let smogon = await fetchSmogonSetsForGen(g);
-                for (let [name, entry] of Object.entries(smogon)) {
-                    if (!smogonMap[name]) smogonMap[name] = [];
-                    // entry shape: { "Format Name": [set, ...] } OR { "Format Name": { "SetName": set } }
-                    for (let formatVal of Object.values(entry)) {
-                        if (Array.isArray(formatVal)) smogonMap[name].push(...formatVal);
-                        else if (formatVal && typeof formatVal === 'object') smogonMap[name].push(...Object.values(formatVal));
-                    }
-                }
-            }
-
-            // === BUILD POOL FROM RANDBATS (fallback for when Smogon sets unavailable) ===
-            let poolMap = {}; // name → randbats entry
-            let rb9 = _randbatsCache[9] || {};
-            for (let [name, entry] of Object.entries(rb9)) {
-                let b = baseStats[name];
-                if (b && b.gen >= minGen && b.gen <= maxGen && activeGrades.includes(getMonGrade(name, b.hp+b.atk+b.def+b.spa+b.spd+b.spe))) poolMap[name] = entry;
-            }
-            for (let g = minGen; g <= Math.min(maxGen, 8); g++) {
-                if (!_randbatsCache[g]) await fetchRandbatsForGen(g);
-                let rbg = _randbatsCache[g] || {};
-                for (let [name, entry] of Object.entries(rbg)) {
-                    if (poolMap[name]) continue;
-                    let b = baseStats[name];
-                    if (b && b.gen >= minGen && b.gen <= maxGen && activeGrades.includes(getMonGrade(name, b.hp+b.atk+b.def+b.spa+b.spd+b.spe))) poolMap[name] = entry;
-                }
-            }
-
-            // Combine Smogon + randbats into eligible pool
-            let eligibleSet = new Set([...Object.keys(smogonMap), ...Object.keys(poolMap)]);
-            let eligible = [...eligibleSet].filter(name => {
-                let b = baseStats[name];
+            // Build eligible pool from CSV builds (gen + grade filtered)
+            let eligible = Object.keys(csvBuilds).filter(name => {
+                const b = baseStats[name];
                 return b && b.gen >= minGen && b.gen <= maxGen && activeGrades.includes(getMonGrade(name, b.hp+b.atk+b.def+b.spa+b.spd+b.spe));
             });
+            // Widen: drop grade filter if pool too small
             if (eligible.length < 12) {
-                let csvE = Object.keys(builds).filter(n => { let b = baseStats[n]; return b && b.gen >= minGen && b.gen <= maxGen && activeGrades.includes(getMonGrade(n, b.hp+b.atk+b.def+b.spa+b.spd+b.spe)); });
-                for (let n of csvE) if (!eligibleSet.has(n)) eligible.push(n);
-            }
-            if (eligible.length < 12) eligible = [...new Set([...eligible, ...Object.keys(builds)])];
-
-            let poolKeys = eligible.sort(() => 0.5 - Math.random()).slice(0, 12);
-
-            // Helpers used across build logic
-            let isMegaStone = item => item && (BANNED_ITEMS.has(item) && (item.endsWith('ite') || item === 'Red Orb' || item === 'Blue Orb' || item === 'Rusted Sword' || item === 'Rusted Shield'));
-            let pickRandom = arr => arr[Math.floor(Math.random() * arr.length)];
-
-            // Check if a build is "clean" for STANDARD — no mechanic-specific items or moves
-            function isBuildClean(b) {
-                if (!b) return false;
-                if (isMegaStone(b.i)) return false;
-                if (Z_TYPE_MAP_VALUES.has(b.i)) return false;
-                // Tera Blast only allowed if gimmick is TERA
-                if (b.m && b.m.includes('Tera Blast')) return false;
-                return true;
-            }
-
-            // Fetch one converted Smogon set from the pool (random)
-            function pickSmogonBuild(sets, name) {
-                if (!sets || sets.length === 0) return null;
-                return convertSmogonSet(pickRandom(sets), name);
-            }
-
-            // Weather-dependent abilities and their required weather setters
-            const WEATHER_ABILITIES = {
-                'Swift Swim': {weather:'Rain', setter:'Rain Dance'},
-                'Hydration': {weather:'Rain', setter:'Rain Dance'},
-                'Rain Dish': {weather:'Rain', setter:'Rain Dance'},
-                'Dry Skin': {weather:'Rain', setter:'Rain Dance'},
-                'Chlorophyll': {weather:'Sun', setter:'Sunny Day'},
-                'Solar Power': {weather:'Sun', setter:'Sunny Day'},
-                'Flower Gift': {weather:'Sun', setter:'Sunny Day'},
-                'Leaf Guard': {weather:'Sun', setter:'Sunny Day'},
-                'Sand Rush': {weather:'Sandstorm', setter:'Sandstorm'},
-                'Sand Force': {weather:'Sandstorm', setter:'Sandstorm'},
-                'Sand Veil': {weather:'Sandstorm', setter:'Sandstorm'},
-                'Slush Rush': {weather:'Hail', setter:'Snowscape'},
-                'Snow Warning': {weather:'Hail', setter:null}, // self-sets
-                'Ice Body': {weather:'Hail', setter:'Snowscape'},
-            };
-            // Weather-setting moves (checking if build already has one)
-            const WEATHER_SETTER_MOVES = new Set(['Rain Dance','Sunny Day','Sandstorm','Snowscape','Hail','Chilly Reception']);
-            // Abilities that auto-set weather (no move needed)
-            const WEATHER_SETTER_ABILITIES = new Set(['Drizzle','Drought','Sand Stream','Snow Warning','Desolate Land','Primordial Sea','Delta Stream']);
-
-            // Replace a move for weather setter using priority:
-            // non-STAB non-damaging > non-STAB damaging > lowest pow×acc STAB > random STAB
-            function replaceForWeatherSetter(b, setterMove, base) {
-                if (!setterMove || !b || !b.m) return;
-                if (b.m.includes(setterMove)) return; // already has it
-                let t1 = base.t1 || '', t2 = base.t2 || '';
-
-                // Score each move slot for replacement priority (lower = replace first)
-                let candidates = b.m.map((mName, i) => {
-                    let mv = movesDB[mName];
-                    if (!mv) return {i, score: 0}; // unknown move = replace first
-                    let isSTAB = mv.type === t1 || mv.type === t2;
-                    let isDamaging = mv.cat !== 'Status' && (mv.pow || 0) > 0;
-                    if (!isSTAB && !isDamaging) return {i, score: 1}; // non-STAB status: best to replace
-                    if (!isSTAB && isDamaging) return {i, score: 2}; // non-STAB damage
-                    if (isSTAB && !isDamaging) return {i, score: 3}; // STAB status
-                    // STAB damaging: score by pow × acc (low = replace first)
-                    let effective = (mv.pow || 0) * ((mv.acc || 100) / 100);
-                    return {i, score: 3 + effective};
+                eligible = Object.keys(csvBuilds).filter(name => {
+                    const b = baseStats[name];
+                    return b && b.gen >= minGen && b.gen <= maxGen;
                 });
-                candidates.sort((a, b) => a.score - b.score);
-                let replaceIdx = candidates[0].i;
-                ensureMoveData(setterMove);
-                b.m[replaceIdx] = setterMove;
             }
+            // Last resort: all CSV builds
+            if (eligible.length < 12) eligible = Object.keys(csvBuilds);
 
-            function makeBuild(name) {
-                let gimmick = rollGimmick(name);
-                let b;
-                let base = baseStats[name] || {};
-                let smogonSets = smogonMap[name] || [];
-                // Only use smogon sets that have proper competitive data (nature/EVs)
-                let richSmogonSets = smogonSets.filter(s => s.nature || s.evs);
-                // If no rich sets, prefer local builds (gen4+) which have natures/EVs
-                let useSmogon = richSmogonSets.length > 0 ? richSmogonSets : smogonSets;
-                let hasLocalBuilds = builds[name] && builds[name].length > 0;
+            const poolKeys = eligible.sort(() => 0.5 - Math.random()).slice(0, 12);
 
-                // Prefer local builds if smogon sets lack competitive data
-                if (hasLocalBuilds && richSmogonSets.length === 0) {
-                    b = { ...window.getRandomBuildFiltered(name) };
-                    // Resolve ability if still 'None'
-                    if (b.a === 'None' && base.abilities) {
-                        let pool = [base.abilities['0'], base.abilities['1']].filter(Boolean);
-                        if (pool.length === 0 && base.abilities['H']) pool.push(base.abilities['H']);
-                        if (pool.length > 0) b.a = pool[Math.floor(Math.random() * pool.length)];
-                    }
-                } else if (useSmogon.length > 0) {
-                    if (gimmick === 'MEGA') {
-                        let megaSets = useSmogon.filter(s => { let it = Array.isArray(s.item) ? s.item[0] : s.item; return isMegaStone(it); });
-                        b = pickSmogonBuild(megaSets.length > 0 ? megaSets : useSmogon, name);
-
-                    } else if (gimmick === 'ZMOVE') {
-                        let zSets = useSmogon.filter(s => {
-                            let items = Array.isArray(s.item) ? s.item : [s.item];
-                            return items.some(it => it && Z_TYPE_MAP_VALUES.has(it));
-                        });
-                        b = pickSmogonBuild(zSets.length > 0 ? zSets : useSmogon, name);
-
-                    } else if (gimmick === 'TERA') {
-                        let teraSets = useSmogon.filter(s => s.teratypes);
-                        b = pickSmogonBuild(teraSets.length > 0 ? teraSets : useSmogon, name);
-
-                    } else {
-                        // STANDARD / DYNAMAX / GMAXDYNAMAX: must get a CLEAN build
-                        let cleanSets = useSmogon.filter(s => {
-                            let it = Array.isArray(s.item) ? s.item[0] : s.item;
-                            return !isMegaStone(it) && !Z_TYPE_MAP_VALUES.has(it) && !s.teratypes;
-                        });
-                        if (cleanSets.length === 0) cleanSets = useSmogon.filter(s => {
-                            let it = Array.isArray(s.item) ? s.item[0] : s.item;
-                            return !isMegaStone(it) && !Z_TYPE_MAP_VALUES.has(it);
-                        });
-
-                        let pool = cleanSets.length > 0 ? cleanSets : useSmogon;
-                        for (let attempt = 0; attempt < 5; attempt++) {
-                            b = pickSmogonBuild(pool, name);
-                            if (b && isBuildClean(b)) break;
-                        }
-                        if (b) {
-                            if (isMegaStone(b.i) || Z_TYPE_MAP_VALUES.has(b.i)) b.i = 'Leftovers';
-                            if (b.m) b.m = b.m.map(m => m === 'Tera Blast' ? 'Tackle' : m);
-                        }
-                    }
-                }
-
-                // FALLBACK: randbats
-                if (!b && poolMap[name]) b = convertRandbatsEntry(poolMap[name], name);
-                // FALLBACK: local builds
-                if (!b && hasLocalBuilds) b = { ...window.getRandomBuildFiltered(name) };
-                // LAST RESORT
-                if (!b) { ensureMoveData('Tackle'); ensureMoveData('Growl'); b = { i: 'Leftovers', a: 'None', n: 'Hardy', m: ['Tackle', 'Growl', 'Tackle', 'Growl'], evs: { hp: 0, atk: 0, spa: 0, def: 0, spd: 0, spe: 0 }, grade: 4 }; }
-
-                // Final sanitization for non-mechanic builds from fallback sources
-                if (gimmick !== 'MEGA' && gimmick !== 'ZMOVE') {
-                    if (isMegaStone(b.i) || Z_TYPE_MAP_VALUES.has(b.i)) b.i = 'Leftovers';
-                }
-                if (gimmick !== 'TERA' && b.m) {
-                    b.m = b.m.map(m => m === 'Tera Blast' ? 'Tackle' : m);
-                }
-
-                // Assign gimmick item (mega stone / Z-crystal override)
-                assignGimmickToBuild(name, b, gimmick);
-
-                // Tera type: ONLY when gimmick is TERA
-                if (gimmick === 'TERA') {
-                    if (b._teratypes && b._teratypes.length > 0) {
-                        b.teraType = pickRandom(b._teratypes);
-                    } else {
-                        b.teraType = rollTeraType(base.t1 || 'Normal', base.t2 || '');
-                    }
-                    // If tera type differs from STAB and no matching attack, add Tera Blast
-                    if (b.teraType !== base.t1 && b.teraType !== (base.t2 || '')) {
-                        let hasSTABForTera = b.m.some(mName => {
-                            let mv = movesDB[mName];
-                            return mv && mv.type === b.teraType && mv.cat !== 'Status';
-                        });
-                        if (!b.m.includes('Tera Blast') && !hasSTABForTera) {
-                            ensureMoveData('Tera Blast');
-                            // Replace weakest non-STAB attack
-                            let weakIdx = -1, weakBP = Infinity;
-                            for (let i = 0; i < b.m.length; i++) {
-                                let mv = movesDB[b.m[i]];
-                                if (mv && mv.cat !== 'Status' && mv.type !== base.t1 && mv.type !== (base.t2 || '') && (mv.pow || 0) < weakBP) {
-                                    weakBP = mv.pow || 0; weakIdx = i;
-                                }
-                            }
-                            if (weakIdx >= 0) b.m[weakIdx] = 'Tera Blast';
-                        }
-                    }
-                } else {
-                    b.teraType = null; // Non-TERA Pokemon get no tera type
-                }
-
-                // Weather move injection: if random weather is OFF and ability needs weather,
-                // ensure a weather-setting move is in the build
-                if (!settings.randomWeather) {
-                    let wInfo = WEATHER_ABILITIES[b.a];
-                    if (wInfo && wInfo.setter) {
-                        // Does the build already have a weather setter or a weather-setting ability?
-                        let hasAutoWeather = WEATHER_SETTER_ABILITIES.has(b.a);
-                        let hasSetterMove = b.m.some(m => WEATHER_SETTER_MOVES.has(m));
-                        if (!hasAutoWeather && !hasSetterMove) {
-                            replaceForWeatherSetter(b, wInfo.setter, base);
-                        }
-                    }
-                }
-
-                return b;
-            }
             state.p1Pool = poolKeys.slice(0, 6).map(name => ({ name, build: makeBuild(name) }));
             state.p2Pool = poolKeys.slice(6, 12).map(name => ({ name, build: makeBuild(name) }));
             renderDraft();
@@ -5443,8 +5336,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             document.getElementById('modal-end-screen').classList.add('hidden');
                             logMsg(`Draw round — no swap reward. Fully healing team...`, 'heal');
                             state.playerParty.forEach((m, i) => { state.playerParty[i] = buildPokemon(m.name, m.buildData); });
-                            let poolKeys = Object.keys(builds).sort(() => 0.5 - Math.random()).slice(0, 3);
-                            state.foeParty = poolKeys.map(name => buildPokemon(name, window.getRandomBuildFiltered(name)));
+                            let drawEligible = Object.keys(csvBuilds).filter(n => { const b = baseStats[n]; return b && b.gen >= state.minGen && b.gen <= state.maxGen && settings.draftGrades.includes(getMonGrade(n, b.hp+b.atk+b.def+b.spa+b.spd+b.spe)); });
+                            if (drawEligible.length < 3) drawEligible = Object.keys(csvBuilds);
+                            const drawKeys = drawEligible.sort(() => 0.5 - Math.random()).slice(0, 3);
+                            state.foeParty = drawKeys.map(name => buildPokemon(name, makeBuild(name)));
                             state.pActive = state.playerParty[0]; state.fActive = state.foeParty[0];
                             state.weather = null; state.weatherTurns = 0;
                             state.pSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0 }; state.fSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0 };
@@ -6644,17 +6539,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.score++; logMsg(`Round ${state.score} cleared! Fully healing team...`, 'heal');
             // Rebuild player party from their saved buildData (preserves shiny, gimmick, moves, etc.)
             state.playerParty.forEach((m, i) => { state.playerParty[i] = buildPokemon(m.name, m.buildData); });
-            // Generate new foe team - try smogon/randbats builds first, fallback to local builds
-            let allEligible = Object.keys(baseStats).filter(n => {
-                let b = baseStats[n];
-                return b && b.gen >= state.minGen && b.gen <= state.maxGen && builds[n] && builds[n].length > 0;
+            // Generate new foe team from CSV builds (same gen range as player)
+            let allEligible = Object.keys(csvBuilds).filter(n => {
+                const b = baseStats[n];
+                return b && b.gen >= state.minGen && b.gen <= state.maxGen && settings.draftGrades.includes(getMonGrade(n, b.hp+b.atk+b.def+b.spa+b.spd+b.spe));
             });
-            if (allEligible.length < 3) allEligible = Object.keys(builds);
-            let foeKeys = allEligible.sort(() => 0.5 - Math.random()).slice(0, 3);
-            state.foeParty = foeKeys.map(name => {
-                let build = window.getRandomBuildFiltered(name);
-                return buildPokemon(name, build);
-            });
+            if (allEligible.length < 3) allEligible = Object.keys(csvBuilds);
+            const foeKeys = allEligible.sort(() => 0.5 - Math.random()).slice(0, 3);
+            state.foeParty = foeKeys.map(name => buildPokemon(name, makeBuild(name)));
             state.pActive = state.playerParty[0]; state.fActive = state.foeParty[0];
             state.weather = null; state.weatherTurns = 0;
             state.terrain = null; state.terrainTurns = 0;
