@@ -1215,7 +1215,7 @@
                 const movesJSONOrig = await fetch('data/moves.json').then(r => r.json()); const movesJSON = movesJSONOrig['9'] || {};
                 for (let k in movesJSON) {
                     let m = movesJSON[k];
-                    movesDB[m.name] = { type: m.type, cat: m.category, pow: m.basePower || 0, acc: m.accuracy===true?100:m.accuracy || 0, pri: m.priority || 0, pp: m.pp || 5, eff: m.shortDesc, desc: m.desc, secondary: m.secondary || null, secondaries: m.secondaries || null, selfEffect: m.self || null, flags: m.flags || {}, drain: m.drain || null, recoil: m.recoil || null };
+                    movesDB[m.name] = { type: m.type, cat: m.category, pow: m.basePower || 0, acc: m.accuracy===true?100:m.accuracy || 0, pri: m.priority || 0, pp: m.pp || 5, eff: m.shortDesc, desc: m.desc };
                 }
 
                 // Load Natures
@@ -1478,48 +1478,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             "Red Orb":"Groudon-Primal","Blue Orb":"Kyogre-Primal",
             "Mewtwonite X":"Mewtwo-Mega-X","Mewtwonite Y":"Mewtwo-Mega-Y"
         };
-        const FIXED_MAX_POWER = {
-            'Counter': 75, 'Mirror Coat': 100, 'Seismic Toss': 100, 'Night Shade': 100,
-            'Dragon Rage': 100, 'Sonic Boom': 100, 'Endeavor': 130, 'Super Fang': 100,
-            'Nature\'s Madness': 100, 'Struggle': 1, 'Bide': 100, 'Psywave': 100
-        };
-
-        const GMAX_MOVE_MAP = {
-            "Charizard": { "Fire": "G-Max Wildfire" },
-            "Venusaur": { "Grass": "G-Max Vine Lash" },
-            "Blastoise": { "Water": "G-Max Cannonade" },
-            "Butterfree": { "Bug": "G-Max Befuddle" },
-            "Pikachu": { "Electric": "G-Max Volt Crash" },
-            "Meowth": { "Normal": "G-Max Gold Rush" },
-            "Machamp": { "Fighting": "G-Max Chi Strike" },
-            "Gengar": { "Ghost": "G-Max Terror" },
-            "Kingler": { "Water": "G-Max Foam Burst" },
-            "Lapras": { "Ice": "G-Max Resonance" },
-            "Eevee": { "Normal": "G-Max Cuddle" },
-            "Snorlax": { "Normal": "G-Max Replenish" },
-            "Garbodor": { "Poison": "G-Max Malodor" },
-            "Melmetal": { "Steel": "G-Max Meltdown" },
-            "Rillaboom": { "Grass": "G-Max Drum Solo" },
-            "Cinderace": { "Fire": "G-Max Fireball" },
-            "Inteleon": { "Water": "G-Max Hydrosnipe" },
-            "Corviknight": { "Flying": "G-Max Wind Rage" },
-            "Orbeetle": { "Psychic": "G-Max Gravitas" },
-            "Drednaw": { "Water": "G-Max Stonesurge" },
-            "Coalossal": { "Rock": "G-Max Vocalith" },
-            "Flapple": { "Grass": "G-Max Tartness" },
-            "Appletun": { "Grass": "G-Max Sweetness" },
-            "Sandaconda": { "Ground": "G-Max Sandblast" },
-            "Toxtricity": { "Electric": "G-Max Stun Shock" },
-            "Centiskorch": { "Fire": "G-Max Centiferno" },
-            "Hatterene": { "Psychic": "G-Max Smite" },
-            "Grimmsnarl": { "Dark": "G-Max Snooze" },
-            "Alcremie": { "Fairy": "G-Max Finale" },
-            "Copperajah": { "Steel": "G-Max Steelsurge" },
-            "Duraludon": { "Steel": "G-Max Depletion" },
-            "Urshifu": { "Fighting": "G-Max One Blow", "Water": "G-Max Rapid Flow" }
-        };
-
-        const GMAX_SPECIES = new Set(Object.keys(GMAX_MOVE_MAP));
+        const GMAX_SPECIES = new Set(["Charizard","Butterfree","Pikachu","Meowth","Machamp","Gengar","Kingler","Lapras","Eevee","Snorlax","Garbodor","Melmetal","Rillaboom","Cinderace","Inteleon","Corviknight","Orbeetle","Drednaw","Coalossal","Flapple","Appletun","Sandaconda","Toxtricity","Centiskorch","Hatterene","Grimmsnarl","Alcremie","Copperajah","Duraludon","Urshifu","Eternatus"]);
         const DYNAMAX_BANNED = new Set(["Zacian","Zamazenta","Eternatus"]);
         const Z_TYPE_MAP = {"Normal":"Normalium Z","Fire":"Firium Z","Water":"Waterium Z","Electric":"Electrium Z","Grass":"Grassium Z","Ice":"Icium Z","Fighting":"Fightinium Z","Poison":"Poisonium Z","Ground":"Groundium Z","Flying":"Flyinium Z","Psychic":"Psychium Z","Bug":"Buginium Z","Rock":"Rockium Z","Ghost":"Ghostium Z","Dragon":"Dragonium Z","Dark":"Darkinium Z","Steel":"Steelium Z","Fairy":"Fairium Z"};
         const Z_TYPE_MAP_VALUES = new Set([...Object.values(Z_TYPE_MAP), "Pikanium Z","Pikashunium Z","Eevium Z","Decidium Z","Incinium Z","Primarium Z","Tapunium Z","Marshadium Z","Aloraichium Z","Snorlium Z","Mewnium Z"]);
@@ -2116,9 +2075,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // Max Move power table for Dynamax
-        function getMaxMovePower(bp, moveName) {
-            if (FIXED_MAX_POWER[moveName]) return FIXED_MAX_POWER[moveName];
-            if (!bp || bp === 0) return 100; // Default for other edge cases
+        function getMaxMovePower(bp, cat) {
+            if (cat === 'Status') return 0;
+            if (!bp || bp === 0) return 0;
             if (bp < 40) return 90; if (bp < 50) return 100; if (bp < 60) return 110;
             if (bp < 70) return 120; if (bp < 100) return 130; if (bp < 140) return 140;
             return 150;
@@ -2181,15 +2140,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.dynamaxed = true;
             mon.dynamaxTurns = 3;
             if (isPlayer) state.usedDyna = true; else state.fUsedDyna = true;
-            
-            // Transform to G-Max form if eligible
-            let baseSpecies = mon.speciesName || mon.name.split('-')[0];
-            if (GMAX_SPECIES.has(baseSpecies)) {
-                mon._prevName = mon.name;
-                mon.name = `${baseSpecies}-Gmax`;
-                mon.isGmax = true;
-            }
-
             // Double max HP and give the extra HP
             let hpGain = mon.maxHp;
             mon.baseMaxHp = mon.maxHp;
@@ -2197,11 +2147,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.currentHp = Math.min(mon.maxHp, mon.currentHp + hpGain);
             logMsg(`${mon.name} is Dynamaxing! It grew to gigantic size!`, 'info');
             let spriteEl = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
-            if (spriteEl) {
-                spriteEl.style.filter = 'drop-shadow(0 0 8px #ef5350) drop-shadow(0 0 4px #ef5350)';
-                spriteEl.style.transform = 'translateX(-50%) scale(1.25)';
-                spriteEl.src = getSprite(mon.name, mon.isShiny); // Update to G-Max sprite immediately
-            }
+            if (spriteEl) { spriteEl.style.filter = 'drop-shadow(0 0 8px #ef5350) drop-shadow(0 0 4px #ef5350)'; spriteEl.style.transform = 'translateX(-50%) scale(1.25)'; }
             updateUI();
         }
 
@@ -2209,10 +2155,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!mon.dynamaxed) return;
             mon.dynamaxed = false;
             mon.dynamaxTurns = 0;
-            if (mon.isGmax && mon._prevName) {
-                mon.name = mon._prevName;
-                mon.isGmax = false;
-            }
             // Revert max HP proportionally
             let hpRatio = mon.currentHp / mon.maxHp;
             mon.maxHp = mon.baseMaxHp;
@@ -2248,64 +2190,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Convert move to Max Move for Dynamax
         function buildMaxMove(mon, move) {
             if (!mon.dynamaxed) return move;
+            let maxPow = getMaxMovePower(move.pow || 0, move.cat);
             if (move.cat === 'Status') {
                 return { ...move, name: `Max Guard`, pow: 0, isMaxMove: true, pri: 4, isMaxGuard: true };
             }
-            let maxPow = getMaxMovePower(move.pow || 0, move.name);
-            
-            // G-Max conversion logic
-            let baseSpecies = mon.speciesName || mon.name.split('-')[0];
-            let gmaxTable = GMAX_MOVE_MAP[baseSpecies];
-            let maxName;
-            if (gmaxTable && gmaxTable[move.type]) {
-                maxName = gmaxTable[move.type];
-            } else {
-                const maxMoveNames = {
-                    "Normal":"Max Strike","Fire":"Max Flare","Water":"Max Geyser","Grass":"Max Overgrowth",
-                    "Electric":"Max Lightning","Ice":"Max Hailstorm","Fighting":"Max Knuckle","Poison":"Max Ooze",
-                    "Ground":"Max Quake","Flying":"Max Airstream","Psychic":"Max Mindstorm","Bug":"Max Flutterby",
-                    "Rock":"Max Rockfall","Ghost":"Max Phantasm","Dragon":"Max Wyrmwind","Dark":"Max Darkness",
-                    "Steel":"Max Steelspike","Fairy":"Max Starfall"
-                };
-                maxName = maxMoveNames[move.type] || `Max ${move.type}`;
-            }
-
+            const maxMoveNames = {
+                "Normal":"Max Strike","Fire":"Max Flare","Water":"Max Geyser","Grass":"Max Overgrowth",
+                "Electric":"Max Lightning","Ice":"Max Hailstorm","Fighting":"Max Knuckle","Poison":"Max Ooze",
+                "Ground":"Max Quake","Flying":"Max Airstream","Psychic":"Max Mindstorm","Bug":"Max Flutterby",
+                "Rock":"Max Rockfall","Ghost":"Max Phantasm","Dragon":"Max Wyrmwind","Dark":"Max Darkness",
+                "Steel":"Max Steelspike","Fairy":"Max Starfall"
+            };
+            let maxName = maxMoveNames[move.type] || `Max ${move.type}`;
             let maxEffect = null;
-            if (maxName.startsWith('G-Max')) {
-                // Implement G-Max specific effects
-                if (maxName === "G-Max Wildfire") maxEffect = { residual: 'wildfire', turns: 4 };
-                else if (maxName === "G-Max Vine Lash") maxEffect = { residual: 'vinelash', turns: 4 };
-                else if (maxName === "G-Max Cannonade") maxEffect = { residual: 'cannonade', turns: 4 };
-                else if (maxName === "G-Max Vocalith") maxEffect = { residual: 'vocalith', turns: 4 };
-                else if (maxName === "G-Max Volt Crash") maxEffect = { status: 'PAR' };
-                else if (maxName === "G-Max Befuddle") maxEffect = { status: 'RANDOM_SLP_PAR_PSN' };
-                else if (maxName === "G-Max Chi Strike") maxEffect = { selfBoost: 'crit', amount: 1 };
-                else if (maxName === "G-Max Foam Burst") maxEffect = { foeDebuff: 'spe', amount: -2 };
-                else if (maxName === "G-Max Finale") maxEffect = { heal: 1/6 };
-                else if (maxName === "G-Max Steelsurge") maxEffect = { hazard: 'steelsurge' };
-                else if (maxName === "G-Max Malodor") maxEffect = { status: 'PSN' };
-                else if (maxName === "G-Max Centiferno" || maxName === "G-Max Sandblast") maxEffect = { trap: true, turns: 4 };
-            } else {
-                switch(move.type) {
-                    case 'Fire': maxEffect = {weather:'Sun',turns:5}; break;
-                    case 'Water': maxEffect = {weather:'Rain',turns:5}; break;
-                    case 'Rock': maxEffect = {weather:'Sandstorm',turns:5}; break;
-                    case 'Ice': maxEffect = {weather:'Hail',turns:5}; break;
-                    case 'Grass': maxEffect = {terrain:'Grassy',turns:5}; break;
-                    case 'Electric': maxEffect = {terrain:'Electric',turns:5}; break;
-                    case 'Psychic': maxEffect = {terrain:'Psychic',turns:5}; break;
-                    case 'Fairy': maxEffect = {terrain:'Misty',turns:5}; break;
-                    case 'Fighting': maxEffect = {selfBoost:'atk',amount:1}; break;
-                    case 'Poison': maxEffect = {selfBoost:'spa',amount:1}; break;
-                    case 'Ground': maxEffect = {selfBoost:'spd',amount:1}; break;
-                    case 'Flying': maxEffect = {selfBoost:'spe',amount:1}; break;
-                    case 'Steel': maxEffect = {selfBoost:'def',amount:1}; break;
-                    case 'Normal': maxEffect = {foeDebuff:'spe',amount:-1}; break;
-                    case 'Dark': maxEffect = {foeDebuff:'spd',amount:-1}; break;
-                    case 'Dragon': maxEffect = {foeDebuff:'atk',amount:-1}; break;
-                    case 'Ghost': maxEffect = {foeDebuff:'def',amount:-1}; break;
-                    case 'Bug': maxEffect = {foeDebuff:'spa',amount:-1}; break;
-                }
+            switch(move.type) {
+                case 'Fire': maxEffect = {weather:'Sun',turns:5}; break;
+                case 'Water': maxEffect = {weather:'Rain',turns:5}; break;
+                case 'Rock': maxEffect = {weather:'Sandstorm',turns:5}; break;
+                case 'Ice': maxEffect = {weather:'Hail',turns:5}; break;
+                case 'Grass': maxEffect = {terrain:'Grassy',turns:5}; break;
+                case 'Electric': maxEffect = {terrain:'Electric',turns:5}; break;
+                case 'Psychic': maxEffect = {terrain:'Psychic',turns:5}; break;
+                case 'Fairy': maxEffect = {terrain:'Misty',turns:5}; break;
+                case 'Fighting': maxEffect = {selfBoost:'atk',amount:1}; break;
+                case 'Poison': maxEffect = {selfBoost:'spa',amount:1}; break;
+                case 'Ground': maxEffect = {selfBoost:'spd',amount:1}; break;
+                case 'Flying': maxEffect = {selfBoost:'spe',amount:1}; break;
+                case 'Steel': maxEffect = {selfBoost:'def',amount:1}; break;
+                case 'Normal': maxEffect = {foeDebuff:'spe',amount:-1}; break;
+                case 'Dark': maxEffect = {foeDebuff:'spd',amount:-1}; break;
+                case 'Dragon': maxEffect = {foeDebuff:'atk',amount:-1}; break;
+                case 'Ghost': maxEffect = {foeDebuff:'def',amount:-1}; break;
+                case 'Bug': maxEffect = {foeDebuff:'spa',amount:-1}; break;
             }
             return { ...move, pow: maxPow, name: maxName, isMaxMove: true, maxEffect: maxEffect, eff: '', effectStr: '' };
         }
@@ -2348,7 +2264,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Read grade filter before building pool
             window.updatePoolCount();
             let activeGrades = settings.draftGrades;
-                        state = { mode: mode, draftTurn: 1, score: 0, minGen, maxGen, p1Pool: [], p2Pool: [], p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wildfire: 0, vinelash: 0, cannonade: 0, vocalith: 0, steelsurge: false }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wildfire: 0, vinelash: 0, cannonade: 0, vocalith: 0, steelsurge: false }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
+            state = { mode: mode, draftTurn: 1, score: 0, minGen, maxGen, p1Pool: [], p2Pool: [], p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
             document.querySelectorAll('.screen, .modal').forEach(el => el.classList.add('hidden'));
             document.getElementById('screen-draft').classList.remove('hidden');
 
@@ -3512,11 +3428,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         if (lockedMove) return lockedMove;
     }
 
-    // Evaluate Speed (Gen 7+ rules: account for pending Mega Evolution)
-    let atkSpe = getEffectiveSpeed(attacker, (attacker === state.pActive), state.weather);
-    let defSpe = getEffectiveSpeed(defender, (defender === state.pActive), state.weather);
     let hpPct = attacker.currentHp / attacker.maxHp;
     let defHpPct = defender.currentHp / defender.maxHp;
+    let w = getCurrentWeather();
+    let atkSpe = getEffectiveSpeed(attacker, w);
+    let defSpe = getEffectiveSpeed(defender, w);
     let isTrickRoom = state.trickRoom > 0;
     let outsped = isTrickRoom ? (atkSpe > defSpe) : (defSpe > atkSpe);
     let threat = aiThreatScore(defender, attacker);
@@ -3804,8 +3720,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     let threat = aiThreatScore(defender, attacker);
     let hpPct = attacker.currentHp / attacker.maxHp;
     let w = getCurrentWeather();
-    let atkSpe = getEffectiveSpeed(attacker, (attacker === state.pActive), state.weather);
-    let defSpe = getEffectiveSpeed(defender, (defender === state.pActive), state.weather);
+    let atkSpe = getEffectiveSpeed(attacker, w);
+    let defSpe = getEffectiveSpeed(defender, w);
     let isTR = state.trickRoom > 0;
     let outsped = isTR ? (atkSpe > defSpe) : (defSpe > atkSpe);
 
@@ -4170,9 +4086,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (fMove.name !== "Protect") state.fActive.volatile.protectCount = 0;
                     
                     let w = getCurrentWeather();
-                    // Determine speed for this turn (accounting for pending Mega)
-                    let pSpe = getEffectiveSpeed(state.pActive, true, w);
-                    let fSpe = getEffectiveSpeed(state.fActive, false, w);
+                    let pSpe = getEffectiveSpeed(state.pActive, w);
+                    let fSpe = getEffectiveSpeed(state.fActive, w);
 
                     // Apply ability-based priority modifiers before comparing
                     let pPri = pMove.pri || 0;
@@ -4256,29 +4171,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        function getMegaSpeed(mon) {
-            let stone = mon.item || (mon.buildData && mon.buildData.i);
-            let megaFormName = MEGA_FORM_NAMES[stone];
-            if (!megaFormName) return mon.stats.spe;
-            let b = baseStats[megaFormName];
-            if (!b) return mon.stats.spe;
-            // Calculate Mega Speed (Lv 50)
-            let evs = (mon.buildData && (mon.buildData.evs || mon.buildData.ev)) || {};
-            let ivs = (mon.buildData && (mon.buildData.ivs || mon.buildData.iv)) || {};
-            let getIV = s => (ivs[s] !== undefined ? ivs[s] : 31);
-            let nMult = 1.0;
-            let nm = natureModifiers[mon.nature];
-            if (nm) { if (nm.up === 'spe') nMult = 1.1; if (nm.down === 'spe') nMult = 0.9; }
-            return Math.floor((Math.floor((2*b.spe+getIV('spe')+Math.floor((evs.spe||0)/4))*50/100)+5)*nMult);
-        }
-
-        function getEffectiveSpeed(mon, isPlayer, weather) {
-            let baseSpe = mon.stats.spe;
-            let gimmickPending = isPlayer ? state.p1GimmickPending : state.p2GimmickPending;
-            if (gimmickPending === 'MEGA' && !mon.megaEvolved) {
-                baseSpe = getMegaSpeed(mon);
-            }
-            let spe = baseSpe * getStageMult(mon.stages.spe);
+        function getEffectiveSpeed(mon, weather) {
+            let spe = mon.stats.spe * getStageMult(mon.stages.spe);
             if (mon.item === "Choice Scarf") spe *= 1.5;
             if (mon.status === "PAR") spe *= 0.5;
             if (mon.ability === "Chlorophyll" && (weather === "Sun" || weather === "HarshSun")) spe *= 2;
@@ -4295,22 +4189,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let attacker = isPlayer ? state.pActive : state.fActive;
             let defender = isPlayer ? state.fActive : state.pActive;
             if (attacker.currentHp <= 0) return;
-
-            // === GIMMICK ACTIVATION (MUST happen before canMove/flinch/sleep checks) ===
-            let gimmickPending = isPlayer ? state.p1GimmickPending : state.p2GimmickPending;
-            if (gimmickPending === 'MEGA' && !attacker.megaEvolved) {
-                activateMega(attacker, isPlayer);
-                if (isPlayer) state.p1GimmickPending = null; else state.p2GimmickPending = null;
-            } else if (gimmickPending === 'DYNAMAX' && !attacker.dynamaxed) {
-                activateDynamax(attacker, isPlayer);
-                if (isPlayer) state.p1GimmickPending = null; else state.p2GimmickPending = null;
-            } else if (gimmickPending === 'TERA' && !attacker.teraActivated) {
-                activateTera(attacker, isPlayer);
-                if (isPlayer) state.p1GimmickPending = null; else state.p2GimmickPending = null;
-            } else if (gimmickPending === 'ZMOVE' && !attacker.zMoveUsed) {
-                // Application and marking for Z-move happens below because it needs 'move' object
-            }
-
             // Thaw out if using a fire move while frozen
             if (attacker.status === "FRZ" && move.type === "Fire") {
                 attacker.status = null; attacker.statusTurns = 0;
@@ -4444,13 +4322,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Pressure: Opponent moves cost 2 PP
                 if (defender.ability === "Pressure" && move.pp > 0) move.pp--;
 
-                // === GIMMICK APPLICATION (Z-MOVE / DYNAMAX CONVERSION) ===
-                if (attacker.dynamaxed) {
-                    // Auto-convert to Max Move when Dynamaxed
-                    move = buildMaxMove(attacker, move);
-                }
-
-                if (gimmickPending === 'ZMOVE' && !attacker.zMoveUsed) {
+                // === GIMMICK ACTIVATION (before move announcement) ===
+                let gimmickPending = isPlayer ? state.p1GimmickPending : state.p2GimmickPending;
+                if (gimmickPending === 'MEGA' && !attacker.megaEvolved) {
+                    activateMega(attacker, isPlayer);
+                    if (isPlayer) state.p1GimmickPending = null; else state.p2GimmickPending = null;
+                } else if (gimmickPending === 'DYNAMAX' && !attacker.dynamaxed) {
+                    activateDynamax(attacker, isPlayer);
+                    if (isPlayer) state.p1GimmickPending = null; else state.p2GimmickPending = null;
+                } else if (gimmickPending === 'TERA' && !attacker.teraActivated) {
+                    activateTera(attacker, isPlayer);
+                    if (isPlayer) state.p1GimmickPending = null; else state.p2GimmickPending = null;
+                } else if (gimmickPending === 'ZMOVE' && !attacker.zMoveUsed) {
                     // Apply Z-move power to the move
                     let zBuild = buildZMove(attacker, move);
                     attacker.zMoveUsed = true;
@@ -4496,6 +4379,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     } else {
                         move = zBuild;
                     }
+                } else if (attacker.dynamaxed) {
+                    // Auto-convert to Max Move when Dynamaxed
+                    move = buildMaxMove(attacker, move);
                 }
 
                 if (!move._zStatusAnnounced) logMsg(`${attacker.name} used ${move.name}!`);
@@ -4706,44 +4592,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // === DAMAGING MOVE ===
             if (move.cat !== "Status") {
-                // ... animation and type immunity logic ...
-                // Damage calculation engine ...
-
-                // After damage: apply special Max Move effects
-                if (move.isMaxMove && move.maxEffect) {
-                    let me = move.maxEffect;
-                    if (me.weather) { state.weather = me.weather; state.weatherTurns = me.turns; logMsg(`The Max Move changed the weather to ${me.weather}!`, 'info'); }
-                    if (me.terrain) { state.terrain = me.terrain; state.terrainTurns = me.turns; logMsg(`The Max Move changed the terrain to ${me.terrain}!`, 'info'); }
-                    if (me.selfBoost) {
-                        if (me.selfBoost === 'crit') { attacker.volatile.critBoost = (attacker.volatile.critBoost || 0) + 1; logMsg(`The Max Move boosted ${attacker.name}'s critical hit rate!`, 'info'); }
-                        else changeStage(attacker, me.selfBoost, me.amount);
-                    }
-                    if (me.foeDebuff) changeStage(defender, me.foeDebuff, me.amount);
-                    if (me.status) {
-                        if (me.status === 'RANDOM_SLP_PAR_PSN') {
-                            let statuses = ['SLP','PAR','PSN']; applyStatus(defender, statuses[Math.floor(Math.random()*3)]);
-                        } else applyStatus(defender, me.status);
-                    }
-                    if (me.residual) {
-                        let side = isPlayer ? state.fSide : state.pSide;
-                        side[me.residual] = me.turns;
-                        logMsg(`The Max Move left ${defender.name}'s side in a ${me.residual === 'wildfire' ? 'sea of fire' : 'storm of vines'}!`, 'info');
-                    }
-                    if (me.heal) {
-                        let heal = Math.floor(attacker.maxHp * me.heal);
-                        attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + heal);
-                        logMsg(`The Max Move restored some of ${attacker.name}'s HP!`, 'heal');
-                    }
-                    if (me.hazard) {
-                        let side = isPlayer ? state.fSide : state.pSide;
-                        if (me.hazard === 'steelsurge') { side.steelsurge = true; logMsg(`Pointed sharpened steel float around the foe's team!`, 'info'); }
-                    }
-                    if (me.trap) {
-                        defender.volatile.trapped = me.turns;
-                        logMsg(`The Max Move trapped ${defender.name}!`, 'info');
-                    }
-                }
-            }
                 // Step 1: Attacker lunges forward
                 if(settings.animations) {
                     let atkSprite = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
@@ -4757,33 +4605,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 // === TYPE IMMUNITY ABILITIES ===
                 // Levitate: Immune to Ground
-                // Mold Breaker / Turboblaze / Teravolt: ignore defender's ability for this attack
-                let _moldBreaker = (attacker.ability === "Mold Breaker" || attacker.ability === "Turboblaze" || attacker.ability === "Teravolt");
-                let _defAbility = _moldBreaker ? "" : defender.ability;
-
-                if (_defAbility === "Levitate" && move.type === "Ground") {
+                if (defender.ability === "Levitate" && move.type === "Ground") {
                     logMsg(`${defender.name}'s Levitate makes it immune to Ground moves!`, 'info'); await sleep(1000); return;
                 }
                 // Lightning Rod: Immune to Electric, SpAtk +1
-                if (_defAbility === "Lightning Rod" && move.type === "Electric") {
+                if (defender.ability === "Lightning Rod" && move.type === "Electric") {
                     logMsg(`${defender.name}'s Lightning Rod absorbed the Electric move!`, 'info');
                     changeStage(defender, 'spa', 1); await sleep(1000); return;
                 }
                 // Volt Absorb: Immune to Electric, heal 25%
-                if (_defAbility === "Volt Absorb" && move.type === "Electric") {
+                if (defender.ability === "Volt Absorb" && move.type === "Electric") {
                     let heal = Math.floor(defender.maxHp / 4);
                     let actHeal = Math.min(defender.maxHp - defender.currentHp, heal);
                     if (actHeal > 0) { defender.currentHp += actHeal; logMsg(`${defender.name}'s Volt Absorb restored ${actHeal} HP!`, 'heal'); }
                     else logMsg(`${defender.name}'s Volt Absorb made it immune!`, 'info');
                     await sleep(1000); return;
                 }
-                // Motor Drive: Immune to Electric, Speed +1
-                if (_defAbility === "Motor Drive" && move.type === "Electric") {
-                    logMsg(`${defender.name}'s Motor Drive absorbed the Electric move!`, 'info');
-                    changeStage(defender, 'spe', 1); await sleep(1000); return;
-                }
                 // Water Absorb: Immune to Water, heal 25%
-                if (_defAbility === "Water Absorb" && move.type === "Water") {
+                if (defender.ability === "Water Absorb" && move.type === "Water") {
                     let heal = Math.floor(defender.maxHp / 4);
                     let actHeal = Math.min(defender.maxHp - defender.currentHp, heal);
                     if (actHeal > 0) { defender.currentHp += actHeal; logMsg(`${defender.name}'s Water Absorb restored ${actHeal} HP!`, 'heal'); }
@@ -4791,26 +4630,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     await sleep(1000); return;
                 }
                 // Dry Skin: Immune to Water, heal 25%
-                if (_defAbility === "Dry Skin" && move.type === "Water") {
+                if (defender.ability === "Dry Skin" && move.type === "Water") {
                     let heal = Math.floor(defender.maxHp / 4);
                     let actHeal = Math.min(defender.maxHp - defender.currentHp, heal);
                     if (actHeal > 0) { defender.currentHp += actHeal; logMsg(`${defender.name}'s Dry Skin restored ${actHeal} HP!`, 'heal'); }
                     else logMsg(`${defender.name}'s Dry Skin made it immune!`, 'info');
                     await sleep(1000); return;
                 }
-                // Storm Drain: Immune to Water, SpAtk +1
-                if (_defAbility === "Storm Drain" && move.type === "Water") {
-                    logMsg(`${defender.name}'s Storm Drain absorbed the Water move!`, 'info');
-                    changeStage(defender, 'spa', 1); await sleep(1000); return;
-                }
-                // Sap Sipper: Immune to Grass, Atk +1
-                if (_defAbility === "Sap Sipper" && move.type === "Grass") {
-                    logMsg(`${defender.name}'s Sap Sipper absorbed the Grass move!`, 'info');
-                    changeStage(defender, 'atk', 1); await sleep(1000); return;
-                }
                 // Soundproof: Immune to sound moves
-                let soundMoves = ["Hyper Voice", "Bug Buzz", "Boomburst", "Uproar", "Snarl", "Overdrive", "Round", "Echoed Voice", "Disarming Voice", "Relic Song", "Clanging Scales", "Clangorous Soulblaze", "Torch Song", "Alluring Voice"];
-                if (_defAbility === "Soundproof" && soundMoves.includes(move.name)) {
+                let soundMoves = ["Hyper Voice", "Bug Buzz", "Boomburst", "Uproar", "Snarl", "Overdrive", "Round", "Echoed Voice", "Disarming Voice", "Relic Song", "Clanging Scales"];
+                if (defender.ability === "Soundproof" && soundMoves.includes(move.name)) {
                     logMsg(`${defender.name}'s Soundproof blocks ${move.name}!`, 'info'); await sleep(1000); return;
                 }
 
@@ -5143,33 +4972,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Expert Belt: x1.2 on SE hits (applied after typeEff known, handled below)
 
                 if (attacker.ability === "Technician" && basePower <= 60) basePower = Math.floor(basePower * 1.5);
-                // Iron Fist: x1.2 punching moves (use flags.punch from data if available)
-                let isPunchMove = (move.flags && move.flags.punch) || ["Drain Punch", "Mach Punch", "Ice Punch", "Fire Punch", "Thunder Punch", "Focus Punch", "Bullet Punch", "Hammer Arm", "Power-Up Punch", "Shadow Punch", "Meteor Mash", "Mega Punch", "Comet Punch", "Dynamic Punch", "Sky Uppercut", "Dizzy Punch", "Rage Fist", "Wicked Blow", "Surging Strikes", "Plasma Fists", "Headlong Rush"].includes(move.name);
-                if (attacker.ability === "Iron Fist" && isPunchMove) basePower = Math.floor(basePower * 1.2);
+                // Iron Fist: x1.2 punching moves
+                let punchMoves = ["Drain Punch", "Mach Punch", "Ice Punch", "Fire Punch", "Thunder Punch", "Focus Punch", "Bullet Punch", "Hammer Arm", "Power-Up Punch", "Shadow Punch", "Meteor Mash", "Mega Punch", "Comet Punch", "Dynamic Punch"];
+                if (attacker.ability === "Iron Fist" && punchMoves.includes(move.name)) basePower = Math.floor(basePower * 1.2);
                 // Reckless: x1.2 recoil moves
-                let recoilMoves = ["Brave Bird", "Flare Blitz", "Wild Charge", "Double-Edge", "Head Smash", "Wood Hammer", "Take Down", "Submission", "Volt Tackle", "Wave Crash", "Head Charge"];
+                let recoilMoves = ["Brave Bird", "Flare Blitz", "Wild Charge", "Double-Edge", "Head Smash", "Wood Hammer", "Take Down", "Submission", "Volt Tackle"];
                 if (attacker.ability === "Reckless" && recoilMoves.includes(move.name)) basePower = Math.floor(basePower * 1.2);
-                // Strong Jaw: x1.5 biting moves
-                let isBiteMove = (move.flags && move.flags.bite) || ["Bite", "Crunch", "Fire Fang", "Ice Fang", "Thunder Fang", "Poison Fang", "Psychic Fangs", "Hyper Fang", "Jaw Lock", "Fishious Rend"].includes(move.name);
-                if (attacker.ability === "Strong Jaw" && isBiteMove) basePower = Math.floor(basePower * 1.5);
-                // Mega Launcher: x1.5 aura/pulse moves
-                let isPulseMove = (move.flags && move.flags.pulse) || ["Aura Sphere", "Dark Pulse", "Dragon Pulse", "Heal Pulse", "Origin Pulse", "Water Pulse", "Terrain Pulse"].includes(move.name);
-                if (attacker.ability === "Mega Launcher" && isPulseMove) basePower = Math.floor(basePower * 1.5);
-                // Tough Claws: x1.3 contact moves
-                let isContactMove = (move.flags && move.flags.contact) || move.cat === "Physical"; // fallback: physical = contact
-                if (attacker.ability === "Tough Claws" && isContactMove) basePower = Math.floor(basePower * 1.3);
-                // Transistor: x1.3 Electric moves (Gen 9: was 1.5 in Gen 8)
-                if (attacker.ability === "Transistor" && move.type === "Electric") basePower = Math.floor(basePower * 1.3);
-                // Dragon's Maw: x1.5 Dragon moves
-                if (attacker.ability === "Dragon's Maw" && move.type === "Dragon") basePower = Math.floor(basePower * 1.5);
-                // Steelworker: x1.5 Steel moves
-                if (attacker.ability === "Steelworker" && move.type === "Steel") basePower = Math.floor(basePower * 1.5);
                 // Sheer Force: x1.3 if move has secondary effect, but suppress the effect
-                let hasSecondary = (move.secondary && move.secondary.chance) || (move.secondaries && move.secondaries.length > 0);
-                if (!hasSecondary) {
-                    let sheerForceEff = (move.effectStr || move.eff || "").toLowerCase();
-                    hasSecondary = sheerForceEff.includes("chance") || sheerForceEff.includes("flinch") || sheerForceEff.includes("burn") || sheerForceEff.includes("paralyze") || sheerForceEff.includes("poison") || sheerForceEff.includes("freeze") || sheerForceEff.includes("confuse") || sheerForceEff.includes("lower");
-                }
+                let sheerForceEff = (move.effectStr || move.eff || "").toLowerCase();
+                let hasSecondary = sheerForceEff.includes("chance") || sheerForceEff.includes("flinch") || sheerForceEff.includes("burn") || sheerForceEff.includes("paralyze") || sheerForceEff.includes("poison") || sheerForceEff.includes("freeze") || sheerForceEff.includes("confuse") || sheerForceEff.includes("lower");
                 let sheerForceActive = false;
                 if (attacker.ability === "Sheer Force" && hasSecondary && move.cat !== "Status") {
                     basePower = Math.floor(basePower * 1.3);
@@ -5206,11 +5017,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (attacker.status === "BRN" && move.cat === "Physical" && attacker.ability !== "Guts") modifier *= 0.5;
                 if (attacker.ability === "Tinted Lens" && typeEff < 1 && typeEff > 0) modifier *= 2;
                 // Thick Fat: Fire and Ice damage x0.5
-                if (_defAbility === "Thick Fat" && (move.type === "Fire" || move.type === "Ice")) modifier *= 0.5;
+                if (defender.ability === "Thick Fat" && (move.type === "Fire" || move.type === "Ice")) modifier *= 0.5;
                 // Filter / Solid Rock / Prism Armor: Super-effective damage x0.75
-                if ((_defAbility === "Filter" || _defAbility === "Solid Rock" || _defAbility === "Prism Armor") && typeEff > 1) modifier *= 0.75;
-                // Ice Scales: Special damage x0.5
-                if (_defAbility === "Ice Scales" && move.cat === "Special") modifier *= 0.5;
+                if ((defender.ability === "Filter" || defender.ability === "Solid Rock" || defender.ability === "Prism Armor") && typeEff > 1) modifier *= 0.75;
                 // Multiscale / Shadow Shield: Damage x0.5 at full HP
                 if ((defender.ability === "Multiscale" || defender.ability === "Shadow Shield") && defender.currentHp === defender.maxHp) modifier *= 0.5;
                 // Fur Coat: Physical damage x0.5
@@ -5378,27 +5187,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     defender.volatile.destinyBond = false;
                 }
 
-                // Drain moves: heal a fraction of damage dealt
-                // Use data-driven drain ratio if available, otherwise use hardcoded defaults
+                // Drain moves: Heal 50% of damage dealt (use actualDamage to avoid over-healing)
                 let drainMoves = ["Drain Punch", "Giga Drain", "Absorb", "Mega Drain", "Leech Life", "Horn Leech", "Parabolic Charge", "Oblivion Wing", "Draining Kiss"];
                 if (drainMoves.includes(move.name) && !hitSub) {
                     let drainBase = actualDamage;
-                    // Determine drain fraction: data-driven from move.drain [numerator, denominator]
-                    let drainFrac = 0.5; // default 50%
-                    if (move.drain && move.drain.length === 2 && move.drain[1] > 0) {
-                        drainFrac = move.drain[0] / move.drain[1];
-                    } else {
-                        // Hardcoded overrides for moves with non-50% drain
-                        if (move.name === "Oblivion Wing") drainFrac = 0.75;
-                        else if (move.name === "Draining Kiss") drainFrac = 0.75;
-                    }
                     if (defender.ability === "Liquid Ooze") {
-                        let dmgAmt = Math.max(1, Math.floor(drainBase * drainFrac));
+                        let dmgAmt = Math.max(1, Math.floor(drainBase / 2));
                         let actDmg = Math.min(attacker.currentHp, dmgAmt);
                         attacker.currentHp -= actDmg;
                         logMsg(`${defender.name}'s Liquid Ooze hurt ${attacker.name} for ${actDmg}!`, 'dmg');
                     } else {
-                        let healAmt = Math.floor(drainBase * drainFrac);
+                        let healAmt = Math.floor(drainBase / 2);
                         let actHeal = Math.min(attacker.maxHp - attacker.currentHp, healAmt);
                         if (actHeal > 0) { attacker.currentHp += actHeal; logMsg(`${attacker.name} restored ${actHeal} HP!`, 'heal'); }
                     }
@@ -5441,30 +5240,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     logMsg(`${attacker.name} took ${actRecoil} recoil from Struggle!`, 'dmg');
                 }
 
-                // Contact abilities — use the contact flag from data if available, fallback to Physical
-                let _isContact = (move.flags && move.flags.contact) ? true : (move.cat === "Physical");
-                if (_isContact && !hitSub && defender.currentHp > 0) {
-                    if (_defAbility === "Static" && Math.random() < 0.3) applyStatus(attacker, "PAR");
-                    if (_defAbility === "Poison Point" && Math.random() < 0.3) applyStatus(attacker, "PSN");
-                    if (_defAbility === "Flame Body" && Math.random() < 0.3) applyStatus(attacker, "BRN");
-                    if (_defAbility === "Cute Charm" && Math.random() < 0.3) { /* Infatuation not fully implemented */ }
-                    if (_defAbility === "Effect Spore" && Math.random() < 0.3) {
+                // Contact abilities (physical moves that make contact)
+                if (move.cat === "Physical" && !hitSub && defender.currentHp > 0) {
+                    if (defender.ability === "Static" && Math.random() < 0.3) applyStatus(attacker, "PAR");
+                    if (defender.ability === "Poison Point" && Math.random() < 0.3) applyStatus(attacker, "PSN");
+                    if (defender.ability === "Flame Body" && Math.random() < 0.3) applyStatus(attacker, "BRN");
+                    if (defender.ability === "Cute Charm" && Math.random() < 0.3) { /* Infatuation not fully implemented */ }
+                    if (defender.ability === "Effect Spore" && Math.random() < 0.3) {
                         let roll = Math.random();
                         if (roll < 0.33) applyStatus(attacker, "PSN");
                         else if (roll < 0.66) applyStatus(attacker, "PAR");
                         else applyStatus(attacker, "SLP");
                     }
                     if (attacker.ability === "Poison Touch" && Math.random() < 0.3) applyStatus(defender, "PSN");
-                    if (_defAbility === "Cursed Body" && Math.random() < 0.3 && move.name) {
+                    if (defender.ability === "Cursed Body" && Math.random() < 0.3 && move.name) {
                         attacker.volatile.disabled = move.name; attacker.volatile.disabledTurns = 4;
                         logMsg(`${attacker.name}'s ${move.name} was disabled by Cursed Body!`, 'status');
-                    }
-                    // Rough Skin / Iron Barbs: 1/8 damage on contact
-                    if ((_defAbility === "Rough Skin" || _defAbility === "Iron Barbs") && attacker.currentHp > 0 && attacker.ability !== "Magic Guard") {
-                        let rsDmg = Math.max(1, Math.floor(attacker.maxHp / 8));
-                        let actRs = Math.min(attacker.currentHp, rsDmg);
-                        attacker.currentHp -= actRs;
-                        logMsg(`${attacker.name} was hurt by ${defender.name}'s ${defender.ability}! (${actRs} damage)`, 'dmg');
                     }
                     // Rocky Helmet: 1/6 damage on contact
                     if (defender.item === "Rocky Helmet" && attacker.currentHp > 0) {
@@ -5473,10 +5264,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         attacker.currentHp -= actRh;
                         logMsg(`${attacker.name} was hurt by ${defender.name}'s Rocky Helmet! (${actRh} damage)`, 'dmg');
                     }
-                }
-                // King's Rock / Razor Fang: 10% flinch on ALL damaging moves (not just contact)
-                if ((attacker.item === "King's Rock" || attacker.item === "Razor Fang") && !hitSub && defender.currentHp > 0 && Math.random() < 0.1) {
-                    defender.volatile.flinch = true;
+                    // King's Rock: 10% flinch
+                    if (attacker.item === "King's Rock" && Math.random() < 0.1) {
+                        defender.volatile.flinch = true;
+                    }
                 }
 
                 // Knock Off: Remove item
@@ -5553,56 +5344,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Sheer Force suppresses secondary effects
             if (typeof sheerForceActive !== 'undefined' && sheerForceActive) {
                 // Skip secondary effects
-            } else if ((_defAbility !== "Shield Dust" && defender.item !== "Covert Cloak" || move.cat === "Status") && defender.volatile.sub <= 0) {
-                // === DATA-DRIVEN SECONDARY EFFECTS ===
-                // Parse structured secondary data from moves.json before falling back to hardcoded
-                let _handledByData = false;
-                let _sereneGrace = attacker.ability === "Serene Grace";
-                let _secondaryList = [];
-                if (move.secondary && move.secondary.chance) _secondaryList.push(move.secondary);
-                if (move.secondaries) _secondaryList = _secondaryList.concat(move.secondaries);
-                for (let sec of _secondaryList) {
-                    if (!sec || !sec.chance) continue;
-                    let chance = (_sereneGrace ? Math.min(100, sec.chance * 2) : sec.chance) / 100;
-                    if (Math.random() >= chance) continue;
-                    // Apply status effect
-                    if (sec.status && defender.currentHp > 0) {
-                        let _statusMap = {brn: "BRN", par: "PAR", psn: "PSN", tox: "TOX", slp: "SLP", frz: "FRZ"};
-                        let code = _statusMap[sec.status];
-                        if (code) { applyStatus(defender, code); _handledByData = true; }
-                    }
-                    // Apply volatile status (flinch, confusion)
-                    if (sec.volatileStatus === "flinch" && defender.currentHp > 0) {
-                        defender.volatile.flinch = true; _handledByData = true;
-                    }
-                    if (sec.volatileStatus === "confusion" && defender.currentHp > 0) {
-                        if (!defender.volatile.confusion) { defender.volatile.confusion = Math.floor(Math.random()*3)+2; logMsg(`${defender.name} became confused!`, 'status'); }
-                        _handledByData = true;
-                    }
-                    // Apply boosts to defender (stat drops)
-                    if (sec.boosts && defender.currentHp > 0) {
-                        for (let stat in sec.boosts) {
-                            changeStage(defender, stat, sec.boosts[stat]);
-                        }
-                        _handledByData = true;
-                    }
-                    // Apply self boosts (e.g. Flame Charge +1 Spe, Power-Up Punch +1 Atk)
-                    if (sec.self && sec.self.boosts && attacker.currentHp > 0) {
-                        for (let stat in sec.self.boosts) {
-                            changeStage(attacker, stat, sec.self.boosts[stat]);
-                        }
-                        _handledByData = true;
-                    }
-                }
-                // Self-effect from move data (non-secondary self boosts like Close Combat)
-                if (move.selfEffect && move.selfEffect.boosts && attacker.currentHp > 0 && move.cat !== "Status") {
-                    for (let stat in move.selfEffect.boosts) {
-                        changeStage(attacker, stat, move.selfEffect.boosts[stat]);
-                    }
-                    _handledByData = true;
-                }
-                // Fall through to hardcoded parseMoveEffects for named moves / status moves
-                // (it handles Swords Dance, Stealth Rock, etc. which aren't in secondary data)
+            } else if ((defender.ability !== "Shield Dust" && defender.item !== "Covert Cloak" || move.cat === "Status") && defender.volatile.sub <= 0) {
                 await parseMoveEffects(attacker, defender, move, isPlayer);
                 updateUI();
                 await sleep(500);
@@ -6577,24 +6319,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function endOfTurnEffects(mon, foe) {
-            let isP = mon === state.pActive;
-            let side = isP ? state.pSide : state.fSide;
-            
-            // ... weather damage ...
-
-            // G-Max Residual Damage (Wildfire, Cannonade, etc.)
-            let resTypes = { wildfire: 'Fire', vinelash: 'Grass', cannonade: 'Water', vocalith: 'Rock' };
-            for (let [key, type] of Object.entries(resTypes)) {
-                if (side[key] > 0) {
-                    side[key]--;
-                    if (mon.type1 !== type && mon.type2 !== type && mon.ability !== "Magic Guard") {
-                        let dmg = Math.floor(mon.maxHp / 6);
-                        mon.currentHp = Math.max(0, mon.currentHp - dmg);
-                        logMsg(`${mon.name} was hurt by the G-Max ${key} effect for ${dmg}!`, 'dmg');
-                    }
-                    if (side[key] === 0) logMsg(`The G-Max ${key} effect ended.`, 'info');
-                }
-            }
             if (mon.currentHp <= 0) return;
             mon.volatile.protect = false;
             mon.volatile.spikyShield = false;
