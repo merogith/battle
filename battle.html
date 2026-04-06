@@ -1281,6 +1281,7 @@
         async function loadBuildsCSV() {
             try {
                 const text = await fetch('data/builds.csv').then(r => r.text());
+                if (!text || text.trim().length < 10) throw new Error('empty');
                 const rows = parseCSV(text, ',');
                 for (const row of rows) {
                     const name = row.name;
@@ -1306,8 +1307,76 @@
                 }
                 console.log(`[CSV] Loaded builds for ${Object.keys(csvBuilds).length} Pokémon`);
             } catch(e) {
-                console.error('[CSV] Failed to load builds.csv', e);
+                console.warn('[CSV] builds.csv unavailable, fetching from pkmn.cc API...');
+                await populateCsvBuildsFromAPI();
             }
+        }
+
+        // Fallback: populate csvBuilds from pkmn.cc Smogon sets API (used when builds.csv can't be fetched,
+        // e.g. file:// protocol). Reuses fetchSmogonSetsForGen which already handles local→API fallback.
+        async function populateCsvBuildsFromAPI() {
+            const WEATHER_DEP = new Set(Object.keys(WEATHER_ABILITIES));
+            const TERA_M = new Set(['Tera Blast', 'Tera Starstorm']);
+            try {
+                await Promise.all([4,5,6,7,8,9].map(g => fetchSmogonSetsForGen(g)));
+            } catch(e) {}
+            for (const [, genData] of Object.entries(_smogonCache)) {
+                for (const [pokemon, tiers] of Object.entries(genData)) {
+                    for (const [, sets] of Object.entries(tiers)) {
+                        for (const [, set] of Object.entries(sets)) {
+                            if (!set || !set.moves) continue;
+                            // Encode move choices as "A/B" format
+                            const enc = (set.moves || []).slice(0, 4).map(m =>
+                                Array.isArray(m) ? m.filter(Boolean).join('/') : (m || '')
+                            );
+                            while (enc.length < 4) enc.push('Tackle');
+
+                            const item    = Array.isArray(set.item)    ? set.item[0]    : (set.item    || 'Leftovers');
+                            const ability = Array.isArray(set.ability)  ? set.ability[0] : (set.ability  || '');
+                            const nature  = Array.isArray(set.nature)   ? set.nature[0]  : (set.nature   || 'Hardy');
+                            const evs     = set.evs || {};
+
+                            // Tag: mega > z-attack > tera > weather > regular
+                            let tag = 'regular';
+                            if (isMegaStone(item)) tag = 'mega';
+                            else if (Z_TYPE_MAP_VALUES.has(item)) tag = 'z-attack';
+                            else if (enc.flatMap(m => m.split('/')).some(m => TERA_M.has(m))) tag = 'tera';
+                            else if (WEATHER_DEP.has(ability)) tag = 'weather';
+
+                            if (!csvBuilds[pokemon]) csvBuilds[pokemon] = { regular: [], weather: [], mega: [], 'z-attack': [], tera: [] };
+                            csvBuilds[pokemon][tag].push({
+                                i: item, a: ability, n: nature,
+                                m: enc.map(m => m || 'Tackle'),
+                                evs: { hp: evs.hp||0, atk: evs.atk||0, def: evs.def||0, spa: evs.spa||0, spd: evs.spd||0, spe: evs.spe||0 }
+                            });
+                        }
+                    }
+                }
+            }
+            console.log(`[CSV] API fallback loaded builds for ${Object.keys(csvBuilds).length} Pokémon`);
+        }
+
+        // Returns a list of Pokémon names suitable for draft pool generation.
+        // Prefers CSV builds; falls back to randbats cache then baseStats so
+        // the draft always has candidates even when builds.csv could not be fetched.
+        function getDraftPool(minGen, maxGen, grades) {
+            const source = Object.keys(csvBuilds).length > 0
+                ? Object.keys(csvBuilds)
+                : Object.keys(_randbatsCache[9] || {}).length > 0
+                    ? Object.keys(_randbatsCache[9])
+                    : Object.keys(baseStats);
+            let eligible = source.filter(name => {
+                const b = baseStats[name];
+                return b && b.gen >= minGen && b.gen <= maxGen && (!grades || grades.includes(getMonGrade(name, b.hp+b.atk+b.def+b.spa+b.spd+b.spe)));
+            });
+            if (eligible.length < 12) {
+                eligible = source.filter(name => {
+                    const b = baseStats[name];
+                    return b && b.gen >= minGen && b.gen <= maxGen;
+                });
+            }
+            if (eligible.length < 12) eligible = source;
+            return eligible;
         }
 
         // Weather-dependent abilities and the move setter they need
@@ -2380,20 +2449,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.querySelectorAll('.screen, .modal').forEach(el => el.classList.add('hidden'));
             document.getElementById('screen-draft').classList.remove('hidden');
 
-            // Build eligible pool from CSV builds (gen + grade filtered)
-            let eligible = Object.keys(csvBuilds).filter(name => {
-                const b = baseStats[name];
-                return b && b.gen >= minGen && b.gen <= maxGen && activeGrades.includes(getMonGrade(name, b.hp+b.atk+b.def+b.spa+b.spd+b.spe));
-            });
-            // Widen: drop grade filter if pool too small
-            if (eligible.length < 12) {
-                eligible = Object.keys(csvBuilds).filter(name => {
-                    const b = baseStats[name];
-                    return b && b.gen >= minGen && b.gen <= maxGen;
-                });
-            }
-            // Last resort: all CSV builds
-            if (eligible.length < 12) eligible = Object.keys(csvBuilds);
+            // Build eligible pool (CSV builds preferred; falls back to randbats/baseStats on file://)
+            let eligible = getDraftPool(minGen, maxGen, activeGrades);
 
             const poolKeys = eligible.sort(() => 0.5 - Math.random()).slice(0, 12);
 
@@ -5336,8 +5393,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             document.getElementById('modal-end-screen').classList.add('hidden');
                             logMsg(`Draw round — no swap reward. Fully healing team...`, 'heal');
                             state.playerParty.forEach((m, i) => { state.playerParty[i] = buildPokemon(m.name, m.buildData); });
-                            let drawEligible = Object.keys(csvBuilds).filter(n => { const b = baseStats[n]; return b && b.gen >= state.minGen && b.gen <= state.maxGen && settings.draftGrades.includes(getMonGrade(n, b.hp+b.atk+b.def+b.spa+b.spd+b.spe)); });
-                            if (drawEligible.length < 3) drawEligible = Object.keys(csvBuilds);
+                            let drawEligible = getDraftPool(state.minGen, state.maxGen, settings.draftGrades);
                             const drawKeys = drawEligible.sort(() => 0.5 - Math.random()).slice(0, 3);
                             state.foeParty = drawKeys.map(name => buildPokemon(name, makeBuild(name)));
                             state.pActive = state.playerParty[0]; state.fActive = state.foeParty[0];
@@ -6539,12 +6595,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.score++; logMsg(`Round ${state.score} cleared! Fully healing team...`, 'heal');
             // Rebuild player party from their saved buildData (preserves shiny, gimmick, moves, etc.)
             state.playerParty.forEach((m, i) => { state.playerParty[i] = buildPokemon(m.name, m.buildData); });
-            // Generate new foe team from CSV builds (same gen range as player)
-            let allEligible = Object.keys(csvBuilds).filter(n => {
-                const b = baseStats[n];
-                return b && b.gen >= state.minGen && b.gen <= state.maxGen && settings.draftGrades.includes(getMonGrade(n, b.hp+b.atk+b.def+b.spa+b.spd+b.spe));
-            });
-            if (allEligible.length < 3) allEligible = Object.keys(csvBuilds);
+            // Generate new foe team (same gen range + grades as player)
+            let allEligible = getDraftPool(state.minGen, state.maxGen, settings.draftGrades);
             const foeKeys = allEligible.sort(() => 0.5 - Math.random()).slice(0, 3);
             state.foeParty = foeKeys.map(name => buildPokemon(name, makeBuild(name)));
             state.pActive = state.playerParty[0]; state.fActive = state.foeParty[0];
