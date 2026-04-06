@@ -1159,7 +1159,7 @@
 
         // Items tied to mechanics not present in the game (Mega Evolution, Z-moves).
         // When a build rolls one of these, it's swapped to a neutral item.
-        const BANNED_ITEMS = new Set(["Venusaurite","Charizardite X","Charizardite Y","Blastoisinite","Beedrillite","Pidgeotite","Alakazite","Slowbronite","Kangaskhanite","Pinsirite","Gyaradosite","Aerodactylite","Ampharosite","Steelixite","Scizorite","Heracronite","Houndoominite","Tyranitarite","Blazikenite","Gardevoirite","Mawilite","Aggronite","Medichamite","Manectite","Sharpedonite","Cameruptite","Altarianite","Banettite","Absolite","Glalitite","Salamencite","Metagrossite","Latiasite","Latiosite","Lopunnite","Garchompite","Lucarioite","Abomasite","Galladite","Audinite","Diancite","Sablenite","Sceptilite","Swampertite","Normalium Z","Firium Z","Waterium Z","Grassium Z","Electrium Z","Icium Z","Fightinium Z","Poisonium Z","Groundium Z","Flyinium Z","Psychium Z","Buginium Z","Rockium Z","Ghostium Z","Dragonium Z","Darkinium Z","Steelium Z","Fairium Z","Pikanium Z","Pikashunium Z","Eevium Z","Decidium Z","Incinium Z","Primarium Z","Tapunium Z","Marshadium Z","Aloraichium Z","Snorlium Z","Mewnium Z","Rusted Sword","Rusted Shield","Adamant Crystal","Lustrous Globe","Griseous Core"]);
+        const BANNED_ITEMS = new Set(["Venusaurite","Charizardite X","Charizardite Y","Blastoisinite","Beedrillite","Pidgeotite","Alakazite","Slowbronite","Gengarite","Kangaskhanite","Pinsirite","Gyaradosite","Aerodactylite","Mewtwonite X","Mewtwonite Y","Ampharosite","Steelixite","Scizorite","Heracronite","Houndoominite","Tyranitarite","Blazikenite","Gardevoirite","Mawilite","Aggronite","Medichamite","Manectite","Sharpedonite","Cameruptite","Altarianite","Banettite","Absolite","Glalitite","Salamencite","Metagrossite","Latiasite","Latiosite","Lopunnite","Garchompite","Lucarionite","Abomasite","Galladite","Audinite","Diancite","Sablenite","Sceptilite","Swampertite","Normalium Z","Firium Z","Waterium Z","Grassium Z","Electrium Z","Icium Z","Fightinium Z","Poisonium Z","Groundium Z","Flyinium Z","Psychium Z","Buginium Z","Rockium Z","Ghostium Z","Dragonium Z","Darkinium Z","Steelium Z","Fairium Z","Pikanium Z","Pikashunium Z","Eevium Z","Decidium Z","Incinium Z","Primarium Z","Tapunium Z","Marshadium Z","Aloraichium Z","Snorlium Z","Mewnium Z","Rusted Sword","Rusted Shield","Adamant Crystal","Lustrous Globe","Griseous Core"]);
 
         // Moves/items that are conditionally allowed when their mechanic is enabled
         function isMoveAllowed(moveName) {
@@ -1434,10 +1434,19 @@
             ensureMoveData(setterMove);
         }
 
-        const isMegaStone = item => item && (
-            item === 'Red Orb' || item === 'Blue Orb' || item === 'Rusted Sword' || item === 'Rusted Shield' ||
-            (item !== 'Eviolite' && (item.endsWith('ite') || item.endsWith('ite X') || item.endsWith('ite Y')) && BANNED_ITEMS.has(item))
-        );
+        // Authoritative set of all mega stones — derived from MEGA_STONE_MAP values so it stays in sync.
+        // Defined separately so isMegaStone doesn't depend on BANNED_ITEMS (which can drift).
+        const ALL_MEGA_STONES = new Set([
+            'Red Orb','Blue Orb','Rusted Sword','Rusted Shield',
+            'Venusaurite','Charizardite X','Charizardite Y','Blastoisinite','Beedrillite','Pidgeotite',
+            'Slowbronite','Gengarite','Kangaskhanite','Pinsirite','Gyaradosite','Aerodactylite',
+            'Mewtwonite X','Mewtwonite Y','Ampharosite','Scizorite','Heracronite','Houndoominite',
+            'Tyranitarite','Blazikenite','Gardevoirite','Mawilite','Aggronite','Medichamite','Manectite',
+            'Sharpedonite','Cameruptite','Altarianite','Banettite','Absolite','Glalitite','Salamencite',
+            'Metagrossite','Latiasite','Latiosite','Lopunnite','Garchompite','Lucarionite','Abomasite',
+            'Galladite','Audinite','Diancite','Sablenite','Sceptilite','Swampertite','Steelixite','Alakazite',
+        ]);
+        const isMegaStone = item => item != null && ALL_MEGA_STONES.has(item);
 
         // Central build factory — used by draft, gauntlet rounds, and draw recovery
         function makeBuild(name) {
@@ -3155,26 +3164,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             let menu = document.getElementById('move-menu'); menu.innerHTML = '';
 
-            // Determine displayed moves (Max Moves if Dynamaxed)
+            // Treat DYNAMAX pending same as dynamaxed for display — player sees Max moves immediately on clicking DYNAMAX
+            const isDynaDisplay = activeMon.dynamaxed || pending === 'DYNAMAX';
+
+            // Determine displayed moves (Max Moves if Dynamaxed or DYNAMAX pending)
             let displayMoves = activeMon.moves.map((move, i) => {
-                if (activeMon.dynamaxed) return { ...buildMaxMove(activeMon, move), _origIndex: i };
+                if (isDynaDisplay) return { ...buildMaxMove(activeMon, move), _origIndex: i };
                 return { ...move, _origIndex: i };
             });
 
             displayMoves.forEach((move, i) => {
                 let rawMove = activeMon.moves[move._origIndex];
                 // For Z-Move preview
-                let shownMove = (pending === 'ZMOVE' && !activeMon.zMoveUsed) ? buildZMove(activeMon, rawMove) : (activeMon.dynamaxed ? buildMaxMove(activeMon, rawMove) : move);
+                let shownMove = (pending === 'ZMOVE' && !activeMon.zMoveUsed) ? buildZMove(activeMon, rawMove) : (isDynaDisplay ? buildMaxMove(activeMon, rawMove) : move);
                 let btn = document.createElement('button'); let eff = 1; let effColor = "#fff"; let effText = "";
                 if (shownMove.cat !== "Status" && shownMove.pow > 0) {
                     eff = getMoveEffectiveness(shownMove.type, targetMon.type1, targetMon.type2);
                     if (eff > 1) { effColor = "var(--hp-green)"; effText = "▲"; } else if (eff < 1 && eff > 0) { effColor = "var(--hp-red)"; effText = "▼"; } else if (eff === 0) { effColor = "#555"; effText = "⊘"; }
                 }
                 let powerTxt = shownMove.pow > 0 ? shownMove.pow : '—';
-                let dynaLabel = activeMon.dynamaxed ? `<span style="font-size:9px;color:#ef5350;"> MAX</span>` : '';
+                let dynaLabel = isDynaDisplay ? `<span style="font-size:9px;color:#ef5350;"> MAX</span>` : '';
                 let zLabel = (pending === 'ZMOVE' && !activeMon.zMoveUsed && shownMove.pow > 0) ? `<span style="font-size:9px;color:#f9a825;"> Z${powerTxt}</span>` : '';
-                let ppDisplay = activeMon.dynamaxed ? '∞' : `${rawMove.pp}/${rawMove.maxPp}`;
-                let ppColor = !activeMon.dynamaxed && rawMove.pp <= 0 ? '#f44336' : (rawMove.pp <= Math.floor(rawMove.maxPp / 3) ? '#ff9800' : '#aaa');
+                let ppDisplay = isDynaDisplay ? '∞' : `${rawMove.pp}/${rawMove.maxPp}`;
+                let ppColor = !isDynaDisplay && rawMove.pp <= 0 ? '#f44336' : (rawMove.pp <= Math.floor(rawMove.maxPp / 3) ? '#ff9800' : '#aaa');
                 let catColor = shownMove.cat === 'Physical' ? '#ff6b6b' : shownMove.cat === 'Special' ? '#6b9fff' : '#888';
                 let effLabelShort = eff > 1 ? `<span style="color:var(--hp-green);font-weight:bold;">▲</span>` : eff === 0 ? `<span style="color:#555;">⊘</span>` : eff < 1 ? `<span style="color:var(--hp-red);">▼</span>` : '';
                 if (isMobile) {
