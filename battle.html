@@ -1359,12 +1359,20 @@
         // Returns a list of Pokémon names suitable for draft pool generation.
         // Prefers CSV builds; falls back to randbats cache then baseStats so
         // the draft always has candidates even when builds.csv could not be fetched.
+        // Excludes mega/primal form names (e.g. "Metagross-Mega", "Charizard-Mega-X") —
+        // those exist as separate entries in Smogon data but should never appear as
+        // draftable Pokémon; the base form with MEGA gimmick handles them.
         function getDraftPool(minGen, maxGen, grades) {
-            const source = Object.keys(csvBuilds).length > 0
+            // Build excluded set lazily (MEGA_FORM_NAMES defined later in same script scope)
+            const excluded = new Set(typeof MEGA_FORM_NAMES !== 'undefined' ? Object.values(MEGA_FORM_NAMES) : []);
+
+            const rawSource = Object.keys(csvBuilds).length > 0
                 ? Object.keys(csvBuilds)
                 : Object.keys(_randbatsCache[9] || {}).length > 0
                     ? Object.keys(_randbatsCache[9])
                     : Object.keys(baseStats);
+            const source = rawSource.filter(n => !excluded.has(n));
+
             let eligible = source.filter(name => {
                 const b = baseStats[name];
                 return b && b.gen >= minGen && b.gen <= maxGen && (!grades || grades.includes(getMonGrade(name, b.hp+b.atk+b.def+b.spa+b.spd+b.spe)));
