@@ -1367,7 +1367,10 @@
         // draftable Pokémon; the base form with MEGA gimmick handles them.
         function getDraftPool(minGen, maxGen, grades) {
             // Build excluded set lazily (MEGA_FORM_NAMES defined later in same script scope)
-            const excluded = new Set(typeof MEGA_FORM_NAMES !== 'undefined' ? Object.values(MEGA_FORM_NAMES) : []);
+            const excluded = new Set([
+                ...(typeof MEGA_FORM_NAMES !== 'undefined' ? Object.values(MEGA_FORM_NAMES) : []),
+                ...(typeof GMAX_SPECIES !== 'undefined' ? [...GMAX_SPECIES].map(n => `${n}-Gmax`) : [])
+            ]);
 
             const rawSource = Object.keys(csvBuilds).length > 0
                 ? Object.keys(csvBuilds)
@@ -1679,7 +1682,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             "Red Orb":"Groudon-Primal","Blue Orb":"Kyogre-Primal",
             "Mewtwonite X":"Mewtwo-Mega-X","Mewtwonite Y":"Mewtwo-Mega-Y"
         };
-        const GMAX_SPECIES = new Set(["Charizard","Butterfree","Pikachu","Meowth","Machamp","Gengar","Kingler","Lapras","Eevee","Snorlax","Garbodor","Melmetal","Rillaboom","Cinderace","Inteleon","Corviknight","Orbeetle","Drednaw","Coalossal","Flapple","Appletun","Sandaconda","Toxtricity","Centiskorch","Hatterene","Grimmsnarl","Alcremie","Copperajah","Duraludon","Urshifu","Eternatus"]);
+        const GMAX_SPECIES = new Set(["Venusaur","Blastoise","Charizard","Butterfree","Pikachu","Meowth","Machamp","Gengar","Kingler","Lapras","Eevee","Snorlax","Garbodor","Melmetal","Rillaboom","Cinderace","Inteleon","Corviknight","Orbeetle","Drednaw","Coalossal","Flapple","Appletun","Sandaconda","Toxtricity","Centiskorch","Hatterene","Grimmsnarl","Alcremie","Copperajah","Duraludon","Urshifu","Eternatus"]);
         const DYNAMAX_BANNED = new Set(["Zacian","Zamazenta","Eternatus"]);
         const Z_TYPE_MAP = {"Normal":"Normalium Z","Fire":"Firium Z","Water":"Waterium Z","Electric":"Electrium Z","Grass":"Grassium Z","Ice":"Icium Z","Fighting":"Fightinium Z","Poison":"Poisonium Z","Ground":"Groundium Z","Flying":"Flyinium Z","Psychic":"Psychium Z","Bug":"Buginium Z","Rock":"Rockium Z","Ghost":"Ghostium Z","Dragon":"Dragonium Z","Dark":"Darkinium Z","Steel":"Steelium Z","Fairy":"Fairium Z"};
         const Z_TYPE_MAP_VALUES = new Set([...Object.values(Z_TYPE_MAP), "Pikanium Z","Pikashunium Z","Eevium Z","Decidium Z","Incinium Z","Primarium Z","Tapunium Z","Marshadium Z","Aloraichium Z","Snorlium Z","Mewnium Z"]);
@@ -2055,12 +2058,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         window.showTextTooltip = function(key, e) {
             let tt = document.getElementById('text-tooltip'); tt.innerText = tooltipDict[key] || "Increases/Decreases specific stats.";
-            tt.style.left = (e.pageX + 10) + 'px'; tt.style.top = (e.pageY + 10) + 'px'; tt.classList.remove('hidden');
+            window._posTooltip(tt, e); tt.classList.remove('hidden');
         }
         window.hideTextTooltip = function() { document.getElementById('text-tooltip').classList.add('hidden'); }
+        // Clamp tooltip to viewport so it's always fully visible (works on mobile too)
+        window._posTooltip = function(tt, e) {
+            let x = e.pageX + 12, y = e.pageY + 12;
+            tt.style.left = x + 'px'; tt.style.top = y + 'px';
+            requestAnimationFrame(() => {
+                let r = tt.getBoundingClientRect();
+                if (r.right > window.innerWidth - 4) tt.style.left = Math.max(4, e.pageX - r.width - 8) + 'px';
+                if (r.bottom > window.innerHeight - 4) tt.style.top = Math.max(4, e.pageY - r.height - 8) + 'px';
+            });
+        };
+        // Global mousemove: hide tooltips when cursor leaves any trigger element
+        document.addEventListener('mousemove', function(ev) {
+            if (!ev.target.closest('[onmousemove],[onmouseenter]')) {
+                document.getElementById('text-tooltip').classList.add('hidden');
+                document.getElementById('move-tooltip').classList.add('hidden');
+            }
+        });
         window.showFieldTooltip = function(html, e) {
             let tt = document.getElementById('text-tooltip');
-            tt.innerHTML = html; tt.style.left = (e.pageX + 10) + 'px'; tt.style.top = (e.pageY - 10) + 'px'; tt.classList.remove('hidden');
+            tt.innerHTML = html; window._posTooltip(tt, e); tt.classList.remove('hidden');
         };
         window.showTeraTooltip = function(teraType, origT1, origT2, e) {
             let stab = (origT1 === teraType || origT2 === teraType) ? '2×' : '1.5×';
@@ -2078,14 +2098,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 + (nve.length ? `<div style="font-size:10px;margin-bottom:2px;"><span style="color:#ff9800;">NVE vs:</span> ${fmtTypes(nve)}</div>` : '')
                 + (immune.length ? `<div style="font-size:10px;"><span style="color:#607d8b;">No effect vs:</span> ${fmtTypes(immune)}</div>` : '');
             let tt = document.getElementById('text-tooltip');
-            tt.innerHTML = html; tt.style.left = (e.pageX + 10) + 'px'; tt.style.top = (e.pageY - 10) + 'px'; tt.classList.remove('hidden');
+            tt.innerHTML = html; window._posTooltip(tt, e); tt.classList.remove('hidden');
         };
         window.showMoveTooltip = function(moveName, e) {
             let move = movesDB[moveName]; if (!move) return;
             let tt = document.getElementById('text-tooltip');
             tt.innerHTML = `<div style="margin-bottom:6px;"><strong style="font-size:14px; color:var(--hp-yellow);">${moveName}</strong> <span class="type-badge type-${move.type}" style="font-size:10px;">${move.type}</span></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:3px; font-size:12px;"><div>Cat: <strong class="cat-${move.cat}">${move.cat}</strong></div><div>Power: <strong>${move.pow > 0 ? move.pow : '---'}</strong></div><div>Acc: <strong>${move.acc > 0 ? move.acc + '%' : '---'}</strong></div><div>PP: <strong>${move.pp}</strong></div></div>${move.eff ? `<div style="margin-top:6px; font-size:11px; color:#ccc; font-style:italic; border-top:1px dashed #555; padding-top:4px;">${move.eff}</div>` : ''}`;
-            tt.style.left = (e.pageX + 10) + 'px'; tt.style.top = (e.pageY + 10) + 'px'; tt.classList.remove('hidden');
+            window._posTooltip(tt, e); tt.classList.remove('hidden');
         }
+        // Tooltip for Max Moves / Z-Moves not in movesDB
+        window.showRawMoveTooltip = function(moveName, e) {
+            const maxDesc = {
+                'Max Strike':'Lowers the target\'s Speed by 1 stage.','Max Flare':'Sets harsh sunlight for 5 turns.',
+                'Max Geyser':'Summons rain for 5 turns.','Max Overgrowth':'Sets Grassy Terrain for 5 turns. Boosts Grass moves.',
+                'Max Lightning':'Sets Electric Terrain for 5 turns. Boosts Electric moves.','Max Hailstorm':'Summons hail for 5 turns.',
+                'Max Knuckle':'Raises the user\'s Attack by 1 stage.','Max Ooze':'Raises the user\'s Sp. Atk by 1 stage.',
+                'Max Quake':'Raises the user\'s Sp. Def by 1 stage.','Max Airstream':'Raises the user\'s Speed by 1 stage.',
+                'Max Mindstorm':'Sets Psychic Terrain for 5 turns. Boosts Psychic moves.','Max Flutterby':'Lowers the target\'s Sp. Atk by 1 stage.',
+                'Max Rockfall':'Summons a sandstorm for 5 turns.','Max Phantasm':'Lowers the target\'s Defense by 1 stage.',
+                'Max Wyrmwind':'Lowers the target\'s Attack by 1 stage.','Max Darkness':'Lowers the target\'s Sp. Def by 1 stage.',
+                'Max Steelspike':'Raises the user\'s Defense by 1 stage.','Max Starfall':'Sets Misty Terrain for 5 turns. Halves Dragon damage.',
+                'Max Guard':'Protects from ALL moves including Max Moves. Priority +4.'
+            };
+            let desc = maxDesc[moveName] || 'A powerful Dynamax move.';
+            let tt = document.getElementById('text-tooltip');
+            tt.innerHTML = `<strong style="color:var(--hp-yellow)">${moveName}</strong><br><span style="font-size:11px;color:#ccc;">${desc}</span>`;
+            window._posTooltip(tt, e); tt.classList.remove('hidden');
+        };
         function getStatColorClass(val) {
             if (val >= 250) return 'stat-val-high';
             if (val >= 200) return 'stat-val-mid-high';
@@ -2119,10 +2158,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             div.className = `log-${type}`;
             // Detect and wrap move names as hoverable
             let processedMsg = msg.replace(/used (.+?)!/g, (match, moveName) => {
+                let safe = moveName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                 if (movesDB[moveName]) {
-                    return `used <span class="log-move-link" onmousemove="window.showMoveTooltip('${moveName.replace(/'/g, "\\'")}', event)" onmouseleave="window.hideTextTooltip()" style="text-decoration:underline dotted; cursor:help; color:var(--accent);">${moveName}</span>!`;
+                    return `used <span class="log-move-link" onmousemove="window.showMoveTooltip('${safe}', event)" onmouseleave="window.hideTextTooltip()" style="text-decoration:underline dotted; cursor:help; color:var(--accent);">${moveName}</span>!`;
                 }
-                return match;
+                // Max Moves / Z-Moves: show raw tooltip
+                return `used <span class="log-move-link" onmousemove="window.showRawMoveTooltip('${safe}', event)" onmouseleave="window.hideTextTooltip()" style="text-decoration:underline dotted; cursor:help; color:#ef9a9a;">${moveName}</span>!`;
             });
             // Wrap known tooltip terms (items, abilities) if message is short enough
             if (processedMsg.length < 200 && Object.keys(tooltipDict).length > 0) {
@@ -2354,7 +2395,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             logMsg(`${oldName} Mega Evolved into ${mon.name}!`, 'info');
             // Update sprite
             let spriteEl = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
-            if (spriteEl) spriteEl.src = getSprite(mon.name);
+            if (spriteEl) { spriteEl.src = getSprite(mon.name, mon.isShiny); spriteEl.alt = mon.name; spriteEl.dataset.shiny = mon.isShiny ? 'true' : 'false'; }
             updateUI();
         }
 
@@ -2374,11 +2415,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (spriteEl) {
                 spriteEl.style.filter = 'drop-shadow(0 0 8px #ef5350) drop-shadow(0 0 4px #ef5350)';
                 spriteEl.style.transform = 'translateX(-50%) scale(1.25)';
-                // Swap to G-Max form sprite (Showdown uses "snorlax-gmax" naming)
+                // Swap to G-Max form sprite + update name
                 if (isGmax) {
-                    const gmaxSpriteName = mon.name + '-Gmax';
-                    spriteEl.alt = gmaxSpriteName;
-                    spriteEl.src = getSprite(gmaxSpriteName, mon.isShiny);
+                    mon._preDynaName = mon.name;
+                    mon.name = mon.name + '-Gmax';
+                    spriteEl.alt = mon.name;
+                    spriteEl.src = getSprite(mon.name, mon.isShiny);
                 }
             }
             updateUI();
@@ -2392,6 +2434,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let hpRatio = mon.currentHp / mon.maxHp;
             mon.maxHp = mon.baseMaxHp;
             mon.currentHp = Math.max(1, Math.floor(mon.maxHp * hpRatio));
+            // Restore G-Max name back to base form before logging
+            if (mon._preDynaName) { mon.name = mon._preDynaName; mon._preDynaName = null; }
             logMsg(`${mon.name} returned to normal size!`, 'info');
             let spriteEl = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
             if (spriteEl) {
@@ -2440,8 +2484,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // Convert move to Max Move for Dynamax
-        function buildMaxMove(mon, move) {
-            if (!mon.dynamaxed) return move;
+        function buildMaxMove(mon, move, force = false) {
+            if (!mon.dynamaxed && !force) return move;
             let maxPow = getMaxMovePower(move.pow || 0, move.cat);
             if (move.cat === 'Status') {
                 return { ...move, name: `Max Guard`, pow: 0, isMaxMove: true, pri: 4, isMaxGuard: true };
@@ -2778,6 +2822,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`Tip: Hover over move buttons for details. ▲ = super effective, ▼ = resisted. Hover Pokemon names for stats.`, 'info');
             }
 
+            document.getElementById('move-menu').classList.add('hidden');
             document.getElementById('command-menu').classList.remove('hidden');
         }
 
@@ -3283,14 +3328,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Determine displayed moves (Max Moves if Dynamaxed or DYNAMAX pending)
             let displayMoves = activeMon.moves.map((move, i) => {
-                if (isDynaDisplay) return { ...buildMaxMove(activeMon, move), _origIndex: i };
+                if (isDynaDisplay) return { ...buildMaxMove(activeMon, move, true), _origIndex: i };
                 return { ...move, _origIndex: i };
             });
 
             displayMoves.forEach((move, i) => {
                 let rawMove = activeMon.moves[move._origIndex];
                 // For Z-Move preview
-                let shownMove = (pending === 'ZMOVE' && !activeMon.zMoveUsed) ? buildZMove(activeMon, rawMove) : (isDynaDisplay ? buildMaxMove(activeMon, rawMove) : move);
+                let shownMove = (pending === 'ZMOVE' && !activeMon.zMoveUsed) ? buildZMove(activeMon, rawMove) : (isDynaDisplay ? buildMaxMove(activeMon, rawMove, true) : move);
                 let btn = document.createElement('button'); let eff = 1; let effColor = "#fff"; let effText = "";
                 if (shownMove.cat !== "Status" && shownMove.pow > 0) {
                     eff = getMoveEffectiveness(shownMove.type, targetMon.type1, targetMon.type2);
@@ -3334,7 +3379,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 btn.onmouseenter = () => {
                     let tt = document.getElementById('move-tooltip');
                     let effString = shownMove.cat === "Status" ? "Status Move" : (eff > 1 ? "<span style='color:var(--hp-green)'>Super Effective!</span>" : (eff === 0 ? "<span style='color:#888'>No Effect.</span>" : (eff < 1 ? "<span style='color:var(--hp-red)'>Not Very Effective.</span>" : "Normal Damage")));
-                    tt.innerHTML = `<div style="display:flex;justify-content:space-between;margin-bottom:10px;"><strong style="font-size:16px;color:var(--hp-yellow);">${shownMove.name}</strong><span class="type-badge type-${shownMove.type}">${shownMove.type}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;font-size:12px;gap:5px;"><div>Cat: <strong class="cat-${shownMove.cat}">${shownMove.cat}</strong></div><div>Power: <strong>${shownMove.pow > 0 ? shownMove.pow : "---"}</strong></div><div>Acc: <strong>${(shownMove.acc||0) <= 100 ? (shownMove.acc||100)+'%' : '---'}</strong></div><div>PP: <strong>${activeMon.dynamaxed ? '∞' : `${rawMove.pp}/${rawMove.maxPp}`}</strong></div></div><div style="margin-top:8px;font-size:11px;font-style:italic;color:#ccc;">${shownMove.effectStr||shownMove.eff||"No additional effects."}</div><div style="margin-top:8px;font-size:12px;font-weight:bold;border-top:1px dashed #555;padding-top:5px;">${effString}</div>`;
+                    let _ppStr = isDynaDisplay ? '∞' : `${rawMove.pp}/${rawMove.maxPp}`;
+                    let _accStr = shownMove.isMaxMove ? '—' : ((shownMove.acc||0) <= 100 ? (shownMove.acc||100)+'%' : '—');
+                    let _powStr = shownMove.pow > 0 ? shownMove.pow : '—';
+                    let _effDesc = shownMove.effectStr || shownMove.eff || (shownMove.isMaxMove ? 'Max Move: bypasses protect. Cannot miss.' : 'No additional effects.');
+                    tt.innerHTML = `<div style="display:flex;justify-content:space-between;margin-bottom:10px;"><strong style="font-size:16px;color:var(--hp-yellow);">${shownMove.name}</strong><span class="type-badge type-${shownMove.type}">${shownMove.type}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;font-size:12px;gap:5px;"><div>Cat: <strong class="cat-${shownMove.cat}">${shownMove.cat}</strong></div><div>Power: <strong>${_powStr}</strong></div><div>Acc: <strong>${_accStr}</strong></div><div>PP: <strong>${_ppStr}</strong></div></div><div style="margin-top:8px;font-size:11px;font-style:italic;color:#ccc;">${_effDesc}</div><div style="margin-top:8px;font-size:12px;font-weight:bold;border-top:1px dashed #555;padding-top:5px;">${effString}</div>`;
                     tt.classList.remove('hidden');
                 };
                 btn.onmouseleave = () => document.getElementById('move-tooltip').classList.add('hidden');
@@ -6733,15 +6782,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             renderReorderParty(); renderSwapGrid();
         };
         window.showGauntletSwap = function() { state.swapFoeSelected = null; state.swapPlayerSelected = null; document.getElementById('modal-gauntlet-swap').classList.remove('hidden'); renderReorderParty(); renderSwapGrid(); }
+        const _gimBadgeHTML = gimmick => ({'MEGA':'<span style="font-size:10px;background:#7b1fa2;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">MEGA</span>','ZMOVE':'<span style="font-size:10px;background:#f9a825;color:#000;border-radius:3px;padding:1px 4px;margin-left:3px;">Z</span>','DYNAMAX':'<span style="font-size:10px;background:#b71c1c;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">DYNA</span>','GMAXDYNAMAX':'<span style="font-size:10px;background:#880e4f;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">G-MAX</span>'})[gimmick] || '';
+        const _teraBadgeHTML = teraType => teraType ? `<span style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">TERA ${teraType}</span>` : '';
         function renderSwapGrid() {
             let fGrid = document.getElementById('swap-foe-grid'); let pGrid = document.getElementById('swap-player-grid'); fGrid.innerHTML = ''; pGrid.innerHTML = '';
             state.foeParty.forEach((mon, i) => {
                 let tier = getMonGrade(mon.name, getBST(mon.name)); let btn = document.createElement('div'); btn.className = `draft-card tier-${tier} ${state.swapFoeSelected === i ? 'selected-swap-foe' : ''}`;
                 let movesHtml = mon.moves.map(m => `<div onmousemove="event.stopPropagation(); window.showMoveTooltip('${m.name}', event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
+                let _gb = _gimBadgeHTML(mon.buildData && mon.buildData.gimmick);
+                let _tb = _teraBadgeHTML(mon.buildData && mon.buildData.teraType);
                 btn.innerHTML = `
-                    <div class="draft-card-sprite"><img src="${getSprite(mon.name, mon.isShiny)}" alt="${mon.name}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
+                    <div class="draft-card-sprite"><img src="${getSprite(mon.name, mon.isShiny)}" alt="${mon.name}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${mon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                     <div class="draft-card-body">
-                        <div class="draft-card-header"><span>${mon.isShiny ? '&#10024; ' : ''}${mon.name} ${getTypeHTML(mon.type1, mon.type2)}</span></div>
+                        <div class="draft-card-header"><span>${mon.isShiny ? '&#10024; ' : ''}${mon.name} ${getTypeHTML(mon.type1, mon.type2)}${_gb}${_tb}</span></div>
                         <div class="draft-card-details"><span class="hover-text" onmousemove="window.showTextTooltip('${mon.nature}', event)" onmouseleave="window.hideTextTooltip()">${mon.nature}</span> <span class="hover-text" onmousemove="window.showTextTooltip('${mon.ability}', event)" onmouseleave="window.hideTextTooltip()">${mon.ability}</span> <span class="hover-text" onmousemove="window.showTextTooltip('${mon.item}', event)" onmouseleave="window.hideTextTooltip()">${mon.item}</span></div>
                         <div class="draft-card-stats">${statBarHTML('HP', mon.maxHp)}${statBarHTML('Atk', mon.stats.atk)}${statBarHTML('Def', mon.stats.def)}${statBarHTML('SpA', mon.stats.spa)}${statBarHTML('SpD', mon.stats.spd)}${statBarHTML('Spe', mon.stats.spe)}</div>
                         <div class="draft-card-moves">${movesHtml}</div>
@@ -6751,10 +6804,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.playerParty.forEach((mon, i) => {
                 let tier = getMonGrade(mon.name, getBST(mon.name)); let btn = document.createElement('div'); btn.className = `draft-card tier-${tier} ${state.swapPlayerSelected === i ? 'selected-swap-player' : ''}`;
                 let movesHtml = mon.moves.map(m => `<div onmousemove="event.stopPropagation(); window.showMoveTooltip('${m.name}', event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
+                let _gb2 = _gimBadgeHTML(mon.buildData && mon.buildData.gimmick);
+                let _tb2 = _teraBadgeHTML(mon.buildData && mon.buildData.teraType);
                 btn.innerHTML = `
-                    <div class="draft-card-sprite"><img src="${getSprite(mon.name, mon.isShiny)}" alt="${mon.name}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
+                    <div class="draft-card-sprite"><img src="${getSprite(mon.name, mon.isShiny)}" alt="${mon.name}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${mon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                     <div class="draft-card-body">
-                        <div class="draft-card-header"><span>${mon.isShiny ? '&#10024; ' : ''}${mon.name} ${getTypeHTML(mon.type1, mon.type2)}</span></div>
+                        <div class="draft-card-header"><span>${mon.isShiny ? '&#10024; ' : ''}${mon.name} ${getTypeHTML(mon.type1, mon.type2)}${_gb2}${_tb2}</span></div>
                         <div class="draft-card-details"><span class="hover-text" onmousemove="window.showTextTooltip('${mon.nature}', event)" onmouseleave="window.hideTextTooltip()">${mon.nature}</span> <span class="hover-text" onmousemove="window.showTextTooltip('${mon.ability}', event)" onmouseleave="window.hideTextTooltip()">${mon.ability}</span> <span class="hover-text" onmousemove="window.showTextTooltip('${mon.item}', event)" onmouseleave="window.hideTextTooltip()">${mon.item}</span></div>
                         <div class="draft-card-stats">${statBarHTML('HP', mon.maxHp)}${statBarHTML('Atk', mon.stats.atk)}${statBarHTML('Def', mon.stats.def)}${statBarHTML('SpA', mon.stats.spa)}${statBarHTML('SpD', mon.stats.spd)}${statBarHTML('Spe', mon.stats.spe)}</div>
                         <div class="draft-card-moves">${movesHtml}</div>
@@ -6792,8 +6847,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.usedMega = false; state.usedZ = false; state.usedDyna = false; state.usedTera = false;
             state.fUsedMega = false; state.fUsedZ = false; state.fUsedDyna = false; state.fUsedTera = false;
             logMsg(`Gauntlet Round ${state.score + 1} begins!`, 'info');
+            // Hide all modals so we cleanly return to battle
+            document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
             applySwitchInAbilities(state.pActive, state.fActive); applySwitchInAbilities(state.fActive, state.pActive);
-            updateUI(); document.getElementById('command-menu').classList.remove('hidden');
+            updateUI();
+            document.getElementById('move-menu').classList.add('hidden');
+            document.getElementById('command-menu').classList.remove('hidden');
         }
     </script>
 </body>
