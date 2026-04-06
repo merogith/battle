@@ -2326,9 +2326,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.baseMaxHp = mon.maxHp;
             mon.maxHp = mon.maxHp * 2;
             mon.currentHp = Math.min(mon.maxHp, mon.currentHp + hpGain);
-            logMsg(`${mon.name} is Dynamaxing! It grew to gigantic size!`, 'info');
+            const isGmax = mon.buildData && mon.buildData.gimmick === 'GMAXDYNAMAX';
+            logMsg(`${mon.name} is ${isGmax ? 'Gigantamaxing' : 'Dynamaxing'}! It grew to gigantic size!`, 'info');
             let spriteEl = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
-            if (spriteEl) { spriteEl.style.filter = 'drop-shadow(0 0 8px #ef5350) drop-shadow(0 0 4px #ef5350)'; spriteEl.style.transform = 'translateX(-50%) scale(1.25)'; }
+            if (spriteEl) {
+                spriteEl.style.filter = 'drop-shadow(0 0 8px #ef5350) drop-shadow(0 0 4px #ef5350)';
+                spriteEl.style.transform = 'translateX(-50%) scale(1.25)';
+                // Swap to G-Max form sprite (Showdown uses "snorlax-gmax" naming)
+                if (isGmax) {
+                    const gmaxSpriteName = mon.name + '-Gmax';
+                    spriteEl.alt = gmaxSpriteName;
+                    spriteEl.src = getSprite(gmaxSpriteName, mon.isShiny);
+                }
+            }
             updateUI();
         }
 
@@ -2342,7 +2352,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.currentHp = Math.max(1, Math.floor(mon.maxHp * hpRatio));
             logMsg(`${mon.name} returned to normal size!`, 'info');
             let spriteEl = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
-            if (spriteEl) { spriteEl.style.filter = ''; spriteEl.style.transform = 'translateX(-50%)'; }
+            if (spriteEl) {
+                spriteEl.style.filter = '';
+                spriteEl.style.transform = 'translateX(-50%)';
+                // Restore original sprite
+                spriteEl.alt = mon.name;
+                spriteEl.src = getSprite(mon.name, mon.isShiny);
+            }
             updateUI();
         }
 
@@ -4280,6 +4296,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else if (gimmickPending === 'DYNAMAX' && !attacker.dynamaxed) {
                     activateDynamax(attacker, isPlayer);
                     if (isPlayer) state.p1GimmickPending = null; else state.p2GimmickPending = null;
+                    // Convert move immediately on the activation turn (attacker.dynamaxed is now true)
+                    move = buildMaxMove(attacker, move);
                 } else if (gimmickPending === 'TERA' && !attacker.teraActivated) {
                     activateTera(attacker, isPlayer);
                     if (isPlayer) state.p1GimmickPending = null; else state.p2GimmickPending = null;
