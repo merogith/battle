@@ -2120,7 +2120,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'Max Steelspike':'Raises the user\'s Defense by 1 stage.','Max Starfall':'Sets Misty Terrain for 5 turns. Halves Dragon damage.',
                 'Max Guard':'Protects from ALL moves including Max Moves. Priority +4.'
             };
-            let desc = maxDesc[moveName] || 'A powerful Dynamax move.';
+            const zDesc = {
+                'Breakneck Blitz':'Normal-type Z-Move. Power based on base move BP.',
+                'All-Out Pummeling':'Fighting-type Z-Move. Power based on base move BP.',
+                'Supersonic Skystrike':'Flying-type Z-Move. Power based on base move BP.',
+                'Acid Downpour':'Poison-type Z-Move. Power based on base move BP.',
+                'Tectonic Rage':'Ground-type Z-Move. Power based on base move BP.',
+                'Continental Crush':'Rock-type Z-Move. Power based on base move BP.',
+                'Savage Spin-Out':'Bug-type Z-Move. Power based on base move BP.',
+                'Never-Ending Nightmare':'Ghost-type Z-Move. Power based on base move BP.',
+                'Corkscrew Crash':'Steel-type Z-Move. Power based on base move BP.',
+                'Inferno Overdrive':'Fire-type Z-Move. Power based on base move BP.',
+                'Hydro Vortex':'Water-type Z-Move. Power based on base move BP.',
+                'Bloom Doom':'Grass-type Z-Move. Power based on base move BP.',
+                'Gigavolt Havoc':'Electric-type Z-Move. Power based on base move BP.',
+                'Subzero Slammer':'Ice-type Z-Move. Power based on base move BP.',
+                'Devastating Drake':'Dragon-type Z-Move. Power based on base move BP.',
+                'Black Hole Eclipse':'Dark-type Z-Move. Power based on base move BP.',
+                'Twinkle Tackle':'Fairy-type Z-Move. Power based on base move BP.',
+                'Catastropika':'Pikachu exclusive. Extreme Electric-type Z-Move.',
+                'Pulverizing Pancake':'Snorlax exclusive. Extreme Normal-type Z-Move.',
+            };
+            let desc = maxDesc[moveName] || zDesc[moveName] || 'A powerful gimmick move.';
             let tt = document.getElementById('text-tooltip');
             tt.innerHTML = `<strong style="color:var(--hp-yellow)">${moveName}</strong><br><span style="font-size:11px;color:#ccc;">${desc}</span>`;
             window._posTooltip(tt, e); tt.classList.remove('hidden');
@@ -2286,9 +2307,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.knockedOff = false;
             mon.isShiny = build._isShiny !== undefined ? build._isShiny : (Math.random() < 0.01);
             build._isShiny = mon.isShiny; // persist so rebuilds keep same shiny state
+            mon._baseName = monName; // always the pre-mega/pre-gmax base species name
             // Gimmick state
             mon.megaEvolved = false;
             mon.dynamaxed = false;
+            mon.dynamaxUsed = false;
             mon.dynamaxTurns = 0;
             mon.baseMaxHp = mon.maxHp; // before dynamax
             mon.teraActivated = false;
@@ -2404,6 +2427,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.dynamaxed = true;
             mon.dynamaxTurns = 3;
             if (isPlayer) state.usedDyna = true; else state.fUsedDyna = true;
+            mon.dynamaxUsed = true; // Per-mon: can never re-dynamax in same battle even after it ends
             // Double max HP and give the extra HP
             let hpGain = mon.maxHp;
             mon.baseMaxHp = mon.maxHp;
@@ -2488,7 +2512,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!mon.dynamaxed && !force) return move;
             let maxPow = getMaxMovePower(move.pow || 0, move.cat);
             if (move.cat === 'Status') {
-                return { ...move, name: `Max Guard`, pow: 0, isMaxMove: true, pri: 4, isMaxGuard: true };
+                return { ...move, name: `Max Guard`, type: 'Normal', pow: 0, isMaxMove: true, pri: 4, isMaxGuard: true };
             }
             const maxMoveNames = {
                 "Normal":"Max Strike","Fire":"Max Flare","Water":"Max Geyser","Grass":"Max Overgrowth",
@@ -3072,7 +3096,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </div>
                     <div class="party-actions">
                         <button onclick="window.showSummary(${index}, ${isP1}); event.stopPropagation();">Summary</button>
-                        <button onclick="window.selectPartyMember(${index}, ${isForced}); event.stopPropagation();" ${(!isAlive || isActive) ? 'disabled' : ''} style="color: var(--hp-green);">Switch</button>
+                        <button onclick="window.selectPartyMember(${index}, ${isForced}); event.stopPropagation();" ${(!isAlive || isActive || (!isForced && activeMon.dynamaxed)) ? 'disabled' : ''} title="${(!isForced && activeMon.dynamaxed) ? 'Cannot switch while Dynamaxed!' : ''}" style="color: var(--hp-green);">Switch</button>
                     </div>
                 `;
                 list.appendChild(slot);
@@ -3231,11 +3255,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         displayMove = buildZMove(s, rawMove);
                         if (rawMove.cat !== 'Status') { cardClass += ' upgraded'; upgradeTag = `<span style="color:#f9a825;font-size:10px;margin-left:6px;">Z-POWER</span>`; }
                     } else if (upgradeMode === 'max' && canUpgradeDyna) {
-                        displayMove = buildMaxMove(s, rawMove);
+                        displayMove = buildMaxMove(s, rawMove, true);
                         cardClass += ' upgraded-max'; upgradeTag = `<span style="color:#ef5350;font-size:10px;margin-left:6px;">MAX MOVE</span>`;
                     }
                     let pow = displayMove.pow > 0 ? displayMove.pow : '—';
-                    let acc = (displayMove.acc || 0) <= 100 ? displayMove.acc + '%' : '—';
+                    let acc = displayMove.isMaxMove ? '—' : ((displayMove.acc || 0) <= 100 ? displayMove.acc + '%' : '—');
+                    let ppDisp = displayMove.isMaxMove ? '∞' : `${rawMove.pp}/${rawMove.maxPp}`;
                     movesHtml += `<div class="${cardClass}">
                         <div class="sum-move-header">
                             <span class="sum-move-name">${displayMove.name}</span>${upgradeTag}
@@ -3245,7 +3270,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <div class="sum-move-stats">
                             <div>Power: <span class="sum-move-stat-val">${pow}</span></div>
                             <div>Accuracy: <span class="sum-move-stat-val">${acc}</span></div>
-                            <div>PP: <span class="sum-move-stat-val">${rawMove.pp}/${rawMove.maxPp}</span></div>
+                            <div>PP: <span class="sum-move-stat-val">${ppDisp}</span></div>
                         </div>
                         ${(displayMove.effectStr || displayMove.eff) ? `<div class="sum-move-eff">${displayMove.effectStr || displayMove.eff}</div>` : ''}
                     </div>`;
@@ -3425,7 +3450,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // === GIMMICK BUTTONS ===
             let canUseMega = activeMon.buildData && activeMon.buildData.gimmick === 'MEGA' && !activeMon.megaEvolved && (!settings.classicMode || !state.usedMega);
-            let canUseDyna = activeMon.buildData && (activeMon.buildData.gimmick === 'DYNAMAX' || activeMon.buildData.gimmick === 'GMAXDYNAMAX') && !activeMon.dynamaxed && (!settings.classicMode || !state.usedDyna);
+            let canUseDyna = activeMon.buildData && (activeMon.buildData.gimmick === 'DYNAMAX' || activeMon.buildData.gimmick === 'GMAXDYNAMAX') && !activeMon.dynamaxed && !activeMon.dynamaxUsed && (!settings.classicMode || !state.usedDyna);
             let canUseTera = activeMon.buildData && activeMon.buildData.teraType && !activeMon.teraActivated && (!settings.classicMode || !state.usedTera);
             let canUseZ = activeMon.buildData && activeMon.buildData.gimmick === 'ZMOVE' && !activeMon.zMoveUsed && (!settings.classicMode || !state.usedZ);
 
@@ -4108,6 +4133,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         window.playTurn = async function(pMoveIndex, pSwitchIndex) {
             if(state.isLocked) return;
+            // VGC: Cannot voluntarily switch while Dynamaxed
+            if (pSwitchIndex !== null && state.pActive && state.pActive.dynamaxed) {
+                logMsg(`${state.pActive.name} cannot switch out while Dynamaxed!`, 'info');
+                return;
+            }
             let action = { moveIndex: pMoveIndex, switchIndex: pSwitchIndex };
             // Preserve aiMove if already set (e.g., Struggle)
             if (state.p1Action && state.p1Action.aiMove && pMoveIndex === null && pSwitchIndex === null) {
@@ -6831,8 +6861,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window.skipSwap = function() { document.getElementById('modal-gauntlet-swap').classList.add('hidden'); nextGauntletRound(); }
         function nextGauntletRound() {
             state.score++; logMsg(`Round ${state.score} cleared! Fully healing team...`, 'heal');
-            // Rebuild player party from their saved buildData (preserves shiny, gimmick, moves, etc.)
-            state.playerParty.forEach((m, i) => { state.playerParty[i] = buildPokemon(m.name, m.buildData); });
+            // Rebuild player party fresh from base name + buildData (fully resets mega/dynamax/tera, restores PP)
+            state.playerParty.forEach((m, i) => {
+                let bn = m._baseName || m.name; // _baseName is always the pre-mega/pre-gmax species name
+                state.playerParty[i] = buildPokemon(bn, m.buildData);
+            });
             // Generate new foe team (same gen range + grades as player)
             let allEligible = getDraftPool(state.minGen, state.maxGen, settings.draftGrades);
             const foeKeys = allEligible.sort(() => 0.5 - Math.random()).slice(0, 3);
