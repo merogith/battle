@@ -1531,6 +1531,29 @@
             // Assign gimmick item and tag build
             assignGimmickToBuild(name, b, gimmick);
 
+            // Validate: if gimmick requirements not met after assignment, degrade to STANDARD
+            if (!validateGimmick(name, b)) {
+                console.warn(`[Gimmick] ${name} rolled ${gimmick} but build cannot support it — degrading to STANDARD`);
+                b.gimmick = 'STANDARD';
+                if (isMegaStone(b.i)) b.i = 'Leftovers';
+                if (Z_TYPE_MAP_VALUES.has(b.i)) b.i = 'Leftovers';
+                // Re-pull a clean regular build if available
+                const fallbackPool2 = (entry.regular || []).concat(entry.weather || []);
+                if (fallbackPool2.length) {
+                    let fb = { ...fallbackPool2[Math.floor(Math.random() * fallbackPool2.length)] };
+                    fb.m = fb.m.map(m => m.includes('/') ? m.split('/')[Math.floor(Math.random()*m.split('/').length)] : m);
+                    fb.evs = { ...fb.evs }; fb.gimmick = 'STANDARD'; fb.teraType = null;
+                    if (!fb.a || fb.a === 'None') {
+                        if (base.abilities) {
+                            const aPool = [base.abilities['0'], base.abilities['1']].filter(Boolean);
+                            if (aPool.length) fb.a = aPool[Math.floor(Math.random() * aPool.length)];
+                        }
+                        if (!fb.a) fb.a = 'None';
+                    }
+                    return fb;
+                }
+            }
+
             // Tera type assignment
             if (gimmick === 'TERA') {
                 b.teraType = rollTeraType(base.t1 || 'Normal', base.t2 || '');
@@ -1725,22 +1748,49 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let stone = MEGA_STONE_MAP[name];
                 if (Array.isArray(stone)) stone = stone[Math.floor(Math.random() * stone.length)];
                 if (stone) build.i = stone;
+                // If no stone is available, degrade below — handled by validateGimmick
             } else if (gimmick === 'ZMOVE') {
-                // Check signature Z first
+                // If the build already has a Z-Crystal from the z-attack pool, keep it
+                if (Z_TYPE_MAP_VALUES.has(build.i)) return; // already set correctly
+                // Check for signature Z
                 let sigZ = SIGNATURE_Z[name];
-                if (sigZ) { build.i = sigZ; }
-                else {
-                    // Pick Z-Crystal matching the highest-BP move's type
-                    let bestMove = null, bestBP = 0;
-                    for (let mname of (build.m || [])) {
-                        let mv = movesDB[mname];
-                        if (mv && mv.cat !== 'Status' && (mv.pow || 0) > bestBP) { bestBP = mv.pow; bestMove = mv; }
-                    }
-                    if (bestMove && Z_TYPE_MAP[bestMove.type]) build.i = Z_TYPE_MAP[bestMove.type];
-                    else build.i = "Normalium Z";
+                if (sigZ) { build.i = sigZ; return; }
+                // Otherwise: find the highest-BP damaging move and assign matching Z-Crystal
+                let bestMove = null, bestBP = 0;
+                for (let mname of (build.m || [])) {
+                    let mv = movesDB[mname];
+                    if (mv && mv.cat !== 'Status' && (mv.pow || 0) > bestBP) { bestBP = mv.pow; bestMove = mv; }
                 }
+                if (bestMove && Z_TYPE_MAP[bestMove.type]) build.i = Z_TYPE_MAP[bestMove.type];
+                // else: leave item as-is — validateGimmick will degrade if no match possible
             }
-            // DYNAMAX / STANDARD: keep item as-is (no item restriction)
+            // DYNAMAX / GMAXDYNAMAX / STANDARD / TERA: keep item as-is
+        }
+
+        // Validate that a build actually supports its gimmick.
+        // Returns true if valid, false if should degrade to STANDARD.
+        function validateGimmick(name, build) {
+            const gimmick = build.gimmick;
+            if (!gimmick || gimmick === 'STANDARD' || gimmick === 'DYNAMAX' || gimmick === 'GMAXDYNAMAX') return true;
+            if (gimmick === 'TERA') return true; // Tera works with any build — no item required
+            if (gimmick === 'MEGA') {
+                // Must have a valid mega stone item in the build
+                return isMegaStone(build.i) && MEGA_FORM_NAMES[build.i];
+            }
+            if (gimmick === 'ZMOVE') {
+                // Must have a Z-Crystal item
+                if (!Z_TYPE_MAP_VALUES.has(build.i)) return false;
+                // Signature Z-crystals: always valid (they have a custom move or work on any move)
+                if (SIGNATURE_Z[name] && build.i === SIGNATURE_Z[name]) return true;
+                // Standard Z-crystal: must have at least one damaging move whose type matches the crystal
+                let crystalType = getZCrystalType(build.i);
+                if (!crystalType) return true; // signature crystal — fine
+                return (build.m || []).some(mname => {
+                    let mv = movesDB[mname];
+                    return mv && mv.cat !== 'Status' && mv.type === crystalType && (mv.pow || 0) > 0;
+                });
+            }
+            return true;
         }
 
         // === LIVE SMOGON BUILD FETCHING (pkmn.cc API) ===
@@ -2316,7 +2366,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.baseMaxHp = mon.maxHp; // before dynamax
             mon.teraActivated = false;
             mon.zMoveUsed = false;
-            mon.baseName = monName; // preserve base form name
             mon.originalType1 = base.t1 || 'Normal';
             mon.originalType2 = base.t2 || '';
             return mon;
@@ -2491,20 +2540,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return null; // signature Z-crystal — doesn't restrict by type
         }
 
+        // Official Z-Move names by type
+        const Z_MOVE_NAMES = {
+            "Normal":"Breakneck Blitz","Fire":"Inferno Overdrive","Water":"Hydro Vortex",
+            "Electric":"Gigavolt Havoc","Grass":"Bloom Doom","Ice":"Subzero Slammer",
+            "Fighting":"All-Out Pummeling","Poison":"Acid Downpour","Ground":"Tectonic Rage",
+            "Flying":"Supersonic Skystrike","Psychic":"Shattered Psyche","Bug":"Savage Spin-Out",
+            "Rock":"Continental Crush","Ghost":"Never-Ending Nightmare","Dragon":"Devastating Drake",
+            "Dark":"Black Hole Eclipse","Steel":"Corkscrew Crash","Fairy":"Twinkle Tackle"
+        };
+
         // Convert normal move to Z-Move (returns modified move object, does NOT mutate original)
         // VGC rules: status moves → Z-status (any crystal); damaging → only if type matches crystal
         function buildZMove(mon, move) {
             if (mon.zMoveUsed) return move;
             // Status Z-move: any Z-crystal can power up any status move
             if (move.cat === 'Status') {
-                return { ...move, isZMove: true, zStatusEffect: true };
+                return { ...move, isZMove: true, zStatusEffect: true, name: `Z-${move.name}` };
             }
             // Damaging Z-move: move type must match the Z-crystal's type
             // (signature Z-crystals return null type — treated as matching for backwards compat)
             let crystalType = getZCrystalType(mon.item);
             if (crystalType && move.type !== crystalType) return move; // type mismatch — not Z-powered
             let zPower = getZMovePower(move.pow || 0);
-            return { ...move, pow: zPower, isZMove: true, name: `Z-${move.name}`, pri: 0 };
+            let zName = Z_MOVE_NAMES[move.type] || `Z-${move.name}`;
+            return { ...move, pow: zPower, isZMove: true, name: zName, pri: 0 };
         }
 
         // Convert move to Max Move for Dynamax
@@ -3368,7 +3428,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 let powerTxt = shownMove.pow > 0 ? shownMove.pow : '—';
                 let dynaLabel = isDynaDisplay ? `<span style="font-size:9px;color:#ef5350;"> MAX</span>` : '';
-                let zLabel = (shownMove.isZMove && shownMove.pow > 0) ? `<span style="font-size:9px;color:#f9a825;"> Z${powerTxt}</span>` : '';
+                // Z-Move name already reflects the Z-Move (e.g. "Bloom Doom") — just add a Z badge for status Z-moves
+                let zLabel = (shownMove.isZMove && shownMove.zStatusEffect) ? `<span style="font-size:9px;color:#f9a825;"> Z!</span>` : '';
                 let ppDisplay = isDynaDisplay ? '∞' : `${rawMove.pp}/${rawMove.maxPp}`;
                 let ppColor = !isDynaDisplay && rawMove.pp <= 0 ? '#f44336' : (rawMove.pp <= Math.floor(rawMove.maxPp / 3) ? '#ff9800' : '#aaa');
                 let catColor = shownMove.cat === 'Physical' ? '#ff6b6b' : shownMove.cat === 'Special' ? '#6b9fff' : '#888';
