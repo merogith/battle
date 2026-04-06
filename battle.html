@@ -858,6 +858,8 @@
         .popup-crit { color: #ffd54f; font-size: 17px; }
         .popup-immune { color: #888; font-size: 15px; }
         .status-icon { position: absolute; bottom: 2px; left: 2px; font-size: 10px; padding: 1px 4px; border-radius: 3px; font-weight: bold; color: #fff; z-index: 5; }
+        .field-pill { font-size: 9px; font-weight: bold; padding: 2px 5px; border-radius: 8px; cursor: help; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.8); transition: filter 0.15s; }
+        .field-pill:hover { filter: brightness(1.3); }
         .status-brn { background: #e65100; } .status-psn { background: #7b1fa2; } .status-tox { background: #4a148c; }
         .status-par { background: #f9a825; color: #000; } .status-slp { background: #546e7a; } .status-frz { background: #00acc1; }
 
@@ -1044,8 +1046,9 @@
     </div>
 
     <div id="screen-battle" class="screen hidden">
-        <div id="weather-indicator" class="hidden" style="position:absolute; top:5px; left:50%; transform:translateX(-50%); font-weight:bold; color:#ffd700; text-shadow: 1px 1px 0 #000; z-index:10;"></div>
+        <div id="weather-indicator" class="hidden" style="display:none;"></div>
         <div id="weather-overlay" class="weather-overlay"></div>
+        <div id="field-conditions" style="position:absolute; top:6px; left:50%; transform:translateX(-50%); display:flex; flex-wrap:wrap; gap:3px; z-index:10; justify-content:center; max-width:380px; min-height:18px;"></div>
         <div id="gauntlet-score" class="hidden" style="position:absolute; top:5px; left:10px; font-weight:bold; color:#fff; z-index:10;">Score: 0</div>
 
         <!-- FOE: stat box top-left, sprite upper-center-right (Game Boy layout) -->
@@ -2055,6 +2058,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             tt.style.left = (e.pageX + 10) + 'px'; tt.style.top = (e.pageY + 10) + 'px'; tt.classList.remove('hidden');
         }
         window.hideTextTooltip = function() { document.getElementById('text-tooltip').classList.add('hidden'); }
+        window.showFieldTooltip = function(html, e) {
+            let tt = document.getElementById('text-tooltip');
+            tt.innerHTML = html; tt.style.left = (e.pageX + 10) + 'px'; tt.style.top = (e.pageY - 10) + 'px'; tt.classList.remove('hidden');
+        };
+        window.showTeraTooltip = function(teraType, origT1, origT2, e) {
+            let stab = (origT1 === teraType || origT2 === teraType) ? '2×' : '1.5×';
+            let stabNote = stab === '2×' ? 'Tera matches original type → <b>2× STAB</b>!' : '<b>1.5× STAB</b> on Tera-type moves.';
+            let tchart = typeChart[teraType] || {};
+            let se = [], nve = [], immune = [];
+            for (let [defType, mult] of Object.entries(tchart)) {
+                if (mult > 1) se.push(defType); else if (mult === 0) immune.push(defType); else if (mult < 1) nve.push(defType);
+            }
+            let fmtTypes = arr => arr.length ? arr.map(t => `<span class="type-badge type-${t}" style="font-size:9px;">${t}</span>`).join(' ') : '<span style="color:#555;">—</span>';
+            let html = `<div style="font-weight:bold;color:#4fc3f7;margin-bottom:5px;">◆ Tera ${teraType} Type</div>`
+                + `<div style="margin-bottom:3px;font-size:11px;">${stabNote}</div>`
+                + `<div style="font-size:10px;color:#888;margin-bottom:4px;">Pokemon becomes pure ${teraType}-type. All other types are shed.</div>`
+                + `<div style="font-size:10px;margin-bottom:2px;"><span style="color:#4caf50;">SE vs:</span> ${fmtTypes(se)}</div>`
+                + (nve.length ? `<div style="font-size:10px;margin-bottom:2px;"><span style="color:#ff9800;">NVE vs:</span> ${fmtTypes(nve)}</div>` : '')
+                + (immune.length ? `<div style="font-size:10px;"><span style="color:#607d8b;">No effect vs:</span> ${fmtTypes(immune)}</div>` : '');
+            let tt = document.getElementById('text-tooltip');
+            tt.innerHTML = html; tt.style.left = (e.pageX + 10) + 'px'; tt.style.top = (e.pageY - 10) + 'px'; tt.classList.remove('hidden');
+        };
         window.showMoveTooltip = function(moveName, e) {
             let move = movesDB[moveName]; if (!move) return;
             let tt = document.getElementById('text-tooltip');
@@ -2208,7 +2233,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
 
             mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0;
-            mon.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, spikyShield: false, kingShield: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, ingrain: false, stockpile: 0, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false };
+            mon.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, maxGuard: false, spikyShield: false, kingShield: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, ingrain: false, stockpile: 0, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false };
             mon.stages = {atk:0, def:0, spa:0, spd:0, spe:0, acc:0, eva:0};
             mon.turnCount = 0;
             mon.fakeOutOk = true;
@@ -2272,12 +2297,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return 200;
         }
 
-        // Max Move power table for Dynamax
+        // Max Move power table for Dynamax (VGC accurate, inclusive upper bounds)
         function getMaxMovePower(bp, cat) {
             if (cat === 'Status') return 0;
             if (!bp || bp === 0) return 0;
-            if (bp < 40) return 90; if (bp < 50) return 100; if (bp < 60) return 110;
-            if (bp < 70) return 120; if (bp < 100) return 130; if (bp < 140) return 140;
+            if (bp <= 40) return 90; if (bp <= 50) return 100; if (bp <= 60) return 110;
+            if (bp <= 70) return 120; if (bp <= 100) return 130; if (bp <= 140) return 140;
             return 150;
         }
 
@@ -2390,14 +2415,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             updateUI();
         }
 
+        // Return the type that a Z-crystal corresponds to (null for signature crystals)
+        function getZCrystalType(item) {
+            for (let [type, crystal] of Object.entries(Z_TYPE_MAP)) {
+                if (crystal === item) return type;
+            }
+            return null; // signature Z-crystal — doesn't restrict by type
+        }
+
         // Convert normal move to Z-Move (returns modified move object, does NOT mutate original)
+        // VGC rules: status moves → Z-status (any crystal); damaging → only if type matches crystal
         function buildZMove(mon, move) {
             if (mon.zMoveUsed) return move;
-            let zPower = getZMovePower(move.pow || 0);
-            if (zPower === 0) {
-                // Status Z-move: give +1 to highest relevant stat instead
+            // Status Z-move: any Z-crystal can power up any status move
+            if (move.cat === 'Status') {
                 return { ...move, isZMove: true, zStatusEffect: true };
             }
+            // Damaging Z-move: move type must match the Z-crystal's type
+            // (signature Z-crystals return null type — treated as matching for backwards compat)
+            let crystalType = getZCrystalType(mon.item);
+            if (crystalType && move.type !== crystalType) return move; // type mismatch — not Z-powered
+            let zPower = getZMovePower(move.pow || 0);
             return { ...move, pow: zPower, isZMove: true, name: `Z-${move.name}`, pri: 0 };
         }
 
@@ -2437,7 +2475,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 case 'Ghost': maxEffect = {foeDebuff:'def',amount:-1}; break;
                 case 'Bug': maxEffect = {foeDebuff:'spa',amount:-1}; break;
             }
-            return { ...move, pow: maxPow, name: maxName, isMaxMove: true, maxEffect: maxEffect, eff: '', effectStr: '' };
+            const maxEffectStr = {
+                'Fire':'Sets harsh sunlight for 5 turns.',
+                'Water':'Summons rain for 5 turns.',
+                'Rock':'Summons a sandstorm for 5 turns.',
+                'Ice':'Summons hail for 5 turns.',
+                'Grass':'Sets Grassy Terrain for 5 turns. Boosts Grass moves 1.3×.',
+                'Electric':'Sets Electric Terrain for 5 turns. Boosts Electric moves 1.3×.',
+                'Psychic':'Sets Psychic Terrain for 5 turns. Boosts Psychic moves 1.3×.',
+                'Fairy':'Sets Misty Terrain for 5 turns. Halves Dragon-type damage.',
+                'Fighting':'Raises the user\'s Attack by 1 stage.',
+                'Poison':'Raises the user\'s Sp. Atk by 1 stage.',
+                'Ground':'Raises the user\'s Sp. Def by 1 stage.',
+                'Flying':'Raises the user\'s Speed by 1 stage.',
+                'Steel':'Raises the user\'s Defense by 1 stage.',
+                'Normal':'Lowers the opponent\'s Speed by 1 stage.',
+                'Dark':'Lowers the opponent\'s Sp. Def by 1 stage.',
+                'Dragon':'Lowers the opponent\'s Attack by 1 stage.',
+                'Ghost':'Lowers the opponent\'s Defense by 1 stage.',
+                'Bug':'Lowers the opponent\'s Sp. Atk by 1 stage.',
+            };
+            let mEffStr = maxEffectStr[move.type] || 'A powerful Max Move.';
+            return { ...move, pow: maxPow, name: maxName, isMaxMove: true, maxEffect: maxEffect, eff: mEffStr, effectStr: mEffStr };
         }
 
         // === 4. DRAFTING ===
@@ -2568,11 +2627,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let movesHtml = tempMon.moves.map(m => `<div onmousemove="event.stopPropagation(); window.showMoveTooltip('${m.name}', event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
                 const gimmickBadge = {MEGA:'<span style="font-size:10px;background:#7b1fa2;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">MEGA</span>',ZMOVE:'<span style="font-size:10px;background:#f9a825;color:#000;border-radius:3px;padding:1px 4px;margin-left:3px;">Z</span>',DYNAMAX:'<span style="font-size:10px;background:#b71c1c;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">DYNA</span>',GMAXDYNAMAX:'<span style="font-size:10px;background:#880e4f;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">G-MAX</span>',STANDARD:''};
                 const gb = (draftItem.build.gimmick && gimmickBadge[draftItem.build.gimmick]) || '';
-                const tera = draftItem.build.teraType ? `<span style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">TERA ${draftItem.build.teraType}</span>` : '';
+                const tera = draftItem.build.teraType ? `<span style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:help;" onmousemove="event.stopPropagation();window.showTeraTooltip('${draftItem.build.teraType}','${tempMon.type1}','${tempMon.type2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${draftItem.build.teraType}</span>` : '';
                 btn.innerHTML = `
-                    <div class="draft-card-sprite"><img src="${getSprite(tempMon.name)}" alt="${tempMon.name}" onerror="handleSpriteError(this)" class="mini-sprite"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
+                    <div class="draft-card-sprite"><img src="${getSprite(tempMon.name, tempMon.isShiny)}" alt="${tempMon.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                     <div class="draft-card-body">
-                        <div class="draft-card-header"><span>${draftItem.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}</span></div>
+                        <div class="draft-card-header"><span>${tempMon.isShiny ? '&#10024; ' : ''}${draftItem.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}</span></div>
                         <div class="draft-card-details">
                             <span class="hover-text" onmousemove="window.showTextTooltip('${tempMon.nature}', event)" onmouseleave="window.hideTextTooltip()">${tempMon.nature}</span>
                             <span class="hover-text" onmousemove="window.showTextTooltip('${tempMon.ability}', event)" onmouseleave="window.hideTextTooltip()">${tempMon.ability}</span>
@@ -2595,9 +2654,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let tempMon = buildPokemon(draftItem.name, draftItem.build); let tier = getMonGrade(draftItem.name, getBST(draftItem.name));
                     let movesHtml = tempMon.moves.map(m => `<div onmousemove="event.stopPropagation(); window.showMoveTooltip('${m.name}', event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
                     grid.innerHTML += `<div class="draft-card tier-${tier}">
-                        <div class="draft-card-sprite"><img src="${getSprite(tempMon.name)}" alt="${tempMon.name}" onerror="handleSpriteError(this)" class="mini-sprite"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
+                        <div class="draft-card-sprite"><img src="${getSprite(tempMon.name, tempMon.isShiny)}" alt="${tempMon.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                         <div class="draft-card-body">
-                            <div class="draft-card-header"><span>${draftItem.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}</span></div>
+                            <div class="draft-card-header"><span>${tempMon.isShiny ? '&#10024; ' : ''}${draftItem.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}</span></div>
                             <div class="draft-card-details">
                                 <span class="hover-text" onmousemove="window.showTextTooltip('${tempMon.nature}', event)" onmouseleave="window.hideTextTooltip()">${tempMon.nature}</span>
                                 <span class="hover-text" onmousemove="window.showTextTooltip('${tempMon.ability}', event)" onmouseleave="window.hideTextTooltip()">${tempMon.ability}</span>
@@ -2685,8 +2744,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             state.weather = null; state.weatherTurns = 0;
             state.trickRoom = 0;
-            state.pSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, reflect: 0, lightScreen: 0, auroraVeil: 0 };
-            state.fSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, reflect: 0, lightScreen: 0, auroraVeil: 0 };
+            state.pSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0 };
+            state.fSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0 };
             // Classic mode: one gimmick use per team
             state.usedMega = false; state.usedZ = false; state.usedDyna = false; state.usedTera = false;
             state.fUsedMega = false; state.fUsedZ = false; state.fUsedDyna = false; state.fUsedTera = false;
@@ -2770,8 +2829,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let dispType1 = mon.type1, dispType2 = mon.type2;
                 let teraIndicator = '';
                 if (mon.teraActivated && mon.buildData && mon.buildData.teraType) {
-                    dispType1 = mon.buildData.teraType; dispType2 = null;
-                    teraIndicator = `<span style="font-size:9px;color:#0277bd;margin-left:3px;">&#11045;TERA</span>`;
+                    let tt = mon.buildData.teraType;
+                    dispType1 = tt; dispType2 = null;
+                    let origT1 = mon.originalType1 || mon.type1, origT2 = mon.originalType2 || mon.type2;
+                    teraIndicator = `<span style="font-size:9px;color:#4fc3f7;margin-left:3px;cursor:help;text-decoration:underline dotted;" onmousemove="window.showTeraTooltip('${tt}','${origT1}','${origT2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045;TERA</span>`;
                 }
                 document.getElementById(`${s === 'p'?'player':'foe'}-types`).innerHTML = getTypeHTML(dispType1, dispType2) + teraIndicator;
                 if(s === 'p') document.getElementById('player-hp-text').innerText = `${mon.currentHp}/${mon.maxHp}`;
@@ -2805,15 +2866,60 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (existingSub) existingSub.remove();
                 }
             });
-            let w = getCurrentWeather(); let wUI = document.getElementById('weather-indicator');
-            let weatherDisplayNames = {'Sun':'Sun','Rain':'Rain','Sandstorm':'Sandstorm','Hail':'Hail','HarshSun':'Harsh Sun','HeavyRain':'Heavy Rain','StrongWinds':'Strong Winds'};
-            if (w) { wUI.innerText = weatherDisplayNames[w] || w; wUI.classList.remove('hidden'); } else { wUI.classList.add('hidden'); }
+            let w = getCurrentWeather();
             let wOverlay = document.getElementById('weather-overlay');
             if (w === 'Sun' || w === 'HarshSun') { wOverlay.className = 'weather-overlay weather-sun active'; }
             else if (w === 'Rain' || w === 'HeavyRain') { wOverlay.className = 'weather-overlay weather-rain active'; }
             else if (w === 'Sandstorm') { wOverlay.className = 'weather-overlay weather-sand active'; }
             else if (w === 'Hail') { wOverlay.className = 'weather-overlay weather-hail active'; }
             else { wOverlay.className = 'weather-overlay'; }
+
+            // === Field Condition Icons ===
+            let fcDiv = document.getElementById('field-conditions');
+            if (fcDiv) {
+                let pills = [];
+                const esc = s => s.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+                const mkPill = (label, turns, color, bg, tipHtml) => {
+                    let t = turns > 0 ? ` <b>${turns}</b>` : '';
+                    return `<span class="field-pill" style="background:${bg};color:${color};border:1px solid ${color};" onmousemove="window.showFieldTooltip('${esc(tipHtml)}', event)" onmouseleave="window.hideTextTooltip()">${label}${t}</span>`;
+                };
+                const isPerm = v => v === 'HarshSun' || v === 'HeavyRain' || v === 'StrongWinds';
+                if (w) {
+                    const wCfg = {
+                        Sun:         ['☀ Sun',        '#ffd700','rgba(255,140,0,0.25)',  `<b>Sun</b><br>Fire ×1.5 · Water ×0.5<br>Turns left: ${state.weatherTurns}`],
+                        Rain:        ['🌧 Rain',       '#64b5f6','rgba(30,136,229,0.25)', `<b>Rain</b><br>Water ×1.5 · Fire ×0.5<br>Turns left: ${state.weatherTurns}`],
+                        Sandstorm:   ['🌪 Sand',       '#bcaaa4','rgba(121,85,72,0.25)',  `<b>Sandstorm</b><br>Chips non-Rock/Steel/Ground 1/16 HP/turn<br>Turns left: ${state.weatherTurns}`],
+                        Hail:        ['❄ Hail',        '#80deea','rgba(0,188,212,0.25)', `<b>Hail</b><br>Chips non-Ice 1/16 HP/turn · Blizzard never misses<br>Turns left: ${state.weatherTurns}`],
+                        HarshSun:    ['☀ Harsh Sun',  '#ff8f00','rgba(255,111,0,0.3)',   `<b>Harsh Sunlight</b> (permanent)<br>Fire ×1.5 · Water moves fail`],
+                        HeavyRain:   ['🌧 Heavy Rain', '#1565c0','rgba(13,71,161,0.3)',  `<b>Heavy Rain</b> (permanent)<br>Water ×1.5 · Fire moves fail`],
+                        StrongWinds: ['🌬 S.Winds',   '#b0bec5','rgba(96,125,139,0.25)', `<b>Strong Winds</b> (permanent)<br>Flying-type weaknesses cancelled`],
+                    };
+                    let cfg = wCfg[w] || [w, '#fff', 'rgba(0,0,0,0.3)', w];
+                    pills.push(mkPill(cfg[0], isPerm(w) ? 0 : state.weatherTurns, cfg[1], cfg[2], cfg[3]));
+                }
+                if (state.terrain) {
+                    const tCfg = {
+                        Electric: ['⚡ Elec',  '#fdd835','rgba(253,216,53,0.2)',  `<b>Electric Terrain</b><br>Prevents sleep · Electric ×1.3<br>Turns left: ${state.terrainTurns}`],
+                        Grassy:   ['🌿 Grass', '#66bb6a','rgba(76,175,80,0.2)',   `<b>Grassy Terrain</b><br>Heals 1/16 HP/turn · Grass ×1.3<br>Turns left: ${state.terrainTurns}`],
+                        Psychic:  ['🔮 Psych', '#ce93d8','rgba(156,39,176,0.2)',  `<b>Psychic Terrain</b><br>Blocks priority moves · Psychic ×1.3<br>Turns left: ${state.terrainTurns}`],
+                        Misty:    ['⛅ Misty',  '#ef9a9a','rgba(244,67,54,0.2)',   `<b>Misty Terrain</b><br>Blocks status · Dragon ×0.5<br>Turns left: ${state.terrainTurns}`],
+                    };
+                    let cfg = tCfg[state.terrain] || [state.terrain, '#fff', 'rgba(0,0,0,0.3)', state.terrain];
+                    pills.push(mkPill(cfg[0], state.terrainTurns, cfg[1], cfg[2], cfg[3]));
+                }
+                if (state.trickRoom > 0) {
+                    pills.push(mkPill('🔀 TR', state.trickRoom, '#e040fb','rgba(156,39,176,0.2)', `<b>Trick Room</b><br>Slower Pokémon move first<br>Turns left: ${state.trickRoom}`));
+                }
+                // Player-side screens (blue tones)
+                if (state.pSide && state.pSide.reflect > 0)     pills.push(mkPill('REF',  state.pSide.reflect,     '#42a5f5','rgba(13,71,161,0.2)',   `<b>Reflect</b> (your side)<br>Halves physical damage<br>Turns left: ${state.pSide.reflect}`));
+                if (state.pSide && state.pSide.lightScreen > 0) pills.push(mkPill('LSC',  state.pSide.lightScreen, '#ffee58','rgba(249,168,37,0.2)',  `<b>Light Screen</b> (your side)<br>Halves special damage<br>Turns left: ${state.pSide.lightScreen}`));
+                if (state.pSide && state.pSide.auroraVeil > 0)  pills.push(mkPill('VEIL', state.pSide.auroraVeil,  '#80deea','rgba(0,188,212,0.2)',  `<b>Aurora Veil</b> (your side)<br>Halves all damage<br>Turns left: ${state.pSide.auroraVeil}`));
+                // Foe-side screens (red tones)
+                if (state.fSide && state.fSide.reflect > 0)     pills.push(mkPill('fREF',  state.fSide.reflect,     '#ef5350','rgba(198,40,40,0.2)',   `<b>Reflect</b> (foe side)<br>Halves physical damage<br>Turns left: ${state.fSide.reflect}`));
+                if (state.fSide && state.fSide.lightScreen > 0) pills.push(mkPill('fLSC',  state.fSide.lightScreen, '#ff8a65','rgba(230,74,25,0.2)',   `<b>Light Screen</b> (foe side)<br>Halves special damage<br>Turns left: ${state.fSide.lightScreen}`));
+                if (state.fSide && state.fSide.auroraVeil > 0)  pills.push(mkPill('fVEIL', state.fSide.auroraVeil,  '#80cbc4','rgba(0,105,92,0.2)',    `<b>Aurora Veil</b> (foe side)<br>Halves all damage<br>Turns left: ${state.fSide.auroraVeil}`));
+                fcDiv.innerHTML = pills.join('');
+            }
             if (state.mode === 'gauntlet') document.getElementById('gauntlet-score').innerText = `Score: ${state.score}`;
 
             // Party ball icons (clickable for summary if revealed)
@@ -3192,7 +3298,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 let powerTxt = shownMove.pow > 0 ? shownMove.pow : '—';
                 let dynaLabel = isDynaDisplay ? `<span style="font-size:9px;color:#ef5350;"> MAX</span>` : '';
-                let zLabel = (pending === 'ZMOVE' && !activeMon.zMoveUsed && shownMove.pow > 0) ? `<span style="font-size:9px;color:#f9a825;"> Z${powerTxt}</span>` : '';
+                let zLabel = (shownMove.isZMove && shownMove.pow > 0) ? `<span style="font-size:9px;color:#f9a825;"> Z${powerTxt}</span>` : '';
                 let ppDisplay = isDynaDisplay ? '∞' : `${rawMove.pp}/${rawMove.maxPp}`;
                 let ppColor = !isDynaDisplay && rawMove.pp <= 0 ? '#f44336' : (rawMove.pp <= Math.floor(rawMove.maxPp / 3) ? '#ff9800' : '#aaa');
                 let catColor = shownMove.cat === 'Physical' ? '#ff6b6b' : shownMove.cat === 'Special' ? '#6b9fff' : '#888';
@@ -3881,17 +3987,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function runWishHealing() {
-            [state.pActive, state.fActive].forEach(mon => {
-                // wishTurns counts down: set to 2 when Wish is used, fires when it hits 0
-                if (mon.volatile.wishTurns > 0) {
-                    mon.volatile.wishTurns--;
-                    if (mon.volatile.wishTurns === 0 && mon.volatile.wishHp > 0) {
-                        let heal = Math.min(mon.maxHp - mon.currentHp, mon.volatile.wishHp);
+            // Wish is stored on the side so it heals whoever switches in, not just the mon that used it
+            [['pSide','pActive'], ['fSide','fActive']].forEach(([sideKey, activeKey]) => {
+                let side = state[sideKey]; let mon = state[activeKey];
+                if (!side || !mon) return;
+                if (side.wishTurns > 0) {
+                    side.wishTurns--;
+                    if (side.wishTurns === 0 && side.wishHp > 0) {
+                        let heal = Math.min(mon.maxHp - mon.currentHp, side.wishHp);
                         if (heal > 0) { mon.currentHp += heal; logMsg(`${mon.name}'s wish came true, restoring ${heal} HP!`, 'heal'); }
                         else { logMsg(`${mon.name}'s HP is already full — the wish faded!`, 'info'); }
-                        mon.volatile.wishHp = 0;
+                        side.wishHp = 0;
                     }
                 }
+            });
+            [state.pActive, state.fActive].forEach(mon => {
                 // Future Sight / Doom Desire delayed damage
                 if (mon.volatile.futureSightTurns > 0) {
                     mon.volatile.futureSightTurns--;
@@ -3922,7 +4032,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 state.weatherTurns--;
                 if (state.weatherTurns === 0) {
                     if (settings.randomWeather) {
-                        // Cycle to a new random weather immediately
                         rollRandomWeather();
                     } else {
                         logMsg(`The weather cleared.`, 'info');
@@ -3930,10 +4039,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
             } else if (settings.randomWeather && !state.weather) {
-                // No weather active but random weather is on — start one
                 rollRandomWeather();
             }
+            // Terrain countdown
+            if (state.terrain && state.terrainTurns > 0) {
+                state.terrainTurns--;
+                if (state.terrainTurns === 0) { logMsg(`The ${state.terrain} Terrain faded!`, 'info'); state.terrain = null; }
+            }
+            // Trick Room countdown
             if (state.trickRoom > 0) { state.trickRoom--; if (state.trickRoom === 0) logMsg(`The twisted dimensions returned to normal!`, 'info'); }
+            // Side screen countdowns
+            ['pSide','fSide'].forEach(side => {
+                if (!state[side]) return;
+                ['reflect','lightScreen','auroraVeil'].forEach(s => {
+                    if (state[side][s] > 0) { state[side][s]--; if (state[side][s] === 0) logMsg(`${side === 'pSide' ? 'Your' : "Foe's"} ${s === 'reflect' ? 'Reflect' : s === 'lightScreen' ? 'Light Screen' : 'Aurora Veil'} wore off!`, 'info'); }
+                });
+            });
         }
 
         window.playTurn = async function(pMoveIndex, pSwitchIndex) {
@@ -4068,16 +4189,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (fainted) { if (!document.getElementById('modal-party').classList.contains('hidden')) { state.pendingEoT = true; return; } }
                     }
                 } else if (state.p1Action.switchIndex === null && state.p2Action.switchIndex === null && pMove && fMove) {
-                    if (pMove.name !== "Protect") state.pActive.volatile.protectCount = 0; 
-                    if (fMove.name !== "Protect") state.fActive.volatile.protectCount = 0;
-                    
+                    // Reset protect counter unless a protect-type move is being used
+                    const _protectMoveNames = new Set(["Protect","Detect","Endure","Spiky Shield","King's Shield","Baneful Bunker","Max Guard"]);
+                    const _pIsProtect = _protectMoveNames.has(pMove.name) || ((state.pActive.dynamaxed || state.p1GimmickPending === 'DYNAMAX') && pMove.cat === 'Status');
+                    const _fIsProtect = _protectMoveNames.has(fMove.name) || ((state.fActive.dynamaxed || state.p2GimmickPending === 'DYNAMAX') && fMove.cat === 'Status');
+                    if (!_pIsProtect) state.pActive.volatile.protectCount = 0;
+                    if (!_fIsProtect) state.fActive.volatile.protectCount = 0;
+
                     let w = getCurrentWeather();
                     let pSpe = getEffectiveSpeed(state.pActive, w);
                     let fSpe = getEffectiveSpeed(state.fActive, w);
 
                     // Apply ability-based priority modifiers before comparing
-                    let pPri = pMove.pri || 0;
-                    let fPri = fMove.pri || 0;
+                    // Dynamax status moves become Max Guard (priority +4) — must be evaluated before turn order
+                    const _pDynaxing = state.pActive.dynamaxed || state.p1GimmickPending === 'DYNAMAX';
+                    const _fDynaxing = state.fActive.dynamaxed || state.p2GimmickPending === 'DYNAMAX';
+                    let pPri = (_pDynaxing && pMove.cat === 'Status') ? 4 : (pMove.pri || 0);
+                    let fPri = (_fDynaxing && fMove.cat === 'Status') ? 4 : (fMove.pri || 0);
                     const drainingMoves = ["Drain Punch", "Draining Kiss", "Giga Drain", "Leech Life", "Mega Drain", "Horn Leech", "Parabolic Charge", "Strength Sap", "Absorb"];
                     if (state.pActive.ability === "Triage" && drainingMoves.includes(pMove.name)) pPri += 3;
                     if (state.fActive.ability === "Triage" && drainingMoves.includes(fMove.name)) fPri += 3;
@@ -4214,7 +4342,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (attacker.volatile.choiceLock) {
                     logMsg(`${attacker.name} has no PP left! Forced to use Struggle!`);
                     move = { name: "Struggle", type: "Normal", cat: "Physical", pow: 50, acc: 100, pri: 0, pp: 1, maxPp: 1, eff: "User takes 25% max HP recoil.", effectStr: "User takes 25% max HP recoil." };
-                } else { await sleep(1000); return; }
+                } else {
+                    logMsg(`${attacker.name}'s ${move.name} has no PP left!`, 'info');
+                    await sleep(1000); return;
+                }
             }
             
             // FOCUS PUNCH: Fails if user took damage this turn (checked via tookDamageThisTurn flag)
@@ -4322,8 +4453,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     activateTera(attacker, isPlayer);
                     if (isPlayer) state.p1GimmickPending = null; else state.p2GimmickPending = null;
                 } else if (gimmickPending === 'ZMOVE' && !attacker.zMoveUsed) {
-                    // Apply Z-move power to the move
+                    // Apply Z-move power to the move (only if type matches crystal or is status)
                     let zBuild = buildZMove(attacker, move);
+                    if (!zBuild.isZMove) {
+                        // Move type doesn't match Z-crystal — use normally, clear pending
+                        if (isPlayer) state.p1GimmickPending = null; else state.p2GimmickPending = null;
+                    } else {
                     attacker.zMoveUsed = true;
                     if (isPlayer) { state.usedZ = true; state.p1GimmickPending = null; } else { state.fUsedZ = true; state.p2GimmickPending = null; }
                     if (zBuild.zStatusEffect) {
@@ -4367,6 +4502,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     } else {
                         move = zBuild;
                     }
+                    } // end if zBuild.isZMove
                 } else if (attacker.dynamaxed) {
                     // Auto-convert to Max Move when Dynamaxed
                     move = buildMaxMove(attacker, move);
@@ -4458,8 +4594,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Max Guard: functions like Protect
             if (move.isMaxGuard) {
                 let successRate = Math.pow(0.5, attacker.volatile.protectCount || 0);
-                if (Math.random() < successRate) { attacker.volatile.protect = true; attacker.volatile.protectCount = (attacker.volatile.protectCount || 0) + 1; logMsg(`${attacker.name} protected itself with Max Guard!`); }
-                else { logMsg(`But it failed!`); } await sleep(1000); return;
+                if (Math.random() < successRate) {
+                    attacker.volatile.protect = true;
+                    attacker.volatile.maxGuard = true; // Max Guard blocks Max Moves; regular Protect does not
+                    attacker.volatile.protectCount = (attacker.volatile.protectCount || 0) + 1;
+                    logMsg(`${attacker.name} protected itself with Max Guard!`);
+                } else { logMsg(`But it failed!`); }
+                await sleep(1000); return;
             }
             if (move.name === "Protect" || move.name === "Detect" || move.name === "Endure") {
                 let successRate = Math.pow(0.5, attacker.volatile.protectCount);
@@ -4482,8 +4623,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     move = { ...move, protectBreak: true };
                     // Continue to damage calc - 0.25x modifier applied below
                 } else if (move.isMaxMove) {
-                    logMsg(`${defender.name} protected itself from the Max Move!`);
-                    await sleep(1000); return;
+                    // VGC: Max Moves are only blocked by Max Guard, NOT by regular Protect
+                    if (defender.volatile.maxGuard) {
+                        logMsg(`${defender.name} protected itself from the Max Move with Max Guard!`);
+                        await sleep(1000); return;
+                    }
+                    // Regular Protect fails against Max Moves — fall through to damage
                 } else {
                     logMsg(`${defender.name} protected itself!`);
                     if (defender.volatile.spikyShield && move.cat === "Physical") {
@@ -5436,7 +5581,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             state.foeParty = drawKeys.map(name => buildPokemon(name, makeBuild(name)));
                             state.pActive = state.playerParty[0]; state.fActive = state.foeParty[0];
                             state.weather = null; state.weatherTurns = 0;
-                            state.pSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0 }; state.fSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0 };
+                            state.pSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0 }; state.fSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0 };
                             state.isLocked = false; state.isOver = false; state.pendingEoT = false; state.turnNumber = 0;
                             logMsg(`Gauntlet next round begins!`, 'info');
                             applySwitchInAbilities(state.pActive, state.fActive); applySwitchInAbilities(state.fActive, state.pActive);
@@ -5680,7 +5825,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.volatile.sub = 0;
             mon.volatile.choiceLock = null;
             mon.volatile.flinch = false;
-            mon.volatile.wishHp = 0;
             mon.volatile.protectCount = 0;
             mon.volatile.encore = 0;
             mon.volatile.encoreMove = null;
@@ -5966,9 +6110,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             if (move.name === "Wish") {
-                if (attacker.volatile.wishTurns > 0) { logMsg(`But it failed!`, 'info'); return; }
-                attacker.volatile.wishHp = Math.floor(attacker.maxHp / 2);
-                attacker.volatile.wishTurns = 2; // fires at end of NEXT turn
+                let wSide = isPlayer ? state.pSide : state.fSide;
+                if (wSide.wishTurns > 0) { logMsg(`But it failed!`, 'info'); return; }
+                wSide.wishHp = Math.floor(attacker.maxHp / 2);
+                wSide.wishTurns = 2; // fires at end of NEXT turn — heals whoever is active then
                 logMsg(`${attacker.name} made a wish!`, 'heal'); return;
             }
             if (move.name === "Heal Bell" || move.name === "Aromatherapy") {
@@ -5977,14 +6122,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`A soothing chime cured the team's status!`, 'heal'); return;
             }
             if (move.name === "Baton Pass") {
-                // Baton Pass is handled via handlePivotSwitch
                 let party = isPlayer ? state.playerParty : state.foeParty;
                 let activeMon = isPlayer ? state.pActive : state.fActive;
                 let bench = party.filter(m => m.currentHp > 0 && m !== activeMon);
                 if (bench.length > 0) {
-                    // handlePivotSwitch is async, but parseMoveEffects is sync...
-                    // We'll set a flag and handle it after
-                    attacker._pendingBatonPass = true;
+                    await handlePivotSwitch(isPlayer, move);
+                } else {
+                    logMsg(`But there's no one to pass to!`, 'info');
                 }
                 return;
             }
@@ -6310,6 +6454,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function endOfTurnEffects(mon, foe) {
             if (mon.currentHp <= 0) return;
             mon.volatile.protect = false;
+            mon.volatile.maxGuard = false;
             mon.volatile.spikyShield = false;
             mon.volatile.kingShield = false;
 
@@ -6641,9 +6786,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.weather = null; state.weatherTurns = 0;
             state.terrain = null; state.terrainTurns = 0;
             state.trickRoom = 0;
-            state.pSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0 }; state.fSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0 };
+            state.pSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0 }; state.fSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0 };
             state.isLocked = false; state.isOver = false; state.pendingEoT = false; state.turnNumber = 0;
-            // Reset gimmick usage for foe each round
+            // Reset gimmick usage for both sides each round (each gauntlet round is a fresh battle)
+            state.usedMega = false; state.usedZ = false; state.usedDyna = false; state.usedTera = false;
             state.fUsedMega = false; state.fUsedZ = false; state.fUsedDyna = false; state.fUsedTera = false;
             logMsg(`Gauntlet Round ${state.score + 1} begins!`, 'info');
             applySwitchInAbilities(state.pActive, state.fActive); applySwitchInAbilities(state.fActive, state.pActive);
