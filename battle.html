@@ -116,6 +116,16 @@
         .foe-platform { position: absolute; bottom: 30px; right: 20px; width: 120px; height: 18px; background: linear-gradient(180deg, #3a5a3a, #1a3a1a); border-radius: 50%; opacity: 0.8; }
         .player-platform { position: absolute; bottom: 20px; left: 20px; width: 150px; height: 22px; background: linear-gradient(180deg, #3a5a3a, #1a3a1a); border-radius: 50%; opacity: 0.8; }
         .stat-box { width: 260px; position: relative; background: var(--surface); border-radius: 6px; padding: 10px 12px; border: 1px solid #333; font-size: 14px; }
+        /* Stat box inner layout */
+        .stat-box-header { display: flex; align-items: center; gap: 5px; }
+        .stat-info-row { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin-top: 4px; min-height: 0; }
+        .stat-info-row .status-indicator { margin-top: 0 !important; font-size: 10px !important; padding: 1px 4px; background: rgba(0,0,0,0.3); border-radius: 3px; }
+        #foe-stages, #player-stages { display: flex; flex-wrap: wrap; gap: 2px; max-width: 100%; }
+        /* Gimmick state badges */
+        .gimmick-badge { display: inline-block; font-size: 9px; font-weight: bold; padding: 1px 5px; border-radius: 3px; letter-spacing: 0.5px; vertical-align: middle; flex-shrink: 0; }
+        .gimmick-dmax { background: #b71c1c; color: #fff; box-shadow: 0 0 6px rgba(183,28,28,0.5); }
+        .gimmick-gmax { background: #4a148c; color: #fff; box-shadow: 0 0 6px rgba(74,20,140,0.5); }
+        .gimmick-mega { background: #6a1b9a; color: #fff; }
         .hp-bar-container { width: 100%; height: 8px; margin-top: 4px; background: #1a1a1a; border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); box-sizing: border-box; }
         .hp-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease-out, background 0.35s, box-shadow 0.35s; background: linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.06) 45%, transparent 55%), var(--hp-bar-solid, var(--hp-green)); box-shadow: inset 0 -1px 0 rgba(0,0,0,0.45); }
         .hp-fill.hp-high { --hp-bar-solid: var(--hp-green); box-shadow: inset 0 -1px 0 rgba(0,0,0,0.45), 0 0 8px rgba(76,175,80,0.35); }
@@ -124,8 +134,9 @@
         .hp-fill.hp-critical { --hp-bar-solid: #b71c1c; animation: hpPulseLow 1.2s ease-in-out infinite; }
         @keyframes hpPulseLow { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.15); } }
         .stat-box .type-badge { font-size: 9px; }
-        #foe-stages, #player-stages { max-width: 100%; }
         .status-indicator { font-weight: bold; font-size: 12px; margin-top: 4px; text-transform: uppercase; }
+        /* Field conditions: top-center strip between the two stat boxes (desktop default) */
+        #field-conditions { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; gap: 4px; z-index: 10; justify-content: center; max-width: 400px; }
         #move-tooltip { position: absolute; bottom: 195px; right: 0; width: 280px; max-width: min(92vw, 320px); z-index: 100; pointer-events: none; background: var(--surface); border: 1px solid #444; border-radius: 4px; padding: 10px; box-shadow: 0 8px 28px rgba(0,0,0,0.65); }
         #move-tooltip.sticky-open { pointer-events: auto; z-index: 450; }
         #move-tooltip .move-tip-close { float: right; margin: -4px -4px 4px 8px; min-width: 36px; min-height: 36px; border-radius: 6px; border: 1px solid #555; background: var(--surface2); color: #fff; font-size: 16px; line-height: 1; cursor: pointer; touch-action: manipulation; }
@@ -197,158 +208,68 @@
            Both pass: max-height 500px AND min-width 600px
            ui-bottom: 140px  →  battle area above it: ~253–272px
         */
+        /* Mobile landscape: phones & small tablets rotated
+           Galaxy S20: ~915×412 | Note20: ~873×393 | both pass max-height:500 AND min-width:600
+        */
         @media screen and (max-height: 500px) and (min-width: 600px) {
             body { align-items: stretch; justify-content: stretch; }
+            .screen { max-width: 100vw !important; width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; font-size: 11px; }
 
-            .screen {
-                max-width: 100vw !important;
-                width: 100vw !important;
-                height: 100dvh !important;
-                max-height: 100dvh !important;
-                font-size: 11px;
-            }
-
-            /* Fix battle-field visual clipping */
-            .battle-field { bottom: 140px !important; }
-
-            /* ---- Info button: show in landscape ---- */
             .mob-info-btn { display: inline-flex !important; }
 
-            /* ---- Compact stat boxes ---- */
+            /* Stat boxes: compact, cornered */
             #foe-stat-box {
-                width: 172px !important;
-                top: 4px !important; left: 4px !important;
-                padding: 5px 8px !important;
-                font-size: 11px !important;
+                width: 178px !important; top: 4px !important; left: 4px !important;
+                padding: 5px 8px !important; font-size: 11px !important;
             }
             #player-stat-box {
-                width: 175px !important;
-                bottom: 144px !important; right: 4px !important;
-                padding: 5px 8px !important;
-                font-size: 11px !important;
+                width: 182px !important; bottom: 144px !important; right: 4px !important;
+                padding: 5px 8px !important; font-size: 11px !important;
             }
             #player-hp-text { font-size: 10px !important; }
+            #foe-types, #player-types { font-size: 9px !important; }
+            .type-badge { font-size: 8px !important; padding: 1px 3px !important; }
+            #foe-stages, #player-stages { max-height: none !important; overflow: visible !important; }
+            .hp-bar-container { height: 6px !important; margin-top: 2px !important; }
 
-            /* Types & stages: compact but visible (competitive info on phone) */
-            #foe-types, #player-types { font-size: 9px !important; margin-top: 2px !important; line-height: 1.15 !important; }
-            #foe-stages, #player-stages { margin-top: 3px !important; gap: 2px !important; max-height: 36px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+            /* Sprites */
+            #foe-sprite-container { width: 115px !important; height: 124px !important; top: 4px !important; right: 10px !important; }
+            #foe-sprite { width: 110px !important; height: 110px !important; }
+            #player-sprite-container { width: 128px !important; height: 138px !important; bottom: 144px !important; left: 10px !important; }
+            #player-sprite { width: 122px !important; height: 122px !important; }
 
-            /* HP bar thinner */
-            .hp-bar-container { height: 6px !important; margin-top: 3px !important; }
+            /* Field conditions: center of field */
+            #field-conditions {
+                bottom: 150px !important; left: 50% !important;
+                transform: translateX(-50%) !important;
+                flex-direction: row !important; align-items: center !important;
+                justify-content: center !important; max-width: 280px !important;
+                top: auto !important; gap: 3px !important;
+            }
+            .field-pill { min-height: 22px !important; font-size: 8px !important; padding: 1px 4px !important; }
 
-            /* ---- Sprites ---- */
-            #foe-sprite-container {
-                width: 110px !important; height: 120px !important;
-                top: 4px !important; right: 8px !important;
-            }
-            #foe-sprite { width: 105px !important; height: 105px !important; }
+            /* Gauntlet score */
+            #gauntlet-score { top: auto !important; bottom: 148px !important; left: 8px !important; font-size: 10px !important; background: rgba(0,0,0,0.55) !important; padding: 2px 6px !important; border-radius: 3px !important; }
 
-            #player-sprite-container {
-                width: 125px !important; height: 135px !important;
-                bottom: 144px !important; left: 8px !important;
-            }
-            #player-sprite { width: 120px !important; height: 120px !important; }
-
-            /* ---- Weather indicator ---- */
-            #weather-indicator {
-                top: 50% !important;
-                transform: translate(-50%, -50%) !important;
-                font-size: 11px !important;
-                white-space: nowrap !important;
-                text-shadow: 0 1px 3px #000, 0 0 8px rgba(0,0,0,0.8) !important;
-            }
-
-            /* ---- Gauntlet score ---- */
-            #gauntlet-score {
-                top: auto !important;
-                bottom: 146px !important;
-                left: 8px !important;
-                font-size: 10px !important;
-                background: rgba(0,0,0,0.55) !important;
-                padding: 2px 6px !important;
-                border-radius: 3px !important;
-            }
-
-            /* ---- Bottom UI: 140px panel (was 112px — too short for 4 moves + BACK) ---- */
-            .ui-bottom {
-                height: 140px !important;
-                padding: 4px 6px !important;
-                gap: 5px !important;
-            }
-            /* Battle log: compact */
-            #battle-log {
-                flex: 1 !important;
-                font-size: 11px !important;
-                line-height: 1.4 !important;
-                padding: 4px 8px !important;
-            }
-            /* Command and Move grids: take MORE space */
-            #command-menu, #move-menu {
-                flex: 1.2 !important;
-                overflow-y: auto !important;
-                -webkit-overflow-scrolling: touch !important;
-            }
+            /* Bottom UI: 140px, row layout */
+            .ui-bottom { height: 140px !important; padding: 4px 6px !important; gap: 5px !important; }
+            #battle-log { flex: 1 !important; font-size: 11px !important; line-height: 1.4 !important; padding: 4px 8px !important; }
+            #command-menu, #move-menu { flex: 1.3 !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; }
             .command-grid { gap: 3px !important; }
+            button { font-size: 11px !important; padding: 2px 4px !important; min-height: 36px !important; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+            #command-menu button { min-height: 44px !important; font-size: 12px !important; }
 
-            /* Touch targets: 36px minimum in landscape (tighter but tappable) */
-            button {
-                font-size: 11px !important;
-                padding: 2px 4px !important;
-                min-height: 36px !important;
-                touch-action: manipulation;
-                -webkit-tap-highlight-color: transparent;
-            }
-            /* FIGHT/POKEMON/BAG/RUN buttons need to be bigger */
-            #command-menu button {
-                min-height: 44px !important;
-                font-size: 13px !important;
-            }
+            /* Move tooltip */
+            #move-tooltip { bottom: 144px !important; right: auto !important; left: 8px !important; width: 215px !important; font-size: 11px !important; }
 
-            /* Move tooltip: above ui-bottom */
-            #move-tooltip {
-                bottom: 144px !important;
-                right: auto !important;
-                left: 8px !important;
-                width: 210px !important;
-                font-size: 11px !important;
-            }
-
-            /* ---- Draft screen ---- */
-            #screen-draft:not(.hidden) {
-                display: flex !important;
-                flex-direction: column !important;
-                padding: 0 !important;
-                overflow: hidden !important;
-                height: 100dvh !important;
-                max-height: 100dvh !important;
-                box-sizing: border-box !important;
-            }
-            #draft-header {
-                padding: 5px 80px 5px 8px !important;
-                margin-bottom: 0 !important;
-                flex-shrink: 0 !important;
-                border-bottom: 1px solid #222 !important;
-            }
+            /* Draft screen */
+            #screen-draft:not(.hidden) { display: flex !important; flex-direction: column !important; padding: 0 !important; overflow: hidden !important; height: 100dvh !important; max-height: 100dvh !important; box-sizing: border-box !important; }
+            #draft-header { padding: 5px 80px 5px 8px !important; margin-bottom: 0 !important; flex-shrink: 0 !important; border-bottom: 1px solid #222 !important; }
             #draft-header h2 { font-size: 13px !important; margin: 0 !important; }
-            #draft-scroll-area {
-                flex: 1 1 0 !important;
-                min-height: 0 !important;
-                overflow-y: auto !important;
-                overflow-x: hidden !important;
-                -webkit-overflow-scrolling: touch !important;
-                padding: 5px 6px !important;
-            }
+            #draft-scroll-area { flex: 1 1 0 !important; min-height: 0 !important; overflow-y: auto !important; overflow-x: hidden !important; -webkit-overflow-scrolling: touch !important; padding: 5px 6px !important; }
             #draft-grid { gap: 5px !important; }
-            #draft-party-bar {
-                flex-shrink: 0 !important;
-                min-height: 54px !important;
-                max-height: 62px !important;
-                padding: 4px 8px !important;
-                gap: 6px !important;
-            }
+            #draft-party-bar { flex-shrink: 0 !important; min-height: 54px !important; max-height: 62px !important; padding: 4px 8px !important; gap: 6px !important; }
             #draft-party-slots { gap: 8px !important; }
-
-            /* Draft cards: compact */
             .draft-card { padding: 5px !important; gap: 5px !important; }
             .draft-card-sprite { min-width: 44px !important; }
             .draft-card-sprite .mini-sprite { width: 44px !important; height: 44px !important; }
@@ -357,19 +278,10 @@
             .draft-card-details { font-size: 10px !important; line-height: 1.3 !important; }
             .draft-card-moves { font-size: 10px !important; gap: 2px !important; }
             .draft-card-moves > div { padding: 1px 3px !important; }
-
-            /* Party slots */
             .party-slot { padding: 7px !important; }
             .mini-sprite { width: 52px !important; height: 52px !important; }
-
-            /* Icon buttons: bigger touch targets */
             .icon-btn { width: 36px !important; height: 36px !important; font-size: 16px !important; }
-
-            /* Menu screen: scrollable */
-            #screen-menu:not(.hidden) {
-                overflow-y: auto !important;
-                -webkit-overflow-scrolling: touch !important;
-            }
+            #screen-menu:not(.hidden) { overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; }
         }
 
         /* Mobile portrait: show rotate hint */
@@ -390,211 +302,159 @@
         }
 
         /* ===== PORTRAIT PHONE LAYOUT =====
-           Target: Galaxy Note 20 Ultra — 412 × 883 CSS px, DPR 3.5
-           Also covers S20/S21 (360-412px wide) at similar heights.
+           App-like experience: full-width stat bars at top/bottom of battle field.
+           Full portrait support — no rotation required.
+           Target: 360–430px wide, 700–900px effective dvh.
+           Min-height: 680px ensures sprite math works (foe + player don't overlap).
 
-           Vertical budget (883px, accounting for ~75px browser chrome → ~808px effective):
-             ui-bottom      : 256px  (log row + full-width button grid)
-             battle area    : 552px  (sprites + field)
-             Sprites clear ui-bottom: player bottom = 260px (256 + 4 gap)
-
-           KEY CHANGES vs previous:
-              #screen-menu is now scrollable so Gauntlet button is always reachable
-              ui-bottom switches to column layout so buttons span full width
-               (previous flex-row squeezed move menu into 1/3 width, hiding Back btn)
+           Vertical layout (e.g. 800px screen):
+             [Foe stat bar   ~64px] ← top:0, full width
+             [Battle field  ~470px] ← sprites diagonal + field conditions
+             [Player stat bar ~64px]
+             [UI bottom      202px] ← log + 2 button rows
         */
-        @media screen and (max-width: 768px) and (orientation: portrait) {
+        @media screen and (max-width: 768px) and (orientation: portrait) and (min-height: 680px) {
             .screen {
                 max-width: 100vw !important;
                 width: 100vw !important;
                 height: 100dvh !important;
                 max-height: 100dvh !important;
-                font-size: 12px;
             }
 
-            /* ---- Battle field clip: match ui-bottom height ---- */
-            .battle-field { bottom: 256px !important; }
-
-            /* ---- FOE STAT BOX: top-left ----
-               Width 218px: right edge = 6+218 = 224px
-               Foe sprite left edge: 412-6-162 = 244px → 20px gap ✔ */
+            /* ---- FOE STAT BOX: full-width strip at very top ---- */
             #foe-stat-box {
-                width: 218px !important;
-                top: 8px !important; left: 6px !important;
-                padding: 6px 10px !important;
-                font-size: 12px !important;
+                top: 0 !important; left: 0 !important; right: 0 !important;
+                width: 100% !important; box-sizing: border-box !important;
+                border-radius: 0 !important;
+                border-left: none !important; border-right: none !important; border-top: none !important;
+                padding: 5px 10px !important; font-size: 12px !important;
+                z-index: 6 !important;
             }
 
-            /* ---- FOE SPRITE: top-right ---- */
-            #foe-sprite-container {
-                width: 162px !important; height: 170px !important;
-                top: 8px !important; right: 6px !important;
-            }
-            #foe-sprite { width: 152px !important; height: 152px !important; }
-
-            /* ---- PLAYER SPRITE: bottom-left, above ui-bottom ----
-               bottom: 260px  (256px ui + 4px gap)
-               Right edge of player-sprite: 6+165 = 171px
-               Left edge of player-stat:    412-6-215 = 191px  → 20px gap ✔ */
-            #player-sprite-container {
-                width: 165px !important; height: 172px !important;
-                bottom: 260px !important; left: 6px !important;
-            }
-            #player-sprite { width: 156px !important; height: 156px !important; }
-
-            /* ---- PLAYER STAT BOX: bottom-right, above ui-bottom ---- */
+            /* ---- PLAYER STAT BOX: full-width strip just above ui-bottom ---- */
             #player-stat-box {
-                width: 215px !important;
-                bottom: 260px !important; right: 6px !important;
-                padding: 6px 10px !important;
-                font-size: 12px !important;
+                bottom: 202px !important; left: 0 !important; right: 0 !important;
+                width: 100% !important; box-sizing: border-box !important;
+                border-radius: 0 !important;
+                border-left: none !important; border-right: none !important; border-bottom: none !important;
+                padding: 5px 10px !important; font-size: 12px !important;
+                z-index: 6 !important;
             }
-            #player-hp-text { font-size: 11px !important; }
 
-            #foe-types, #player-types { font-size: 10px !important; margin-top: 3px !important; }
-            #foe-stages, #player-stages { margin-top: 4px !important; max-height: 52px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+            /* HP bars: slightly thinner */
+            .hp-bar-container { height: 7px !important; margin-top: 3px !important; }
+            #player-hp-text { font-size: 10px !important; color: #bbb !important; }
 
+            /* Types: compact */
+            #foe-types, #player-types { font-size: 9px !important; }
+            .type-badge { padding: 1px 4px !important; font-size: 9px !important; }
+
+            /* Stages: inline, no overflow clamp */
+            #foe-stages, #player-stages { max-height: none !important; overflow: visible !important; }
+
+            /* Info button: always visible in portrait */
             .mob-info-btn { display: inline-flex !important; }
 
-            /* HP bar */
-            .hp-bar-container { height: 7px !important; margin-top: 3px !important; }
-
-            /* ---- WEATHER INDICATOR: vertically centered in battle field ---- */
-            #weather-indicator {
-                top: 40% !important;
-                transform: translate(-50%, -50%) !important;
-                font-size: 12px !important;
+            /* ---- FOE SPRITE: top-right, below foe stat bar ---- */
+            #foe-sprite-container {
+                top: 68px !important; right: 4px !important; left: auto !important;
+                width: 180px !important; height: 192px !important;
             }
+            #foe-sprite { width: 175px !important; height: 175px !important; }
 
-            /* ---- GAUNTLET SCORE: above ui-bottom ---- */
-            #gauntlet-score {
-                top: auto !important;
-                bottom: 260px !important;
-                left: 6px !important;
-                font-size: 11px !important;
-                background: rgba(0,0,0,0.55) !important;
-                padding: 2px 6px !important;
-                border-radius: 3px !important;
+            /* ---- PLAYER SPRITE: bottom-left, above player stat bar ---- */
+            #player-sprite-container {
+                bottom: 270px !important; left: 4px !important; right: auto !important;
+                width: 188px !important; height: 202px !important;
             }
+            #player-sprite { width: 183px !important; height: 183px !important; }
 
-            /* ---- BOTTOM UI PANEL: column layout ----
-               Row 1: battle log   (~90px, scrollable)
-               Row 2: button grid  (~156px — full width → Back button always visible)
-               Total: 256px
-            */
-            .ui-bottom {
-                height: 256px !important;
+            /* ---- FIELD CONDITIONS: left of battle field, below foe stat bar ---- */
+            #field-conditions {
+                bottom: auto !important;
+                top: 72px !important; left: 4px !important;
+                transform: none !important;
                 flex-direction: column !important;
-                padding: 5px 6px !important;
-                gap: 5px !important;
+                align-items: flex-start !important;
+                justify-content: flex-start !important;
+                max-width: 172px !important;
+                gap: 3px !important;
+            }
+            .field-pill { min-height: 24px !important; font-size: 9px !important; padding: 1px 5px !important; }
+
+            /* ---- GAUNTLET SCORE: left, above player stat bar ---- */
+            #gauntlet-score {
+                top: auto !important; bottom: 272px !important; left: 6px !important;
+                font-size: 10px !important; background: rgba(0,0,0,0.6) !important;
+                padding: 2px 6px !important; border-radius: 3px !important;
             }
 
-            /* Battle log: fixed height, scrollable */
+            /* ---- BOTTOM UI: column — log row then full-width button grid ---- */
+            .ui-bottom {
+                height: 202px !important;
+                flex-direction: column !important;
+                padding: 4px 5px !important;
+                gap: 4px !important;
+            }
+
+            /* Battle log row */
             #battle-log {
-                flex: 0 0 86px !important;
-                max-height: 86px !important;
+                flex: 0 0 64px !important;
+                max-height: 64px !important;
                 font-size: 12px !important;
                 line-height: 1.5 !important;
-                padding: 5px 8px !important;
+                padding: 5px 9px !important;
             }
 
-            /* Command/Move grids: fill remaining width × height */
-            #command-menu,
-            #move-menu {
+            /* Command / Move menus: fill remaining height, full width */
+            #command-menu, #move-menu {
                 flex: 1 !important;
                 width: 100% !important;
                 box-sizing: border-box !important;
+                overflow-y: auto !important;
             }
+            .command-grid { gap: 4px !important; }
 
-            /* Button grid gap */
-            .command-grid { gap: 5px !important; }
-
-            /* Touch targets: 44px min (WCAG 2.5.5) */
+            /* Touch targets: 44px WCAG minimum */
             button {
                 font-size: 13px !important;
                 min-height: 44px !important;
-                padding: 5px 8px !important;
+                padding: 5px 6px !important;
                 touch-action: manipulation;
                 -webkit-tap-highlight-color: transparent;
             }
 
-            /* Move tooltip: above ui-bottom */
+            /* Move tooltip: above player stat bar */
             #move-tooltip {
-                bottom: 260px !important;
-                right: auto !important;
-                left: 6px !important;
-                width: 260px !important;
+                bottom: 206px !important;
+                right: auto !important; left: 5px !important;
+                width: min(92vw, 280px) !important;
                 font-size: 11px !important;
             }
 
-            /* ---- MENU SCREEN ----
-               overflow-y: auto ensures Gauntlet button is always reachable
-               even when browser chrome reduces the effective viewport height. */
+            /* ---- MENU SCREEN: scrollable column ---- */
             #screen-menu:not(.hidden) {
-                overflow-y: auto !important;
-                overflow-x: hidden !important;
+                overflow-y: auto !important; overflow-x: hidden !important;
                 -webkit-overflow-scrolling: touch !important;
                 box-sizing: border-box !important;
                 padding: 10px 14px 24px !important;
-                display: flex !important;
-                flex-direction: column !important;
-                align-items: center !important;
+                display: flex !important; flex-direction: column !important; align-items: center !important;
             }
-            #screen-menu h1 {
-                font-size: 16px !important;
-                margin: 6px 0 10px !important;
-                padding: 0 10px !important;
-                word-break: break-word !important;
-            }
-            /* Panels: stretch to fill width */
-            #screen-menu .white-outline {
-                width: 100% !important;
-                max-width: 400px !important;
-                box-sizing: border-box !important;
-                margin: 0 0 8px !important;
-            }
-            /* Mode buttons: full width, clearly tappable */
-            #screen-menu .menu-options {
-                width: 100% !important;
-                max-width: 400px !important;
-                margin-top: 6px !important;
-                gap: 8px !important;
-            }
-            #screen-menu .menu-options button {
-                width: 100% !important;
-                min-height: 52px !important;
-                font-size: 15px !important;
-            }
+            #screen-menu h1 { font-size: 16px !important; margin: 6px 0 10px !important; padding: 0 10px !important; word-break: break-word !important; }
+            #screen-menu .white-outline { width: 100% !important; max-width: 400px !important; box-sizing: border-box !important; margin: 0 0 8px !important; }
+            #screen-menu .menu-options { width: 100% !important; max-width: 400px !important; margin-top: 6px !important; gap: 8px !important; }
+            #screen-menu .menu-options button { width: 100% !important; min-height: 52px !important; font-size: 15px !important; }
 
-            /* ---- DRAFT SCREEN ----
-               :not(.hidden) prevents ID specificity overriding
-               .hidden { display:none !important } when JS hides it. */
+            /* ---- DRAFT SCREEN ---- */
             #screen-draft:not(.hidden) {
-                display: flex !important;
-                flex-direction: column !important;
-                padding: 0 !important;
-                overflow: hidden !important;
-                height: 100dvh !important;
-                max-height: 100dvh !important;
-                box-sizing: border-box !important;
+                display: flex !important; flex-direction: column !important;
+                padding: 0 !important; overflow: hidden !important;
+                height: 100dvh !important; max-height: 100dvh !important; box-sizing: border-box !important;
             }
-            #draft-header {
-                padding: 6px 88px 6px 10px !important;
-                margin-bottom: 0 !important;
-                flex-shrink: 0 !important;
-                border-bottom: 1px solid #222 !important;
-            }
+            #draft-header { padding: 6px 88px 6px 10px !important; margin-bottom: 0 !important; flex-shrink: 0 !important; border-bottom: 1px solid #222 !important; }
             #draft-header h2 { font-size: 15px !important; margin: 0 !important; }
-            #draft-scroll-area {
-                flex: 1 1 0 !important;
-                min-height: 0 !important;
-                overflow-y: auto !important;
-                -webkit-overflow-scrolling: touch !important;
-                padding: 6px 8px !important;
-            }
-            /* Single-column cards on narrow portrait */
+            #draft-scroll-area { flex: 1 1 0 !important; min-height: 0 !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; padding: 6px 8px !important; }
             #draft-grid { grid-template-columns: 1fr !important; gap: 7px !important; }
-
             .draft-card { padding: 8px !important; gap: 8px !important; }
             .draft-card-sprite { min-width: 60px !important; }
             .draft-card-sprite .mini-sprite { width: 60px !important; height: 60px !important; }
@@ -603,22 +463,64 @@
             .draft-card-details { font-size: 11px !important; line-height: 1.4 !important; }
             .draft-card-moves { font-size: 11px !important; gap: 3px !important; }
             .draft-card-moves > div { padding: 2px 4px !important; }
-
-            #draft-party-bar {
-                flex-shrink: 0 !important;
-                min-height: 58px !important;
-                max-height: 66px !important;
-                padding: 4px 8px !important;
-                gap: 6px !important;
-            }
+            #draft-party-bar { flex-shrink: 0 !important; min-height: 58px !important; max-height: 66px !important; padding: 4px 8px !important; gap: 6px !important; }
             #draft-party-slots { gap: 8px !important; }
 
-            /* ---- PARTY MODAL ---- */
+            /* ---- MODALS ---- */
             .modal-content { width: 96% !important; max-height: 86dvh !important; padding: 10px !important; }
             .party-slot { min-height: 52px !important; }
+        }
 
-            /* ---- GAUNTLET SCORE (battle) ---- */
-            #gauntlet-score { font-size: 12px !important; }
+        /* ===== PORTRAIT SMALL PHONES (< 680px dvh) =====
+           Fallback: side-by-side layout (original approach) but improved.
+           Applies to old/small phones like iPhone SE.
+        */
+        @media screen and (max-width: 768px) and (orientation: portrait) and (max-height: 679px) {
+            .screen { max-width: 100vw !important; width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; }
+            .mob-info-btn { display: inline-flex !important; }
+            #foe-stat-box { width: 195px !important; top: 6px !important; left: 5px !important; padding: 5px 8px !important; font-size: 11px !important; }
+            #foe-sprite-container { width: 148px !important; height: 156px !important; top: 6px !important; right: 5px !important; }
+            #foe-sprite { width: 142px !important; height: 142px !important; }
+            #player-sprite-container { width: 158px !important; height: 166px !important; bottom: 228px !important; left: 5px !important; }
+            #player-sprite { width: 152px !important; height: 152px !important; }
+            #player-stat-box { width: 198px !important; bottom: 228px !important; right: 5px !important; padding: 5px 8px !important; font-size: 11px !important; }
+            #player-hp-text { font-size: 10px !important; }
+            #foe-types, #player-types { font-size: 9px !important; }
+            .type-badge { font-size: 8px !important; padding: 1px 3px !important; }
+            .hp-bar-container { height: 6px !important; margin-top: 2px !important; }
+            #field-conditions { bottom: auto !important; top: 180px !important; left: 50% !important; transform: translateX(-50%) !important; flex-direction: row !important; align-items: center !important; justify-content: center !important; max-width: 220px !important; gap: 3px !important; }
+            .field-pill { min-height: 22px !important; font-size: 8px !important; padding: 1px 4px !important; }
+            #gauntlet-score { top: auto !important; bottom: 232px !important; left: 5px !important; font-size: 10px !important; background: rgba(0,0,0,0.55) !important; padding: 2px 5px !important; border-radius: 3px !important; }
+            .ui-bottom { height: 222px !important; flex-direction: column !important; padding: 4px 5px !important; gap: 4px !important; }
+            #battle-log { flex: 0 0 58px !important; max-height: 58px !important; font-size: 11px !important; line-height: 1.4 !important; padding: 4px 7px !important; }
+            #command-menu, #move-menu { flex: 1 !important; width: 100% !important; box-sizing: border-box !important; }
+            .command-grid { gap: 4px !important; }
+            button { font-size: 12px !important; min-height: 42px !important; padding: 4px 6px !important; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+            #move-tooltip { bottom: 226px !important; right: auto !important; left: 5px !important; width: min(92vw, 250px) !important; font-size: 10px !important; }
+            #screen-menu:not(.hidden) { overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; box-sizing: border-box !important; padding: 8px 12px 20px !important; display: flex !important; flex-direction: column !important; align-items: center !important; }
+            #screen-menu h1 { font-size: 14px !important; margin: 4px 0 8px !important; }
+            #screen-menu .white-outline { width: 100% !important; max-width: 380px !important; box-sizing: border-box !important; margin: 0 0 6px !important; }
+            #screen-menu .menu-options { width: 100% !important; max-width: 380px !important; margin-top: 4px !important; gap: 6px !important; }
+            #screen-menu .menu-options button { width: 100% !important; min-height: 48px !important; font-size: 14px !important; }
+            #screen-draft:not(.hidden) { display: flex !important; flex-direction: column !important; padding: 0 !important; overflow: hidden !important; height: 100dvh !important; max-height: 100dvh !important; box-sizing: border-box !important; }
+            #draft-header { padding: 5px 80px 5px 8px !important; margin-bottom: 0 !important; flex-shrink: 0 !important; border-bottom: 1px solid #222 !important; }
+            #draft-header h2 { font-size: 13px !important; margin: 0 !important; }
+            #draft-scroll-area { flex: 1 1 0 !important; min-height: 0 !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; padding: 5px 7px !important; }
+            #draft-grid { grid-template-columns: 1fr !important; gap: 6px !important; }
+            .draft-card { padding: 7px !important; gap: 7px !important; }
+            .draft-card-sprite .mini-sprite { width: 54px !important; height: 54px !important; }
+            .draft-card-stats { display: none !important; }
+            .draft-card-header { font-size: 12px !important; }
+            .draft-card-details { font-size: 10px !important; }
+            .draft-card-moves { font-size: 10px !important; }
+            #draft-party-bar { flex-shrink: 0 !important; min-height: 54px !important; max-height: 62px !important; padding: 3px 7px !important; }
+            .modal-content { width: 96% !important; max-height: 86dvh !important; padding: 10px !important; }
+            .party-slot { min-height: 48px !important; }
+        }
+
+        /* General portrait: menu + draft improvements (any height) */
+        @media screen and (max-width: 768px) and (orientation: portrait) {
+            .modal-content { width: 96% !important; max-height: 86dvh !important; }
         }
 
         /* General mobile touch improvements */
@@ -1224,20 +1126,22 @@
     <div id="screen-battle" class="screen hidden">
         <div id="weather-indicator" class="hidden" style="display:none;"></div>
         <div id="weather-overlay" class="weather-overlay"></div>
-        <div id="field-conditions" style="position:absolute; top:6px; left:50%; transform:translateX(-50%); display:flex; flex-wrap:wrap; gap:3px; z-index:10; justify-content:center; max-width:380px; min-height:18px;"></div>
+        <div id="field-conditions"></div>
         <div id="gauntlet-score" class="hidden" style="position:absolute; top:5px; left:10px; font-weight:bold; color:#fff; z-index:10;">Score: 0</div>
 
-        <!-- FOE: stat box top-left, sprite upper-center-right (Game Boy layout) -->
+        <!-- FOE: stat box top-left, sprite upper-right (Game Boy layout) -->
         <div class="stat-box white-outline" id="foe-stat-box" style="position:absolute; top:15px; left:15px; z-index:5; width:230px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
-                <span id="foe-name" style="cursor:help; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">MissingNo</span>
+            <div class="stat-box-header">
+                <span id="foe-name" style="cursor:pointer; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">MissingNo</span>
                 <button class="mob-info-btn" onclick="window.showActiveInfo(false)" title="Info">ℹ</button>
-                <div id="foe-party-bar" style="display:flex; gap:3px; z-index:10; flex-shrink:0;"></div>
+                <div id="foe-party-bar" style="display:flex; gap:3px; flex-shrink:0;"></div>
             </div>
             <div class="hp-bar-container border-white"><div id="foe-hp-bar" class="hp-fill"></div></div>
-            <div id="foe-types" style="margin-top:4px;"></div>
-            <div class="status-indicator" id="foe-status"></div>
-            <div id="foe-stages" style="margin-top:3px; display:flex; flex-wrap:wrap; gap:2px;"></div>
+            <div class="stat-info-row">
+                <div id="foe-types"></div>
+                <div class="status-indicator" id="foe-status"></div>
+                <div id="foe-stages"></div>
+            </div>
         </div>
 
         <!-- Foe sprite upper-right, shifted left toward center -->
@@ -1256,15 +1160,18 @@
 
         <!-- Player stat box bottom-right -->
         <div class="stat-box white-outline" id="player-stat-box" style="position:absolute; bottom:195px; right:15px; z-index:5; width:240px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
-                <span id="player-name" style="cursor:help; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">MissingNo</span>
+            <div class="stat-box-header">
+                <span id="player-name" style="cursor:pointer; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">MissingNo</span>
+                <span id="player-hp-text" style="font-size:11px; color:#aaa; flex-shrink:0;">0/0</span>
                 <button class="mob-info-btn" onclick="window.showActiveInfo(true)" title="Info">ℹ</button>
-                <div id="player-party-bar" style="display:flex; gap:3px; z-index:10; flex-shrink:0;"></div>
+                <div id="player-party-bar" style="display:flex; gap:3px; flex-shrink:0;"></div>
             </div>
             <div class="hp-bar-container border-white"><div id="player-hp-bar" class="hp-fill"></div></div>
-            <div style="display:flex; justify-content:space-between; margin-top:4px;"><div id="player-types"></div><div id="player-hp-text" style="font-size:12px;">0/0</div></div>
-            <div class="status-indicator" id="player-status"></div>
-            <div id="player-stages" style="margin-top:3px; display:flex; flex-wrap:wrap; gap:2px;"></div>
+            <div class="stat-info-row">
+                <div id="player-types"></div>
+                <div class="status-indicator" id="player-status"></div>
+                <div id="player-stages"></div>
+            </div>
         </div>
 
         <div class="ui-bottom" style="height:190px;">
@@ -3464,7 +3371,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ['p', 'f'].forEach(s => {
                 let mon = s === 'p' ? state.pActive : state.fActive; let party = s === 'p' ? state.playerParty : state.foeParty;
                 let nameEl = document.getElementById(`${s === 'p'?'player':'foe'}-name`);
-                nameEl.innerHTML = (mon.isShiny ? '&#10024; ' : '') + mon.name;
+                // Gimmick badge: show active Dynamax / G-Max state prominently
+                let gBadge = '';
+                if (mon.dynamaxed) {
+                    const isGmax = mon.buildData && mon.buildData.gimmick === 'GMAXDYNAMAX';
+                    gBadge = isGmax
+                        ? ' <span class="gimmick-badge gimmick-gmax">G-MAX</span>'
+                        : ' <span class="gimmick-badge gimmick-dmax">DMAX</span>';
+                }
+                nameEl.innerHTML = (mon.isShiny ? '&#10024; ' : '') + mon.name + gBadge;
                 nameEl.title = 'Tap for full summary · hover for quick stats';
                 nameEl.onmousemove = function(e) {
                     let tt = document.getElementById('text-tooltip');
@@ -4807,13 +4722,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Trick Room countdown
             if (state.trickRoom > 0) { state.trickRoom--; if (state.trickRoom === 0) logMsg(`The twisted dimensions returned to normal!`, 'info'); }
-            // Side screen countdowns
-            ['pSide','fSide'].forEach(side => {
-                if (!state[side]) return;
-                ['reflect','lightScreen','auroraVeil'].forEach(s => {
-                    if (state[side][s] > 0) { state[side][s]--; if (state[side][s] === 0) logMsg(`${side === 'pSide' ? 'Your' : "Foe's"} ${s === 'reflect' ? 'Reflect' : s === 'lightScreen' ? 'Light Screen' : 'Aurora Veil'} wore off!`, 'info'); }
-                });
-            });
+            // NOTE: Side screen countdowns are handled in endOfTurnEffects (one decrement per turn per side).
+            // Do NOT also decrement here to avoid double-counting.
         }
 
         window.playTurn = async function(pMoveIndex, pSwitchIndex) {
@@ -5169,15 +5079,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // No Consecutive moves: Gigaton Hammer, Blood Moon fail if used back-to-back
             if ((move.name === "Gigaton Hammer" || move.name === "Blood Moon") && attacker.volatile.lastMoveUsed === move.name) {
                 if (move.pp > 0) move.pp--;
-                // Tera Blast: becomes Tera type and uses higher of Atk/SpA when Terastallized
-                if (move.name === 'Tera Blast' && attacker.teraActivated && attacker.buildData && attacker.buildData.teraType) {
-                    move = { ...move, type: attacker.buildData.teraType };
-                    if (attacker.stats.atk > attacker.stats.spa) move.cat = 'Physical';
-                }
-                // Tera 60 BP floor: Tera-type moves with <60 BP get boosted to 60
-                if (attacker.teraActivated && attacker.buildData && move.type === attacker.buildData.teraType && move.pow > 0 && move.pow < 60) {
-                    move = { ...move, pow: 60 };
-                }
                 logMsg(`${attacker.name} used ${move.name}!`);
                 logMsg(`But it failed!`, 'info');
                 attacker.volatile.lastMoveUsed = move.name;
@@ -5307,6 +5208,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else if (attacker.dynamaxed) {
                     // Auto-convert to Max Move when Dynamaxed
                     move = buildMaxMove(attacker, move);
+                }
+
+                // Tera Blast: becomes Tera type and uses higher of boosted Atk/SpA when Terastallized
+                if (move.name === 'Tera Blast' && attacker.teraActivated && attacker.buildData && attacker.buildData.teraType) {
+                    move = { ...move, type: attacker.buildData.teraType };
+                    let boostedAtk = attacker.stats.atk * getStageMult(attacker.stages.atk);
+                    let boostedSpa = attacker.stats.spa * getStageMult(attacker.stages.spa);
+                    if (boostedAtk > boostedSpa) move = { ...move, cat: 'Physical' };
+                }
+                // Tera 60 BP floor: when Terastallized, moves matching Tera type with <60 BP are boosted to 60
+                if (attacker.teraActivated && attacker.buildData && attacker.buildData.teraType &&
+                    move.type === attacker.buildData.teraType && move.pow > 0 && move.pow < 60) {
+                    move = { ...move, pow: 60 };
                 }
 
                 if (!move._zStatusAnnounced) logMsg(`${attacker.name} used ${move.name}!`);
@@ -5520,7 +5434,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
-            // === QUEENLY MAJESTY / DAZZLING: block increased-priority moves ===
+            // === QUEENLY MAJESTY / DAZZLING / PSYCHIC TERRAIN: block increased-priority moves ===
             {
                 let effectivePri = move.pri || 0;
                 const drainingMovesQM = ["Drain Punch","Draining Kiss","Giga Drain","Leech Life","Mega Drain","Horn Leech","Parabolic Charge","Strength Sap","Absorb"];
@@ -5530,6 +5444,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (effectivePri > 0 && (defender.ability === "Queenly Majesty" || defender.ability === "Dazzling" || defender.ability === "Armor Tail")) {
                     logMsg(`${defender.name}'s ${defender.ability} blocked the priority move!`, 'info');
                     await sleep(1000); return;
+                }
+                // Psychic Terrain blocks priority moves against grounded targets
+                if (effectivePri > 0 && state.terrain === "Psychic" && state.terrainTurns > 0) {
+                    const _ptGrounded = (m) => m.type1 !== "Flying" && m.type2 !== "Flying" && m.ability !== "Levitate" && m.item !== "Air Balloon" && !m.volatile.magnetRise;
+                    if (_ptGrounded(defender)) {
+                        logMsg(`Psychic Terrain protected ${defender.name} from the priority move!`, 'info');
+                        await sleep(1000); return;
+                    }
                 }
             }
 
@@ -6029,6 +5951,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (move.name === "SolarBeam" && w !== "Sun" && w !== "HarshSun") basePower = Math.floor(basePower * 0.5);
 
+                // Terrain modifiers (only affect grounded Pokémon)
+                if (state.terrain && state.terrainTurns > 0) {
+                    const _terrGrounded = (m) => m.type1 !== "Flying" && m.type2 !== "Flying" && m.ability !== "Levitate" && m.item !== "Air Balloon" && !m.volatile.magnetRise;
+                    if (state.terrain === "Electric" && move.type === "Electric" && _terrGrounded(attacker))
+                        basePower = Math.floor(basePower * 1.3);
+                    if (state.terrain === "Grassy" && move.type === "Grass" && _terrGrounded(attacker))
+                        basePower = Math.floor(basePower * 1.3);
+                    if (state.terrain === "Psychic" && move.type === "Psychic" && _terrGrounded(attacker))
+                        basePower = Math.floor(basePower * 1.3);
+                    if (state.terrain === "Misty" && move.type === "Dragon" && _terrGrounded(defender))
+                        basePower = Math.floor(basePower * 0.5);
+                    if (state.terrain === "Grassy" && (move.name === "Earthquake" || move.name === "Bulldoze" || move.name === "Magnitude"))
+                        basePower = Math.floor(basePower * 0.5);
+                }
+
                 // Dry Skin: Fire moves deal 25% more to Dry Skin users
                 if (defender.ability === "Dry Skin" && move.type === "Fire") basePower = Math.floor(basePower * 1.25);
 
@@ -6298,7 +6235,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     logMsg(`${attacker.name} lost ${actCost} HP from the recoil!`, 'dmg');
                 }
                 let recoilMovesList = ["Brave Bird", "Flare Blitz", "Wild Charge", "Double-Edge", "Head Smash", "Wood Hammer", "Take Down", "Submission", "Volt Tackle", "Wave Crash"];
-                if (recoilMovesList.includes(move.name) && attacker.ability !== "Rock Head" && attacker.currentHp > 0) {
+                if (!hitSub && recoilMovesList.includes(move.name) && attacker.ability !== "Rock Head" && attacker.currentHp > 0) {
                     let recoilPct = (move.name === "Head Smash") ? 0.5 : (["Wild Charge", "Take Down", "Submission"].includes(move.name) ? 0.25 : 0.33);
                     let recoilBase = actualDamage > 0 ? actualDamage : damage;
                     let recoil = Math.max(1, Math.floor(recoilBase * recoilPct));
@@ -6424,10 +6361,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             // Secondary effects (for damaging moves with secondaries, and for status moves)
-            // Sheer Force suppresses secondary effects
+            // Sheer Force suppresses secondary effects of damaging moves
             if (typeof sheerForceActive !== 'undefined' && sheerForceActive) {
-                // Skip secondary effects
-            } else if ((defender.ability !== "Shield Dust" && defender.item !== "Covert Cloak" || move.cat === "Status") && defender.volatile.sub <= 0) {
+                // Skip secondary effects for Sheer Force moves
+            } else if (move.cat === "Status" || ((defender.ability !== "Shield Dust" && defender.item !== "Covert Cloak") && defender.volatile.sub <= 0)) {
+                // Status moves: always call parseMoveEffects (it handles sub-blocking internally)
+                // Damaging moves: only call if sub was not blocking (sub <= 0 after damage), Shield Dust/Covert Cloak block secondaries
                 await parseMoveEffects(attacker, defender, move, isPlayer);
                 updateUI();
                 await sleep(500);
@@ -6527,7 +6466,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             logMsg(`Draw round — no swap reward. Fully healing team...`, 'heal');
                             state.playerParty.forEach((m, i) => { state.playerParty[i] = buildPokemon(m.name, m.buildData); });
                             let drawEligible = getDraftPool(state.minGen, state.maxGen, settings.draftGrades);
-                            const drawKeys = drawEligible.sort(() => 0.5 - Math.random()).slice(0, 3);
+                            const drawKeys = drawEligible.sort(() => 0.5 - Math.random()).slice(0, settings.partySize);
                             state.foeParty = drawKeys.map(name => buildPokemon(name, makeBuild(name)));
                             state.pActive = state.playerParty[0]; state.fActive = state.foeParty[0];
                             state.weather = null; state.weatherTurns = 0;
@@ -6938,7 +6877,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // === Pure status move named handlers (must come first) ===
             if (move.name === "Will-O-Wisp") { applyStatus(defender, "BRN"); return; }
-            if (move.name === "Thunder Wave" || move.name === "Stun Spore" || move.name === "Glare") { applyStatus(defender, "PAR"); return; }
+            if (move.name === "Thunder Wave" || move.name === "Stun Spore" || move.name === "Glare") {
+                // Thunder Wave is Electric-type — Ground types are immune
+                if (move.name === "Thunder Wave" && (defender.type1 === "Ground" || defender.type2 === "Ground")) {
+                    logMsg(`It doesn't affect ${defender.name}...`, 'info'); return;
+                }
+                applyStatus(defender, "PAR"); return;
+            }
             if (move.name === "Sleep Powder" || move.name === "Spore" || move.name === "Hypnosis" || move.name === "Lovely Kiss" || move.name === "Sing") { applyStatus(defender, "SLP"); return; }
             if (move.name === "Yawn") {
                 if (defender.status || defender.volatile.yawnTurns > 0) { logMsg(`But it failed!`, 'info'); return; }
@@ -7128,6 +7073,50 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 wSide.wishTurns = 2; // fires at end of NEXT turn — heals whoever is active then
                 logMsg(`${attacker.name} made a wish!`, 'heal'); return;
             }
+            if (move.name === "Spikes") {
+                let side = isPlayer ? state.fSide : state.pSide;
+                if (side.spikes < 3) { side.spikes++; logMsg(`Spikes scattered around the foe's team! (Layer ${side.spikes})`, 'status'); }
+                else { logMsg(`But it failed!`); } return;
+            }
+            if (move.name === "Reflect") {
+                let side = isPlayer ? state.pSide : state.fSide;
+                if (side.reflect > 0) { logMsg(`But it failed!`, 'info'); return; }
+                side.reflect = attacker.item === "Light Clay" ? 8 : 5;
+                logMsg(`${attacker.name} put up a Reflect!`, 'info'); return;
+            }
+            if (move.name === "Light Screen") {
+                let side = isPlayer ? state.pSide : state.fSide;
+                if (side.lightScreen > 0) { logMsg(`But it failed!`, 'info'); return; }
+                side.lightScreen = attacker.item === "Light Clay" ? 8 : 5;
+                logMsg(`${attacker.name} set up a Light Screen!`, 'info'); return;
+            }
+            if (move.name === "Aurora Veil") {
+                let w = getCurrentWeather();
+                if (w !== "Hail") { logMsg(`But it failed! Aurora Veil requires Hail!`, 'info'); return; }
+                let side = isPlayer ? state.pSide : state.fSide;
+                if (side.auroraVeil > 0) { logMsg(`But it failed!`, 'info'); return; }
+                side.auroraVeil = attacker.item === "Light Clay" ? 8 : 5;
+                logMsg(`${attacker.name} created an Aurora Veil!`, 'info'); return;
+            }
+            if (move.name === "Defog") {
+                // Clears foe's hazards + field conditions; also lowers foe's evasion -1
+                let foeSide = isPlayer ? state.fSide : state.pSide;
+                let userSide = isPlayer ? state.pSide : state.fSide;
+                let cleared = false;
+                if (foeSide.stealthRock) { foeSide.stealthRock = false; cleared = true; }
+                if (foeSide.spikes > 0) { foeSide.spikes = 0; cleared = true; }
+                if (foeSide.toxicSpikes > 0) { foeSide.toxicSpikes = 0; cleared = true; }
+                if (foeSide.stickyWeb) { foeSide.stickyWeb = false; cleared = true; }
+                if (foeSide.reflect > 0) { foeSide.reflect = 0; cleared = true; }
+                if (foeSide.lightScreen > 0) { foeSide.lightScreen = 0; cleared = true; }
+                if (foeSide.auroraVeil > 0) { foeSide.auroraVeil = 0; cleared = true; }
+                if (userSide.reflect > 0) { userSide.reflect = 0; cleared = true; }
+                if (userSide.lightScreen > 0) { userSide.lightScreen = 0; cleared = true; }
+                if (userSide.auroraVeil > 0) { userSide.auroraVeil = 0; cleared = true; }
+                changeStage(defender, 'eva', -1);
+                logMsg(`${attacker.name} blew away${cleared ? ' hazards and screens' : ' nothing'}!`, 'info');
+                return;
+            }
             if (move.name === "Heal Bell" || move.name === "Aromatherapy") {
                 let party = isPlayer ? state.playerParty : state.foeParty;
                 party.forEach(m => { m.status = null; m.statusTurns = 0; });
@@ -7292,43 +7281,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Rapid Spin" && move.cat !== "Status") { changeStage(attacker, 'spe', 1); }
 
             // === Status application from effects ===
+            // Serene Grace doubles secondary effect chances (capped at 100%)
+            const _sg = (chance) => sereneGrace ? Math.min(1.0, chance * 2) : chance;
             // Named move special status effects
-            if (move.name === "Scald" && Math.random() < 0.3) applyStatus(defender, "BRN");
-            else if (move.name === "Discharge" && Math.random() < 0.3) applyStatus(defender, "PAR");
-            else if (move.name === "Lava Plume" && Math.random() < 0.3) applyStatus(defender, "BRN");
-            else if (move.name === "Body Slam" && Math.random() < 0.3) applyStatus(defender, "PAR");
-            else if (move.name === "Thunder" && Math.random() < 0.3) applyStatus(defender, "PAR");
-            else if (move.name === "Blizzard" && Math.random() < 0.1) applyStatus(defender, "FRZ");
-            else if (move.name === "Fire Blast" && Math.random() < 0.1) applyStatus(defender, "BRN");
-            else if (eff.includes("30% chance to poison") && Math.random() < 0.3) applyStatus(defender, "PSN");
+            if (move.name === "Scald" && Math.random() < _sg(0.3)) applyStatus(defender, "BRN");
+            else if (move.name === "Discharge" && Math.random() < _sg(0.3)) applyStatus(defender, "PAR");
+            else if (move.name === "Lava Plume" && Math.random() < _sg(0.3)) applyStatus(defender, "BRN");
+            else if (move.name === "Body Slam" && Math.random() < _sg(0.3)) applyStatus(defender, "PAR");
+            else if (move.name === "Thunder" && Math.random() < _sg(0.3)) applyStatus(defender, "PAR");
+            else if (move.name === "Blizzard" && Math.random() < _sg(0.1)) applyStatus(defender, "FRZ");
+            else if (move.name === "Fire Blast" && Math.random() < _sg(0.1)) applyStatus(defender, "BRN");
+            else if (eff.includes("30% chance to poison") && Math.random() < _sg(0.3)) applyStatus(defender, "PSN");
             else if (eff.includes("badly poisons")) applyStatus(defender, "TOX");
             else if (eff.includes("burns the target") || eff.includes("burns opponent")) applyStatus(defender, "BRN");
-            else if (eff.includes("30% chance to burn") && Math.random() < 0.3) applyStatus(defender, "BRN");
-            else if (eff.includes("10% chance to burn") && Math.random() < 0.1) applyStatus(defender, "BRN");
-            else if (eff.includes("30% chance to paralyze") && Math.random() < 0.3) applyStatus(defender, "PAR");
-            else if (eff.includes("10% chance to paralyze") && Math.random() < 0.1) applyStatus(defender, "PAR");
-            else if (eff.includes("10% paralyze") && Math.random() < 0.1) applyStatus(defender, "PAR");
+            else if (eff.includes("30% chance to burn") && Math.random() < _sg(0.3)) applyStatus(defender, "BRN");
+            else if (eff.includes("10% chance to burn") && Math.random() < _sg(0.1)) applyStatus(defender, "BRN");
+            else if (eff.includes("30% chance to paralyze") && Math.random() < _sg(0.3)) applyStatus(defender, "PAR");
+            else if (eff.includes("10% chance to paralyze") && Math.random() < _sg(0.1)) applyStatus(defender, "PAR");
+            else if (eff.includes("10% paralyze") && Math.random() < _sg(0.1)) applyStatus(defender, "PAR");
             else if (eff.includes("paralyzes the target") || eff.includes("paralyzes opponent")) applyStatus(defender, "PAR");
-            else if (eff.includes("10% chance to freeze") && Math.random() < 0.1) applyStatus(defender, "FRZ");
+            else if (eff.includes("10% chance to freeze") && Math.random() < _sg(0.1)) applyStatus(defender, "FRZ");
             else if (eff.includes("puts the target to sleep") || eff.includes("opponent to sleep")) applyStatus(defender, "SLP");
-            
-            // Flinch
-            if (eff.includes("flinch")) { 
-                let flinchChance = eff.includes("100%") ? 1.0 : 0.3;
-                if (Math.random() < flinchChance) defender.volatile.flinch = true; 
-            }
-            // 10% flinch (Thunder Fang)
-            if (eff.includes("10% flinch") && Math.random() < 0.1) defender.volatile.flinch = true;
-            
-            // Confusion
-            if (eff.includes("confuse") && Math.random() < 0.2) defender.volatile.confusion = Math.floor(Math.random()*3)+2;
 
-            // Defender stat drops from damaging moves
-            if (eff.includes("20% chance to lower spdef") && Math.random() < 0.2) changeStage(defender, 'spd', -1);
-            if (eff.includes("10% chance to lower spdef") && Math.random() < 0.1) changeStage(defender, 'spd', -1);
-            if (eff.includes("20% chance to lower def") && Math.random() < 0.2) changeStage(defender, 'def', -1);
-            if (eff.includes("30% chance to lower def") && Math.random() < 0.3) changeStage(defender, 'def', -1);
-            if (eff.includes("30% chance to lower") && eff.includes("spatk") && Math.random() < 0.3) changeStage(defender, 'spa', -1);
+            // Flinch
+            if (eff.includes("flinch")) {
+                let flinchChance = eff.includes("100%") ? 1.0 : _sg(0.3);
+                if (Math.random() < flinchChance) defender.volatile.flinch = true;
+            }
+            // 10% flinch (Thunder Fang etc.)
+            if (eff.includes("10% flinch") && Math.random() < _sg(0.1)) defender.volatile.flinch = true;
+
+            // Confusion
+            if (eff.includes("confuse") && Math.random() < _sg(0.2)) defender.volatile.confusion = Math.floor(Math.random()*3)+2;
+
+            // Defender stat drops from damaging moves (Serene Grace applies)
+            if (eff.includes("20% chance to lower spdef") && Math.random() < _sg(0.2)) changeStage(defender, 'spd', -1);
+            if (eff.includes("10% chance to lower spdef") && Math.random() < _sg(0.1)) changeStage(defender, 'spd', -1);
+            if (eff.includes("20% chance to lower def") && Math.random() < _sg(0.2)) changeStage(defender, 'def', -1);
+            if (eff.includes("30% chance to lower def") && Math.random() < _sg(0.3)) changeStage(defender, 'def', -1);
+            if (eff.includes("30% chance to lower") && eff.includes("spatk") && Math.random() < _sg(0.3)) changeStage(defender, 'spa', -1);
 
             // HP restoration (for status healing moves)
             const healMoves50 = ["Recover","Soft-Boiled","Slack Off","Milk Drink","Life Dew","Heal Order","Roost","Moonlight","Morning Sun","Synthesis","Shore Up","Jungle Healing"];
@@ -7411,6 +7402,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function applyStatus(mon, status, noSync) {
             if (mon.currentHp <= 0 || mon.volatile.sub > 0) return;
             if (mon.status) { logMsg(`${mon.name} is already affected by ${mon.status}!`, 'info'); return; }
+            // Terrain status blocks (grounded mons only)
+            const _stGrounded = (m) => m.type1 !== "Flying" && m.type2 !== "Flying" && m.ability !== "Levitate" && m.item !== "Air Balloon" && !m.volatile.magnetRise;
+            if (state.terrain === "Misty" && state.terrainTurns > 0 && _stGrounded(mon)) {
+                logMsg(`Misty Terrain prevented ${mon.name} from getting a status condition!`, 'info'); return;
+            }
+            if (status === "SLP" && state.terrain === "Electric" && state.terrainTurns > 0 && _stGrounded(mon)) {
+                logMsg(`Electric Terrain prevents ${mon.name} from falling asleep!`, 'info'); return;
+            }
             if (mon.ability === "Insomnia" && status === "SLP") { logMsg(`${mon.name}'s Insomnia prevents sleep!`, 'info'); return; }
             if (mon.ability === "Vital Spirit" && status === "SLP") { logMsg(`${mon.name}'s Vital Spirit prevents sleep!`, 'info'); return; }
             // Uproar prevents sleep for all mons on the field
@@ -7548,6 +7547,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let actDmg = Math.min(mon.currentHp, dmg);
                     mon.currentHp -= actDmg;
                     logMsg(`${mon.name} took ${actDmg} damage from the sandstorm!`, 'dmg');
+                }
+            }
+
+            // Grassy Terrain: grounded mons heal 1/16 HP per turn
+            if (state.terrain === "Grassy" && state.terrainTurns > 0 && mon.currentHp > 0 && mon.currentHp < mon.maxHp) {
+                const _gtGrounded = (m) => m.type1 !== "Flying" && m.type2 !== "Flying" && m.ability !== "Levitate" && m.item !== "Air Balloon";
+                if (_gtGrounded(mon)) {
+                    let heal = Math.max(1, Math.floor(mon.maxHp / 16));
+                    let actHeal = Math.min(mon.maxHp - mon.currentHp, heal);
+                    if (actHeal > 0) { mon.currentHp += actHeal; logMsg(`${mon.name} restored ${actHeal} HP from Grassy Terrain!`, 'heal'); }
                 }
             }
 
@@ -7741,11 +7750,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
-            // Disabled move timer
-            if (mon.volatile.disabledTurns > 0) {
-                mon.volatile.disabledTurns--;
-                if (mon.volatile.disabledTurns <= 0) { mon.volatile.disabled = null; logMsg(`${mon.name}'s move is no longer disabled!`, 'info'); }
-            }
+            // NOTE: Disabled move timer is handled in runVolatileTimers — do not decrement here.
 
             // Screen countdown (only run for first mon to avoid double-decrement)
             let monSide = (mon === state.pActive) ? state.pSide : state.fSide;
@@ -7861,14 +7866,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let allEligible = getDraftPool(state.minGen, state.maxGen, settings.draftGrades);
             let playerSpecies = new Set(state.playerParty.map(m => m._baseName || m.name));
             let foeEligible = allEligible.filter(n => !playerSpecies.has(n));
-            if (foeEligible.length < 3) foeEligible = allEligible; // fallback if pool too small
-            // Shuffle and pick 3 unique species
+            if (foeEligible.length < settings.partySize) foeEligible = allEligible; // fallback if pool too small
+            // Shuffle and pick unique species equal to partySize
             foeEligible = foeEligible.sort(() => 0.5 - Math.random());
             const foeKeys = [];
             const foeSeen = new Set();
             for (let name of foeEligible) {
                 if (!foeSeen.has(name)) { foeSeen.add(name); foeKeys.push(name); }
-                if (foeKeys.length === 3) break;
+                if (foeKeys.length === settings.partySize) break;
             }
             state.foeParty = foeKeys.map(name => buildPokemon(name, makeBuild(name)));
             state.pActive = state.playerParty[0]; state.fActive = state.foeParty[0];
