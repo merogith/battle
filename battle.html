@@ -2,22 +2,25 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Retro Battle Sim - Competitive Fix</title>
     <style>
-        :root { --bg-color: #0a0a0a; --border-color: #444; --text-color: #e8e8e8; --hp-green: #4caf50; --hp-yellow: #ffc107; --hp-red: #f44336; --accent: #ffd54f; --surface: #161616; --surface2: #1e1e1e; }
-        body { background-color: #000; color: var(--text-color); font-family: 'Courier New', Courier, monospace; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        :root { --bg-color: #0a0a0a; --border-color: #444; --text-color: #e8e8e8; --hp-green: #4caf50; --hp-yellow: #ffc107; --hp-red: #f44336; --accent: #ffd54f; --surface: #161616; --surface2: #1e1e1e; --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px); --safe-left: env(safe-area-inset-left, 0px); --safe-right: env(safe-area-inset-right, 0px); }
+        body { background-color: #000; color: var(--text-color); font-family: 'Courier New', Courier, monospace; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; height: 100dvh; overflow: hidden; padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); box-sizing: border-box; }
         .screen { width: 100%; max-width: 960px; height: 100vh; max-height: 700px; position: relative; background: var(--bg-color); overflow: hidden; }
         .hidden { display: none !important; } .active { display: block; }
         .white-outline { outline: none; border: 1px solid var(--border-color); padding: 10px; background: var(--surface); border-radius: 4px; }
         .border-white { border: 1px solid var(--border-color); }
         img, .sprite { border: none; background: transparent; width: 180px; height: 180px; object-fit: contain; image-rendering: pixelated; transition: transform 0.2s, filter 0.2s, opacity 0.4s; }
         .mini-sprite { width: 64px; height: 64px; border: none; background: transparent; image-rendering: pixelated; margin-right: 8px; flex-shrink: 0; }
-        .icon-btn { position: absolute; top: 10px; width: 32px; height: 32px; border-radius: 50%; background: var(--surface2); color: #fff; font-size: 16px; font-weight: bold; border: 1px solid #555; cursor: pointer; z-index: 500; display: flex; justify-content: center; align-items: center; padding: 0; transition: all 0.2s;}
-        .help-btn { right: 10px; } .settings-btn { right: 50px; } .fullscreen-btn { right: 90px; } .icon-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+        .icon-btn { position: absolute; top: calc(10px + var(--safe-top)); width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%; background: var(--surface2); color: #fff; font-size: 16px; font-weight: bold; border: 1px solid #555; cursor: pointer; z-index: 500; display: flex; justify-content: center; align-items: center; padding: 0; transition: all 0.2s; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+        .help-btn { right: calc(10px + var(--safe-right)); } .settings-btn { right: calc(54px + var(--safe-right)); } .fullscreen-btn { right: calc(98px + var(--safe-right)); } .icon-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+        @media (max-width: 768px) {
+            #gauntlet-swap-columns { flex-direction: column !important; }
+        }
 
         /* Fullscreen button: two inward-pointing L-corners (enter) → outward (exit) */
         #fullscreen-icon-btn::before {
@@ -58,7 +61,8 @@
         /* Stat colors */
         .stat-val-high { color: #4caf50; } .stat-val-mid-high { color: #8bc34a; } .stat-val-mid { color: #ffc107; } .stat-val-mid-low { color: #ff9800; } .stat-val-low { color: #f44336; }
 
-        .hover-text { text-decoration: underline dotted #666; cursor: help; display: inline-block; padding: 1px 2px; color: #ccc; transition: color 0.15s; } .hover-text:hover { color: var(--accent); }
+        .hover-text { text-decoration: underline dotted #666; cursor: pointer; display: inline-block; padding: 4px 4px; margin: -2px; min-height: 28px; line-height: 1.3; color: #ccc; transition: color 0.15s; border-radius: 3px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+        .hover-text:hover, .hover-text:active { color: var(--accent); background: rgba(255,213,79,0.08); }
 
         /* Party */
         .party-slot { display: flex; align-items: center; padding: 10px; border: 1px solid #333; background: var(--surface); cursor: pointer; border-radius: 4px; gap: 10px; transition: all 0.15s; }
@@ -112,10 +116,25 @@
         .foe-platform { position: absolute; bottom: 30px; right: 20px; width: 120px; height: 18px; background: linear-gradient(180deg, #3a5a3a, #1a3a1a); border-radius: 50%; opacity: 0.8; }
         .player-platform { position: absolute; bottom: 20px; left: 20px; width: 150px; height: 22px; background: linear-gradient(180deg, #3a5a3a, #1a3a1a); border-radius: 50%; opacity: 0.8; }
         .stat-box { width: 260px; position: relative; background: var(--surface); border-radius: 6px; padding: 10px 12px; border: 1px solid #333; font-size: 14px; }
-        .hp-bar-container { width: 100%; height: 8px; margin-top: 4px; background: #222; border-radius: 4px; overflow: hidden; border: none; }
-        .hp-fill { height: 100%; background: var(--hp-green); border-radius: 4px; transition: width 0.8s ease-out, background-color 0.8s; }
+        .hp-bar-container { width: 100%; height: 8px; margin-top: 4px; background: #1a1a1a; border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); box-sizing: border-box; }
+        .hp-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease-out, background 0.35s, box-shadow 0.35s; background: linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.06) 45%, transparent 55%), var(--hp-bar-solid, var(--hp-green)); box-shadow: inset 0 -1px 0 rgba(0,0,0,0.45); }
+        .hp-fill.hp-high { --hp-bar-solid: var(--hp-green); box-shadow: inset 0 -1px 0 rgba(0,0,0,0.45), 0 0 8px rgba(76,175,80,0.35); }
+        .hp-fill.hp-mid { --hp-bar-solid: var(--hp-yellow); box-shadow: inset 0 -1px 0 rgba(0,0,0,0.45), 0 0 8px rgba(255,193,7,0.35); }
+        .hp-fill.hp-low { --hp-bar-solid: var(--hp-red); box-shadow: inset 0 -1px 0 rgba(0,0,0,0.45), 0 0 10px rgba(244,67,54,0.45); }
+        .hp-fill.hp-critical { --hp-bar-solid: #b71c1c; animation: hpPulseLow 1.2s ease-in-out infinite; }
+        @keyframes hpPulseLow { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.15); } }
+        .stat-box .type-badge { font-size: 9px; }
+        #foe-stages, #player-stages { max-width: 100%; }
         .status-indicator { font-weight: bold; font-size: 12px; margin-top: 4px; text-transform: uppercase; }
-        #move-tooltip { position: absolute; bottom: 195px; right: 0; width: 280px; z-index: 100; pointer-events: none; background: var(--surface); border: 1px solid #444; border-radius: 4px; padding: 10px; }
+        #move-tooltip { position: absolute; bottom: 195px; right: 0; width: 280px; max-width: min(92vw, 320px); z-index: 100; pointer-events: none; background: var(--surface); border: 1px solid #444; border-radius: 4px; padding: 10px; box-shadow: 0 8px 28px rgba(0,0,0,0.65); }
+        #move-tooltip.sticky-open { pointer-events: auto; z-index: 450; }
+        #move-tooltip .move-tip-close { float: right; margin: -4px -4px 4px 8px; min-width: 36px; min-height: 36px; border-radius: 6px; border: 1px solid #555; background: var(--surface2); color: #fff; font-size: 16px; line-height: 1; cursor: pointer; touch-action: manipulation; }
+        .field-pill { cursor: pointer; touch-action: manipulation; min-height: 28px; display: inline-flex; align-items: center; padding: 2px 6px; border-radius: 4px; -webkit-tap-highlight-color: transparent; user-select: none; }
+        .field-pill:active { filter: brightness(1.15); }
+        .move-info-hit { flex-shrink: 0; min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; margin: -6px -4px -6px 0; border-radius: 8px; border: 1px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.35); color: var(--accent); font-size: 15px; font-weight: bold; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+        .move-info-hit:active { background: rgba(255,213,79,0.2); }
+        #text-tooltip.tooltip-tap-mode { pointer-events: auto; z-index: 460; max-width: min(94vw, 320px); }
+        #text-tooltip .tip-close-x { float: right; margin: -6px -6px 6px 8px; min-width: 36px; min-height: 36px; border-radius: 6px; border: 1px solid #555; background: var(--surface2); color: #fff; font-size: 16px; cursor: pointer; }
 
         /* Type badges */
         .type-badge { padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-right: 3px; border: none; text-shadow: 1px 1px 0 rgba(0,0,0,0.5); text-transform: uppercase; font-weight: bold; display: inline-block; letter-spacing: 0.5px; }
@@ -128,7 +147,12 @@
         .command-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
         button { background: var(--surface); color: var(--text-color); border: 1px solid #444; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: bold; padding: 6px; border-radius: 3px; transition: all 0.15s; }
         button:hover:not(:disabled) { background: var(--surface2); border-color: #666; } button:disabled { opacity: 0.25; cursor: not-allowed; border-color: #222; color: #555; }
-        .log-dmg { color: #ef5350; } .log-heal { color: #66bb6a; } .log-status { color: #ce93d8; } .log-info { color: #bbb; }
+        .log-dmg { color: #ef5350; font-weight: 600; } .log-heal { color: #66bb6a; font-weight: 600; } .log-status { color: #ce93d8; } .log-info { color: #d0d0d0; }
+        #battle-log { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+        #move-menu button { -webkit-touch-callout: none; }
+        @media (max-width: 768px) {
+            .draft-card-moves > div { min-height: 38px; display: flex; align-items: center; padding: 4px 2px !important; }
+        }
 
         /* ===== MOBILE RESPONSIVE ===== */
 
@@ -156,13 +180,15 @@
         .mob-info-btn {
             display: none;
             align-items: center; justify-content: center;
-            width: 22px; height: 22px; min-height: 22px !important;
+            width: 36px; height: 36px; min-width: 36px !important; min-height: 36px !important;
             background: rgba(255,255,255,0.15);
             border: 1px solid rgba(255,255,255,0.4);
             border-radius: 50%;
-            color: #fff; font-size: 13px;
+            color: #fff; font-size: 16px;
             padding: 0 !important; cursor: pointer;
             flex-shrink: 0; line-height: 1;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
 
         /* Mobile landscape: phones & small tablets rotated
@@ -203,9 +229,9 @@
             }
             #player-hp-text { font-size: 10px !important; }
 
-            /* Hide types & stages — accessible via ℹ info button */
-            #foe-types, #player-types,
-            #foe-stages, #player-stages { display: none !important; }
+            /* Types & stages: compact but visible (competitive info on phone) */
+            #foe-types, #player-types { font-size: 9px !important; margin-top: 2px !important; line-height: 1.15 !important; }
+            #foe-stages, #player-stages { margin-top: 3px !important; gap: 2px !important; max-height: 36px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
             /* HP bar thinner */
             .hp-bar-container { height: 6px !important; margin-top: 3px !important; }
@@ -425,9 +451,8 @@
             }
             #player-hp-text { font-size: 11px !important; }
 
-            /* Hide types & stages — accessible via ℹ info button */
-            #foe-types, #player-types,
-            #foe-stages, #player-stages { display: none !important; }
+            #foe-types, #player-types { font-size: 10px !important; margin-top: 3px !important; }
+            #foe-stages, #player-stages { margin-top: 4px !important; max-height: 52px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
             .mob-info-btn { display: inline-flex !important; }
 
@@ -1154,9 +1179,9 @@
                 <h3 style="color: #8bb8d0; margin: 0 0 8px; font-size: 13px;">Reorder Party (first slot leads in battle)</h3>
                 <div id="reorder-party-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
             </div>
-            <div style="display: flex; gap: 20px; margin-top: 15px;">
-                <div style="flex: 1;"><h3 style="color: var(--hp-red); text-align: center;">Defeated Foe</h3><div id="swap-foe-grid" style="display: flex; flex-direction: column; gap: 10px;"></div></div>
-                <div style="flex: 1;"><h3 style="color: var(--hp-green); text-align: center;">Your Team</h3><div id="swap-player-grid" style="display: flex; flex-direction: column; gap: 10px;"></div></div>
+            <div id="gauntlet-swap-columns" style="display: flex; gap: 20px; margin-top: 15px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: min(100%, 280px);"><h3 style="color: var(--hp-red); text-align: center;">Defeated Foe</h3><div id="swap-foe-grid" style="display: flex; flex-direction: column; gap: 10px;"></div></div>
+                <div style="flex: 1; min-width: min(100%, 280px);"><h3 style="color: var(--hp-green); text-align: center;">Your Team</h3><div id="swap-player-grid" style="display: flex; flex-direction: column; gap: 10px;"></div></div>
             </div>
             <div style="display: flex; justify-content: space-between; margin-top: 20px;">
                 <button onclick="window.skipSwap()" style="width: 48%;">Keep Current Team</button>
@@ -1348,6 +1373,17 @@
             }
             let fb = { type: 'Normal', cat: 'Physical', pow: 80, acc: 100, pri: 0, pp: 15, eff: '', prob: 0, mathEff: '' };
             movesDB[moveName] = fb; return fb;
+        }
+
+        /** Full move object for battle UI / damage — uses JSON DB when present, else @pkmn/dex via ensureMoveData (needed when fetch to data/*.json fails under file://). */
+        function buildMoveObject(mName) {
+            if (movesDB[mName]) {
+                let moveObj = { ...movesDB[mName], name: mName, maxPp: movesDB[mName].pp };
+                moveObj.effectStr = moveObj.eff || '';
+                return moveObj;
+            }
+            let md = ensureMoveData(mName);
+            return { name: mName, type: md.type, cat: md.cat, pow: md.pow, acc: md.acc, pri: md.pri, pp: md.pp, maxPp: md.pp, eff: md.eff || '', effectStr: md.eff || '', mathEff: md.mathEff || '' };
         }
 
         async function loadGameData() {
@@ -1578,12 +1614,12 @@
             const t1 = base.t1 || '', t2 = base.t2 || '';
 
             const stabDamagingCount = b.m.filter(m => {
-                const mv = movesDB[m];
+                const mv = movesDB[m] || ensureMoveData(m);
                 return mv && (mv.type === t1 || mv.type === t2) && mv.cat !== 'Status' && (mv.pow || 0) > 0;
             }).length;
 
             const candidates = b.m.map((mName, i) => {
-                const mv = movesDB[mName];
+                const mv = movesDB[mName] || ensureMoveData(mName);
                 if (!mv) return { i, score: 0 };
                 const isSTAB     = mv.type === t1 || mv.type === t2;
                 const isDamaging = mv.cat !== 'Status' && (mv.pow || 0) > 0;
@@ -1710,14 +1746,14 @@
                 b.teraType = rollTeraType(base.t1 || 'Normal', base.t2 || '');
                 if (b.teraType !== base.t1 && b.teraType !== (base.t2 || '')) {
                     const hasSTABForTera = b.m.some(mName => {
-                        const mv = movesDB[mName];
+                        const mv = movesDB[mName] || ensureMoveData(mName);
                         return mv && mv.type === b.teraType && mv.cat !== 'Status';
                     });
                     if (!b.m.includes('Tera Blast') && !hasSTABForTera) {
                         ensureMoveData('Tera Blast');
                         let weakIdx = -1, weakBP = Infinity;
                         for (let i = 0; i < b.m.length; i++) {
-                            const mv = movesDB[b.m[i]];
+                            const mv = movesDB[b.m[i]] || ensureMoveData(b.m[i]);
                             if (mv && mv.cat !== 'Status' && mv.type !== base.t1 && mv.type !== (base.t2||'') && (mv.pow||0) < weakBP) {
                                 weakBP = mv.pow||0; weakIdx = i;
                             }
@@ -1729,6 +1765,9 @@
                 b.teraType = null;
             }
 
+            // Final item fallback: ensure item is never null/undefined
+            if (!b.i) b.i = 'Leftovers';
+
             // Weather move injection: if random weather is OFF, ensure weather-dep builds have their setter
             if (!settings.randomWeather) {
                 const wInfo = WEATHER_ABILITIES[b.a];
@@ -1737,6 +1776,12 @@
                         replaceForWeatherSetter(b, wInfo.setter, base);
                     }
                 }
+            }
+
+            // Deduplicate moves (pool data may have duplicate entries)
+            if (b.m) {
+                let _seen = new Set();
+                b.m = b.m.filter(m => m && (_seen.has(m) ? false : (_seen.add(m), true)));
             }
 
             return b;
@@ -1774,7 +1819,7 @@ You pick from a pool of 6 randomly chosen Pokemon (from 84 total). Each Pokemon 
 All Pokemon are <b>Level 50</b> with <b>31 IVs</b> and preset EVs. Natures boost one stat by 10% and lower another by 10%. Abilities and Items follow standard competitive rules.</div>`,
             draft: `<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Building Your Team</h3>
 Click a card to add that Pokemon to your team. You need to pick 3.<br>
-<b>Hover</b> over Natures, Abilities, Items, and Moves to see detailed tooltips.</div>
+<b>Tap</b> Natures, Abilities, Items, and Moves for full descriptions (or hover on desktop). <b>Tap</b> a move name for stats, priority, and effects.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Tier System</h3>
 <span style="color:#ff8c00;font-weight:bold;">T1 (Orange)</span> — Strongest builds, top-tier threats<br>
 <span style="color:#9c27b0;font-weight:bold;">T2 (Purple)</span> — Very strong, solid picks<br>
@@ -1805,7 +1850,7 @@ Build a balanced team! Consider type coverage, speed tiers, and offensive/defens
 <b>Sand</b> — Damages non-Rock/Ground/Steel. Rock types get +SpD<br>
 <b>Hail</b> — Damages non-Ice types</div>
 <div><h3 style="color:var(--accent);margin:0 0 6px;">Stat Stages</h3>
-Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplier, -1 = x0.67. Hover over a Pokemon's name to see current stats and stage changes. Switching out resets all stat changes!</div>`
+Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplier, -1 = x0.67. <b>Tap</b> a Pokémon's name (or the ℹ button) for the full summary with matchups. Weather and terrain pills are tappable. On the move grid, priority and accuracy are shown on each button; tap <b>i</b> for the full move breakdown. Switching out resets your stat changes!</div>`
         };
         let showTipsEnabled = true;
         // Dynamically load @pkmn/dex (Showdown data bundle: 900+ Pokémon, 950+ moves)
@@ -1969,8 +2014,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (stone) build.i = stone;
                 // If no stone is available, degrade below — handled by validateGimmick
             } else if (gimmick === 'ZMOVE') {
-                // If the build already has a Z-Crystal from the z-attack pool, keep it
-                if (Z_TYPE_MAP_VALUES.has(build.i)) return; // already set correctly
+                // If the build already has a standard (non-signature) Z-Crystal, keep it
+                if (Z_TYPE_MAP_VALUES.has(build.i) && !SIGNATURE_Z_REQUIRED_MOVE[build.i]) return;
                 // Check for signature Z
                 let sigZ = SIGNATURE_Z[name];
                 if (sigZ) {
@@ -2340,33 +2385,103 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!document.getElementById('screen-battle').classList.contains('hidden')) text = helpData.battle;
             document.getElementById('help-text').innerHTML = text; document.getElementById('modal-help').classList.remove('hidden');
         }
+        function formatMovePriority(pri) {
+            let p = pri === undefined || pri === null ? 0 : Number(pri);
+            if (p > 0) return '+' + p;
+            return String(p);
+        }
+        window.formatMovePriority = formatMovePriority;
+
+        window._eventPageXY = function(e) {
+            if (e.pageX != null && e.pageY != null) return { x: e.pageX, y: e.pageY };
+            let t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
+            if (t) return { x: t.pageX, y: t.pageY };
+            return { x: (e.clientX || 0) + window.scrollX, y: (e.clientY || 0) + window.scrollY };
+        };
+
         window.showTextTooltip = function(key, e) {
-            let tt = document.getElementById('text-tooltip'); tt.innerText = tooltipDict[key] || "Increases/Decreases specific stats.";
+            let tt = document.getElementById('text-tooltip');
+            tt.innerText = tooltipDict[key] || "Increases/Decreases specific stats.";
+            tt.classList.remove('tooltip-tap-mode');
             window._posTooltip(tt, e); tt.classList.remove('hidden');
         }
-        window.hideTextTooltip = function() { document.getElementById('text-tooltip').classList.add('hidden'); }
+        window.showTextTooltipFromData = function(el, e) {
+            if (e) e.stopPropagation();
+            let key = decodeURIComponent(el.getAttribute('data-tip-key') || '');
+            let tt = document.getElementById('text-tooltip');
+            tt.classList.add('tooltip-tap-mode');
+            tt.innerHTML = '<button type="button" class="tip-close-x" onclick="window.hideTextTooltip()">×</button>';
+            let body = document.createElement('div');
+            body.style.cssText = 'clear:both;font-size:12px;color:#ffd700;padding:6px 4px 2px 0;max-width:min(88vw,300px);';
+            body.textContent = tooltipDict[key] || 'No description loaded.';
+            tt.appendChild(body);
+            window._posTooltip(tt, e); tt.classList.remove('hidden');
+        };
+        window.showTextTooltipHoverFromData = function(el, e) {
+            e.stopPropagation();
+            let key = decodeURIComponent(el.getAttribute('data-tip-key') || '');
+            window.showTextTooltip(key, e);
+        };
+        window.hideTextTooltip = function() {
+            let tt = document.getElementById('text-tooltip');
+            tt.classList.add('hidden');
+            tt.classList.remove('tooltip-tap-mode');
+            tt.innerHTML = '';
+        };
         // Clamp tooltip to viewport so it's always fully visible (works on mobile too)
         window._posTooltip = function(tt, e) {
-            let x = e.pageX + 12, y = e.pageY + 12;
+            let pos = window._eventPageXY(e);
+            let x = pos.x + 12, y = pos.y + 12;
             tt.style.left = x + 'px'; tt.style.top = y + 'px';
             requestAnimationFrame(() => {
                 let r = tt.getBoundingClientRect();
-                if (r.right > window.innerWidth - 4) tt.style.left = Math.max(4, e.pageX - r.width - 8) + 'px';
-                if (r.bottom > window.innerHeight - 4) tt.style.top = Math.max(4, e.pageY - r.height - 8) + 'px';
+                if (r.right > window.innerWidth - 4) tt.style.left = Math.max(4, pos.x - r.width - 8) + 'px';
+                if (r.bottom > window.innerHeight - 4) tt.style.top = Math.max(4, pos.y - r.height - 8) + 'px';
             });
         };
-        // Global mousemove: hide tooltips when cursor leaves any trigger element
+        window.showFieldTooltipFromData = function(e) {
+            e.stopPropagation();
+            let el = e.currentTarget;
+            let html = decodeURIComponent(el.getAttribute('data-tip') || '');
+            let tt = document.getElementById('text-tooltip');
+            tt.classList.add('tooltip-tap-mode');
+            tt.innerHTML = '<button type="button" class="tip-close-x" onclick="window.hideTextTooltip()">×</button><div style="font-size:12px;clear:both;color:#e8e8e8;padding-top:4px;">' + html + '</div>';
+            window._posTooltip(tt, e); tt.classList.remove('hidden');
+        };
+        window.closeStickyMoveTooltip = function() {
+            let tt = document.getElementById('move-tooltip');
+            if (!tt) return;
+            tt.classList.add('hidden');
+            tt.classList.remove('sticky-open');
+        };
+        window.openStickyMoveTooltip = function(htmlInner) {
+            let tt = document.getElementById('move-tooltip');
+            tt.innerHTML = '<button type="button" class="move-tip-close" onclick="window.closeStickyMoveTooltip()">×</button>' + htmlInner;
+            tt.classList.remove('hidden');
+            tt.classList.add('sticky-open');
+        };
+        // Global mousemove: hide tooltips when cursor leaves any trigger element (not sticky move panel)
         document.addEventListener('mousemove', function(ev) {
             if (!ev.target.closest('[onmousemove],[onmouseenter]')) {
                 document.getElementById('text-tooltip').classList.add('hidden');
-                document.getElementById('move-tooltip').classList.add('hidden');
+                let mt = document.getElementById('move-tooltip');
+                if (mt && !mt.classList.contains('sticky-open')) mt.classList.add('hidden');
             }
         });
+        document.addEventListener('touchstart', function(ev) {
+            if (!ev.target.closest('#move-tooltip.sticky-open') && !ev.target.closest('.move-info-hit')) {
+                let mt = document.getElementById('move-tooltip');
+                if (mt && mt.classList.contains('sticky-open')) {
+                    mt.classList.add('hidden');
+                    mt.classList.remove('sticky-open');
+                }
+            }
+        }, { passive: true });
         window.showFieldTooltip = function(html, e) {
             let tt = document.getElementById('text-tooltip');
             tt.innerHTML = html; window._posTooltip(tt, e); tt.classList.remove('hidden');
         };
-        window.showTeraTooltip = function(teraType, origT1, origT2, e) {
+        window.showTeraTooltip = function(teraType, origT1, origT2, e, tapMode) {
             let stab = (origT1 === teraType || origT2 === teraType) ? '2×' : '1.5×';
             let stabNote = stab === '2×' ? 'Tera matches original type → <b>2× STAB</b>!' : '<b>1.5× STAB</b> on Tera-type moves.';
             let tchart = typeChart[teraType] || {};
@@ -2382,14 +2497,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 + (nve.length ? `<div style="font-size:10px;margin-bottom:2px;"><span style="color:#ff9800;">NVE vs:</span> ${fmtTypes(nve)}</div>` : '')
                 + (immune.length ? `<div style="font-size:10px;"><span style="color:#607d8b;">No effect vs:</span> ${fmtTypes(immune)}</div>` : '');
             let tt = document.getElementById('text-tooltip');
-            tt.innerHTML = html; window._posTooltip(tt, e); tt.classList.remove('hidden');
+            if (tapMode) {
+                tt.classList.add('tooltip-tap-mode');
+                tt.innerHTML = '<button type="button" class="tip-close-x" onclick="window.hideTextTooltip()">×</button><div style="clear:both">' + html + '</div>';
+            } else {
+                tt.classList.remove('tooltip-tap-mode');
+                tt.innerHTML = html;
+            }
+            window._posTooltip(tt, e); tt.classList.remove('hidden');
+        };
+        window.showTeraFromEl = function(e) {
+            e.stopPropagation();
+            let el = e.currentTarget;
+            let teraType = decodeURIComponent(el.getAttribute('data-tera') || '');
+            let origT1 = decodeURIComponent(el.getAttribute('data-o1') || '');
+            let origT2 = decodeURIComponent(el.getAttribute('data-o2') || '');
+            window.showTeraTooltip(teraType, origT1, origT2, e, true);
         };
         window.showMoveTooltip = function(moveName, e) {
             let move = movesDB[moveName]; if (!move) return;
             let tt = document.getElementById('text-tooltip');
-            tt.innerHTML = `<div style="margin-bottom:6px;"><strong style="font-size:14px; color:var(--hp-yellow);">${moveName}</strong> <span class="type-badge type-${move.type}" style="font-size:10px;">${move.type}</span></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:3px; font-size:12px;"><div>Cat: <strong class="cat-${move.cat}">${move.cat}</strong></div><div>Power: <strong>${move.pow > 0 ? move.pow : '---'}</strong></div><div>Acc: <strong>${move.acc > 0 ? move.acc + '%' : '---'}</strong></div><div>PP: <strong>${move.pp}</strong></div></div>${move.eff ? `<div style="margin-top:6px; font-size:11px; color:#ccc; font-style:italic; border-top:1px dashed #555; padding-top:4px;">${move.eff}</div>` : ''}`;
+            let pri = formatMovePriority(move.pri);
+            tt.innerHTML = `<div style="margin-bottom:6px;"><strong style="font-size:14px; color:var(--hp-yellow);">${moveName}</strong> <span class="type-badge type-${move.type}" style="font-size:10px;">${move.type}</span></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:3px; font-size:12px;"><div>Cat: <strong class="cat-${move.cat}">${move.cat}</strong></div><div>Power: <strong>${move.pow > 0 ? move.pow : '---'}</strong></div><div>Acc: <strong>${move.acc > 0 ? move.acc + '%' : '---'}</strong></div><div>PP: <strong>${move.pp}</strong></div><div style="grid-column:1/-1;">Priority: <strong>${pri}</strong> <span style="color:#888;font-size:10px;">(same bracket: faster Spe first)</span></div></div>${move.eff ? `<div style="margin-top:6px; font-size:11px; color:#ccc; font-style:italic; border-top:1px dashed #555; padding-top:4px;">${move.eff}</div>` : ''}`;
+            tt.classList.remove('tooltip-tap-mode');
             window._posTooltip(tt, e); tt.classList.remove('hidden');
         }
+        window.showMoveTooltipTap = function(moveName, e) {
+            e.stopPropagation();
+            let move = movesDB[moveName]; if (!move) return;
+            let tt = document.getElementById('text-tooltip');
+            let pri = formatMovePriority(move.pri);
+            tt.classList.add('tooltip-tap-mode');
+            tt.innerHTML = '<button type="button" class="tip-close-x" onclick="window.hideTextTooltip()">×</button><div style="clear:both"><div style="margin-bottom:6px;"><strong style="font-size:14px; color:var(--hp-yellow);">' + moveName + '</strong> <span class="type-badge type-' + move.type + '" style="font-size:10px;">' + move.type + '</span></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:3px; font-size:12px;"><div>Cat: <strong class="cat-' + move.cat + '">' + move.cat + '</strong></div><div>Power: <strong>' + (move.pow > 0 ? move.pow : '---') + '</strong></div><div>Acc: <strong>' + (move.acc > 0 ? move.acc + '%' : '---') + '</strong></div><div>PP: <strong>' + move.pp + '</strong></div><div style="grid-column:1/-1;">Priority: <strong>' + pri + '</strong></div></div>' + (move.eff ? '<div style="margin-top:6px; font-size:11px; color:#ccc; font-style:italic; border-top:1px dashed #555; padding-top:4px;">' + move.eff + '</div>' : '') + '</div>';
+            window._posTooltip(tt, e); tt.classList.remove('hidden');
+        };
         // Tooltip for Max Moves / Z-Moves not in movesDB
         window.showRawMoveTooltip = function(moveName, e) {
             const maxDesc = {
@@ -2533,14 +2674,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Handle Farfetch'd name variants
             let lookupName = monName === "Farfetch'd" ? "Farfetchd" : monName;
             let base = baseStats[monName] || baseStats[lookupName] || {hp:50, atk:50, def:50, spa:50, spd:50, spe:50, t1:"Normal", t2:""};
-            let generatedMoves = build.m.map(mName => {
-                if(movesDB[mName]) {
-                    let moveObj = { ...movesDB[mName], name: mName, maxPp: movesDB[mName].pp };
-                    moveObj.effectStr = moveObj.eff || "";
-                    return moveObj;
-                }
-                return { name: mName, type: "Normal", cat: "Physical", pow: 80, acc: 100, pri: 0, pp: 15, maxPp: 15, eff: "", effectStr: "", mathEff: "" };
-            });
+            let generatedMoves = build.m.map(mName => buildMoveObject(mName));
             let evs = build.evs || { hp:0, atk:0, spa:0, def:0, spd:0, spe:0 };
             let abilityVal = build.a;
             if (!abilityVal || abilityVal === 'None') {
@@ -2592,6 +2726,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.isShiny = build._isShiny !== undefined ? build._isShiny : (Math.random() < 0.01);
             build._isShiny = mon.isShiny; // persist so rebuilds keep same shiny state
             mon._baseName = monName; // always the pre-mega/pre-gmax base species name
+            // Locked type: Arceus and Silvally forms lock their type regardless of held item
+            mon.lockedType = null;
+            if (mon.ability === "Multitype" && monName.includes('-')) {
+                // Arceus-Dark, Arceus-Fire, etc. — extract the type suffix
+                let suffix = monName.split('-').slice(1).join('-');
+                const _arcTypes = new Set(["Fire","Water","Grass","Electric","Ice","Fighting","Poison","Ground","Flying","Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel","Fairy"]);
+                if (_arcTypes.has(suffix)) mon.lockedType = suffix;
+            } else if (mon.ability === "RKS System" && monName.includes('-')) {
+                let suffix = monName.split('-').slice(1).join('-');
+                const _sTypes = new Set(["Fire","Water","Grass","Electric","Ice","Fighting","Poison","Ground","Flying","Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel","Fairy"]);
+                if (_sTypes.has(suffix)) mon.lockedType = suffix;
+            }
+            // Gender assignment (persisted in build._gender for gauntlet resets)
+            {
+                const _genderless = new Set(["Magnemite","Magneton","Magnezone","Voltorb","Electrode","Staryu","Starmie","Ditto","Porygon","Porygon2","Porygon-Z","Shedinja","Lunatone","Solrock","Baltoy","Claydol","Beldum","Metang","Metagross","Bronzor","Bronzong","Rotom","Phione","Manaphy","Darkrai","Arceus","Victini","Klink","Klang","Klinklang","Cryogonal","Sigilyph","Golurk","Golett","Carbink","Minior","Dhelmise","Magearna","Meltan","Melmetal","Cosmog","Cosmoem","Solgaleo","Lunala","Nihilego","Buzzwole","Pheromosa","Xurkitree","Celesteela","Kartana","Guzzlord","Necrozma","Stakataka","Blacephalon","Eternatus","Zacian","Zamazenta","Kubfu","Urshifu","Zarude","Regieleki","Regidrago","Glastrier","Spectrier","Calyrex","Regice","Regirock","Registeel","Regigigas","Latias","Latios","Kyogre","Groudon","Rayquaza","Jirachi","Deoxys","Uxie","Mesprit","Azelf","Dialga","Palkia","Heatran","Giratina","Cresselia","Mew","Celebi","Articuno","Zapdos","Moltres","Mewtwo","Lugia","Ho-Oh","Entei","Raikou","Suicune","Regirock","Regice","Registeel","Jirachi","Deoxys","Cobalion","Terrakion","Virizion","Tornadus","Thundurus","Reshiram","Zekrom","Kyurem","Keldeo","Meloetta","Genesect","Xerneas","Yveltal","Zygarde","Diancie","Hoopa","Volcanion","Type: Null","Silvally","Tapu Koko","Tapu Lele","Tapu Bulu","Tapu Fini","Marshadow","Poipole","Naganadel","Blacephalon","Stakataka","Zeraora","Meltan","Melmetal"]);
+                const _alwaysMale = new Set(["Nidoran-M","Nidorino","Nidoking","Hitmonlee","Hitmonchan","Tyrogue","Hitmontop","Volbeat","Tauros","Mothim"]);
+                const _alwaysFemale = new Set(["Nidoran-F","Nidorina","Nidoqueen","Chansey","Blissey","Happiny","Kangaskhan","Smoochum","Jynx","Miltank","Illumise","Wormadam","Froslass","Vespiquen","Petilil","Lilligant","Gothita","Gothorita","Gothitelle","Flabébé","Floette","Florges","Bounsweet","Steenee","Tsareena","Comfey","Salazzle"]);
+                if (build._gender !== undefined) {
+                    mon.gender = build._gender;
+                } else if (_genderless.has(monName) || monName.startsWith("Arceus") || monName.startsWith("Silvally")) {
+                    mon.gender = null;
+                } else if (_alwaysMale.has(monName)) {
+                    mon.gender = "M";
+                } else if (_alwaysFemale.has(monName)) {
+                    mon.gender = "F";
+                } else {
+                    mon.gender = Math.random() < 0.5 ? "M" : "F";
+                }
+                build._gender = mon.gender; // persist for resets
+            }
             // Gimmick state
             mon.megaEvolved = false;
             mon.dynamaxed = false;
@@ -2649,9 +2813,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (cat === 'Status') return 0;
             if (!bp || bp === 0) return 0;
             if (bp <= 40) return 90; if (bp <= 50) return 100; if (bp <= 60) return 110;
-            if (bp <= 70) return 120; if (bp <= 100) return 130; if (bp <= 140) return 140;
+            if (bp <= 70) return 120; if (bp <= 100) return 130; if (bp <= 130) return 140;
             return 150;
         }
+        // Assumed base power for variable-damage moves (for Max Move tier lookup)
+        const _varPowerMoveBP = {
+            "Return": 102, "Frustration": 102,
+            "Gyro Ball": 150, "Electro Ball": 130,
+            "Flail": 200, "Reversal": 200,
+            "Eruption": 150, "Water Spout": 150,
+            "Grass Knot": 120, "Low Kick": 120,
+            "Heavy Slam": 120, "Heat Crash": 120,
+            "Stored Power": 160, "Power Trip": 160,
+            "Punishment": 140, "Wring Out": 120, "Hard Press": 120,
+            "Natural Gift": 80, "Hidden Power": 60,
+            "Magnitude": 70, "Final Gambit": 1,
+            "Fissure": 1, "Horn Drill": 1, "Guillotine": 1, "Sheer Cold": 1,
+        };
 
         // === GIMMICK ACTIVATION FUNCTIONS ===
         function activateMega(mon, isPlayer) {
@@ -2812,14 +2990,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let requiredMove = SIGNATURE_Z_REQUIRED_MOVE[mon.item];
                 // Signature Z only activates on its specific required move
                 if (requiredMove && move.name !== requiredMove) return move;
-                let zPower = getZMovePower(move.pow || 0);
+                let _zBP = move.pow || _varPowerMoveBP[move.name] || 0;
+                let zPower = getZMovePower(_zBP);
                 let zName = SIGNATURE_Z_MOVE_NAMES[mon.item] || `Z-${move.name}`;
                 return { ...move, pow: zPower, isZMove: true, isSignatureZ: true, name: zName, pri: 0 };
             }
             // Damaging Z-move: move type must match the Z-crystal's type
             let crystalType = getZCrystalType(mon.item);
             if (!crystalType || move.type !== crystalType) return move; // type mismatch — not Z-powered
-            let zPower = getZMovePower(move.pow || 0);
+            let _zBP2 = move.pow || _varPowerMoveBP[move.name] || 0;
+            let zPower = getZMovePower(_zBP2);
             let zName = Z_MOVE_NAMES[move.type] || `Z-${move.name}`;
             return { ...move, pow: zPower, isZMove: true, name: zName, pri: 0 };
         }
@@ -2897,7 +3077,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Convert move to Max Move for Dynamax
         function buildMaxMove(mon, move, force = false) {
             if (!mon.dynamaxed && !force) return move;
-            let maxPow = getMaxMovePower(move.pow || 0, move.cat);
+            let _resolvedBP = move.pow || _varPowerMoveBP[move.name] || 0;
+            let maxPow = getMaxMovePower(_resolvedBP, move.cat);
             if (move.cat === 'Status') {
                 return { ...move, name: `Max Guard`, type: 'Normal', pow: 0, isMaxMove: true, pri: 4, isMaxGuard: true };
             }
@@ -3099,18 +3280,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             currentPool.forEach((draftItem) => {
                 let tempMon = buildPokemon(draftItem.name, draftItem.build); let tier = getMonGrade(draftItem.name, getBST(draftItem.name));
                 let btn = document.createElement('div'); btn.className = `draft-card tier-${tier}`;
-                let movesHtml = tempMon.moves.map(m => `<div onmousemove="event.stopPropagation(); window.showMoveTooltip('${m.name}', event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
+                let movesHtml = tempMon.moves.map(m => `<div data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
                 const gimmickBadge = {MEGA:'<span style="font-size:10px;background:#7b1fa2;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">MEGA</span>',ZMOVE:'<span style="font-size:10px;background:#f9a825;color:#000;border-radius:3px;padding:1px 4px;margin-left:3px;">Z</span>',DYNAMAX:'<span style="font-size:10px;background:#b71c1c;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">DYNA</span>',GMAXDYNAMAX:'<span style="font-size:10px;background:#880e4f;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">G-MAX</span>',STANDARD:''};
                 const gb = (draftItem.build.gimmick && gimmickBadge[draftItem.build.gimmick]) || '';
-                const tera = draftItem.build.teraType ? `<span style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:help;" onmousemove="event.stopPropagation();window.showTeraTooltip('${draftItem.build.teraType}','${tempMon.type1}','${tempMon.type2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${draftItem.build.teraType}</span>` : '';
+                const tera = draftItem.build.teraType ? `<span style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:pointer;touch-action:manipulation;" data-tera="${encodeURIComponent(draftItem.build.teraType)}" data-o1="${encodeURIComponent(tempMon.type1)}" data-o2="${encodeURIComponent(tempMon.type2||'')}" onclick="event.stopPropagation();window.showTeraFromEl(event)" onmousemove="event.stopPropagation();window.showTeraTooltip('${draftItem.build.teraType}','${tempMon.type1}','${tempMon.type2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${draftItem.build.teraType}</span>` : '';
                 btn.innerHTML = `
                     <div class="draft-card-sprite"><img src="${getSprite(tempMon.name, tempMon.isShiny)}" alt="${tempMon.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                     <div class="draft-card-body">
                         <div class="draft-card-header"><span>${tempMon.isShiny ? '&#10024; ' : ''}${draftItem.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}</span></div>
                         <div class="draft-card-details">
-                            <span class="hover-text" onmousemove="window.showTextTooltip('${tempMon.nature}', event)" onmouseleave="window.hideTextTooltip()">${tempMon.nature}</span>
-                            <span class="hover-text" onmousemove="window.showTextTooltip('${tempMon.ability}', event)" onmouseleave="window.hideTextTooltip()">${tempMon.ability}</span>
-                            <span class="hover-text" onmousemove="window.showTextTooltip('${tempMon.item}', event)" onmouseleave="window.hideTextTooltip()">${tempMon.item}</span>
+                            <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.nature}</span>
+                            <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.ability}</span>
+                            <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.item)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.item}</span>
                         </div>
                         <div class="draft-card-stats">${statBarHTML('HP', tempMon.maxHp)}${statBarHTML('Atk', tempMon.stats.atk)}${statBarHTML('Def', tempMon.stats.def)}${statBarHTML('SpA', tempMon.stats.spa)}${statBarHTML('SpD', tempMon.stats.spd)}${statBarHTML('Spe', tempMon.stats.spe)}</div>
                         <div class="draft-card-moves">${movesHtml}</div>
@@ -3127,15 +3308,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let grid = document.getElementById('enemy-pool-grid'); grid.innerHTML = '';
                 state.p2Pool.forEach((draftItem) => {
                     let tempMon = buildPokemon(draftItem.name, draftItem.build); let tier = getMonGrade(draftItem.name, getBST(draftItem.name));
-                    let movesHtml = tempMon.moves.map(m => `<div onmousemove="event.stopPropagation(); window.showMoveTooltip('${m.name}', event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
+                    let movesHtml = tempMon.moves.map(m => `<div data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
                     grid.innerHTML += `<div class="draft-card tier-${tier}">
                         <div class="draft-card-sprite"><img src="${getSprite(tempMon.name, tempMon.isShiny)}" alt="${tempMon.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                         <div class="draft-card-body">
                             <div class="draft-card-header"><span>${tempMon.isShiny ? '&#10024; ' : ''}${draftItem.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}</span></div>
                             <div class="draft-card-details">
-                                <span class="hover-text" onmousemove="window.showTextTooltip('${tempMon.nature}', event)" onmouseleave="window.hideTextTooltip()">${tempMon.nature}</span>
-                                <span class="hover-text" onmousemove="window.showTextTooltip('${tempMon.ability}', event)" onmouseleave="window.hideTextTooltip()">${tempMon.ability}</span>
-                                <span class="hover-text" onmousemove="window.showTextTooltip('${tempMon.item}', event)" onmouseleave="window.hideTextTooltip()">${tempMon.item}</span>
+                                <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.nature}</span>
+                                <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.ability}</span>
+                                <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.item)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.item}</span>
                             </div>
                             <div class="draft-card-stats">${statBarHTML('HP', tempMon.maxHp)}${statBarHTML('Atk', tempMon.stats.atk)}${statBarHTML('Def', tempMon.stats.def)}${statBarHTML('SpA', tempMon.stats.spa)}${statBarHTML('SpD', tempMon.stats.spd)}${statBarHTML('Spe', tempMon.stats.spe)}</div>
                             <div class="draft-card-moves">${movesHtml}</div>
@@ -3284,13 +3465,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let mon = s === 'p' ? state.pActive : state.fActive; let party = s === 'p' ? state.playerParty : state.foeParty;
                 let nameEl = document.getElementById(`${s === 'p'?'player':'foe'}-name`);
                 nameEl.innerHTML = (mon.isShiny ? '&#10024; ' : '') + mon.name;
+                nameEl.title = 'Tap for full summary · hover for quick stats';
                 nameEl.onmousemove = function(e) {
                     let tt = document.getElementById('text-tooltip');
                     tt.innerHTML = getStatTooltipHTML(mon);
+                    tt.classList.remove('tooltip-tap-mode');
                     window._posTooltip(tt, e); tt.classList.remove('hidden');
                 };
                 nameEl.onmouseleave = function() { document.getElementById('text-tooltip').classList.add('hidden'); };
-                nameEl.style.cursor = 'help';
+                nameEl.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.showActiveInfo(s === 'p');
+                };
+                nameEl.style.cursor = 'pointer';
                 let spriteEl = document.getElementById(`${s === 'p'?'player':'foe'}-sprite`); spriteEl.alt = mon.name; spriteEl.dataset.shiny = mon.isShiny ? 'true' : 'false'; spriteEl.src = getSprite(mon.name, mon.isShiny);
                 // Sync Dynamax visual state: apply glow+scale if dynamaxed, clear if not
                 if (mon.dynamaxed) {
@@ -3309,7 +3497,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let hpPct = Math.max(0, (mon.currentHp/mon.maxHp)*100);
                 let hpBar = document.getElementById(`${s === 'p'?'player':'foe'}-hp-bar`);
                 hpBar.style.width = `${hpPct}%`;
-                hpBar.style.background = hpPct > 50 ? 'var(--hp-green)' : (hpPct > 20 ? 'var(--hp-yellow)' : 'var(--hp-red)');
+                hpBar.className = 'hp-fill' + (hpPct <= 10 ? ' hp-critical' : hpPct <= 20 ? ' hp-low' : hpPct <= 50 ? ' hp-mid' : ' hp-high');
                 // count element removed (pokeballs replaced it)
                 let statBox = document.getElementById(`${s === 'p'?'player':'foe'}-status`); 
                 let str = mon.status || ""; 
@@ -3324,7 +3512,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let tt = mon.buildData.teraType;
                     dispType1 = tt; dispType2 = null;
                     let origT1 = mon.originalType1 || mon.type1, origT2 = mon.originalType2 || mon.type2;
-                    teraIndicator = `<span style="font-size:9px;color:#4fc3f7;margin-left:3px;cursor:help;text-decoration:underline dotted;" onmousemove="window.showTeraTooltip('${tt}','${origT1}','${origT2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045;TERA</span>`;
+                    teraIndicator = `<span style="font-size:9px;color:#4fc3f7;margin-left:3px;cursor:pointer;text-decoration:underline dotted;" data-tera="${encodeURIComponent(tt)}" data-o1="${encodeURIComponent(origT1)}" data-o2="${encodeURIComponent(origT2||'')}" onclick="window.showTeraFromEl(event)" onmousemove="window.showTeraTooltip('${tt}','${origT1}','${origT2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045;TERA</span>`;
                 }
                 document.getElementById(`${s === 'p'?'player':'foe'}-types`).innerHTML = getTypeHTML(dispType1, dispType2) + teraIndicator;
                 if(s === 'p') document.getElementById('player-hp-text').innerText = `${mon.currentHp}/${mon.maxHp}`;
@@ -3370,10 +3558,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let fcDiv = document.getElementById('field-conditions');
             if (fcDiv) {
                 let pills = [];
-                const esc = s => s.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
                 const mkPill = (label, turns, color, bg, tipHtml) => {
                     let t = turns > 0 ? ` <b>${turns}</b>` : '';
-                    return `<span class="field-pill" style="background:${bg};color:${color};border:1px solid ${color};" onmousemove="window.showFieldTooltip('${esc(tipHtml)}', event)" onmouseleave="window.hideTextTooltip()">${label}${t}</span>`;
+                    return `<span class="field-pill" role="button" tabindex="0" style="background:${bg};color:${color};border:1px solid ${color};" data-tip="${encodeURIComponent(tipHtml)}" onclick="window.showFieldTooltipFromData(event)" onkeydown="if(event.key==='Enter'||event.key===' ')window.showFieldTooltipFromData(event)">${label}${t}</span>`;
                 };
                 const isPerm = v => v === 'HarshSun' || v === 'HeavyRain' || v === 'StrongWinds';
                 if (w) {
@@ -3675,8 +3862,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let cardClass = 'sum-move-card';
                     let upgradeTag = '';
                     if (upgradeMode === 'z' && canUpgradeZ) {
-                        displayMove = buildZMove(s, rawMove);
-                        if (rawMove.cat !== 'Status') { cardClass += ' upgraded'; upgradeTag = `<span style="color:#f9a825;font-size:10px;margin-left:6px;">Z-POWER</span>`; }
+                        // Use original item (not battle-state item which may be consumed/knocked)
+                        let _zDisplayMon = { ...s, item: s.originalItem || (bd && bd.i) || s.item, zMoveUsed: false };
+                        displayMove = buildZMove(_zDisplayMon, rawMove);
+                        if (displayMove.isZMove) {
+                            cardClass += ' upgraded';
+                            upgradeTag = `<span style="color:#f9a825;font-size:10px;margin-left:6px;">${rawMove.cat === 'Status' ? 'Z-STATUS' : 'Z-POWER'}</span>`;
+                        }
                     } else if (upgradeMode === 'max' && canUpgradeDyna) {
                         displayMove = buildMaxMove(s, rawMove, true);
                         cardClass += ' upgraded-max'; upgradeTag = `<span style="color:#ef5350;font-size:10px;margin-left:6px;">MAX MOVE</span>`;
@@ -3797,18 +3989,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let ppColor = !isDynaDisplay && rawMove.pp <= 0 ? '#f44336' : (rawMove.pp <= Math.floor(rawMove.maxPp / 3) ? '#ff9800' : '#aaa');
                 let catColor = shownMove.cat === 'Physical' ? '#ff6b6b' : shownMove.cat === 'Special' ? '#6b9fff' : '#888';
                 let effLabelShort = eff > 1 ? `<span style="color:var(--hp-green);font-weight:bold;">▲</span>` : eff === 0 ? `<span style="color:#555;">⊘</span>` : eff < 1 ? `<span style="color:var(--hp-red);">▼</span>` : '';
+                let priStr = formatMovePriority(shownMove.pri);
+                let accMob = (shownMove.acc||0) <= 100 ? (shownMove.acc||100)+'%' : '—';
                 if (isMobile) {
-                    // Compact mobile layout: type | name | PP | eff arrow
+                    // Compact mobile: stats + priority visible; tap ⓘ for full effect text
                     btn.innerHTML = `
-                        <div style="display:flex;align-items:center;gap:4px;width:100%;">
-                            <span class="type-badge type-${shownMove.type}" style="font-size:8px;padding:1px 3px;flex-shrink:0;">${shownMove.type.slice(0,4)}</span>
-                            <span style="font-weight:bold;font-size:11px;flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${shownMove.name}${dynaLabel}${zLabel}</span>
-                            <span style="color:${catColor};font-size:8px;font-weight:bold;flex-shrink:0;">${shownMove.cat.toUpperCase().slice(0,4)}</span>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;align-items:center;font-size:9px;width:100%;margin-top:2px;">
-                            <span style="color:#888;">Pow: <strong style="color:#ddd;">${shownMove.pow > 0 ? shownMove.pow : '—'}</strong></span>
-                            <span style="color:${ppColor};">PP: ${ppDisplay}</span>
-                            ${effLabelShort ? `<span>${effLabelShort}</span>` : '<span></span>'}
+                        <div style="display:flex;align-items:flex-start;gap:2px;width:100%;">
+                            <div style="flex:1;min-width:0;">
+                                <div style="display:flex;align-items:center;gap:4px;width:100%;">
+                                    <span class="type-badge type-${shownMove.type}" style="font-size:8px;padding:1px 3px;flex-shrink:0;">${shownMove.type.slice(0,4)}</span>
+                                    <span style="font-weight:bold;font-size:11px;flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${shownMove.name}${dynaLabel}${zLabel}</span>
+                                    <span style="color:${catColor};font-size:8px;font-weight:bold;flex-shrink:0;">${shownMove.cat.toUpperCase().slice(0,4)}</span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:2px;font-size:9px;width:100%;margin-top:3px;">
+                                    <span style="color:#888;">Pow <strong style="color:#ddd;">${shownMove.pow > 0 ? shownMove.pow : '—'}</strong></span>
+                                    <span style="color:#888;">Acc <strong style="color:#ddd;">${accMob}</strong></span>
+                                    <span style="color:#aed581;font-weight:bold;">Pri ${priStr}</span>
+                                    <span style="color:${ppColor};">PP ${ppDisplay}</span>
+                                    ${effLabelShort ? `<span>${effLabelShort}</span>` : '<span></span>'}
+                                </div>
+                            </div>
+                            <span class="move-info-hit" title="Move details" role="button">i</span>
                         </div>`;
                 } else {
                     let effLabel = eff > 1 ? `<span style="color:var(--hp-green);font-size:11px;font-weight:bold;">▲ Super Eff!</span>` : eff === 0 ? `<span style="color:#555;font-size:11px;">⊘ No Effect</span>` : eff < 1 ? `<span style="color:var(--hp-red);font-size:11px;">▼ Resisted</span>` : '';
@@ -3825,17 +4026,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             <span>${effLabel}</span>
                         </div>`;
                 }
+                let effString = shownMove.cat === "Status" ? "Status Move" : (eff > 1 ? "<span style='color:var(--hp-green)'>Super Effective!</span>" : (eff === 0 ? "<span style='color:#888'>No Effect.</span>" : (eff < 1 ? "<span style='color:var(--hp-red)'>Not Very Effective.</span>" : "Normal Damage")));
+                let _ppStr = isDynaDisplay ? '∞' : `${rawMove.pp}/${rawMove.maxPp}`;
+                let _accStr = shownMove.isMaxMove ? '—' : ((shownMove.acc||0) <= 100 ? (shownMove.acc||100)+'%' : '—');
+                let _powStr = shownMove.pow > 0 ? shownMove.pow : '—';
+                let _effDesc = shownMove.effectStr || shownMove.eff || (shownMove.isMaxMove ? 'Max Move: bypasses protect. Cannot miss.' : 'No additional effects.');
+                let moveTipHtml = `<div style="display:flex;justify-content:space-between;margin-bottom:10px;"><strong style="font-size:16px;color:var(--hp-yellow);">${shownMove.name}</strong><span class="type-badge type-${shownMove.type}">${shownMove.type}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;font-size:12px;gap:5px;"><div>Cat: <strong class="cat-${shownMove.cat}">${shownMove.cat}</strong></div><div>Power: <strong>${_powStr}</strong></div><div>Acc: <strong>${_accStr}</strong></div><div>PP: <strong>${_ppStr}</strong></div><div style="grid-column:1/-1;font-size:11px;">Priority: <strong>${priStr}</strong> <span style="color:#888;">(within bracket: faster / Trick Room)</span></div></div><div style="margin-top:8px;font-size:11px;font-style:italic;color:#ccc;">${_effDesc}</div><div style="margin-top:8px;font-size:12px;font-weight:bold;border-top:1px dashed #555;padding-top:5px;">${effString}</div>`;
                 btn.onmouseenter = () => {
                     let tt = document.getElementById('move-tooltip');
-                    let effString = shownMove.cat === "Status" ? "Status Move" : (eff > 1 ? "<span style='color:var(--hp-green)'>Super Effective!</span>" : (eff === 0 ? "<span style='color:#888'>No Effect.</span>" : (eff < 1 ? "<span style='color:var(--hp-red)'>Not Very Effective.</span>" : "Normal Damage")));
-                    let _ppStr = isDynaDisplay ? '∞' : `${rawMove.pp}/${rawMove.maxPp}`;
-                    let _accStr = shownMove.isMaxMove ? '—' : ((shownMove.acc||0) <= 100 ? (shownMove.acc||100)+'%' : '—');
-                    let _powStr = shownMove.pow > 0 ? shownMove.pow : '—';
-                    let _effDesc = shownMove.effectStr || shownMove.eff || (shownMove.isMaxMove ? 'Max Move: bypasses protect. Cannot miss.' : 'No additional effects.');
-                    tt.innerHTML = `<div style="display:flex;justify-content:space-between;margin-bottom:10px;"><strong style="font-size:16px;color:var(--hp-yellow);">${shownMove.name}</strong><span class="type-badge type-${shownMove.type}">${shownMove.type}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;font-size:12px;gap:5px;"><div>Cat: <strong class="cat-${shownMove.cat}">${shownMove.cat}</strong></div><div>Power: <strong>${_powStr}</strong></div><div>Acc: <strong>${_accStr}</strong></div><div>PP: <strong>${_ppStr}</strong></div></div><div style="margin-top:8px;font-size:11px;font-style:italic;color:#ccc;">${_effDesc}</div><div style="margin-top:8px;font-size:12px;font-weight:bold;border-top:1px dashed #555;padding-top:5px;">${effString}</div>`;
+                    tt.innerHTML = moveTipHtml;
+                    tt.classList.remove('sticky-open');
                     tt.classList.remove('hidden');
                 };
-                btn.onmouseleave = () => document.getElementById('move-tooltip').classList.add('hidden');
+                btn.onmouseleave = () => {
+                    let tt = document.getElementById('move-tooltip');
+                    if (!tt.classList.contains('sticky-open')) tt.classList.add('hidden');
+                };
+                if (isMobile) {
+                    let hit = btn.querySelector('.move-info-hit');
+                    if (hit) {
+                        hit.addEventListener('click', (ev) => {
+                            ev.preventDefault();
+                            ev.stopPropagation();
+                            window.openStickyMoveTooltip(moveTipHtml);
+                        });
+                    }
+                }
 
                 let isTaunted = activeMon.volatile.taunt > 0 && rawMove.cat === "Status";
                 let isEncored = activeMon.volatile.encore > 0 && activeMon.volatile.encoreMove !== rawMove.name;
@@ -3855,7 +4071,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!activeMon.dynamaxed && (rawMove.pp <= 0 || isCharging || isRecharging || (activeMon.volatile.choiceLock && activeMon.volatile.choiceLock !== rawMove.name) || isTaunted || isEncored || isFakeOutBlocked || isNoConsec || isDisabledMove || isTormented || isHealBlocked || isThroatChopped || isImprisoned)) btn.disabled = true;
 
                 btn.onclick = () => {
-                    document.getElementById('move-tooltip').classList.add('hidden'); menu.classList.add('hidden');
+                    window.closeStickyMoveTooltip();
+                    document.getElementById('move-tooltip').classList.add('hidden');
+                    menu.classList.add('hidden');
                     if (!activeMon.dynamaxed && (activeMon.item && activeMon.item.includes("Choice") || activeMon.ability === "Gorilla Tactics") && !activeMon.volatile.choiceLock) activeMon.volatile.choiceLock = rawMove.name;
                     if (isP1) state.p1GimmickPending = pending; else state.p2GimmickPending = pending;
                     window.playTurn(move._origIndex, null);
@@ -3863,15 +4081,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 menu.appendChild(btn);
             });
 
-            // Check if ALL moves are disabled (Struggle mechanic)
+            // Check if ALL moves are disabled (Struggle or Recharge)
             let allDisabled = true;
             menu.querySelectorAll('button').forEach(b => { if (!b.disabled) allDisabled = false; });
             if (allDisabled && !activeMon.dynamaxed) {
-                let struggleMove = { name: "Struggle", type: "Normal", cat: "Physical", pow: 50, acc: 100, pri: 0, pp: 1, maxPp: 1, eff: "User takes 25% max HP recoil.", effectStr: "User takes 25% max HP recoil.", mathEff: "" };
                 menu.innerHTML = '';
+                if (activeMon.volatile.recharge) {
+                    // Recharge turn: auto-submit a recharge action (performAction handles it)
+                    let rechargeMove = { name: "_Recharge", type: "Normal", cat: "Status", pow: 0, acc: 100, pri: 0, pp: 1, eff: "" };
+                    let rechBtn = document.createElement('button');
+                    rechBtn.disabled = true;
+                    rechBtn.innerHTML = `<div style="display:flex;justify-content:center;width:100%;color:#aaa;"><span>Recharging...</span></div>`;
+                    menu.appendChild(rechBtn);
+                    document.getElementById('command-menu').classList.add('hidden'); menu.classList.remove('hidden');
+                    // Auto-submit after brief display
+                    setTimeout(() => {
+                        state.p1Action = { moveIndex: null, switchIndex: null, aiMove: rechargeMove };
+                        if (isP1) window.playTurn(null, null);
+                    }, 600);
+                    return;
+                }
+                let struggleMove = { name: "Struggle", type: "Normal", cat: "Physical", pow: 50, acc: 100, pri: 0, pp: 1, maxPp: 1, eff: "User takes 25% max HP recoil.", effectStr: "User takes 25% max HP recoil.", mathEff: "" };
                 let strugBtn = document.createElement('button');
                 strugBtn.innerHTML = `<div style="display:flex;justify-content:space-between;width:100%;"><span>Struggle</span><span style="color:#f44336;font-weight:bold;">!</span></div><div style="font-size:10px;text-align:left;color:#f44336;margin-top:4px;">No usable moves!</div>`;
                 strugBtn.onclick = () => {
+                    window.closeStickyMoveTooltip();
                     document.getElementById('move-tooltip').classList.add('hidden'); menu.classList.add('hidden');
                     state.p1Action = { moveIndex: null, switchIndex: null, aiMove: struggleMove };
                     if (isP1) window.playTurn(null, null);
@@ -3913,6 +4147,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             backBtn.textContent = '← BACK';
             backBtn.style.cssText = 'color:#aaa;grid-column:1/-1;';
             backBtn.onclick = () => {
+                window.closeStickyMoveTooltip();
                 document.getElementById('move-tooltip').classList.add('hidden'); menu.classList.add('hidden');
                 if (isP1) state.p1GimmickPending = null; else state.p2GimmickPending = null;
                 document.getElementById('command-menu').classList.remove('hidden');
@@ -4867,9 +5102,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     logMsg(`${attacker.name}'s ${move.name} is sealed by Imprison!`, 'status'); await sleep(1000); return;
                 }
             }
-            // Assault Vest blocks status moves
-            if (attacker.item === "Assault Vest" && move.cat === "Status" && move.name !== "Substitute") {
-                logMsg(`${attacker.name} can't use ${move.name} due to the Assault Vest!`, 'status'); await sleep(1000); return;
+            // Assault Vest blocks status moves (but not when Dynamaxed — status moves become Max Guard, which is allowed)
+            {
+                let _avGimmickPending = isPlayer ? state.p1GimmickPending : state.p2GimmickPending;
+                if (attacker.item === "Assault Vest" && move.cat === "Status" && move.name !== "Substitute" && !attacker.dynamaxed && _avGimmickPending !== 'DYNAMAX') {
+                    logMsg(`${attacker.name} can't use ${move.name} due to the Assault Vest!`, 'status'); await sleep(1000); return;
+                }
             }
             // Taunt blocks status moves
             if (attacker.volatile.taunt > 0 && move.cat === "Status") {
@@ -4980,6 +5218,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 move = lockedMoveObj;
             }
 
+            // Multi-turn continuation flag: don't deduct PP on turn 2+ of charge/lock moves
+            let _isMultiTurnContinuation = (attacker.volatile.charging === move.name) ||
+                                           (attacker.volatile.lockMove && attacker.volatile.lockTurns > 0);
+
             if (move.name === "Sleep Talk") {
                 if (attacker.status !== "SLP") { logMsg("But it failed!"); await sleep(1000); return; }
                 let validMoves = attacker.moves.filter(m => m.name !== "Sleep Talk" && m.name !== "Focus Punch");
@@ -4988,9 +5230,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${attacker.name} used Sleep Talk and called ${sleepTalkPick.name}!`);
                 move = sleepTalkPick;
             } else {
-                if (move.pp > 0) move.pp--;
-                // Pressure: Opponent moves cost 2 PP
-                if (defender.ability === "Pressure" && move.pp > 0) move.pp--;
+                if (!_isMultiTurnContinuation && move.pp > 0) move.pp--;
+                // Pressure: Opponent moves cost 2 PP (only on initial use)
+                if (!_isMultiTurnContinuation && defender.ability === "Pressure" && move.pp > 0) move.pp--;
 
                 // === GIMMICK ACTIVATION (before move announcement) ===
                 let gimmickPending = isPlayer ? state.p1GimmickPending : state.p2GimmickPending;
@@ -5104,6 +5346,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 attacker.volatile.bideDamage = 0;
                 logMsg(`${attacker.name} is storing energy!`, 'info');
                 await sleep(1000); return;
+            }
+
+            // === INFATUATION CHECK (Attract / Cute Charm) — 50% chance to skip ===
+            if (attacker.volatile.infatuated) {
+                logMsg(`${attacker.name} is in love and can't move!`, 'info');
+                if (Math.random() < 0.5) {
+                    logMsg(`${attacker.name} is immobilized by love!`, 'info');
+                    await sleep(1000); return;
+                }
             }
 
             // === RECHARGE CHECK (Hyper Beam, Giga Impact, etc. — rest one turn after use) ===
@@ -5627,16 +5878,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     else basePower = 200;
                 }
                 if (move.name === "Facade" && attacker.status) basePower *= 2;
-                // Stored Power: 20 + 20 per positive boost
-                if (move.name === "Stored Power") {
+                // Stored Power / Power Trip: 20 + 20 per positive boost stage
+                if (move.name === "Stored Power" || move.name === "Power Trip") {
                     let totalBoosts = Object.values(attacker.stages).filter(s => s > 0).reduce((a,b) => a+b, 0);
                     basePower = 20 + 20 * totalBoosts;
                 }
-                // Gyro Ball: 25 * target_spe / user_spe, max 150
+                // Gyro Ball: floor(25 * target_spe / user_spe), max 150; includes paralysis halving
                 if (move.name === "Gyro Ball") {
-                    let userSpe = Math.max(1, attacker.stats.spe * getStageMult(attacker.stages.spe));
-                    let targetSpe = defender.stats.spe * getStageMult(defender.stages.spe);
+                    let userSpe = Math.max(1, attacker.stats.spe * getStageMult(attacker.stages.spe) * (attacker.status === "PAR" ? 0.5 : 1));
+                    let targetSpe = Math.max(1, defender.stats.spe * getStageMult(defender.stages.spe) * (defender.status === "PAR" ? 0.5 : 1));
                     basePower = Math.min(150, Math.max(1, Math.floor(25 * targetSpe / userSpe)));
+                }
+                // Electro Ball: power based on user_spe / target_spe ratio
+                if (move.name === "Electro Ball") {
+                    let userSpe = Math.max(1, attacker.stats.spe * getStageMult(attacker.stages.spe) * (attacker.status === "PAR" ? 0.5 : 1));
+                    let targetSpe = Math.max(1, defender.stats.spe * getStageMult(defender.stages.spe) * (defender.status === "PAR" ? 0.5 : 1));
+                    let ratio = userSpe / targetSpe;
+                    basePower = ratio >= 4 ? 150 : ratio >= 3 ? 120 : ratio >= 2 ? 80 : ratio >= 1 ? 60 : 40;
                 }
                 // Multi-hit moves: calculate hit count
                 let numHits = 1;
@@ -5649,15 +5907,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Knock Off: x1.5 if target has item
                 if (move.name === "Knock Off" && defender.item && !defender.knockedOff) basePower = Math.floor(basePower * 1.5);
                 // Weather Ball: type changes with weather, power doubles
-                // JUDGMENT (Arceus): type matches held Plate; Normal if no plate
+                // JUDGMENT (Arceus): type matches held Plate; falls back to lockedType (form type) if no plate
                 if (move.name === "Judgment") {
                     const _plateMap = { "Flame Plate":"Fire","Splash Plate":"Water","Meadow Plate":"Grass","Zap Plate":"Electric","Icicle Plate":"Ice","Fist Plate":"Fighting","Toxic Plate":"Poison","Earth Plate":"Ground","Sky Plate":"Flying","Mind Plate":"Psychic","Insect Plate":"Bug","Stone Plate":"Rock","Spooky Plate":"Ghost","Draco Plate":"Dragon","Dread Plate":"Dark","Iron Plate":"Steel","Pixie Plate":"Fairy" };
-                    if (attacker.item && _plateMap[attacker.item]) move = {...move, type: _plateMap[attacker.item]};
+                    let _jType = (attacker.item && _plateMap[attacker.item]) || attacker.lockedType || null;
+                    if (_jType) move = {...move, type: _jType};
                 }
-                // MULTI-ATTACK (Silvally): type matches held Memory
+                // MULTI-ATTACK (Silvally): type matches held Memory; falls back to lockedType
                 if (move.name === "Multi-Attack") {
                     const _memMap = { "Fire Memory":"Fire","Water Memory":"Water","Grass Memory":"Grass","Electric Memory":"Electric","Ice Memory":"Ice","Fighting Memory":"Fighting","Poison Memory":"Poison","Ground Memory":"Ground","Flying Memory":"Flying","Psychic Memory":"Psychic","Bug Memory":"Bug","Rock Memory":"Rock","Ghost Memory":"Ghost","Dragon Memory":"Dragon","Dark Memory":"Dark","Steel Memory":"Steel","Fairy Memory":"Fairy" };
-                    if (attacker.item && _memMap[attacker.item]) move = {...move, type: _memMap[attacker.item]};
+                    let _maType = (attacker.item && _memMap[attacker.item]) || attacker.lockedType || null;
+                    if (_maType) move = {...move, type: _maType};
                 }
                 // TECHNO BLAST (Genesect): type matches held Drive
                 if (move.name === "Techno Blast") {
@@ -5780,6 +6040,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
 
                 let modifier = stab * typeEff * crit * rng * lifeOrb;
+                // Rivalry: +25% same gender, -25% opposite gender, neutral if either genderless
+                if (attacker.ability === "Rivalry" && attacker.gender !== null && defender.gender !== null) {
+                    modifier *= attacker.gender === defender.gender ? 1.25 : 0.75;
+                }
                 if (attacker.status === "BRN" && move.cat === "Physical" && attacker.ability !== "Guts") modifier *= 0.5;
                 if (attacker.ability === "Tinted Lens" && typeEff < 1 && typeEff > 0) modifier *= 2;
                 // Thick Fat: Fire and Ice damage x0.5
@@ -6054,7 +6318,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (defender.ability === "Static" && Math.random() < 0.3) applyStatus(attacker, "PAR");
                     if (defender.ability === "Poison Point" && Math.random() < 0.3) applyStatus(attacker, "PSN");
                     if (defender.ability === "Flame Body" && Math.random() < 0.3) applyStatus(attacker, "BRN");
-                    if (defender.ability === "Cute Charm" && Math.random() < 0.3) { /* Infatuation not fully implemented */ }
+                    if (defender.ability === "Cute Charm" && Math.random() < 0.3 && attacker.gender !== null && defender.gender !== null && attacker.gender !== defender.gender && attacker.ability !== "Oblivious") {
+                        attacker.volatile.infatuated = true;
+                        logMsg(`${attacker.name} fell in love from Cute Charm!`, 'status');
+                    }
                     if (defender.ability === "Effect Spore" && Math.random() < 0.3) {
                         let roll = Math.random();
                         if (roll < 0.33) applyStatus(attacker, "PSN");
@@ -6547,10 +6814,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     mon.stats = { atk: Math.floor((2*base.atk+Math.floor((evs.atk||0)/4)+5)*nMults.atk), def: Math.floor((2*base.def+Math.floor((evs.def||0)/4)+5)*nMults.def), spa: Math.floor((2*base.spa+Math.floor((evs.spa||0)/4)+5)*nMults.spa), spd: Math.floor((2*base.spd+Math.floor((evs.spd||0)/4)+5)*nMults.spd), spe: Math.floor((2*base.spe+Math.floor((evs.spe||0)/4)+5)*nMults.spe) };
                     mon.type1 = base.t1; mon.type2 = base.t2;
                     mon.ability = mon.buildData.a || 'None';
-                    mon.moves = mon.buildData.m.map(mName => {
-                        if(movesDB[mName]) { let mv = {...movesDB[mName], name: mName, maxPp: movesDB[mName].pp}; mv.effectStr = mv.eff||""; return mv; }
-                        return { name: mName, type:"Normal", cat:"Physical", pow:80, acc:100, pri:0, pp:15, maxPp:15, eff:"", effectStr:"", mathEff:"" };
-                    });
+                    mon.moves = mon.buildData.m.map(mName => buildMoveObject(mName));
                 }
             }
         }
@@ -6869,6 +7133,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 party.forEach(m => { m.status = null; m.statusTurns = 0; });
                 logMsg(`A soothing chime cured the team's status!`, 'heal'); return;
             }
+            if (move.name === "Psycho Shift") {
+                if (!attacker.status) { logMsg(`But it failed! ${attacker.name} has no status to transfer.`); return; }
+                if (defender.status) { logMsg(`But it failed! ${defender.name} already has a status condition.`); return; }
+                // Check if target is immune to the status being transferred
+                const _psStatus = attacker.status;
+                const _psImmune = (
+                    (_psStatus === "BRN" && (defender.type1 === "Fire" || defender.type2 === "Fire")) ||
+                    (_psStatus === "PAR" && (defender.type1 === "Electric" || defender.type2 === "Electric")) ||
+                    ((_psStatus === "PSN" || _psStatus === "TOX") && ((defender.type1 === "Poison" || defender.type2 === "Poison") || (defender.type1 === "Steel" || defender.type2 === "Steel"))) ||
+                    (_psStatus === "FRZ" && (defender.type1 === "Ice" || defender.type2 === "Ice"))
+                );
+                if (_psImmune) { logMsg(`But it failed! ${defender.name} is immune to the transferred status.`); return; }
+                // Transfer status
+                defender.status = _psStatus;
+                defender.statusTurns = attacker.statusTurns || 0;
+                attacker.status = null;
+                attacker.statusTurns = 0;
+                logMsg(`${attacker.name} transferred its ${_psStatus} status to ${defender.name}!`, 'status');
+                return;
+            }
             if (move.name === "Baton Pass") {
                 let party = isPlayer ? state.playerParty : state.foeParty;
                 let activeMon = isPlayer ? state.pActive : state.fActive;
@@ -7072,6 +7356,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 defender.volatile.partialTrapSrc = move.name;
                 logMsg(`${defender.name} was trapped by ${move.name}!`, 'status');
                 return;
+            }
+
+            // === Attract / Captivate gender checks ===
+            if (move.name === "Attract") {
+                if (attacker.gender === null || defender.gender === null || attacker.gender === defender.gender) { logMsg(`But it failed!`, 'info'); return; }
+                if (defender.ability === "Oblivious") { logMsg(`${defender.name}'s Oblivious prevents infatuation!`, 'info'); return; }
+                defender.volatile.infatuated = true;
+                logMsg(`${defender.name} fell in love!`, 'status'); return;
+            }
+            if (move.name === "Captivate") {
+                if (attacker.gender === null || defender.gender === null || attacker.gender === defender.gender) { logMsg(`But it failed!`, 'info'); return; }
+                changeStage(defender, 'spa', -2); return;
             }
 
             // === Missing stat boost/drop moves ===
@@ -7487,21 +7783,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.pActive = state.playerParty[0];
             renderReorderParty(); renderSwapGrid();
         };
-        window.showGauntletSwap = function() { state.swapFoeSelected = null; state.swapPlayerSelected = null; document.getElementById('modal-gauntlet-swap').classList.remove('hidden'); renderReorderParty(); renderSwapGrid(); }
+        window.showGauntletSwap = function() {
+            state.swapFoeSelected = null; state.swapPlayerSelected = null;
+            // Rebuild player party to clean state BEFORE rendering swap screen
+            // (resets Transform/Imposter names, restores knocked items, etc.)
+            state.playerParty.forEach((m, i) => {
+                let bn = m._baseName || m.name;
+                state.playerParty[i] = buildPokemon(bn, m.buildData);
+            });
+            state.pActive = state.playerParty[0];
+            document.getElementById('modal-gauntlet-swap').classList.remove('hidden');
+            renderReorderParty(); renderSwapGrid();
+        }
         const _gimBadgeHTML = gimmick => ({'MEGA':'<span style="font-size:10px;background:#7b1fa2;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">MEGA</span>','ZMOVE':'<span style="font-size:10px;background:#f9a825;color:#000;border-radius:3px;padding:1px 4px;margin-left:3px;">Z</span>','DYNAMAX':'<span style="font-size:10px;background:#b71c1c;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">DYNA</span>','GMAXDYNAMAX':'<span style="font-size:10px;background:#880e4f;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">G-MAX</span>'})[gimmick] || '';
         const _teraBadgeHTML = teraType => teraType ? `<span style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">TERA ${teraType}</span>` : '';
         function renderSwapGrid() {
             let fGrid = document.getElementById('swap-foe-grid'); let pGrid = document.getElementById('swap-player-grid'); fGrid.innerHTML = ''; pGrid.innerHTML = '';
             state.foeParty.forEach((mon, i) => {
                 let tier = getMonGrade(mon.name, getBST(mon.name)); let btn = document.createElement('div'); btn.className = `draft-card tier-${tier} ${state.swapFoeSelected === i ? 'selected-swap-foe' : ''}`;
-                let movesHtml = mon.moves.map(m => `<div onmousemove="event.stopPropagation(); window.showMoveTooltip('${m.name}', event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
+                let movesHtml = mon.moves.map(m => `<div data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
                 let _gb = _gimBadgeHTML(mon.buildData && mon.buildData.gimmick);
                 let _tb = _teraBadgeHTML(mon.buildData && mon.buildData.teraType);
                 btn.innerHTML = `
                     <div class="draft-card-sprite"><img src="${getSprite(mon.name, mon.isShiny)}" alt="${mon.name}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${mon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                     <div class="draft-card-body">
                         <div class="draft-card-header"><span>${mon.isShiny ? '&#10024; ' : ''}${mon.name} ${getTypeHTML(mon.type1, mon.type2)}${_gb}${_tb}</span></div>
-                        <div class="draft-card-details"><span class="hover-text" onmousemove="window.showTextTooltip('${mon.nature}', event)" onmouseleave="window.hideTextTooltip()">${mon.nature}</span> <span class="hover-text" onmousemove="window.showTextTooltip('${mon.ability}', event)" onmouseleave="window.hideTextTooltip()">${mon.ability}</span> <span class="hover-text" onmousemove="window.showTextTooltip('${mon.item}', event)" onmouseleave="window.hideTextTooltip()">${mon.item}</span></div>
+                        <div class="draft-card-details"><span class="hover-text" data-tip-key="${encodeURIComponent(mon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${mon.nature}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(mon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${mon.ability}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(mon.item)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${mon.item}</span></div>
                         <div class="draft-card-stats">${statBarHTML('HP', mon.maxHp)}${statBarHTML('Atk', mon.stats.atk)}${statBarHTML('Def', mon.stats.def)}${statBarHTML('SpA', mon.stats.spa)}${statBarHTML('SpD', mon.stats.spd)}${statBarHTML('Spe', mon.stats.spe)}</div>
                         <div class="draft-card-moves">${movesHtml}</div>
                     </div>`;
@@ -7509,14 +7816,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             });
             state.playerParty.forEach((mon, i) => {
                 let tier = getMonGrade(mon.name, getBST(mon.name)); let btn = document.createElement('div'); btn.className = `draft-card tier-${tier} ${state.swapPlayerSelected === i ? 'selected-swap-player' : ''}`;
-                let movesHtml = mon.moves.map(m => `<div onmousemove="event.stopPropagation(); window.showMoveTooltip('${m.name}', event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
+                let movesHtml = mon.moves.map(m => `<div data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
                 let _gb2 = _gimBadgeHTML(mon.buildData && mon.buildData.gimmick);
                 let _tb2 = _teraBadgeHTML(mon.buildData && mon.buildData.teraType);
                 btn.innerHTML = `
                     <div class="draft-card-sprite"><img src="${getSprite(mon.name, mon.isShiny)}" alt="${mon.name}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${mon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                     <div class="draft-card-body">
                         <div class="draft-card-header"><span>${mon.isShiny ? '&#10024; ' : ''}${mon.name} ${getTypeHTML(mon.type1, mon.type2)}${_gb2}${_tb2}</span></div>
-                        <div class="draft-card-details"><span class="hover-text" onmousemove="window.showTextTooltip('${mon.nature}', event)" onmouseleave="window.hideTextTooltip()">${mon.nature}</span> <span class="hover-text" onmousemove="window.showTextTooltip('${mon.ability}', event)" onmouseleave="window.hideTextTooltip()">${mon.ability}</span> <span class="hover-text" onmousemove="window.showTextTooltip('${mon.item}', event)" onmouseleave="window.hideTextTooltip()">${mon.item}</span></div>
+                        <div class="draft-card-details"><span class="hover-text" data-tip-key="${encodeURIComponent(mon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${mon.nature}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(mon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${mon.ability}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(mon.item)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${mon.item}</span></div>
                         <div class="draft-card-stats">${statBarHTML('HP', mon.maxHp)}${statBarHTML('Atk', mon.stats.atk)}${statBarHTML('Def', mon.stats.def)}${statBarHTML('SpA', mon.stats.spa)}${statBarHTML('SpD', mon.stats.spd)}${statBarHTML('Spe', mon.stats.spe)}</div>
                         <div class="draft-card-moves">${movesHtml}</div>
                     </div>`;
