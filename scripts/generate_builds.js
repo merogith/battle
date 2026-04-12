@@ -66,7 +66,24 @@ function encodeMoves(movesRaw) {
 
 function flattenEvs(evs) {
   let e = Array.isArray(evs) ? (evs[0] || {}) : (evs || {});
-  return [e.hp||0, e.atk||0, e.def||0, e.spa||0, e.spd||0, e.spe||0];
+  let arr = [e.hp||0, e.atk||0, e.def||0, e.spa||0, e.spd||0, e.spe||0];
+  // Cap individual EVs at 252
+  arr = arr.map(v => Math.min(252, Math.max(0, v)));
+  // Cap total at 510
+  let total = arr.reduce((a, b) => a + b, 0);
+  if (total > 510) {
+    const scale = 510 / total;
+    arr = arr.map(v => Math.floor(v * scale));
+    // Ensure we don't exceed 510 due to rounding
+    total = arr.reduce((a, b) => a + b, 0);
+    while (total > 510) {
+      // Remove from largest non-zero stat
+      let maxIdx = arr.indexOf(Math.max(...arr));
+      arr[maxIdx]--;
+      total--;
+    }
+  }
+  return arr;
 }
 
 // Tag priority: mega > z-attack > tera > weather > regular

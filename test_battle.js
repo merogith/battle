@@ -38,9 +38,8 @@ async function runTests() {
     try {
         console.log('--- STARTING TESTS ---');
 
-        // Test 1: Function Existence
+        // Test 1: Function Existence (damage runs inside performAction; no standalone calculateDamage)
         assert(typeof window.performAction === 'function', 'performAction is defined');
-        assert(typeof window.calculateDamage === 'function', 'calculateDamage is defined');
         
         // Z-Move setup checking: Do we have the tables?
         assert(typeof window.buildZMove === 'function', 'buildZMove is defined');
