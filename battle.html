@@ -936,8 +936,8 @@
         .weather-sun { background: radial-gradient(ellipse at top, rgba(255,200,0,0.15) 0%, transparent 70%); animation: sunPulse 4s ease-in-out infinite; }
         @keyframes sunPulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
         
-        .weather-rain { background: linear-gradient(180deg, rgba(80,120,200,0.15) 0%, rgba(80,120,200,0.05) 100%); }
-        .weather-rain.active::before { content: ''; position: absolute; top: -100%; left: 0; right: 0; bottom: -100%; background: repeating-linear-gradient(20deg, transparent 0px, transparent 22px, rgba(150,180,255,0.22) 22px, rgba(150,180,255,0.22) 24px); animation: rainDrop 2.6s linear infinite; }
+        .weather-rain { background: linear-gradient(180deg, rgba(80,120,200,0.08) 0%, rgba(80,120,200,0.03) 100%); }
+        .weather-rain.active::before { content: ''; position: absolute; top: -100%; left: 0; right: 0; bottom: -100%; background: repeating-linear-gradient(20deg, transparent 0px, transparent 38px, rgba(150,180,255,0.10) 38px, rgba(150,180,255,0.10) 39px); animation: rainDrop 5s linear infinite; }
         @keyframes rainDrop { 0% { transform: translateY(0); } 100% { transform: translateY(50%); } }
         
         .weather-sand { background: linear-gradient(180deg, rgba(194,178,128,0.2) 0%, rgba(194,178,128,0.1) 100%); }
@@ -1102,9 +1102,23 @@
     <div id="modal-settings" class="modal hidden">
         <div class="modal-content white-outline">
             <h2 style="color:var(--hp-yellow); text-align:center; margin-top:0;">Settings</h2>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;"><span>Battle Animations:</span><button id="toggle-anim-btn" onclick="window.toggleAnimations()" style="color: var(--hp-green);">ON</button></div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;"><span>Fullscreen:</span><button id="toggle-fs-btn" onclick="window.toggleFullscreen()" style="color: var(--hp-green);">ENTER</button></div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;"><span>Help &amp; Controls:</span><button onclick="window.closeModal('modal-settings'); window.showHelp();" style="color: var(--accent);">VIEW</button></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid #444; padding-bottom: 10px;"><span>Battle Animations:</span><button id="toggle-anim-btn" onclick="window.toggleAnimations()" style="color: var(--hp-green);">ON</button></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid #444; padding-bottom: 10px;"><span>Music:</span><button id="toggle-music-btn" onclick="AudioSystem.toggleMusic()" style="color: var(--hp-green);">ON</button></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #333; gap: 10px;">
+                <span style="white-space:nowrap; font-size:12px; color:#aaa;">Music Volume</span>
+                <input type="range" id="music-vol-slider" min="0" max="100" value="45" oninput="AudioSystem.setMusicVolume(this.value/100); document.getElementById('music-vol-pct').innerText=this.value+'%'" style="flex:1; accent-color:var(--hp-green); cursor:pointer;">
+                <span id="music-vol-pct" style="font-size:12px; color:#aaa; min-width:32px; text-align:right;">45%</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid #444; padding-bottom: 10px;"><span>Sound Effects:</span><button id="toggle-sound-btn" onclick="AudioSystem.toggleSound()" style="color: var(--hp-green);">ON</button></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #333; gap: 10px;">
+                <span style="white-space:nowrap; font-size:12px; color:#aaa;">SFX Volume</span>
+                <input type="range" id="sound-vol-slider" min="0" max="100" value="55" oninput="AudioSystem.setSoundVolume(this.value/100); document.getElementById('sound-vol-pct').innerText=this.value+'%'" style="flex:1; accent-color:var(--hp-green); cursor:pointer;">
+                <span id="sound-vol-pct" style="font-size:12px; color:#aaa; min-width:32px; text-align:right;">55%</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid #444; padding-bottom: 10px;"><span>Weather Animation:</span><button id="toggle-weather-anim-btn" onclick="window.toggleWeatherAnimation()" style="color: var(--hp-green);">ON</button></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid #444; padding-bottom: 10px;"><span>Terrain Background:</span><button id="toggle-terrain-bg-btn" onclick="window.toggleTerrainBackground()" style="color: var(--hp-green);">ON</button></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid #444; padding-bottom: 10px;"><span>Fullscreen:</span><button id="toggle-fs-btn" onclick="window.toggleFullscreen()" style="color: var(--hp-green);">ENTER</button></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid #444; padding-bottom: 10px;"><span>Help &amp; Controls:</span><button onclick="window.closeModal('modal-settings'); window.showHelp();" style="color: var(--accent);">VIEW</button></div>
             <button onclick="window.returnToHome()" style="width:100%; margin-bottom: 10px; color:var(--hp-red);">Forfeit &amp; Exit</button>
             <button onclick="window.closeModal('modal-settings')" style="width:100%;">Close</button>
         </div>
@@ -1847,7 +1861,155 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         });
         let dataReady = _dexReady.then(() => loadGameData()).then(() => window.updatePoolCount());
 
-        let settings = { animations: true, draftGrades: [1,2,3,4], mechanics: { mega: false, zmove: false, dynamax: false, tera: false }, classicMode: true, randomWeather: false, partySize: 3 };
+        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, draftGrades: [1,2,3,4], mechanics: { mega: false, zmove: false, dynamax: false, tera: false }, classicMode: true, randomWeather: false, partySize: 3 };
+
+        // ============================================================
+        // AUDIO SYSTEM
+        // Flow: on first interaction → play 1 random theme from start →
+        //       when theme ends → battle music plays forever (random tracks,
+        //       random start positions, one after another).
+        //       Starting a new battle always begins a fresh random battle track.
+        //       Returning to home keeps battle music running.
+        // ============================================================
+        const AudioSystem = (function() {
+            const THEME_TRACKS = [
+                'music/thememusic/Theme1.mp3',
+                'music/thememusic/Theme2.mp3',
+                'music/thememusic/Theme3.mp3',
+                'music/thememusic/Theme4.mp3'
+            ];
+            const BATTLE_TRACKS = [
+                'music/battlemusic/Battle1.mp3',
+                'music/battlemusic/Battle2.mp3',
+                'music/battlemusic/Battle3.mp3',
+                'music/battlemusic/Battle4.mp3'
+            ];
+            const TYPE_SOUNDS = {
+                'Normal':   'music/animationsound/normal.mp3',
+                'Fire':     'music/animationsound/fire.mp3',
+                'Water':    'music/animationsound/water.mp3',
+                'Electric': 'music/animationsound/electric.mp3',
+                'Grass':    'music/animationsound/grass.mp3',
+                'Ice':      'music/animationsound/ice.mp3',
+                'Fighting': 'music/animationsound/fighting.mp3',
+                'Poison':   'music/animationsound/poison.mp3',
+                'Ground':   'music/animationsound/ground.mp3',
+                'Flying':   'music/animationsound/flying.mp3',
+                'Psychic':  'music/animationsound/psychic.mp3',
+                'Bug':      'music/animationsound/bug.mp3',
+                'Rock':     'music/animationsound/rock.mp3',
+                'Ghost':    'music/animationsound/ghost.mp3',
+                'Dragon':   'music/animationsound/dragon.mp3',
+                'Dark':     'music/animationsound/dark.mp3',
+                'Steel':    'music/animationsound/steel.mp3',
+                'Fairy':    'music/animationsound/fairy.mp3',
+                '__status': 'music/animationsound/status.mp3'
+            };
+
+            let bgAudio = null;
+            let _themePlayedOnce = false; // true after the opening theme finishes
+            let _lastBattleIdx = -1;
+            let _musicVol = 0.45;
+            let _soundVol = 0.55;
+
+            function _pickBattle() {
+                if (BATTLE_TRACKS.length === 1) return 0;
+                let idx;
+                do { idx = Math.floor(Math.random() * BATTLE_TRACKS.length); } while (idx === _lastBattleIdx);
+                _lastBattleIdx = idx;
+                return idx;
+            }
+
+            function _playBattleTrack() {
+                if (!settings.musicEnabled) return;
+                if (bgAudio) { bgAudio.pause(); bgAudio.onended = null; bgAudio = null; }
+                const idx = _pickBattle();
+                const audio = new Audio(BATTLE_TRACKS[idx]);
+                audio.volume = _musicVol;
+                // Start from a random position (leave at least 30s to play)
+                audio.addEventListener('loadedmetadata', () => {
+                    const maxStart = Math.max(0, (audio.duration || 120) - 30);
+                    audio.currentTime = Math.random() * maxStart;
+                    audio.play().catch(() => {});
+                }, { once: true });
+                audio.play().catch(() => {}); // triggers load; seek applied on metadata
+                audio.onended = _playBattleTrack;
+                bgAudio = audio;
+            }
+
+            function _playThemeOnce() {
+                if (!settings.musicEnabled) return;
+                if (bgAudio) { bgAudio.pause(); bgAudio.onended = null; bgAudio = null; }
+                const idx = Math.floor(Math.random() * THEME_TRACKS.length);
+                const audio = new Audio(THEME_TRACKS[idx]);
+                audio.volume = _musicVol;
+                audio.play().catch(() => {});
+                audio.onended = () => {
+                    _themePlayedOnce = true;
+                    _playBattleTrack();
+                };
+                bgAudio = audio;
+            }
+
+            return {
+                // Call once on page load; waits for first user gesture then plays theme → battle
+                init() {
+                    let started = false;
+                    const _tryStart = () => {
+                        if (started) return;
+                        started = true;
+                        _playThemeOnce();
+                        document.removeEventListener('click', _tryStart);
+                        document.removeEventListener('keydown', _tryStart);
+                    };
+                    document.addEventListener('click', _tryStart);
+                    document.addEventListener('keydown', _tryStart);
+                },
+
+                // Call when a new battle/gauntlet round begins — starts a fresh battle track
+                startNewBattle() {
+                    if (!_themePlayedOnce) return; // still in opening theme, let it finish naturally
+                    _playBattleTrack();
+                },
+
+                toggleMusic() {
+                    settings.musicEnabled = !settings.musicEnabled;
+                    const btn = document.getElementById('toggle-music-btn');
+                    if (btn) { btn.innerText = settings.musicEnabled ? 'ON' : 'OFF'; btn.style.color = settings.musicEnabled ? 'var(--hp-green)' : 'var(--hp-red)'; }
+                    if (settings.musicEnabled) {
+                        if (!_themePlayedOnce) _playThemeOnce(); else _playBattleTrack();
+                    } else {
+                        if (bgAudio) bgAudio.pause();
+                    }
+                },
+
+                toggleSound() {
+                    settings.soundEnabled = !settings.soundEnabled;
+                    const btn = document.getElementById('toggle-sound-btn');
+                    if (btn) { btn.innerText = settings.soundEnabled ? 'ON' : 'OFF'; btn.style.color = settings.soundEnabled ? 'var(--hp-green)' : 'var(--hp-red)'; }
+                },
+
+                setMusicVolume(val) {
+                    _musicVol = val;
+                    if (bgAudio) bgAudio.volume = _musicVol;
+                },
+
+                setSoundVolume(val) {
+                    _soundVol = val;
+                },
+
+                getMusicVolume() { return _musicVol; },
+                getSoundVolume() { return _soundVol; },
+
+                playMoveSound(move) {
+                    if (!settings.soundEnabled) return;
+                    const src = move.cat === 'Status' ? TYPE_SOUNDS['__status'] : (TYPE_SOUNDS[move.type] || TYPE_SOUNDS['Normal']);
+                    const sfx = new Audio(src);
+                    sfx.volume = _soundVol;
+                    sfx.play().catch(() => {});
+                }
+            };
+        })();
 
         // === GIMMICK DATA ===
         const MEGA_STONE_MAP = {
@@ -2333,6 +2495,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             btn.style.color = settings.animations ? "var(--hp-green)" : "var(--hp-red)";
         }
 
+        window.toggleWeatherAnimation = function() {
+            settings.weatherAnimation = !settings.weatherAnimation;
+            let btn = document.getElementById('toggle-weather-anim-btn');
+            btn.innerText = settings.weatherAnimation ? "ON" : "OFF";
+            btn.style.color = settings.weatherAnimation ? "var(--hp-green)" : "var(--hp-red)";
+            // Apply immediately: hide or show the weather overlay
+            let wOverlay = document.getElementById('weather-overlay');
+            if (wOverlay) wOverlay.style.display = settings.weatherAnimation ? '' : 'none';
+        }
+
+        window.toggleTerrainBackground = function() {
+            settings.terrainBackground = !settings.terrainBackground;
+            let btn = document.getElementById('toggle-terrain-bg-btn');
+            btn.innerText = settings.terrainBackground ? "ON" : "OFF";
+            btn.style.color = settings.terrainBackground ? "var(--hp-green)" : "var(--hp-red)";
+            // Apply immediately: hide or show terrain overlay and reset background
+            let tOverlay = document.getElementById('terrain-overlay');
+            if (tOverlay) tOverlay.style.display = settings.terrainBackground ? '' : 'none';
+            let screenBattle = document.getElementById('screen-battle');
+            if (screenBattle && !settings.terrainBackground) screenBattle.style.backgroundImage = "url('sprites/bg_neutral.png')";
+            else if (screenBattle && settings.terrainBackground) updateUI(); // re-apply terrain bg
+        }
+
         // === FULLSCREEN ===
         function _isFullscreen() {
             return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
@@ -2785,6 +2970,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.querySelectorAll('.screen, .modal').forEach(el => el.classList.add('hidden'));
             document.getElementById('draft-grid').innerHTML = ''; document.getElementById('battle-log').innerHTML = '';
             document.getElementById('screen-menu').classList.remove('hidden');
+            // Music keeps playing — battle music continues on home screen
         }
 
         // Z-Move power table (base power → Z-Move power)
@@ -3422,6 +3608,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         async function startBattle() {
+            AudioSystem.startNewBattle();
             document.getElementById('screen-draft').classList.add('hidden'); document.getElementById('screen-battle').classList.remove('hidden');
             if (state.mode === 'gauntlet') document.getElementById('gauntlet-score').classList.remove('hidden'); else document.getElementById('gauntlet-score').classList.add('hidden');
             state.playerParty = state.p1Draft.map(d => buildPokemon(d.name, d.build)); state.foeParty = state.p2Draft.map(d => buildPokemon(d.name, d.build));
@@ -3585,24 +3772,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             });
             let w = getCurrentWeather();
             let wOverlay = document.getElementById('weather-overlay');
-            if (w === 'Sun' || w === 'HarshSun') { wOverlay.className = 'weather-overlay weather-sun active'; }
-            else if (w === 'Rain' || w === 'HeavyRain') { wOverlay.className = 'weather-overlay weather-rain active'; }
-            else if (w === 'Sandstorm') { wOverlay.className = 'weather-overlay weather-sand active'; }
-            else if (w === 'Hail') { wOverlay.className = 'weather-overlay weather-hail active'; }
-            else { wOverlay.className = 'weather-overlay'; }
+            if (!settings.weatherAnimation) {
+                wOverlay.className = 'weather-overlay';
+                wOverlay.style.display = 'none';
+            } else {
+                wOverlay.style.display = '';
+                if (w === 'Sun' || w === 'HarshSun') { wOverlay.className = 'weather-overlay weather-sun active'; }
+                else if (w === 'Rain' || w === 'HeavyRain') { wOverlay.className = 'weather-overlay weather-rain active'; }
+                else if (w === 'Sandstorm') { wOverlay.className = 'weather-overlay weather-sand active'; }
+                else if (w === 'Hail') { wOverlay.className = 'weather-overlay weather-hail active'; }
+                else { wOverlay.className = 'weather-overlay'; }
+            }
 
             let tOverlay = document.getElementById('terrain-overlay');
             if (tOverlay) {
-                if (state.terrain === 'Grassy') tOverlay.className = 'terrain-overlay terrain-grassy active';
-                else if (state.terrain === 'Electric') tOverlay.className = 'terrain-overlay terrain-electric active';
-                else if (state.terrain === 'Psychic') tOverlay.className = 'terrain-overlay terrain-psychic active';
-                else if (state.terrain === 'Misty') tOverlay.className = 'terrain-overlay terrain-misty active';
-                else tOverlay.className = 'terrain-overlay';
+                if (!settings.terrainBackground) {
+                    tOverlay.className = 'terrain-overlay';
+                    tOverlay.style.display = 'none';
+                } else {
+                    tOverlay.style.display = '';
+                    if (state.terrain === 'Grassy') tOverlay.className = 'terrain-overlay terrain-grassy active';
+                    else if (state.terrain === 'Electric') tOverlay.className = 'terrain-overlay terrain-electric active';
+                    else if (state.terrain === 'Psychic') tOverlay.className = 'terrain-overlay terrain-psychic active';
+                    else if (state.terrain === 'Misty') tOverlay.className = 'terrain-overlay terrain-misty active';
+                    else tOverlay.className = 'terrain-overlay';
+                }
             }
-            
+
             let screenBattle = document.getElementById('screen-battle');
             if (screenBattle) {
-                if (state.terrain === 'Grassy') screenBattle.style.backgroundImage = "url('sprites/bg_grassy.png')";
+                if (!settings.terrainBackground) { screenBattle.style.backgroundImage = "url('sprites/bg_neutral.png')"; }
+                else if (state.terrain === 'Grassy') screenBattle.style.backgroundImage = "url('sprites/bg_grassy.png')";
                 else if (state.terrain === 'Electric') screenBattle.style.backgroundImage = "url('sprites/bg_electric.png')";
                 else if (state.terrain === 'Psychic') screenBattle.style.backgroundImage = "url('sprites/bg_psychic.png')";
                 else if (state.terrain === 'Misty') screenBattle.style.backgroundImage = "url('sprites/bg_misty.png')";
@@ -5457,7 +5657,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     move = { ...move, pow: 60 };
                 }
 
-                if (!move._zStatusAnnounced) logMsg(`${attacker.name} used ${move.name}!`);
+                if (!move._zStatusAnnounced) { logMsg(`${attacker.name} used ${move.name}!`); AudioSystem.playMoveSound(move); }
             }
 
             attacker.volatile.lastMoveUsed = move.name;
@@ -8131,6 +8331,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.fUsedMega = false; state.fUsedZ = false; state.fUsedDyna = false; state.fUsedTera = false;
             state.p1GimmickIntent = null; state.p2GimmickIntent = null;
             logMsg(`Gauntlet Round ${state.score + 1} begins!`, 'info');
+            AudioSystem.startNewBattle();
             // Hide all modals so we cleanly return to battle
             document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
             applySwitchInAbilities(state.pActive, state.fActive); applySwitchInAbilities(state.fActive, state.pActive);
@@ -8138,6 +8339,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.getElementById('move-menu').classList.add('hidden');
             document.getElementById('command-menu').classList.remove('hidden');
         }
+
+        // Initialize audio system — plays opening theme once on first gesture, then battle music forever
+        AudioSystem.init();
     </script>
 </body>
 </html>
