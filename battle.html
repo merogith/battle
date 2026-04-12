@@ -16,8 +16,9 @@
         .border-white { border: 1px solid var(--border-color); }
         img, .sprite { border: none; background: transparent; width: 180px; height: 180px; object-fit: contain; image-rendering: pixelated; transition: transform 0.2s, filter 0.2s, opacity 0.4s; }
         .mini-sprite { width: 64px; height: 64px; border: none; background: transparent; image-rendering: pixelated; margin-right: 8px; flex-shrink: 0; }
-        .icon-btn { position: absolute; top: calc(10px + var(--safe-top)); width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%; background: var(--surface2); color: #fff; font-size: 16px; font-weight: bold; border: 1px solid #555; cursor: pointer; z-index: 500; display: flex; justify-content: center; align-items: center; padding: 0; transition: all 0.2s; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-        .help-btn { right: calc(10px + var(--safe-right)); } .settings-btn { right: calc(54px + var(--safe-right)); } .fullscreen-btn { right: calc(98px + var(--safe-right)); } .icon-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+        .icon-btn { position: absolute; right: calc(10px + var(--safe-right)); width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%; background: var(--surface2); color: #fff; font-size: 16px; font-weight: bold; border: 1px solid #555; cursor: pointer; z-index: 500; display: flex; justify-content: center; align-items: center; padding: 0; transition: all 0.2s; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+        .settings-btn { top: calc(10px + var(--safe-top)); }
+        .icon-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
         @media (max-width: 768px) {
             #gauntlet-swap-columns { flex-direction: column !important; }
         }
@@ -110,11 +111,21 @@
         .tier-badge { font-size: 9px; padding: 2px 6px; color: #000; font-weight: bold; border-radius: 3px; letter-spacing: 0.5px; } .bg-tier-1 { background: #ff8c00; } .bg-tier-2 { background: #9c27b0; color: #fff; } .bg-tier-3 { background: #1565c0; color: #fff; } .bg-tier-4 { background: #2e7d32; color: #fff; }
         .selected-swap-foe { border-color: var(--accent) !important; box-shadow: 0 0 20px rgba(255,213,79,0.3); } .selected-swap-player { border-color: var(--hp-red) !important; box-shadow: 0 0 20px rgba(244,67,54,0.3); }
 
-        /* Battle layout - Game Boy inspired */
-        #screen-battle { position: relative; background: linear-gradient(180deg, #0d1a0d 0%, #0a1a0a 45%, #0a1209 50%, #0d1400 50%, #111800 100%); }
+        /* Battle layout */
+        #screen-battle { position: relative; background: url('sprites/battle_bg_grass.png') center bottom / cover no-repeat, #0a1a0a; }
+        /* Vignette + depth atmosphere overlay — sits below all positioned children (z-index:0) */
+        #screen-battle::before {
+            content: '';
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 50% 100%, rgba(0,0,0,0.0) 40%, rgba(0,0,0,0.55) 100%),
+                radial-gradient(ellipse 100% 40% at 50% 0%, rgba(0,0,0,0.35) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
         .battle-field { position: absolute; top: 0; left: 0; right: 0; bottom: 190px; overflow: hidden; }
-        .foe-platform { position: absolute; bottom: 30px; right: 20px; width: 120px; height: 18px; background: linear-gradient(180deg, #3a5a3a, #1a3a1a); border-radius: 50%; opacity: 0.8; }
-        .player-platform { position: absolute; bottom: 20px; left: 20px; width: 150px; height: 22px; background: linear-gradient(180deg, #3a5a3a, #1a3a1a); border-radius: 50%; opacity: 0.8; }
+        .foe-platform { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 140px; height: 35px; background: rgba(0,0,0,0.4); border-radius: 50%; filter: blur(4px); transform: translateX(-50%); pointer-events: none; z-index: 0; }
+        .player-platform { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 180px; height: 45px; background: rgba(0,0,0,0.45); border-radius: 50%; filter: blur(6px); transform: translateX(-50%); pointer-events: none; z-index: 0; }
         .stat-box { width: 260px; position: relative; background: var(--surface); border-radius: 6px; padding: 10px 12px; border: 1px solid #333; font-size: 14px; }
         /* Stat box inner layout */
         .stat-box-header { display: flex; align-items: center; gap: 5px; }
@@ -137,6 +148,8 @@
         .status-indicator { font-weight: bold; font-size: 12px; margin-top: 4px; text-transform: uppercase; }
         /* Field conditions: top-center strip between the two stat boxes (desktop default) */
         #field-conditions { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; gap: 4px; z-index: 10; justify-content: center; max-width: 400px; }
+        /* Gauntlet score: bottom-left of battle area, never overlaps stat boxes */
+        #gauntlet-score { position: absolute; bottom: 205px; left: 12px; font-weight: bold; color: #fff; z-index: 10; font-size: 12px; background: rgba(0,0,0,0.55); padding: 2px 10px; border-radius: 10px; white-space: nowrap; text-shadow: 0 1px 3px #000; }
         #move-tooltip { position: absolute; bottom: 195px; right: 0; width: 280px; max-width: min(92vw, 320px); z-index: 100; pointer-events: none; background: var(--surface); border: 1px solid #444; border-radius: 4px; padding: 10px; box-shadow: 0 8px 28px rgba(0,0,0,0.65); }
         #move-tooltip.sticky-open { pointer-events: auto; z-index: 450; }
         #move-tooltip .move-tip-close { float: right; margin: -4px -4px 4px 8px; min-width: 36px; min-height: 36px; border-radius: 6px; border: 1px solid #555; background: var(--surface2); color: #fff; font-size: 16px; line-height: 1; cursor: pointer; touch-action: manipulation; }
@@ -232,11 +245,14 @@
             #foe-stages, #player-stages { max-height: none !important; overflow: visible !important; }
             .hp-bar-container { height: 6px !important; margin-top: 2px !important; }
 
-            /* Sprites */
-            #foe-sprite-container { width: 115px !important; height: 124px !important; top: 4px !important; right: 10px !important; }
-            #foe-sprite { width: 110px !important; height: 110px !important; }
-            #player-sprite-container { width: 128px !important; height: 138px !important; bottom: 144px !important; left: 10px !important; }
-            #player-sprite { width: 122px !important; height: 122px !important; }
+            /* Sprites — sized for landscape, diagonal layout, foe enlarged for balance */
+            #foe-sprite-container { width: 195px !important; height: 210px !important; top: 4px !important; right: 48px !important; }
+            #foe-sprite { width: 188px !important; height: 188px !important; }
+            #player-sprite-container { width: 185px !important; height: 200px !important; bottom: 144px !important; left: 155px !important; }
+            #player-sprite { width: 178px !important; height: 178px !important; }
+            /* Settings button only */
+            .icon-btn { width: 34px !important; height: 34px !important; right: calc(8px + var(--safe-right)) !important; font-size: 14px !important; }
+            .settings-btn { top: calc(6px + var(--safe-top)) !important; }
 
             /* Field conditions: center of field */
             #field-conditions {
@@ -321,15 +337,19 @@
                 max-height: 100dvh !important;
             }
 
-            /* ---- FOE STAT BOX: full-width strip at very top ---- */
+            /* ---- FOE STAT BOX: full-width strip at very top, right padding clears single button column ---- */
             #foe-stat-box {
                 top: 0 !important; left: 0 !important; right: 0 !important;
                 width: 100% !important; box-sizing: border-box !important;
                 border-radius: 0 !important;
                 border-left: none !important; border-right: none !important; border-top: none !important;
-                padding: 5px 10px !important; font-size: 12px !important;
+                padding: 5px 56px 5px 10px !important; font-size: 12px !important;
                 z-index: 6 !important;
             }
+
+            /* ---- ICON BUTTON: settings only, sits within foe stat box right padding area ---- */
+            .icon-btn { width: 36px !important; height: 36px !important; right: calc(10px + var(--safe-right)) !important; }
+            .settings-btn { top: calc(10px + var(--safe-top)) !important; }
 
             /* ---- PLAYER STAT BOX: full-width strip just above ui-bottom ---- */
             #player-stat-box {
@@ -355,19 +375,19 @@
             /* Info button: always visible in portrait */
             .mob-info-btn { display: inline-flex !important; }
 
-            /* ---- FOE SPRITE: top-right, below foe stat bar ---- */
+            /* ---- FOE SPRITE: top-right, enlarged to compensate for sprite art density ---- */
             #foe-sprite-container {
-                top: 68px !important; right: 4px !important; left: auto !important;
-                width: 180px !important; height: 192px !important;
+                top: 58px !important; right: 50px !important; left: auto !important;
+                width: 228px !important; height: 244px !important;
             }
-            #foe-sprite { width: 175px !important; height: 175px !important; }
+            #foe-sprite { width: 222px !important; height: 222px !important; }
 
             /* ---- PLAYER SPRITE: bottom-left, above player stat bar ---- */
             #player-sprite-container {
-                bottom: 270px !important; left: 4px !important; right: auto !important;
-                width: 188px !important; height: 202px !important;
+                bottom: 270px !important; left: 12px !important; right: auto !important;
+                width: 200px !important; height: 216px !important;
             }
-            #player-sprite { width: 183px !important; height: 183px !important; }
+            #player-sprite { width: 194px !important; height: 194px !important; }
 
             /* ---- FIELD CONDITIONS: left of battle field, below foe stat bar ---- */
             #field-conditions {
@@ -479,9 +499,9 @@
             .screen { max-width: 100vw !important; width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; }
             .mob-info-btn { display: inline-flex !important; }
             #foe-stat-box { width: 195px !important; top: 6px !important; left: 5px !important; padding: 5px 8px !important; font-size: 11px !important; }
-            #foe-sprite-container { width: 148px !important; height: 156px !important; top: 6px !important; right: 5px !important; }
-            #foe-sprite { width: 142px !important; height: 142px !important; }
-            #player-sprite-container { width: 158px !important; height: 166px !important; bottom: 228px !important; left: 5px !important; }
+            #foe-sprite-container { width: 175px !important; height: 185px !important; top: 6px !important; right: 48px !important; }
+            #foe-sprite { width: 168px !important; height: 168px !important; }
+            #player-sprite-container { width: 158px !important; height: 166px !important; bottom: 228px !important; left: 15px !important; }
             #player-sprite { width: 152px !important; height: 152px !important; }
             #player-stat-box { width: 198px !important; bottom: 228px !important; right: 5px !important; padding: 5px 8px !important; font-size: 11px !important; }
             #player-hp-text { font-size: 10px !important; }
@@ -942,9 +962,7 @@
         <p>This game is best played in<br><strong>landscape mode</strong></p>
     </div>
 
-    <button class="icon-btn help-btn" onclick="window.showHelp()">?</button>
     <button class="icon-btn settings-btn" onclick="window.openSettings()">⚙</button>
-    <button class="icon-btn fullscreen-btn" id="fullscreen-icon-btn" onclick="window.toggleFullscreen()" title="Toggle Fullscreen"></button>
 
     <div id="screen-menu" class="screen active">
         <h1 class="title-text" style="text-align: center; margin-top: 30px; padding: 0 100px;">PURE STATS BATTLE</h1>
@@ -1053,7 +1071,8 @@
             <h2 style="color:var(--hp-yellow); text-align:center; margin-top:0;">Settings</h2>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;"><span>Battle Animations:</span><button id="toggle-anim-btn" onclick="window.toggleAnimations()" style="color: var(--hp-green);">ON</button></div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;"><span>Fullscreen:</span><button id="toggle-fs-btn" onclick="window.toggleFullscreen()" style="color: var(--hp-green);">ENTER</button></div>
-            <button onclick="window.returnToHome()" style="width:100%; margin-bottom: 10px; color:var(--hp-red);">Forfeit & Exit</button>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;"><span>Help &amp; Controls:</span><button onclick="window.closeModal('modal-settings'); window.showHelp();" style="color: var(--accent);">VIEW</button></div>
+            <button onclick="window.returnToHome()" style="width:100%; margin-bottom: 10px; color:var(--hp-red);">Forfeit &amp; Exit</button>
             <button onclick="window.closeModal('modal-settings')" style="width:100%;">Close</button>
         </div>
     </div>
@@ -1127,7 +1146,7 @@
         <div id="weather-indicator" class="hidden" style="display:none;"></div>
         <div id="weather-overlay" class="weather-overlay"></div>
         <div id="field-conditions"></div>
-        <div id="gauntlet-score" class="hidden" style="position:absolute; top:5px; left:10px; font-weight:bold; color:#fff; z-index:10;">Score: 0</div>
+        <div id="gauntlet-score" class="hidden">Score: 0</div>
 
         <!-- FOE: stat box top-left, sprite upper-right (Game Boy layout) -->
         <div class="stat-box white-outline" id="foe-stat-box" style="position:absolute; top:15px; left:15px; z-index:5; width:230px;">
@@ -1144,17 +1163,17 @@
             </div>
         </div>
 
-        <!-- Foe sprite upper-right, shifted left toward center -->
-        <div id="foe-sprite-container" style="position:absolute; top:10px; right:60px; display:inline-block; width:195px; height:210px;">
-            <div class="foe-platform" style="position:absolute; bottom:0; left:50%; transform:translateX(-50%); width:170px; height:18px;"></div>
-            <img id="foe-sprite" class="sprite opponent-sprite" src="" alt="Foe" onerror="handleSpriteError(this)" style="width:195px; height:195px; position:absolute; bottom:12px; left:50%; transform:translateX(-50%); image-rendering:pixelated;">
-            <span id="foe-status-icon" class="status-icon" style="display:none;"></span>
+        <!-- Foe sprite upper-right -->
+        <div id="foe-sprite-container" style="position:absolute; top:20px; right:40px; display:inline-block; width:258px; height:276px;">
+            <div class="foe-platform" style="position:absolute; bottom:12px; left:50%; transform:translateX(-50%); width:160px; height:28px;"></div>
+            <img id="foe-sprite" class="sprite opponent-sprite" src="" alt="Foe" onerror="handleSpriteError(this)" style="width:252px; height:252px; position:absolute; bottom:16px; left:50%; transform:translateX(-50%); image-rendering:pixelated; z-index:2;">
+            <span id="foe-status-icon" class="status-icon" style="display:none; z-index:5;"></span>
         </div>
 
         <!-- PLAYER: sprite bottom-left shifted right toward center, stat box bottom-right -->
-        <div id="player-sprite-container" style="position:absolute; bottom:195px; left:60px; display:inline-block; width:247px; height:270px;">
-            <div class="player-platform" style="position:absolute; bottom:0; left:50%; transform:translateX(-50%); width:210px; height:22px;"></div>
-            <img id="player-sprite" class="sprite player-sprite" src="" alt="Player" onerror="handleSpriteError(this)" style="width:247px; height:247px; position:absolute; bottom:16px; left:50%; transform:translateX(-50%); image-rendering:pixelated;">
+        <div id="player-sprite-container" style="position:absolute; bottom:195px; left:55px; display:inline-block; width:247px; height:270px;">
+            <div class="player-platform" style="position:absolute; bottom:18px; left:50%; transform:translateX(-50%); width:180px; height:35px;"></div>
+            <img id="player-sprite" class="sprite player-sprite" src="" alt="Player" onerror="handleSpriteError(this)" style="width:247px; height:247px; position:absolute; bottom:22px; left:50%; transform:translateX(-50%); image-rendering:pixelated; z-index:2;">
             <span id="player-status-icon" class="status-icon" style="display:none;"></span>
         </div>
 
@@ -2883,13 +2902,48 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             "Dark":"Black Hole Eclipse","Steel":"Corkscrew Crash","Fairy":"Twinkle Tackle"
         };
 
+        const Z_STATUS_EFFECTS = {
+            'Swords Dance':{atk:1},'Nasty Plot':{spa:1},'Shell Smash':{atk:1,spa:1,spe:1},
+            'Belly Drum':{atk:1},'Calm Mind':{spa:1,spd:1},'Dragon Dance':{atk:1,spe:1},
+            'Quiver Dance':{spa:1,spd:1,spe:1},'Geomancy':{spa:1,spd:1,spe:1},
+            'Toxic':{def:1},'Will-O-Wisp':{atk:1},'Thunder Wave':{spd:1},
+            'Stealth Rock':{def:1},'Spikes':{def:1},'Toxic Spikes':{def:1},
+            'Defog':{acc:1},'Roost':{spe:1,def:1,spd:1},'Taunt':{atk:1},
+            'Encore':{spe:1},'Disable':{def:1},'Leech Seed':{def:1,spd:1},
+            'Sleep Powder':{spe:1},'Stun Spore':{spd:1},'Hypnosis':{spe:1},
+            'Sing':{spe:1},'Lovely Kiss':{spe:1},'Dark Void':{spe:1},'Spore':{def:1},
+            'Trick Room':{acc:1},'Rain Dance':{spe:1},'Sunny Day':{spe:1},
+            'Sandstorm':{spe:1},'Hail':{spe:1},'Wish':{spd:1},
+            'Heal Bell':{spe:1,def:1,spd:1},'Aromatherapy':{spe:1,def:1,spd:1},
+            'Rapid Spin':{def:1},'Sticky Web':{spe:1},'Parting Shot':{spe:1},
+            'Bulk Up':{atk:1},'Iron Defense':{def:1},'Amnesia':{spd:1},
+            'Agility':{spe:1},'Rock Polish':{spe:1},'Autotomize':{spe:1},
+            'Hone Claws':{atk:1},'Coil':{atk:1,def:1,acc:1},'Minimize':{spe:1},
+            'Double Team':{spe:1},'Trick':{spe:1},'Switcheroo':{spe:1},
+        };
+
+        function getZStatusText(moveName) {
+            let boosts = Z_STATUS_EFFECTS[moveName];
+            if (!boosts) return "Raises highest stat.";
+            let names = {atk:'Atk', def:'Def', spa:'SpA', spd:'SpD', spe:'Spe', acc:'Acc', eva:'Eva'};
+            let bArr = Object.entries(boosts).map(([k,v]) => {
+                if(k==='crit') return 'Crit Rate';
+                if(names[k]) return `+${v} ${names[k]}`;
+                return `+${v} ${k}`;
+            });
+            return `Raises ${bArr.join(', ')}.`;
+        }
+        
+        const SELF_TARGETING_STATUS = new Set(["Swords Dance", "Nasty Plot", "Agility", "Rock Polish", "Calm Mind", "Cosmic Power", "Dragon Dance", "Quiver Dance", "Shell Smash", "Coil", "Belly Drum", "Amnesia", "Barrier", "Iron Defense", "Acid Armor", "Cotton Guard", "Minimize", "Double Team", "Defense Curl", "Withdraw", "Growth", "Sharpen", "Meditate", "Howl", "Bulk Up", "Work Up", "Shift Gear", "Clangorous Soul", "Geomancy", "Stockpile", "Rain Dance", "Sunny Day", "Sandstorm", "Hail", "Snowscape", "Chilly Reception", "Tailwind", "Trick Room", "Reflect", "Light Screen", "Aurora Veil", "Spikes", "Stealth Rock", "Toxic Spikes", "Aromatherapy", "Heal Bell", "Wish", "Recover", "Roost", "Synthesis", "Morning Sun", "Moonlight", "Shore Up", "Slack Off", "Soft-Boiled", "Milk Drink", "Heal Order", "Rest", "Aqua Ring", "Ingrain", "Substitute", "Focus Energy", "Baton Pass", "Protect", "Detect", "Endure", "Spiky Shield", "King's Shield", "Baneful Bunker", "Max Guard", "Defog", "Haze", "Perish Song", "Destiny Bond", "Refresh", "Tail Glow", "Swallow", "Safeguard", "Magic Coat"]);
+
+
         // Convert normal move to Z-Move (returns modified move object, does NOT mutate original)
         // VGC rules: status moves → Z-status (any crystal); damaging → only if type matches crystal
         function buildZMove(mon, move) {
             if (mon.zMoveUsed) return move;
             // Status Z-move: any Z-crystal can power up any status move
             if (move.cat === 'Status') {
-                return { ...move, isZMove: true, zStatusEffect: true, name: `Z-${move.name}` };
+                return { ...move, isZMove: true, zStatusEffect: true, name: `Z-${move.name}`, effectStr: `[Z-Power] ${getZStatusText(move.name)}\n${move.effectStr || move.eff || ''}` };
             }
             // Check for signature Z-crystal
             let isSigCrystal = SIGNATURE_Z_MOVE_NAMES[mon.item] !== undefined;
@@ -3329,7 +3383,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             logMsg(`Battle started!`, 'info');
             // Clear leftover Dynamax/animation styles from previous battle
-            ['player-sprite','foe-sprite'].forEach(id => { let el = document.getElementById(id); if (el) { el.style.filter = ''; el.style.transform = ''; } });
+            ['player-sprite','foe-sprite'].forEach(id => { let el = document.getElementById(id); if (el) { el.style.filter = ''; el.style.transform = 'translateX(-50%)'; } });
             updateUI();
 
             // Pokeball throw animations
@@ -3938,6 +3992,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             <span style="color:#888;">Pow: <strong style="color:#ddd;">${shownMove.pow > 0 ? shownMove.pow : '—'}</strong></span>
                             <span style="color:#888;">Acc: <strong style="color:#ddd;">${(shownMove.acc||0) <= 100 ? shownMove.acc+'%' : '—'}</strong></span>
                             <span style="color:${ppColor};">PP: ${ppDisplay}</span>
+                            <span style="color:#aed581;font-weight:bold;">Pri: ${priStr}</span>
                             <span>${effLabel}</span>
                         </div>`;
                 }
@@ -5166,26 +5221,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (zBuild.zStatusEffect) {
                         logMsg(`${attacker.name} used Z-${move.name}! A surge of power filled the battlefield!`, 'info');
                         // Z-status boost: per-move official table, fallback +1 highest stat
-                        let zBoosts = {
-                            'Swords Dance':{atk:1},'Nasty Plot':{spa:1},'Shell Smash':{atk:1,spa:1,spe:1},
-                            'Belly Drum':{atk:1},'Calm Mind':{spa:1,spd:1},'Dragon Dance':{atk:1,spe:1},
-                            'Quiver Dance':{spa:1,spd:1,spe:1},'Geomancy':{spa:1,spd:1,spe:1},
-                            'Toxic':{def:1},'Will-O-Wisp':{atk:1},'Thunder Wave':{spd:1},
-                            'Stealth Rock':{def:1},'Spikes':{def:1},'Toxic Spikes':{def:1},
-                            'Defog':{acc:1},'Roost':{spe:1,def:1,spd:1},'Taunt':{atk:1},
-                            'Encore':{spe:1},'Disable':{def:1},'Leech Seed':{def:1,spd:1},
-                            'Sleep Powder':{spe:1},'Stun Spore':{spd:1},'Hypnosis':{spe:1},
-                            'Sing':{spe:1},'Lovely Kiss':{spe:1},'Dark Void':{spe:1},'Spore':{def:1},
-                            'Trick Room':{acc:1},'Rain Dance':{spe:1},'Sunny Day':{spe:1},
-                            'Sandstorm':{spe:1},'Hail':{spe:1},'Wish':{spd:1},
-                            'Heal Bell':{spe:1,def:1,spd:1},'Aromatherapy':{spe:1,def:1,spd:1},
-                            'Rapid Spin':{def:1},'Sticky Web':{spe:1},'Parting Shot':{spe:1},
-                            'Bulk Up':{atk:1},'Iron Defense':{def:1},'Amnesia':{spd:1},
-                            'Agility':{spe:1},'Rock Polish':{spe:1},'Autotomize':{spe:1},
-                            'Hone Claws':{atk:1},'Coil':{atk:1,def:1,acc:1},'Minimize':{spe:1},
-                            'Double Team':{spe:1},'Trick':{spe:1},'Switcheroo':{spe:1},
-                        };
-                        let boostMap = zBoosts[move.name];
+                        let boostMap = Z_STATUS_EFFECTS[move.name];
                         if (boostMap && Object.keys(boostMap).length > 0) {
                             for (let [stat, amt] of Object.entries(boostMap)) {
                                 if (stat === 'crit') { logMsg(`${attacker.name} is getting pumped! (Critical hit rate up!)`, 'info'); }
@@ -5341,7 +5377,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (Math.random() < successRate) { attacker.volatile.protect = true; attacker.volatile.kingShield = true; attacker.volatile.protectCount++; logMsg(`${attacker.name} took a defensive stance!`); }
                 else { logMsg(`But it failed!`); } await sleep(1000); return;
             }
-            if (defender.volatile.protect && move.cat !== "Status") {
+            if (defender.volatile.protect && (move.cat !== "Status" || !SELF_TARGETING_STATUS.has(move.name))) {
                 if (move.isZMove) {
                     logMsg(`${defender.name} couldn't fully protect itself from the Z-Move!`, 'info');
                     move = { ...move, protectBreak: true };
