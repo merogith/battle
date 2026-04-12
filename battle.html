@@ -937,11 +937,11 @@
         @keyframes sunPulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
         
         .weather-rain { background: linear-gradient(180deg, rgba(80,120,200,0.15) 0%, rgba(80,120,200,0.05) 100%); }
-        .weather-rain.active::before { content: ''; position: absolute; top: -100%; left: 0; right: 0; bottom: -100%; background: repeating-linear-gradient(20deg, transparent 0px, transparent 15px, rgba(150,180,255,0.4) 15px, rgba(150,180,255,0.4) 17px); animation: rainDrop 0.6s linear infinite; }
+        .weather-rain.active::before { content: ''; position: absolute; top: -100%; left: 0; right: 0; bottom: -100%; background: repeating-linear-gradient(20deg, transparent 0px, transparent 22px, rgba(150,180,255,0.22) 22px, rgba(150,180,255,0.22) 24px); animation: rainDrop 2.6s linear infinite; }
         @keyframes rainDrop { 0% { transform: translateY(0); } 100% { transform: translateY(50%); } }
         
         .weather-sand { background: linear-gradient(180deg, rgba(194,178,128,0.2) 0%, rgba(194,178,128,0.1) 100%); }
-        .weather-sand.active::before { content: ''; position: absolute; top: 0; left: -100%; width: 300%; height: 100%; background: repeating-linear-gradient(90deg, transparent 0, transparent 40px, rgba(200,180,130,0.25) 40px, rgba(200,180,130,0.25) 80px); animation: sandBlow 1.5s linear infinite; }
+        .weather-sand.active::before { content: ''; position: absolute; top: 0; left: -100%; width: 300%; height: 100%; background: repeating-linear-gradient(90deg, transparent 0, transparent 56px, rgba(200,180,130,0.18) 56px, rgba(200,180,130,0.18) 112px); animation: sandBlow 5s linear infinite; }
         @keyframes sandBlow { 0% { transform: translateX(0) skewX(-15deg); } 100% { transform: translateX(-33%) skewX(-15deg); } }
         
         .weather-hail { background: linear-gradient(180deg, rgba(200,220,255,0.15) 0%, rgba(200,220,255,0.05) 100%); }
@@ -1314,6 +1314,15 @@
             return false;
         }
 
+        function normalizeMoveCategory(cat) {
+            if (!cat || typeof cat !== 'string') return 'Physical';
+            const s = cat.toLowerCase();
+            if (s === 'physical') return 'Physical';
+            if (s === 'special') return 'Special';
+            if (s === 'status') return 'Status';
+            return 'Physical';
+        }
+
         function ensureMoveData(moveName) {
             if (BANNED_MOVES.has(moveName) && !isMoveAllowed(moveName)) {
                 if (!movesDB['Tackle']) movesDB['Tackle'] = { type: 'Normal', cat: 'Physical', pow: 40, acc: 100, pri: 0, pp: 35, eff: '', prob: 0, mathEff: '' };
@@ -1324,12 +1333,27 @@
             if (D) {
                 try {
                     let m = D.moves.get(moveName);
-                    if (m && m.exists !== false && m.id) {
-                        movesDB[m.name] = { type: m.type || 'Normal', cat: m.category || 'Physical', pow: m.basePower || 0, acc: typeof m.accuracy === 'number' ? m.accuracy : 100, pri: m.priority || 0, pp: m.pp || 10, eff: m.shortDesc || '', prob: (m.secondary && m.secondary.chance) || 0, mathEff: '' };
+                    if (!m || m.exists === false) {
+                        const id = moveName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        if (id) m = D.moves.get(id);
+                    }
+                    if (m && m.exists !== false) {
+                        let cat = normalizeMoveCategory(m.category);
+                        movesDB[m.name] = { type: m.type || 'Normal', cat, pow: m.basePower ?? 0, acc: typeof m.accuracy === 'number' ? m.accuracy : 100, pri: m.priority || 0, pp: m.pp || 10, eff: m.shortDesc || '', prob: (m.secondary && m.secondary.chance) || 0, mathEff: '' };
                         if (m.name !== moveName) movesDB[moveName] = movesDB[m.name];
                         return movesDB[moveName];
                     }
                 } catch(e) {}
+            }
+            // When local JSON + @pkmn/dex are both unavailable (e.g. offline tests), never mis-classify these as 80 BP Physical.
+            const WELL_KNOWN_MOVE_FALLBACK = {
+                Transform: { type: 'Normal', cat: 'Status', pow: 0, acc: 100, pri: 0, pp: 10, eff: '', prob: 0, mathEff: '' },
+                Sketch:    { type: 'Normal', cat: 'Status', pow: 0, acc: 100, pri: 0, pp: 1,  eff: '', prob: 0, mathEff: '' },
+            };
+            if (WELL_KNOWN_MOVE_FALLBACK[moveName]) {
+                let fb = { ...WELL_KNOWN_MOVE_FALLBACK[moveName] };
+                movesDB[moveName] = fb;
+                return fb;
             }
             let fb = { type: 'Normal', cat: 'Physical', pow: 80, acc: 100, pri: 0, pp: 15, eff: '', prob: 0, mathEff: '' };
             movesDB[moveName] = fb; return fb;
@@ -1365,7 +1389,7 @@
                 const movesJSONOrig = await fetch('data/moves.json').then(r => r.json()); const movesJSON = movesJSONOrig['9'] || {};
                 for (let k in movesJSON) {
                     let m = movesJSON[k];
-                    movesDB[m.name] = { type: m.type, cat: m.category, pow: m.basePower || 0, acc: m.accuracy===true?100:m.accuracy || 0, pri: m.priority || 0, pp: m.pp || 5, eff: m.shortDesc, desc: m.desc };
+                    movesDB[m.name] = { type: m.type, cat: normalizeMoveCategory(m.category), pow: m.basePower || 0, acc: m.accuracy===true?100:m.accuracy || 0, pri: m.priority || 0, pp: m.pp || 5, eff: m.shortDesc, desc: m.desc };
                 }
 
                 // Load Natures
@@ -3413,7 +3437,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Classic mode: one gimmick use per team
             state.usedMega = false; state.usedZ = false; state.usedDyna = false; state.usedTera = false;
             state.fUsedMega = false; state.fUsedZ = false; state.fUsedDyna = false; state.fUsedTera = false;
-            state.p1GimmickPending = null; state.p2GimmickPending = null;
+            state.p1GimmickIntent = null; state.p2GimmickIntent = null;
 
             // Start with random weather if setting is on
             if (settings.randomWeather) {
@@ -3985,12 +4009,58 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        /** Gimmick intent { kind, slot }: `slot` indexes playerParty / foeParty; applies only while that slot is still the active Pokémon. */
+        function clearGimmickIntent(isP1Side) {
+            if (isP1Side) state.p1GimmickIntent = null; else state.p2GimmickIntent = null;
+        }
+        function clearAllGimmickIntent() { state.p1GimmickIntent = null; state.p2GimmickIntent = null; }
+
+        function resolveGimmickIntentForActive(isP1Side) {
+            let intent = isP1Side ? state.p1GimmickIntent : state.p2GimmickIntent;
+            if (!intent || typeof intent.slot !== 'number' || !intent.kind) return null;
+            let party = isP1Side ? state.playerParty : state.foeParty;
+            let active = isP1Side ? state.pActive : state.fActive;
+            if (!active || !party || intent.slot < 0 || intent.slot >= party.length) {
+                clearGimmickIntent(isP1Side);
+                return null;
+            }
+            if (party[intent.slot] !== active) {
+                clearGimmickIntent(isP1Side);
+                return null;
+            }
+            return intent.kind;
+        }
+
+        function setGimmickIntentToggle(isP1Side, key) {
+            let party = isP1Side ? state.playerParty : state.foeParty;
+            let active = isP1Side ? state.pActive : state.fActive;
+            let cur = isP1Side ? state.p1GimmickIntent : state.p2GimmickIntent;
+            if (cur && cur.kind === key) {
+                clearGimmickIntent(isP1Side);
+                return;
+            }
+            let slot = party.indexOf(active);
+            if (slot < 0) return;
+            let next = { kind: key, slot };
+            if (isP1Side) state.p1GimmickIntent = next; else state.p2GimmickIntent = next;
+        }
+
+        function syncGimmickIntentSlotOnMoveCommit(isP1Side) {
+            let party = isP1Side ? state.playerParty : state.foeParty;
+            let active = isP1Side ? state.pActive : state.fActive;
+            let cur = isP1Side ? state.p1GimmickIntent : state.p2GimmickIntent;
+            if (!cur) return;
+            let slot = party.indexOf(active);
+            if (slot < 0) { clearGimmickIntent(isP1Side); return; }
+            cur.slot = slot;
+        }
+
         window.showMoves = function() {
             if (state.isLocked) return;
             let isP1 = (state.mode !== 'pvp') || (state.currentPlayer === 1);
             let activeMon = isP1 ? state.pActive : state.fActive;
             let targetMon = isP1 ? state.fActive : state.pActive;
-            let pending = isP1 ? state.p1GimmickPending : state.p2GimmickPending;
+            let pending = resolveGimmickIntentForActive(isP1);
 
             let menu = document.getElementById('move-menu'); menu.innerHTML = '';
 
@@ -4107,7 +4177,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     document.getElementById('move-tooltip').classList.add('hidden');
                     menu.classList.add('hidden');
                     if (!activeMon.dynamaxed && (activeMon.item && activeMon.item.includes("Choice") || activeMon.ability === "Gorilla Tactics") && !activeMon.volatile.choiceLock) activeMon.volatile.choiceLock = rawMove.name;
-                    if (isP1) state.p1GimmickPending = pending; else state.p2GimmickPending = pending;
+                    syncGimmickIntentSlotOnMoveCommit(isP1);
                     window.playTurn(move._origIndex, null);
                 };
                 menu.appendChild(btn);
@@ -4162,8 +4232,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     gb.style.cssText = `background:${pending===key?'#fff':bg};color:${pending===key?bg:fg};border:2px solid ${bg};border-radius:4px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;transition:all 0.15s;`;
                     gb.title = pending === key ? `Cancel ${key}` : `Toggle ${key}`;
                     gb.onclick = () => {
-                        if (isP1) state.p1GimmickPending = (state.p1GimmickPending === key ? null : key);
-                        else state.p2GimmickPending = (state.p2GimmickPending === key ? null : key);
+                        setGimmickIntentToggle(isP1, key);
                         window.showMoves();
                     };
                     return gb;
@@ -4181,7 +4250,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             backBtn.onclick = () => {
                 window.closeStickyMoveTooltip();
                 document.getElementById('move-tooltip').classList.add('hidden'); menu.classList.add('hidden');
-                if (isP1) state.p1GimmickPending = null; else state.p2GimmickPending = null;
+                clearGimmickIntent(isP1);
                 document.getElementById('command-menu').classList.remove('hidden');
             };
             menu.appendChild(backBtn);
@@ -4635,6 +4704,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let playerName = isP1 ? "Player 1" : "Player 2";
 
             if (isForced) {
+                // Forced replacement: any gimmick queued for the fainted battler must not apply here.
+                clearGimmickIntent(isP1);
                 state[activeTarget] = state[partyTarget][index];
                 state[activeTarget].turnCount = 0;
                 state[activeTarget].fakeOutOk = true;
@@ -4808,24 +4879,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function rollRandomWeather() {
-            const weathers = ['Sun','Rain','Sandstorm','Hail'];
+            const weathers = ['Sun','Rain','Sandstorm','Hail', null];
             const msgs = {Sun:'The sunlight turned harsh!', Rain:'It started to rain!', Sandstorm:'A sandstorm brewed up!', Hail:'It started to hail!'};
-            // Pick a different weather than current
-            let choices = weathers.filter(w => w !== state.weather);
+            const prev = state.weather;
+            let choices = weathers.filter(w => state.weather === null || w !== state.weather);
             let pick = choices[Math.floor(Math.random() * choices.length)];
             state.weather = pick;
-            state.weatherTurns = 3;
-            logMsg(msgs[pick], 'info');
+            if (pick === null) {
+                state.weatherTurns = 0;
+                if (prev !== null) logMsg('The weather cleared.', 'info');
+            } else {
+                state.weatherTurns = 3;
+                logMsg(msgs[pick], 'info');
+            }
         }
 
         function rollRandomTerrain() {
-            const terrains = ['Grassy','Electric','Psychic','Misty'];
+            const terrains = ['Grassy','Electric','Psychic','Misty', null];
             const msgs = {Grassy:'Grass grew to cover the battlefield!', Electric:'An electric current ran across the battlefield!', Psychic:'The battlefield got weird!', Misty:'Mist swirled around the battlefield!'};
-            let choices = terrains.filter(t => t !== state.terrain);
+            const prev = state.terrain;
+            let choices = terrains.filter(t => state.terrain === null || t !== state.terrain);
             let pick = choices[Math.floor(Math.random() * choices.length)];
             state.terrain = pick;
-            state.terrainTurns = 3;
-            logMsg(msgs[pick], 'info');
+            if (pick === null) {
+                state.terrainTurns = 0;
+                if (prev !== null) logMsg(`The ${prev} Terrain faded!`, 'info');
+            } else {
+                state.terrainTurns = 3;
+                logMsg(msgs[pick], 'info');
+            }
         }
 
         function tickWeather() {
@@ -4892,8 +4974,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     state.p2Action = { moveIndex: null, switchIndex: switchIdx };
                 } else {
                     let fMove = window.getBestMove(state.fActive, state.pActive);
-                    // AI gimmick decision
-                    state.p2GimmickPending = aiChooseGimmick(state.fActive, state.pActive);
+                    // AI gimmick decision (bound to foe active party slot)
+                    let _aiG = aiChooseGimmick(state.fActive, state.pActive);
+                    let _aiSlot = state.foeParty.indexOf(state.fActive);
+                    state.p2GimmickIntent = (_aiG && _aiSlot >= 0) ? { kind: _aiG, slot: _aiSlot } : null;
                     state.p2Action = { moveIndex: state.fActive.moves.indexOf(fMove), switchIndex: null, aiMove: fMove };
                 }
             }
@@ -4924,6 +5008,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 let pMove = state.p1Action.switchIndex !== null ? null : (state.p1Action.moveIndex !== null ? state.pActive.moves[state.p1Action.moveIndex] : (state.p1Action.aiMove || null));
                 let fMove = state.p2Action.switchIndex !== null ? null : (state.p2Action.moveIndex !== null ? (state.mode === 'pvp' ? state.fActive.moves[state.p2Action.moveIndex] : state.p2Action.aiMove) : (state.p2Action.aiMove || null));
+
+                // Gimmick toggles (Mega/Tera/Z/Dynamax) are per-command for the active Pokémon that queued them.
+                // Voluntary switch cancels that intent — and must not leak to the switched-in teammate.
+                if (state.p1Action.switchIndex !== null) clearGimmickIntent(true);
+                if (state.p2Action.switchIndex !== null) clearGimmickIntent(false);
 
                 // Resolve Choice Lock (Choice items + Gorilla Tactics)
                 if (pMove && ((state.pActive.item && state.pActive.item.includes && state.pActive.item.includes("Choice")) || state.pActive.ability === "Gorilla Tactics") && !state.pActive.volatile.choiceLock) state.pActive.volatile.choiceLock = pMove.name;
@@ -5012,8 +5101,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else if (state.p1Action.switchIndex === null && state.p2Action.switchIndex === null && pMove && fMove) {
                     // Reset protect counter unless a protect-type move is being used
                     const _protectMoveNames = new Set(["Protect","Detect","Endure","Spiky Shield","King's Shield","Baneful Bunker","Max Guard"]);
-                    const _pIsProtect = _protectMoveNames.has(pMove.name) || ((state.pActive.dynamaxed || state.p1GimmickPending === 'DYNAMAX') && pMove.cat === 'Status');
-                    const _fIsProtect = _protectMoveNames.has(fMove.name) || ((state.fActive.dynamaxed || state.p2GimmickPending === 'DYNAMAX') && fMove.cat === 'Status');
+                    const _pIsProtect = _protectMoveNames.has(pMove.name) || ((state.pActive.dynamaxed || resolveGimmickIntentForActive(true) === 'DYNAMAX') && pMove.cat === 'Status');
+                    const _fIsProtect = _protectMoveNames.has(fMove.name) || ((state.fActive.dynamaxed || resolveGimmickIntentForActive(false) === 'DYNAMAX') && fMove.cat === 'Status');
                     if (!_pIsProtect) state.pActive.volatile.protectCount = 0;
                     if (!_fIsProtect) state.fActive.volatile.protectCount = 0;
 
@@ -5023,8 +5112,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                     // Apply ability-based priority modifiers before comparing
                     // Dynamax status moves become Max Guard (priority +4) — must be evaluated before turn order
-                    const _pDynaxing = state.pActive.dynamaxed || state.p1GimmickPending === 'DYNAMAX';
-                    const _fDynaxing = state.fActive.dynamaxed || state.p2GimmickPending === 'DYNAMAX';
+                    const _pDynaxing = state.pActive.dynamaxed || resolveGimmickIntentForActive(true) === 'DYNAMAX';
+                    const _fDynaxing = state.fActive.dynamaxed || resolveGimmickIntentForActive(false) === 'DYNAMAX';
                     let pPri = (_pDynaxing && pMove.cat === 'Status') ? 4 : (pMove.pri || 0);
                     let fPri = (_fDynaxing && fMove.cat === 'Status') ? 4 : (fMove.pri || 0);
                     const drainingMoves = ["Drain Punch", "Draining Kiss", "Giga Drain", "Leech Life", "Mega Drain", "Horn Leech", "Parabolic Charge", "Strength Sap", "Absorb"];
@@ -5161,7 +5250,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Assault Vest blocks status moves (but not when Dynamaxed — status moves become Max Guard, which is allowed)
             {
-                let _avGimmickPending = isPlayer ? state.p1GimmickPending : state.p2GimmickPending;
+                let _avGimmickPending = resolveGimmickIntentForActive(isPlayer);
                 if (attacker.item === "Assault Vest" && move.cat === "Status" && move.name !== "Substitute" && !attacker.dynamaxed && _avGimmickPending !== 'DYNAMAX') {
                     logMsg(`${attacker.name} can't use ${move.name} due to the Assault Vest!`, 'status'); await sleep(1000); return;
                 }
@@ -5283,27 +5372,44 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!_isMultiTurnContinuation && defender.ability === "Pressure" && move.pp > 0) move.pp--;
 
                 // === GIMMICK ACTIVATION (before move announcement) ===
-                let gimmickPending = isPlayer ? state.p1GimmickPending : state.p2GimmickPending;
+                let gimmickPending = resolveGimmickIntentForActive(isPlayer);
+                // Invalidate illegal intents (wrong build / classic lockout) — slot+active already matched in resolve
+                if (gimmickPending === 'MEGA') {
+                    let ok = attacker.buildData && attacker.buildData.gimmick === 'MEGA' && !attacker.megaEvolved && (!settings.classicMode || !(isPlayer ? state.usedMega : state.fUsedMega));
+                    if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
+                }
+                if (gimmickPending === 'DYNAMAX') {
+                    let ok = attacker.buildData && (attacker.buildData.gimmick === 'DYNAMAX' || attacker.buildData.gimmick === 'GMAXDYNAMAX') && !attacker.dynamaxed && !attacker.dynamaxUsed && (!settings.classicMode || !(isPlayer ? state.usedDyna : state.fUsedDyna));
+                    if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
+                }
+                if (gimmickPending === 'TERA') {
+                    let ok = attacker.buildData && attacker.buildData.teraType && !attacker.teraActivated && (!settings.classicMode || !(isPlayer ? state.usedTera : state.fUsedTera));
+                    if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
+                }
+                if (gimmickPending === 'ZMOVE') {
+                    let ok = attacker.buildData && attacker.buildData.gimmick === 'ZMOVE' && !attacker.zMoveUsed && (!settings.classicMode || !(isPlayer ? state.usedZ : state.fUsedZ));
+                    if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
+                }
                 if (gimmickPending === 'MEGA' && !attacker.megaEvolved) {
                     activateMega(attacker, isPlayer);
-                    if (isPlayer) state.p1GimmickPending = null; else state.p2GimmickPending = null;
+                    clearGimmickIntent(isPlayer);
                 } else if (gimmickPending === 'DYNAMAX' && !attacker.dynamaxed) {
                     activateDynamax(attacker, isPlayer);
-                    if (isPlayer) state.p1GimmickPending = null; else state.p2GimmickPending = null;
+                    clearGimmickIntent(isPlayer);
                     // Convert move immediately on the activation turn (attacker.dynamaxed is now true)
                     move = buildMaxMove(attacker, move);
                 } else if (gimmickPending === 'TERA' && !attacker.teraActivated) {
                     activateTera(attacker, isPlayer);
-                    if (isPlayer) state.p1GimmickPending = null; else state.p2GimmickPending = null;
+                    clearGimmickIntent(isPlayer);
                 } else if (gimmickPending === 'ZMOVE' && !attacker.zMoveUsed) {
                     // Apply Z-move power to the move (only if type matches crystal or is status)
                     let zBuild = buildZMove(attacker, move);
                     if (!zBuild.isZMove) {
                         // Move type doesn't match Z-crystal — use normally, clear pending
-                        if (isPlayer) state.p1GimmickPending = null; else state.p2GimmickPending = null;
+                        clearGimmickIntent(isPlayer);
                     } else {
                     attacker.zMoveUsed = true;
-                    if (isPlayer) { state.usedZ = true; state.p1GimmickPending = null; } else { state.fUsedZ = true; state.p2GimmickPending = null; }
+                    if (isPlayer) { state.usedZ = true; clearGimmickIntent(true); } else { state.fUsedZ = true; clearGimmickIntent(false); }
                     // Z-Move activation animation
                     if (settings.animations) {
                         let zSprite = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
@@ -5750,7 +5856,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); await sleep(1000); return; }
                     let damage = Math.max(1, Math.floor(defender.currentHp / 2));
                     if (defender.volatile.sub > 0) { let s = Math.min(defender.volatile.sub, damage); defender.volatile.sub -= s; logMsg(`The substitute took ${s} damage!`, 'dmg'); if (defender.volatile.sub <= 0) { defender.volatile.sub = 0; logMsg(`${defender.name}'s substitute faded!`, 'info'); } }
-                    else { defender.currentHp = Math.max(1, defender.currentHp - damage); defender.tookDamageThisTurn = true; if(settings.animations){let ds=document.getElementById(!isPlayer?'foe-sprite':'player-sprite');ds.classList.add('anim-hit-flash');setTimeout(()=>ds.classList.remove('anim-hit-flash'),400);} logMsg(`It dealt ${damage} damage!`, 'dmg'); }
+                    else { defender.currentHp = Math.max(0, defender.currentHp - damage); defender.tookDamageThisTurn = true; if(settings.animations){let ds=document.getElementById(!isPlayer?'foe-sprite':'player-sprite');ds.classList.add('anim-hit-flash');setTimeout(()=>ds.classList.remove('anim-hit-flash'),400);} logMsg(`It dealt ${damage} damage!`, 'dmg'); }
                     updateUI(); await sleep(1000); return;
                 }
 
@@ -6570,6 +6676,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Check for simultaneous faint (draw condition)
             if (foeFainted && playerFainted) {
+                clearAllGimmickIntent();
                 logMsg(`${state.fActive.name} fainted!`, 'heal');
                 logMsg(`${state.pActive.name} fainted!`, 'dmg');
                 if(settings.animations){ let fs = document.getElementById('foe-sprite'); fs.classList.add('anim-faint'); let ps = document.getElementById('player-sprite'); ps.classList.add('anim-faint'); await sleep(800); fs.style.opacity = '0'; fs.style.visibility = 'hidden'; ps.style.opacity = '0'; ps.style.visibility = 'hidden'; fs.classList.remove('anim-faint'); ps.classList.remove('anim-faint'); } ['foe-sprite','player-sprite'].forEach(id=>{let el=document.getElementById(id);if(el){el.style.filter='';el.style.transform='translateX(-50%)';}});
@@ -6601,6 +6708,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             state.weather = null; state.weatherTurns = 0;
                             state.pSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0 }; state.fSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0 };
                             state.isLocked = false; state.isOver = false; state.pendingEoT = false; state.turnNumber = 0;
+                            state.p1GimmickIntent = null; state.p2GimmickIntent = null;
                             logMsg(`Gauntlet next round begins!`, 'info');
                             applySwitchInAbilities(state.pActive, state.fActive); applySwitchInAbilities(state.fActive, state.pActive);
                             updateUI(); document.getElementById('command-menu').classList.remove('hidden');
@@ -6636,6 +6744,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             if (foeFainted) {
+                clearGimmickIntent(false);
                 logMsg(`${state.fActive.name} fainted!`, 'heal');
                 clearPermanentWeatherIfHolder(state.fActive);
                 if(settings.animations){ let fs = document.getElementById('foe-sprite'); fs.classList.add('anim-faint'); await sleep(800); fs.style.opacity = '0'; fs.style.visibility = 'hidden'; fs.classList.remove('anim-faint'); }
@@ -6670,6 +6779,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             if (playerFainted) {
+                clearGimmickIntent(true);
                 logMsg(`${state.pActive.name} fainted!`, 'dmg');
                 clearPermanentWeatherIfHolder(state.pActive);
                 if(settings.animations){ let ps = document.getElementById('player-sprite'); ps.classList.add('anim-faint'); await sleep(800); ps.style.opacity = '0'; ps.style.visibility = 'hidden'; ps.classList.remove('anim-faint'); }
@@ -8019,6 +8129,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Reset gimmick usage for both sides each round (each gauntlet round is a fresh battle)
             state.usedMega = false; state.usedZ = false; state.usedDyna = false; state.usedTera = false;
             state.fUsedMega = false; state.fUsedZ = false; state.fUsedDyna = false; state.fUsedTera = false;
+            state.p1GimmickIntent = null; state.p2GimmickIntent = null;
             logMsg(`Gauntlet Round ${state.score + 1} begins!`, 'info');
             // Hide all modals so we cleanly return to battle
             document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
