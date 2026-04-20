@@ -1476,6 +1476,13 @@
             <button onclick="window.initDraft('pvp')" style="width: 250px;">Local PvP</button>
             <button type="button" onclick="window.initOnlineHost && window.initOnlineHost()" style="width: 250px; border-color: #4fc3f7; color: #4fc3f7;">Online — Host</button>
             <button type="button" onclick="window.openOnlineJoinModal && window.openOnlineJoinModal()" style="width: 250px; border-color: #81d4fa; color: #81d4fa;">Online — Join</button>
+            <p id="online-setup-hint" class="hidden" style="max-width:340px;margin:0 12px;padding:10px 12px;font-size:11px;line-height:1.45;color:#aaa;text-align:center;border:1px solid #444;border-radius:6px;background:#121212;">
+                <strong style="color:#4fc3f7;">Online PvP is off</strong> until you add a free Supabase backend (GitHub Pages cannot host it). Steps:
+                (1) Create a project at <a href="https://supabase.com/dashboard" target="_blank" rel="noopener" style="color:#81d4fa;">supabase.com</a>
+                (2) SQL Editor → paste <code style="font-size:10px;color:#ccc;">supabase/migrations/001_online_pvp.sql</code> → Run
+                (3) Database → Publications → <code style="font-size:10px;">supabase_realtime</code> → enable table <code style="font-size:10px;">pvp_rooms</code>
+                (4) Project Settings → API → copy URL + <code style="font-size:10px;">anon</code> key into <code style="font-size:10px;">online-config.js</code> in your repo → push to GitHub. Then reload this page.
+            </p>
             <button onclick="window.initDraft('gauntlet')" style="width: 250px; border-color: #ffd700; color: #ffd700;">Gauntlet Mode</button>
             <button onclick="window.StoryMode && window.StoryMode.showMenu()" style="width: 250px; border-color: #ff6b6b; color: #ff6b6b; background: #1a0808;">&#9670; Story Mode</button>
         </div>
@@ -1935,6 +1942,14 @@
         document.addEventListener('DOMContentLoaded', function() {
             checkOrientation();
             try { applyDesktopGameScale(); } catch (e) {}
+            window.refreshOnlineSetupHint = function() {
+                var el = document.getElementById('online-setup-hint');
+                if (!el) return;
+                var ok = (typeof window.__onlinePvpConfigured === 'function' && window.__onlinePvpConfigured());
+                if (ok) el.classList.add('hidden');
+                else el.classList.remove('hidden');
+            };
+            try { window.refreshOnlineSetupHint(); } catch (e) {}
             setTimeout(function() {
                 try {
                     const q = new URLSearchParams(location.search).get('online');
@@ -4011,6 +4026,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             document.getElementById('screen-menu').classList.remove('hidden');
+            try { if (typeof window.refreshOnlineSetupHint === 'function') window.refreshOnlineSetupHint(); } catch (e) {}
             // Music keeps playing — battle music continues on home screen
         }
 
