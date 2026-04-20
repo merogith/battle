@@ -98,8 +98,30 @@
             box-shadow: none;
             border-style: dashed;
         }
-        .modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 200; display: flex; justify-content: center; align-items: center; }
-        .modal-content { width: 92%; max-width: 650px; background: var(--surface); border: 1px solid var(--border-color); border-radius: 6px; padding: 16px; max-height: 92vh; overflow-y: auto;}
+        /* Modals live inside #app-root (desktop: fixed 700px tall). Cap height to the game frame, not the browser viewport, so panels stay scrollable and actions are not clipped. */
+        .modal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 200;
+            display: flex; justify-content: center; align-items: flex-start;
+            padding: 10px 8px; box-sizing: border-box;
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
+        }
+        .modal-content {
+            width: 92%; max-width: 650px; background: var(--surface); border: 1px solid var(--border-color); border-radius: 6px; padding: 16px;
+            max-height: min(92dvh, 100%); overflow-y: auto; flex-shrink: 0;
+            margin-top: auto; margin-bottom: auto;
+            scrollbar-gutter: stable;
+        }
+        .modal-content::-webkit-scrollbar { width: 8px; }
+        .modal-header-row { display: flex; align-items: center; justify-content: flex-end; position: relative; min-height: 40px; margin: -4px 0 10px; gap: 8px; }
+        .modal-header-row h2 { position: absolute; left: 50%; transform: translateX(-50%); margin: 0; pointer-events: none; }
+        .modal-close-x {
+            flex-shrink: 0; width: 40px; height: 40px; min-width: 40px; min-height: 40px; margin-left: auto;
+            border-radius: 50%; border: 1px solid #555; background: var(--surface2); color: #fff;
+            font-size: 20px; line-height: 1; padding: 0; cursor: pointer; z-index: 1;
+            display: flex; align-items: center; justify-content: center; font-family: inherit;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .modal-close-x:hover { background: var(--accent); color: #000; border-color: var(--accent); }
 
         /* Draft Cards - Compact with big sprite */
         .draft-card { display: flex; flex-direction: row; align-items: stretch; text-align: left; padding: 10px; font-size: 12px; background: var(--surface); border: 2px solid #333; cursor: pointer; transition: all 0.15s; border-radius: 4px; gap: 10px; }
@@ -786,7 +808,7 @@
             #draft-party-slots { gap: 8px !important; }
 
             /* ---- MODALS ---- */
-            .modal-content { width: 96% !important; max-height: 86dvh !important; padding: 10px !important; }
+            .modal-content { width: 96% !important; max-height: min(86dvh, 100%) !important; padding: 10px !important; }
             .party-slot { min-height: 52px !important; }
         }
 
@@ -833,13 +855,13 @@
             .draft-card-details { font-size: 10px !important; }
             .draft-card-moves { font-size: 10px !important; }
             #draft-party-bar { flex-shrink: 0 !important; min-height: 54px !important; max-height: 62px !important; padding: 3px 7px !important; }
-            .modal-content { width: 96% !important; max-height: 86dvh !important; padding: 10px !important; }
+            .modal-content { width: 96% !important; max-height: min(86dvh, 100%) !important; padding: 10px !important; }
             .party-slot { min-height: 48px !important; }
         }
 
         /* General portrait: menu + draft improvements (any height) */
         @media screen and (max-width: 768px) and (orientation: portrait) {
-            .modal-content { width: 96% !important; max-height: 86dvh !important; }
+            .modal-content { width: 96% !important; max-height: min(86dvh, 100%) !important; }
         }
 
         /* General mobile touch improvements */
@@ -1351,6 +1373,9 @@
         }
         @media screen and (min-width: 769px) { #pwa-install-hint { display: none !important; } }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="online-config.js"></script>
+    <script src="online-pvp.js"></script>
 </head>
 <body>
     <!-- Rotate overlay (portrait phones only) -->
@@ -1449,6 +1474,8 @@
         <div class="menu-options" style="display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 10px;">
             <button onclick="window.initDraft('pve')" style="width: 250px;">Player Vs AI</button>
             <button onclick="window.initDraft('pvp')" style="width: 250px;">Local PvP</button>
+            <button type="button" onclick="window.initOnlineHost && window.initOnlineHost()" style="width: 250px; border-color: #4fc3f7; color: #4fc3f7;">Online — Host</button>
+            <button type="button" onclick="window.openOnlineJoinModal && window.openOnlineJoinModal()" style="width: 250px; border-color: #81d4fa; color: #81d4fa;">Online — Join</button>
             <button onclick="window.initDraft('gauntlet')" style="width: 250px; border-color: #ffd700; color: #ffd700;">Gauntlet Mode</button>
             <button onclick="window.StoryMode && window.StoryMode.showMenu()" style="width: 250px; border-color: #ff6b6b; color: #ff6b6b; background: #1a0808;">&#9670; Story Mode</button>
         </div>
@@ -1472,9 +1499,12 @@
     <div id="move-tooltip" class="white-outline hidden"></div>
     <div id="text-tooltip" class="white-outline hidden" style="position:absolute; background:#111; border:1px solid #fff; padding:8px; font-size:12px; max-width:250px; z-index:300; pointer-events:none; color: #ffd700;"></div>
 
-    <div id="modal-settings" class="modal hidden">
-        <div class="modal-content white-outline">
-            <h2 style="color:var(--hp-yellow); text-align:center; margin-top:0;">Settings</h2>
+    <div id="modal-settings" class="modal hidden" onclick="if (event.target === event.currentTarget) window.closeModal('modal-settings')">
+        <div class="modal-content white-outline" onclick="event.stopPropagation()">
+            <div class="modal-header-row">
+                <h2 style="color:var(--hp-yellow); text-align:center;">Settings</h2>
+                <button type="button" class="modal-close-x" onclick="window.closeModal('modal-settings')" title="Close" aria-label="Close settings">×</button>
+            </div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid #444; padding-bottom: 10px;"><span>Battle Animations:</span><button id="toggle-anim-btn" onclick="window.toggleAnimations()" style="color: var(--hp-green);">ON</button></div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid #444; padding-bottom: 10px;"><span>Music:</span><button id="toggle-music-btn" onclick="AudioSystem.toggleMusic()" style="color: var(--hp-green);">ON</button></div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #333; gap: 10px;">
@@ -1514,6 +1544,20 @@
             </div>
             <button onclick="window.returnToHome()" style="width:100%; margin-bottom: 10px; color:var(--hp-red);">Forfeit &amp; Exit</button>
             <button onclick="window.closeModal('modal-settings')" style="width:100%;">Close</button>
+        </div>
+    </div>
+
+    <div id="modal-online-pvp" class="modal hidden">
+        <div class="modal-content white-outline" style="max-width: 420px;">
+            <h2 style="color: var(--hp-yellow); margin-top: 0; text-align: center;">Join online battle</h2>
+            <p style="font-size: 12px; color: #888;">Enter the 6-character room code the host shared.</p>
+            <label style="display:block;font-size:12px;margin:8px 0 4px;">Your name (leaderboard)</label>
+            <input id="online-join-name" maxlength="24" placeholder="Trainer" style="width:100%;box-sizing:border-box;padding:8px;background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;font-family:inherit;">
+            <label style="display:block;font-size:12px;margin:10px 0 4px;">Room code</label>
+            <input id="online-join-code" maxlength="8" style="width:100%;box-sizing:border-box;padding:8px;background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;font-family:inherit;text-transform:uppercase;">
+            <p id="online-join-err" style="color:#f44336;font-size:12px;min-height:18px;margin:8px 0 0;"></p>
+            <button type="button" onclick="window.submitOnlineJoin && window.submitOnlineJoin()" style="width:100%;margin-top:12px;padding:10px;">Join</button>
+            <button type="button" onclick="window.closeModal('modal-online-pvp')" style="width:100%;margin-top:8px;">Cancel</button>
         </div>
     </div>
 
@@ -1891,6 +1935,16 @@
         document.addEventListener('DOMContentLoaded', function() {
             checkOrientation();
             try { applyDesktopGameScale(); } catch (e) {}
+            setTimeout(function() {
+                try {
+                    const q = new URLSearchParams(location.search).get('online');
+                    if (q && typeof window.openOnlineJoinModal === 'function') {
+                        window.openOnlineJoinModal();
+                        const jc = document.getElementById('online-join-code');
+                        if (jc) jc.value = String(q).trim().toUpperCase();
+                    }
+                } catch (e) {}
+            }, 600);
         });
 
         // === 1. DATABASE (loaded from CSV files) ===
@@ -3325,6 +3379,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
         window.addEventListener('resize', () => { try { window.applyBattleLogDockClass(); } catch(e) {} });
         window.closeModal = function(id) { document.getElementById(id).classList.add('hidden'); }
+        if (!window._modalEscapeBound) {
+            window._modalEscapeBound = true;
+            document.addEventListener('keydown', function(e) {
+                if (e.key !== 'Escape') return;
+                const help = document.getElementById('modal-help');
+                const settings = document.getElementById('modal-settings');
+                if (help && !help.classList.contains('hidden')) {
+                    e.preventDefault();
+                    window.closeModal('modal-help');
+                    return;
+                }
+                if (settings && !settings.classList.contains('hidden')) {
+                    e.preventDefault();
+                    window.closeModal('modal-settings');
+                }
+            });
+        }
         window.showHelp = function() {
             let text = helpData.menu;
             if (!document.getElementById('screen-draft').classList.contains('hidden')) text = helpData.draft;
@@ -3922,6 +3993,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window._randbatsCache = _randbatsCache;
 
         window.returnToHome = function() {
+            try { if (window.OnlineBattle && window.OnlineBattle.dispose) window.OnlineBattle.dispose(); } catch (e) {}
             const battleScreen = document.getElementById('screen-battle');
             const wasStoryBattle = window.StoryMode && window.StoryMode.isActive() && typeof state !== 'undefined' && state.mode === 'story'
                 && battleScreen && !battleScreen.classList.contains('hidden');
@@ -4399,40 +4471,151 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch(e) {}
         });
 
-        window.initDraft = async function(mode) {
+        async function buildDraftPoolsForCurrentSettings(mode) {
             await dataReady;
             window.updateMechanics();
             let minGen = +document.getElementById('gen-min').value || 1;
             let maxGen = +document.getElementById('gen-max').value || 9;
             if (maxGen < minGen) maxGen = minGen;
-            // Read grade filter before building pool
             window.updatePoolCount();
             let activeGrades = settings.draftGrades.length ? settings.draftGrades : [1,2,3,4,5];
-            state = { mode: mode, draftTurn: 1, score: 0, minGen, maxGen, p1Pool: [], p2Pool: [], p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
-            document.querySelectorAll('.screen, .modal').forEach(el => el.classList.add('hidden'));
-            document.getElementById('screen-draft').classList.remove('hidden');
-
-            // Build eligible pool (CSV builds preferred; falls back to randbats/baseStats on file://)
             let eligible = getDraftPool(minGen, maxGen, activeGrades);
-
-            const poolSizeMap = {
-                1: 3,
-                2: 4,
-                3: 6,
-                4: 6,
-                5: 8,
-                6: 8
-            };
-
+            const poolSizeMap = { 1: 3, 2: 4, 3: 6, 4: 6, 5: 8, 6: 8 };
             let poolSizePerPlayer = poolSizeMap[settings.partySize] || (settings.partySize + 2);
             let totalPool = poolSizePerPlayer * 2;
-
             const poolKeys = eligible.sort(() => 0.5 - Math.random()).slice(0, totalPool);
+            const p1Pool = poolKeys.slice(0, poolSizePerPlayer).map(name => ({ name, build: makeBuild(name) }));
+            const p2Pool = poolKeys.slice(poolSizePerPlayer, totalPool).map(name => ({ name, build: makeBuild(name) }));
+            return { mode, minGen, maxGen, p1Pool, p2Pool };
+        }
 
-            state.p1Pool = poolKeys.slice(0, poolSizePerPlayer).map(name => ({ name, build: makeBuild(name) }));
-            state.p2Pool = poolKeys.slice(poolSizePerPlayer, totalPool).map(name => ({ name, build: makeBuild(name) }));
+        window.initDraft = async function(mode) {
+            const pools = await buildDraftPoolsForCurrentSettings(mode);
+            let { minGen, maxGen, p1Pool, p2Pool } = pools;
+            state = { mode: mode, draftTurn: 1, score: 0, minGen, maxGen, p1Pool, p2Pool, p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
+            document.querySelectorAll('.screen, .modal').forEach(el => el.classList.add('hidden'));
+            document.getElementById('screen-draft').classList.remove('hidden');
             renderDraft();
         }
+
+        function mergeOnlineDraftFromPayload(d) {
+            if (!d || !d.p1_pool) return;
+            const mapRow = (row) => row && row.name ? { name: row.name, build: row.build } : null;
+            state.p1Pool = (d.p1_pool || []).map(mapRow).filter(Boolean);
+            state.p2Pool = (d.p2_pool || []).map(mapRow).filter(Boolean);
+            state.p1Draft = (d.p1_draft || []).map(mapRow).filter(Boolean);
+            state.p2Draft = (d.p2_draft || []).map(mapRow).filter(Boolean);
+            if (typeof d.draft_turn === 'number') state.draftTurn = d.draft_turn;
+        }
+
+        window.initOnlineHost = async function() {
+            if (typeof window.__onlinePvpConfigured === 'function' && !window.__onlinePvpConfigured()) {
+                alert('Online PvP needs Supabase. Edit online-config.js with your project URL and anon key, run supabase/migrations/001_online_pvp.sql, and enable Realtime on table pvp_rooms.');
+                return;
+            }
+            try {
+                const pools = await buildDraftPoolsForCurrentSettings('pvp');
+                const match = window.OnlineBattle.buildMatchOptionsFromSettings(settings);
+                match.minGen = pools.minGen;
+                match.maxGen = pools.maxGen;
+                const serPool = (pl) => pl.map((x) => ({ name: x.name, build: x.build }));
+                await window.OnlineBattle.createRoom(match, pools.minGen, pools.maxGen, { p1_pool: serPool(pools.p1Pool), p2_pool: serPool(pools.p2Pool) });
+                state = { mode: 'pvp', draftTurn: 1, score: 0, minGen: pools.minGen, maxGen: pools.maxGen, p1Pool: pools.p1Pool, p2Pool: pools.p2Pool, p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
+                window.__hostOnlineBattleStarted = false;
+                window.__guestLastResolved = 0;
+                window.__guestBattleStartApplied = false;
+                document.querySelectorAll('.screen, .modal').forEach(el => el.classList.add('hidden'));
+                document.getElementById('screen-draft').classList.remove('hidden');
+                renderDraft();
+                await window.OnlineBattle.pushDraftState(state);
+                const code = window.OnlineBattle.getCode();
+                const link = location.origin + location.pathname + '?online=' + encodeURIComponent(code);
+                logMsg(`Online room ${code} — share link or code with guest.`, 'info');
+                try { await navigator.clipboard.writeText(link); logMsg('Invite link copied to clipboard.', 'info'); } catch (e) {}
+            } catch (e) {
+                console.error(e);
+                alert('Could not create online room: ' + (e && e.message ? e.message : e));
+            }
+        };
+
+        window.openOnlineJoinModal = function() {
+            if (typeof window.__onlinePvpConfigured === 'function' && !window.__onlinePvpConfigured()) {
+                alert('Configure online-config.js with Supabase URL and anon key first.');
+                return;
+            }
+            const el = document.getElementById('modal-online-pvp');
+            const ne = document.getElementById('online-join-err');
+            if (ne) ne.textContent = '';
+            const nm = document.getElementById('online-join-name');
+            if (nm && window.OnlineBattle) nm.value = window.OnlineBattle.getDisplayName();
+            document.getElementById('modal-online-pvp').classList.remove('hidden');
+        };
+
+        window.submitOnlineJoin = async function() {
+            const ne = document.getElementById('online-join-err');
+            const code = (document.getElementById('online-join-code').value || '').trim().toUpperCase();
+            const name = (document.getElementById('online-join-name').value || '').trim() || 'Guest';
+            if (code.length < 4) { if (ne) ne.textContent = 'Enter a valid room code.'; return; }
+            window.OnlineBattle.setDisplayName(name);
+            try {
+                const row = await window.OnlineBattle.joinRoom(code, name);
+                const d = row.data || {};
+                window.OnlineBattle.applyMatchOptionsToSettings(d.match_options || {}, settings);
+                if (typeof d.minGen === 'number') { const el = document.getElementById('gen-min'); if (el) el.value = String(d.minGen); }
+                if (typeof d.maxGen === 'number') { const el = document.getElementById('gen-max'); if (el) el.value = String(d.maxGen); }
+                window.updateMechanics();
+                state = { mode: 'pvp', draftTurn: d.draft_turn || 1, score: 0, minGen: d.minGen || (+document.getElementById('gen-min').value || 1), maxGen: d.maxGen || (+document.getElementById('gen-max').value || 9), p1Pool: [], p2Pool: [], p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
+                mergeOnlineDraftFromPayload(d);
+                window.__hostOnlineBattleStarted = false;
+                window.__guestLastResolved = 0;
+                window.__guestBattleStartApplied = false;
+                document.querySelectorAll('.screen, .modal').forEach(el => el.classList.add('hidden'));
+                document.getElementById('screen-draft').classList.remove('hidden');
+                renderDraft();
+                window.closeModal('modal-online-pvp');
+                logMsg('Joined online room as Player 2. Wait for host picks when it is their turn.', 'info');
+            } catch (e) {
+                console.error(e);
+                if (ne) ne.textContent = (e && e.message) ? e.message : String(e);
+            }
+        };
+
+        window.onOnlineRoomData = async function(d, ctx) {
+            if (!window.OnlineBattle || !window.OnlineBattle.isActive()) return;
+            try {
+                if (d.match_options && ctx.role === 2) {
+                    window.OnlineBattle.applyMatchOptionsToSettings(d.match_options, settings);
+                    window.updateMechanics();
+                }
+                if (d.phase === 'draft') {
+                    mergeOnlineDraftFromPayload(d);
+                    renderDraft();
+                    const n = settings.partySize;
+                    if (window.OnlineBattle.isHost() && (d.p1_draft || []).length === n && (d.p2_draft || []).length === n && !window.__hostOnlineBattleStarted) {
+                        window.__hostOnlineBattleStarted = true;
+                        await startBattle();
+                    }
+                }
+                if (d.phase === 'battle' && d.battle_start_blob && ctx.role === 2 && !window.__guestBattleStartApplied) {
+                    window.__guestBattleStartApplied = true;
+                    await window.OnlineBattle.guestApplyBattleStart(state, d.battle_start_blob);
+                }
+                if (state.mode === 'pvp' && window.OnlineBattle.isActive() && d.battle && d.battle.p1_pick && !d.battle.p2_pick) {
+                    state.currentPlayer = 2;
+                    try { syncBattleActiveHighlight(); } catch (e) {}
+                    if (ctx.role === 2) logMsg('Your turn — select a move.', 'info');
+                }
+                if (ctx.role === 1 && d.battle && d.battle.p1_pick && d.battle.p2_pick) {
+                    await window.OnlineBattle.consumeRemoteForHost(state, settings, d);
+                }
+                if (ctx.role === 2 && d.battle && d.battle.state_blob && typeof d.battle.resolved_turn === 'number' && d.battle.resolved_turn > (window.__guestLastResolved || 0)) {
+                    window.__guestLastResolved = d.battle.resolved_turn;
+                    await window.OnlineBattle.guestApplyBattleBlob(state, d);
+                }
+            } catch (e) {
+                console.error('[onOnlineRoomData]', e);
+            }
+        };
 
         function getTypeDefensiveInfo(typeName) {
             let weakTo = [], resists = [], immuneTo = [];
@@ -4508,7 +4691,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (pvpHint) {
                 if (state.mode === 'pvp') {
                     pvpHint.classList.remove('hidden');
-                    pvpHint.textContent = 'Local PvP rules: mechanics & party size follow Settings. Battle items toggle (Settings) is for future symmetric PvP — Story Mode has the full bag.';
+                    pvpHint.textContent = (window.OnlineBattle && window.OnlineBattle.isActive())
+                        ? 'Online PvP: rules follow the host snapshot. Host = Player 1 (bottom), guest = Player 2 (top). Leaderboard is honor-system only.'
+                        : 'Local PvP rules: mechanics & party size follow Settings. Battle items toggle (Settings) is for future symmetric PvP — Story Mode has the full bag.';
                 } else pvpHint.classList.add('hidden');
             }
 
@@ -4578,6 +4763,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function selectDraft(draftItem) {
+            if (window.OnlineBattle && window.OnlineBattle.isActive()) {
+                window.OnlineBattle.handleSelectDraft(state, settings, draftItem, selectDraftCore);
+                return;
+            }
+            selectDraftCore(draftItem);
+        }
+
+        function selectDraftCore(draftItem) {
             if (state.draftTurn === 1) {
                 state.p1Pool = state.p1Pool.filter(i => i !== draftItem);
                 state.p1Draft.push(draftItem);
@@ -4593,8 +4786,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } else {
                 state.p2Pool = state.p2Pool.filter(i => i !== draftItem);
                 state.p2Draft.push(draftItem);
-                if (state.p2Draft.length === settings.partySize) startBattle();
-                else renderDraft();
+                if (state.p2Draft.length === settings.partySize) {
+                    if (window.OnlineBattle && window.OnlineBattle.isActive()) {
+                        renderDraft();
+                        return;
+                    }
+                    startBattle();
+                } else renderDraft();
             }
         }
 
@@ -4710,6 +4908,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.getElementById('move-menu').classList.add('hidden');
             document.getElementById('command-menu').classList.remove('hidden');
             if (typeof window.applyBattleLogDockClass === 'function') window.applyBattleLogDockClass();
+            if (typeof window.OnlineBattle !== 'undefined' && window.OnlineBattle.isHost && window.OnlineBattle.isHost()) {
+                try { await window.OnlineBattle.afterHostStartBattle(state); } catch (e) { console.warn('[OnlinePvP] afterHostStartBattle', e); }
+            }
         }
 
         window.tryFoeStoryBattleItem = function() {
@@ -6520,6 +6721,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             if (state.mode === 'pvp') {
+                if (window.OnlineBattle && window.OnlineBattle.isActive()) {
+                    if (!window.OnlineBattle.myTurn(state)) return;
+                    return await window.OnlineBattle.handlePvPPlayTurn(state, action, settings);
+                }
                 if (state.currentPlayer === 1) {
                     state.p1Action = action; state.currentPlayer = 2;
                     logMsg("Player 2's turn! Select an action.", "info");
@@ -6553,6 +6758,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
+            await window.__runLockedPvPTurnResolution();
+        };
+
+        window.__runLockedPvPTurnResolution = async function() {
             state.isLocked = true;
             state.turnNumber++;
             // VGC: Enforce turn limit to prevent stall wars (200 turns → draw)
