@@ -283,12 +283,13 @@
             if (!sb) throw new Error('Supabase not configured');
             const r = await fetchRoomByCode(code);
             if (r.error) throw new Error(r.error);
+            const prev = r.room.data || {};
+            if (prev.guest_joined) throw new Error('Room is full — another player already joined.');
             roomId = r.room.id;
             roomCode = r.room.code;
             role = 2;
             const nm = (guestName || '').trim() || 'Guest';
             global.localStorage.setItem(STORAGE_KEY, nm);
-            const prev = r.room.data || {};
             const data = mergeData(prev, { guest_joined: true, guest_display_name: nm, seq: (prev.seq || 0) + 1 });
             const { error } = await sb.from('pvp_rooms').update({ data, updated_at: new Date().toISOString() }).eq('id', roomId);
             if (error) throw error;
@@ -355,6 +356,8 @@
                 global.__hostOnlineBattleStarted = false;
                 global.__guestLastResolved = 0;
                 global.__guestBattleStartApplied = false;
+                global.__onlineGuestJoined = false;
+                global.__onlineHostDraftDeadlinePrimed = false;
                 if (typeof global.clearOnlinePvPTimers === 'function') global.clearOnlinePvPTimers();
             } catch (e) {}
         },
