@@ -51,6 +51,20 @@
             max-height: none !important;
             min-height: 0 !important;
         }
+        /* Desktop: menu content can exceed the 700px design height — scroll inside the frame */
+        body:not(.is-mobile) #screen-menu:not(.hidden) {
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            box-sizing: border-box;
+            padding-bottom: 20px;
+            scrollbar-gutter: stable;
+        }
+        body:not(.is-mobile) #screen-menu h1.title-text {
+            padding-left: clamp(16px, 10vw, 88px) !important;
+            padding-right: clamp(16px, 10vw, 88px) !important;
+        }
         #game-stage {
             position: relative;
             width: 100%;
@@ -434,7 +448,13 @@
         .field-pill:active { filter: brightness(1.15); }
         .move-info-hit { flex-shrink: 0; min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; margin: -6px -4px -6px 0; border-radius: 8px; border: 1px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.35); color: var(--accent); font-size: 15px; font-weight: bold; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
         .move-info-hit:active { background: rgba(255,213,79,0.2); }
-        #text-tooltip.tooltip-tap-mode { pointer-events: auto; z-index: 460; max-width: min(94vw, 320px); }
+        /* Outside #app-root so position:fixed is viewport-based (desktop scale uses transform on #app-root) */
+        #text-tooltip {
+            position: fixed;
+            z-index: 8000;
+            box-sizing: border-box;
+        }
+        #text-tooltip.tooltip-tap-mode { pointer-events: auto; z-index: 8000; max-width: min(94vw, 320px); }
         #text-tooltip .tip-close-x { float: right; margin: -6px -6px 6px 8px; min-width: 36px; min-height: 36px; border-radius: 6px; border: 1px solid #555; background: var(--surface2); color: #fff; font-size: 16px; cursor: pointer; }
 
         /* Active side (input phase) — VGC-style clarity */
@@ -1385,6 +1405,8 @@
         <p>This game is best played in<br><strong>landscape mode</strong></p>
     </div>
 
+    <div id="text-tooltip" class="white-outline hidden" style="background:#111; border:1px solid #fff; padding:8px; font-size:12px; max-width:250px; pointer-events:none; color: #ffd700;"></div>
+
     <div id="desktop-scale-outer">
     <div id="app-root">
     <div id="game-stage">
@@ -1504,7 +1526,6 @@
     </div>
 
     <div id="move-tooltip" class="white-outline hidden"></div>
-    <div id="text-tooltip" class="white-outline hidden" style="position:absolute; background:#111; border:1px solid #fff; padding:8px; font-size:12px; max-width:250px; z-index:300; pointer-events:none; color: #ffd700;"></div>
 
     <div id="modal-settings" class="modal hidden" onclick="if (event.target === event.currentTarget) window.closeModal('modal-settings')">
         <div class="modal-content white-outline" onclick="event.stopPropagation()">
@@ -1551,6 +1572,15 @@
             </div>
             <button onclick="window.returnToHome()" style="width:100%; margin-bottom: 10px; color:var(--hp-red);">Forfeit &amp; Exit</button>
             <button onclick="window.closeModal('modal-settings')" style="width:100%;">Close</button>
+        </div>
+    </div>
+
+    <div id="modal-story-abandon-confirm" class="modal hidden">
+        <div class="modal-content white-outline" style="max-width: 380px;">
+            <h2 style="color: var(--hp-red); margin-top: 0; text-align: center;">Abandon run?</h2>
+            <p style="font-size: 13px; color: #aaa; line-height: 1.5;">Your save will be deleted. This cannot be undone.</p>
+            <button type="button" onclick="window.closeModal('modal-story-abandon-confirm')" style="width: 100%; margin-bottom: 8px;">Cancel</button>
+            <button type="button" onclick="window.StoryMode.abandonAndReturn()" style="width: 100%; color: var(--hp-red); border-color: var(--hp-red);">End run &amp; delete save</button>
         </div>
     </div>
 
@@ -3324,6 +3354,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _isFullscreen() {
             return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
         }
+        /** If the player was in fullscreen before a navigation/dialog, re-apply it when the document left fullscreen (native confirm/alert do this). */
+        function _reenterFullscreenIfNeeded(wantFs) {
+            if (!wantFs || _isFullscreen()) return;
+            const el = document.documentElement;
+            const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+            if (req) req.call(el).catch(function() {});
+        }
         function _updateFullscreenUI() {
             const fs = _isFullscreen();
             const settingsBtn = document.getElementById('toggle-fs-btn');
@@ -3405,6 +3442,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     window.closeModal('modal-help');
                     return;
                 }
+                const abandonC = document.getElementById('modal-story-abandon-confirm');
+                if (abandonC && !abandonC.classList.contains('hidden')) {
+                    e.preventDefault();
+                    window.closeModal('modal-story-abandon-confirm');
+                    return;
+                }
                 if (settings && !settings.classList.contains('hidden')) {
                     e.preventDefault();
                     window.closeModal('modal-settings');
@@ -3482,16 +3525,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             tt.classList.remove('tooltip-tap-mode');
             tt.innerHTML = '';
         };
-        // Clamp tooltip to viewport so it's always fully visible (works on mobile too)
+        // Viewport-fixed tooltip; clamp all edges (must live outside transformed #app-root — see #text-tooltip in <body>)
         window._posTooltip = function(tt, e) {
-            let pos = window._eventPageXY(e);
-            let x = pos.x + 12, y = pos.y + 12;
-            tt.style.left = x + 'px'; tt.style.top = y + 'px';
-            requestAnimationFrame(() => {
-                let r = tt.getBoundingClientRect();
-                if (r.right > window.innerWidth - 4) tt.style.left = Math.max(4, pos.x - r.width - 8) + 'px';
-                if (r.bottom > window.innerHeight - 4) tt.style.top = Math.max(4, pos.y - r.height - 8) + 'px';
-            });
+            let cx = e.clientX, cy = e.clientY;
+            if (cx == null || cy == null) {
+                let pos = window._eventPageXY(e);
+                cx = pos.x - window.scrollX;
+                cy = pos.y - window.scrollY;
+            }
+            const pad = 8, ox = 12, oy = 12;
+            tt.style.position = 'fixed';
+            tt.style.right = 'auto';
+            tt.style.bottom = 'auto';
+            tt.style.left = (cx + ox) + 'px';
+            tt.style.top = (cy + oy) + 'px';
+            const applyClamp = () => {
+                const vv = window.visualViewport;
+                const vw = vv ? vv.width : window.innerWidth;
+                const vh = vv ? vv.height : window.innerHeight;
+                const vx = vv ? vv.offsetLeft : 0;
+                const vy = vv ? vv.offsetTop : 0;
+                const minX = vx + pad, minY = vy + pad;
+                const maxX = vx + vw - pad, maxY = vy + vh - pad;
+                for (let i = 0; i < 2; i++) {
+                    const r = tt.getBoundingClientRect();
+                    let left = r.left, top = r.top;
+                    if (r.right > maxX) left -= r.right - maxX;
+                    if (r.bottom > maxY) top -= r.bottom - maxY;
+                    if (left < minX) left += minX - left;
+                    if (top < minY) top += minY - top;
+                    if (left === r.left && top === r.top) break;
+                    tt.style.left = left + 'px';
+                    tt.style.top = top + 'px';
+                }
+            };
+            requestAnimationFrame(applyClamp);
         };
         window.showFieldTooltipFromData = function(e) {
             e.stopPropagation();
@@ -4008,6 +4076,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window._randbatsCache = _randbatsCache;
 
         window.returnToHome = function() {
+            const wantFs = _isFullscreen();
+            const finish = function() { _reenterFullscreenIfNeeded(wantFs); };
             try { if (window.OnlineBattle && window.OnlineBattle.dispose) window.OnlineBattle.dispose(); } catch (e) {}
             const battleScreen = document.getElementById('screen-battle');
             const wasStoryBattle = window.StoryMode && window.StoryMode.isActive() && typeof state !== 'undefined' && state.mode === 'story'
@@ -4018,15 +4088,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Forfeit from Settings during an active story battle — same outcome as loss (not afterBattleReturn, which would re-enter the same event)
             if (wasStoryBattle && window.StoryMode.onBattleEnd) {
                 window.StoryMode.onBattleEnd(false, 'FORFEIT', 'You gave up the battle.');
+                finish();
                 return;
             }
             // Story run active but not mid-battle (edge paths): sync party and continue story flow
             if (window.StoryMode && window.StoryMode.isActive()) {
                 window.StoryMode.afterBattleReturn();
+                finish();
                 return;
             }
             document.getElementById('screen-menu').classList.remove('hidden');
             try { if (typeof window.refreshOnlineSetupHint === 'function') window.refreshOnlineSetupHint(); } catch (e) {}
+            finish();
             // Music keeps playing — battle music continues on home screen
         }
 
@@ -13356,15 +13429,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function confirmAbandon() {
-            if (confirm('Abandon this run? Your save will be deleted.')) abandonAndReturn();
+            document.getElementById('modal-story-abandon-confirm').classList.remove('hidden');
         }
 
         function abandonAndReturn() {
+            const wantFs = _isFullscreen();
             document.querySelectorAll('[style*="z-index:9999"]').forEach(el=>el.remove());
+            window.closeModal('modal-story-abandon-confirm');
             sm.active = false;
             deleteSave();
             document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
             document.getElementById('screen-menu').classList.remove('hidden');
+            _reenterFullscreenIfNeeded(wantFs);
         }
 
         // ── ARTIFACT EFFECTS (applied at battle start) ────────────────────
