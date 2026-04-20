@@ -81,7 +81,8 @@
             pvpBattleItems: !!settings.pvpBattleItems,
             battleLogDock: !!settings.battleLogDock,
             minGen: null,
-            maxGen: null
+            maxGen: null,
+            timer_preset: (settings && settings.timer_preset) || 'none'
         };
     }
 
@@ -89,6 +90,10 @@
         if (!match || !settings) return;
         Object.keys(match).forEach((k) => {
             if (k === 'minGen' || k === 'maxGen') return;
+            if (k === 'timer_preset') {
+                global.__onlineMatchTimerPreset = match.timer_preset === 'fast' || match.timer_preset === 'slow' ? match.timer_preset : 'none';
+                return;
+            }
             if (match[k] !== undefined) settings[k] = match[k];
         });
     }
@@ -214,20 +219,25 @@
             sb.from('pvp_rooms').select('data').eq('id', roomId).maybeSingle().then(({ data: row }) => {
                 const d = row && row.data ? row.data : {};
                 if (d.match_options) applyMatchOptionsToSettings(d.match_options, settings);
-                if (typeof d.minGen === 'number') {
-                    const el = document.getElementById('gen-min');
-                    if (el) el.value = String(d.minGen);
+                if (d.match_options && d.match_options.timer_preset !== undefined) {
+                    global.__onlineMatchTimerPreset = d.match_options.timer_preset === 'fast' || d.match_options.timer_preset === 'slow' ? d.match_options.timer_preset : 'none';
                 }
-                if (typeof d.maxGen === 'number') {
-                    const el = document.getElementById('gen-max');
-                    if (el) el.value = String(d.maxGen);
+                if (Array.isArray(d.enabledGens) && d.enabledGens.length && typeof global.setDraftGenCheckboxes === 'function') {
+                    global.setDraftGenCheckboxes(d.enabledGens);
+                } else if (typeof d.minGen === 'number' && typeof d.maxGen === 'number' && typeof global.setDraftGenCheckboxes === 'function' && typeof global.rangeToEnabledGens === 'function') {
+                    global.setDraftGenCheckboxes(global.rangeToEnabledGens(d.minGen, d.maxGen));
                 }
             });
         },
 
-        async createRoom(matchOptions, minGen, maxGen, poolPayload) {
+        async createRoom(matchOptions, enabledGens, poolPayload) {
             const sb = getClient();
             if (!sb) throw new Error('Supabase not configured');
+            const eg = (enabledGens && enabledGens.length)
+                ? [...new Set(enabledGens)].filter((g) => g >= 1 && g <= 9).sort((a, b) => a - b)
+                : [1, 2, 3, 4, 5, 6, 7, 8, 9];
+            const minGen = Math.min(...eg);
+            const maxGen = Math.max(...eg);
             roomCode = randomCode();
             const hostName = (global.localStorage.getItem(STORAGE_KEY) || '').trim() || 'Host';
             const seq = 1;
@@ -235,7 +245,9 @@
                 seq,
                 phase: 'draft',
                 match_options: matchOptions,
-                minGen, maxGen,
+                enabledGens: eg,
+                minGen,
+                maxGen,
                 host_display_name: hostName,
                 guest_display_name: null,
                 p1_pool: poolPayload.p1_pool,
@@ -244,6 +256,8 @@
                 p2_draft: [],
                 draft_turn: 1,
                 guest_joined: false,
+                draft_deadline_iso: null,
+                battle_turn_deadline_iso: null,
                 battle: {
                     pending_turn: 1,
                     p1_pick: null,
@@ -284,15 +298,30 @@
             return rowFresh || r.room;
         },
 
-        async pushDraftState(state) {
-            await this.pushData({
+        async pushDraftState(state, extraTopLevel) {
+            const patch = {
                 phase: 'draft',
                 p1_pool: state.p1Pool.map((x) => ({ name: x.name, build: x.build })),
                 p2_pool: state.p2Pool.map((x) => ({ name: x.name, build: x.build })),
                 p1_draft: state.p1Draft.map((x) => ({ name: x.name, build: x.build })),
                 p2_draft: state.p2Draft.map((x) => ({ name: x.name, build: x.build })),
                 draft_turn: state.draftTurn
-            });
+            };
+            if (extraTopLevel && typeof extraTopLevel === 'object') {
+                Object.assign(patch, extraTopLevel);
+            }
+            await this.pushData(patch);
+        },
+
+        async refreshDraftDeadlineOnly() {
+            const preset = global.__onlineMatchTimerPreset || 'none';
+            if (!this.isHost()) return;
+            if (preset === 'none') {
+                await this.pushData({ draft_deadline_iso: null });
+                return;
+            }
+            const sec = preset === 'fast' ? 30 : 60;
+            await this.pushData({ draft_deadline_iso: new Date(Date.now() + sec * 1000).toISOString() });
         },
 
         _subscribe() {
@@ -326,6 +355,7 @@
                 global.__hostOnlineBattleStarted = false;
                 global.__guestLastResolved = 0;
                 global.__guestBattleStartApplied = false;
+                if (typeof global.clearOnlinePvPTimers === 'function') global.clearOnlinePvPTimers();
             } catch (e) {}
         },
 
@@ -387,7 +417,8 @@
                     p2_pick: prev.battle && prev.battle.p2_pick,
                     p2_gimmick: prev.battle && prev.battle.p2_gimmick
                 });
-                await this.pushData({ battle });
+                const deadlineIso = typeof global.computeOnlineBattleTurnDeadlineIso === 'function' ? global.computeOnlineBattleTurnDeadlineIso(state) : null;
+                await this.pushData({ battle, battle_turn_deadline_iso: deadlineIso });
                 if (typeof global.logMsg === 'function') global.logMsg("Waiting for opponent…", 'info');
                 document.getElementById('move-menu').classList.add('hidden');
                 document.getElementById('command-menu').classList.remove('hidden');
@@ -456,10 +487,13 @@
                 state_blob: blob,
                 state_hash: h
             });
-            await this.pushData({ battle });
+            const nextDeadline = !state.isOver && typeof global.computeOnlineBattleTurnDeadlineIso === 'function'
+                ? global.computeOnlineBattleTurnDeadlineIso(state)
+                : null;
+            await this.pushData({ battle, battle_turn_deadline_iso: nextDeadline });
 
             if (state.isOver) {
-                await this.pushData({ phase: 'done' });
+                await this.pushData({ phase: 'done', battle_turn_deadline_iso: null });
                 const p1Alive = state.playerParty.some((m) => m.currentHp > 0);
                 const fAlive = state.foeParty.some((m) => m.currentHp > 0);
                 if (p1Alive && !fAlive) await reportWinIfConfigured(true);
@@ -467,12 +501,50 @@
             }
         },
 
+        async hostResolveGuestBattleTimeout(state, settings) {
+            if (role !== 1 || !roomId) return;
+            const sb = getClient();
+            if (!sb) return;
+            if (global.__onlineBattleDeadlineFiring) return;
+            const { data: row } = await sb.from('pvp_rooms').select('data').eq('id', roomId).single();
+            if (!row || !row.data || !row.data.battle) return;
+            const b = row.data.battle;
+            if (!b.p1_pick || b.p2_pick || state.isLocked) return;
+            if (state.currentPlayer !== 2) return;
+            if (typeof global._pvpBuildTimeoutAction !== 'function') return;
+            global.__onlineBattleDeadlineFiring = true;
+            try {
+                if (typeof global.logMsg === 'function') global.logMsg("Time's up — AI chose Player 2's move.", 'info');
+                const action = global._pvpBuildTimeoutAction();
+                const ser = (a) => ({
+                    moveIndex: a.moveIndex,
+                    switchIndex: a.switchIndex,
+                    aiMoveName: a.aiMove && a.aiMove.name ? a.aiMove.name : null
+                });
+                const g2 = state.p2GimmickIntent ? deepClone(state.p2GimmickIntent) : null;
+                const remoteBattle = {
+                    p1_pick: b.p1_pick,
+                    p2_pick: ser(action),
+                    p1_gimmick: b.p1_gimmick,
+                    p2_gimmick: g2
+                };
+                await this._hostRunResolution(state, settings, remoteBattle);
+            } catch (e) {
+                console.warn('[OnlinePvP] hostResolveGuestBattleTimeout', e);
+            } finally {
+                global.__onlineBattleDeadlineFiring = false;
+            }
+        },
+
         async afterHostStartBattle(state) {
             if (!this.isHost() || !roomId) return;
             const blob = exportBattleSnapshot(state);
             const h = simpleHash(blob);
+            const deadlineIso = typeof global.computeOnlineBattleTurnDeadlineIso === 'function' ? global.computeOnlineBattleTurnDeadlineIso(state) : null;
             await this.pushData({
                 phase: 'battle',
+                draft_deadline_iso: null,
+                battle_turn_deadline_iso: deadlineIso,
                 battle_start_blob: blob,
                 battle_start_hash: h,
                 battle: {

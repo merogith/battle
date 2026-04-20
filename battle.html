@@ -65,6 +65,31 @@
             padding-left: clamp(16px, 10vw, 88px) !important;
             padding-right: clamp(16px, 10vw, 88px) !important;
         }
+        /* Gauntlet: full-width label + compact leaderboard (same total width as other menu buttons) */
+        #screen-menu .menu-options .menu-gauntlet-row {
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            gap: 8px;
+            width: 250px;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        #screen-menu .menu-options .menu-gauntlet-row .menu-gauntlet-main {
+            flex: 1 1 auto;
+            min-width: 0;
+            width: auto;
+        }
+        #screen-menu .menu-options .menu-gauntlet-row .menu-gauntlet-lb {
+            flex: 0 0 48px;
+            width: 48px;
+            min-width: 48px;
+            padding: 4px 2px;
+            font-size: 22px;
+            line-height: 1;
+            border-color: #e6c200;
+            color: #e6c200;
+        }
         #game-stage {
             position: relative;
             width: 100%;
@@ -112,9 +137,10 @@
             box-shadow: none;
             border-style: dashed;
         }
-        /* Modals live inside #app-root (desktop: fixed 700px tall). Cap height to the game frame, not the browser viewport, so panels stay scrollable and actions are not clipped. */
+        /* Modals live inside #app-root (desktop: fixed 700px tall). Cap height to the game frame, not the browser viewport, so panels stay scrollable and actions are not clipped.
+           z-index must stay above .icon-btn (500) and #move-tooltip.sticky-open (450) so settings/help cover the full frame. */
         .modal {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 200;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1200;
             display: flex; justify-content: center; align-items: flex-start;
             padding: 10px 8px; box-sizing: border-box;
             overflow-y: auto; -webkit-overflow-scrolling: touch;
@@ -263,6 +289,7 @@
         .sum-move-card.upgraded-max { border-color: #b71c1c; background: #1a0000; }
         .sum-move-header { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 3px; }
         .sum-move-name { font-size: 13px; font-weight: bold; color: var(--accent); flex: 1; min-width: 120px; }
+        .sum-move-name.tip-move-cell { cursor: help; text-decoration: underline dotted rgba(255, 213, 79, 0.35); }
         .sum-move-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2px 6px; font-size: 10px; color: #999; margin-top: 2px; }
         .sum-move-stat-val { color: #ddd; font-weight: bold; }
         .sum-move-eff { font-size: 10px; color: #aaa; font-style: italic; margin-top: 3px; border-top: 1px dashed #2a2a2a; padding-top: 3px; line-height: 1.35; }
@@ -437,6 +464,23 @@
         @keyframes hpPulseLow { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.15); } }
         .stat-box .type-badge { font-size: 9px; }
         .status-indicator { font-weight: bold; font-size: 12px; margin-top: 4px; text-transform: uppercase; }
+        /*
+         * Desktop battle sprite layout (960×700 canvas): inline sprite positions are tuned here so
+         * the player mon sits to the right of the HP box (not under z-index:5) and the foe sits lower.
+         * Requires !important to override container inline styles. Narrow/touch layouts use their own blocks.
+         */
+        @media screen and (min-width: 769px) and (min-height: 600px) {
+            #foe-sprite-container {
+                top: 54px !important;
+                right: 38px !important;
+            }
+            /* player-stat-box: left 15px + width 240px → keep sprite entirely to the right with a small gap */
+            #player-sprite-container {
+                left: 264px !important;
+                bottom: 198px !important;
+            }
+        }
+
         /* Field conditions: top-center strip between the two stat boxes (desktop default) */
         #field-conditions { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; gap: 4px; z-index: 4; justify-content: center; max-width: 400px; }
         /* Gauntlet score: bottom-right of battle area (player HUD is bottom-left) */
@@ -491,6 +535,9 @@
                 flex: 1;
                 min-width: 0;
             }
+            #screen-battle.battle-log-dock #move-menu.move-menu-layout {
+                min-height: 0;
+            }
         }
         /* Tablet-friendly larger move targets */
         @media screen and (min-width: 700px) and (max-width: 1100px) {
@@ -502,7 +549,42 @@
         .log-dmg { color: #ef5350; font-weight: 600; } .log-heal { color: #66bb6a; font-weight: 600; } .log-status { color: #ce93d8; } .log-info { color: #d0d0d0; }
         #battle-log { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
         #move-menu button { -webkit-touch-callout: none; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; text-align: left; box-sizing: border-box; min-height: 76px; }
-        #move-menu.command-grid button { overflow: visible; }
+        #move-menu .move-menu-scroll button { overflow: visible; }
+        /* Moves scroll; BACK stays visible (was easy to miss below the fold) */
+        #move-menu.move-menu-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+        #move-menu .move-menu-scroll {
+            flex: 1;
+            min-height: 0;
+            overflow-x: hidden;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            align-content: start;
+        }
+        #move-menu .move-menu-back {
+            flex-shrink: 0;
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 44px;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 8px 10px;
+            color: #aaa !important;
+            border-color: #555;
+            background: var(--surface2);
+        }
+        #move-menu .move-menu-back:active:not(:disabled) { background: #2a2a2a; }
         @media (max-width: 768px) {
             .draft-card-moves > div { min-height: 38px; display: flex; align-items: center; padding: 4px 2px !important; }
         }
@@ -552,8 +634,10 @@
         */
         /* Mobile landscape: phones & small tablets rotated
            Galaxy S20: ~915×412 | Note20: ~873×393 | both pass max-height:500 AND min-width:600
+           Exclude mouse desktops: short wide windows were matching this and breaking the scaled 960×700 frame.
+           Require touch + landscape so real phones still get these rules.
         */
-        @media screen and (max-height: 500px) and (min-width: 600px) {
+        @media screen and (max-height: 500px) and (min-width: 600px) and (orientation: landscape) and ((hover: none) or (pointer: coarse)) {
             body { align-items: stretch; justify-content: stretch; }
             .screen, #app-root { max-width: 100vw !important; width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; font-size: 11px; }
 
@@ -599,7 +683,9 @@
             /* Bottom UI: 140px, row layout */
             .ui-bottom { height: 140px !important; padding: 4px 6px !important; gap: 5px !important; }
             #battle-log { flex: 1 !important; font-size: 11px !important; line-height: 1.4 !important; padding: 4px 8px !important; }
-            #command-menu, #move-menu { flex: 1.3 !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; }
+            #command-menu { flex: 1.3 !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; }
+            #move-menu.move-menu-layout { flex: 1.3 !important; min-height: 0 !important; overflow: hidden !important; }
+            #move-menu .move-menu-scroll { -webkit-overflow-scrolling: touch !important; }
             .command-grid { gap: 3px !important; }
             button { font-size: 11px !important; padding: 2px 4px !important; min-height: 36px !important; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
             #command-menu button { min-height: 44px !important; font-size: 12px !important; }
@@ -768,12 +854,20 @@
             }
 
             /* Command / Move menus: fill remaining height, full width */
-            #command-menu, #move-menu {
+            #command-menu {
                 flex: 1 !important;
                 width: 100% !important;
                 box-sizing: border-box !important;
                 overflow-y: auto !important;
             }
+            #move-menu.move-menu-layout {
+                flex: 1 !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
+                min-height: 0 !important;
+            }
+            #move-menu .move-menu-scroll { -webkit-overflow-scrolling: touch !important; }
             .command-grid { gap: 4px !important; }
 
             /* Touch targets: 44px WCAG minimum */
@@ -805,6 +899,9 @@
             #screen-menu .white-outline { width: 100% !important; max-width: 400px !important; box-sizing: border-box !important; margin: 0 0 8px !important; }
             #screen-menu .menu-options { width: 100% !important; max-width: 400px !important; margin-top: 6px !important; gap: 8px !important; }
             #screen-menu .menu-options button { width: 100% !important; min-height: 52px !important; font-size: 15px !important; }
+            #screen-menu .menu-options .menu-gauntlet-row { width: 100% !important; }
+            #screen-menu .menu-options .menu-gauntlet-row > .menu-gauntlet-main { flex: 1 1 auto !important; width: auto !important; min-width: 0 !important; }
+            #screen-menu .menu-options .menu-gauntlet-row > .menu-gauntlet-lb { flex: 0 0 52px !important; width: 52px !important; min-width: 52px !important; max-width: 52px !important; font-size: 22px !important; }
 
             /* ---- DRAFT SCREEN ---- */
             #screen-draft:not(.hidden) {
@@ -854,7 +951,9 @@
             #gauntlet-score { top: auto !important; bottom: 232px !important; left: auto !important; right: 5px !important; font-size: 10px !important; background: rgba(0,0,0,0.55) !important; padding: 2px 5px !important; border-radius: 3px !important; }
             .ui-bottom { height: 222px !important; flex-direction: column !important; padding: 4px 5px !important; gap: 4px !important; }
             #battle-log { flex: 0 0 58px !important; max-height: 58px !important; font-size: 11px !important; line-height: 1.4 !important; padding: 4px 7px !important; }
-            #command-menu, #move-menu { flex: 1 !important; width: 100% !important; box-sizing: border-box !important; }
+            #command-menu { flex: 1 !important; width: 100% !important; box-sizing: border-box !important; }
+            #move-menu.move-menu-layout { flex: 1 !important; width: 100% !important; box-sizing: border-box !important; min-height: 0 !important; overflow: hidden !important; }
+            #move-menu .move-menu-scroll { -webkit-overflow-scrolling: touch !important; }
             .command-grid { gap: 4px !important; }
             button { font-size: 12px !important; min-height: 42px !important; padding: 4px 6px !important; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
             #move-tooltip { bottom: 226px !important; right: auto !important; left: 5px !important; width: min(92vw, 250px) !important; font-size: 10px !important; }
@@ -863,6 +962,9 @@
             #screen-menu .white-outline { width: 100% !important; max-width: 380px !important; box-sizing: border-box !important; margin: 0 0 6px !important; }
             #screen-menu .menu-options { width: 100% !important; max-width: 380px !important; margin-top: 4px !important; gap: 6px !important; }
             #screen-menu .menu-options button { width: 100% !important; min-height: 48px !important; font-size: 14px !important; }
+            #screen-menu .menu-options .menu-gauntlet-row { width: 100% !important; }
+            #screen-menu .menu-options .menu-gauntlet-row > .menu-gauntlet-main { flex: 1 1 auto !important; width: auto !important; min-width: 0 !important; }
+            #screen-menu .menu-options .menu-gauntlet-row > .menu-gauntlet-lb { flex: 0 0 50px !important; width: 50px !important; min-width: 50px !important; max-width: 50px !important; font-size: 20px !important; }
             #screen-draft:not(.hidden) { display: flex !important; flex-direction: column !important; padding: 0 !important; overflow: hidden !important; height: 100dvh !important; max-height: 100dvh !important; box-sizing: border-box !important; }
             #draft-header { padding: 5px 80px 5px 8px !important; margin-bottom: 0 !important; flex-shrink: 0 !important; border-bottom: 1px solid #222 !important; }
             #draft-header h2 { font-size: 13px !important; margin: 0 !important; }
@@ -1419,25 +1521,21 @@
             <p style="color: var(--hp-green); font-size: 12px; margin:4px 0;">Rules: 3v3 Singles. Lv 50. Competitive EVs. Random Builds.</p>
         </div>
         <div class="white-outline" style="text-align: center; margin: 8px auto; width: 80%; padding: 10px 15px;">
-            <div style="font-size: 12px; color: var(--accent); font-weight: bold; margin-bottom: 8px;">GENERATION RANGE</div>
-            <div style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
-                <div style="display:flex; align-items:center; gap:6px;">
-                    <label style="font-size:11px; color:#aaa;">From</label>
-                    <select id="gen-min" onchange="window.updatePoolCount()" style="background:var(--surface2); color:var(--text-color); border:1px solid #555; border-radius:3px; padding:4px 8px; font-family:inherit; font-size:13px; cursor:pointer;">
-                        <option value="1">Gen 1</option><option value="2">Gen 2</option><option value="3">Gen 3</option>
-                        <option value="4">Gen 4</option><option value="5">Gen 5</option><option value="6">Gen 6</option>
-                        <option value="7">Gen 7</option><option value="8">Gen 8</option><option value="9">Gen 9</option>
-                    </select>
-                </div>
-                <span style="color:#666; font-size:16px;">—</span>
-                <div style="display:flex; align-items:center; gap:6px;">
-                    <label style="font-size:11px; color:#aaa;">To</label>
-                    <select id="gen-max" onchange="window.updatePoolCount()" style="background:var(--surface2); color:var(--text-color); border:1px solid #555; border-radius:3px; padding:4px 8px; font-family:inherit; font-size:13px; cursor:pointer;">
-                        <option value="1">Gen 1</option><option value="2" selected>Gen 2</option><option value="3">Gen 3</option>
-                        <option value="4">Gen 4</option><option value="5">Gen 5</option><option value="6">Gen 6</option>
-                        <option value="7">Gen 7</option><option value="8">Gen 8</option><option value="9">Gen 9</option>
-                    </select>
-                </div>
+            <div style="font-size: 12px; color: var(--accent); font-weight: bold; margin-bottom: 8px;">GENERATIONS IN POOL</div>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; max-width: 360px; margin: 0 auto;">
+                <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" id="draft-gen-cb-1" checked onchange="window.updatePoolCount()"><span>G1</span></label>
+                <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" id="draft-gen-cb-2" checked onchange="window.updatePoolCount()"><span>G2</span></label>
+                <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" id="draft-gen-cb-3" onchange="window.updatePoolCount()"><span>G3</span></label>
+                <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" id="draft-gen-cb-4" onchange="window.updatePoolCount()"><span>G4</span></label>
+                <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" id="draft-gen-cb-5" onchange="window.updatePoolCount()"><span>G5</span></label>
+                <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" id="draft-gen-cb-6" onchange="window.updatePoolCount()"><span>G6</span></label>
+                <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" id="draft-gen-cb-7" onchange="window.updatePoolCount()"><span>G7</span></label>
+                <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" id="draft-gen-cb-8" onchange="window.updatePoolCount()"><span>G8</span></label>
+                <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" id="draft-gen-cb-9" onchange="window.updatePoolCount()"><span>G9</span></label>
+            </div>
+            <div style="display:flex;justify-content:center;gap:10px;margin-top:6px;font-size:10px;">
+                <button type="button" onclick="window.toggleDraftGenAll(true)" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:2px 8px;font-family:inherit;cursor:pointer;">All gens</button>
+                <button type="button" onclick="window.toggleDraftGenClear()" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:2px 8px;font-family:inherit;cursor:pointer;">Gen 1 only</button>
             </div>
             <div id="gen-range-note" style="font-size:10px; color:#666; margin-top:6px;">Pokémon from Gen 1–2 in pool</div>
             <div class="grade-filter-row" style="margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -1496,23 +1594,25 @@
         <div class="menu-options" style="display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 10px;">
             <button onclick="window.initDraft('pve')" style="width: 250px;">Player Vs AI</button>
             <button onclick="window.initDraft('pvp')" style="width: 250px;">Local PvP</button>
-            <button type="button" onclick="window.initOnlineHost && window.initOnlineHost()" style="width: 250px; border-color: #4fc3f7; color: #4fc3f7;">Online — Host</button>
+            <button type="button" onclick="window.openOnlineHostModal && window.openOnlineHostModal()" style="width: 250px; border-color: #4fc3f7; color: #4fc3f7;">Online — Host</button>
             <button type="button" onclick="window.openOnlineJoinModal && window.openOnlineJoinModal()" style="width: 250px; border-color: #81d4fa; color: #81d4fa;">Online — Join</button>
             <p id="online-setup-hint" class="hidden" style="max-width:340px;margin:0 12px;padding:10px 12px;font-size:11px;line-height:1.45;color:#aaa;text-align:center;border:1px solid #444;border-radius:6px;background:#121212;">
                 <strong style="color:#4fc3f7;">Online PvP is off</strong> until you add a free Supabase backend (GitHub Pages cannot host it). Steps:
                 (1) Create a project at <a href="https://supabase.com/dashboard" target="_blank" rel="noopener" style="color:#81d4fa;">supabase.com</a>
-                (2) SQL Editor → paste <code style="font-size:10px;color:#ccc;">supabase/migrations/001_online_pvp.sql</code> → Run
+                (2) SQL Editor → run <code style="font-size:10px;color:#ccc;">supabase/migrations/001_online_pvp.sql</code> then <code style="font-size:10px;color:#ccc;">002_gauntlet_leaderboard.sql</code>
                 (3) Database → Publications → <code style="font-size:10px;">supabase_realtime</code> → enable table <code style="font-size:10px;">pvp_rooms</code>
                 (4) Project Settings → API → copy URL + <code style="font-size:10px;">anon</code> key into <code style="font-size:10px;">online-config.js</code> in your repo → push to GitHub. Then reload this page.
             </p>
             <button onclick="window.initDraft('gauntlet')" style="width: 250px; border-color: #ffd700; color: #ffd700;">Gauntlet Mode</button>
+            <button type="button" onclick="window.openGauntletLeaderboardModal && window.openGauntletLeaderboardModal()" style="width: 250px; border-color: #e6c200; color: #e6c200; font-size: 13px;">Gauntlet leaderboard</button>
             <button onclick="window.StoryMode && window.StoryMode.showMenu()" style="width: 250px; border-color: #ff6b6b; color: #ff6b6b; background: #1a0808;">&#9670; Story Mode</button>
         </div>
     </div>
 
     <div id="screen-draft" class="screen hidden" style="display:flex; flex-direction:column;">
-        <div id="draft-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-shrink:0; padding-right:72px;">
+        <div id="draft-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-shrink:0; padding-right:72px; gap: 10px; flex-wrap: wrap;">
             <h2 id="draft-title" style="color: var(--hp-yellow); margin: 0;">Player 1: Pick a Pokémon</h2>
+            <span id="online-draft-timer" class="hidden" style="font-size:12px;font-weight:bold;color:#81d4fa;padding:4px 10px;border-radius:6px;background:rgba(0,0,0,0.45);"></span>
             <button onclick="window.toggleEnemyPool()" style="font-size: 12px; padding: 5px 10px;">Inspect Foe's Pool</button>
         </div>
         <p id="draft-pvp-hint" class="hidden" style="font-size:11px;color:#888;text-align:center;margin:-4px 8px 8px;padding:0 8px;"></p>
@@ -1584,6 +1684,33 @@
         </div>
     </div>
 
+    <div id="modal-online-host" class="modal hidden">
+        <div class="modal-content white-outline" style="max-width: 420px;">
+            <h2 style="color: var(--hp-yellow); margin-top: 0; text-align: center;">Host online battle</h2>
+            <p style="font-size: 12px; color: #888;">Room rules follow your current draft settings. Share the code or link with your opponent.</p>
+            <label style="display:block;font-size:12px;margin:10px 0 4px;">Turn timers</label>
+            <select id="online-host-timer-preset" style="width:100%;box-sizing:border-box;padding:8px;background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;font-family:inherit;">
+                <option value="none">No time limit</option>
+                <option value="fast">Fast — 30s draft pick, 30s per turn (AI if time runs out)</option>
+                <option value="slow">Slow — 60s draft pick, 60s per turn (AI if time runs out)</option>
+            </select>
+            <p style="font-size:11px;color:#888;margin:8px 0 0;line-height:1.4;">Timers sync from the host. If a player does not act in time, the AI chooses for them.</p>
+            <button type="button" onclick="window.confirmOnlineHost && window.confirmOnlineHost()" style="width:100%;margin-top:14px;padding:10px;">Create room</button>
+            <button type="button" onclick="window.closeModal('modal-online-host')" style="width:100%;margin-top:8px;">Cancel</button>
+        </div>
+    </div>
+
+    <div id="modal-gauntlet-leaderboard" class="modal hidden">
+        <div class="modal-content white-outline" style="max-width: 520px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;">
+            <h2 style="color: #ffd700; margin-top: 0; text-align: center;">Gauntlet leaderboard</h2>
+            <p style="font-size: 11px; color: #888; margin: 0 0 8px; text-align: center;">Top 100 runs (honor system). Requires Supabase in online-config.js.</p>
+            <div id="gauntlet-lb-loading" style="font-size:12px;color:#aaa;padding:12px;">Loading…</div>
+            <div id="gauntlet-lb-err" style="font-size:12px;color:#f44336;padding:0 8px 8px;display:none;"></div>
+            <div id="gauntlet-lb-scroll" style="overflow-y: auto; flex: 1; min-height: 0; font-size: 11px;"></div>
+            <button type="button" onclick="window.closeModal('modal-gauntlet-leaderboard')" style="width:100%;margin-top:10px;">Close</button>
+        </div>
+    </div>
+
     <div id="modal-online-pvp" class="modal hidden">
         <div class="modal-content white-outline" style="max-width: 420px;">
             <h2 style="color: var(--hp-yellow); margin-top: 0; text-align: center;">Join online battle</h2>
@@ -1636,6 +1763,13 @@
         <div class="modal-content white-outline" style="text-align: center;">
             <h1 id="end-title" style="margin-bottom: 5px;">MATCH OVER</h1>
             <p id="end-desc" style="margin-bottom: 20px; color: #ccc;"></p>
+            <div id="gauntlet-lb-row" class="hidden" style="margin: 0 0 16px; text-align: left; max-width: 360px; margin-left: auto; margin-right: auto;">
+                <label style="display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: #ccc; cursor: pointer;">
+                    <input type="checkbox" id="gauntlet-lb-optin" style="margin-top: 2px;">
+                    <span>Submit this run to the online Gauntlet leaderboard (top 100, honor system)</span>
+                </label>
+                <p id="gauntlet-lb-msg" style="color: #888; font-size: 11px; margin: 8px 0 0;"></p>
+            </div>
             <button onclick="window.returnToHome()" style="width: 100%;">Return to Main Menu</button>
         </div>
     </div>
@@ -1655,7 +1789,7 @@
                 <button class="sum-tab active" id="sum-tab-1" onclick="window.switchSummaryTab(1)">&#9670; Overview</button>
                 <button class="sum-tab" id="sum-tab-2" onclick="window.switchSummaryTab(2)">&#9654; Moves</button>
                 <button class="sum-tab" id="sum-tab-3" onclick="window.switchSummaryTab(3)">&#9741; Matchups</button>
-                <button type="button" class="summary-modal-mob-info" onclick="window.cycleSummaryTabForMobile();" title="Next tab">&#8505;</button>
+                <button type="button" class="summary-modal-mob-info" onclick="window.cycleSummaryTabForMobile();" title="Next summary tab (Overview → Moves → Matchups)" aria-label="Next summary tab">&#8505;</button>
             </div>
             <div class="summary-body-row">
                 <div id="summary-pages-scroll" class="summary-pages-scroll">
@@ -1686,14 +1820,24 @@
             <div style="border:1px solid #444;border-radius:6px;padding:14px;background:var(--surface);">
                 <h3 style="color:var(--accent);margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:1px;">Run Settings</h3>
                 <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
-                    <span style="font-size:12px;color:#aaa;">Generations:</span>
-                    <select id="story-setting-mingen" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:2px 6px;font-family:inherit;font-size:12px;cursor:pointer;">
-                        <option value="1" selected>Gen 1</option><option value="2">Gen 2</option><option value="3">Gen 3</option><option value="4">Gen 4</option><option value="5">Gen 5</option><option value="6">Gen 6</option><option value="7">Gen 7</option><option value="8">Gen 8</option><option value="9">Gen 9</option>
-                    </select>
-                    <span style="color:#666;font-size:12px;">to</span>
-                    <select id="story-setting-maxgen" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:2px 6px;font-family:inherit;font-size:12px;cursor:pointer;">
-                        <option value="1">Gen 1</option><option value="2">Gen 2</option><option value="3">Gen 3</option><option value="4">Gen 4</option><option value="5">Gen 5</option><option value="6">Gen 6</option><option value="7">Gen 7</option><option value="8">Gen 8</option><option value="9" selected>Gen 9</option>
-                    </select>
+                    <div style="width:100%;">
+                        <div style="font-size:11px;color:#aaa;margin-bottom:6px;">Generations in pool (tap toggles):</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;">
+                            <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" id="story-gen-cb-1" checked><span>G1</span></label>
+                            <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" id="story-gen-cb-2" checked><span>G2</span></label>
+                            <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" id="story-gen-cb-3" checked><span>G3</span></label>
+                            <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" id="story-gen-cb-4" checked><span>G4</span></label>
+                            <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" id="story-gen-cb-5" checked><span>G5</span></label>
+                            <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" id="story-gen-cb-6" checked><span>G6</span></label>
+                            <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" id="story-gen-cb-7" checked><span>G7</span></label>
+                            <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" id="story-gen-cb-8" checked><span>G8</span></label>
+                            <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" id="story-gen-cb-9" checked><span>G9</span></label>
+                        </div>
+                        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;font-size:10px;">
+                            <button type="button" onclick="window.toggleStoryGenAll(true)" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:2px 8px;font-family:inherit;cursor:pointer;">All gens</button>
+                            <button type="button" onclick="window.toggleStoryGenClear()" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:2px 8px;font-family:inherit;cursor:pointer;">Gen 1 only</button>
+                        </div>
+                    </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;margin-bottom:8px;">
                     <label style="color:#aaa;">Difficulty:</label>
@@ -1895,14 +2039,14 @@
         </div>
 
         <!-- Foe sprite upper-right -->
-        <div id="foe-sprite-container" style="position:absolute; top:20px; right:40px; display:inline-block; width:258px; height:276px;">
+        <div id="foe-sprite-container" style="position:absolute; top:54px; right:38px; display:inline-block; width:258px; height:276px;">
             <div class="foe-platform" style="position:absolute; bottom:12px; left:50%; transform:translateX(-50%); width:160px; height:28px;"></div>
             <img id="foe-sprite" class="sprite opponent-sprite" src="" alt="Foe" onerror="handleSpriteError(this)" style="width:252px; height:252px; position:absolute; bottom:16px; left:50%; transform:translateX(-50%); image-rendering:pixelated; z-index:2;">
             <span id="foe-status-icon" class="status-icon" style="display:none; z-index:5;"></span>
         </div>
 
         <!-- PLAYER: sprite bottom-left shifted right toward center, stat box bottom-right -->
-        <div id="player-sprite-container" style="position:absolute; bottom:195px; left:55px; display:inline-block; width:247px; height:270px;">
+        <div id="player-sprite-container" style="position:absolute; bottom:198px; left:264px; display:inline-block; width:247px; height:270px;">
             <div class="player-platform" style="position:absolute; bottom:18px; left:50%; transform:translateX(-50%); width:180px; height:35px;"></div>
             <img id="player-sprite" class="sprite player-sprite" src="" alt="Player" onerror="handleSpriteError(this)" style="width:247px; height:247px; position:absolute; bottom:22px; left:50%; transform:translateX(-50%); image-rendering:pixelated; z-index:2;">
             <span id="player-status-icon" class="status-icon" style="display:none;"></span>
@@ -1924,7 +2068,8 @@
             </div>
         </div>
 
-        <div class="ui-bottom" style="height:190px;">
+        <div class="ui-bottom" style="height:190px; position:relative;">
+            <div id="online-battle-timer" class="hidden" style="position:absolute; top:-22px; right:8px; z-index:12; font-size:11px; font-weight:bold; color:#81d4fa; padding:2px 8px; border-radius:6px; background:rgba(0,0,0,0.5); pointer-events:none;"></div>
             <div id="battle-log" class="white-outline scrollable"></div>
             <div id="command-menu" class="command-grid white-outline hidden">
                 <button onclick="window.showMoves()" style="color: var(--hp-yellow);">FIGHT</button>
@@ -1932,7 +2077,7 @@
                 <button onclick="window.openBag()" style="color: #add8e6;">BAG</button>
                 <button onclick="window.runAway()" style="color: var(--hp-red);">RUN</button>
             </div>
-            <div id="move-menu" class="command-grid white-outline hidden"></div>
+            <div id="move-menu" class="move-menu-layout white-outline hidden"></div>
         </div>
     </div>
     </div>
@@ -1943,7 +2088,9 @@
         // === 0. DEVICE DETECTION ===
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
             || (navigator.maxTouchPoints > 1 && /MacIntel/.test(navigator.platform))
-            || window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+            || window.matchMedia('(hover: none) and (pointer: coarse)').matches
+            /* WebViews / “Desktop site” / devtools can miss UA; coarse pointer + narrow viewport ≈ phone/tablet */
+            || (navigator.maxTouchPoints > 0 && window.matchMedia('(pointer: coarse)').matches && window.matchMedia('(max-width: 1024px)').matches);
 
         if (isMobile) document.body.classList.add('is-mobile');
         function applyLayoutPresetClasses() {
@@ -2017,6 +2164,25 @@
             if (num <= 151) return 1; if (num <= 251) return 2; if (num <= 386) return 3;
             if (num <= 493) return 4; if (num <= 649) return 5; if (num <= 721) return 6;
             if (num <= 809) return 7; if (num <= 905) return 8; return 9;
+        }
+
+        function rangeToEnabledGens(minG, maxG) {
+            const lo = Math.max(1, Math.min(9, Math.min(minG, maxG)));
+            const hi = Math.max(1, Math.min(9, Math.max(minG, maxG)));
+            const a = [];
+            for (let g = lo; g <= hi; g++) a.push(g);
+            return a;
+        }
+        function normalizeEnabledGens(gens) {
+            if (!gens || !gens.length) return [1, 2, 3, 4, 5, 6, 7, 8, 9];
+            const s = [...new Set(gens.filter((g) => g >= 1 && g <= 9))].sort((a, b) => a - b);
+            return s.length ? s : [1, 2, 3, 4, 5, 6, 7, 8, 9];
+        }
+        function formatEnabledGensNote(gens) {
+            const g = normalizeEnabledGens(gens);
+            if (g.length === 9) return 'All generations in pool';
+            if (g.length === 1) return `Pokémon from Gen ${g[0]} only`;
+            return `Gens ${g.join(', ')} in pool`;
         }
 
         // Helper: get @pkmn/dex Dex instance (window.pkmn.dex.Dex)
@@ -2276,7 +2442,8 @@
         // Excludes mega/primal form names (e.g. "Metagross-Mega", "Charizard-Mega-X") —
         // those exist as separate entries in Smogon data but should never appear as
         // draftable Pokémon; the base form with MEGA gimmick handles them.
-        function getDraftPool(minGen, maxGen, grades) {
+        function getDraftPool(enabledGens, grades) {
+            const genSet = new Set(normalizeEnabledGens(enabledGens));
             // Build excluded set lazily (MEGA_FORM_NAMES defined later in same script scope)
             const excluded = new Set([
                 ...(typeof MEGA_FORM_NAMES !== 'undefined' ? Object.values(MEGA_FORM_NAMES) : []),
@@ -2292,12 +2459,12 @@
 
             let eligible = source.filter(name => {
                 const b = baseStats[name];
-                return b && b.gen >= minGen && b.gen <= maxGen && (!grades || grades.includes(getMonGrade(name, b.hp+b.atk+b.def+b.spa+b.spd+b.spe)));
+                return b && genSet.has(b.gen) && (!grades || grades.includes(getMonGrade(name, b.hp+b.atk+b.def+b.spa+b.spd+b.spe)));
             });
             if (eligible.length < 12) {
                 eligible = source.filter(name => {
                     const b = baseStats[name];
-                    return b && b.gen >= minGen && b.gen <= maxGen;
+                    return b && genSet.has(b.gen);
                 });
             }
             if (eligible.length < 12) eligible = source;
@@ -3412,7 +3579,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         document.addEventListener('mozfullscreenchange', _onFullscreenEvent);
         document.addEventListener('MSFullscreenChange', _onFullscreenEvent);
 
+        /** #text-tooltip is fixed outside transformed #app-root (z-index 8000) — hide when opening in-frame modals so they are not covered. */
+        function dismissTextTooltipForModal() {
+            const t = document.getElementById('text-tooltip');
+            if (t) t.classList.add('hidden');
+        }
         window.openSettings = function() {
+            dismissTextTooltipForModal();
             const ap = document.getElementById('setting-ai-profile');
             if (ap) ap.value = settings.aiProfile || 'balanced';
             const tsb = document.getElementById('toggle-story-bag-btn');
@@ -3455,6 +3628,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             });
         }
         window.showHelp = function() {
+            dismissTextTooltipForModal();
             let text = helpData.menu;
             if (!document.getElementById('screen-draft').classList.contains('hidden')) text = helpData.draft;
             if (!document.getElementById('screen-battle').classList.contains('hidden')) text = helpData.battle;
@@ -3472,6 +3646,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
             if (t) return { x: t.pageX, y: t.pageY };
             return { x: (e.clientX || 0) + window.scrollX, y: (e.clientY || 0) + window.scrollY };
+        };
+
+        /** True when hover tooltips are appropriate (mouse / trackpad on a hover-capable primary pointer). */
+        window._prefersFinePointerHover = function() {
+            try {
+                return window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+            } catch (err) {
+                return true;
+            }
         };
 
         // Central tooltip text resolver: tooltipDict first, then live @pkmn/dex fallback
@@ -3496,6 +3679,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return null;
         };
         window.showTextTooltip = function(key, e) {
+            if (!window._prefersFinePointerHover()) return;
             let tt = document.getElementById('text-tooltip');
             let text = window._resolveTooltipText(key) || key;
             tt.innerText = text;
@@ -3515,6 +3699,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             window._posTooltip(tt, e); tt.classList.remove('hidden');
         };
         window.showTextTooltipHoverFromData = function(el, e) {
+            if (!window._prefersFinePointerHover()) return;
             e.stopPropagation();
             let key = decodeURIComponent(el.getAttribute('data-tip-key') || '');
             window.showTextTooltip(key, e);
@@ -3582,15 +3767,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             tt.classList.remove('hidden');
             tt.classList.add('sticky-open');
         };
-        // Global mousemove: hide tooltips when cursor leaves any trigger element (not sticky move panel)
+        // Global mousemove: hide hover tooltips when cursor leaves known trigger regions (tap-mode: Esc / × / touch-outside)
         document.addEventListener('mousemove', function(ev) {
-            if (!ev.target.closest('[onmousemove],[onmouseenter]')) {
-                document.getElementById('text-tooltip').classList.add('hidden');
+            let tt = document.getElementById('text-tooltip');
+            if (tt && tt.classList.contains('tooltip-tap-mode') && !tt.classList.contains('hidden')) return;
+            const tipZone = ev.target.closest([
+                '.hover-text',
+                '.log-move-link',
+                '.log-tip-term',
+                '.tip-move-cell',
+                '.type-badge',
+                '.tera-tip-hover',
+                '#player-name',
+                '#foe-name'
+            ].join(','));
+            if (!tipZone) {
+                if (tt) tt.classList.add('hidden');
                 let mt = document.getElementById('move-tooltip');
                 if (mt && !mt.classList.contains('sticky-open')) mt.classList.add('hidden');
             }
         });
         document.addEventListener('touchstart', function(ev) {
+            let tt = document.getElementById('text-tooltip');
+            if (tt && !tt.classList.contains('hidden') && tt.classList.contains('tooltip-tap-mode') && !ev.target.closest('#text-tooltip')) {
+                tt.classList.add('hidden');
+                tt.classList.remove('tooltip-tap-mode');
+                tt.innerHTML = '';
+            }
             if (!ev.target.closest('#move-tooltip.sticky-open') && !ev.target.closest('.move-info-hit')) {
                 let mt = document.getElementById('move-tooltip');
                 if (mt && mt.classList.contains('sticky-open')) {
@@ -3604,6 +3807,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             tt.innerHTML = html; window._posTooltip(tt, e); tt.classList.remove('hidden');
         };
         window.showTeraTooltip = function(teraType, origT1, origT2, e, tapMode) {
+            if (!tapMode && !window._prefersFinePointerHover()) return;
             let stab = (origT1 === teraType || origT2 === teraType) ? '2×' : '1.5×';
             let stabNote = stab === '2×' ? 'Tera matches original type → <b>2× STAB</b>!' : '<b>1.5× STAB</b> on Tera-type moves.';
             let tchart = typeChart[teraType] || {};
@@ -3708,6 +3912,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return state.pActive || state.fActive || null;
         };
         window.showMoveTooltip = function(moveName, e) {
+            if (!window._prefersFinePointerHover()) return;
             let move = movesDB[moveName]; if (!move) return;
             let tt = document.getElementById('text-tooltip');
             let pri = formatMovePriority(move.pri);
@@ -3727,7 +3932,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             window._posTooltip(tt, e); tt.classList.remove('hidden');
         };
         // Tooltip for Max Moves / Z-Moves not in movesDB
-        window.showRawMoveTooltip = function(moveName, e) {
+        function _rawGimmickMoveDescription(moveName) {
             const maxDesc = {
                 'Max Strike':'Lowers the target\'s Speed by 1 stage.','Max Flare':'Sets harsh sunlight for 5 turns.',
                 'Max Geyser':'Summons rain for 5 turns.','Max Overgrowth':'Sets Grassy Terrain for 5 turns. Boosts Grass moves.',
@@ -3761,9 +3966,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'Catastropika':'Pikachu exclusive. Extreme Electric-type Z-Move.',
                 'Pulverizing Pancake':'Snorlax exclusive. Extreme Normal-type Z-Move.',
             };
-            let desc = maxDesc[moveName] || zDesc[moveName] || 'A powerful gimmick move.';
+            return maxDesc[moveName] || zDesc[moveName] || 'A powerful gimmick move.';
+        }
+        window.showRawMoveTooltip = function(moveName, e) {
+            if (!window._prefersFinePointerHover()) return;
+            let desc = _rawGimmickMoveDescription(moveName);
             let tt = document.getElementById('text-tooltip');
+            tt.classList.remove('tooltip-tap-mode');
             tt.innerHTML = `<strong style="color:var(--hp-yellow)">${moveName}</strong><br><span style="font-size:11px;color:#ccc;">${desc}</span>`;
+            window._posTooltip(tt, e); tt.classList.remove('hidden');
+        };
+        window.showRawMoveTooltipTap = function(moveName, e) {
+            e.stopPropagation();
+            let desc = _rawGimmickMoveDescription(moveName);
+            let tt = document.getElementById('text-tooltip');
+            tt.classList.add('tooltip-tap-mode');
+            tt.innerHTML = '<button type="button" class="tip-close-x" onclick="window.hideTextTooltip()">×</button><div style="clear:both;font-size:12px;color:#ccc;padding-top:4px;"><strong style="color:var(--hp-yellow)">' + moveName + '</strong><br><span style="font-size:11px;">' + desc + '</span></div>';
             window._posTooltip(tt, e); tt.classList.remove('hidden');
         };
         function getStatColorClass(val) {
@@ -3795,9 +4013,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const clamped = Math.max(0, Math.min(1, t));
             return 0.85 + clamped * 0.30;
         }
+        /** Field sprite species during Transform / Imposter (appearance matches target; mon.name stays the original). */
+        function getBattleSpriteSpeciesName(mon) {
+            if (!mon) return '';
+            return mon.transformedInto || mon.name;
+        }
+        function getBattleSpriteShiny(mon) {
+            if (!mon) return false;
+            if (mon.transformedInto) return mon.transformTargetShiny !== undefined ? mon.transformTargetShiny : mon.isShiny;
+            return mon.isShiny;
+        }
         function getSpriteTransformStyle(mon) {
             if (!mon) return 'translateX(-50%)';
-            let s = getLoreSpriteScaleFactor(mon._baseName || mon.name);
+            let scaleName = mon.transformedInto || mon._baseName || mon.name;
+            let s = getLoreSpriteScaleFactor(scaleName);
             if (mon.dynamaxed) s *= 1.25;
             return `translateX(-50%) scale(${s})`;
         }
@@ -3828,19 +4057,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             div.className = `log-${type}`;
             // Detect and wrap move names as hoverable
             let processedMsg = msg.replace(/used (.+?)!/g, (match, moveName) => {
-                let safe = moveName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                let enc = encodeURIComponent(moveName);
                 if (movesDB[moveName]) {
-                    return `used <span class="log-move-link" onmousemove="window.showMoveTooltip('${safe}', event)" onmouseleave="window.hideTextTooltip()" style="text-decoration:underline dotted; cursor:help; color:var(--accent);">${moveName}</span>!`;
+                    return `used <span class="log-move-link tip-move-cell" data-mn="${enc}" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()" style="text-decoration:underline dotted; cursor:help; color:var(--accent);">${moveName}</span>!`;
                 }
-                // Max Moves / Z-Moves: show raw tooltip
-                return `used <span class="log-move-link" onmousemove="window.showRawMoveTooltip('${safe}', event)" onmouseleave="window.hideTextTooltip()" style="text-decoration:underline dotted; cursor:help; color:#ef9a9a;">${moveName}</span>!`;
+                return `used <span class="log-move-link tip-move-cell" data-mn="${enc}" onclick="event.stopPropagation(); window.showRawMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showRawMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()" style="text-decoration:underline dotted; cursor:help; color:#ef9a9a;">${moveName}</span>!`;
             });
             // Wrap known tooltip terms (items, abilities) if message is short enough
             if (processedMsg.length < 200 && Object.keys(tooltipDict).length > 0) {
                 for (let key of Object.keys(tooltipDict)) {
                     if (key.length > 3 && processedMsg.includes(key)) {
-                        let safe = key.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-                        processedMsg = processedMsg.replace(key, `<span style="text-decoration:underline dotted #888;cursor:help;" onmousemove="window.showTextTooltip('${safe}',event)" onmouseleave="window.hideTextTooltip()">${key}</span>`);
+                        let encK = encodeURIComponent(key);
+                        processedMsg = processedMsg.replace(key, `<span class="hover-text log-tip-term" data-tip-key="${encK}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()" style="text-decoration:underline dotted #888;">${key}</span>`);
                         break; // Only wrap the first match per message to avoid slow loops
                     }
                 }
@@ -4075,9 +4303,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window._smogonCache = _smogonCache;
         window._randbatsCache = _randbatsCache;
 
-        window.returnToHome = function() {
+        window.returnToHome = async function() {
             const wantFs = _isFullscreen();
             const finish = function() { _reenterFullscreenIfNeeded(wantFs); };
+            try {
+                const glOpt = document.getElementById('gauntlet-lb-optin');
+                const glRow = document.getElementById('gauntlet-lb-row');
+                if (glOpt && glRow && !glRow.classList.contains('hidden') && glOpt.checked && state && state.mode === 'gauntlet' && typeof window.submitGauntletLeaderboardRun === 'function') {
+                    await window.submitGauntletLeaderboardRun();
+                }
+            } catch (e) { console.warn('[GauntletLB]', e); }
+            try { if (typeof window.clearOnlinePvPTimers === 'function') window.clearOnlinePvPTimers(); } catch (e) {}
             try { if (window.OnlineBattle && window.OnlineBattle.dispose) window.OnlineBattle.dispose(); } catch (e) {}
             const battleScreen = document.getElementById('screen-battle');
             const wasStoryBattle = window.StoryMode && window.StoryMode.isActive() && typeof state !== 'undefined' && state.mode === 'story'
@@ -4258,9 +4494,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (spriteEl) {
                 spriteEl.style.filter = '';
                 spriteEl.style.transform = 'translateX(-50%)';
-                // Restore original sprite
-                spriteEl.alt = mon.name;
-                spriteEl.src = getSprite(mon.name, mon.isShiny);
+                let sprName = getBattleSpriteSpeciesName(mon);
+                let sprShiny = getBattleSpriteShiny(mon);
+                spriteEl.alt = sprName;
+                spriteEl.dataset.shiny = sprShiny ? 'true' : 'false';
+                spriteEl.src = getSprite(sprName, sprShiny);
             }
             updateUI();
         }
@@ -4511,22 +4749,52 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // === 4. DRAFTING ===
+        function getDraftEnabledGensFromUI() {
+            const gens = [];
+            for (let g = 1; g <= 9; g++) {
+                const el = document.getElementById(`draft-gen-cb-${g}`);
+                if (el && el.checked) gens.push(g);
+            }
+            return normalizeEnabledGens(gens);
+        }
+        window.setDraftGenCheckboxes = function (enabledGens) {
+            const set = new Set(normalizeEnabledGens(enabledGens));
+            for (let g = 1; g <= 9; g++) {
+                const el = document.getElementById(`draft-gen-cb-${g}`);
+                if (el) el.checked = set.has(g);
+            }
+        };
+        window.toggleDraftGenAll = function (on) {
+            for (let g = 1; g <= 9; g++) {
+                const el = document.getElementById(`draft-gen-cb-${g}`);
+                if (el) el.checked = on !== false;
+            }
+            window.updatePoolCount();
+        };
+        window.toggleDraftGenClear = function () {
+            window.toggleDraftGenAll(false);
+            const el = document.getElementById('draft-gen-cb-1');
+            if (el) el.checked = true;
+            window.updatePoolCount();
+        };
+        window.rangeToEnabledGens = rangeToEnabledGens;
+        window.normalizeEnabledGens = normalizeEnabledGens;
+
         window.updatePoolCount = function() {
-            let minGen = +document.getElementById('gen-min').value;
-            let maxGen = +document.getElementById('gen-max').value;
-            if (maxGen < minGen) { document.getElementById('gen-max').value = minGen; maxGen = minGen; }
+            const enabledGens = getDraftEnabledGensFromUI();
+            const genSet = new Set(enabledGens);
             // Count from gen9 randbats + full baseStats (from @pkmn/dex or CSV)
             let enabledGrades = [];
             for (let g = 1; g <= 4; g++) { let cb = document.getElementById(`grade-${g}-cb`); if (!cb || cb.checked) enabledGrades.push(g); }
             settings.draftGrades = enabledGrades.length > 0 ? enabledGrades : [1,2,3,4];
             let eligible = new Set();
             let rb9 = _randbatsCache[9] || {};
-            for (let name of Object.keys(rb9)) { let b = baseStats[name]; if (b && b.gen >= minGen && b.gen <= maxGen && settings.draftGrades.includes(getMonGrade(name, b.hp+b.atk+b.def+b.spa+b.spd+b.spe))) eligible.add(name); }
-            for (let name of Object.keys(baseStats)) { let b = baseStats[name]; if (b && b.gen >= minGen && b.gen <= maxGen && settings.draftGrades.includes(getMonGrade(name, b.hp+b.atk+b.def+b.spa+b.spd+b.spe))) eligible.add(name); }
+            for (let name of Object.keys(rb9)) { let b = baseStats[name]; if (b && genSet.has(b.gen) && settings.draftGrades.includes(getMonGrade(name, b.hp+b.atk+b.def+b.spa+b.spd+b.spe))) eligible.add(name); }
+            for (let name of Object.keys(baseStats)) { let b = baseStats[name]; if (b && genSet.has(b.gen) && settings.draftGrades.includes(getMonGrade(name, b.hp+b.atk+b.def+b.spa+b.spd+b.spe))) eligible.add(name); }
             let el = document.getElementById('pool-count-display');
             let note = document.getElementById('gen-range-note');
             if (el) el.textContent = `Draft Pool: ${eligible.size} Pokémon`;
-            if (note) note.textContent = minGen === maxGen ? `Pokémon from Gen ${minGen} only` : `Pokémon from Gen ${minGen}–${maxGen} in pool`;
+            if (note) note.textContent = formatEnabledGensNote(enabledGens);
         };
         window.updateMechanics = function() {
             settings.mechanics.mega    = document.getElementById('mech-mega-cb')?.checked || false;
@@ -4563,25 +4831,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         async function buildDraftPoolsForCurrentSettings(mode) {
             await dataReady;
             window.updateMechanics();
-            let minGen = +document.getElementById('gen-min').value || 1;
-            let maxGen = +document.getElementById('gen-max').value || 9;
-            if (maxGen < minGen) maxGen = minGen;
+            const enabledGens = getDraftEnabledGensFromUI();
             window.updatePoolCount();
             let activeGrades = settings.draftGrades.length ? settings.draftGrades : [1,2,3,4,5];
-            let eligible = getDraftPool(minGen, maxGen, activeGrades);
+            let eligible = getDraftPool(enabledGens, activeGrades);
             const poolSizeMap = { 1: 3, 2: 4, 3: 6, 4: 6, 5: 8, 6: 8 };
             let poolSizePerPlayer = poolSizeMap[settings.partySize] || (settings.partySize + 2);
             let totalPool = poolSizePerPlayer * 2;
             const poolKeys = eligible.sort(() => 0.5 - Math.random()).slice(0, totalPool);
             const p1Pool = poolKeys.slice(0, poolSizePerPlayer).map(name => ({ name, build: makeBuild(name) }));
             const p2Pool = poolKeys.slice(poolSizePerPlayer, totalPool).map(name => ({ name, build: makeBuild(name) }));
-            return { mode, minGen, maxGen, p1Pool, p2Pool };
+            const minGen = Math.min(...enabledGens);
+            const maxGen = Math.max(...enabledGens);
+            return { mode, enabledGens, minGen, maxGen, p1Pool, p2Pool };
         }
 
         window.initDraft = async function(mode) {
             const pools = await buildDraftPoolsForCurrentSettings(mode);
-            let { minGen, maxGen, p1Pool, p2Pool } = pools;
-            state = { mode: mode, draftTurn: 1, score: 0, minGen, maxGen, p1Pool, p2Pool, p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
+            let { enabledGens, minGen, maxGen, p1Pool, p2Pool } = pools;
+            state = { mode: mode, draftTurn: 1, score: 0, enabledGens, minGen, maxGen, p1Pool, p2Pool, p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
             document.querySelectorAll('.screen, .modal').forEach(el => el.classList.add('hidden'));
             document.getElementById('screen-draft').classList.remove('hidden');
             renderDraft();
@@ -4595,21 +4863,225 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.p1Draft = (d.p1_draft || []).map(mapRow).filter(Boolean);
             state.p2Draft = (d.p2_draft || []).map(mapRow).filter(Boolean);
             if (typeof d.draft_turn === 'number') state.draftTurn = d.draft_turn;
+            if (d.draft_deadline_iso) window.__onlineDraftDeadlineIso = d.draft_deadline_iso;
+            else if (d.draft_deadline_iso === null) window.__onlineDraftDeadlineIso = null;
         }
 
-        window.initOnlineHost = async function() {
+        window.computeOnlineBattleTurnDeadlineIso = function(st) {
+            const preset = window.__onlineMatchTimerPreset || 'none';
+            if (preset === 'none' || !st || st.mode !== 'pvp') return null;
+            const sec = preset === 'fast' ? 30 : 60;
+            return new Date(Date.now() + sec * 1000).toISOString();
+        };
+
+        window.clearOnlinePvPTimers = function() {
+            try {
+                if (window.__onlineDraftTimerIv) { clearInterval(window.__onlineDraftTimerIv); window.__onlineDraftTimerIv = null; }
+                if (window.__onlineBattleTimerIv) { clearInterval(window.__onlineBattleTimerIv); window.__onlineBattleTimerIv = null; }
+            } catch (e) {}
+            window.__onlineDraftDeadlineIso = null;
+            window.__onlineBattleDeadlineIso = null;
+            window.__onlineBattleDeadlineFiring = false;
+            window.__onlineDraftTimeoutFiring = false;
+        };
+
+        window.submitGauntletLeaderboardRun = async function() {
+            const msg = document.getElementById('gauntlet-lb-msg');
             if (typeof window.__onlinePvpConfigured === 'function' && !window.__onlinePvpConfigured()) {
-                alert('Online PvP needs Supabase. Edit online-config.js with your project URL and anon key, run supabase/migrations/001_online_pvp.sql, and enable Realtime on table pvp_rooms.');
+                if (msg) msg.textContent = 'Supabase not configured.';
+                return;
+            }
+            if (!window.supabase || !window.supabase.createClient || !window.__PBS_SUPABASE_URL) {
+                if (msg) msg.textContent = 'Supabase client missing.';
+                return;
+            }
+            const displayName = (window.OnlineBattle && window.OnlineBattle.getDisplayName) ? window.OnlineBattle.getDisplayName() : 'Trainer';
+            const party = (state.playerParty || []).map(function(m) {
+                return { name: m.name, build: m.buildData ? JSON.parse(JSON.stringify(m.buildData)) : {} };
+            });
+            try {
+                const sb = window.supabase.createClient(window.__PBS_SUPABASE_URL, window.__PBS_SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+                const { error } = await sb.from('gauntlet_leaderboard').insert({
+                    display_name: String(displayName).trim().slice(0, 32) || 'Trainer',
+                    rounds_cleared: Math.max(0, parseInt(state.score, 10) || 0),
+                    final_party: party
+                });
+                if (error) { if (msg) msg.textContent = 'Submit failed: ' + error.message; }
+                else if (msg) msg.textContent = 'Submitted. Thanks!';
+            } catch (e) {
+                if (msg) msg.textContent = 'Submit failed: ' + (e && e.message ? e.message : e);
+            }
+        };
+
+        window.openGauntletLeaderboardModal = async function() {
+            document.getElementById('modal-gauntlet-leaderboard').classList.remove('hidden');
+            const loadEl = document.getElementById('gauntlet-lb-loading');
+            const errEl = document.getElementById('gauntlet-lb-err');
+            const scroll = document.getElementById('gauntlet-lb-scroll');
+            if (loadEl) loadEl.style.display = '';
+            if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+            if (scroll) scroll.innerHTML = '';
+            if (typeof window.__onlinePvpConfigured === 'function' && !window.__onlinePvpConfigured()) {
+                if (loadEl) loadEl.style.display = 'none';
+                if (errEl) { errEl.style.display = 'block'; errEl.textContent = 'Add Supabase keys to online-config.js and run supabase/migrations/002_gauntlet_leaderboard.sql.'; }
+                return;
+            }
+            try {
+                const sb = window.supabase.createClient(window.__PBS_SUPABASE_URL, window.__PBS_SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+                const { data, error } = await sb.from('gauntlet_leaderboard').select('display_name, rounds_cleared, final_party, created_at').order('rounds_cleared', { ascending: false }).limit(100);
+                if (loadEl) loadEl.style.display = 'none';
+                if (error) throw error;
+                if (!scroll) return;
+                (data || []).forEach(function(row, i) {
+                    const rowEl = document.createElement('div');
+                    rowEl.style.cssText = 'border-bottom:1px solid #333;padding:8px 4px;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;';
+                    const rank = document.createElement('span');
+                    rank.textContent = '#' + (i + 1);
+                    rank.style.cssText = 'color:#ffd700;font-weight:bold;min-width:28px;';
+                    const meta = document.createElement('div');
+                    meta.style.flex = '1';
+                    meta.innerHTML = '<div style="color:#eee;font-weight:bold;">' + (row.display_name || '?') + '</div><div style="color:#81d4fa;">Rounds: ' + (row.rounds_cleared != null ? row.rounds_cleared : '?') + '</div>';
+                    const icons = document.createElement('div');
+                    icons.style.display = 'flex'; icons.style.flexWrap = 'wrap'; icons.style.gap = '2px';
+                    const party = row.final_party;
+                    if (Array.isArray(party)) {
+                        party.slice(0, 8).forEach(function(p) {
+                            if (!p || !p.name) return;
+                            const im = document.createElement('img');
+                            im.width = 28; im.height = 28;
+                            im.style.imageRendering = 'pixelated';
+                            im.alt = p.name;
+                            im.src = typeof getSprite === 'function' ? getSprite(p.name, !!(p.build && p.build._isShiny)) : '';
+                            im.onerror = function() { handleSpriteError(this); };
+                            icons.appendChild(im);
+                        });
+                    }
+                    rowEl.appendChild(rank);
+                    rowEl.appendChild(meta);
+                    rowEl.appendChild(icons);
+                    scroll.appendChild(rowEl);
+                });
+                if (!(data || []).length) scroll.innerHTML = '<p style="color:#888;padding:8px;">No entries yet.</p>';
+            } catch (e) {
+                if (loadEl) loadEl.style.display = 'none';
+                if (errEl) { errEl.style.display = 'block'; errEl.textContent = (e && e.message) ? e.message : String(e); }
+            }
+        };
+
+        window.startOnlinePvPWatchdogs = function() {
+            window.clearOnlinePvPTimers();
+            if (!window.OnlineBattle || !window.OnlineBattle.isActive()) return;
+            const tickDraft = () => {
+                const el = document.getElementById('online-draft-timer');
+                const preset = window.__onlineMatchTimerPreset || 'none';
+                if (!el || document.getElementById('screen-draft').classList.contains('hidden')) return;
+                if (preset === 'none' || !window.__onlineDraftDeadlineIso) { el.classList.add('hidden'); return; }
+                const left = Math.floor((new Date(window.__onlineDraftDeadlineIso).getTime() - Date.now()) / 1000);
+                if (left <= 0) {
+                    el.textContent = '0s';
+                    el.classList.remove('hidden');
+                    window.tryOnlineDraftTimeout && window.tryOnlineDraftTimeout();
+                } else {
+                    el.textContent = 'Pick: ' + left + 's';
+                    el.classList.remove('hidden');
+                }
+            };
+            const tickBattle = () => {
+                const el = document.getElementById('online-battle-timer');
+                const preset = window.__onlineMatchTimerPreset || 'none';
+                if (!el || document.getElementById('screen-battle').classList.contains('hidden')) return;
+                if (preset === 'none' || state.isLocked || state.isOver || !window.__onlineBattleDeadlineIso) { el.classList.add('hidden'); return; }
+                const left = Math.floor((new Date(window.__onlineBattleDeadlineIso).getTime() - Date.now()) / 1000);
+                if (left <= 0) {
+                    el.textContent = '0s';
+                    el.classList.remove('hidden');
+                    window.tryOnlineBattleTimeout && window.tryOnlineBattleTimeout();
+                } else {
+                    el.textContent = 'Turn: ' + left + 's';
+                    el.classList.remove('hidden');
+                }
+            };
+            window.__onlineDraftTimerIv = setInterval(tickDraft, 250);
+            window.__onlineBattleTimerIv = setInterval(tickBattle, 250);
+            tickDraft();
+            tickBattle();
+        };
+
+        window.tryOnlineDraftTimeout = async function() {
+            if (state.mode !== 'pvp' || !window.OnlineBattle || !window.OnlineBattle.isActive()) return;
+            if ((window.__onlineMatchTimerPreset || 'none') === 'none') return;
+            if (!window.__onlineDraftDeadlineIso || Date.now() < new Date(window.__onlineDraftDeadlineIso).getTime()) return;
+            if (window.__onlineDraftTimeoutFiring) return;
+            const turn = state.draftTurn;
+            const pool = turn === 1 ? state.p1Pool : state.p2Pool;
+            const draft = turn === 1 ? state.p1Draft : state.p2Draft;
+            if (!pool || pool.length === 0 || draft.length >= settings.partySize) return;
+            const pick = pool[0];
+            const myR = window.OnlineBattle.getRole();
+            const isMyTurn = (turn === 1 && myR === 1) || (turn === 2 && myR === 2);
+            const hostP2 = window.OnlineBattle.isHost() && turn === 2;
+            if (!isMyTurn && !hostP2) return;
+            window.__onlineDraftTimeoutFiring = true;
+            try {
+                logMsg(isMyTurn ? "Time's up — auto-drafted first available Pokémon." : "Guest timer expired — auto-drafting for Player 2.", 'info');
+                await window.OnlineBattle.handleSelectDraft(state, settings, pick, selectDraftCore);
+                if (window.OnlineBattle.isHost()) await window.OnlineBattle.refreshDraftDeadlineOnly();
+            } catch (e) { console.warn('[OnlineDraftTimeout]', e); }
+            finally { window.__onlineDraftTimeoutFiring = false; }
+        };
+
+        window.tryOnlineBattleTimeout = async function() {
+            if (state.mode !== 'pvp' || !window.OnlineBattle || !window.OnlineBattle.isActive() || state.isLocked || state.isOver) return;
+            if ((window.__onlineMatchTimerPreset || 'none') === 'none') return;
+            if (!window.__onlineBattleDeadlineIso || Date.now() < new Date(window.__onlineBattleDeadlineIso).getTime()) return;
+            if (window.__onlineBattleDeadlineFiring) return;
+            const cp = state.currentPlayer;
+            const host = window.OnlineBattle.isHost();
+            if (cp === 2 && host) {
+                try { await window.OnlineBattle.hostResolveGuestBattleTimeout(state, settings); } catch (e) { console.warn(e); }
+                return;
+            }
+            if (!window.OnlineBattle.myTurn(state)) return;
+            window.__onlineBattleDeadlineFiring = true;
+            try {
+                logMsg("Time's up — AI chose your move.", 'info');
+                const action = window._pvpBuildTimeoutAction();
+                await window.OnlineBattle.handlePvPPlayTurn(state, action, settings);
+            } catch (e) { console.warn('[OnlineBattleTimeout]', e); }
+            finally { window.__onlineBattleDeadlineFiring = false; }
+        };
+
+        window.openOnlineHostModal = function() {
+            if (typeof window.__onlinePvpConfigured === 'function' && !window.__onlinePvpConfigured()) {
+                alert('Online PvP needs Supabase. Edit online-config.js with your project URL and anon key, run supabase/migrations/001_online_pvp.sql and 002_gauntlet_leaderboard.sql, and enable Realtime on table pvp_rooms.');
+                return;
+            }
+            document.getElementById('modal-online-host').classList.remove('hidden');
+        };
+
+        window.confirmOnlineHost = async function() {
+            const sel = document.getElementById('online-host-timer-preset');
+            const v = sel ? sel.value : 'none';
+            window.closeModal('modal-online-host');
+            await window.initOnlineHost(v);
+        };
+
+        window.initOnlineHost = async function(timerPreset) {
+            if (typeof window.__onlinePvpConfigured === 'function' && !window.__onlinePvpConfigured()) {
+                alert('Online PvP needs Supabase. Edit online-config.js with your project URL and anon key, run supabase/migrations/001_online_pvp.sql and 002_gauntlet_leaderboard.sql, and enable Realtime on table pvp_rooms.');
                 return;
             }
             try {
                 const pools = await buildDraftPoolsForCurrentSettings('pvp');
                 const match = window.OnlineBattle.buildMatchOptionsFromSettings(settings);
+                match.enabledGens = pools.enabledGens;
                 match.minGen = pools.minGen;
                 match.maxGen = pools.maxGen;
+                match.timer_preset = (timerPreset === 'fast' || timerPreset === 'slow') ? timerPreset : 'none';
+                window.__onlineMatchTimerPreset = match.timer_preset;
                 const serPool = (pl) => pl.map((x) => ({ name: x.name, build: x.build }));
-                await window.OnlineBattle.createRoom(match, pools.minGen, pools.maxGen, { p1_pool: serPool(pools.p1Pool), p2_pool: serPool(pools.p2Pool) });
-                state = { mode: 'pvp', draftTurn: 1, score: 0, minGen: pools.minGen, maxGen: pools.maxGen, p1Pool: pools.p1Pool, p2Pool: pools.p2Pool, p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
+                await window.OnlineBattle.createRoom(match, pools.enabledGens, { p1_pool: serPool(pools.p1Pool), p2_pool: serPool(pools.p2Pool) });
+                state = { mode: 'pvp', draftTurn: 1, score: 0, enabledGens: pools.enabledGens, minGen: pools.minGen, maxGen: pools.maxGen, p1Pool: pools.p1Pool, p2Pool: pools.p2Pool, p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
                 window.__hostOnlineBattleStarted = false;
                 window.__guestLastResolved = 0;
                 window.__guestBattleStartApplied = false;
@@ -4617,6 +5089,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 document.getElementById('screen-draft').classList.remove('hidden');
                 renderDraft();
                 await window.OnlineBattle.pushDraftState(state);
+                await window.OnlineBattle.refreshDraftDeadlineOnly();
+                window.startOnlinePvPWatchdogs();
                 const code = window.OnlineBattle.getCode();
                 const link = location.origin + location.pathname + '?online=' + encodeURIComponent(code);
                 logMsg(`Online room ${code} — share link or code with guest.`, 'info');
@@ -4650,17 +5124,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const row = await window.OnlineBattle.joinRoom(code, name);
                 const d = row.data || {};
                 window.OnlineBattle.applyMatchOptionsToSettings(d.match_options || {}, settings);
-                if (typeof d.minGen === 'number') { const el = document.getElementById('gen-min'); if (el) el.value = String(d.minGen); }
-                if (typeof d.maxGen === 'number') { const el = document.getElementById('gen-max'); if (el) el.value = String(d.maxGen); }
+                let joinedGens = (Array.isArray(d.enabledGens) && d.enabledGens.length)
+                    ? normalizeEnabledGens(d.enabledGens)
+                    : rangeToEnabledGens(typeof d.minGen === 'number' ? d.minGen : 1, typeof d.maxGen === 'number' ? d.maxGen : 9);
+                window.setDraftGenCheckboxes(joinedGens);
                 window.updateMechanics();
-                state = { mode: 'pvp', draftTurn: d.draft_turn || 1, score: 0, minGen: d.minGen || (+document.getElementById('gen-min').value || 1), maxGen: d.maxGen || (+document.getElementById('gen-max').value || 9), p1Pool: [], p2Pool: [], p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
+                const jMin = Math.min(...joinedGens);
+                const jMax = Math.max(...joinedGens);
+                state = { mode: 'pvp', draftTurn: d.draft_turn || 1, score: 0, enabledGens: joinedGens, minGen: jMin, maxGen: jMax, p1Pool: [], p2Pool: [], p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
                 mergeOnlineDraftFromPayload(d);
+                if (d.battle_turn_deadline_iso !== undefined) window.__onlineBattleDeadlineIso = d.battle_turn_deadline_iso;
                 window.__hostOnlineBattleStarted = false;
                 window.__guestLastResolved = 0;
                 window.__guestBattleStartApplied = false;
                 document.querySelectorAll('.screen, .modal').forEach(el => el.classList.add('hidden'));
                 document.getElementById('screen-draft').classList.remove('hidden');
                 renderDraft();
+                window.startOnlinePvPWatchdogs();
                 window.closeModal('modal-online-pvp');
                 logMsg('Joined online room as Player 2. Wait for host picks when it is their turn.', 'info');
             } catch (e) {
@@ -4672,6 +5152,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window.onOnlineRoomData = async function(d, ctx) {
             if (!window.OnlineBattle || !window.OnlineBattle.isActive()) return;
             try {
+                if (d.draft_deadline_iso !== undefined) window.__onlineDraftDeadlineIso = d.draft_deadline_iso;
+                if (d.battle_turn_deadline_iso !== undefined) window.__onlineBattleDeadlineIso = d.battle_turn_deadline_iso;
                 if (d.match_options && ctx.role === 2) {
                     window.OnlineBattle.applyMatchOptionsToSettings(d.match_options, settings);
                     window.updateMechanics();
@@ -4723,6 +5205,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return html;
         }
         window.showTypeTooltip = function(typeName, e) {
+            if (!window._prefersFinePointerHover()) return;
             let info = getTypeDefensiveInfo(typeName);
             // Also get offensive info
             let offChart = typeChart[typeName] || {};
@@ -4733,6 +5216,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (offChart[defType] < 1) notVeryEff.push(defType);
             }
             let tt = document.getElementById('text-tooltip');
+            tt.classList.remove('tooltip-tap-mode');
             tt.innerHTML = `<strong style="color:var(--hp-yellow);">${typeName}</strong><br>` +
                 `<span style="color:#ef5350;">Weak to:</span> ${info.weakTo.length ? info.weakTo.join(', ') : 'None'}<br>` +
                 `<span style="color:#66bb6a;">Resists:</span> ${info.resists.length ? info.resists.join(', ') : 'None'}<br>` +
@@ -4789,10 +5273,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             currentPool.forEach((draftItem) => {
                 let tempMon = buildPokemon(draftItem.name, draftItem.build); let tier = getMonGrade(draftItem.name, getBST(draftItem.name));
                 let btn = document.createElement('div'); btn.className = `draft-card tier-${tier}`;
-                let movesHtml = tempMon.moves.map(m => `<div data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
+                let movesHtml = tempMon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
                 const gimmickBadge = {MEGA:'<span style="font-size:10px;background:#7b1fa2;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">MEGA</span>',ZMOVE:'<span style="font-size:10px;background:#f9a825;color:#000;border-radius:3px;padding:1px 4px;margin-left:3px;">Z</span>',DYNAMAX:'<span style="font-size:10px;background:#b71c1c;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">DYNA</span>',GMAXDYNAMAX:'<span style="font-size:10px;background:#880e4f;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">G-MAX</span>',STANDARD:''};
                 const gb = (draftItem.build.gimmick && gimmickBadge[draftItem.build.gimmick]) || '';
-                const tera = draftItem.build.teraType ? `<span style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:pointer;touch-action:manipulation;" data-tera="${encodeURIComponent(draftItem.build.teraType)}" data-o1="${encodeURIComponent(tempMon.type1)}" data-o2="${encodeURIComponent(tempMon.type2||'')}" onclick="event.stopPropagation();window.showTeraFromEl(event)" onmousemove="event.stopPropagation();window.showTeraTooltip('${draftItem.build.teraType}','${tempMon.type1}','${tempMon.type2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${draftItem.build.teraType}</span>` : '';
+                const tera = draftItem.build.teraType ? `<span class="tera-tip-hover" style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:pointer;touch-action:manipulation;" data-tera="${encodeURIComponent(draftItem.build.teraType)}" data-o1="${encodeURIComponent(tempMon.type1)}" data-o2="${encodeURIComponent(tempMon.type2||'')}" onclick="event.stopPropagation();window.showTeraFromEl(event)" onmousemove="event.stopPropagation();window.showTeraTooltip('${draftItem.build.teraType}','${tempMon.type1}','${tempMon.type2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${draftItem.build.teraType}</span>` : '';
                 btn.innerHTML = `
                     <div class="draft-card-sprite"><img src="${getSprite(tempMon.name, tempMon.isShiny)}" alt="${tempMon.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                     <div class="draft-card-body">
@@ -4819,7 +5303,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let grid = document.getElementById('enemy-pool-grid'); grid.innerHTML = '';
                 state.p2Pool.forEach((draftItem) => {
                     let tempMon = buildPokemon(draftItem.name, draftItem.build); let tier = getMonGrade(draftItem.name, getBST(draftItem.name));
-                    let movesHtml = tempMon.moves.map(m => `<div data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
+                    let movesHtml = tempMon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
                     let row = document.createElement('div');
                     row.className = `draft-card tier-${tier}`;
                     row.innerHTML = `
@@ -4851,9 +5335,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             renderDraft();
         }
 
-        function selectDraft(draftItem) {
+        async function selectDraft(draftItem) {
             if (window.OnlineBattle && window.OnlineBattle.isActive()) {
-                window.OnlineBattle.handleSelectDraft(state, settings, draftItem, selectDraftCore);
+                await window.OnlineBattle.handleSelectDraft(state, settings, draftItem, selectDraftCore);
+                if (window.OnlineBattle.isHost && window.OnlineBattle.isHost() && window.OnlineBattle.refreshDraftDeadlineOnly) {
+                    await window.OnlineBattle.refreshDraftDeadlineOnly();
+                }
                 return;
             }
             selectDraftCore(draftItem);
@@ -5087,6 +5574,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 nameEl.innerHTML = (mon.isShiny ? '&#10024; ' : '') + mon.name + gBadge;
                 nameEl.title = 'Tap for full summary · hover for quick stats';
                 nameEl.onmousemove = function(e) {
+                    if (!window._prefersFinePointerHover()) return;
                     let tt = document.getElementById('text-tooltip');
                     tt.innerHTML = getStatTooltipHTML(mon);
                     tt.classList.remove('tooltip-tap-mode');
@@ -5099,7 +5587,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     window.showActiveInfo(s === 'p');
                 };
                 nameEl.style.cursor = 'pointer';
-                let spriteEl = document.getElementById(`${s === 'p'?'player':'foe'}-sprite`); spriteEl.alt = mon.name; spriteEl.dataset.shiny = mon.isShiny ? 'true' : 'false'; spriteEl.src = getSprite(mon.name, mon.isShiny);
+                let spriteEl = document.getElementById(`${s === 'p'?'player':'foe'}-sprite`);
+                let sprName = getBattleSpriteSpeciesName(mon);
+                let sprShiny = getBattleSpriteShiny(mon);
+                spriteEl.alt = sprName; spriteEl.dataset.shiny = sprShiny ? 'true' : 'false'; spriteEl.src = getSprite(sprName, sprShiny);
                 if (mon.dynamaxed) {
                     spriteEl.style.filter = 'drop-shadow(0 0 8px #ef5350) drop-shadow(0 0 4px #ef5350)';
                 } else if (spriteEl.style.filter && spriteEl.style.filter.includes('ef5350')) {
@@ -5130,7 +5621,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let tt = mon.buildData.teraType;
                     dispType1 = tt; dispType2 = null;
                     let origT1 = mon.originalType1 || mon.type1, origT2 = mon.originalType2 || mon.type2;
-                    teraIndicator = `<span style="font-size:9px;color:#4fc3f7;margin-left:3px;cursor:pointer;text-decoration:underline dotted;" data-tera="${encodeURIComponent(tt)}" data-o1="${encodeURIComponent(origT1)}" data-o2="${encodeURIComponent(origT2||'')}" onclick="window.showTeraFromEl(event)" onmousemove="window.showTeraTooltip('${tt}','${origT1}','${origT2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045;TERA</span>`;
+                    teraIndicator = `<span class="tera-tip-hover" style="font-size:9px;color:#4fc3f7;margin-left:3px;cursor:pointer;text-decoration:underline dotted;" data-tera="${encodeURIComponent(tt)}" data-o1="${encodeURIComponent(origT1)}" data-o2="${encodeURIComponent(origT2||'')}" onclick="window.showTeraFromEl(event)" onmousemove="window.showTeraTooltip('${tt}','${origT1}','${origT2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045;TERA</span>`;
                 }
                 document.getElementById(`${s === 'p'?'player':'foe'}-types`).innerHTML = getTypeHTML(dispType1, dispType2) + teraIndicator;
                 if(s === 'p') document.getElementById('player-hp-text').innerText = `${mon.currentHp}/${mon.maxHp}`;
@@ -5363,6 +5854,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             document.getElementById('end-title').innerText = title; document.getElementById('end-desc').innerText = desc;
+            const glRow = document.getElementById('gauntlet-lb-row');
+            const glOpt = document.getElementById('gauntlet-lb-optin');
+            const glMsg = document.getElementById('gauntlet-lb-msg');
+            if (glRow && glOpt && glMsg) {
+                if (state.mode === 'gauntlet' && typeof window.__onlinePvpConfigured === 'function' && window.__onlinePvpConfigured()) {
+                    glRow.classList.remove('hidden');
+                    glOpt.checked = false;
+                    glMsg.textContent = '';
+                } else {
+                    glRow.classList.add('hidden');
+                }
+            }
             document.getElementById('modal-end-screen').classList.remove('hidden');
         }
 
@@ -5637,8 +6140,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         </div>
                     </div>
                     <div class="sum-overview-details">
-                        <div class="sum-detail-cell"><span class="sum-detail-lbl">Item</span><span class="hover-text" onmousemove="window.showTextTooltip('${(s.item||'').replace(/'/g,"\\'")}',event)" onmouseleave="window.hideTextTooltip()" style="color:#ddd;">${s.item || 'No Item'}</span></div>
-                        <div class="sum-detail-cell"><span class="sum-detail-lbl">Ability</span><span class="hover-text" onmousemove="window.showTextTooltip('${(s.ability||'').replace(/'/g,"\\'")}',event)" onmouseleave="window.hideTextTooltip()" style="color:#ddd;">${s.ability || 'None'}</span></div>
+                        <div class="sum-detail-cell"><span class="sum-detail-lbl">Item</span><span class="hover-text" data-tip-key="${encodeURIComponent(s.item || 'No Item')}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()" style="color:#ddd;">${s.item || 'No Item'}</span></div>
+                        <div class="sum-detail-cell"><span class="sum-detail-lbl">Ability</span><span class="hover-text" data-tip-key="${encodeURIComponent(s.ability || 'None')}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()" style="color:#ddd;">${s.ability || 'None'}</span></div>
                         <div class="sum-detail-cell"><span class="sum-detail-lbl">Nature</span><div>${natureLine}</div></div>
                     </div>
                 </div>`;
@@ -5669,9 +6172,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let pow = displayMove.pow > 0 ? displayMove.pow : '—';
                     let acc = displayMove.isMaxMove ? '—' : ((displayMove.acc || 0) <= 100 ? displayMove.acc + '%' : '—');
                     let ppDisp = displayMove.isMaxMove ? '∞' : `${rawMove.pp}/${rawMove.maxPp}`;
+                    const _dmn = displayMove.name;
+                    const _denc = encodeURIComponent(_dmn);
+                    const moveNameSpan = movesDB[_dmn]
+                        ? `<span class="sum-move-name tip-move-cell" data-mn="${_denc}" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${_dmn}</span>`
+                        : `<span class="sum-move-name tip-move-cell" data-mn="${_denc}" onclick="event.stopPropagation(); window.showRawMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showRawMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${_dmn}</span>`;
                     movesHtml += `<div class="${cardClass}">
                         <div class="sum-move-header">
-                            <span class="sum-move-name">${displayMove.name}</span>${upgradeTag}
+                            ${moveNameSpan}${upgradeTag}
                             ${getTypeHTML(displayMove.type, null)}
                             <span class="cat-${displayMove.cat}" style="font-size:11px;font-weight:bold;">${displayMove.cat}</span>
                         </div>
@@ -5800,7 +6308,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let targetMon = isP1 ? state.fActive : state.pActive;
             let pending = resolveGimmickIntentForActive(isP1);
 
-            let menu = document.getElementById('move-menu'); menu.innerHTML = '';
+            let menu = document.getElementById('move-menu');
+            menu.innerHTML = '';
+            menu.classList.remove('command-grid');
+            menu.classList.add('move-menu-layout');
+            let moveScroll = document.createElement('div');
+            moveScroll.className = 'move-menu-scroll command-grid';
+            menu.appendChild(moveScroll);
 
             // Treat DYNAMAX pending same as dynamaxed for display — player sees Max moves immediately on clicking DYNAMAX
             const isDynaDisplay = activeMon.dynamaxed || pending === 'DYNAMAX';
@@ -5918,21 +6432,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     syncGimmickIntentSlotOnMoveCommit(isP1);
                     window.playTurn(move._origIndex, null);
                 };
-                menu.appendChild(btn);
+                moveScroll.appendChild(btn);
             });
 
             // Check if ALL moves are disabled (Struggle or Recharge)
             let allDisabled = true;
-            menu.querySelectorAll('button').forEach(b => { if (!b.disabled) allDisabled = false; });
+            moveScroll.querySelectorAll('button').forEach(b => { if (!b.disabled) allDisabled = false; });
             if (allDisabled && !activeMon.dynamaxed) {
                 menu.innerHTML = '';
+                menu.classList.add('move-menu-layout');
+                moveScroll = document.createElement('div');
+                moveScroll.className = 'move-menu-scroll command-grid';
+                menu.appendChild(moveScroll);
                 if (activeMon.volatile.recharge) {
                     // Recharge turn: auto-submit a recharge action (performAction handles it)
                     let rechargeMove = { name: "_Recharge", type: "Normal", cat: "Status", pow: 0, acc: 100, pri: 0, pp: 1, eff: "" };
                     let rechBtn = document.createElement('button');
                     rechBtn.disabled = true;
                     rechBtn.innerHTML = `<div style="display:flex;justify-content:center;width:100%;color:#aaa;"><span>Recharging...</span></div>`;
-                    menu.appendChild(rechBtn);
+                    moveScroll.appendChild(rechBtn);
                     document.getElementById('command-menu').classList.add('hidden'); menu.classList.remove('hidden');
                     // Auto-submit after brief display
                     setTimeout(() => {
@@ -5951,7 +6469,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     state.p1Action = { moveIndex: null, switchIndex: null, aiMove: struggleMove };
                     if (isP1) window.playTurn(null, null);
                 };
-                menu.appendChild(strugBtn);
+                moveScroll.appendChild(strugBtn);
                 let swBtn = document.createElement('button');
                 swBtn.innerHTML = `<div style="display:flex;justify-content:center;width:100%;"><span>Switch Pokémon</span></div><div style="font-size:10px;text-align:left;color:#aaa;margin-top:4px;">Open party instead of Struggle</div>`;
                 swBtn.onclick = () => {
@@ -5960,7 +6478,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     document.getElementById('command-menu').classList.remove('hidden');
                     window.openParty(false);
                 };
-                menu.appendChild(swBtn);
+                moveScroll.appendChild(swBtn);
                 document.getElementById('command-menu').classList.add('hidden'); menu.classList.remove('hidden');
                 try { syncBattleActiveHighlight(); } catch (e) {}
                 return;
@@ -5990,12 +6508,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (canUseDyna) gDiv.appendChild(mkGBtn(' DYNAMAX', 'DYNAMAX', '#b71c1c', '#fff'));
                 if (canUseTera) gDiv.appendChild(mkGBtn(`◆ TERA<span style="font-size:9px"> ${activeMon.buildData.teraType}</span>`, 'TERA', '#0277bd', '#fff'));
                 if (canUseZ) gDiv.appendChild(mkGBtn('⚡ Z-MOVE', 'ZMOVE', '#f9a825', '#000'));
-                menu.appendChild(gDiv);
+                moveScroll.appendChild(gDiv);
             }
 
             let backBtn = document.createElement('button');
+            backBtn.type = 'button';
+            backBtn.className = 'move-menu-back';
             backBtn.textContent = '← BACK';
-            backBtn.style.cssText = 'color:#aaa;grid-column:1/-1;';
             backBtn.onclick = () => {
                 window.closeStickyMoveTooltip();
                 document.getElementById('move-tooltip').classList.add('hidden'); menu.classList.add('hidden');
@@ -6518,7 +7037,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     }
     return null;
 }
-        
+
+        window._pvpBuildTimeoutAction = function() {
+            if (state.mode !== 'pvp') return { moveIndex: null, switchIndex: null, aiMove: null };
+            if (state.currentPlayer === 2) {
+                let switchIdx = aiDecision();
+                if (switchIdx !== null) {
+                    clearGimmickIntent(false);
+                    return { moveIndex: null, switchIndex: switchIdx };
+                }
+                let fMove = window.getBestMove(state.fActive, state.pActive);
+                let _aiG = aiChooseGimmick(state.fActive, state.pActive);
+                let _aiSlot = state.foeParty.indexOf(state.fActive);
+                state.p2GimmickIntent = (_aiG && _aiSlot >= 0) ? { kind: _aiG, slot: _aiSlot } : null;
+                return { moveIndex: state.fActive.moves.indexOf(fMove), switchIndex: null, aiMove: fMove };
+            }
+            const _fa = state.fActive, _pa = state.pActive, _fp = state.foeParty, _pp = state.playerParty;
+            state.fActive = _pa;
+            state.pActive = _fa;
+            state.foeParty = _pp;
+            state.playerParty = _fp;
+            try {
+                let switchIdx = aiDecision();
+                if (switchIdx !== null) {
+                    clearGimmickIntent(true);
+                    return { moveIndex: null, switchIndex: switchIdx };
+                }
+                let pMove = window.getBestMove(state.fActive, state.pActive);
+                let _aiG = aiChooseGimmick(state.fActive, state.pActive);
+                let _aiSlot = state.foeParty.indexOf(state.fActive);
+                state.p1GimmickIntent = (_aiG && _aiSlot >= 0) ? { kind: _aiG, slot: _aiSlot } : null;
+                return { moveIndex: state.fActive.moves.indexOf(pMove), switchIndex: null, aiMove: pMove };
+            } finally {
+                state.fActive = _fa;
+                state.pActive = _pa;
+                state.foeParty = _fp;
+                state.playerParty = _pp;
+            }
+        };
+
         window.selectPartyMember = async function(index, isForced) {
             window.closeParty();
             let isP1 = (state.mode !== 'pvp') || (state.currentPlayer === 1);
@@ -8916,7 +9473,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             document.getElementById('modal-end-screen').classList.add('hidden');
                             logMsg(`Draw round — no swap reward. Fully healing team...`, 'heal');
                             state.playerParty.forEach((m, i) => { state.playerParty[i] = buildPokemon(m.name, m.buildData); });
-                            let drawEligible = getDraftPool(state.minGen, state.maxGen, settings.draftGrades);
+                            let drawEligible = getDraftPool(state.enabledGens || rangeToEnabledGens(state.minGen != null ? state.minGen : 1, state.maxGen != null ? state.maxGen : 9), settings.draftGrades);
                             const drawKeys = drawEligible.sort(() => 0.5 - Math.random()).slice(0, settings.partySize);
                             state.foeParty = drawKeys.map(name => buildPokemon(name, makeBuild(name)));
                             state.pActive = state.playerParty[0]; state.fActive = state.foeParty[0];
@@ -9157,11 +9714,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!noImposterAbilities.has(foe.ability)) mon.ability = foe.ability;
                     mon.moves = foe.moves.map(m => ({...m, pp: Math.min(5, m.pp || 5), maxPp: Math.min(5, m.maxPp || 5)}));
                     mon.transformedInto = foe.name;
+                    mon.transformTargetShiny = !!foe.isShiny;
                     logMsg(`${mon.name} transformed into ${foe.name} via Imposter!`, 'info');
                     let isPlayerMon = mon === state.pActive;
                     let sid = isPlayerMon ? 'player-sprite' : 'foe-sprite';
                     let spriteEl = document.getElementById(sid);
-                    if (spriteEl) { spriteEl.src = getSprite(foe.name); }
+                    if (spriteEl) {
+                        spriteEl.alt = foe.name;
+                        spriteEl.dataset.shiny = mon.transformTargetShiny ? 'true' : 'false';
+                        spriteEl.src = getSprite(foe.name, mon.transformTargetShiny);
+                    }
                 }
             }
             if (mon.ability === "Download") {
@@ -9269,6 +9831,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Reset Transform on switch-out
             if (mon.transformedInto) {
                 mon.transformedInto = null;
+                mon.transformTargetShiny = undefined;
                 let base = baseStats[mon.name];
                 if (base && mon.buildData) {
                     let evs = mon.buildData.evs || {};
@@ -9551,9 +10114,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!noTransformAbilities.has(target.ability)) attacker.ability = target.ability;
                 attacker.moves = target.moves.map(m => ({...m, pp: Math.min(5, m.pp || 5), maxPp: Math.min(5, m.maxPp || 5)}));
                 attacker.transformedInto = target.name;
+                attacker.transformTargetShiny = !!target.isShiny;
                 let sid = isPlayer ? 'player-sprite' : 'foe-sprite';
                 let spriteEl = document.getElementById(sid);
-                if (spriteEl) { spriteEl.src = getSprite(target.name); spriteEl.style.opacity = '1'; spriteEl.style.visibility = 'visible'; }
+                if (spriteEl) {
+                    spriteEl.alt = target.name;
+                    spriteEl.dataset.shiny = attacker.transformTargetShiny ? 'true' : 'false';
+                    spriteEl.src = getSprite(target.name, attacker.transformTargetShiny);
+                    spriteEl.style.opacity = '1'; spriteEl.style.visibility = 'visible';
+                }
                 logMsg(`${attacker.name} transformed into ${target.name}!`, 'info');
                 updateUI(); return;
             }
@@ -10745,7 +11314,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let fGrid = document.getElementById('swap-foe-grid'); let pGrid = document.getElementById('swap-player-grid'); fGrid.innerHTML = ''; pGrid.innerHTML = '';
             state.foeParty.forEach((mon, i) => {
                 let tier = getMonGrade(mon.name, getBST(mon.name)); let btn = document.createElement('div'); btn.className = `draft-card tier-${tier} ${state.swapFoeSelected === i ? 'selected-swap-foe' : ''}`;
-                let movesHtml = mon.moves.map(m => `<div data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
+                let movesHtml = mon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
                 let _gb = _gimBadgeHTML(mon.buildData && mon.buildData.gimmick);
                 let _tb = _teraBadgeHTML(mon.buildData && mon.buildData.teraType);
                 btn.innerHTML = `
@@ -10762,7 +11331,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             });
             state.playerParty.forEach((mon, i) => {
                 let tier = getMonGrade(mon.name, getBST(mon.name)); let btn = document.createElement('div'); btn.className = `draft-card tier-${tier} ${state.swapPlayerSelected === i ? 'selected-swap-player' : ''}`;
-                let movesHtml = mon.moves.map(m => `<div data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
+                let movesHtml = mon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
                 let _gb2 = _gimBadgeHTML(mon.buildData && mon.buildData.gimmick);
                 let _tb2 = _teraBadgeHTML(mon.buildData && mon.buildData.teraType);
                 btn.innerHTML = `
@@ -10806,7 +11375,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             });
             // Generate new foe team (same gen range + grades as player)
             // Exclude species already on the player's team to avoid same-species matchups
-            let allEligible = getDraftPool(state.minGen, state.maxGen, settings.draftGrades);
+            let allEligible = getDraftPool(state.enabledGens || rangeToEnabledGens(state.minGen != null ? state.minGen : 1, state.maxGen != null ? state.maxGen : 9), settings.draftGrades);
             let playerSpecies = new Set(state.playerParty.map(m => m._baseName || m.name));
             let foeEligible = allEligible.filter(n => !playerSpecies.has(n));
             if (foeEligible.length < settings.partySize) foeEligible = allEligible; // fallback if pool too small
@@ -11728,7 +12297,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── STATE ─────────────────────────────────────────────────────────
         const SAVE_KEY = 'pbs_story_save';
-        const SAVE_VER = 6;
+        const SAVE_VER = 7;
         const PROF_INTRO_THEME_BROWSER_KEY = 'pbs_story_prof_intro_theme_heard';
         function browserProfIntroThemeHeard() {
             try { return localStorage.getItem(PROF_INTRO_THEME_BROWSER_KEY) === '1'; } catch (e) { return false; }
@@ -11739,7 +12308,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         let sm = { active:false, eventIndex:0, badges:0, gold:1000, team:[],
                    inventory:{}, artifacts:[], activeArtifactType:null,
                    trainerAssignments:{}, currentTrainerData:null,
-                   settings:{ minGen:1, maxGen:9, megaOn:false, zOn:false, dynaOn:false, teraOn:false },
+                   settings:{ minGen:1, maxGen:9, enabledGens:[1,2,3,4,5,6,7,8,9], megaOn:false, zOn:false, dynaOn:false, teraOn:false },
                    gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{}, currentEnemyLock:null,
                    artifactsDisabled:[], storyCityIdx:null,
                    profIntroThemePending:false,
@@ -11788,6 +12357,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.storyMilestoneTips || typeof sm.storyMilestoneTips !== 'object') sm.storyMilestoneTips = { m4:false, m8:false };
                 if (sm.storyMilestoneTips.m4 !== true) sm.storyMilestoneTips.m4 = false;
                 if (sm.storyMilestoneTips.m8 !== true) sm.storyMilestoneTips.m8 = false;
+                if (sm.settings && (!sm.settings.enabledGens || !sm.settings.enabledGens.length)) {
+                    sm.settings.enabledGens = rangeToEnabledGens(sm.settings.minGen != null ? sm.settings.minGen : 1, sm.settings.maxGen != null ? sm.settings.maxGen : 9);
+                }
+                if (sm.settings && sm.settings.enabledGens && sm.settings.enabledGens.length) {
+                    sm.settings.minGen = Math.min(...sm.settings.enabledGens);
+                    sm.settings.maxGen = Math.max(...sm.settings.enabledGens);
+                }
                 return true;
             } catch(e) { return false; }
         }
@@ -11799,12 +12375,43 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Existing getMonGrade: 1=best(BST≥530), 4=worst(<350). CSV G4=weakest ↔ grade 4.
         const MEGA_EXCLUDE = new Set(typeof MEGA_FORM_NAMES !== 'undefined' ? Object.values(MEGA_FORM_NAMES) : []);
 
-        function buildGradePool(minGen, maxGen, grade) {
+        function getStoryEnabledGensFromUI() {
+            const gens = [];
+            for (let g = 1; g <= 9; g++) {
+                const el = document.getElementById(`story-gen-cb-${g}`);
+                if (el && el.checked) gens.push(g);
+            }
+            return normalizeEnabledGens(gens);
+        }
+        function setStoryGenCheckboxes(enabledGens) {
+            const set = new Set(normalizeEnabledGens(enabledGens));
+            for (let g = 1; g <= 9; g++) {
+                const el = document.getElementById(`story-gen-cb-${g}`);
+                if (el) el.checked = set.has(g);
+            }
+        }
+        window.toggleStoryGenAll = function (on) {
+            for (let g = 1; g <= 9; g++) {
+                const el = document.getElementById(`story-gen-cb-${g}`);
+                if (el) el.checked = on !== false;
+            }
+        };
+        window.toggleStoryGenClear = function () {
+            window.toggleStoryGenAll(false);
+            const el = document.getElementById('story-gen-cb-1');
+            if (el) el.checked = true;
+        };
+        function storySettingsGens() {
+            return normalizeEnabledGens((sm.settings && sm.settings.enabledGens) || rangeToEnabledGens(sm.settings.minGen ?? 1, sm.settings.maxGen ?? 9));
+        }
+
+        function buildGradePool(enabledGens, grade) {
+            const genSet = new Set(normalizeEnabledGens(enabledGens));
             const result = [];
             for (const name of Object.keys(baseStats)) {
                 if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
                 const b = baseStats[name];
-                if (!b || b.gen < minGen || b.gen > maxGen) continue;
+                if (!b || !genSet.has(b.gen)) continue;
                 if (getMonGrade(name, getBST(name)) === grade) result.push(name);
             }
             return result;
@@ -11821,7 +12428,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return o;
         }
 
-        function weightedPickFromGrades(gradeWeights, minGen, maxGen) {
+        function weightedPickFromGrades(gradeWeights, enabledGens) {
             // gradeWeights: {g1,g2,g3,g4} summing to ~100
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
             const total = (gradeWeights.g1||0)+(gradeWeights.g2||0)+(gradeWeights.g3||0)+(gradeWeights.g4||0);
@@ -11832,10 +12439,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else { r -= (gradeWeights.g3||0); if (r <= 0) { chosenGrade = 3; }
             else { r -= (gradeWeights.g2||0); if (r <= 0) { chosenGrade = 2; }
             else { chosenGrade = 1; } } }
-            const pool = buildGradePool(minGen, maxGen, chosenGrade);
+            const pool = buildGradePool(enabledGens, chosenGrade);
             if (!pool.length) {
                 const all = [];
-                for (let g=1;g<=4;g++) all.push(...buildGradePool(minGen,maxGen,g));
+                for (let g=1;g<=4;g++) all.push(...buildGradePool(enabledGens, g));
                 return all.length ? all[Math.floor(rng()*all.length)] : null;
             }
             return pool[Math.floor(rng()*pool.length)];
@@ -11926,23 +12533,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (/^Gym Leader/i.test(e) || e === 'Rival' || /^E[1-4]$/.test(e) || e === 'Champion' || e === 'Victory Road') return 0.85;
             return 0.70;
         }
-        function rollTrainerTeam(trainer, partySize, gradeWeights, minGen, maxGen, battleEventType) {
+        function rollTrainerTeam(trainer, partySize, gradeWeights, enabledGensIn, battleEventType) {
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
             const gwIn = applyDifficultyToGradeWeights(gradeWeights || { g1: 0, g2: 0, g3: 50, g4: 50 });
-            let minG = minGen != null ? minGen : sm.settings.minGen;
-            let maxG = maxGen != null ? maxGen : sm.settings.maxGen;
+            let allowedGens = normalizeEnabledGens(enabledGensIn != null ? enabledGensIn : storySettingsGens());
             const pg = trainer && trainer.pkmGens;
             if (pg && pg.length) {
-                const lo = Math.min.apply(null, pg);
-                const hi = Math.max.apply(null, pg);
-                const a = Math.max(minG, lo);
-                const b = Math.min(maxG, hi);
-                if (a <= b) { minG = a; maxG = b; }
+                const crossed = allowedGens.filter((g) => pg.includes(g));
+                if (crossed.length) allowedGens = crossed;
+                else {
+                    const lo = Math.min.apply(null, pg);
+                    const hi = Math.max.apply(null, pg);
+                    const spanCross = allowedGens.filter((g) => g >= lo && g <= hi);
+                    if (spanCross.length) allowedGens = spanCross;
+                }
             }
+            const genSet = new Set(allowedGens);
             const sigP = _signatureProbabilityForEvent(battleEventType);
             let S = (trainer.sigs || []).filter(name => {
                 const b = baseStats[name];
-                return b && b.gen >= minG && b.gen <= maxG;
+                return b && genSet.has(b.gen);
             }).slice();
 
             const types = parseTrainerTypes(trainer.type);
@@ -11951,7 +12561,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             for (const name of Object.keys(baseStats)) {
                 if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
                 const b = baseStats[name];
-                if (!b || b.gen < minG || b.gen > maxG) continue;
+                if (!b || !genSet.has(b.gen)) continue;
                 if (!isMixed) {
                     const ok = types.some(type => b.t1 === type || (b.t2 && b.t2 === type));
                     if (!ok) continue;
@@ -11981,7 +12591,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 for (const name of Object.keys(baseStats)) {
                     if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
                     const b = baseStats[name];
-                    if (b && b.gen >= minG && b.gen <= maxG) pool.push(name);
+                    if (b && genSet.has(b.gen)) pool.push(name);
                 }
                 return pool.length ? pool[Math.floor(rng() * pool.length)] : null;
             }
@@ -12017,7 +12627,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _baseTrainerName(name) {
             return _storyTrainerBaseName(name);
         }
-        function selectTrainerForRole(roleKey, minGen, maxGen, usedBaseNames, preferredType) {
+        function selectTrainerForRole(roleKey, enabledGens, usedBaseNames, preferredType) {
             const rk = roleKey.toLowerCase().trim();
             let candidates = TRAINER_DATA.filter(t => {
                 const tr = t.role.toLowerCase();
@@ -12026,8 +12636,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (rk === 'elite trainer') return tr === 'elite trainer' && !t.isRival;
                 return tr === rk;
             });
-            // Gen filter (prefer trainers whose charGen is in range)
-            const inRange = candidates.filter(t => t.charGen >= minGen && t.charGen <= maxGen);
+            const genSet = new Set(normalizeEnabledGens(enabledGens));
+            const inRange = candidates.filter(t => genSet.has(t.charGen));
             if (inRange.length) candidates = inRange;
             if (preferredType && (rk === 'basic trainer' || rk === 'gym trainer')) {
                 const want = String(preferredType).trim();
@@ -12047,13 +12657,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return candidates[Math.floor(_rng() * candidates.length)];
         }
 
-        function assignTrainers(minGen, maxGen) {
+        function assignTrainers(enabledGens) {
+            const eg = normalizeEnabledGens(enabledGens);
             sm.trainerAssignments = {};
             const usedBase = new Set();
             STORY_EVENTS_RAW.forEach(ev => {
                 const [idx, type, event] = ev;
                 if (type !== 'Battle') return;
-                const t = selectTrainerForRole(event, minGen, maxGen, usedBase);
+                const t = selectTrainerForRole(event, eg, usedBase);
                 if (t) {
                     sm.trainerAssignments[idx] = t.name;
                     usedBase.add(_baseTrainerName(t.name));
@@ -12064,8 +12675,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── START / CONTINUE ─────────────────────────────────────────────
         function startNewRun() {
-            const minGen = +(document.getElementById('story-setting-mingen')?.value||1);
-            const maxGen = +(document.getElementById('story-setting-maxgen')?.value||9);
+            const enabledGens = getStoryEnabledGensFromUI();
+            const minGen = Math.min(...enabledGens);
+            const maxGen = Math.max(...enabledGens);
             const _diffEl = document.getElementById('story-difficulty');
             const _storyDiff = (_diffEl && _diffEl.value) ? _diffEl.value : 'normal';
             sm = {
@@ -12080,7 +12692,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 artifacts:[], activeArtifactType:null, trainerAssignments:{}, currentTrainerData:null,
                 profUsed:{}, usedTrainerNames:[], gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{},
                 currentEnemyLock:null, artifactsDisabled:[],
-                settings:{ minGen, maxGen,
+                settings:{ enabledGens, minGen, maxGen,
                     megaOn: document.getElementById('story-mech-mega')?.checked||false,
                     zOn:    document.getElementById('story-mech-z')?.checked||false,
                     dynaOn: document.getElementById('story-mech-dyna')?.checked||false,
@@ -12095,7 +12707,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
             sm._strngState = null;
             applyMechanicsToSettings();
-            assignTrainers(minGen, maxGen);
+            assignTrainers(enabledGens);
             save();
             processNextEvent();
         }
@@ -12466,18 +13078,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const cardEl   = document.getElementById('story-prof-rolled-card');
 
             // Pre-roll 3 distinct options
-            const { minGen, maxGen } = sm.settings;
+            const sg = storySettingsGens();
             const choices = [];
             const usedNames = new Set(sm.team.map(t => t.name));
             for (let i = 0; i < 3; i++) {
                 let name = null;
                 for (let t = 0; t < 15; t++) {
-                    const c = weightedPickFromGrades(rolls, minGen, maxGen);
+                    const c = weightedPickFromGrades(rolls, sg);
                     if (c && !usedNames.has(c)) { name = c; break; }
                 }
                 if (!name) {
                     // fallback: allow any (may duplicate)
-                    name = weightedPickFromGrades(rolls, minGen, maxGen);
+                    name = weightedPickFromGrades(rolls, sg);
                 }
                 if (!name) continue;
                 usedNames.add(name);
@@ -12494,7 +13106,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 choices.push({ name, build, g });
             }
             if (!choices.length) {
-                statusEl.textContent = 'No Pokémon available for the selected generation range!';
+                statusEl.textContent = 'No Pokémon available for the selected generations!';
                 return;
             }
             _pendingProfChoices = choices;
@@ -12518,10 +13130,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _buildProfPickCardElement(ch, idx) {
             const tempMon = buildPokemon(ch.name, ch.build);
             const tier = ch.g;
-            const movesHtml = tempMon.moves.map(m => `<div data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
+            const movesHtml = tempMon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
             const gimmickBadge = { MEGA: '<span style="font-size:10px;background:#7b1fa2;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">MEGA</span>', ZMOVE: '<span style="font-size:10px;background:#f9a825;color:#000;border-radius:3px;padding:1px 4px;margin-left:3px;">Z</span>', DYNAMAX: '<span style="font-size:10px;background:#b71c1c;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">DYNA</span>', GMAXDYNAMAX: '<span style="font-size:10px;background:#880e4f;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">G-MAX</span>', STANDARD: '' };
             const gb = (ch.build.gimmick && gimmickBadge[ch.build.gimmick]) || '';
-            const tera = ch.build.teraType ? `<span style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:pointer;touch-action:manipulation;" data-tera="${encodeURIComponent(ch.build.teraType)}" data-o1="${encodeURIComponent(tempMon.type1)}" data-o2="${encodeURIComponent(tempMon.type2||'')}" onclick="event.stopPropagation();window.showTeraFromEl(event)" onmousemove="event.stopPropagation();window.showTeraTooltip('${ch.build.teraType}','${tempMon.type1}','${tempMon.type2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${ch.build.teraType}</span>` : '';
+            const tera = ch.build.teraType ? `<span class="tera-tip-hover" style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:pointer;touch-action:manipulation;" data-tera="${encodeURIComponent(ch.build.teraType)}" data-o1="${encodeURIComponent(tempMon.type1)}" data-o2="${encodeURIComponent(tempMon.type2||'')}" onclick="event.stopPropagation();window.showTeraFromEl(event)" onmousemove="event.stopPropagation();window.showTeraTooltip('${ch.build.teraType}','${tempMon.type1}','${tempMon.type2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${ch.build.teraType}</span>` : '';
             const card = document.createElement('div');
             card.className = `draft-card prof-pick-card tier-${tier}`;
             card.innerHTML = `
@@ -12701,12 +13313,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             const [idx, type, event, gradeWeights, coins] = ev;
-            const { minGen, maxGen } = sm.settings;
+            const sg = storySettingsGens();
             const battleIdx = sm.eventIndex;
             // Get assigned trainer
             const trainerName = sm.trainerAssignments[idx];
             const prefType = preferredTypeBeforeGymBattle(battleIdx);
-            const trainer = TRAINER_DATA.find(t=>t.name===trainerName) || selectTrainerForRole(event, minGen, maxGen, null, prefType);
+            const trainer = TRAINER_DATA.find(t=>t.name===trainerName) || selectTrainerForRole(event, sg, null, prefType);
             sm.currentTrainerData = trainer;
 
             // Party size mirrors player's current team (so opponents scale with your roster).
@@ -12726,7 +13338,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             showBattleIntro(trainer, event, () => {
-                const enemyTeam = rollTrainerTeam(trainer, partySize, gradeWeights || {g1:0,g2:0,g3:50,g4:50}, minGen, maxGen, event);
+                const enemyTeam = rollTrainerTeam(trainer, partySize, gradeWeights || {g1:0,g2:0,g3:50,g4:50}, sg, event);
                 try {
                     sm.currentEnemyLock = { eventIdx: battleIdx, team: JSON.parse(JSON.stringify(enemyTeam)) };
                     save();
@@ -12787,8 +13399,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.mode = 'story';
             state.p1Draft = p1Draft;
             state.p2Draft = p2Draft;
-            state.minGen = sm.settings.minGen;
-            state.maxGen = sm.settings.maxGen;
+            const sg = storySettingsGens();
+            state.enabledGens = sg;
+            state.minGen = Math.min(...sg);
+            state.maxGen = Math.max(...sg);
             state.score  = sm.badges;
             state.isOver = false; state.isLocked = false; state.pendingEoT = false;
             state.draftTurn = 1; state.currentPlayer = 1;
@@ -13044,19 +13658,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Get valid evolutions for a Pokémon within the generation range.
         // Returns array of species names (empty if none).
-        function _getValidEvos(monName, minGen, maxGen) {
+        function _getValidEvos(monName, enabledGens) {
             try {
+                const genSet = new Set(normalizeEnabledGens(enabledGens));
                 const D = typeof getPssDex === 'function' ? getPssDex() : null;
                 if (!D) return [];
                 const sp = D.species.get(monName);
                 if (!sp || !sp.evos || !sp.evos.length) return [];
                 return sp.evos.filter(evo => {
-                    // Must exist in baseStats AND be in the gen range
                     const b = baseStats[evo];
                     if (!b) return false;
-                    if (b.gen < minGen || b.gen > maxGen) return false;
-                    // Gen restriction: if gen-1-only run, Magneton can't become Magnezone (gen 4 mechanic)
-                    // baseStats[evo].gen captures the evo's native gen, which handles this automatically
+                    if (!genSet.has(b.gen)) return false;
                     return true;
                 });
             } catch(e) { return []; }
@@ -13067,7 +13679,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!el) return;
             document.getElementById('story-link-gold').textContent = `🪙 ${sm.gold.toLocaleString()}G`;
             if (!sm.team.length) { el.innerHTML='<div style="color:#555;font-size:12px;">No Pokémon in party.</div>'; return; }
-            const {minGen, maxGen} = sm.settings;
+            const sg = storySettingsGens();
 
             el.innerHTML = sm.team.map((t,i) => {
                 const g      = getMonGrade(t.name, getBST(t.name));
@@ -13075,7 +13687,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if ((sm.storyDifficulty || 'normal') === 'easy' && (sm.cityRerollsUsed[`r_${i}`]||0) === 0) rCost = Math.ceil(rCost * 0.78);
                 const uCostBase = g > 1 ? (UPGRADE_COSTS[g] || 9999) : null;
                 const uCost    = uCostBase !== null ? Math.ceil(uCostBase * Math.pow(1.5, (sm.cityRerollsUsed[`u_${i}`]||0))) : null;
-                const evos   = _getValidEvos(t.name, minGen, maxGen);
+                const evos   = _getValidEvos(t.name, sg);
                 const evoB   = evos.length ? (EVOLVE_COSTS[g] || 2000) : null;
                 const evoCost= evoB !== null ? Math.ceil(evoB * Math.pow(1.5, (sm.cityRerollsUsed[`e_${i}`]||0))) : null;
                 const rebB   = Math.ceil(REBUILD_COST * Math.pow(1.5, (sm.cityRerollsUsed[`b_${i}`]||0)));
@@ -13122,8 +13734,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let cost = Math.ceil((REROLL_COSTS[g]||100) * Math.pow(1.5, rn - 1));
             if ((sm.storyDifficulty || 'normal') === 'easy' && rn === 1) cost = Math.ceil(cost * 0.78);
             if (sm.gold < cost) return;
-            const {minGen,maxGen} = sm.settings;
-            const pool = buildGradePool(minGen, maxGen, g).filter(n=>n!==mon.name&&!sm.team.some((t,i)=>i!==idx&&t.name===n));
+            const pool = buildGradePool(storySettingsGens(), g).filter(n=>n!==mon.name&&!sm.team.some((t,i)=>i!==idx&&t.name===n));
             if (!pool.length) { alert('No other Pokémon of this grade available!'); return; }
             sm.cityRerollsUsed[rk] = rn;
             const newName  = pool[Math.floor(storyRngNext() * pool.length)];
@@ -13152,8 +13763,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const un = (sm.cityRerollsUsed[uk] || 0) + 1;
             const cost = Math.ceil((UPGRADE_COSTS[g] || 9999) * Math.pow(1.5, un - 1));
             if (sm.gold < cost) return;
-            const {minGen,maxGen} = sm.settings;
-            const pool = buildGradePool(minGen, maxGen, newG).filter(n=>!sm.team.some((t,i)=>i!==idx&&t.name===n));
+            const pool = buildGradePool(storySettingsGens(), newG).filter(n=>!sm.team.some((t,i)=>i!==idx&&t.name===n));
             if (!pool.length) { alert('No Pokémon of that grade available!'); return; }
             sm.cityRerollsUsed[uk] = un;
             const newName  = pool[Math.floor(storyRngNext() * pool.length)];
@@ -13175,9 +13785,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function linkEvolve(idx) {
             const mon = sm.team[idx]; if (!mon) return;
-            const { minGen, maxGen } = sm.settings;
-            const evos = _getValidEvos(mon.name, minGen, maxGen);
-            if (!evos.length) { alert(`${mon.name} cannot evolve in the selected generation range.`); return; }
+            const evos = _getValidEvos(mon.name, storySettingsGens());
+            if (!evos.length) { alert(`${mon.name} cannot evolve with the selected generations.`); return; }
             const g    = getMonGrade(mon.name, getBST(mon.name));
             const ek = `e_${idx}`;
             const en = (sm.cityRerollsUsed[ek] || 0) + 1;
@@ -13422,6 +14031,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (ab) ab.style.display = hasSv ? '' : 'none';
             const sd = document.getElementById('story-difficulty');
             if (sd && sm.storyDifficulty) sd.value = sm.storyDifficulty;
+            if (hasSv && sm.settings) {
+                setStoryGenCheckboxes(sm.settings.enabledGens || rangeToEnabledGens(sm.settings.minGen ?? 1, sm.settings.maxGen ?? 9));
+            }
             // Show current run seed so player can share it
             const si = document.getElementById('story-setting-seed');
             if (si && hasSv && sm.runSeed != null) si.value = String(sm.runSeed >>> 0);
