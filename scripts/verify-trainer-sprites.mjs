@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
 const htmlPath = path.join(root, 'battle.html');
-const trainerDir = path.join(root, '..', 'new assets', 'Trainerlist');
+const trainerDir = path.join(root, 'sprites', 'trainers');
 
 function sanitize(name) {
   return String(name).replace(/\s+/g, '_').replace(/[().\/]/g, '');
