@@ -1015,6 +1015,58 @@
 
         /* Scrollbar */
         ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #111; } ::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; } ::-webkit-scrollbar-thumb:hover { background: #666; }
+
+        /* === Mobile app polish (Android/iOS portrait phones) === */
+        @media screen and (max-width: 768px) and (orientation: portrait) {
+            /* Respect notches / home-indicator */
+            body, .screen, .modal-content {
+                padding-top: env(safe-area-inset-top);
+                padding-bottom: env(safe-area-inset-bottom);
+                padding-left: env(safe-area-inset-left);
+                padding-right: env(safe-area-inset-right);
+            }
+            #screen-story-city, #screen-story-professor, #screen-story-shop, #screen-story-link {
+                padding-top: max(8px, env(safe-area-inset-top));
+                padding-bottom: max(8px, env(safe-area-inset-bottom));
+            }
+            /* Touch targets ≥ 48px (Material guideline) */
+            .story-action-btn, .story-prof-card button, #story-prof-buttons button,
+            .story-team-slot, #command-menu button, .move-btn {
+                min-height: 48px;
+            }
+            .story-action-btn { font-size: 14px; padding: 10px 14px; }
+            /* Story team panel → horizontal swipe strip (Emerald-style party card row) */
+            #story-team-panel {
+                display: flex !important;
+                flex-wrap: nowrap !important;
+                overflow-x: auto;
+                scroll-snap-type: x mandatory;
+                -webkit-overflow-scrolling: touch;
+                gap: 8px;
+                padding: 6px 2px 8px;
+            }
+            #story-team-panel .story-team-slot {
+                scroll-snap-align: start;
+                flex: 0 0 auto;
+                min-width: 112px;
+            }
+            /* Compact HUD pills */
+            #story-hud-city, #story-hud-badges, #story-hud-gold {
+                font-size: 13px; padding: 4px 8px; border-radius: 999px;
+                background: rgba(255,255,255,0.05); white-space: nowrap;
+            }
+            /* No tap highlight, disable iOS long-press callout */
+            * { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+            /* Install hint toast */
+            #pwa-install-hint {
+                position: fixed; left: 8px; right: 8px; bottom: calc(12px + env(safe-area-inset-bottom));
+                background: #111; border: 1px solid var(--accent, #64c8ff);
+                color: #eee; font-size: 12px; padding: 10px 14px; border-radius: 10px;
+                z-index: 9999; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+            }
+            #pwa-install-hint button { margin-left: 8px; font-size: 12px; padding: 4px 8px; }
+        }
+        @media screen and (min-width: 769px) { #pwa-install-hint { display: none !important; } }
     </style>
 </head>
 <body>
@@ -3085,17 +3137,52 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // Grade system: G1 (best) → G4 (weakest)
+        // G4 = basic cuties, G3 = stage-1 / mid-evo, G2 = fully-evolved strong, G1 = pseudo + legendary
+        const PSEUDO_LEGEND = new Set(["Dragonite","Tyranitar","Salamence","Metagross","Garchomp","Hydreigon","Goodra","Kommo-o","Dragapult","Baxcalibur"]);
         function getMonGrade(name, bst) {
+            // Curated overrides first
             const grade4Override = new Set(["Slaking","Regigigas","Archeops","Avalugg"]);
             if (grade4Override.has(name)) return 4;
             const grade1Override = new Set(["Azumarill","Amoonguss","Chansey","Wishiwashi"]);
             if (grade1Override.has(name)) return 1;
-            const grade2Override = new Set(["Smeargle","Shedinja","Ditto","Clefairy","Medicham","Diggersby","Pelipper","Torkoal","Murkrow","Pachirisu","Dusclops","Cosmog","Cosmoem","Kubfu","Poipole","Terapagos","Phione"]);
+            const grade2Override = new Set(["Smeargle","Shedinja","Ditto","Clefairy","Medicham","Diggersby","Pelipper","Torkoal","Murkrow","Pachirisu","Dusclops","Cosmog","Cosmoem","Kubfu","Poipole","Terapagos","Phione","Lapras","Snorlax","Kangaskhan","Tauros","Aerodactyl","Heracross"]);
             if (grade2Override.has(name)) return 2;
-            let grade = bst >= 530 ? 1 : bst >= 480 ? 2 : bst >= 350 ? 3 : 4;
-            let D = getPssDex();
-            if (D) { try { let sp = D.species.get(name); if (sp && (sp.legendary || sp.mythical)) grade = Math.min(grade, 2); } catch(e) {} }
-            return grade;
+
+            if (PSEUDO_LEGEND.has(name)) return 1;
+
+            let stage = null;
+            let isLegendary = false;
+            const D = getPssDex();
+            if (D) {
+                try {
+                    const sp = D.species.get(name);
+                    if (sp) {
+                        if (sp.isLegendary || sp.isMythical || sp.legendary || sp.mythical) isLegendary = true;
+                        const hasEvos = !!(sp.evos && sp.evos.length);
+                        const hasPrevo = !!sp.prevo;
+                        if (!hasPrevo && !hasEvos) stage = 'basic-final';
+                        else if (!hasPrevo && hasEvos) stage = 'stage0';
+                        else if (hasPrevo && hasEvos)  stage = 'stage1-mid';
+                        else {
+                            let deepPrevo = false;
+                            try { const pr = D.species.get(sp.prevo); if (pr && pr.prevo) deepPrevo = true; } catch(e) {}
+                            stage = deepPrevo ? 'stage2-final' : 'stage1-final';
+                        }
+                    }
+                } catch(e) {}
+            }
+            if (isLegendary) return 1;
+            if (stage === 'stage0')       return bst >= 350 ? 3 : 4;
+            if (stage === 'stage1-mid')   return 3;
+            if (stage === 'stage1-final') return bst >= 500 ? 2 : 3;
+            if (stage === 'stage2-final') return bst >= 570 ? 1 : 2;
+            if (stage === 'basic-final') {
+                if (bst >= 570) return 1;
+                if (bst >= 480) return 2;
+                if (bst >= 380) return 3;
+                return 4;
+            }
+            return bst >= 530 ? 1 : bst >= 480 ? 2 : bst >= 350 ? 3 : 4;
         }
 
         // Recalculate tiers as quartile split within a pool of 6 Pokémon (for draft cards)
@@ -3710,6 +3797,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Run once after data loads
         document.addEventListener('DOMContentLoaded', () => { if (typeof baseStats !== 'undefined') window.updatePoolCount(); });
+        // One-time mobile "Add to Home Screen" hint
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                if (window.innerWidth > 768) return;
+                if (window.matchMedia && !window.matchMedia('(orientation: portrait)').matches) return;
+                if (localStorage.getItem('pwaHintDismissed')) return;
+                if (window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches) return;
+                const hint = document.createElement('div');
+                hint.id = 'pwa-install-hint';
+                hint.innerHTML = `📱 Tip: Add to Home Screen for a full-app experience.<button id="pwa-hint-dismiss">OK</button>`;
+                document.body.appendChild(hint);
+                document.getElementById('pwa-hint-dismiss').onclick = () => {
+                    localStorage.setItem('pwaHintDismissed','1');
+                    hint.remove();
+                };
+                setTimeout(() => { if (hint.parentNode) hint.remove(); }, 12000);
+            } catch(e) {}
+        });
 
         window.initDraft = async function(mode) {
             await dataReady;
@@ -9638,6 +9743,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Gym Leader 7', name:'Piers',    type:'Dark',    sigs:['Obstagoon','Scrafty','Malamar','Skuntank','Pangoro'],            charGen:8, pkmGens:[4,5,6,8] },
           { role:'Gym Leader 7', name:'Tulip',    type:'Psychic', sigs:['Espathra','Farigiraf','Gallade','Gardevoir'],                   charGen:9, pkmGens:[3,6,9] },
           // Gym Leader 8
+          // Classic-leader "elite rematch" variants: full 6-mon OG signature teams.
+          { role:'Gym Leader 8', name:'Brock (Elite)',  type:'Rock/Ground', sigs:['Rhyperior','Golem','Onix','Tyranitar','Aerodactyl','Kabutops'], charGen:1, pkmGens:[1,2,3,4] },
+          { role:'Gym Leader 8', name:'Misty (Elite)',  type:'Water',       sigs:['Starmie','Gyarados','Lapras','Vaporeon','Golduck','Kingdra'],   charGen:1, pkmGens:[1,2] },
+          { role:'Gym Leader 8', name:'Erika (Elite)',  type:'Grass',       sigs:['Vileplume','Tangrowth','Victreebel','Bellossom','Jumpluff','Exeggutor'], charGen:1, pkmGens:[1,2,4] },
+          { role:'Gym Leader 8', name:'Sabrina (Elite)',type:'Psychic',     sigs:['Alakazam','Espeon','Mr. Mime','Jynx','Starmie','Gallade'],       charGen:1, pkmGens:[1,2,3,4] },
+          { role:'Gym Leader 8', name:'Blaine (Elite)', type:'Fire',        sigs:['Arcanine','Magmortar','Rapidash','Ninetales','Charizard','Magmar'], charGen:1, pkmGens:[1,4] },
+          { role:'Gym Leader 8', name:'Koga (Elite)',   type:'Poison',      sigs:['Crobat','Muk','Weezing','Venomoth','Toxicroak','Drapion'],       charGen:1, pkmGens:[1,2,4] },
           { role:'Gym Leader 8', name:'Giovanni (Gym)',type:'Ground',sigs:['Rhydon','Dugtrio','Nidoqueen','Nidoking','Rhyperior'],        charGen:1, pkmGens:[1,4] },
           { role:'Gym Leader 8', name:'Clair',    type:'Dragon',  sigs:['Kingdra','Dragonair','Gyarados','Dragonite','Salamence'],        charGen:2, pkmGens:[1,2,3] },
           { role:'Gym Leader 8', name:'Wallace',  type:'Water',   sigs:['Milotic','Luvdisc','Sealeo','Whiscash','Walrein'],              charGen:3, pkmGens:[3] },
@@ -9918,7 +10030,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── STATE ─────────────────────────────────────────────────────────
         const SAVE_KEY = 'pbs_story_save';
-        const SAVE_VER = 1;
+        const SAVE_VER = 2;
         let sm = { active:false, eventIndex:0, badges:0, gold:1000, team:[],
                    inventory:{}, artifacts:[], activeArtifactType:null,
                    trainerAssignments:{}, currentTrainerData:null,
@@ -10075,7 +10187,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── TRAINER SELECTION ─────────────────────────────────────────────
-        function selectTrainerForRole(roleKey, minGen, maxGen) {
+        function _baseTrainerName(name) {
+            // "Brock (Elite)" → "Brock"; "Giovanni (Gym)" → "Giovanni"; strips parentheticals/tags.
+            return String(name||'').replace(/\s*\([^)]*\)\s*/g, '').replace(/\s+Rival\s*$/i,'').trim();
+        }
+        function selectTrainerForRole(roleKey, minGen, maxGen, usedBaseNames) {
             const rk = roleKey.toLowerCase().trim();
             let candidates = TRAINER_DATA.filter(t => {
                 const tr = t.role.toLowerCase();
@@ -10087,18 +10203,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Gen filter (prefer trainers whose charGen is in range)
             const inRange = candidates.filter(t => t.charGen >= minGen && t.charGen <= maxGen);
             if (inRange.length) candidates = inRange;
+            // Exclude any whose base name is already used this run (allow Basic/Gym Trainers to repeat).
+            if (usedBaseNames && rk !== 'basic trainer' && rk !== 'gym trainer') {
+                const fresh = candidates.filter(t => !usedBaseNames.has(_baseTrainerName(t.name)));
+                if (fresh.length) candidates = fresh;
+            }
             if (!candidates.length) candidates = TRAINER_DATA;
             return candidates[Math.floor(Math.random()*candidates.length)];
         }
 
         function assignTrainers(minGen, maxGen) {
             sm.trainerAssignments = {};
+            const usedBase = new Set();
             STORY_EVENTS_RAW.forEach(ev => {
                 const [idx, type, event] = ev;
                 if (type !== 'Battle') return;
-                const t = selectTrainerForRole(event, minGen, maxGen);
-                if (t) sm.trainerAssignments[idx] = t.name;
+                const t = selectTrainerForRole(event, minGen, maxGen, usedBase);
+                if (t) {
+                    sm.trainerAssignments[idx] = t.name;
+                    usedBase.add(_baseTrainerName(t.name));
+                }
             });
+            sm.usedTrainerNames = [...usedBase];
         }
 
         // ── START / CONTINUE ─────────────────────────────────────────────
@@ -10115,6 +10241,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sunOrb:0,rainOrb:0,hailOrb:0,sandOrb:0,emergencyTeleporter:0,
                 },
                 artifacts:[], activeArtifactType:null, trainerAssignments:{}, currentTrainerData:null,
+                profUsed:{}, usedTrainerNames:[],
                 settings:{ minGen, maxGen,
                     megaOn: document.getElementById('story-mech-mega')?.checked||false,
                     zOn:    document.getElementById('story-mech-z')?.checked||false,
@@ -10176,6 +10303,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const cityIdx = getCityIndex(ev);
             const hasProf = actions.includes('Professor');
             const hasTeamRoom = sm.team.length < 6;
+            const profUsedHere = !!(sm.profUsed && sm.profUsed[cityIdx]);
+            const mysteryMode = hasProf && !hasTeamRoom && !profUsedHere;
 
             // Determine city NPC (use a random trainer who fits the location theme)
             const npcName = hasProf ? `Professor ${cityIdx}` : 'City Guide';
@@ -10192,9 +10321,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!btn) return;
             btn.innerHTML = '';
 
-            // Professor (only if city has one AND team < 6)
-            if (hasProf && hasTeamRoom) {
-                btn.innerHTML += makeActionBtn('Professor — Receive a Pokémon (Free)','professor','window.StoryMode.enterProfessor()','primary');
+            // Professor / Mystery Figure (one visit per city)
+            if (hasProf && !profUsedHere) {
+                if (hasTeamRoom) {
+                    btn.innerHTML += makeActionBtn('Professor — Receive a Pokémon (Free)','professor','window.StoryMode.enterProfessor()','primary');
+                } else {
+                    btn.innerHTML += makeActionBtn('❓ Mystery Figure — Swap in a Grade 1 Pokémon','mystery','window.StoryMode.enterProfessor()','primary');
+                }
             }
             // Battle actions
             if (actions.includes('Gym Battle')) {
@@ -10261,32 +10394,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             '"These Pokémon are ready for battle — which suits your style?"',
         ];
 
+        let _profMysteryMode = false;
         function enterProfessor() {
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             const cityIdx = getCityIndex(ev);
-            const rolls = PROF_ROLLS[cityIdx] || PROF_ROLLS[0];
+            const isFull = sm.team.length >= 6;
+            _profMysteryMode = isFull;
+            // Mystery Figure: force 100% G1 rolls
+            const rolls = isFull ? {g1:100,g2:0,g3:0,g4:0} : (PROF_ROLLS[cityIdx] || PROF_ROLLS[0]);
             _pendingProfRolls = rolls;
 
-            const profName = 'Prof. ' + (PROF_NAMES[cityIdx % PROF_NAMES.length] || 'Oak');
+            const profName = isFull ? '??? — Mystery Figure' : ('Prof. ' + (PROF_NAMES[cityIdx % PROF_NAMES.length] || 'Oak'));
             document.getElementById('story-prof-name').textContent = profName;
-            document.getElementById('story-prof-quote').textContent = PROF_QUOTES[Math.floor(Math.random()*PROF_QUOTES.length)];
-            document.getElementById('story-prof-sprite').src = getTrainerSprite('Prof. Kukui');
+            document.getElementById('story-prof-quote').textContent = isFull
+                ? '"Your party is full, trainer. But you look like you could use an ace up your sleeve… choose one, and decide who to leave behind."'
+                : PROF_QUOTES[Math.floor(Math.random()*PROF_QUOTES.length)];
+            document.getElementById('story-prof-sprite').src = getTrainerSprite(isFull ? 'Cyrus' : 'Prof. Kukui');
 
             const statusEl = document.getElementById('story-prof-status');
             const btnsEl   = document.getElementById('story-prof-buttons');
             const cardEl   = document.getElementById('story-prof-rolled-card');
-
-            if (sm.team.length >= 6) {
-                statusEl.textContent = '✓ Your party is full! (6/6) — visit the Cable Link Station to swap a Pokémon.';
-                cardEl.style.display = 'none'; cardEl.innerHTML = '';
-                btnsEl.innerHTML = '';
-                const backBtn = document.createElement('button');
-                backBtn.textContent = '← Back to City'; backBtn.style.color = '#aaa';
-                backBtn.onclick = () => window.StoryMode.enterCity();
-                btnsEl.appendChild(backBtn);
-                showScreen('screen-story-professor');
-                return;
-            }
 
             // Pre-roll 3 distinct options
             const { minGen, maxGen } = sm.settings;
@@ -10324,7 +10451,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const btnsEl  = document.getElementById('story-prof-buttons');
             const statusEl= document.getElementById('story-prof-status');
 
-            statusEl.textContent = 'Pick one Pokémon to add to your team:';
+            statusEl.textContent = _profMysteryMode
+                ? 'Pick one Grade-1 Pokémon. You\'ll choose who it replaces in your party.'
+                : 'Pick one Pokémon to add to your team:';
 
             // Build the 3-card row
             cardEl.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:12px 0;';
@@ -10389,13 +10518,71 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (_profSelectedIdx === null || !_pendingProfChoices) return;
             const ch = _pendingProfChoices[_profSelectedIdx];
             if (!ch) return;
+            const ev = STORY_EVENTS_RAW[sm.eventIndex];
+            const cityIdx = getCityIndex(ev);
+
+            if (_profMysteryMode) {
+                // Show swap picker: replace one of the 6 team slots with ch.
+                const cardEl  = document.getElementById('story-prof-rolled-card');
+                const btnsEl  = document.getElementById('story-prof-buttons');
+                const statusEl= document.getElementById('story-prof-status');
+                statusEl.textContent = `Who does ${ch.name} replace?`;
+                cardEl.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:12px 0;';
+                cardEl.innerHTML = '';
+                sm.team.forEach((t, i) => {
+                    const g = t.name ? getMonGrade(t.name, getBST(t.name)) : 4;
+                    const slot = document.createElement('div');
+                    slot.className = `story-team-slot tier-${g}`;
+                    slot.style.cssText = 'cursor:pointer;min-width:130px;padding:10px;transition:all 0.15s;';
+                    slot.innerHTML = `
+                        <img src="${getSprite(t.name,false)}" onerror="this.src=''" style="width:56px;height:56px;image-rendering:pixelated;">
+                        <div style="font-size:12px;"><b>${t.name}</b><br><span class="tier-badge bg-tier-${g}" style="font-size:9px;">G${g}</span></div>`;
+                    slot.onclick = () => window.StoryMode._mysteryDoSwap(i);
+                    cardEl.appendChild(slot);
+                });
+                btnsEl.innerHTML = '';
+                const cancelBtn = document.createElement('button');
+                cancelBtn.textContent = '← Keep Current Team';
+                cancelBtn.style.color = '#aaa';
+                cancelBtn.onclick = () => window.StoryMode.enterCity();
+                btnsEl.appendChild(cancelBtn);
+                return;
+            }
+
+            // Normal professor: append to team
             _pendingProfChoices = null; _profSelectedIdx = null; _pendingProfRoll = null;
             sm.team.push({ name: ch.name, build: ch.build });
+            if (!sm.profUsed) sm.profUsed = {};
+            sm.profUsed[cityIdx] = true;
             save();
             document.getElementById('story-prof-status').textContent = `✓ ${ch.name} joined your team!`;
             const btnsEl = document.getElementById('story-prof-buttons');
             btnsEl.innerHTML = '';
             document.getElementById('story-prof-rolled-card').innerHTML = '';
+            const backBtn = document.createElement('button');
+            backBtn.textContent = '← Back to City';
+            backBtn.style.color = 'var(--accent)';
+            backBtn.onclick = () => window.StoryMode.enterCity();
+            btnsEl.appendChild(backBtn);
+            renderTeamPanel();
+        }
+
+        function _mysteryDoSwap(slotIdx) {
+            if (_profSelectedIdx === null || !_pendingProfChoices) return;
+            const ch = _pendingProfChoices[_profSelectedIdx];
+            if (!ch || slotIdx < 0 || slotIdx >= sm.team.length) return;
+            const ev = STORY_EVENTS_RAW[sm.eventIndex];
+            const cityIdx = getCityIndex(ev);
+            const replaced = sm.team[slotIdx].name;
+            sm.team[slotIdx] = { name: ch.name, build: ch.build };
+            if (!sm.profUsed) sm.profUsed = {};
+            sm.profUsed[cityIdx] = true;
+            _pendingProfChoices = null; _profSelectedIdx = null; _profMysteryMode = false;
+            save();
+            document.getElementById('story-prof-status').textContent = `✓ ${ch.name} replaced ${replaced}!`;
+            document.getElementById('story-prof-rolled-card').innerHTML = '';
+            const btnsEl = document.getElementById('story-prof-buttons');
+            btnsEl.innerHTML = '';
             const backBtn = document.createElement('button');
             backBtn.textContent = '← Back to City';
             backBtn.style.color = 'var(--accent)';
@@ -10430,8 +10617,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const trainer = TRAINER_DATA.find(t=>t.name===trainerName) || selectTrainerForRole(event, minGen, maxGen);
             sm.currentTrainerData = trainer;
 
-            // Party size = min(badges+1, 6)
-            const partySize = Math.min(sm.badges + 1, 6);
+            // Party size mirrors player's current team (so opponents scale with your roster).
+            // Floor at 1, cap at 6. Late-game bosses (Gym 6+, E4, Champion) always field a full 6.
+            const isLateBoss = /Gym Leader [678]|E1|E2|E3|E4|Champion|Victory Road/i.test(event);
+            const partySize = isLateBoss ? 6 : Math.min(Math.max(sm.team.length, 1), 6);
 
             // Show battle intro overlay briefly
             showBattleIntro(trainer, event, () => {
@@ -10610,10 +10799,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── LINK STATION ──────────────────────────────────────────────────
-        const REROLL_COSTS     = { 1:1000, 2:500, 3:250, 4:100 };
-        const UPGRADE_COSTS    = { 4:1500, 3:3000, 2:6000 }; // G4→G3=1500, G3→G2=3000, G2→G1=6000
+        const REROLL_COSTS     = { 1:1500, 2:700, 3:300, 4:120 };
+        const UPGRADE_COSTS    = { 4:1200, 3:3500, 2:9000 }; // G4→G3 cheap, G2→G1 is the gold sink
         // Evolution costs = same scale (keeps the evo line vs. random upgrade distinction meaningful)
-        const EVOLVE_COSTS     = { 4:800, 3:2000, 2:5000 }; // cheaper than random upgrade since it's your own Pokémon
+        const EVOLVE_COSTS     = { 4:600, 3:2000, 2:5500 }; // cheaper than random upgrade since it's your own Pokémon
         const REBUILD_COST     = 400;
 
         function enterLink() {
@@ -10947,7 +11136,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── PUBLIC API ────────────────────────────────────────────────────
         return {
             showMenu, startNewRun, continueRun, isActive, hasSave,
-            enterCity, enterProfessor, profRoll, profAccept, profDecline, profSelectChoice,
+            enterCity, enterProfessor, profRoll, profAccept, profDecline, profSelectChoice, _mysteryDoSwap,
             proceedToNextBattle, onBattleEnd, afterBattleReturn,
             enterShop, buyItem, buyArtifact,
             enterLink, linkReroll, linkUpgrade, linkEvolve, linkRebuild, linkRelease,
