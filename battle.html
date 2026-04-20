@@ -6,11 +6,31 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icons/app-icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/app-icon.svg">
     <title>Retro Battle Sim - Competitive Fix</title>
     <style>
-        :root { --bg-color: #0a0a0a; --border-color: #444; --text-color: #e8e8e8; --hp-green: #4caf50; --hp-yellow: #ffc107; --hp-red: #f44336; --accent: #ffd54f; --surface: #161616; --surface2: #1e1e1e; --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px); --safe-left: env(safe-area-inset-left, 0px); --safe-right: env(safe-area-inset-right, 0px); }
-        body { background-color: #000; color: var(--text-color); font-family: 'Courier New', Courier, monospace; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; height: 100dvh; overflow: hidden; padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); box-sizing: border-box; }
+        :root { --bg-color: #0a0a0a; --border-color: #444; --text-color: #e8e8e8; --hp-green: #4caf50; --hp-yellow: #ffc107; --hp-red: #f44336; --accent: #ffd54f; --surface: #161616; --surface2: #1e1e1e; --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px); --safe-left: env(safe-area-inset-left, 0px); --safe-right: env(safe-area-inset-right, 0px); --game-design-w: 960; --game-design-h: 700; }
+        html { height: 100%; overscroll-behavior: none; }
+        body { background-color: #000; color: var(--text-color); font-family: 'Courier New', Courier, monospace; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; min-height: 100dvh; min-height: 100svh; height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior: none; padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); box-sizing: border-box; }
         .screen { width: 100%; max-width: 960px; height: 100vh; max-height: 700px; position: relative; background: var(--bg-color); overflow: hidden; }
+        /* Desktop: outer box matches scaled 960×700 footprint so the game centers and fills the window */
+        #desktop-scale-outer {
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+        }
+        body.is-mobile #desktop-scale-outer {
+            width: 100%;
+            max-width: 100vw;
+            min-height: 100dvh;
+            min-height: 100svh;
+            height: auto;
+            align-self: stretch;
+            display: flex;
+            flex-direction: column;
+        }
         /* Game column: absolute UI (settings) is positioned against this, not the browser viewport */
         #app-root {
             position: relative;
@@ -22,8 +42,36 @@
             flex-shrink: 0;
             overflow: hidden;
             box-sizing: border-box;
+            transform-origin: top left;
         }
-        #app-root > .screen { height: 100%; max-height: 100%; }
+        body:not(.is-mobile) #app-root {
+            width: 960px !important;
+            height: 700px !important;
+            max-width: none !important;
+            max-height: none !important;
+            min-height: 0 !important;
+        }
+        #game-stage {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        body.is-mobile #app-root {
+            display: flex;
+            flex-direction: column;
+            min-height: 100dvh;
+            min-height: 100svh;
+        }
+        body.is-mobile #game-stage {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        #game-stage > .screen { height: 100%; max-height: 100%; flex: 1; min-height: 0; }
         .hidden { display: none !important; } .active { display: block; }
         .white-outline { outline: none; border: 1px solid var(--border-color); padding: 10px; background: var(--surface); border-radius: 4px; }
         .border-white { border: 1px solid var(--border-color); }
@@ -244,6 +292,10 @@
             border-radius: 6px; background: rgba(0,0,0,0.35); border: 1px solid #333;
         }
         .story-shop-item-icon svg { display: block; width: 26px; height: 26px; }
+        .story-shop-item-icon .story-shop-item-img {
+            width: 30px; height: 30px; display: block; object-fit: contain;
+            image-rendering: pixelated; image-rendering: crisp-edges;
+        }
         .story-artifact-card .story-shop-item-row { align-items: center; }
         .story-fx-confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
         .story-fx-confetti span {
@@ -304,11 +356,14 @@
         .story-artifact-card { border:1px solid #9c27b0; border-radius:5px; padding:10px; background:#0d0013; }
         .story-artifact-card h4 { margin:0 0 4px; color:#ce93d8; font-size:13px; }
         .story-artifact-card .desc { font-size:11px; color:#aaa; line-height:1.4; }
-        .story-bag-item { border:1px solid #333; border-radius:4px; padding:8px 10px; background:var(--surface); display:flex; flex-direction:column; gap:3px; cursor:pointer; transition:all 0.15s; }
+        .story-bag-item { border:1px solid #333; border-radius:4px; padding:8px 10px; background:var(--surface); display:flex; flex-direction:row; align-items:flex-start; gap:8px; cursor:pointer; transition:all 0.15s; }
         .story-bag-item:hover { border-color:#888; background:var(--surface2); }
+        .story-bag-item .story-bag-item-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+        .story-bag-item .story-shop-item-icon { width:28px; height:28px; }
+        .story-bag-item .story-shop-item-img { width:26px; height:26px; }
         .story-bag-item .name { font-size:12px; color:var(--accent); font-weight:bold; }
         .story-bag-item .qty { font-size:10px; color:#888; }
-        .story-bag-item .eff { font-size:10px; color:#ccc; }
+        .story-bag-item .eff { font-size:10px; color:#ccc; line-height:1.3; }
         .badge-icon { display:inline-block; width:14px; height:14px; border-radius:50%; background:var(--accent); border:1px solid #000; }
 
         /* Battle layout */
@@ -347,7 +402,7 @@
         .stat-box .type-badge { font-size: 9px; }
         .status-indicator { font-weight: bold; font-size: 12px; margin-top: 4px; text-transform: uppercase; }
         /* Field conditions: top-center strip between the two stat boxes (desktop default) */
-        #field-conditions { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; gap: 4px; z-index: 10; justify-content: center; max-width: 400px; }
+        #field-conditions { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; gap: 4px; z-index: 4; justify-content: center; max-width: 400px; }
         /* Gauntlet score: bottom-right of battle area (player HUD is bottom-left) */
         #gauntlet-score { position: absolute; bottom: 205px; right: 12px; left: auto; font-weight: bold; color: #fff; z-index: 10; font-size: 12px; background: rgba(0,0,0,0.55); padding: 2px 10px; border-radius: 10px; white-space: nowrap; text-shadow: 0 1px 3px #000; }
         #move-tooltip { position: absolute; bottom: 195px; right: 0; width: 280px; max-width: min(92vw, 320px); z-index: 100; pointer-events: none; background: var(--surface); border: 1px solid #444; border-radius: 4px; padding: 10px; box-shadow: 0 8px 28px rgba(0,0,0,0.65); }
@@ -359,6 +414,16 @@
         .move-info-hit:active { background: rgba(255,213,79,0.2); }
         #text-tooltip.tooltip-tap-mode { pointer-events: auto; z-index: 460; max-width: min(94vw, 320px); }
         #text-tooltip .tip-close-x { float: right; margin: -6px -6px 6px 8px; min-width: 36px; min-height: 36px; border-radius: 6px; border: 1px solid #555; background: var(--surface2); color: #fff; font-size: 16px; cursor: pointer; }
+
+        /* Active side (input phase) — VGC-style clarity */
+        #screen-battle.battle-active-player #player-stat-box {
+            box-shadow: 0 0 0 2px rgba(255, 213, 79, 0.65), 0 0 14px rgba(255, 213, 79, 0.22);
+            border-color: rgba(255, 213, 79, 0.5);
+        }
+        #screen-battle.battle-active-foe #foe-stat-box {
+            box-shadow: 0 0 0 2px rgba(239, 83, 80, 0.55), 0 0 14px rgba(239, 83, 80, 0.2);
+            border-color: rgba(239, 83, 80, 0.45);
+        }
 
         /* Type badges */
         .type-badge { padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-right: 3px; border: none; text-shadow: 1px 1px 0 rgba(0,0,0,0.5); text-transform: uppercase; font-weight: bold; display: inline-block; letter-spacing: 0.5px; }
@@ -1295,7 +1360,9 @@
         <p>This game is best played in<br><strong>landscape mode</strong></p>
     </div>
 
+    <div id="desktop-scale-outer">
     <div id="app-root">
+    <div id="game-stage">
     <button class="icon-btn settings-btn" onclick="window.openSettings()">⚙</button>
 
     <div id="screen-menu" class="screen active">
@@ -1554,7 +1621,12 @@
                         <option value="normal" selected>Normal</option>
                         <option value="hard">Hard — sharper foes</option>
                         <option value="challenge">Challenge — max pressure</option>
+                        <option value="hardcore">Hardcore — full attrition</option>
                     </select>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;margin-bottom:8px;">
+                    <label style="color:#aaa;">Seed (optional):</label>
+                    <input id="story-setting-seed" placeholder="e.g. 12345" maxlength="10" inputmode="numeric" pattern="[0-9]*" style="width:120px;background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:3px 8px;font-size:12px;font-family:inherit;">
                 </div>
                 <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;">
                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="story-mech-mega"><span style="color:#ef9a9a;">&#9650; Mega</span></label>
@@ -1566,6 +1638,7 @@
             <!-- Buttons -->
             <button onclick="window.StoryMode.startNewRun()" style="padding:14px;font-size:15px;border-color:#ff6b6b;color:#ff6b6b;background:#1a0808;">&#9670; New Adventure</button>
             <button id="story-continue-btn" onclick="window.StoryMode.continueRun()" style="padding:12px;font-size:13px;border-color:#4caf50;color:#4caf50;display:none;">&#9654; Continue Journey</button>
+            <button id="story-abandon-btn" onclick="window.StoryMode.confirmAbandon()" style="padding:10px;font-size:12px;border-color:#888;color:#888;display:none;">&#10006; Abandon Run</button>
             <button onclick="window.StoryMode.showMenu(false)" style="padding:10px;font-size:12px;color:#aaa;">&#8592; Back to Main Menu</button>
         </div>
     </div>
@@ -1782,6 +1855,8 @@
         </div>
     </div>
     </div>
+    </div>
+    </div>
 
     <script>
         // === 0. DEVICE DETECTION ===
@@ -1798,6 +1873,7 @@
         }
         applyLayoutPresetClasses();
         window.addEventListener('resize', applyLayoutPresetClasses);
+        window.addEventListener('resize', function() { try { applyDesktopGameScale(); } catch (e) {} });
         window.isMobile = isMobile;
 
         // Show/hide rotate overlay: portrait + narrow screen (any device)
@@ -1812,7 +1888,10 @@
         }
         window.addEventListener('resize', checkOrientation);
         window.addEventListener('orientationchange', () => setTimeout(checkOrientation, 150));
-        document.addEventListener('DOMContentLoaded', checkOrientation);
+        document.addEventListener('DOMContentLoaded', function() {
+            checkOrientation();
+            try { applyDesktopGameScale(); } catch (e) {}
+        });
 
         // === 1. DATABASE (loaded from CSV files) ===
         function parseCSV(text, delim) {
@@ -3186,6 +3265,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (iconBtn) iconBtn.classList.toggle('fs-active', fs);
         }
+        const GAME_DESIGN_W = 960;
+        const GAME_DESIGN_H = 700;
+        function applyDesktopGameScale() {
+            const root = document.getElementById('app-root');
+            const outer = document.getElementById('desktop-scale-outer');
+            if (!root || !outer) return;
+            if (document.body.classList.contains('is-mobile')) {
+                root.style.transform = '';
+                root.style.transformOrigin = '';
+                outer.style.width = '';
+                outer.style.height = '';
+                return;
+            }
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const s = Math.min(vw / GAME_DESIGN_W, vh / GAME_DESIGN_H, 3);
+            root.style.transform = 'scale(' + s + ')';
+            root.style.transformOrigin = 'top left';
+            outer.style.width = (GAME_DESIGN_W * s) + 'px';
+            outer.style.height = (GAME_DESIGN_H * s) + 'px';
+        }
+        window.applyDesktopGameScale = applyDesktopGameScale;
+
         window.toggleFullscreen = function() {
             if (_isFullscreen()) {
                 (document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen).call(document);
@@ -3195,10 +3297,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (req) req.call(el).catch(() => {});
             }
         };
-        document.addEventListener('fullscreenchange', _updateFullscreenUI);
-        document.addEventListener('webkitfullscreenchange', _updateFullscreenUI);
-        document.addEventListener('mozfullscreenchange', _updateFullscreenUI);
-        document.addEventListener('MSFullscreenChange', _updateFullscreenUI);
+        function _onFullscreenEvent() {
+            _updateFullscreenUI();
+            applyDesktopGameScale();
+        }
+        document.addEventListener('fullscreenchange', _onFullscreenEvent);
+        document.addEventListener('webkitfullscreenchange', _onFullscreenEvent);
+        document.addEventListener('mozfullscreenchange', _onFullscreenEvent);
+        document.addEventListener('MSFullscreenChange', _onFullscreenEvent);
 
         window.openSettings = function() {
             const ap = document.getElementById('setting-ai-profile');
@@ -4538,6 +4644,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.getElementById('screen-draft').classList.add('hidden'); document.getElementById('screen-battle').classList.remove('hidden');
             if (state.mode === 'gauntlet') document.getElementById('gauntlet-score').classList.remove('hidden'); else document.getElementById('gauntlet-score').classList.add('hidden');
             state.playerParty = state.p1Draft.map(d => buildPokemon(d.name, d.build)); state.foeParty = state.p2Draft.map(d => buildPokemon(d.name, d.build));
+            // Hardcore story mode: restore persisted HP/status/PP before first turn
+            if (state.mode === 'story' && window.StoryMode && typeof window.StoryMode.applyHardcoreState === 'function') {
+                window.StoryMode.applyHardcoreState(state.playerParty);
+            }
             state.pActive = state.playerParty[0]; state.fActive = state.foeParty[0];
             state.turnNumber = 0;
             if (state.mode === 'story') {
@@ -4636,6 +4746,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return false;
         };
+
+        function syncBattleActiveHighlight() {
+            const sb = document.getElementById('screen-battle');
+            if (!sb || sb.classList.contains('hidden')) return;
+            const partyModal = document.getElementById('modal-party');
+            if (partyModal && !partyModal.classList.contains('hidden')) {
+                sb.classList.remove('battle-active-player', 'battle-active-foe');
+                return;
+            }
+            const cmd = document.getElementById('command-menu');
+            const mv = document.getElementById('move-menu');
+            const cmdVis = cmd && !cmd.classList.contains('hidden');
+            const mvVis = mv && !mv.classList.contains('hidden');
+            const waitingInput = (cmdVis || mvVis) && !state.isLocked;
+            sb.classList.remove('battle-active-player', 'battle-active-foe');
+            if (!waitingInput) return;
+            let side = 'player';
+            if (state.mode === 'pvp') side = state.currentPlayer === 1 ? 'player' : 'foe';
+            if (side === 'player') sb.classList.add('battle-active-player');
+            else sb.classList.add('battle-active-foe');
+        }
 
         function getStatTooltipHTML(mon) {
             let stageNames = {atk:'Atk', def:'Def', spa:'SpA', spd:'SpD', spe:'Spe'};
@@ -4918,6 +5049,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     container.appendChild(badge);
                 }
             });
+            try { syncBattleActiveHighlight(); } catch (e) {}
         }
 
         window.openBag = function() {
@@ -4974,7 +5106,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             });
             document.getElementById('btn-cancel-party').disabled = isForced; document.getElementById('modal-party').classList.remove('hidden');
         }
-        window.closeParty = function() { document.getElementById('modal-party').classList.add('hidden'); }
+        window.closeParty = function() {
+            document.getElementById('modal-party').classList.add('hidden');
+            try { syncBattleActiveHighlight(); } catch (e) {}
+        }
 
         window._summaryDraftPoolMode = false;
         window._summaryDraftPartyList = null;
@@ -5514,6 +5649,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         state.p1Action = { moveIndex: null, switchIndex: null, aiMove: rechargeMove };
                         if (isP1) window.playTurn(null, null);
                     }, 600);
+                    try { syncBattleActiveHighlight(); } catch (e) {}
                     return;
                 }
                 let struggleMove = { name: "Struggle", type: "Normal", cat: "Physical", pow: 50, acc: 100, pri: 0, pp: 1, maxPp: 1, eff: "User takes 25% max HP recoil.", effectStr: "User takes 25% max HP recoil.", mathEff: "" };
@@ -5536,6 +5672,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 };
                 menu.appendChild(swBtn);
                 document.getElementById('command-menu').classList.add('hidden'); menu.classList.remove('hidden');
+                try { syncBattleActiveHighlight(); } catch (e) {}
                 return;
             }
 
@@ -5574,9 +5711,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 document.getElementById('move-tooltip').classList.add('hidden'); menu.classList.add('hidden');
                 clearGimmickIntent(isP1);
                 document.getElementById('command-menu').classList.remove('hidden');
+                try { syncBattleActiveHighlight(); } catch (e) {}
             };
             menu.appendChild(backBtn);
             document.getElementById('command-menu').classList.add('hidden'); menu.classList.remove('hidden');
+            try { syncBattleActiveHighlight(); } catch (e) {}
         }
 
         // === 6. TURN SEQUENCING ===
@@ -7915,6 +8054,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // At Lv50: (2*50/5 + 2) = 22
                 let damage = Math.floor((Math.floor(Math.floor(22 * basePower * (A / D)) / 50) + 2) * modifier);
                 damage = Math.max(1, Math.floor(damage));
+                // Glass Cannon Pact artifact: +25% all damage, both sides
+                if (state._glassCannonPact) damage = Math.floor(damage * 1.25);
                 // Final Gambit: damage = user's current HP exactly; user faints
                 if (move.name === "Final Gambit") damage = attacker.currentHp;
                 // Level-based flat damage (always equal to user's level = 50 at Lv50)
@@ -8522,6 +8663,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (foeFainted) {
                 clearGimmickIntent(false);
                 logMsg(`${state.fActive.name} fainted!`, 'heal');
+                // Reaper's Toll: foe's survivors heal 10% maxHp, one random survivor loses -1 SpD
+                if (state._reapersTollActive) {
+                    const foeSurvivors = state.foeParty.filter(m => m !== state.fActive && m.currentHp > 0);
+                    if (foeSurvivors.length > 0) {
+                        foeSurvivors.forEach(m => { m.currentHp = Math.min(m.maxHp, m.currentHp + Math.floor(m.maxHp * 0.10)); });
+                        const cursed = foeSurvivors[Math.floor((typeof storyRngNext !== 'undefined' ? storyRngNext() : Math.random()) * foeSurvivors.length)];
+                        cursed.stages.spd = Math.max(-6, (cursed.stages.spd||0) - 1);
+                        logMsg("Reaper's Toll: Foe survivors rallied (+10% HP) but one is weakened (−1 SpD)!",'info');
+                    }
+                    // Player side also affected symmetrically
+                    const playerSurvivors = state.playerParty.filter(m => m.currentHp > 0);
+                    if (playerSurvivors.length > 0) {
+                        playerSurvivors.forEach(m => { m.currentHp = Math.min(m.maxHp, m.currentHp + Math.floor(m.maxHp * 0.10)); });
+                        const cursed = playerSurvivors[Math.floor((typeof storyRngNext !== 'undefined' ? storyRngNext() : Math.random()) * playerSurvivors.length)];
+                        cursed.stages.spd = Math.max(-6, (cursed.stages.spd||0) - 1);
+                        logMsg("Reaper's Toll: Your survivors rallied (+10% HP) but one is weakened (−1 SpD)!",'info');
+                    }
+                }
                 clearPermanentWeatherIfHolder(state.fActive);
                 if(settings.animations){ let fs = document.getElementById('foe-sprite'); fs.classList.add('anim-faint'); await sleep(800); fs.style.opacity = '0'; fs.style.visibility = 'hidden'; fs.classList.remove('anim-faint'); }
                 // Clear Dynamax state and styles on faint (use deactivateDynamax to ensure sprite CSS is cleared)
@@ -8557,6 +8716,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (playerFainted) {
                 clearGimmickIntent(true);
                 logMsg(`${state.pActive.name} fainted!`, 'dmg');
+                // Reaper's Toll: player's survivors heal 10% maxHp, one random survivor loses -1 SpD
+                if (state._reapersTollActive) {
+                    const playerSurvivors = state.playerParty.filter(m => m !== state.pActive && m.currentHp > 0);
+                    if (playerSurvivors.length > 0) {
+                        playerSurvivors.forEach(m => { m.currentHp = Math.min(m.maxHp, m.currentHp + Math.floor(m.maxHp * 0.10)); });
+                        const cursed = playerSurvivors[Math.floor((typeof storyRngNext !== 'undefined' ? storyRngNext() : Math.random()) * playerSurvivors.length)];
+                        cursed.stages.spd = Math.max(-6, (cursed.stages.spd||0) - 1);
+                        logMsg("Reaper's Toll: Your survivors rallied (+10% HP) but one is weakened (−1 SpD)!",'info');
+                    }
+                    // Foe side also affected symmetrically
+                    const foeSurvivors = state.foeParty.filter(m => m !== state.fActive && m.currentHp > 0);
+                    if (foeSurvivors.length > 0) {
+                        foeSurvivors.forEach(m => { m.currentHp = Math.min(m.maxHp, m.currentHp + Math.floor(m.maxHp * 0.10)); });
+                        const cursed = foeSurvivors[Math.floor((typeof storyRngNext !== 'undefined' ? storyRngNext() : Math.random()) * foeSurvivors.length)];
+                        cursed.stages.spd = Math.max(-6, (cursed.stages.spd||0) - 1);
+                        logMsg("Reaper's Toll: Foe survivors rallied (+10% HP) but one is weakened (−1 SpD)!",'info');
+                    }
+                }
                 clearPermanentWeatherIfHolder(state.pActive);
                 if(settings.animations){ let ps = document.getElementById('player-sprite'); ps.classList.add('anim-faint'); await sleep(800); ps.style.opacity = '0'; ps.style.visibility = 'hidden'; ps.classList.remove('anim-faint'); }
                 // Clear Dynamax state and styles on faint (use deactivateDynamax to ensure sprite CSS is cleared)
@@ -10977,6 +11154,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { id:'typeAmplifier',   name:'[Type] Amplifier',          cost:5000, desc:'Type randomly chosen at run start. That type deals 30% more damage, but takes 15% more.' },
           { id:'typeNullifier',   name:'[Type] Nullifier',          cost:5000, desc:'Type chosen at run start. Pokémon of that type are immune to indirect damage but can\'t get stat boosts.' },
           { id:'typeMagnetizer',  name:'[Type] Magnetizer',         cost:5000, desc:'Type chosen at run start. Moves against or from that type never miss.' },
+          { id:'eternalSunLens',  name:'Eternal Sun Lens',           cost:5000, desc:'Permanent harsh sunlight every battle. Fire moves +50% power, Water moves -50%. Both sides.' },
+          { id:'thunderstoneEarrings', name:'Thunderstone Earrings', cost:5000, desc:'Electric Terrain always active. Grounded mons +20% Spe, immune to sleep. Both sides.' },
+          { id:'glassCannonPact', name:'Glass Cannon Pact',          cost:5000, desc:'All damage dealt and taken +25%. Pure variance amplifier. Both sides.' },
+          { id:'reapersToll',     name:"Reaper's Toll",              cost:5000, desc:'On any KO, all surviving allies of that side heal 10% max HP; one random survivor drops -1 SpD. Both sides.' },
+          { id:'cursedCoinPouch', name:'Cursed Coin Pouch',          cost:5000, desc:'Coin gain ×2 on victory. Every Pokémon enters battle with one random stat at -1. Both sides.' },
         ];
 
         // Trainer sprites map (name → filename without extension)
@@ -11069,7 +11251,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
         function getTrainerQuote(role) {
             const pool = TRAINER_QUOTES[role] || TRAINER_QUOTES['Basic Trainer'];
-            return pool[Math.floor(Math.random() * pool.length)];
+            const rng = (sm && sm.active) ? storyRngNext : Math.random;
+            return pool[Math.floor(rng() * pool.length)];
         }
         function getTrainerQuoteForBattle(trainer, quoteRole) {
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
@@ -11130,8 +11313,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return lines[Math.floor(rng() * lines.length)];
         }
 
-        const PROF_NAMES = ['Elm','Oak','Birch','Rowan','Juniper','Sycamore','Kukui','Magnolia','Sada'];
-        const CITY_HUB_PROF_SPRITES = ['Oak','Oak','Birch','Oak','Juniper','Clemont','Kukui','Oak','Colress'];
+        // Story city hub + professor screen: HUD label must match `sprites/trainers/<spriteFile>.png` on disk.
+        const CITY_PROFESSOR_SLOTS = [
+            { label: 'Prof. Oak',       spriteFile: 'Oak' },
+            { label: 'Samson Oak',      spriteFile: 'Samson_Oak' },
+            { label: 'Prof. Birch',     spriteFile: 'Birch' },
+            { label: 'Prof. Juniper',   spriteFile: 'Juniper' },
+            { label: 'Prof. Kukui',     spriteFile: 'Kukui' },
+            { label: 'Prof. Kukui',     spriteFile: 'Kukui-2' },
+            { label: 'Clemont',         spriteFile: 'Clemont' },
+            { label: 'Colress',         spriteFile: 'Colress' },
+            { label: 'Prof. Oak',       spriteFile: 'Oak' },
+        ];
+        function cityProfessorHubSlot(cityIdx) {
+            const slots = CITY_PROFESSOR_SLOTS;
+            const i = (cityIdx | 0) % slots.length;
+            return slots[i] || { label: 'Prof. Oak', spriteFile: 'Oak' };
+        }
         const CITY_GUIDE_SPRITES = ['Backpacker','Sightseer','Camper','Picnicker','Youngster'];
         const DEFAULT_STORY_BG_MANIFEST = {
             version: 1,
@@ -11179,6 +11377,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _storyIconSvg(fill, label) {
             return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="4" fill="' + fill + '" opacity="0.9"/><text x="12" y="16" text-anchor="middle" font-size="11" font-weight="bold" fill="#111">' + label + '</text></svg>';
         }
+        // Official item artwork filenames (same as github.com/PokeAPI/sprites — sprites/items/*.png)
+        const STORY_SHOP_ITEM_SPRITE_SLUG = {
+            maxPotion:'max-potion', fullRestore:'full-restore', fullHeal:'full-heal',
+            ether:'ether', maxEther:'max-ether', elixir:'elixir',
+            xAttack:'x-attack', xDefense:'x-defense', xSpAtk:'x-sp-atk', xSpDef:'x-sp-def',
+            xSpeed:'x-speed', xAccuracy:'x-accuracy', direHit:'dire-hit', guardSpec:'guard-spec',
+            revive:'revive', maxRevive:'max-revive', revivalHerb:'revival-herb'
+        };
         const STORY_SHOP_ICON_HTML = (function() {
             const H = _storyIconSvg;
             return {
@@ -11198,6 +11404,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
         })();
         function storyShopIconInnerHtml(id) {
+            const slug = STORY_SHOP_ITEM_SPRITE_SLUG[id];
+            if (slug) {
+                return '<img class="story-shop-item-img" src="sprites/items/' + slug + '.png" alt="" width="30" height="30" loading="lazy" decoding="async">';
+            }
             return STORY_SHOP_ICON_HTML[id] || STORY_SHOP_ICON_HTML._default;
         }
         function storyShopIconCellHtml(id) {
@@ -11220,7 +11430,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── STATE ─────────────────────────────────────────────────────────
         const SAVE_KEY = 'pbs_story_save';
-        const SAVE_VER = 5;
+        const SAVE_VER = 6;
         const PROF_INTRO_THEME_BROWSER_KEY = 'pbs_story_prof_intro_theme_heard';
         function browserProfIntroThemeHeard() {
             try { return localStorage.getItem(PROF_INTRO_THEME_BROWSER_KEY) === '1'; } catch (e) { return false; }
@@ -11238,9 +11448,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    storyDifficulty:'normal', runSeed:null,
                    storyMilestoneTips:{ m4:false, m8:false },
                    version:SAVE_VER };
-        /** Deterministic RNG for story rolls (team picks, etc.). Sequence resets each session from runSeed. */
+        /** Deterministic RNG for story rolls (team picks, etc.). Sequence continues from saved _strngState. */
         function storyRngNext() {
-            if (sm.runSeed == null || sm.runSeed === undefined) return Math.random();
+            if (sm.runSeed == null || sm.runSeed === undefined) {
+                if (sm.active) console.warn('[Story] storyRngNext called with no seed during active run — using Math.random()');
+                return Math.random();
+            }
             if (sm._strngState == null) sm._strngState = ((sm.runSeed >>> 0) ^ 0x9E3779B9) >>> 0;
             sm._strngState = (Math.imul(sm._strngState, 1664525) + 1013904223) >>> 0;
             return sm._strngState / 4294967296;
@@ -11250,7 +11463,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function save() {
             try {
                 const d = JSON.parse(JSON.stringify(sm));
-                delete d._strngState;
+                // _strngState is preserved so Continue Journey resumes the exact RNG sequence
                 localStorage.setItem(SAVE_KEY, JSON.stringify(d));
             } catch(e) { console.warn('[Story] Save failed', e); }
         }
@@ -11272,7 +11485,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (browserProfIntroThemeHeard()) sm.profIntroThemePending = false;
                 if (!sm.storyDifficulty) sm.storyDifficulty = 'normal';
                 if (sm.runSeed == null || sm.runSeed === undefined) sm.runSeed = (Math.random() * 0xFFFFFFFF) | 0;
-                sm._strngState = null;
+                // _strngState is restored from save via Object.assign above — do not reset here
                 if (typeof sm.active !== 'boolean') sm.active = true;
                 if (!sm.storyMilestoneTips || typeof sm.storyMilestoneTips !== 'object') sm.storyMilestoneTips = { m4:false, m8:false };
                 if (sm.storyMilestoneTips.m4 !== true) sm.storyMilestoneTips.m4 = false;
@@ -11306,6 +11519,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (d === 'easy') { o.g1 *= 0.88; o.g4 *= 1.12; }
             else if (d === 'hard') { o.g1 *= 1.1; o.g4 *= 0.9; }
             else if (d === 'challenge') { o.g1 *= 1.18; o.g4 *= 0.82; }
+            else if (d === 'hardcore') { o.g1 *= 1.25; o.g4 *= 0.75; }
             return o;
         }
 
@@ -11575,7 +11789,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     teraOn: document.getElementById('story-mech-tera')?.checked||false,
                 },
                 storyDifficulty: _storyDiff,
-                runSeed: (Math.random() * 0xFFFFFFFF) | 0,
+                runSeed: (() => { const v = document.getElementById('story-setting-seed')?.value?.trim(); return (v && /^\d+$/.test(v)) ? (parseInt(v, 10) >>> 0) : ((Math.random() * 0xFFFFFFFF) | 0); })(),
                 version: SAVE_VER,
                 storyCityVisit: null,
                 profIntroThemePending: !browserProfIntroThemeHeard(),
@@ -11655,9 +11869,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let spriteTrainerArg = { spriteFile: CITY_GUIDE_SPRITES[(cityIdx + (sm.badges | 0)) % CITY_GUIDE_SPRITES.length] };
             if (hasProf && !profUsedHere) {
                 if (hasTeamRoom) {
-                    const pi = cityIdx % PROF_NAMES.length;
-                    speakerLabel = 'Prof. ' + PROF_NAMES[pi];
-                    spriteTrainerArg = { spriteFile: CITY_HUB_PROF_SPRITES[pi] || 'Oak' };
+                    const hub = cityProfessorHubSlot(cityIdx);
+                    speakerLabel = hub.label;
+                    spriteTrainerArg = { spriteFile: hub.spriteFile };
                 } else {
                     speakerLabel = '???';
                     spriteTrainerArg = 'Cyrus';
@@ -11755,6 +11969,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if ((sm.artifacts || []).length > 0) {
                 btn.innerHTML += makeActionBtn('✨ Artifact Hall — Toggle run artifacts','artifacts','window.StoryMode.enterArtifactHall()','shop');
+            }
+            // Pokémon Center: only in Hardcore mode — full party heal, free, unlimited
+            if (sm.storyDifficulty === 'hardcore') {
+                btn.innerHTML += makeActionBtn('🏥 Pokémon Center — Restore your party','center','window.StoryMode.enterPokemonCenter()','link');
             }
         }
 
@@ -11937,12 +12155,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const rolls = isFull ? {g1:100,g2:0,g3:0,g4:0} : (PROF_ROLLS[cityIdx] || PROF_ROLLS[0]);
             _pendingProfRolls = rolls;
 
-            const profName = isFull ? '??? — Mystery Figure' : ('Prof. ' + (PROF_NAMES[cityIdx % PROF_NAMES.length] || 'Oak'));
+            const hub = cityProfessorHubSlot(cityIdx);
+            const profName = isFull ? '??? — Mystery Figure' : hub.label;
             document.getElementById('story-prof-name').textContent = profName;
             document.getElementById('story-prof-quote').textContent = isFull
                 ? '"Your party is full, trainer. But you look like you could use an ace up your sleeve… choose one, and decide who to leave behind."'
-                : PROF_QUOTES[Math.floor(Math.random()*PROF_QUOTES.length)];
-            document.getElementById('story-prof-sprite').src = getTrainerSprite(isFull ? 'Cyrus' : 'Prof. Kukui');
+                : PROF_QUOTES[Math.floor(storyRngNext()*PROF_QUOTES.length)];
+            document.getElementById('story-prof-sprite').src = getTrainerSprite(isFull ? 'Cyrus' : { spriteFile: hub.spriteFile });
 
             const statusEl = document.getElementById('story-prof-status');
             const btnsEl   = document.getElementById('story-prof-buttons');
@@ -12247,6 +12466,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             setTimeout(() => { overlay.remove(); callback(); }, 2200);
         }
 
+        function applyHardcoreState(playerParty) {
+            // Restore persisted HP/status/PP from sm.team into just-built battle party (hardcore only)
+            if (sm.storyDifficulty !== 'hardcore') return;
+            (playerParty || []).forEach((mon, i) => {
+                const slot = sm.team[i];
+                if (!slot) return;
+                if (slot.currentHp != null) mon.currentHp = Math.min(slot.currentHp, mon.maxHp);
+                if (slot.status) { mon.status = slot.status; mon.statusTurns = slot.statusTurns | 0; }
+                if (Array.isArray(slot.pp)) {
+                    slot.pp.forEach((pp, mi) => { if (mon.moves[mi] && pp != null) mon.moves[mi].pp = pp; });
+                }
+                if (slot.consumedItem) { mon.item = null; mon.originalItem = null; mon.itemConsumed = true; }
+            });
+        }
+
         function launchBattle(enemyTeam) {
             // Build player p1Draft and enemy p2Draft for state
             const p1Draft = sm.team.map(t => ({ name: t.name, build: t.build }));
@@ -12279,6 +12513,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (diff === 'easy') coinMult = 1.15;
                 else if (diff === 'hard') coinMult = 0.92;
                 else if (diff === 'challenge') coinMult = 1.05;
+                else if (diff === 'hardcore') coinMult = 1.20; // attrition risk rewarded
+                // Cursed Coin Pouch: ×2 coin gain (applied after difficulty mult)
+                if ((sm.artifacts||[]).includes('cursedCoinPouch') && !(sm.artifactsDisabled||[]).includes('cursedCoinPouch')) coinMult *= 2;
                 const coinsAwarded = Math.floor((coins || 0) * coinMult);
                 sm.gold += coinsAwarded;
                 // Award badge if gym leader / E4 / champion
@@ -12339,10 +12576,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Called from returnToHome when story mode is active
             try {
                 if (typeof state !== 'undefined' && state.playerParty && state.playerParty.length && sm.team) {
-                    sm.team = state.playerParty.map(m => ({
-                        name: m._baseName || m.name,
-                        build: m.buildData ? JSON.parse(JSON.stringify(m.buildData)) : (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).build
-                    })).filter(t => t.build);
+                    const isHardcore = sm.storyDifficulty === 'hardcore';
+                    sm.team = state.playerParty.map(m => {
+                        const slot = {
+                            name: m._baseName || m.name,
+                            build: m.buildData ? JSON.parse(JSON.stringify(m.buildData)) : (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).build
+                        };
+                        if (isHardcore) {
+                            slot.currentHp = m.currentHp;
+                            slot.status = m.status || null;
+                            slot.statusTurns = m.statusTurns | 0;
+                            slot.pp = (m.moves || []).map(mv => mv.pp);
+                            slot.consumedItem = !!m.itemConsumed;
+                        }
+                        return slot;
+                    }).filter(t => t.build);
                     save();
                 }
             } catch (e) { console.warn('[Story] team sync', e); }
@@ -12390,6 +12638,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── SHOPS ─────────────────────────────────────────────────────────
+        function enterPokemonCenter() {
+            sm.team.forEach(slot => {
+                slot.currentHp = null;   // null = recalculate as full on next build
+                slot.status = null;
+                slot.statusTurns = 0;
+                slot.pp = null;
+                slot.consumedItem = false;
+            });
+            save();
+            renderTeamPanel();
+            // Show heal confirmation in city dialog
+            const quoteEl = document.getElementById('story-city-quote');
+            if (quoteEl) quoteEl.textContent = '"Welcome to the Pokémon Center! Your Pokémon have been fully restored!"';
+        }
+
         function enterShop(type) {
             const shopScreen = document.getElementById('screen-story-shop');
             if (shopScreen) shopScreen.setAttribute('data-shop-type', type === 'dept' ? 'dept' : 'mart');
@@ -12716,7 +12979,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 hasAny = true;
                 const div = document.createElement('div');
                 div.className = 'story-bag-item';
-                div.innerHTML = `<div class="name">${item.name}</div><div class="qty">x${qty}</div><div class="eff">${item.desc}</div>`;
+                const icon = storyShopIconCellHtml(item.id);
+                div.innerHTML = icon + `<div class="story-bag-item-text"><div class="name">${item.name}</div><div class="qty">x${qty}</div><div class="eff">${item.desc}</div></div>`;
                 div.onclick = () => selectBagItem(item, div);
                 bagEl.appendChild(div);
             });
@@ -12852,11 +13116,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 document.getElementById('screen-menu').classList.remove('hidden');
                 return;
             }
-            // Update continue button visibility
+            // Update continue/abandon button visibility
+            const hasSv = hasSave();
             const cb = document.getElementById('story-continue-btn');
-            if (cb) cb.style.display = hasSave() ? '' : 'none';
+            if (cb) cb.style.display = hasSv ? '' : 'none';
+            const ab = document.getElementById('story-abandon-btn');
+            if (ab) ab.style.display = hasSv ? '' : 'none';
             const sd = document.getElementById('story-difficulty');
             if (sd && sm.storyDifficulty) sd.value = sm.storyDifficulty;
+            // Show current run seed so player can share it
+            const si = document.getElementById('story-setting-seed');
+            if (si && hasSv && sm.runSeed != null) si.value = String(sm.runSeed >>> 0);
             showScreen('screen-story-menu');
         }
 
@@ -12888,9 +13158,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 state.gravity = 999;
                 if (typeof logMsg==='function') logMsg('Heavy Gravity Boots: Gravity is in effect!','info');
             }
-            // Berserker Serum: apply +1 Atk/SpA to all mons on entry (handled via switch-in)
-            // Stagnation Core: prevent stat changes — hooked in calcStatChange
-            // (these are passive and need engine hooks — noted as partial implementation)
+            // Eternal Sun Lens: permanent harsh sunlight
+            if (active('eternalSunLens')) {
+                state.weather = 'Sun'; state.weatherTurns = 999;
+                if (typeof logMsg==='function') logMsg('Eternal Sun Lens: Harsh sunlight blazes permanently!','info');
+            }
+            // Thunderstone Earrings: permanent Electric Terrain
+            if (active('thunderstoneEarrings')) {
+                state.terrain = 'Electric'; state.terrainTurns = 999;
+                if (typeof logMsg==='function') logMsg('Thunderstone Earrings: Electric Terrain crackles endlessly!','info');
+            }
+            // Glass Cannon Pact: flag for damage calc (+25% all damage, both sides)
+            state._glassCannonPact = active('glassCannonPact');
+            if (state._glassCannonPact && typeof logMsg==='function') logMsg('Glass Cannon Pact: All damage amplified +25%!','info');
+            // Reaper's Toll: flag for checkFaints (KO triggers ally heal + SpD drop)
+            state._reapersTollActive = active('reapersToll');
+            if (state._reapersTollActive && typeof logMsg==='function') logMsg("Reaper's Toll: Fallen allies leave a mark…",'info');
+            // Cursed Coin Pouch: apply -1 random stat to every mon on battle start (both sides)
+            if (active('cursedCoinPouch')) {
+                const statKeys = ['atk','def','spa','spd','spe'];
+                const rng = (sm && sm.active) ? storyRngNext : Math.random;
+                [...(state.playerParty||[]), ...(state.foeParty||[])].forEach(mon => {
+                    const st = statKeys[Math.floor(rng() * statKeys.length)];
+                    mon.stages[st] = Math.max(-6, (mon.stages[st]||0) - 1);
+                });
+                if (typeof logMsg==='function') logMsg('Cursed Coin Pouch: All Pokémon feel the weight of the curse! (−1 random stat each)','info');
+            }
+            // Berserker Serum / Stagnation Core: passive engine hooks (existing)
         }
 
         // Expose for battle engine to call after startBattle initialisation
@@ -12903,13 +13197,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const badges = sm.badges | 0;
             const diff = sm.storyDifficulty || 'normal';
             if (diff === 'easy' && gymCount < 3) return { maxPotion: 0, fullRestore: 0, fullHeal: 0 };
-            const sc = diff === 'challenge' ? 1.2 : diff === 'easy' ? 0.75 : diff === 'hard' ? 1.15 : 1;
+            const sc = diff === 'hardcore' ? 1.3 : diff === 'challenge' ? 1.2 : diff === 'easy' ? 0.75 : diff === 'hard' ? 1.15 : 1;
             let maxPotion = 0, fullRestore = 0, fullHeal = 0;
             if (badges >= 2) maxPotion += Math.max(1, Math.round(1 * sc));
             if (badges >= 4) maxPotion += 1;
             if (badges >= 5) fullHeal = 1;
             if (badges >= 6) fullRestore = Math.max(1, Math.round(1 * sc));
-            if (diff === 'challenge') maxPotion += 1;
+            if (diff === 'challenge' || diff === 'hardcore') { maxPotion += 1; fullHeal += (badges >= 5 ? 1 : 0); }
             return { maxPotion, fullRestore, fullHeal };
         }
         window.buildFoeStoryInventoryForBattle = buildFoeStoryInventoryForBattle;
@@ -12918,8 +13212,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         return {
             showMenu, startNewRun, continueRun, retryFromGameOver, isActive, hasSave,
             enterCity, enterProfessor, profRoll, profAccept, profDecline, profSelectChoice, _mysteryDoSwap,
-            proceedToNextBattle, onBattleEnd, afterBattleReturn,
-            enterShop, buyItem, buyArtifact,
+            proceedToNextBattle, onBattleEnd, afterBattleReturn, applyHardcoreState,
+            enterShop, buyItem, buyArtifact, enterPokemonCenter,
             enterLink, linkReroll, linkUpgrade, linkEvolve, linkRebuild, linkMoveUp, linkMoveDown,
             openBattleBag, useBagItemOn,
             confirmAbandon, abandonAndReturn, continuePostGame,
