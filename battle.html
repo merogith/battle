@@ -11,9 +11,29 @@
     <link rel="apple-touch-icon" href="icons/app-icon.svg">
     <title>Retro Battle Sim - Competitive Fix</title>
     <style>
-        :root { --bg-color: #0a0a0a; --border-color: #444; --text-color: #e8e8e8; --hp-green: #4caf50; --hp-yellow: #ffc107; --hp-red: #f44336; --accent: #ffd54f; --surface: #161616; --surface2: #1e1e1e; --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px); --safe-left: env(safe-area-inset-left, 0px); --safe-right: env(safe-area-inset-right, 0px); --game-design-w: 960; --game-design-h: 700; }
+        /* Battle UI tokens — single theme for stat boxes, log, commands (overrides use these, not parallel palettes). */
+        :root {
+            --bg-color: #0a0a0a; --border-color: #444; --text-color: #e8e8e8;
+            --hp-green: #4caf50; --hp-yellow: #ffc107; --hp-red: #f44336; --accent: #ffd54f;
+            --surface: #161616; --surface2: #1e1e1e;
+            --battle-font: 'Courier New', Courier, monospace;
+            --battle-chrome-bg: #050505;
+            --battle-panel-bg: var(--surface);
+            --battle-log-bg: var(--surface);
+            --battle-radius: 4px;
+            --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-left: env(safe-area-inset-left, 0px); --safe-right: env(safe-area-inset-right, 0px);
+            --game-design-w: 960; --game-design-h: 700;
+            /* Battle chrome — spacing rhythm (4/8/12) */
+            --battle-space-1: 4px;
+            --battle-space-2: 8px;
+            --battle-space-3: 12px;
+            --battle-panel-pad: var(--battle-space-2);
+            --battle-btn-radius: 4px;
+            --battle-btn-gap: var(--battle-space-1);
+        }
         html { height: 100%; overscroll-behavior: none; }
-        body { background-color: #000; color: var(--text-color); font-family: 'Courier New', Courier, monospace; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; min-height: 100dvh; min-height: 100svh; height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior: none; padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); box-sizing: border-box; }
+        body { background-color: #000; color: var(--text-color); font-family: var(--battle-font); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; min-height: 100dvh; min-height: 100svh; height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior: none; padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); box-sizing: border-box; }
         .screen { width: 100%; max-width: 960px; height: 100vh; max-height: 700px; position: relative; background: var(--bg-color); overflow: hidden; }
         /* Desktop: outer box matches scaled 960×700 footprint so the game centers and fills the window */
         #desktop-scale-outer {
@@ -119,7 +139,7 @@
         }
         #game-stage > .screen { height: 100%; max-height: 100%; flex: 1; min-height: 0; }
         .hidden { display: none !important; } .active { display: block; }
-        .white-outline { outline: none; border: 1px solid var(--border-color); padding: 10px; background: var(--surface); border-radius: 4px; }
+        .white-outline { outline: none; border: 1px solid var(--border-color); padding: 10px; background: var(--battle-panel-bg); border-radius: var(--battle-radius); }
         .border-white { border: 1px solid var(--border-color); }
         img, .sprite { border: none; background: transparent; width: 180px; height: 180px; object-fit: contain; image-rendering: pixelated; transition: transform 0.2s, filter 0.2s, opacity 0.4s; }
         .mini-sprite { width: 64px; height: 64px; border: none; background: transparent; image-rendering: pixelated; margin-right: 8px; flex-shrink: 0; }
@@ -231,7 +251,8 @@
             .summary-modal-mob-info, .story-summary-mob-info { display: inline-flex !important; }
         }
         .sum-tabs-with-mob-info { flex-wrap: wrap; align-items: center; }
-        #move-menu button .move-btn-eff-bottom { min-height: 20px; padding-bottom: 5px; margin-top: 2px; }
+        /* Compact move tiles — stats row (replaces .move-btn-eff-bottom) */
+        .battle-btn-move .move-tile-meta { margin-top: var(--battle-space-1); font-size: 10px; color: #888; line-height: 1.35; }
 
         /* Stat bar mini (for draft cards) */
         .stat-mini { display: flex; align-items: center; gap: 3px; font-size: 11px; }
@@ -332,6 +353,13 @@
             height: 100%; min-height: 0; flex: 1;
         }
         #screen-story-city { background: var(--bg-color); }
+        .story-city-main-row {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+            flex-direction: row;
+        }
         #story-city-left .story-city-portrait-wrap {
             position: relative; display: flex; align-items: center; justify-content: center;
             width: 200px; height: 200px; border-radius: 50%;
@@ -531,6 +559,11 @@
         .story-link-mon-header > div:first-of-type { flex:1; min-width:0; }
         .story-link-mon-header .draft-card-info-btn { flex-shrink:0; align-self:flex-start; }
         .story-link-mon-header img { width:56px; height:56px; image-rendering:pixelated; border:none; background:transparent; }
+        .story-link-title-row { font-size:14px; font-weight:bold; line-height:1.25; display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; }
+        .story-link-build {
+            display:flex; flex-direction:column; gap:6px; margin-bottom:8px; width:100%; box-sizing:border-box;
+        }
+        .story-link-build-stats { display:flex; flex-direction:column; gap:1px; font-size:11px; }
         .story-link-btns { display:flex; gap:6px; flex-wrap:wrap; }
         .story-link-btn { font-size:10px; padding:4px 8px; border:1px solid #444; border-radius:3px; cursor:pointer; background:var(--surface2); color:var(--text-color); font-family:inherit; transition:all 0.15s; }
         .story-link-btn:hover:not(:disabled) { border-color:#888; color:var(--accent); }
@@ -548,8 +581,20 @@
         .story-bag-item .eff { font-size:10px; color:#ccc; line-height:1.3; }
         .badge-icon { display:inline-block; width:14px; height:14px; border-radius:50%; background:var(--accent); border:1px solid #000; }
 
-        /* Battle layout */
-        #screen-battle { position: relative; background-image: url('sprites/bg_neutral.png'); background-color: #0a1a0a; background-size: cover; background-position: center bottom; background-repeat: no-repeat; transition: background-image 0.8s ease-in-out; }
+        /* Battle layout — --battle-ui-h: command row + log panel (override per breakpoint) */
+        #screen-battle {
+            --battle-ui-h: 190px;
+            --battle-player-hud-est: 72px;
+            font-family: var(--battle-font);
+            position: relative;
+            background-image: url('sprites/bg_neutral.png');
+            background-color: #0a1a0a;
+            background-size: cover;
+            background-position: center bottom;
+            background-repeat: no-repeat;
+            transition: background-image 0.8s ease-in-out;
+        }
+        #screen-battle.battle-log-dock { --battle-ui-h: 200px; }
         /* Vignette + depth atmosphere overlay — sits below all positioned children (z-index:0) */
         #screen-battle::before {
             content: '';
@@ -560,12 +605,26 @@
             pointer-events: none;
             z-index: 0;
         }
-        .battle-field { position: absolute; top: 0; left: 0; right: 0; bottom: 190px; overflow: hidden; }
+        .battle-field { position: absolute; top: 0; left: 0; right: 0; bottom: var(--battle-ui-h, 190px); overflow: hidden; }
         .foe-platform { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 140px; height: 35px; background: rgba(0,0,0,0.4); border-radius: 50%; filter: blur(4px); transform: translateX(-50%); pointer-events: none; z-index: 0; }
         .player-platform { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 180px; height: 45px; background: rgba(0,0,0,0.45); border-radius: 50%; filter: blur(6px); transform: translateX(-50%); pointer-events: none; z-index: 0; }
-        .stat-box { width: 260px; position: relative; background: var(--surface); border-radius: 6px; padding: 10px 12px; border: 1px solid #333; font-size: 14px; }
+        .stat-box { width: 260px; position: relative; background: var(--battle-panel-bg); border-radius: var(--battle-radius); padding: 10px 12px; border: 1px solid var(--border-color); font-size: 14px; }
         /* Stat box inner layout */
         .stat-box-header { display: flex; align-items: center; gap: 5px; }
+        .stat-box-header .stat-box-name {
+            flex: 1 1 auto;
+            min-width: 0;
+            max-width: 100%;
+            cursor: pointer;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            white-space: normal;
+            word-break: break-word;
+            line-height: 1.25;
+        }
         .stat-info-row { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin-top: 4px; min-height: 0; }
         .stat-info-row .status-indicator { margin-top: 0 !important; font-size: 10px !important; padding: 1px 4px; background: rgba(0,0,0,0.3); border-radius: 3px; }
         #foe-stages, #player-stages { display: flex; flex-wrap: wrap; gap: 2px; max-width: 100%; }
@@ -584,27 +643,48 @@
         .stat-box .type-badge { font-size: 9px; }
         .status-indicator { font-weight: bold; font-size: 12px; margin-top: 4px; text-transform: uppercase; }
         /*
-         * Desktop battle sprite layout (960×700 canvas): inline sprite positions are tuned here so
-         * the player mon sits to the right of the HP box (not under z-index:5) and the foe sits lower.
-         * Requires !important to override container inline styles. Narrow/touch layouts use their own blocks.
+         * Desktop battle sprite layout (960×700 canvas): foe upper-center (slight right) on the arena
+         * screen; player bottom-center, nudged left. !important overrides container inline styles.
          */
         @media screen and (min-width: 769px) and (min-height: 600px) {
+            /* Foe: upper field, slightly right of center */
             #foe-sprite-container {
-                top: 54px !important;
-                right: 38px !important;
+                top: 36px !important;
+                bottom: auto !important;
+                left: 58% !important;
+                right: auto !important;
+                transform: translateX(-50%) !important;
+                width: 244px !important;
+                height: 258px !important;
             }
-            /* player-stat-box: left 15px + width 240px → keep sprite entirely to the right with a small gap */
+            #foe-sprite {
+                width: 228px !important;
+                height: 228px !important;
+                bottom: 14px !important;
+            }
+            /* Player: bottom-center, slight left — separated from foe for readability */
             #player-sprite-container {
-                left: 264px !important;
-                bottom: 198px !important;
+                left: 50% !important;
+                right: auto !important;
+                transform: translateX(calc(-50% - 88px)) !important;
+                bottom: 300px !important;
+                width: 258px !important;
+                height: 272px !important;
             }
+            #player-sprite {
+                width: 240px !important;
+                height: 240px !important;
+                bottom: 20px !important;
+            }
+            #player-sprite-container { z-index: 3; }
+            #foe-sprite-container { z-index: 2; }
         }
 
         /* Field conditions: top-center strip between the two stat boxes (desktop default) */
         #field-conditions { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; gap: 4px; z-index: 4; justify-content: center; max-width: 400px; }
         /* Gauntlet score: bottom-right of battle area (player HUD is bottom-left) */
-        #gauntlet-score { position: absolute; bottom: 205px; right: 12px; left: auto; font-weight: bold; color: #fff; z-index: 10; font-size: 12px; background: rgba(0,0,0,0.55); padding: 2px 10px; border-radius: 10px; white-space: nowrap; text-shadow: 0 1px 3px #000; }
-        #move-tooltip { position: absolute; bottom: 195px; right: 0; width: 280px; max-width: min(92vw, 320px); z-index: 100; pointer-events: none; background: var(--surface); border: 1px solid #444; border-radius: 4px; padding: 10px; box-shadow: 0 8px 28px rgba(0,0,0,0.65); }
+        #gauntlet-score { position: absolute; bottom: 322px; right: 12px; left: auto; font-weight: bold; color: #fff; z-index: 10; font-size: 12px; background: rgba(0,0,0,0.55); padding: 2px 10px; border-radius: 10px; white-space: nowrap; text-shadow: 0 1px 3px #000; }
+        #move-tooltip { position: absolute; bottom: 300px; right: 0; width: 280px; max-width: min(92vw, 320px); z-index: 100; pointer-events: none; background: var(--surface); border: 1px solid #444; border-radius: 4px; padding: 10px; box-shadow: 0 8px 28px rgba(0,0,0,0.65); }
         #move-tooltip.sticky-open { pointer-events: auto; z-index: 450; }
         #move-tooltip .move-tip-close { float: right; margin: -4px -4px 4px 8px; min-width: 36px; min-height: 36px; border-radius: 6px; border: 1px solid #555; background: var(--surface2); color: #fff; font-size: 16px; line-height: 1; cursor: pointer; touch-action: manipulation; }
         .field-pill { cursor: pointer; touch-action: manipulation; min-height: 28px; display: inline-flex; align-items: center; padding: 2px 6px; border-radius: 4px; -webkit-tap-highlight-color: transparent; user-select: none; }
@@ -635,15 +715,85 @@
         .type-Normal { background: #A8A878; color: #fff; } .type-Fire { background: #F08030; color: #fff; } .type-Water { background: #6890F0; color: #fff; } .type-Grass { background: #78C850; color: #fff; } .type-Electric { background: #F8D030; color: #000; } .type-Ice { background: #98D8D8; color: #000; } .type-Fighting { background: #C03028; color: #fff; } .type-Poison { background: #A040A0; color: #fff; } .type-Ground { background: #E0C068; color: #000; } .type-Flying { background: #A890F0; color: #fff; } .type-Psychic { background: #F85888; color: #fff; } .type-Bug { background: #A8B820; color: #fff; } .type-Rock { background: #B8A038; color: #fff; } .type-Ghost { background: #705898; color: #fff; } .type-Dragon { background: #7038F8; color: #fff; } .type-Dark { background: #705848; color: #fff; } .type-Steel { background: #B8B8D0; color: #000; } .type-Fairy { background: #EE99AC; color: #000; }
         .cat-Physical { color: #ff6b6b; } .cat-Special { color: #6b9fff; } .cat-Status { color: #999; }
 
+        /* Bottom chrome: player HP strip + log/commands (one column — avoids HP box “floating” on the arena) */
+        .battle-bottom-stack {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            box-sizing: border-box;
+            width: 100%;
+            pointer-events: none;
+        }
+        .battle-bottom-stack > * { pointer-events: auto; }
+        .battle-player-hud-row {
+            width: 100%;
+            flex: 0 0 auto;
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-start;
+            align-items: flex-start;
+            box-sizing: border-box;
+        }
+        #battle-bottom-stack #player-stat-box {
+            position: relative !important;
+            bottom: auto !important;
+            left: auto !important;
+            right: auto !important;
+            width: 100% !important;
+            max-width: none;
+            margin: 0;
+            flex: 0 0 auto;
+            z-index: 1;
+            border-radius: 0;
+            border-left: none;
+            border-right: none;
+            border-bottom: 1px solid #222;
+            border-top: 1px solid #222;
+            background: var(--battle-chrome-bg);
+            box-sizing: border-box;
+            padding: 8px 12px;
+        }
+        /* Desktop / mouse: compact player HUD (matches foe box width) — phones keep full-width strip.
+           No full-bleed bar color: a wide chrome row left empty space beside the card; show arena bg instead. */
+        body:not(.is-mobile) .battle-player-hud-row {
+            border-top: 1px solid rgba(255,255,255,0.1);
+            background: transparent;
+            padding: 8px 10px 10px;
+        }
+        body:not(.is-mobile) #battle-bottom-stack #player-stat-box {
+            width: 248px !important;
+            max-width: min(280px, 40vw) !important;
+            align-self: flex-start !important;
+            border-radius: 6px !important;
+            border: 1px solid var(--border-color) !important;
+            border-top: 1px solid var(--border-color) !important;
+            border-bottom: 1px solid #333 !important;
+            background: var(--surface) !important;
+            margin: 0 !important;
+        }
+        .battle-bottom-stack .ui-bottom {
+            position: relative !important;
+            bottom: auto !important;
+            left: auto !important;
+            flex: 0 0 var(--battle-ui-h);
+            height: var(--battle-ui-h) !important;
+            width: 100% !important;
+            z-index: 2;
+        }
+
         /* UI Bottom */
-        .ui-bottom { position: absolute; bottom: 0; width: 100%; height: 190px; display: flex; gap: 8px; box-sizing: border-box; background: #050505; border-top: 1px solid #222; padding: 6px; z-index: 2; }
-        #battle-log { flex: 2; overflow-y: auto; font-size: 13px; line-height: 1.7; padding: 8px 12px; background: var(--surface); border-radius: 4px; border: 1px solid #222; }
+        .ui-bottom { position: absolute; bottom: 0; width: 100%; height: var(--battle-ui-h); display: flex; gap: 8px; box-sizing: border-box; background: var(--battle-chrome-bg); border-top: 1px solid var(--border-color); padding: 6px; z-index: 2; }
+        #battle-log { flex: 2; overflow-y: auto; font-size: 13px; line-height: 1.7; padding: 8px 12px; background: var(--battle-log-bg); border-radius: var(--battle-radius); border: 1px solid var(--border-color); word-break: break-word; }
         /* Desktop / large tablet: optional side dock for battle log (toggle in Settings) */
-        @media screen and (min-width: 900px) {
+        @media screen and (min-width: 768px) {
             #screen-battle.battle-log-dock .ui-bottom {
                 flex-direction: row-reverse;
                 align-items: stretch;
-                height: 200px;
             }
             #screen-battle.battle-log-dock #battle-log {
                 flex: 0 0 min(380px, 40vw);
@@ -657,18 +807,37 @@
             #screen-battle.battle-log-dock #move-menu.move-menu-layout {
                 min-height: 0;
             }
+            /* Dock uses --battle-ui-h 200px — bump sprites to stay above chrome */
+            #screen-battle.battle-log-dock .battle-bottom-stack .ui-bottom {
+                flex: 0 0 var(--battle-ui-h);
+                height: var(--battle-ui-h) !important;
+            }
+            #screen-battle.battle-log-dock #foe-sprite-container {
+                top: 34px !important;
+                bottom: auto !important;
+            }
+            #screen-battle.battle-log-dock #player-sprite-container {
+                bottom: 318px !important;
+            }
         }
         /* Tablet-friendly larger move targets */
         @media screen and (min-width: 700px) and (max-width: 1100px) {
-            body.layout-tablet-preset #move-menu button { min-height: 48px; font-size: 13px; }
+            body.layout-tablet-preset #move-menu .move-menu-scroll button.battle-btn-move { min-height: 48px; font-size: 13px; }
         }
         .command-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
         button { background: var(--surface); color: var(--text-color); border: 1px solid #444; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: bold; padding: 6px; border-radius: 3px; transition: all 0.15s; }
         button:hover:not(:disabled) { background: var(--surface2); border-color: #666; } button:disabled { opacity: 0.25; cursor: not-allowed; border-color: #222; color: #555; }
         .log-dmg { color: #ef5350; font-weight: 600; } .log-heal { color: #66bb6a; font-weight: 600; } .log-status { color: #ce93d8; } .log-info { color: #d0d0d0; }
         #battle-log { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
-        #move-menu button { -webkit-touch-callout: none; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; text-align: left; box-sizing: border-box; min-height: 76px; }
+        #move-menu button { -webkit-touch-callout: none; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; text-align: left; box-sizing: border-box; min-height: 0; }
+        #move-menu .move-menu-scroll button.battle-btn-move {
+            min-height: 52px;
+        }
         #move-menu .move-menu-scroll button { overflow: visible; }
+        #move-menu .move-menu-scroll button:not(.battle-btn-move) {
+            min-height: 48px;
+            justify-content: center;
+        }
         /* Moves scroll; BACK stays visible (was easy to miss below the fold) */
         #move-menu.move-menu-layout {
             display: flex;
@@ -704,6 +873,139 @@
             background: var(--surface2);
         }
         #move-menu .move-menu-back:active:not(:disabled) { background: #2a2a2a; }
+        /* Desktop: denser move tiles (no tall min-height), larger command keys, clearer mouse affordance */
+        body:not(.is-mobile) #move-menu .move-menu-scroll button.battle-btn-move {
+            min-height: 44px;
+            padding: 6px 8px;
+            justify-content: flex-start;
+            cursor: pointer;
+        }
+        body:not(.is-mobile) #move-menu .move-menu-scroll {
+            gap: 6px;
+            align-content: start;
+        }
+        body:not(.is-mobile) #command-menu.command-grid {
+            gap: 6px;
+        }
+        body:not(.is-mobile) #command-menu button {
+            min-height: 48px;
+            font-size: 14px;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        body:not(.is-mobile) #move-menu .move-menu-back {
+            min-height: 40px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        /* Command menu — icon + label stack (same chrome as move tiles) */
+        #command-menu.command-grid .battle-cmd-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            padding: var(--battle-space-2) var(--battle-space-2);
+            border-radius: var(--battle-btn-radius);
+            min-height: 0;
+        }
+        #command-menu.command-grid .battle-cmd-ico {
+            font-size: 17px;
+            line-height: 1;
+            opacity: 0.92;
+            filter: grayscale(0.08);
+        }
+        #command-menu.command-grid .battle-cmd-label {
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 0.03em;
+        }
+        body:not(.is-mobile) #command-menu.command-grid .battle-cmd-btn {
+            min-height: 48px;
+        }
+
+        /* Move tiles — one DOM shape; symbols + compact meta row */
+        #move-menu button.battle-btn-move {
+            flex-direction: row;
+            align-items: stretch;
+            justify-content: flex-start;
+            min-height: 0;
+            padding: 5px 6px;
+            border-radius: var(--battle-btn-radius);
+        }
+        .battle-btn-move .battle-btn-move-inner {
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            gap: 4px;
+            width: 100%;
+            min-width: 0;
+        }
+        .battle-btn-move .move-tile-core {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .battle-btn-move .move-tile-head {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            min-width: 0;
+        }
+        .battle-btn-move .move-tile-head .type-badge {
+            flex-shrink: 0;
+            font-size: 8px;
+            padding: 1px 4px;
+            margin-right: 0;
+        }
+        .battle-btn-move .move-tile-name {
+            flex: 1;
+            min-width: 0;
+            font-weight: bold;
+            font-size: 12px;
+            line-height: 1.2;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            text-align: left;
+        }
+        .battle-btn-move .move-tile-cat {
+            flex-shrink: 0;
+            font-size: 13px;
+            line-height: 1;
+            width: 1.1em;
+            text-align: center;
+        }
+        .battle-btn-move .move-tile-eff { flex-shrink: 0; font-size: 11px; line-height: 1; }
+        .battle-btn-move .move-tile-meta {
+            margin-top: 3px;
+            font-size: 10px;
+            color: #9e9e9e;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 2px 6px;
+        }
+        .battle-btn-move .move-tile-meta strong { color: #ddd; font-weight: 600; }
+        .battle-btn-move .move-tile-meta .move-tile-sep { color: #555; user-select: none; }
+        .battle-btn-move .move-info-hit {
+            align-self: center;
+            margin: 0;
+        }
+        body:not(.is-mobile) .battle-btn-move .move-tile-name { font-size: 13px; }
+        body:not(.is-mobile) .battle-btn-move .move-tile-meta { font-size: 10px; }
+
+        /* Move phase: prioritize action column; cap log so four moves + BACK stay usable */
+        #screen-battle.battle-phase-moves .ui-bottom {
+            min-height: 0;
+        }
+        #screen-battle.battle-phase-moves #move-menu.move-menu-layout {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+        }
         @media (max-width: 768px) {
             .draft-card-moves > div { min-height: 38px; display: flex; align-items: center; padding: 4px 2px !important; }
         }
@@ -757,60 +1059,145 @@
            Require touch + landscape so real phones still get these rules.
         */
         @media screen and (max-height: 500px) and (min-width: 600px) and (orientation: landscape) and ((hover: none) or (pointer: coarse)) {
+            /* Phone landscape: compact chrome + diagonal sprites; same theme tokens as desktop */
+            #screen-battle {
+                --battle-ui-h: 132px;
+            }
             body { align-items: stretch; justify-content: stretch; }
             .screen, #app-root { max-width: 100vw !important; width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; font-size: 11px; }
 
+            #screen-battle .stat-box.white-outline,
+            #screen-battle .ui-bottom .white-outline,
+            #screen-battle #battle-log {
+                border-radius: var(--battle-radius) !important;
+                border-width: 1px !important;
+                border-color: var(--border-color) !important;
+                background: var(--battle-panel-bg) !important;
+                color: var(--text-color) !important;
+                box-shadow: none !important;
+            }
+            #screen-battle #battle-bottom-stack #player-stat-box {
+                background: var(--battle-panel-bg) !important;
+            }
+            #screen-battle .battle-bottom-stack,
+            #screen-battle .ui-bottom {
+                background: var(--battle-chrome-bg) !important;
+                border-color: var(--border-color) !important;
+            }
+            #screen-battle #battle-bottom-stack #player-stat-box {
+                border-bottom-color: var(--border-color) !important;
+            }
+            #screen-battle .ui-bottom,
+            #screen-battle #battle-bottom-stack #player-stat-box {
+                font-family: var(--battle-font) !important;
+            }
+            #screen-battle #battle-log {
+                font-family: var(--battle-font) !important;
+                font-size: 10px !important;
+                line-height: 1.45 !important;
+            }
+            #screen-battle #command-menu button,
+            #screen-battle #move-menu .move-menu-back {
+                font-family: var(--battle-font) !important;
+                font-size: 10px !important;
+            }
+
             .mob-info-btn { display: inline-flex !important; }
 
-            /* Stat boxes: compact, cornered */
+            /* Stat boxes: foe top-right; player compact card bottom-left (not full bleed) */
             #foe-stat-box {
-                width: 178px !important; top: 4px !important; left: auto !important; right: 56px !important;
-                padding: 5px 8px !important; font-size: 11px !important;
+                width: min(176px, 38vw) !important; top: calc(4px + var(--safe-top)) !important; left: auto !important; right: calc(48px + var(--safe-right)) !important;
+                padding: 5px 7px !important; font-size: 9px !important;
             }
-            #player-stat-box {
-                width: 182px !important; bottom: 144px !important; left: 4px !important; right: auto !important;
-                padding: 5px 8px !important; font-size: 11px !important;
+            body.is-mobile .battle-player-hud-row {
+                justify-content: flex-start !important;
+                padding: 4px 6px 2px !important;
+                background: transparent !important;
+                border-top: 1px solid var(--border-color) !important;
             }
-            #player-hp-text { font-size: 10px !important; }
-            #foe-types, #player-types { font-size: 9px !important; }
-            .type-badge { font-size: 8px !important; padding: 1px 3px !important; }
+            body.is-mobile #battle-bottom-stack #player-stat-box {
+                width: min(200px, 42vw) !important;
+                max-width: min(210px, 44vw) !important;
+                margin: 0 !important;
+                padding: 5px 7px !important;
+                font-size: 9px !important;
+                border-radius: var(--battle-radius) !important;
+                border: 1px solid var(--border-color) !important;
+                border-top: 1px solid var(--border-color) !important;
+                border-bottom: 1px solid var(--border-color) !important;
+            }
+            .battle-bottom-stack .ui-bottom {
+                flex: 0 0 var(--battle-ui-h) !important;
+                height: var(--battle-ui-h) !important;
+            }
+            #player-hp-text { font-size: 7px !important; }
+            #foe-types, #player-types { font-size: 7px !important; }
+            .type-badge { font-size: 7px !important; padding: 1px 3px !important; }
             #foe-stages, #player-stages { max-height: none !important; overflow: visible !important; }
-            .hp-bar-container { height: 6px !important; margin-top: 2px !important; }
+            .hp-bar-container { height: 5px !important; margin-top: 2px !important; border-radius: 0 !important; }
 
-            /* Sprites — sized for landscape, diagonal layout, foe enlarged for balance */
-            #foe-sprite-container { width: 195px !important; height: 210px !important; top: 4px !important; right: 48px !important; }
-            #foe-sprite { width: 188px !important; height: 188px !important; }
-            #player-sprite-container { width: 185px !important; height: 200px !important; bottom: 144px !important; left: 155px !important; }
-            #player-sprite { width: 178px !important; height: 178px !important; }
+            /* Sprites — foe upper-right (below foe HP box); player lower-left */
+            #foe-sprite-container {
+                width: min(168px, 36vw) !important; height: min(182px, 40vw) !important;
+                top: calc(56px + var(--safe-top)) !important; bottom: auto !important;
+                left: auto !important; right: calc(8px + var(--safe-right)) !important;
+                transform: none !important;
+                z-index: 2 !important;
+            }
+            #foe-sprite { width: min(156px, 34vw) !important; height: min(156px, 34vw) !important; }
+            #player-sprite-container {
+                width: min(160px, 36vw) !important; height: min(174px, 38vw) !important;
+                bottom: calc(var(--battle-ui-h) + 70px) !important;
+                left: calc(6px + var(--safe-left)) !important; right: auto !important;
+                transform: none !important;
+                z-index: 3 !important;
+            }
+            #player-sprite { width: min(148px, 33vw) !important; height: min(148px, 33vw) !important; }
             /* Settings button only */
             .icon-btn { width: 34px !important; height: 34px !important; right: calc(8px + var(--safe-right)) !important; font-size: 14px !important; }
             .settings-btn { top: calc(6px + var(--safe-top)) !important; }
 
-            /* Field conditions: center of field */
+            /* Field conditions: left strip, clear of foe corner */
             #field-conditions {
-                bottom: 150px !important; left: 50% !important;
-                transform: translateX(-50%) !important;
-                flex-direction: row !important; align-items: center !important;
-                justify-content: center !important; max-width: 280px !important;
-                top: auto !important; gap: 3px !important;
+                bottom: auto !important; top: calc(52px + var(--safe-top)) !important; left: calc(4px + var(--safe-left)) !important;
+                transform: none !important;
+                flex-direction: column !important; align-items: flex-start !important;
+                justify-content: flex-start !important; max-width: min(200px, 42vw) !important;
+                right: auto !important; gap: 2px !important;
             }
-            .field-pill { min-height: 22px !important; font-size: 8px !important; padding: 1px 4px !important; }
+            .field-pill { min-height: 20px !important; font-size: 7px !important; padding: 1px 4px !important; border-radius: 0 !important; }
 
-            /* Gauntlet score */
-            #gauntlet-score { top: auto !important; bottom: 148px !important; left: auto !important; right: 8px !important; font-size: 10px !important; background: rgba(0,0,0,0.55) !important; padding: 2px 6px !important; border-radius: 3px !important; }
+            /* Gauntlet score — clear of player sprite */
+            #gauntlet-score { top: auto !important; bottom: calc(var(--battle-ui-h) + 76px) !important; left: auto !important; right: calc(8px + var(--safe-right)) !important; font-size: 8px !important; background: var(--battle-panel-bg) !important; border: 1px solid var(--border-color) !important; padding: 3px 6px !important; border-radius: var(--battle-radius) !important; font-family: var(--battle-font) !important; }
 
-            /* Bottom UI: 140px, row layout */
-            .ui-bottom { height: 140px !important; padding: 4px 6px !important; gap: 5px !important; }
-            #battle-log { flex: 1 !important; font-size: 11px !important; line-height: 1.4 !important; padding: 4px 8px !important; }
-            #command-menu { flex: 1.3 !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; }
-            #move-menu.move-menu-layout { flex: 1.3 !important; min-height: 0 !important; overflow: hidden !important; }
+            /* Bottom UI: row — wide command grid, narrow message strip */
+            .ui-bottom { height: var(--battle-ui-h) !important; padding: 4px 5px !important; gap: 5px !important; }
+            #battle-log {
+                flex: 0 0 clamp(120px, 30vw, 200px) !important;
+                max-width: 34vw !important;
+                min-width: 0 !important;
+                max-height: calc(1.5em * 4 + 10px) !important;
+                min-height: 0 !important;
+                overflow: hidden !important;
+                padding: 4px 6px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: flex-end !important;
+            }
+            #battle-log > div { flex-shrink: 0; }
+            #command-menu { flex: 1 1 auto !important; min-width: 0 !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; }
+            #move-menu.move-menu-layout { flex: 1 1 auto !important; min-width: 0 !important; min-height: 0 !important; overflow: hidden !important; }
             #move-menu .move-menu-scroll { -webkit-overflow-scrolling: touch !important; }
             .command-grid { gap: 3px !important; }
-            button { font-size: 11px !important; padding: 2px 4px !important; min-height: 36px !important; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-            #command-menu button { min-height: 44px !important; font-size: 12px !important; }
+            button { font-size: 10px !important; padding: 2px 4px !important; min-height: 32px !important; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+            #command-menu button { min-height: 40px !important; font-size: 10px !important; }
+            #move-menu button { min-height: 36px !important; padding: 3px 4px !important; font-size: 9px !important; }
+            #screen-battle[data-battle-layout="landscape-touch"] #move-menu .move-menu-scroll {
+                grid-template-columns: 1fr !important;
+            }
 
             /* Move tooltip */
-            #move-tooltip { bottom: 144px !important; right: auto !important; left: 8px !important; width: 215px !important; font-size: 11px !important; }
+            #move-tooltip { bottom: calc(var(--battle-ui-h) + 8px) !important; right: auto !important; left: 8px !important; width: min(220px, 48vw) !important; font-size: 10px !important; }
 
             /* Draft screen */
             #screen-draft:not(.hidden) { display: flex !important; flex-direction: column !important; padding: 0 !important; overflow: hidden !important; height: 100dvh !important; max-height: 100dvh !important; box-sizing: border-box !important; }
@@ -832,6 +1219,83 @@
             .mini-sprite { width: 52px !important; height: 52px !important; }
             .icon-btn { width: 36px !important; height: 36px !important; font-size: 16px !important; }
             #screen-menu:not(.hidden) { overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; }
+        }
+
+        /* Touch tablet / iPad landscape: more vertical arena than short-phone rules; avoids “tall but narrow” dead zone */
+        @media screen and (min-width: 600px) and (max-width: 1366px) and (orientation: landscape) and ((hover: none) or (pointer: coarse)) and (min-height: 501px) and (max-height: 900px) {
+            #screen-battle { --battle-ui-h: 160px; }
+            .mob-info-btn { display: inline-flex !important; }
+            #foe-stat-box {
+                width: min(200px, 36vw) !important; top: 6px !important; left: auto !important; right: 52px !important;
+                padding: 6px 9px !important; font-size: 11px !important;
+            }
+            #battle-bottom-stack #player-stat-box {
+                width: 100% !important;
+                padding: 6px 9px !important;
+                font-size: 12px !important;
+            }
+            body.is-mobile .battle-player-hud-row {
+                justify-content: flex-start !important;
+                padding: 5px 8px 3px !important;
+                background: transparent !important;
+            }
+            body.is-mobile #battle-bottom-stack #player-stat-box {
+                width: min(220px, 40vw) !important;
+                max-width: min(240px, 42vw) !important;
+                padding: 6px 9px !important;
+                font-size: 11px !important;
+                border-radius: 6px !important;
+                border: 1px solid var(--border-color) !important;
+            }
+            .battle-bottom-stack .ui-bottom {
+                flex: 0 0 var(--battle-ui-h) !important;
+                height: var(--battle-ui-h) !important;
+            }
+            .ui-bottom { height: var(--battle-ui-h) !important; padding: 5px 7px !important; gap: 6px !important; }
+            #player-hp-text { font-size: 10px !important; }
+            .hp-bar-container { height: 6px !important; margin-top: 2px !important; }
+            /* Diagonal field: foe back-right, player front-left */
+            #foe-sprite-container {
+                width: min(200px, 34vw) !important; height: min(214px, 38vw) !important;
+                top: calc(52px + var(--safe-top)) !important; bottom: auto !important;
+                left: auto !important; right: calc(12px + var(--safe-right)) !important;
+                transform: none !important;
+            }
+            #foe-sprite { width: min(188px, 32vw) !important; height: min(188px, 32vw) !important; }
+            #player-sprite-container {
+                width: min(188px, 34vw) !important; height: min(202px, 36vw) !important;
+                bottom: calc(var(--battle-ui-h) + 72px) !important;
+                left: calc(10px + var(--safe-left)) !important; right: auto !important;
+                transform: none !important;
+            }
+            #player-sprite { width: min(176px, 31vw) !important; height: min(176px, 31vw) !important; }
+            #field-conditions {
+                bottom: auto !important; top: calc(58px + var(--safe-top)) !important; left: calc(6px + var(--safe-left)) !important;
+                transform: none !important;
+                flex-direction: column !important; align-items: flex-start !important;
+                justify-content: flex-start !important; max-width: 220px !important;
+                right: auto !important; gap: 3px !important;
+            }
+            #gauntlet-score {
+                top: auto !important; bottom: calc(var(--battle-ui-h) + 64px) !important; left: auto !important; right: 10px !important;
+                font-size: 11px !important;
+            }
+            #battle-log {
+                flex: 0 0 clamp(140px, 28vw, 260px) !important;
+                max-height: calc(1.5em * 4 + 12px) !important;
+                overflow: hidden !important;
+                font-size: 11px !important;
+                line-height: 1.45 !important;
+                padding: 5px 8px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: flex-end !important;
+            }
+            #battle-log > div { flex-shrink: 0; }
+            #command-menu { flex: 1 1 auto !important; min-width: 0 !important; }
+            #move-menu.move-menu-layout { flex: 1 1 auto !important; min-width: 0 !important; }
+            #move-tooltip { bottom: calc(var(--battle-ui-h) + 8px) !important; left: 8px !important; right: auto !important; width: min(280px, 42vw) !important; }
+            #command-menu button { min-height: 46px !important; }
         }
 
         /* Mobile portrait: show rotate hint */
@@ -858,22 +1322,73 @@
             .draft-card { padding: 7px !important; gap: 7px !important; }
             .modal-content { width: 98% !important; padding: 12px !important; }
             button { min-height: 44px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+            #screen-battle .battle-bottom-stack #move-menu .move-menu-scroll button.battle-btn-move { min-height: 40px; }
             .party-slot { min-height: 44px; }
             .grade-filter-row { gap: 6px !important; }
             #gauntlet-reorder-section button { min-width: 44px; min-height: 44px; }
+        }
+
+        /* Shared portrait battle chrome: consistent bottom panel height + home indicator */
+        @media screen and (max-width: 768px) and (orientation: portrait) {
+            #screen-battle { --battle-ui-h: clamp(148px, 22dvh, 200px); }
+            #screen-battle .battle-bottom-stack {
+                padding-bottom: env(safe-area-inset-bottom, 0px);
+                box-sizing: border-box;
+            }
+        }
+
+        /* Portrait: player sprite + gauntlet score track player HUD strip + bottom panel (layout-driven). */
+        @media screen and (max-width: 768px) and (orientation: portrait) {
+            #screen-battle[data-battle-layout="portrait"] {
+                --battle-player-hud-est: clamp(58px, 11dvh, 80px);
+            }
+            @media (max-height: 679px) {
+                #screen-battle[data-battle-layout="portrait"] {
+                    --battle-player-hud-est: clamp(52px, 9dvh, 74px);
+                }
+            }
+            #screen-battle[data-battle-layout="portrait"] #player-sprite-container {
+                bottom: calc(var(--battle-player-hud-est) + var(--battle-ui-h) + max(8px, env(safe-area-inset-bottom, 0px))) !important;
+            }
+            #screen-battle[data-battle-layout="portrait"] #gauntlet-score {
+                bottom: calc(var(--battle-player-hud-est) + var(--battle-ui-h) + 16px) !important;
+            }
+        }
+
+        /* When choosing moves, reserve vertical space for the move grid (scroll) over the log. */
+        #screen-battle.battle-phase-moves .ui-bottom #battle-log {
+            flex: 0 0 auto !important;
+            min-height: 0 !important;
+            max-height: min(88px, 15dvh) !important;
+        }
+        @media screen and (max-width: 768px) and (orientation: portrait) {
+            #screen-battle.battle-phase-moves .ui-bottom #battle-log {
+                max-height: min(72px, 12dvh) !important;
+                flex: 0 0 auto !important;
+            }
+        }
+        @media screen and (max-width: 768px) and (orientation: portrait) and (min-height: 680px) {
+            #screen-battle.battle-phase-moves #battle-log {
+                max-height: min(76px, 12dvh) !important;
+            }
+        }
+        @media screen and (max-width: 768px) and (orientation: portrait) and (max-height: 679px) {
+            #screen-battle.battle-phase-moves #battle-log {
+                max-height: min(56px, 10dvh) !important;
+            }
         }
 
         /* ===== PORTRAIT PHONE LAYOUT =====
            App-like experience: full-width stat bars at top/bottom of battle field.
            Full portrait support — no rotation required.
            Target: 360–430px wide, 700–900px effective dvh.
-           Min-height: 680px ensures sprite math works (foe + player don't overlap).
+           Tall portrait (min-height: 680px): generous field for sprite placement.
 
            Vertical layout (e.g. 800px screen):
              [Foe stat bar   ~64px] ← top:0, full width
-             [Battle field  ~470px] ← sprites diagonal + field conditions
+             [Battle field  ~470px] ← foe upper-center; player bottom-center + field conditions
              [Player stat bar ~64px]
-             [UI bottom      202px] ← log + 2 button rows
+             [UI bottom      var(--battle-ui-h) ~236px] ← taller log + command rows
         */
         @media screen and (max-width: 768px) and (orientation: portrait) and (min-height: 680px) {
             .screen {
@@ -897,15 +1412,19 @@
             .icon-btn { width: 36px !important; height: 36px !important; right: calc(10px + var(--safe-right)) !important; }
             .settings-btn { top: calc(10px + var(--safe-top)) !important; }
 
-            /* ---- PLAYER STAT BOX: full-width strip just above ui-bottom ---- */
-            #player-stat-box {
-                bottom: 202px !important; left: 0 !important; right: 0 !important;
+            /* ---- PLAYER STAT BOX: full-width row inside bottom stack (flow, not absolute) ---- */
+            #battle-bottom-stack #player-stat-box {
+                bottom: auto !important; left: auto !important; right: auto !important;
                 width: 100% !important; box-sizing: border-box !important;
                 border-radius: 0 !important;
-                border-left: none !important; border-right: none !important; border-bottom: none !important;
+                border-left: none !important; border-right: none !important;
+                border-bottom: 1px solid #222 !important;
+                border-top: 1px solid #222 !important;
                 padding: 5px 10px !important; font-size: 12px !important;
                 z-index: 6 !important;
+                background: var(--battle-chrome-bg) !important;
             }
+            .battle-bottom-stack { z-index: 6 !important; }
 
             /* HP bars: slightly thinner */
             .hp-bar-container { height: 7px !important; margin-top: 3px !important; }
@@ -921,19 +1440,26 @@
             /* Info button: always visible in portrait */
             .mob-info-btn { display: inline-flex !important; }
 
-            /* ---- FOE SPRITE: top-right, enlarged to compensate for sprite art density ---- */
+            /* ---- FOE SPRITE: upper arena, slightly right of center (stadium screen) ---- */
             #foe-sprite-container {
-                top: 58px !important; right: 50px !important; left: auto !important;
-                width: 228px !important; height: 244px !important;
+                top: max(58px, calc(env(safe-area-inset-top, 0px) + 52px)) !important;
+                bottom: auto !important;
+                left: calc(62% + min(1vw, 6px)) !important;
+                right: auto !important;
+                transform: translateX(-50%) !important;
+                width: min(196px, 52vw) !important; height: min(210px, 56vw) !important;
+                z-index: 3 !important;
             }
-            #foe-sprite { width: 222px !important; height: 222px !important; }
+            #foe-sprite { width: min(180px, 48vw) !important; height: min(180px, 48vw) !important; }
 
-            /* ---- PLAYER SPRITE: bottom-left, above player stat bar ---- */
+            /* ---- PLAYER SPRITE: bottom-center, slight left (vertical offset: data-battle-layout portrait block) ---- */
             #player-sprite-container {
-                bottom: 270px !important; left: 12px !important; right: auto !important;
-                width: 200px !important; height: 216px !important;
+                left: 50% !important; right: auto !important;
+                transform: translateX(calc(-50% - clamp(22px, 7vw, 36px))) !important;
+                width: min(196px, 52vw) !important; height: min(210px, 56vw) !important;
+                z-index: 4 !important;
             }
-            #player-sprite { width: 194px !important; height: 194px !important; }
+            #player-sprite { width: min(180px, 48vw) !important; height: min(180px, 48vw) !important; }
 
             /* ---- FIELD CONDITIONS: left of battle field, below foe stat bar ---- */
             #field-conditions {
@@ -948,33 +1474,39 @@
             }
             .field-pill { min-height: 24px !important; font-size: 9px !important; padding: 1px 5px !important; }
 
-            /* ---- GAUNTLET SCORE: left, above player stat bar ---- */
+            /* ---- GAUNTLET SCORE: position from calc in shared portrait rules ---- */
             #gauntlet-score {
-                top: auto !important; bottom: 272px !important; left: auto !important; right: 6px !important;
+                top: auto !important; left: auto !important; right: 6px !important;
                 font-size: 10px !important; background: rgba(0,0,0,0.6) !important;
                 padding: 2px 6px !important; border-radius: 3px !important;
             }
 
-            /* ---- BOTTOM UI: column — log row then full-width button grid ---- */
+            /* ---- BOTTOM UI: column — flexible log + full-width button grid ---- */
             .ui-bottom {
-                height: 202px !important;
+                height: var(--battle-ui-h) !important;
                 flex-direction: column !important;
                 padding: 4px 5px !important;
                 gap: 4px !important;
             }
+            .battle-bottom-stack .ui-bottom {
+                flex: 0 0 var(--battle-ui-h) !important;
+                height: var(--battle-ui-h) !important;
+            }
 
-            /* Battle log row */
+            /* Battle log — command phase; move phase caps use .battle-phase-moves rules */
             #battle-log {
-                flex: 0 0 64px !important;
-                max-height: 64px !important;
+                flex: 1 1 36% !important;
+                min-height: 72px !important;
+                max-height: 128px !important;
                 font-size: 12px !important;
                 line-height: 1.5 !important;
-                padding: 5px 9px !important;
+                padding: 6px 9px !important;
             }
 
             /* Command / Move menus: fill remaining height, full width */
             #command-menu {
-                flex: 1 !important;
+                flex: 1 1 0 !important;
+                min-height: 0 !important;
                 width: 100% !important;
                 box-sizing: border-box !important;
                 overflow-y: auto !important;
@@ -989,18 +1521,23 @@
             #move-menu .move-menu-scroll { -webkit-overflow-scrolling: touch !important; }
             .command-grid { gap: 4px !important; }
 
-            /* Touch targets: 44px WCAG minimum */
-            button {
+            /* Touch targets — scope to battle chrome so draft/menu keep global rules */
+            #screen-battle .battle-bottom-stack button {
                 font-size: 13px !important;
                 min-height: 44px !important;
                 padding: 5px 6px !important;
                 touch-action: manipulation;
                 -webkit-tap-highlight-color: transparent;
             }
+            #screen-battle .battle-bottom-stack #move-menu .move-menu-scroll button.battle-btn-move {
+                min-height: 42px !important;
+                padding: 4px 5px !important;
+                font-size: 11px !important;
+            }
 
-            /* Move tooltip: above player stat bar */
+            /* Move tooltip: above bottom chrome */
             #move-tooltip {
-                bottom: 206px !important;
+                bottom: calc(var(--battle-ui-h) + 8px) !important;
                 right: auto !important; left: 5px !important;
                 width: min(92vw, 280px) !important;
                 font-size: 11px !important;
@@ -1011,7 +1548,8 @@
                 overflow-y: auto !important; overflow-x: hidden !important;
                 -webkit-overflow-scrolling: touch !important;
                 box-sizing: border-box !important;
-                padding: 52px 56px 24px 14px !important;
+                /* Equal L/R padding so the flex column is centered in the viewport (asymmetric padding made the stack look left-shifted). */
+                padding: 52px 52px 24px 52px !important;
                 display: flex !important; flex-direction: column !important; align-items: center !important;
             }
             #screen-menu h1 { font-size: 16px !important; margin: 6px 0 10px !important; padding: 0 10px !important; word-break: break-word !important; }
@@ -1049,35 +1587,105 @@
             .party-slot { min-height: 52px !important; }
         }
 
-        /* ===== PORTRAIT SMALL PHONES (< 680px dvh) =====
-           Fallback: side-by-side layout (original approach) but improved.
-           Applies to old/small phones like iPhone SE.
+        /* ===== PORTRAIT SHORT PHONES (< 680px height) =====
+           Same full-width battle chrome as tall portrait; tighter log so FIGHT/moves stay usable.
         */
         @media screen and (max-width: 768px) and (orientation: portrait) and (max-height: 679px) {
             .screen, #app-root { max-width: 100vw !important; width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; }
             .mob-info-btn { display: inline-flex !important; }
-            #foe-stat-box { width: 195px !important; top: 6px !important; left: auto !important; right: 56px !important; padding: 5px 8px !important; font-size: 11px !important; }
-            #foe-sprite-container { width: 175px !important; height: 185px !important; top: 6px !important; right: 48px !important; }
-            #foe-sprite { width: 168px !important; height: 168px !important; }
-            #player-sprite-container { width: 158px !important; height: 166px !important; bottom: 228px !important; left: 15px !important; }
-            #player-sprite { width: 152px !important; height: 152px !important; }
-            #player-stat-box { width: 198px !important; bottom: 228px !important; left: 5px !important; right: auto !important; padding: 5px 8px !important; font-size: 11px !important; }
-            #player-hp-text { font-size: 10px !important; }
+
+            #foe-stat-box {
+                top: 0 !important; left: 0 !important; right: 0 !important;
+                width: 100% !important; box-sizing: border-box !important;
+                border-radius: 0 !important;
+                border-left: none !important; border-right: none !important; border-top: none !important;
+                padding: 5px 56px 5px 10px !important; font-size: 12px !important;
+                z-index: 6 !important;
+            }
+            .icon-btn { width: 36px !important; height: 36px !important; right: calc(10px + var(--safe-right)) !important; }
+            .settings-btn { top: calc(10px + var(--safe-top)) !important; }
+
+            #battle-bottom-stack #player-stat-box {
+                bottom: auto !important; left: auto !important; right: auto !important;
+                width: 100% !important; box-sizing: border-box !important;
+                border-radius: 0 !important;
+                border-left: none !important; border-right: none !important;
+                border-bottom: 1px solid #222 !important;
+                border-top: 1px solid #222 !important;
+                padding: 5px 10px !important; font-size: 12px !important;
+                z-index: 6 !important;
+                background: var(--battle-chrome-bg) !important;
+            }
+            .battle-bottom-stack { z-index: 6 !important; }
+
+            .hp-bar-container { height: 7px !important; margin-top: 3px !important; }
+            #player-hp-text { font-size: 10px !important; color: #bbb !important; }
             #foe-types, #player-types { font-size: 9px !important; }
-            .type-badge { font-size: 8px !important; padding: 1px 3px !important; }
-            .hp-bar-container { height: 6px !important; margin-top: 2px !important; }
-            #field-conditions { bottom: auto !important; top: 180px !important; left: 50% !important; transform: translateX(-50%) !important; flex-direction: row !important; align-items: center !important; justify-content: center !important; max-width: 220px !important; gap: 3px !important; }
-            .field-pill { min-height: 22px !important; font-size: 8px !important; padding: 1px 4px !important; }
-            #gauntlet-score { top: auto !important; bottom: 232px !important; left: auto !important; right: 5px !important; font-size: 10px !important; background: rgba(0,0,0,0.55) !important; padding: 2px 5px !important; border-radius: 3px !important; }
-            .ui-bottom { height: 222px !important; flex-direction: column !important; padding: 4px 5px !important; gap: 4px !important; }
-            #battle-log { flex: 0 0 58px !important; max-height: 58px !important; font-size: 11px !important; line-height: 1.4 !important; padding: 4px 7px !important; }
-            #command-menu { flex: 1 !important; width: 100% !important; box-sizing: border-box !important; }
+            .type-badge { padding: 1px 4px !important; font-size: 9px !important; }
+            #foe-stages, #player-stages { max-height: none !important; overflow: visible !important; }
+
+            #foe-sprite-container {
+                top: max(54px, calc(env(safe-area-inset-top, 0px) + 48px)) !important;
+                bottom: auto !important;
+                left: calc(61% + min(1vw, 6px)) !important;
+                right: auto !important;
+                transform: translateX(-50%) !important;
+                width: min(184px, 50vw) !important; height: min(198px, 54vw) !important;
+                z-index: 3 !important;
+            }
+            #foe-sprite { width: min(168px, 46vw) !important; height: min(168px, 46vw) !important; }
+            #player-sprite-container {
+                left: 50% !important; right: auto !important;
+                transform: translateX(calc(-50% - clamp(18px, 6vw, 30px))) !important;
+                width: min(184px, 50vw) !important; height: min(198px, 54vw) !important;
+                z-index: 4 !important;
+            }
+            #player-sprite { width: min(168px, 46vw) !important; height: min(168px, 46vw) !important; }
+
+            #field-conditions {
+                bottom: auto !important;
+                top: 68px !important; left: 4px !important;
+                transform: none !important;
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                justify-content: flex-start !important;
+                max-width: 168px !important;
+                gap: 3px !important;
+            }
+            .field-pill { min-height: 22px !important; font-size: 8px !important; padding: 1px 5px !important; }
+            #gauntlet-score {
+                top: auto !important; left: auto !important; right: 6px !important;
+                font-size: 10px !important; background: rgba(0,0,0,0.6) !important;
+                padding: 2px 6px !important; border-radius: 3px !important;
+            }
+
+            .ui-bottom {
+                height: var(--battle-ui-h) !important;
+                flex-direction: column !important;
+                padding: 4px 5px !important;
+                gap: 4px !important;
+            }
+            .battle-bottom-stack .ui-bottom {
+                flex: 0 0 var(--battle-ui-h) !important;
+                height: var(--battle-ui-h) !important;
+            }
+            /* Tighter log on short viewports — reserve flex for command / move grid */
+            #battle-log {
+                flex: 1 1 32% !important;
+                min-height: 64px !important;
+                max-height: 118px !important;
+                font-size: 11px !important;
+                line-height: 1.45 !important;
+                padding: 5px 8px !important;
+            }
+            #command-menu { flex: 1 1 0 !important; min-height: 0 !important; width: 100% !important; box-sizing: border-box !important; overflow-y: auto !important; }
             #move-menu.move-menu-layout { flex: 1 !important; width: 100% !important; box-sizing: border-box !important; min-height: 0 !important; overflow: hidden !important; }
             #move-menu .move-menu-scroll { -webkit-overflow-scrolling: touch !important; }
             .command-grid { gap: 4px !important; }
-            button { font-size: 12px !important; min-height: 42px !important; padding: 4px 6px !important; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-            #move-tooltip { bottom: 226px !important; right: auto !important; left: 5px !important; width: min(92vw, 250px) !important; font-size: 10px !important; }
-            #screen-menu:not(.hidden) { overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; box-sizing: border-box !important; padding: 48px 52px 20px 12px !important; display: flex !important; flex-direction: column !important; align-items: center !important; }
+            #screen-battle .battle-bottom-stack button { font-size: 12px !important; min-height: 44px !important; padding: 4px 6px !important; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+            #screen-battle .battle-bottom-stack #move-menu .move-menu-scroll button.battle-btn-move { min-height: 40px !important; padding: 3px 5px !important; font-size: 10px !important; }
+            #move-tooltip { bottom: calc(var(--battle-ui-h) + 8px) !important; right: auto !important; left: 5px !important; width: min(92vw, 260px) !important; font-size: 10px !important; }
+            #screen-menu:not(.hidden) { overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; box-sizing: border-box !important; padding: 48px 48px 20px 48px !important; display: flex !important; flex-direction: column !important; align-items: center !important; }
             #screen-menu h1 { font-size: 14px !important; margin: 4px 0 8px !important; }
             #screen-menu .white-outline { width: 100% !important; max-width: 380px !important; box-sizing: border-box !important; margin: 0 0 6px !important; }
             #screen-menu .menu-options { width: 100% !important; max-width: 380px !important; margin-top: 4px !important; gap: 6px !important; }
@@ -1577,6 +2185,56 @@
                 padding-top: max(8px, env(safe-area-inset-top));
                 padding-bottom: max(8px, env(safe-area-inset-bottom));
             }
+            /* Story city: stack NPC / dialogue / team vertically on narrow portrait */
+            .story-city-main-row {
+                flex-direction: column !important;
+                overflow-x: hidden;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            #story-city-left {
+                width: 100% !important;
+                max-width: 100%;
+                border-right: none !important;
+                border-bottom: 1px solid rgba(34, 34, 34, 0.9);
+                flex-shrink: 0;
+                box-sizing: border-box;
+            }
+            #story-city-left .story-city-portrait-wrap {
+                max-width: min(200px, 56vw);
+            }
+            #story-city-actions {
+                flex: 1 1 auto !important;
+                min-height: 0;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            #story-city-team {
+                width: 100% !important;
+                max-width: 100%;
+                border-left: none !important;
+                border-top: 1px solid rgba(34, 34, 34, 0.9);
+                flex-shrink: 0;
+                min-height: 0;
+                max-height: min(42vh, 280px);
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                box-sizing: border-box;
+            }
+            /* Story shop: one column on narrow portrait */
+            #story-shop-grid {
+                grid-template-columns: 1fr !important;
+                gap: 12px !important;
+                padding: 10px !important;
+            }
+            /* Summary modal: readable tab targets on portrait */
+            #modal-summary .sum-tab {
+                min-height: 44px;
+                box-sizing: border-box;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
             /* Touch targets ≥ 48px (Material guideline) */
             .story-action-btn, #story-prof-rolled-card .draft-card button, #story-prof-buttons button,
             .story-team-slot, #command-menu button, .move-btn {
@@ -1804,7 +2462,7 @@
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid #444; padding-bottom: 10px;">
                 <span style="font-size:12px;" title="Wide windows only">Dock battle log (side):</span>
-                <button type="button" id="toggle-log-dock-btn" onclick="settings.battleLogDock=!settings.battleLogDock; document.getElementById('toggle-log-dock-btn').innerText=settings.battleLogDock?'ON':'OFF'; document.getElementById('toggle-log-dock-btn').style.color=settings.battleLogDock?'var(--hp-green)':'var(--hp-red)'; persistMiscSettings(); window.applyBattleLogDockClass&&window.applyBattleLogDockClass();" style="color: var(--hp-red);">OFF</button>
+                <button type="button" id="toggle-log-dock-btn" onclick="settings.battleLogDock=!settings.battleLogDock; document.getElementById('toggle-log-dock-btn').innerText=settings.battleLogDock?'ON':'OFF'; document.getElementById('toggle-log-dock-btn').style.color=settings.battleLogDock?'var(--hp-green)':'var(--hp-red)'; persistMiscSettings(); window.applyBattleLogDockClass&&window.applyBattleLogDockClass();">—</button>
             </div>
             <button onclick="window.returnToHome()" style="width:100%; margin-bottom: 10px; color:var(--hp-red);">Forfeit &amp; Exit</button>
             <button onclick="window.closeModal('modal-settings')" style="width:100%;">Close</button>
@@ -1937,9 +2595,9 @@
     <div id="modal-summary" class="modal hidden">
         <div class="modal-content white-outline modal-summary-shell" style="position: relative; max-width: 600px;">
             <div class="sum-tabs sum-tabs-with-mob-info">
-                <button class="sum-tab active" id="sum-tab-1" onclick="window.switchSummaryTab(1)">&#9670; Overview</button>
-                <button class="sum-tab" id="sum-tab-2" onclick="window.switchSummaryTab(2)">&#9654; Moves</button>
-                <button class="sum-tab" id="sum-tab-3" onclick="window.switchSummaryTab(3)">&#9741; Matchups</button>
+                <button type="button" class="sum-tab active" id="sum-tab-1" onclick="window.switchSummaryTab(1)">&#9670; Overview</button>
+                <button type="button" class="sum-tab" id="sum-tab-2" onclick="window.switchSummaryTab(2)">&#9654; Moves</button>
+                <button type="button" class="sum-tab" id="sum-tab-3" onclick="window.switchSummaryTab(3)">&#9741; Matchups</button>
                 <button type="button" class="summary-modal-mob-info" onclick="window.cycleSummaryTabForMobile();" title="Next summary tab (Overview → Moves → Matchups)" aria-label="Next summary tab">&#8505;</button>
             </div>
             <div class="summary-body-row">
@@ -2034,7 +2692,7 @@
             </div>
         </div>
         <!-- Main content -->
-        <div style="display:flex;flex:1;overflow:hidden;min-height:0;">
+        <div class="story-city-main-row">
             <!-- Left: Trainer sprite + event info -->
             <div id="story-city-left" style="width:220px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;border-right:1px solid rgba(34,34,34,0.9);gap:8px;background:rgba(8,8,12,0.35);">
                 <div class="story-city-portrait-wrap">
@@ -2054,7 +2712,7 @@
                 <div id="story-action-buttons" style="display:flex;flex-direction:column;gap:8px;"></div>
             </div>
             <!-- Right: Team mini-panel -->
-            <div style="width:180px;flex-shrink:0;border-left:1px solid rgba(34,34,34,0.9);padding:8px;overflow-y:auto;background:rgba(8,8,12,0.35);">
+            <div id="story-city-team" style="width:180px;flex-shrink:0;border-left:1px solid rgba(34,34,34,0.9);padding:8px;overflow-y:auto;background:rgba(8,8,12,0.35);">
                 <div style="font-size:11px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Your Team</div>
                 <div id="story-team-panel" style="display:flex;flex-direction:column;gap:4px;"></div>
             </div>
@@ -2174,10 +2832,10 @@
         <div id="field-conditions"></div>
         <div id="gauntlet-score" class="hidden">Score: 0</div>
 
-        <!-- FOE: stat box top-right (by foe sprite), clear of settings button -->
+        <!-- FOE: stat box top-right (sprite sits upper-center on arena), clear of settings button -->
         <div class="stat-box white-outline" id="foe-stat-box" style="position:absolute; top:15px; right:56px; left:auto; z-index:5; width:230px;">
             <div class="stat-box-header">
-                <span id="foe-name" style="cursor:pointer; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">MissingNo</span>
+                <span id="foe-name" class="stat-box-name">MissingNo</span>
                 <button class="mob-info-btn" onclick="window.showActiveInfo(false)" title="Info">ℹ</button>
                 <div id="foe-party-bar" style="display:flex; gap:3px; flex-shrink:0;"></div>
             </div>
@@ -2189,24 +2847,26 @@
             </div>
         </div>
 
-        <!-- Foe sprite upper-right -->
-        <div id="foe-sprite-container" style="position:absolute; top:54px; right:38px; display:inline-block; width:258px; height:276px;">
-            <div class="foe-platform" style="position:absolute; bottom:12px; left:50%; transform:translateX(-50%); width:160px; height:28px;"></div>
-            <img id="foe-sprite" class="sprite opponent-sprite" src="" alt="Foe" onerror="handleSpriteError(this)" style="width:252px; height:252px; position:absolute; bottom:16px; left:50%; transform:translateX(-50%); image-rendering:pixelated; z-index:2;">
+        <!-- Foe sprite: upper arena, slightly right of center -->
+        <div id="foe-sprite-container" style="position:absolute; top:36px; bottom:auto; left:58%; right:auto; transform:translateX(-50%); display:inline-block; width:244px; height:258px;">
+            <div class="foe-platform" style="position:absolute; bottom:10px; left:50%; transform:translateX(-50%); width:140px; height:24px;"></div>
+            <img id="foe-sprite" class="sprite opponent-sprite" src="" alt="Foe" onerror="handleSpriteError(this)" style="width:228px; height:228px; position:absolute; bottom:14px; left:50%; transform:translateX(-50%); image-rendering:pixelated; z-index:2;">
             <span id="foe-status-icon" class="status-icon" style="display:none; z-index:5;"></span>
         </div>
 
-        <!-- PLAYER: sprite bottom-left shifted right toward center, stat box bottom-right -->
-        <div id="player-sprite-container" style="position:absolute; bottom:198px; left:264px; display:inline-block; width:247px; height:270px;">
-            <div class="player-platform" style="position:absolute; bottom:18px; left:50%; transform:translateX(-50%); width:180px; height:35px;"></div>
-            <img id="player-sprite" class="sprite player-sprite" src="" alt="Player" onerror="handleSpriteError(this)" style="width:247px; height:247px; position:absolute; bottom:22px; left:50%; transform:translateX(-50%); image-rendering:pixelated; z-index:2;">
+        <!-- PLAYER: sprite bottom-center, slight left -->
+        <div id="player-sprite-container" style="position:absolute; bottom:300px; left:50%; right:auto; transform:translateX(calc(-50% - 88px)); display:inline-block; width:258px; height:272px;">
+            <div class="player-platform" style="position:absolute; bottom:16px; left:50%; transform:translateX(-50%); width:168px; height:32px;"></div>
+            <img id="player-sprite" class="sprite player-sprite" src="" alt="Player" onerror="handleSpriteError(this)" style="width:240px; height:240px; position:absolute; bottom:20px; left:50%; transform:translateX(-50%); image-rendering:pixelated; z-index:2;">
             <span id="player-status-icon" class="status-icon" style="display:none;"></span>
         </div>
 
-        <!-- Player stat box bottom-left (by player sprite) -->
-        <div class="stat-box white-outline" id="player-stat-box" style="position:absolute; bottom:195px; left:15px; right:auto; z-index:5; width:240px;">
+        <!-- Bottom chrome: player HP strip + log/commands (column — not overlaid on arena) -->
+        <div id="battle-bottom-stack" class="battle-bottom-stack">
+        <div id="battle-player-hud-row" class="battle-player-hud-row">
+        <div class="stat-box white-outline" id="player-stat-box">
             <div class="stat-box-header">
-                <span id="player-name" style="cursor:pointer; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">MissingNo</span>
+                <span id="player-name" class="stat-box-name">MissingNo</span>
                 <span id="player-hp-text" style="font-size:11px; color:#aaa; flex-shrink:0;">0/0</span>
                 <button class="mob-info-btn" onclick="window.showActiveInfo(true)" title="Info">ℹ</button>
                 <div id="player-party-bar" style="display:flex; gap:3px; flex-shrink:0;"></div>
@@ -2218,17 +2878,19 @@
                 <div id="player-stages"></div>
             </div>
         </div>
+        </div>
 
-        <div class="ui-bottom" style="height:190px; position:relative;">
+        <div class="ui-bottom" style="position:relative;">
             <div id="online-battle-timer" class="hidden" style="position:absolute; top:-22px; right:8px; z-index:12; font-size:11px; font-weight:bold; color:#81d4fa; padding:2px 8px; border-radius:6px; background:rgba(0,0,0,0.5); pointer-events:none;"></div>
             <div id="battle-log" class="white-outline scrollable"></div>
             <div id="command-menu" class="command-grid white-outline hidden">
-                <button onclick="window.showMoves()" style="color: var(--hp-yellow);">FIGHT</button>
-                <button onclick="window.openParty(false)" style="color: var(--hp-green);">POKÉMON</button>
-                <button onclick="window.openBag()" style="color: #add8e6;">BAG</button>
-                <button onclick="window.runAway()" style="color: var(--hp-red);">RUN</button>
+                <button type="button" class="battle-cmd-btn" onclick="window.showMoves()" style="color: var(--hp-yellow);" title="Fight (keyboard: F)"><span class="battle-cmd-ico" aria-hidden="true">⚔</span><span class="battle-cmd-label">FIGHT</span></button>
+                <button type="button" class="battle-cmd-btn" onclick="window.openParty(false)" style="color: var(--hp-green);" title="Pokémon (keyboard: P)"><span class="battle-cmd-ico" aria-hidden="true">◎</span><span class="battle-cmd-label">POKÉMON</span></button>
+                <button type="button" class="battle-cmd-btn" onclick="window.openBag()" style="color: #add8e6;" title="Bag (keyboard: B)"><span class="battle-cmd-ico" aria-hidden="true">◇</span><span class="battle-cmd-label">BAG</span></button>
+                <button type="button" class="battle-cmd-btn" onclick="window.runAway()" style="color: var(--hp-red);" title="Run (keyboard: R)"><span class="battle-cmd-ico" aria-hidden="true">»</span><span class="battle-cmd-label">RUN</span></button>
             </div>
             <div id="move-menu" class="move-menu-layout white-outline hidden"></div>
+        </div>
         </div>
     </div>
     </div>
@@ -2250,8 +2912,26 @@
                 document.body.classList.toggle('layout-tablet-preset', tab);
             } catch (e) {}
         }
+        function applyBattleLayoutMode() {
+            const sb = document.getElementById('screen-battle');
+            if (!sb) return;
+            let mode = 'desktop';
+            if (document.body.classList.contains('is-mobile')) {
+                mode = window.matchMedia('(orientation: portrait)').matches ? 'portrait' : 'landscape-touch';
+            }
+            sb.setAttribute('data-battle-layout', mode);
+        }
+        window.applyBattleLayoutMode = applyBattleLayoutMode;
+        window.syncBattlePhaseClass = function() {
+            const sb = document.getElementById('screen-battle');
+            const mv = document.getElementById('move-menu');
+            if (!sb || !mv) return;
+            sb.classList.toggle('battle-phase-moves', !mv.classList.contains('hidden'));
+        };
         applyLayoutPresetClasses();
+        applyBattleLayoutMode();
         window.addEventListener('resize', applyLayoutPresetClasses);
+        window.addEventListener('resize', applyBattleLayoutMode);
         window.addEventListener('resize', function() { try { applyDesktopGameScale(); } catch (e) {} });
         window.isMobile = isMobile;
 
@@ -2267,6 +2947,7 @@
         }
         window.addEventListener('resize', checkOrientation);
         window.addEventListener('orientationchange', () => setTimeout(checkOrientation, 150));
+        window.addEventListener('orientationchange', () => setTimeout(applyBattleLayoutMode, 150));
         document.addEventListener('DOMContentLoaded', function() {
             checkOrientation();
             try { applyDesktopGameScale(); } catch (e) {}
@@ -2921,7 +3602,8 @@ Build a balanced team! Consider type coverage, speed tiers, and offensive/defens
 <b style="color:var(--hp-yellow);">FIGHT</b> — Choose one of your 4 moves to attack or use a status move.<br>
 <b style="color:var(--hp-green);">POKEMON</b> — Switch your active Pokemon. <span style="color:#f44336;">This costs your turn!</span><br>
 <b style="color:#add8e6;">BAG</b> — No items in competitive format.<br>
-<b style="color:var(--hp-red);">RUN</b> — Forfeit the match.</div>
+<b style="color:var(--hp-red);">RUN</b> — Forfeit the match.<br>
+<span style="color:#81d4fa;">Desktop:</span> <b>F</b> / <b>P</b> / <b>B</b> / <b>R</b> trigger the same four commands. On the move grid, <b>1</b>–<b>4</b> picks the move in that slot; <b>Esc</b> goes back.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Type Effectiveness</h3>
 <span style="color:var(--hp-green);font-weight:bold;">▲</span> Super Effective (2x or 4x damage)<br>
 <span style="color:var(--hp-red);font-weight:bold;">▼</span> Not Very Effective (0.5x or 0.25x damage)<br>
@@ -2955,7 +3637,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             aiProfile: 'balanced', /* aggro | balanced | stall — vs AI only */
             storyBattleItems: true, /* story in-battle bag */
             pvpBattleItems: false,  /* reserved: symmetric items in PvP */
-            battleLogDock: false    /* desktop: dock log to the side */
+            battleLogDock: true     /* landscape tablets/desktop: dock log when wide enough */
         };
         try {
             const _pbs = JSON.parse(localStorage.getItem('pbs_settings') || '{}');
@@ -3558,7 +4240,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let popup = document.createElement('div');
             popup.className = 'battle-popup ' + cssClass;
             popup.textContent = text;
-            // Position near the target sprite (Game Boy layout: player bottom-left, foe top-right)
+            // Position near the target sprite (foe upper-center; player bottom-center, slight left)
             popup.style.left = isPlayerSide ? '15%' : '55%';
             popup.style.top = isPlayerSide ? '50%' : '15%';
             container.appendChild(popup);
@@ -3750,10 +4432,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window.applyBattleLogDockClass = function() {
             const sb = document.getElementById('screen-battle');
             if (!sb) return;
-            const on = settings.battleLogDock && window.innerWidth >= 900;
+            /* Side-docked log is for wide layouts with enough vertical room; short phone landscape stays compact */
+            const on = settings.battleLogDock && window.innerWidth >= 768 && window.innerHeight >= 560;
             sb.classList.toggle('battle-log-dock', !!on);
         };
-        window.addEventListener('resize', () => { try { window.applyBattleLogDockClass(); } catch(e) {} });
+        window.addEventListener('resize', () => { try { window.applyBattleLogDockClass(); window.trimBattleLogToCap && window.trimBattleLogToCap(); } catch(e) {} });
+        function _syncBattleLogDockFromSettings() {
+            try { window.applyBattleLogDockClass(); } catch (e) {}
+            try {
+                const tld = document.getElementById('toggle-log-dock-btn');
+                if (tld) {
+                    tld.innerText = settings.battleLogDock ? 'ON' : 'OFF';
+                    tld.style.color = settings.battleLogDock ? 'var(--hp-green)' : 'var(--hp-red)';
+                }
+            } catch (e) {}
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', _syncBattleLogDockFromSettings);
+        } else {
+            _syncBattleLogDockFromSettings();
+        }
         window.closeModal = function(id) { document.getElementById(id).classList.add('hidden'); }
         window.showGameAlert = function(msg) {
             dismissTextTooltipForModal();
@@ -4214,6 +4912,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!mon) return 'translateX(-50%)';
             let scaleName = mon.transformedInto || mon._baseName || mon.name;
             let s = getLoreSpriteScaleFactor(scaleName);
+            /* Keep battle sprites in a tighter band so weight-based scale doesn’t dwarf the field */
+            s = Math.min(1.08, Math.max(0.88, s));
             if (mon.dynamaxed) s *= 1.25;
             return `translateX(-50%) scale(${s})`;
         }
@@ -4238,6 +4938,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return `<div class="summary-stat-row"><span class="summary-stat-label">${label}</span><div class="summary-stat-bar-bg"><div class="summary-stat-bar-fill" style="width:${pct}%; background:${color};"></div></div><span class="summary-stat-val" style="color:${color}">${val}</span></div>`;
         }
         
+        function battleLogMaxEntries() {
+            try {
+                if (!document.body.classList.contains('is-mobile')) return 0;
+                if (!window.matchMedia('(orientation: landscape)').matches) return 0;
+                const h = window.innerHeight || 0;
+                if (h <= 520) return 4;
+                if (h <= 900) return 6;
+                return 0;
+            } catch (e) { return 0; }
+        }
         window.logMsg = function(msg, type = "info") {
             let log = document.getElementById('battle-log');
             let div = document.createElement('div');
@@ -4262,11 +4972,78 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             div.innerHTML = processedMsg;
             log.appendChild(div);
+            const cap = battleLogMaxEntries();
+            if (cap > 0) {
+                while (log.children.length > cap) log.removeChild(log.firstChild);
+            }
             log.scrollTop = log.scrollHeight;
         }
+        window.trimBattleLogToCap = function() {
+            const log = document.getElementById('battle-log');
+            if (!log) return;
+            const cap = battleLogMaxEntries();
+            if (cap > 0) {
+                while (log.children.length > cap) log.removeChild(log.firstChild);
+            }
+        };
 
         // === 3. STATE LOGIC ===
         let state = { mode: 'pve', draftTurn: 1, score: 0, p1Pool: [], p2Pool: [], p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, weather: null, weatherTurns: 0, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
+
+        if (!window._battleDesktopKeysBound) {
+            window._battleDesktopKeysBound = true;
+            document.addEventListener('keydown', function(e) {
+                if (isMobile) return;
+                if (e.repeat) return;
+                if (state.isLocked) return;
+                const t = e.target;
+                if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+                if (document.querySelector('.modal:not(.hidden)')) return;
+                const battle = document.getElementById('screen-battle');
+                if (!battle || battle.classList.contains('hidden')) return;
+                const moveMenu = document.getElementById('move-menu');
+                const cmdMenu = document.getElementById('command-menu');
+                const moveOpen = moveMenu && !moveMenu.classList.contains('hidden');
+                const cmdOpen = cmdMenu && !cmdMenu.classList.contains('hidden');
+
+                if (moveOpen && e.key >= '1' && e.key <= '4') {
+                    const scroll = moveMenu.querySelector('.move-menu-scroll');
+                    if (!scroll) return;
+                    const btns = scroll.querySelectorAll(':scope > button');
+                    const idx = e.key.charCodeAt(0) - 49;
+                    const btn = btns[idx];
+                    if (btn && !btn.disabled) {
+                        e.preventDefault();
+                        btn.click();
+                    }
+                    return;
+                }
+                if (moveOpen && e.key === 'Escape') {
+                    const backBtn = moveMenu.querySelector('.move-menu-back');
+                    if (backBtn) {
+                        e.preventDefault();
+                        backBtn.click();
+                    }
+                    return;
+                }
+                if (cmdOpen && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                    const k = e.key.toLowerCase();
+                    if (k === 'f') {
+                        e.preventDefault();
+                        window.showMoves();
+                    } else if (k === 'p') {
+                        e.preventDefault();
+                        window.openParty(false);
+                    } else if (k === 'b') {
+                        e.preventDefault();
+                        window.openBag();
+                    } else if (k === 'r') {
+                        e.preventDefault();
+                        window.runAway();
+                    }
+                }
+            });
+        }
 
         function getBST(monName) {
             let b = baseStats[monName]; if (!b) return 0;
@@ -5052,6 +5829,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof d.draft_turn === 'number') state.draftTurn = d.draft_turn;
             if (d.draft_deadline_iso) window.__onlineDraftDeadlineIso = d.draft_deadline_iso;
             else if (d.draft_deadline_iso === null) window.__onlineDraftDeadlineIso = null;
+            if (d.guest_joined !== undefined) window.__onlineGuestJoined = !!d.guest_joined;
         }
 
         window.computeOnlineBattleTurnDeadlineIso = function(st) {
@@ -5196,6 +5974,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         window.tryOnlineDraftTimeout = async function() {
             if (state.mode !== 'pvp' || !window.OnlineBattle || !window.OnlineBattle.isActive()) return;
+            if (window.OnlineBattle.isHost() && !window.__onlineGuestJoined) return;
             if ((window.__onlineMatchTimerPreset || 'none') === 'none') return;
             if (!window.__onlineDraftDeadlineIso || Date.now() < new Date(window.__onlineDraftDeadlineIso).getTime()) return;
             if (window.__onlineDraftTimeoutFiring) return;
@@ -5253,6 +6032,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             await window.initOnlineHost(v);
         };
 
+        window.copyOnlineInviteLink = function() {
+            const code = (window.OnlineBattle && window.OnlineBattle.getCode) ? window.OnlineBattle.getCode() : '';
+            if (!code) return;
+            const link = location.origin + location.pathname + '?online=' + encodeURIComponent(code);
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(link).then(function() { logMsg('Invite link copied to clipboard.', 'info'); }).catch(function() {});
+            }
+        };
+
         window.initOnlineHost = async function(timerPreset) {
             if (typeof window.__onlinePvpConfigured === 'function' && !window.__onlinePvpConfigured()) {
                 window.showGameAlert('Online PvP needs Supabase. Edit online-config.js with your project URL and anon key, run supabase/migrations/001_online_pvp.sql and 002_gauntlet_leaderboard.sql, and enable Realtime on table pvp_rooms.');
@@ -5266,6 +6054,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 match.maxGen = pools.maxGen;
                 match.timer_preset = (timerPreset === 'fast' || timerPreset === 'slow') ? timerPreset : 'none';
                 window.__onlineMatchTimerPreset = match.timer_preset;
+                window.__onlineGuestJoined = false;
+                window.__onlineHostDraftDeadlinePrimed = false;
                 const serPool = (pl) => pl.map((x) => ({ name: x.name, build: x.build }));
                 await window.OnlineBattle.createRoom(match, pools.enabledGens, { p1_pool: serPool(pools.p1Pool), p2_pool: serPool(pools.p2Pool) });
                 state = { mode: 'pvp', draftTurn: 1, score: 0, enabledGens: pools.enabledGens, minGen: pools.minGen, maxGen: pools.maxGen, p1Pool: pools.p1Pool, p2Pool: pools.p2Pool, p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
@@ -5276,11 +6066,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 document.getElementById('screen-draft').classList.remove('hidden');
                 renderDraft();
                 await window.OnlineBattle.pushDraftState(state);
-                await window.OnlineBattle.refreshDraftDeadlineOnly();
                 window.startOnlinePvPWatchdogs();
                 const code = window.OnlineBattle.getCode();
                 const link = location.origin + location.pathname + '?online=' + encodeURIComponent(code);
-                logMsg(`Online room ${code} — share link or code with guest.`, 'info');
+                logMsg(`Online room ${code} — waiting for opponent. Draft starts after they join.`, 'info');
                 try { await navigator.clipboard.writeText(link); logMsg('Invite link copied to clipboard.', 'info'); } catch (e) {}
             } catch (e) {
                 console.error(e);
@@ -5324,6 +6113,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 window.__hostOnlineBattleStarted = false;
                 window.__guestLastResolved = 0;
                 window.__guestBattleStartApplied = false;
+                window.__onlineGuestJoined = true;
+                window.__onlineHostDraftDeadlinePrimed = false;
                 document.querySelectorAll('.screen, .modal').forEach(el => el.classList.add('hidden'));
                 document.getElementById('screen-draft').classList.remove('hidden');
                 renderDraft();
@@ -5348,6 +6139,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (d.phase === 'draft') {
                     mergeOnlineDraftFromPayload(d);
                     renderDraft();
+                    if (window.OnlineBattle.isHost() && d.guest_joined && !window.__onlineHostDraftDeadlinePrimed) {
+                        window.__onlineHostDraftDeadlinePrimed = true;
+                        try { logMsg('Opponent joined — you can draft now.', 'info'); } catch (e2) {}
+                        try { await window.OnlineBattle.refreshDraftDeadlineOnly(); } catch (e) { console.warn(e); }
+                    }
                     const n = settings.partySize;
                     if (window.OnlineBattle.isHost() && (d.p1_draft || []).length === n && (d.p2_draft || []).length === n && !window.__hostOnlineBattleStarted) {
                         window.__hostOnlineBattleStarted = true;
@@ -5356,7 +6152,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (d.phase === 'battle' && d.battle_start_blob && ctx.role === 2 && !window.__guestBattleStartApplied) {
                     window.__guestBattleStartApplied = true;
-                    await window.OnlineBattle.guestApplyBattleStart(state, d.battle_start_blob);
+                    await window.OnlineBattle.guestApplyBattleStart(state, d);
                 }
                 if (state.mode === 'pvp' && window.OnlineBattle.isActive() && d.battle && d.battle.p1_pick && !d.battle.p2_pick) {
                     state.currentPlayer = 2;
@@ -5420,7 +6216,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let slotsEl = document.getElementById('draft-party-slots');
             if (!slotsEl) return;
             slotsEl.innerHTML = '';
-            let currentDraft = state.draftTurn === 1 ? state.p1Draft : state.p2Draft;
+            const online = state.mode === 'pvp' && window.OnlineBattle && window.OnlineBattle.isActive();
+            const myR = online && window.OnlineBattle.getRole ? window.OnlineBattle.getRole() : null;
+            const currentDraft = (online && myR)
+                ? (myR === 1 ? state.p1Draft : state.p2Draft)
+                : (state.draftTurn === 1 ? state.p1Draft : state.p2Draft);
             for (let i = 0; i < settings.partySize; i++) {
                 let slot = document.createElement('div');
                 slot.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:1px; width:56px;';
@@ -5441,21 +6241,58 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function renderDraft() {
             let grid = document.getElementById('draft-grid'); grid.innerHTML = '';
-            let currentPool = state.draftTurn === 1 ? state.p1Pool : state.p2Pool;
-            document.getElementById('draft-title').innerText = state.mode === 'pvp'
-                ? `Player ${state.draftTurn}: Pick ${settings.partySize} Pokémon (${currentPool.length} left)`
-                : `Pick ${settings.partySize} Pokémon for your Team`;
+            const onlineActive = window.OnlineBattle && window.OnlineBattle.isActive();
+            const waitingForGuest = state.mode === 'pvp' && onlineActive && window.OnlineBattle.isHost() && !window.__onlineGuestJoined;
+            const waitOv = document.getElementById('online-waiting-overlay');
+            const waitCodeEl = document.getElementById('online-waiting-code');
+            if (waitOv) {
+                if (waitingForGuest) {
+                    waitOv.classList.remove('hidden');
+                    if (waitCodeEl && window.OnlineBattle.getCode) waitCodeEl.textContent = window.OnlineBattle.getCode() || '';
+                } else waitOv.classList.add('hidden');
+            }
             let inspectBtn = document.querySelector('[onclick="window.toggleEnemyPool()"]');
-            if (inspectBtn) inspectBtn.style.display = state.mode === 'gauntlet' ? 'none' : '';
+            const canInspectFoe = state.mode !== 'gauntlet' && (!onlineActive || window.__onlineGuestJoined);
+            if (inspectBtn) inspectBtn.style.display = canInspectFoe ? '' : 'none';
             const pvpHint = document.getElementById('draft-pvp-hint');
             if (pvpHint) {
                 if (state.mode === 'pvp') {
                     pvpHint.classList.remove('hidden');
-                    pvpHint.textContent = (window.OnlineBattle && window.OnlineBattle.isActive())
-                        ? 'Online PvP: rules follow the host snapshot. Host = Player 1 (bottom), guest = Player 2 (top). Leaderboard is honor-system only.'
-                        : 'Local PvP rules: mechanics & party size follow Settings. Battle items toggle (Settings) is for future symmetric PvP — Story Mode has the full bag.';
+                    if (waitingForGuest) {
+                        pvpHint.textContent = 'Share the room code or link. Draft timers and Inspect Foe unlock when your opponent joins.';
+                    } else {
+                        pvpHint.textContent = onlineActive
+                            ? 'Online PvP: rules follow the host snapshot. Host = Player 1 (bottom), guest = Player 2 (top). Leaderboard is honor-system only.'
+                            : 'Local PvP rules: mechanics & party size follow Settings. Battle items toggle (Settings) is for future symmetric PvP — Story Mode has the full bag.';
+                    }
                 } else pvpHint.classList.add('hidden');
             }
+            if (waitingForGuest) {
+                const rc = window.OnlineBattle.getCode ? window.OnlineBattle.getCode() : '';
+                document.getElementById('draft-title').innerText = rc ? `Room ${rc}: waiting for opponent` : 'Waiting for opponent';
+                renderDraftPartyBar();
+                return;
+            }
+
+            const myR = onlineActive && window.OnlineBattle.getRole ? window.OnlineBattle.getRole() : null;
+            const onlineWaitOpponent = onlineActive && myR != null && state.draftTurn !== myR;
+            if (onlineWaitOpponent) {
+                const oppLeft = state.draftTurn === 1 ? state.p1Pool.length : state.p2Pool.length;
+                document.getElementById('draft-title').innerText = `Player ${state.draftTurn} is drafting (${oppLeft} left in their pool)`;
+                const waitMsg = document.createElement('div');
+                waitMsg.style.cssText = 'grid-column:1/-1;text-align:center;padding:36px 16px;color:#aaa;font-size:14px;line-height:1.65;max-width:420px;margin:0 auto;';
+                waitMsg.innerHTML = `You only pick from <strong style="color:#eee;">your</strong> pool when it is your turn (Player ${myR}).<br><span style="font-size:12px;color:#777;">Player ${state.draftTurn} is choosing from their own six now.</span>`;
+                grid.appendChild(waitMsg);
+                renderDraftPartyBar();
+                return;
+            }
+
+            let currentPool = state.draftTurn === 1 ? state.p1Pool : state.p2Pool;
+            document.getElementById('draft-title').innerText = state.mode === 'pvp'
+                ? (onlineActive && myR != null
+                    ? `Player ${myR}: Pick ${settings.partySize} from your pool (${currentPool.length} left)`
+                    : `Player ${state.draftTurn}: Pick ${settings.partySize} Pokémon (${currentPool.length} left)`)
+                : `Pick ${settings.partySize} Pokémon for your Team`;
 
             currentPool.forEach((draftItem) => {
                 let tempMon = buildPokemon(draftItem.name, draftItem.build); let tier = getMonGrade(draftItem.name, getBST(draftItem.name));
@@ -5485,10 +6322,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         window.toggleEnemyPool = function() {
+            if (state.mode === 'pvp' && window.OnlineBattle && window.OnlineBattle.isActive() && !window.__onlineGuestJoined) return;
             let modal = document.getElementById('modal-enemy-pool');
             if (modal.classList.contains('hidden')) {
                 let grid = document.getElementById('enemy-pool-grid'); grid.innerHTML = '';
-                state.p2Pool.forEach((draftItem) => {
+                let foeDraftPool = state.p2Pool;
+                if (state.mode === 'pvp') {
+                    if (window.OnlineBattle && window.OnlineBattle.isActive() && window.OnlineBattle.getRole) {
+                        foeDraftPool = window.OnlineBattle.getRole() === 1 ? state.p2Pool : state.p1Pool;
+                    } else {
+                        foeDraftPool = state.draftTurn === 1 ? state.p2Pool : state.p1Pool;
+                    }
+                }
+                foeDraftPool.forEach((draftItem) => {
                     let tempMon = buildPokemon(draftItem.name, draftItem.build); let tier = getMonGrade(draftItem.name, getBST(draftItem.name));
                     let movesHtml = tempMon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
                     let row = document.createElement('div');
@@ -5514,6 +6360,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function undraftPokemon(idx) {
+            if (window.OnlineBattle && window.OnlineBattle.isActive()) {
+                if (window.OnlineBattle.isHost() && !window.__onlineGuestJoined) return;
+                const myR = window.OnlineBattle.getRole();
+                const turn = state.draftTurn;
+                const isMyPick = (turn === 1 && myR === 1) || (turn === 2 && myR === 2);
+                if (!isMyPick) return;
+            }
             let currentDraft = state.draftTurn === 1 ? state.p1Draft : state.p2Draft;
             let currentPool = state.draftTurn === 1 ? state.p1Pool : state.p2Pool;
             if (idx < 0 || idx >= currentDraft.length) return;
@@ -5524,6 +6377,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         async function selectDraft(draftItem) {
             if (window.OnlineBattle && window.OnlineBattle.isActive()) {
+                if (window.OnlineBattle.isHost() && !window.__onlineGuestJoined) return;
+                const myR = window.OnlineBattle.getRole();
+                const turn = state.draftTurn;
+                const isMyPick = (turn === 1 && myR === 1) || (turn === 2 && myR === 2);
+                if (!isMyPick) return;
                 await window.OnlineBattle.handleSelectDraft(state, settings, draftItem, selectDraftCore);
                 if (window.OnlineBattle.isHost && window.OnlineBattle.isHost() && window.OnlineBattle.refreshDraftDeadlineOnly) {
                     await window.OnlineBattle.refreshDraftDeadlineOnly();
@@ -5603,6 +6461,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         async function startBattle() {
             AudioSystem.startNewBattle();
             document.getElementById('screen-draft').classList.add('hidden'); document.getElementById('screen-battle').classList.remove('hidden');
+            try { applyBattleLayoutMode(); } catch (e) {}
             if (state.mode === 'gauntlet') document.getElementById('gauntlet-score').classList.remove('hidden'); else document.getElementById('gauntlet-score').classList.add('hidden');
             state.playerParty = state.p1Draft.map(d => buildPokemon(d.name, d.build)); state.foeParty = state.p2Draft.map(d => buildPokemon(d.name, d.build));
             // Hardcore story mode: restore persisted HP/status/PP before first turn
@@ -5665,11 +6524,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Show contextual tip on first battle
             if (showTipsEnabled && !window._battleTipShown) {
                 window._battleTipShown = true;
-                logMsg(`Tip: Hover over move buttons for details. ▲ = super effective, ▼ = resisted. Hover Pokemon names for stats.`, 'info');
+                logMsg(`Tip: Tap moves or "i" for info. ▲▼ = damage matchup. Tap names for stats.`, 'info');
             }
 
             document.getElementById('move-menu').classList.add('hidden');
             document.getElementById('command-menu').classList.remove('hidden');
+            try { syncBattleActiveHighlight(); } catch (e) {}
             if (typeof window.applyBattleLogDockClass === 'function') window.applyBattleLogDockClass();
             if (typeof window.OnlineBattle !== 'undefined' && window.OnlineBattle.isHost && window.OnlineBattle.isHost()) {
                 try { await window.OnlineBattle.afterHostStartBattle(state); } catch (e) { console.warn('[OnlinePvP] afterHostStartBattle', e); }
@@ -5713,10 +6573,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function syncBattleActiveHighlight() {
             const sb = document.getElementById('screen-battle');
-            if (!sb || sb.classList.contains('hidden')) return;
+            if (!sb || sb.classList.contains('hidden')) {
+                try { if (window.syncBattlePhaseClass) window.syncBattlePhaseClass(); } catch (e) {}
+                return;
+            }
             const partyModal = document.getElementById('modal-party');
             if (partyModal && !partyModal.classList.contains('hidden')) {
                 sb.classList.remove('battle-active-player', 'battle-active-foe');
+                try { if (window.syncBattlePhaseClass) window.syncBattlePhaseClass(); } catch (e) {}
                 return;
             }
             const cmd = document.getElementById('command-menu');
@@ -5730,6 +6594,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (state.mode === 'pvp') side = state.currentPlayer === 1 ? 'player' : 'foe';
             if (side === 'player') sb.classList.add('battle-active-player');
             else sb.classList.add('battle-active-foe');
+            try { if (window.syncBattlePhaseClass) window.syncBattlePhaseClass(); } catch (e) {}
         }
 
         function getStatTooltipHTML(mon) {
@@ -6035,6 +6900,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function showEndScreen(title, desc, storyPlayerWon) {
             document.getElementById('command-menu').classList.add('hidden'); document.getElementById('move-menu').classList.add('hidden');
+            try { syncBattleActiveHighlight(); } catch (e) {}
             if (state.mode === 'story' && window.StoryMode) {
                 const won = typeof storyPlayerWon === 'boolean' ? storyPlayerWon : title.includes('VICTORY');
                 window.StoryMode.onBattleEnd(won, title, desc);
@@ -6516,61 +7382,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let rawMove = activeMon.moves[move._origIndex];
                 // For Z-Move preview
                 let shownMove = (pending === 'ZMOVE' && !activeMon.zMoveUsed) ? buildZMove(activeMon, rawMove) : (isDynaDisplay ? buildMaxMove(activeMon, rawMove, true) : move);
-                let btn = document.createElement('button'); let eff = 1; let effColor = "#fff"; let effText = "";
+                let btn = document.createElement('button');
+                btn.type = 'button';
+                let eff = 1; let effColor = "#fff"; let effText = "";
                 if (shownMove.cat !== "Status" && shownMove.pow > 0) {
                     eff = getMoveEffectiveness(shownMove.type, targetMon.type1, targetMon.type2);
                     if (eff > 1) { effColor = "var(--hp-green)"; effText = "▲"; } else if (eff < 1 && eff > 0) { effColor = "var(--hp-red)"; effText = "▼"; } else if (eff === 0) { effColor = "#555"; effText = "⊘"; }
                 }
-                let powerTxt = shownMove.pow > 0 ? shownMove.pow : '—';
                 let dynaLabel = isDynaDisplay ? `<span style="font-size:9px;color:#ef5350;"> MAX</span>` : '';
-                // Z-Move name already reflects the Z-Move (e.g. "Bloom Doom") — just add a Z badge for status Z-moves
                 let zLabel = (shownMove.isZMove && shownMove.zStatusEffect) ? `<span style="font-size:9px;color:#f9a825;"> Z!</span>` : '';
                 let ppDisplay = isDynaDisplay ? '∞' : `${rawMove.pp}/${rawMove.maxPp}`;
                 let ppColor = !isDynaDisplay && rawMove.pp <= 0 ? '#f44336' : (rawMove.pp <= Math.floor(rawMove.maxPp / 3) ? '#ff9800' : '#aaa');
                 let catColor = shownMove.cat === 'Physical' ? '#ff6b6b' : shownMove.cat === 'Special' ? '#6b9fff' : '#888';
                 let effLabelShort = eff > 1 ? `<span style="color:var(--hp-green);font-weight:bold;">▲</span>` : eff === 0 ? `<span style="color:#555;">⊘</span>` : eff < 1 ? `<span style="color:var(--hp-red);">▼</span>` : '';
                 let priStr = formatMovePriority(shownMove.pri);
-                let accMob = (shownMove.acc||0) <= 100 ? (shownMove.acc||100)+'%' : '—';
-                if (isMobile) {
-                    // Compact mobile: two-line stats grid + own row for matchup hint (no overlap with category)
-                    btn.innerHTML = `
-                        <div style="display:flex;align-items:flex-start;gap:2px;width:100%;">
-                            <div style="flex:1;min-width:0;">
-                                <div style="display:flex;align-items:center;gap:4px;width:100%;">
-                                    <span class="type-badge type-${shownMove.type}" style="font-size:8px;padding:1px 3px;flex-shrink:0;">${shownMove.type.slice(0,4)}</span>
-                                    <span style="font-weight:bold;font-size:11px;flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${shownMove.name}${dynaLabel}${zLabel}</span>
-                                    <span style="color:${catColor};font-size:8px;font-weight:bold;flex-shrink:0;">${shownMove.cat.toUpperCase().slice(0,4)}</span>
-                                </div>
-                                <div class="move-btn-eff-bottom" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 6px;font-size:9px;width:100%;margin-top:4px;padding-bottom:2px;box-sizing:border-box;">
-                                    <span style="color:#888;">Pow <strong style="color:#ddd;">${shownMove.pow > 0 ? shownMove.pow : '—'}</strong></span>
-                                    <span style="color:#888;text-align:right;">Acc <strong style="color:#ddd;">${accMob}</strong></span>
-                                    <span style="color:#aed581;font-weight:bold;">Pri ${priStr}</span>
-                                    <span style="color:${ppColor};text-align:right;">PP ${ppDisplay}</span>
-                                    ${effLabelShort ? `<span style="grid-column:1/-1;text-align:center;margin-top:2px;">${effLabelShort}</span>` : ''}
-                                </div>
-                            </div>
-                            <span class="move-info-hit" title="Move details" role="button">i</span>
-                        </div>`;
-                } else {
-                    let effLabel = eff > 1 ? `<span style="color:var(--hp-green);font-size:11px;font-weight:bold;">▲ Super Eff!</span>` : eff === 0 ? `<span style="color:#555;font-size:11px;">⊘ No Effect</span>` : eff < 1 ? `<span style="color:var(--hp-red);font-size:11px;">▼ Resisted</span>` : '';
-                    btn.innerHTML = `
-                        <div style="display:flex;align-items:center;gap:6px;width:100%;margin-bottom:4px;">
-                            <span class="type-badge type-${shownMove.type}" style="font-size:9px;padding:1px 4px;">${shownMove.type}</span>
-                            <span style="font-weight:bold;font-size:13px;flex:1;min-width:0;text-align:left;">${shownMove.name}${dynaLabel}${zLabel}</span>
-                            <span style="color:${catColor};font-size:9px;font-weight:bold;flex-shrink:0;">${shownMove.cat.toUpperCase().slice(0,4)}</span>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px 8px;font-size:10px;width:100%;">
-                            <span style="color:#888;">Pow: <strong style="color:#ddd;">${shownMove.pow > 0 ? shownMove.pow : '—'}</strong></span>
-                            <span style="color:#888;">Acc: <strong style="color:#ddd;">${(shownMove.acc||0) <= 100 ? shownMove.acc+'%' : '—'}</strong></span>
-                            <span style="color:${ppColor};">PP: ${ppDisplay}</span>
-                            <span style="color:#aed581;font-weight:bold;">Pri: ${priStr}</span>
-                        </div>
-                        <div style="font-size:10px;width:100%;margin-top:4px;min-height:14px;line-height:1.2;">${effLabel}</div>`;
-                }
-                let effString = shownMove.cat === "Status" ? "Status Move" : (eff > 1 ? "<span style='color:var(--hp-green)'>Super Effective!</span>" : (eff === 0 ? "<span style='color:#888'>No Effect.</span>" : (eff < 1 ? "<span style='color:var(--hp-red)'>Not Very Effective.</span>" : "Normal Damage")));
                 let _ppStr = isDynaDisplay ? '∞' : `${rawMove.pp}/${rawMove.maxPp}`;
                 let _accStr = shownMove.isMaxMove ? '—' : ((shownMove.acc||0) <= 100 ? (shownMove.acc||100)+'%' : '—');
                 let _powStr = shownMove.pow > 0 ? shownMove.pow : '—';
+                let catG = shownMove.cat === 'Physical' ? '⚔' : (shownMove.cat === 'Special' ? '✦' : '◎');
+                let typeShort = shownMove.type.length > 4 ? shownMove.type.slice(0, 4) : shownMove.type;
+                let metaTail = effLabelShort ? `<span class="move-tile-sep">·</span>${effLabelShort}` : '';
+                let infoHit = isMobile ? '<span class="move-info-hit" title="Move details" role="button">i</span>' : '';
+                btn.className = 'battle-btn-move';
+                btn.setAttribute('aria-label', `${shownMove.name}, ${shownMove.type}, ${shownMove.cat}, Power ${_powStr}, Acc ${_accStr}, PP ${_ppStr}, Pri ${priStr}`);
+                btn.innerHTML = '<div class="battle-btn-move-inner"><div class="move-tile-core"><div class="move-tile-head"><span class="type-badge type-' + shownMove.type + '">' + typeShort + '</span><span class="move-tile-name">' + shownMove.name + dynaLabel + zLabel + '</span><span class="move-tile-cat" style="color:' + catColor + '" title="' + shownMove.cat + '">' + catG + '</span></div><div class="move-tile-meta"><span title="Power"><strong>' + _powStr + '</strong></span><span class="move-tile-sep">·</span><span title="Accuracy"><strong>' + _accStr + '</strong></span><span class="move-tile-sep">·</span><span title="Priority" style="color:#aed581;font-weight:bold;">' + priStr + '</span><span class="move-tile-sep">·</span><span title="PP" style="color:' + ppColor + '"><strong>' + ppDisplay + '</strong></span>' + metaTail + '</div></div>' + infoHit + '</div>';
+                if (!isMobile) btn.title = 'Keyboard: ' + (i + 1) + ' — hover for full move info';
+                let effString = shownMove.cat === "Status" ? "Status Move" : (eff > 1 ? "<span style='color:var(--hp-green)'>Super Effective!</span>" : (eff === 0 ? "<span style='color:#888'>No Effect.</span>" : (eff < 1 ? "<span style='color:var(--hp-red)'>Not Very Effective.</span>" : "Normal Damage")));
                 let _effDesc = shownMove.effectStr || shownMove.eff || (shownMove.isMaxMove ? 'Max Move: bypasses protect. Cannot miss.' : 'No additional effects.');
                 let moveTipHtml = `<div style="display:flex;justify-content:space-between;margin-bottom:10px;"><strong style="font-size:16px;color:var(--hp-yellow);">${shownMove.name}</strong><span class="type-badge type-${shownMove.type}">${shownMove.type}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;font-size:12px;gap:5px;"><div>Cat: <strong class="cat-${shownMove.cat}">${shownMove.cat}</strong></div><div>Power: <strong>${_powStr}</strong></div><div>Acc: <strong>${_accStr}</strong></div><div>PP: <strong>${_ppStr}</strong></div><div style="grid-column:1/-1;font-size:11px;">Priority: <strong>${priStr}</strong> <span style="color:#888;">(within bracket: faster / Trick Room)</span></div></div><div style="margin-top:8px;font-size:11px;font-style:italic;color:#ccc;">${_effDesc}</div><div style="margin-top:8px;font-size:12px;font-weight:bold;border-top:1px dashed #555;padding-top:5px;">${effString}</div>`;
                 btn.onmouseenter = () => {
@@ -6653,6 +7490,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 strugBtn.onclick = () => {
                     window.closeStickyMoveTooltip();
                     document.getElementById('move-tooltip').classList.add('hidden'); menu.classList.add('hidden');
+                    try { syncBattleActiveHighlight(); } catch (e) {}
                     state.p1Action = { moveIndex: null, switchIndex: null, aiMove: struggleMove };
                     if (isP1) window.playTurn(null, null);
                 };
@@ -6663,6 +7501,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     window.closeStickyMoveTooltip();
                     document.getElementById('move-tooltip').classList.add('hidden'); menu.classList.add('hidden');
                     document.getElementById('command-menu').classList.remove('hidden');
+                    try { syncBattleActiveHighlight(); } catch (e) {}
                     window.openParty(false);
                 };
                 moveScroll.appendChild(swBtn);
@@ -7563,6 +8402,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     logMsg("Player 2's turn! Select an action.", "info");
                     document.getElementById('move-menu').classList.add('hidden');
                     document.getElementById('command-menu').classList.remove('hidden');
+                    try { syncBattleActiveHighlight(); } catch (e) {}
                     return;
                 } else {
                     state.p2Action = action; state.currentPlayer = 1;
@@ -7610,6 +8450,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             document.getElementById('command-menu').classList.add('hidden');
             document.getElementById('move-menu').classList.add('hidden');
+            try { syncBattleActiveHighlight(); } catch (e) {}
 
             try {
                 // Reset per-turn flags
@@ -11593,6 +12434,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             updateUI();
             document.getElementById('move-menu').classList.add('hidden');
             document.getElementById('command-menu').classList.remove('hidden');
+            try { syncBattleActiveHighlight(); } catch (e) {}
         }
 
         // ===================================================================
@@ -11806,7 +12648,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Basic Trainer', name:'Birch', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Birch' },
           { role:'Basic Trainer', name:'Blackbelt', type:'Fighting', sigs:['Croagunk','Stufful','Machop','Makuhita','Meditite'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Blackbelt' },
           { role:'Basic Trainer', name:'Blue 2', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Blue-2' },
-          { role:'Elite Trainer', name:'Blue Champion', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Blue-Champion' },
+          { role:'Elite Trainer', name:'Blue Champion', type:'Mixed', sigs:['Blastoise','Pidgeot','Alakazam','Rhydon','Arcanine','Exeggutor'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Blue-Champion' },
           { role:'Basic Trainer', name:'Boarder', type:'Ice', sigs:['Spheal','Vanillite','Snorunt','Snom','Cubchoo'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Boarder' },
           { role:'Basic Trainer', name:'Brandon', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Brandon' },
           { role:'Basic Trainer', name:'Bryony', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Bryony' },
@@ -12497,7 +13339,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    trainerAssignments:{}, currentTrainerData:null,
                    settings:{ minGen:1, maxGen:9, enabledGens:[1,2,3,4,5,6,7,8,9], megaOn:false, zOn:false, dynaOn:false, teraOn:false },
                    gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{}, currentEnemyLock:null,
-                   artifactsDisabled:[], storyCityIdx:null,
+                   artifactsDisabled:[], storyCityVisit:null,
                    profIntroThemePending:false,
                    storyDifficulty:'normal', runSeed:null,
                    storyMilestoneTips:{ m4:false, m8:false },
@@ -12513,6 +13355,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return sm._strngState / 4294967296;
         }
         let _selectedBagItem = null;
+        let _storyBattleInventorySnapshot = null;
 
         function save() {
             try {
@@ -12613,6 +13456,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (d === 'challenge') { o.g1 *= 1.18; o.g4 *= 0.82; }
             else if (d === 'hardcore') { o.g1 *= 1.25; o.g4 *= 0.75; }
             return o;
+        }
+
+        function applyDifficultyToSigProbability(p) {
+            const d = sm.storyDifficulty || 'normal';
+            let x = Math.max(0, Math.min(1, +p || 0));
+            if (d === 'easy') x *= 0.92;
+            else if (d === 'hard') x *= 1.04;
+            else if (d === 'challenge') x *= 1.08;
+            else if (d === 'hardcore') x *= 1.12;
+            return Math.min(1, x);
         }
 
         function weightedPickFromGrades(gradeWeights, enabledGens) {
@@ -12720,6 +13573,53 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (/^Gym Leader/i.test(e) || e === 'Rival' || /^E[1-4]$/.test(e) || e === 'Champion' || e === 'Victory Road') return 0.85;
             return 0.70;
         }
+
+        const STORY_PLACEHOLDER_SIGS = ['Sentret', 'Zigzagoon', 'Bidoof', 'Patrat', 'Rattata'];
+        function isPlaceholderSignatureList(sigs) {
+            if (!Array.isArray(sigs) || sigs.length !== STORY_PLACEHOLDER_SIGS.length) return false;
+            for (let i = 0; i < STORY_PLACEHOLDER_SIGS.length; i++) {
+                if (sigs[i] !== STORY_PLACEHOLDER_SIGS[i]) return false;
+            }
+            return true;
+        }
+        function buildSyntheticSignaturePool(trainer, genSet, rng) {
+            const types = parseTrainerTypes(trainer && trainer.type);
+            const isMixed = types.some(t => t === 'Mixed' || t === 'All-Rounder');
+            function pullByGrade(gradeLo, gradeHi) {
+                const arr = [];
+                for (const name of Object.keys(baseStats)) {
+                    if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
+                    const b = baseStats[name];
+                    if (!b || !genSet.has(b.gen)) continue;
+                    if (!isMixed) {
+                        const ok = types.some(type => b.t1 === type || (b.t2 && b.t2 === type));
+                        if (!ok) continue;
+                    }
+                    const g = getMonGrade(name, getBST(name));
+                    if (g < gradeLo || g > gradeHi) continue;
+                    arr.push(name);
+                }
+                return arr;
+            }
+            let pool = pullByGrade(3, 4);
+            if (pool.length < 6) pool = pool.concat(pullByGrade(2, 2));
+            if (pool.length < 6) pool = pool.concat(pullByGrade(1, 1));
+            const uniq = [];
+            const seen = new Set();
+            for (const n of pool) {
+                if (seen.has(n)) continue;
+                seen.add(n);
+                uniq.push(n);
+            }
+            for (let i = uniq.length - 1; i > 0; i--) {
+                const j = Math.floor(rng() * (i + 1));
+                const t = uniq[i];
+                uniq[i] = uniq[j];
+                uniq[j] = t;
+            }
+            return uniq.slice(0, 12);
+        }
+
         function rollTrainerTeam(trainer, partySize, gradeWeights, enabledGensIn, battleEventType) {
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
             const gwIn = applyDifficultyToGradeWeights(gradeWeights || { g1: 0, g2: 0, g3: 50, g4: 50 });
@@ -12736,14 +13636,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             const genSet = new Set(allowedGens);
-            const sigP = _signatureProbabilityForEvent(battleEventType);
+            const types = parseTrainerTypes(trainer.type);
+            const isMixed = types.some(t => t === 'Mixed' || t === 'All-Rounder');
+            const sigP = applyDifficultyToSigProbability(_signatureProbabilityForEvent(battleEventType));
             let S = (trainer.sigs || []).filter(name => {
                 const b = baseStats[name];
                 return b && genSet.has(b.gen);
             }).slice();
-
-            const types = parseTrainerTypes(trainer.type);
-            const isMixed = types.some(t => t === 'Mixed' || t === 'All-Rounder');
+            if (isPlaceholderSignatureList(trainer.sigs || [])) S = buildSyntheticSignaturePool(trainer, genSet, rng);
+            else if (!S.length) S = buildSyntheticSignaturePool(trainer, genSet, rng);
             const T = {1:[],2:[],3:[],4:[]};
             for (const name of Object.keys(baseStats)) {
                 if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
@@ -12803,6 +13704,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!chosen || usedNames.has(chosen)) chosen = pickFromUnionExcluding(usedNames);
                 if (!chosen || usedNames.has(chosen)) chosen = pickRandomInGenWindow();
                 if (!chosen) chosen = 'Rattata';
+                if (isMixed && partySize >= 4 && chosen) {
+                    const t1c = (baseStats[chosen] || {}).t1 || '';
+                    const othersSame = team.filter(t => t && baseStats[t.name] && (baseStats[t.name].t1 || '') === t1c).length;
+                    if (othersSame >= 2) {
+                        for (let r = 0; r < 6; r++) {
+                            const alt = pickThematic();
+                            if (!alt || usedNames.has(alt)) continue;
+                            const t1a = (baseStats[alt] || {}).t1 || '';
+                            const oc = team.filter(t => t && baseStats[t.name] && (baseStats[t.name].t1 || '') === t1a).length;
+                            if (oc < 2) { chosen = alt; break; }
+                        }
+                    }
+                }
                 usedNames.add(chosen);
                 const build = makeBuild(chosen, { forceGimmick: 'STANDARD' });
                 team.push({ name: chosen, build });
@@ -12893,6 +13807,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 storyMilestoneTips: { m4: false, m8: false },
             };
             sm._strngState = null;
+            _storyBattleInventorySnapshot = null;
             applyMechanicsToSettings();
             assignTrainers(enabledGens);
             save();
@@ -12929,6 +13844,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (sm.storyCityVisit !== cidx) {
                 sm.cityRerollsUsed = {};
                 sm.storyCityVisit = cidx;
+                try { save(); } catch (e) { console.warn('[Story] enterCity save', e); }
             }
             updateHUD();
             renderTeamPanel();
@@ -13597,6 +14513,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.fSide = {stealthRock:false,toxicSpikes:0,spikes:0,stickyWeb:false,reflect:0,lightScreen:0,auroraVeil:0,wishHp:0,wishTurns:0,safeguard:0,mist:0,tailwind:0};
             // Hide all screens/modals
             document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
+            try {
+                _storyBattleInventorySnapshot = JSON.parse(JSON.stringify(sm.inventory || {}));
+            } catch (e) {
+                _storyBattleInventorySnapshot = null;
+            }
             // startBattle will show screen-battle and build parties from p1Draft/p2Draft
             startBattle();
         }
@@ -13604,6 +14525,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── BATTLE END CALLBACK ───────────────────────────────────────────
         function onBattleEnd(won, title, desc) {
             if (won) {
+                _storyBattleInventorySnapshot = null;
                 const ev = STORY_EVENTS_RAW[sm.eventIndex];
                 if (!ev) return;
                 const [idx, type, event, , coins] = ev;
@@ -13645,6 +14567,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }, event);
             } else {
                 // Defeat: show game over — persist cursor + enemy lock so Retry resumes this battle
+                if (_storyBattleInventorySnapshot) {
+                    try {
+                        sm.inventory = JSON.parse(JSON.stringify(_storyBattleInventorySnapshot));
+                    } catch (e) { /* keep current inventory */ }
+                    _storyBattleInventorySnapshot = null;
+                }
                 try { save(); } catch (e) { console.warn('[Story] Defeat save', e); }
                 document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
                 const ev = STORY_EVENTS_RAW[sm.eventIndex];
@@ -13887,16 +14815,47 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const gimmickTag = t.build?.gimmick && t.build.gimmick !== 'STANDARD'
                     ? `<span style="font-size:9px;background:#333;padding:1px 4px;border-radius:3px;color:#ff9800;margin-left:4px;">${t.build.gimmick}</span>` : '';
 
+                let tempMon = null;
+                try {
+                    if (t.build) {
+                        const bc = { ...t.build, m: [...(t.build.m || [])] };
+                        tempMon = buildPokemon(t.name, bc);
+                    }
+                } catch (e) { /* ignore render-time build errors */ }
+
+                const typeHtml = tempMon ? getTypeHTML(tempMon.type1, tempMon.type2) : '';
+                const shinyPre = tempMon && tempMon.isShiny ? '&#10024; ' : '';
+                const teraHtml = (t.build && t.build.teraType && tempMon)
+                    ? `<span class="tera-tip-hover" style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:pointer;touch-action:manipulation;" data-tera="${encodeURIComponent(t.build.teraType)}" data-o1="${encodeURIComponent(tempMon.type1)}" data-o2="${encodeURIComponent(tempMon.type2||'')}" onclick="event.stopPropagation();window.showTeraFromEl(event)" onmousemove="event.stopPropagation();window.showTeraTooltip('${t.build.teraType}','${tempMon.type1}','${tempMon.type2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${t.build.teraType}</span>`
+                    : '';
+                const movesHtml = tempMon
+                    ? tempMon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('')
+                    : '';
+                const statsHtml = tempMon
+                    ? `${statBarHTML('HP', tempMon.maxHp)}${statBarHTML('Atk', tempMon.stats.atk)}${statBarHTML('Def', tempMon.stats.def)}${statBarHTML('SpA', tempMon.stats.spa)}${statBarHTML('SpD', tempMon.stats.spd)}${statBarHTML('Spe', tempMon.stats.spe)}`
+                    : '';
+                const buildBlock = tempMon
+                    ? `<div class="story-link-build">
+                        <div class="draft-card-details">
+                            <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.nature}</span>
+                            <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.ability}</span>
+                            <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.item)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.item}</span>
+                        </div>
+                        <div class="story-link-build-stats">${statsHtml}</div>
+                        <div class="draft-card-moves">${movesHtml}</div>
+                    </div>`
+                    : `<div class="story-link-build" style="font-size:11px;color:#777;">Could not load set details.</div>`;
+
                 return `<div class="story-link-mon tier-${g}">
                     <div class="story-link-mon-header">
                         <img src="${getSprite(t.name,false)}" onerror="this.src=''" alt="${t.name}">
                         <div>
-                            <div style="font-size:14px;font-weight:bold;">${t.name}${gimmickTag}</div>
+                            <div class="story-link-title-row">${shinyPre}${t.name}${gimmickTag} ${typeHtml}${teraHtml}</div>
                             <span class="tier-badge bg-tier-${g}">Grade ${g}</span>
-                            <div style="font-size:11px;color:#aaa;margin-top:3px;">📦 ${t.build?.i||'None'}</div>
                         </div>
                         <button type="button" class="draft-card-info-btn" style="width:26px;height:26px;min-width:26px;font-size:12px;" onclick="window.StoryMode.openSummary(${i})" aria-label="Full summary" title="Full summary">&#8505;</button>
                     </div>
+                    ${buildBlock}
                     <div class="story-link-btns">
                         <button class="story-link-btn" onclick="window.StoryMode.linkReroll(${i})" ${canR?'':'disabled'} title="Swap for a random different G${g} Pokémon">🔄 Reroll G${g} (🪙${rCost}G)</button>
                         ${evoCost!==null
