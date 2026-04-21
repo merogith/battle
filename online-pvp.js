@@ -130,9 +130,22 @@
             foeParty: deepClone(state.foeParty),
             pActiveName: state.pActive && state.pActive.name,
             fActiveName: state.fActive && state.fActive.name,
+            pActiveIndex: (() => {
+                const arr = state.playerParty;
+                if (!arr || !state.pActive) return 0;
+                const i = arr.indexOf(state.pActive);
+                return i >= 0 ? i : 0;
+            })(),
+            fActiveIndex: (() => {
+                const arr = state.foeParty;
+                if (!arr || !state.fActive) return 0;
+                const i = arr.indexOf(state.fActive);
+                return i >= 0 ? i : 0;
+            })(),
             revealedFoe: revealed,
             score: state.score,
-            pendingEoT: !!state.pendingEoT
+            pendingEoT: !!state.pendingEoT,
+            currentPlayer: (state.currentPlayer === 2 ? 2 : 1)
         };
         return JSON.stringify(snap);
     }
@@ -158,20 +171,45 @@
         state.p2GimmickIntent = o.p2GimmickIntent;
         state.playerParty = o.playerParty;
         state.foeParty = o.foeParty;
-        state.pActive = state.playerParty.find((m) => m.name === o.pActiveName) || state.playerParty[0];
-        state.fActive = state.foeParty.find((m) => m.name === o.fActiveName) || state.foeParty[0];
+        const pp = state.playerParty || [];
+        const fp = state.foeParty || [];
+        const pi = typeof o.pActiveIndex === 'number' ? o.pActiveIndex : -1;
+        const fi = typeof o.fActiveIndex === 'number' ? o.fActiveIndex : -1;
+        if (pi >= 0 && pi < pp.length) state.pActive = pp[pi];
+        else state.pActive = pp.find((m) => m && m.name === o.pActiveName) || pp[0];
+        if (fi >= 0 && fi < fp.length) state.fActive = fp[fi];
+        else state.fActive = fp.find((m) => m && m.name === o.fActiveName) || fp[0];
         state.revealedFoe = new Set(o.revealedFoe || []);
         state.score = o.score || 0;
         state.pendingEoT = o.pendingEoT;
         state.p1Action = null;
         state.p2Action = null;
-        state.currentPlayer = 1;
+        state.currentPlayer = (typeof o.currentPlayer === 'number' && o.currentPlayer === 2) ? 2 : 1;
     }
 
     function simpleHash(str) {
         let h = 5381;
         for (let i = 0; i < str.length; i++) h = ((h << 5) + h) ^ str.charCodeAt(i);
         return (h >>> 0).toString(16);
+    }
+
+    function captureBattleLogHtml() {
+        try {
+            const el = global.document && global.document.getElementById('battle-log');
+            return el ? el.innerHTML : '';
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function applyBattleLogHtml(html) {
+        if (html === undefined || html === null) return;
+        try {
+            const el = global.document && global.document.getElementById('battle-log');
+            if (!el) return;
+            el.innerHTML = typeof html === 'string' ? html : '';
+            el.scrollTop = el.scrollHeight;
+        } catch (e) {}
     }
 
     async function reportWinIfConfigured(winnerIsP1) {
@@ -493,10 +531,11 @@
             const nextDeadline = !state.isOver && typeof global.computeOnlineBattleTurnDeadlineIso === 'function'
                 ? global.computeOnlineBattleTurnDeadlineIso(state)
                 : null;
-            await this.pushData({ battle, battle_turn_deadline_iso: nextDeadline });
+            const battle_log_html = captureBattleLogHtml();
+            await this.pushData({ battle, battle_turn_deadline_iso: nextDeadline, battle_log_html });
 
             if (state.isOver) {
-                await this.pushData({ phase: 'done', battle_turn_deadline_iso: null });
+                await this.pushData({ phase: 'done', battle_turn_deadline_iso: null, battle_log_html: captureBattleLogHtml() });
                 const p1Alive = state.playerParty.some((m) => m.currentHp > 0);
                 const fAlive = state.foeParty.some((m) => m.currentHp > 0);
                 if (p1Alive && !fAlive) await reportWinIfConfigured(true);
@@ -544,12 +583,14 @@
             const blob = exportBattleSnapshot(state);
             const h = simpleHash(blob);
             const deadlineIso = typeof global.computeOnlineBattleTurnDeadlineIso === 'function' ? global.computeOnlineBattleTurnDeadlineIso(state) : null;
+            const battle_log_html = captureBattleLogHtml();
             await this.pushData({
                 phase: 'battle',
                 draft_deadline_iso: null,
                 battle_turn_deadline_iso: deadlineIso,
                 battle_start_blob: blob,
                 battle_start_hash: h,
+                battle_log_html,
                 battle: {
                     pending_turn: 1,
                     p1_pick: null,
@@ -564,8 +605,13 @@
             hostStartedBattle = true;
         },
 
-        async guestApplyBattleStart(state, blob) {
+        async guestApplyBattleStart(state, roomData) {
+            const blob = typeof roomData === 'string' ? roomData : (roomData && roomData.battle_start_blob);
+            if (!blob) return;
             applyBattleSnapshot(state, blob);
+            if (typeof roomData === 'object' && roomData && roomData.battle_log_html !== undefined) {
+                applyBattleLogHtml(roomData.battle_log_html);
+            }
             if (global.AudioSystem && typeof global.AudioSystem.startNewBattle === 'function') {
                 try { global.AudioSystem.startNewBattle(); } catch (e) {}
             }
@@ -583,6 +629,7 @@
             const b = d.battle || {};
             if (!b.state_blob) return;
             applyBattleSnapshot(state, b.state_blob);
+            if (d && d.battle_log_html !== undefined) applyBattleLogHtml(d.battle_log_html);
             if (typeof global.updateUI === 'function') global.updateUI();
             state.isLocked = false;
             if (!state.isOver) {
