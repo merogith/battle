@@ -2592,6 +2592,211 @@
             #pwa-install-hint button { margin-left: 8px; font-size: 12px; padding: 4px 8px; }
         }
         @media screen and (min-width: 769px) { #pwa-install-hint { display: none !important; } }
+
+        /* ============================================================
+           BATTLE UI POLISH — efficient space, clean tiles, bigger sprites
+           (appended; overrides earlier rules by specificity + source order)
+           ============================================================ */
+
+        /* ---- Command buttons: tinted tiles with visible shortcut ---- */
+        #command-menu.command-grid .battle-cmd-btn {
+            position: relative;
+            background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(0,0,0,0.25) 100%);
+            border: 1px solid rgba(255,255,255,0.10);
+            transition: transform 0.08s ease, background 0.12s ease, border-color 0.12s ease;
+            overflow: hidden;
+        }
+        #command-menu.command-grid .battle-cmd-btn::before {
+            content: "";
+            position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+            background: currentColor; opacity: 0.85;
+        }
+        #command-menu.command-grid .battle-cmd-btn:hover:not(:disabled) {
+            background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.2) 100%);
+            border-color: currentColor;
+            transform: translateY(-1px);
+        }
+        #command-menu.command-grid .battle-cmd-btn[onclick*="showMoves"]      { background-color: rgba(255, 213, 79, 0.08); }
+        #command-menu.command-grid .battle-cmd-btn[onclick*="openParty"]       { background-color: rgba(102, 187, 106, 0.08); }
+        #command-menu.command-grid .battle-cmd-btn[onclick*="openBag"]         { background-color: rgba(100, 181, 246, 0.08); }
+        #command-menu.command-grid .battle-cmd-btn[onclick*="runAway"]         { background-color: rgba(239, 83, 80, 0.08); }
+        #command-menu.command-grid .battle-cmd-ico {
+            font-size: 26px !important;
+            opacity: 1;
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6));
+        }
+        body:not(.is-mobile) #command-menu.command-grid .battle-cmd-ico { font-size: 30px !important; }
+        #command-menu.command-grid .battle-cmd-label {
+            font-size: 13px !important;
+            letter-spacing: 0.08em;
+            color: #eee;
+        }
+        body:not(.is-mobile) #command-menu.command-grid .battle-cmd-btn { min-height: 60px !important; }
+        /* Shortcut hint (desktop only — reveals the keyboard mapping) */
+        body:not(.is-mobile) #command-menu.command-grid .battle-cmd-btn::after {
+            content: attr(data-shortcut);
+            position: absolute; right: 6px; bottom: 4px;
+            font-size: 9px; letter-spacing: 0.08em;
+            color: rgba(255,255,255,0.35);
+            font-weight: bold;
+        }
+
+        /* ---- Move tiles: less clutter, clearer name, type-colored rail ---- */
+        #move-menu button.battle-btn-move {
+            padding: 7px 8px;
+            border-left: 3px solid rgba(255,255,255,0.08);
+            transition: border-color 0.12s ease, background 0.12s ease, transform 0.08s ease;
+        }
+        #move-menu button.battle-btn-move:hover:not(:disabled) {
+            transform: translateY(-1px);
+            background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.2) 100%);
+        }
+        .battle-btn-move .move-tile-name {
+            font-size: 14px !important;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+        }
+        body:not(.is-mobile) .battle-btn-move .move-tile-name { font-size: 15px !important; }
+        .battle-btn-move .move-tile-meta {
+            font-size: 10px !important;
+            color: #8a8a8a;
+            opacity: 0.85;
+        }
+        .battle-btn-move .move-tile-meta strong { color: #ddd; }
+        .battle-btn-move .move-tile-sep { color: #555; margin: 0 4px; }
+        /* Hide the per-tile (i) button — hover (desktop) or long-press (mobile) gives info */
+        body:not(.is-mobile) .battle-btn-move .move-info-hit { display: none !important; }
+        .battle-btn-move .move-info-hit {
+            width: 28px !important; height: 28px !important;
+            font-size: 12px !important;
+            opacity: 0.55;
+            align-self: center;
+        }
+        .battle-btn-move .move-info-hit:hover { opacity: 1; }
+
+        /* Color the left rail per move type via the inner type-badge sibling hack:
+           we can't select parent, but every move tile starts with a .type-badge —
+           give the tile itself a slightly tinted bg so type contrast pops. */
+        .battle-btn-move .type-badge {
+            font-size: 9px !important;
+            padding: 2px 6px !important;
+            border-radius: 4px;
+            letter-spacing: 0.04em;
+        }
+
+        /* ---- Desktop stat boxes: single compact row ---- */
+        body:not(.is-mobile) #foe-stat-box,
+        body:not(.is-mobile) #player-stat-box {
+            padding: 6px 10px !important;
+        }
+        body:not(.is-mobile) #foe-stat-box .stat-info-row,
+        body:not(.is-mobile) #player-stat-box .stat-info-row {
+            margin-top: 3px;
+            font-size: 10px;
+            gap: 4px;
+        }
+        body:not(.is-mobile) #foe-stat-box { width: 248px !important; top: 12px !important; right: 56px !important; }
+
+        /* ---- Desktop move phase: stack log BELOW moves so moves span full width ---- */
+        body:not(.is-mobile) #screen-battle.battle-phase-moves .ui-bottom {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 6px !important;
+        }
+        body:not(.is-mobile) #screen-battle.battle-phase-moves .ui-bottom #battle-log {
+            order: 2 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            max-height: calc(1.45em * 2 + 8px) !important;
+            flex: 0 0 auto !important;
+            font-size: 11px !important;
+        }
+        body:not(.is-mobile) #screen-battle.battle-phase-moves .ui-bottom #move-menu {
+            order: 1 !important;
+            width: 100% !important;
+            flex: 1 1 auto !important;
+        }
+
+        /* ---- Desktop command phase: give command grid more room by shrinking the log ---- */
+        body:not(.is-mobile) #screen-battle:not(.battle-phase-moves) .ui-bottom #battle-log {
+            max-width: min(180px, 22vw) !important;
+        }
+
+        /* ---- Portrait: kill the seam between sprite regions ---- */
+        @media screen and (max-width: 768px) and (orientation: portrait) and (min-height: 680px) {
+            /* Hide the separate floor ellipses — they read as two isolated platforms */
+            #screen-battle[data-battle-layout="portrait"] .foe-platform,
+            #screen-battle[data-battle-layout="portrait"] .player-platform {
+                display: none !important;
+            }
+            /* Shared horizon line where both sprites land */
+            #screen-battle[data-battle-layout="portrait"] .battle-field::after {
+                content: "";
+                position: absolute;
+                left: 8%; right: 8%;
+                top: 56%;
+                height: 26px;
+                background: radial-gradient(ellipse at center, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 70%);
+                pointer-events: none;
+                z-index: 0;
+            }
+            /* Bigger foe sprite, pulled down toward the horizon */
+            #screen-battle[data-battle-layout="portrait"] #foe-sprite-container {
+                top: clamp(72px, 12dvh, 120px) !important;
+                width: min(230px, 60vw) !important;
+                height: min(240px, 62vw) !important;
+            }
+            #screen-battle[data-battle-layout="portrait"] #foe-sprite {
+                width: min(220px, 58vw) !important;
+                height: min(220px, 58vw) !important;
+            }
+            /* Player sprite bigger and closer to the horizon */
+            #screen-battle[data-battle-layout="portrait"] #player-sprite-container {
+                width: min(240px, 64vw) !important;
+                height: min(252px, 66vw) !important;
+                bottom: calc(var(--battle-player-hud-est) + var(--battle-ui-h) + max(8px, env(safe-area-inset-bottom, 0px)) + 0px) !important;
+            }
+            #screen-battle[data-battle-layout="portrait"] #player-sprite {
+                width: min(232px, 62vw) !important;
+                height: min(232px, 62vw) !important;
+            }
+            /* Field conditions: collapse when empty (no children) */
+            #screen-battle[data-battle-layout="portrait"] #field-conditions:empty {
+                display: none !important;
+            }
+            /* When populated, make it a compact horizontal strip under the foe bar
+               so it doesn't steal a 172px column */
+            #screen-battle[data-battle-layout="portrait"] #field-conditions:not(:empty) {
+                top: 56px !important;
+                left: 6px !important;
+                right: 6px !important;
+                max-width: none !important;
+                flex-direction: row !important;
+                flex-wrap: wrap !important;
+                justify-content: flex-start !important;
+                gap: 4px !important;
+                pointer-events: none;
+            }
+            #screen-battle[data-battle-layout="portrait"] #field-conditions:not(:empty) .field-pill {
+                pointer-events: auto;
+            }
+        }
+
+        /* ---- Portrait moves: single-column list, taller tap targets ---- */
+        @media screen and (max-width: 768px) and (orientation: portrait) {
+            #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-scroll,
+            #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-scroll.command-grid {
+                grid-template-columns: 1fr !important;
+                gap: 5px !important;
+            }
+            #screen-battle[data-battle-layout="portrait"] #move-menu .battle-btn-move {
+                min-height: 60px !important;
+                padding: 8px 10px !important;
+            }
+            #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-name {
+                font-size: 15px !important;
+            }
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script src="online-config.js"></script>
@@ -3204,10 +3409,10 @@
             <div id="online-battle-timer" class="hidden" style="position:absolute; top:-22px; right:8px; z-index:12; font-size:11px; font-weight:bold; color:#81d4fa; padding:2px 8px; border-radius:6px; background:rgba(0,0,0,0.5); pointer-events:none;"></div>
             <div id="battle-log" class="white-outline scrollable"></div>
             <div id="command-menu" class="command-grid white-outline hidden">
-                <button type="button" class="battle-cmd-btn" onclick="window.showMoves()" style="color: var(--hp-yellow);" title="Fight (keyboard: F)"><span class="battle-cmd-ico" aria-hidden="true">⚔</span><span class="battle-cmd-label">FIGHT</span></button>
-                <button type="button" class="battle-cmd-btn" onclick="window.openParty(false)" style="color: var(--hp-green);" title="Pokémon (keyboard: P)"><span class="battle-cmd-ico" aria-hidden="true">◎</span><span class="battle-cmd-label">POKÉMON</span></button>
-                <button type="button" class="battle-cmd-btn" onclick="window.openBag()" style="color: #add8e6;" title="Bag (keyboard: B)"><span class="battle-cmd-ico" aria-hidden="true">◇</span><span class="battle-cmd-label">BAG</span></button>
-                <button type="button" class="battle-cmd-btn" onclick="window.runAway()" style="color: var(--hp-red);" title="Run (keyboard: R)"><span class="battle-cmd-ico" aria-hidden="true">»</span><span class="battle-cmd-label">RUN</span></button>
+                <button type="button" class="battle-cmd-btn" data-shortcut="F" onclick="window.showMoves()" style="color: var(--hp-yellow);" title="Fight (keyboard: F)"><span class="battle-cmd-ico" aria-hidden="true">⚔</span><span class="battle-cmd-label">FIGHT</span></button>
+                <button type="button" class="battle-cmd-btn" data-shortcut="P" onclick="window.openParty(false)" style="color: var(--hp-green);" title="Pokémon (keyboard: P)"><span class="battle-cmd-ico" aria-hidden="true">◉</span><span class="battle-cmd-label">POKÉMON</span></button>
+                <button type="button" class="battle-cmd-btn" data-shortcut="B" onclick="window.openBag()" style="color: #add8e6;" title="Bag (keyboard: B)"><span class="battle-cmd-ico" aria-hidden="true">❖</span><span class="battle-cmd-label">BAG</span></button>
+                <button type="button" class="battle-cmd-btn" data-shortcut="R" onclick="window.runAway()" style="color: var(--hp-red);" title="Run (keyboard: R)"><span class="battle-cmd-ico" aria-hidden="true">⟫</span><span class="battle-cmd-label">RUN</span></button>
             </div>
             <div id="move-menu" class="move-menu-layout white-outline hidden"></div>
         </div>
