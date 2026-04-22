@@ -3421,9 +3421,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ============================================================
         // AUDIO SYSTEM
-        // First user gesture → one session-assigned battle track, random start, loop (same file).
-        // Story: first professor intro → full theme once per browser (localStorage), then resume session battle.
-        // New battle / toggle on → session battle track. Returning to home keeps music.
+        // First user gesture → startup theme once, then continuous background-music playlist.
+        // Story: first professor intro → full theme once per browser (localStorage), then resume background music.
+        // Entering battles/cities should not interrupt already-playing background music.
         // ============================================================
         const AudioSystem = (function() {
             const THEME_TRACKS = [
@@ -3432,11 +3432,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'music/themes/Theme3.mp3',
                 'music/themes/Theme4.mp3'
             ];
-            const BATTLE_TRACKS = [
+            const BACKGROUND_TRACKS = [
                 'music/battle/Battle1.mp3',
                 'music/battle/Battle3.mp3',
                 'music/battle/Battle4.mp3'
             ];
+            const STARTUP_THEME = 'music/themes/Theme1.mp3';
+            const BG_TRACK_STORAGE_KEY = 'pbs_bg_track_idx';
+            const BG_TIME_STORAGE_KEY = 'pbs_bg_time';
             const TYPE_SOUNDS = {
                 'Normal':   'music/moves/normal.mp3',
                 'Fire':     'music/moves/fire.mp3',
@@ -3460,41 +3463,108 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
 
             let bgAudio = null;
-            let _sessionBattleIdx = null;
+            let _sessionBackgroundIdx = null;
             let _storyThemePlaying = false;
             let _pendingProfThemeCallback = null;
             let _musicVol = 0.45;
             let _soundVol = 0.55;
+            let _startupThemePlayedThisSession = false;
+            let _currentAudioKind = null; // 'background' | 'theme'
+            let _resumeBackgroundTime = 0;
 
-            function _ensureSessionBattleIdx() {
-                if (_sessionBattleIdx != null && _sessionBattleIdx >= 0) return;
-                if (BATTLE_TRACKS.length <= 1) _sessionBattleIdx = 0;
-                else _sessionBattleIdx = Math.floor(Math.random() * BATTLE_TRACKS.length);
+            function _readPersistedBackgroundState() {
+                try {
+                    const idx = parseInt(localStorage.getItem(BG_TRACK_STORAGE_KEY), 10);
+                    const t = parseFloat(localStorage.getItem(BG_TIME_STORAGE_KEY));
+                    if (!Number.isNaN(idx) && idx >= 0) _sessionBackgroundIdx = idx % Math.max(1, BACKGROUND_TRACKS.length);
+                    if (!Number.isNaN(t) && t >= 0) _resumeBackgroundTime = t;
+                } catch (e) {}
             }
 
-            function _playBattleTrack() {
+            function _persistBackgroundState(timeSec) {
+                try {
+                    if (_sessionBackgroundIdx != null) localStorage.setItem(BG_TRACK_STORAGE_KEY, String(_sessionBackgroundIdx));
+                    if (typeof timeSec === 'number' && Number.isFinite(timeSec) && timeSec >= 0) localStorage.setItem(BG_TIME_STORAGE_KEY, String(timeSec));
+                } catch (e) {}
+            }
+
+            function _ensureSessionBackgroundIdx() {
+                if (_sessionBackgroundIdx != null && _sessionBackgroundIdx >= 0) return;
+                _sessionBackgroundIdx = 0;
+            }
+
+            function _captureBackgroundResumePointFromCurrentAudio() {
+                if (!bgAudio || _currentAudioKind !== 'background') return;
+                _resumeBackgroundTime = Math.max(0, Number(bgAudio.currentTime) || 0);
+                _persistBackgroundState(_resumeBackgroundTime);
+            }
+
+            function _advanceBackgroundTrack() {
+                _ensureSessionBackgroundIdx();
+                _sessionBackgroundIdx = (_sessionBackgroundIdx + 1) % Math.max(1, BACKGROUND_TRACKS.length);
+                _resumeBackgroundTime = 0;
+                _persistBackgroundState(0);
+            }
+
+            function _playBackgroundTrack(startAtSec) {
                 if (!settings.musicEnabled) return;
-                if (bgAudio) { bgAudio.pause(); bgAudio.onended = null; bgAudio = null; }
-                _ensureSessionBattleIdx();
-                const audio = new Audio(BATTLE_TRACKS[_sessionBattleIdx]);
+                if (bgAudio) {
+                    _captureBackgroundResumePointFromCurrentAudio();
+                    bgAudio.pause();
+                    bgAudio.onended = null;
+                    bgAudio = null;
+                }
+                _ensureSessionBackgroundIdx();
+                _persistBackgroundState(_resumeBackgroundTime);
+                const audio = new Audio(BACKGROUND_TRACKS[_sessionBackgroundIdx]);
                 audio.volume = _musicVol;
                 audio.addEventListener('loadedmetadata', () => {
-                    const maxStart = Math.max(0, (audio.duration || 120) - 30);
-                    audio.currentTime = Math.random() * maxStart;
+                    const maxStart = Math.max(0, (audio.duration || 0) - 0.25);
+                    const requested = typeof startAtSec === 'number' && Number.isFinite(startAtSec) ? startAtSec : _resumeBackgroundTime;
+                    audio.currentTime = Math.max(0, Math.min(requested || 0, maxStart));
                     audio.play().catch(() => {});
                 }, { once: true });
                 audio.play().catch(() => {});
-                audio.onended = _playBattleTrack;
+                audio.ontimeupdate = () => {
+                    if (_currentAudioKind !== 'background') return;
+                    _persistBackgroundState(Math.max(0, Number(audio.currentTime) || 0));
+                };
+                audio.onended = () => {
+                    _advanceBackgroundTrack();
+                    _playBackgroundTrack(0);
+                };
                 bgAudio = audio;
+                _currentAudioKind = 'background';
+            }
+
+            function _playStartupThemeThenBackground() {
+                if (!settings.musicEnabled) return;
+                if (_startupThemePlayedThisSession) { _playBackgroundTrack(_resumeBackgroundTime); return; }
+                _startupThemePlayedThisSession = true;
+                if (bgAudio) {
+                    _captureBackgroundResumePointFromCurrentAudio();
+                    bgAudio.pause();
+                    bgAudio.onended = null;
+                    bgAudio = null;
+                }
+                const audio = new Audio(STARTUP_THEME);
+                audio.volume = _musicVol;
+                audio.play().catch(() => {
+                    _playBackgroundTrack(_resumeBackgroundTime);
+                });
+                audio.onended = () => _playBackgroundTrack(_resumeBackgroundTime);
+                bgAudio = audio;
+                _currentAudioKind = 'theme';
             }
 
             return {
                 init() {
+                    _readPersistedBackgroundState();
                     let started = false;
                     const _tryStart = () => {
                         if (started) return;
                         started = true;
-                        _playBattleTrack();
+                        _playStartupThemeThenBackground();
                         document.removeEventListener('click', _tryStart);
                         document.removeEventListener('keydown', _tryStart);
                     };
@@ -3511,7 +3581,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         try { if (cb) cb(); } catch(e) {}
                     };
                     if (!settings.musicEnabled) { finishIntro(); return; }
-                    if (bgAudio) { bgAudio.pause(); bgAudio.onended = null; bgAudio = null; }
+                    if (bgAudio) {
+                        _captureBackgroundResumePointFromCurrentAudio();
+                        bgAudio.pause();
+                        bgAudio.onended = null;
+                        bgAudio = null;
+                    }
                     _storyThemePlaying = true;
                     const idx = Math.floor(Math.random() * THEME_TRACKS.length);
                     const audio = new Audio(THEME_TRACKS[idx]);
@@ -3519,9 +3594,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     audio.play().catch(() => {});
                     audio.onended = () => {
                         finishIntro();
-                        _playBattleTrack();
+                        _playBackgroundTrack(_resumeBackgroundTime);
                     };
                     bgAudio = audio;
+                    _currentAudioKind = 'theme';
                 },
 
                 startNewBattle() {
@@ -3529,7 +3605,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!settings.musicEnabled) return;
                     // Keep the current BGM flowing between battles; only start if none is active.
                     if (bgAudio && !bgAudio.paused && !bgAudio.ended) return;
-                    _playBattleTrack();
+                    _playBackgroundTrack(_resumeBackgroundTime);
                 },
 
                 toggleMusic() {
@@ -3537,9 +3613,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const btn = document.getElementById('toggle-music-btn');
                     if (btn) { btn.innerText = settings.musicEnabled ? 'ON' : 'OFF'; btn.style.color = settings.musicEnabled ? 'var(--hp-green)' : 'var(--hp-red)'; }
                     if (settings.musicEnabled) {
-                        _playBattleTrack();
+                        _playBackgroundTrack(_resumeBackgroundTime);
                     } else {
-                        if (bgAudio) bgAudio.pause();
+                        if (bgAudio) {
+                            _captureBackgroundResumePointFromCurrentAudio();
+                            bgAudio.pause();
+                        }
                         if (_storyThemePlaying) {
                             _storyThemePlaying = false;
                             const cb = _pendingProfThemeCallback;
@@ -13229,6 +13308,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.deptArtifactOffersByCity || typeof sm.deptArtifactOffersByCity !== 'object') sm.deptArtifactOffersByCity = {};
                 if (!sm.deptArtifactTypesByCity || typeof sm.deptArtifactTypesByCity !== 'object') sm.deptArtifactTypesByCity = {};
                 if (!sm.artifactTypeById || typeof sm.artifactTypeById !== 'object') sm.artifactTypeById = {};
+                if (!sm.deptItemOffersByCity || typeof sm.deptItemOffersByCity !== 'object') sm.deptItemOffersByCity = {};
                 if (!('profIntroThemePending' in sm)) sm.profIntroThemePending = false;
                 if (browserProfIntroThemeHeard()) sm.profIntroThemePending = false;
                 if (!sm.storyDifficulty) sm.storyDifficulty = 'normal';
@@ -13645,7 +13725,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 artifacts:[], activeArtifactType:null, trainerAssignments:{}, currentTrainerData:null,
                 profUsed:{}, usedTrainerNames:[], gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{},
                 currentEnemyLock:null, artifactsDisabled:[],
-                deptArtifactOffersByCity:{}, deptArtifactTypesByCity:{}, artifactTypeById:{},
+                deptArtifactOffersByCity:{}, deptArtifactTypesByCity:{}, artifactTypeById:{}, deptItemOffersByCity:{},
                 settings:{ enabledGens, minGen, maxGen,
                     megaOn: document.getElementById('story-mech-mega')?.checked||false,
                     zOn:    document.getElementById('story-mech-z')?.checked||false,
@@ -14591,6 +14671,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const typeName = STORY_TYPE_ARTIFACT_IDS.has(art.id) ? _artifactTypeForDisplay(art.id, cityIdx) : null;
             return typeName ? art.desc.replace(/^Type/, typeName + ' type') : art.desc;
         }
+        function _getDeptCatalogItems() {
+            return [...DEPT_ITEMS, ...getStoryFeaturedItems()];
+        }
+        function _ensureDeptItemOfferForCity(cityIdx) {
+            const cKey = String(Math.max(0, cityIdx | 0));
+            if (!sm.deptItemOffersByCity || typeof sm.deptItemOffersByCity !== 'object') sm.deptItemOffersByCity = {};
+            const catalog = _getDeptCatalogItems();
+            const validIds = new Set(catalog.map(i => i.id));
+            let offers = Array.isArray(sm.deptItemOffersByCity[cKey]) ? sm.deptItemOffersByCity[cKey].slice() : [];
+            offers = offers.filter((id, idx, arr) => validIds.has(id) && arr.indexOf(id) === idx);
+            while (offers.length < 3) {
+                const candidates = catalog.map(i => i.id).filter(id => !offers.includes(id));
+                if (!candidates.length) break;
+                offers.push(candidates[Math.floor(storyRngNext() * candidates.length)]);
+            }
+            sm.deptItemOffersByCity[cKey] = offers.slice(0, 3);
+            const byId = new Map(catalog.map(i => [i.id, i]));
+            return sm.deptItemOffersByCity[cKey].map(id => byId.get(id)).filter(Boolean);
+        }
         function enterShop(type) {
             const shopScreen = document.getElementById('screen-story-shop');
             if (shopScreen) shopScreen.setAttribute('data-shop-type', type === 'dept' ? 'dept' : 'mart');
@@ -14602,11 +14701,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (goldEl)  goldEl.textContent  = `🪙 ${sm.gold.toLocaleString()}G`;
             gridEl.innerHTML = '';
 
-            const items = type==='dept' ? [...POKEMART_ITEMS, ...DEPT_ITEMS] : POKEMART_ITEMS;
+            const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
+            const items = type === 'dept' ? _ensureDeptItemOfferForCity(cityIdx) : POKEMART_ITEMS;
             items.forEach(item => {
                 const canAfford = sm.gold >= item.price;
                 const qty = sm.inventory[item.id]||0;
                 const icon = storyShopIconCellHtml(item.id);
+                const buyColor = item.tier === 'mega' || item.tier === 'ultra' ? '#ffb74d' : '#4caf50';
                 gridEl.innerHTML += `<div class="story-shop-item">
                     <div class="story-shop-item-row">
                         ${icon}
@@ -14617,39 +14718,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </div>
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
                         <span class="price">🪙 ${item.price.toLocaleString()}G</span>
-                        <button onclick="window.StoryMode.buyItem('${item.id}',${item.price})" ${canAfford?'':'disabled'} style="font-size:11px;padding:3px 8px;${canAfford?'color:#4caf50;border-color:#4caf50;':'opacity:0.4;'}">Buy</button>
+                        <button onclick="window.StoryMode.buyItem('${item.id}',${item.price})" ${canAfford?'':'disabled'} style="font-size:11px;padding:3px 8px;${canAfford?`color:${buyColor};border-color:${buyColor};`:'opacity:0.4;'}">Buy</button>
                     </div>
                 </div>`;
             });
-            if (type === 'dept') {
-                const featuredItems = getStoryFeaturedItems();
-                const featuredSection = document.createElement('div');
-                featuredSection.style.cssText='grid-column:1/-1;border-top:1px solid #555;padding-top:12px;margin-top:8px;';
-                featuredSection.innerHTML='<h4 style="color:#ffb74d;margin:0 0 10px;">⭐ Featured Battle Tech</h4>';
-                featuredItems.forEach(item => {
-                    const canAfford = sm.gold >= item.price;
-                    const qty = sm.inventory[item.id]||0;
-                    const icon = storyShopIconCellHtml(item.id);
-                    featuredSection.innerHTML += `<div class="story-shop-item" style="border-color:${item.tier==='mega' ? '#43a047' : '#7e57c2'};">
-                        <div class="story-shop-item-row">
-                            ${icon}
-                            <div style="flex:1;min-width:0;">
-                                <h4>${item.name} <span style="float:right;color:#888;font-size:10px;">×${qty}</span></h4>
-                                <div class="desc">${item.desc}</div>
-                            </div>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-                            <span class="price">🪙 ${item.price.toLocaleString()}G</span>
-                            <button onclick="window.StoryMode.buyItem('${item.id}',${item.price})" ${canAfford?'':'disabled'} style="font-size:11px;padding:3px 8px;${canAfford?'color:#ffb74d;border-color:#ffb74d;':'opacity:0.4;'}">Buy</button>
-                        </div>
-                    </div>`;
-                });
-                gridEl.appendChild(featuredSection);
-            }
 
             // Department Store: also show artifacts (appended inside gridEl to avoid leak across shop types)
             if (type === 'dept') {
-                const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
                 const offer = _ensureDeptOfferForCity(cityIdx);
                 const artifactSection = document.createElement('div');
                 artifactSection.style.cssText='grid-column:1/-1;border-top:1px solid #444;padding-top:12px;margin-top:4px;';
@@ -14679,11 +14754,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function buyItem(itemId, price) {
+            const st = document.getElementById('screen-story-shop')?.getAttribute('data-shop-type');
+            if (st === 'dept') {
+                const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
+                const offers = _ensureDeptItemOfferForCity(cityIdx);
+                if (!offers.some(i => i.id === itemId && i.price === price)) return;
+            }
             if (sm.gold < price) return;
             sm.gold -= price;
             sm.inventory[itemId] = (sm.inventory[itemId]||0) + 1;
             save();
-            const st = document.getElementById('screen-story-shop')?.getAttribute('data-shop-type');
             enterShop(st === 'dept' ? 'dept' : 'mart');
         }
 
