@@ -14671,13 +14671,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const typeName = STORY_TYPE_ARTIFACT_IDS.has(art.id) ? _artifactTypeForDisplay(art.id, cityIdx) : null;
             return typeName ? art.desc.replace(/^Type/, typeName + ' type') : art.desc;
         }
-        function _getDeptCatalogItems() {
-            return [...DEPT_ITEMS, ...getStoryFeaturedItems()];
+        function _getDeptFeaturedCatalogItems() {
+            return getStoryFeaturedItems();
         }
         function _ensureDeptItemOfferForCity(cityIdx) {
             const cKey = String(Math.max(0, cityIdx | 0));
             if (!sm.deptItemOffersByCity || typeof sm.deptItemOffersByCity !== 'object') sm.deptItemOffersByCity = {};
-            const catalog = _getDeptCatalogItems();
+            const catalog = _getDeptFeaturedCatalogItems();
             const validIds = new Set(catalog.map(i => i.id));
             let offers = Array.isArray(sm.deptItemOffersByCity[cKey]) ? sm.deptItemOffersByCity[cKey].slice() : [];
             offers = offers.filter((id, idx, arr) => validIds.has(id) && arr.indexOf(id) === idx);
@@ -14702,7 +14702,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             gridEl.innerHTML = '';
 
             const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
-            const items = type === 'dept' ? _ensureDeptItemOfferForCity(cityIdx) : POKEMART_ITEMS;
+            const items = type === 'dept' ? [...POKEMART_ITEMS, ...DEPT_ITEMS] : POKEMART_ITEMS;
+            if (type === 'dept') {
+                const featuredItems = _ensureDeptItemOfferForCity(cityIdx);
+                const featuredSection = document.createElement('div');
+                featuredSection.style.cssText='grid-column:1/-1;border-top:1px solid #555;padding-top:12px;margin-top:8px;';
+                featuredSection.innerHTML='<h4 style="color:#ffb74d;margin:0 0 10px;">⭐ Featured Battle Tech (3 per city)</h4>';
+                featuredItems.forEach(item => {
+                    const canAfford = sm.gold >= item.price;
+                    const qty = sm.inventory[item.id]||0;
+                    const icon = storyShopIconCellHtml(item.id);
+                    featuredSection.innerHTML += `<div class="story-shop-item" style="border-color:${item.tier==='mega' ? '#43a047' : '#7e57c2'};">
+                        <div class="story-shop-item-row">
+                            ${icon}
+                            <div style="flex:1;min-width:0;">
+                                <h4>${item.name} <span style="float:right;color:#888;font-size:10px;">×${qty}</span></h4>
+                                <div class="desc">${item.desc}</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+                            <span class="price">🪙 ${item.price.toLocaleString()}G</span>
+                            <button onclick="window.StoryMode.buyItem('${item.id}',${item.price})" ${canAfford?'':'disabled'} style="font-size:11px;padding:3px 8px;${canAfford?'color:#ffb74d;border-color:#ffb74d;':'opacity:0.4;'}">Buy</button>
+                        </div>
+                    </div>`;
+                });
+                gridEl.appendChild(featuredSection);
+            }
             items.forEach(item => {
                 const canAfford = sm.gold >= item.price;
                 const qty = sm.inventory[item.id]||0;
@@ -14722,7 +14747,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </div>
                 </div>`;
             });
-
             // Department Store: also show artifacts (appended inside gridEl to avoid leak across shop types)
             if (type === 'dept') {
                 const offer = _ensureDeptOfferForCity(cityIdx);
@@ -14757,8 +14781,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const st = document.getElementById('screen-story-shop')?.getAttribute('data-shop-type');
             if (st === 'dept') {
                 const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
-                const offers = _ensureDeptItemOfferForCity(cityIdx);
-                if (!offers.some(i => i.id === itemId && i.price === price)) return;
+                const featuredOffers = _ensureDeptItemOfferForCity(cityIdx);
+                const normalDept = [...POKEMART_ITEMS, ...DEPT_ITEMS];
+                const allowed = [...normalDept, ...featuredOffers];
+                if (!allowed.some(i => i.id === itemId && i.price === price)) return;
             }
             if (sm.gold < price) return;
             sm.gold -= price;

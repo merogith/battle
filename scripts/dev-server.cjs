@@ -45,14 +45,28 @@ const server = http.createServer((req, res) => {
       file = path.join(file, 'index.html');
     }
     fs.readFile(file, (readErr, data) => {
-      if (readErr) {
-        res.writeHead(404);
-        res.end('Not found');
+      if (!readErr) {
+        const ext = path.extname(file).toLowerCase();
+        res.setHeader('Content-Type', MIME[ext] || 'application/octet-stream');
+        res.end(data);
         return;
       }
-      const ext = path.extname(file).toLowerCase();
-      res.setHeader('Content-Type', MIME[ext] || 'application/octet-stream');
-      res.end(data);
+      // Support extensionless HTML paths such as /battle -> /battle.html
+      if (!path.extname(file)) {
+        const htmlFile = file + '.html';
+        fs.readFile(htmlFile, (htmlErr, htmlData) => {
+          if (htmlErr) {
+            res.writeHead(404);
+            res.end('Not found');
+            return;
+          }
+          res.setHeader('Content-Type', MIME['.html']);
+          res.end(htmlData);
+        });
+        return;
+      }
+      res.writeHead(404);
+      res.end('Not found');
     });
   });
 });
