@@ -543,89 +543,92 @@
         .story-hof-team-slot img {
             filter: drop-shadow(0 6px 8px rgba(0,0,0,0.5));
         }
-        /* Story: Game Boy–style Hall of Fame (LCD + bezel) */
+        /* Story: Hall of Fame (Gen-3 style — 2×3 sprites + welcome banner) */
         .story-hof-gb-overlay {
-            font-family: 'Courier New', Courier, monospace;
-            -webkit-font-smoothing: none;
+            font-family: 'Courier New', Consolas, ui-monospace, monospace;
+            -webkit-font-smoothing: antialiased;
         }
-        .story-hof-gb-console {
+        .story-hof-gba-panel {
             width: 100%;
-            max-width: 340px;
-            padding: 14px 16px 16px;
-            border-radius: 8px 8px 14px 14px;
-            background: linear-gradient(165deg, #6b6e78 0%, #3d4048 40%, #2a2c32 100%);
-            box-shadow:
-                inset 0 1px 0 rgba(255,255,255,0.12),
-                0 8px 32px rgba(0,0,0,0.75);
-            border: 2px solid #222;
-        }
-        .story-hof-gb-product {
-            text-align: center;
-            font-size: 9px;
-            letter-spacing: 0.35em;
-            color: #9aa0a8;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-        }
-        .story-hof-gb-bezel {
+            max-width: min(100vw - 32px, 520px);
             border-radius: 4px;
-            padding: 10px;
-            background: linear-gradient(180deg, #1e2026 0%, #12141a 100%);
-            box-shadow: inset 0 2px 8px rgba(0,0,0,0.9);
-        }
-        .story-hof-gb-screen {
-            position: relative;
-            min-height: 200px;
-            max-height: min(42vh, 280px);
             overflow: hidden;
-            background: #0f380f;
-            border-radius: 2px;
-            box-shadow: inset 0 0 0 2px #061a06;
+            box-shadow: 0 12px 48px rgba(0,0,0,0.85), 0 0 0 3px #1a1c22, 0 0 0 5px #0d0e12;
         }
-        .story-hof-gb-scanlines {
+        .story-hof-gba-sprite-stage {
+            position: relative;
+            min-height: min(48vh, 360px);
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(180deg, #a8b4c4 0%, #98a8b8 50%, #8898a8 100%);
+        }
+        .story-hof-gba-stripe {
             position: absolute;
-            inset: 0;
+            top: 0; left: 0; right: 0;
+            height: 42%;
+            background: linear-gradient(180deg, #5a6e88 0%, #4a5c78 100%);
+            opacity: 0.9;
             pointer-events: none;
-            z-index: 1;
-            opacity: 0.18;
-            background: repeating-linear-gradient(
-                0deg,
-                transparent 0px,
-                transparent 2px,
-                rgba(0,0,0,0.45) 2px,
-                rgba(0,0,0,0.45) 3px
-            );
-            mix-blend-mode: multiply;
         }
-        .story-hof-gb-pre {
+        .story-hof-gba-grid {
             position: relative;
             z-index: 2;
-            margin: 0;
-            padding: 14px 12px 12px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 4px 6px;
+            padding: 14px 12px 16px;
             box-sizing: border-box;
-            font-family: inherit;
-            font-size: clamp(11px, 2.9vw, 13px);
-            line-height: 1.45;
-            color: #9bbc0f;
-            text-shadow: 0 0 1px rgba(155,188,15,0.35);
-            white-space: pre-wrap;
-            word-break: break-word;
-            min-height: 180px;
-            max-height: min(42vh, 280px);
-            overflow-y: auto;
+            flex: 1;
         }
-        .story-hof-gb-hint {
+        .story-hof-gba-cell {
+            min-height: 0;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+        }
+        .story-hof-gba-cell img {
+            max-width: 100%;
+            max-height: min(22vh, 140px);
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            filter: drop-shadow(0 4px 0 rgba(0,0,0,0.15));
+        }
+        .story-hof-gba-lower {
+            position: relative;
+            z-index: 2;
+            min-height: clamp(88px, 18vh, 120px);
+            background: linear-gradient(180deg, #3a3d44 0%, #2a2c32 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 14px 14px;
+            box-sizing: border-box;
+        }
+        .story-hof-gba-welcome {
+            margin: 0;
             text-align: center;
-            font-size: 9px;
-            color: #6b7280;
-            margin: 10px 0 0;
+            font-size: clamp(12px, 2.8vw, 16px);
+            line-height: 1.4;
+            color: #e8e8f0;
+            text-shadow: 0 1px 0 #000, 0 0 1px #000;
+            letter-spacing: 0.02em;
+        }
+        .story-hof-gba-welcome .story-hof-gba-hof {
+            display: inline;
+            font-weight: bold;
             letter-spacing: 0.06em;
-            transition: opacity 0.4s ease;
-            opacity: 0;
         }
         .story-hof-gb-footer {
-            max-width: 340px;
+            max-width: min(100vw - 32px, 520px);
             width: 100%;
+            margin-top: 12px;
         }
         .story-hof-gb-btn {
             flex: 1 1 auto;
@@ -2299,6 +2302,8 @@
                 </button>
             </div>
             <button onclick="window.StoryMode && window.StoryMode.showMenu()" style="width: 250px; border-color: #ff6b6b; color: #ff6b6b; background: #1a0808;">&#9670; Story Mode</button>
+            <button type="button" onclick="window.StoryMode && window.StoryMode.openTeamTester()" style="width: 250px; font-size: 12px; border-color: #666; color: #9e9e9e; margin-top: 8px;">Story team tester</button>
+            <button type="button" onclick="window.StoryMode && window.StoryMode.previewHallOfFame()" style="width: 250px; font-size: 12px; border-color: #666; color: #9e9e9e; margin-top: 6px;">Preview Hall of Fame</button>
         </div>
     </div>
 
@@ -2592,6 +2597,8 @@
             <button id="story-continue-btn" onclick="window.StoryMode.continueRun()" style="padding:12px;font-size:13px;border-color:#4caf50;color:#4caf50;display:none;">&#9654; Continue Journey</button>
             <button id="story-abandon-btn" onclick="window.StoryMode.confirmAbandon()" style="padding:10px;font-size:12px;border-color:#888;color:#888;display:none;">&#10006; Abandon Run</button>
             <button onclick="window.StoryMode.showMenu(false)" style="padding:10px;font-size:12px;color:#aaa;">&#8592; Back to Main Menu</button>
+            <button type="button" onclick="window.StoryMode && window.StoryMode.openTeamTester()" style="padding:8px;font-size:11px;border-color:#666;color:#9e9e9e;">Story team tester</button>
+            <button type="button" onclick="window.StoryMode && window.StoryMode.previewHallOfFame()" style="padding:8px;font-size:11px;border-color:#666;color:#9e9e9e;">Preview Hall of Fame</button>
         </div>
     </div>
 
@@ -2739,6 +2746,58 @@
             <div id="story-artifact-list" style="display:flex;flex-direction:column;gap:10px;max-height:350px;overflow-y:auto;margin-bottom:12px;"></div>
             <button onclick="window.closeModal('modal-story-artifact')" style="width:100%;">Close</button>
         </div>
+    </div>
+
+    <div id="screen-story-tester" class="screen hidden" style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:#0a0a0c;">
+        <div style="flex-shrink:0;padding:12px 16px;border-bottom:1px solid #333;background:#111;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+                <h1 style="color:#ce93d8;font-size:18px;margin:0 0 6px;">Story team tester</h1>
+                <button type="button" onclick="window.StoryMode && window.StoryMode.closeTeamTester()" style="padding:6px 12px;font-size:12px;border-color:#666;color:#aaa;">← Main menu</button>
+            </div>
+            <p style="color:#888;font-size:11px;margin:0 0 10px;max-width:720px;">Generates the same <code>assignTrainers</code> + <code>rollTrainerTeam</code> pipeline as a New Adventure (sequential RNG). City screens and other story actions are not simulated, so a live run can diverge slightly; trainer picks and team rolls match a clean generator pass.</p>
+            <div style="display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end;margin-bottom:10px;font-size:12px;">
+                <label style="color:#aaa;">Seed: <input id="tester-seed" type="text" inputmode="numeric" placeholder="e.g. 42" style="width:100px;padding:4px 8px;background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;font-family:monospace;"></label>
+                <label style="color:#aaa;">Party size (non–late-boss): <input id="tester-party-size" type="number" min="1" max="6" value="6" style="width:48px;padding:4px 8px;background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;"></label>
+                <label style="color:#aaa;">Difficulty: <select id="tester-difficulty" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;padding:3px 8px;font-size:12px;max-width:200px;">
+                    <option value="veryeasy">Very Easy</option>
+                    <option value="easy">Easy</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="hard">Hard</option>
+                    <option value="challenge">Challenge</option>
+                    <option value="hardcore">Hardcore</option>
+                </select></label>
+                <label style="color:#aaa;">Filter: <select id="tester-filter" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;padding:3px 8px;font-size:12px;max-width:200px;">
+                    <option value="all">All battles</option>
+                    <option value="no_basic">No Basic Trainer</option>
+                    <option value="gym_e4">Gym + E1–E4 + Champ + Rival + VR</option>
+                    <option value="league">League only (E1–E4 + Champion)</option>
+                </select></label>
+            </div>
+            <div style="font-size:11px;color:#888;margin-bottom:6px;">Generations in pool:</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px 8px;margin-bottom:10px;">
+                <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" class="tester-gen-cb" data-g="1" id="tester-gen-cb-1" checked><span>G1</span></label>
+                <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" class="tester-gen-cb" data-g="2" id="tester-gen-cb-2" checked><span>G2</span></label>
+                <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" class="tester-gen-cb" data-g="3" id="tester-gen-cb-3" checked><span>G3</span></label>
+                <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" class="tester-gen-cb" data-g="4" id="tester-gen-cb-4" checked><span>G4</span></label>
+                <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" class="tester-gen-cb" data-g="5" id="tester-gen-cb-5" checked><span>G5</span></label>
+                <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" class="tester-gen-cb" data-g="6" id="tester-gen-cb-6" checked><span>G6</span></label>
+                <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" class="tester-gen-cb" data-g="7" id="tester-gen-cb-7" checked><span>G7</span></label>
+                <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" class="tester-gen-cb" data-g="8" id="tester-gen-cb-8" checked><span>G8</span></label>
+                <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;"><input type="checkbox" class="tester-gen-cb" data-g="9" id="tester-gen-cb-9" checked><span>G9</span></label>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px;font-size:12px;">
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="tester-mech-mega"><span style="color:#ef9a9a;">Mega</span></label>
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="tester-mech-z"><span style="color:#ffeb3b;">Z</span></label>
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="tester-mech-dyna"><span style="color:#ef5350;">Dynamax</span></label>
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="tester-mech-tera"><span style="color:#4fc3f7;">Tera</span></label>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                <button type="button" onclick="window.StoryMode && window.StoryMode.runTeamTester()" style="padding:10px 20px;border-color:#ce93d8;color:#ce93d8;">Generate all teams</button>
+                <button type="button" onclick="window.StoryMode && window.StoryMode.copyTeamTesterText()" style="padding:10px 14px;border-color:#666;color:#aaa;">Copy as text</button>
+                <button type="button" onclick="window.StoryMode && window.StoryMode.openTeamTesterSyncFromStory()" style="padding:10px 14px;border-color:#666;color:#888;">Sync from Story menu defaults</button>
+            </div>
+        </div>
+        <div id="story-tester-out" style="flex:1;overflow:auto;padding:12px 16px;font-size:12px;color:#ccc;">Press <b style="color:#ce93d8;">Generate all teams</b>.</div>
     </div>
 
     <!-- ===== END STORY MODE SCREENS ===== -->
@@ -12995,25 +13054,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Story events: [idx, type, event, gradeWeights{g1,g2,g3,g4}, coins, cityActions]
         // Grade weights: g4=weakest(early), g1=strongest(late). Blanks auto-interpolated.
-        // Economy: ~68 main-path battles; starting 1000-2000G (by difficulty) + ~201k battle rewards if unbeaten (post-J1 bumps).
+        // Economy: ~65 main-path battles; starting 1000-2000G (by difficulty) + battle rewards scale with route.
         // Early route payouts set to 1400G so a few wins better cover Link G1 rerolls (4000G base).
+        // Exactly 8 gym badges (Gym Leader 1–8 once); then Victory Road (3 Elite), League City (City9, Dept store), E1–E4, Champion, Rival, HoF.
         const STORY_EVENTS_RAW = [
-          [0,'City','City0',null,0,['Professor','Link Station','Pokemarkt','Leave City']],
+          [0,'City','City0',null,0,['Professor','Link Station','Pokemart','Leave City']],
           [1,'Battle','Basic Trainer',{g1:0,g2:0,g3:0,g4:100},1400,null],
           [2,'Battle','Basic Trainer',{g1:0,g2:0,g3:20,g4:80},1400,null],
           [3,'Battle','Basic Trainer',{g1:0,g2:0,g3:50,g4:50},1400,null],
-          [4,'City','City1',null,0,['Professor','Link Station','Pokemarkt','Gym Battle','Leave City']],
+          [4,'City','City1',null,0,['Professor','Link Station','Pokemart','Gym Battle','Leave City']],
           [5,'Battle','Gym Trainer',{g1:0,g2:0,g3:50,g4:50},1500,null],
           [6,'Battle','Gym Leader 1',{g1:0,g2:0,g3:80,g4:20},2000,null],
-          [7,'City','City1',null,0,['Professor','Link Station','Pokemarkt','Leave City']],
+          [7,'City','City1',null,0,['Professor','Link Station','Pokemart','Leave City']],
           [8,'Battle','Basic Trainer',{g1:0,g2:0,g3:70,g4:30},1200,null],
           [9,'Battle','Basic Trainer',{g1:0,g2:0,g3:70,g4:30},1200,null],
           [10,'Battle','Basic Trainer',{g1:0,g2:0,g3:100,g4:0},1200,null],
-          [11,'City','City2',null,0,['Professor','Link Station','Pokemarkt','Gym Battle','Leave City']],
+          [11,'City','City2',null,0,['Professor','Link Station','Pokemart','Gym Battle','Leave City']],
           [12,'Battle','Gym Trainer',{g1:0,g2:0,g3:100,g4:0},1700,null],
           [13,'Battle','Gym Leader 2',{g1:0,g2:30,g3:70,g4:0},2500,null],
           [14,'Battle','Rival',{g1:0,g2:35,g3:65,g4:0},1500,null],
-          [15,'City','City2',null,0,['Professor','Link Station','Pokemarkt','Leave City']],
+          [15,'City','City2',null,0,['Professor','Link Station','Pokemart','Leave City']],
           [16,'Battle','Basic Trainer',{g1:0,g2:10,g3:90,g4:0},1500,null],
           [17,'Battle','Basic Trainer',{g1:0,g2:10,g3:90,g4:0},1500,null],
           [18,'Battle','Basic Trainer',{g1:0,g2:30,g3:70,g4:0},1500,null],
@@ -13024,18 +13084,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [23,'Battle','Basic Trainer',{g1:0,g2:30,g3:70,g4:0},1700,null],
           [24,'Battle','Basic Trainer',{g1:0,g2:30,g3:70,g4:0},1700,null],
           [25,'Battle','Basic Trainer',{g1:0,g2:50,g3:50,g4:0},1700,null],
-          [26,'City','City4',null,0,['Professor','Link Station','Pokemarkt','Gym Battle','Leave City']],
+          [26,'City','City4',null,0,['Professor','Link Station','Pokemart','Gym Battle','Leave City']],
           [27,'Battle','Gym Trainer',{g1:0,g2:50,g3:50,g4:0},2300,null],
           [28,'Battle','Gym Leader 4',{g1:15,g2:75,g3:10,g4:0},3200,null],
-          [29,'City','City4',null,0,['Professor','Link Station','Pokemarkt','Leave City']],
+          [29,'City','City4',null,0,['Professor','Link Station','Pokemart','Leave City']],
           [30,'Battle','Basic Trainer',{g1:0,g2:50,g3:50,g4:0},2000,null],
           [31,'Battle','Basic Trainer',{g1:0,g2:50,g3:50,g4:0},2000,null],
           [32,'Battle','Basic Trainer',{g1:0,g2:70,g3:30,g4:0},2000,null],
-          [33,'City','City5',null,0,['Professor','Link Station','Pokemarkt','Gym Battle','Leave City']],
+          [33,'City','City5',null,0,['Professor','Link Station','Pokemart','Gym Battle','Leave City']],
           [34,'Battle','Gym Trainer',{g1:5,g2:60,g3:35,g4:0},2500,null],
           [35,'Battle','Gym Trainer',{g1:5,g2:65,g3:30,g4:0},2500,null],
           [36,'Battle','Gym Leader 5',{g1:25,g2:70,g3:5,g4:0},3500,null],
-          [37,'City','City5',null,0,['Professor','Link Station','Pokemarkt','Leave City']],
+          [37,'City','City5',null,0,['Professor','Link Station','Pokemart','Leave City']],
           [38,'Battle','Basic Trainer',{g1:5,g2:65,g3:30,g4:0},2200,null],
           [39,'Battle','Basic Trainer',{g1:5,g2:65,g3:30,g4:0},2200,null],
           [40,'Battle','Elite Trainer',{g1:10,g2:75,g3:15,g4:0},2700,null],
@@ -13044,59 +13104,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [43,'Battle','Gym Trainer',{g1:15,g2:75,g3:10,g4:0},2700,null],
           [44,'Battle','Gym Leader 6',{g1:20,g2:75,g3:5,g4:0},4700,null],
           [45,'Battle','Rival',{g1:30,g2:65,g3:5,g4:0},2500,null],
-          [46,'City','City6',null,0,['Link Station','Pokemarkt','Leave City']],
+          [46,'City','City6',null,0,['Link Station','Pokemart','Leave City']],
           [47,'Battle','Basic Trainer',{g1:15,g2:75,g3:10,g4:0},2500,null],
           [48,'Battle','Basic Trainer',{g1:15,g2:75,g3:10,g4:0},2500,null],
           [49,'Battle','Elite Trainer',{g1:20,g2:75,g3:5,g4:0},2900,null],
-          [50,'City','City7',null,0,['Link Station','Pokemarkt','Gym Battle','Leave City']],
+          [50,'City','City7',null,0,['Link Station','Pokemart','Gym Battle','Leave City']],
           [51,'Battle','Gym Trainer',{g1:20,g2:75,g3:5,g4:0},2900,null],
           [52,'Battle','Gym Trainer',{g1:25,g2:75,g3:0,g4:0},2900,null],
           [53,'Battle','Gym Leader 7',{g1:30,g2:70,g3:0,g4:0},4900,null],
-          [54,'City','City7',null,0,['Link Station','Pokemarkt','Leave City']],
+          [54,'City','City7',null,0,['Link Station','Pokemart','Leave City']],
           [55,'Battle','Basic Trainer',{g1:25,g2:75,g3:0,g4:0},2600,null],
           [56,'Battle','Elite Trainer',{g1:30,g2:70,g3:0,g4:0},3000,null],
           [57,'Battle','Elite Trainer',{g1:35,g2:65,g3:0,g4:0},3000,null],
-          [58,'City','City8',null,0,['Link Station','Pokemarkt','Gym Battle','Leave City']],
+          [58,'City','City8',null,0,['Link Station','Pokemart','Gym Battle','Leave City']],
           [59,'Battle','Gym Trainer',{g1:35,g2:65,g3:0,g4:0},3000,null],
           [60,'Battle','Gym Trainer',{g1:40,g2:60,g3:0,g4:0},3000,null],
           [61,'Battle','Gym Leader 8',{g1:45,g2:55,g3:0,g4:0},5000,null],
           [62,'Battle','Rival',{g1:60,g2:35,g3:5,g4:0},2800,null],
-          [63,'City','City8',null,0,['Link Station','Pokemarkt','Leave City']],
-          [64,'Battle','Basic Trainer',{g1:40,g2:60,g3:0,g4:0},2800,null],
-          [65,'Battle','Elite Trainer',{g1:45,g2:55,g3:0,g4:0},3200,null],
-          [66,'Battle','Elite Trainer',{g1:50,g2:50,g3:0,g4:0},3200,null],
-          [67,'City','City9',null,0,['Link Station','Pokemarkt','Gym Battle','Leave City']],
-          [68,'Battle','Gym Trainer',{g1:55,g2:45,g3:0,g4:0},3200,null],
-          [69,'Battle','Gym Trainer',{g1:60,g2:40,g3:0,g4:0},3200,null],
-          [70,'Battle','Victory Road',{g1:65,g2:35,g3:0,g4:0},5200,null],
-          [71,'City','City9',null,0,['Link Station','Pokemarkt','Leave City']],
-          [72,'Battle','Elite Trainer',{g1:65,g2:35,g3:0,g4:0},3500,null],
-          [73,'Battle','Elite Trainer',{g1:70,g2:30,g3:0,g4:0},3500,null],
-          [74,'Battle','Elite Trainer',{g1:75,g2:25,g3:0,g4:0},3500,null],
-          [75,'City','City10',null,0,['Link Station','Department Store','Gym Battle','Leave City']],
-          [76,'Battle','Gym Trainer',{g1:75,g2:25,g3:0,g4:0},3500,null],
-          [77,'Battle','Gym Trainer',{g1:80,g2:20,g3:0,g4:0},3500,null],
-          [78,'Battle','Gym Leader 8',{g1:85,g2:15,g3:0,g4:0},5500,null],
-          [79,'City','City10',null,0,['Link Station','Pokemarkt','Leave City']],
-          [80,'Battle','Elite Trainer',{g1:80,g2:20,g3:0,g4:0},3800,null],
-          [81,'Battle','Elite Trainer',{g1:85,g2:15,g3:0,g4:0},3800,null],
-          [82,'Battle','Elite Trainer',{g1:90,g2:10,g3:0,g4:0},3800,null],
-          [83,'City','City11',null,0,['Link Station','Department Store','Enter Pokemon League']],
-          [84,'Battle','E1',{g1:90,g2:10,g3:0,g4:0},5000,null],
-          [85,'Battle','E2',{g1:95,g2:5,g3:0,g4:0},5000,null],
-          [86,'Battle','E3',{g1:95,g2:5,g3:0,g4:0},5000,null],
-          [87,'Battle','E4',{g1:100,g2:0,g3:0,g4:0},5000,null],
-          [88,'Battle','Champion',{g1:100,g2:0,g3:0,g4:0},7500,null],
-          [89,'Battle','Rival',{g1:95,g2:5,g3:0,g4:0},5000,null],
-          [90,'Hall of Fame','Hall of Fame',null,0,null],
-          [91,'City','City11',null,0,['Link Station','Department Store','Enter Pokemon League']],
-          [92,'Battle','E1',{g1:100,g2:0,g3:0,g4:0},5000,null],
-          [93,'Battle','E2',{g1:100,g2:0,g3:0,g4:0},5000,null],
-          [94,'Battle','E3',{g1:100,g2:0,g3:0,g4:0},5000,null],
-          [95,'Battle','E4',{g1:100,g2:0,g3:0,g4:0},5000,null],
-          [96,'Battle','Champion',{g1:100,g2:0,g3:0,g4:0},7500,null],
-          [97,'Hall of Fame','Hall of Fame',null,0,null],
-          [98,'City','City11',null,0,['Link Station','Department Store','Enter Pokemon League']],
+          [63,'City','City8',null,0,['Link Station','Pokemart','Leave City']],
+          [64,'Battle','Elite Trainer',{g1:55,g2:45,g3:0,g4:0},4200,null],
+          [65,'Battle','Elite Trainer',{g1:65,g2:35,g3:0,g4:0},4800,null],
+          [66,'Battle','Elite Trainer',{g1:75,g2:25,g3:0,g4:0},5200,null],
+          [67,'City','City9',null,0,['Link Station','Department Store','Enter Pokemon League']],
+          [68,'Battle','E1',{g1:90,g2:10,g3:0,g4:0},5000,null],
+          [69,'Battle','E2',{g1:95,g2:5,g3:0,g4:0},5000,null],
+          [70,'Battle','E3',{g1:95,g2:5,g3:0,g4:0},5000,null],
+          [71,'Battle','E4',{g1:100,g2:0,g3:0,g4:0},5000,null],
+          [72,'Battle','Champion',{g1:100,g2:0,g3:0,g4:0},7500,null],
+          [73,'Battle','Rival',{g1:95,g2:5,g3:0,g4:0},5000,null],
+          [74,'Hall of Fame','Hall of Fame',null,0,null],
         ];
 
         // Professor grade rolls per city (0-based city index)
@@ -13111,9 +13147,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           {g1:45,g2:55, g3:0,  g4:0},   // City6  — nearly half G1 (no professor in story, but data used if shown)
           {g1:60,g2:40, g3:0,  g4:0},   // City7  — mostly G1
           {g1:75,g2:25, g3:0,  g4:0},   // City8
-          {g1:85,g2:15, g3:0,  g4:0},   // City9
-          {g1:95,g2:5,  g3:0,  g4:0},   // City10
-          {g1:100,g2:0, g3:0,  g4:0},   // City11 — only G1
+          {g1:100,g2:0, g3:0,  g4:0},   // City9 — League City
         ];
 
         // Shop item definitions — Pokémart
@@ -13351,9 +13385,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           ['Victory Road begins in the mind first.','Elite trainers lurk everywhere—stay sharp.','Your team reflects you. Polish them.'],
           ['The summit isn\'t far now…','Cold winds, warm hearts—keep both.','One step at a time. That\'s how champions walk.'],
           ['…Almost there. Breathe.','The Champion\'s room is past the door—past fear.','Legends are written one battle at a time.'],
-          ['Post-game isn\'t the end—it\'s the real test.','New horizons. Same fire.','…Still here? Good. The journey never truly ends.'],
           ['The League awaits. No takebacks.','Final preparations. No regrets.','You\'ve earned this stage. Own it.'],
           ['The champion\'s road ends here… and begins again.','Same city—new you.','Post-League life hits different!'],
+          ['…Still here? Good. The journey never truly ends.','New horizons. Same fire.','Return whenever the battle itch calls.'],
         ];
         const CITY_GUIDE_QUOTES = [
           ['Fresh air, fresh battles!','The Pokémon Center\'s that way—take a breather!','Small steps, big dreams!'],
@@ -14012,7 +14046,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── MAIN EVENT LOOP ───────────────────────────────────────────────
         function processNextEvent() {
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
-            if (!ev) { showHallOfFame(); return; }
+            if (!ev) {
+                sm.active = false;
+                try { deleteSave(); } catch (e) {}
+                showMenu(true);
+                return;
+            }
             const [idx, type, event] = ev;
             if (type === 'City') { enterCity(); return; }
             if (type === 'Hall of Fame') { showHallOfFame(); return; }
@@ -14041,7 +14080,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const el = id => document.getElementById(id);
             const setT = (i,t) => { const e=el(i); if(e) e.textContent=t; };
             setT('story-hud-city', cityName.replace('City','City '));
-            setT('story-hud-badges', `◆ ${sm.badges} Victories`);
+            setT('story-hud-badges', `◆ ${sm.badges} / 8 gym badges`);
             setT('story-hud-gold', `🪙 ${sm.gold.toLocaleString()}G`);
         }
 
@@ -14050,9 +14089,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Starting city (City0): Pokémart for Normal+; Department Store only on Easy / Very Easy
             const _sd = sm.storyDifficulty || 'normal';
             if (getCityIndex(ev) === 0 && (_sd === 'easy' || _sd === 'veryeasy')) {
-                actions = actions.map(a => (a === 'Pokemarkt' ? 'Department Store' : a));
+                actions = actions.map(a => (a === 'Pokemart' ? 'Department Store' : a));
             }
-            if (actions.includes('Department Store')) actions = actions.filter(a => a !== 'Pokemarkt');
+            if (actions.includes('Department Store')) actions = actions.filter(a => a !== 'Pokemart');
             const cityIdx = getCityIndex(ev);
             const hasProf = actions.includes('Professor');
             const hasTeamRoom = sm.team.length < 6;
@@ -14087,7 +14126,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 spriteEl.onload = function() { this.style.visibility = 'visible'; };
             }
             if (npcNameEl) npcNameEl.textContent = speakerLabel;
-            if (labelEl) labelEl.textContent = ev ? `${ev[2]} · ${sm.badges} victories` : `${sm.badges} victories`;
+            if (labelEl) labelEl.textContent = ev ? `${ev[2]} · ${sm.badges} / 8 gym badges` : `${sm.badges} / 8 gym badges`;
             if (dialogNameEl) dialogNameEl.textContent = speakerLabel;
             let quoteText = hasProf
                 ? _pickCityQuoteLine(CITY_PROFESSOR_QUOTES, cityIdx)
@@ -14095,7 +14134,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             quoteText = `"${quoteText}"`;
             if (!sm.storyMilestoneTips) sm.storyMilestoneTips = { m4: false, m8: false };
             if (sm.badges >= 8 && !sm.storyMilestoneTips.m8) {
-                quoteText += '\n\n📻 Trainer Tips: "Eight victories—you\'re practically a legend!"';
+                quoteText += '\n\n📻 Trainer Tips: "Eight gym badges—you\'re practically a legend!"';
                 sm.storyMilestoneTips.m8 = true;
                 save();
             } else if (sm.badges >= 4 && !sm.storyMilestoneTips.m4) {
@@ -14127,10 +14166,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Battle actions
             const hasGym = actions.includes('Gym Battle');
+            const hasVR = actions.includes('Victory Road');
+            const hasTrainerRoad = actions.includes('Trainer Road');
             const hasLeague = actions.includes('Enter Pokemon League');
             if (!sm.gymCleared) sm.gymCleared = {};
             const gymBeat = !!(sm.gymCleared[cityIdx]);
-            const routeLocked = hasGym && !gymBeat;
+            // Block route until the city's gym (or Victor Road / pre-League gauntlet) is cleared
+            const routeLocked = (hasGym || hasVR || hasTrainerRoad) && !gymBeat;
             // Block gym/league until professor is visited in this city (when professor is available)
             const gymBlocked = hasProf && !profUsedHere;
             if (hasGym) {
@@ -14145,20 +14187,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (actions.includes('Leave City')) {
                 if (routeLocked) {
-                    btn.innerHTML += `<button class="story-action-btn primary" disabled title="Defeat the Gym Leader first" style="opacity:0.45;cursor:not-allowed;">→ Continue on Route <span style="font-size:10px;color:#aaa;">(Beat gym first)</span></button>`;
+                    btn.innerHTML += `<button class="story-action-btn primary" disabled title="Clear this area's challenge first" style="opacity:0.45;cursor:not-allowed;">→ Continue on Route <span style="font-size:10px;color:#aaa;">(Complete challenge first)</span></button>`;
                 } else if (!hasLeague) {
                     btn.innerHTML += makeActionBtn('→ Continue on Route','route','window.StoryMode.proceedToNextBattle()','primary');
                 }
             }
-            if (actions.includes('Victory Road')) {
-                if (routeLocked) {
-                    btn.innerHTML += `<button class="story-action-btn primary" disabled title="Defeat the Gym Leader first" style="opacity:0.45;cursor:not-allowed;">🏔 Enter Victory Road <span style="font-size:10px;color:#aaa;">(Beat gym first)</span></button>`;
+            if (hasVR) {
+                if (gymBlocked) {
+                    btn.innerHTML += `<button class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;">🏔 Enter Victory Road <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></button>`;
                 } else {
                     btn.innerHTML += makeActionBtn('🏔 Enter Victory Road','vr','window.StoryMode.proceedToNextBattle()','primary');
                 }
             }
+            if (hasTrainerRoad) {
+                if (gymBlocked) {
+                    btn.innerHTML += `<button class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;">⚔ Pre-League challenge <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></button>`;
+                } else {
+                    btn.innerHTML += makeActionBtn('⚔ Pre-League challenge (trainers)','tr','window.StoryMode.proceedToNextBattle()','primary');
+                }
+            }
             // Shops
-            if (actions.includes('Pokemarkt')) {
+            if (actions.includes('Pokemart')) {
                 btn.innerHTML += makeActionBtn('🛒 Pokémart — Buy items','mart','window.StoryMode.enterShop(\'mart\')','shop');
             }
             if (actions.includes('Link Station')) {
@@ -14739,13 +14788,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if ((sm.artifacts||[]).includes('cursedCoinPouch') && !(sm.artifactsDisabled||[]).includes('cursedCoinPouch')) coinMult *= 2;
                 const coinsAwarded = Math.floor((coins || 0) * coinMult);
                 sm.gold += coinsAwarded;
-                // Award badge if gym leader / E4 / champion
-                const isGymBattle = /Gym Leader|E1|E2|E3|E4|Champion/i.test(event);
-                if (isGymBattle) sm.badges++;
-                if (/Gym Leader/i.test(event)) {
+                const en = String(event || '');
+                const isGymBadge = /^Gym Leader [1-8]$/.test(en);
+                if (isGymBadge) sm.badges++;
+                if (isGymBadge) {
                     if (!sm.gymCleared) sm.gymCleared = {};
                     sm.gymCleared[cityIndexFromEventIndex(sm.eventIndex)] = true;
                 }
+                const isMilestoneVictory = isGymBadge || /^(E1|E2|E3|E4|Champion|Rival)$/.test(en);
                 // Unlock player gimmicks in fixed order — one per gym badge (not league badges)
                 {
                     const order = [];
@@ -14753,7 +14803,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (sm.settings.dynaOn) order.push('dmax');
                     if (sm.settings.teraOn) order.push('tera');
                     if (sm.settings.zOn) order.push('z');
-                    const gymBeatCount = Object.values(sm.gymCleared || {}).filter(Boolean).length;
+                    const gymBeatCount = Math.min(sm.badges | 0, 8);
                     sm.unlockedGimmicks = order.slice(0, Math.min(gymBeatCount, order.length));
                 }
                 sm.currentEnemyLock = null;
@@ -14761,7 +14811,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.eventIndex++;
                 save();
                 // Show result overlay then continue
-                showVictoryOverlay(title, coinsAwarded, isGymBattle, () => {
+                showVictoryOverlay(title, coinsAwarded, isMilestoneVictory, () => {
                     document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
                     processNextEvent();
                 }, event);
@@ -14844,16 +14894,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let badgeFlavor = '';
             if (gotBadge && battleEventName) {
                 const evn = String(battleEventName);
-                if (/Gym Leader/i.test(evn)) badgeFlavor = `<div style="font-size:14px;color:#81c784;">You received a Gym Badge!</div>`;
+                if (/^Gym Leader [1-8]$/i.test(evn)) badgeFlavor = `<div style="font-size:14px;color:#81c784;">You received a Gym Badge!</div>`;
                 else if (/^E[1-4]$/.test(evn)) badgeFlavor = `<div style="font-size:14px;color:#81c784;">Elite Four passed—one step closer!</div>`;
                 else if (evn === 'Champion') badgeFlavor = `<div style="font-size:14px;color:#81c784;">You defeated the Champion!</div>`;
+                else if (evn === 'Rival') badgeFlavor = `<div style="font-size:14px;color:#81c784;">Your rival challenges the new Champion!</div>`;
             }
+            const isGymBadgeEvent = gotBadge && battleEventName && /^Gym Leader [1-8]$/i.test(String(battleEventName));
             ov.innerHTML = `
                 <div class="story-fx-confetti" style="position:absolute;inset:0;pointer-events:none;z-index:0;"></div>
                 <div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;width:100%;max-width:420px;padding:12px;">
                 ${gotBadge ? '<div class="story-victory-badge-slot" title="Milestone">🏅</div>' : ''}
                 <div style="font-size:28px;color:#ffd700;font-weight:bold;">VICTORY!</div>
-                ${gotBadge?`<div style="font-size:16px;color:#4caf50;">Milestone victory! (${sm.badges} total)</div>`:''}
+                ${isGymBadgeEvent?`<div style="font-size:16px;color:#4caf50;">Milestone victory! (${sm.badges} / 8 gym badges)</div>` : (gotBadge?`<div style="font-size:16px;color:#4caf50;">Milestone victory!</div>`:'')}
                 ${badgeFlavor}
                 <div style="font-size:14px;color:#ffeb3b;">+${(coins||0).toLocaleString()}G</div>
                 <div style="font-size:13px;color:#888;">Total Gold: ${sm.gold.toLocaleString()}G</div></div>`;
@@ -15436,34 +15488,48 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _selectedBagItem = null;
         }
 
-        // ── HALL OF FAME (Game Boy–style LCD sequence) ────────────────────
+        // ── HALL OF FAME (Gen-3 style: 2×3 sprites, confetti, welcome text) ─
+        const HOF_DEMO_SPECIES = ['Pikachu', 'Charizard', 'Blastoise', 'Venusaur', 'Snorlax', 'Arcanine', 'Lapras', 'Dragonite', 'Gyarados', 'Gengar', 'Scyther', 'Zapdos', 'Golem', 'Vileplume', 'Moltres', 'Tyranitar', 'Metagross', 'Salamence', 'Garchomp', 'Lucario'];
+
+        function pickHofRandomSpecies6() {
+            const pool = (typeof baseStats === 'object' && baseStats && Object.keys(baseStats).length >= 6)
+                ? Object.keys(baseStats)
+                : HOF_DEMO_SPECIES.slice();
+            const copy = pool.slice();
+            const out = [];
+            for (let k = 0; k < 6; k++) {
+                if (copy.length === 0) break;
+                const i = (typeof storyRngNext === 'function') ? Math.floor(storyRngNext() * copy.length) : Math.floor(Math.random() * copy.length);
+                out.push(copy[i]);
+                copy.splice(i, 1);
+            }
+            while (out.length < 6) out.push('Pikachu');
+            return out;
+        }
+
+        function getHallOfFameDisplaySlots() {
+            const raw = Array.isArray(sm.team) ? sm.team.filter(t => t && t.name) : [];
+            if (raw.length) {
+                const last = raw.slice(-6);
+                const out = [];
+                for (let i = 0; i < 6; i++) {
+                    if (i < last.length) {
+                        out[i] = { name: last[i].name, shiny: !!(last[i].build && last[i].build._isShiny) };
+                    } else {
+                        out[i] = null;
+                    }
+                }
+                return out;
+            }
+            return pickHofRandomSpecies6().map(n => ({ name: n, shiny: (typeof storyRngNext === 'function' ? storyRngNext() : Math.random()) < 0.05 }));
+        }
+
         function showHallOfFame() {
             document.querySelectorAll('.story-hof-gb-overlay').forEach(el => { try { el.remove(); } catch (e) {} });
             window._storyHofToken = (window._storyHofToken || 0) + 1;
             const myTok = window._storyHofToken;
 
-            let playerName = 'TRAINER';
-            try {
-                if (window.OnlineBattle && typeof window.OnlineBattle.getDisplayName === 'function') {
-                    const n = String(window.OnlineBattle.getDisplayName() || '').trim();
-                    if (n) playerName = n.toUpperCase().slice(0, 12);
-                }
-            } catch (e) { /* keep default */ }
-
-            const team = Array.isArray(sm.team) ? sm.team.filter(t => t && t.name) : [];
-            const lines = [
-                { t: 'HALL OF FAME', d: 1000 },
-                { t: '', d: 400 },
-                { t: 'LEAGUE CHAMPION', d: 850 },
-                { t: playerName, d: 950 },
-                { t: '', d: 450 },
-                ...team.map(t => ({ t: String(t.name).toUpperCase(), d: 720 })),
-                ...(team.length ? [] : [{ t: 'NO POKEMON DATA', d: 700 }]),
-                { t: '', d: 400 },
-                { t: 'CONGRATULATIONS!', d: 1100 },
-                { t: '', d: 350 },
-                { t: 'VICTORIES ' + (sm.badges | 0) + '  GOLD ' + (typeof sm.gold === 'number' ? sm.gold.toLocaleString() : String(sm.gold || 0)) + 'G', d: 900 },
-            ];
+            const displaySlots = getHallOfFameDisplaySlots();
 
             const ov = document.createElement('div');
             ov.className = 'story-hof-gb-overlay';
@@ -15471,125 +15537,83 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ov.setAttribute('role', 'dialog');
             ov.setAttribute('aria-modal', 'true');
             ov.setAttribute('aria-label', 'Hall of Fame');
-            ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;padding:max(16px, env(safe-area-inset-bottom));overflow-y:auto;background:radial-gradient(ellipse at 50% 30%, #252a1e 0%, #0a0b08 65%);';
+            ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;padding:max(16px, env(safe-area-inset-bottom));overflow-y:auto;background:radial-gradient(ellipse at 50% 20%, #2a2f3a 0%, #0c0d12 55%);';
 
-            const consoleEl = document.createElement('div');
-            consoleEl.className = 'story-hof-gb-console';
-            consoleEl.innerHTML =
-                '<div class="story-hof-gb-product">POKEMON RETRO</div>' +
-                '<div class="story-hof-gb-bezel">' +
-                '<div class="story-hof-gb-screen">' +
-                '<div class="story-hof-gb-scanlines" aria-hidden="true"></div>' +
-                '<pre class="story-hof-gb-pre" id="story-hof-gb-pre"></pre>' +
-                '</div></div>' +
-                '<p class="story-hof-gb-hint" id="story-hof-gb-hint">Tap or Enter: skip to buttons</p>';
+            const panel = document.createElement('div');
+            panel.className = 'story-hof-gba-panel';
+
+            const stage = document.createElement('div');
+            stage.className = 'story-hof-gba-sprite-stage';
+            const conf = document.createElement('div');
+            conf.className = 'story-fx-confetti';
+            conf.setAttribute('aria-hidden', 'true');
+            stage.appendChild(conf);
+            const stripe = document.createElement('div');
+            stripe.className = 'story-hof-gba-stripe';
+            stripe.setAttribute('aria-hidden', 'true');
+            stage.appendChild(stripe);
+
+            const grid = document.createElement('div');
+            grid.className = 'story-hof-gba-grid';
+            for (let i = 0; i < 6; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'story-hof-gba-cell';
+                const slot = displaySlots[i];
+                if (slot && slot.name) {
+                    const im = document.createElement('img');
+                    im.alt = String(slot.name);
+                    im.setAttribute('data-shiny', slot.shiny ? 'true' : 'false');
+                    im.setAttribute('loading', 'eager');
+                    im.setAttribute('decoding', 'async');
+                    if (typeof getSprite === 'function') im.src = getSprite(slot.name, !!slot.shiny);
+                    if (typeof handleSpriteError === 'function') im.onerror = function() { handleSpriteError(this); };
+                    if (slot.shiny) im.style.filter = 'drop-shadow(0 0 4px rgba(255,215,0,0.7))';
+                    cell.appendChild(im);
+                }
+                grid.appendChild(cell);
+            }
+            stage.appendChild(grid);
+            panel.appendChild(stage);
+
+            const lower = document.createElement('div');
+            lower.className = 'story-hof-gba-lower';
+            const welcome = document.createElement('p');
+            welcome.className = 'story-hof-gba-welcome';
+            welcome.innerHTML = 'Welcome to the <span class="story-hof-gba-hof">HALL OF FAME</span>!';
+            lower.appendChild(welcome);
+            panel.appendChild(lower);
 
             const footer = document.createElement('div');
             footer.className = 'story-hof-gb-footer';
-            footer.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px;opacity:0;transition:opacity 0.45s ease;pointer-events:none;';
+            footer.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;justify-content:center;pointer-events:auto;';
             const btnCont = document.createElement('button');
             btnCont.type = 'button';
             btnCont.className = 'story-hof-gb-btn story-hof-gb-btn-primary';
             btnCont.textContent = 'CONTINUE (POST-GAME)';
-            btnCont.onclick = function() { window.StoryMode.continuePostGame(); };
+            btnCont.onclick = function() { if (myTok === window._storyHofToken) window.StoryMode.continuePostGame(); };
             const btnEnd = document.createElement('button');
             btnEnd.type = 'button';
             btnEnd.className = 'story-hof-gb-btn';
             btnEnd.textContent = 'END RUN';
-            btnEnd.onclick = function() { window.StoryMode.abandonAndReturn(); };
+            btnEnd.onclick = function() { if (myTok === window._storyHofToken) window.StoryMode.abandonAndReturn(); };
             footer.appendChild(btnCont);
             footer.appendChild(btnEnd);
 
-            ov.appendChild(consoleEl);
+            ov.appendChild(panel);
             ov.appendChild(footer);
             document.body.appendChild(ov);
 
-            const pre = ov.querySelector('#story-hof-gb-pre');
-            const hint = ov.querySelector('#story-hof-gb-hint');
-            if (!pre || !hint) {
-                try { ov.remove(); } catch (e2) {}
-                save();
-                return;
+            if (myTok === window._storyHofToken) {
+                try { storySpawnConfetti(conf, 40); } catch (e) { /* */ }
             }
-            let lineIdx = 0;
-            let seqDone = false;
-            let timeoutId = null;
-
-            function finishSeq() {
-                if (seqDone) return;
-                if (myTok !== window._storyHofToken) return;
-                seqDone = true;
-                if (timeoutId) clearTimeout(timeoutId);
-                timeoutId = null;
-                try { ov.removeEventListener('click', skipSequence); } catch (e) {}
-                try { document.removeEventListener('keydown', onKeySkip); } catch (e) {}
-                hint.style.opacity = '1';
-                footer.style.opacity = '1';
-                footer.style.pointerEvents = 'auto';
-            }
-
-            function showStep() {
-                if (myTok !== window._storyHofToken) return;
-                if (lineIdx >= lines.length) {
-                    finishSeq();
-                    return;
-                }
-                const row = lines[lineIdx];
-                if (row.t) pre.textContent += row.t + '\n';
-                else pre.textContent += '\n';
-                pre.scrollTop = pre.scrollHeight;
-                lineIdx++;
-                if (lineIdx >= lines.length) {
-                    finishSeq();
-                    return;
-                }
-                timeoutId = setTimeout(function stepLater() {
-                    timeoutId = null;
-                    if (myTok !== window._storyHofToken) return;
-                    showStep();
-                }, row.d);
-            }
-
-            function skipSequence(e) {
-                if (myTok !== window._storyHofToken) return;
-                if (seqDone) return;
-                const t = e && e.target;
-                if (t && typeof t.closest === 'function' && t.closest('button')) return;
-                if (timeoutId) clearTimeout(timeoutId);
-                timeoutId = null;
-                while (lineIdx < lines.length) {
-                    const row = lines[lineIdx];
-                    if (row.t) pre.textContent += row.t + '\n';
-                    else pre.textContent += '\n';
-                    lineIdx++;
-                }
-                pre.scrollTop = pre.scrollHeight;
-                finishSeq();
-            }
-
-            function onKeySkip(e) {
-                if (myTok !== window._storyHofToken) {
-                    try { document.removeEventListener('keydown', onKeySkip); } catch (err) {}
-                    return;
-                }
-                if (seqDone) return;
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    skipSequence({});
-                }
-            }
-
-            ov.addEventListener('click', skipSequence);
-            document.addEventListener('keydown', onKeySkip);
-
-            timeoutId = setTimeout(function boot() {
-                timeoutId = null;
-                if (myTok !== window._storyHofToken) return;
-                showStep();
-            }, 500);
 
             save();
+        }
+
+        /** For UI/dev: open the Hall of Fame without reaching event 90/97. Loads the latest story save if one exists so team matches your save. */
+        function previewHallOfFame() {
+            try { if (hasSave()) load(); } catch (e) { /* use in-memory sm */ }
+            showHallOfFame();
         }
 
         function continuePostGame() {
@@ -15744,6 +15768,193 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         window.buildFoeStoryInventoryForBattle = buildFoeStoryInventoryForBattle;
 
+        // ── STORY TEAM TESTER (dev / balance) ─────────────────────────────
+        function countGymBadgesBeforeStoryRow(rowIndex) {
+            let c = 0;
+            for (let i = 0; i < rowIndex; i++) {
+                const r = STORY_EVENTS_RAW[i];
+                if (!r || r[1] !== 'Battle') continue;
+                if (/^Gym Leader [1-8]$/.test(String(r[2] || ''))) c++;
+            }
+            return c;
+        }
+        function shouldIncludeBattleInTesterFilter(eventName, f) {
+            const e = String(eventName || '');
+            if (f === 'all') return true;
+            if (f === 'no_basic') return e !== 'Basic Trainer';
+            if (f === 'league') return (e === 'E1' || e === 'E2' || e === 'E3' || e === 'E4' || e === 'Champion');
+            if (f === 'gym_e4') {
+                return /^Gym Leader/i.test(e) || /^E[1-4]$/.test(e) || e === 'Champion' || e === 'Rival' || e === 'Victory Road';
+            }
+            return true;
+        }
+        let _lastTeamTesterPlain = '';
+        function _esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+        function openTeamTester() {
+            document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
+            const st = document.getElementById('screen-story-tester');
+            if (st) st.classList.remove('hidden');
+        }
+        function openTeamTesterSyncFromStory() {
+            for (let g = 1; g <= 9; g++) {
+                const a = document.getElementById(`story-gen-cb-${g}`);
+                const b = document.getElementById(`tester-gen-cb-${g}`);
+                if (a && b) b.checked = a.checked;
+            }
+            const m = { mega: 'story-mech-mega', z: 'story-mech-z', dyna: 'story-mech-dyna', tera: 'story-mech-tera' };
+            const tm = { mega: 'tester-mech-mega', z: 'tester-mech-z', dyna: 'tester-mech-dyna', tera: 'tester-mech-tera' };
+            for (const k of Object.keys(m)) {
+                const a = document.getElementById(m[k]);
+                const b = document.getElementById(tm[k]);
+                if (a && b) b.checked = a.checked;
+            }
+            const ds = document.getElementById('story-difficulty');
+            const dt = document.getElementById('tester-difficulty');
+            if (ds && dt && ds.value) dt.value = ds.value;
+            const ss = document.getElementById('story-setting-seed');
+            const ts = document.getElementById('tester-seed');
+            if (ss && ts && ss.value && /^\d+$/.test(String(ss.value).trim())) ts.value = ss.value;
+        }
+        function runTeamTester() {
+            const out = document.getElementById('story-tester-out');
+            if (!out) return;
+            out.innerHTML = '<div style="color:#888;">Generating…</div>';
+            const rawSeed = (document.getElementById('tester-seed') && document.getElementById('tester-seed').value || '').trim();
+            let seed = (rawSeed && /^\d+$/.test(rawSeed)) ? (parseInt(rawSeed, 10) >>> 0) : ((Math.random() * 0xFFFFFFFF) | 0);
+            if (document.getElementById('tester-seed') && !rawSeed) document.getElementById('tester-seed').value = String(seed);
+            const partySizeN = Math.max(1, Math.min(6, parseInt((document.getElementById('tester-party-size') && document.getElementById('tester-party-size').value) || '6', 10) || 6));
+            const filter = (document.getElementById('tester-filter') && document.getElementById('tester-filter').value) || 'all';
+            const diff = (document.getElementById('tester-difficulty') && document.getElementById('tester-difficulty').value) || 'normal';
+            const enabledGens = [];
+            for (let g = 1; g <= 9; g++) {
+                const el = document.getElementById(`tester-gen-cb-${g}`);
+                if (el && el.checked) enabledGens.push(g);
+            }
+            const ng = normalizeEnabledGens(enabledGens.length ? enabledGens : [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+            const snap = {
+                runSeed: sm.runSeed, _strngState: sm._strngState, active: sm.active, badges: sm.badges|0, storyDifficulty: sm.storyDifficulty,
+                eventIndex: sm.eventIndex, trainerAssignments: (sm.trainerAssignments && { ...sm.trainerAssignments }) || {},
+                team: (sm.team && sm.team.length) ? sm.team.map(s => (typeof s === 'object' && s ? { ...s, build: s.build ? { ...s.build } : s.build } : s)) : [],
+                settings: sm.settings ? JSON.parse(JSON.stringify(sm.settings)) : null
+            };
+            let errMsg = null;
+            const rowsOut = [];
+            let lines = [];
+            try {
+                sm.active = true;
+                sm.runSeed = seed;
+                sm._strngState = null;
+                sm.storyDifficulty = diff;
+                sm.settings = {
+                    enabledGens: ng,
+                    minGen: Math.min(...ng),
+                    maxGen: Math.max(...ng),
+                    megaOn: !!(document.getElementById('tester-mech-mega') && document.getElementById('tester-mech-mega').checked),
+                    zOn: !!(document.getElementById('tester-mech-z') && document.getElementById('tester-mech-z').checked),
+                    dynaOn: !!(document.getElementById('tester-mech-dyna') && document.getElementById('tester-mech-dyna').checked),
+                    teraOn: !!(document.getElementById('tester-mech-tera') && document.getElementById('tester-mech-tera').checked),
+                    classicMode: true
+                };
+                sm.team = Array.from({ length: partySizeN }, () => ({ name: 'Tester', build: { gimmick: 'STANDARD' } }));
+                sm.badges = 0;
+                sm.eventIndex = 0;
+                applyMechanicsToSettings();
+                assignTrainers(ng);
+                const sg = storySettingsGens();
+                for (let pos = 0; pos < STORY_EVENTS_RAW.length; pos++) {
+                    const ev = STORY_EVENTS_RAW[pos];
+                    if (!ev || ev[1] !== 'Battle') continue;
+                    const eventName = String(ev[2] || '');
+                    if (!shouldIncludeBattleInTesterFilter(eventName, filter)) continue;
+                    const [eid, , , gw, coins] = ev;
+                    sm.badges = countGymBadgesBeforeStoryRow(pos);
+                    const trainerName = sm.trainerAssignments[eid];
+                    const pref = preferredTypeBeforeGymBattle(pos);
+                    const trainer = (trainerName && TRAINER_DATA.find(t => t.name === trainerName))
+                        || selectTrainerForRole(eventName, ng, null, pref);
+                    if (!trainer) continue;
+                    sm.eventIndex = pos;
+                    const isLate = /Gym Leader [678]|E1|E2|E3|E4|Champion|Victory Road/i.test(eventName);
+                    const ps = isLate ? 6 : Math.min(Math.max(sm.team.length, 1), 6);
+                    const enemyTeam = rollTrainerTeam(trainer, ps, gw || { g1:0, g2:0, g3: 50, g4: 50 }, sg, eventName);
+                    rowsOut.push({ pos, eid, eventName, trainer: trainer.name, trainerType: trainer.type, badges: sm.badges, partySize: ps, gradeWeights: gw, coins, team: enemyTeam });
+                    let line = `#${eid} row@${pos} ${eventName} | ${trainer.name} (${trainer.type}) | pre-fight badges=${sm.badges} | size=${ps} | g ${JSON.stringify(gw || {})}`;
+                    enemyTeam.forEach((slot, i) => {
+                        const b = slot && slot.build;
+                        const g = b && b.gimmick ? b.gimmick : 'STANDARD';
+                        const tt = b && b.teraType ? ' Tera:' + b.teraType : '';
+                        line += '\n  ' + (i + 1) + '. ' + slot.name + '  [' + g + ']' + tt;
+                    });
+                    lines.push(line);
+                }
+            } catch (e) {
+                errMsg = e && (e.message || String(e));
+                console.warn('[Story team tester]', e);
+            } finally {
+                sm.runSeed = snap.runSeed;
+                sm._strngState = snap._strngState;
+                sm.active = snap.active;
+                sm.badges = snap.badges;
+                sm.storyDifficulty = snap.storyDifficulty;
+                sm.trainerAssignments = snap.trainerAssignments;
+                sm.settings = snap.settings;
+                sm.eventIndex = snap.eventIndex;
+                sm.team = snap.team;
+                try { applyMechanicsToSettings(); } catch (e2) {}
+            }
+            _lastTeamTesterPlain = [`Story team tester  seed=${seed}  filter=${filter}  difficulty=${diff}  gens=[${ng.join(',')}]`,
+                errMsg ? 'ERROR: ' + errMsg : 'OK',
+                '---', ...lines].join('\n');
+            if (errMsg) {
+                out.innerHTML = '<div style="color:#f44336;">' + _esc(errMsg) + '</div><pre style="color:#888;font-size:11px;white-space:pre-wrap;">' + _esc(_lastTeamTesterPlain) + '</pre>';
+                return;
+            }
+            let h = '<div style="color:#9e9e9e;font-size:11px;margin-bottom:10px;">Seed: <b style="color:#ce93d8;">' + _esc(String(seed)) + '</b> &middot; Battles listed: <b style="color:#fff;">' + rowsOut.length + '</b> &middot; Filter: <b>' + _esc(filter) + '</b> &middot; Gens: ' + _esc(ng.join(',')) + '</div>';
+            rowsOut.forEach(r => {
+                h += '<div style="border:1px solid #333;border-radius:8px;padding:10px 12px;margin-bottom:10px;background:rgba(20,20,28,0.6);">';
+                h += '<div style="color:#ce93d8;font-weight:bold;margin-bottom:4px;">#' + _esc(String(r.eid)) + ' <span style="color:#888;font-weight:400;">@row ' + r.pos + '</span> — ' + _esc(r.eventName) + '</div>';
+                h += '<div style="color:#aaa;font-size:11px;margin-bottom:8px;">Trainer: <b style="color:#e0e0e0;">' + _esc(r.trainer) + '</b> (' + _esc(r.trainerType) + ') &middot; pre-fight gym badges: ' + r.badges + ' &middot; party: ' + r.partySize + (r.coins != null ? ' &middot; ' + r.coins + 'G' : '') + '</div>';
+                h += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;">';
+                (r.team || []).forEach((slot, i) => {
+                    const b = slot && slot.build;
+                    const g = (b && b.gimmick) || 'STANDARD';
+                    const tt = (b && b.teraType) ? '<span style="color:#4fc3f7;font-size:10px;"> Tera ' + _esc(b.teraType) + '</span>' : '';
+                    h += '<div style="border:1px solid #2a2a2e;border-radius:6px;padding:6px 8px;background:#121218;"><div style="font-weight:600;">' + (i + 1) + '. ' + _esc(slot.name) + '</div>';
+                    h += '<div style="font-size:10px;color:#888;">' + _esc(g) + tt + '</div></div>';
+                });
+                h += '</div></div>';
+            });
+            out.innerHTML = h;
+        }
+        function copyTeamTesterText() {
+            if (!_lastTeamTesterPlain) {
+                if (window.showGameAlert) window.showGameAlert('Generate teams first.');
+                return;
+            }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(_lastTeamTesterPlain).then(function() { if (window.showGameAlert) window.showGameAlert('Copied to clipboard.'); }, function() {});
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = _lastTeamTesterPlain;
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); } catch (e) {}
+                ta.remove();
+                if (window.showGameAlert) window.showGameAlert('Copied (fallback).');
+            }
+        }
+        function closeTeamTester() {
+            document.getElementById('screen-story-tester') && document.getElementById('screen-story-tester').classList.add('hidden');
+            const m = document.getElementById('screen-menu');
+            if (m) m.classList.remove('hidden');
+        }
+
         // ── PUBLIC API ────────────────────────────────────────────────────
         return {
             showMenu, startNewRun, continueRun, retryFromGameOver, isActive, hasSave,
@@ -15754,6 +15965,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openBattleBag, useBagItemOn,
             confirmAbandon, abandonAndReturn, continuePostGame,
             openSummary, profOpenSummary, summaryMove, enterArtifactHall, toggleArtifactDisabled,
+            openTeamTester, openTeamTesterSyncFromStory, runTeamTester, copyTeamTesterText, closeTeamTester,
+            previewHallOfFame,
         };
         })(); // end StoryMode IIFE
 
