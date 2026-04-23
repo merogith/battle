@@ -2574,6 +2574,18 @@
                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="story-mech-dyna"><span style="color:#ef5350;">&#128165; Dynamax</span></label>
                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="story-mech-tera"><span style="color:#4fc3f7;">&#11046; Tera</span></label>
                 </div>
+                <div style="font-size:11px;color:#888;margin:10px 0 4px;">In-battle mechanics use (per Pok&#233;mon can still use its gimmick only once each battle):</div>
+                <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:12px;">
+                    <span style="color:#aaa;white-space:nowrap;">Mode:</span>
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+                        <input type="radio" name="story-battle-mech-mode" id="story-mode-classic-rb" checked>
+                        <span style="color:var(--hp-yellow);">Classic (1 use/team per mechanic type)</span>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+                        <input type="radio" name="story-battle-mech-mode" id="story-mode-unlimited-rb">
+                        <span style="color:var(--hp-green);">Unlimited (each mon)</span>
+                    </label>
+                </div>
             </div>
             <!-- Buttons -->
             <button onclick="window.StoryMode.startNewRun()" style="padding:14px;font-size:15px;border-color:#ff6b6b;color:#ff6b6b;background:#1a0808;">&#9670; New Adventure</button>
@@ -13498,7 +13510,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         let sm = { active:false, eventIndex:0, badges:0, gold:1000, team:[],
                    inventory:{}, artifacts:[], activeArtifactType:null,
                    trainerAssignments:{}, currentTrainerData:null,
-                   settings:{ minGen:1, maxGen:9, enabledGens:[1,2,3,4,5,6,7,8,9], megaOn:false, zOn:false, dynaOn:false, teraOn:false },
+                   settings:{ minGen:1, maxGen:9, enabledGens:[1,2,3,4,5,6,7,8,9], megaOn:false, zOn:false, dynaOn:false, teraOn:false, classicMode:true },
                    gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{}, currentEnemyLock:null,
                    artifactsDisabled:[], storyCityVisit:null,
                    profIntroThemePending:false,
@@ -13559,6 +13571,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sm.settings.minGen = Math.min(...sm.settings.enabledGens);
                     sm.settings.maxGen = Math.max(...sm.settings.enabledGens);
                 }
+                if (sm.settings && typeof sm.settings.classicMode !== 'boolean') sm.settings.classicMode = true;
                 return true;
             } catch(e) { return false; }
         }
@@ -13965,6 +13978,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     zOn:    document.getElementById('story-mech-z')?.checked||false,
                     dynaOn: document.getElementById('story-mech-dyna')?.checked||false,
                     teraOn: document.getElementById('story-mech-tera')?.checked||false,
+                    classicMode: document.getElementById('story-mode-classic-rb')?.checked !== false,
                 },
                 storyDifficulty: _storyDiff,
                 runSeed: (() => { const v = document.getElementById('story-setting-seed')?.value?.trim(); return (v && /^\d+$/.test(v)) ? (parseInt(v, 10) >>> 0) : ((Math.random() * 0xFFFFFFFF) | 0); })(),
@@ -13992,6 +14006,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             settings.mechanics.zmove   = sm.settings.zOn;
             settings.mechanics.dynamax = sm.settings.dynaOn;
             settings.mechanics.tera    = sm.settings.teraOn;
+            settings.classicMode       = sm.settings.classicMode !== false;
         }
 
         // ── MAIN EVENT LOOP ───────────────────────────────────────────────
@@ -14679,6 +14694,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function launchBattle(enemyTeam) {
+            applyMechanicsToSettings();
             // Build player p1Draft and enemy p2Draft for state
             const p1Draft = sm.team.map(t => ({ name: t.name, build: t.build }));
             const p2Draft = enemyTeam;
@@ -15608,6 +15624,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (sd && sm.storyDifficulty) sd.value = sm.storyDifficulty;
             if (hasSv && sm.settings) {
                 setStoryGenCheckboxes(sm.settings.enabledGens || rangeToEnabledGens(sm.settings.minGen ?? 1, sm.settings.maxGen ?? 9));
+            }
+            const sClassic = document.getElementById('story-mode-classic-rb');
+            const sUnlim   = document.getElementById('story-mode-unlimited-rb');
+            if (sClassic && sUnlim) {
+                const cl = (hasSv && sm.settings) ? (sm.settings.classicMode !== false) : (sClassic.checked !== false);
+                sClassic.checked = cl;
+                sUnlim.checked = !cl;
             }
             // Show current run seed so player can share it
             const si = document.getElementById('story-setting-seed');
