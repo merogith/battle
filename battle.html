@@ -9,6 +9,7 @@
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="icons/app-icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icons/app-icon.svg">
+    <meta name="theme-color" content="#0a0a0a">
     <title>Retro Battle Sim - Competitive Fix</title>
     <style>
         /* Battle UI tokens — single theme for stat boxes, log, commands (overrides use these, not parallel palettes). */
@@ -32,7 +33,20 @@
             --battle-btn-radius: 4px;
             --battle-btn-gap: var(--battle-space-1);
         }
-        html { height: 100%; overscroll-behavior: none; }
+        /* Polish: native dark scrollbars/inputs, crisp text, readable selection, keyboard focus */
+        html { height: 100%; overscroll-behavior: none; color-scheme: dark; }
+        body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        ::selection { background: rgba(255, 213, 79, 0.22); color: inherit; }
+        :where(button, [type="button"], [type="submit"], [type="reset"], a[href], input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])):focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .story-fx-confetti span { animation: none !important; opacity: 0; }
+            .story-victory-badge-slot { animation: none !important; }
+            #rotate-overlay .rotate-icon { animation: none !important; }
+            .hp-fill.hp-critical { animation: none !important; }
+        }
         /* Full-viewport underlay: softens letterboxing around the fixed 960×700 frame on wide displays */
         body::before {
             content: '';
@@ -142,6 +156,11 @@
             flex-direction: column;
             min-height: 100dvh;
             min-height: 100svh;
+            max-width: none;
+            width: 100%;
+        }
+        body.is-mobile #game-stage > .screen {
+            max-width: none;
         }
         body.is-mobile #game-stage {
             flex: 1;
@@ -162,11 +181,82 @@
         body.is-mobile #screen-battle .battle-bottom-stack {
             background: linear-gradient(180deg, rgba(12,18,28,0.5) 0%, rgba(8,11,18,0.9) 100%) !important;
         }
+        /* Landscape: avoid a tall “film” over the arena — tint only the chrome rows, not the whole stack */
+        @media screen and (orientation: landscape) and ((hover: none) or (pointer: coarse)) {
+            body.is-mobile #screen-battle .battle-bottom-stack { background: transparent !important; }
+            /* Long Pokémon names still fit; short names (e.g. Corsola) must not break mid-word in a narrow foe card */
+            body.is-mobile #foe-stat-box .stat-box-name {
+                white-space: nowrap;
+                -webkit-line-clamp: unset;
+                line-clamp: unset;
+                display: block;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+        }
         /* Softer edge darkening on touch (less “empty black” over the stadium). */
         body.is-mobile #screen-battle::before {
             background:
                 radial-gradient(ellipse 85% 55% at 50% 100%, rgba(0,0,0,0.0) 45%, rgba(0,0,0,0.28) 100%),
                 radial-gradient(ellipse 100% 42% at 50% 0%, rgba(0,0,0,0.18) 0%, transparent 72%);
+        }
+        /* Touch landscape: no full-screen vignette (avoids a sharp “filter” seam through mid‑arena); tint only the lower area */
+        @media screen and (orientation: landscape) and ((hover: none) or (pointer: coarse)) {
+            body.is-mobile #screen-battle::before {
+                top: 42%;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                height: auto;
+                background: radial-gradient(ellipse 120% 90% at 50% 100%, rgba(0,0,0,0) 42%, rgba(0,0,0,0.11) 100%);
+            }
+            body.is-mobile #screen-battle .battle-bottom-stack,
+            body.is-mobile #screen-battle .ui-bottom {
+                overflow: hidden;
+            }
+            body.is-mobile #screen-battle .mob-info-btn {
+                width: 26px;
+                height: 26px;
+                min-width: 26px;
+                min-height: 26px;
+                font-size: 11px;
+            }
+            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"] #move-menu.white-outline,
+            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"] #command-menu.white-outline {
+                background: rgba(12, 14, 20, 0.48);
+                border-color: rgba(255, 255, 255, 0.12);
+            }
+            /* Only the player stat card is real UI here — a full-width row background looked like an empty “filter” over the arena */
+            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"] .battle-player-hud-row {
+                align-self: flex-start;
+                width: auto;
+                max-width: 100%;
+                background: transparent !important;
+                border-top: none !important;
+                box-sizing: border-box;
+            }
+            /* 6v6: six party balls + narrow landscape cards — wrap balls to a second row, compact orbs */
+            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] .stat-box-header {
+                flex-wrap: wrap;
+                align-items: center;
+                column-gap: 4px;
+                row-gap: 2px;
+            }
+            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] #foe-party-bar,
+            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] #player-party-bar {
+                flex-basis: 100%;
+                width: 100%;
+                gap: 2px !important;
+                margin-top: 1px;
+            }
+            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] #foe-party-bar {
+                justify-content: flex-end;
+            }
+            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] .party-bar-ball {
+                width: 10px !important;
+                height: 10px !important;
+                box-sizing: border-box;
+            }
         }
         .hidden { display: none !important; } .active { display: block; }
         .white-outline { outline: none; border: 1px solid var(--border-color); padding: 10px; background: var(--battle-panel-bg); border-radius: var(--battle-radius); }
@@ -581,6 +671,17 @@
         .prof-pick-card { flex: 1 1 280px; max-width: 420px; min-width: min(100%, 240px); }
         .prof-pick-card-selected { transform: scale(1.02); border-color: var(--accent) !important; box-shadow: 0 0 18px rgba(255,213,79,0.22); }
         .story-shop-item { border:1px solid #333; border-radius:5px; padding:10px; background:var(--surface); display:flex; flex-direction:column; gap:4px; }
+        .story-featured-section {
+            grid-column: 1 / -1;
+            border-top: 1px solid #555;
+            padding-top: 12px;
+            margin-top: 8px;
+            margin-bottom: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .story-featured-section h4 { margin: 0; color: #ffb74d; }
         .story-shop-item h4 { margin:0; font-size:12px; color:var(--accent); }
         .story-shop-item .price { color:#ffd700; font-size:11px; font-weight:bold; }
         .story-shop-item .desc { color:#888; font-size:10px; line-height:1.3; }
@@ -1063,7 +1164,7 @@
         body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) .battle-btn-move { padding: 3px 5px; }
         body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) .battle-btn-move .move-tile-name { font-size: 12px; line-height: 1.2; }
         body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) .battle-btn-move .move-tile-meta { margin-top: 1px; font-size: 9px; gap: 1px 4px; }
-        body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) .move-info-hit { width: 32px; height: 32px; min-width: 32px; min-height: 32px; font-size: 13px; opacity: 0.55; }
+        body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) .move-info-hit { width: 28px; height: 28px; min-width: 28px; min-height: 28px; font-size: 12px; opacity: 0.55; }
         body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) #move-menu .move-menu-back { min-height: 38px; padding: 5px 8px; }
         body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) #move-menu .move-menu-scroll button.battle-btn-move { min-height: 40px; }
 
@@ -1146,6 +1247,10 @@
             border-bottom: none;
             margin: 2px 0 1px;
         }
+        #move-menu.move-menu-no-gimmicks .move-menu-scroll {
+            align-content: stretch;
+            grid-auto-rows: minmax(52px, 1fr);
+        }
         .move-info-hit:active { background: rgba(255,213,79,0.22); filter: brightness(0.95); }
         #text-tooltip { position: fixed; z-index: 8000; box-sizing: border-box; }
         #text-tooltip.tooltip-tap-mode { pointer-events: auto; z-index: 8000; max-width: min(94vw, 320px); }
@@ -1177,9 +1282,10 @@
         body:has(#screen-story-gameover:not(.hidden)) #screen-story-gameover { padding-top: 52px; box-sizing: border-box; }
 
         /* ── Phone landscape ──────────────────────────────────────────────── */
-        @media screen and (max-height: 500px) and (min-width: 600px) and (orientation: landscape) and ((hover: none) or (pointer: coarse)) {
-            #screen-battle { --battle-ui-h: clamp(150px, 52dvh, 200px); --sprite-foe-w: min(36vw, 168px); --sprite-player-w: min(36vw, 160px); }
-            body.is-mobile #screen-battle.battle-phase-moves { --battle-ui-h: clamp(150px, 52dvh, 200px); }
+        @media screen and (max-height: 500px) and (max-width: 900px) and (orientation: landscape) and ((hover: none) or (pointer: coarse)) {
+            /* Short landscape: keep more room for the arena; 52dvh was eating ~half the viewport */
+            #screen-battle { --battle-ui-h: clamp(108px, 30dvh, 158px); --sprite-foe-w: min(32vw, 152px); --sprite-player-w: min(32vw, 148px); }
+            body.is-mobile #screen-battle.battle-phase-moves { --battle-ui-h: clamp(108px, 30dvh, 158px); }
             body { align-items: stretch; justify-content: stretch; }
             .screen, #app-root { max-width: 100vw; width: 100vw; height: 100dvh; max-height: 100dvh; font-size: 11px; }
             .mob-info-btn { display: inline-flex; }
@@ -1189,15 +1295,21 @@
                 width: min(176px, 38vw); padding: 5px 7px; font-size: 9px;
                 background: var(--battle-panel-bg); border-radius: var(--battle-radius); border: 1px solid var(--border-color);
             }
+            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] #foe-stat-box {
+                width: min(200px, 48vw);
+            }
             body.is-mobile .battle-player-hud-row {
-                justify-content: flex-start; padding: 4px 6px 2px;
-                background: linear-gradient(180deg, rgba(12,18,28,0.25) 0%, rgba(8,12,20,0.72) 100%);
-                border-top: 1px solid var(--border-color);
+                justify-content: flex-start;
+                padding: 4px max(6px, env(safe-area-inset-left, 0px)) 2px max(6px, env(safe-area-inset-right, 0px));
             }
             body.is-mobile #battle-bottom-stack #player-stat-box {
                 width: min(200px, 42vw); max-width: min(210px, 44vw);
                 margin: 0; padding: 5px 7px; font-size: 9px;
                 border-radius: var(--battle-radius); border: 1px solid var(--border-color);
+                background: var(--battle-panel-bg);
+            }
+            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] #battle-bottom-stack #player-stat-box {
+                width: min(220px, 50vw); max-width: min(232px, 52vw);
             }
             .battle-bottom-stack .ui-bottom { flex: 0 0 var(--battle-ui-h); height: var(--battle-ui-h); }
             #player-hp-text, #foe-hp-text { font-size: 7px; }
@@ -1206,19 +1318,19 @@
             #foe-stages, #player-stages { max-height: none; overflow: visible; }
             .hp-bar-container { height: 5px; margin-top: 2px; border-radius: 0; }
             #foe-sprite-container {
-                width: min(168px, 36vw); height: min(182px, 40vw);
-                top: calc(56px + var(--safe-top, 0px)); bottom: auto;
-                left: auto; right: calc(14px + min(5vw, 48px) + var(--safe-right, 0px));
+                width: min(152px, 32vw); height: min(164px, 34vw);
+                top: calc(50px + var(--safe-top, 0px)); bottom: auto;
+                left: auto; right: calc(12px + min(4vw, 40px) + var(--safe-right, 0px));
                 transform: none; z-index: 2;
             }
-            #foe-sprite { width: min(156px, 34vw); height: min(156px, 34vw); max-width: 100%; max-height: 94%; object-fit: contain; }
+            #foe-sprite { width: min(140px, 30vw); height: min(140px, 30vw); max-width: 100%; max-height: 88%; object-fit: contain; bottom: 6px; }
             #player-sprite-container {
-                width: min(160px, 36vw); height: min(174px, 38vw);
-                bottom: calc(var(--battle-ui-h) + 76px);
-                left: calc(10px + min(4vw, 40px) + var(--safe-left, 0px)); right: auto;
+                width: min(148px, 32vw); height: min(158px, 34vw);
+                bottom: calc(var(--battle-ui-h) + clamp(56px, 14dvh, 72px));
+                left: calc(8px + min(3vw, 28px) + var(--safe-left, 0px)); right: auto;
                 transform: none; z-index: 3;
             }
-            #player-sprite { width: min(148px, 33vw); height: min(148px, 33vw); max-width: 100%; max-height: 94%; object-fit: contain; }
+            #player-sprite { width: min(132px, 29vw); height: min(132px, 29vw); max-width: 100%; max-height: 88%; object-fit: contain; bottom: 12px; }
             .icon-btn { width: 34px; height: 34px; right: calc(8px + var(--safe-right, 0px)); font-size: 14px; }
             .settings-btn { top: calc(6px + var(--safe-top, 0px)); }
             #field-conditions {
@@ -1228,21 +1340,34 @@
             }
             .field-pill { min-height: 20px; font-size: 7px; padding: 1px 4px; border-radius: 0; }
             #gauntlet-score {
-                top: auto; bottom: calc(var(--battle-ui-h) + 76px);
+                top: auto; bottom: calc(var(--battle-ui-h) + clamp(56px, 14dvh, 72px));
                 left: auto; right: calc(8px + var(--safe-right, 0px));
                 font-size: 8px; background: var(--battle-panel-bg);
                 border: 1px solid var(--border-color); padding: 3px 6px; border-radius: var(--battle-radius);
             }
-            .ui-bottom { height: var(--battle-ui-h); padding: 4px 5px; gap: 5px; }
+            .ui-bottom {
+                height: var(--battle-ui-h);
+                padding: 5px max(5px, env(safe-area-inset-left, 0px)) 5px max(5px, env(safe-area-inset-right, 0px));
+                gap: 5px; align-items: stretch;
+                box-sizing: border-box;
+                background: linear-gradient(180deg, rgba(10,12,18,0.92) 0%, var(--battle-chrome-bg) 100%);
+            }
             body.is-mobile .ui-bottom { flex-direction: row; }
             body.is-mobile #battle-log {
-                align-self: flex-start; flex: 0 0 clamp(96px, 22vw, 160px);
-                max-width: min(200px, 28vw); max-height: calc(1.45em * 4 + 8px);
-                min-height: 0; min-width: 0; width: auto;
-                padding: 4px 5px; font-size: 10px; line-height: 1.45;
+                align-self: stretch;
+                flex: 1 1 34%;
+                min-width: min(160px, 34vw);
+                max-width: min(300px, 42vw);
+                max-height: none;
+                min-height: 0; width: auto; height: auto;
+                padding: 5px 7px; font-size: 10px; line-height: 1.45;
                 overflow-x: hidden; overflow-y: auto;
             }
-            body.is-mobile #screen-battle.battle-phase-moves .ui-bottom #battle-log { max-width: min(200px, 28vw); max-height: calc(1.45em * 4 + 8px); }
+            body.is-mobile #screen-battle.battle-phase-moves .ui-bottom #battle-log {
+                min-width: min(160px, 34vw);
+                max-width: min(300px, 42vw);
+                max-height: none;
+            }
             #command-menu { flex: 1 1 auto; min-width: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
             #move-menu.move-menu-layout { flex: 1 1 0%; min-width: 0; min-height: 0; overflow: hidden; gap: 2px; }
             #move-menu .move-menu-scroll { flex: 1 1 0%; min-height: 0; -webkit-overflow-scrolling: touch; grid-template-columns: 1fr 1fr; gap: 4px; }
@@ -1275,50 +1400,69 @@
 
         /* ── Tablet landscape ─────────────────────────────────────────────── */
         @media screen and (min-width: 600px) and (max-width: 1366px) and (orientation: landscape) and ((hover: none) or (pointer: coarse)) and (min-height: 501px) and (max-height: 900px) {
-            #screen-battle { --battle-ui-h: clamp(172px, 24svh, 240px); }
-            body.is-mobile #screen-battle.battle-phase-moves { --battle-ui-h: clamp(172px, 24svh, 240px); }
+            /* Same as portrait mobile: fill the viewport — avoids 960px letterboxing + “floating” chrome on wide tablets */
+            body { align-items: stretch; justify-content: stretch; }
+            .screen, #app-root { max-width: 100vw; width: 100vw; height: 100dvh; max-height: 100dvh; box-sizing: border-box; }
+            #screen-battle { --battle-ui-h: clamp(140px, 20svh, 200px); }
+            body.is-mobile #screen-battle.battle-phase-moves { --battle-ui-h: clamp(140px, 20svh, 200px); }
             .mob-info-btn { display: inline-flex; }
             #foe-stat-box {
-                width: min(200px, 36vw); top: 6px; left: auto; right: 52px;
+                width: min(228px, 40vw); top: 6px; left: auto; right: 52px;
                 padding: 6px 9px; font-size: 11px;
                 background: var(--battle-panel-bg); border-radius: var(--battle-radius); border: 1px solid var(--border-color);
             }
+            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] #foe-stat-box {
+                width: min(248px, 44vw);
+            }
             body.is-mobile .battle-player-hud-row {
-                justify-content: flex-start; padding: 5px 8px 3px;
-                background: linear-gradient(180deg, rgba(12,18,28,0.2) 0%, rgba(8,12,20,0.65) 100%);
+                justify-content: flex-start;
+                padding: 5px max(8px, env(safe-area-inset-left, 0px)) 3px max(8px, env(safe-area-inset-right, 0px));
             }
             body.is-mobile #battle-bottom-stack #player-stat-box {
                 width: min(220px, 40vw); max-width: min(240px, 42vw);
                 padding: 6px 9px; font-size: 11px; border-radius: 6px; border: 1px solid var(--border-color);
+                background: var(--battle-panel-bg);
+            }
+            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] #battle-bottom-stack #player-stat-box {
+                width: min(236px, 42vw); max-width: min(252px, 46vw);
             }
             .battle-bottom-stack .ui-bottom { flex: 0 0 var(--battle-ui-h); height: var(--battle-ui-h); }
-            .ui-bottom { height: var(--battle-ui-h); padding: 5px 7px; gap: 6px; }
+            .ui-bottom {
+                height: var(--battle-ui-h);
+                padding: 6px max(6px, env(safe-area-inset-left, 0px)) 6px max(6px, env(safe-area-inset-right, 0px));
+                gap: 6px; align-items: stretch;
+                box-sizing: border-box;
+                background: linear-gradient(180deg, rgba(10,12,18,0.92) 0%, var(--battle-chrome-bg) 100%);
+            }
             #player-hp-text, #foe-hp-text { font-size: 10px; }
             .hp-bar-container { height: 6px; margin-top: 2px; }
             #foe-sprite-container {
-                width: min(200px, 34vw); height: min(214px, 38vw);
+                width: min(176px, 28vw); height: min(190px, 30vw);
                 top: calc(52px + var(--safe-top, 0px)); bottom: auto;
-                left: auto; right: calc(16px + min(4vw, 40px) + var(--safe-right, 0px)); transform: none;
+                left: auto; right: calc(14px + min(3vw, 36px) + var(--safe-right, 0px)); transform: none;
             }
-            #foe-sprite { width: min(188px, 32vw); height: min(188px, 32vw); max-width: 100%; max-height: 94%; object-fit: contain; }
+            #foe-sprite { width: min(164px, 27vw); height: min(164px, 27vw); max-width: 100%; max-height: 88%; object-fit: contain; bottom: 4px; }
             #player-sprite-container {
-                width: min(188px, 34vw); height: min(202px, 36vw);
-                bottom: calc(var(--battle-ui-h) + 76px);
-                left: calc(14px + min(3vw, 28px) + var(--safe-left, 0px)); right: auto; transform: none;
+                width: min(168px, 29vw); height: min(182px, 31vw);
+                bottom: calc(var(--battle-ui-h) + clamp(52px, 11dvh, 72px));
+                left: calc(12px + min(2.5vw, 24px) + var(--safe-left, 0px)); right: auto; transform: none;
             }
-            #player-sprite { width: min(176px, 31vw); height: min(176px, 31vw); max-width: 100%; max-height: 94%; object-fit: contain; }
+            #player-sprite { width: min(160px, 28vw); height: min(160px, 28vw); max-width: 100%; max-height: 90%; object-fit: contain; bottom: 14px; }
             #field-conditions {
                 top: calc(58px + var(--safe-top, 0px)); left: calc(6px + var(--safe-left, 0px));
                 transform: none; flex-direction: column; align-items: flex-start;
                 justify-content: flex-start; max-width: 220px; right: auto; gap: 3px;
             }
-            #gauntlet-score { top: auto; bottom: calc(var(--battle-ui-h) + 64px); left: auto; right: 10px; font-size: 11px; }
-            body.is-mobile .ui-bottom { flex-direction: row; }
+            #gauntlet-score { top: auto; bottom: calc(var(--battle-ui-h) + clamp(52px, 11dvh, 72px)); left: auto; right: 10px; font-size: 11px; }
+            body.is-mobile .ui-bottom { flex-direction: row; align-items: stretch; }
             body.is-mobile #battle-log {
-                align-self: flex-start; flex: 0 0 clamp(100px, 22vw, 200px);
-                max-width: min(220px, 28vw); max-height: calc(1.45em * 4 + 8px);
+                align-self: stretch;
+                flex: 1 1 34%;
+                min-width: min(200px, 36vw);
+                max-width: min(340px, 44vw);
+                max-height: none;
                 overflow-x: hidden; overflow-y: auto; font-size: 11px; line-height: 1.45;
-                padding: 4px 6px; width: auto;
+                padding: 6px 8px; width: auto; height: auto; min-height: 0;
             }
             #command-menu { flex: 1 1 auto; min-width: 0; }
             #move-menu.move-menu-layout { flex: 1 1 0%; min-width: 0; min-height: 0; gap: 3px; }
@@ -1326,7 +1470,11 @@
             #move-menu .move-menu-back { min-height: 38px; padding: 5px 10px; }
             #move-tooltip { bottom: calc(var(--battle-ui-h) + 8px); left: 8px; right: auto; width: min(280px, 42vw); }
             #command-menu button { min-height: 46px; }
-            #screen-battle.battle-phase-moves .ui-bottom #battle-log { max-width: min(220px, 28vw); max-height: calc(1.45em * 4 + 8px); }
+            #screen-battle.battle-phase-moves .ui-bottom #battle-log {
+                min-width: min(200px, 36vw);
+                max-width: min(340px, 44vw);
+                max-height: none;
+            }
             #screen-battle .battle-bottom-stack #move-menu .move-menu-scroll button.battle-btn-move { min-height: 50px; padding: 5px 7px; font-size: 12px; }
         }
 
@@ -2682,6 +2830,12 @@
             const usePhoneBattleLayout = document.body.classList.contains('is-mobile') || narrow;
             const mode = !usePhoneBattleLayout ? 'desktop' : (portrait ? 'portrait' : 'landscape-touch');
             sb.setAttribute('data-battle-layout', mode);
+            try {
+                const sel = document.getElementById('party-size-select');
+                const ps = sel ? (parseInt(sel.value, 10) || 3) : 3;
+                if (ps >= 1 && ps <= 6) sb.setAttribute('data-party-size', String(ps));
+                else sb.removeAttribute('data-party-size');
+            } catch (e) {}
         }
         window.applyBattleLayoutMode = applyBattleLayoutMode;
         window.syncBattlePhaseClass = function() {
@@ -4120,12 +4274,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         const _spriteCache = {};
         const _preloadedImages = {};
+        const SPRITE_ID_ALIASES = {
+            // Mega X/Y forms
+            'charizard-mega-x': 'charizard-megax',
+            'charizard-mega-y': 'charizard-megay',
+            'mewtwo-mega-x': 'mewtwo-megax',
+            'mewtwo-mega-y': 'mewtwo-megay',
+            // Apostrophe/punctuation edge cases (kept explicit for resilience)
+            'farfetchd': 'farfetchd',
+            'sirfetchd': 'sirfetchd',
+            'mr-mime': 'mrmime',
+            'mr-rime': 'mrrime',
+            'mime-jr': 'mimejr',
+            'type-null': 'typenull'
+        };
         // Convert display name to Showdown sprite ID (e.g. "Mr. Mime" → "mr-mime", "Nidoran♀" → "nidoran-f")
         function toShowdownSpriteId(name) {
-            return name.toLowerCase()
+            const normalized = name.toLowerCase()
                 .replace(/♀/g, '-f').replace(/♂/g, '-m')
                 .replace(/\s+/g, '-').replace(/\./g, '').replace(/'/g, '')
+                // Showdown uses "megax/megay" suffixes, not "mega-x/mega-y"
+                .replace(/-mega-x/g, '-megax').replace(/-mega-y/g, '-megay')
                 .replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/-$/, '');
+            return SPRITE_ID_ALIASES[normalized] || normalized;
         }
         const getSprite = (name, shiny = false) => {
             let cacheKey = name + (shiny ? '_shiny' : '');
@@ -4152,7 +4323,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // PokeAPI animated failed → try Showdown animated
                 img.src = `https://play.pokemonshowdown.com/sprites/gen5ani${shinyPart}/${sid}.gif`;
             } else if (src.includes('gen5ani')) {
-                // Showdown animated failed → try Showdown static
+                // Showdown gen5 animated failed → try xy animated (covers many Mega forms)
+                img.src = `https://play.pokemonshowdown.com/sprites/xyani${shinyPart}/${sid}.gif`;
+            } else if (src.includes('xyani')) {
+                // Showdown xy animated failed → try Showdown static
                 img.src = `https://play.pokemonshowdown.com/sprites/gen5${shinyPart}/${sid}.png`;
             } else if (src.includes('gen5/') || src.includes('gen5-shiny/')) {
                 // Showdown static failed → try PokeAPI static
@@ -5282,10 +5456,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function deactivateDynamax(mon, isPlayer) {
             if (!mon.dynamaxed) return;
+            // #region agent log
+            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'900105'},body:JSON.stringify({sessionId:'900105',runId:'pre-fix',hypothesisId:'H1',location:'battle.html:deactivateDynamax-entry',message:'Entered deactivateDynamax',data:{name:mon.name,isPlayer:!!isPlayer,dynamaxed:!!mon.dynamaxed,currentHp:mon.currentHp,maxHp:mon.maxHp,baseMaxHp:mon.baseMaxHp,fainted:!!mon.fainted},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
             mon.dynamaxed = false;
             mon.dynamaxTurns = 0;
             // If the mon fainted while dynamaxed, just restore max HP — don't resurrect with 1 HP
             if (mon.currentHp <= 0 || mon.fainted) {
+                // #region agent log
+                {
+                    let spriteElDbg = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
+                    fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'900105'},body:JSON.stringify({sessionId:'900105',runId:'pre-fix',hypothesisId:'H1',location:'battle.html:deactivateDynamax-early-return',message:'Early return branch hit for fainted mon',data:{name:mon.name,isPlayer:!!isPlayer,currentHp:mon.currentHp,maxHp:mon.maxHp,baseMaxHp:mon.baseMaxHp,spriteFilter:spriteElDbg?.style?.filter||'',spriteTransform:spriteElDbg?.style?.transform||''},timestamp:Date.now()})}).catch(()=>{});
+                }
+                // #endregion
                 if (mon.baseMaxHp) mon.maxHp = mon.baseMaxHp;
                 mon.currentHp = 0;
                 if (mon._preDynaName) { mon.name = mon._preDynaName; mon._preDynaName = null; }
@@ -5613,6 +5796,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             settings.randomTerrain     = document.getElementById('mech-terrain-cb')?.checked || false;
             settings.classicMode       = document.getElementById('mode-classic-rb')?.checked !== false;
             settings.partySize         = parseInt(document.getElementById('party-size-select')?.value) || 3;
+            try { applyBattleLayoutMode(); } catch (e) {}
         };
 
         // Run once after data loads
@@ -6302,6 +6486,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             await sleep(150);
             pokeContainer.remove();
+            // #region agent log
+            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'900105'},body:JSON.stringify({sessionId:'900105',runId:'pre-fix',hypothesisId:'H3',location:'battle.html:playPokeballAnimation-before-show',message:'Sprite styles before switch-in reveal',data:{spriteId,isPlayer:!!isPlayer,filter:spriteEl?.style?.filter||'',transform:spriteEl?.style?.transform||'',opacity:spriteEl?.style?.opacity||'',visibility:spriteEl?.style?.visibility||''},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
             spriteEl.style.visibility = 'visible';
             spriteEl.style.opacity = '1';
             spriteEl.classList.add('anim-switch-in');
@@ -6676,6 +6863,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 bar.innerHTML = '';
                 party.forEach((mon, idx) => {
                     let ball = document.createElement('div');
+                    ball.className = 'party-bar-ball';
                     let revealed = !isFoe || (state.revealedFoe && state.revealedFoe.has(mon.name));
                     ball.style.cssText = `width:14px; height:14px; border-radius:50%; border:1px solid #666; position:relative; transition:transform 0.1s;`;
                     if (mon.currentHp > 0) {
@@ -6704,6 +6892,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     bar.appendChild(ball);
                 });
             });
+            try {
+                const sbParty = document.getElementById('screen-battle');
+                const n = (state.playerParty && state.playerParty.length) || (state.foeParty && state.foeParty.length) || 0;
+                if (sbParty && n >= 1 && n <= 6) sbParty.setAttribute('data-party-size', String(n));
+            } catch (e) {}
 
             // Stat stage indicators
             ['p', 'f'].forEach(s => {
@@ -7320,7 +7513,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     window.closeStickyMoveTooltip();
                     document.getElementById('move-tooltip').classList.add('hidden');
                     menu.classList.add('hidden');
-                    if (!activeMon.dynamaxed && (activeMon.item && activeMon.item.includes("Choice") || activeMon.ability === "Gorilla Tactics") && !activeMon.volatile.choiceLock) activeMon.volatile.choiceLock = rawMove.name;
+                    if (!activeMon.dynamaxed && ((/choice/i.test(String(activeMon.item || ''))) || activeMon.ability === "Gorilla Tactics") && !activeMon.volatile.choiceLock) activeMon.volatile.choiceLock = rawMove.name;
                     syncGimmickIntentSlotOnMoveCommit(isP1);
                     window.playTurn(move._origIndex, null);
                 };
@@ -7386,8 +7579,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let canUseDyna = activeMon.buildData && (activeMon.buildData.gimmick === 'DYNAMAX' || activeMon.buildData.gimmick === 'GMAXDYNAMAX') && !activeMon.dynamaxed && !activeMon.dynamaxUsed && (!settings.classicMode || !state.usedDyna);
             let canUseTera = activeMon.buildData && activeMon.buildData.teraType && !activeMon.teraActivated && (!settings.classicMode || !state.usedTera);
             let canUseZ = activeMon.buildData && activeMon.buildData.gimmick === 'ZMOVE' && !activeMon.zMoveUsed && (!settings.classicMode || !state.usedZ);
+            const hasGimmickButtons = canUseMega || canUseDyna || canUseTera || canUseZ;
+            menu.classList.toggle('move-menu-no-gimmicks', !hasGimmickButtons);
 
-            if (canUseMega || canUseDyna || canUseTera || canUseZ) {
+            if (hasGimmickButtons) {
                 let gDiv = document.createElement('div');
                 gDiv.className = 'move-menu-gimmicks';
                 const mkGBtn = (label, key, bg, fg) => {
@@ -8340,9 +8535,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (state.p2Action.switchIndex !== null) clearGimmickIntent(false);
 
                 // Resolve Choice Lock (Choice items + Gorilla Tactics)
-                if (pMove && ((state.pActive.item && state.pActive.item.includes && state.pActive.item.includes("Choice")) || state.pActive.ability === "Gorilla Tactics") && !state.pActive.volatile.choiceLock) state.pActive.volatile.choiceLock = pMove.name;
+                if (pMove && ((/choice/i.test(String(state.pActive.item || ''))) || state.pActive.ability === "Gorilla Tactics") && !state.pActive.volatile.choiceLock) state.pActive.volatile.choiceLock = pMove.name;
                 else if (state.pActive.volatile.choiceLock && pMove) pMove = state.pActive.moves.find(m => m.name === state.pActive.volatile.choiceLock) || pMove;
-                if (fMove && ((state.fActive.item && state.fActive.item.includes && state.fActive.item.includes("Choice")) || state.fActive.ability === "Gorilla Tactics") && !state.fActive.volatile.choiceLock) state.fActive.volatile.choiceLock = fMove.name;
+                if (fMove && ((/choice/i.test(String(state.fActive.item || ''))) || state.fActive.ability === "Gorilla Tactics") && !state.fActive.volatile.choiceLock) state.fActive.volatile.choiceLock = fMove.name;
                 else if (state.fActive.volatile.choiceLock && fMove) fMove = state.fActive.moves.find(m => m.name === state.fActive.volatile.choiceLock) || fMove;
 
                 // Two-turn charge: force continuation regardless of player/AI selection
@@ -10441,8 +10636,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 clearPermanentWeatherIfHolder(state.fActive);
                 if(settings.animations){ let fs = document.getElementById('foe-sprite'); fs.classList.add('anim-faint'); await sleep(800); fs.style.opacity = '0'; fs.style.visibility = 'hidden'; fs.classList.remove('anim-faint'); }
                 // Clear Dynamax state and styles on faint (use deactivateDynamax to ensure sprite CSS is cleared)
+                // #region agent log
+                {
+                    let fsDbg = document.getElementById('foe-sprite');
+                    fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'900105'},body:JSON.stringify({sessionId:'900105',runId:'pre-fix',hypothesisId:'H2',location:'battle.html:checkFaints-foe-before-deactivate',message:'Foe faint flow before deactivateDynamax',data:{activeName:state.fActive?.name||'',dynamaxed:!!state.fActive?.dynamaxed,currentHp:state.fActive?.currentHp,maxHp:state.fActive?.maxHp,filter:fsDbg?.style?.filter||'',transform:fsDbg?.style?.transform||''},timestamp:Date.now()})}).catch(()=>{});
+                }
+                // #endregion
                 if (state.fActive.dynamaxed) deactivateDynamax(state.fActive, false);
                 state.fActive.dynamaxed = false; state.fActive.dynamaxTurns = 0;
+                // #region agent log
+                {
+                    let fsDbg2 = document.getElementById('foe-sprite');
+                    fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'900105'},body:JSON.stringify({sessionId:'900105',runId:'pre-fix',hypothesisId:'H4',location:'battle.html:checkFaints-foe-after-deactivate',message:'Foe faint flow after deactivateDynamax',data:{activeName:state.fActive?.name||'',dynamaxed:!!state.fActive?.dynamaxed,currentHp:state.fActive?.currentHp,maxHp:state.fActive?.maxHp,filter:fsDbg2?.style?.filter||'',transform:fsDbg2?.style?.transform||''},timestamp:Date.now()})}).catch(()=>{});
+                }
+                // #endregion
                 state.fActive.stages = {atk:0,def:0,spa:0,spd:0,spe:0,acc:0,eva:0};
                 state.fActive.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, spikyShield: false, kingShield: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', recharge: false, charging: null, lockMove: null, lockTurns: 0 };
 
@@ -10494,8 +10701,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 clearPermanentWeatherIfHolder(state.pActive);
                 if(settings.animations){ let ps = document.getElementById('player-sprite'); ps.classList.add('anim-faint'); await sleep(800); ps.style.opacity = '0'; ps.style.visibility = 'hidden'; ps.classList.remove('anim-faint'); }
                 // Clear Dynamax state and styles on faint (use deactivateDynamax to ensure sprite CSS is cleared)
+                // #region agent log
+                {
+                    let psDbg = document.getElementById('player-sprite');
+                    fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'900105'},body:JSON.stringify({sessionId:'900105',runId:'pre-fix',hypothesisId:'H2',location:'battle.html:checkFaints-player-before-deactivate',message:'Player faint flow before deactivateDynamax',data:{activeName:state.pActive?.name||'',dynamaxed:!!state.pActive?.dynamaxed,currentHp:state.pActive?.currentHp,maxHp:state.pActive?.maxHp,filter:psDbg?.style?.filter||'',transform:psDbg?.style?.transform||''},timestamp:Date.now()})}).catch(()=>{});
+                }
+                // #endregion
                 if (state.pActive.dynamaxed) deactivateDynamax(state.pActive, true);
                 state.pActive.dynamaxed = false; state.pActive.dynamaxTurns = 0;
+                // #region agent log
+                {
+                    let psDbg2 = document.getElementById('player-sprite');
+                    fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'900105'},body:JSON.stringify({sessionId:'900105',runId:'pre-fix',hypothesisId:'H4',location:'battle.html:checkFaints-player-after-deactivate',message:'Player faint flow after deactivateDynamax',data:{activeName:state.pActive?.name||'',dynamaxed:!!state.pActive?.dynamaxed,currentHp:state.pActive?.currentHp,maxHp:state.pActive?.maxHp,filter:psDbg2?.style?.filter||'',transform:psDbg2?.style?.transform||''},timestamp:Date.now()})}).catch(()=>{});
+                }
+                // #endregion
                 state.pActive.stages = {atk:0,def:0,spa:0,spd:0,spe:0,acc:0,eva:0};
                 state.pActive.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, spikyShield: false, kingShield: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', recharge: false, charging: null, lockMove: null, lockTurns: 0 };
 
@@ -12767,7 +12986,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Economy: ~68 main-path battles; starting 1000-2000G (by difficulty) + ~201k battle rewards if unbeaten (post-J1 bumps).
         // Early route payouts set to 1400G so a few wins better cover Link G1 rerolls (4000G base).
         const STORY_EVENTS_RAW = [
-          [0,'City','City0',null,0,['Professor','Link Station','Department Store','Leave City']],
+          [0,'City','City0',null,0,['Professor','Link Station','Pokemarkt','Leave City']],
           [1,'Battle','Basic Trainer',{g1:0,g2:0,g3:0,g4:100},1400,null],
           [2,'Battle','Basic Trainer',{g1:0,g2:0,g3:20,g4:80},1400,null],
           [3,'Battle','Basic Trainer',{g1:0,g2:0,g3:50,g4:50},1400,null],
@@ -12948,6 +13167,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const FEATURED_ULTRA_ITEM_IDS = new Set([
             'xAttack','xDefense','xSpAtk','xSpDef','xSpeed','xAccuracy','direHit'
         ]);
+        function getFeaturedMegaDesc(item) {
+            return `${item.desc} Instant use (does not end your turn).`;
+        }
+        function getFeaturedUltraDesc(item) {
+            const ultraDescByEffect = {
+                xAtk: '+4 Attack stages for this battle.',
+                xDef: '+4 Defense stages for this battle.',
+                xSpA: '+4 Sp. Attack stages for this battle.',
+                xSpD: '+4 Sp. Defense stages for this battle.',
+                xSpe: '+4 Speed stages for this battle.',
+                xAcc: '+4 Accuracy stages for this battle.',
+                direHit: 'Greatly raises critical hit ratio (+4 stages).'
+            };
+            return ultraDescByEffect[item.effect] || `${item.desc} 2x stronger effect.`;
+        }
         function getStoryFeaturedItems() {
             const baseItems = [...POKEMART_ITEMS, ...DEPT_ITEMS];
             const featured = [];
@@ -12957,7 +13191,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         id: `mega_${item.id}`,
                         name: `Mega ${item.name}`,
                         price: item.price * 5,
-                        desc: `${item.desc} Does not end your turn.`,
+                        desc: getFeaturedMegaDesc(item),
                         effect: item.effect,
                         tier: 'mega',
                         baseItemId: item.id
@@ -12968,7 +13202,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         id: `ultra_${item.id}`,
                         name: `Ultra ${item.name}`,
                         price: item.price * 3,
-                        desc: `${item.desc} 2x stronger effect.`,
+                        desc: getFeaturedUltraDesc(item),
                         effect: item.effect,
                         tier: 'ultra',
                         baseItemId: item.id
@@ -13798,6 +14032,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function renderCityActions(ev) {
             let actions = ev ? (ev[5]||[]).slice() : [];
+            // Starting city (City0): Pokémart for Normal+; Department Store only on Easy / Very Easy
+            const _sd = sm.storyDifficulty || 'normal';
+            if (getCityIndex(ev) === 0 && (_sd === 'easy' || _sd === 'veryeasy')) {
+                actions = actions.map(a => (a === 'Pokemarkt' ? 'Department Store' : a));
+            }
             if (actions.includes('Department Store')) actions = actions.filter(a => a !== 'Pokemarkt');
             const cityIdx = getCityIndex(ev);
             const hasProf = actions.includes('Professor');
@@ -14706,8 +14945,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (type === 'dept') {
                 const featuredItems = _ensureDeptItemOfferForCity(cityIdx);
                 const featuredSection = document.createElement('div');
-                featuredSection.style.cssText='grid-column:1/-1;border-top:1px solid #555;padding-top:12px;margin-top:8px;';
-                featuredSection.innerHTML='<h4 style="color:#ffb74d;margin:0 0 10px;">⭐ Featured Battle Tech (3 per city)</h4>';
+                featuredSection.className = 'story-featured-section';
+                featuredSection.innerHTML='<h4>⭐ Featured Battle Tech (3 per city)</h4>';
                 featuredItems.forEach(item => {
                     const canAfford = sm.gold >= item.price;
                     const qty = sm.inventory[item.id]||0;
@@ -15166,6 +15405,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (typeof logMsg === 'function') logMsg(msg,'heal');
                 if (typeof updateUI === 'function') updateUI();
                 if (typeof state !== 'undefined' && state.mode === 'story') {
+                    // Using a bag item is a non-move action, so Choice lock should reset.
+                    // The lock will be re-established automatically after the next selected move.
+                    if (state.pActive && state.pActive.volatile) state.pActive.volatile.choiceLock = null;
                     state.storyItemUsedThisTurn = !instantUse;
                     window._storyBagPassAfterItem = !instantUse;
                     window.closeModal('modal-story-bag');
