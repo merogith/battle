@@ -13133,6 +13133,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [72,'Battle','Champion',{g1:100,g2:0,g3:0,g4:0},7500,null],
           [73,'Battle','Rival',{g1:95,g2:5,g3:0,g4:0},5000,null],
           [74,'Hall of Fame','Hall of Fame',null,0,null],
+          [75,'Battle','Mystery Figure',{g1:100,g2:0,g3:0,g4:0},12000,null],
         ];
 
         // Professor grade rolls per city (0-based city index)
@@ -13149,6 +13150,44 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           {g1:75,g2:25, g3:0,  g4:0},   // City8
           {g1:100,g2:0, g3:0,  g4:0},   // City9 — League City
         ];
+        function mysteryFigureRollsForBadges(badges) {
+            const b = Math.max(0, badges | 0);
+            const g1 = b >= 7 ? 30 : (b >= 4 ? 20 : 10);
+            return { g1, g2: 100 - g1, g3: 0, g4: 0 };
+        }
+        function shouldForceCityProfessor(cityIdx, actions) {
+            const c = Math.max(0, cityIdx | 0);
+            if (c >= 9) return false; // Never in League city.
+            if (Array.isArray(actions) && actions.includes('Professor')) return false;
+            if (isPreLeagueLegendaryMysteryGate(c)) return true;
+            return sm.team.length < 6;
+        }
+        function isPreLeagueLegendaryMysteryGate(cityIdx) {
+            const c = Math.max(0, cityIdx | 0);
+            if (c >= 9) return false;
+            return c === 8 && (sm.badges | 0) >= 8;
+        }
+        function pickStoryLegendaryFromGens(enabledGens, usedNames) {
+            const D = getPssDex();
+            if (!D || !D.species || typeof D.species.forEach !== 'function') return null;
+            const genSet = new Set(normalizeEnabledGens(enabledGens && enabledGens.length ? enabledGens : storySettingsGens()));
+            const pool = [];
+            D.species.forEach((sp, name) => {
+                try {
+                    const n = String(name || '');
+                    if (!n || usedNames.has(n)) return;
+                    if (MEGA_EXCLUDE.has(n) || n.includes('-Mega') || n.includes('-Gmax')) return;
+                    const b = baseStats[n];
+                    if (!b || !genSet.has(b.gen)) return;
+                    const isLeg = !!(sp && (sp.isLegendary || sp.isMythical || sp.legendary || sp.mythical));
+                    if (!isLeg) return;
+                    if (getMonGrade(n, getBST(n)) !== 1) return;
+                    pool.push(n);
+                } catch (e) { /* skip invalid species */ }
+            });
+            if (!pool.length) return null;
+            return pool[Math.floor(storyRngNext() * pool.length)];
+        }
 
         // Shop item definitions — Pokémart
         const POKEMART_ITEMS = [
@@ -13370,6 +13409,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (e === 'Champion') return 'Champion';
             if (e === 'Gym Trainer') return 'Gym Trainer';
             if (e === 'Rival') return 'Rival';
+            if (e === 'Mystery Figure') return 'Mystery Figure';
             if (e === 'Victory Road') return 'Victory Road';
             if (e === 'Elite Trainer') return 'Ace Trainer';
             return 'Trainer';
@@ -13935,6 +13975,63 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return _applyEnemyGimmickDistribution(team);
         }
+        function rollMysteryFigureFinalBossTeam(partySize, enabledGensIn) {
+            const rng = (sm && sm.active) ? storyRngNext : Math.random;
+            const allowedGens = normalizeEnabledGens(enabledGensIn != null ? enabledGensIn : storySettingsGens());
+            const genSet = new Set(allowedGens);
+            const gradeOnePool = [];
+            for (const name of Object.keys(baseStats)) {
+                if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
+                const b = baseStats[name];
+                if (!b || !genSet.has(b.gen)) continue;
+                if (getMonGrade(name, getBST(name)) !== 1) continue;
+                gradeOnePool.push(name);
+            }
+            const usedNames = new Set();
+            const usedTypes = new Set();
+            const picks = [];
+            for (let i = 0; i < partySize; i++) {
+                let chosen = null;
+                const uniqueTypeCandidates = gradeOnePool.filter((n) => {
+                    if (usedNames.has(n)) return false;
+                    const t1 = (baseStats[n] && baseStats[n].t1) || '';
+                    return t1 && !usedTypes.has(t1);
+                });
+                if (uniqueTypeCandidates.length) {
+                    chosen = uniqueTypeCandidates[Math.floor(rng() * uniqueTypeCandidates.length)];
+                } else {
+                    const anyCandidates = gradeOnePool.filter((n) => !usedNames.has(n));
+                    if (anyCandidates.length) chosen = anyCandidates[Math.floor(rng() * anyCandidates.length)];
+                }
+                if (!chosen) chosen = gradeOnePool[Math.floor(rng() * gradeOnePool.length)] || 'Dragonite';
+                usedNames.add(chosen);
+                const t1 = (baseStats[chosen] && baseStats[chosen].t1) || '';
+                if (t1) usedTypes.add(t1);
+                picks.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD' }) });
+            }
+            const oldMech = {
+                megaOn: !!sm.settings.megaOn,
+                dynaOn: !!sm.settings.dynaOn,
+                teraOn: !!sm.settings.teraOn,
+                zOn: !!sm.settings.zOn
+            };
+            const oldBadges = sm.badges | 0;
+            try {
+                // Final boss: roll from all mechanics using existing priority system.
+                sm.settings.megaOn = true;
+                sm.settings.dynaOn = true;
+                sm.settings.teraOn = true;
+                sm.settings.zOn = true;
+                sm.badges = 8;
+                return _applyEnemyGimmickDistribution(picks);
+            } finally {
+                sm.settings.megaOn = oldMech.megaOn;
+                sm.settings.dynaOn = oldMech.dynaOn;
+                sm.settings.teraOn = oldMech.teraOn;
+                sm.settings.zOn = oldMech.zOn;
+                sm.badges = oldBadges;
+            }
+        }
 
         // ── TRAINER SELECTION ─────────────────────────────────────────────
         function _baseTrainerName(name) {
@@ -14093,10 +14190,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (actions.includes('Department Store')) actions = actions.filter(a => a !== 'Pokemart');
             const cityIdx = getCityIndex(ev);
-            const hasProf = actions.includes('Professor');
+            const hasBaseProf = actions.includes('Professor');
+            const hasProf = hasBaseProf || shouldForceCityProfessor(cityIdx, actions);
             const hasTeamRoom = sm.team.length < 6;
             const profUsedHere = !!(sm.profUsed && sm.profUsed[cityIdx]);
             const mysteryMode = hasProf && !hasTeamRoom && !profUsedHere;
+            const legendMysteryGate = mysteryMode && isPreLeagueLegendaryMysteryGate(cityIdx);
 
             const spriteEl = document.getElementById('story-city-sprite');
             const npcNameEl = document.getElementById('story-city-npc-name');
@@ -14161,7 +14260,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (hasTeamRoom) {
                     btn.innerHTML += makeActionBtn('Professor — Receive a Pokémon (Free)','professor','window.StoryMode.enterProfessor()','primary');
                 } else {
-                    btn.innerHTML += makeActionBtn('❓ Mystery Figure — Swap in a Grade 1 Pokémon','mystery','window.StoryMode.enterProfessor()','primary');
+                    const mysteryLabel = legendMysteryGate
+                        ? '❓ Mystery Figure — Legendary Grade 1 Swap (Required)'
+                        : '❓ Mystery Figure — Swap in Grade 1/2 Pokémon';
+                    btn.innerHTML += makeActionBtn(mysteryLabel,'mystery','window.StoryMode.enterProfessor()','primary');
                 }
             }
             // Battle actions
@@ -14185,9 +14287,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (hasLeague) {
                 btn.innerHTML += makeActionBtn('🏆 Enter the Pokémon League!','league','window.StoryMode.proceedToNextBattle()','primary');
             }
+            const routeBlockedByMysteryGate = legendMysteryGate && !profUsedHere;
             if (actions.includes('Leave City')) {
                 if (routeLocked) {
                     btn.innerHTML += `<button class="story-action-btn primary" disabled title="Clear this area's challenge first" style="opacity:0.45;cursor:not-allowed;">→ Continue on Route <span style="font-size:10px;color:#aaa;">(Complete challenge first)</span></button>`;
+                } else if (routeBlockedByMysteryGate) {
+                    btn.innerHTML += `<button class="story-action-btn primary" disabled title="Talk to the Mystery Figure first" style="opacity:0.45;cursor:not-allowed;">→ Continue on Route <span style="font-size:10px;color:#aaa;">(Talk to Mystery Figure first)</span></button>`;
                 } else if (!hasLeague) {
                     btn.innerHTML += makeActionBtn('→ Continue on Route','route','window.StoryMode.proceedToNextBattle()','primary');
                 }
@@ -14384,6 +14489,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         let _pendingProfChoices = null; // [{name, build, g}, ...]
         let _profSelectedIdx    = null; // which of the 3 the player picked
         let _pendingProfCityIdx = null; // city index that owns current choices
+        let _profLegendaryMysteryMode = false;
         // (legacy _pendingProfRoll kept for safety)
         let _pendingProfRoll    = null;
 
@@ -14401,15 +14507,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const cityIdx = getCityIndex(ev);
             const isFull = sm.team.length >= 6;
             _profMysteryMode = isFull;
-            // Mystery Figure: force 100% G1 rolls
-            const rolls = isFull ? {g1:100,g2:0,g3:0,g4:0} : (PROF_ROLLS[cityIdx] || PROF_ROLLS[0]);
+            _profLegendaryMysteryMode = _profMysteryMode && isPreLeagueLegendaryMysteryGate(cityIdx);
+            // Mystery Figure: G1/G2 rolls, except guaranteed legendary gate before Victory Road.
+            const rolls = _profLegendaryMysteryMode
+                ? {g1:100,g2:0,g3:0,g4:0}
+                : (_profMysteryMode ? mysteryFigureRollsForBadges(sm.badges) : (PROF_ROLLS[cityIdx] || PROF_ROLLS[0]));
             _pendingProfRolls = rolls;
 
             const hub = cityProfessorHubSlot(cityIdx);
             const profName = isFull ? '??? — Mystery Figure' : hub.label;
             document.getElementById('story-prof-name').textContent = profName;
             document.getElementById('story-prof-quote').textContent = isFull
-                ? '"Your party is full, trainer. But you look like you could use an ace up your sleeve… choose one, and decide who to leave behind."'
+                ? (_profLegendaryMysteryMode
+                    ? '"The League gate opens only for the prepared. Take one legendary ace and choose who leaves your party."'
+                    : '"Your party is full, trainer. Choose one mystery partner and decide who to leave behind."')
                 : PROF_QUOTES[Math.floor(storyRngNext()*PROF_QUOTES.length)];
             document.getElementById('story-prof-sprite').src = getTrainerSprite(isFull ? 'Cyrus' : { spriteFile: hub.spriteFile });
 
@@ -14429,12 +14540,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 for (let i = 0; i < 3; i++) {
                     let name = null;
                     for (let t = 0; t < 15; t++) {
-                        const c = weightedPickFromGrades(rolls, sg);
+                        const c = _profLegendaryMysteryMode
+                            ? pickStoryLegendaryFromGens(sg, usedNames)
+                            : weightedPickFromGrades(rolls, sg);
                         if (c && !usedNames.has(c)) { name = c; break; }
                     }
                     if (!name) {
                         // fallback: allow any (may duplicate)
-                        name = weightedPickFromGrades(rolls, sg);
+                        name = _profLegendaryMysteryMode
+                            ? pickStoryLegendaryFromGens(sg, new Set())
+                            : weightedPickFromGrades(rolls, sg);
                     }
                     if (!name) continue;
                     usedNames.add(name);
@@ -14509,7 +14624,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const statusEl= document.getElementById('story-prof-status');
 
             statusEl.textContent = _profMysteryMode
-                ? 'Pick one Grade-1 Pokémon. You\'ll choose who it replaces in your party.'
+                ? (_profLegendaryMysteryMode
+                    ? 'Pick one Grade-1 legendary Pokémon. You\'ll choose who it replaces in your party.'
+                    : 'Pick one Grade-1/Grade-2 Pokémon. You\'ll choose who it replaces in your party.')
                 : 'Pick one Pokémon to add to your team:';
 
             cardEl.className = 'story-prof-card-wrap';
@@ -14591,7 +14708,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             // Normal professor: append to team
-            _pendingProfChoices = null; _profSelectedIdx = null; _pendingProfRoll = null; _pendingProfCityIdx = null;
+            _pendingProfChoices = null; _profSelectedIdx = null; _pendingProfRoll = null; _pendingProfCityIdx = null; _profLegendaryMysteryMode = false;
             sm.team.push({ name: ch.name, build: ch.build });
             if (!sm.profUsed) sm.profUsed = {};
             sm.profUsed[cityIdx] = true;
@@ -14618,7 +14735,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.team[slotIdx] = { name: ch.name, build: ch.build };
             if (!sm.profUsed) sm.profUsed = {};
             sm.profUsed[cityIdx] = true;
-            _pendingProfChoices = null; _profSelectedIdx = null; _profMysteryMode = false; _pendingProfCityIdx = null;
+            _pendingProfChoices = null; _profSelectedIdx = null; _profMysteryMode = false; _pendingProfCityIdx = null; _profLegendaryMysteryMode = false;
             save();
             document.getElementById('story-prof-status').textContent = `✓ ${ch.name} replaced ${replaced}!`;
             document.getElementById('story-prof-rolled-card').innerHTML = '';
@@ -14669,7 +14786,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Get assigned trainer
             const trainerName = sm.trainerAssignments[idx];
             const prefType = preferredTypeBeforeGymBattle(battleIdx);
-            const trainer = TRAINER_DATA.find(t=>t.name===trainerName) || selectTrainerForRole(event, sg, null, prefType);
+            const isMysteryFinal = String(event || '') === 'Mystery Figure';
+            const trainer = isMysteryFinal
+                ? {
+                    role: 'Mystery Figure',
+                    name: '??? Mystery Figure',
+                    type: 'Mixed',
+                    sigs: ['Mewtwo', 'Rayquaza', 'Dialga', 'Giratina', 'Kyogre', 'Groudon'],
+                    introQuotes: ['So we meet again, Champion.', 'Your Hall of Fame crown means nothing here.', 'Show me your strongest six.']
+                }
+                : (TRAINER_DATA.find(t=>t.name===trainerName) || selectTrainerForRole(event, sg, null, prefType));
             sm.currentTrainerData = trainer;
 
             // Party size mirrors player's current team (so opponents scale with your roster).
@@ -14689,7 +14815,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             showBattleIntro(trainer, event, () => {
-                const enemyTeam = rollTrainerTeam(trainer, partySize, gradeWeights || {g1:0,g2:0,g3:50,g4:50}, sg, event);
+                const enemyTeam = isMysteryFinal
+                    ? rollMysteryFigureFinalBossTeam(6, sg)
+                    : rollTrainerTeam(trainer, partySize, gradeWeights || {g1:0,g2:0,g3:50,g4:50}, sg, event);
                 try {
                     sm.currentEnemyLock = { eventIdx: battleIdx, team: JSON.parse(JSON.stringify(enemyTeam)) };
                     save();
@@ -14709,6 +14837,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'Gym Leader 7':'Gym Leader','Gym Leader 8':'Gym Leader',
                 'Rival':'Rival','Elite Trainer':'Elite Trainer',
                 'E1':'E1','E2':'E2','E3':'E3','E4':'E4','Champion':'Champion','Victory Road':'Victory Road',
+                'Mystery Figure':'Rival',
             };
             const quoteRole = roleLookup[eventType] || 'Basic Trainer';
             const quote = getTrainerQuoteForBattle(trainer, quoteRole);
