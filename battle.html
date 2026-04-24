@@ -12,13 +12,8 @@
     <meta name="theme-color" content="#0a0a0a">
     <title>Retro Battle Sim - Competitive Fix</title>
     <style>
-        /* ============================================================
-           M0 — DESIGN TOKEN SYSTEM
-           Single source of truth for all visual properties.
-           Layout-specific overrides are in the layout matrix section.
-        ============================================================ */
+        /* Battle UI tokens — single theme for stat boxes, log, commands (overrides use these, not parallel palettes). */
         :root {
-            /* --- Core palette --- */
             --bg-color: #0a0a0a; --border-color: #444; --text-color: #e8e8e8;
             --hp-green: #4caf50; --hp-yellow: #ffc107; --hp-red: #f44336; --accent: #ffd54f;
             --surface: #161616; --surface2: #1e1e1e;
@@ -30,8 +25,7 @@
             --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px);
             --safe-left: env(safe-area-inset-left, 0px); --safe-right: env(safe-area-inset-right, 0px);
             --game-design-w: 960; --game-design-h: 700;
-
-            /* --- Spacing rhythm (4/8/12) --- */
+            /* Battle chrome — spacing rhythm (4/8/12) */
             --battle-space-1: 4px;
             --battle-space-2: 8px;
             --battle-space-3: 12px;
@@ -39,164 +33,6 @@
             --battle-btn-radius: 4px;
             --battle-btn-gap: var(--battle-space-1);
             --ui-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-
-            /* --- Semantic color layer --- */
-            --fg-primary: #e8e8e8;
-            --fg-secondary: #aaaaaa;
-            --fg-muted: #666666;
-            --bg-panel: #161616;
-            --bg-elevated: #1e1e1e;
-            --bg-overlay: rgba(0,0,0,0.82);
-            --state-success: #4caf50;
-            --state-warn: #ffc107;
-            --state-danger: #f44336;
-            --state-info: #81d4fa;
-
-            /* --- Elevation shadows --- */
-            --elev-1: 0 1px 3px rgba(0,0,0,0.4);
-            --elev-2: 0 4px 12px rgba(0,0,0,0.5);
-            --elev-3: 0 8px 28px rgba(0,0,0,0.65);
-
-            /* --- Typography scale --- */
-            --text-xs: 10px;
-            --text-sm: 12px;
-            --text-md: 14px;
-            --text-lg: 17px;
-            --text-xl: 22px;
-
-            /* --- Motion tokens --- */
-            --dur-fast: 0.15s;
-            --dur-mid: 0.25s;
-            --dur-slow: 0.5s;
-            --dur-very-slow: 0.8s;
-            --ease-out: cubic-bezier(0.0, 0, 0.2, 1);
-            --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-            --lunge-dur: 0.25s;
-            --hit-flash-dur: 0.4s;
-            --switch-in-dur: 0.35s;
-            --faint-dur: 0.6s;
-
-            /* --- Type color tokens (M0 — replaces hard-coded hex in type badges) --- */
-            --type-normal: #A8A878;   --type-normal-text: #fff;
-            --type-fire: #F08030;     --type-fire-text: #fff;
-            --type-water: #6890F0;    --type-water-text: #fff;
-            --type-grass: #78C850;    --type-grass-text: #fff;
-            --type-electric: #F8D030; --type-electric-text: #000;
-            --type-ice: #98D8D8;      --type-ice-text: #000;
-            --type-fighting: #C03028; --type-fighting-text: #fff;
-            --type-poison: #A040A0;   --type-poison-text: #fff;
-            --type-ground: #E0C068;   --type-ground-text: #000;
-            --type-flying: #A890F0;   --type-flying-text: #fff;
-            --type-psychic: #F85888;  --type-psychic-text: #fff;
-            --type-bug: #A8B820;      --type-bug-text: #fff;
-            --type-rock: #B8A038;     --type-rock-text: #fff;
-            --type-ghost: #705898;    --type-ghost-text: #fff;
-            --type-dragon: #7038F8;   --type-dragon-text: #fff;
-            --type-dark: #705848;     --type-dark-text: #fff;
-            --type-steel: #B8B8D0;    --type-steel-text: #000;
-            --type-fairy: #EE99AC;    --type-fairy-text: #000;
-
-            /* --- Arena layout tokens (base = desktop, overridden per layout) --- */
-            --arena-floor-h: 28%;
-            --sprite-scale: 1.0;
-            --hud-stack-gap: 8px;
-            --arena-shake-max: 8px;
-
-            /* --- Arena sky/palette (overridden by Arena.setPalette()) --- */
-            --arena-sky-top: #0c1628;
-            --arena-sky-bot: #1a2d1a;
-            --arena-floor-color: #1a2810;
-            --arena-floor-color2: #0f1e0a;
-            --arena-mid-color: #0d1f10;
-            --arena-mid-opacity: 1;
-            --arena-ambience: rgba(0,0,0,0);
-
-            /* --- FX quality multipliers (overridden by JS based on settings.fxQuality) --- */
-            --fx-particle-scale: 1.0;
-            --fx-shake-scale: 1.0;
-            --fx-blur-scale: 1.0;
-        }
-
-        /* ============================================================
-           M0 — LAYOUT MATRIX
-           Each data-battle-layout value gets its own token overrides.
-        ============================================================ */
-        #screen-battle[data-battle-layout="portrait"] {
-            --arena-floor-h: 32%;
-            --sprite-scale: 0.95;
-            --hud-stack-gap: 6px;
-            --arena-shake-max: 6px;
-        }
-        #screen-battle[data-battle-layout="landscape-touch"] {
-            --arena-floor-h: 24%;
-            --sprite-scale: 0.85;
-            --hud-stack-gap: 4px;
-            --arena-shake-max: 5px;
-        }
-        #screen-battle[data-battle-layout="desktop"] {
-            --arena-floor-h: 26%;
-            --sprite-scale: 1.0;
-            --hud-stack-gap: 8px;
-            --arena-shake-max: 8px;
-        }
-        #screen-battle[data-battle-layout="ultrawide"] {
-            --arena-floor-h: 22%;
-            --sprite-scale: 1.15;
-            --hud-stack-gap: 10px;
-            --arena-shake-max: 10px;
-        }
-        body.layout-tablet-preset #screen-battle {
-            --sprite-scale: 1.05;
-            --hud-stack-gap: 9px;
-        }
-
-        /* --- Pointer class helpers --- */
-        body.has-pointer-fine button:hover,
-        body.has-pointer-fine a:hover {
-            transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
-        }
-        body.has-pointer-coarse button:active,
-        body.has-pointer-coarse a:active {
-            filter: brightness(1.15);
-        }
-
-        /* --- Ultrawide letterbox vignette --- */
-        body.layout-ultrawide::after {
-            content: '';
-            position: fixed;
-            inset: 0;
-            z-index: -1;
-            pointer-events: none;
-            background:
-                linear-gradient(to right, rgba(0,0,0,0.5) 0%, transparent 12%, transparent 88%, rgba(0,0,0,0.5) 100%),
-                linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 10%, transparent 90%, rgba(0,0,0,0.3) 100%);
-        }
-
-        /* --- prefers-reduced-motion global gate --- */
-        @media (prefers-reduced-motion: reduce) {
-            :root {
-                --dur-fast: 0.01s;
-                --dur-mid: 0.01s;
-                --dur-slow: 0.01s;
-                --dur-very-slow: 0.01s;
-                --lunge-dur: 0.01s;
-                --hit-flash-dur: 0.01s;
-                --switch-in-dur: 0.01s;
-                --faint-dur: 0.01s;
-                --fx-particle-scale: 0;
-                --fx-shake-scale: 0;
-                --fx-blur-scale: 0;
-            }
-        }
-
-        /* --- prefers-contrast: more --- */
-        @media (prefers-contrast: more) {
-            :root {
-                --border-color: #888;
-                --fg-muted: #aaa;
-                --bg-panel: #000;
-                --bg-elevated: #111;
-            }
         }
         /* Polish: native dark scrollbars/inputs, crisp text, readable selection, keyboard focus */
         html { height: 100%; overscroll-behavior: none; color-scheme: dark; }
@@ -211,11 +47,6 @@
             .story-victory-badge-slot { animation: none !important; }
             #rotate-overlay .rotate-icon { animation: none !important; }
             .hp-fill.hp-critical { animation: none !important; }
-            .arena-particles { display: none !important; }
-            .arena-sky, .arena-mid, .arena-floor { transition: none !important; }
-            .type-anim { animation-duration: 0.01s !important; }
-            .anim-lunge-player, .anim-lunge-foe { animation-duration: 0.01s !important; }
-            .arena-parallax-layer { transform: none !important; transition: none !important; }
         }
         /* Full-viewport underlay: softens letterboxing around the fixed 960×700 frame on wide displays */
         body::before {
@@ -350,6 +181,10 @@
         }
         body.is-mobile #screen-battle .battle-bottom-stack {
             background: linear-gradient(180deg, rgba(12,18,28,0.5) 0%, rgba(8,11,18,0.9) 100%) !important;
+        }
+        /* Portrait: solid opaque background so battle UI does not bleed into the arena */
+        body.is-mobile #screen-battle[data-battle-layout="portrait"] .battle-bottom-stack {
+            background: #0a0e14 !important;
         }
         /* Landscape: avoid a tall “film” over the arena — tint only the chrome rows, not the whole stack */
         @media screen and (orientation: landscape) and ((hover: none) or (pointer: coarse)) {
@@ -639,6 +474,17 @@
             background-size: cover;
             background-position: center;
         }
+        .story-tutor-mon { border:1px solid #444; border-radius:6px; padding:12px; background:var(--surface); }
+        .story-tutor-mon-name { font-size:14px; font-weight:bold; color:var(--accent); margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+        .story-tutor-section { margin-top:8px; }
+        .story-tutor-section-title { font-size:11px; color:#888; text-transform:uppercase; margin-bottom:4px; }
+        .story-tutor-option-row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:4px; }
+        .story-tutor-option-row .current { font-size:11px; color:#aaa; min-width:80px; }
+        .story-tutor-btn { font-size:10px; padding:2px 7px; border:1px solid #555; border-radius:4px; background:transparent; color:#ccc; cursor:pointer; }
+        .story-tutor-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+        .story-tutor-btn:disabled { opacity:0.35; cursor:not-allowed; }
+        .story-tutor-btn.active { border-color:#ce93d8; color:#ce93d8; background:rgba(206,147,216,0.1); }
+        .story-tutor-price { font-size:10px; color:#ffd700; margin-left:4px; }
         .story-city-stack, .story-shop-stack, .story-link-stack {
             position: relative; z-index: 1; display: flex; flex-direction: column;
             height: 100%; min-height: 0; flex: 1;
@@ -653,11 +499,13 @@
         }
         #story-city-left .story-city-portrait-wrap {
             position: relative; display: flex; align-items: center; justify-content: center;
-            width: 200px; height: 200px; border-radius: 50%;
+            width: 150px; height: 150px; border-radius: 50%;
             background: radial-gradient(ellipse at 50% 80%, rgba(255,213,79,0.12) 0%, transparent 55%);
-            border: 2px solid rgba(255,213,79,0.25); box-shadow: inset 0 0 24px rgba(0,0,0,0.45);
+            border: 2px solid rgba(255,213,79,0.25); box-shadow: inset 0 0 18px rgba(0,0,0,0.45);
         }
-        #story-city-left .story-city-portrait-wrap img { width: 180px; height: 180px; }
+        #story-city-left .story-city-portrait-wrap img { width: 135px; height: 135px; }
+        #story-city-npc-name { font-size: 10px; }
+        #story-city-event-label { font-size: 8px; }
         .story-dialog-host { margin-bottom: 10px; width: 100%; max-width: 640px; }
         .story-dialog-nameplate {
             display: inline-block; font-size: 11px; font-weight: bold; letter-spacing: 0.06em;
@@ -841,6 +689,18 @@
         .story-team-slot { display:flex; align-items:center; gap:6px; padding:4px 6px; border:1px solid #2a2a2a; border-radius:4px; background:var(--surface); font-size:11px; }
         .story-team-slot img { width:40px; height:40px; image-rendering:pixelated; border:none; background:transparent; }
         .story-team-slot .draft-card-info-btn { flex-shrink: 0; }
+        /* Party panel sort buttons */
+        .party-sort-btn { width:22px; height:19px; font-size:9px; padding:0; line-height:1; border-radius:2px; }
+        .party-sort-btn:disabled { opacity:0.15; }
+        /* Compact sprite strip tile */
+        .party-compact-tile { display:flex;flex-direction:column;align-items:center;cursor:pointer;gap:1px;transition:opacity 0.1s; }
+        .party-compact-tile:hover { opacity:0.8; }
+        .party-compact-tile img { width:36px;height:36px;image-rendering:pixelated;border-radius:3px;border:1px solid rgba(100,150,200,0.3); }
+        .party-compact-tile span { font-size:7px;color:#888;max-width:36px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center; }
+        /* Collapsed state */
+        #story-city-team.party-collapsed #story-city-team-body { display:none; }
+        #story-city-team.party-collapsed #story-team-compact-strip { display:block !important; }
+        #story-party-toggle-arrow { transition: transform 0.2s ease; }
         .story-prof-card-wrap { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: stretch; width: 100%; max-width: 1200px; margin: 12px auto; box-sizing: border-box; }
         .prof-pick-card { flex: 1 1 280px; max-width: 420px; min-width: min(100%, 240px); }
         .prof-pick-card-selected { transform: scale(1.02); border-color: var(--accent) !important; box-shadow: 0 0 18px rgba(255,213,79,0.22); }
@@ -903,15 +763,35 @@
             background-repeat: no-repeat;
             transition: background-image 0.8s ease-in-out;
         }
-        body.is-mobile #screen-battle.battle-phase-moves { --battle-ui-h: clamp(210px, 44dvh, 295px); }
-        #screen-battle.battle-log-dock { --battle-ui-h: clamp(165px, 24dvh, 220px); }
-        body:not(.is-mobile) #screen-battle {
-            --battle-ui-h: 228px;
+
+        /* ── Per-layout independent tokens ───────────────────────────────── */
+        /* Each layout owns its own sizing — no cross-layout bleed */
+        #screen-battle[data-battle-layout="desktop"] {
+            --battle-ui-h: 276px;
             --battle-player-hud-est: 0px;
             --sprite-foe-w: min(224px, 26vmin);
             --sprite-player-w: min(272px, 28vmin);
         }
-        body:not(.is-mobile) #screen-battle.battle-log-dock { --battle-ui-h: 236px; }
+        #screen-battle[data-battle-layout="ultrawide"] {
+            --battle-ui-h: 296px;
+            --battle-player-hud-est: 0px;
+            --sprite-foe-w: min(248px, 22vmin);
+            --sprite-player-w: min(296px, 26vmin);
+        }
+        #screen-battle[data-battle-layout="portrait"] {
+            --battle-ui-h: clamp(290px, 42dvh, 360px);
+            --battle-player-hud-est: clamp(48px, 8dvh, 64px);
+            --sprite-foe-w: min(40vw, 168px);
+            --sprite-player-w: min(46vw, 192px);
+        }
+        #screen-battle[data-battle-layout="landscape-touch"] {
+            --battle-ui-h: clamp(108px, 30dvh, 158px);
+            --battle-player-hud-est: 0px;
+        }
+
+        #screen-battle.battle-log-dock { --battle-ui-h: clamp(165px, 24dvh, 220px); }
+        #screen-battle[data-battle-layout="desktop"].battle-log-dock { --battle-ui-h: 284px; }
+        #screen-battle[data-battle-layout="ultrawide"].battle-log-dock { --battle-ui-h: 304px; }
 
         /* ── Vignette ─────────────────────────────────────────────────────── */
         #screen-battle::before {
@@ -981,15 +861,17 @@
         }
         #foe-stat-box .stat-box-name { font-size: 1.1em; }
         #foe-stat-box .hp-bar-container { height: 10px; }
-        /* Desktop: card in upper-right */
-        body:not(.is-mobile) #foe-stat-box {
+        /* Desktop/ultrawide: card in upper-right */
+        #screen-battle[data-battle-layout="desktop"] #foe-stat-box,
+        #screen-battle[data-battle-layout="ultrawide"] #foe-stat-box {
             top: 12px; left: auto; right: 56px; bottom: auto;
             width: 248px; border-radius: var(--battle-radius);
             border: 1px solid var(--border-color);
             padding: 6px 10px; font-size: 13px;
             background: var(--battle-panel-bg);
         }
-        body:not(.is-mobile) #foe-stat-box .stat-info-row { margin-top: 3px; font-size: 10px; gap: 4px; }
+        #screen-battle[data-battle-layout="desktop"] #foe-stat-box .stat-info-row,
+        #screen-battle[data-battle-layout="ultrawide"] #foe-stat-box .stat-info-row { margin-top: 3px; font-size: 10px; gap: 4px; }
 
         /* ── FOE SPRITE ───────────────────────────────────────────────────── */
         #foe-sprite-container {
@@ -1005,12 +887,14 @@
             width: 92%; height: 90%; max-width: 100%; max-height: 92%;
             object-fit: contain; z-index: 2;
         }
-        body:not(.is-mobile) #foe-sprite-container {
+        #screen-battle[data-battle-layout="desktop"] #foe-sprite-container,
+        #screen-battle[data-battle-layout="ultrawide"] #foe-sprite-container {
             top: 38px; right: clamp(12px, 7.5%, 80px);
             width: var(--sprite-foe-w); aspect-ratio: auto;
             height: min(252px, 29vmin);
         }
-        body:not(.is-mobile) #foe-sprite { width: 100%; height: 100%; bottom: 14px; }
+        #screen-battle[data-battle-layout="desktop"] #foe-sprite,
+        #screen-battle[data-battle-layout="ultrawide"] #foe-sprite { width: 100%; height: 100%; bottom: 14px; }
 
         /* ── PLAYER SPRITE ────────────────────────────────────────────────── */
         #player-sprite-container {
@@ -1026,29 +910,33 @@
             width: 92%; height: 90%; max-width: 100%; max-height: 92%;
             object-fit: contain; z-index: 2;
         }
-        body:not(.is-mobile) #player-sprite-container {
+        #screen-battle[data-battle-layout="desktop"] #player-sprite-container,
+        #screen-battle[data-battle-layout="ultrawide"] #player-sprite-container {
             left: clamp(10px, 4.5%, 52px); right: auto;
-            bottom: calc(var(--battle-ui-h) + 118px);
+            bottom: calc(var(--battle-ui-h) + 70px);
             width: var(--sprite-player-w); aspect-ratio: auto;
             height: min(290px, 33vmin);
         }
-        body:not(.is-mobile) #player-sprite { width: 100%; height: 100%; bottom: 18px; }
-        /* Portrait: DS-style depth — foe at back-court upper-right, player at front lower-left */
+        #screen-battle[data-battle-layout="desktop"] #player-sprite,
+        #screen-battle[data-battle-layout="ultrawide"] #player-sprite { width: 100%; height: 100%; bottom: 18px; }
+        /* Portrait: DS-style depth — foe upper-right, player front lower-left */
         #screen-battle[data-battle-layout="portrait"] #foe-sprite-container {
-            top: clamp(75px, 11dvh, 118px);
+            top: clamp(48px, 7dvh, 80px);
             right: clamp(4px, 2vw, 14px); left: auto; bottom: auto;
-            width: min(48vw, 196px); height: min(50vw, 204px);
+            width: min(40vw, 168px); height: min(42vw, 176px);
         }
         #screen-battle[data-battle-layout="portrait"] #foe-sprite {
-            width: min(46vw, 188px); height: min(46vw, 188px);
+            width: min(38vw, 160px); height: min(38vw, 160px);
+            max-width: 100%; max-height: 92%; object-fit: contain;
         }
         #screen-battle[data-battle-layout="portrait"] #player-sprite-container {
-            width: min(56vw, 228px); height: min(58vw, 236px);
+            width: min(46vw, 192px); height: min(48vw, 200px);
             bottom: calc(var(--battle-player-hud-est) + var(--battle-ui-h) + max(0px, env(safe-area-inset-bottom, 0px)));
             left: clamp(2px, 1vw, 10px);
         }
         #screen-battle[data-battle-layout="portrait"] #player-sprite {
-            width: min(54vw, 220px); height: min(54vw, 220px);
+            width: min(44vw, 184px); height: min(44vw, 184px);
+            max-width: 100%; max-height: 92%; object-fit: contain;
         }
 
         /* ── Field conditions ─────────────────────────────────────────────── */
@@ -1061,12 +949,13 @@
         }
         #screen-battle[data-battle-layout="portrait"] #field-conditions:empty { display: none; }
         #screen-battle[data-battle-layout="portrait"] #field-conditions:not(:empty) {
-            top: 56px; left: 6px; right: 6px; bottom: auto;
+            top: 44px; left: 6px; right: 6px; bottom: auto;
             max-width: none; flex-direction: row; flex-wrap: wrap;
             justify-content: flex-start; gap: 4px; pointer-events: none;
         }
         #screen-battle[data-battle-layout="portrait"] #field-conditions:not(:empty) .field-pill { pointer-events: auto; }
-        body:not(.is-mobile) #field-conditions {
+        #screen-battle[data-battle-layout="desktop"] #field-conditions,
+        #screen-battle[data-battle-layout="ultrawide"] #field-conditions {
             top: 6px; left: 50%; transform: translateX(-50%);
             flex-direction: row; justify-content: center; max-width: 400px;
         }
@@ -1086,7 +975,8 @@
             padding: 2px 10px; border-radius: 10px;
             white-space: nowrap; text-shadow: 0 1px 3px #000;
         }
-        body:not(.is-mobile) #gauntlet-score { bottom: calc(var(--battle-ui-h) + 132px); }
+        #screen-battle[data-battle-layout="desktop"] #gauntlet-score,
+        #screen-battle[data-battle-layout="ultrawide"] #gauntlet-score { bottom: calc(var(--battle-ui-h) + 84px); }
 
         /* ── Move tooltip ─────────────────────────────────────────────────── */
         #move-tooltip {
@@ -1098,8 +988,9 @@
             border-radius: 4px; padding: 10px;
             box-shadow: 0 8px 28px rgba(0,0,0,0.65);
         }
-        body:not(.is-mobile) #move-tooltip {
-            bottom: calc(var(--battle-ui-h) + 120px);
+        #screen-battle[data-battle-layout="desktop"] #move-tooltip,
+        #screen-battle[data-battle-layout="ultrawide"] #move-tooltip {
+            bottom: calc(var(--battle-ui-h) + 72px);
             right: 0; left: auto; width: 280px;
         }
         #move-tooltip.sticky-open { pointer-events: auto; z-index: 450; }
@@ -1140,16 +1031,19 @@
             padding: 6px 10px; font-size: clamp(11px, 2.8vw, 13px);
         }
         #battle-bottom-stack #player-stat-box .hp-bar-container { height: 9px; }
-        body:not(.is-mobile) .battle-player-hud-row {
+        #screen-battle[data-battle-layout="desktop"] .battle-player-hud-row,
+        #screen-battle[data-battle-layout="ultrawide"] .battle-player-hud-row {
             border-top: 1px solid rgba(255,255,255,0.1);
             background: transparent; padding: 8px 10px 10px;
         }
-        body:not(.is-mobile) #battle-bottom-stack #player-stat-box {
+        #screen-battle[data-battle-layout="desktop"] #battle-bottom-stack #player-stat-box,
+        #screen-battle[data-battle-layout="ultrawide"] #battle-bottom-stack #player-stat-box {
             width: 248px; max-width: min(280px, 40vw); align-self: flex-start;
             border-radius: 6px; border: 1px solid var(--border-color);
             background: var(--surface); margin: 0; padding: 6px 10px;
         }
-        body:not(.is-mobile) #battle-bottom-stack #player-stat-box .stat-info-row { margin-top: 3px; font-size: 10px; gap: 4px; }
+        #screen-battle[data-battle-layout="desktop"] #battle-bottom-stack #player-stat-box .stat-info-row,
+        #screen-battle[data-battle-layout="ultrawide"] #battle-bottom-stack #player-stat-box .stat-info-row { margin-top: 3px; font-size: 10px; gap: 4px; }
 
         /* ── UI Bottom ────────────────────────────────────────────────────── */
         .battle-bottom-stack .ui-bottom {
@@ -1231,9 +1125,13 @@
         }
         #move-menu .move-menu-back:active:not(:disabled) { background: #2a2a2a; }
 
-        /* Desktop: row chrome, 2-col moves */
-        body:not(.is-mobile) .ui-bottom { flex-direction: row; align-items: stretch; }
-        body:not(.is-mobile) .ui-bottom #battle-log {
+        /* ── Desktop / ultrawide: row chrome, 2-col moves ───────────────────── */
+        /* Scoped to data-battle-layout so portrait is completely unaffected */
+        #screen-battle[data-battle-layout="desktop"] .ui-bottom,
+        #screen-battle[data-battle-layout="ultrawide"] .ui-bottom { flex-direction: row; align-items: stretch; }
+
+        #screen-battle[data-battle-layout="desktop"] .ui-bottom #battle-log,
+        #screen-battle[data-battle-layout="ultrawide"] .ui-bottom #battle-log {
             align-self: stretch;
             flex: 0 0 clamp(250px, 29vw, 340px);
             width: clamp(250px, 29vw, 340px);
@@ -1243,18 +1141,44 @@
             line-height: 1.45;
             padding: 8px 10px;
         }
-        body:not(.is-mobile) #move-menu .move-menu-scroll { grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; }
-        body:not(.is-mobile) #move-menu .move-menu-scroll button.battle-btn-move { min-height: 52px; padding: 6px 8px; justify-content: flex-start; cursor: pointer; }
-        body:not(.is-mobile) #command-menu.command-grid { gap: 6px; }
-        body:not(.is-mobile) #command-menu button { min-height: 48px; font-size: 14px; padding: 8px 12px; cursor: pointer; }
-        body:not(.is-mobile) #move-menu .move-menu-back { min-height: 36px; font-size: 13px; cursor: pointer; }
-        body:not(.is-mobile) #move-menu.move-menu-layout { justify-content: flex-start; }
-        body:not(.is-mobile) #move-menu .move-menu-scroll { flex: 0 0 auto; overflow: visible; }
-        /* Desktop move phase: keep moves left, log right (like battle command view) */
-        body:not(.is-mobile) #screen-battle.battle-phase-moves .ui-bottom {
+
+        #screen-battle[data-battle-layout="desktop"] #move-menu.move-menu-layout,
+        #screen-battle[data-battle-layout="ultrawide"] #move-menu.move-menu-layout {
+            display: flex; flex-direction: column; justify-content: stretch;
+        }
+
+        #screen-battle[data-battle-layout="desktop"] #move-menu .move-menu-scroll,
+        #screen-battle[data-battle-layout="ultrawide"] #move-menu .move-menu-scroll {
+            grid-template-columns: 1fr 1fr; gap: 6px;
+            flex: 1 1 0%; min-height: 0; overflow: visible;
+            align-content: stretch; grid-auto-rows: 1fr;
+        }
+
+        #screen-battle[data-battle-layout="desktop"] #move-menu .move-menu-scroll button.battle-btn-move,
+        #screen-battle[data-battle-layout="ultrawide"] #move-menu .move-menu-scroll button.battle-btn-move {
+            min-height: 52px; padding: 8px 10px; justify-content: center; cursor: pointer;
+        }
+
+        #screen-battle[data-battle-layout="desktop"] #command-menu.command-grid,
+        #screen-battle[data-battle-layout="ultrawide"] #command-menu.command-grid { gap: 6px; }
+
+        #screen-battle[data-battle-layout="desktop"] #command-menu button,
+        #screen-battle[data-battle-layout="ultrawide"] #command-menu button {
+            min-height: 48px; font-size: 14px; padding: 8px 12px; cursor: pointer;
+        }
+
+        #screen-battle[data-battle-layout="desktop"] #move-menu .move-menu-back,
+        #screen-battle[data-battle-layout="ultrawide"] #move-menu .move-menu-back {
+            min-height: 36px; font-size: 13px; cursor: pointer;
+        }
+
+        /* Desktop move phase: log right, moves left */
+        #screen-battle[data-battle-layout="desktop"].battle-phase-moves .ui-bottom,
+        #screen-battle[data-battle-layout="ultrawide"].battle-phase-moves .ui-bottom {
             flex-direction: row; align-items: stretch; gap: 8px;
         }
-        body:not(.is-mobile) #screen-battle.battle-phase-moves .ui-bottom #battle-log {
+        #screen-battle[data-battle-layout="desktop"].battle-phase-moves .ui-bottom #battle-log,
+        #screen-battle[data-battle-layout="ultrawide"].battle-phase-moves .ui-bottom #battle-log {
             order: 2;
             flex: 0 0 clamp(250px, 29vw, 340px);
             width: clamp(250px, 29vw, 340px);
@@ -1262,7 +1186,8 @@
             max-height: none;
             font-size: 12px;
         }
-        body:not(.is-mobile) #screen-battle.battle-phase-moves .ui-bottom #move-menu {
+        #screen-battle[data-battle-layout="desktop"].battle-phase-moves .ui-bottom #move-menu,
+        #screen-battle[data-battle-layout="ultrawide"].battle-phase-moves .ui-bottom #move-menu {
             order: 1; width: auto; flex: 1 1 auto;
         }
 
@@ -1298,8 +1223,10 @@
         #command-menu.command-grid .battle-cmd-ico { font-size: 26px; line-height: 1; opacity: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6)); }
         body:not(.is-mobile) #command-menu.command-grid .battle-cmd-ico { font-size: 30px; }
         #command-menu.command-grid .battle-cmd-label { font-size: 13px; font-weight: bold; letter-spacing: 0.08em; color: #eee; }
-        body:not(.is-mobile) #command-menu.command-grid .battle-cmd-btn { min-height: 60px; }
-        body:not(.is-mobile) #command-menu.command-grid .battle-cmd-btn::after {
+        #screen-battle[data-battle-layout="desktop"] #command-menu.command-grid .battle-cmd-btn,
+        #screen-battle[data-battle-layout="ultrawide"] #command-menu.command-grid .battle-cmd-btn { min-height: 60px; }
+        #screen-battle[data-battle-layout="desktop"] #command-menu.command-grid .battle-cmd-btn::after,
+        #screen-battle[data-battle-layout="ultrawide"] #command-menu.command-grid .battle-cmd-btn::after {
             content: attr(data-shortcut);
             position: absolute; right: 6px; bottom: 4px;
             font-size: 9px; letter-spacing: 0.08em;
@@ -1346,7 +1273,8 @@
             -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; word-break: break-word;
             -webkit-font-smoothing: antialiased; letter-spacing: 0.01em;
         }
-        body:not(.is-mobile) .battle-btn-move .move-tile-name { font-size: 15px; }
+        #screen-battle[data-battle-layout="desktop"] .battle-btn-move .move-tile-name,
+        #screen-battle[data-battle-layout="ultrawide"] .battle-btn-move .move-tile-name { font-size: 15px; }
         .battle-btn-move .move-tile-cat { flex-shrink: 0; font-size: 13px; line-height: 1; width: 1.1em; text-align: center; }
         .battle-btn-move .move-tile-eff { flex-shrink: 0; font-size: 11px; line-height: 1; }
         .battle-btn-move .move-tile-meta { margin-top: 3px; font-size: 10px; color: #8a8a8a; opacity: 0.85; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
@@ -1354,7 +1282,8 @@
         .battle-btn-move .move-tile-sep { color: #555; margin: 0 4px; user-select: none; }
         .battle-btn-move .move-info-hit { align-self: center; margin: 0; width: 28px; height: 28px; font-size: 12px; opacity: 0.55; }
         .battle-btn-move .move-info-hit:hover { opacity: 1; }
-        body:not(.is-mobile) .battle-btn-move .move-info-hit { display: none; }
+        #screen-battle[data-battle-layout="desktop"] .battle-btn-move .move-info-hit,
+        #screen-battle[data-battle-layout="ultrawide"] .battle-btn-move .move-info-hit { display: none; }
         /* Landscape-touch / non-portrait mobile: compact tiles */
         body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) .battle-btn-move { padding: 3px 5px; }
         body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) .battle-btn-move .move-tile-name { font-size: 12px; line-height: 1.2; }
@@ -1363,45 +1292,47 @@
         body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) #move-menu .move-menu-back { min-height: 38px; padding: 5px 8px; }
         body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) #move-menu .move-menu-scroll button.battle-btn-move { min-height: 40px; }
 
-        /* Portrait phone: DS-style 2×2 move grid — big tappable tiles */
-        body.is-mobile #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-scroll,
-        body.is-mobile #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-scroll.command-grid {
-            grid-template-columns: 1fr 1fr; gap: 6px;
+        /* Portrait: DS-style 2×2 move grid — big tappable tiles */
+        #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-scroll,
+        #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-scroll.command-grid {
+            grid-template-columns: 1fr 1fr; gap: 5px;
+            align-content: stretch; grid-auto-rows: 1fr;
         }
-        body.is-mobile #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-scroll .battle-btn-move {
-            min-height: 72px; padding: 9px 10px;
-            /* keep row layout from base: [core flex:1] [info-hit hidden] */
+        #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-scroll .battle-btn-move {
+            min-height: 64px; padding: 8px 10px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.28) 100%);
+            border: 1px solid rgba(255,255,255,0.13);
         }
-        body.is-mobile #screen-battle[data-battle-layout="portrait"] .battle-btn-move .battle-btn-move-inner {
+        #screen-battle[data-battle-layout="portrait"] .battle-btn-move .battle-btn-move-inner {
             flex-direction: row; align-items: stretch; gap: 0;
         }
-        body.is-mobile #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-core {
+        #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-core {
             flex: 1; min-width: 0;
         }
-        body.is-mobile #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-head {
+        #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-head {
             align-items: center; gap: 5px; flex-wrap: nowrap;
         }
-        body.is-mobile #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-name {
+        #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-name {
             font-size: 13px; line-height: 1.2; -webkit-line-clamp: 2; line-clamp: 2;
         }
-        body.is-mobile #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-meta {
+        #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-meta {
             margin-top: 4px; font-size: 10px; gap: 2px 5px; opacity: 1; color: #bbb;
         }
-        body.is-mobile #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-meta strong {
+        #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-meta strong {
             color: #eee;
         }
-        body.is-mobile #screen-battle[data-battle-layout="portrait"] .battle-btn-move .type-badge {
+        #screen-battle[data-battle-layout="portrait"] .battle-btn-move .type-badge {
             font-size: 9px; padding: 2px 5px; flex-shrink: 0;
         }
-        body.is-mobile #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-cat {
+        #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-cat {
             font-size: 13px; flex-shrink: 0;
         }
-        /* Hide the per-move ℹ button — info is in the stat box */
-        body.is-mobile #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-info-hit {
+        /* Hide the per-move ℹ button in portrait — info is in the stat box */
+        #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-info-hit {
             display: none !important;
         }
-        body.is-mobile #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-back {
-            min-height: 46px; font-size: 13px;
+        #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-back {
+            min-height: 36px; padding: 4px 8px; font-size: 13px;
         }
         body.layout-tablet-preset #move-menu .move-menu-scroll button.battle-btn-move { min-height: 48px; font-size: 13px; }
 
@@ -1676,66 +1607,86 @@
             #screen-battle .battle-bottom-stack #move-menu .move-menu-scroll button.battle-btn-move { min-height: 50px; padding: 5px 7px; font-size: 12px; }
         }
 
-        /* ── Portrait phone ───────────────────────────────────────────────── */
+        /* ── Portrait layout: all battle sizing via data-battle-layout="portrait" ── */
+        /* These rules apply whenever the JS sets portrait layout, regardless of screen size */
+        #screen-battle[data-battle-layout="portrait"] #foe-stat-box {
+            top: 0; left: 0; right: 0; width: 100%; box-sizing: border-box;
+            border-radius: 0; border-left: none; border-right: none; border-top: none;
+            padding: 5px 56px 5px 10px; font-size: clamp(11px, 3vw, 13px); z-index: 6;
+        }
+        #screen-battle[data-battle-layout="portrait"] #battle-bottom-stack #player-stat-box {
+            bottom: auto; left: auto; right: auto; width: 100%; box-sizing: border-box;
+            border-radius: 0; border-left: none; border-right: none;
+            border-bottom: 1px solid #222; border-top: 1px solid #222;
+            padding: 5px 10px; font-size: clamp(11px, 3vw, 13px);
+            z-index: 6; background: var(--battle-chrome-bg);
+        }
+        #screen-battle[data-battle-layout="portrait"] .battle-bottom-stack { z-index: 6; background: #0a0e14 !important; }
+        #screen-battle[data-battle-layout="portrait"] .hp-bar-container { height: 7px; margin-top: 3px; }
+        #screen-battle[data-battle-layout="portrait"] #player-hp-text,
+        #screen-battle[data-battle-layout="portrait"] #foe-hp-text { font-size: 10px; color: #bbb; }
+        #screen-battle[data-battle-layout="portrait"] #foe-types,
+        #screen-battle[data-battle-layout="portrait"] #player-types { font-size: 9px; }
+        #screen-battle[data-battle-layout="portrait"] .type-badge { padding: 1px 4px; font-size: 9px; }
+        #screen-battle[data-battle-layout="portrait"] #gauntlet-score {
+            top: auto; left: auto; right: 6px; font-size: 10px;
+            background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 3px;
+        }
+        #screen-battle[data-battle-layout="portrait"] .ui-bottom {
+            height: var(--battle-ui-h); flex-direction: column; padding: 4px 5px; gap: 4px;
+            background: #0a0e14;
+        }
+        #screen-battle[data-battle-layout="portrait"] .battle-bottom-stack .ui-bottom {
+            flex: 0 0 var(--battle-ui-h); height: var(--battle-ui-h);
+        }
+        #screen-battle[data-battle-layout="portrait"] #battle-log {
+            align-self: stretch; width: 100%; max-width: 100%;
+            flex: 0 0 auto; min-height: 0; max-height: calc(1.45em * 3 + 8px);
+            font-size: 11px; line-height: 1.45; padding: 4px 6px;
+            overflow-x: hidden; overflow-y: auto;
+        }
+        #screen-battle[data-battle-layout="portrait"].battle-phase-moves .ui-bottom #battle-log {
+            max-height: calc(1.45em * 2 + 8px); max-width: 100%;
+        }
+        #screen-battle[data-battle-layout="portrait"] #command-menu {
+            flex: 1 1 0; min-height: 0; width: 100%; box-sizing: border-box; overflow-y: auto;
+        }
+        #screen-battle[data-battle-layout="portrait"] #move-menu.move-menu-layout {
+            flex: 1 1 0%; width: 100%; box-sizing: border-box; min-height: 0; overflow: hidden; gap: 3px;
+        }
+        #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-scroll {
+            flex: 1 1 0%; min-height: 0; -webkit-overflow-scrolling: touch;
+            grid-template-columns: 1fr 1fr; gap: 5px;
+            align-content: stretch; grid-auto-rows: 1fr;
+        }
+        #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-back { min-height: 36px; padding: 4px 8px; }
+        #screen-battle[data-battle-layout="portrait"] .command-grid { gap: 5px; }
+        #screen-battle[data-battle-layout="portrait"] .battle-bottom-stack button {
+            font-size: 12px; min-height: 44px; padding: 4px 6px;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        #screen-battle[data-battle-layout="portrait"] #command-menu.command-grid .battle-cmd-btn { min-height: 68px; }
+        #screen-battle[data-battle-layout="portrait"] .battle-bottom-stack button.battle-btn-move {
+            background: linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(0,0,0,0.3) 100%);
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+        #screen-battle[data-battle-layout="portrait"] #move-tooltip {
+            bottom: calc(var(--battle-ui-h) + 8px); right: auto; left: 5px;
+            width: min(92vw, 260px); font-size: 10px;
+        }
+
+        /* ── Portrait phone media query: viewport/safe-area/screen rules only ─ */
         @media screen and (max-width: 768px) and (orientation: portrait) {
             .screen, #app-root { max-width: 100vw; width: 100vw; height: 100dvh; max-height: 100dvh; }
-            #screen-battle { --battle-ui-h: clamp(268px, 35dvh, 310px); }
-            body.is-mobile #screen-battle.battle-phase-moves { --battle-ui-h: clamp(268px, 35dvh, 310px); }
-            body.is-mobile #screen-battle[data-battle-layout="portrait"] { --battle-player-hud-est: clamp(54px, 10dvh, 76px); }
             #screen-battle .battle-bottom-stack { padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; }
             .mob-info-btn { display: inline-flex; width: 32px; height: 32px; min-width: 32px; min-height: 32px; font-size: 14px; }
             .icon-btn { width: 34px; height: 34px; right: calc(8px + var(--safe-right, 0px)); }
             .settings-btn { top: calc(8px + var(--safe-top, 0px)); }
-            #foe-stat-box {
-                top: 0; left: 0; right: 0; width: 100%; box-sizing: border-box;
-                border-radius: 0; border-left: none; border-right: none; border-top: none;
-                padding: 5px 56px 5px 10px; font-size: clamp(11px, 3vw, 13px); z-index: 6;
-            }
-            #battle-bottom-stack #player-stat-box {
-                bottom: auto; left: auto; right: auto; width: 100%; box-sizing: border-box;
-                border-radius: 0; border-left: none; border-right: none;
-                border-bottom: 1px solid #222; border-top: 1px solid #222;
-                padding: 5px 10px; font-size: clamp(11px, 3vw, 13px);
-                z-index: 6; background: var(--battle-chrome-bg);
-            }
-            .battle-bottom-stack { z-index: 6; }
             .hp-bar-container { height: 7px; margin-top: 3px; }
             #player-hp-text, #foe-hp-text { font-size: 10px; color: #bbb; }
             #foe-types, #player-types { font-size: 9px; }
             .type-badge { padding: 1px 4px; font-size: 9px; }
-            #foe-stages, #player-stages { max-height: none; overflow: visible; }
-            #foe-sprite-container {
-                top: clamp(75px, 11dvh, 118px);
-                bottom: auto; left: auto; right: clamp(4px, 2vw, 14px); transform: none;
-                width: min(48vw, 196px); height: min(50vw, 204px); z-index: 3;
-            }
-            #foe-sprite { width: min(46vw, 188px); height: min(46vw, 188px); max-width: 100%; max-height: 92%; object-fit: contain; }
-            #player-sprite-container {
-                left: clamp(2px, 1vw, 10px); right: auto; transform: none;
-                width: min(56vw, 228px); height: min(58vw, 236px); z-index: 4;
-            }
-            #player-sprite { width: min(54vw, 220px); height: min(54vw, 220px); max-width: 100%; max-height: 92%; object-fit: contain; }
-            #field-conditions { top: 68px; left: 4px; transform: none; flex-direction: column; align-items: flex-start; justify-content: flex-start; max-width: 168px; gap: 3px; }
             .field-pill { min-height: 22px; font-size: 8px; padding: 1px 5px; }
-            #gauntlet-score { top: auto; left: auto; right: 6px; font-size: 10px; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 3px; }
-            .ui-bottom { height: var(--battle-ui-h); flex-direction: column; padding: 4px 5px; gap: 4px; background: linear-gradient(180deg, rgba(14,20,30,0.96) 0%, rgba(7,10,16,0.99) 100%); }
-            .battle-bottom-stack .ui-bottom { flex: 0 0 var(--battle-ui-h); height: var(--battle-ui-h); }
-            #battle-log {
-                align-self: stretch; width: 100%; max-width: 100%;
-                flex: 0 0 auto; min-height: 0; max-height: calc(1.45em * 4 + 8px);
-                font-size: 11px; line-height: 1.45; padding: 4px 6px;
-                overflow-x: hidden; overflow-y: auto;
-            }
-            #screen-battle.battle-phase-moves .ui-bottom #battle-log { max-height: calc(1.45em * 4 + 8px); max-width: 100%; }
-            #command-menu { flex: 1 1 0; min-height: 0; width: 100%; box-sizing: border-box; overflow-y: auto; }
-            #move-menu.move-menu-layout { flex: 1 1 0%; width: 100%; box-sizing: border-box; min-height: 0; overflow: hidden; gap: 3px; }
-            #move-menu .move-menu-scroll { flex: 1 1 0%; min-height: 0; -webkit-overflow-scrolling: touch; grid-template-columns: 1fr; }
-            #move-menu .move-menu-back { min-height: 40px; padding: 5px 8px; }
-            .command-grid { gap: 4px; }
-            #screen-battle .battle-bottom-stack button { font-size: 12px; min-height: 44px; padding: 4px 6px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-            #screen-battle #command-menu.command-grid .battle-cmd-btn { min-height: 72px; }
-            /* Move tile sizing handled by portrait-specific rules (data-battle-layout="portrait") */
-            #move-tooltip { bottom: calc(var(--battle-ui-h) + 8px); right: auto; left: 5px; width: min(92vw, 260px); font-size: 10px; }
             #screen-menu:not(.hidden) { overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; box-sizing: border-box; padding: 48px 48px 20px; display: flex; flex-direction: column; align-items: center; }
             #screen-menu h1 { font-size: 15px; margin: 6px 0 10px; padding: 0 10px; word-break: break-word; }
             #screen-menu .white-outline { width: 100%; max-width: 400px; box-sizing: border-box; margin: 0 0 8px; }
@@ -2283,16 +2234,20 @@
                 padding-left: env(safe-area-inset-left);
                 padding-right: env(safe-area-inset-right);
             }
-            #screen-story-city, #screen-story-professor, #screen-story-shop, #screen-story-link {
+            #screen-story-city, #screen-story-professor, #screen-story-shop, #screen-story-tutor, #screen-story-link {
                 padding-top: max(8px, env(safe-area-inset-top));
                 padding-bottom: max(8px, env(safe-area-inset-bottom));
             }
             /* Story city: stack NPC / dialogue / team vertically on narrow portrait */
             .story-city-main-row {
                 flex-direction: column !important;
+                flex: 1 1 0% !important;
                 overflow-x: hidden;
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain;
+                touch-action: pan-y;
+                min-height: 0;
             }
             #story-city-left {
                 width: 100% !important;
@@ -2303,12 +2258,13 @@
                 box-sizing: border-box;
             }
             #story-city-left .story-city-portrait-wrap {
-                max-width: min(200px, 56vw);
+                max-width: min(150px, 42vw);
             }
+            /* Let the whole column scroll; avoid a nested flex "trap" in #story-city-actions */
             #story-city-actions {
-                flex: 1 1 auto !important;
+                flex: 0 0 auto !important;
                 min-height: 0;
-                overflow-y: auto;
+                overflow: visible;
                 -webkit-overflow-scrolling: touch;
             }
             #story-city-team {
@@ -2318,10 +2274,13 @@
                 border-top: 1px solid rgba(34, 34, 34, 0.9);
                 flex-shrink: 0;
                 min-height: 0;
-                max-height: min(42vh, 280px);
+                overflow: hidden;
+                box-sizing: border-box;
+            }
+            #story-city-team-body {
+                max-height: min(36vh, 220px);
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
-                box-sizing: border-box;
             }
             /* Story shop: one column on narrow portrait */
             #story-shop-grid {
@@ -2344,7 +2303,7 @@
             }
             .story-action-btn { font-size: 14px; padding: 10px 14px; }
             /* Story team panel → horizontal swipe strip (Emerald-style party card row) */
-            #story-team-panel {
+            #story-city-team-body #story-team-panel {
                 display: flex !important;
                 flex-wrap: nowrap !important;
                 overflow-x: auto;
@@ -2353,11 +2312,13 @@
                 gap: 8px;
                 padding: 6px 2px 8px;
             }
-            #story-team-panel .story-team-slot {
+            #story-city-team-body #story-team-panel .story-team-slot {
                 scroll-snap-align: start;
                 flex: 0 0 auto;
-                min-width: 112px;
+                min-width: 108px;
             }
+            /* Sort buttons hidden on mobile horizontal scroll — use compact strip tap instead */
+            #story-city-team-body .party-sort-col { display: none; }
             /* Compact HUD pills */
             #story-hud-city, #story-hud-badges, #story-hud-gold {
                 font-size: 13px; padding: 4px 8px; border-radius: 999px;
@@ -2828,14 +2789,6 @@
             <label class="settings-row" for="sw-animations"><span>Battle animations</span><input type="checkbox" class="pbs-switch" id="sw-animations" role="switch" onchange="window.applySettingSwitch('animations', this.checked)"></label>
             <label class="settings-row" for="sw-weather-anim"><span>Weather animation</span><input type="checkbox" class="pbs-switch" id="sw-weather-anim" role="switch" onchange="window.applySettingSwitch('weatherAnimation', this.checked)"></label>
             <label class="settings-row" for="sw-terrain-bg"><span>Terrain background</span><input type="checkbox" class="pbs-switch" id="sw-terrain-bg" role="switch" onchange="window.applySettingSwitch('terrainBackground', this.checked)"></label>
-            <div class="settings-row" style="border-bottom:1px solid #333;">
-                <span style="font-size:13px;">FX quality</span>
-                <select id="setting-fx-quality" onchange="settings.fxQuality=this.value; persistMiscSettings(); window.applyFxQuality&&window.applyFxQuality(); window.Arena&&window.Arena.applyFxQuality&&window.Arena.applyFxQuality();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;">
-                    <option value="low">Low — fast, no particles</option>
-                    <option value="mid">Balanced — reduced FX</option>
-                    <option value="high">High — full effects</option>
-                </select>
-            </div>
             <div class="settings-section-title">Audio</div>
             <label class="settings-row" for="sw-music"><span>Music</span><input type="checkbox" class="pbs-switch" id="sw-music" role="switch" onchange="window.applySettingSwitch('musicEnabled', this.checked)"></label>
             <div class="settings-row" style="flex-wrap:wrap;">
@@ -3154,12 +3107,12 @@
         <!-- Main content -->
         <div class="story-city-main-row">
             <!-- Left: Trainer sprite + event info -->
-            <div id="story-city-left" style="width:220px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;border-right:1px solid rgba(34,34,34,0.9);gap:8px;background:rgba(8,8,12,0.35);">
+            <div id="story-city-left" style="width:165px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:9px;border-right:1px solid rgba(34,34,34,0.9);gap:6px;background:rgba(8,8,12,0.35);">
                 <div class="story-city-portrait-wrap">
                     <img id="story-city-sprite" src="" alt="" onerror="this.style.visibility='hidden'" style="object-fit:contain;image-rendering:pixelated;border:none;background:transparent;">
                 </div>
-                <div id="story-city-npc-name" style="color:var(--accent);font-size:13px;font-weight:bold;text-align:center;"></div>
-                <div id="story-city-event-label" style="color:#888;font-size:11px;text-align:center;"></div>
+                <div id="story-city-npc-name" style="color:var(--accent);font-weight:bold;text-align:center;"></div>
+                <div id="story-city-event-label" style="color:#888;text-align:center;"></div>
             </div>
             <!-- Center: Action buttons -->
             <div id="story-city-actions" style="flex:1;display:flex;flex-direction:column;gap:8px;padding:16px;overflow-y:auto;background:rgba(6,8,14,0.25);">
@@ -3171,10 +3124,20 @@
                 </div>
                 <div id="story-action-buttons" style="display:flex;flex-direction:column;gap:8px;"></div>
             </div>
-            <!-- Right: Team mini-panel -->
-            <div id="story-city-team" style="width:180px;flex-shrink:0;border-left:1px solid rgba(34,34,34,0.9);padding:8px;overflow-y:auto;background:rgba(8,8,12,0.35);">
-                <div style="font-size:11px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Your Team</div>
-                <div id="story-team-panel" style="display:flex;flex-direction:column;gap:4px;"></div>
+            <!-- Right: Team mini-panel (collapsible on mobile) -->
+            <div id="story-city-team" style="width:180px;flex-shrink:0;border-left:1px solid rgba(34,34,34,0.9);display:flex;flex-direction:column;overflow:hidden;background:rgba(8,8,12,0.35);">
+                <button id="story-city-team-hdr" type="button" onclick="window.StoryMode.togglePartyPanel()" style="font-size:11px;color:#888;padding:7px 8px;text-transform:uppercase;letter-spacing:1px;display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.3);border:none;border-bottom:1px solid rgba(34,34,34,0.8);cursor:pointer;width:100%;border-radius:0;flex-shrink:0;">
+                    <span>Party <span id="story-party-count" style="color:#aaa;font-size:10px;letter-spacing:0;"></span></span>
+                    <span id="story-party-toggle-arrow" style="font-size:9px;color:#555;">▲</span>
+                </button>
+                <!-- Compact sprite strip: shown when collapsed -->
+                <div id="story-team-compact-strip" style="display:none;flex-shrink:0;padding:4px 6px;overflow-x:auto;-webkit-overflow-scrolling:touch;border-bottom:1px solid rgba(34,34,34,0.6);">
+                    <div id="story-team-compact" style="display:flex;gap:4px;align-items:center;padding:2px 0;"></div>
+                </div>
+                <!-- Full panel body -->
+                <div id="story-city-team-body" style="flex:1;overflow-y:auto;padding:8px;-webkit-overflow-scrolling:touch;min-height:0;">
+                    <div id="story-team-panel" style="display:flex;flex-direction:column;gap:4px;"></div>
+                </div>
             </div>
         </div>
         </div>
@@ -3206,6 +3169,23 @@
             <span id="story-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;">&#128176; 0G</span>
         </div>
         <div id="story-shop-grid" style="flex:1;overflow-y:auto;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:0;"></div>
+        <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+            <button onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
+        </div>
+        </div>
+    </div>
+
+    <div id="screen-story-tutor" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div id="story-tutor-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
+        <div class="story-shop-stack">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+            <h3 style="color:#ce93d8;margin:0;font-size:14px;">&#128218; Move Tutor</h3>
+            <span id="story-tutor-gold" style="color:#ffd700;font-size:13px;font-weight:bold;">&#128176; 0G</span>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
+            <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Customize your team's moves, held items, abilities, and natures. Options are drawn from known competitive sets.</p>
+            <div id="story-tutor-team" style="display:flex;flex-direction:column;gap:12px;"></div>
+        </div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
             <button onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
         </div>
@@ -3427,21 +3407,10 @@
             || (navigator.maxTouchPoints > 0 && window.matchMedia('(pointer: coarse)').matches && window.matchMedia('(max-width: 1024px)').matches);
 
         if (isMobile) document.body.classList.add('is-mobile');
-
-        // M0: pointer fine/coarse body classes
-        (function() {
-            try {
-                const fine = window.matchMedia('(pointer: fine)').matches;
-                document.body.classList.add(fine ? 'has-pointer-fine' : 'has-pointer-coarse');
-            } catch(e) { document.body.classList.add('has-pointer-fine'); }
-        })();
         function applyLayoutPresetClasses() {
             try {
                 const tab = window.matchMedia('(min-width:700px) and (max-width:1100px)').matches;
                 document.body.classList.toggle('layout-tablet-preset', tab);
-                // M0: ultrawide layout class (>=1400px landscape, aspect > 1.6)
-                const uw = window.innerWidth >= 1400 && (window.innerWidth / Math.max(1, window.innerHeight)) > 1.6;
-                document.body.classList.toggle('layout-ultrawide', uw);
             } catch (e) {}
         }
         function applyBattleLayoutMode() {
@@ -3453,9 +3422,7 @@
             const portrait = window.matchMedia('(orientation: portrait)').matches;
             const narrow = typeof window.innerWidth === 'number' && window.innerWidth <= 900;
             const usePhoneBattleLayout = document.body.classList.contains('is-mobile') || narrow;
-            // M0: ultrawide mode for desktop only
-            const uw = !usePhoneBattleLayout && window.innerWidth >= 1400 && (window.innerWidth / Math.max(1, window.innerHeight)) > 1.6;
-            const mode = uw ? 'ultrawide' : (!usePhoneBattleLayout ? 'desktop' : (portrait ? 'portrait' : 'landscape-touch'));
+            const mode = !usePhoneBattleLayout ? 'desktop' : (portrait ? 'portrait' : 'landscape-touch');
             sb.setAttribute('data-battle-layout', mode);
             try {
                 const sel = document.getElementById('party-size-select');
@@ -3465,25 +3432,6 @@
             } catch (e) {}
         }
         window.applyBattleLayoutMode = applyBattleLayoutMode;
-
-        // M0: apply fxQuality CSS token overrides
-        window.applyFxQuality = function() {
-            const q = settings.fxQuality || 'high';
-            const r = document.documentElement.style;
-            if (q === 'low') {
-                r.setProperty('--fx-particle-scale', '0');
-                r.setProperty('--fx-shake-scale', '0');
-                r.setProperty('--fx-blur-scale', '0');
-            } else if (q === 'mid') {
-                r.setProperty('--fx-particle-scale', '0.3');
-                r.setProperty('--fx-shake-scale', '0.5');
-                r.setProperty('--fx-blur-scale', '0.5');
-            } else {
-                r.setProperty('--fx-particle-scale', '1');
-                r.setProperty('--fx-shake-scale', '1');
-                r.setProperty('--fx-blur-scale', '1');
-            }
-        };
         window.syncBattlePhaseClass = function() {
             const sb = document.getElementById('screen-battle');
             const mv = document.getElementById('move-menu');
@@ -3556,9 +3504,6 @@
         window.addEventListener('resize', applyBattleLayoutMode);
         window.addEventListener('resize', function() { try { applyDesktopGameScale(); } catch (e) {} });
         window.isMobile = isMobile;
-        // M0: apply fxQuality on boot (default to 'mid' on mobile for performance)
-        if (isMobile && !localStorage.getItem('pbs_settings')) settings.fxQuality = 'mid';
-        try { window.applyFxQuality && window.applyFxQuality(); } catch(e) {}
 
         // Show/hide rotate overlay: portrait + narrow screen (any device)
         function checkOrientation() {
@@ -4474,8 +4419,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             aiProfile: 'balanced', /* aggro | balanced | stall — vs AI only */
             storyBattleItems: true, /* story in-battle bag */
             pvpBattleItems: false,  /* reserved: symmetric items in PvP */
-            battleLogDock: true,    /* landscape tablets/desktop: dock log when wide enough */
-            fxQuality: 'high'       /* M0: low | mid | high — gates particles, shake, blur */
+            battleLogDock: true     /* landscape tablets/desktop: dock log when wide enough */
         };
         try {
             const _pbs = JSON.parse(localStorage.getItem('pbs_settings') || '{}');
@@ -4484,7 +4428,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.pvpBattleItems === 'boolean') settings.pvpBattleItems = _pbs.pvpBattleItems;
             if (typeof _pbs.battleLogDock === 'boolean') settings.battleLogDock = _pbs.battleLogDock;
             if (typeof _pbs.smartDraftPool === 'boolean') settings.smartDraftPool = _pbs.smartDraftPool;
-            if (_pbs.fxQuality && ['low','mid','high'].includes(_pbs.fxQuality)) settings.fxQuality = _pbs.fxQuality;
         } catch (e) {}
         function persistMiscSettings() {
             try {
@@ -4492,7 +4435,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     aiProfile: settings.aiProfile,
                     storyBattleItems: settings.storyBattleItems,
                     pvpBattleItems: settings.pvpBattleItems,
-                    fxQuality: settings.fxQuality,
                     battleLogDock: settings.battleLogDock,
                     smartDraftPool: settings.smartDraftPool
                 }));
@@ -5333,9 +5275,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (pair[1] === 'storyBattleItems') el.checked = settings.storyBattleItems !== false;
                 else el.checked = !!settings[pair[1]];
             });
-            // M0: sync fxQuality select
-            const fxSel = document.getElementById('setting-fx-quality');
-            if (fxSel) fxSel.value = settings.fxQuality || 'high';
         };
         window.applySettingSwitch = function(key, checked) {
             const on = !!checked;
@@ -6094,13 +6033,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const PSEUDO_LEGEND = new Set(["Dragonite","Tyranitar","Salamence","Metagross","Garchomp","Hydreigon","Goodra","Kommo-o","Dragapult","Baxcalibur"]);
         function getMonGrade(name, bst) {
             // Curated overrides first
-            const grade4Override = new Set(["Slaking","Archeops","Avalugg","Avalugg-Hisui"]);
-            if (grade4Override.has(name)) return 4;
             const grade1Override = new Set(["Azumarill","Amoonguss","Chansey","Wishiwashi"]);
             if (grade1Override.has(name)) return 1;
-            const grade2Override = new Set(["Smeargle","Shedinja","Ditto","Clefairy","Medicham","Diggersby","Pelipper","Torkoal","Murkrow","Pachirisu","Dusclops","Cosmog","Cosmoem","Kubfu","Poipole","Terapagos","Phione","Lapras","Snorlax","Kangaskhan","Tauros","Aerodactyl","Heracross"]);
+            // G2: crippled-ability Pokémon with high BST, strong Eviolite users, and others that would
+            // otherwise appear in wrong story stages based purely on BST/stage detection
+            const grade2Override = new Set([
+                "Slaking","Archeops",                              // high BST, crippling ability (Truant/Defeatist)
+                "Avalugg","Avalugg-Hisui",                         // stage1-final ≥500 BST, naturally G2
+                "Porygon2","Dusclops","Rhydon",                    // strong Eviolite users, naturally G3 as stage1-mid
+                "Smeargle","Shedinja","Ditto","Clefairy","Medicham","Diggersby","Pelipper","Torkoal",
+                "Murkrow","Pachirisu","Cosmog","Cosmoem","Kubfu","Poipole","Terapagos","Phione",
+                "Lapras","Snorlax","Kangaskhan","Tauros","Aerodactyl","Heracross"
+            ]);
             if (grade2Override.has(name)) return 2;
-            if (name === 'Regigigas') return 3;
 
             if (PSEUDO_LEGEND.has(name)) return 1;
 
@@ -8936,7 +8881,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     window.closeStickyMoveTooltip();
                     document.getElementById('move-tooltip').classList.add('hidden');
                     menu.classList.add('hidden');
-                    if (!activeMon.dynamaxed && ((/choice/i.test(String(activeMon.item || ''))) || activeMon.ability === "Gorilla Tactics") && !activeMon.volatile.choiceLock) activeMon.volatile.choiceLock = rawMove.name;
                     syncGimmickIntentSlotOnMoveCommit(isP1);
                     window.playTurn(move._origIndex, null);
                 };
@@ -9321,25 +9265,63 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Stealth Rock
             if (move.name === "Stealth Rock") {
-                if (!side.stealthRock) {
+                if (!side.stealthRock && playerBench > 0) {
                     score = isEarlyGame ? 90 : 60;
                     if (hpPct > 0.7) score += 15;
-                    if (playerBench >= 2) score += 15; // More valuable with more enemies to switch
+                    if (playerBench >= 2) score += 20;
+                    else score += 5; // Still some value with one remaining switch-in
                 } else score = 0;
             }
-            // Spikes
+            // Spikes — only useful if there are grounded switch-ins not immune to them
             else if (move.name === "Spikes") {
-                if (side.spikes < 3) {
-                    score = isEarlyGame ? 75 : 45;
-                    if (hpPct > 0.7) score += 10;
-                    score += side.spikes * 5; // More layers = more commitment
+                if (side.spikes < 3 && playerBench > 0) {
+                    let groundedBench = state.playerParty.filter(m => m !== defender && m.currentHp > 0 &&
+                        m.type1 !== "Flying" && m.type2 !== "Flying" &&
+                        m.ability !== "Levitate" && m.item !== "Air Balloon" && m.item !== "Heavy-Duty Boots" &&
+                        !(m.volatile && m.volatile.magnetRise));
+                    if (groundedBench.length === 0) { score = 0; }
+                    else {
+                        score = isEarlyGame ? 75 : 45;
+                        if (hpPct > 0.7) score += 10;
+                        score += side.spikes * 5;
+                        score += Math.min(groundedBench.length, 3) * 8; // More targets = more value
+                    }
                 } else score = 0;
             }
-            // Toxic Spikes
+            // Toxic Spikes — avoid if a grounded Poison-type on bench will absorb them
             else if (move.name === "Toxic Spikes") {
-                if (side.toxicSpikes < 2) {
-                    score = isEarlyGame ? 70 : 50;
-                    if (hpPct > 0.7) score += 10;
+                if (side.toxicSpikes < 2 && playerBench > 0) {
+                    let poisonAbsorber = state.playerParty.some(m => m !== defender && m.currentHp > 0 &&
+                        (m.type1 === "Poison" || m.type2 === "Poison") &&
+                        m.type1 !== "Flying" && m.type2 !== "Flying" &&
+                        m.ability !== "Levitate" && m.item !== "Air Balloon" && m.item !== "Heavy-Duty Boots");
+                    let affectedBench = state.playerParty.filter(m => m !== defender && m.currentHp > 0 &&
+                        m.type1 !== "Poison" && m.type2 !== "Poison" &&
+                        m.type1 !== "Steel" && m.type2 !== "Steel" &&
+                        m.type1 !== "Flying" && m.type2 !== "Flying" &&
+                        m.ability !== "Levitate" && m.item !== "Air Balloon" && m.item !== "Heavy-Duty Boots" &&
+                        !(m.volatile && m.volatile.magnetRise) && !m.status);
+                    if (affectedBench.length === 0 || poisonAbsorber) { score = 0; }
+                    else {
+                        score = isEarlyGame ? 70 : 50;
+                        if (hpPct > 0.7) score += 10;
+                        score += Math.min(affectedBench.length, 3) * 8;
+                    }
+                } else score = 0;
+            }
+            // Sticky Web — slows grounded switch-ins; worthless with no bench remaining
+            else if (move.name === "Sticky Web") {
+                if (!side.stickyWeb && playerBench > 0) {
+                    let groundedBench = state.playerParty.filter(m => m !== defender && m.currentHp > 0 &&
+                        m.type1 !== "Flying" && m.type2 !== "Flying" &&
+                        m.ability !== "Levitate" && m.item !== "Air Balloon" && m.item !== "Heavy-Duty Boots" &&
+                        !(m.volatile && m.volatile.magnetRise));
+                    if (groundedBench.length === 0) { score = 0; }
+                    else {
+                        score = isEarlyGame ? 65 : 40;
+                        if (hpPct > 0.7) score += 10;
+                        score += Math.min(groundedBench.length, 3) * 8;
+                    }
                 } else score = 0;
             }
             // Sleep moves
@@ -10018,18 +10000,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return false;
                 }
                 const _STRUGGLE = { name: "Struggle", type: "Normal", cat: "Physical", pow: 50, acc: 100, pri: 0, pp: 1, maxPp: 1, eff: "User takes 25% max HP recoil.", effectStr: "User takes 25% max HP recoil." };
-                if (pMove && !state.pActive.dynamaxed && ((/choice/i.test(String(state.pActive.item || ''))) || state.pActive.ability === "Gorilla Tactics") && !state.pActive.volatile.choiceLock) {
-                    state.pActive.volatile.choiceLock = pMove.name;
-                } else if (state.pActive.volatile.choiceLock && pMove && !state.pActive.dynamaxed) {
+                // Only enforce an existing lock here; the lock is SET inside performAction
+                // after canMove() confirms the move actually fires (so flinch/paralysis/sleep
+                // does NOT lock a choice item user into that move).
+                if (state.pActive.volatile.choiceLock && pMove && !state.pActive.dynamaxed) {
                     if (_choiceLockBlocked(state.pActive)) {
                         pMove = _STRUGGLE;
                     } else {
                         pMove = state.pActive.moves.find(m => m.name === state.pActive.volatile.choiceLock) || pMove;
                     }
                 }
-                if (fMove && !state.fActive.dynamaxed && ((/choice/i.test(String(state.fActive.item || ''))) || state.fActive.ability === "Gorilla Tactics") && !state.fActive.volatile.choiceLock) {
-                    state.fActive.volatile.choiceLock = fMove.name;
-                } else if (state.fActive.volatile.choiceLock && fMove && !state.fActive.dynamaxed) {
+                if (state.fActive.volatile.choiceLock && fMove && !state.fActive.dynamaxed) {
                     if (_choiceLockBlocked(state.fActive)) {
                         fMove = _STRUGGLE;
                     } else {
@@ -10439,6 +10420,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Pressure: Opponent moves cost 2 PP (only on initial use)
                 if (!_isMultiTurnContinuation && defender.ability === "Pressure" && move.pp > 0) move.pp--;
 
+                // Set choice lock now that the move is confirmed to execute (not on flinch/paralysis/sleep/etc.)
+                if (!attacker.dynamaxed && !attacker.volatile.choiceLock && move.name !== "Struggle" &&
+                    ((/choice/i.test(String(attacker.item || ''))) || attacker.ability === "Gorilla Tactics")) {
+                    attacker.volatile.choiceLock = move.name;
+                }
+
                 // === GIMMICK ACTIVATION (before move announcement) ===
                 let gimmickPending = resolveGimmickIntentForActive(isPlayer);
                 // Invalidate illegal intents (wrong build / classic lockout) — slot+active already matched in resolve
@@ -10532,6 +10519,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Track move history for Last Resort
             if (!attacker.volatile.moveHistory) attacker.volatile.moveHistory = [];
             if (!attacker.volatile.moveHistory.includes(move.name)) attacker.volatile.moveHistory.push(move.name);
+            // Last Resort: fails before any damage if the user hasn't used every other move at least once
+            if (move.name === "Last Resort") {
+                let _lrOther = attacker.moves.filter(m => m.name !== "Last Resort");
+                if (_lrOther.length > 0) {
+                    let _lrHist = attacker.volatile.moveHistory || [];
+                    if (!_lrOther.every(m => _lrHist.includes(m.name))) {
+                        logMsg(`But it failed! ${attacker.name} hasn't used all its other moves!`, 'info');
+                        await sleep(1000); return;
+                    }
+                }
+            }
             // Consume Lock-On after it has guaranteed the hit this turn
             if (attacker.volatile.lockOn) attacker.volatile.lockOn = false;
 
@@ -13301,17 +13299,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else { logMsg(`But it failed!`, 'info'); }
                 return;
             }
-            // Last Resort: fails if any other move hasn't been used yet this battle
-            if (move.name === "Last Resort") {
-                let otherMoves = attacker.moves.filter(m => m.name !== "Last Resort");
-                if (otherMoves.length === 0) { /* solo move, allow it */ }
-                else {
-                    let history = attacker.volatile.moveHistory || [];
-                    let allUsed = otherMoves.every(m => history.includes(m.name));
-                    if (!allUsed) { logMsg(`But it failed! ${attacker.name} hasn't used all its other moves!`, 'info'); return; }
-                }
-                return; // damage already dealt above; no additional effect
-            }
             // Skill Swap: attacker and defender swap abilities
             if (move.name === "Skill Swap") {
                 const _noSwap = new Set(["Wonder Guard","Illusion","Stance Change","Schooling","Comatose","Shields Down","Disguise","RKS System","Battle Bond","Neutralizing Gas","Ice Face","Hunger Switch","Power Construct"]);
@@ -14961,7 +14948,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Early route payouts set to 1400G so a few wins better cover Link G1 rerolls (4000G base).
         // Exactly 8 gym badges (Gym Leader 1–8 once); then Victory Road (3 Elite), League City (City9, Dept store), E1–E4, Champion, Rival, HoF.
         const STORY_EVENTS_RAW = [
-          [0,'City','City0',null,0,['Professor','Link Station','Pokemart','Leave City']],
+          [0,'City','City0',null,0,['Professor','Link Station','Pokemart','Move Tutor','Leave City']],
           [1,'Battle','Basic Trainer',{g1:0,g2:0,g3:0,g4:100},1400,null],
           [2,'Battle','Basic Trainer',{g1:0,g2:0,g3:20,g4:80},1400,null],
           [3,'Battle','Basic Trainer',{g1:0,g2:0,g3:50,g4:50},1400,null],
@@ -14980,10 +14967,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [16,'Battle','Basic Trainer',{g1:0,g2:10,g3:90,g4:0},1500,null],
           [17,'Battle','Basic Trainer',{g1:0,g2:10,g3:90,g4:0},1500,null],
           [18,'Battle','Basic Trainer',{g1:0,g2:30,g3:70,g4:0},1500,null],
-          [19,'City','City3',null,0,['Professor','Link Station','Department Store','Gym Battle']],
+          [19,'City','City3',null,0,['Professor','Link Station','Department Store','Move Tutor','Gym Battle']],
           [20,'Battle','Gym Trainer',{g1:0,g2:30,g3:70,g4:0},2000,null],
           [21,'Battle','Gym Leader 3',{g1:0,g2:65,g3:35,g4:0},3000,null],
-          [22,'City','City3',null,0,['Professor','Link Station','Department Store','Leave City']],
+          [22,'City','City3',null,0,['Professor','Link Station','Department Store','Move Tutor','Leave City']],
           [23,'Battle','Basic Trainer',{g1:0,g2:30,g3:70,g4:0},1700,null],
           [24,'Battle','Basic Trainer',{g1:0,g2:30,g3:70,g4:0},1700,null],
           [25,'Battle','Basic Trainer',{g1:0,g2:50,g3:50,g4:0},1700,null],
@@ -14994,11 +14981,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [30,'Battle','Basic Trainer',{g1:0,g2:50,g3:50,g4:0},2000,null],
           [31,'Battle','Basic Trainer',{g1:0,g2:50,g3:50,g4:0},2000,null],
           [32,'Battle','Basic Trainer',{g1:0,g2:70,g3:30,g4:0},2000,null],
-          [33,'City','City5',null,0,['Professor','Link Station','Pokemart','Gym Battle','Leave City']],
+          [33,'City','City5',null,0,['Professor','Link Station','Pokemart','Move Tutor','Gym Battle','Leave City']],
           [34,'Battle','Gym Trainer',{g1:5,g2:60,g3:35,g4:0},2500,null],
           [35,'Battle','Gym Trainer',{g1:5,g2:65,g3:30,g4:0},2500,null],
           [36,'Battle','Gym Leader 5',{g1:25,g2:70,g3:5,g4:0},3500,null],
-          [37,'City','City5',null,0,['Professor','Link Station','Pokemart','Leave City']],
+          [37,'City','City5',null,0,['Professor','Link Station','Pokemart','Move Tutor','Leave City']],
           [38,'Battle','Basic Trainer',{g1:5,g2:65,g3:30,g4:0},2200,null],
           [39,'Battle','Basic Trainer',{g1:5,g2:65,g3:30,g4:0},2200,null],
           [40,'Battle','Elite Trainer',{g1:10,g2:75,g3:15,g4:0},2700,null],
@@ -15028,7 +15015,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [64,'Battle','Elite Trainer',{g1:55,g2:45,g3:0,g4:0},4200,null],
           [65,'Battle','Elite Trainer',{g1:65,g2:35,g3:0,g4:0},4800,null],
           [66,'Battle','Elite Trainer',{g1:75,g2:25,g3:0,g4:0},5200,null],
-          [67,'City','City9',null,0,['Link Station','Department Store','Enter Pokemon League']],
+          [67,'City','City9',null,0,['Link Station','Department Store','Move Tutor','Enter Pokemon League']],
           [68,'Battle','E1',{g1:90,g2:10,g3:0,g4:0},5000,null],
           [69,'Battle','E2',{g1:95,g2:5,g3:0,g4:0},5000,null],
           [70,'Battle','E3',{g1:95,g2:5,g3:0,g4:0},5000,null],
@@ -15501,6 +15488,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function syncStoryLinkBackground() {
             applyStoryBgLayer(document.getElementById('story-link-bg-layer'), getStoryBgManifest().linkStation || '');
         }
+        function syncStoryTutorBackground() {
+            applyStoryBgLayer(document.getElementById('story-tutor-bg-layer'), getStoryBgManifest().shopMart || '');
+        }
         (function loadStoryBgManifestFetch() {
             fetch('sprites/story/backgrounds/manifest.json')
                 .then(function(r) { return r.ok ? r.json() : null; })
@@ -15874,13 +15864,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const genSet = new Set(allowedGens);
             const types = parseTrainerTypes(trainer.type);
-            const isMixed = types.some(t => t === 'Mixed' || t === 'All-Rounder');
+            const _trainerIsPlaceholder = isPlaceholderSignatureList(trainer.sigs || []);
+            const isMixed = types.some(t => t === 'Mixed' || t === 'All-Rounder') || _trainerIsPlaceholder;
             const sigP = applyDifficultyToSigProbability(_signatureProbabilityForEvent(battleEventType));
             let S = (trainer.sigs || []).filter(name => {
                 const b = baseStats[name];
                 return b && genSet.has(b.gen);
             }).slice();
-            if (isPlaceholderSignatureList(trainer.sigs || [])) S = buildSyntheticSignaturePool(trainer, genSet, rng);
+            if (_trainerIsPlaceholder) S = buildSyntheticSignaturePool({ ...trainer, type: 'Mixed' }, genSet, rng);
             else if (!S.length) S = buildSyntheticSignaturePool(trainer, genSet, rng);
             const T = {1:[],2:[],3:[],4:[]};
             for (const name of Object.keys(baseStats)) {
@@ -15904,7 +15895,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else { r-=(gwIn.g2||0); if(r<=0) g=2;
                 else g=1; } }
                 let pool = T[g];
-                if (!pool.length) { for(let x=4;x>=1;x--) if(T[x].length){pool=T[x];break;} }
+                if (!pool.length) {
+                    // Spiral outward from target grade, preferring stronger (lower index) grades
+                    for (let delta = 1; delta <= 3; delta++) {
+                        const stronger = g - delta;
+                        const weaker   = g + delta;
+                        if (stronger >= 1 && T[stronger].length) { pool = T[stronger]; break; }
+                        if (weaker   <= 4 && T[weaker].length)   { pool = T[weaker];   break; }
+                    }
+                }
                 return pool.length ? pool[Math.floor(rng()*pool.length)] : null;
             }
             function pickFromUnionExcluding(usedNames) {
@@ -16049,6 +16048,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (!candidates.length) candidates = TRAINER_DATA;
             const _rng = (sm && sm.active) ? storyRngNext : Math.random;
+            // For Basic/Gym Trainer picks, avoid Normal-type numerical dominance by grouping
+            // candidates by their effective type and picking the type first, then the trainer.
+            if (rk === 'basic trainer' || rk === 'gym trainer') {
+                const byType = {};
+                for (const t of candidates) {
+                    const key = isPlaceholderSignatureList(t.sigs || []) ? 'Mixed' : (t.type || 'Mixed');
+                    if (!byType[key]) byType[key] = [];
+                    byType[key].push(t);
+                }
+                const typeKeys = Object.keys(byType);
+                const chosenType = typeKeys[Math.floor(_rng() * typeKeys.length)];
+                const typePool = byType[chosenType];
+                return typePool[Math.floor(_rng() * typePool.length)];
+            }
             return candidates[Math.floor(_rng() * candidates.length)];
         }
 
@@ -16154,6 +16167,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             renderTeamPanel();
             renderCityActions(ev);
             syncStoryCityBackground(cidx);
+            // Restore party panel collapse state (default collapsed on mobile)
+            const teamEl = document.getElementById('story-city-team');
+            const arrow = document.getElementById('story-party-toggle-arrow');
+            if (teamEl) {
+                const isMob = document.body.classList.contains('is-mobile');
+                let savedCollapsed;
+                try { savedCollapsed = localStorage.getItem('storyPartyCollapsed'); } catch(e) {}
+                const collapsed = savedCollapsed !== null ? savedCollapsed === '1' : isMob;
+                teamEl.classList.toggle('party-collapsed', collapsed);
+                if (arrow) arrow.style.transform = collapsed ? 'rotate(180deg)' : '';
+            }
             showScreen('screen-story-city');
         }
 
@@ -16325,6 +16349,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (actions.includes('Department Store')) {
                 btn.innerHTML += makeActionBtn('🏬 Department Store — Premium items & Artifacts','dept','window.StoryMode.enterShop(\'dept\')','dept');
             }
+            if (actions.includes('Move Tutor') && sm.team.length > 0) {
+                btn.innerHTML += makeActionBtn('📖 Move Tutor — Change moves, items, ability & nature','tutor','window.StoryMode.enterTutor()','shop');
+            }
             if ((sm.artifacts || []).length > 0) {
                 btn.innerHTML += makeActionBtn('✨ Artifact Hall — Toggle run artifacts','artifacts','window.StoryMode.enterArtifactHall()','shop');
             }
@@ -16332,6 +16359,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (sm.storyDifficulty === 'hardcore') {
                 btn.innerHTML += makeActionBtn('🏥 Pokémon Center — Restore your party','center','window.StoryMode.enterPokemonCenter()','link');
             }
+            // Bag — always accessible in city to view inventory and sell items
+            const _invCount = Object.keys(sm.inventory || {}).filter(k => sm.inventory[k] > 0).length;
+            const _bagLabel = _invCount > 0
+                ? `🎒 Bag — View & Sell Items (${_invCount} type${_invCount !== 1 ? 's' : ''})`
+                : '🎒 Bag — Empty';
+            btn.innerHTML += makeActionBtn(_bagLabel, 'bag', 'window.StoryMode.openCityBag()', 'shop');
         }
 
         function makeActionBtn(label, key, onclick, cls) {
@@ -16425,18 +16458,61 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function renderTeamPanel() {
             const panel = document.getElementById('story-team-panel');
             if (!panel) return;
-            if (!sm.team.length) { panel.innerHTML='<div style="font-size:11px;color:#555;">Empty — visit the Professor!</div>'; return; }
+            const countEl = document.getElementById('story-party-count');
+            if (countEl) countEl.textContent = sm.team.length ? `(${sm.team.length}/6)` : '';
+            if (!sm.team.length) {
+                panel.innerHTML='<div style="font-size:11px;color:#555;padding:4px;">Empty — visit the Professor!</div>';
+                renderCompactStrip();
+                return;
+            }
             panel.innerHTML = sm.team.map((t,i) => {
                 const g = t.name ? getMonGrade(t.name, getBST(t.name)) : 4;
-                return `<div class="story-team-slot tier-${g}" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;box-sizing:border-box;" role="button" onclick="window.StoryMode.openSummary(${i})" title="View summary">
-                    <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">
-                        <img src="${getSprite(t.name,t.isShiny||false)}" onerror="handleSpriteError(this)" data-shiny="${t.isShiny?'true':'false'}" alt="${t.name}">
+                const n = sm.team.length;
+                return `<div class="story-team-slot tier-${g}" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;box-sizing:border-box;" role="button" onclick="window.StoryMode.openSummary(${i})" title="View summary">
+                    <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;">
+                        <img src="${getSprite(t.name,false)}" onerror="this.src=''" alt="${t.name}">
                         <div><div style="font-weight:bold;font-size:11px;">${t.name}</div>
                         <span class="tier-badge bg-tier-${g}" style="font-size:9px;">G${g}</span></div>
                     </div>
-                    <button type="button" class="draft-card-info-btn" style="width:26px;height:26px;min-width:26px;font-size:12px;" onclick="event.stopPropagation();window.StoryMode.openSummary(${i})" aria-label="Full summary" title="Full summary">&#8505;</button>
+                    <div class="party-sort-col" style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;" onclick="event.stopPropagation()">
+                        <button type="button" class="party-sort-btn" title="Move up in party" ${i===0?'disabled':''} onclick="event.stopPropagation();window.StoryMode.moveInParty(${i},-1)">▲</button>
+                        <button type="button" class="party-sort-btn" title="Move down in party" ${i===n-1?'disabled':''} onclick="event.stopPropagation();window.StoryMode.moveInParty(${i},1)">▼</button>
+                    </div>
                 </div>`;
             }).join('');
+            renderCompactStrip();
+        }
+
+        function renderCompactStrip() {
+            const strip = document.getElementById('story-team-compact');
+            if (!strip) return;
+            if (!sm.team.length) { strip.innerHTML = '<span style="font-size:10px;color:#555;padding:2px 4px;">Empty</span>'; return; }
+            strip.innerHTML = sm.team.map((t,i) => {
+                const g = t.name ? getMonGrade(t.name, getBST(t.name)) : 4;
+                const borderColor = g===1?'rgba(255,60,60,0.5)':g===2?'rgba(255,193,7,0.5)':g===3?'rgba(100,200,100,0.4)':'rgba(100,150,200,0.3)';
+                return `<div class="party-compact-tile" onclick="window.StoryMode.openSummary(${i})" title="${t.name}">
+                    <img src="${getSprite(t.name,false)}" onerror="this.src=''" alt="${t.name}" style="border-color:${borderColor};">
+                    <span>${t.name}</span>
+                </div>`;
+            }).join('');
+        }
+
+        function togglePartyPanel() {
+            const teamEl = document.getElementById('story-city-team');
+            const arrow = document.getElementById('story-party-toggle-arrow');
+            if (!teamEl) return;
+            const nowCollapsed = !teamEl.classList.contains('party-collapsed');
+            teamEl.classList.toggle('party-collapsed', nowCollapsed);
+            if (arrow) arrow.style.transform = nowCollapsed ? 'rotate(180deg)' : '';
+            try { localStorage.setItem('storyPartyCollapsed', nowCollapsed ? '1' : '0'); } catch(e) {}
+        }
+
+        function moveInParty(idx, dir) {
+            const j = idx + dir;
+            if (j < 0 || j >= sm.team.length) return;
+            [sm.team[j], sm.team[idx]] = [sm.team[idx], sm.team[j]];
+            save();
+            renderTeamPanel();
         }
 
         function openSummary(i) {
@@ -16506,6 +16582,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             '"These Pokémon are ready for battle — which suits your style?"',
         ];
 
+        // Species whose forms share the same "slot" — owning any form blocks all others.
+        // e.g. Arceus-Fire and Arceus are the same identity; same for Silvally-*.
+        const _STORY_UNIQUE_FAMILIES = ['Arceus', 'Silvally'];
+        function _storyBaseFamily(name) {
+            if (!name) return name;
+            for (const fam of _STORY_UNIQUE_FAMILIES) {
+                if (name === fam || name.startsWith(fam + '-')) return fam;
+            }
+            return name;
+        }
+
         let _profMysteryMode = false;
         function enterProfessor() {
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
@@ -16546,13 +16633,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const sg = storySettingsGens();
                 const choices = [];
                 const usedNames = new Set(sm.team.map(t => t.name));
+                // Block all forms of families already on the team (e.g. having Arceus blocks Arceus-Fire)
+                const usedFamilies = new Set(sm.team.map(t => _storyBaseFamily(t.name)));
                 for (let i = 0; i < numChoices; i++) {
                     let name = null;
                     for (let t = 0; t < 15; t++) {
                         const c = _profLegendaryMysteryMode
                             ? pickStoryLegendaryFromGens(sg, usedNames)
                             : weightedPickFromGrades(rolls, sg);
-                        if (c && !usedNames.has(c)) { name = c; break; }
+                        if (c && !usedNames.has(c) && !usedFamilies.has(_storyBaseFamily(c))) { name = c; break; }
                     }
                     if (!name) {
                         // fallback: allow any (may duplicate)
@@ -16562,6 +16651,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     if (!name) continue;
                     usedNames.add(name);
+                    usedFamilies.add(_storyBaseFamily(name));
                     let build;
                     try {
                         window._pbsStoryUsePlayerGimmickGate = true;
@@ -16720,7 +16810,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     slot.className = `story-team-slot tier-${g}`;
                     slot.style.cssText = 'cursor:pointer;min-width:130px;padding:10px;transition:all 0.15s;';
                     slot.innerHTML = `
-                        <img src="${getSprite(t.name,t.isShiny||false)}" onerror="handleSpriteError(this)" data-shiny="${t.isShiny?'true':'false'}" alt="${t.name}" style="width:56px;height:56px;image-rendering:pixelated;">
+                        <img src="${getSprite(t.name,false)}" onerror="this.src=''" style="width:56px;height:56px;image-rendering:pixelated;">
                         <div style="font-size:12px;"><b>${t.name}</b><br><span class="tier-badge bg-tier-${g}" style="font-size:9px;">G${g}</span></div>`;
                     slot.onclick = () => window.StoryMode._mysteryDoSwap(i);
                     cardEl.appendChild(slot);
@@ -17362,7 +17452,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 return `<div class="story-link-mon tier-${g}">
                     <div class="story-link-mon-header">
-                        <img src="${getSprite(t.name,t.isShiny||false)}" onerror="handleSpriteError(this)" data-shiny="${t.isShiny?'true':'false'}" alt="${t.name}">
+                        <img src="${getSprite(t.name,false)}" onerror="this.src=''" alt="${t.name}">
                         <div>
                             <div class="story-link-title-row">${shinyPre}${t.name}${gimmickTag} ${typeHtml}${teraHtml}</div>
                             <span class="tier-badge bg-tier-${g}">Grade ${g}</span>
@@ -17541,6 +17631,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!bagEl) return;
             if (tarEl) tarEl.style.display='none';
             _selectedBagItem = null;
+            // Restore battle-bag layout (city bag switches to 1-column)
+            bagEl.style.gridTemplateColumns = '1fr 1fr';
+            const _battleBagModal = document.getElementById('modal-story-bag');
+            const _battleBagH3 = _battleBagModal && _battleBagModal.querySelector('h3');
+            if (_battleBagH3) _battleBagH3.textContent = 'Battle Bag';
             bagEl.innerHTML = '';
 
             const allItems = [...POKEMART_ITEMS, ...DEPT_ITEMS, ...getStoryFeaturedItems()];
@@ -17646,6 +17741,59 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             window.closeModal('modal-story-bag');
             _selectedBagItem = null;
+        }
+
+        // ── CITY BAG — view inventory & sell items at 50% price ──────────────
+        function openCityBag() {
+            const modal = document.getElementById('modal-story-bag');
+            const bagEl  = document.getElementById('story-bag-grid');
+            const tarEl  = document.getElementById('story-bag-target');
+            if (!bagEl || !modal) return;
+            if (tarEl) tarEl.style.display = 'none';
+            _selectedBagItem = null;
+            // single-column layout gives room for the sell button
+            bagEl.style.gridTemplateColumns = '1fr';
+            const h3 = modal.querySelector('h3');
+            if (h3) h3.textContent = '🎒 Your Bag';
+            bagEl.innerHTML = '';
+
+            const allItems = [...POKEMART_ITEMS, ...DEPT_ITEMS, ...getStoryFeaturedItems()];
+            let hasAny = false;
+            allItems.forEach(item => {
+                const qty = sm.inventory[item.id] || 0;
+                if (qty === 0) return;
+                hasAny = true;
+                const sellPrice = Math.floor(item.price / 2);
+                const icon = storyShopIconCellHtml(item.id);
+                const div = document.createElement('div');
+                div.className = 'story-bag-item';
+                div.style.cursor = 'default';
+                div.innerHTML = icon + `<div class="story-bag-item-text">
+                    <div class="name">${item.name}</div>
+                    <div class="qty">x${qty}</div>
+                    <div class="eff">${item.desc}</div>
+                </div>
+                <button onclick="window.StoryMode.sellItem('${item.id}',${sellPrice});event.stopPropagation();"
+                    style="font-size:11px;padding:4px 10px;color:#ffd700;border-color:#ffd700;flex-shrink:0;align-self:center;line-height:1.4;">
+                    Sell<br><span style="font-size:10px;">🪙 ${sellPrice.toLocaleString()}G</span>
+                </button>`;
+                bagEl.appendChild(div);
+            });
+            if (!hasAny) {
+                bagEl.innerHTML = '<div style="color:#555;font-size:12px;grid-column:1/-1;">Your bag is empty.</div>';
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function sellItem(itemId, sellPrice) {
+            if (!sm.inventory[itemId] || sm.inventory[itemId] <= 0) return;
+            sm.inventory[itemId]--;
+            if (sm.inventory[itemId] <= 0) delete sm.inventory[itemId];
+            sm.gold += sellPrice;
+            save();
+            updateHUD();
+            // Re-render the city bag so qty and gold update instantly
+            openCityBag();
         }
 
         // ── HALL OF FAME (Gen-3 style: 2×3 sprites, confetti, welcome text) ─
@@ -18117,6 +18265,205 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (m) m.classList.remove('hidden');
         }
 
+        // ── MOVE TUTOR ────────────────────────────────────────────────────
+        const TUTOR_COST_MOVE    = 1500;
+        const TUTOR_COST_ITEM    = 2000;
+        const TUTOR_COST_ABILITY = 2500;
+        const TUTOR_COST_NATURE  = 2000;
+
+        function _tutorGetPoolForMon(monName) {
+            const moves = new Set();
+            const items = new Set();
+            const abilities = new Set();
+            const natures = new Set();
+            const entry = csvBuilds[monName];
+            const bs = baseStats[monName];
+            const baseName = bs && bs.baseSpecies ? bs.baseSpecies : null;
+            const entries = [entry];
+            if (baseName && csvBuilds[baseName]) entries.push(csvBuilds[baseName]);
+            if (bs && bs.changesFrom && csvBuilds[bs.changesFrom]) entries.push(csvBuilds[bs.changesFrom]);
+            for (const e of entries) {
+                if (!e) continue;
+                for (const tag of Object.keys(e)) {
+                    const builds = e[tag];
+                    if (!Array.isArray(builds)) continue;
+                    for (const b of builds) {
+                        if (b.m) b.m.forEach(slot => {
+                            slot.split('/').forEach(m => {
+                                const mt = m.trim();
+                                if (mt && mt !== 'Tackle' && !BANNED_MOVES.has(mt) && movesDB[mt]) moves.add(mt);
+                            });
+                        });
+                        if (b.i && b.i !== 'NO_ITEM' && b.i !== '' && !isMegaStone(b.i) && !Z_TYPE_MAP_VALUES.has(b.i) && !BANNED_ITEMS.has(b.i)) {
+                            items.add(b.i);
+                        }
+                        if (b.a && b.a.trim()) abilities.add(b.a.trim());
+                        if (b.n && b.n.trim()) natures.add(b.n.trim());
+                    }
+                }
+            }
+            if (bs && bs.abilities) {
+                for (const k of Object.keys(bs.abilities)) {
+                    const a = bs.abilities[k];
+                    if (a) abilities.add(a);
+                }
+            }
+            const safeItems = new Set();
+            items.forEach(it => {
+                if (!isMegaStone(it) && !Z_TYPE_MAP_VALUES.has(it) && !BANNED_ITEMS.has(it)) safeItems.add(it);
+            });
+            return {
+                moves: [...moves].sort(),
+                items: [...safeItems].sort(),
+                abilities: [...abilities].sort(),
+                natures: [...natures].sort()
+            };
+        }
+
+        function enterTutor() {
+            const el = document.getElementById('story-tutor-team');
+            const goldEl = document.getElementById('story-tutor-gold');
+            if (goldEl) goldEl.textContent = `🪙 ${sm.gold.toLocaleString()}G`;
+            if (!el) return;
+            if (!sm.team.length) {
+                el.innerHTML = '<div style="color:#555;font-size:12px;">No Pokémon in party.</div>';
+                syncStoryTutorBackground();
+                showScreen('screen-story-tutor');
+                return;
+            }
+            renderTutorTeam();
+            syncStoryTutorBackground();
+            showScreen('screen-story-tutor');
+        }
+
+        function renderTutorTeam() {
+            const el = document.getElementById('story-tutor-team');
+            const goldEl = document.getElementById('story-tutor-gold');
+            if (goldEl) goldEl.textContent = `🪙 ${sm.gold.toLocaleString()}G`;
+            if (!el) return;
+
+            el.innerHTML = sm.team.map((t, idx) => {
+                const pool = _tutorGetPoolForMon(t.name);
+                const b = t.build || {};
+                let mon = null;
+                try { if (b) mon = buildPokemon(t.name, { ...b, m: [...(b.m || [])] }); } catch (e) {}
+
+                const typeHtml = mon ? getTypeHTML(mon.type1, mon.type2 || '') : '';
+                const spriteUrl = getSprite(t.name);
+
+                const currentMoves = (b.m || []).map(m => m.split('/')[0]);
+                const moveRows = currentMoves.map((cm, mi) => {
+                    const otherMoves = currentMoves.filter((_, oi) => oi !== mi);
+                    const available = pool.moves.filter(m => m !== cm && !otherMoves.includes(m));
+                    if (!available.length) return `<div class="story-tutor-option-row"><span class="current" style="min-width:auto;">Slot ${mi+1}: <strong>${cm}</strong></span><span style="font-size:10px;color:#555;">(no alternatives)</span></div>`;
+                    const opts = available.map(m =>
+                        `<button class="story-tutor-btn" onclick="window.StoryMode.tutorChangeMove(${idx},${mi},'${m.replace(/'/g,"\\'")}')"`
+                        + ` ${sm.gold < TUTOR_COST_MOVE ? 'disabled' : ''}`
+                        + ` title="${(movesDB[m] ? movesDB[m].type + ' / ' + movesDB[m].cat + ' / ' + (movesDB[m].pow || '—') + ' BP' : '')}">`
+                        + `${m}</button>`
+                    ).join('');
+                    return `<div class="story-tutor-option-row"><span class="current">Slot ${mi+1}: <strong>${cm}</strong> →</span>${opts}<span class="story-tutor-price">🪙${TUTOR_COST_MOVE}G</span></div>`;
+                }).join('');
+
+                const currentItem = b.i || '(none)';
+                const itemAvailable = pool.items.filter(it => it !== b.i);
+                const itemRow = itemAvailable.length
+                    ? `<div class="story-tutor-option-row"><span class="current">Now: <strong>${currentItem}</strong> →</span>`
+                      + itemAvailable.map(it =>
+                          `<button class="story-tutor-btn" onclick="window.StoryMode.tutorChangeItem(${idx},'${it.replace(/'/g,"\\'")}')"`
+                          + ` ${sm.gold < TUTOR_COST_ITEM ? 'disabled' : ''}`
+                          + ` title="${tooltipDict[it] || ''}">${it}</button>`
+                      ).join('')
+                      + `<span class="story-tutor-price">🪙${TUTOR_COST_ITEM}G</span></div>`
+                    : `<div class="story-tutor-option-row"><span class="current">Now: <strong>${currentItem}</strong></span><span style="font-size:10px;color:#555;">(no alternatives)</span></div>`;
+
+                const currentAbility = b.a || (mon && mon.ability) || '(none)';
+                const abilAvailable = pool.abilities.filter(a => a !== currentAbility);
+                const abilRow = abilAvailable.length
+                    ? `<div class="story-tutor-option-row"><span class="current">Now: <strong>${currentAbility}</strong> →</span>`
+                      + abilAvailable.map(a =>
+                          `<button class="story-tutor-btn" onclick="window.StoryMode.tutorChangeAbility(${idx},'${a.replace(/'/g,"\\'")}')"`
+                          + ` ${sm.gold < TUTOR_COST_ABILITY ? 'disabled' : ''}`
+                          + ` title="${tooltipDict[a] || ''}">${a}</button>`
+                      ).join('')
+                      + `<span class="story-tutor-price">🪙${TUTOR_COST_ABILITY}G</span></div>`
+                    : `<div class="story-tutor-option-row"><span class="current">Now: <strong>${currentAbility}</strong></span><span style="font-size:10px;color:#555;">(no alternatives)</span></div>`;
+
+                const currentNature = b.n || 'Hardy';
+                const natAvailable = pool.natures.filter(n => n !== currentNature);
+                const natureRow = natAvailable.length
+                    ? `<div class="story-tutor-option-row"><span class="current">Now: <strong>${currentNature}</strong> →</span>`
+                      + natAvailable.map(n => {
+                          const nm = natureModifiers[n];
+                          const statNames = {atk:'Atk',def:'Def',spa:'SpA',spd:'SpD',spe:'Spe'};
+                          const tip = nm ? `+${statNames[nm.up]}, -${statNames[nm.down]}` : 'Neutral';
+                          return `<button class="story-tutor-btn" onclick="window.StoryMode.tutorChangeNature(${idx},'${n.replace(/'/g,"\\'")}')"`
+                          + ` ${sm.gold < TUTOR_COST_NATURE ? 'disabled' : ''}`
+                          + ` title="${tip}">${n}</button>`;
+                      }).join('')
+                      + `<span class="story-tutor-price">🪙${TUTOR_COST_NATURE}G</span></div>`
+                    : `<div class="story-tutor-option-row"><span class="current">Now: <strong>${currentNature}</strong></span><span style="font-size:10px;color:#555;">(no alternatives)</span></div>`;
+
+                return `<div class="story-tutor-mon">
+                    <div class="story-tutor-mon-name">
+                        <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
+                        ${t.name} ${typeHtml}
+                    </div>
+                    <div class="story-tutor-section"><div class="story-tutor-section-title">Moves</div>${moveRows}</div>
+                    <div class="story-tutor-section"><div class="story-tutor-section-title">Held Item</div>${itemRow}</div>
+                    <div class="story-tutor-section"><div class="story-tutor-section-title">Ability</div>${abilRow}</div>
+                    <div class="story-tutor-section"><div class="story-tutor-section-title">Nature</div>${natureRow}</div>
+                </div>`;
+            }).join('');
+        }
+
+        function tutorChangeMove(teamIdx, moveSlot, newMove) {
+            const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+            if (sm.gold < TUTOR_COST_MOVE) return;
+            const currentMoves = (mon.build.m || []).map(m => m.split('/')[0]);
+            if (currentMoves.includes(newMove)) return;
+            sm.gold -= TUTOR_COST_MOVE;
+            mon.build.m[moveSlot] = newMove;
+            mon.currentHp = null;
+            mon.status = null;
+            mon.pp = null;
+            save();
+            renderTutorTeam();
+            renderTeamPanel();
+        }
+
+        function tutorChangeItem(teamIdx, newItem) {
+            const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+            if (sm.gold < TUTOR_COST_ITEM) return;
+            if (isMegaStone(newItem) || Z_TYPE_MAP_VALUES.has(newItem) || BANNED_ITEMS.has(newItem)) return;
+            sm.gold -= TUTOR_COST_ITEM;
+            mon.build.i = newItem;
+            save();
+            renderTutorTeam();
+            renderTeamPanel();
+        }
+
+        function tutorChangeAbility(teamIdx, newAbility) {
+            const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+            if (sm.gold < TUTOR_COST_ABILITY) return;
+            sm.gold -= TUTOR_COST_ABILITY;
+            mon.build.a = newAbility;
+            save();
+            renderTutorTeam();
+            renderTeamPanel();
+        }
+
+        function tutorChangeNature(teamIdx, newNature) {
+            const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+            if (sm.gold < TUTOR_COST_NATURE) return;
+            sm.gold -= TUTOR_COST_NATURE;
+            mon.build.n = newNature;
+            mon.currentHp = null;
+            save();
+            renderTutorTeam();
+            renderTeamPanel();
+        }
+
         // ── PUBLIC API ────────────────────────────────────────────────────
         return {
             showMenu, startNewRun, continueRun, retryFromGameOver, isActive, hasSave,
@@ -18124,9 +18471,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             proceedToNextBattle, onBattleEnd, afterBattleReturn, applyHardcoreState,
             enterShop, buyItem, buyArtifact, enterPokemonCenter,
             enterLink, linkReroll, linkUpgrade, linkEvolve, linkRebuild, linkMoveUp, linkMoveDown,
-            openBattleBag, useBagItemOn,
+            openBattleBag, useBagItemOn, openCityBag, sellItem,
             confirmAbandon, abandonAndReturn, continuePostGame,
-            openSummary, profOpenSummary, summaryMove, enterArtifactHall, toggleArtifactDisabled,
+            openSummary, profOpenSummary, summaryMove, moveInParty, togglePartyPanel,
+            enterArtifactHall, toggleArtifactDisabled,
+            enterTutor, tutorChangeMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
             openTeamTester, openTeamTesterSyncFromStory, runTeamTester, copyTeamTesterText, closeTeamTester,
             previewHallOfFame,
         };
