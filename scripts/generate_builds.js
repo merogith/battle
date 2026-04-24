@@ -26,6 +26,14 @@ const WEATHER_DEP_ABILITIES = new Set([
 
 const TERA_MOVES = new Set(['Tera Blast','Tera Starstorm']);
 
+const WEATHER_SETTER_MOVES = new Set([
+  'Rain Dance','Sunny Day','Sandstorm','Hail','Snowscape','Chilly Reception'
+]);
+const WEATHER_BOOSTED_MOVES = new Set([
+  'Solar Beam','Solar Blade','Thunder','Hurricane','Weather Ball',
+  'Growth','Morning Sun','Synthesis','Moonlight','Blizzard'
+]);
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function isMegaItem(item) {
@@ -90,10 +98,12 @@ function flattenEvs(evs) {
 function tagBuild(item, ability, encodedMoves) {
   if (isMegaItem(item))    return 'mega';
   if (isZCrystal(item))    return 'z-attack';
-  // Check all move options (expand A/B choices)
   const allMoves = encodedMoves.flatMap(m => m.split('/'));
   if (allMoves.some(m => TERA_MOVES.has(m)))             return 'tera';
   if (ability && WEATHER_DEP_ABILITIES.has(ability))      return 'weather';
+  const hasSetter  = allMoves.some(m => WEATHER_SETTER_MOVES.has(m));
+  const hasBoosted = allMoves.some(m => WEATHER_BOOSTED_MOVES.has(m));
+  if (hasSetter && hasBoosted) return 'weather';
   return 'regular';
 }
 

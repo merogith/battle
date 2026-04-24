@@ -12,8 +12,13 @@
     <meta name="theme-color" content="#0a0a0a">
     <title>Retro Battle Sim - Competitive Fix</title>
     <style>
-        /* Battle UI tokens — single theme for stat boxes, log, commands (overrides use these, not parallel palettes). */
+        /* ============================================================
+           M0 — DESIGN TOKEN SYSTEM
+           Single source of truth for all visual properties.
+           Layout-specific overrides are in the layout matrix section.
+        ============================================================ */
         :root {
+            /* --- Core palette --- */
             --bg-color: #0a0a0a; --border-color: #444; --text-color: #e8e8e8;
             --hp-green: #4caf50; --hp-yellow: #ffc107; --hp-red: #f44336; --accent: #ffd54f;
             --surface: #161616; --surface2: #1e1e1e;
@@ -25,7 +30,8 @@
             --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px);
             --safe-left: env(safe-area-inset-left, 0px); --safe-right: env(safe-area-inset-right, 0px);
             --game-design-w: 960; --game-design-h: 700;
-            /* Battle chrome — spacing rhythm (4/8/12) */
+
+            /* --- Spacing rhythm (4/8/12) --- */
             --battle-space-1: 4px;
             --battle-space-2: 8px;
             --battle-space-3: 12px;
@@ -33,6 +39,164 @@
             --battle-btn-radius: 4px;
             --battle-btn-gap: var(--battle-space-1);
             --ui-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+            /* --- Semantic color layer --- */
+            --fg-primary: #e8e8e8;
+            --fg-secondary: #aaaaaa;
+            --fg-muted: #666666;
+            --bg-panel: #161616;
+            --bg-elevated: #1e1e1e;
+            --bg-overlay: rgba(0,0,0,0.82);
+            --state-success: #4caf50;
+            --state-warn: #ffc107;
+            --state-danger: #f44336;
+            --state-info: #81d4fa;
+
+            /* --- Elevation shadows --- */
+            --elev-1: 0 1px 3px rgba(0,0,0,0.4);
+            --elev-2: 0 4px 12px rgba(0,0,0,0.5);
+            --elev-3: 0 8px 28px rgba(0,0,0,0.65);
+
+            /* --- Typography scale --- */
+            --text-xs: 10px;
+            --text-sm: 12px;
+            --text-md: 14px;
+            --text-lg: 17px;
+            --text-xl: 22px;
+
+            /* --- Motion tokens --- */
+            --dur-fast: 0.15s;
+            --dur-mid: 0.25s;
+            --dur-slow: 0.5s;
+            --dur-very-slow: 0.8s;
+            --ease-out: cubic-bezier(0.0, 0, 0.2, 1);
+            --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+            --lunge-dur: 0.25s;
+            --hit-flash-dur: 0.4s;
+            --switch-in-dur: 0.35s;
+            --faint-dur: 0.6s;
+
+            /* --- Type color tokens (M0 — replaces hard-coded hex in type badges) --- */
+            --type-normal: #A8A878;   --type-normal-text: #fff;
+            --type-fire: #F08030;     --type-fire-text: #fff;
+            --type-water: #6890F0;    --type-water-text: #fff;
+            --type-grass: #78C850;    --type-grass-text: #fff;
+            --type-electric: #F8D030; --type-electric-text: #000;
+            --type-ice: #98D8D8;      --type-ice-text: #000;
+            --type-fighting: #C03028; --type-fighting-text: #fff;
+            --type-poison: #A040A0;   --type-poison-text: #fff;
+            --type-ground: #E0C068;   --type-ground-text: #000;
+            --type-flying: #A890F0;   --type-flying-text: #fff;
+            --type-psychic: #F85888;  --type-psychic-text: #fff;
+            --type-bug: #A8B820;      --type-bug-text: #fff;
+            --type-rock: #B8A038;     --type-rock-text: #fff;
+            --type-ghost: #705898;    --type-ghost-text: #fff;
+            --type-dragon: #7038F8;   --type-dragon-text: #fff;
+            --type-dark: #705848;     --type-dark-text: #fff;
+            --type-steel: #B8B8D0;    --type-steel-text: #000;
+            --type-fairy: #EE99AC;    --type-fairy-text: #000;
+
+            /* --- Arena layout tokens (base = desktop, overridden per layout) --- */
+            --arena-floor-h: 28%;
+            --sprite-scale: 1.0;
+            --hud-stack-gap: 8px;
+            --arena-shake-max: 8px;
+
+            /* --- Arena sky/palette (overridden by Arena.setPalette()) --- */
+            --arena-sky-top: #0c1628;
+            --arena-sky-bot: #1a2d1a;
+            --arena-floor-color: #1a2810;
+            --arena-floor-color2: #0f1e0a;
+            --arena-mid-color: #0d1f10;
+            --arena-mid-opacity: 1;
+            --arena-ambience: rgba(0,0,0,0);
+
+            /* --- FX quality multipliers (overridden by JS based on settings.fxQuality) --- */
+            --fx-particle-scale: 1.0;
+            --fx-shake-scale: 1.0;
+            --fx-blur-scale: 1.0;
+        }
+
+        /* ============================================================
+           M0 — LAYOUT MATRIX
+           Each data-battle-layout value gets its own token overrides.
+        ============================================================ */
+        #screen-battle[data-battle-layout="portrait"] {
+            --arena-floor-h: 32%;
+            --sprite-scale: 0.95;
+            --hud-stack-gap: 6px;
+            --arena-shake-max: 6px;
+        }
+        #screen-battle[data-battle-layout="landscape-touch"] {
+            --arena-floor-h: 24%;
+            --sprite-scale: 0.85;
+            --hud-stack-gap: 4px;
+            --arena-shake-max: 5px;
+        }
+        #screen-battle[data-battle-layout="desktop"] {
+            --arena-floor-h: 26%;
+            --sprite-scale: 1.0;
+            --hud-stack-gap: 8px;
+            --arena-shake-max: 8px;
+        }
+        #screen-battle[data-battle-layout="ultrawide"] {
+            --arena-floor-h: 22%;
+            --sprite-scale: 1.15;
+            --hud-stack-gap: 10px;
+            --arena-shake-max: 10px;
+        }
+        body.layout-tablet-preset #screen-battle {
+            --sprite-scale: 1.05;
+            --hud-stack-gap: 9px;
+        }
+
+        /* --- Pointer class helpers --- */
+        body.has-pointer-fine button:hover,
+        body.has-pointer-fine a:hover {
+            transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
+        }
+        body.has-pointer-coarse button:active,
+        body.has-pointer-coarse a:active {
+            filter: brightness(1.15);
+        }
+
+        /* --- Ultrawide letterbox vignette --- */
+        body.layout-ultrawide::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            background:
+                linear-gradient(to right, rgba(0,0,0,0.5) 0%, transparent 12%, transparent 88%, rgba(0,0,0,0.5) 100%),
+                linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 10%, transparent 90%, rgba(0,0,0,0.3) 100%);
+        }
+
+        /* --- prefers-reduced-motion global gate --- */
+        @media (prefers-reduced-motion: reduce) {
+            :root {
+                --dur-fast: 0.01s;
+                --dur-mid: 0.01s;
+                --dur-slow: 0.01s;
+                --dur-very-slow: 0.01s;
+                --lunge-dur: 0.01s;
+                --hit-flash-dur: 0.01s;
+                --switch-in-dur: 0.01s;
+                --faint-dur: 0.01s;
+                --fx-particle-scale: 0;
+                --fx-shake-scale: 0;
+                --fx-blur-scale: 0;
+            }
+        }
+
+        /* --- prefers-contrast: more --- */
+        @media (prefers-contrast: more) {
+            :root {
+                --border-color: #888;
+                --fg-muted: #aaa;
+                --bg-panel: #000;
+                --bg-elevated: #111;
+            }
         }
         /* Polish: native dark scrollbars/inputs, crisp text, readable selection, keyboard focus */
         html { height: 100%; overscroll-behavior: none; color-scheme: dark; }
@@ -47,6 +211,11 @@
             .story-victory-badge-slot { animation: none !important; }
             #rotate-overlay .rotate-icon { animation: none !important; }
             .hp-fill.hp-critical { animation: none !important; }
+            .arena-particles { display: none !important; }
+            .arena-sky, .arena-mid, .arena-floor { transition: none !important; }
+            .type-anim { animation-duration: 0.01s !important; }
+            .anim-lunge-player, .anim-lunge-foe { animation-duration: 0.01s !important; }
+            .arena-parallax-layer { transform: none !important; transition: none !important; }
         }
         /* Full-viewport underlay: softens letterboxing around the fixed 960×700 frame on wide displays */
         body::before {
@@ -2573,6 +2742,7 @@
             <div class="menu-filter-row" style="margin-top:6px;">
                 <label><input type="checkbox" id="mech-weather-cb" onchange="window.updateMechanics()"><span style="color:#78909c;">&#9729; Weather</span></label>
                 <label><input type="checkbox" id="mech-terrain-cb" onchange="window.updateMechanics()"><span style="color:#81c784;">&#127793; Terrain</span></label>
+                <label><input type="checkbox" id="smart-draft-cb" checked onchange="window.updateMechanics()"><span style="color:#4db6ac;">&#x1F9E0; Smart Pool</span></label>
             </div>
             <div class="menu-filter-row" style="margin-top:10px; font-size:11px;">
                 <label><input type="radio" name="battle-mode-radio" id="mode-classic-rb" checked onchange="window.updateMechanics()"><span style="color:var(--hp-yellow);">Classic</span></label>
@@ -2658,6 +2828,14 @@
             <label class="settings-row" for="sw-animations"><span>Battle animations</span><input type="checkbox" class="pbs-switch" id="sw-animations" role="switch" onchange="window.applySettingSwitch('animations', this.checked)"></label>
             <label class="settings-row" for="sw-weather-anim"><span>Weather animation</span><input type="checkbox" class="pbs-switch" id="sw-weather-anim" role="switch" onchange="window.applySettingSwitch('weatherAnimation', this.checked)"></label>
             <label class="settings-row" for="sw-terrain-bg"><span>Terrain background</span><input type="checkbox" class="pbs-switch" id="sw-terrain-bg" role="switch" onchange="window.applySettingSwitch('terrainBackground', this.checked)"></label>
+            <div class="settings-row" style="border-bottom:1px solid #333;">
+                <span style="font-size:13px;">FX quality</span>
+                <select id="setting-fx-quality" onchange="settings.fxQuality=this.value; persistMiscSettings(); window.applyFxQuality&&window.applyFxQuality(); window.Arena&&window.Arena.applyFxQuality&&window.Arena.applyFxQuality();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;">
+                    <option value="low">Low — fast, no particles</option>
+                    <option value="mid">Balanced — reduced FX</option>
+                    <option value="high">High — full effects</option>
+                </select>
+            </div>
             <div class="settings-section-title">Audio</div>
             <label class="settings-row" for="sw-music"><span>Music</span><input type="checkbox" class="pbs-switch" id="sw-music" role="switch" onchange="window.applySettingSwitch('musicEnabled', this.checked)"></label>
             <div class="settings-row" style="flex-wrap:wrap;">
@@ -2787,6 +2965,7 @@
     <div id="modal-enemy-pool" class="modal hidden">
         <div class="modal-content white-outline" style="max-width: 850px;">
             <h3 style="color: #ff4500; text-align: center; margin-top: 0;">Foe's Potential Draft Pool</h3>
+            <p style="color:#888;font-size:11px;text-align:center;margin:-4px 0 10px;">All six possible builds (picks stay listed here so you never see only what they passed up).</p>
             <div id="enemy-pool-grid" class="command-grid" style="grid-template-columns: 1fr 1fr; gap: 15px; max-height: 450px; overflow-y: auto;"></div>
             <button onclick="window.toggleEnemyPool()" style="margin-top: 15px; width: 100%;">Close</button>
         </div>
@@ -3248,10 +3427,21 @@
             || (navigator.maxTouchPoints > 0 && window.matchMedia('(pointer: coarse)').matches && window.matchMedia('(max-width: 1024px)').matches);
 
         if (isMobile) document.body.classList.add('is-mobile');
+
+        // M0: pointer fine/coarse body classes
+        (function() {
+            try {
+                const fine = window.matchMedia('(pointer: fine)').matches;
+                document.body.classList.add(fine ? 'has-pointer-fine' : 'has-pointer-coarse');
+            } catch(e) { document.body.classList.add('has-pointer-fine'); }
+        })();
         function applyLayoutPresetClasses() {
             try {
                 const tab = window.matchMedia('(min-width:700px) and (max-width:1100px)').matches;
                 document.body.classList.toggle('layout-tablet-preset', tab);
+                // M0: ultrawide layout class (>=1400px landscape, aspect > 1.6)
+                const uw = window.innerWidth >= 1400 && (window.innerWidth / Math.max(1, window.innerHeight)) > 1.6;
+                document.body.classList.toggle('layout-ultrawide', uw);
             } catch (e) {}
         }
         function applyBattleLayoutMode() {
@@ -3263,7 +3453,9 @@
             const portrait = window.matchMedia('(orientation: portrait)').matches;
             const narrow = typeof window.innerWidth === 'number' && window.innerWidth <= 900;
             const usePhoneBattleLayout = document.body.classList.contains('is-mobile') || narrow;
-            const mode = !usePhoneBattleLayout ? 'desktop' : (portrait ? 'portrait' : 'landscape-touch');
+            // M0: ultrawide mode for desktop only
+            const uw = !usePhoneBattleLayout && window.innerWidth >= 1400 && (window.innerWidth / Math.max(1, window.innerHeight)) > 1.6;
+            const mode = uw ? 'ultrawide' : (!usePhoneBattleLayout ? 'desktop' : (portrait ? 'portrait' : 'landscape-touch'));
             sb.setAttribute('data-battle-layout', mode);
             try {
                 const sel = document.getElementById('party-size-select');
@@ -3273,6 +3465,25 @@
             } catch (e) {}
         }
         window.applyBattleLayoutMode = applyBattleLayoutMode;
+
+        // M0: apply fxQuality CSS token overrides
+        window.applyFxQuality = function() {
+            const q = settings.fxQuality || 'high';
+            const r = document.documentElement.style;
+            if (q === 'low') {
+                r.setProperty('--fx-particle-scale', '0');
+                r.setProperty('--fx-shake-scale', '0');
+                r.setProperty('--fx-blur-scale', '0');
+            } else if (q === 'mid') {
+                r.setProperty('--fx-particle-scale', '0.3');
+                r.setProperty('--fx-shake-scale', '0.5');
+                r.setProperty('--fx-blur-scale', '0.5');
+            } else {
+                r.setProperty('--fx-particle-scale', '1');
+                r.setProperty('--fx-shake-scale', '1');
+                r.setProperty('--fx-blur-scale', '1');
+            }
+        };
         window.syncBattlePhaseClass = function() {
             const sb = document.getElementById('screen-battle');
             const mv = document.getElementById('move-menu');
@@ -3345,6 +3556,9 @@
         window.addEventListener('resize', applyBattleLayoutMode);
         window.addEventListener('resize', function() { try { applyDesktopGameScale(); } catch (e) {} });
         window.isMobile = isMobile;
+        // M0: apply fxQuality on boot (default to 'mid' on mobile for performance)
+        if (isMobile && !localStorage.getItem('pbs_settings')) settings.fxQuality = 'mid';
+        try { window.applyFxQuality && window.applyFxQuality(); } catch(e) {}
 
         // Show/hide rotate overlay: portrait + narrow screen (any device)
         function checkOrientation() {
@@ -3384,8 +3598,9 @@
 
         // === 1. DATABASE (loaded from CSV files) ===
         function parseCSV(text, delim) {
-            if (!delim) delim = text.indexOf(';') < text.indexOf('\n') && text.indexOf(';') !== -1 ? ';' : ',';
-            let lines = text.trim().split('\n'), headers = parseCSVLine(lines[0], delim), rows = [];
+            const norm = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            if (!delim) delim = norm.indexOf(';') < norm.indexOf('\n') && norm.indexOf(';') !== -1 ? ';' : ',';
+            let lines = norm.trim().split('\n'), headers = parseCSVLine(lines[0], delim), rows = [];
             for (let i = 1; i < lines.length; i++) { if (!lines[i].trim()) continue; let vals = parseCSVLine(lines[i], delim); let obj = {}; headers.forEach((h, j) => obj[h.trim()] = (vals[j] || '').trim()); rows.push(obj); }
             return rows;
         }
@@ -3398,6 +3613,14 @@
                 else { if (c === '"') inQuotes = true; else if (c === delim) { result.push(current); current = ''; } else current += c; }
             }
             result.push(current); return result;
+        }
+        /** Fisher–Yates shuffle in-place; returns the same array. */
+        function shuffleInPlace(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+            }
+            return arr;
         }
 
         let baseStats = {}, movesDB = {}, csvBuilds = {}, tooltipDict = {};
@@ -3415,6 +3638,38 @@
         function deepClone(o) {
             return typeof structuredClone === 'function' ? structuredClone(o) : JSON.parse(JSON.stringify(o));
         }
+
+        // #region agent log
+        // Debug-mode invariant logger. Sends NDJSON to local debug server.
+        // Only fires when an anomaly/hypothesis trigger is detected — clean turns produce no logs.
+        window._dbgLog = function(location, message, data, hypothesisId) {
+            try {
+                fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '579a07' },
+                    body: JSON.stringify({
+                        sessionId: '579a07',
+                        runId: 'initial',
+                        hypothesisId: hypothesisId || 'general',
+                        location: location,
+                        message: message,
+                        data: data || {},
+                        timestamp: Date.now()
+                    })
+                }).catch(() => {});
+            } catch (e) {}
+        };
+        // Snapshot of a Pokemon for logs (small, safe — no functions, no circular refs).
+        window._dbgMon = function(m) {
+            if (!m) return null;
+            return {
+                name: m.name, hp: m.currentHp, max: m.maxHp,
+                t1: m.type1, t2: m.type2,
+                abi: m.ability, item: m.item,
+                stat: m.status, fainted: m.currentHp <= 0
+            };
+        };
+        // #endregion
 
         const battleEls = { player: null, foe: null };
         function cacheBattleEls() {
@@ -3665,6 +3920,69 @@
             }
             await loadBuildsCSV();
             computeStatScales();
+            if (Object.keys(baseStats).length === 0 || Object.keys(movesDB).length === 0) {
+                throw new Error('Critical game data missing (species or moves). Check data/ files and console.');
+            }
+        }
+
+        const _SETUP_MOVES = new Set([
+            'Swords Dance','Nasty Plot','Dragon Dance','Calm Mind','Shell Smash',
+            'Quiver Dance','Belly Drum','Coil','Shift Gear','Bulk Up','Iron Defense',
+            'Agility','Rock Polish','Autotomize','Geomancy','Clangorous Soul',
+            'No Retreat','Victory Dance','Tail Glow','Growth','Work Up','Curse',
+            'Tidy Up','Filament Dance'
+        ]);
+        const _HAZARD_MOVES = new Set([
+            'Stealth Rock','Spikes','Toxic Spikes','Sticky Web','Ceaseless Edge'
+        ]);
+        const _WEATHER_SETTER_MOVE_SET = new Set([
+            'Rain Dance','Sunny Day','Sandstorm','Hail','Snowscape','Chilly Reception'
+        ]);
+        const _WEATHER_BOOSTED = new Set([
+            'Solar Beam','Solar Blade','Thunder','Hurricane','Weather Ball',
+            'Growth','Morning Sun','Synthesis','Moonlight','Blizzard'
+        ]);
+        const _ATK_NATURES = new Set(['Adamant','Jolly','Brave','Naughty','Lonely']);
+        const _SPA_NATURES = new Set(['Modest','Timid','Quiet','Mild','Rash']);
+        const _DEF_NATURES = new Set(['Bold','Impish','Relaxed','Lax']);
+        const _SPD_NATURES = new Set(['Calm','Careful','Sassy','Gentle']);
+
+        function classifyArchetype(build) {
+            const evs = build.evs;
+            const moves = (build.m || []).flatMap(m => m.split('/'));
+            const ability = build.a || '';
+
+            const hasSetup = moves.some(m => _SETUP_MOVES.has(m));
+            const hasHazards = moves.some(m => _HAZARD_MOVES.has(m));
+            const isWeatherAbility = !!WEATHER_ABILITIES[ability];
+            const hasWeatherSetter = moves.some(m => _WEATHER_SETTER_MOVE_SET.has(m));
+            const hasWeatherBoosted = moves.some(m => _WEATHER_BOOSTED.has(m));
+
+            const offAtk = evs.atk >= 200;
+            const offSpa = evs.spa >= 200;
+            const bulky = (evs.hp >= 200) || (evs.def >= 200) || (evs.spd >= 200);
+            const physNature = _ATK_NATURES.has(build.n);
+            const specNature = _SPA_NATURES.has(build.n);
+
+            if (isWeatherAbility || (hasWeatherSetter && hasWeatherBoosted))
+                return 'weather-attacker';
+            if (hasHazards && !hasSetup && (bulky || build.i === 'Focus Sash'))
+                return 'lead-hazards';
+            if (hasSetup && (offAtk || offSpa || physNature || specNature))
+                return 'setup-sweeper';
+            if (offAtk && offSpa)
+                return 'mixed-attacker';
+            if (offAtk || (physNature && evs.atk >= 100))
+                return 'physical-attacker';
+            if (offSpa || (specNature && evs.spa >= 100))
+                return 'special-attacker';
+            if (bulky)
+                return 'bulky-support';
+            if (physNature)
+                return 'physical-attacker';
+            if (specNature)
+                return 'special-attacker';
+            return 'other';
         }
 
         async function loadBuildsCSV() {
@@ -3679,7 +3997,7 @@
                     if (!csvBuilds[name]) csvBuilds[name] = { regular: [], weather: [], mega: [], 'z-attack': [], tera: [] };
                     if (!csvBuilds[name][tag]) csvBuilds[name][tag] = [];
                     const moves = [row.move1, row.move2, row.move3, row.move4].map(m => m || 'Tackle');
-                    csvBuilds[name][tag].push({
+                    const buildObj = {
                         i: !row.item ? '' : row.item === 'No Item' ? 'NO_ITEM' : row.item,
                         a: row.ability || '',
                         n: row.nature || 'Hardy',
@@ -3692,7 +4010,9 @@
                             spd: +row.spd_ev || 0,
                             spe: +row.spe_ev || 0
                         }
-                    });
+                    };
+                    buildObj.archetype = classifyArchetype(buildObj);
+                    csvBuilds[name][tag].push(buildObj);
                 }
                 console.log(`[CSV] Loaded builds for ${Object.keys(csvBuilds).length} Pokémon`);
             } catch(e) {
@@ -3725,19 +4045,22 @@
                             const nature  = Array.isArray(set.nature)   ? set.nature[0]  : (set.nature   || 'Hardy');
                             const evs     = set.evs || {};
 
-                            // Tag: mega > z-attack > tera > weather > regular
                             let tag = 'regular';
+                            const allM = enc.flatMap(m => m.split('/'));
                             if (isMegaStone(item)) tag = 'mega';
                             else if (Z_TYPE_MAP_VALUES.has(item)) tag = 'z-attack';
-                            else if (enc.flatMap(m => m.split('/')).some(m => TERA_M.has(m))) tag = 'tera';
+                            else if (allM.some(m => TERA_M.has(m))) tag = 'tera';
                             else if (WEATHER_DEP.has(ability)) tag = 'weather';
+                            else if (allM.some(m => _WEATHER_SETTER_MOVE_SET.has(m)) && allM.some(m => _WEATHER_BOOSTED.has(m))) tag = 'weather';
 
                             if (!csvBuilds[pokemon]) csvBuilds[pokemon] = { regular: [], weather: [], mega: [], 'z-attack': [], tera: [] };
-                            csvBuilds[pokemon][tag].push({
+                            const buildObj = {
                                 i: item, a: ability, n: nature,
                                 m: enc.map(m => m || 'Tackle'),
                                 evs: { hp: evs.hp||0, atk: evs.atk||0, def: evs.def||0, spa: evs.spa||0, spd: evs.spd||0, spe: evs.spe||0 }
-                            });
+                            };
+                            buildObj.archetype = classifyArchetype(buildObj);
+                            csvBuilds[pokemon][tag].push(buildObj);
                         }
                     }
                 }
@@ -3913,11 +4236,21 @@
             if (!pool.length) pool = (entry.regular || []).concat(entry.weather || []);
 
             if (pool.length) {
-                b = { ...pool[Math.floor(Math.random() * pool.length)] };
-                // Resolve move choices: "Move A/Move B" → pick one at random
+                if (settings.smartDraftPool && pool.length > 1) {
+                    const groups = {};
+                    for (const bd of pool) {
+                        const a = bd.archetype || 'other';
+                        (groups[a] = groups[a] || []).push(bd);
+                    }
+                    const archs = Object.keys(groups);
+                    const pick = archs[Math.floor(Math.random() * archs.length)];
+                    b = { ...groups[pick][Math.floor(Math.random() * groups[pick].length)] };
+                } else {
+                    b = { ...pool[Math.floor(Math.random() * pool.length)] };
+                }
                 b.m = b.m.map(m => {
                     if (!m.includes('/')) return m;
-                    const opts = m.split('/').filter(Boolean);
+                    const opts = m.split('/').map(s => s.trim()).filter(Boolean);
                     return opts[Math.floor(Math.random() * opts.length)];
                 });
                 b.evs = { ...b.evs };
@@ -3973,8 +4306,20 @@
                 // Re-pull a clean regular build if available
                 const fallbackPool2 = (entry.regular || []).concat(entry.weather || []);
                 if (fallbackPool2.length) {
-                    let fb = { ...fallbackPool2[Math.floor(Math.random() * fallbackPool2.length)] };
-                    fb.m = fb.m.map(m => m.includes('/') ? m.split('/')[Math.floor(Math.random()*m.split('/').length)] : m);
+                    let fb;
+                    if (settings.smartDraftPool && fallbackPool2.length > 1) {
+                        const fg = {};
+                        for (const bd of fallbackPool2) { const a = bd.archetype || 'other'; (fg[a] = fg[a] || []).push(bd); }
+                        const fk = Object.keys(fg); const fp = fk[Math.floor(Math.random() * fk.length)];
+                        fb = { ...fg[fp][Math.floor(Math.random() * fg[fp].length)] };
+                    } else {
+                        fb = { ...fallbackPool2[Math.floor(Math.random() * fallbackPool2.length)] };
+                    }
+                    fb.m = fb.m.map(m => {
+                        if (!m.includes('/')) return m;
+                        const parts = m.split('/').map(s => s.trim()).filter(Boolean);
+                        return parts[Math.floor(Math.random() * parts.length)];
+                    });
                     fb.evs = { ...fb.evs }; fb.gimmick = 'STANDARD'; fb.teraType = null;
                     if (!fb.a || fb.a === 'None') {
                         if (base.abilities) {
@@ -4076,7 +4421,7 @@ Click a card to add that Pokemon to your team. You need to pick 3.<br>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Type Badges</h3>
 Hover over the type badges to see defensive matchups — what types the Pokemon is weak to, resists, or immune to.</div>
 <div><h3 style="color:var(--accent);margin:0 0 6px;">Strategy Tips</h3>
-Build a balanced team! Consider type coverage, speed tiers, and offensive/defensive roles. Check the foe's pool with the "Inspect Foe's Pool" button to plan ahead.</div>`,
+Build a balanced team! Consider type coverage, speed tiers, and offensive/defensive roles. "Inspect Foe's Pool" shows all six of their possible builds (including ones they already picked), so you can plan without learning their hidden bench.</div>`,
             battle: `<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Commands</h3>
 <b style="color:var(--hp-yellow);">FIGHT</b> — Choose one of your 4 moves to attack or use a status move.<br>
 <b style="color:var(--hp-green);">POKEMON</b> — Switch your active Pokemon. <span style="color:#f44336;">This costs your turn!</span><br>
@@ -4125,11 +4470,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { window.showToast('Could not load all game data'); } catch (e) {}
         });
 
-        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, draftGrades: [1,2,3,4], mechanics: { mega: false, zmove: false, dynamax: false, tera: false }, classicMode: true, randomWeather: false, partySize: 3,
+        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, draftGrades: [1,2,3,4], mechanics: { mega: false, zmove: false, dynamax: false, tera: false }, classicMode: true, randomWeather: false, smartDraftPool: true, partySize: 3,
             aiProfile: 'balanced', /* aggro | balanced | stall — vs AI only */
             storyBattleItems: true, /* story in-battle bag */
             pvpBattleItems: false,  /* reserved: symmetric items in PvP */
-            battleLogDock: true     /* landscape tablets/desktop: dock log when wide enough */
+            battleLogDock: true,    /* landscape tablets/desktop: dock log when wide enough */
+            fxQuality: 'high'       /* M0: low | mid | high — gates particles, shake, blur */
         };
         try {
             const _pbs = JSON.parse(localStorage.getItem('pbs_settings') || '{}');
@@ -4137,6 +4483,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.storyBattleItems === 'boolean') settings.storyBattleItems = _pbs.storyBattleItems;
             if (typeof _pbs.pvpBattleItems === 'boolean') settings.pvpBattleItems = _pbs.pvpBattleItems;
             if (typeof _pbs.battleLogDock === 'boolean') settings.battleLogDock = _pbs.battleLogDock;
+            if (typeof _pbs.smartDraftPool === 'boolean') settings.smartDraftPool = _pbs.smartDraftPool;
+            if (_pbs.fxQuality && ['low','mid','high'].includes(_pbs.fxQuality)) settings.fxQuality = _pbs.fxQuality;
         } catch (e) {}
         function persistMiscSettings() {
             try {
@@ -4144,7 +4492,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     aiProfile: settings.aiProfile,
                     storyBattleItems: settings.storyBattleItems,
                     pvpBattleItems: settings.pvpBattleItems,
-                    battleLogDock: settings.battleLogDock
+                    fxQuality: settings.fxQuality,
+                    battleLogDock: settings.battleLogDock,
+                    smartDraftPool: settings.smartDraftPool
                 }));
             } catch (e) {}
         }
@@ -4756,7 +5106,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let opts = Array.isArray(slot) ? slot : [slot];
                 let picked = null;
                 // Shuffle opts to avoid always picking first
-                let shuffled = [...opts].sort(() => 0.5 - Math.random());
+                let shuffled = shuffleInPlace([...opts]);
                 for (let opt of shuffled) {
                     if (opt && !usedMoveNames.has(opt)) { picked = opt; break; }
                 }
@@ -4983,6 +5333,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (pair[1] === 'storyBattleItems') el.checked = settings.storyBattleItems !== false;
                 else el.checked = !!settings[pair[1]];
             });
+            // M0: sync fxQuality select
+            const fxSel = document.getElementById('setting-fx-quality');
+            if (fxSel) fxSel.value = settings.fxQuality || 'high';
         };
         window.applySettingSwitch = function(key, checked) {
             const on = !!checked;
@@ -5184,8 +5537,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         window.showHelp = function() {
             dismissTextTooltipForModal();
-            let text = helpData.menu;
-            if (!document.getElementById('screen-draft').classList.contains('hidden')) text = helpData.draft;
+            const ps = settings.partySize || 3;
+            const poolPerPlayer = ({ 1: 3, 2: 4, 3: 6, 4: 6, 5: 8, 6: 8 })[ps] || (ps + 2);
+            let text = helpData.menu
+                .replace(/\bDraft 3 Pokemon\b/g, `Draft ${ps} Pokemon`)
+                .replace(/\bpool of 6 randomly\b/g, `pool of ${poolPerPlayer} randomly`);
+            if (!document.getElementById('screen-draft').classList.contains('hidden')) {
+                text = helpData.draft.replace(/\bYou need to pick 3\./g, `You need to pick ${ps}.`);
+            }
             if (!document.getElementById('screen-battle').classList.contains('hidden')) text = helpData.battle;
             document.getElementById('help-text').innerHTML = text; document.getElementById('modal-help').classList.remove('hidden');
         }
@@ -6476,10 +6835,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             settings.mechanics.tera    = document.getElementById('mech-tera-cb')?.checked || false;
             settings.randomWeather     = document.getElementById('mech-weather-cb')?.checked || false;
             settings.randomTerrain     = document.getElementById('mech-terrain-cb')?.checked || false;
+            const sdCb = document.getElementById('smart-draft-cb');
+            if (sdCb) settings.smartDraftPool = sdCb.checked;
             settings.classicMode       = document.getElementById('mode-classic-rb')?.checked !== false;
             settings.partySize         = parseInt(document.getElementById('party-size-select')?.value) || 3;
+            persistMiscSettings();
             try { applyBattleLayoutMode(); } catch (e) {}
         };
+        // Restore smart-draft checkbox from persisted setting
+        (function() {
+            const cb = document.getElementById('smart-draft-cb');
+            if (cb) cb.checked = settings.smartDraftPool !== false;
+        })();
 
         // Run once after data loads
         document.addEventListener('DOMContentLoaded', () => { if (typeof baseStats !== 'undefined') window.updatePoolCount(); });
@@ -6502,6 +6869,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch(e) {}
         });
 
+        function rebalanceWeatherBuilds(pool) {
+            if (!settings.smartDraftPool) return;
+            const hasWeatherSetter = pool.some(p =>
+                p.build && WEATHER_SETTER_ABILITIES.has(p.build.a));
+
+            for (const entry of pool) {
+                if (!entry.build) continue;
+                const wInfo = WEATHER_ABILITIES[entry.build.a];
+                if (!wInfo) continue;
+
+                if (hasWeatherSetter) continue;
+
+                const csvEntry = resolveCsvBuildEntry(entry.name);
+                const allNonWeather = (csvEntry.regular || []).concat(csvEntry.mega || [], csvEntry['z-attack'] || [], csvEntry.tera || [])
+                    .filter(b => b.archetype !== 'weather-attacker');
+                if (!allNonWeather.length) continue;
+
+                const picked = allNonWeather[Math.floor(Math.random() * allNonWeather.length)];
+                const nb = { ...picked };
+                nb.m = nb.m.map(m => {
+                    if (!m.includes('/')) return m;
+                    const opts = m.split('/').map(s => s.trim()).filter(Boolean);
+                    return opts[Math.floor(Math.random() * opts.length)];
+                });
+                nb.evs = { ...nb.evs };
+                entry.build = nb;
+            }
+        }
+
         async function buildDraftPoolsForCurrentSettings(mode) {
             await dataReady;
             window.updateMechanics();
@@ -6512,9 +6908,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const poolSizeMap = { 1: 3, 2: 4, 3: 6, 4: 6, 5: 8, 6: 8 };
             let poolSizePerPlayer = poolSizeMap[settings.partySize] || (settings.partySize + 2);
             let totalPool = poolSizePerPlayer * 2;
-            const poolKeys = eligible.sort(() => 0.5 - Math.random()).slice(0, totalPool);
+            const poolKeys = shuffleInPlace([...eligible]).slice(0, totalPool);
             const p1Pool = poolKeys.slice(0, poolSizePerPlayer).map(name => ({ name, build: makeBuild(name) }));
             const p2Pool = poolKeys.slice(poolSizePerPlayer, totalPool).map(name => ({ name, build: makeBuild(name) }));
+            rebalanceWeatherBuilds(p1Pool);
+            rebalanceWeatherBuilds(p2Pool);
             const minGen = Math.min(...enabledGens);
             const maxGen = Math.max(...enabledGens);
             return { mode, enabledGens, minGen, maxGen, p1Pool, p2Pool };
@@ -6552,6 +6950,48 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (d.draft_deadline_iso) window.__onlineDraftDeadlineIso = d.draft_deadline_iso;
             else if (d.draft_deadline_iso === null) window.__onlineDraftDeadlineIso = null;
             if (d.guest_joined !== undefined) window.__onlineGuestJoined = !!d.guest_joined;
+        }
+
+        function isOnlineParallelDraft() {
+            return state.mode === 'pvp' && window.OnlineBattle && typeof window.OnlineBattle.isActive === 'function'
+                && window.OnlineBattle.isActive() && !!window.__onlineGuestJoined;
+        }
+
+        /** Opponent's full six (remaining pool + locked picks) so Inspect Foe never leaks unpicked Pokémon. */
+        function getFoeFullDraftPoolForInspect() {
+            const p1All = [].concat(state.p1Pool || [], state.p1Draft || []);
+            const p2All = [].concat(state.p2Pool || [], state.p2Draft || []);
+            const onlineActive = window.OnlineBattle && window.OnlineBattle.isActive();
+            const myR = onlineActive && window.OnlineBattle.getRole ? window.OnlineBattle.getRole() : null;
+            if (onlineActive && myR != null) {
+                return myR === 1 ? p2All : p1All;
+            }
+            if (state.mode === 'pvp') {
+                return state.draftTurn === 1 ? p2All : p1All;
+            }
+            return (state.p2Pool || []).slice();
+        }
+
+        /** Auto-pick: prefer higher draft tier / BST; random among ties (better than always pool[0]). */
+        function pickDraftAutofillFromPool(pool) {
+            if (!pool || !pool.length) return null;
+            let bestKey = -Infinity;
+            const ties = [];
+            for (const item of pool) {
+                if (!item || !item.name) continue;
+                const bst = getBST(item.name);
+                const tier = getMonGrade(item.name, bst);
+                const key = tier * 10000 + bst;
+                if (key > bestKey) {
+                    bestKey = key;
+                    ties.length = 0;
+                    ties.push(item);
+                } else if (key === bestKey) {
+                    ties.push(item);
+                }
+            }
+            if (!ties.length) return pool[Math.floor(Math.random() * pool.length)];
+            return ties[Math.floor(Math.random() * ties.length)];
         }
 
         window.computeOnlineBattleTurnDeadlineIso = function(st) {
@@ -6700,18 +7140,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if ((window.__onlineMatchTimerPreset || 'none') === 'none') return;
             if (!window.__onlineDraftDeadlineIso || Date.now() < new Date(window.__onlineDraftDeadlineIso).getTime()) return;
             if (window.__onlineDraftTimeoutFiring) return;
-            const turn = state.draftTurn;
-            const pool = turn === 1 ? state.p1Pool : state.p2Pool;
-            const draft = turn === 1 ? state.p1Draft : state.p2Draft;
-            if (!pool || pool.length === 0 || draft.length >= settings.partySize) return;
-            const pick = pool[0];
+            const n = settings.partySize;
             const myR = window.OnlineBattle.getRole();
-            const isMyTurn = (turn === 1 && myR === 1) || (turn === 2 && myR === 2);
-            const hostP2 = window.OnlineBattle.isHost() && turn === 2;
-            if (!isMyTurn && !hostP2) return;
+            let pool = null;
+            let logLine = '';
+            if (isOnlineParallelDraft()) {
+                if (myR === 1) {
+                    if (state.p1Draft.length < n && state.p1Pool.length) {
+                        pool = state.p1Pool;
+                        logLine = "Time's up — auto-drafted from your pool (tier pick).";
+                    } else if (window.OnlineBattle.isHost() && state.p2Draft.length < n && state.p2Pool.length) {
+                        pool = state.p2Pool;
+                        logLine = 'Guest timer — auto-drafting for Player 2 (tier pick).';
+                    } else return;
+                } else {
+                    if (state.p2Draft.length < n && state.p2Pool.length) {
+                        pool = state.p2Pool;
+                        logLine = "Time's up — auto-drafted from your pool (tier pick).";
+                    } else return;
+                }
+            } else {
+                const turn = state.draftTurn;
+                pool = turn === 1 ? state.p1Pool : state.p2Pool;
+                const draft = turn === 1 ? state.p1Draft : state.p2Draft;
+                if (!pool || pool.length === 0 || draft.length >= n) return;
+                const isMyTurn = (turn === 1 && myR === 1) || (turn === 2 && myR === 2);
+                const hostP2 = window.OnlineBattle.isHost() && turn === 2;
+                if (!isMyTurn && !hostP2) return;
+                logLine = isMyTurn ? "Time's up — auto-drafted (tier pick)." : 'Guest timer expired — auto-drafting for Player 2.';
+            }
+            const pick = pickDraftAutofillFromPool(pool);
+            if (!pick) return;
             window.__onlineDraftTimeoutFiring = true;
             try {
-                logMsg(isMyTurn ? "Time's up — auto-drafted first available Pokémon." : "Guest timer expired — auto-drafting for Player 2.", 'info');
+                logMsg(logLine, 'info');
                 await window.OnlineBattle.handleSelectDraft(state, settings, pick, selectDraftCore);
                 if (window.OnlineBattle.isHost()) await window.OnlineBattle.refreshDraftDeadlineOnly();
             } catch (e) { console.warn('[OnlineDraftTimeout]', e); }
@@ -6867,7 +7329,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 renderDraft();
                 window.startOnlinePvPWatchdogs();
                 window.closeModal('modal-online-pvp');
-                logMsg('Joined online room as Player 2. Wait for host picks when it is their turn.', 'info');
+                logMsg('Joined online room as Player 2. When the host finishes setup, you both pick from your pools in the same time window.', 'info');
             } catch (e) {
                 console.error(e);
                 if (ne) ne.textContent = (e && e.message) ? e.message : String(e);
@@ -7165,11 +7627,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Keep an inspect snapshot locked to the current pick prompt.
             // This prevents the foe-pool modal from drifting while the user is deciding.
             if (state.mode === 'pvp') {
-                if (window.OnlineBattle && window.OnlineBattle.isActive() && window.OnlineBattle.getRole) {
-                    state.enemyPoolSnapshot = (window.OnlineBattle.getRole() === 1 ? state.p2Pool : state.p1Pool).slice();
-                } else {
-                    state.enemyPoolSnapshot = (state.draftTurn === 1 ? state.p2Pool : state.p1Pool).slice();
-                }
+                state.enemyPoolSnapshot = getFoeFullDraftPoolForInspect().slice();
             } else {
                 state.enemyPoolSnapshot = (state.p2Pool || []).slice();
             }
@@ -7192,8 +7650,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         pvpHint.textContent = 'Share the room code or link. Draft timers and Inspect Foe unlock when your opponent joins.';
                     } else {
                         pvpHint.textContent = onlineActive
-                            ? 'Online PvP: rules follow the host snapshot. Host = Player 1 (bottom), guest = Player 2 (top). Leaderboard is honor-system only.'
-                            : 'Local PvP rules: mechanics & party size follow Settings. Battle items toggle (Settings) is for future symmetric PvP — Story Mode has the full bag.';
+                            ? 'Online PvP: rules follow the host snapshot. Host = Player 1 (bottom), guest = Player 2 (top). After both join, you draft in the same time window from your own pools. Leaderboard is honor-system only.'
+                            : 'Local PvP: same device, so you still take turns (Player 1, then Player 2). Mechanics & party size follow Settings.';
                     }
                 } else pvpHint.classList.add('hidden');
             }
@@ -7205,7 +7663,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             const myR = onlineActive && window.OnlineBattle.getRole ? window.OnlineBattle.getRole() : null;
-            const onlineWaitOpponent = onlineActive && myR != null && state.draftTurn !== myR;
+            const onlineWaitOpponent = onlineActive && myR != null && !isOnlineParallelDraft() && state.draftTurn !== myR;
             if (onlineWaitOpponent) {
                 const oppLeft = state.draftTurn === 1 ? state.p1Pool.length : state.p2Pool.length;
                 document.getElementById('draft-title').innerText = `Player ${state.draftTurn} is drafting (${oppLeft} left in their pool)`;
@@ -7217,10 +7675,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
 
-            let currentPool = state.draftTurn === 1 ? state.p1Pool : state.p2Pool;
+            let currentPool = isOnlineParallelDraft() && myR != null
+                ? (myR === 1 ? state.p1Pool : state.p2Pool)
+                : (state.draftTurn === 1 ? state.p1Pool : state.p2Pool);
             document.getElementById('draft-title').innerText = state.mode === 'pvp'
                 ? (onlineActive && myR != null
-                    ? `Player ${myR}: Pick ${settings.partySize} from your pool (${currentPool.length} left)`
+                    ? (isOnlineParallelDraft()
+                        ? `Pick ${settings.partySize} from your pool (${currentPool.length} left) — same window as your opponent`
+                        : `Player ${myR}: Pick ${settings.partySize} from your pool (${currentPool.length} left)`)
                     : `Player ${state.draftTurn}: Pick ${settings.partySize} Pokémon (${currentPool.length} left)`)
                 : `Pick ${settings.partySize} Pokémon for your Team`;
 
@@ -7294,11 +7756,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (window.OnlineBattle.isHost() && !window.__onlineGuestJoined) return;
                 const myR = window.OnlineBattle.getRole();
                 const turn = state.draftTurn;
-                const isMyPick = (turn === 1 && myR === 1) || (turn === 2 && myR === 2);
+                const isMyPick = isOnlineParallelDraft()
+                    ? true
+                    : ((turn === 1 && myR === 1) || (turn === 2 && myR === 2));
                 if (!isMyPick) return;
             }
-            let currentDraft = state.draftTurn === 1 ? state.p1Draft : state.p2Draft;
-            let currentPool = state.draftTurn === 1 ? state.p1Pool : state.p2Pool;
+            let currentDraft;
+            let currentPool;
+            if (isOnlineParallelDraft()) {
+                const mr = window.OnlineBattle.getRole();
+                currentDraft = mr === 1 ? state.p1Draft : state.p2Draft;
+                currentPool = mr === 1 ? state.p1Pool : state.p2Pool;
+            } else {
+                currentDraft = state.draftTurn === 1 ? state.p1Draft : state.p2Draft;
+                currentPool = state.draftTurn === 1 ? state.p1Pool : state.p2Pool;
+            }
             if (idx < 0 || idx >= currentDraft.length) return;
             let removed = currentDraft.splice(idx, 1)[0];
             currentPool.push(removed);
@@ -7310,7 +7782,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (window.OnlineBattle.isHost() && !window.__onlineGuestJoined) return;
                 const myR = window.OnlineBattle.getRole();
                 const turn = state.draftTurn;
-                const isMyPick = (turn === 1 && myR === 1) || (turn === 2 && myR === 2);
+                const isMyPick = isOnlineParallelDraft()
+                    ? ((myR === 1 && state.p1Draft.length < settings.partySize) || (myR === 2 && state.p2Draft.length < settings.partySize))
+                    : ((turn === 1 && myR === 1) || (turn === 2 && myR === 2));
                 if (!isMyPick) return;
                 await window.OnlineBattle.handleSelectDraft(state, settings, draftItem, selectDraftCore);
                 if (window.OnlineBattle.isHost && window.OnlineBattle.isHost() && window.OnlineBattle.refreshDraftDeadlineOnly) {
@@ -7322,22 +7796,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function selectDraftCore(draftItem) {
+            const n = settings.partySize;
+            if (isOnlineParallelDraft()) {
+                const myR = window.OnlineBattle.getRole();
+                if (myR === 1) {
+                    state.p1Pool = state.p1Pool.filter(i => i !== draftItem);
+                    state.p1Draft.push(draftItem);
+                } else {
+                    state.p2Pool = state.p2Pool.filter(i => i !== draftItem);
+                    state.p2Draft.push(draftItem);
+                }
+                if (state.p1Draft.length === n && state.p2Draft.length === n) {
+                    if (window.OnlineBattle && window.OnlineBattle.isHost && window.OnlineBattle.isHost()) {
+                        window.__hostOnlineBattleStarted = true;
+                        startBattle();
+                    } else {
+                        renderDraft();
+                    }
+                } else renderDraft();
+                return;
+            }
             if (state.draftTurn === 1) {
                 state.p1Pool = state.p1Pool.filter(i => i !== draftItem);
                 state.p1Draft.push(draftItem);
-                if (state.p1Draft.length === settings.partySize) {
+                if (state.p1Draft.length === n) {
                     if (state.mode === 'pvp') {
                         state.draftTurn = 2;
                         renderDraft();
                     } else {
-                        state.p2Draft = state.p2Pool.sort(() => 0.5 - Math.random()).slice(0, settings.partySize);
+                        state.p2Draft = shuffleInPlace([...state.p2Pool]).slice(0, n);
                         startBattle();
                     }
                 } else renderDraft();
             } else {
                 state.p2Pool = state.p2Pool.filter(i => i !== draftItem);
                 state.p2Draft.push(draftItem);
-                if (state.p2Draft.length === settings.partySize) {
+                if (state.p2Draft.length === n) {
                     if (window.OnlineBattle && window.OnlineBattle.isActive()) {
                         renderDraft();
                         return;
@@ -10786,12 +11280,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_atkItemActive && attacker.item === "Choice Band" && _effectiveCat === "Physical") A *= 1.5;
                 if (_atkItemActive && attacker.item === "Choice Specs" && _effectiveCat === "Special") A *= 1.5;
                 if (_atkItemActive && attacker.item === "Thick Club" && attacker.name === "Marowak" && _effectiveCat === "Physical") A *= 2;
-                // Eviolite: Def/SpDef x1.5 — only if the holder can evolve further
+                // Eviolite: Def/SpDef x1.5 — only for NFE (species with at least one evolution); no fallback if dex lookup fails
                 if (_defItemActive && defender.item === "Eviolite") {
                     let _canEvolve = false;
-                    let _D = getPssDex(); if (_D) { try { let sp = _D.species.get(defender.name); _canEvolve = !!(sp && sp.evos && sp.evos.length > 0); } catch(e) {} }
-                    if (!_canEvolve) { // Fallback: always grant (safe default)
-                        _canEvolve = true;
+                    const _D = getPssDex();
+                    if (_D) {
+                        try {
+                            const sp = _D.species.get(defender.name);
+                            _canEvolve = !!(sp && sp.evos && sp.evos.length > 0);
+                        } catch (e) {}
                     }
                     if (_canEvolve) D *= 1.5;
                 }
@@ -11771,7 +12268,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             logMsg(`Draw round — no swap reward. Fully healing team...`, 'heal');
                             state.playerParty.forEach((m, i) => { state.playerParty[i] = buildPokemon(m.name, m.buildData); });
                             let drawEligible = getDraftPool(state.enabledGens || rangeToEnabledGens(state.minGen != null ? state.minGen : 1, state.maxGen != null ? state.maxGen : 9), settings.draftGrades);
-                            const drawKeys = drawEligible.sort(() => 0.5 - Math.random()).slice(0, settings.partySize);
+                            const drawKeys = shuffleInPlace([...drawEligible]).slice(0, settings.partySize);
                             state.foeParty = drawKeys.map(name => buildPokemon(name, makeBuild(name)));
                             state.pActive = state.playerParty[0]; state.fActive = state.foeParty[0];
                             state.weather = null; state.weatherTurns = 0;
@@ -12178,6 +12675,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function applyEntryHazards(mon, isPlayer) {
             let side = isPlayer ? state.pSide : state.fSide;
+            // #region agent log
+            const _dbgHpBefore = mon.currentHp;
+            const _dbgSide = { sr: !!side.stealthRock, sp: side.spikes|0, ts: side.toxicSpikes|0, sw: !!side.stickyWeb };
+            const _dbgHazardCount = (side.stealthRock?1:0) + (side.spikes>0?1:0) + (side.toxicSpikes>0?1:0) + (side.stickyWeb?1:0);
+            // H2: Magic Guard early-returns, which also skips Sticky Web. Sticky Web is a stat drop,
+            // not damage — Magic Guard should NOT block it. Flag this as a suspected real bug.
+            if (mon.ability === "Magic Guard" && side.stickyWeb && _dbgHpBefore > 0) {
+                window._dbgLog('battle.html:applyEntryHazards', 'Magic Guard skipped Sticky Web speed drop (suspected bug — MG only blocks damage)',
+                    { mon: window._dbgMon(mon), side: _dbgSide, isPlayer }, 'H2');
+            }
+            // #endregion
             if (mon.ability === "Magic Guard") return;
             if (mon.item === "Heavy-Duty Boots") return;
             let isGrounded = mon.type1 !== "Flying" && mon.type2 !== "Flying" && mon.ability !== "Levitate";
@@ -13967,7 +14475,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let foeEligible = allEligible.filter(n => !playerSpecies.has(n));
             if (foeEligible.length < settings.partySize) foeEligible = allEligible; // fallback if pool too small
             // Shuffle and pick unique species equal to partySize
-            foeEligible = foeEligible.sort(() => 0.5 - Math.random());
+            shuffleInPlace(foeEligible);
             const foeKeys = [];
             const foeSeen = new Set();
             for (let name of foeEligible) {
@@ -15922,7 +16430,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const g = t.name ? getMonGrade(t.name, getBST(t.name)) : 4;
                 return `<div class="story-team-slot tier-${g}" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;box-sizing:border-box;" role="button" onclick="window.StoryMode.openSummary(${i})" title="View summary">
                     <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">
-                        <img src="${getSprite(t.name,false)}" onerror="this.src=''" alt="${t.name}">
+                        <img src="${getSprite(t.name,t.isShiny||false)}" onerror="handleSpriteError(this)" data-shiny="${t.isShiny?'true':'false'}" alt="${t.name}">
                         <div><div style="font-weight:bold;font-size:11px;">${t.name}</div>
                         <span class="tier-badge bg-tier-${g}" style="font-size:9px;">G${g}</span></div>
                     </div>
@@ -16212,7 +16720,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     slot.className = `story-team-slot tier-${g}`;
                     slot.style.cssText = 'cursor:pointer;min-width:130px;padding:10px;transition:all 0.15s;';
                     slot.innerHTML = `
-                        <img src="${getSprite(t.name,false)}" onerror="this.src=''" style="width:56px;height:56px;image-rendering:pixelated;">
+                        <img src="${getSprite(t.name,t.isShiny||false)}" onerror="handleSpriteError(this)" data-shiny="${t.isShiny?'true':'false'}" alt="${t.name}" style="width:56px;height:56px;image-rendering:pixelated;">
                         <div style="font-size:12px;"><b>${t.name}</b><br><span class="tier-badge bg-tier-${g}" style="font-size:9px;">G${g}</span></div>`;
                     slot.onclick = () => window.StoryMode._mysteryDoSwap(i);
                     cardEl.appendChild(slot);
@@ -16854,7 +17362,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 return `<div class="story-link-mon tier-${g}">
                     <div class="story-link-mon-header">
-                        <img src="${getSprite(t.name,false)}" onerror="this.src=''" alt="${t.name}">
+                        <img src="${getSprite(t.name,t.isShiny||false)}" onerror="handleSpriteError(this)" data-shiny="${t.isShiny?'true':'false'}" alt="${t.name}">
                         <div>
                             <div class="story-link-title-row">${shinyPre}${t.name}${gimmickTag} ${typeHtml}${teraHtml}</div>
                             <span class="tier-badge bg-tier-${g}">Grade ${g}</span>
