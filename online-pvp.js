@@ -44,7 +44,7 @@
     }
 
     function mergeData(prev, patch) {
-        const base = prev && typeof prev === 'object' ? JSON.parse(JSON.stringify(prev)) : {};
+        const base = prev && typeof prev === 'object' ? deepClone(prev) : {};
         return Object.assign(base, patch);
     }
 
@@ -60,7 +60,7 @@
     }
 
     function deepClone(o) {
-        return JSON.parse(JSON.stringify(o));
+        return typeof structuredClone === 'function' ? structuredClone(o) : JSON.parse(JSON.stringify(o));
     }
 
     /** Keys copied from host settings into match contract (guest must not use local settings). */
@@ -92,6 +92,10 @@
             if (k === 'minGen' || k === 'maxGen') return;
             if (k === 'timer_preset') {
                 global.__onlineMatchTimerPreset = match.timer_preset === 'fast' || match.timer_preset === 'slow' ? match.timer_preset : 'none';
+                return;
+            }
+            if (k === 'match_format') {
+                global.__onlineMatchFormat = (match.match_format === 3 || match.match_format === 5) ? match.match_format : 1;
                 return;
             }
             if (match[k] !== undefined) settings[k] = match[k];
@@ -296,6 +300,9 @@
                 guest_joined: false,
                 draft_deadline_iso: null,
                 battle_turn_deadline_iso: null,
+                p1_wins: 0,
+                p2_wins: 0,
+                round_number: 1,
                 battle: {
                     pending_turn: 1,
                     p1_pick: null,
@@ -396,15 +403,25 @@
                 global.__guestBattleStartApplied = false;
                 global.__onlineGuestJoined = false;
                 global.__onlineHostDraftDeadlinePrimed = false;
+                global.__onlineP1Wins = 0;
+                global.__onlineP2Wins = 0;
+                global.__onlineRoundNumber = 1;
+                global.__onlineMatchFormat = 1;
+                global.__onlineGuestRematchApplied = 0;
+                global.__onlineHostName = null;
+                global.__onlineGuestName = null;
                 if (typeof global.clearOnlinePvPTimers === 'function') global.clearOnlinePvPTimers();
             } catch (e) {}
         },
 
-        async pushData(patch) {
+        async pushData(patch, existingData) {
             const sb = getClient();
             if (!sb || !roomId) return;
-            const { data: row } = await sb.from('pvp_rooms').select('data').eq('id', roomId).single();
-            const prev = row && row.data ? row.data : {};
+            let prev = existingData;
+            if (prev === undefined) {
+                const { data: row } = await sb.from('pvp_rooms').select('data').eq('id', roomId).single();
+                prev = row && row.data ? row.data : {};
+            }
             const seq = (prev.seq || 0) + 1;
             const data = mergeData(prev, patch);
             data.seq = seq;
@@ -459,7 +476,7 @@
                     p2_gimmick: prev.battle && prev.battle.p2_gimmick
                 });
                 const deadlineIso = typeof global.computeOnlineBattleTurnDeadlineIso === 'function' ? global.computeOnlineBattleTurnDeadlineIso(state) : null;
-                await this.pushData({ battle, battle_turn_deadline_iso: deadlineIso });
+                await this.pushData({ battle, battle_turn_deadline_iso: deadlineIso }, prev);
                 if (typeof global.logMsg === 'function') global.logMsg("Waiting for opponent…", 'info');
                 document.getElementById('move-menu').classList.add('hidden');
                 document.getElementById('command-menu').classList.remove('hidden');
@@ -477,7 +494,7 @@
                 p1_pick: prev.battle && prev.battle.p1_pick,
                 p1_gimmick: prev.battle && prev.battle.p1_gimmick
             });
-            await this.pushData({ battle });
+            await this.pushData({ battle }, prev);
             /* Host runs resolution when guest's p2 pick arrives — see consumeRemoteForHost from onOnlineRoomData */
         },
 
@@ -532,14 +549,36 @@
                 ? global.computeOnlineBattleTurnDeadlineIso(state)
                 : null;
             const battle_log_html = captureBattleLogHtml();
-            await this.pushData({ battle, battle_turn_deadline_iso: nextDeadline, battle_log_html });
+            await this.pushData({ battle, battle_turn_deadline_iso: nextDeadline, battle_log_html }, prev);
 
             if (state.isOver) {
-                await this.pushData({ phase: 'done', battle_turn_deadline_iso: null, battle_log_html: captureBattleLogHtml() });
                 const p1Alive = state.playerParty.some((m) => m.currentHp > 0);
                 const fAlive = state.foeParty.some((m) => m.currentHp > 0);
-                if (p1Alive && !fAlive) await reportWinIfConfigured(true);
-                else if (fAlive && !p1Alive) await reportWinIfConfigured(false);
+                const p1Won = p1Alive && !fAlive;
+                const p2Won = fAlive && !p1Alive;
+
+                // Pull current wins from room then increment
+                const { data: winRow } = await getClient().from('pvp_rooms').select('data').eq('id', roomId).single();
+                const winPrev = winRow && winRow.data ? winRow.data : {};
+                const p1Wins = (winPrev.p1_wins || 0) + (p1Won ? 1 : 0);
+                const p2Wins = (winPrev.p2_wins || 0) + (p2Won ? 1 : 0);
+                const roundNumber = winPrev.round_number || 1;
+
+                // Expose to local globals immediately so the host's end screen can read them
+                global.__onlineP1Wins = p1Wins;
+                global.__onlineP2Wins = p2Wins;
+                global.__onlineRoundNumber = roundNumber;
+
+                await this.pushData({
+                    phase: 'done',
+                    battle_turn_deadline_iso: null,
+                    battle_log_html: captureBattleLogHtml(),
+                    p1_wins: p1Wins,
+                    p2_wins: p2Wins,
+                    round_number: roundNumber
+                }, winPrev);
+                if (p1Won) await reportWinIfConfigured(true);
+                else if (p2Won) await reportWinIfConfigured(false);
             }
         },
 
@@ -584,6 +623,9 @@
             const h = simpleHash(blob);
             const deadlineIso = typeof global.computeOnlineBattleTurnDeadlineIso === 'function' ? global.computeOnlineBattleTurnDeadlineIso(state) : null;
             const battle_log_html = captureBattleLogHtml();
+            // Include latest display names + match format so guest stays in sync
+            const { data: nameRow } = await getClient().from('pvp_rooms').select('data').eq('id', roomId).single();
+            const nPrev = nameRow && nameRow.data ? nameRow.data : {};
             await this.pushData({
                 phase: 'battle',
                 draft_deadline_iso: null,
@@ -591,6 +633,12 @@
                 battle_start_blob: blob,
                 battle_start_hash: h,
                 battle_log_html,
+                host_display_name: nPrev.host_display_name || (global.localStorage && global.localStorage.getItem('pbs_online_display_name')) || 'Host',
+                guest_display_name: nPrev.guest_display_name,
+                match_options: nPrev.match_options,
+                p1_wins: nPrev.p1_wins || 0,
+                p2_wins: nPrev.p2_wins || 0,
+                round_number: nPrev.round_number || 1,
                 battle: {
                     pending_turn: 1,
                     p1_pick: null,
@@ -601,13 +649,22 @@
                     state_blob: null,
                     state_hash: null
                 }
-            });
+            }, nPrev);
             hostStartedBattle = true;
         },
 
         async guestApplyBattleStart(state, roomData) {
             const blob = typeof roomData === 'string' ? roomData : (roomData && roomData.battle_start_blob);
             if (!blob) return;
+            // Sync display names from room data
+            if (roomData && typeof roomData === 'object') {
+                if (roomData.host_display_name) global.__onlineHostName = roomData.host_display_name;
+                if (roomData.guest_display_name) global.__onlineGuestName = roomData.guest_display_name;
+                if (typeof roomData.p1_wins === 'number') global.__onlineP1Wins = roomData.p1_wins;
+                if (typeof roomData.p2_wins === 'number') global.__onlineP2Wins = roomData.p2_wins;
+                if (typeof roomData.round_number === 'number') global.__onlineRoundNumber = roomData.round_number;
+                if (roomData.match_options && roomData.match_options.match_format) global.__onlineMatchFormat = roomData.match_options.match_format;
+            }
             applyBattleSnapshot(state, blob);
             if (typeof roomData === 'object' && roomData && roomData.battle_log_html !== undefined) {
                 applyBattleLogHtml(roomData.battle_log_html);
@@ -622,6 +679,7 @@
             document.getElementById('move-menu').classList.add('hidden');
             document.getElementById('command-menu').classList.remove('hidden');
             if (typeof global.applyBattleLogDockClass === 'function') global.applyBattleLogDockClass();
+            if (typeof global.updateOnlineBattleScoreOverlay === 'function') global.updateOnlineBattleScoreOverlay();
             try { global.syncBattleActiveHighlight(); } catch (e) {}
         },
 
@@ -637,9 +695,11 @@
             } else if (role === 2 && typeof global.showEndScreen === 'function') {
                 const p1s = state.playerParty.some((m) => m.currentHp > 0);
                 const p2s = state.foeParty.some((m) => m.currentHp > 0);
-                if (!p1s && p2s) global.showEndScreen('VICTORY!', 'You won the online battle!', true);
-                else if (p1s && !p2s) global.showEndScreen('DEFEAT', 'You lost the online battle.', false);
-                else global.showEndScreen('DRAW', 'The battle ended in a draw.', false);
+                const p1Name = global.__onlineHostName || 'Host';
+                const p2Name = global.__onlineGuestName || 'Guest';
+                if (!p1s && p2s) global.showEndScreen('VICTORY!', `You (${p2Name}) won this round!`, true);
+                else if (p1s && !p2s) global.showEndScreen('DEFEAT', `${p1Name} won this round.`, false);
+                else global.showEndScreen('DRAW', 'The round ended in a draw.', false);
             }
             try { global.syncBattleActiveHighlight(); } catch (e) {}
             const localH = simpleHash(b.state_blob);
