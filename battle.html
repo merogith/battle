@@ -1346,6 +1346,56 @@
             filter: brightness(0.9);
             box-shadow: inset 2px 2px 4px rgba(0,0,0,0.4), 0 0 0 transparent;
         }
+        /* ── Charging-move sprite states ───────────────────────────────────── */
+        /* Dig / Dive / Phantom Force / Shadow Force: sprite hidden underground or vanished */
+        .sprite.sprite-underground {
+            opacity: 0.08 !important;
+            filter: brightness(0.3) !important;
+            transition: opacity 0.3s ease, filter 0.3s ease;
+        }
+        /* Fly / Bounce: sprite floats upward */
+        .sprite.sprite-airborne {
+            transform-origin: bottom center;
+            animation: sprite-bob-airborne 0.9s ease-in-out infinite alternate !important;
+            filter: drop-shadow(0 8px 6px rgba(0,0,0,0.5)) !important;
+        }
+        @keyframes sprite-bob-airborne {
+            from { translate: 0 -18px; }
+            to   { translate: 0 -30px; }
+        }
+        /* Solar Beam / Sky Attack / Geomancy etc.: pulsing energy glow */
+        .sprite.sprite-charging-glow {
+            animation: sprite-charge-pulse 0.8s ease-in-out infinite alternate !important;
+        }
+        @keyframes sprite-charge-pulse {
+            from { filter: brightness(1.0) drop-shadow(0 0 4px rgba(255,240,80,0.4)); }
+            to   { filter: brightness(1.35) drop-shadow(0 0 12px rgba(255,240,80,0.85)); }
+        }
+        /* ─────────────────────────────────────────────────────────────────── */
+
+        /* Rampage lock: red-orange border on the forced move */
+        #move-menu button.battle-btn-move.locked-rampage {
+            border-color: #e64a19 !important;
+            background: #2a1208 !important;
+            box-shadow: 0 0 0 2px rgba(230,74,25,0.45), 0 2px 0 #080810, 0 3px 5px rgba(0,0,0,0.4) !important;
+            animation: rampage-pulse 1.2s ease-in-out infinite alternate;
+        }
+        @keyframes rampage-pulse {
+            from { box-shadow: 0 0 0 2px rgba(230,74,25,0.3), 0 2px 0 #080810; }
+            to   { box-shadow: 0 0 0 4px rgba(230,74,25,0.65), 0 2px 0 #080810; }
+        }
+        .lock-rampage-badge { font-size: 12px; margin-left: 4px; }
+        /* Lock turn counter badge below the move grid */
+        .move-lock-badge {
+            margin: 6px 6px 0;
+            padding: 5px 10px;
+            background: rgba(230,74,25,0.12);
+            border: 1px solid rgba(230,74,25,0.4);
+            border-radius: 6px;
+            font-size: 12px;
+            color: #ff8a65;
+            text-align: center;
+        }
         .battle-btn-move .battle-btn-move-inner { display: flex; flex-direction: row; align-items: stretch; gap: 4px; width: 100%; min-width: 0; }
         .battle-btn-move .move-tile-core { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
         .battle-btn-move .move-tile-head { display: flex; align-items: flex-start; gap: 5px; min-width: 0; }
@@ -9360,6 +9410,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return lines.join('<br>');
         }
 
+        // Applies charging-move sprite visual state (underground, airborne, vanished, glowing)
+        function updateSpriteChargingState(mon, spriteEl) {
+            if (!spriteEl) return;
+            const ch = mon.volatile && mon.volatile.charging;
+            // Remove all charging classes first
+            spriteEl.classList.remove('sprite-underground', 'sprite-airborne', 'sprite-charging-glow');
+            if (!ch) return;
+            const _underground = new Set(['Dig', 'Dive']);
+            const _vanished    = new Set(['Phantom Force', 'Shadow Force', 'Sky Drop']);
+            const _airborne    = new Set(['Fly', 'Bounce']);
+            const _glowing     = new Set(['Solar Beam', 'Solar Blade', 'Sky Attack', 'Meteor Beam', 'Geomancy', 'Razor Wind', 'Skull Bash', 'Electro Shot', 'Freeze Shock', 'Ice Burn']);
+            if (_underground.has(ch) || _vanished.has(ch)) {
+                spriteEl.classList.add('sprite-underground'); // invisible + dim
+            } else if (_airborne.has(ch)) {
+                spriteEl.classList.add('sprite-airborne');    // shifted up + bob animation
+            } else if (_glowing.has(ch)) {
+                spriteEl.classList.add('sprite-charging-glow'); // pulsing glow
+            }
+        }
+
         function updateUI() {
             if (!battleEls.player || !battleEls.player.name) cacheBattleEls();
             const be = battleEls;
@@ -9402,6 +9472,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     spriteEl.style.filter = '';
                 }
                 spriteEl.style.transform = getSpriteTransformStyle(mon);
+                // Charging state visuals (Dig → underground, Fly/Bounce → airborne, etc.)
+                updateSpriteChargingState(mon, spriteEl);
                 // Hide sprite container entirely if mon is fainted
                 let spriteContainer = el.spriteContainer;
                 if (spriteContainer) {
@@ -9708,6 +9780,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!isForced) {
                 if (activeMon.dynamaxed) _switchLockReason = 'Cannot switch while Dynamaxed!';
                 else if (activeMon.volatile.lockMove && activeMon.volatile.lockTurns > 0) _switchLockReason = `Locked into ${activeMon.volatile.lockMove}!`;
+                else if (activeMon.volatile.recharge) _switchLockReason = 'Must recharge this turn!';
                 else if (activeMon.volatile.charging) _switchLockReason = 'Cannot switch while charging!';
                 else if (activeMon.volatile.partialTrap > 0) _switchLockReason = `Trapped by ${activeMon.volatile.partialTrapSrc || 'a move'}!`;
                 else if (activeMon.volatile.ingrain) _switchLockReason = 'Rooted! Cannot switch out!';
@@ -10055,7 +10128,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </div>`;
                 }
 
-                document.getElementById('sum-page-2').innerHTML = summarySpriteHeader + upgradeBtns + movesHtml;
+                document.getElementById('sum-page-2').innerHTML = summarySpriteHeader + sereneGraceNote + upgradeBtns + movesHtml;
 
             } else if (page === 3) {
                 // === PAGE 3: MATCHUP MATRIX ===
@@ -10155,6 +10228,55 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let isP1 = (state.mode !== 'pvp') || (state.currentPlayer === 1);
             let activeMon = isP1 ? state.pActive : state.fActive;
             let targetMon = isP1 ? state.fActive : state.pActive;
+
+            // Locking moves (Outrage, Thrash, Petal Dance, Uproar, Raging Fury): forced continuation
+            // Show full move grid with locked move highlighted and others grayed out, then auto-submit
+            if (activeMon.volatile.lockMove && activeMon.volatile.lockTurns > 0) {
+                let lockName = activeMon.volatile.lockMove;
+                let lockedSlot = activeMon.moves.find(m => m.name === lockName);
+                let lockMoveObj = lockedSlot || { name: lockName, type: 'Dragon', cat: 'Physical', pow: 120, acc: 100, pri: 0, pp: 1, eff: '' };
+                let menu = document.getElementById('move-menu');
+                menu.innerHTML = '';
+                menu.classList.add('move-menu-layout');
+                let scroll = document.createElement('div');
+                scroll.className = 'move-menu-scroll command-grid';
+                // Render all moves — locked one is highlighted, others are dimmed
+                activeMon.moves.forEach((mv, idx) => {
+                    let isLocked = (mv.name === lockName);
+                    let b = document.createElement('button');
+                    b.disabled = true;
+                    let typeShort = (mv.type||'Normal').length > 4 ? mv.type.slice(0,4) : (mv.type||'Normal');
+                    let catG = mv.cat === 'Physical' ? '⚔' : (mv.cat === 'Special' ? '✦' : '◎');
+                    let catColor = mv.cat === 'Physical' ? '#ff6b6b' : mv.cat === 'Special' ? '#6b9fff' : '#888';
+                    if (isLocked) {
+                        b.className = 'battle-btn-move locked-rampage';
+                        b.innerHTML = `<div class="battle-btn-move-inner"><div class="move-tile-core"><div class="move-tile-head"><span class="type-badge type-${mv.type||'Normal'}">${typeShort}</span><span class="move-tile-name">${mv.name}</span><span class="move-tile-cat" style="color:${catColor}">${catG}</span><span class="lock-rampage-badge">🔒</span></div><div class="move-tile-meta" style="color:#ff8a65;font-weight:bold;">LOCKED IN</div></div></div>`;
+                    } else {
+                        b.className = 'battle-btn-move';
+                        b.style.opacity = '0.35';
+                        b.style.filter = 'grayscale(0.7)';
+                        b.innerHTML = `<div class="battle-btn-move-inner"><div class="move-tile-core"><div class="move-tile-head"><span class="type-badge type-${mv.type||'Normal'}">${typeShort}</span><span class="move-tile-name">${mv.name}</span><span class="move-tile-cat" style="color:${catColor}">${catG}</span></div><div class="move-tile-meta" style="color:#555;">—</div></div></div>`;
+                    }
+                    scroll.appendChild(b);
+                });
+                scroll.classList.toggle('move-grid--few', activeMon.moves.length <= 2);
+                menu.appendChild(scroll);
+                // Lock turn counter badge
+                let lockBadge = document.createElement('div');
+                lockBadge.className = 'move-lock-badge';
+                lockBadge.innerHTML = `🔒 <strong>${lockName}</strong> — ${activeMon.volatile.lockTurns} turn${activeMon.volatile.lockTurns !== 1 ? 's' : ''} remaining`;
+                menu.appendChild(lockBadge);
+                document.getElementById('command-menu').classList.add('hidden');
+                menu.classList.remove('hidden');
+                setTimeout(() => {
+                    let idx2 = activeMon.moves.indexOf(lockedSlot);
+                    state.p1Action = { moveIndex: idx2 >= 0 ? idx2 : null, switchIndex: null, aiMove: idx2 < 0 ? lockMoveObj : null };
+                    if (isP1) window.playTurn(null, null);
+                }, 700);
+                try { syncBattleActiveHighlight(); } catch (e) {}
+                return;
+            }
+
             let pending = resolveGimmickIntentForActive(isP1);
 
             let menu = document.getElementById('move-menu');
@@ -10427,10 +10549,39 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let D = move.cat === "Physical" ? defender.stats.def * getStageMult(defender.stages.def) : defender.stats.spd * getStageMult(defender.stages.spd);
             if (attacker.item === "Choice Band" && move.cat === "Physical") A *= 1.5;
             if (attacker.item === "Choice Specs" && move.cat === "Special") A *= 1.5;
+            if ((attacker.ability === "Huge Power" || attacker.ability === "Pure Power") && move.cat === "Physical") A *= 2;
+            if (attacker.ability === "Gorilla Tactics" && move.cat === "Physical") A *= 1.5;
+            if (attacker.item === "Thick Club" && (attacker.name === "Marowak" || attacker.name === "Marowak-Alola") && move.cat === "Physical") A *= 2;
+            if (attacker.item === "Light Ball" && (attacker.name === "Pikachu" || attacker.name.startsWith("Pikachu-"))) A *= 2;
+            if (attacker.ability === "Dragon's Maw" && move.type === "Dragon") A *= 1.5;
+            if (attacker.ability === "Flare Boost" && attacker.status === "BRN" && move.cat === "Special") A *= 1.5;
+            if (attacker.ability === "Toxic Boost" && attacker.status === "TOX" && move.cat === "Physical") A *= 1.5;
+            if (attacker.ability === "Hustle" && move.cat === "Physical") A *= 1.5;
+            if (attacker.ability === "Guts" && attacker.status) A *= 1.5;
+            if (attacker.ability === "Solar Power" && (getCurrentWeather() === "Sun" || getCurrentWeather() === "HarshSun") && move.cat === "Special") A *= 1.5;
+            if (attacker.ability === "Supreme Overlord") {
+                const _aiSoParty = (state.playerParty || []).concat(state.foeParty || []).filter(m => m.ability === "Supreme Overlord").length > 0
+                    ? (state.foeParty || []).some(m => m === attacker) ? state.foeParty : state.playerParty : [];
+                const _aiSoFainted = Math.min(5, (_aiSoParty || []).filter(m => m !== attacker && m.currentHp <= 0).length);
+                if (_aiSoFainted > 0) A *= (1 + 0.1 * _aiSoFainted);
+            }
             let lifeOrb = attacker.item === "Life Orb" ? 1.3 : 1;
             let accFactor = (!move.acc || move.acc <= 0) ? 1 : (move.acc / 100);
             let abMod = abilityDamageMod(move, defender, attacker);
-            let dmg = ((22 * move.pow * A / D) / 50 + 2) * stab * eff * lifeOrb * accFactor * abMod;
+            // Base power boosts from abilities
+            let _aiPow = move.pow || 0;
+            const _aiJaw = ["Crunch","Ice Fang","Fire Fang","Thunder Fang","Poison Fang","Bite","Hyper Fang","Bug Bite","Fishious Rend","Jaw Lock","Psychic Fangs"];
+            const _aiPulse = ["Aura Sphere","Dark Pulse","Dragon Pulse","Flash Cannon","Water Pulse","Origin Pulse","Terrain Pulse","Mystical Fire","Oblivion Wing","Signal Beam"];
+            const _aiSlice = ["Psycho Cut","Air Slash","Night Slash","Leaf Blade","X-Scissor","Sacred Sword","Razor Shell","Slash","Fury Cutter","Solar Blade","Ceaseless Edge","Stone Axe","Kowtow Cleave","Aqua Cutter"];
+            if (attacker.ability === "Strong Jaw" && _aiJaw.includes(move.name)) _aiPow = Math.floor(_aiPow * 1.5);
+            if (attacker.ability === "Mega Launcher" && _aiPulse.includes(move.name)) _aiPow = Math.floor(_aiPow * 1.5);
+            if (attacker.ability === "Rocky Payload" && move.type === "Rock") _aiPow = Math.floor(_aiPow * 1.5);
+            if (attacker.ability === "Sharpness" && _aiSlice.includes(move.name)) _aiPow = Math.floor(_aiPow * 1.5);
+            if ((attacker.ability === "Steelworker" || attacker.ability === "Steely Spirit") && move.type === "Steel") _aiPow = Math.floor(_aiPow * 1.5);
+            if (attacker.ability === "Tough Claws" && isContactMove(move)) _aiPow = Math.floor(_aiPow * 1.3);
+            // Marvel Scale: reduce physical damage vs statused defender
+            if (defender.ability === "Marvel Scale" && defender.status && move.cat === "Physical") abMod *= (2/3);
+            let dmg = ((22 * _aiPow * A / D) / 50 + 2) * stab * eff * lifeOrb * accFactor * abMod;
             return dmg;
         }
 
@@ -10869,9 +11020,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // AI decision: should we switch or attack?
         function aiDecision() {
     let attacker = state.fActive, defender = state.pActive;
-    // Don't switch if trapped
+    // Don't switch if trapped or locked
     if (attacker.volatile.choiceLock) return null;
     if (attacker.volatile.lockMove && attacker.volatile.lockTurns > 0) return null;
+    if (attacker.volatile.recharge) return null;
     if (defender.ability === "Arena Trap" && attacker.type1 !== "Flying" && attacker.type2 !== "Flying" && attacker.ability !== "Levitate") return null;
     if (defender.ability === "Shadow Tag" && attacker.ability !== "Shadow Tag") return null;
     if (defender.ability === "Magnet Pull" && (attacker.type1 === "Steel" || attacker.type2 === "Steel")) return null;
@@ -11588,6 +11740,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.ability === "Swift Swim" && (weather === "Rain" || weather === "HeavyRain")) spe *= 2;
             if (mon.ability === "Sand Rush" && weather === "Sandstorm") spe *= 2;
             if (mon.ability === "Slush Rush" && weather === "Hail") spe *= 2;
+            if (mon.ability === "Surge Surfer" && state.terrain === "Electric" && state.terrainTurns > 0) spe *= 2;
             if (mon.ability === "Unburden" && mon.itemConsumed) spe *= 2;
             // Speed Boost is handled via +1 spe stage per turn in endOfTurnEffects; no multiplier needed here
             if (_spdItemActive && mon.item === "Salac Berry" && mon.currentHp <= mon.maxHp * 0.25) spe *= 1.5;
@@ -12035,7 +12188,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 await sleep(1000); return;
             }
             if (move.name === "Protect" || move.name === "Detect") {
-                let successRate = Math.pow(0.5, attacker.volatile.protectCount);
+                let successRate = Math.pow(1/3, attacker.volatile.protectCount);
                 if (Math.random() < successRate) {
                     attacker.volatile.protect = true; attacker.volatile.protectCount++;
                     logMsg(`${attacker.name} protected itself!`); AudioSystem.playMoveSound(move);
@@ -12046,7 +12199,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 await sleep(1000); return;
             }
             if (move.name === "Endure") {
-                let successRate = Math.pow(0.5, attacker.volatile.protectCount);
+                let successRate = Math.pow(1/3, attacker.volatile.protectCount);
                 if (Math.random() < successRate) {
                     attacker.volatile.endure = true; attacker.volatile.protectCount++;
                     logMsg(`${attacker.name} braced itself!`); AudioSystem.playMoveSound(move);
@@ -12057,7 +12210,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 await sleep(1000); return;
             }
             if (move.name === "Spiky Shield") {
-                let successRate = Math.pow(0.5, attacker.volatile.protectCount);
+                let successRate = Math.pow(1/3, attacker.volatile.protectCount);
                 if (Math.random() < successRate) {
                     attacker.volatile.protect = true; attacker.volatile.spikyShield = true; attacker.volatile.protectCount++;
                     logMsg(`${attacker.name} protected itself with Spiky Shield!`); AudioSystem.playMoveSound(move);
@@ -12068,7 +12221,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 await sleep(1000); return;
             }
             if (move.name === "King's Shield") {
-                let successRate = Math.pow(0.5, attacker.volatile.protectCount);
+                let successRate = Math.pow(1/3, attacker.volatile.protectCount);
                 if (Math.random() < successRate) {
                     attacker.volatile.protect = true; attacker.volatile.kingShield = true; attacker.volatile.protectCount++;
                     logMsg(`${attacker.name} took a defensive stance!`); AudioSystem.playMoveSound(move);
@@ -12079,7 +12232,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 await sleep(1000); return;
             }
             if (move.name === "Baneful Bunker") {
-                let successRate = Math.pow(0.5, attacker.volatile.protectCount);
+                let successRate = Math.pow(1/3, attacker.volatile.protectCount);
                 if (Math.random() < successRate) {
                     attacker.volatile.protect = true; attacker.volatile.banefulBunker = true; attacker.volatile.protectCount++;
                     logMsg(`${attacker.name} hunkered down!`); AudioSystem.playMoveSound(move);
@@ -12090,7 +12243,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 await sleep(1000); return;
             }
             if (move.name === "Silk Trap") {
-                let successRate = Math.pow(0.5, attacker.volatile.protectCount);
+                let successRate = Math.pow(1/3, attacker.volatile.protectCount);
                 if (Math.random() < successRate) {
                     attacker.volatile.protect = true; attacker.volatile.silkTrap = true; attacker.volatile.protectCount++;
                     logMsg(`${attacker.name} protected itself with a silk trap!`); AudioSystem.playMoveSound(move);
@@ -12101,7 +12254,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 await sleep(1000); return;
             }
             if (move.name === "Obstruct") {
-                let successRate = Math.pow(0.5, attacker.volatile.protectCount);
+                let successRate = Math.pow(1/3, attacker.volatile.protectCount);
                 if (Math.random() < successRate) {
                     attacker.volatile.protect = true; attacker.volatile.obstruct = true; attacker.volatile.protectCount++;
                     logMsg(`${attacker.name} obstructed the attack!`); AudioSystem.playMoveSound(move);
@@ -12112,7 +12265,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 await sleep(1000); return;
             }
             if (move.name === "Burning Bulwark") {
-                let successRate = Math.pow(0.5, attacker.volatile.protectCount);
+                let successRate = Math.pow(1/3, attacker.volatile.protectCount);
                 if (Math.random() < successRate) {
                     attacker.volatile.protect = true; attacker.volatile.burningBulwark = true; attacker.volatile.protectCount++;
                     logMsg(`${attacker.name} raised a burning bulwark!`); AudioSystem.playMoveSound(move);
@@ -12612,8 +12765,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     A = defender.stats.atk * getStageMult(crit > 1 ? Math.max(0, defender.stages.atk) : defender.stages.atk);
                     D = defender.stats.def * getStageMult(crit > 1 ? Math.min(0, defender.stages.def) : defender.stages.def);
                 } else if (move.name === "Photon Geyser") {
-                    // Photon Geyser: Physical if user's boosted Atk > boosted SpA, else Special; ignores abilities
-                    let _pgAtk = attacker.stats.atk * getStageMult(crit > 1 ? Math.max(0, attacker.stages.atk) : attacker.stages.atk);
+                    // Photon Geyser: Physical if user's boosted Atk > boosted SpA, else Special; ignores target's abilities
+                    // Attacker's own ability multipliers (Huge Power etc.) still apply
+                    let _pgHugeMult = (attacker.ability === "Huge Power" || attacker.ability === "Pure Power") ? 2 : 1;
+                    if (attacker.ability === "Gorilla Tactics") _pgHugeMult *= 1.5;
+                    let _pgAtk = attacker.stats.atk * _pgHugeMult * getStageMult(crit > 1 ? Math.max(0, attacker.stages.atk) : attacker.stages.atk);
                     let _pgSpa = attacker.stats.spa * getStageMult(crit > 1 ? Math.max(0, attacker.stages.spa) : attacker.stages.spa);
                     if (_pgAtk >= _pgSpa) {
                         _effectiveCat = "Physical";
@@ -12626,7 +12782,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 } else if (move.name === "Shell Side Arm") {
                     // Shell Side Arm: uses whichever of Physical or Special deals more damage
-                    let _ssaAtkA = attacker.stats.atk * getStageMult(crit > 1 ? Math.max(0, attacker.stages.atk) : attacker.stages.atk);
+                    let _ssaHugeMult = (attacker.ability === "Huge Power" || attacker.ability === "Pure Power") ? 2 : 1;
+                    if (attacker.ability === "Gorilla Tactics") _ssaHugeMult *= 1.5;
+                    let _ssaAtkA = attacker.stats.atk * _ssaHugeMult * getStageMult(crit > 1 ? Math.max(0, attacker.stages.atk) : attacker.stages.atk);
                     let _ssaSpaA = attacker.stats.spa * getStageMult(crit > 1 ? Math.max(0, attacker.stages.spa) : attacker.stages.spa);
                     let _ssaDefD = defender.stats.def * getStageMult(crit > 1 ? Math.min(0, defender.stages.def) : defender.stages.def);
                     let _ssaSpdD = defender.stats.spd * getStageMult(crit > 1 ? Math.min(0, defender.stages.spd) : defender.stages.spd);
@@ -12661,18 +12819,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _defItemActive = state.magicRoom === 0 && !(defender.volatile.embargo > 0);
                 if (_atkItemActive && attacker.item === "Choice Band" && _effectiveCat === "Physical") A *= 1.5;
                 if (_atkItemActive && attacker.item === "Choice Specs" && _effectiveCat === "Special") A *= 1.5;
-                if (_atkItemActive && attacker.item === "Thick Club" && attacker.name === "Marowak" && _effectiveCat === "Physical") A *= 2;
-                // Eviolite: Def/SpDef x1.5 — only for NFE (species with at least one evolution); no fallback if dex lookup fails
-                if (_defItemActive && defender.item === "Eviolite") {
-                    let _canEvolve = false;
-                    const _D = getPssDex();
-                    if (_D) {
-                        try {
-                            const sp = _D.species.get(defender.name);
-                            _canEvolve = !!(sp && sp.evos && sp.evos.length > 0);
-                        } catch (e) {}
+                if (_atkItemActive && attacker.item === "Thick Club" && (attacker.name === "Marowak" || attacker.name === "Marowak-Alola") && _effectiveCat === "Physical") A *= 2;
+                // Light Ball: doubles Pikachu's Attack and Special Attack
+                if (_atkItemActive && attacker.item === "Light Ball" && (attacker.name === "Pikachu" || attacker.name.startsWith("Pikachu-"))) A *= 2;
+                // Eviolite: Def/SpDef x1.5 for NFE — item or Eviolite Blessing artifact, whichever applies (no stacking)
+                {
+                    const _evioliteItem = _defItemActive && defender.item === "Eviolite";
+                    const _evioliteArt  = !!(state._evioliteBlessing);
+                    if (_evioliteItem || _evioliteArt) {
+                        let _canEvolve = false;
+                        const _D = getPssDex();
+                        if (_D) {
+                            try {
+                                const sp = _D.species.get(defender.name);
+                                _canEvolve = !!(sp && sp.evos && sp.evos.length > 0);
+                            } catch (e) {}
+                        }
+                        if (_canEvolve) D *= 1.5;
                     }
-                    if (_canEvolve) D *= 1.5;
                 }
                 // Assault Vest: SpDef x1.5
                 if (_defItemActive && defender.item === "Assault Vest" && _effectiveCat === "Special") {
@@ -12695,6 +12859,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (attacker.flashFireBoost && move.type === "Fire") A *= 1.5;
                 // Solar Power: SpA x1.5 in Sun (damage to self handled in endOfTurn)
                 if (attacker.ability === "Solar Power" && (getCurrentWeather() === "Sun" || getCurrentWeather() === "HarshSun") && _effectiveCat === "Special") A *= 1.5;
+                // Dragon's Maw: x1.5 Dragon-type moves
+                if (attacker.ability === "Dragon's Maw" && move.type === "Dragon") A *= 1.5;
+                // Flare Boost: x1.5 SpA when burned
+                if (attacker.ability === "Flare Boost" && attacker.status === "BRN" && _effectiveCat === "Special") A *= 1.5;
+                // Toxic Boost: x1.5 Atk when badly poisoned
+                if (attacker.ability === "Toxic Boost" && attacker.status === "TOX" && _effectiveCat === "Physical") A *= 1.5;
+                // Hadron Engine: x4/3 SpA in Electric Terrain (attacker must be grounded)
+                if (attacker.ability === "Hadron Engine" && state.terrain === "Electric" && state.terrainTurns > 0 && _effectiveCat === "Special" &&
+                    attacker.type1 !== "Flying" && attacker.type2 !== "Flying" && attacker.ability !== "Levitate" && attacker.item !== "Air Balloon" && !(attacker.volatile && attacker.volatile.magnetRise))
+                    A *= 4/3;
+                // Supreme Overlord: +10% Atk/SpA per fainted ally (max 5 stacks)
+                const _soParty = isPlayer ? state.playerParty : state.foeParty;
+                const _soFainted = _soParty ? Math.min(5, _soParty.filter(m => m !== attacker && m.currentHp <= 0).length) : 0;
+                if (attacker.ability === "Supreme Overlord" && _soFainted > 0) A *= (1 + 0.1 * _soFainted);
 
                 // Base power calculations
                 let basePower = move.pow;
@@ -12916,6 +13094,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 // Analytic: x1.3 if moving last
                 if (attacker.ability === "Analytic" && defender.volatile.lastMoveUsed) basePower = Math.floor(basePower * 1.3);
+                // Strong Jaw: x1.5 biting moves
+                const _jawMoves = ["Crunch","Ice Fang","Fire Fang","Thunder Fang","Poison Fang","Bite","Hyper Fang","Bug Bite","Fishious Rend","Jaw Lock","Psychic Fangs","Snap Trap"];
+                if (attacker.ability === "Strong Jaw" && _jawMoves.includes(move.name)) basePower = Math.floor(basePower * 1.5);
+                // Mega Launcher: x1.5 aura/pulse moves
+                const _pulseMoves = ["Aura Sphere","Dark Pulse","Dragon Pulse","Flash Cannon","Water Pulse","Heal Pulse","Origin Pulse","Terrain Pulse","Mystical Fire","Oblivion Wing","Signal Beam","Mist Ball","Luster Purge"];
+                if (attacker.ability === "Mega Launcher" && _pulseMoves.includes(move.name)) basePower = Math.floor(basePower * 1.5);
+                // Rocky Payload: x1.5 Rock-type moves
+                if (attacker.ability === "Rocky Payload" && move.type === "Rock") basePower = Math.floor(basePower * 1.5);
+                // Sharpness: x1.5 slicing/cutting moves
+                const _sliceMoves = ["Psycho Cut","Air Slash","Night Slash","Leaf Blade","X-Scissor","Sacred Sword","Razor Shell","Slash","Cut","Fury Cutter","False Swipe","Aerial Ace","Solar Blade","Ceaseless Edge","Stone Axe","Kowtow Cleave","Population Bomb","Bitter Blade","Temper Flare","Aqua Cutter","Razor Leaf","Slash","Guillotine"];
+                if (attacker.ability === "Sharpness" && _sliceMoves.includes(move.name)) basePower = Math.floor(basePower * 1.5);
+                // Steelworker / Steely Spirit: x1.5 Steel-type moves
+                if ((attacker.ability === "Steelworker" || attacker.ability === "Steely Spirit") && move.type === "Steel") basePower = Math.floor(basePower * 1.5);
+                // Tough Claws: x1.3 contact moves
+                if (attacker.ability === "Tough Claws" && isContactMove(move)) basePower = Math.floor(basePower * 1.3);
+                // Liquid Voice: sound moves become Water-type
+                const _soundMovesLV = new Set(["Hyper Voice","Bug Buzz","Boomburst","Uproar","Snarl","Overdrive","Round","Echoed Voice","Disarming Voice","Relic Song","Clanging Scales","Chatter","Sparkling Aria","Snore","Clangorous Soul"]);
+                if (attacker.ability === "Liquid Voice" && _soundMovesLV.has(move.name)) move = {...move, type: "Water"};
+                // Electromorphosis: doubles next Electric move when charged after being hit
+                if (attacker.ability === "Electromorphosis" && attacker.volatile.electromorphosisCharged && move.type === "Electric") {
+                    basePower = Math.floor(basePower * 2);
+                    attacker.volatile.electromorphosisCharged = false;
+                }
 
                 // Weather
                 let w = getCurrentWeather();
@@ -13025,6 +13226,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if ((defender.ability === "Multiscale" || defender.ability === "Shadow Shield") && defender.currentHp === defender.maxHp) modifier *= 0.5;
                 // Fur Coat: Physical damage x0.5
                 if (defender.ability === "Fur Coat" && _effectiveCat === "Physical") modifier *= 0.5;
+                // Marvel Scale: 1.5x Def when statused → physical damage x(2/3)
+                if (_defAbilityActive && defender.ability === "Marvel Scale" && defender.status && _effectiveCat === "Physical") modifier *= (2/3);
                 // Expert Belt: SE damage x1.2
                 if (_atkItemActive && attacker.item === "Expert Belt" && typeEff > 1) modifier *= 1.2;
                 // Air Balloon: immune to Ground moves (breaks when hit) — suppressed by Magic Room / Embargo / Gravity
@@ -13040,11 +13243,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     else if (move.name !== "Psyshock" && move.name !== "Psystrike" && move.name !== "Secret Sword") D = defender.stats.spd * getStageMult(Math.min(0, defender.stages.spd));
                 }
                 if (defender.ability === "Unaware") {
-                    // Ignore attacker's positive offensive stage bonuses
+                    // Unaware ignores attacker's positive stat stage bonuses — NOT ability/item multipliers (e.g. Huge Power still applies)
                     if (move.name === "Body Press") A = attacker.stats.def * getStageMult(Math.min(0, attacker.stages.def));
                     else if (move.name === "Foul Play") A = defender.stats.atk * getStageMult(Math.min(0, defender.stages.atk));
-                    else if (_effectiveCat === "Physical") A = attacker.stats.atk * getStageMult(Math.min(0, attacker.stages.atk));
-                    else A = attacker.stats.spa * getStageMult(Math.min(0, attacker.stages.spa));
+                    else if (_effectiveCat === "Physical") {
+                        let _unaStage = crit > 1 ? Math.max(0, attacker.stages.atk) : attacker.stages.atk;
+                        let _unaCapStage = Math.min(0, attacker.stages.atk);
+                        if (_unaStage !== _unaCapStage) A = A / getStageMult(_unaStage) * getStageMult(_unaCapStage);
+                    } else {
+                        let _unaStage = crit > 1 ? Math.max(0, attacker.stages.spa) : attacker.stages.spa;
+                        let _unaCapStage = Math.min(0, attacker.stages.spa);
+                        if (_unaStage !== _unaCapStage) A = A / getStageMult(_unaStage) * getStageMult(_unaCapStage);
+                    }
                 }
                 // Rock-type SpDef boost in Sandstorm: x1.5 SpDef for Rock types
                 if (getCurrentWeather() === "Sandstorm" && _effectiveCat === "Special" &&
@@ -13314,6 +13524,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         changeStage(defender, 'def', -1); changeStage(defender, 'spe', 2);
                         logMsg(`${defender.name}'s Weak Armor activated!`, 'info');
                     }
+                    // Stamina: Def +1 when hit by any damaging move
+                    if (defender.ability === "Stamina" && defender.currentHp > 0) {
+                        changeStage(defender, 'def', 1);
+                        logMsg(`${defender.name}'s Stamina raised its Defense!`, 'info');
+                    }
+                    // Thermal Exchange: Atk +1 when hit by a Fire-type move
+                    if (defender.ability === "Thermal Exchange" && move.type === "Fire" && defender.currentHp > 0) {
+                        changeStage(defender, 'atk', 1);
+                        logMsg(`${defender.name}'s Thermal Exchange raised its Attack!`, 'info');
+                    }
+                    // Steam Engine: Speed +6 when hit by a Fire- or Water-type move
+                    if (defender.ability === "Steam Engine" && (move.type === "Fire" || move.type === "Water") && defender.currentHp > 0) {
+                        changeStage(defender, 'spe', 6);
+                        logMsg(`${defender.name}'s Steam Engine raised its Speed!`, 'info');
+                    }
+                    // Electromorphosis: charges next Electric-type move when hit
+                    if (defender.ability === "Electromorphosis" && defender.currentHp > 0) {
+                        if (!defender.volatile) defender.volatile = {};
+                        defender.volatile.electromorphosisCharged = true;
+                        logMsg(`${defender.name}'s Electromorphosis charged up an Electric move!`, 'info');
+                    }
                 }
 
                 // Destiny Bond: if defender was KO'd and had Destiny Bond active, attacker also faints
@@ -13407,6 +13638,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         let actRh = Math.min(attacker.currentHp, rhDmg);
                         attacker.currentHp -= actRh;
                         logMsg(`${attacker.name} was hurt by ${defender.name}'s Rocky Helmet! (${actRh} damage)`, 'dmg');
+                    }
+                    // Gooey / Tangling Hair: lowers attacker's Speed by 1 on contact
+                    if ((defender.ability === "Gooey" || defender.ability === "Tangling Hair") && isContactMove(move) && attacker.currentHp > 0) {
+                        changeStage(attacker, 'spe', -1);
+                        logMsg(`${defender.name}'s ${defender.ability} lowered ${attacker.name}'s Speed!`, 'info');
                     }
                     // Rough Skin / Iron Barbs: 1/8 damage on contact
                     if ((defender.ability === "Rough Skin" || defender.ability === "Iron Barbs") && attacker.currentHp > 0 && attacker.ability !== "Magic Guard") {
@@ -13529,8 +13765,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
 
                 // Recharge moves: must rest next turn (Hyper Beam family)
-                const _rechargeMoves = new Set(["Hyper Beam","Giga Impact","Blast Burn","Hydro Cannon","Frenzy Plant","Roar of Time","Rock Wrecker","Eternabeam","Prismatic Laser","Meteor Assault"]);
-                if (_rechargeMoves.has(move.name) && attacker.currentHp > 0) {
+                // Data-driven recharge detection via moves.json flags.recharge
+                if ((move.flags && move.flags.recharge) && attacker.currentHp > 0) {
                     attacker.volatile.recharge = true;
                 }
 
@@ -14027,6 +14263,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.volatile.bideActive = false; mon.volatile.bideDamage = 0; mon.volatile.bideTurns = 0;
             mon.volatile.perishCount = -1;
             // Multi-turn move states must clear on switch-out (forced or natural)
+            mon.volatile.truanting = false; // Truant cycle resets: attacks on first turn back in (VGC rule)
             mon.volatile.lockMove = null;
             mon.volatile.lockTurns = 0;
             mon.volatile.rolloutCount = 0;
@@ -14155,6 +14392,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let flinchId = (mon === state.pActive) ? 'player-sprite' : 'foe-sprite';
                     let fEl = document.getElementById(flinchId);
                     if (fEl) { fEl.classList.add('anim-flinch'); setTimeout(() => fEl.classList.remove('anim-flinch'), 350); }
+                }
+                // Steadfast: Speed +1 when flinched
+                if (mon.ability === "Steadfast") {
+                    changeStage(mon, 'spe', 1);
+                    logMsg(`${mon.name}'s Steadfast raised its Speed!`, 'info');
                 }
                 return false;
             }
@@ -14756,77 +14998,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Superpower") { changeStage(attacker, 'atk', -1); changeStage(attacker, 'def', -1); }
             // Rapid Spin: Speed +1 is handled inside the Rapid Spin named handler above (no duplicate here)
 
-            // === Status application from effects ===
+            // === Secondary effects — data-driven from moves.json secondary/secondaries ===
             // Serene Grace doubles secondary effect chances (capped at 100%)
-            const _sg = (chance) => sereneGrace ? Math.min(1.0, chance * 2) : chance;
-            // Named move status effects — explicit list ensures correctness regardless of eff-string format.
-            // Ordered with highest-priority named checks first; eff-string fallbacks at the end of chain.
-            if (move.name === "Scald" && Math.random() < _sg(0.3)) applyStatus(defender, "BRN");
-            else if (move.name === "Lava Plume" && Math.random() < _sg(0.3)) applyStatus(defender, "BRN");
-            else if (move.name === "Flamethrower" && Math.random() < _sg(0.1)) applyStatus(defender, "BRN");
-            else if (move.name === "Ember" && Math.random() < _sg(0.1)) applyStatus(defender, "BRN");
-            else if (move.name === "Fire Punch" && Math.random() < _sg(0.1)) applyStatus(defender, "BRN");
-            else if (move.name === "Flame Wheel" && Math.random() < _sg(0.1)) applyStatus(defender, "BRN");
-            else if (move.name === "Heat Wave" && Math.random() < _sg(0.1)) applyStatus(defender, "BRN");
-            else if (move.name === "Incinerate" && Math.random() < _sg(0.1)) applyStatus(defender, "BRN");
-            else if (move.name === "Fire Blast" && Math.random() < _sg(0.1)) applyStatus(defender, "BRN");
-            else if (move.name === "Fire Fang" && Math.random() < _sg(0.1)) applyStatus(defender, "BRN");
-            else if (move.name === "Discharge" && Math.random() < _sg(0.3)) applyStatus(defender, "PAR");
-            else if (move.name === "Body Slam" && Math.random() < _sg(0.3)) applyStatus(defender, "PAR");
-            else if (move.name === "Thunder" && Math.random() < _sg(0.3)) applyStatus(defender, "PAR");
-            else if (move.name === "Thunderbolt" && Math.random() < _sg(0.1)) applyStatus(defender, "PAR");
-            else if (move.name === "Thunder Punch" && Math.random() < _sg(0.1)) applyStatus(defender, "PAR");
-            else if (move.name === "Thunder Shock" && Math.random() < _sg(0.1)) applyStatus(defender, "PAR");
-            else if (move.name === "Spark" && Math.random() < _sg(0.3)) applyStatus(defender, "PAR");
-            else if (move.name === "Nuzzle") applyStatus(defender, "PAR");
-            else if (move.name === "Thunder Fang" && Math.random() < _sg(0.1)) applyStatus(defender, "PAR");
-            else if (move.name === "Blizzard" && Math.random() < _sg(0.1)) applyStatus(defender, "FRZ");
-            else if (move.name === "Ice Beam" && Math.random() < _sg(0.1)) applyStatus(defender, "FRZ");
-            else if (move.name === "Ice Punch" && Math.random() < _sg(0.1)) applyStatus(defender, "FRZ");
-            else if (move.name === "Powder Snow" && Math.random() < _sg(0.1)) applyStatus(defender, "FRZ");
-            else if (move.name === "Ice Fang" && Math.random() < _sg(0.1)) applyStatus(defender, "FRZ");
-            else if (move.name === "Poison Jab" && Math.random() < _sg(0.3)) applyStatus(defender, "PSN");
-            else if (move.name === "Poison Sting" && Math.random() < _sg(0.3)) applyStatus(defender, "PSN");
-            else if (move.name === "Cross Poison" && Math.random() < _sg(0.1)) applyStatus(defender, "PSN");
-            else if (move.name === "Sludge" && Math.random() < _sg(0.3)) applyStatus(defender, "PSN");
-            else if (move.name === "Sludge Bomb" && Math.random() < _sg(0.3)) applyStatus(defender, "PSN");
-            else if (move.name === "Sludge Wave" && Math.random() < _sg(0.1)) applyStatus(defender, "PSN");
-            else if (move.name === "Tri Attack" && Math.random() < _sg(0.2)) {
+            const _sg = (chance) => sereneGrace ? Math.min(100, chance * 2) : chance;
+
+            // Tri Attack: 3-way status split (custom logic not representable in standard secondary schema)
+            if (move.name === "Tri Attack" && Math.random() * 100 < _sg(20)) {
                 let _tr = Math.floor(Math.random() * 3);
                 if (_tr === 0) applyStatus(defender, "BRN"); else if (_tr === 1) applyStatus(defender, "FRZ"); else applyStatus(defender, "PAR");
             }
-            // eff-string fallbacks for any remaining moves
-            else if (eff.includes("30% chance to poison") && Math.random() < _sg(0.3)) applyStatus(defender, "PSN");
-            else if (eff.includes("badly poisons") || eff.includes("toxic")) applyStatus(defender, "TOX");
-            else if (eff.includes("burns the target") || eff.includes("burns opponent")) applyStatus(defender, "BRN");
-            else if (eff.includes("30% chance to burn") && Math.random() < _sg(0.3)) applyStatus(defender, "BRN");
-            else if (eff.includes("10% chance to burn") && Math.random() < _sg(0.1)) applyStatus(defender, "BRN");
-            else if (eff.includes("30% chance to paralyze") && Math.random() < _sg(0.3)) applyStatus(defender, "PAR");
-            else if (eff.includes("10% chance to paralyze") && Math.random() < _sg(0.1)) applyStatus(defender, "PAR");
-            else if (eff.includes("10% paralyze") && Math.random() < _sg(0.1)) applyStatus(defender, "PAR");
-            else if (eff.includes("paralyzes the target") || eff.includes("paralyzes opponent")) applyStatus(defender, "PAR");
-            else if (eff.includes("10% chance to freeze") && Math.random() < _sg(0.1)) applyStatus(defender, "FRZ");
-            else if (eff.includes("puts the target to sleep") || eff.includes("opponent to sleep")) applyStatus(defender, "SLP");
 
-            // Fang moves: independent flinch chance (separate from their status chance above)
-            if ((move.name === "Fire Fang" || move.name === "Ice Fang" || move.name === "Thunder Fang") && Math.random() < _sg(0.1)) {
-                defender.volatile.flinch = true;
-            }
-
-            // Explicit flinch for named moves (correct rates regardless of eff-string format)
-            const _flinch30 = ["Rock Slide","Iron Head","Air Slash","Bite","Headbutt","Icicle Crash","Snore","Stomp","Rolling Kick","Needle Arm","Twister","Dragon Rush"];
-            const _flinch20 = ["Dark Pulse","Waterfall","Zen Headbutt","Extrasensory","Astonish","Bounce"];
-            const _flinch10 = ["Hyper Fang","Bone Club","Low Kick"];
-            if (_flinch30.includes(move.name) && Math.random() < _sg(0.3)) defender.volatile.flinch = true;
-            else if (_flinch20.includes(move.name) && Math.random() < _sg(0.2)) defender.volatile.flinch = true;
-            else if (_flinch10.includes(move.name) && Math.random() < _sg(0.1)) defender.volatile.flinch = true;
-            // eff-string fallback for any unlisted flinch moves
-            else if (eff.includes("100%") && eff.includes("flinch")) { defender.volatile.flinch = true; }
-            else if ((eff.includes("20% flinch") || eff.includes("20% chance to flinch")) && Math.random() < _sg(0.2)) defender.volatile.flinch = true;
-            else if ((eff.includes("10% flinch") || eff.includes("10% chance to flinch")) && Math.random() < _sg(0.1)) defender.volatile.flinch = true;
-            else if (eff.includes("flinch") && Math.random() < _sg(0.3)) defender.volatile.flinch = true;
-
-            // Confusion (explicit named moves first, then eff-string fallback)
+            // _tryConfuse: apply confusion to the defender (respects Own Tempo / Safeguard)
             const _tryConfuse = () => {
                 if (!defender.volatile) return;
                 if (defender.volatile.confusion > 0) return;
@@ -14835,55 +15017,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 defender.volatile.confusion = Math.floor(Math.random()*3)+2;
                 logMsg(`${defender.name} became confused!`, 'status');
             };
-            if (move.name === "Psybeam" || move.name === "Confusion") { if (Math.random() < _sg(0.1)) _tryConfuse(); }
-            else if (move.name === "Dynamic Punch" || move.name === "Zap Cannon") { _tryConfuse(); }
-            else if (move.name === "Chatter") { _tryConfuse(); }
-            else if (move.name === "Water Pulse" && Math.random() < _sg(0.2)) { _tryConfuse(); }
-            else if (move.name === "Supersonic" || move.name === "Teeter Dance" || move.name === "Confuse Ray") { _tryConfuse(); }
-            else if (eff.includes("confuse") && Math.random() < _sg(0.2)) _tryConfuse();
 
-            // Explicit defender stat drops from named damaging moves (Serene Grace applies)
-            if (move.name === "Psychic" && Math.random() < _sg(0.1)) changeStage(defender, 'spd', -1, true);
-            if (move.name === "Crunch" && Math.random() < _sg(0.2)) changeStage(defender, 'def', -1, true);
-            if (move.name === "Shadow Ball" && Math.random() < _sg(0.2)) changeStage(defender, 'spd', -1, true);
-            if (move.name === "Flash Cannon" && Math.random() < _sg(0.1)) changeStage(defender, 'spd', -1, true);
-            if (move.name === "Energy Ball" && Math.random() < _sg(0.1)) changeStage(defender, 'spd', -1, true);
-            if (move.name === "Bug Buzz" && Math.random() < _sg(0.1)) changeStage(defender, 'spd', -1, true);
-            if (move.name === "Earth Power" && Math.random() < _sg(0.1)) changeStage(defender, 'spd', -1, true);
-            if (move.name === "Liquidation" && Math.random() < _sg(0.2)) changeStage(defender, 'def', -1, true);
-            if (move.name === "Moonblast" && Math.random() < _sg(0.3)) changeStage(defender, 'spa', -1, true);
-            if (move.name === "Play Rough" && Math.random() < _sg(0.1)) changeStage(defender, 'atk', -1, true);
-            if (move.name === "Mud-Slap" || move.name === "Mud Slap") { changeStage(defender, 'acc', -1, true); }
-            if (move.name === "Snarl") { changeStage(defender, 'spa', -1, true); }
-            if (move.name === "Icy Wind") { changeStage(defender, 'spe', -1, true); }
-            if (move.name === "Electroweb") { changeStage(defender, 'spe', -1, true); }
-            if (move.name === "Rock Tomb") { changeStage(defender, 'spe', -1, true); }
-            if (move.name === "Bulldoze") { changeStage(defender, 'spe', -1, true); }
-            if (move.name === "Lunge") { changeStage(defender, 'atk', -1, true); }
-            if (move.name === "Acid") { if (Math.random() < _sg(0.1)) changeStage(defender, 'spd', -1, true); }
-            if (move.name === "Acid Spray") { changeStage(defender, 'spd', -2, true); }
-            if (move.name === "Glaciate") { changeStage(defender, 'spe', -1, true); }
-            if (move.name === "Mystical Fire") { changeStage(defender, 'spa', -1, true); }
-            if (move.name === "Aurora Beam" && Math.random() < _sg(0.1)) changeStage(defender, 'atk', -1, true);
-            if (move.name === "Struggle Bug") { changeStage(defender, 'spa', -1, true); }
-            if (move.name === "Seed Flare" && Math.random() < _sg(0.4)) changeStage(defender, 'spd', -2, true);
-            // eff-string fallbacks for any remaining stat drops
-            if (eff.includes("20% chance to lower spdef") && Math.random() < _sg(0.2)) changeStage(defender, 'spd', -1, true);
-            if (eff.includes("10% chance to lower spdef") && Math.random() < _sg(0.1)) changeStage(defender, 'spd', -1, true);
-            if (eff.includes("20% chance to lower def") && Math.random() < _sg(0.2)) changeStage(defender, 'def', -1, true);
-            if (eff.includes("30% chance to lower def") && Math.random() < _sg(0.3)) changeStage(defender, 'def', -1, true);
-            if (eff.includes("30% chance to lower") && eff.includes("spatk") && Math.random() < _sg(0.3)) changeStage(defender, 'spa', -1, true);
+            // Data-driven secondary effects: loop over move.secondaries[] or move.secondary
+            // Handles: flinch, confusion, burn/para/freeze/poison, stat drops on defender,
+            //          self-stat boosts on attacker (Charge Beam, Meteor Mash, Ancient Power, etc.)
+            // Fang moves' dual secondaries (status + flinch) are automatically handled by the array.
+            {
+                const _secs = move.secondaries
+                    ? move.secondaries
+                    : (move.secondary ? [move.secondary] : []);
+                for (const _sec of _secs) {
+                    if (!_sec) continue;
+                    if (move.name === "Tri Attack") continue; // handled explicitly above
+                    const _secChance = (_sec.chance != null) ? _sec.chance : 100;
+                    if (Math.random() * 100 >= _sg(_secChance)) continue; // RNG failed
 
-            // Self-boost secondaries from damaging moves
-            if (move.name === "Power-Up Punch") { changeStage(attacker, 'atk', 1); }
-            if ((move.name === "Ancient Power" || move.name === "Silver Wind" || move.name === "Ominous Wind") && Math.random() < _sg(0.1)) {
-                changeStage(attacker, 'atk', 1); changeStage(attacker, 'def', 1); changeStage(attacker, 'spa', 1);
-                changeStage(attacker, 'spd', 1); changeStage(attacker, 'spe', 1);
-                logMsg(`${attacker.name}'s stats all rose!`, 'info');
+                    // Flinch (Inner Focus / Dynamax exemption checked in canMove)
+                    if (_sec.volatileStatus === 'flinch') defender.volatile.flinch = true;
+                    // Confusion on defender
+                    if (_sec.volatileStatus === 'confusion') _tryConfuse();
+                    // Status condition on defender
+                    if (_sec.status) applyStatus(defender, _sec.status.toUpperCase());
+                    // Stat changes on defender (secondary boosts field)
+                    if (_sec.boosts) {
+                        Object.entries(_sec.boosts).forEach(([stat, delta]) => changeStage(defender, stat, delta, delta < 0));
+                    }
+                    // Self stat changes on attacker (e.g., Charge Beam +SpA, Meteor Mash +Atk, Ancient Power +all)
+                    if (_sec.self && _sec.self.boosts) {
+                        Object.entries(_sec.self.boosts).forEach(([stat, delta]) => changeStage(attacker, stat, delta, false));
+                    }
+                }
             }
-            if (move.name === "Charge Beam" && Math.random() < _sg(0.7)) changeStage(attacker, 'spa', 1);
-            if (move.name === "Meteor Mash" && Math.random() < _sg(0.2)) changeStage(attacker, 'atk', 1);
-            if (move.name === "Fiery Dance" && Math.random() < _sg(0.5)) changeStage(attacker, 'spa', 1);
+            // Stench ability: adds 10% flinch bonus to all damaging contact moves
+            if (attacker.ability === "Stench" && move.flags && move.flags.contact && !defender.volatile.flinch && Math.random() < 0.1) {
+                defender.volatile.flinch = true;
+            }
+            // Locking moves (Outrage, Thrash, Petal Dance, etc.) confuse only the attacker after finishing — handled in locking move logic
 
             // Sparkling Aria: cures target's burn
             if (move.name === "Sparkling Aria" && defender.status === "BRN") {
@@ -17483,7 +17652,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const maxGen = Math.max(...enabledGens);
             const _diffEl = document.getElementById('story-difficulty');
             const _storyDiff = (_diffEl && _diffEl.value) ? _diffEl.value : 'normal';
-            const _startingGoldBonus = _storyDiff === 'veryeasy' ? 19000 : _storyDiff === 'easy' ? 1000 : _storyDiff === 'normal' ? 600 : 0;
+            const _startingGoldBonus = _storyDiff === 'veryeasy' ? 19000 : _storyDiff === 'easy' ? 2000 : _storyDiff === 'normal' ? 1080 : 0;
             sm = {
                 active:true, eventIndex:0, badges:0, gold:1000 + _startingGoldBonus, team:[],
                 inventory: {
@@ -18418,7 +18587,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const [idx, type, event, , coins] = ev;
                 let coinMult = 1;
                 const diff = sm.storyDifficulty || 'normal';
-                if (diff === 'easy' || diff === 'veryeasy') coinMult = 1.15;
+                if (diff === 'normal') coinMult = 1.30;
+                else if (diff === 'easy') coinMult = 1.50;
+                else if (diff === 'veryeasy') coinMult = 1.60;
                 else if (diff === 'hard') coinMult = 0.92;
                 else if (diff === 'challenge') coinMult = 1.05;
                 else if (diff === 'hardcore') coinMult = 1.20; // attrition risk rewarded
@@ -19444,6 +19615,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 });
                 if (typeof logMsg==='function') logMsg('Cursed Coin Pouch: All Pokémon feel the weight of the curse! (−1 random stat each)','info');
             }
+            // Eviolite Blessing: +50% Def/SpDef for all NFE Pokémon (does not stack with Eviolite item)
+            state._evioliteBlessing = active('evioliteBlessing');
+            if (state._evioliteBlessing && typeof logMsg==='function') logMsg('Eviolite Blessing: All NFE Pokémon gain +50% Def and Sp. Def!','info');
             // Berserker Serum / Stagnation Core: passive engine hooks (existing)
         }
 
