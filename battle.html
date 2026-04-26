@@ -9312,6 +9312,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return false;
         };
 
+        function isGuestPerspective() {
+            return state.mode === 'pvp' && window.OnlineBattle && typeof window.OnlineBattle.isActive === 'function' && window.OnlineBattle.isActive() && !window.OnlineBattle.isHost();
+        }
+
         function syncBattleActiveHighlight() {
             if (!battleEls.screenBattle) cacheBattleEls();
             const sb = battleEls.screenBattle;
@@ -9336,7 +9340,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             let side = 'player';
-            if (state.mode === 'pvp') side = state.currentPlayer === 1 ? 'player' : 'foe';
+            if (state.mode === 'pvp') { const _gvH = isGuestPerspective(); side = state.currentPlayer === (_gvH ? 2 : 1) ? 'player' : 'foe'; }
             if (side === 'player') sb.classList.add('battle-active-player');
             else sb.classList.add('battle-active-foe');
             try { if (window.syncBattlePhaseClass) window.syncBattlePhaseClass(); } catch (e) {}
@@ -9362,7 +9366,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ['p', 'f'].forEach(s => {
                 const sideKey = s === 'p' ? 'player' : 'foe';
                 const el = be[sideKey];
-                let mon = s === 'p' ? state.pActive : state.fActive; let party = s === 'p' ? state.playerParty : state.foeParty;
+                const _gv = isGuestPerspective(); const _ps = (s === 'p') !== _gv; let mon = _ps ? state.pActive : state.fActive; let party = _ps ? state.playerParty : state.foeParty;
                 let nameEl = el.name;
                 // Gimmick badge: show active Dynamax / G-Max state prominently
                 let gBadge = '';
@@ -9538,26 +9542,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (state.trickRoom > 0) {
                     pills.push(mkPill('🔀 TR', state.trickRoom, '#e040fb','rgba(156,39,176,0.2)', `<b>Trick Room</b><br>Slower Pokémon move first<br>Turns left: ${state.trickRoom}`));
                 }
-                // Player-side screens (blue tones)
-                if (state.pSide && state.pSide.reflect > 0)     pills.push(mkPill('REF',  state.pSide.reflect,     '#42a5f5','rgba(13,71,161,0.2)',   `<b>Reflect</b> (your side)<br>Halves physical damage<br>Turns left: ${state.pSide.reflect}`));
-                if (state.pSide && state.pSide.lightScreen > 0) pills.push(mkPill('LSC',  state.pSide.lightScreen, '#ffee58','rgba(249,168,37,0.2)',  `<b>Light Screen</b> (your side)<br>Halves special damage<br>Turns left: ${state.pSide.lightScreen}`));
-                if (state.pSide && state.pSide.auroraVeil > 0)  pills.push(mkPill('VEIL', state.pSide.auroraVeil,  '#80deea','rgba(0,188,212,0.2)',  `<b>Aurora Veil</b> (your side)<br>Halves all damage<br>Turns left: ${state.pSide.auroraVeil}`));
+                // Player-side screens (blue tones) — swap pSide/fSide for guest
+                const _gvSide = isGuestPerspective(); const _mySide = _gvSide ? state.fSide : state.pSide; const _foeSide = _gvSide ? state.pSide : state.fSide;
+                if (_mySide && _mySide.reflect > 0)     pills.push(mkPill('REF',  _mySide.reflect,     '#42a5f5','rgba(13,71,161,0.2)',   `<b>Reflect</b> (your side)<br>Halves physical damage<br>Turns left: ${_mySide.reflect}`));
+                if (_mySide && _mySide.lightScreen > 0) pills.push(mkPill('LSC',  _mySide.lightScreen, '#ffee58','rgba(249,168,37,0.2)',  `<b>Light Screen</b> (your side)<br>Halves special damage<br>Turns left: ${_mySide.lightScreen}`));
+                if (_mySide && _mySide.auroraVeil > 0)  pills.push(mkPill('VEIL', _mySide.auroraVeil,  '#80deea','rgba(0,188,212,0.2)',  `<b>Aurora Veil</b> (your side)<br>Halves all damage<br>Turns left: ${_mySide.auroraVeil}`));
                 // Foe-side screens (red tones)
-                if (state.fSide && state.fSide.reflect > 0)     pills.push(mkPill('fREF',  state.fSide.reflect,     '#ef5350','rgba(198,40,40,0.2)',   `<b>Reflect</b> (foe side)<br>Halves physical damage<br>Turns left: ${state.fSide.reflect}`));
-                if (state.fSide && state.fSide.lightScreen > 0) pills.push(mkPill('fLSC',  state.fSide.lightScreen, '#ff8a65','rgba(230,74,25,0.2)',   `<b>Light Screen</b> (foe side)<br>Halves special damage<br>Turns left: ${state.fSide.lightScreen}`));
-                if (state.fSide && state.fSide.auroraVeil > 0)  pills.push(mkPill('fVEIL', state.fSide.auroraVeil,  '#80cbc4','rgba(0,105,92,0.2)',    `<b>Aurora Veil</b> (foe side)<br>Halves all damage<br>Turns left: ${state.fSide.auroraVeil}`));
-                if (state.pSide && state.pSide.tailwind > 0)    pills.push(mkPill('TW',   state.pSide.tailwind,    '#66bb6a','rgba(46,125,50,0.2)',   `<b>Tailwind</b> (your side)<br>Doubles Speed<br>Turns left: ${state.pSide.tailwind}`));
-                if (state.fSide && state.fSide.tailwind > 0)    pills.push(mkPill('fTW',  state.fSide.tailwind,    '#ef6c00','rgba(230,81,0,0.2)',     `<b>Tailwind</b> (foe side)<br>Doubles Speed<br>Turns left: ${state.fSide.tailwind}`));
+                if (_foeSide && _foeSide.reflect > 0)     pills.push(mkPill('fREF',  _foeSide.reflect,     '#ef5350','rgba(198,40,40,0.2)',   `<b>Reflect</b> (foe side)<br>Halves physical damage<br>Turns left: ${_foeSide.reflect}`));
+                if (_foeSide && _foeSide.lightScreen > 0) pills.push(mkPill('fLSC',  _foeSide.lightScreen, '#ff8a65','rgba(230,74,25,0.2)',   `<b>Light Screen</b> (foe side)<br>Halves special damage<br>Turns left: ${_foeSide.lightScreen}`));
+                if (_foeSide && _foeSide.auroraVeil > 0)  pills.push(mkPill('fVEIL', _foeSide.auroraVeil,  '#80cbc4','rgba(0,105,92,0.2)',    `<b>Aurora Veil</b> (foe side)<br>Halves all damage<br>Turns left: ${_foeSide.auroraVeil}`));
+                if (_mySide && _mySide.tailwind > 0)    pills.push(mkPill('TW',   _mySide.tailwind,    '#66bb6a','rgba(46,125,50,0.2)',   `<b>Tailwind</b> (your side)<br>Doubles Speed<br>Turns left: ${_mySide.tailwind}`));
+                if (_foeSide && _foeSide.tailwind > 0)    pills.push(mkPill('fTW',  _foeSide.tailwind,    '#ef6c00','rgba(230,81,0,0.2)',     `<b>Tailwind</b> (foe side)<br>Doubles Speed<br>Turns left: ${_foeSide.tailwind}`));
                 fcDiv.innerHTML = pills.join('');
             }
             if (state.mode === 'gauntlet' && be.gauntletScore) be.gauntletScore.innerText = `Score: ${state.score}`;
 
             // Party ball icons (clickable for summary if revealed)
             ['player', 'foe'].forEach(side => {
+                const _gvPB = isGuestPerspective();
                 let bar = side === 'player' ? be.playerPartyBar : be.foePartyBar;
                 if (!bar) return;
-                let party = side === 'player' ? state.playerParty : state.foeParty;
-                let isFoe = side === 'foe';
+                let party, isFoe, _summaryP1;
+                if (!_gvPB) { party = side === 'player' ? state.playerParty : state.foeParty; isFoe = side === 'foe'; _summaryP1 = side === 'player'; }
+                else { party = side === 'player' ? state.foeParty : state.playerParty; isFoe = false; _summaryP1 = side !== 'player'; }
                 bar.innerHTML = '';
                 party.forEach((mon, idx) => {
                     let ball = document.createElement('div');
@@ -9582,7 +9589,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         ball.style.cursor = 'pointer';
                         ball.onmouseenter = () => { ball.style.transform = 'scale(1.3)'; };
                         ball.onmouseleave = () => { ball.style.transform = 'scale(1)'; };
-                        ball.onclick = () => { window.showSummary(idx, !isFoe); };
+                        ball.onclick = () => { window.showSummary(idx, _summaryP1); };
                     } else {
                         ball.style.cursor = 'help';
                         ball.style.filter = 'brightness(0.4)';
@@ -9598,7 +9605,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Stat stage indicators
             ['p', 'f'].forEach(s => {
-                let mon = s === 'p' ? state.pActive : state.fActive;
+                const _gvSt = isGuestPerspective(); let mon = ((s === 'p') !== _gvSt) ? state.pActive : state.fActive;
                 let container = (s === 'p' ? be.player : be.foe).spriteContainer;
                 if (!container) return;
                 // Remove old badges
@@ -9849,10 +9856,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         window.showActiveInfo = function(isPlayer) {
-            let party = isPlayer ? state.playerParty : state.foeParty;
-            let active = isPlayer ? state.pActive : state.fActive;
+            const _iso = isGuestPerspective() ? !isPlayer : isPlayer;
+            let party = _iso ? state.playerParty : state.foeParty;
+            let active = _iso ? state.pActive : state.fActive;
             let idx = party ? party.indexOf(active) : -1;
-            if (idx >= 0) window.showSummary(idx, isPlayer);
+            if (idx >= 0) window.showSummary(idx, _iso);
         };
         
         // Helper: calculate defensive type multiplier for a given defending type combo
@@ -10306,10 +10314,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             // === GIMMICK BUTTONS ===
-            let canUseMega = activeMon.buildData && activeMon.buildData.gimmick === 'MEGA' && !activeMon.megaEvolved && (!settings.classicMode || !state.usedMega);
-            let canUseDyna = activeMon.buildData && (activeMon.buildData.gimmick === 'DYNAMAX' || activeMon.buildData.gimmick === 'GMAXDYNAMAX') && !activeMon.dynamaxed && !activeMon.dynamaxUsed && (!settings.classicMode || !state.usedDyna);
-            let canUseTera = activeMon.buildData && activeMon.buildData.teraType && !activeMon.teraActivated && (!settings.classicMode || !state.usedTera);
-            let canUseZ = activeMon.buildData && activeMon.buildData.gimmick === 'ZMOVE' && !activeMon.zMoveUsed && (!settings.classicMode || !state.usedZ);
+            const _usedMega = isP1 ? state.usedMega : state.fUsedMega; const _usedDyna = isP1 ? state.usedDyna : state.fUsedDyna; const _usedTera = isP1 ? state.usedTera : state.fUsedTera; const _usedZ = isP1 ? state.usedZ : state.fUsedZ;
+            let canUseMega = activeMon.buildData && activeMon.buildData.gimmick === 'MEGA' && !activeMon.megaEvolved && (!settings.classicMode || !_usedMega);
+            let canUseDyna = activeMon.buildData && (activeMon.buildData.gimmick === 'DYNAMAX' || activeMon.buildData.gimmick === 'GMAXDYNAMAX') && !activeMon.dynamaxed && !activeMon.dynamaxUsed && (!settings.classicMode || !_usedDyna);
+            let canUseTera = activeMon.buildData && activeMon.buildData.teraType && !activeMon.teraActivated && (!settings.classicMode || !_usedTera);
+            let canUseZ = activeMon.buildData && activeMon.buildData.gimmick === 'ZMOVE' && !activeMon.zMoveUsed && (!settings.classicMode || !_usedZ);
             const hasGimmickButtons = canUseMega || canUseDyna || canUseTera || canUseZ;
             menu.classList.toggle('move-menu-no-gimmicks', !hasGimmickButtons);
 
