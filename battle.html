@@ -977,14 +977,18 @@
         #screen-battle[data-battle-layout="desktop"] {
             --battle-ui-h: 280px;
             --battle-player-hud-est: 0px;
-            --sprite-foe-w: min(260px, 28vmin);
-            --sprite-player-w: min(310px, 32vmin);
+            /* Player stat row stacked above .ui-bottom — include in sprite baseline + tuck under chrome */
+            --battle-player-hud-strip-h: clamp(92px, 13.5vh, 112px);
+            /* Sprites −15% vs prior max so more fits in the arena without clipping */
+            --sprite-foe-w: min(265px, calc(34vmin * 0.85));
+            --sprite-player-w: min(281px, calc(34vmin * 0.85));
         }
         #screen-battle[data-battle-layout="ultrawide"] {
             --battle-ui-h: 300px;
             --battle-player-hud-est: 0px;
-            --sprite-foe-w: min(280px, 24vmin);
-            --sprite-player-w: min(330px, 28vmin);
+            --battle-player-hud-strip-h: clamp(96px, 12vh, 116px);
+            --sprite-foe-w: min(287px, calc(29vmin * 0.85));
+            --sprite-player-w: min(298px, calc(30vmin * 0.85));
         }
         #screen-battle[data-battle-layout="portrait"] {
             --battle-ui-h: clamp(330px, 48dvh, 410px);
@@ -1071,17 +1075,20 @@
         }
         #foe-stat-box .stat-box-name { font-size: 1.1em; }
         #foe-stat-box .hp-bar-container { height: 10px; }
-        /* Desktop/ultrawide: card in upper-right */
+        /* Desktop / ultrawide / narrow “desktop” window: foe UI on the right (enemy side), player UI on the left.
+           landscape-touch on non-mobile = width ≤900px or short landscape — same side-matching as desktop. */
         #screen-battle[data-battle-layout="desktop"] #foe-stat-box,
-        #screen-battle[data-battle-layout="ultrawide"] #foe-stat-box {
-            top: 12px; left: auto; right: 56px; bottom: auto;
-            width: 300px; border-radius: var(--battle-radius);
+        #screen-battle[data-battle-layout="ultrawide"] #foe-stat-box,
+        body:not(.is-mobile) #screen-battle[data-battle-layout="landscape-touch"] #foe-stat-box {
+            top: 12px; left: auto; right: max(12px, env(safe-area-inset-right, 0px)); bottom: auto;
+            width: 300px; max-width: min(300px, 42vw); border-radius: var(--battle-radius);
             border: 1px solid var(--border-color);
             padding: 8px 12px; font-size: 13px;
             background: var(--battle-panel-bg);
         }
         #screen-battle[data-battle-layout="desktop"] #foe-stat-box .stat-info-row,
-        #screen-battle[data-battle-layout="ultrawide"] #foe-stat-box .stat-info-row { margin-top: 3px; font-size: 10px; gap: 4px; }
+        #screen-battle[data-battle-layout="ultrawide"] #foe-stat-box .stat-info-row,
+        body:not(.is-mobile) #screen-battle[data-battle-layout="landscape-touch"] #foe-stat-box .stat-info-row { margin-top: 3px; font-size: 10px; gap: 4px; }
 
         /* ── FOE SPRITE ───────────────────────────────────────────────────── */
         #foe-sprite-container {
@@ -1099,12 +1106,17 @@
         }
         #screen-battle[data-battle-layout="desktop"] #foe-sprite-container,
         #screen-battle[data-battle-layout="ultrawide"] #foe-sprite-container {
-            top: 32px; right: clamp(16px, 8%, 100px);
+            /* Lower than before so back-line mon clears the top / stat card and reads fully on-screen */
+            top: calc(14px + clamp(24px, 3.2vmin, 40px) + 1.5cm); right: clamp(12px, 6%, 88px);
             width: var(--sprite-foe-w); aspect-ratio: auto;
-            height: min(240px, 28vmin);
+            height: min(252px, calc(34vmin * 0.85));
         }
         #screen-battle[data-battle-layout="desktop"] #foe-sprite,
-        #screen-battle[data-battle-layout="ultrawide"] #foe-sprite { width: 100%; height: 100%; bottom: 14px; object-position: bottom; }
+        #screen-battle[data-battle-layout="ultrawide"] #foe-sprite { width: 100%; height: 100%; bottom: 10px; object-position: bottom; }
+        #screen-battle[data-battle-layout="desktop"] #foe-sprite-container > .foe-platform,
+        #screen-battle[data-battle-layout="ultrawide"] #foe-sprite-container > .foe-platform {
+            width: 155px !important; height: 26px !important; bottom: 8px !important;
+        }
 
         /* ── PLAYER SPRITE ────────────────────────────────────────────────── */
         #player-sprite-container {
@@ -1122,13 +1134,20 @@
         }
         #screen-battle[data-battle-layout="desktop"] #player-sprite-container,
         #screen-battle[data-battle-layout="ultrawide"] #player-sprite-container {
-            left: clamp(16px, 5%, 72px); right: auto;
-            bottom: calc(var(--battle-ui-h) + 60px);
+            left: clamp(8px, 3.5%, 56px); right: auto;
+            /* Feet tuck under player HP row + command chrome (GBA-style overlap; z-index below #battle-bottom-stack) */
+            bottom: calc(var(--battle-ui-h) + var(--battle-player-hud-strip-h) - 52px);
             width: var(--sprite-player-w); aspect-ratio: auto;
-            height: min(340px, 38vmin);
+            height: min(323px, calc(42vmin * 0.85));
         }
         #screen-battle[data-battle-layout="desktop"] #player-sprite,
-        #screen-battle[data-battle-layout="ultrawide"] #player-sprite { width: 100%; height: 100%; bottom: 18px; object-position: bottom; }
+        #screen-battle[data-battle-layout="ultrawide"] #player-sprite {
+            width: 100%; height: 100%; bottom: 8px; object-position: bottom;
+        }
+        #screen-battle[data-battle-layout="desktop"] #player-sprite-container > .player-platform,
+        #screen-battle[data-battle-layout="ultrawide"] #player-sprite-container > .player-platform {
+            width: 170px !important; height: 32px !important; bottom: 4px !important;
+        }
         /* Portrait: DS-style depth — foe upper-right, player front lower-left */
         /* Inset from top/right; foe lower for headroom; object-position = feet baseline; slight size skew = classic depth */
         #screen-battle[data-battle-layout="portrait"] #foe-sprite-container {
@@ -1245,19 +1264,25 @@
         }
         #battle-bottom-stack #player-stat-box .hp-bar-container { height: 9px; }
         #screen-battle[data-battle-layout="desktop"] .battle-player-hud-row,
-        #screen-battle[data-battle-layout="ultrawide"] .battle-player-hud-row {
+        #screen-battle[data-battle-layout="ultrawide"] .battle-player-hud-row,
+        body:not(.is-mobile) #screen-battle[data-battle-layout="landscape-touch"] .battle-player-hud-row {
             border-top: 1px solid rgba(255,255,255,0.1);
-            background: transparent; padding: 8px 10px 10px;
+            /* Right side masks empty strip toward log; card sits bottom-left (mirrors old gradient) */
+            background: linear-gradient(90deg, transparent 28%, rgba(5,5,8,0.35) 52%, rgba(5,5,8,0.72) 100%);
+            padding: 6px 12px 8px;
             justify-content: flex-start;
+            align-items: flex-end;
         }
         #screen-battle[data-battle-layout="desktop"] #battle-bottom-stack #player-stat-box,
-        #screen-battle[data-battle-layout="ultrawide"] #battle-bottom-stack #player-stat-box {
-            width: 300px; max-width: min(320px, 40vw); align-self: flex-start;
+        #screen-battle[data-battle-layout="ultrawide"] #battle-bottom-stack #player-stat-box,
+        body:not(.is-mobile) #screen-battle[data-battle-layout="landscape-touch"] #battle-bottom-stack #player-stat-box {
+            width: min(300px, 34vw); max-width: min(320px, 40vw); align-self: flex-end;
             border-radius: 6px; border: 1px solid var(--border-color);
             background: var(--surface); margin: 0; padding: 8px 12px;
         }
         #screen-battle[data-battle-layout="desktop"] #battle-bottom-stack #player-stat-box .stat-info-row,
-        #screen-battle[data-battle-layout="ultrawide"] #battle-bottom-stack #player-stat-box .stat-info-row { margin-top: 3px; font-size: 10px; gap: 4px; }
+        #screen-battle[data-battle-layout="ultrawide"] #battle-bottom-stack #player-stat-box .stat-info-row,
+        body:not(.is-mobile) #screen-battle[data-battle-layout="landscape-touch"] #battle-bottom-stack #player-stat-box .stat-info-row { margin-top: 3px; font-size: 10px; gap: 4px; }
 
         /* ── UI Bottom ────────────────────────────────────────────────────── */
         .battle-bottom-stack .ui-bottom {
@@ -1274,6 +1299,17 @@
             padding: 6px; z-index: 2; align-items: stretch;
         }
         body.is-mobile .ui-bottom { flex-direction: column; padding: 4px 5px; gap: 4px; }
+
+        /* Command + move panels: always one flex child of .ui-bottom so the battle log
+           stays on the right on desktop when both menus are display:none (message phase). */
+        .ui-bottom-menus {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 auto;
+            min-width: 0;
+            min-height: 0;
+            box-sizing: border-box;
+        }
 
         /* ── Battle log ───────────────────────────────────────────────────── */
         #battle-log {
@@ -1308,8 +1344,7 @@
                 flex: 0 0 min(260px, 30vw); max-width: min(280px, 32vw);
                 align-self: stretch; min-height: 0; overflow-y: auto;
             }
-            #screen-battle.battle-log-dock #command-menu,
-            #screen-battle.battle-log-dock #move-menu { order: 1; flex: 1; min-width: 0; }
+            #screen-battle.battle-log-dock .ui-bottom-menus { order: 1; flex: 1; min-width: 0; }
         }
 
         /* ── Command / move menu ──────────────────────────────────────────── */
@@ -1370,9 +1405,12 @@
             line-height: 1.5;
             padding: 8px 12px;
         }
-        #screen-battle[data-battle-layout="desktop"] .ui-bottom #command-menu,
-        #screen-battle[data-battle-layout="ultrawide"] .ui-bottom #command-menu {
+        #screen-battle[data-battle-layout="desktop"] .ui-bottom .ui-bottom-menus,
+        #screen-battle[data-battle-layout="ultrawide"] .ui-bottom .ui-bottom-menus {
             order: 1;
+            flex: 1 1 auto;
+            min-width: 0;
+            min-height: 0;
         }
 
         #screen-battle[data-battle-layout="desktop"] #move-menu.move-menu-layout,
@@ -1419,11 +1457,6 @@
             max-height: none;
             font-size: 12px;
         }
-        #screen-battle[data-battle-layout="desktop"].battle-phase-moves .ui-bottom #move-menu,
-        #screen-battle[data-battle-layout="ultrawide"].battle-phase-moves .ui-bottom #move-menu {
-            order: 1; width: auto; flex: 1 1 auto;
-        }
-
         /* Mobile flex fixes */
         body.is-mobile #move-menu.move-menu-layout { flex: 1 1 0%; min-height: 0; }
         body.is-mobile #screen-battle.battle-phase-moves #move-menu.move-menu-layout { flex: 1 1 0%; min-height: 0; }
@@ -1974,6 +2007,12 @@
         }
         #screen-battle[data-battle-layout="portrait"].battle-phase-moves .ui-bottom #battle-log {
             max-height: calc(1.45em * 5 + 12px); max-width: 100%;
+        }
+        #screen-battle[data-battle-layout="portrait"] .ui-bottom-menus {
+            flex: 1 1 0;
+            min-height: 0;
+            width: 100%;
+            box-sizing: border-box;
         }
         #screen-battle[data-battle-layout="portrait"] #command-menu {
             flex: 1 1 0; min-height: 0; width: 100%; box-sizing: border-box; overflow-y: auto;
@@ -4325,7 +4364,7 @@
             <span id="obs-round-info" style="color:#555;font-size:10px;"></span>
         </div>
 
-        <!-- FOE: stat box top-right (sprite sits upper-center on arena) -->
+        <!-- Side-matched HUD: player mon + HP row on the left; foe mon + stat card on the right (enemy side). -->
         <div class="stat-box white-outline" id="foe-stat-box">
             <div class="stat-box-header">
                 <span id="foe-name" class="stat-box-name">MissingNo</span>
@@ -4377,6 +4416,7 @@
         <div class="ui-bottom">
             <div id="online-battle-timer" class="hidden" style="position:absolute; top:-22px; right:8px; z-index:12; font-size:11px; font-weight:bold; color:#81d4fa; padding:2px 8px; border-radius:6px; background:rgba(0,0,0,0.5); pointer-events:none;"></div>
             <div id="battle-log" class="white-outline scrollable" role="log" aria-label="Battle log"></div>
+            <div class="ui-bottom-menus">
             <div id="command-menu" class="command-grid white-outline hidden">
                 <button type="button" class="battle-cmd-btn" data-cmd="fight" data-shortcut="F" onclick="window.showMoves()" title="Fight (keyboard: F)"><span class="battle-cmd-ico" aria-hidden="true"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" focusable="false" aria-hidden="true"><path fill="#5d4037" d="M1 12h2v2H1v-2zm0-3h2v2H1V9zm0-3h2v2H1V6z"/><path fill="#ffecb3" d="M3 2h2v10H3V2zm1 0h1v1H4V2zm0 8h1v1H4v-1z"/><path fill="#ffe082" d="M5 1h1v1H5V1zm0 2h1v1H5V3zm0 2h1v1H5V5zm0 2h1v1H5V7zm0 2h1v1H5V9z"/><path fill="#8d6e63" d="M11 3h2v8h-2V3zm-1-1h2v1h-2V2zm0 9h2v1h-2v-1z"/><path fill="#d7ccc8" d="M10 1h1v1h-1V1zm0 2h1v1h-1V3zm0 2h1v1h-1V5zm0 2h1v1h-1V7zm0 2h1v1h-1V9z"/><path fill="#eceff1" d="M6 2h4v1H6V2zm0 2h3v1H6V4zm0 2h2v1H6V6z"/></svg></span><span class="battle-cmd-label">FIGHT</span></button>
                 <button type="button" class="battle-cmd-btn" data-cmd="party" data-shortcut="P" onclick="window.openParty(false)" title="Pokémon (keyboard: P)"><span class="battle-cmd-ico" aria-hidden="true"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" focusable="false" aria-hidden="true"><path fill="#1a1a1a" d="M1 1h14v14H1V1z"/><path fill="#c62828" d="M2 2h12v5H2V2z"/><path fill="#212121" d="M2 7h12v1H2V7z"/><path fill="#f5f5f5" d="M2 8h12v6H2V8z"/><rect fill="#424242" x="6" y="6" width="4" height="1"/><rect fill="#eceff1" x="7" y="7" width="2" height="2"/></svg></span><span class="battle-cmd-label">POKÉMON</span></button>
@@ -4384,6 +4424,7 @@
                 <button type="button" class="battle-cmd-btn" data-cmd="run" data-shortcut="R" onclick="window.runAway()" title="Run (keyboard: R)"><span class="battle-cmd-ico" aria-hidden="true"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" focusable="false" aria-hidden="true"><path fill="#90a4ae" d="M1 2h2v2H1V2zm3 0h2v2H4V2zm0 3h2v2H4V5zm-3 3h2v2H1V8zm3 0h2v2H4V8z"/><path fill="#ef9a9a" d="M8 2h4v1H8V2zm0 2h2v1H8V4z"/><path fill="#e57373" d="M10 2h2v1h-2V2zm-1 1h1v1H9V3zm-1 2h3v1H8V5z"/><path fill="#ef5350" d="M10 5h4v1h-4V5zm0 2h3v1h-3V7zm-2 2h3v1H8V9z"/></svg></span><span class="battle-cmd-label">RUN</span></button>
             </div>
             <div id="move-menu" class="move-menu-layout white-outline hidden"></div>
+            </div>
         </div>
         </div>
     </div>
@@ -7191,6 +7232,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const outer = document.getElementById('desktop-scale-outer');
             if (!root || !outer) return;
             if (document.body.classList.contains('is-mobile')) {
+                // #region agent log
+                fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'c1e5d2' }, body: JSON.stringify({ sessionId: 'c1e5d2', runId: 'pre-fix', hypothesisId: 'A', location: 'battle.html:applyDesktopGameScale', message: 'mobile path: no scale', data: { isMobile: true, transform: root.style.transform }, timestamp: Date.now() }) }).catch(function() {});
+                // #endregion
                 root.style.transform = '';
                 root.style.transformOrigin = '';
                 outer.style.width = '';
@@ -7204,6 +7248,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             root.style.transformOrigin = 'top left';
             outer.style.width = (GAME_DESIGN_W * s) + 'px';
             outer.style.height = (GAME_DESIGN_H * s) + 'px';
+            // #region agent log
+            (function () {
+                const dpr = window.devicePixelRatio || 1;
+                const sSnap = Math.floor(s * GAME_DESIGN_W * dpr) / (GAME_DESIGN_W * dpr);
+                const battle = document.getElementById('screen-battle');
+                var beforeOp = '', beforeBg0 = '', rootF = '', battleF = '';
+                try { rootF = window.getComputedStyle(root).transform; } catch (e) {}
+                try { battleF = battle ? window.getComputedStyle(battle).filter : ''; } catch (e) {}
+                try { if (battle) { var pb = window.getComputedStyle(battle, '::before'); beforeOp = pb ? String(pb.opacity) : ''; beforeBg0 = (pb && pb.background) ? String(pb.background).slice(0, 200) : ''; } } catch (e) {}
+                fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'c1e5d2' }, body: JSON.stringify({ sessionId: 'c1e5d2', runId: 'pre-fix', hypothesisId: 'A', location: 'battle.html:applyDesktopGameScale', message: 'desktop scale applied', data: { vw: vw, vh: vh, s: s, dpr: dpr, sDeltaFromSnap: s - sSnap, rootTransformComputed: rootF, battleFilter: battleF, beforeOpacity: beforeOp, beforeGradientStart: beforeBg0, hypothesisB_vignette: (beforeOp !== '0' && beforeOp !== '') ? 1 : 0 }, timestamp: Date.now() }) }).catch(function() {});
+            })();
+            // #endregion
         }
         window.applyDesktopGameScale = applyDesktopGameScale;
 
@@ -13903,8 +13959,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (mn !== mx && (attacker.ability === "Skill Link" || attacker.item === "Loaded Dice")) numHits = mx;
                     }
                 }
-                // Knock Off: x1.5 if target has item
-                if (move.name === "Knock Off" && defender.item && !defender.knockedOff) basePower = Math.floor(basePower * 1.5);
+                // Knock Off: x1.5 only if target has a removable item (no boost vs Mega Stones, Plates, Z-Crystals, etc.)
+                if (move.name === "Knock Off" && defender.item && !defender.knockedOff && !isKnockOffImmuneHeldItem(defender, defender.item)) basePower = Math.floor(basePower * 1.5);
                 // Weather Ball: type changes with weather, power doubles
                 // JUDGMENT (Arceus): type matches held Plate; falls back to lockedType (form type) if no plate
                 if (move.name === "Judgment") {
@@ -14659,16 +14715,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         updateUI(); await sleep(500);
                     } else if (defender.item) {
                         const _item = defender.item;
-                        const _unknockable = (
-                            defender.megaEvolved ||
-                            isMegaStoneItemName(_item) ||
-                            Z_TYPE_MAP_VALUES.has(_item) ||
-                            _item === "Red Orb" || _item === "Blue Orb" ||
-                            _item === "Griseous Orb" || _item === "Rusted Sword" || _item === "Rusted Shield" ||
-                            _item === "Booster Energy"
-                        );
-                        if (_unknockable) {
-                            // Cannot be knocked off
+                        if (isKnockOffImmuneHeldItem(defender, _item)) {
+                            logMsg(`${defender.name}'s ${_item} can't be removed!`, 'info');
                         } else if (defender.ability !== "Sticky Hold") {
                             logMsg(`${attacker.name} knocked off ${defender.name}'s ${defender.item}!`, 'info');
                             const _knockedItem = defender.item;
@@ -15299,6 +15347,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         /** Mega Stones match *ite / *ite X|Y; Eviolite also ends in "ite" but is a normal held item. */
         function isMegaStoneItemName(item) {
             return !!(item && item !== "Eviolite" && /ite$|ite [XY]$/.test(item));
+        }
+
+        /** Knock Off cannot remove or get its damage boost vs these held items (cartridge-style + Z-Attack crystals). */
+        function isKnockOffImmuneHeldItem(defender, item) {
+            if (!defender) return false;
+            if (defender.megaEvolved) return true;
+            const it = item != null ? item : defender.item;
+            if (!it) return false;
+            if (isMegaStoneItemName(it)) return true;
+            if (typeof Z_TYPE_MAP_VALUES !== "undefined" && Z_TYPE_MAP_VALUES.has(it)) return true;
+            if (it === "Red Orb" || it === "Blue Orb") return true;
+            if (it === "Griseous Orb" || it === "Rusted Sword" || it === "Rusted Shield") return true;
+            if (it === "Booster Energy") return true;
+            if (/ Plate$/.test(it)) return true;
+            if (/^(Douse|Shock|Burn|Chill) Drive$/.test(it)) return true;
+            if (/ Memory$/.test(it)) return true;
+            if (it === "Wellspring Mask" || it === "Hearthflame Mask" || it === "Cornerstone Mask") return true;
+            return false;
         }
 
         /** Items that cannot be selected for Fling (matches cartridge-style key stones / form items). */
