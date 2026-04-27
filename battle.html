@@ -19085,8 +19085,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _storyFullHealPartySlots();
             const fee = _storyCalcRetreatGoldFee();
             sm.gold = Math.max(0, (sm.gold | 0) - fee);
+            const failedBattleIdx = sm.eventIndex;
             sm.eventIndex = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
-            sm.currentEnemyLock = null;
+            // Keep the frozen foe team for the battle you lost so Leave City → rematch uses the same party (RNG is not re-rolled).
+            const lock = sm.currentEnemyLock;
+            if (!lock || lock.eventIdx !== failedBattleIdx || !Array.isArray(lock.team) || !lock.team.length) {
+                sm.currentEnemyLock = null;
+            }
             sm.storyRetryInventorySnapshot = null;
             _storyBattleInventorySnapshot = null;
             try { save(); } catch (e) { console.warn('[Story] retreat save', e); }
