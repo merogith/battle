@@ -592,6 +592,94 @@
             height: 100%; min-height: 0; flex: 1;
         }
         #screen-story-city { background: var(--bg-color); }
+        /* Story city top bar: location + gold | abandon + settings (settings lives here so it aligns with Abandon) */
+        #story-hud.story-hud-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px 12px;
+            padding: 10px 14px;
+            background: linear-gradient(180deg, rgba(20, 20, 30, 0.95) 0%, rgba(10, 10, 18, 0.97) 100%);
+            border-bottom: 2px solid #444;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            box-sizing: border-box;
+        }
+        .story-hud-primary {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px 14px;
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+        .story-hud-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        #story-hud-city {
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: bold;
+            font-family: var(--battle-font);
+            letter-spacing: 1px;
+            text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.7);
+        }
+        #story-hud-gold {
+            color: #ffd700;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: var(--battle-font);
+            text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.7);
+        }
+        .story-hud-abandon {
+            font-family: var(--battle-font);
+            font-size: 9px;
+            letter-spacing: 0.5px;
+            padding: 8px 14px;
+            min-height: 40px;
+            box-sizing: border-box;
+            color: #ffcdd2;
+            background: rgba(80, 20, 20, 0.35);
+            border: 1px solid rgba(244, 67, 54, 0.5);
+            border-radius: 2px;
+            cursor: pointer;
+            touch-action: manipulation;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+        }
+        .story-hud-abandon:hover {
+            background: rgba(120, 30, 30, 0.45);
+            border-color: #f44336;
+            color: #fff;
+        }
+        .story-hud-settings {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
+            min-height: 40px;
+            padding: 0;
+            box-sizing: border-box;
+            font-size: 17px;
+            line-height: 1;
+            color: #e8e8e8;
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.28);
+            border-radius: 0;
+            cursor: pointer;
+            touch-action: manipulation;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+        }
+        .story-hud-settings:hover {
+            border-color: var(--accent);
+            background: rgba(36, 32, 18, 0.9);
+            color: var(--accent);
+        }
         .story-city-main-row {
             display: flex;
             flex: 1;
@@ -607,7 +695,6 @@
         }
         #story-city-left .story-city-portrait-wrap img { width: 135px; height: 135px; }
         #story-city-npc-name { font-size: 10px; }
-        #story-city-event-label { font-size: 8px; }
         .story-dialog-host { margin-bottom: 10px; width: 100%; max-width: 640px; }
         .story-dialog-nameplate {
             display: inline-block; font-size: 11px; font-weight: bold; letter-spacing: 0.06em;
@@ -798,6 +885,23 @@
         .story-action-btn.link:hover { box-shadow:inset -3px -3px 0 #0a2830,inset 3px 3px 0 #1a4858, 0 0 12px rgba(0,229,255,0.15); }
         .story-action-btn.dept { border-color:#9c27b0; color:#ce93d8; background:linear-gradient(180deg,#1e0a22 0%,#120618 100%); }
         .story-action-btn.dept:hover { box-shadow:inset -3px -3px 0 #2a1030,inset 3px 3px 0 #4a2058, 0 0 12px rgba(206,147,216,0.15); }
+        /* Training / customization (tutors, dojo — distinct from mart green) */
+        .story-action-btn.training { border-color:#ffb74d; color:#ffb74d; background:linear-gradient(180deg,#2a2210 0%,#1a1408 100%); }
+        .story-action-btn.training:hover { background:linear-gradient(180deg,#322818 0%,#221a0a 100%); box-shadow:inset -3px -3px 0 #3a3020,inset 3px 3px 0 #5a4830, 0 0 12px rgba(255,183,77,0.18); border-color:#ffcc80; color:#ffcc80; }
+        /* Pokémon Center vs Link vs Party */
+        .story-action-btn.center { border-color:#81d4fa; color:#b3e5fc; background:linear-gradient(180deg,#0f1a24 0%,#081018 100%); }
+        .story-action-btn.center:hover { background:linear-gradient(180deg,#16222e 0%,#0c1420 100%); box-shadow:inset -3px -3px 0 #1a2834,inset 3px 3px 0 #2a4050, 0 0 12px rgba(129,212,250,0.2); border-color:#a5d6fa; color:#e1f5fe; }
+        .story-action-btn.party { border-color:#4dd0e1; color:#80deea; background:linear-gradient(180deg,#0a2226 0%,#061418 100%); }
+        .story-action-btn.party:hover { background:linear-gradient(180deg,#0e2a30 0%,#081c20 100%); box-shadow:inset -3px -3px 0 #0a3038,inset 3px 3px 0 #1a4858, 0 0 12px rgba(77,208,225,0.18); border-color:#80deea; color:#b2ebf2; }
+        /* Same hue family, lighter/dimmer accent (alternate NPC, secondary service, bag vs mart) */
+        .story-action-btn.primary.story-action-btn--soft { border-color:#c98888; color:#d4a0a0; background:linear-gradient(180deg,#221818 0%,#151010 100%); }
+        .story-action-btn.primary.story-action-btn--soft:hover { background:linear-gradient(180deg,#2a1c1c 0%,#1a1212 100%); box-shadow:inset -3px -3px 0 #302020,inset 3px 3px 0 #483030, 0 0 10px rgba(200,136,136,0.12); border-color:#d4a0a0; color:#e0b4b4; }
+        .story-action-btn.shop.story-action-btn--soft { border-color:#66bb6a; color:#81c784; background:linear-gradient(180deg,#11221a 0%,#081410 100%); }
+        .story-action-btn.shop.story-action-btn--soft:hover { background:linear-gradient(180deg,#162a20 0%,#0c1814 100%); box-shadow:inset -3px -3px 0 #1a3228,inset 3px 3px 0 #2a4a3a, 0 0 12px rgba(129,199,132,0.14); border-color:#a5d6a7; color:#c8e6c9; }
+        .story-action-btn.training.story-action-btn--soft { border-color:#d4a574; color:#ffcc80; background:linear-gradient(180deg,#242018 0%,#161410 100%); }
+        .story-action-btn.training.story-action-btn--soft:hover { background:linear-gradient(180deg,#2c2820 0%,#1e1a14 100%); box-shadow:inset -3px -3px 0 #383028,inset 3px 3px 0 #504838, 0 0 10px rgba(212,165,116,0.14); border-color:#ffe0b2; color:#ffe8cc; }
+        .story-action-btn.dept.story-action-btn--soft { border-color:#8e6aaf; color:#e1bee7; background:linear-gradient(180deg,#1a1220 0%,#100c18 100%); }
+        .story-action-btn.dept.story-action-btn--soft:hover { background:linear-gradient(180deg,#221a28 0%,#16101e 100%); box-shadow:inset -3px -3px 0 #281e34,inset 3px 3px 0 #403050, 0 0 12px rgba(225,190,231,0.12); border-color:#f3e5f5; color:#fce4fc; }
         .story-action-btn.disabled, .story-action-btn:disabled { opacity:0.35; cursor:not-allowed; }
         .story-team-slot { display:flex; align-items:center; gap:6px; padding:4px 6px; border:1px solid #2a2a2a; border-radius:4px; background:var(--surface); font-size:11px; }
         .story-team-slot img { width:40px; height:40px; image-rendering:pixelated; border:none; background:transparent; }
@@ -805,15 +909,6 @@
         /* Party panel sort buttons */
         .party-sort-btn { width:22px; height:19px; font-size:9px; padding:0; line-height:1; border-radius:2px; }
         .party-sort-btn:disabled { opacity:0.15; }
-        /* Compact sprite strip tile */
-        .party-compact-tile { display:flex;flex-direction:column;align-items:center;cursor:pointer;gap:1px;transition:opacity 0.1s; }
-        .party-compact-tile:hover { opacity:0.8; }
-        .party-compact-tile img { width:36px;height:36px;image-rendering:pixelated;border-radius:3px;border:1px solid rgba(100,150,200,0.3); }
-        .party-compact-tile span { font-size:7px;color:#888;max-width:36px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center; }
-        /* Collapsed state */
-        #story-city-team.party-collapsed #story-city-team-body { display:none; }
-        #story-city-team.party-collapsed #story-team-compact-strip { display:block !important; }
-        #story-party-toggle-arrow { transition: transform 0.2s ease; }
         .story-prof-card-wrap { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: stretch; width: 100%; max-width: 1200px; margin: 12px auto; box-sizing: border-box; }
         .prof-pick-card { flex: 1 1 280px; max-width: 420px; min-width: min(100%, 240px); }
         .prof-pick-card-selected { transform: scale(1.02); border-color: var(--accent) !important; box-shadow: 0 0 18px rgba(255,213,79,0.22); }
@@ -1566,6 +1661,10 @@
         #game-stage:has(#screen-battle:not(.hidden)) > .settings-btn {
             display: none;
         }
+        /* Story city HUD includes its own settings control — hide floating gear to avoid double placement */
+        #game-stage:has(#screen-story-city:not(.hidden)) > .settings-btn {
+            display: none;
+        }
         .mob-info-btn {
             display: none; align-items: center; justify-content: center;
             width: 36px; height: 36px; min-width: 36px; min-height: 36px;
@@ -1628,6 +1727,11 @@
         body:has(#screen-story-menu:not(.hidden)) #screen-story-menu { padding-top: 52px; box-sizing: border-box; }
         body:has(#screen-story-professor:not(.hidden)) #screen-story-professor { padding-top: 52px; box-sizing: border-box; }
         body:has(#screen-story-gameover:not(.hidden)) #screen-story-gameover { padding-top: 52px; box-sizing: border-box; }
+        /* City screen: gear is inside #story-hud — no extra empty margin for a floating icon */
+        body:has(#screen-story-city:not(.hidden)) #story-hud {
+            padding-right: 12px !important;
+            box-sizing: border-box !important;
+        }
 
         /* ── Phone landscape ──────────────────────────────────────────────── */
         @media screen and (max-height: 500px) and (max-width: 900px) and (orientation: landscape) and ((hover: none) or (pointer: coarse)) {
@@ -2477,29 +2581,21 @@
                 flex-shrink: 0;
                 box-sizing: border-box;
             }
+            /* City NPC portrait: 30% smaller than base (150×150 / 135px img) on portrait phones only */
             #story-city-left .story-city-portrait-wrap {
-                max-width: min(150px, 42vw);
+                width: 105px;
+                height: 105px;
+                max-width: none;
+            }
+            #story-city-left .story-city-portrait-wrap img {
+                width: 95px;
+                height: 95px;
             }
             /* Let the whole column scroll; avoid a nested flex "trap" in #story-city-actions */
             #story-city-actions {
                 flex: 0 0 auto !important;
                 min-height: 0;
                 overflow: visible;
-                -webkit-overflow-scrolling: touch;
-            }
-            #story-city-team {
-                width: 100% !important;
-                max-width: 100%;
-                border-left: none !important;
-                border-top: 1px solid rgba(34, 34, 34, 0.9);
-                flex-shrink: 0;
-                min-height: 0;
-                overflow: hidden;
-                box-sizing: border-box;
-            }
-            #story-city-team-body {
-                max-height: min(36vh, 220px);
-                overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
             }
             /* Story shop: one column on narrow portrait */
@@ -2529,27 +2625,29 @@
                 min-height: 48px;
             }
             .story-action-btn { font-size: 14px; padding: 10px 14px; }
-            /* Story team panel → horizontal swipe strip (Emerald-style party card row) */
-            #story-city-team-body #story-team-panel {
-                display: flex !important;
-                flex-wrap: nowrap !important;
-                overflow-x: auto;
-                scroll-snap-type: x mandatory;
-                -webkit-overflow-scrolling: touch;
-                gap: 8px;
-                padding: 6px 2px 8px;
+            /* Story city HUD: keep one toolbar row; chips read cleanly on narrow portrait */
+            #story-hud.story-hud-bar {
+                gap: 8px 10px;
             }
-            #story-city-team-body #story-team-panel .story-team-slot {
-                scroll-snap-align: start;
-                flex: 0 0 auto;
-                min-width: 108px;
+            .story-hud-primary {
+                gap: 8px 10px;
             }
-            /* Sort buttons hidden on mobile horizontal scroll — use compact strip tap instead */
-            #story-city-team-body .party-sort-col { display: none; }
-            /* Compact HUD pills */
-            #story-hud-city, #story-hud-badges, #story-hud-gold {
-                font-size: 13px; padding: 4px 8px; border-radius: 999px;
-                background: rgba(255,255,255,0.05); white-space: nowrap;
+            #story-hud-city, #story-hud-gold {
+                font-size: 12px;
+                padding: 5px 10px;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.06);
+                white-space: normal;
+            }
+            .story-hud-abandon {
+                min-height: 44px;
+                padding: 8px 12px;
+            }
+            .story-hud-settings {
+                width: 44px;
+                height: 44px;
+                min-width: 44px;
+                min-height: 44px;
             }
             /* No tap highlight, disable iOS long-press callout */
             * { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
@@ -3157,6 +3255,43 @@
             padding: 10px 12px !important;
         }
         .story-bag-close-btn:hover { border-color: var(--accent) !important; color: var(--accent) !important; }
+
+        #modal-story-party .story-party-modal-content { max-width: 420px; }
+        #modal-story-party .story-party-modal-title {
+            font-family: var(--battle-font) !important;
+            font-size: 12px !important;
+            letter-spacing: 2px !important;
+            color: var(--accent) !important;
+            text-shadow: 1px 1px 0 #000;
+            margin-top: 0 !important;
+        }
+        #modal-story-party .story-party-modal-hint {
+            font-size: 10px !important;
+            color: #9aa0aa !important;
+            margin-bottom: 8px !important;
+            letter-spacing: 0.5px;
+            line-height: 1.4;
+        }
+        #modal-story-party .story-party-modal-scroll {
+            max-height: min(55dvh, 380px);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 10px;
+            overscroll-behavior: contain;
+        }
+        #modal-story-party #story-team-panel {
+            display: flex !important;
+            flex-direction: column !important;
+            flex-wrap: nowrap !important;
+            gap: 6px;
+        }
+        #modal-story-party .story-team-slot { width: 100%; box-sizing: border-box; }
+        #modal-story-party .party-sort-col {
+            display: flex !important;
+            flex-direction: column;
+            gap: 2px;
+            flex-shrink: 0;
+        }
 
         /* --- Move buttons: type-colored with pixel border --- */
         #move-menu .move-menu-scroll button.battle-btn-move {
@@ -3900,7 +4035,7 @@
                         <input type="checkbox" id="story-no-item-run">
                         <span style="color:#ffb74d;font-weight:bold;">&#128683; No Item Run</span>
                     </label>
-                    <span style="color:#777;font-size:10px;">No shops. Neither side uses battle items.</span>
+                    <span style="color:#777;font-size:10px;">Shops stay open; battle-bag stock is not sold. Neither side uses battle items.</span>
                 </div>
                 <div style="font-size:10px;color:#666;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Battle mechanic mode:</div>
                 <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:11px;">
@@ -3927,14 +4062,14 @@
         <div id="story-city-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-city-stack">
         <!-- Top HUD -->
-        <div id="story-hud" style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:linear-gradient(180deg,rgba(20,20,30,0.95) 0%,rgba(10,10,18,0.97) 100%);border-bottom:2px solid #444;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.4);">
-            <div style="display:flex;gap:14px;align-items:center;">
-                <span id="story-hud-city" style="color:var(--accent);font-size:12px;font-weight:bold;font-family:var(--battle-font);letter-spacing:1px;text-shadow:1px 1px 0 rgba(0,0,0,0.7);">City 0</span>
-                <span id="story-hud-badges" style="font-size:11px;color:#aaa;font-family:var(--battle-font);" title="Gym + League milestone wins">&#9670; 0 / 8 gym badges</span>
+        <div id="story-hud" class="story-hud-bar">
+            <div class="story-hud-primary">
+                <span id="story-hud-city">City 0</span>
+                <span id="story-hud-gold">&#128176; 0G</span>
             </div>
-            <div style="display:flex;gap:10px;align-items:center;">
-                <span id="story-hud-gold" style="color:#ffd700;font-size:12px;font-weight:bold;font-family:var(--battle-font);text-shadow:1px 1px 0 rgba(0,0,0,0.7);">&#128176; 0G</span>
-                <button onclick="window.StoryMode.confirmAbandon()" style="font-size:9px;padding:4px 10px;color:#f44336;border:2px solid #f44336;border-radius:0;font-family:var(--battle-font);letter-spacing:0.5px;background:linear-gradient(180deg,#2a0808 0%,#1a0404 100%);box-shadow:inset -2px -2px 0 #1a0404,inset 2px 2px 0 #3a1010;">Abandon</button>
+            <div class="story-hud-actions">
+                <button type="button" class="story-hud-abandon" onclick="window.StoryMode.confirmAbandon()">Abandon</button>
+                <button type="button" class="story-hud-settings" onclick="window.openSettings()" aria-label="Settings">⚙</button>
             </div>
         </div>
         <!-- Main content -->
@@ -3945,7 +4080,6 @@
                     <img id="story-city-sprite" src="" alt="" onerror="this.style.visibility='hidden'" style="object-fit:contain;image-rendering:pixelated;border:none;background:transparent;">
                 </div>
                 <div id="story-city-npc-name" style="color:var(--accent);font-weight:bold;text-align:center;"></div>
-                <div id="story-city-event-label" style="color:#888;text-align:center;"></div>
             </div>
             <!-- Center: Action buttons -->
             <div id="story-city-actions" style="flex:1;display:flex;flex-direction:column;gap:8px;padding:16px;overflow-y:auto;background:rgba(6,8,14,0.25);">
@@ -3956,21 +4090,6 @@
                     </div>
                 </div>
                 <div id="story-action-buttons" style="display:flex;flex-direction:column;gap:8px;"></div>
-            </div>
-            <!-- Right: Team mini-panel (collapsible on mobile) -->
-            <div id="story-city-team" style="width:180px;flex-shrink:0;border-left:1px solid rgba(34,34,34,0.9);display:flex;flex-direction:column;overflow:hidden;background:rgba(8,8,12,0.35);">
-                <button id="story-city-team-hdr" type="button" onclick="window.StoryMode.togglePartyPanel()" style="font-size:11px;color:#888;padding:7px 8px;text-transform:uppercase;letter-spacing:1px;display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.3);border:none;border-bottom:1px solid rgba(34,34,34,0.8);cursor:pointer;width:100%;border-radius:0;flex-shrink:0;">
-                    <span>Party <span id="story-party-count" style="color:#aaa;font-size:10px;letter-spacing:0;"></span></span>
-                    <span id="story-party-toggle-arrow" style="font-size:9px;color:#555;">▲</span>
-                </button>
-                <!-- Compact sprite strip: shown when collapsed -->
-                <div id="story-team-compact-strip" style="display:none;flex-shrink:0;padding:4px 6px;overflow-x:auto;-webkit-overflow-scrolling:touch;border-bottom:1px solid rgba(34,34,34,0.6);">
-                    <div id="story-team-compact" style="display:flex;gap:4px;align-items:center;padding:2px 0;"></div>
-                </div>
-                <!-- Full panel body -->
-                <div id="story-city-team-body" style="flex:1;overflow-y:auto;padding:8px;-webkit-overflow-scrolling:touch;min-height:0;">
-                    <div id="story-team-panel" style="display:flex;flex-direction:column;gap:4px;"></div>
-                </div>
             </div>
         </div>
         </div>
@@ -4110,6 +4229,17 @@
                 <div id="story-bag-targets" style="display:flex;flex-direction:column;gap:6px;"></div>
             </div>
             <button type="button" class="story-bag-close-btn" onclick="window.closeModal('modal-story-bag')">Close</button>
+        </div>
+    </div>
+
+    <div id="modal-story-party" class="modal hidden">
+        <div class="modal-content white-outline story-party-modal-content">
+            <h3 class="story-party-modal-title">Party <span id="story-party-count" style="color:#9aa0aa;font-size:10px;letter-spacing:0;font-weight:normal;"></span></h3>
+            <p class="story-party-modal-hint">Tap a Pokémon for the full summary. Use ▲ ▼ to change lead order.</p>
+            <div id="story-party-modal-scroll" class="story-party-modal-scroll">
+                <div id="story-team-panel" style="display:flex;flex-direction:column;gap:4px;"></div>
+            </div>
+            <button type="button" class="story-bag-close-btn" onclick="window.closeModal('modal-story-party')">Close</button>
         </div>
     </div>
 
@@ -5326,6 +5456,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
             return false;
         }
+        /** Story + Colress / Mega harness: ?testmega=1 or #testmega / #testmega=1 */
+        function __testmegaUrlRequested() {
+            try {
+                if (new URLSearchParams(location.search).get('testmega') === '1') return true;
+                var h = String(location.hash || '').replace(/^#/, '');
+                if (h === 'testmega' || h === 'testmega=1' || /^testmega$/i.test(h)) return true;
+            } catch (e) {}
+            return false;
+        }
         let dataReady = _dexReady.then(function() {
             var ov = document.getElementById('app-loading-overlay');
             if (ov) ov.classList.remove('hidden');
@@ -5344,6 +5483,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { window.startCharge6TestBattle(); } catch (e) { console.warn('[testbattle]', e); }
                 }, 0);
             }
+            // ?testmega=1 is scheduled after StoryMode exists (see end of file) — do not hook here or it runs before window.StoryMode is assigned.
         }).catch(function(err) {
             var ov = document.getElementById('app-loading-overlay');
             if (ov) ov.classList.add('hidden');
@@ -17401,6 +17541,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { id:'mistyOrb',      name:'Misty Orb',     price:1000, desc:'Starts Misty Terrain for 5 turns on battle entry.', effect:'terrainMisty' },
           { id:'emergencyTeleporter', name:'Emergency Teleporter', price:800, desc:'Bypasses trapping effects once per battle.', effect:'teleport' },
         ];
+        const STORY_BATTLE_BAG_SHOP_IDS = new Set(
+            [...POKEMART_ITEMS, ...DEPT_ITEMS].filter(row => row.battleBag !== false).map(row => row.id)
+        );
+        function isNoItemRunBattleBagExcluded(item) {
+            if (!sm || !sm.settings || !sm.settings.noItemRun || !item) return false;
+            if (item.battleBag === false) return false;
+            const baseId = item.baseItemId || null;
+            if (baseId) {
+                const baseRow = [...POKEMART_ITEMS, ...DEPT_ITEMS].find(r => r.id === baseId);
+                if (baseRow && baseRow.battleBag === false) return false;
+                return STORY_BATTLE_BAG_SHOP_IDS.has(baseId);
+            }
+            const row = [...POKEMART_ITEMS, ...DEPT_ITEMS].find(r => r.id === item.id);
+            if (row && row.battleBag === false) return false;
+            return STORY_BATTLE_BAG_SHOP_IDS.has(item.id);
+        }
         // Artifacts — affect BOTH sides all run
         const ALL_ARTIFACTS = [
           { id:'tricksterWatch',  name:"Trickster's Pocket-Watch",  cost:5000, desc:'Auto-Trick Room for first 3 turns of every battle. Speed is inverted early.' },
@@ -18403,6 +18559,65 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             console.log('[Story debug] City8 seeded (6 Pokémon, 8 badges). Open Mystery Figure — Legendary Grade 1 Swap.');
         }
 
+        /** Dev: `battle.html?testmega=1` (or `#testmega`) — City6 with Power Up / Colress, all run gimmicks on, 50k G, party with Mega-capable mons. */
+        function seedTestMegaFromUrl() {
+            if (!sm.profUsed) sm.profUsed = {};
+            _pendingProfChoices = null;
+            _pendingProfCityIdx = null;
+            sm.active = true;
+            sm.version = SAVE_VER;
+            if (sm.runSeed == null || sm.runSeed === undefined) sm.runSeed = 0x7E574D45;
+            sm._strngState = null;
+            sm.eventIndex = 46;
+            sm.badges = 6;
+            sm.gold = 50000;
+            sm.storyDifficulty = sm.storyDifficulty || 'normal';
+            if (!sm.inventory) {
+                sm.inventory = {
+                    potion:0,superPotion:0,hyperPotion:0,maxPotion:0,fullRestore:0,fullHeal:0,
+                    antidote:0,burnHeal:0,maxElixir:0,
+                    xAttack:0,xDefense:0,xSpAtk:0,xSpDef:0,xSpeed:0,xAccuracy:0,
+                    direHit:0,guardSpec:0,revive:0,maxRevive:0,
+                    sunOrb:0,rainOrb:0,hailOrb:0,sandOrb:0,electricOrb:0,grassyOrb:0,psychicOrb:0,mistyOrb:0,emergencyTeleporter:0,
+                };
+            }
+            if (!sm.settings) sm.settings = { megaOn: false, zOn: false, dynaOn: false, teraOn: false, classicMode: true, noItemRun: false };
+            if (!sm.settings.enabledGens || !sm.settings.enabledGens.length) {
+                sm.settings.enabledGens = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+                sm.settings.minGen = 1;
+                sm.settings.maxGen = 9;
+            }
+            sm.settings.megaOn = true;
+            sm.settings.zOn = true;
+            sm.settings.dynaOn = true;
+            sm.settings.teraOn = true;
+            sm.settings.classicMode = sm.settings.classicMode !== false;
+            sm.settings.noItemRun = false;
+            const _megaCb = document.getElementById('story-mech-mega');
+            const _zCb = document.getElementById('story-mech-z');
+            const _dynaCb = document.getElementById('story-mech-dyna');
+            const _teraCb = document.getElementById('story-mech-tera');
+            if (_megaCb) _megaCb.checked = true;
+            if (_zCb) _zCb.checked = true;
+            if (_dynaCb) _dynaCb.checked = true;
+            if (_teraCb) _teraCb.checked = true;
+            applyMechanicsToSettings();
+            assignTrainers(normalizeEnabledGens(sm.settings.enabledGens));
+            const team = [];
+            for (const name of ['Charizard', 'Lucario']) {
+                try { team.push({ name, build: makeBuild(name) }); } catch (e) { console.warn('[testmega] makeBuild', name, e); }
+            }
+            while (team.length < 6) {
+                try { team.push({ name: 'Rattata', build: makeBuild('Rattata') }); } catch (e) { break; }
+            }
+            sm.team = team.slice(0, 6);
+            if (!sm.gymCleared) sm.gymCleared = {};
+            sm.gymCleared[6] = true;
+            save();
+            enterCity();
+            console.log('[testmega] Seeded City6 (event 46). Use "Colress — Awaken battle mechanics" — 10,000G per swap. Global mechanics synced from run flags.');
+        }
+
         function enterCity() {
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             const cidx = getCityIndex(ev);
@@ -18415,17 +18630,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             renderTeamPanel();
             renderCityActions(ev);
             syncStoryCityBackground(cidx);
-            // Restore party panel collapse state (default collapsed on mobile)
-            const teamEl = document.getElementById('story-city-team');
-            const arrow = document.getElementById('story-party-toggle-arrow');
-            if (teamEl) {
-                const isMob = document.body.classList.contains('is-mobile');
-                let savedCollapsed;
-                try { savedCollapsed = localStorage.getItem('storyPartyCollapsed'); } catch(e) {}
-                const collapsed = savedCollapsed !== null ? savedCollapsed === '1' : isMob;
-                teamEl.classList.toggle('party-collapsed', collapsed);
-                if (arrow) arrow.style.transform = collapsed ? 'rotate(180deg)' : '';
-            }
             showScreen('screen-story-city');
         }
 
@@ -18448,23 +18652,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 cityName = rawName || 'Town';
             }
             setT('story-hud-city', cityName);
-            setT('story-hud-badges', `◆ ${sm.badges} / 8 gym badges`);
             setT('story-hud-gold', `🪙 ${sm.gold.toLocaleString()}G`);
         }
 
         function renderCityActions(ev) {
             let actions = ev ? (ev[5]||[]).slice() : [];
-            // No Item Run: remove all shops from every city
-            if (sm.settings && sm.settings.noItemRun) {
-                actions = actions.filter(a => a !== 'Pokemart' && a !== 'Department Store');
-            } else {
-                // Starting city (City0): Pokémart for Normal+; Department Store only on Easy / Very Easy
-                const _sd = sm.storyDifficulty || 'normal';
-                if (getCityIndex(ev) === 0 && (_sd === 'easy' || _sd === 'veryeasy')) {
-                    actions = actions.map(a => (a === 'Pokemart' ? 'Department Store' : a));
-                }
-                if (actions.includes('Department Store')) actions = actions.filter(a => a !== 'Pokemart');
+            // Starting city (City0): Pokémart for Normal+; Department Store only on Easy / Very Easy
+            const _sd = sm.storyDifficulty || 'normal';
+            if (getCityIndex(ev) === 0 && (_sd === 'easy' || _sd === 'veryeasy')) {
+                actions = actions.map(a => (a === 'Pokemart' ? 'Department Store' : a));
             }
+            if (actions.includes('Department Store')) actions = actions.filter(a => a !== 'Pokemart');
             const cityIdx = getCityIndex(ev);
             const hasBaseProf = actions.includes('Professor');
             const hasProf = hasBaseProf || shouldForceCityProfessor(cityIdx, actions);
@@ -18475,7 +18673,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             const spriteEl = document.getElementById('story-city-sprite');
             const npcNameEl = document.getElementById('story-city-npc-name');
-            const labelEl = document.getElementById('story-city-event-label');
             const quoteEl = document.getElementById('story-city-quote');
             const dialogNameEl = document.getElementById('story-city-dialog-name');
 
@@ -18501,7 +18698,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 spriteEl.onload = function() { this.style.visibility = 'visible'; };
             }
             if (npcNameEl) npcNameEl.textContent = speakerLabel;
-            if (labelEl) labelEl.textContent = ev ? `${ev[2]} · ${sm.badges} / 8 gym badges` : `${sm.badges} / 8 gym badges`;
             if (dialogNameEl) dialogNameEl.textContent = speakerLabel;
             let quoteText = hasProf
                 ? _pickCityQuoteLine(CITY_PROFESSOR_QUOTES, cityIdx)
@@ -18538,7 +18734,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const mysteryLabel = legendMysteryGate
                         ? '❓ Mystery Figure — Legendary Grade 1 Swap (Required)'
                         : '❓ Mystery Figure — Swap in Grade 1/2 Pokémon';
-                    btn.innerHTML += makeActionBtn(mysteryLabel,'mystery','window.StoryMode.enterProfessor()','primary');
+                    btn.innerHTML += makeActionBtn(mysteryLabel,'mystery','window.StoryMode.enterProfessor()','primary',{ soft:true });
                 }
             }
             // Battle actions
@@ -18569,7 +18765,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else if (routeBlockedByMysteryGate) {
                     btn.innerHTML += `<button class="story-action-btn primary" disabled title="Talk to the Mystery Figure first" style="opacity:0.45;cursor:not-allowed;">→ Continue on Route <span style="font-size:10px;color:#aaa;">(Talk to Mystery Figure first)</span></button>`;
                 } else if (!hasLeague) {
-                    btn.innerHTML += makeActionBtn('→ Continue on Route','route','window.StoryMode.proceedToNextBattle()','primary');
+                    btn.innerHTML += makeActionBtn('→ Continue on Route','route','window.StoryMode.proceedToNextBattle()','primary',{ soft:true });
                 }
             }
             if (hasVR) {
@@ -18598,33 +18794,39 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const _tutorTeam = sm.team.length > 0;
             if (actions.includes('Move Tutor') && _tutorTeam) {
-                btn.innerHTML += makeActionBtn('📖 Move Tutor — Swap battle moves','tutor','window.StoryMode.enterTutor(\'moves\')','shop');
+                btn.innerHTML += makeActionBtn('📖 Move Tutor — Swap battle moves','tutor','window.StoryMode.enterTutor(\'moves\')','training');
             }
             if (actions.includes('Nature Rater') && _tutorTeam) {
-                btn.innerHTML += makeActionBtn('📛 Nature Rater — Adjust natures','nature','window.StoryMode.enterTutor(\'nature\')','shop');
+                btn.innerHTML += makeActionBtn('📛 Nature Rater — Adjust natures','nature','window.StoryMode.enterTutor(\'nature\')','training',{ soft:true });
             }
             if (actions.includes('Battle Dojo') && _tutorTeam) {
-                btn.innerHTML += makeActionBtn('🥋 Battle Dojo — Held items & abilities','dojo','window.StoryMode.enterTutor(\'loadout\')','shop');
+                btn.innerHTML += makeActionBtn('🥋 Battle Dojo — Held items & abilities','dojo','window.StoryMode.enterTutor(\'loadout\')','training');
             }
             const _colressMechAny = !!(sm.settings && (sm.settings.megaOn || sm.settings.zOn || sm.settings.dynaOn || sm.settings.teraOn));
             if (actions.includes('Power Up') && _tutorTeam && _colressMechAny) {
-                btn.innerHTML += makeActionBtn('🧪 Colress — Awaken battle mechanics','colress','window.StoryMode.enterColress()','shop');
+                btn.innerHTML += makeActionBtn('🧪 Colress — Awaken battle mechanics','colress','window.StoryMode.enterColress()','training',{ soft:true });
             }
             if ((sm.artifacts || []).length > 0) {
-                btn.innerHTML += makeActionBtn('✨ Artifact Hall — Toggle run artifacts','artifacts','window.StoryMode.enterArtifactHall()','shop');
+                btn.innerHTML += makeActionBtn('✨ Artifact Hall — Toggle run artifacts','artifacts','window.StoryMode.enterArtifactHall()','dept',{ soft:true });
             }
             // Pokémon Center — full party heal, free, unlimited (all difficulties)
-            btn.innerHTML += makeActionBtn('🏥 Pokémon Center — Restore your party','center','window.StoryMode.enterPokemonCenter()','link');
+            btn.innerHTML += makeActionBtn('🏥 Pokémon Center — Restore your party','center','window.StoryMode.enterPokemonCenter()','center');
+            const _partyN = sm.team.length;
+            const _partyLabel = _partyN
+                ? `Party — Team & order (${_partyN}/6)`
+                : 'Party — Empty (visit Professor)';
+            btn.innerHTML += makeActionBtn(_partyLabel, 'party', 'window.StoryMode.openPartyModal()', 'party');
             // Bag — always accessible in city to view inventory and sell items
             const _invCount = Object.keys(sm.inventory || {}).filter(k => sm.inventory[k] > 0).length;
             const _bagLabel = _invCount > 0
                 ? `🎒 Bag — View & Sell Items (${_invCount} type${_invCount !== 1 ? 's' : ''})`
                 : '🎒 Bag — Empty';
-            btn.innerHTML += makeActionBtn(_bagLabel, 'bag', 'window.StoryMode.openCityBag()', 'shop');
+            btn.innerHTML += makeActionBtn(_bagLabel, 'bag', 'window.StoryMode.openCityBag()', 'shop',{ soft:true });
         }
 
-        function makeActionBtn(label, key, onclick, cls) {
-            return `<button class="story-action-btn ${cls||''}" onclick="${onclick}">${label}</button>`;
+        function makeActionBtn(label, key, onclick, cls, opts) {
+            const soft = (opts && opts.soft) ? ' story-action-btn--soft' : '';
+            return `<button class="story-action-btn ${cls || ''}${soft}" onclick="${onclick}">${label}</button>`;
         }
 
         function getCityIndex(ev) {
@@ -18788,7 +18990,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (countEl) countEl.textContent = sm.team.length ? `(${sm.team.length}/6)` : '';
             if (!sm.team.length) {
                 panel.innerHTML='<div style="font-size:11px;color:#555;padding:4px;">Empty — visit the Professor!</div>';
-                renderCompactStrip();
                 return;
             }
             panel.innerHTML = sm.team.map((t,i) => {
@@ -18806,31 +19007,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </div>
                 </div>`;
             }).join('');
-            renderCompactStrip();
         }
 
-        function renderCompactStrip() {
-            const strip = document.getElementById('story-team-compact');
-            if (!strip) return;
-            if (!sm.team.length) { strip.innerHTML = '<span style="font-size:10px;color:#555;padding:2px 4px;">Empty</span>'; return; }
-            strip.innerHTML = sm.team.map((t,i) => {
-                const g = t.name ? getMonGrade(t.name, getBST(t.name)) : 4;
-                const borderColor = g===1?'rgba(255,60,60,0.5)':g===2?'rgba(255,193,7,0.5)':g===3?'rgba(100,200,100,0.4)':'rgba(100,150,200,0.3)';
-                return `<div class="party-compact-tile" onclick="window.StoryMode.openSummary(${i})" title="${t.name}">
-                    <img src="${getSprite(t.name,false)}" onerror="this.src=''" alt="${t.name}" style="border-color:${borderColor};">
-                    <span>${t.name}</span>
-                </div>`;
-            }).join('');
-        }
-
-        function togglePartyPanel() {
-            const teamEl = document.getElementById('story-city-team');
-            const arrow = document.getElementById('story-party-toggle-arrow');
-            if (!teamEl) return;
-            const nowCollapsed = !teamEl.classList.contains('party-collapsed');
-            teamEl.classList.toggle('party-collapsed', nowCollapsed);
-            if (arrow) arrow.style.transform = nowCollapsed ? 'rotate(180deg)' : '';
-            try { localStorage.setItem('storyPartyCollapsed', nowCollapsed ? '1' : '0'); } catch(e) {}
+        function openPartyModal() {
+            renderTeamPanel();
+            const m = document.getElementById('modal-story-party');
+            if (m) m.classList.remove('hidden');
         }
 
         function moveInParty(idx, dir) {
@@ -18842,6 +19024,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function openSummary(i) {
+            window.closeModal('modal-story-party');
             const t = sm.team[i];
             if (!t) return;
             _storySumIdx = i;
@@ -19619,7 +19802,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return typeName ? art.desc.replace(/^Type/, typeName + ' type') : art.desc;
         }
         function _getDeptFeaturedCatalogItems() {
-            return getStoryFeaturedItems();
+            let list = getStoryFeaturedItems();
+            if (sm && sm.settings && sm.settings.noItemRun) {
+                list = list.filter(item => !isNoItemRunBattleBagExcluded(item));
+            }
+            return list;
         }
         function _ensureDeptItemOfferForCity(cityIdx) {
             const cKey = String(Math.max(0, cityIdx | 0));
@@ -19649,31 +19836,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             gridEl.innerHTML = '';
 
             const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
-            const items = type === 'dept' ? [...POKEMART_ITEMS, ...DEPT_ITEMS] : POKEMART_ITEMS;
+            const rawItems = type === 'dept' ? [...POKEMART_ITEMS, ...DEPT_ITEMS] : POKEMART_ITEMS;
+            const items = rawItems.filter(item => !isNoItemRunBattleBagExcluded(item));
             if (type === 'dept') {
-                const featuredItems = _ensureDeptItemOfferForCity(cityIdx);
-                const featuredSection = document.createElement('div');
-                featuredSection.className = 'story-featured-section';
-                featuredSection.innerHTML='<h4>⭐ Featured Battle Tech (3 per city)</h4>';
-                featuredItems.forEach(item => {
-                    const canAfford = sm.gold >= item.price;
-                    const qty = sm.inventory[item.id]||0;
-                    const icon = storyShopIconCellHtml(item.id);
-                    featuredSection.innerHTML += `<div class="story-shop-item" style="border-color:${item.tier==='mega' ? '#43a047' : '#7e57c2'};">
-                        <div class="story-shop-item-row">
-                            ${icon}
-                            <div style="flex:1;min-width:0;">
-                                <h4>${item.name} <span style="float:right;color:#888;font-size:10px;">×${qty}</span></h4>
-                                <div class="desc">${item.desc}</div>
+                const featuredItems = _ensureDeptItemOfferForCity(cityIdx).filter(item => !isNoItemRunBattleBagExcluded(item));
+                if (featuredItems.length) {
+                    const featuredSection = document.createElement('div');
+                    featuredSection.className = 'story-featured-section';
+                    featuredSection.innerHTML='<h4>⭐ Featured Battle Tech (3 per city)</h4>';
+                    featuredItems.forEach(item => {
+                        const canAfford = sm.gold >= item.price;
+                        const qty = sm.inventory[item.id]||0;
+                        const icon = storyShopIconCellHtml(item.id);
+                        featuredSection.innerHTML += `<div class="story-shop-item" style="border-color:${item.tier==='mega' ? '#43a047' : '#7e57c2'};">
+                            <div class="story-shop-item-row">
+                                ${icon}
+                                <div style="flex:1;min-width:0;">
+                                    <h4>${item.name} <span style="float:right;color:#888;font-size:10px;">×${qty}</span></h4>
+                                    <div class="desc">${item.desc}</div>
+                                </div>
                             </div>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-                            <span class="price">🪙 ${item.price.toLocaleString()}G</span>
-                            <button onclick="window.StoryMode.buyItem('${item.id}',${item.price})" ${canAfford?'':'disabled'} style="font-size:11px;padding:3px 8px;${canAfford?'color:#ffb74d;border-color:#ffb74d;':'opacity:0.4;'}">Buy</button>
-                        </div>
-                    </div>`;
-                });
-                gridEl.appendChild(featuredSection);
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+                                <span class="price">🪙 ${item.price.toLocaleString()}G</span>
+                                <button onclick="window.StoryMode.buyItem('${item.id}',${item.price})" ${canAfford?'':'disabled'} style="font-size:11px;padding:3px 8px;${canAfford?'color:#ffb74d;border-color:#ffb74d;':'opacity:0.4;'}">Buy</button>
+                            </div>
+                        </div>`;
+                    });
+                    gridEl.appendChild(featuredSection);
+                }
             }
             items.forEach(item => {
                 const canAfford = sm.gold >= item.price;
@@ -19694,6 +19884,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </div>
                 </div>`;
             });
+            if (sm.settings && sm.settings.noItemRun && type === 'mart' && items.length === 0) {
+                gridEl.innerHTML += '<div style="grid-column:1/-1;color:#888;font-size:12px;padding:12px;line-height:1.4;">No battle items are stocked on a No Item Run. Run artifacts are sold at the Department Store.</div>';
+            }
             // Department Store: also show artifacts (appended inside gridEl to avoid leak across shop types)
             if (type === 'dept') {
                 const offer = _ensureDeptOfferForCity(cityIdx);
@@ -19726,7 +19919,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function buyItem(itemId, price) {
             const st = document.getElementById('screen-story-shop')?.getAttribute('data-shop-type');
-            if (st === 'dept') {
+            if (sm.settings && sm.settings.noItemRun) {
+                if (st === 'dept') {
+                    const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
+                    const featuredOffers = _ensureDeptItemOfferForCity(cityIdx).filter(i => !isNoItemRunBattleBagExcluded(i));
+                    const deptNormal = [...POKEMART_ITEMS, ...DEPT_ITEMS].filter(i => !isNoItemRunBattleBagExcluded(i));
+                    const allowed = [...deptNormal, ...featuredOffers];
+                    if (!allowed.some(i => i.id === itemId && i.price === price)) return;
+                } else {
+                    const martStock = POKEMART_ITEMS.filter(i => !isNoItemRunBattleBagExcluded(i));
+                    if (!martStock.some(i => i.id === itemId && i.price === price)) return;
+                }
+            } else if (st === 'dept') {
                 const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
                 const featuredOffers = _ensureDeptItemOfferForCity(cityIdx);
                 const normalDept = [...POKEMART_ITEMS, ...DEPT_ITEMS];
@@ -21582,14 +21786,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterLink, linkReroll, linkUpgrade, linkEvolve, linkRebuild, linkMoveUp, linkMoveDown,
             openBattleBag, useBagItemOn, openCityBag, sellItem,
             confirmAbandon, abandonAndReturn, continuePostGame,
-            openSummary, profOpenSummary, summaryMove, moveInParty, togglePartyPanel,
+            openSummary, profOpenSummary, summaryMove, moveInParty, openPartyModal,
             enterArtifactHall, toggleArtifactDisabled,
             enterTutor, tutorChangeMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
             enterColress, colressApplyMega, colressApplyDmax, colressApplyZ, colressApplyZSig, colressApplyTera,
             openTeamTester, openTeamTesterSyncFromStory, runTeamTester, copyTeamTesterText, closeTeamTester,
-            previewHallOfFame, seedDebugMysteryLegendGate,
+            previewHallOfFame, seedDebugMysteryLegendGate, seedTestMegaFromUrl,
         };
         })(); // end StoryMode IIFE
+
+        // ?testmega=1 — schedule AFTER StoryMode exists (dataReady's .then ran too early: StoryMode was still undefined).
+        (function scheduleTestMegaFromUrl() {
+            try {
+                if (typeof __testmegaUrlRequested !== 'function' || !__testmegaUrlRequested()) return;
+                if (!window.StoryMode || typeof window.StoryMode.seedTestMegaFromUrl !== 'function') return;
+                const runSeed = function() {
+                    setTimeout(function() {
+                        try {
+                            window.StoryMode.seedTestMegaFromUrl();
+                        } catch (e) {
+                            console.warn('[testmega] seed failed', e);
+                            try {
+                                if (typeof window.showGameAlert === 'function') {
+                                    window.showGameAlert('testmega=1 failed — open the browser console (F12) for details.');
+                                }
+                            } catch (_) {}
+                        }
+                    }, 0);
+                };
+                if (typeof dataReady !== 'undefined' && dataReady && typeof dataReady.then === 'function') {
+                    dataReady.then(runSeed, function(err) {
+                        console.warn('[testmega] game data failed to load', err);
+                    });
+                } else {
+                    runSeed();
+                }
+            } catch (e) {
+                console.warn('[testmega] schedule', e);
+            }
+        })();
 
         // Note: artifact effects (Trick Room, Gravity) are applied inside startBattle()
         // via the window._storyApplyArtifacts hook called at 'Battle started!' logMsg.
