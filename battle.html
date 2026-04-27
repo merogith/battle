@@ -4513,7 +4513,14 @@
                     }
                     if (m && m.exists !== false) {
                         let cat = normalizeMoveCategory(m.category);
-                        movesDB[m.name] = { type: m.type || 'Normal', cat, pow: m.basePower ?? 0, acc: typeof m.accuracy === 'number' ? m.accuracy : 100, pri: m.priority || 0, pp: m.pp || 10, eff: m.shortDesc || '', prob: (m.secondary && m.secondary.chance) || 0, mathEff: '' };
+                        let rowDex = { type: m.type || 'Normal', cat, pow: m.basePower ?? 0, acc: typeof m.accuracy === 'number' ? m.accuracy : 100, pri: m.priority || 0, pp: m.pp || 10, eff: m.shortDesc || '', prob: (m.secondary && m.secondary.chance) || 0, mathEff: '' };
+                        if (m.secondary != null) rowDex.secondary = m.secondary;
+                        if (m.secondaries != null && m.secondaries.length) rowDex.secondaries = m.secondaries;
+                        if (m.flags != null) rowDex.flags = m.flags;
+                        if (m.target) rowDex.target = m.target;
+                        if (m.boosts != null && typeof m.boosts === 'object') rowDex.boosts = m.boosts;
+                        if (m.multihit != null) rowDex.multihit = m.multihit;
+                        movesDB[m.name] = rowDex;
                         if (m.name !== moveName) movesDB[moveName] = movesDB[m.name];
                         return movesDB[moveName];
                     }
@@ -4577,6 +4584,9 @@
                     if (m.secondary != null) row.secondary = m.secondary;
                     if (m.secondaries != null && m.secondaries.length) row.secondaries = m.secondaries;
                     if (m.flags != null) row.flags = m.flags;
+                    if (m.target) row.target = m.target;
+                    if (m.boosts != null && typeof m.boosts === 'object') row.boosts = m.boosts;
+                    if (m.multihit != null) row.multihit = m.multihit;
                     movesDB[m.name] = row;
                 }
 
@@ -13209,13 +13219,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let ratio = userSpe / targetSpe;
                     basePower = ratio >= 4 ? 150 : ratio >= 3 ? 120 : ratio >= 2 ? 80 : ratio >= 1 ? 60 : 40;
                 }
-                // Multi-hit moves: calculate hit count
+                // Multi-hit: prefer moves.json `multihit` on the move object; fallback to legacy map (Metronome/Copycat moves may lack DB fields).
                 let numHits = 1;
                 const multiHitConfig = { "Icicle Spear": [2,5], "Rock Blast": [2,5], "Dual Wingbeat": [2,2], "Arm Thrust": [2,5], "Bone Rush": [2,5], "Bullet Seed": [2,5], "Pin Missile": [2,5], "Fury Attack": [2,5], "Double Slap": [2,5], "Comet Punch": [2,5], "Fury Swipes": [2,5], "Water Shuriken": [2,5], "Scale Shot": [2,5], "Tail Slap": [2,5], "Gear Grind": [2,2], "Dragon Darts": [2,2], "Double Hit": [2,2], "Twineedle": [2,2], "Spike Cannon": [2,5], "Barrage": [2,5], "Population Bomb": [1,10], "Triple Kick": [3,3], "Triple Axel": [3,3], "Triple Dive": [3,3], "Surging Strikes": [3,3], "Twin Beam": [2,2], "Double Iron Bash": [2,2], "Tachyon Cutter": [2,2] };
-                if (multiHitConfig[move.name]) {
+                let _mhSpec = move.multihit;
+                if (_mhSpec == null && multiHitConfig[move.name]) {
                     let [mn, mx] = multiHitConfig[move.name];
-                    numHits = mn === mx ? mn : [2,2,3,3,4,5][Math.floor(Math.random()*6)];
-                    if (attacker.ability === "Skill Link" || attacker.item === "Loaded Dice") numHits = mx; // Always hit max
+                    _mhSpec = mn === mx ? mn : [mn, mx];
+                }
+                if (_mhSpec != null) {
+                    const _roll25 = (mn, mx) => (mn === mx ? mn : [2, 2, 3, 3, 4, 5][Math.floor(Math.random() * 6)]);
+                    const _rollRange = (mn, mx) => {
+                        if (mn === mx) return mn;
+                        if (mn === 2 && mx === 5) return _roll25(mn, mx);
+                        return mn + Math.floor(Math.random() * (mx - mn + 1));
+                    };
+                    if (typeof _mhSpec === 'number') {
+                        numHits = Math.max(1, Math.min(25, _mhSpec));
+                    } else if (Array.isArray(_mhSpec) && _mhSpec.length >= 2) {
+                        let mn = _mhSpec[0], mx = _mhSpec[1];
+                        numHits = _rollRange(mn, mx);
+                        if (mn !== mx && (attacker.ability === "Skill Link" || attacker.item === "Loaded Dice")) numHits = mx;
+                    }
                 }
                 // Knock Off: x1.5 if target has item
                 if (move.name === "Knock Off" && defender.item && !defender.knockedOff) basePower = Math.floor(basePower * 1.5);
@@ -13687,6 +13712,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 // Apply damage
                 let hitSub = false;
+                // True only when damage was absorbed by Substitute (not Disguise) — used so Knock Off still strips items through sub
+                let hitSubFromSubstitute = false;
                 let actualDamage = 0;
                 // Disguise (Mimikyu): absorb one hit, take 1/8 max HP chip damage, block full damage
                 if (defender.ability === "Disguise" && !defender.volatile.disguiseBroken) {
@@ -13707,6 +13734,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     logMsg(`The substitute took ${subDamage} damage for ${defender.name}!`, 'dmg');
                     if (defender.volatile.sub <= 0) { defender.volatile.sub = 0; logMsg(`${defender.name}'s substitute faded!`, 'info'); }
                     hitSub = true;
+                    hitSubFromSubstitute = true;
                 } else {
                     if (defender.volatile.sub > 0 && attacker.ability === "Infiltrator") {
                         logMsg(`${attacker.name}'s Infiltrator bypassed the substitute!`, 'info');
@@ -13958,8 +13986,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
 
-                // Knock Off: Remove item (or register knock-off if Focus Sash broke this hit — item already cleared in precalc)
-                if (move.name === "Knock Off" && !hitSub && defender.currentHp > 0) {
+                // Knock Off: Remove item (or register knock-off if Focus Sash broke this hit — item already cleared in precalc).
+                // Gen 6+: item is removed even if Substitute took the damage; Disguise still blocks (hitSub without hitSubFromSubstitute).
+                if (move.name === "Knock Off" && (!hitSub || hitSubFromSubstitute) && defender.currentHp > 0) {
                     if (defender._knockOffSashProc) {
                         defender._knockOffSashProc = false;
                         defender.knockedOff = true;
