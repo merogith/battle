@@ -1480,6 +1480,10 @@
         }
         .icon-btn:hover { background: rgba(0,0,0,0.75); border-color: rgba(255,255,255,0.6); }
         .settings-btn { top: calc(8px + var(--safe-top, 0px)); right: calc(8px + var(--safe-right, 0px)); }
+        /* Hide gear during battle (all layouts) — overlap / mis-taps; menu & draft still expose settings */
+        #game-stage:has(#screen-battle:not(.hidden)) > .settings-btn {
+            display: none;
+        }
         .mob-info-btn {
             display: none; align-items: center; justify-content: center;
             width: 36px; height: 36px; min-width: 36px; min-height: 36px;
@@ -1748,9 +1752,6 @@
             border-radius: 0; border-left: none; border-right: none; border-top: none;
             padding: 5px 10px 5px 10px; font-size: clamp(11px, 3vw, 13px); z-index: 6;
         }
-        #game-stage:has(#screen-battle[data-battle-layout="portrait"]:not(.hidden)) > .settings-btn {
-            display: none;
-        }
         #screen-battle[data-battle-layout="portrait"] #battle-bottom-stack #player-stat-box {
             bottom: auto; left: auto; right: auto; width: 100%; box-sizing: border-box;
             border-radius: 0; border-left: none; border-right: none;
@@ -1818,9 +1819,6 @@
             #screen-battle .battle-bottom-stack { padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; }
             .mob-info-btn { display: inline-flex; width: 32px; height: 32px; min-width: 32px; min-height: 32px; font-size: 14px; }
             .icon-btn { width: 32px; height: 32px; min-width: 32px; min-height: 32px; right: calc(6px + var(--safe-right, 0px)); font-size: 14px; }
-            #game-stage:has(#screen-battle:not(.hidden)) > .settings-btn {
-                display: none;
-            }
             .hp-bar-container { height: 7px; margin-top: 3px; }
             #player-hp-text, #foe-hp-text { font-size: 10px; color: #bbb; }
             #foe-types, #player-types { font-size: 9px; }
@@ -3948,10 +3946,12 @@
     <div id="screen-story-gameover" class="screen hidden" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:20px;">
         <h1 style="color:#f44336;font-size:32px;margin:0;letter-spacing:3px;">DEFEATED</h1>
         <p id="story-gameover-desc" style="color:#aaa;font-size:14px;text-align:center;margin:0;max-width:400px;"></p>
+        <p id="story-gameover-center-hint" style="color:#888;font-size:11px;text-align:center;margin:0;max-width:400px;line-height:1.45;"></p>
         <div id="story-gameover-seed" style="font-size:11px;color:#666;text-align:center;max-width:420px;display:none;"></div>
         <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;">
-            <button onclick="window.StoryMode.retryFromGameOver()" style="padding:14px;color:#4caf50;border-color:#4caf50;">&#9654; Retry from Save</button>
-            <button onclick="window.StoryMode.confirmAbandon()" style="padding:12px;color:#f44336;border-color:#f44336;">&#128465; Abandon Run</button>
+            <button type="button" onclick="window.StoryMode.retryFromGameOver()" style="padding:14px;color:#4caf50;border-color:#4caf50;">&#9654; Retry from Save</button>
+            <button type="button" id="story-gameover-btn-center" onclick="window.StoryMode.retreatToLastPokemonCenter()" style="padding:14px;color:#f48fb1;border-color:#f48fb1;font-weight:bold;">&#127973; Last Pokémon Center</button>
+            <button type="button" onclick="window.StoryMode.confirmAbandon()" style="padding:12px;color:#f44336;border-color:#f44336;">&#128465; Abandon Run</button>
         </div>
     </div>
 
@@ -4069,7 +4069,7 @@
             <span id="obs-round-info" style="color:#555;font-size:10px;"></span>
         </div>
 
-        <!-- FOE: stat box top-right (sprite sits upper-center on arena), clear of settings button -->
+        <!-- FOE: stat box top-right (sprite sits upper-center on arena) -->
         <div class="stat-box white-outline" id="foe-stat-box">
             <div class="stat-box-header">
                 <span id="foe-name" class="stat-box-name">MissingNo</span>
@@ -9475,6 +9475,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const mon = state.fActive;
             if (!mon || mon.currentHp <= 0) return false;
             const hpPct = mon.currentHp / mon.maxHp;
+            // Tuned thresholds (were 0.42 / 0.28): fewer opportunistic full heals
+            const FOE_MAX_POTION_HP = 0.32;
+            const FOE_FULL_RESTORE_HP = 0.22;
             if (mon.status && (inv.fullHeal || 0) > 0) {
                 inv.fullHeal--;
                 mon.status = null;
@@ -9483,7 +9486,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 updateUI();
                 return true;
             }
-            if (hpPct <= 0.42 && (inv.maxPotion || 0) > 0) {
+            if (hpPct <= FOE_MAX_POTION_HP && (inv.maxPotion || 0) > 0) {
                 inv.maxPotion--;
                 const h = mon.maxHp - mon.currentHp;
                 mon.currentHp = mon.maxHp;
@@ -9492,7 +9495,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 updateUI();
                 return true;
             }
-            if (hpPct <= 0.28 && (inv.fullRestore || 0) > 0) {
+            if (hpPct <= FOE_FULL_RESTORE_HP && (inv.fullRestore || 0) > 0) {
                 inv.fullRestore--;
                 mon.currentHp = mon.maxHp;
                 mon.status = null;
@@ -9500,6 +9503,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 state.foeStoryItemUsedThisTurn = true;
                 updateUI();
                 return true;
+            }
+            // Bench Revive / Max Revive (highest BST fainted non-active)
+            let benchTgt = null, bestBst = -1;
+            for (let i = 0; i < (state.foeParty || []).length; i++) {
+                const m = state.foeParty[i];
+                if (!m || m === mon || m.currentHp > 0) continue;
+                const b = getBST(m.name);
+                if (b > bestBst) { bestBst = b; benchTgt = m; }
+            }
+            if (benchTgt) {
+                if ((inv.maxRevive || 0) > 0) {
+                    inv.maxRevive--;
+                    benchTgt.currentHp = benchTgt.maxHp;
+                    benchTgt.status = null;
+                    logMsg(`The foe used a Max Revive on ${benchTgt.name}!`, 'heal');
+                    state.foeStoryItemUsedThisTurn = true;
+                    updateUI();
+                    return true;
+                }
+                if ((inv.revive || 0) > 0) {
+                    inv.revive--;
+                    benchTgt.currentHp = Math.floor(benchTgt.maxHp / 2);
+                    benchTgt.status = null;
+                    logMsg(`The foe used a Revive on ${benchTgt.name}!`, 'heal');
+                    state.foeStoryItemUsedThisTurn = true;
+                    updateUI();
+                    return true;
+                }
             }
             return false;
         };
@@ -12542,7 +12573,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 AudioSystem.playMoveSound(move);
                 await sleep(1000); return;
             }
-            
+
+            // Fling / Natural Gift: fail before accuracy (Klutz / Embargo / Magic Room / no item / unflingable — no item consumption)
+            if (move.name === "Fling") {
+                if (attacker.ability === "Klutz" || state.magicRoom > 0 || (attacker.volatile && attacker.volatile.embargo > 0) || !attacker.item || !getFlingBasePower(attacker.item)) {
+                    logMsg(`But it failed!`, 'info');
+                    await sleep(1000);
+                    return;
+                }
+            }
+            if (move.name === "Natural Gift") {
+                if (state.magicRoom > 0 || (attacker.volatile && attacker.volatile.embargo > 0) || !attacker.item) {
+                    logMsg(`But it failed!`, 'info');
+                    await sleep(1000);
+                    return;
+                }
+            }
+
             // Accuracy check
             let accMod = (attacker.ability === "Compound Eyes" || attacker.ability === "Compoundeyes") ? 1.3 : 1;
             if (attacker.ability === "Victory Star") accMod *= 1.1;
@@ -12590,6 +12637,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     attacker.volatile.charging = null;
                     attacker.volatile.invulnerable = false;
                 }
+                // Gen 5+: Fling / Natural Gift still consume the item on a miss
+                if (move.name === "Fling" || move.name === "Natural Gift") consumeFlingNaturalGiftIfHeld(attacker, move.name);
                 await sleep(1000); return;
             }
 
@@ -12608,6 +12657,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!canHitInvulnerable) {
                     logMsg(`${attacker.name}'s attack missed!`);
                     AudioSystem.playMissSound();
+                    if (move.name === "Fling" || move.name === "Natural Gift") consumeFlingNaturalGiftIfHeld(attacker, move.name);
                     await sleep(1000); return;
                 }
             }
@@ -13102,6 +13152,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (move.name === "Magnitude" && !basePower) basePower = 70;
                 if (move.name === "Natural Gift" && !basePower) basePower = 80;
+                if (move.name === "Fling" && attacker.item) {
+                    let _fp = getFlingBasePower(attacker.item);
+                    if (_fp) basePower = _fp;
+                }
                 if ((move.name === "Wring Out" || move.name === "Hard Press") && !basePower) basePower = Math.max(1, Math.floor(120 * defender.currentHp / defender.maxHp));
                 if (move.name === "Eruption" || move.name === "Water Spout") basePower = Math.max(1, Math.floor(150 * attacker.currentHp / attacker.maxHp));
                 // Final Gambit: damage = user's current HP, then user faints (handled after damage)
@@ -13471,7 +13525,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (defSide.reflect > 0 && _effectiveCat === "Physical" && crit <= 1) modifier *= 0.5;
                 if (defSide.lightScreen > 0 && _effectiveCat === "Special" && crit <= 1) modifier *= 0.5;
                 if (defSide.auroraVeil > 0 && _effectiveCat !== "Status" && crit <= 1) modifier *= 0.5;
-                if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); showBattlePopup('No Effect!', 'popup-immune', !isPlayer); await sleep(1000); return; }
+                if (typeEff === 0) {
+                    if (move.name === "Fling" || move.name === "Natural Gift") consumeFlingNaturalGiftIfHeld(attacker, move.name);
+                    logMsg(`It doesn't affect ${defender.name}...`, 'info'); showBattlePopup('No Effect!', 'popup-immune', !isPlayer); await sleep(1000); return;
+                }
 
                 // *** COMPETITIVE FIX: Lv100 damage formula ***
                 // damage = ((2*Level/5 + 2) * Power * A/D) / 50 + 2) * modifier
@@ -13560,7 +13617,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     "Kasib Berry": "Ghost", "Haban Berry": "Dragon", "Colbur Berry": "Dark",
                     "Babiri Berry": "Steel", "Chilan Berry": "Normal", "Roseli Berry": "Fairy"
                 };
-                if (attacker.ability !== "Unnerve" && defender.item && typeResistBerries[defender.item]) {
+                if (attacker.ability !== "Unnerve" && _defItemActive && defender.item && typeResistBerries[defender.item]) {
                     let berryType = typeResistBerries[defender.item];
                     if (move.type === berryType && typeEff > 1) {
                         damage = Math.floor(damage / 2);
@@ -13568,13 +13625,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         defender.item = null; defender.itemConsumed = true;
                     }
                 }
+                // Substitute blocks Focus Sash unless Infiltrator lets this move strike the holder's HP directly
+                const _sashHitsRealHp = (defender.volatile.sub | 0) <= 0 || attacker.ability === "Infiltrator";
                 // Focus Sash
-                if (defender.item === "Focus Sash" && defender.currentHp === defender.maxHp && damage >= defender.currentHp && defender.volatile.sub <= 0) {
+                if (defender.item === "Focus Sash" && defender.currentHp === defender.maxHp && damage >= defender.currentHp && _sashHitsRealHp) {
                     damage = defender.currentHp - 1; defender.item = null; defender.itemConsumed = true;
+                    if (move.name === "Knock Off") defender._knockOffSashProc = true;
                     logMsg(`${defender.name} hung on using its Focus Sash!`, 'info');
                 }
                 // Sturdy: Survive any hit from full HP with 1 HP (bypassed by Mold Breaker)
-                if (_defAbilityActive && defender.ability === "Sturdy" && defender.currentHp === defender.maxHp && damage >= defender.currentHp && defender.volatile.sub <= 0) {
+                if (_defAbilityActive && defender.ability === "Sturdy" && defender.currentHp === defender.maxHp && damage >= defender.currentHp && _sashHitsRealHp) {
                     damage = defender.currentHp - 1;
                     logMsg(`${defender.name}'s Sturdy let it endure the hit!`, 'info');
                 }
@@ -13616,6 +13676,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         let rc = Math.max(1, Math.floor(attacker.maxHp * 0.1)); let ar = Math.min(attacker.currentHp, rc); attacker.currentHp -= ar;
                         logMsg(`${attacker.name} lost ${ar} HP from Life Orb recoil!`, 'dmg');
                     }
+                    if ((move.name === "Fling" || move.name === "Natural Gift") && attacker.item) consumeFlingNaturalGiftIfHeld(attacker, move.name);
                     await parseMoveEffects(attacker, defender, move, isPlayer); updateUI();
                     return;
                 }
@@ -13893,28 +13954,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
 
-                // Knock Off: Remove item
-                if (move.name === "Knock Off" && defender.item && !hitSub && defender.currentHp > 0) {
-                    const _item = defender.item;
-                    const _unknockable = (
-                        defender.megaEvolved ||
-                        (_item && /ite$|ite [XY]$/.test(_item)) ||
-                        Z_TYPE_MAP_VALUES.has(_item) ||
-                        _item === "Red Orb" || _item === "Blue Orb" ||
-                        _item === "Griseous Orb" || _item === "Rusted Sword" || _item === "Rusted Shield" ||
-                        _item === "Booster Energy"
-                    );
-                    if (_unknockable) {
-                        // Cannot be knocked off
-                    } else if (defender.ability !== "Sticky Hold") {
-                        logMsg(`${attacker.name} knocked off ${defender.name}'s ${defender.item}!`, 'info');
-                        const _knockedItem = defender.item;
-                        defender.item = null; defender.knockedOff = true;
-                        // Choice lock depends on holding the item — remove it when the Choice item is gone
-                        if (/choice/i.test(String(_knockedItem || ''))) defender.volatile.choiceLock = null;
+                // Knock Off: Remove item (or register knock-off if Focus Sash broke this hit — item already cleared in precalc)
+                if (move.name === "Knock Off" && !hitSub && defender.currentHp > 0) {
+                    if (defender._knockOffSashProc) {
+                        defender._knockOffSashProc = false;
+                        defender.knockedOff = true;
+                        logMsg(`${attacker.name} knocked off ${defender.name}'s Focus Sash!`, 'info');
                         updateUI(); await sleep(500);
-                    } else {
-                        logMsg(`${defender.name}'s Sticky Hold prevented item removal!`, 'info');
+                    } else if (defender.item) {
+                        const _item = defender.item;
+                        const _unknockable = (
+                            defender.megaEvolved ||
+                            (_item && /ite$|ite [XY]$/.test(_item)) ||
+                            Z_TYPE_MAP_VALUES.has(_item) ||
+                            _item === "Red Orb" || _item === "Blue Orb" ||
+                            _item === "Griseous Orb" || _item === "Rusted Sword" || _item === "Rusted Shield" ||
+                            _item === "Booster Energy"
+                        );
+                        if (_unknockable) {
+                            // Cannot be knocked off
+                        } else if (defender.ability !== "Sticky Hold") {
+                            logMsg(`${attacker.name} knocked off ${defender.name}'s ${defender.item}!`, 'info');
+                            const _knockedItem = defender.item;
+                            defender.item = null; defender.itemConsumed = true; defender.knockedOff = true;
+                            // Choice lock depends on holding the item — remove it when the Choice item is gone
+                            if (/choice/i.test(String(_knockedItem || ''))) defender.volatile.choiceLock = null;
+                            updateUI(); await sleep(500);
+                        } else {
+                            logMsg(`${defender.name}'s Sticky Hold prevented item removal!`, 'info');
+                        }
                     }
                 }
 
@@ -14000,6 +14068,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
 
                 // Teleport is a Status move — handled in parseMoveEffects
+            }
+
+            // Fling / Natural Gift: consume held item after the attack (including through Substitute; not on Protect — blocked earlier)
+            if (move.cat !== "Status" && (move.name === "Fling" || move.name === "Natural Gift") && attacker.item) {
+                consumeFlingNaturalGiftIfHeld(attacker, move.name);
             }
 
             // Secondary effects (for damaging moves with secondaries, and for status moves)
@@ -14495,6 +14568,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.volatile.ingrain = false;
             mon.volatile.infatuated = false;
             mon.volatile.boostedThisTurn = false;
+            if (mon._knockOffSashProc) delete mon._knockOffSashProc;
             // Zero to Hero (Palafin): transforms into Palafin-Hero on switch-out
             if (mon.ability === "Zero to Hero" && mon.name === "Palafin" && mon.currentHp > 0) {
                 mon.name = "Palafin-Hero";
@@ -14573,6 +14647,46 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${mon.name} was caught in a sticky web!`, 'info');
                 changeStage(mon, 'spe', -1, true);
             }
+        }
+
+        /** Items that cannot be selected for Fling (matches cartridge-style key stones / form items). */
+        function cannotFlingItem(item) {
+            if (!item) return true;
+            if (typeof Z_TYPE_MAP_VALUES !== 'undefined' && Z_TYPE_MAP_VALUES.has(item)) return true;
+            if (item === "Rusted Sword" || item === "Rusted Shield" || item === "Red Orb" || item === "Blue Orb" || item === "Griseous Orb") return true;
+            if (/ite$|ite [XY]$/.test(item)) return true;
+            return false;
+        }
+        /** Fling base power; 0 = cannot be flung. Berries default to 10; unknown flingable items default to 30. */
+        function getFlingBasePower(item) {
+            if (!item || cannotFlingItem(item)) return 0;
+            const FLING_POWER_MAP = {
+                "Iron Ball": 130, "Hard Stone": 100, "Rare Bone": 100, "Thick Club": 90,
+                "Deep Sea Tooth": 90, "Deep Sea Scale": 110, "Heavy-Duty Boots": 80,
+                "Razor Fang": 80, "Razor Claw": 80, "Sticky Barb": 80,
+                "Big Nugget": 130, "Nugget": 30, "Big Pearl": 30, "Pearl": 30, "Stardust": 20, "Star Piece": 30,
+                "Light Ball": 30, "Life Orb": 30, "Flame Orb": 30, "Toxic Orb": 30, "Black Sludge": 30,
+                "Assault Vest": 10, "Choice Band": 10, "Choice Specs": 10, "Choice Scarf": 10,
+                "Leftovers": 10, "White Herb": 10, "Mental Herb": 10, "Power Herb": 10, "Mirror Herb": 30,
+                "Eject Button": 30, "Red Card": 10, "Cell Battery": 30, "Absorb Bulb": 30, "Snowball": 30,
+                "Weakness Policy": 30, "Blunder Policy": 10, "Room Service": 10,
+                "Rocky Helmet": 60, "Expert Belt": 10, "Muscle Band": 10, "Wise Glasses": 10,
+                "Silver Powder": 10, "Spell Tag": 10, "Dragon Fang": 10, "Black Belt": 10, "Magnet": 10,
+                "Metal Coat": 30, "King's Rock": 30, "Scope Lens": 30,
+                "Leek": 30, "Utility Umbrella": 60, "Eviolite": 40, "Soul Dew": 30,
+                "Custap Berry": 80, "Jaboca Berry": 80, "Rowap Berry": 80
+            };
+            if (FLING_POWER_MAP[item] != null) return FLING_POWER_MAP[item];
+            if (/ Berry$/i.test(item)) return 10;
+            return 30;
+        }
+        function consumeFlingNaturalGiftIfHeld(attacker, moveName) {
+            if ((moveName !== "Fling" && moveName !== "Natural Gift") || !attacker || !attacker.item) return;
+            const lost = attacker.item;
+            attacker.item = null;
+            attacker.itemConsumed = true;
+            if (moveName === "Natural Gift") logMsg(`${attacker.name} ate its ${lost}!`, 'info');
+            else logMsg(`${attacker.name} flung its ${lost}!`, 'info');
         }
 
         function getCurrentWeather() {
@@ -15157,6 +15271,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (attacker.originalItem && !attacker.item && attacker.itemConsumed) {
                     attacker.item = attacker.originalItem;
                     attacker.itemConsumed = false;
+                    attacker.knockedOff = false;
                     logMsg(`${attacker.name} recycled its ${attacker.item}!`, 'heal');
                 } else { logMsg(`But it failed!`, 'info'); }
                 return;
@@ -15205,6 +15320,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let atkItem = attacker.item || 'nothing';
                 let defItem = defender.item || 'nothing';
                 let temp = attacker.item; attacker.item = defender.item; defender.item = temp;
+                attacker.knockedOff = false;
+                defender.knockedOff = false;
                 // Item changed — clear choice locks on both sides; new lock applies on next move
                 attacker.volatile.choiceLock = null;
                 defender.volatile.choiceLock = null;
@@ -15376,7 +15493,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Memento") { attacker.currentHp = 0; changeStage(defender, 'atk', -2, true); changeStage(defender, 'spa', -2, true); logMsg(`${attacker.name} used Memento and fainted!`, 'dmg'); return; }
             // Self-sacrifice/utility
             if (move.name === "Refresh") { if (attacker.status) { let old = attacker.status; attacker.status = null; attacker.statusTurns = 0; logMsg(`${attacker.name} cured its ${old}!`, 'heal'); } else { logMsg(`But it had no status!`, 'info'); } return; }
-            if (move.name === "Natural Gift" || move.name === "Fling") { if (!attacker.item) { logMsg(`But it failed!`, 'info'); } return; }
+            // Fling / Natural Gift: item consumption happens in performAction damage path (including sub hits); nothing left here
+            if (move.name === "Natural Gift" || move.name === "Fling") return;
 
             // === MIRROR MOVE: copy foe's last move used ===
             if (move.name === "Mirror Move") {
@@ -17362,6 +17480,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    profIntroThemePending:false,
                    storyDifficulty:'normal', runSeed:null,
                    storyMilestoneTips:{ m4:false, m8:false },
+                   storyRetryInventorySnapshot: null,
                    version:SAVE_VER };
         /** Deterministic RNG for story rolls (team picks, etc.). Sequence continues from saved _strngState. */
         function storyRngNext() {
@@ -17418,6 +17537,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sm.settings.maxGen = Math.max(...sm.settings.enabledGens);
                 }
                 if (sm.settings && typeof sm.settings.classicMode !== 'boolean') sm.settings.classicMode = true;
+                if (!('storyRetryInventorySnapshot' in sm)) sm.storyRetryInventorySnapshot = null;
                 return true;
             } catch(e) { return false; }
         }
@@ -17901,6 +18021,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 storyCityVisit: null,
                 profIntroThemePending: true,
                 storyMilestoneTips: { m4: false, m8: false },
+                storyRetryInventorySnapshot: null,
             };
             sm._strngState = null;
             _storyBattleInventorySnapshot = null;
@@ -18171,6 +18292,73 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (row && row[1] === 'City') return getCityIndex(row);
             }
             return 0;
+        }
+
+        function lastStoryCityEventIndexAtOrBefore(ei) {
+            const cap = Math.min(Math.max(0, ei | 0), STORY_EVENTS_RAW.length - 1);
+            for (let i = cap; i >= 0; i--) {
+                const row = STORY_EVENTS_RAW[i];
+                if (row && row[1] === 'City') return i;
+            }
+            return 0;
+        }
+
+        function getStoryDisplayTownNameForCityRow(cityEv) {
+            if (!cityEv) return 'Town';
+            const rawName = cityEv[2] ? String(cityEv[2]) : '';
+            const cityIdx = rawName.startsWith('City') ? parseInt(rawName.slice(4), 10) : -1;
+            if (cityIdx === 0) return 'Pallet Town';
+            if (cityIdx >= 1 && cityIdx <= 8) {
+                const leaderEvIdx = GYM_CITY_LEADER_EVENT[cityIdx];
+                const leaderName = sm.trainerAssignments && sm.trainerAssignments[leaderEvIdx];
+                return (leaderName && GYM_LEADER_CITY_NAMES[leaderName]) || ('City ' + cityIdx);
+            }
+            if (cityIdx === 9) return 'Pokemon League';
+            return rawName || 'Town';
+        }
+
+        function _storyGoldFeeAppliesForRetreat() {
+            const d = sm.storyDifficulty || 'normal';
+            return d === 'normal' || d === 'hard' || d === 'challenge' || d === 'hardcore';
+        }
+
+        function _storyCalcRetreatGoldFee() {
+            if (!_storyGoldFeeAppliesForRetreat()) return 0;
+            const g = Math.max(0, sm.gold | 0);
+            const raw = Math.max(100, Math.floor(g / 2));
+            return Math.min(raw, g);
+        }
+
+        function _storyFullHealPartySlots() {
+            (sm.team || []).forEach(slot => {
+                if (!slot) return;
+                slot.currentHp = null;
+                slot.status = null;
+                slot.statusTurns = 0;
+                slot.pp = null;
+                slot.consumedItem = false;
+            });
+        }
+
+        function refreshStoryGameOverRetreatUI() {
+            const targetIdx = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
+            const cityEv = STORY_EVENTS_RAW[targetIdx];
+            const town = getStoryDisplayTownNameForCityRow(cityEv);
+            const btn = document.getElementById('story-gameover-btn-center');
+            const hint = document.getElementById('story-gameover-center-hint');
+            if (btn) {
+                const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+                btn.innerHTML = `🏥 Last Pokémon Center<br><span style="font-size:11px;font-weight:normal;opacity:0.92;">Return to ${esc(town)}</span>`;
+            }
+            if (hint) {
+                const d = sm.storyDifficulty || 'normal';
+                if (d === 'veryeasy' || d === 'easy') {
+                    hint.textContent = 'No gold cost on this difficulty. Used bag items stay used.';
+                } else {
+                    const fee = _storyCalcRetreatGoldFee();
+                    hint.textContent = 'Heals your party. Lose ' + fee.toLocaleString() + 'G (half your gold, min 100G, max what you have). Used bag items stay used.';
+                }
+            }
         }
 
         function preferredTypeBeforeGymBattle(battleIdx) {
@@ -18803,6 +18991,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function onBattleEnd(won, title, desc) {
             if (won) {
                 _storyBattleInventorySnapshot = null;
+                sm.storyRetryInventorySnapshot = null;
                 const ev = STORY_EVENTS_RAW[sm.eventIndex];
                 if (!ev) return;
                 const [idx, type, event, , coins] = ev;
@@ -18846,13 +19035,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     processNextEvent();
                 }, event);
             } else {
-                // Defeat: show game over — persist cursor + enemy lock so Retry resumes this battle
-                if (_storyBattleInventorySnapshot) {
-                    try {
-                        sm.inventory = deepClone(_storyBattleInventorySnapshot);
-                    } catch (e) { /* keep current inventory */ }
-                    _storyBattleInventorySnapshot = null;
+                // Defeat: keep consumed bag on save; stash pre-fight inventory for Retry only
+                try {
+                    if (_storyBattleInventorySnapshot) {
+                        sm.storyRetryInventorySnapshot = deepClone(_storyBattleInventorySnapshot);
+                    } else {
+                        sm.storyRetryInventorySnapshot = null;
+                    }
+                } catch (e) {
+                    sm.storyRetryInventorySnapshot = null;
                 }
+                _storyBattleInventorySnapshot = null;
                 try { save(); } catch (e) { console.warn('[Story] Defeat save', e); }
                 document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
                 const ev = STORY_EVENTS_RAW[sm.eventIndex];
@@ -18864,12 +19057,52 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const sv = (sm.runSeed >>> 0).toString();
                     seedEl.innerHTML = `Run seed: <code style="color:#888;">${sv}</code><br><button type="button" style="margin-top:8px;font-size:11px;padding:4px 10px;" onclick="navigator.clipboard.writeText('${sv}').then(function(){window.showGameAlert('Seed copied');}).catch(function(){})">Copy seed</button>`;
                 } else if (seedEl) seedEl.style.display = 'none';
+                refreshStoryGameOverRetreatUI();
                 showScreen('screen-story-gameover');
             }
+        }
+        function retreatToLastPokemonCenter() {
+            if (!sm.active) return;
+            try {
+                if (typeof state !== 'undefined' && state.mode === 'story' && state.playerParty && state.playerParty.length && sm.team) {
+                    const isHardcore = sm.storyDifficulty === 'hardcore';
+                    sm.team = state.playerParty.map(m => {
+                        const slot = {
+                            name: m._baseName || m.name,
+                            build: m.buildData ? deepClone(m.buildData) : (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).build
+                        };
+                        if (isHardcore) {
+                            slot.currentHp = m.currentHp;
+                            slot.status = m.status || null;
+                            slot.statusTurns = m.statusTurns | 0;
+                            slot.pp = (m.moves || []).map(mv => mv.pp);
+                            slot.consumedItem = !!m.itemConsumed;
+                        }
+                        return slot;
+                    }).filter(t => t.build);
+                }
+            } catch (e) { console.warn('[Story] retreat team sync', e); }
+            _storyFullHealPartySlots();
+            const fee = _storyCalcRetreatGoldFee();
+            sm.gold = Math.max(0, (sm.gold | 0) - fee);
+            sm.eventIndex = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
+            sm.currentEnemyLock = null;
+            sm.storyRetryInventorySnapshot = null;
+            _storyBattleInventorySnapshot = null;
+            try { save(); } catch (e) { console.warn('[Story] retreat save', e); }
+            document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
+            enterCity();
         }
         function retryFromGameOver() {
             if (!load()) { showMenu(true); return; }
             if (sm.active !== true) sm.active = true;
+            if (sm.storyRetryInventorySnapshot) {
+                try {
+                    sm.inventory = deepClone(sm.storyRetryInventorySnapshot);
+                } catch (e) { /* keep inventory */ }
+                sm.storyRetryInventorySnapshot = null;
+                try { save(); } catch (e) { console.warn('[Story] retry inv save', e); }
+            }
             applyMechanicsToSettings();
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             if (ev && ev[1] === 'Battle' && sm.currentEnemyLock && sm.currentEnemyLock.eventIdx === sm.eventIndex) {
@@ -18948,13 +19181,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── SHOPS ─────────────────────────────────────────────────────────
         function enterPokemonCenter() {
-            sm.team.forEach(slot => {
-                slot.currentHp = null;   // null = recalculate as full on next build
-                slot.status = null;
-                slot.statusTurns = 0;
-                slot.pp = null;
-                slot.consumedItem = false;
-            });
+            _storyFullHealPartySlots();
             save();
             renderTeamPanel();
             // Show heal confirmation in city dialog
@@ -19764,6 +19991,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             window._storyHofToken = (window._storyHofToken || 0) + 1;
             window.closeModal('modal-story-abandon-confirm');
             sm.active = false;
+            sm.storyRetryInventorySnapshot = null;
+            _storyBattleInventorySnapshot = null;
             deleteSave();
             document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
             document.getElementById('screen-menu').classList.remove('hidden');
@@ -19846,21 +20075,61 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window._storyApplyArtifacts = applyArtifactBattleEffects;
 
         function buildFoeStoryInventoryForBattle() {
+            const emptyInv = () => ({ maxPotion: 0, fullRestore: 0, fullHeal: 0, revive: 0, maxRevive: 0 });
             if (!sm || !sm.active) return null;
-            if (sm.settings && sm.settings.noItemRun) return { maxPotion: 0, fullRestore: 0, fullHeal: 0 };
-            if (typeof settings !== 'undefined' && settings.storyBattleItems === false) return { maxPotion: 0, fullRestore: 0, fullHeal: 0 };
+            if (sm.settings && sm.settings.noItemRun) return emptyInv();
+            if (typeof settings !== 'undefined' && settings.storyBattleItems === false) return emptyInv();
             const gymCount = Object.values(sm.gymCleared || {}).filter(Boolean).length;
             const badges = sm.badges | 0;
             const diff = sm.storyDifficulty || 'normal';
-            if ((diff === 'easy' || diff === 'veryeasy') && gymCount < 3) return { maxPotion: 0, fullRestore: 0, fullHeal: 0 };
+            if ((diff === 'easy' || diff === 'veryeasy') && gymCount < 3) return emptyInv();
             const sc = diff === 'hardcore' ? 1.3 : diff === 'challenge' ? 1.2 : (diff === 'easy' || diff === 'veryeasy') ? 0.75 : diff === 'hard' ? 1.15 : 1;
-            let maxPotion = 0, fullRestore = 0, fullHeal = 0;
-            if (badges >= 2) maxPotion += Math.max(1, Math.round(1 * sc));
+            let maxPotion = 0, fullRestore = 0, fullHeal = 0, revive = 0, maxRevive = 0;
+            // Fewer Max Potions: first at 4+ badges, second at 7+ (was 2+ and 4+)
             if (badges >= 4) maxPotion += 1;
-            if (badges >= 5) fullHeal = 1;
-            if (badges >= 6) fullRestore = Math.max(1, Math.round(1 * sc));
-            if (diff === 'challenge' || diff === 'hardcore') { maxPotion += 1; fullHeal += (badges >= 5 ? 1 : 0); }
-            return { maxPotion, fullRestore, fullHeal };
+            if (badges >= 7) maxPotion += 1;
+            // Full Heal / Full Restore slightly later
+            if (badges >= 6) fullHeal = 1;
+            if (badges >= 7) fullRestore = Math.max(1, Math.round(1 * sc));
+            // Challenge: extra Full Heal from 6+ badges only (no free Max Potion at 0–1 badges)
+            if (diff === 'challenge' && badges >= 6) fullHeal += 1;
+            // Hardcore: extra Max Potion from 5+, extra Full Heal from 6+
+            if (diff === 'hardcore') {
+                if (badges >= 5) maxPotion += 1;
+                if (badges >= 6) fullHeal += 1;
+            }
+            // Hard+ bench items: stagger Revive (5–6) then Max Revive (7+); −1 Max Potion trade each
+            const hardPlus = diff === 'hard' || diff === 'challenge' || diff === 'hardcore';
+            if (hardPlus) {
+                if (badges >= 5 && badges <= 6) {
+                    revive = 1;
+                    maxPotion = Math.max(0, maxPotion - 1);
+                } else if (badges >= 7) {
+                    maxRevive = 1;
+                    maxPotion = Math.max(0, maxPotion - 1);
+                }
+            }
+            // Normal / Easy / Very Easy: boss battle extras (do not stack on Hard+ — they use badge-based revives only)
+            const isNormalLike = diff === 'normal' || diff === 'easy' || diff === 'veryeasy';
+            if (isNormalLike && typeof STORY_EVENTS_RAW !== 'undefined') {
+                try {
+                    const ev = STORY_EVENTS_RAW[sm.eventIndex];
+                    if (ev && ev[1] === 'Battle') {
+                        const label = String(ev[2] || '');
+                        if (label === 'Champion') {
+                            revive += 1;
+                            maxPotion = Math.max(0, maxPotion - 1);
+                        } else if (label === 'Rival' && badges >= 7) {
+                            revive += 1;
+                            maxPotion = Math.max(0, maxPotion - 1);
+                        } else if (label === 'Mystery Figure') {
+                            maxRevive += 1;
+                            maxPotion = Math.max(0, maxPotion - 1);
+                        }
+                    }
+                } catch (e) {}
+            }
+            return { maxPotion, fullRestore, fullHeal, revive, maxRevive };
         }
         window.buildFoeStoryInventoryForBattle = buildFoeStoryInventoryForBattle;
 
@@ -20264,7 +20533,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── PUBLIC API ────────────────────────────────────────────────────
         return {
-            showMenu, startNewRun, continueRun, retryFromGameOver, isActive, hasSave,
+            showMenu, startNewRun, continueRun, retryFromGameOver, retreatToLastPokemonCenter, isActive, hasSave,
             enterCity, enterProfessor, profRoll, profAccept, profDecline, profSelectChoice, _mysteryDoSwap,
             proceedToNextBattle, onBattleEnd, afterBattleReturn, applyHardcoreState,
             enterShop, buyItem, buyArtifact, enterPokemonCenter,
