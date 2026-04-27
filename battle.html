@@ -561,6 +561,7 @@
             margin-top: 6px; padding-top: 6px; border-top: 1px dashed #444;
             font-size: 10px; color: #aaa; font-style: italic;
         }
+        .story-tutor-current-equip.story-tutor-move-detail { margin-top: 4px; }
         .story-tutor-afford-warn {
             font-size: 10px; color: #ffb74d; margin: 6px 0 0; line-height: 1.4; padding: 6px 8px;
             border-radius: 4px; background: rgba(80, 50, 20, 0.35); border: 1px solid #5a4030;
@@ -11721,7 +11722,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let sid = isP1 ? 'player-sprite' : 'foe-sprite';
                 await playPokeballAnimation(sid, isP1);
                 await sleep(1000);
-                if (await checkFaints()) return;
+                if (await checkFaints()) {
+            // #region agent log
+            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4e3ddc'},body:JSON.stringify({sessionId:'4e3ddc',location:'battle.html:selectPartyMember:forced',message:'checkFaints true after switch-in',data:{isOver:state.isOver,isLocked:state.isLocked,pendingEoT:state.pendingEoT,mode:state.mode},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+            // #endregion
+                return; }
 
                 if (state.pendingEoT) {
                     state.pendingEoT = false;
@@ -12136,7 +12141,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     await performAction(false, pursuitMove);
                     let fainted = await checkFaints();
                     if (state.isOver) return;
-                    if (fainted) { state.isLocked = false; document.getElementById('command-menu').classList.remove('hidden'); return; }
+                    if (fainted) { state.isLocked = false; document.getElementById('command-menu').classList.remove('hidden'); // #region agent log
+            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4e3ddc'},body:JSON.stringify({sessionId:'4e3ddc',location:'battle.html:executeTurn:pursuitP1',message:'Pursuit vs p1 switch faint branch',data:{fainted,isOver:state.isOver,modalOpen:!document.getElementById('modal-party').classList.contains('hidden')},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
+            // #endregion
+ return; }
                     fMove = null; // Pursuit already used
                 }
                 if (state.p2Action.switchIndex !== null && pMove && pMove.name === "Pursuit") {
@@ -12249,7 +12257,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         let fainted = await checkFaints();
                         if (state.isOver) return;
                         if (fainted) {
-                            if (!document.getElementById('modal-party').classList.contains('hidden')) { state.pendingEoT = true; return; }
+                            if (!document.getElementById('modal-party').classList.contains('hidden')) { state.pendingEoT = true; // #region agent log
+            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4e3ddc'},body:JSON.stringify({sessionId:'4e3ddc',location:'battle.html:executeTurn:p1first faint',message:'faint after p1 move pendingEoT',data:{modalOpen:true,pendingEoT:state.pendingEoT},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+            // #endregion
+ return; } else { // #region agent log
+            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4e3ddc'},body:JSON.stringify({sessionId:'4e3ddc',location:'battle.html:executeTurn:p1first fallthrough',message:'faint but modal hidden — fall through',data:{isOver:state.isOver},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+            // #endregion
+ }
                         } else {
                             await performAction(false, fMove);
                             let fainted2 = await checkFaints();
@@ -12329,7 +12343,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return spe;
         }
 
-        /** After lastMoveUsed is set: advance Outrage-style locks / Rollout even if Protect, immunities, or invuln short-circuit damage. */
+        /** After lastMoveUsed is set: advance Outrage-style locks / Rollout. Skipped on miss / no connect (see registerMoveConnectionFailure). */
         function finalizeLockingAndRollout(attacker, move, lockingMovesSet) {
             if (!attacker || !lockingMovesSet) return;
             if (attacker.volatile._skipLockMgmtFinalize) {
@@ -12401,6 +12415,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!attacker || !attacker.volatile || !attacker.volatile.lockMove) return;
             attacker.volatile.lockMove = null;
             attacker.volatile.lockTurns = 0;
+        }
+
+        /**
+         * The move did not connect with the target (miss, evasion, immunity block, Dazzling, invuln, etc.):
+         * do not advance Outrage-style locks, Rollout, or two-turn charge. finalizeLockingAndRollout respects _skipLockMgmtFinalize.
+         * (Not used when the move is fully blocked by Protect in the usual way — that still “uses” the turn for lock fatigue.)
+         * @param {boolean} [consumeFlingOnMiss] If true (default), Fling/Natural Gift still lose the item on a whiff (Gen 5+). False for pre-use “But it failed!” (Klutz, no item, etc.).
+         */
+        function registerMoveConnectionFailure(attacker, move, consumeFlingOnMiss = true) {
+            if (!attacker || !attacker.volatile) return;
+            const nm = move && move.name;
+            if (nm === "Rollout" || nm === "Ice Ball") {
+                attacker.volatile.rolloutCount = 0;
+            }
+            clearAllMoveLock(attacker);
+            clearChargingVolatile(attacker);
+            if (consumeFlingOnMiss && (nm === "Fling" || nm === "Natural Gift")) {
+                consumeFlingNaturalGiftIfHeld(attacker, nm);
+            }
+            attacker.volatile._skipLockMgmtFinalize = true;
         }
 
         /**
@@ -12987,11 +13021,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (defender.volatile.quickGuard && (move.pri || 0) > 0 && move.cat !== "Status") {
                 logMsg(`${defender.name}'s Quick Guard blocked ${attacker.name}'s ${move.name}!`, 'info');
-                AudioSystem.playMissSound(); await sleep(1000); return;
+                AudioSystem.playMissSound();
+                registerMoveConnectionFailure(attacker, move);
+                await sleep(1000); return;
             }
             if (defender.volatile.wideGuard && move.cat !== "Status" && isSpreadMoveForWideGuard(move)) {
                 logMsg(`${defender.name}'s Wide Guard blocked the attack!`, 'info');
-                AudioSystem.playMissSound(); await sleep(1000); return;
+                AudioSystem.playMissSound();
+                registerMoveConnectionFailure(attacker, move);
+                await sleep(1000); return;
             }
             // Helping Hand: fails in singles (no ally to receive the boost)
             if (move.name === "Helping Hand") {
@@ -13008,6 +13046,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (defender.volatile.maxGuard) {
                         logMsg(`${defender.name} protected itself from the Max Move with Max Guard!`);
                         AudioSystem.playMissSound();
+                        registerMoveConnectionFailure(attacker, move);
                         await sleep(1000); return;
                     }
                     // Regular Protect fails against Max Moves — fall through to damage
@@ -13048,7 +13087,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Hail" || move.name === "Snowscape" || move.name === "Chilly Reception") { state.weather = "Hail"; state.weatherTurns = attacker.item === "Icy Rock" ? 8 : 5; logMsg(move.name === "Chilly Reception" ? "The cold reception chilled the air!" : "It started to hail!", 'info'); AudioSystem.playMoveSound(move); await sleep(1000); if (move.name === "Chilly Reception") await handlePivotSwitch(isPlayer, move); return; }
             // Future Sight / Doom Desire: intercept before damage engine (they are Special moves but deal NO immediate damage)
             if (move.name === "Future Sight" || move.name === "Doom Desire") {
-                if (defender.volatile.futureSightTurns > 0) { logMsg(`But it failed!`, 'info'); AudioSystem.playMissSound(); await sleep(1000); return; }
+                if (defender.volatile.futureSightTurns > 0) { logMsg(`But it failed!`, 'info'); AudioSystem.playMissSound(); registerMoveConnectionFailure(attacker, move); await sleep(1000); return; }
                 let fsA = attacker.stats.spa;
                 let fsD = defender.stats.spd;
                 let fsStab = calcSTAB(attacker, move);
@@ -13065,6 +13104,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Fling") {
                 if (attacker.ability === "Klutz" || state.magicRoom > 0 || (attacker.volatile && attacker.volatile.embargo > 0) || !attacker.item || !getFlingBasePower(attacker.item)) {
                     logMsg(`But it failed!`, 'info');
+                    registerMoveConnectionFailure(attacker, move, false);
                     await sleep(1000);
                     return;
                 }
@@ -13072,6 +13112,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Natural Gift") {
                 if (state.magicRoom > 0 || (attacker.volatile && attacker.volatile.embargo > 0) || !attacker.item) {
                     logMsg(`But it failed!`, 'info');
+                    registerMoveConnectionFailure(attacker, move, false);
                     await sleep(1000);
                     return;
                 }
@@ -13110,15 +13151,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!neverMiss && Math.random() * 100 > finalAcc) {
                 logMsg(`${attacker.name}'s attack missed!`);
                 AudioSystem.playMissSound();
-                // Miss resets Rollout/Ice Ball counter
-                if (move.name === "Rollout" || move.name === "Ice Ball") {
-                    attacker.volatile.rolloutCount = 0;
-                }
-                clearAllMoveLock(attacker);
-                clearChargingVolatile(attacker);
-                // Gen 5+: Fling / Natural Gift still consume the item on a miss
-                if (move.name === "Fling" || move.name === "Natural Gift") consumeFlingNaturalGiftIfHeld(attacker, move.name);
-                attacker.volatile._skipLockMgmtFinalize = true;
+                registerMoveConnectionFailure(attacker, move);
                 await sleep(1000); return;
             }
 
@@ -13137,7 +13170,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!canHitInvulnerable) {
                     logMsg(`${attacker.name}'s attack missed!`);
                     AudioSystem.playMissSound();
-                    if (move.name === "Fling" || move.name === "Natural Gift") consumeFlingNaturalGiftIfHeld(attacker, move.name);
+                    registerMoveConnectionFailure(attacker, move);
                     await sleep(1000); return;
                 }
             }
@@ -13152,6 +13185,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (effectivePri > 0 && (defender.ability === "Queenly Majesty" || defender.ability === "Dazzling" || defender.ability === "Armor Tail")) {
                     logMsg(`${defender.name}'s ${defender.ability} blocked the priority move!`, 'info');
                     AudioSystem.playMissSound();
+                    registerMoveConnectionFailure(attacker, move);
                     await sleep(1000); return;
                 }
                 // Psychic Terrain blocks priority moves against grounded targets
@@ -13160,6 +13194,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (_ptGrounded(defender)) {
                         logMsg(`Psychic Terrain protected ${defender.name} from the priority move!`, 'info');
                         AudioSystem.playMissSound();
+                        registerMoveConnectionFailure(attacker, move);
                         await sleep(1000); return;
                     }
                 }
@@ -13285,7 +13320,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // SEISMIC TOSS: Fixed 50 damage at Lv50
                 if (move.name === "Seismic Toss") {
                     let typeEff = getMoveEffectiveness(move.type, defender.type1, defender.type2);
-                    if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); await sleep(1000); return; }
+                    if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
                     let damage = 50;
                     if (defender.volatile.sub > 0) {
                         let subDmg = Math.min(defender.volatile.sub, damage); defender.volatile.sub -= subDmg;
@@ -13321,7 +13356,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // SONIC BOOM: Always deals exactly 20 damage
                 if (move.name === "Sonic Boom" || move.name === "SonicBoom") {
                     let typeEff = getMoveEffectiveness("Normal", defender.type1, defender.type2);
-                    if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); await sleep(1000); return; }
+                    if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
                     let damage = 20;
                     if (defender.volatile.sub > 0) { let subDmg = Math.min(defender.volatile.sub, damage); defender.volatile.sub -= subDmg; logMsg(`The substitute took ${subDmg} damage!`, 'dmg'); if (defender.volatile.sub <= 0) { defender.volatile.sub = 0; logMsg(`${defender.name}'s substitute faded!`, 'info'); } }
                     else { let actualDmg = Math.min(defender.currentHp, damage); defender.currentHp -= actualDmg; defender.tookDamageThisTurn = true; logMsg(`It dealt ${actualDmg} damage!`, 'dmg'); if(settings.animations){let ds=document.getElementById(!isPlayer?'foe-sprite':'player-sprite');ds.classList.add('anim-hit-flash');setTimeout(()=>ds.classList.remove('anim-hit-flash'),400);} }
@@ -13331,7 +13366,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // ENDEAVOR: Equalizes HP
                 if (move.name === "Endeavor") {
                     let typeEff = getMoveEffectiveness(move.type, defender.type1, defender.type2);
-                    if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); await sleep(1000); return; }
+                    if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
                     if (defender.currentHp > attacker.currentHp) {
                         let dmgAmount = defender.currentHp - attacker.currentHp;
                         if (defender.volatile.sub > 0) {
@@ -13348,7 +13383,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // COUNTER: Returns 2× the last physical damage taken this turn
                 if (move.name === "Counter") {
                     let lastPhys = attacker.volatile.lastPhysicalDmg || 0;
-                    if (lastPhys <= 0) { logMsg(`${attacker.name}'s Counter failed!`, 'info'); await sleep(1000); return; }
+                    if (lastPhys <= 0) { logMsg(`${attacker.name}'s Counter failed!`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
                     let counterDmg = lastPhys * 2;
                     if (defender.volatile.sub > 0) {
                         let subDmg = Math.min(defender.volatile.sub, counterDmg); defender.volatile.sub -= subDmg;
@@ -13367,7 +13402,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // MIRROR COAT: Returns 2× the last special damage taken this turn
                 if (move.name === "Mirror Coat") {
                     let lastSpec = attacker.volatile.lastSpecialDmg || 0;
-                    if (lastSpec <= 0) { logMsg(`${attacker.name}'s Mirror Coat failed!`, 'info'); await sleep(1000); return; }
+                    if (lastSpec <= 0) { logMsg(`${attacker.name}'s Mirror Coat failed!`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
                     let coatDmg = lastSpec * 2;
                     if (defender.volatile.sub > 0) {
                         let subDmg = Math.min(defender.volatile.sub, coatDmg); defender.volatile.sub -= subDmg;
@@ -13386,7 +13421,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // SUPER FANG / NATURE'S MADNESS: deal % of target's current HP
                 if (move.name === "Super Fang" || move.name === "Nature's Madness") {
                     let typeEff = getMoveEffectiveness(move.type, defender.type1, defender.type2);
-                    if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); await sleep(1000); return; }
+                    if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
                     let damage = Math.max(1, Math.floor(defender.currentHp / 2));
                     if (defender.volatile.sub > 0) { let s = Math.min(defender.volatile.sub, damage); defender.volatile.sub -= s; logMsg(`The substitute took ${s} damage!`, 'dmg'); if (defender.volatile.sub <= 0) { defender.volatile.sub = 0; logMsg(`${defender.name}'s substitute faded!`, 'info'); } }
                     else { defender.currentHp = Math.max(0, defender.currentHp - damage); defender.tookDamageThisTurn = true; if(settings.animations){let ds=document.getElementById(!isPlayer?'foe-sprite':'player-sprite');ds.classList.add('anim-hit-flash');setTimeout(()=>ds.classList.remove('anim-hit-flash'),400);} logMsg(`It dealt ${damage} damage!`, 'dmg'); }
@@ -13405,7 +13440,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // METAL BURST: deals 1.5× the last damage received this turn
                 if (move.name === "Metal Burst") {
                     let lastDmg = Math.max(attacker.volatile.lastPhysicalDmg || 0, attacker.volatile.lastSpecialDmg || 0);
-                    if (lastDmg <= 0) { logMsg(`${attacker.name}'s Metal Burst failed!`, 'info'); await sleep(1000); return; }
+                    if (lastDmg <= 0) { logMsg(`${attacker.name}'s Metal Burst failed!`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
                     let burstDmg = Math.floor(lastDmg * 1.5);
                     if (defender.volatile.sub > 0) { let s = Math.min(defender.volatile.sub, burstDmg); defender.volatile.sub -= s; logMsg(`The substitute took ${s} damage!`, 'dmg'); if (defender.volatile.sub <= 0) { defender.volatile.sub = 0; logMsg(`${defender.name}'s substitute faded!`, 'info'); } }
                     else { let a = Math.min(defender.currentHp, burstDmg); defender.currentHp -= a; defender.tookDamageThisTurn = true; if(settings.animations){let ds=document.getElementById(!isPlayer?'foe-sprite':'player-sprite');ds.classList.add('anim-hit-flash');setTimeout(()=>ds.classList.remove('anim-hit-flash'),400);} logMsg(`Metal Burst dealt ${a} damage!`, 'dmg'); }
@@ -13415,7 +13450,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // PSYWAVE: random damage 50–150% of user level (Lv50 engine: 25–75)
                 if (move.name === "Psywave") {
                     let typeEff = getMoveEffectiveness(move.type, defender.type1, defender.type2);
-                    if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); await sleep(1000); return; }
+                    if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
                     let damage = Math.max(1, Math.floor(50 * (0.5 + Math.random())));
                     if (defender.volatile.sub > 0) { let s = Math.min(defender.volatile.sub, damage); defender.volatile.sub -= s; logMsg(`The substitute took ${s} damage!`, 'dmg'); if (defender.volatile.sub <= 0) { defender.volatile.sub = 0; logMsg(`${defender.name}'s substitute faded!`, 'info'); } }
                     else { let a = Math.min(defender.currentHp, damage); defender.currentHp -= a; defender.tookDamageThisTurn = true; if(settings.animations){let ds=document.getElementById(!isPlayer?'foe-sprite':'player-sprite');ds.classList.add('anim-hit-flash');setTimeout(()=>ds.classList.remove('anim-hit-flash'),400);} logMsg(`It dealt ${a} damage!`, 'dmg'); }
@@ -13427,11 +13462,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_ohkoMoves.has(move.name)) {
                     // Sheer Cold misses non-Ice types more (accuracy=20 in DB, no special override needed)
                     // Invulnerable targets are immune
-                    if (defender.volatile.invulnerable) { logMsg(`${attacker.name}'s attack missed!`); await sleep(1000); return; }
+                    if (defender.volatile.invulnerable) { logMsg(`${attacker.name}'s attack missed!`); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
                     // Type immunity (Ghost immune to Normal-type moves → Guillotine/Fissure/Horn Drill fail)
                     if (move.name !== "Sheer Cold") {
                         let typeEff = getMoveEffectiveness(move.type || "Normal", defender.type1, defender.type2);
-                        if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); await sleep(1000); return; }
+                        if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
                     }
                     // Sturdy and Focus Sash block OHKOs
                     if (defender.ability === "Sturdy" || defender.item === "Focus Sash") {
@@ -13441,7 +13476,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     // Sheer Cold has 0% accuracy against Ice types
                     if (move.name === "Sheer Cold" && (defender.type1 === "Ice" || defender.type2 === "Ice")) {
-                        logMsg(`Sheer Cold doesn't affect ${defender.name} because it's an Ice type!`, 'info'); await sleep(1000); return;
+                        logMsg(`Sheer Cold doesn't affect ${defender.name} because it's an Ice type!`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return;
                     }
                     let ohkoDmg = defender.currentHp;
                     defender.currentHp = 0; defender.tookDamageThisTurn = true;
@@ -13454,7 +13489,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (move.name === "Beat Up") {
                     let userParty = isPlayer ? state.playerParty : state.foeParty;
                     let hitters = userParty.filter(m => m.currentHp > 0 && !m.status);
-                    if (hitters.length === 0) { logMsg(`But it failed!`, 'info'); await sleep(1000); return; }
+                    if (hitters.length === 0) { logMsg(`But it failed!`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
                     let totalBeatUp = 0;
                     for (let h of hitters) {
                         let hBase = (baseStats[h.name] || {}).atk || 10;
@@ -14023,6 +14058,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (typeEff === 0) {
                     if (move.name === "Fling" || move.name === "Natural Gift") consumeFlingNaturalGiftIfHeld(attacker, move.name);
+                    registerMoveConnectionFailure(attacker, move, false);
                     logMsg(`It doesn't affect ${defender.name}...`, 'info'); showBattlePopup('No Effect!', 'popup-immune', !isPlayer); await sleep(1000); return;
                 }
 
@@ -14619,6 +14655,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         async function checkFaints() {
             let foeFainted = state.fActive.currentHp <= 0;
             let playerFainted = state.pActive.currentHp <= 0;
+            // #region agent log
+            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4e3ddc'},body:JSON.stringify({sessionId:'4e3ddc',location:'battle.html:checkFaints:entry',message:'checkFaints entry',data:{foeFainted,playerFainted,pHp:state.pActive?state.pActive.currentHp:null,fHp:state.fActive?state.fActive.currentHp:null,isLocked:!!state.isOver?state.isLocked:state.isLocked,isOver:state.isOver},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
+            // #endregion
 
             // Check for simultaneous faint (draw condition)
             if (foeFainted && playerFainted) {
@@ -21004,8 +21043,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function _tutorRefreshMoveDetailRow(row) {
             if (!row) return;
-            const det = row.querySelector('.story-tutor-move-detail');
-            if (!det || det.classList.contains('story-tutor-move-detail--static')) return;
+            const det = row.querySelector('.story-tutor-move-picker .story-tutor-move-detail');
+            if (!det) return;
             const sel = row.querySelector('.story-tutor-move-select');
             if (sel && sel.value) det.innerHTML = _formatMoveTutorDetailHtml(sel.value);
             else det.innerHTML = '<div class="story-tutor-move-detail--empty">Select a move in the list to see type, power, and effect.</div>';
@@ -21020,6 +21059,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!s) return '';
                 return '<div class="story-tutor-choice-desc">' + _esc(s) + '</div>';
             } catch (e) { return ''; }
+        }
+        /** Under "Now: …" for dojo / nature: same text as per-option lines (items, abilities, natures). */
+        function _tutorEquippedDescHtml(key, noneMsg) {
+            if (key === '(none)' || !key) {
+                return (noneMsg != null && String(noneMsg) !== '') ? '<div class="story-tutor-choice-desc">' + _esc(String(noneMsg)) + '</div>' : '';
+            }
+            return _tutorChoiceDescBlockFromKey(String(key)) || '';
         }
 
         function _tutorMoveAllowedStrict(mt) {
@@ -21323,6 +21369,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             : '';
                         return `<div class="story-tutor-move-slot" data-has-moves="1" data-team="${idx}" data-slot="${mi}" data-slot-key="${slotKey}">`
                             + `<div class="story-tutor-option-row"><span class="current">Slot ${mi + 1}: <strong>${_esc(cm)}</strong> →</span><span class="story-tutor-price">🪙${TUTOR_COST_MOVE}G</span></div>`
+                            + `<div class="story-tutor-move-detail story-tutor-move-detail--static story-tutor-current-equip" aria-label="Current move">${_formatMoveTutorDetailHtml(cm)}</div>`
                             + `<div class="story-tutor-move-picker">`
                             + `<input type="search" class="story-tutor-move-filter" placeholder="Filter moves…" autocomplete="off" />`
                             + `<select class="story-tutor-move-select" size="8"></select>`
@@ -21344,6 +21391,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         : '';
                     itemRow = itemAvailable.length
                         ? `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentItem)}</strong> →</span></div>`
+                          + _tutorEquippedDescHtml(currentItem, 'No held item.')
                           + itemGoldWarn
                           + `<div class="story-tutor-choice-list">`
                           + itemAvailable.map(it =>
@@ -21359,7 +21407,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                               + `</div>`
                           ).join('')
                           + `</div>`
-                        : `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentItem)}</strong></span><span style="font-size:10px;color:#555;">(no alternatives)</span></div>`;
+                        : `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentItem)}</strong></span><span style="font-size:10px;color:#555;">(no alternatives)</span></div>`
+                          + _tutorEquippedDescHtml(currentItem, 'No held item.');
 
                     const currentAbility = b.a || (mon && mon.ability) || '(none)';
                     const abilAvailable = pool.abilities.filter(a => a !== currentAbility);
@@ -21368,6 +21417,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         : '';
                     abilRow = abilAvailable.length
                         ? `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentAbility)}</strong> →</span></div>`
+                          + _tutorEquippedDescHtml(currentAbility, '')
                           + abilGoldWarn
                           + `<div class="story-tutor-choice-list">`
                           + abilAvailable.map(a =>
@@ -21383,7 +21433,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                               + `</div>`
                           ).join('')
                           + `</div>`
-                        : `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentAbility)}</strong></span><span style="font-size:10px;color:#555;">(no alternatives)</span></div>`;
+                        : `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentAbility)}</strong></span><span style="font-size:10px;color:#555;">(no alternatives)</span></div>`
+                          + _tutorEquippedDescHtml(currentAbility, '');
                 }
 
                 let natureRow = '';
@@ -21395,6 +21446,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         : '';
                     natureRow = natAvailable.length
                         ? `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentNature)}</strong> →</span></div>`
+                          + _tutorEquippedDescHtml(currentNature, '')
                           + natGoldWarn
                           + `<div class="story-tutor-choice-list">`
                           + natAvailable.map(n => {
@@ -21413,20 +21465,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                               + `</div>`;
                           }).join('')
                           + `</div>`
-                        : `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentNature)}</strong></span><span style="font-size:10px;color:#555;">(no alternatives)</span></div>`;
+                        : `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentNature)}</strong></span><span style="font-size:10px;color:#555;">(no alternatives)</span></div>`
+                          + _tutorEquippedDescHtml(currentNature, '');
                 }
 
                 const moveSection = showMoves
-                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Moves</div><p class="story-tutor-moves-hint">The highlighted move in each list shows type, category, power, accuracy, PP, priority, and a short effect description next to or below the list on wider screens.</p>${moveRows}</div>`
+                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Moves</div><p class="story-tutor-moves-hint">Each box shows the effect of your <strong>current</strong> slotted move, then a replacer list: the list preview shows a selected replacement (wider screens put it beside the list).</p>${moveRows}</div>`
                     : '';
                 const itemSection = showLoadout
-                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Held Item</div><p class="story-tutor-moves-hint">Each option shows what the item does below the button (same info as hover on desktop).</p>${itemRow}</div>`
+                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Held Item</div><p class="story-tutor-moves-hint">Your equipped item is described under <strong>Now:</strong>; each swap option repeats the same style of text under its button (hover on desktop also works).</p>${itemRow}</div>`
                     : '';
                 const abilSection = showLoadout
-                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Ability</div><p class="story-tutor-moves-hint">Short ability text appears under each choice.</p>${abilRow}</div>`
+                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Ability</div><p class="story-tutor-moves-hint">Current ability and each option show short text below the line (hover on desktop also works).</p>${abilRow}</div>`
                     : '';
                 const natureSection = showNature
-                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Nature</div><p class="story-tutor-moves-hint">Stat boosts (+/−) are listed under each nature.</p>${natureRow}</div>`
+                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Nature</div><p class="story-tutor-moves-hint">Your current nature and each option show the stat spread below the name (hover on desktop also works).</p>${natureRow}</div>`
                     : '';
 
                 return `<div class="story-tutor-mon">
