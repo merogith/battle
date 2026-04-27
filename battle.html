@@ -12375,6 +12375,57 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        /** Outrage / Thrash / Petal Dance / Uproar / Raging Fury — fatigue lock cleared only on disruption that should end the rampage (not Rollout). */
+        const OUTRAGE_FAMILY_LOCKS = new Set(["Outrage", "Petal Dance", "Thrash", "Uproar", "Raging Fury"]);
+
+        function clearChargingVolatile(attacker) {
+            if (!attacker || !attacker.volatile) return;
+            if (attacker.volatile.charging) {
+                attacker.volatile.charging = null;
+                attacker.volatile.invulnerable = false;
+            }
+        }
+
+        /** Flinch, sleep, full para, etc.: ends rampage lock without fatigue confusion (handled in finalizeLockingAndRollout only on natural end). */
+        function clearOutrageFamilyLockIfHeld(attacker) {
+            if (!attacker || !attacker.volatile) return;
+            const lm = attacker.volatile.lockMove;
+            if (lm && OUTRAGE_FAMILY_LOCKS.has(lm)) {
+                attacker.volatile.lockMove = null;
+                attacker.volatile.lockTurns = 0;
+            }
+        }
+
+        /** Accuracy miss: cancel any lockMove (includes Rollout / Ice Ball chain). */
+        function clearAllMoveLock(attacker) {
+            if (!attacker || !attacker.volatile || !attacker.volatile.lockMove) return;
+            attacker.volatile.lockMove = null;
+            attacker.volatile.lockTurns = 0;
+        }
+
+        /**
+         * Truant loaf + Hyper Beam / Giga Impact recharge are one idle turn (not two).
+         * Call when canMove() returned false; pass volatile.truanting from *before* canMove().
+         */
+        function consumeTruantLoafPendingRecharge(attacker, truantingBeforeCanMove) {
+            if (!attacker || !attacker.volatile || attacker.ability !== "Truant") return;
+            if (truantingBeforeCanMove && !attacker.volatile.truanting && attacker.volatile.recharge) {
+                attacker.volatile.recharge = false;
+            }
+        }
+
+        /** After canMove() succeeded: move was committed but voided (item/ability move blocks, Attract, branched “failed!” checks). */
+        function abortPostCanMoveBlock(attacker) {
+            if (!attacker || !attacker.volatile) return;
+            clearOutrageFamilyLockIfHeld(attacker);
+            clearChargingVolatile(attacker);
+        }
+
+        function onCanMoveFailed(attacker, truantingBeforeCanMove) {
+            consumeTruantLoafPendingRecharge(attacker, truantingBeforeCanMove);
+            abortPostCanMoveBlock(attacker);
+        }
+
         async function performAction(isPlayer, move) {
             let attacker = isPlayer ? state.pActive : state.fActive;
             let defender = isPlayer ? state.fActive : state.pActive;
@@ -12394,40 +12445,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 attacker.status = null; attacker.statusTurns = 0;
                 logMsg(`${attacker.name} thawed out by using ${move.name}!`, 'info');
             }
-            // Locking moves set (declared here so disruption logic below can reference it)
-            const lockingMoves = new Set(["Outrage","Petal Dance","Thrash","Uproar","Raging Fury"]);
+            // Outrage-style fatigue locks + two-turn charge cleanup live in shared helpers (see OUTRAGE_FAMILY_LOCKS).
+            const lockingMoves = OUTRAGE_FAMILY_LOCKS;
+            const _truantCycleBeforeCanMove = attacker.volatile.truanting;
             if (!canMove(attacker, move.name)) {
-                // Disruption (paralysis, sleep, flinch, confusion self-hit, etc.) ends a locking move
-                // without applying fatigue confusion (Gen 5+ rule: only natural completion confuses)
-                if (attacker.volatile.lockMove && lockingMoves.has(attacker.volatile.lockMove)) {
-                    attacker.volatile.lockMove = null;
-                    attacker.volatile.lockTurns = 0;
-                }
-                // Disruption also cancels a two-turn charge (Fly, Dig, Bounce, etc.) and clears invulnerability
-                if (attacker.volatile.charging) {
-                    attacker.volatile.charging = null;
-                    attacker.volatile.invulnerable = false;
-                }
+                onCanMoveFailed(attacker, _truantCycleBeforeCanMove);
                 await sleep(1000); return;
             }
 
             // Disabled move check
             if (attacker.volatile.disabled && move.name === attacker.volatile.disabled) {
-                logMsg(`${attacker.name}'s ${move.name} is disabled!`, 'status'); await sleep(1000); return;
+                logMsg(`${attacker.name}'s ${move.name} is disabled!`, 'status'); abortPostCanMoveBlock(attacker); await sleep(1000); return;
             }
             // Torment: cannot use same move twice in a row
             if (attacker.volatile.torment && attacker.volatile.lastMoveUsed === move.name) {
-                logMsg(`${attacker.name} can't use the same move twice due to Torment!`, 'status'); await sleep(1000); return;
+                logMsg(`${attacker.name} can't use the same move twice due to Torment!`, 'status'); abortPostCanMoveBlock(attacker); await sleep(1000); return;
             }
             // Heal Block: cannot use healing moves
             const _hbHealMoves = new Set(["Recover","Roost","Moonlight","Morning Sun","Synthesis","Slack Off","Soft-Boiled","Milk Drink","Heal Order","Shore Up","Strength Sap","Wish","Ingrain","Aqua Ring","Drain Punch","Giga Drain","Mega Drain","Horn Leech","Parabolic Charge","Rest","Oblivion Wing","Draining Kiss","Absorb","Leech Life"]);
             if (attacker.volatile.healBlock > 0 && _hbHealMoves.has(move.name)) {
-                logMsg(`${attacker.name} can't use ${move.name} due to Heal Block!`, 'status'); await sleep(1000); return;
+                logMsg(`${attacker.name} can't use ${move.name} due to Heal Block!`, 'status'); abortPostCanMoveBlock(attacker); await sleep(1000); return;
             }
             // Throat Chop: cannot use sound-based moves
             const _tcSoundMoves = new Set(["Hyper Voice","Bug Buzz","Boomburst","Clanging Scales","Disarming Voice","Echoed Voice","Overdrive","Relic Song","Round","Snarl","Sparkling Aria","Uproar","Chatter","Clangorous Soul","Growl","Heal Bell","Howl","Metal Sound","Noble Roar","Parting Shot","Perish Song","Screech","Sing","Snore","Supersonic","Tearful Look"]);
             if (attacker.volatile.throatChop > 0 && _tcSoundMoves.has(move.name)) {
-                logMsg(`${attacker.name} can't use sound moves due to Throat Chop!`, 'status'); await sleep(1000); return;
+                logMsg(`${attacker.name} can't use sound moves due to Throat Chop!`, 'status'); abortPostCanMoveBlock(attacker); await sleep(1000); return;
             }
             // Snore: only works while the user is asleep
             if (move.name === "Snore" && attacker.status !== "SLP") {
@@ -12435,25 +12477,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`But it failed! ${attacker.name} isn't asleep!`, 'info');
                 if (move.pp > 0) move.pp--;
                 attacker.volatile.lastMoveUsed = move.name;
-                await sleep(1000); return;
+                abortPostCanMoveBlock(attacker); await sleep(1000); return;
             }
             // Imprison: cannot use moves that the opponent also knows (when opponent used Imprison)
             {
                 let foeImprisoner = isPlayer ? state.fActive : state.pActive;
                 if (foeImprisoner.volatile.imprisoned && foeImprisoner.moves.some(m => m.name === move.name)) {
-                    logMsg(`${attacker.name}'s ${move.name} is sealed by Imprison!`, 'status'); await sleep(1000); return;
+                    logMsg(`${attacker.name}'s ${move.name} is sealed by Imprison!`, 'status'); abortPostCanMoveBlock(attacker); await sleep(1000); return;
                 }
             }
             // Assault Vest blocks status moves (but not when Dynamaxed — status moves become Max Guard, which is allowed)
             {
                 let _avGimmickPending = resolveGimmickIntentForActive(isPlayer);
                 if (attacker.item === "Assault Vest" && move.cat === "Status" && move.name !== "Substitute" && !attacker.dynamaxed && _avGimmickPending !== 'DYNAMAX') {
-                    logMsg(`${attacker.name} can't use ${move.name} due to the Assault Vest!`, 'status'); await sleep(1000); return;
+                    logMsg(`${attacker.name} can't use ${move.name} due to the Assault Vest!`, 'status'); abortPostCanMoveBlock(attacker); await sleep(1000); return;
                 }
             }
             // Taunt blocks status moves
             if (attacker.volatile.taunt > 0 && move.cat === "Status") {
-                logMsg(`${attacker.name} can't use ${move.name} due to Taunt!`, 'status'); await sleep(1000); return;
+                logMsg(`${attacker.name} can't use ${move.name} due to Taunt!`, 'status'); abortPostCanMoveBlock(attacker); await sleep(1000); return;
             }
             
             // Encore forces specific move
@@ -12468,7 +12510,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             attacker.fakeOutOk = false; // Consume the first-action flag
             if (move.name === "Fake Out" && !hadFakeOutOk) {
                 logMsg(`${attacker.name} can't use Fake Out — it's not the first turn!`, 'info');
-                await sleep(1000); return;
+                abortPostCanMoveBlock(attacker); await sleep(1000); return;
             }
             
             if (move.pp <= 0) {
@@ -12478,7 +12520,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     move = { name: "Struggle", type: "Normal", cat: "Physical", pow: 50, acc: 100, pri: 0, pp: 1, maxPp: 1, eff: "User takes 25% max HP recoil.", effectStr: "User takes 25% max HP recoil." };
                 } else {
                     logMsg(`${attacker.name}'s ${move.name} has no PP left!`, 'info');
-                    await sleep(1000); return;
+                    abortPostCanMoveBlock(attacker); await sleep(1000); return;
                 }
             }
             
@@ -12487,7 +12529,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (attacker.tookDamageThisTurn) {
                     logMsg(`${attacker.name} lost its focus and couldn't move!`, 'info');
                     if (move.pp > 0) move.pp--;
-                    await sleep(1000); return;
+                    abortPostCanMoveBlock(attacker); await sleep(1000); return;
                 }
                 logMsg(`${attacker.name} is tightening its focus!`, 'info');
             }
@@ -12505,7 +12547,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     logMsg(`${attacker.name} used Sucker Punch!`);
                     logMsg(`But it failed!`);
                     attacker.volatile.lastMoveUsed = move.name;
-                    await sleep(1000); return;
+                    abortPostCanMoveBlock(attacker); await sleep(1000); return;
                 }
             }
 
@@ -12515,7 +12557,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${attacker.name} used ${move.name}!`);
                 logMsg(`But it failed!`, 'info');
                 attacker.volatile.lastMoveUsed = move.name;
-                await sleep(1000); return;
+                abortPostCanMoveBlock(attacker); await sleep(1000); return;
             }
 
             // Bide: check if we're mid-bide
@@ -12532,9 +12574,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     attacker.volatile.bideDamage = 0;
                     attacker.volatile.lastMoveUsed = "Bide";
                     logMsg(`${attacker.name} unleashed its stored energy!`);
-                    if (bideDmg <= 0) { logMsg(`But it failed!`, 'info'); await sleep(1000); return; }
+                    if (bideDmg <= 0) { logMsg(`But it failed!`, 'info'); abortPostCanMoveBlock(attacker); await sleep(1000); return; }
                     let typeEffBide = getMoveEffectiveness("Normal", defender.type1, defender.type2);
-                    if (typeEffBide === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); await sleep(1000); return; }
+                    if (typeEffBide === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); abortPostCanMoveBlock(attacker); await sleep(1000); return; }
                     let actualBideDmg = Math.min(defender.currentHp, bideDmg);
                     defender.currentHp -= actualBideDmg;
                     defender.tookDamageThisTurn = true;
@@ -12556,9 +12598,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                            (attacker.volatile.lockMove && attacker.volatile.lockTurns > 0);
 
             if (move.name === "Sleep Talk") {
-                if (attacker.status !== "SLP") { logMsg("But it failed!"); await sleep(1000); return; }
+                if (attacker.status !== "SLP") { logMsg("But it failed!"); abortPostCanMoveBlock(attacker); await sleep(1000); return; }
                 let validMoves = attacker.moves.filter(m => m.name !== "Sleep Talk" && m.name !== "Focus Punch");
-                if (validMoves.length === 0) { logMsg("But it failed!"); await sleep(1000); return; }
+                if (validMoves.length === 0) { logMsg("But it failed!"); abortPostCanMoveBlock(attacker); await sleep(1000); return; }
                 let sleepTalkPick = validMoves[Math.floor(Math.random() * validMoves.length)];
                 logMsg(`${attacker.name} used Sleep Talk and called ${sleepTalkPick.name}!`);
                 // Sleep Talk: deduct PP from Sleep Talk itself, NOT from the called move
@@ -12683,7 +12725,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let _lrHist = attacker.volatile.moveHistory || [];
                     if (!_lrOther.every(m => _lrHist.includes(m.name))) {
                         logMsg(`But it failed! ${attacker.name} hasn't used all its other moves!`, 'info');
-                        await sleep(1000); return;
+                        abortPostCanMoveBlock(attacker); await sleep(1000); return;
                     }
                 }
             }
@@ -12729,7 +12771,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${attacker.name} is in love and can't move!`, 'info');
                 if (Math.random() < 0.5) {
                     logMsg(`${attacker.name} is immobilized by love!`, 'info');
-                    await sleep(1000); return;
+                    abortPostCanMoveBlock(attacker); await sleep(1000); return;
                 }
             }
 
@@ -13072,16 +13114,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (move.name === "Rollout" || move.name === "Ice Ball") {
                     attacker.volatile.rolloutCount = 0;
                 }
-                // Miss disrupts any locking move (Outrage, Thrash, Rollout, etc.) — no confusion on disruption
-                if (attacker.volatile.lockMove) {
-                    attacker.volatile.lockMove = null;
-                    attacker.volatile.lockTurns = 0;
-                }
-                // Miss also cancels a two-turn charge (user lands / resurfaces)
-                if (attacker.volatile.charging) {
-                    attacker.volatile.charging = null;
-                    attacker.volatile.invulnerable = false;
-                }
+                clearAllMoveLock(attacker);
+                clearChargingVolatile(attacker);
                 // Gen 5+: Fling / Natural Gift still consume the item on a miss
                 if (move.name === "Fling" || move.name === "Natural Gift") consumeFlingNaturalGiftIfHeld(attacker, move.name);
                 attacker.volatile._skipLockMgmtFinalize = true;
