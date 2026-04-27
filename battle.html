@@ -13998,7 +13998,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const _item = defender.item;
                         const _unknockable = (
                             defender.megaEvolved ||
-                            (_item && /ite$|ite [XY]$/.test(_item)) ||
+                            isMegaStoneItemName(_item) ||
                             Z_TYPE_MAP_VALUES.has(_item) ||
                             _item === "Red Orb" || _item === "Blue Orb" ||
                             _item === "Griseous Orb" || _item === "Rusted Sword" || _item === "Rusted Shield" ||
@@ -14682,12 +14682,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        /** Mega Stones match *ite / *ite X|Y; Eviolite also ends in "ite" but is a normal held item. */
+        function isMegaStoneItemName(item) {
+            return !!(item && item !== "Eviolite" && /ite$|ite [XY]$/.test(item));
+        }
+
         /** Items that cannot be selected for Fling (matches cartridge-style key stones / form items). */
         function cannotFlingItem(item) {
             if (!item) return true;
             if (typeof Z_TYPE_MAP_VALUES !== 'undefined' && Z_TYPE_MAP_VALUES.has(item)) return true;
             if (item === "Rusted Sword" || item === "Rusted Shield" || item === "Red Orb" || item === "Blue Orb" || item === "Griseous Orb") return true;
-            if (/ite$|ite [XY]$/.test(item)) return true;
+            if (isMegaStoneItemName(item)) return true;
             return false;
         }
         /** Fling base power; 0 = cannot be flung. Berries default to 10; unknown flingable items default to 30. */
@@ -15347,8 +15352,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "Trick" || move.name === "Switcheroo") {
                 if (defender.ability === "Sticky Hold") { logMsg(`${defender.name}'s Sticky Hold prevented the trick!`, 'info'); return; }
-                let atkMega = attacker.megaEvolved || (attacker.item && /ite$|ite [XY]$/.test(attacker.item));
-                let defMega = defender.megaEvolved || (defender.item && /ite$|ite [XY]$/.test(defender.item));
+                let atkMega = attacker.megaEvolved || isMegaStoneItemName(attacker.item);
+                let defMega = defender.megaEvolved || isMegaStoneItemName(defender.item);
                 if (atkMega || defMega) { logMsg(`But it failed!`); return; }
                 let atkItem = attacker.item || 'nothing';
                 let defItem = defender.item || 'nothing';
