@@ -4573,7 +4573,11 @@
                 const movesJSON = movesJSONOrig['9'] || {};
                 for (let k in movesJSON) {
                     let m = movesJSON[k];
-                    movesDB[m.name] = { type: m.type, cat: normalizeMoveCategory(m.category), pow: m.basePower || 0, acc: m.accuracy===true?100:m.accuracy || 0, pri: m.priority || 0, pp: m.pp || 5, eff: m.shortDesc, desc: m.desc };
+                    let row = { type: m.type, cat: normalizeMoveCategory(m.category), pow: m.basePower || 0, acc: m.accuracy===true?100:m.accuracy || 0, pri: m.priority || 0, pp: m.pp || 5, eff: m.shortDesc, desc: m.desc };
+                    if (m.secondary != null) row.secondary = m.secondary;
+                    if (m.secondaries != null && m.secondaries.length) row.secondaries = m.secondaries;
+                    if (m.flags != null) row.flags = m.flags;
+                    movesDB[m.name] = row;
                 }
 
                 const naturesJSON = naturesJSONOrig['9'] || {};
