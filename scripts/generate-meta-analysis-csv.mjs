@@ -309,8 +309,8 @@ function main() {
   const topNatures = countMap(natureCounts).slice(0, 50);
   topNatures.forEach(([name, c], i) => pushRow('TOP_NATURES', '', i + 1, name, c, pct(c, N), '', '', ''));
 
-  const topMovesAll = countMap(moveCounts).slice(0, 50);
-  topMovesAll.forEach(([name, c], i) => {
+  const topMoves100 = countMap(moveCounts).slice(0, 100);
+  topMoves100.forEach(([name, c], i) => {
     const meta = lookupMove(name, byNameNorm);
     pushRow('TOP_MOVES_ALL', '', i + 1, name, c, pct(c, N), meta?.type || '', meta?.category || 'UNKNOWN', meta ? '' : 'unresolved in moves.json');
   });
@@ -364,6 +364,23 @@ function main() {
 
   fs.writeFileSync(outPath, outLines.join('\r\n'), 'utf8');
   console.log('Wrote', outPath, 'rows', outLines.length - 1, 'builds', N);
+
+  const finalPath = path.join(root, 'final meta top lists.csv');
+  const finalLines = ['category,rank,name,count,pct_of_builds,move_type,move_category'];
+  topMoves100.forEach(([name, c], idx) => {
+    const meta = lookupMove(name, byNameNorm);
+    finalLines.push(
+      ['MOVE', idx + 1, csvEscape(name), c, pct(c, N), csvEscape(meta?.type || ''), csvEscape(meta?.category || 'UNKNOWN')].join(',')
+    );
+  });
+  topAbilities.forEach(([name, c], idx) => {
+    finalLines.push(['ABILITY', idx + 1, csvEscape(name), c, pct(c, N), '', ''].join(','));
+  });
+  topItems.forEach(([name, c], idx) => {
+    finalLines.push(['ITEM', idx + 1, csvEscape(name), c, pct(c, N), '', ''].join(','));
+  });
+  fs.writeFileSync(finalPath, finalLines.join('\r\n'), 'utf8');
+  console.log('Wrote', finalPath, 'lines', finalLines.length);
 }
 
 main();
