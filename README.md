@@ -4,6 +4,8 @@
 
 **http://localhost:5173/battle.html**
 
+**KO / faint / hazard debug sandbox:** `http://localhost:5173/battle.html?kobugtest=1` (or `battle.html#kobugtest` — or Settings → *Developer / Story tools* → **Debug: KO / hazard test**). Puts **Stealth Rock** on your side, **Blissey** + two **Shedinja**; let the foe KO Blissey, then test forced switch chains.
+
 The dev server prints this on startup (`scripts/dev-server.cjs`; `PORT` defaults to `5173`).
 
 ## How to run

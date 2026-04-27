@@ -7,7 +7,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.webmanifest">
-    <script src="move-sfx-map.js"></script>
     <link rel="icon" href="icons/app-icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icons/app-icon.svg">
     <meta name="theme-color" content="#0a0a0a">
@@ -3802,6 +3801,7 @@
                 <div class="settings-dev-inner">
                     <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && window.StoryMode.openTeamTester();">Story team tester</button>
                     <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && window.StoryMode.seedDebugMysteryLegendGate && window.StoryMode.seedDebugMysteryLegendGate();" title="localhost or ?debugMystery=1 — City8, 8 badges, full party, then open Mystery Figure">Debug: Mystery legend gate</button>
+                    <button type="button" onclick="window.closeModal('modal-settings'); typeof window.startKoBugTestBattle==='function' && window.startKoBugTestBattle();" title="Opens ?kobugtest=1 sandbox: SR on your field, 2x Shedinja bench (die on switch), Machamp foe — use to repro faint / pendingEoT bugs.">Debug: KO / hazard test</button>
                     <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && window.StoryMode.previewHallOfFame();">Preview Hall of Fame</button>
                 </div>
             </details>
@@ -4795,6 +4795,55 @@
             return { name: mName, type: md.type, cat: md.cat, pow: md.pow, acc: md.acc, pri: md.pri, pp: md.pp, maxPp: md.pp, eff: md.eff || '', effectStr: md.eff || '', mathEff: md.mathEff || '' };
         }
 
+        /** Read height in meters: Dex Species often omits heightm on the class; raw pokedex is in D.data.Species[id]. */
+        function getSpeciesHeightMetersFromDexSpecies(s, D) {
+            if (!s) return 0;
+            const tryNum = (v) => {
+                if (v == null) return 0;
+                const n = (typeof v === 'number' && !Number.isNaN(v)) ? v
+                    : (typeof v === 'string' ? parseFloat(v) : NaN);
+                return (typeof n === 'number' && n > 0 && !Number.isNaN(n)) ? n : 0;
+            };
+            let h = tryNum(s.heightm != null ? s.heightm : s.heightM);
+            if (h > 0) return h;
+            h = tryNum(s.data && (s.data.heightm != null ? s.data.heightm : s.data.heightM));
+            if (h > 0) return h;
+            if (D && D.data && D.data.Species && s.id) {
+                const row = D.data.Species[s.id];
+                if (row) h = tryNum(row.heightm != null ? row.heightm : row.heightM);
+            }
+            return h > 0 ? h : 0;
+        }
+        /** Fill `heightM` (m) from @pkmn/dex for sprite lore when not in local JSON. */
+        function enrichBaseStatsHeightsFromDex() {
+            const D = getPssDex();
+            if (!D || !D.species || !D.species.get) {
+                if (window.__DEBUG_SPRITE_SCALE) console.log('[SpriteScale] enrichBaseStatsHeightsFromDex: skipped (no Dex yet)');
+                return;
+            }
+            let n = 0;
+            for (const name of Object.keys(baseStats)) {
+                const b = baseStats[name];
+                if (!b || b.heightM > 0) continue;
+                try {
+                    const s = D.species.get(name);
+                    const hm = getSpeciesHeightMetersFromDexSpecies(s, D);
+                    if (hm > 0) { b.heightM = hm; n++; }
+                } catch (e) {}
+            }
+            if (window.__DEBUG_SPRITE_SCALE) {
+                console.log('[SpriteScale] enrichBaseStatsHeightsFromDex: heightM added for ' + n + ' species');
+                if (n === 0) {
+                    try {
+                        const probe = D.species.get('Pikachu');
+                        const id = probe && probe.id;
+                        const raw = id && D.data && D.data.Species && D.data.Species[id];
+                        console.log('[SpriteScale] dex probe Pikachu', { id, heightmOnClass: probe && probe.heightm, heightmOnRaw: raw && raw.heightm, weightkg: probe && probe.weightkg });
+                    } catch (e) { console.log('[SpriteScale] dex probe failed', e); }
+                }
+            }
+        }
+
         async function loadGameData() {
             // === LOAD LOCAL PS_DATA JSON (Pokemon Showdown Dex) ===
             try {
@@ -4813,7 +4862,9 @@
                     if (s.name.includes('-Alola')) _gen = Math.max(_gen, 7);
                     else if (s.name.includes('-Galar') || s.name.includes('-Hisui')) _gen = Math.max(_gen, 8);
                     else if (s.name.includes('-Paldea')) _gen = Math.max(_gen, 9);
-                    const bsRow = { hp: s.baseStats.hp, atk: s.baseStats.atk, def: s.baseStats.def, spa: s.baseStats.spa, spd: s.baseStats.spd, spe: s.baseStats.spe, t1: (s.types||['Normal'])[0], t2: (s.types||[])[1] || '', dex: s.num, gen: _gen, weight: s.weightkg || 10.0, abilities: s.abilities || {} };
+                    const _hm0 = s.heightm != null ? s.heightm : s.heightM;
+                    const _heightM = (typeof _hm0 === 'number' && _hm0 > 0) ? _hm0 : null;
+                    const bsRow = { hp: s.baseStats.hp, atk: s.baseStats.atk, def: s.baseStats.def, spa: s.baseStats.spa, spd: s.baseStats.spd, spe: s.baseStats.spe, t1: (s.types||['Normal'])[0], t2: (s.types||[])[1] || '', dex: s.num, gen: _gen, weight: s.weightkg || 10.0, heightM: _heightM, abilities: s.abilities || {} };
                     if (s.baseSpecies) bsRow.baseSpecies = s.baseSpecies;
                     if (s.changesFrom) bsRow.changesFrom = s.changesFrom;
                     if (s.prevo) bsRow.prevo = s.prevo;
@@ -4885,7 +4936,9 @@
                     try {
                         let s = D2.species.get(name);
                         if (s && s.exists !== false && s.num > 0) {
-                            const dexRow = { hp: s.baseStats.hp, atk: s.baseStats.atk, def: s.baseStats.def, spa: s.baseStats.spa, spd: s.baseStats.spd, spe: s.baseStats.spe, t1: s.types[0], t2: s.types[1] || '', dex: s.num, gen: s.gen || getGenFromDexNum(s.num), weight: s.weightkg || 10.0, abilities: s.abilities || {} };
+                            const _hm1 = s.heightm != null ? s.heightm : s.heightM;
+                            const _heightD = (typeof _hm1 === 'number' && _hm1 > 0) ? _hm1 : null;
+                            const dexRow = { hp: s.baseStats.hp, atk: s.baseStats.atk, def: s.baseStats.def, spa: s.baseStats.spa, spd: s.baseStats.spd, spe: s.baseStats.spe, t1: s.types[0], t2: s.types[1] || '', dex: s.num, gen: s.gen || getGenFromDexNum(s.num), weight: s.weightkg || 10.0, heightM: _heightD, abilities: s.abilities || {} };
                             if (s.baseSpecies) dexRow.baseSpecies = s.baseSpecies;
                             if (s.changesFrom) dexRow.changesFrom = s.changesFrom;
                             if (s.prevo) dexRow.prevo = s.prevo;
@@ -4898,6 +4951,8 @@
             }
             await loadBuildsCSV();
             computeStatScales();
+            try { if (new URLSearchParams(location.search).get('spritescaledebug') === '1') window.__DEBUG_SPRITE_SCALE = true; } catch (e) {}
+            enrichBaseStatsHeightsFromDex();
             if (Object.keys(baseStats).length === 0 || Object.keys(movesDB).length === 0) {
                 throw new Error('Critical game data missing (species or moves). Check data/ files and console.');
             }
@@ -5469,6 +5524,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
             return false;
         }
+        /** KO / hazard / forced-switch stress test: ?kobugtest=1 or #kobugtest (see startKoBugTestBattle). */
+        function __kobugtestUrlRequested() {
+            try {
+                const v = new URLSearchParams(location.search).get('kobugtest');
+                if (v === '1' || v === 'true') return true;
+                var h = String(location.hash || '').replace(/^#/, '');
+                if (h === 'kobugtest' || h === 'kobugtest=1' || /^kobugtest$/i.test(h)) return true;
+            } catch (e) {}
+            return false;
+        }
         let dataReady = _dexReady.then(function() {
             var ov = document.getElementById('app-loading-overlay');
             if (ov) ov.classList.remove('hidden');
@@ -5485,6 +5550,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } else if (__testbattleUrlRequested('charge6') && typeof window.startCharge6TestBattle === 'function') {
                 setTimeout(function() {
                     try { window.startCharge6TestBattle(); } catch (e) { console.warn('[testbattle]', e); }
+                }, 0);
+            } else if (__kobugtestUrlRequested() && typeof window.startKoBugTestBattle === 'function') {
+                setTimeout(function() {
+                    try { window.startKoBugTestBattle(); } catch (e) { console.warn('[kobugtest]', e); }
                 }, 0);
             }
             // ?testmega=1 is scheduled after StoryMode exists (see end of file) — do not hook here or it runs before window.StoryMode is assigned.
@@ -7650,14 +7719,54 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let color = getStatColor(val);
             return `<div class="stat-mini"><span class="stat-mini-label">${label}</span><div style="flex:1; height:6px; background:#222; border-radius:3px; overflow:hidden;"><div class="stat-mini-bar" style="width:${pct}%; background:${color};"></div></div><span class="stat-mini-val" style="color:${color}">${val}</span></div>`;
         }
-        /** Lore-ish sprite scale from species weight (~0.85–1.15) for battle sprites */
+        /** Tunable: battle sprite size from Pokédex weight + optional height (see enrichBaseStatsHeightsFromDex). */
+        const SPRITE_LORE_CONFIG = {
+            weightLogMin: 0.25,
+            weightLogSpan: 2.35,
+            heightLogMin: -1,
+            heightLogSpan: 2.2,
+            scaleOutMin: 0.85,
+            scaleOutSpan: 0.30,
+            curvePow: 0.85,
+            clampedMin: 0.78,
+            clampedMax: 1.12,
+            heightBlend: 0.55,
+            weightBlend: 0.45
+        };
+
+        /** Pre-combinator unit from log-mapped mass/length (0–1). */
+        function _spriteLoreLogToUnit(logVal, logMin, logSpan) {
+            const t = (logVal - logMin) / logSpan;
+            return Math.max(0, Math.min(1, t));
+        }
+
+        /** Lore-ish sprite scale from species weight + height when available (~0.85–1.15 before battle clamp). */
         function getLoreSpriteScaleFactor(speciesName) {
-            let b = baseStats[speciesName];
+            const cfg = SPRITE_LORE_CONFIG;
+            const b = baseStats[speciesName];
             const w = (b && b.weight) > 0 ? b.weight : 50;
             const logw = Math.log10(Math.max(0.1, w));
-            const t = (logw - 0.25) / 2.35;
-            const clamped = Math.max(0, Math.min(1, t));
-            return 0.85 + clamped * 0.30;
+            let tW = _spriteLoreLogToUnit(logw, cfg.weightLogMin, cfg.weightLogSpan);
+            tW = Math.pow(tW, cfg.curvePow);
+            const hM = b && b.heightM > 0 ? b.heightM : 0;
+            let tCombined;
+            if (hM > 0) {
+                const logh = Math.log10(Math.max(0.1, hM));
+                let tH = _spriteLoreLogToUnit(logh, cfg.heightLogMin, cfg.heightLogSpan);
+                tH = Math.pow(tH, cfg.curvePow);
+                tCombined = cfg.heightBlend * tH + cfg.weightBlend * tW;
+            } else {
+                tCombined = tW;
+            }
+            const out = cfg.scaleOutMin + tCombined * cfg.scaleOutSpan;
+            if (window.__DEBUG_SPRITE_SCALE && typeof console !== 'undefined') {
+                if (!window._spriteScaleDebugLogOnce) window._spriteScaleDebugLogOnce = new Set();
+                if (!window._spriteScaleDebugLogOnce.has(speciesName)) {
+                    window._spriteScaleDebugLogOnce.add(speciesName);
+                    console.log('[SpriteScale]', speciesName, { weight: w, heightM: hM || null, tCombined, rawOut: out });
+                }
+            }
+            return out;
         }
         /** Field sprite species during Transform / Imposter (appearance matches target; mon.name stays the original). */
         function getBattleSpriteSpeciesName(mon) {
@@ -7669,14 +7778,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.transformedInto) return mon.transformTargetShiny !== undefined ? mon.transformTargetShiny : mon.isShiny;
             return mon.isShiny;
         }
+        /** Final CSS scale (after clamp, incl. Dynamax) for the active battle mon — use for anim keyframes. */
+        function getSpriteLoreScaleNumber(mon) {
+            if (!mon) return 1;
+            const c = SPRITE_LORE_CONFIG;
+            const scaleName = mon.transformedInto || mon._baseName || mon.name;
+            let s = getLoreSpriteScaleFactor(scaleName);
+            s = Math.min(c.clampedMax, Math.max(c.clampedMin, s));
+            if (mon.dynamaxed) s *= 1.25;
+            return s;
+        }
         function getSpriteTransformStyle(mon) {
             if (!mon) return 'translateX(-50%)';
-            let scaleName = mon.transformedInto || mon._baseName || mon.name;
-            let s = getLoreSpriteScaleFactor(scaleName);
-            /* Keep battle sprites in a tighter band so weight-based scale doesn’t dwarf the field */
-            s = Math.min(1.08, Math.max(0.88, s));
-            if (mon.dynamaxed) s *= 1.25;
-            return `translateX(-50%) scale(${s})`;
+            return `translateX(-50%) scale(${getSpriteLoreScaleNumber(mon)})`;
         }
         window.storySummaryScrollInfo = function() {
             const m = document.getElementById('modal-story-pokemon-summary');
@@ -8281,12 +8395,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         spriteEl.classList.remove('anim-dmax-activate');
                         if (mon.dynamaxed) {
                             spriteEl.style.filter = 'drop-shadow(0 0 8px #ef5350) drop-shadow(0 0 4px #ef5350)';
-                            spriteEl.style.transform = 'translateX(-50%) scale(1.25)';
+                            spriteEl.style.transform = getSpriteTransformStyle(mon);
                         }
                     }, 950);
                 } else {
                     spriteEl.style.filter = 'drop-shadow(0 0 8px #ef5350) drop-shadow(0 0 4px #ef5350)';
-                    spriteEl.style.transform = 'translateX(-50%) scale(1.25)';
+                    spriteEl.style.transform = getSpriteTransformStyle(mon);
                 }
             }
             updateUI();
@@ -9680,14 +9794,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Play Pokemon cry on entrance
             const mon = isPlayer ? state.pActive : state.fActive;
             if (mon && mon.name) AudioSystem.playCry(mon.name, 0.45);
-            // anime.js enhanced entrance: scale bounce + fade in
+            // anime.js — bounce in; scale keyframes use lore + Dynamax (same as getSpriteTransformStyle)
+            const sEnd = mon ? getSpriteLoreScaleNumber(mon) : 1;
             await anime({
                 targets: spriteEl,
-                scale: [0.3, 1.06, 1],
-                opacity: [0, 1],
+                translateX: '-50%',
+                scale: [0.3 * sEnd, 1.06 * sEnd, sEnd],
+                opacity: [0, 1, 1],
                 duration: 420,
                 easing: 'easeOutBack'
             }).finished;
+            if (mon) spriteEl.style.transform = getSpriteTransformStyle(mon);
             anime.remove(spriteEl);
 
             flash.remove();
@@ -9856,6 +9973,62 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 document.getElementById('screen-draft').classList.add('hidden');
                 logMsg('6v6 charge test: Outrage/Dig/Fly/Solar/Dive/Meteor Beam/Hyper Beam vs stall. Link: ?testbattle=charge6 or #charge6 — enable Mega/Dyna in settings if needed.', 'info');
                 await startBattle();
+            } finally {
+                settings.partySize = prevParty;
+                settings.aiProfile = prevAi;
+            }
+        };
+
+        /**
+         * Stress-test faint chains: Stealth Rock on the player's side, Blissey active, two 1-HP Shedinja on the bench (SR kills on forced switch).
+         * Open: battle.html?kobugtest=1 or #kobugtest — or Settings → Developer / Story tools → Debug: KO / hazard test.
+         * How to use: get Blissey KO’d (e.g. Close Combat); each forced pick to Shedinja should die to rocks and chain checkFaints.
+         */
+        window.startKoBugTestBattle = async function() {
+            const eg = normalizeEnabledGens([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+            function row(name, moves) {
+                const b = makeBuild(name, { forceGimmick: 'STANDARD' });
+                b.m = moves.slice();
+                return { name: name, build: b };
+            }
+            const p1Draft = [
+                row('Blissey', ['Seismic Toss', 'Soft-Boiled', 'Protect', 'Toxic']),
+                row('Shedinja', ['Shadow Claw', 'Swords Dance', 'X-Scissor', 'Shadow Sneak']),
+                row('Shedinja', ['Shadow Claw', 'Swords Dance', 'X-Scissor', 'Shadow Sneak'])
+            ];
+            const p2Draft = [
+                row('Machamp', ['Close Combat', 'Earthquake', 'Bulk Up', 'Rest']),
+                row('Snorlax', ['Body Slam', 'Rest', 'Curse', 'Earthquake']),
+                row('Slowbro', ['Scald', 'Slack Off', 'Psychic', 'Toxic'])
+            ];
+            const prevParty = settings.partySize;
+            const prevAi = settings.aiProfile;
+            settings.partySize = 3;
+            settings.aiProfile = 'aggro';
+            state = {
+                mode: 'pve', draftTurn: 1, score: 0,
+                enabledGens: eg, minGen: 1, maxGen: 9,
+                p1Pool: [], p2Pool: [],
+                p1Draft: p1Draft,
+                p2Draft: p2Draft,
+                playerParty: [], foeParty: [],
+                pActive: null, fActive: null,
+                isOver: false, isLocked: false, pendingEoT: false,
+                weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, fieldLastMove: null,
+                pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 },
+                fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 },
+                currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0
+            };
+            try {
+                document.querySelectorAll('.screen, .modal').forEach(el => el.classList.add('hidden'));
+                document.getElementById('screen-menu').classList.add('hidden');
+                document.getElementById('screen-draft').classList.add('hidden');
+                await startBattle();
+                // Randbats builds often give Shedinja Heavy-Duty Boots; entry hazards are skipped for that item, so a 1-HP mon would wrongly survive.
+                (state.playerParty || []).forEach(m => { if (m && m.item === 'Heavy-Duty Boots') m.item = null; });
+                state.pSide.stealthRock = true;
+                logMsg('KO-bug test: Stealth Rock is on YOUR side (Shedinja bench: Heavy-Duty Boots removed so rocks apply). Let Machamp KO Blissey, then pick Shedinja to chain faints. Link: ?kobugtest=1 or #kobugtest', 'info');
+                updateUI();
             } finally {
                 settings.partySize = prevParty;
                 settings.aiProfile = prevAi;
@@ -11722,11 +11895,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let sid = isP1 ? 'player-sprite' : 'foe-sprite';
                 await playPokeballAnimation(sid, isP1);
                 await sleep(1000);
-                if (await checkFaints()) {
-            // #region agent log
-            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4e3ddc'},body:JSON.stringify({sessionId:'4e3ddc',location:'battle.html:selectPartyMember:forced',message:'checkFaints true after switch-in',data:{isOver:state.isOver,isLocked:state.isLocked,pendingEoT:state.pendingEoT,mode:state.mode},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-            // #endregion
-                return; }
+                if (await checkFaints()) return;
 
                 if (state.pendingEoT) {
                     state.pendingEoT = false;
@@ -12141,10 +12310,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     await performAction(false, pursuitMove);
                     let fainted = await checkFaints();
                     if (state.isOver) return;
-                    if (fainted) { state.isLocked = false; document.getElementById('command-menu').classList.remove('hidden'); // #region agent log
-            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4e3ddc'},body:JSON.stringify({sessionId:'4e3ddc',location:'battle.html:executeTurn:pursuitP1',message:'Pursuit vs p1 switch faint branch',data:{fainted,isOver:state.isOver,modalOpen:!document.getElementById('modal-party').classList.contains('hidden')},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
-            // #endregion
- return; }
+                    if (fainted) { state.isLocked = false; document.getElementById('command-menu').classList.remove('hidden'); return; }
                     fMove = null; // Pursuit already used
                 }
                 if (state.p2Action.switchIndex !== null && pMove && pMove.name === "Pursuit") {
@@ -12257,13 +12423,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         let fainted = await checkFaints();
                         if (state.isOver) return;
                         if (fainted) {
-                            if (!document.getElementById('modal-party').classList.contains('hidden')) { state.pendingEoT = true; // #region agent log
-            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4e3ddc'},body:JSON.stringify({sessionId:'4e3ddc',location:'battle.html:executeTurn:p1first faint',message:'faint after p1 move pendingEoT',data:{modalOpen:true,pendingEoT:state.pendingEoT},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-            // #endregion
- return; } else { // #region agent log
-            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4e3ddc'},body:JSON.stringify({sessionId:'4e3ddc',location:'battle.html:executeTurn:p1first fallthrough',message:'faint but modal hidden — fall through',data:{isOver:state.isOver},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-            // #endregion
- }
+                            if (!document.getElementById('modal-party').classList.contains('hidden')) { state.pendingEoT = true; return; }
                         } else {
                             await performAction(false, fMove);
                             let fainted2 = await checkFaints();
@@ -14655,9 +14815,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         async function checkFaints() {
             let foeFainted = state.fActive.currentHp <= 0;
             let playerFainted = state.pActive.currentHp <= 0;
-            // #region agent log
-            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4e3ddc'},body:JSON.stringify({sessionId:'4e3ddc',location:'battle.html:checkFaints:entry',message:'checkFaints entry',data:{foeFainted,playerFainted,pHp:state.pActive?state.pActive.currentHp:null,fHp:state.fActive?state.fActive.currentHp:null,isLocked:!!state.isOver?state.isLocked:state.isLocked,isOver:state.isOver},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
-            // #endregion
 
             // Check for simultaneous faint (draw condition)
             if (foeFainted && playerFainted) {
