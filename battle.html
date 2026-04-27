@@ -387,16 +387,6 @@
             #story-prof-rolled-card .prof-pick-card .prof-full-summary-btn { display: none !important; }
             #story-prof-rolled-card .prof-pick-card .prof-summary-icon-btn { display: inline-flex !important; }
         }
-        .summary-modal-mob-info, .story-summary-mob-info {
-            display: none; flex-shrink: 0; width: 36px; height: 36px; min-width: 36px; min-height: 36px;
-            align-items: center; justify-content: center; border-radius: 50%;
-            background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.35); color: #fff;
-            font-size: 16px; font-weight: bold; padding: 0; cursor: pointer; line-height: 1; margin-left: auto;
-        }
-        @media (max-width: 768px) and (orientation: portrait) {
-            .summary-modal-mob-info, .story-summary-mob-info { display: inline-flex !important; }
-        }
-        .sum-tabs-with-mob-info { flex-wrap: wrap; align-items: center; }
         /* Compact move tiles — stats row (replaces .move-btn-eff-bottom) */
         .battle-btn-move .move-tile-meta { margin-top: var(--battle-space-1); font-size: 10px; color: #888; line-height: 1.35; }
 
@@ -423,7 +413,16 @@
         .summary-stat-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
         .summary-stat-val { width: 30px; font-size: 12px; font-weight: bold; text-align: right; }
         .summary-move-slot { padding: 10px; border: 1px solid #333; background: var(--surface); border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
-        #modal-summary .modal-summary-shell { display: flex; flex-direction: column; max-height: min(92vh, 880px); padding: 10px 12px; box-sizing: border-box; }
+        #modal-summary .modal-summary-shell {
+            display: flex; flex-direction: column; max-height: min(92vh, 880px); padding: 10px 12px; box-sizing: border-box;
+            overflow-y: hidden; min-height: 0;
+            width: 100%; max-width: min(420px, 96vw); margin-left: auto; margin-right: auto;
+        }
+        /* Same stacked Overview / single-column details as narrow phones — all viewports */
+        #modal-summary .sum-overview-top { grid-template-columns: 1fr; justify-items: center; }
+        #modal-summary .sum-overview-stats { width: 100%; max-width: 100%; }
+        #modal-summary .sum-overview-details { grid-template-columns: 1fr; }
+        #modal-summary .sum-tabs > .sum-tab { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
         .summary-body-row { display: flex; gap: 8px; align-items: stretch; flex: 1 1 auto; min-height: 0; max-height: min(72vh, 720px); }
         .summary-pages-scroll { flex: 1; min-width: 0; min-height: 0; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         .summary-party-nav { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; flex-shrink: 0; padding: 2px 0; }
@@ -453,6 +452,12 @@
         .sum-tab { flex: 1; padding: 7px 4px; border: 1px solid #444; background: var(--surface); color: #888; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; text-align: center; transition: all 0.15s; }
         .sum-tab.active { border-color: var(--accent); background: #1a1700; color: var(--accent); }
         .sum-tab:hover:not(.active) { border-color: #666; color: #ccc; }
+        /* Z/Max/Base toggles on summary Moves page (not main Overview/Moves/Matchups tabs) */
+        .sum-mode-btn {
+            flex: 1; padding: 7px 4px; border: 1px solid #444; background: var(--surface); color: #888; border-radius: 4px; cursor: pointer;
+            font-size: 11px; font-weight: bold; text-align: center; transition: all 0.15s; font-family: inherit; touch-action: manipulation;
+        }
+        .sum-mode-btn:hover { border-color: #666; color: #ccc; }
         .sum-page { display: none; } .sum-page.active { display: block; }
         /* Gimmick dashboard */
         .sum-gimmick-row { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin: 6px 0; }
@@ -463,7 +468,7 @@
         .sum-move-card.upgraded-max { border-color: #b71c1c; background: #1a0000; }
         .sum-move-header { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 3px; }
         .sum-move-name { font-size: 13px; font-weight: bold; color: var(--accent); flex: 1; min-width: 120px; }
-        .sum-move-name.tip-move-cell { cursor: help; text-decoration: underline dotted rgba(255, 213, 79, 0.35); }
+        .sum-move-name.tip-move-cell { cursor: help; text-decoration: underline dotted rgba(255, 213, 79, 0.35); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
         .sum-move-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2px 6px; font-size: 10px; color: #999; margin-top: 2px; }
         .sum-move-stat-val { color: #ddd; font-weight: bold; }
         .sum-move-eff { font-size: 10px; color: #aaa; font-style: italic; margin-top: 3px; border-top: 1px dashed #2a2a2a; padding-top: 3px; line-height: 1.35; }
@@ -502,9 +507,86 @@
         .story-tutor-option-row .current { font-size:11px; color:#aaa; min-width:80px; }
         .story-tutor-btn { font-size:10px; padding:2px 7px; border:1px solid #555; border-radius:4px; background:transparent; color:#ccc; cursor:pointer; }
         .story-tutor-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
-        .story-tutor-btn:disabled { opacity:0.35; cursor:not-allowed; }
+        .story-tutor-btn:disabled { opacity: 0.55; cursor: not-allowed; color: #9a9a9a; border-color: #444; }
+        .story-tutor-apply-move:disabled {
+            opacity: 1; cursor: not-allowed;
+            background: rgba(35, 28, 28, 0.85); color: #e0c0b0; border-color: #5c4038;
+        }
         .story-tutor-btn.active { border-color:#ce93d8; color:#ce93d8; background:rgba(206,147,216,0.1); }
         .story-tutor-price { font-size:10px; color:#ffd700; margin-left:4px; }
+        .story-tutor-move-slot {
+            margin-bottom: 10px; padding: 8px; border: 1px solid #333; border-radius: 6px; background: rgba(0,0,0,0.2);
+            display: flex; flex-direction: column; align-items: stretch; gap: 6px;
+        }
+        .story-tutor-move-slot > .story-tutor-option-row { margin-bottom: 0; }
+        .story-tutor-move-picker {
+            display: flex; flex-direction: column; gap: 8px;
+            width: 100%; max-width: min(100%, 28rem); box-sizing: border-box;
+            padding: 10px; border: 1px solid #3a3a3a; border-radius: 6px;
+            background: rgba(0,0,0,0.28);
+        }
+        .story-tutor-move-picker .story-tutor-move-filter {
+            width: 100%; box-sizing: border-box; margin: 0;
+            padding: 6px 8px; font-size: 12px; border-radius: 4px; border: 1px solid #555;
+            background: var(--surface2); color: #e0e0e0; font-family: inherit;
+        }
+        .story-tutor-move-picker .story-tutor-move-select {
+            width: 100%; box-sizing: border-box; margin: 0; min-height: 11em;
+            font-size: 12px; border-radius: 4px; border: 1px solid #555;
+            background: var(--surface2); color: #ddd; font-family: inherit;
+        }
+        .story-tutor-move-picker-footer {
+            display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 4px;
+        }
+        .story-tutor-move-picker .story-tutor-apply-move {
+            width: 100%; box-sizing: border-box; margin: 0; margin-top: 0;
+            padding: 8px 12px; font-size: 11px; font-weight: 600;
+        }
+        .story-tutor-moves-hint {
+            font-size: 10px; color: #777; margin: 0 0 8px; line-height: 1.35;
+        }
+        .story-tutor-move-detail {
+            margin-top: 4px; padding: 8px 0 0; border-top: 1px solid #3a3a3a;
+            font-size: 11px; color: #c8c8c8; line-height: 1.4;
+        }
+        .story-tutor-move-slot--locked .story-tutor-move-detail { margin-top: 6px; padding-top: 8px; }
+        .story-tutor-move-detail--empty { color: #666; font-style: italic; }
+        .story-tutor-move-detail-head { margin-bottom: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+        .story-tutor-move-detail-name { font-size: 12px; color: var(--hp-yellow, #ffeb3b); }
+        .story-tutor-move-detail-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 11px;
+        }
+        .story-tutor-move-detail-pri { grid-column: 1 / -1; }
+        .story-tutor-move-detail-eff {
+            margin-top: 6px; padding-top: 6px; border-top: 1px dashed #444;
+            font-size: 10px; color: #aaa; font-style: italic;
+        }
+        .story-tutor-afford-warn {
+            font-size: 10px; color: #ffb74d; margin: 6px 0 0; line-height: 1.4; padding: 6px 8px;
+            border-radius: 4px; background: rgba(80, 50, 20, 0.35); border: 1px solid #5a4030;
+        }
+        .story-tutor-choice-list { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; width: 100%; }
+        .story-tutor-choice { border: 1px solid #333; border-radius: 6px; padding: 8px 10px; background: rgba(0,0,0,0.18); }
+        .story-tutor-choice-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .story-tutor-choice-desc {
+            font-size: 10px; color: #999; line-height: 1.4; margin-top: 6px; padding-top: 6px;
+            border-top: 1px dashed #3a3a3a;
+        }
+        @media (min-width: 720px) {
+            .story-tutor-move-picker {
+                display: grid; grid-template-columns: 1fr minmax(200px, 1fr); grid-template-rows: auto 1fr auto;
+                align-items: stretch; gap: 8px 12px; margin-inline: auto;
+            }
+            .story-tutor-move-picker .story-tutor-move-filter { grid-column: 1; grid-row: 1; }
+            .story-tutor-move-picker .story-tutor-move-select { grid-column: 1; grid-row: 2; min-height: 11em; }
+            .story-tutor-move-picker .story-tutor-move-detail {
+                grid-column: 2; grid-row: 1 / span 2; margin-top: 0; padding-top: 0;
+                border-top: none; border-left: 1px solid #3a3a3a; padding-left: 12px; align-self: start;
+            }
+            .story-tutor-move-picker .story-tutor-move-picker-footer {
+                grid-column: 1 / -1; grid-row: 3; margin-top: 0;
+            }
+        }
         .story-city-stack, .story-shop-stack, .story-link-stack {
             position: relative; z-index: 1; display: flex; flex-direction: column;
             height: 100%; min-height: 0; flex: 1;
@@ -2426,8 +2508,15 @@
                 gap: 12px !important;
                 padding: 10px !important;
             }
-            /* Summary modal: readable tab targets on portrait */
-            #modal-summary .sum-tab {
+            /* Summary modal: readable tab targets on portrait (main tabs only) */
+            #modal-summary .sum-tabs > .sum-tab {
+                min-height: 44px;
+                box-sizing: border-box;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #modal-summary .sum-mode-btn {
                 min-height: 44px;
                 box-sizing: border-box;
                 display: inline-flex;
@@ -2479,6 +2568,16 @@
         #draft-scroll-area, #battle-log, .modal, .summary-pages-scroll, #enemy-pool-grid, .modal-content {
             overscroll-behavior: contain;
             touch-action: pan-y;
+        }
+        /* Summary modal: outer shell does not scroll — #summary-pages-scroll owns vertical pan (avoids nested scroll on phones) */
+        #modal-summary.modal { touch-action: auto; }
+        #modal-summary #summary-pages-scroll.summary-pages-scroll {
+            touch-action: pan-y;
+            overscroll-behavior: contain;
+        }
+        /* Do not apply pan-y to summary shell (it does not scroll); inner #summary-pages-scroll handles vertical pan */
+        #modal-summary .modal-content.modal-summary-shell {
+            touch-action: manipulation;
         }
         #toast-host {
             position: fixed;
@@ -3723,12 +3822,11 @@
     </div>
 
     <div id="modal-summary" class="modal hidden">
-        <div class="modal-content white-outline modal-summary-shell" style="position: relative; max-width: 600px;">
-            <div class="sum-tabs sum-tabs-with-mob-info">
+        <div class="modal-content white-outline modal-summary-shell" style="position: relative;">
+            <div class="sum-tabs">
                 <button type="button" class="sum-tab active" id="sum-tab-1" onclick="window.switchSummaryTab(1)">&#9670; Overview</button>
                 <button type="button" class="sum-tab" id="sum-tab-2" onclick="window.switchSummaryTab(2)">&#9654; Moves</button>
                 <button type="button" class="sum-tab" id="sum-tab-3" onclick="window.switchSummaryTab(3)">&#9741; Matchups</button>
-                <button type="button" class="summary-modal-mob-info" onclick="window.cycleSummaryTabForMobile();" title="Next summary tab (Overview → Moves → Matchups)" aria-label="Next summary tab">&#8505;</button>
             </div>
             <div class="summary-body-row">
                 <div id="summary-pages-scroll" class="summary-pages-scroll">
@@ -3914,12 +4012,35 @@
         <div id="story-tutor-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
-            <h3 style="color:#ce93d8;margin:0;font-size:14px;">&#128218; Move Tutor</h3>
+            <h3 id="story-tutor-head-title" style="color:#ce93d8;margin:0;font-size:14px;">📖 Move Tutor</h3>
             <span id="story-tutor-gold" style="color:#ffd700;font-size:13px;font-weight:bold;">&#128176; 0G</span>
         </div>
         <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
-            <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Customize your team's moves, held items, abilities, and natures. Options are drawn from known competitive sets.</p>
+            <p id="story-tutor-head-desc" style="font-size:12px;color:#aaa;margin:0 0 12px;">Swap battle moves. Options come from known competitive sets and learnsets.</p>
             <div id="story-tutor-team" style="display:flex;flex-direction:column;gap:12px;"></div>
+        </div>
+        <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+            <button onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
+        </div>
+        </div>
+    </div>
+
+    <div id="screen-story-colress" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div id="story-colress-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
+        <div class="story-shop-stack">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;gap:10px;">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+                <img id="story-colress-portrait" src="sprites/trainers/Colress.png" alt="Colress" style="width:36px;height:36px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.visibility='hidden'">
+                <div style="min-width:0;">
+                    <h3 style="color:#ce93d8;margin:0;font-size:14px;">🧪 Colress — Power Awakening</h3>
+                    <div style="font-size:10px;color:#888;margin-top:2px;">"Splendid! Let's draw out your Pokémon's hidden potential."</div>
+                </div>
+            </div>
+            <span id="story-colress-gold" style="color:#ffd700;font-size:13px;font-weight:bold;flex-shrink:0;">&#128176; 0G</span>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
+            <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Set or swap a Pokémon's battle gimmick. Each change costs <strong style="color:#ffd700;">10,000G</strong>. The proper Mega Stone or Z-Crystal is auto-equipped (replaces current held item).</p>
+            <div id="story-colress-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
             <button onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
@@ -3951,7 +4072,7 @@
         <div id="story-gameover-seed" style="font-size:11px;color:#666;text-align:center;max-width:420px;display:none;"></div>
         <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;">
             <button type="button" onclick="window.StoryMode.retryFromGameOver()" style="padding:14px;color:#4caf50;border-color:#4caf50;">&#9654; Retry from Save</button>
-            <button type="button" id="story-gameover-btn-center" onclick="window.StoryMode.retreatToLastPokemonCenter()" style="padding:14px;color:#f48fb1;border-color:#f48fb1;font-weight:bold;">&#127973; Last Pokémon Center</button>
+            <button type="button" id="story-gameover-btn-center" onclick="window.StoryMode.retreatToLastPokemonCenter()" style="padding:14px;color:#f48fb1;border-color:#f48fb1;font-weight:bold;">Return to last city hub</button>
             <button type="button" onclick="window.StoryMode.confirmAbandon()" style="padding:12px;color:#f44336;border-color:#f44336;">&#128465; Abandon Run</button>
         </div>
     </div>
@@ -4342,6 +4463,10 @@
         }
 
         let baseStats = {}, movesDB = {}, csvBuilds = {}, tooltipDict = {};
+        /** Move names present in shipped data/moves.json (gen 9) — tutor ∩ filter (Target A). */
+        let implementedMoveNames = new Set();
+        const _tutorLearnsetCache = new Map();
+        const _tutorSlotMoveOptions = new Map();
         let _tooltipKeysCache = null;
         function invalidateTooltipKeysCache() { _tooltipKeysCache = null; }
         function getTooltipKeysSorted() {
@@ -4562,6 +4687,7 @@
                     baseStats[s.name] = bsRow;
                 }
 
+                implementedMoveNames = new Set();
                 const movesJSON = movesJSONOrig['9'] || {};
                 for (let k in movesJSON) {
                     let m = movesJSON[k];
@@ -4573,7 +4699,9 @@
                     if (m.boosts != null && typeof m.boosts === 'object') row.boosts = m.boosts;
                     if (m.multihit != null) row.multihit = m.multihit;
                     movesDB[m.name] = row;
+                    if (m.name) implementedMoveNames.add(m.name);
                 }
+                _tutorLearnsetCache.clear();
 
                 const naturesJSON = naturesJSONOrig['9'] || {};
                 for (let k in naturesJSON) {
@@ -5163,14 +5291,24 @@ Build a balanced team! Consider type coverage, speed tiers, and offensive/defens
 Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplier, -1 = x0.67. <b>Tap</b> a Pokémon's name (or the ℹ button) for the full summary with matchups. Weather and terrain pills are tappable. On the move grid, priority and accuracy are shown on each button; tap <b>i</b> for the full move breakdown. Switching out resets your stat changes!</div>`
         };
         let showTipsEnabled = true;
-        // Dynamically load @pkmn/dex (Showdown data bundle: 900+ Pokémon, 950+ moves)
-        const _dexReady = new Promise(resolve => {
-            if (window.pkmn && window.pkmn.dex && window.pkmn.dex.Dex) { resolve(); return; }
+        // Dynamically load @pkmn/dex + learnsets (learnsets required for Dex.learnsets.get — see npm readme)
+        const PKMN_DEX_VER = '0.10.7';
+        const _dexLearnsetsReady = new Promise(resolve => {
+            if (document.querySelector('script[data-pkmn-learnsets-bundle]')) { resolve(); return; }
             let s = document.createElement('script');
-            s.src = 'https://unpkg.com/@pkmn/dex/build/index.min.js';
+            s.src = `https://cdn.jsdelivr.net/npm/@pkmn/dex@${PKMN_DEX_VER}/build/learnsets.min.js`;
+            s.dataset.pkmnLearnsetsBundle = '1';
             s.onload = s.onerror = resolve;
             document.head.appendChild(s);
         });
+        const _dexCoreReady = new Promise(resolve => {
+            if (window.pkmn && window.pkmn.dex && window.pkmn.dex.Dex) { resolve(); return; }
+            let s = document.createElement('script');
+            s.src = `https://cdn.jsdelivr.net/npm/@pkmn/dex@${PKMN_DEX_VER}/build/index.min.js`;
+            s.onload = s.onerror = resolve;
+            document.head.appendChild(s);
+        });
+        const _dexReady = Promise.all([_dexLearnsetsReady, _dexCoreReady]).then(() => {});
         function __locktestUrlRequested() {
             try {
                 if (new URLSearchParams(location.search).get('locktest') === '1') return true;
@@ -7396,11 +7534,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.dynamaxed) s *= 1.25;
             return `translateX(-50%) scale(${s})`;
         }
-        window.cycleSummaryTabForMobile = function() {
-            const cur = (typeof window._summaryActivePage === 'number' ? window._summaryActivePage : 1) || 1;
-            const next = cur >= 3 ? 1 : cur + 1;
-            if (typeof window.switchSummaryTab === 'function') window.switchSummaryTab(next);
-        };
         window.storySummaryScrollInfo = function() {
             const m = document.getElementById('modal-story-pokemon-summary');
             const el = document.getElementById('story-sum-body');
@@ -10411,19 +10544,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let upgradeBtns = '';
                 if (canUpgradeZ && canUpgradeDyna) {
                     upgradeBtns = `<div style="display:flex;gap:6px;margin-bottom:6px;">
-                        <button onclick="window._sumUpgradeMode='base';window.switchSummaryTab(2)" style="${upgradeMode==='base'?'border-color:var(--accent);':''}" class="sum-tab">Base Moves</button>
-                        <button onclick="window._sumUpgradeMode='z';window.switchSummaryTab(2)" style="${upgradeMode==='z'?'border-color:#f9a825;color:#f9a825;':''}" class="sum-tab">&#9889; Z-Power</button>
-                        <button onclick="window._sumUpgradeMode='max';window.switchSummaryTab(2)" style="${upgradeMode==='max'?'border-color:#ef5350;color:#ef5350;':''}" class="sum-tab">&#128165; Max Moves</button>
+                        <button type="button" onclick="window._sumUpgradeMode='base';window.switchSummaryTab(2)" style="${upgradeMode==='base'?'border-color:var(--accent);':''}" class="sum-mode-btn">Base Moves</button>
+                        <button type="button" onclick="window._sumUpgradeMode='z';window.switchSummaryTab(2)" style="${upgradeMode==='z'?'border-color:#f9a825;color:#f9a825;':''}" class="sum-mode-btn">&#9889; Z-Power</button>
+                        <button type="button" onclick="window._sumUpgradeMode='max';window.switchSummaryTab(2)" style="${upgradeMode==='max'?'border-color:#ef5350;color:#ef5350;':''}" class="sum-mode-btn">&#128165; Max Moves</button>
                     </div>`;
                 } else if (canUpgradeZ) {
                     upgradeBtns = `<div style="display:flex;gap:6px;margin-bottom:6px;">
-                        <button onclick="window._sumUpgradeMode='base';window.switchSummaryTab(2)" style="${upgradeMode==='base'?'border-color:var(--accent);':''}" class="sum-tab">Base Moves</button>
-                        <button onclick="window._sumUpgradeMode='z';window.switchSummaryTab(2)" style="${upgradeMode==='z'?'border-color:#f9a825;color:#f9a825;':''}" class="sum-tab">&#9889; View Z-Power</button>
+                        <button type="button" onclick="window._sumUpgradeMode='base';window.switchSummaryTab(2)" style="${upgradeMode==='base'?'border-color:var(--accent);':''}" class="sum-mode-btn">Base Moves</button>
+                        <button type="button" onclick="window._sumUpgradeMode='z';window.switchSummaryTab(2)" style="${upgradeMode==='z'?'border-color:#f9a825;color:#f9a825;':''}" class="sum-mode-btn">&#9889; View Z-Power</button>
                     </div>`;
                 } else if (canUpgradeDyna) {
                     upgradeBtns = `<div style="display:flex;gap:6px;margin-bottom:6px;">
-                        <button onclick="window._sumUpgradeMode='base';window.switchSummaryTab(2)" style="${upgradeMode==='base'?'border-color:var(--accent);':''}" class="sum-tab">Base Moves</button>
-                        <button onclick="window._sumUpgradeMode='max';window.switchSummaryTab(2)" style="${upgradeMode==='max'?'border-color:#ef5350;color:#ef5350;':''}" class="sum-tab">&#128165; View Max Moves</button>
+                        <button type="button" onclick="window._sumUpgradeMode='base';window.switchSummaryTab(2)" style="${upgradeMode==='base'?'border-color:var(--accent);':''}" class="sum-mode-btn">Base Moves</button>
+                        <button type="button" onclick="window._sumUpgradeMode='max';window.switchSummaryTab(2)" style="${upgradeMode==='max'?'border-color:#ef5350;color:#ef5350;':''}" class="sum-mode-btn">&#128165; View Max Moves</button>
                     </div>`;
                 }
 
@@ -17005,7 +17138,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Early route payouts set to 1400G so a few wins better cover Link G1 rerolls (4000G base).
         // Exactly 8 gym badges (Gym Leader 1–8 once); then Victory Road (3 Elite), League City (City9, Dept store), E1–E4, Champion, Rival, HoF.
         const STORY_EVENTS_RAW = [
-          [0,'City','City0',null,0,['Professor','Link Station','Pokemart','Move Tutor','Leave City']],
+          [0,'City','City0',null,0,['Professor','Link Station','Pokemart','Move Tutor','Nature Rater','Battle Dojo','Leave City']],
           [1,'Battle','Basic Trainer',{g1:0,g2:0,g3:0,g4:100},1400,null],
           [2,'Battle','Basic Trainer',{g1:0,g2:0,g3:20,g4:80},1400,null],
           [3,'Battle','Basic Trainer',{g1:0,g2:0,g3:50,g4:50},1400,null],
@@ -17016,63 +17149,63 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [8,'Battle','Basic Trainer',{g1:0,g2:0,g3:70,g4:30},1200,null],
           [9,'Battle','Basic Trainer',{g1:0,g2:0,g3:70,g4:30},1200,null],
           [10,'Battle','Basic Trainer',{g1:0,g2:0,g3:100,g4:0},1200,null],
-          [11,'City','City2',null,0,['Professor','Link Station','Pokemart','Gym Battle','Leave City']],
+          [11,'City','City2',null,0,['Professor','Link Station','Pokemart','Nature Rater','Gym Battle','Leave City']],
           [12,'Battle','Gym Trainer',{g1:0,g2:0,g3:100,g4:0},1700,null],
           [13,'Battle','Gym Leader 2',{g1:0,g2:30,g3:70,g4:0},2500,null],
           [14,'Battle','Rival',{g1:0,g2:35,g3:65,g4:0},1500,null],
-          [15,'City','City2',null,0,['Professor','Link Station','Pokemart','Leave City']],
+          [15,'City','City2',null,0,['Professor','Link Station','Pokemart','Nature Rater','Leave City']],
           [16,'Battle','Basic Trainer',{g1:0,g2:10,g3:90,g4:0},1500,null],
           [17,'Battle','Basic Trainer',{g1:0,g2:10,g3:90,g4:0},1500,null],
           [18,'Battle','Basic Trainer',{g1:0,g2:30,g3:70,g4:0},1500,null],
-          [19,'City','City3',null,0,['Professor','Link Station','Department Store','Move Tutor','Gym Battle']],
+          [19,'City','City3',null,0,['Professor','Link Station','Department Store','Battle Dojo','Gym Battle']],
           [20,'Battle','Gym Trainer',{g1:0,g2:30,g3:70,g4:0},2000,null],
           [21,'Battle','Gym Leader 3',{g1:0,g2:65,g3:35,g4:0},3000,null],
-          [22,'City','City3',null,0,['Professor','Link Station','Department Store','Move Tutor','Leave City']],
+          [22,'City','City3',null,0,['Professor','Link Station','Department Store','Battle Dojo','Leave City']],
           [23,'Battle','Basic Trainer',{g1:0,g2:30,g3:70,g4:0},1700,null],
           [24,'Battle','Basic Trainer',{g1:0,g2:30,g3:70,g4:0},1700,null],
           [25,'Battle','Basic Trainer',{g1:0,g2:50,g3:50,g4:0},1700,null],
-          [26,'City','City4',null,0,['Professor','Link Station','Pokemart','Gym Battle','Leave City']],
+          [26,'City','City4',null,0,['Professor','Link Station','Pokemart','Move Tutor','Gym Battle','Leave City']],
           [27,'Battle','Gym Trainer',{g1:0,g2:50,g3:50,g4:0},2300,null],
           [28,'Battle','Gym Leader 4',{g1:15,g2:75,g3:10,g4:0},3200,null],
-          [29,'City','City4',null,0,['Professor','Link Station','Pokemart','Leave City']],
+          [29,'City','City4',null,0,['Professor','Link Station','Pokemart','Move Tutor','Leave City']],
           [30,'Battle','Basic Trainer',{g1:0,g2:50,g3:50,g4:0},2000,null],
           [31,'Battle','Basic Trainer',{g1:0,g2:50,g3:50,g4:0},2000,null],
           [32,'Battle','Basic Trainer',{g1:0,g2:70,g3:30,g4:0},2000,null],
-          [33,'City','City5',null,0,['Professor','Link Station','Pokemart','Move Tutor','Gym Battle','Leave City']],
+          [33,'City','City5',null,0,['Professor','Link Station','Pokemart','Gym Battle','Leave City']],
           [34,'Battle','Gym Trainer',{g1:5,g2:60,g3:35,g4:0},2500,null],
           [35,'Battle','Gym Trainer',{g1:5,g2:65,g3:30,g4:0},2500,null],
           [36,'Battle','Gym Leader 5',{g1:25,g2:70,g3:5,g4:0},3500,null],
-          [37,'City','City5',null,0,['Professor','Link Station','Pokemart','Move Tutor','Leave City']],
+          [37,'City','City5',null,0,['Professor','Link Station','Pokemart','Leave City']],
           [38,'Battle','Basic Trainer',{g1:5,g2:65,g3:30,g4:0},2200,null],
           [39,'Battle','Basic Trainer',{g1:5,g2:65,g3:30,g4:0},2200,null],
           [40,'Battle','Elite Trainer',{g1:10,g2:75,g3:15,g4:0},2700,null],
-          [41,'City','City6',null,0,['Link Station','Department Store','Gym Battle','Leave City']],
+          [41,'City','City6',null,0,['Link Station','Department Store','Nature Rater','Power Up','Gym Battle','Leave City']],
           [42,'Battle','Gym Trainer',{g1:10,g2:75,g3:15,g4:0},2700,null],
           [43,'Battle','Gym Trainer',{g1:15,g2:75,g3:10,g4:0},2700,null],
           [44,'Battle','Gym Leader 6',{g1:20,g2:75,g3:5,g4:0},4700,null],
           [45,'Battle','Rival',{g1:30,g2:65,g3:5,g4:0},2500,null],
-          [46,'City','City6',null,0,['Link Station','Pokemart','Leave City']],
+          [46,'City','City6',null,0,['Link Station','Pokemart','Nature Rater','Power Up','Leave City']],
           [47,'Battle','Basic Trainer',{g1:15,g2:75,g3:10,g4:0},2500,null],
           [48,'Battle','Basic Trainer',{g1:15,g2:75,g3:10,g4:0},2500,null],
           [49,'Battle','Elite Trainer',{g1:20,g2:75,g3:5,g4:0},2900,null],
-          [50,'City','City7',null,0,['Link Station','Pokemart','Gym Battle','Leave City']],
+          [50,'City','City7',null,0,['Link Station','Pokemart','Battle Dojo','Gym Battle','Leave City']],
           [51,'Battle','Gym Trainer',{g1:20,g2:75,g3:5,g4:0},2900,null],
           [52,'Battle','Gym Trainer',{g1:25,g2:75,g3:0,g4:0},2900,null],
           [53,'Battle','Gym Leader 7',{g1:30,g2:70,g3:0,g4:0},4900,null],
-          [54,'City','City7',null,0,['Link Station','Pokemart','Leave City']],
+          [54,'City','City7',null,0,['Link Station','Pokemart','Battle Dojo','Leave City']],
           [55,'Battle','Basic Trainer',{g1:25,g2:75,g3:0,g4:0},2600,null],
           [56,'Battle','Elite Trainer',{g1:30,g2:70,g3:0,g4:0},3000,null],
           [57,'Battle','Elite Trainer',{g1:35,g2:65,g3:0,g4:0},3000,null],
-          [58,'City','City8',null,0,['Link Station','Pokemart','Gym Battle','Leave City']],
+          [58,'City','City8',null,0,['Link Station','Pokemart','Move Tutor','Gym Battle','Leave City']],
           [59,'Battle','Gym Trainer',{g1:35,g2:65,g3:0,g4:0},3000,null],
           [60,'Battle','Gym Trainer',{g1:40,g2:60,g3:0,g4:0},3000,null],
           [61,'Battle','Gym Leader 8',{g1:45,g2:55,g3:0,g4:0},5000,null],
           [62,'Battle','Rival',{g1:60,g2:35,g3:5,g4:0},2800,null],
-          [63,'City','City8',null,0,['Link Station','Pokemart','Leave City']],
+          [63,'City','City8',null,0,['Link Station','Pokemart','Move Tutor','Leave City']],
           [64,'Battle','Elite Trainer',{g1:55,g2:45,g3:0,g4:0},4200,null],
           [65,'Battle','Elite Trainer',{g1:65,g2:35,g3:0,g4:0},4800,null],
           [66,'Battle','Elite Trainer',{g1:75,g2:25,g3:0,g4:0},5200,null],
-          [67,'City','City9',null,0,['Link Station','Department Store','Move Tutor','Enter Pokemon League']],
+          [67,'City','City9',null,0,['Link Station','Department Store','Move Tutor','Nature Rater','Battle Dojo','Power Up','Enter Pokemon League']],
           [68,'Battle','E1',{g1:90,g2:10,g3:0,g4:0},5000,null],
           [69,'Battle','E2',{g1:95,g2:5,g3:0,g4:0},5000,null],
           [70,'Battle','E3',{g1:95,g2:5,g3:0,g4:0},5000,null],
@@ -17558,6 +17691,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function syncStoryTutorBackground() {
             applyStoryBgLayer(document.getElementById('story-tutor-bg-layer'), getStoryBgManifest().shopMart || '');
+        }
+        function syncStoryColressBackground() {
+            applyStoryBgLayer(document.getElementById('story-colress-bg-layer'), getStoryBgManifest().shopDept || getStoryBgManifest().shopMart || '');
         }
         (function loadStoryBgManifestFetch() {
             fetch('sprites/story/backgrounds/manifest.json')
@@ -18150,7 +18286,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const maxGen = Math.max(...enabledGens);
             const _diffEl = document.getElementById('story-difficulty');
             const _storyDiff = (_diffEl && _diffEl.value) ? _diffEl.value : 'normal';
-            const _startingGoldBonus = _storyDiff === 'veryeasy' ? 19000 : _storyDiff === 'easy' ? 2000 : _storyDiff === 'normal' ? 1080 : 0;
+            // 1000 base + bonus; easy/normal starting totals rounded to 5000G / 3500G.
+            const _startingGoldBonus = _storyDiff === 'veryeasy' ? 19000 : _storyDiff === 'easy' ? 4000 : _storyDiff === 'normal' ? 2500 : 0;
             sm = {
                 active:true, eventIndex:0, badges:0, gold:1000 + _startingGoldBonus, team:[],
                 inventory: {
@@ -18380,9 +18517,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.storyMilestoneTips.m4 = true;
                 save();
             }
-            const _cityRng = (sm && sm.active) ? storyRngNext : Math.random;
-            if (_cityRng() < 0.06) {
-                const find = 100 + Math.floor(_cityRng() * 401);
+            if (Math.random() < 0.06) {
+                const find = 100 + Math.floor(Math.random() * 401);
                 sm.gold += find;
                 quoteText += `\n\n✨ You found ${find}G on the ground!`;
                 save();
@@ -18460,16 +18596,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (actions.includes('Department Store')) {
                 btn.innerHTML += makeActionBtn('🏬 Department Store — Premium items & Artifacts','dept','window.StoryMode.enterShop(\'dept\')','dept');
             }
-            if (actions.includes('Move Tutor') && sm.team.length > 0) {
-                btn.innerHTML += makeActionBtn('📖 Move Tutor — Change moves, items, ability & nature','tutor','window.StoryMode.enterTutor()','shop');
+            const _tutorTeam = sm.team.length > 0;
+            if (actions.includes('Move Tutor') && _tutorTeam) {
+                btn.innerHTML += makeActionBtn('📖 Move Tutor — Swap battle moves','tutor','window.StoryMode.enterTutor(\'moves\')','shop');
+            }
+            if (actions.includes('Nature Rater') && _tutorTeam) {
+                btn.innerHTML += makeActionBtn('📛 Nature Rater — Adjust natures','nature','window.StoryMode.enterTutor(\'nature\')','shop');
+            }
+            if (actions.includes('Battle Dojo') && _tutorTeam) {
+                btn.innerHTML += makeActionBtn('🥋 Battle Dojo — Held items & abilities','dojo','window.StoryMode.enterTutor(\'loadout\')','shop');
+            }
+            const _colressMechAny = !!(sm.settings && (sm.settings.megaOn || sm.settings.zOn || sm.settings.dynaOn || sm.settings.teraOn));
+            if (actions.includes('Power Up') && _tutorTeam && _colressMechAny) {
+                btn.innerHTML += makeActionBtn('🧪 Colress — Awaken battle mechanics','colress','window.StoryMode.enterColress()','shop');
             }
             if ((sm.artifacts || []).length > 0) {
                 btn.innerHTML += makeActionBtn('✨ Artifact Hall — Toggle run artifacts','artifacts','window.StoryMode.enterArtifactHall()','shop');
             }
-            // Pokémon Center: only in Hardcore mode — full party heal, free, unlimited
-            if (sm.storyDifficulty === 'hardcore') {
-                btn.innerHTML += makeActionBtn('🏥 Pokémon Center — Restore your party','center','window.StoryMode.enterPokemonCenter()','link');
-            }
+            // Pokémon Center — full party heal, free, unlimited (all difficulties)
+            btn.innerHTML += makeActionBtn('🏥 Pokémon Center — Restore your party','center','window.StoryMode.enterPokemonCenter()','link');
             // Bag — always accessible in city to view inventory and sell items
             const _invCount = Object.keys(sm.inventory || {}).filter(k => sm.inventory[k] > 0).length;
             const _bagLabel = _invCount > 0
@@ -18527,7 +18672,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _storyCalcRetreatGoldFee() {
             if (!_storyGoldFeeAppliesForRetreat()) return 0;
             const g = Math.max(0, sm.gold | 0);
-            const raw = Math.max(100, Math.floor(g / 2));
+            if (g <= 0) return 0;
+            const half = g / 2;
+            const step100 = Math.ceil(half / 100) * 100;
+            const raw = Math.max(100, step100);
             return Math.min(raw, g);
         }
 
@@ -18550,7 +18698,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const hint = document.getElementById('story-gameover-center-hint');
             if (btn) {
                 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-                btn.innerHTML = `🏥 Last Pokémon Center<br><span style="font-size:11px;font-weight:normal;opacity:0.92;">Return to ${esc(town)}</span>`;
+                btn.innerHTML = `Return to last city hub<br><span style="font-size:11px;font-weight:normal;opacity:0.92;">${esc(town)}</span>`;
             }
             if (hint) {
                 const d = sm.storyDifficulty || 'normal';
@@ -18558,7 +18706,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     hint.textContent = 'No gold cost on this difficulty. Used bag items stay used.';
                 } else {
                     const fee = _storyCalcRetreatGoldFee();
-                    hint.textContent = 'Heals your party. Lose ' + fee.toLocaleString() + 'G (half your gold, min 100G, max what you have). Used bag items stay used.';
+                    hint.textContent = 'Heals your party. Lose ' + fee.toLocaleString() + 'G (half your gold, rounded up to the next 100G, min 100G, never more than you have). Used bag items stay used.';
                 }
             }
         }
@@ -19042,6 +19190,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Legacy: keep profRoll in API for backward compatibility (not used in 3-choice flow)
         function profRoll() { enterProfessor(); }
 
+        /** Run buildPokemon on each foe build so story locks persist fields that would otherwise re-roll on rematch (gender, shiny, move padding). */
+        function storyFreezeFoeTeamForPersistence(enemyTeam) {
+            if (!Array.isArray(enemyTeam)) return [];
+            return enemyTeam.map(slot => {
+                if (!slot || !slot.name) return slot;
+                const build = deepClone(slot.build || {});
+                buildPokemon(String(slot.name).trim(), build);
+                return { name: slot.name, build };
+            });
+        }
+
         // ── PROCEED TO BATTLE ─────────────────────────────────────────────
         function proceedToNextBattle() {
             if (sm.team.length === 0) { window.showGameAlert('You have no Pokémon! Visit the Professor first.'); return; }
@@ -19054,6 +19213,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 window.showGameAlert('No upcoming battle found.');
                 enterCity();
                 return;
+            }
+            // After blacking out and returning to a city hub, eventIndex sits on the City row while
+            // currentEnemyLock still points at the trainer you lost to. Skip already-cleared route
+            // battles and resume that rematch (same frozen foe team as enterBattleEvent uses).
+            const lock = sm.currentEnemyLock;
+            if (lock && lock.eventIdx != null && Array.isArray(lock.team) && lock.team.length) {
+                const le = lock.eventIdx | 0;
+                const row = STORY_EVENTS_RAW[le];
+                if (row && row[1] === 'Battle' && le > nextBattleIdx) nextBattleIdx = le;
             }
             sm.eventIndex = nextBattleIdx;
             save();
@@ -19099,7 +19267,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             const lock = sm.currentEnemyLock;
             if (lock && lock.eventIdx === battleIdx && Array.isArray(lock.team) && lock.team.length) {
-                showBattleIntro(trainer, event, () => startFight(deepClone(lock.team)));
+                showBattleIntro(trainer, event, () => {
+                    const team = storyFreezeFoeTeamForPersistence(deepClone(lock.team));
+                    try {
+                        sm.currentEnemyLock = { eventIdx: battleIdx, team: deepClone(team) };
+                        save();
+                    } catch (e) { console.warn('[Story] enemy lock refresh save', e); }
+                    startFight(team);
+                });
                 return;
             }
 
@@ -19107,11 +19282,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const enemyTeam = isMysteryFinal
                     ? rollMysteryFigureFinalBossTeam(6, sg)
                     : rollTrainerTeam(trainer, partySize, gradeWeights || {g1:0,g2:0,g3:50,g4:50}, sg, event);
+                const frozenTeam = storyFreezeFoeTeamForPersistence(enemyTeam);
                 try {
-                    sm.currentEnemyLock = { eventIdx: battleIdx, team: deepClone(enemyTeam) };
+                    sm.currentEnemyLock = { eventIdx: battleIdx, team: deepClone(frozenTeam) };
                     save();
                 } catch (e) { console.warn('[Story] enemy lock save', e); }
-                startFight(enemyTeam);
+                startFight(frozenTeam);
             });
         }
 
@@ -20533,6 +20709,83 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const TUTOR_COST_ITEM    = 2000;
         const TUTOR_COST_ABILITY = 2500;
         const TUTOR_COST_NATURE  = 2000;
+        /** 'moves' | 'nature' | 'loadout' — set by enterTutor(mode); renderTutorTeam reads this */
+        let _storyTutorMode = 'moves';
+
+        function _applyStoryTutorHeader() {
+            const mode = _storyTutorMode || 'moves';
+            const titleEl = document.getElementById('story-tutor-head-title');
+            const descEl = document.getElementById('story-tutor-head-desc');
+            if (mode === 'nature') {
+                if (titleEl) titleEl.textContent = '📛 Nature Rater';
+                if (descEl) descEl.textContent = 'Adjust each Pokémon\'s nature. Stat boosts (+/−) are shown per option; any standard nature is available.';
+            } else if (mode === 'loadout') {
+                if (titleEl) titleEl.textContent = '🥋 Battle Dojo';
+                if (descEl) descEl.textContent = 'Swap held items and abilities. Options come from known competitive sets and species data.';
+            } else {
+                if (titleEl) titleEl.textContent = '📖 Move Tutor';
+                if (descEl) descEl.textContent = 'Swap battle moves. Options come from known competitive sets and learnsets.';
+            }
+        }
+        const TUTOR_UNIVERSAL_ITEMS = [
+            'Leftovers', 'Life Orb',
+            'Choice Band', 'Choice Specs', 'Choice Scarf',
+            'Heavy-Duty Boots', 'Focus Sash',
+            'Assault Vest', 'Rocky Helmet'
+        ];
+
+        /** HTML for Move Tutor detail block (stats + short effect); safe for innerHTML of .story-tutor-move-detail */
+        function _formatMoveTutorDetailHtml(moveName) {
+            if (!moveName || typeof moveName !== 'string') {
+                return '<div class="story-tutor-move-detail--empty">—</div>';
+            }
+            const move = ensureMoveData(moveName);
+            if (!move) return '<div class="story-tutor-move-detail--empty">—</div>';
+            const typ = move.type || 'Normal';
+            const pri = formatMovePriority(move.pri);
+            const powStr = move.pow > 0 ? String(move.pow) : '—';
+            const accStr = move.acc > 0 ? move.acc + '%' : '—';
+            const effHtml = move.eff
+                ? '<div class="story-tutor-move-detail-eff">' + _esc(move.eff) + '</div>'
+                : '';
+            return ''
+                + '<div class="story-tutor-move-detail-head"><strong class="story-tutor-move-detail-name">' + _esc(moveName) + '</strong> '
+                + '<span class="type-badge type-' + typ + '" style="font-size:10px;">' + _esc(typ) + '</span></div>'
+                + '<div class="story-tutor-move-detail-grid">'
+                + '<span>Cat: <strong class="cat-' + move.cat + '">' + _esc(move.cat) + '</strong></span>'
+                + '<span>Pow: <strong>' + powStr + '</strong></span>'
+                + '<span>Acc: <strong>' + _esc(accStr) + '</strong></span>'
+                + '<span>PP: <strong>' + _esc(String(move.pp)) + '</strong></span>'
+                + '<span class="story-tutor-move-detail-pri">Pri: <strong>' + pri + '</strong></span>'
+                + '</div>' + effHtml;
+        }
+
+        function _tutorRefreshMoveDetailRow(row) {
+            if (!row) return;
+            const det = row.querySelector('.story-tutor-move-detail');
+            if (!det || det.classList.contains('story-tutor-move-detail--static')) return;
+            const sel = row.querySelector('.story-tutor-move-select');
+            if (sel && sel.value) det.innerHTML = _formatMoveTutorDetailHtml(sel.value);
+            else det.innerHTML = '<div class="story-tutor-move-detail--empty">Select a move in the list to see type, power, and effect.</div>';
+        }
+
+        /** Inline description for tutor item/ability/nature rows (sync; uses tooltipDict + @pkmn/dex via _resolveTooltipText). */
+        function _tutorChoiceDescBlockFromKey(key) {
+            if (!key) return '';
+            try {
+                const t = (typeof window._resolveTooltipText === 'function') ? window._resolveTooltipText(key) : null;
+                const s = (t && String(t).trim()) || '';
+                if (!s) return '';
+                return '<div class="story-tutor-choice-desc">' + _esc(s) + '</div>';
+            } catch (e) { return ''; }
+        }
+
+        function _tutorMoveAllowedStrict(mt) {
+            if (!mt || mt === 'Tackle') return false;
+            if (!isMoveAllowed(mt)) return false;
+            if (implementedMoveNames.size) return implementedMoveNames.has(mt);
+            return !!movesDB[mt];
+        }
 
         function _tutorGetPoolForMon(monName) {
             const moves = new Set();
@@ -20554,7 +20807,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (b.m) b.m.forEach(slot => {
                             slot.split('/').forEach(m => {
                                 const mt = m.trim();
-                                if (mt && mt !== 'Tackle' && !BANNED_MOVES.has(mt) && movesDB[mt]) moves.add(mt);
+                                if (_tutorMoveAllowedStrict(mt)) moves.add(mt);
                             });
                         });
                         if (b.i && b.i !== 'NO_ITEM' && b.i !== '' && !isMegaStone(b.i) && !Z_TYPE_MAP_VALUES.has(b.i) && !BANNED_ITEMS.has(b.i)) {
@@ -20575,6 +20828,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             items.forEach(it => {
                 if (!isMegaStone(it) && !Z_TYPE_MAP_VALUES.has(it) && !BANNED_ITEMS.has(it)) safeItems.add(it);
             });
+            TUTOR_UNIVERSAL_ITEMS.forEach(it => { if (!BANNED_ITEMS.has(it)) safeItems.add(it); });
+            try {
+                const _D = (typeof getPssDex === 'function') ? getPssDex() : null;
+                if (_D && _D.species && typeof _D.species.get === 'function') {
+                    const sp = _D.species.get(monName) || (baseName ? _D.species.get(baseName) : null);
+                    if (sp && sp.evos && sp.evos.length > 0) safeItems.add('Eviolite');
+                    const addDexAbil = (formKey) => {
+                        if (!formKey) return;
+                        try {
+                            const dsp = _D.species.get(formKey);
+                            if (!dsp || !dsp.abilities) return;
+                            for (const slot of Object.keys(dsp.abilities)) {
+                                const a = dsp.abilities[slot];
+                                if (a && typeof a === 'string') abilities.add(a);
+                            }
+                        } catch (e2) {}
+                    };
+                    addDexAbil(monName);
+                    if (baseName && baseName !== monName) addDexAbil(baseName);
+                    if (bs && bs.changesFrom && bs.changesFrom !== monName && bs.changesFrom !== baseName) addDexAbil(bs.changesFrom);
+                }
+            } catch (e) {}
+            try {
+                Object.keys(natureModifiers || {}).forEach(name => { if (name) natures.add(name); });
+            } catch (e) {}
             return {
                 moves: [...moves].sort(),
                 items: [...safeItems].sort(),
@@ -20583,7 +20861,152 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
         }
 
-        function enterTutor() {
+        /** Species names to union for learnsets: self, form bases, and full prevo chain (baseStats + @pkmn/dex). Does not walk evos (wrong for learnsets). */
+        function _tutorSpeciesKeysForLearnset(monName) {
+            const keys = [];
+            const add = (n) => {
+                if (!n || typeof n !== 'string') return;
+                if (!keys.includes(n)) keys.push(n);
+            };
+            add(monName);
+            const bs = baseStats[monName];
+            if (bs) {
+                add(bs.baseSpecies);
+                add(bs.changesFrom);
+                const seenPrev = new Set();
+                let cur = bs.prevo;
+                while (cur && !seenPrev.has(cur)) {
+                    seenPrev.add(cur);
+                    add(cur);
+                    const pbs = baseStats[cur];
+                    cur = pbs && pbs.prevo ? pbs.prevo : null;
+                }
+            }
+            try {
+                const D = getPssDex();
+                if (D && D.species && typeof D.species.get === 'function') {
+                    const walkDexPrevo = (start) => {
+                        const seen = new Set();
+                        let nm = start;
+                        while (nm && !seen.has(nm)) {
+                            seen.add(nm);
+                            add(nm);
+                            let sp = null;
+                            try { sp = D.species.get(nm); } catch (e0) {}
+                            nm = sp && sp.prevo ? sp.prevo : null;
+                        }
+                    };
+                    walkDexPrevo(monName);
+                    if (bs && bs.baseSpecies && bs.baseSpecies !== monName) walkDexPrevo(bs.baseSpecies);
+                    if (bs && bs.changesFrom && bs.changesFrom !== monName && bs.changesFrom !== bs.baseSpecies) walkDexPrevo(bs.changesFrom);
+                }
+            } catch (e) {}
+            return keys;
+        }
+
+        async function _tutorFetchLearnsetMoveNames(monName) {
+            if (_tutorLearnsetCache.has(monName)) return _tutorLearnsetCache.get(monName);
+            const D = getPssDex();
+            if (!D || !D.learnsets || typeof D.learnsets.get !== 'function') {
+                _tutorLearnsetCache.set(monName, []);
+                return [];
+            }
+            const ids = new Set();
+            for (const nm of _tutorSpeciesKeysForLearnset(monName)) {
+                try {
+                    const ls = await D.learnsets.get(nm);
+                    if (ls && ls.learnset && typeof ls.learnset === 'object') {
+                        Object.keys(ls.learnset).forEach(id => ids.add(id));
+                    }
+                } catch (e) {}
+            }
+            const names = new Set();
+            for (const id of ids) {
+                try {
+                    const mv = D.moves.get(id);
+                    if (mv && mv.exists !== false && mv.name && _tutorMoveAllowedStrict(mv.name)) names.add(mv.name);
+                } catch (e2) {}
+            }
+            const arr = [...names].sort();
+            _tutorLearnsetCache.set(monName, arr);
+            return arr;
+        }
+
+        async function _tutorGetMergedMovePoolAsync(monName) {
+            const syncMoves = _tutorGetPoolForMon(monName).moves;
+            let learnMoves = [];
+            try { learnMoves = await _tutorFetchLearnsetMoveNames(monName); } catch (e) { learnMoves = []; }
+            return [...new Set([...syncMoves, ...learnMoves])].sort();
+        }
+
+        function _tutorFillMoveSelect(sel, moves) {
+            if (!sel) return;
+            const cur = sel.value;
+            sel.innerHTML = '';
+            const frag = document.createDocumentFragment();
+            for (let i = 0; i < moves.length; i++) {
+                const m = moves[i];
+                const o = document.createElement('option');
+                o.value = m;
+                o.textContent = m;
+                frag.appendChild(o);
+            }
+            sel.appendChild(frag);
+            if (cur && moves.includes(cur)) sel.value = cur;
+            else if (moves.length) sel.selectedIndex = 0;
+        }
+
+        function _initTutorMovePickerDelegationOnce() {
+            const el = document.getElementById('story-tutor-team');
+            if (!el || el._tutorPickerBound) return;
+            el._tutorPickerBound = true;
+            el.addEventListener('input', function(ev) {
+                if (ev.target.classList && ev.target.classList.contains('story-tutor-move-select')) {
+                    const row = ev.target.closest('.story-tutor-move-slot');
+                    if (!row) return;
+                    _tutorRefreshMoveDetailRow(row);
+                    return;
+                }
+                if (!ev.target.classList || !ev.target.classList.contains('story-tutor-move-filter')) return;
+                const row = ev.target.closest('.story-tutor-move-slot');
+                if (!row) return;
+                const key = row.dataset.slotKey;
+                const all = _tutorSlotMoveOptions.get(key) || [];
+                const q = (ev.target.value || '').trim().toLowerCase();
+                const filt = q ? all.filter(m => String(m).toLowerCase().includes(q)) : all;
+                const sel = row.querySelector('.story-tutor-move-select');
+                const use = filt.length ? filt : all;
+                _tutorFillMoveSelect(sel, use);
+                _tutorRefreshMoveDetailRow(row);
+                const ap = row.querySelector('.story-tutor-apply-move');
+                if (ap) ap.disabled = !(sel && sel.value) || sm.gold < TUTOR_COST_MOVE;
+            });
+            el.addEventListener('change', function(ev) {
+                if (!ev.target.classList || !ev.target.classList.contains('story-tutor-move-select')) return;
+                const row = ev.target.closest('.story-tutor-move-slot');
+                if (!row) return;
+                _tutorRefreshMoveDetailRow(row);
+                const ap = row.querySelector('.story-tutor-apply-move');
+                if (ap) ap.disabled = !ev.target.value || sm.gold < TUTOR_COST_MOVE;
+            });
+            el.addEventListener('click', function(ev) {
+                if (!ev.target.classList || !ev.target.classList.contains('story-tutor-apply-move')) return;
+                const row = ev.target.closest('.story-tutor-move-slot');
+                if (!row) return;
+                const sel = row.querySelector('.story-tutor-move-select');
+                const v = sel && sel.value;
+                if (!v || ev.target.disabled || sm.gold < TUTOR_COST_MOVE) return;
+                const teamIdx = parseInt(row.dataset.team, 10);
+                const moveSlot = parseInt(row.dataset.slot, 10);
+                if (window.StoryMode && typeof window.StoryMode.tutorChangeMove === 'function')
+                    window.StoryMode.tutorChangeMove(teamIdx, moveSlot, v);
+            });
+        }
+
+        function enterTutor(mode) {
+            const m = mode === 'nature' ? 'nature' : mode === 'loadout' ? 'loadout' : 'moves';
+            _storyTutorMode = m;
+            _applyStoryTutorHeader();
             const el = document.getElementById('story-tutor-team');
             const goldEl = document.getElementById('story-tutor-gold');
             if (goldEl) goldEl.textContent = `🪙 ${sm.gold.toLocaleString()}G`;
@@ -20594,19 +21017,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 showScreen('screen-story-tutor');
                 return;
             }
-            renderTutorTeam();
+            el.innerHTML = (m === 'moves')
+                ? '<div style="color:#888;font-size:12px;padding:12px;">Loading move lists…</div>'
+                : '<div style="color:#888;font-size:12px;padding:12px;">Loading…</div>';
             syncStoryTutorBackground();
             showScreen('screen-story-tutor');
+            void renderTutorTeam();
         }
 
-        function renderTutorTeam() {
+        async function renderTutorTeam() {
             const el = document.getElementById('story-tutor-team');
             const goldEl = document.getElementById('story-tutor-gold');
             if (goldEl) goldEl.textContent = `🪙 ${sm.gold.toLocaleString()}G`;
             if (!el) return;
+            _initTutorMovePickerDelegationOnce();
+
+            const mode = _storyTutorMode || 'moves';
+            const showMoves = mode === 'moves';
+            const showNature = mode === 'nature';
+            const showLoadout = mode === 'loadout';
+
+            const movePools = [];
+            if (showMoves) {
+                for (let ti = 0; ti < sm.team.length; ti++) {
+                    try {
+                        movePools.push(await _tutorGetMergedMovePoolAsync(sm.team[ti].name));
+                    } catch (e) {
+                        movePools.push(_tutorGetPoolForMon(sm.team[ti].name).moves);
+                    }
+                }
+            }
+
+            _tutorSlotMoveOptions.clear();
 
             el.innerHTML = sm.team.map((t, idx) => {
                 const pool = _tutorGetPoolForMon(t.name);
+                const mergedMoves = showMoves && (movePools[idx] && movePools[idx].length) ? movePools[idx] : pool.moves;
                 const b = t.build || {};
                 let mon = null;
                 try { if (b) mon = buildPokemon(t.name, { ...b, m: [...(b.m || [])] }); } catch (e) {}
@@ -20614,81 +21060,154 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const typeHtml = mon ? getTypeHTML(mon.type1, mon.type2 || '') : '';
                 const spriteUrl = getSprite(t.name);
 
-                const currentMoves = (b.m || []).map(m => m.split('/')[0]);
-                const moveRows = currentMoves.map((cm, mi) => {
-                    const otherMoves = currentMoves.filter((_, oi) => oi !== mi);
-                    const available = pool.moves.filter(m => m !== cm && !otherMoves.includes(m));
-                    if (!available.length) return `<div class="story-tutor-option-row"><span class="current" style="min-width:auto;">Slot ${mi+1}: <strong>${cm}</strong></span><span style="font-size:10px;color:#555;">(no alternatives)</span></div>`;
-                    const opts = available.map(m =>
-                        `<button class="story-tutor-btn" onclick="window.StoryMode.tutorChangeMove(${idx},${mi},'${m.replace(/'/g,"\\'")}')"`
-                        + ` ${sm.gold < TUTOR_COST_MOVE ? 'disabled' : ''}`
-                        + ` onmouseenter="window.showTutorMoveTooltip('${m.replace(/'/g,"\\'")}',event)"`
-                        + ` onmousemove="window.showTutorMoveTooltip('${m.replace(/'/g,"\\'")}',event)"`
-                        + ` onmouseleave="window.hideTextTooltip()">`
-                        + `${m}</button>`
-                    ).join('');
-                    return `<div class="story-tutor-option-row"><span class="current">Slot ${mi+1}: <strong>${cm}</strong> →</span>${opts}<span class="story-tutor-price">🪙${TUTOR_COST_MOVE}G</span></div>`;
-                }).join('');
+                let moveRows = '';
+                if (showMoves) {
+                    const currentMoves = (b.m || []).map(m => m.split('/')[0]);
+                    const goldLow = sm.gold < TUTOR_COST_MOVE;
+                    moveRows = currentMoves.map((cm, mi) => {
+                        const otherMoves = currentMoves.filter((_, oi) => oi !== mi);
+                        const available = mergedMoves.filter(m => m !== cm && !otherMoves.includes(m));
+                        if (!available.length) {
+                            return `<div class="story-tutor-move-slot story-tutor-move-slot--locked" data-no-alternatives="1">`
+                                + `<div class="story-tutor-option-row"><span class="current" style="min-width:auto;">Slot ${mi + 1}: <strong>${_esc(cm)}</strong></span><span style="font-size:10px;color:#555;">(no alternatives)</span></div>`
+                                + `<div class="story-tutor-move-detail story-tutor-move-detail--static" aria-live="polite">${_formatMoveTutorDetailHtml(cm)}</div>`
+                                + `</div>`;
+                        }
+                        const slotKey = `${idx}-${mi}`;
+                        _tutorSlotMoveOptions.set(slotKey, available);
+                        const affordMoveWarn = goldLow
+                            ? `<p class="story-tutor-afford-warn" role="status">Teaching costs ${TUTOR_COST_MOVE.toLocaleString()}G. You have ${sm.gold.toLocaleString()}G`
+                              + ` — short by ${Math.max(0, TUTOR_COST_MOVE - sm.gold).toLocaleString()}G. You can still preview moves; teach when you can afford it.</p>`
+                            : '';
+                        return `<div class="story-tutor-move-slot" data-has-moves="1" data-team="${idx}" data-slot="${mi}" data-slot-key="${slotKey}">`
+                            + `<div class="story-tutor-option-row"><span class="current">Slot ${mi + 1}: <strong>${_esc(cm)}</strong> →</span><span class="story-tutor-price">🪙${TUTOR_COST_MOVE}G</span></div>`
+                            + `<div class="story-tutor-move-picker">`
+                            + `<input type="search" class="story-tutor-move-filter" placeholder="Filter moves…" autocomplete="off" />`
+                            + `<select class="story-tutor-move-select" size="8"></select>`
+                            + `<div class="story-tutor-move-detail" aria-live="polite"></div>`
+                            + `<div class="story-tutor-move-picker-footer">`
+                            + affordMoveWarn
+                            + `<button type="button" class="story-tutor-btn story-tutor-apply-move" disabled>Teach selected</button>`
+                            + `</div></div></div>`;
+                    }).join('');
+                }
 
-                const currentItem = b.i || '(none)';
-                const itemAvailable = pool.items.filter(it => it !== b.i);
-                const itemRow = itemAvailable.length
-                    ? `<div class="story-tutor-option-row"><span class="current">Now: <strong>${currentItem}</strong> →</span>`
-                      + itemAvailable.map(it =>
-                          `<button class="story-tutor-btn" onclick="window.StoryMode.tutorChangeItem(${idx},'${it.replace(/'/g,"\\'")}')"`
-                          + ` ${sm.gold < TUTOR_COST_ITEM ? 'disabled' : ''}`
-                          + ` data-tip="${encodeURIComponent(tooltipDict[it] || '')}"`
-                          + ` onmouseenter="window.showTutorTextTooltip(this,event)"`
-                          + ` onmousemove="window.showTutorTextTooltip(this,event)"`
-                          + ` onmouseleave="window.hideTextTooltip()">${it}</button>`
-                      ).join('')
-                      + `<span class="story-tutor-price">🪙${TUTOR_COST_ITEM}G</span></div>`
-                    : `<div class="story-tutor-option-row"><span class="current">Now: <strong>${currentItem}</strong></span><span style="font-size:10px;color:#555;">(no alternatives)</span></div>`;
+                let itemRow = '';
+                let abilRow = '';
+                if (showLoadout) {
+                    const currentItem = b.i || '(none)';
+                    const itemAvailable = pool.items.filter(it => it !== b.i);
+                    const itemGoldWarn = itemAvailable.length && sm.gold < TUTOR_COST_ITEM
+                        ? `<p class="story-tutor-afford-warn" role="status">Each held-item swap costs ${TUTOR_COST_ITEM.toLocaleString()}G (you have ${sm.gold.toLocaleString()}G).</p>`
+                        : '';
+                    itemRow = itemAvailable.length
+                        ? `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentItem)}</strong> →</span></div>`
+                          + itemGoldWarn
+                          + `<div class="story-tutor-choice-list">`
+                          + itemAvailable.map(it =>
+                              `<div class="story-tutor-choice"><div class="story-tutor-choice-actions">`
+                              + `<button type="button" class="story-tutor-btn" onclick="window.StoryMode.tutorChangeItem(${idx},'${it.replace(/'/g,"\\'")}')"`
+                              + ` ${sm.gold < TUTOR_COST_ITEM ? 'disabled' : ''}`
+                              + ` data-tip="${encodeURIComponent(tooltipDict[it] || '')}"`
+                              + ` onmouseenter="window.showTutorTextTooltip(this,event)"`
+                              + ` onmousemove="window.showTutorTextTooltip(this,event)"`
+                              + ` onmouseleave="window.hideTextTooltip()">${_esc(it)}</button>`
+                              + `<span class="story-tutor-price">🪙${TUTOR_COST_ITEM}G</span></div>`
+                              + _tutorChoiceDescBlockFromKey(it)
+                              + `</div>`
+                          ).join('')
+                          + `</div>`
+                        : `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentItem)}</strong></span><span style="font-size:10px;color:#555;">(no alternatives)</span></div>`;
 
-                const currentAbility = b.a || (mon && mon.ability) || '(none)';
-                const abilAvailable = pool.abilities.filter(a => a !== currentAbility);
-                const abilRow = abilAvailable.length
-                    ? `<div class="story-tutor-option-row"><span class="current">Now: <strong>${currentAbility}</strong> →</span>`
-                      + abilAvailable.map(a =>
-                          `<button class="story-tutor-btn" onclick="window.StoryMode.tutorChangeAbility(${idx},'${a.replace(/'/g,"\\'")}')"`
-                          + ` ${sm.gold < TUTOR_COST_ABILITY ? 'disabled' : ''}`
-                          + ` data-tip="${encodeURIComponent(tooltipDict[a] || '')}"`
-                          + ` onmouseenter="window.showTutorTextTooltip(this,event)"`
-                          + ` onmousemove="window.showTutorTextTooltip(this,event)"`
-                          + ` onmouseleave="window.hideTextTooltip()">${a}</button>`
-                      ).join('')
-                      + `<span class="story-tutor-price">🪙${TUTOR_COST_ABILITY}G</span></div>`
-                    : `<div class="story-tutor-option-row"><span class="current">Now: <strong>${currentAbility}</strong></span><span style="font-size:10px;color:#555;">(no alternatives)</span></div>`;
+                    const currentAbility = b.a || (mon && mon.ability) || '(none)';
+                    const abilAvailable = pool.abilities.filter(a => a !== currentAbility);
+                    const abilGoldWarn = abilAvailable.length && sm.gold < TUTOR_COST_ABILITY
+                        ? `<p class="story-tutor-afford-warn" role="status">Each ability swap costs ${TUTOR_COST_ABILITY.toLocaleString()}G (you have ${sm.gold.toLocaleString()}G).</p>`
+                        : '';
+                    abilRow = abilAvailable.length
+                        ? `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentAbility)}</strong> →</span></div>`
+                          + abilGoldWarn
+                          + `<div class="story-tutor-choice-list">`
+                          + abilAvailable.map(a =>
+                              `<div class="story-tutor-choice"><div class="story-tutor-choice-actions">`
+                              + `<button type="button" class="story-tutor-btn" onclick="window.StoryMode.tutorChangeAbility(${idx},'${a.replace(/'/g,"\\'")}')"`
+                              + ` ${sm.gold < TUTOR_COST_ABILITY ? 'disabled' : ''}`
+                              + ` data-tip="${encodeURIComponent(tooltipDict[a] || '')}"`
+                              + ` onmouseenter="window.showTutorTextTooltip(this,event)"`
+                              + ` onmousemove="window.showTutorTextTooltip(this,event)"`
+                              + ` onmouseleave="window.hideTextTooltip()">${_esc(a)}</button>`
+                              + `<span class="story-tutor-price">🪙${TUTOR_COST_ABILITY}G</span></div>`
+                              + _tutorChoiceDescBlockFromKey(a)
+                              + `</div>`
+                          ).join('')
+                          + `</div>`
+                        : `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentAbility)}</strong></span><span style="font-size:10px;color:#555;">(no alternatives)</span></div>`;
+                }
 
-                const currentNature = b.n || 'Hardy';
-                const natAvailable = pool.natures.filter(n => n !== currentNature);
-                const natureRow = natAvailable.length
-                    ? `<div class="story-tutor-option-row"><span class="current">Now: <strong>${currentNature}</strong> →</span>`
-                      + natAvailable.map(n => {
-                          const nm = natureModifiers[n];
-                          const statNames = {atk:'Atk',def:'Def',spa:'SpA',spd:'SpD',spe:'Spe'};
-                          const tip = nm ? '+' + statNames[nm.up] + ', -' + statNames[nm.down] : 'Neutral';
-                          return `<button class="story-tutor-btn" onclick="window.StoryMode.tutorChangeNature(${idx},'${n.replace(/'/g,"\\'")}')"`
-                          + ` ${sm.gold < TUTOR_COST_NATURE ? 'disabled' : ''}`
-                          + ` data-tip="${encodeURIComponent(tip)}"`
-                          + ` onmouseenter="window.showTutorTextTooltip(this,event)"`
-                          + ` onmousemove="window.showTutorTextTooltip(this,event)"`
-                          + ` onmouseleave="window.hideTextTooltip()">${n}</button>`;
-                      }).join('')
-                      + `<span class="story-tutor-price">🪙${TUTOR_COST_NATURE}G</span></div>`
-                    : `<div class="story-tutor-option-row"><span class="current">Now: <strong>${currentNature}</strong></span><span style="font-size:10px;color:#555;">(no alternatives)</span></div>`;
+                let natureRow = '';
+                if (showNature) {
+                    const currentNature = b.n || 'Hardy';
+                    const natAvailable = pool.natures.filter(n => n !== currentNature);
+                    const natGoldWarn = natAvailable.length && sm.gold < TUTOR_COST_NATURE
+                        ? `<p class="story-tutor-afford-warn" role="status">Each nature swap costs ${TUTOR_COST_NATURE.toLocaleString()}G (you have ${sm.gold.toLocaleString()}G).</p>`
+                        : '';
+                    natureRow = natAvailable.length
+                        ? `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentNature)}</strong> →</span></div>`
+                          + natGoldWarn
+                          + `<div class="story-tutor-choice-list">`
+                          + natAvailable.map(n => {
+                              const nm = natureModifiers[n];
+                              const statNames = {atk:'Atk',def:'Def',spa:'SpA',spd:'SpD',spe:'Spe'};
+                              const tip = nm ? '+' + statNames[nm.up] + ', -' + statNames[nm.down] : 'Neutral';
+                              return `<div class="story-tutor-choice"><div class="story-tutor-choice-actions">`
+                              + `<button type="button" class="story-tutor-btn" onclick="window.StoryMode.tutorChangeNature(${idx},'${n.replace(/'/g,"\\'")}')"`
+                              + ` ${sm.gold < TUTOR_COST_NATURE ? 'disabled' : ''}`
+                              + ` data-tip="${encodeURIComponent(tip)}"`
+                              + ` onmouseenter="window.showTutorTextTooltip(this,event)"`
+                              + ` onmousemove="window.showTutorTextTooltip(this,event)"`
+                              + ` onmouseleave="window.hideTextTooltip()">${_esc(n)}</button>`
+                              + `<span class="story-tutor-price">🪙${TUTOR_COST_NATURE}G</span></div>`
+                              + _tutorChoiceDescBlockFromKey(n)
+                              + `</div>`;
+                          }).join('')
+                          + `</div>`
+                        : `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentNature)}</strong></span><span style="font-size:10px;color:#555;">(no alternatives)</span></div>`;
+                }
+
+                const moveSection = showMoves
+                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Moves</div><p class="story-tutor-moves-hint">The highlighted move in each list shows type, category, power, accuracy, PP, priority, and a short effect description next to or below the list on wider screens.</p>${moveRows}</div>`
+                    : '';
+                const itemSection = showLoadout
+                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Held Item</div><p class="story-tutor-moves-hint">Each option shows what the item does below the button (same info as hover on desktop).</p>${itemRow}</div>`
+                    : '';
+                const abilSection = showLoadout
+                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Ability</div><p class="story-tutor-moves-hint">Short ability text appears under each choice.</p>${abilRow}</div>`
+                    : '';
+                const natureSection = showNature
+                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Nature</div><p class="story-tutor-moves-hint">Stat boosts (+/−) are listed under each nature.</p>${natureRow}</div>`
+                    : '';
 
                 return `<div class="story-tutor-mon">
                     <div class="story-tutor-mon-name">
                         <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
                         ${t.name} ${typeHtml}
                     </div>
-                    <div class="story-tutor-section"><div class="story-tutor-section-title">Moves</div>${moveRows}</div>
-                    <div class="story-tutor-section"><div class="story-tutor-section-title">Held Item</div>${itemRow}</div>
-                    <div class="story-tutor-section"><div class="story-tutor-section-title">Ability</div>${abilRow}</div>
-                    <div class="story-tutor-section"><div class="story-tutor-section-title">Nature</div>${natureRow}</div>
+                    ${moveSection}${itemSection}${abilSection}${natureSection}
                 </div>`;
             }).join('');
+
+            if (showMoves) {
+                el.querySelectorAll('.story-tutor-move-slot[data-has-moves="1"]').forEach(function(row) {
+                    const key = row.dataset.slotKey;
+                    const moves = _tutorSlotMoveOptions.get(key);
+                    const sel = row.querySelector('.story-tutor-move-select');
+                    const ap = row.querySelector('.story-tutor-apply-move');
+                    const low = sm.gold < TUTOR_COST_MOVE;
+                    if (moves && sel) _tutorFillMoveSelect(sel, moves);
+                    if (ap) ap.disabled = low || !(sel && sel.value);
+                    _tutorRefreshMoveDetailRow(row);
+                });
+            }
         }
 
         function tutorChangeMove(teamIdx, moveSlot, newMove) {
@@ -20702,18 +21221,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.status = null;
             mon.pp = null;
             save();
-            renderTutorTeam();
+            void renderTutorTeam();
             renderTeamPanel();
         }
 
-        function tutorChangeItem(teamIdx, newItem) {
+        async function tutorChangeItem(teamIdx, newItem) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (sm.gold < TUTOR_COST_ITEM) return;
             if (isMegaStone(newItem) || Z_TYPE_MAP_VALUES.has(newItem) || BANNED_ITEMS.has(newItem)) return;
+            const curItem = mon.build.i;
+            const curGimmick = mon.build.gimmick;
+            const swappingAwayMegaStone = curGimmick === 'MEGA' && isMegaStone(curItem);
+            const swappingAwayZCrystal  = curGimmick === 'ZMOVE' && Z_TYPE_MAP_VALUES.has(curItem);
+            if (swappingAwayMegaStone || swappingAwayZCrystal) {
+                const which = swappingAwayMegaStone ? 'Mega Evolution' : 'Z-Move';
+                const ok = (typeof window !== 'undefined' && typeof window.showGameConfirm === 'function')
+                    ? await window.showGameConfirm(`Replacing the ${curItem} will disable ${which} on ${mon.name}. Visit Colress again (10,000G) to restore it. Continue?`)
+                    : true;
+                if (!ok) return;
+                mon.build.gimmick = 'STANDARD';
+            }
             sm.gold -= TUTOR_COST_ITEM;
             mon.build.i = newItem;
             save();
-            renderTutorTeam();
+            void renderTutorTeam();
             renderTeamPanel();
         }
 
@@ -20723,19 +21254,323 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.gold -= TUTOR_COST_ABILITY;
             mon.build.a = newAbility;
             save();
-            renderTutorTeam();
+            void renderTutorTeam();
             renderTeamPanel();
         }
 
         function tutorChangeNature(teamIdx, newNature) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (sm.gold < TUTOR_COST_NATURE) return;
+            if (!Object.prototype.hasOwnProperty.call(natureModifiers, newNature)) return;
             sm.gold -= TUTOR_COST_NATURE;
             mon.build.n = newNature;
             mon.currentHp = null;
             save();
-            renderTutorTeam();
+            void renderTutorTeam();
             renderTeamPanel();
+        }
+
+        // ── COLRESS — POWER AWAKENING NPC ────────────────────────────────
+        const COLRESS_COST = 10000;
+        const COLRESS_ALL_TYPES = ["Normal","Fire","Water","Electric","Grass","Ice","Fighting","Poison","Ground","Flying","Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel","Fairy"];
+
+        function _colressMechAvailable(kind) {
+            if (!sm || !sm.settings) return false;
+            if (kind === 'mega')  return !!sm.settings.megaOn;
+            if (kind === 'dmax')  return !!sm.settings.dynaOn;
+            if (kind === 'z')     return !!sm.settings.zOn;
+            if (kind === 'tera')  return !!sm.settings.teraOn;
+            return false;
+        }
+
+        function _colressEligibleMechanics(name, build) {
+            const out = { mega: false, dmax: false, z: false, tera: false };
+            if (!name || !build) return out;
+            if (_colressMechAvailable('mega') && MEGA_SPECIES.has(name) && name !== 'Rayquaza') {
+                const stone = MEGA_STONE_MAP[name];
+                if (stone) out.mega = true;
+            }
+            if (_colressMechAvailable('dmax') && !DYNAMAX_BANNED.has(name)) {
+                out.dmax = true;
+            }
+            if (_colressMechAvailable('z')) {
+                const sigZ = SIGNATURE_Z[name];
+                let zOk = !!sigZ;
+                if (!zOk) {
+                    const moves = build.m || [];
+                    for (const mn of moves) {
+                        const mv = movesDB[mn && mn.split && mn.split('/')[0]];
+                        if (mv && mv.cat !== 'Status' && (mv.pow || 0) > 0 && Z_TYPE_MAP[mv.type]) { zOk = true; break; }
+                    }
+                }
+                out.z = zOk;
+            }
+            if (_colressMechAvailable('tera')) {
+                out.tera = true;
+            }
+            return out;
+        }
+
+        function _colressZTypesForBuild(build) {
+            const set = new Set();
+            if (!build || !build.m) return [];
+            for (const mn of build.m) {
+                const m = mn && mn.split ? mn.split('/')[0] : mn;
+                const mv = movesDB[m];
+                if (mv && mv.cat !== 'Status' && (mv.pow || 0) > 0 && Z_TYPE_MAP[mv.type]) set.add(mv.type);
+            }
+            return COLRESS_ALL_TYPES.filter(t => set.has(t));
+        }
+
+        function _colressGimmickBadge(build) {
+            const g = build && build.gimmick;
+            if (g === 'MEGA')          return '<span class="story-colress-badge" style="background:#7b1fa2;color:#fff;">MEGA</span>';
+            if (g === 'DYNAMAX')       return '<span class="story-colress-badge" style="background:#b71c1c;color:#fff;">DMAX</span>';
+            if (g === 'GMAXDYNAMAX')   return '<span class="story-colress-badge" style="background:#b71c1c;color:#fff;">GMAX</span>';
+            if (g === 'ZMOVE')         return '<span class="story-colress-badge" style="background:#f9a825;color:#000;">Z-MOVE</span>';
+            if (g === 'TERA')          return '<span class="story-colress-badge" style="background:#0277bd;color:#fff;">TERA' + (build.teraType ? ' · ' + build.teraType : '') + '</span>';
+            return '<span class="story-colress-badge" style="background:#444;color:#bbb;">STANDARD</span>';
+        }
+
+        function enterColress() {
+            const goldEl = document.getElementById('story-colress-gold');
+            if (goldEl) goldEl.textContent = `🪙 ${sm.gold.toLocaleString()}G`;
+            syncStoryColressBackground();
+            showScreen('screen-story-colress');
+            renderColressTeam();
+        }
+
+        function renderColressTeam() {
+            const el = document.getElementById('story-colress-team');
+            const goldEl = document.getElementById('story-colress-gold');
+            if (goldEl) goldEl.textContent = `🪙 ${sm.gold.toLocaleString()}G`;
+            if (!el) return;
+            if (!sm.team || !sm.team.length) {
+                el.innerHTML = '<div style="color:#555;font-size:12px;">No Pokémon in party.</div>';
+                return;
+            }
+            el.innerHTML = sm.team.map((t, idx) => _renderColressMonCard(t, idx)).join('');
+        }
+
+        function _renderColressMonCard(t, idx) {
+            const b = t.build || {};
+            const elig = _colressEligibleMechanics(t.name, b);
+            const spriteUrl = getSprite(t.name);
+            let typeHtml = '';
+            try {
+                const mon = buildPokemon(t.name, { ...b, m: [...(b.m || [])] });
+                typeHtml = mon ? getTypeHTML(mon.type1, mon.type2 || '') : '';
+            } catch (e) {}
+            const badge = _colressGimmickBadge(b);
+            const heldItem = b.i || '(none)';
+            const cantAfford = sm.gold < COLRESS_COST;
+            const priceTag = `<span class="story-tutor-price">🪙${COLRESS_COST.toLocaleString()}G</span>`;
+            const noneEligible = !(elig.mega || elig.dmax || elig.z || elig.tera);
+
+            const sections = [];
+
+            if (elig.mega) {
+                const stone = MEGA_STONE_MAP[t.name];
+                const stones = Array.isArray(stone) ? stone : (stone ? [stone] : []);
+                const isCurrent = b.gimmick === 'MEGA';
+                const buttons = stones.map(s => {
+                    const formName = MEGA_FORM_NAMES[s] || (t.name + '-Mega');
+                    const activeFlag = (isCurrent && b.i === s) ? ' data-current="1"' : '';
+                    const dis = cantAfford || (isCurrent && b.i === s) ? 'disabled' : '';
+                    return `<div class="story-tutor-choice"${activeFlag}><div class="story-tutor-choice-actions">`
+                        + `<button type="button" class="story-tutor-btn" ${dis} onclick="window.StoryMode.colressApplyMega(${idx},'${s.replace(/'/g,"\\'")}')">`
+                        + `${_esc(formName)} <span style="opacity:0.7;font-size:10px;">(${_esc(s)})</span></button>`
+                        + priceTag + `</div></div>`;
+                }).join('');
+                sections.push(
+                    `<div class="story-tutor-section"><div class="story-tutor-section-title" style="color:#ce93d8;">⚡ Mega Evolution</div>`
+                    + `<p class="story-tutor-moves-hint">Equips the proper Mega Stone (replaces current held item).</p>`
+                    + `<div class="story-tutor-choice-list">${buttons}</div></div>`
+                );
+            }
+
+            if (elig.dmax) {
+                const isGmax = GMAX_SPECIES.has(t.name);
+                const tag = isGmax ? 'GMAXDYNAMAX' : 'DYNAMAX';
+                const isCurrent = b.gimmick === tag;
+                const dis = (cantAfford || isCurrent) ? 'disabled' : '';
+                sections.push(
+                    `<div class="story-tutor-section"><div class="story-tutor-section-title" style="color:#ef9a9a;">🌋 ${isGmax ? 'Gigantamax' : 'Dynamax'}</div>`
+                    + `<p class="story-tutor-moves-hint">No item change. Held item is preserved.</p>`
+                    + `<div class="story-tutor-choice-list">`
+                    + `<div class="story-tutor-choice"><div class="story-tutor-choice-actions">`
+                    + `<button type="button" class="story-tutor-btn" ${dis} onclick="window.StoryMode.colressApplyDmax(${idx})">${isGmax ? 'Gigantamax' : 'Dynamax'}${isCurrent ? ' (active)' : ''}</button>`
+                    + priceTag + `</div></div></div></div>`
+                );
+            }
+
+            if (elig.z) {
+                const sigZ = SIGNATURE_Z[t.name];
+                let buttons = '';
+                if (sigZ) {
+                    const reqMove = SIGNATURE_Z_REQUIRED_MOVE[sigZ] || '';
+                    const hasReq = reqMove ? (b.m || []).includes(reqMove) : true;
+                    const isCurrent = b.gimmick === 'ZMOVE' && b.i === sigZ;
+                    const dis = (cantAfford || isCurrent) ? 'disabled' : '';
+                    const teachNote = reqMove
+                        ? (hasReq ? '' : ' (auto-teaches ' + _esc(reqMove) + ')')
+                        : '';
+                    const label = `Signature: ${_esc(sigZ)}${teachNote}`;
+                    buttons += `<div class="story-tutor-choice"><div class="story-tutor-choice-actions">`
+                        + `<button type="button" class="story-tutor-btn" ${dis} onclick="window.StoryMode.colressApplyZSig(${idx})">${label}</button>`
+                        + priceTag + `</div></div>`;
+                }
+                const types = _colressZTypesForBuild(b);
+                if (types.length) {
+                    buttons += types.map(typ => {
+                        const crystal = Z_TYPE_MAP[typ];
+                        const isCurrent = b.gimmick === 'ZMOVE' && b.i === crystal;
+                        const dis = (cantAfford || isCurrent) ? 'disabled' : '';
+                        return `<div class="story-tutor-choice"><div class="story-tutor-choice-actions">`
+                            + `<button type="button" class="story-tutor-btn type-badge type-${typ}" style="border:none;font-weight:bold;" ${dis} onclick="window.StoryMode.colressApplyZ(${idx},'${typ}')">${typ} (${_esc(crystal)})</button>`
+                            + priceTag + `</div></div>`;
+                    }).join('');
+                }
+                if (!buttons) {
+                    buttons = `<div class="story-tutor-option-row"><span class="current">No damaging move types eligible — visit the Move Tutor first.</span></div>`;
+                }
+                sections.push(
+                    `<div class="story-tutor-section"><div class="story-tutor-section-title" style="color:#ffd54f;">⚡ Z-Move</div>`
+                    + `<p class="story-tutor-moves-hint">Equips the matching Z-Crystal (replaces current held item). Damaging moves of the chosen type become Z-powered.</p>`
+                    + `<div class="story-tutor-choice-list">${buttons}</div></div>`
+                );
+            }
+
+            if (elig.tera) {
+                const buttons = COLRESS_ALL_TYPES.map(typ => {
+                    const isCurrent = b.gimmick === 'TERA' && b.teraType === typ;
+                    const dis = (cantAfford || isCurrent) ? 'disabled' : '';
+                    return `<button type="button" class="story-tutor-btn type-badge type-${typ}" style="border:none;font-weight:bold;${isCurrent ? 'outline:2px solid #fff;' : ''}" ${dis} onclick="window.StoryMode.colressApplyTera(${idx},'${typ}')">${typ}</button>`;
+                }).join('');
+                sections.push(
+                    `<div class="story-tutor-section"><div class="story-tutor-section-title" style="color:#81d4fa;">◆ Terastallization</div>`
+                    + `<p class="story-tutor-moves-hint">Pick any of the 18 Tera types. No item change. Cost applies per change.</p>`
+                    + `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;">${buttons}</div>`
+                    + `<div style="font-size:10px;color:#ffd54f;margin-top:6px;text-align:right;">Each pick: 🪙${COLRESS_COST.toLocaleString()}G</div>`
+                    + `</div>`
+                );
+            }
+
+            const body = noneEligible
+                ? `<div class="story-tutor-option-row"><span class="current" style="color:#888;">No eligible mechanics for this Pokémon under current run settings.</span></div>`
+                : sections.join('');
+
+            return `<div class="story-tutor-mon">
+                <div class="story-tutor-mon-name" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
+                    <span>${_esc(t.name)}</span> ${typeHtml}
+                    ${badge}
+                    <span style="font-size:10px;color:#888;margin-left:auto;">Held: <strong style="color:#bbb;">${_esc(heldItem)}</strong></span>
+                </div>
+                ${body}
+            </div>`;
+        }
+
+        function _colressCharge() {
+            if (sm.gold < COLRESS_COST) {
+                if (typeof window !== 'undefined' && typeof window.showGameAlert === 'function') {
+                    window.showGameAlert(`Colress charges ${COLRESS_COST.toLocaleString()}G — you only have ${sm.gold.toLocaleString()}G.`);
+                }
+                return false;
+            }
+            sm.gold -= COLRESS_COST;
+            return true;
+        }
+
+        function _colressFinish() {
+            save();
+            renderColressTeam();
+            try { renderTeamPanel(); } catch (e) {}
+            try { updateHUD(); } catch (e) {}
+        }
+
+        function _colressClearStaleGimmickItem(build) {
+            if (isMegaStone(build.i) || Z_TYPE_MAP_VALUES.has(build.i)) build.i = 'Leftovers';
+        }
+
+        function colressApplyMega(teamIdx, stone) {
+            const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+            if (!_colressMechAvailable('mega')) return;
+            if (!MEGA_SPECIES.has(mon.name) || mon.name === 'Rayquaza') return;
+            if (!isMegaStone(stone) || !MEGA_FORM_NAMES[stone]) return;
+            const allowed = MEGA_STONE_MAP[mon.name];
+            const allowedList = Array.isArray(allowed) ? allowed : (allowed ? [allowed] : []);
+            if (!allowedList.includes(stone)) return;
+            if (mon.build.gimmick === 'MEGA' && mon.build.i === stone) return;
+            if (!_colressCharge()) return;
+            mon.build.gimmick = 'MEGA';
+            mon.build.i = stone;
+            delete mon.build.teraType;
+            _colressFinish();
+        }
+
+        function colressApplyDmax(teamIdx) {
+            const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+            if (!_colressMechAvailable('dmax')) return;
+            if (DYNAMAX_BANNED.has(mon.name)) return;
+            const tag = GMAX_SPECIES.has(mon.name) ? 'GMAXDYNAMAX' : 'DYNAMAX';
+            if (mon.build.gimmick === tag) return;
+            if (!_colressCharge()) return;
+            mon.build.gimmick = tag;
+            _colressClearStaleGimmickItem(mon.build);
+            delete mon.build.teraType;
+            _colressFinish();
+        }
+
+        function colressApplyZ(teamIdx, type) {
+            const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+            if (!_colressMechAvailable('z')) return;
+            if (!Z_TYPE_MAP[type]) return;
+            const eligibleTypes = _colressZTypesForBuild(mon.build);
+            if (!eligibleTypes.includes(type)) return;
+            const crystal = Z_TYPE_MAP[type];
+            if (mon.build.gimmick === 'ZMOVE' && mon.build.i === crystal) return;
+            if (!_colressCharge()) return;
+            mon.build.gimmick = 'ZMOVE';
+            mon.build.i = crystal;
+            delete mon.build.teraType;
+            _colressFinish();
+        }
+
+        function colressApplyZSig(teamIdx) {
+            const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+            if (!_colressMechAvailable('z')) return;
+            const sigZ = SIGNATURE_Z[mon.name];
+            if (!sigZ) return;
+            if (mon.build.gimmick === 'ZMOVE' && mon.build.i === sigZ) return;
+            if (!_colressCharge()) return;
+            mon.build.gimmick = 'ZMOVE';
+            mon.build.i = sigZ;
+            delete mon.build.teraType;
+            const reqMove = SIGNATURE_Z_REQUIRED_MOVE[sigZ];
+            if (reqMove) {
+                mon.build.m = mon.build.m || [];
+                if (!mon.build.m.includes(reqMove)) {
+                    const injIdx = mon.build.m.length < 4 ? mon.build.m.length : mon.build.m.length - 1;
+                    mon.build.m[injIdx] = reqMove;
+                    mon.currentHp = null;
+                    mon.status = null;
+                    mon.pp = null;
+                }
+            }
+            _colressFinish();
+        }
+
+        function colressApplyTera(teamIdx, type) {
+            const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+            if (!_colressMechAvailable('tera')) return;
+            if (!COLRESS_ALL_TYPES.includes(type)) return;
+            if (mon.build.gimmick === 'TERA' && mon.build.teraType === type) return;
+            if (!_colressCharge()) return;
+            mon.build.gimmick = 'TERA';
+            mon.build.teraType = type;
+            _colressClearStaleGimmickItem(mon.build);
+            _colressFinish();
         }
 
         // ── PUBLIC API ────────────────────────────────────────────────────
@@ -20750,6 +21585,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openSummary, profOpenSummary, summaryMove, moveInParty, togglePartyPanel,
             enterArtifactHall, toggleArtifactDisabled,
             enterTutor, tutorChangeMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
+            enterColress, colressApplyMega, colressApplyDmax, colressApplyZ, colressApplyZSig, colressApplyTera,
             openTeamTester, openTeamTesterSyncFromStory, runTeamTester, copyTeamTesterText, closeTeamTester,
             previewHallOfFame, seedDebugMysteryLegendGate,
         };
