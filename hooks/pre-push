@@ -1,0 +1,16 @@
+#!/bin/sh
+# Bumps deploy patch in battle.html before each push; see scripts/bump-deploy-version.ps1
+if [ "$GIT_BUMP_VERSION_PUSH" = "1" ]; then
+	exit 0
+fi
+ROOT="$(git rev-parse --show-toplevel)"
+export GIT_BUMP_VERSION_PUSH=1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$ROOT/scripts/bump-deploy-version.ps1"
+code=$?
+if [ "$code" -eq 1 ]; then
+	exec git push "$@"
+fi
+if [ "$code" -eq 2 ]; then
+	exit 1
+fi
+exit 0
