@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -10239,15 +10239,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 updateUI();
                 return true;
             }
-            // Bench Revive / Max Revive (highest BST fainted non-active)
-            let benchTgt = null, bestBst = -1;
-            for (let i = 0; i < (state.foeParty || []).length; i++) {
-                const m = state.foeParty[i];
+            // Bench Revive / Max Revive: wait until several teammates are down (up to 3), then revive strongest BST among fainted.
+            const _foeParty = state.foeParty || [];
+            const _maxBenchFainted = Math.max(0, _foeParty.length - 1);
+            const _foeReviveWait = _maxBenchFainted <= 0 ? 999 : Math.min(3, _maxBenchFainted);
+            let benchTgt = null, bestBst = -1, benchFaintCount = 0;
+            for (let i = 0; i < _foeParty.length; i++) {
+                const m = _foeParty[i];
                 if (!m || m === mon || m.currentHp > 0) continue;
+                benchFaintCount++;
                 const b = getBST(m.name);
                 if (b > bestBst) { bestBst = b; benchTgt = m; }
             }
-            if (benchTgt) {
+            if (benchTgt && benchFaintCount >= _foeReviveWait) {
                 if ((inv.maxRevive || 0) > 0) {
                     inv.maxRevive--;
                     benchTgt.currentHp = benchTgt.maxHp;
