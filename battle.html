@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -7227,13 +7227,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         const GAME_DESIGN_W = 1280;
         const GAME_DESIGN_H = 720;
+        /** Scale the 1280×720 design to fit the window. Snap the limiting axis to device pixels to avoid resampling banding/scanlines from fractional transform scale. */
         function applyDesktopGameScale() {
             const root = document.getElementById('app-root');
             const outer = document.getElementById('desktop-scale-outer');
             if (!root || !outer) return;
             if (document.body.classList.contains('is-mobile')) {
                 // #region agent log
-                fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'c1e5d2' }, body: JSON.stringify({ sessionId: 'c1e5d2', runId: 'pre-fix', hypothesisId: 'A', location: 'battle.html:applyDesktopGameScale', message: 'mobile path: no scale', data: { isMobile: true, transform: root.style.transform }, timestamp: Date.now() }) }).catch(function() {});
+                fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'c1e5d2' }, body: JSON.stringify({ sessionId: 'c1e5d2', runId: 'post-fix', hypothesisId: 'A', location: 'battle.html:applyDesktopGameScale', message: 'mobile path: no scale', data: { isMobile: true, transform: root.style.transform }, timestamp: Date.now() }) }).catch(function() {});
                 // #endregion
                 root.style.transform = '';
                 root.style.transformOrigin = '';
@@ -7243,21 +7244,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const vw = window.innerWidth;
             const vh = window.innerHeight;
-            const s = Math.min(vw / GAME_DESIGN_W, vh / GAME_DESIGN_H, 3);
-            root.style.transform = 'scale(' + s + ')';
+            const dpr = window.devicePixelRatio || 1;
+            const limW = vw / GAME_DESIGN_W;
+            const limH = vh / GAME_DESIGN_H;
+            const sRaw = Math.min(limW, limH, 3);
+            const widthTighter = limW <= limH;
+            var s;
+            if (widthTighter) {
+                s = Math.floor(limW * GAME_DESIGN_W * dpr) / (GAME_DESIGN_W * dpr);
+            } else {
+                s = Math.floor(limH * GAME_DESIGN_H * dpr) / (GAME_DESIGN_H * dpr);
+            }
+            s = Math.min(s, 3, sRaw);
+            if (s < 0.0001) s = sRaw;
+            root.style.transform = 'translate3d(0,0,0) scale(' + s + ')';
             root.style.transformOrigin = 'top left';
             outer.style.width = (GAME_DESIGN_W * s) + 'px';
             outer.style.height = (GAME_DESIGN_H * s) + 'px';
             // #region agent log
             (function () {
-                const dpr = window.devicePixelRatio || 1;
-                const sSnap = Math.floor(s * GAME_DESIGN_W * dpr) / (GAME_DESIGN_W * dpr);
                 const battle = document.getElementById('screen-battle');
                 var beforeOp = '', beforeBg0 = '', rootF = '', battleF = '';
                 try { rootF = window.getComputedStyle(root).transform; } catch (e) {}
                 try { battleF = battle ? window.getComputedStyle(battle).filter : ''; } catch (e) {}
                 try { if (battle) { var pb = window.getComputedStyle(battle, '::before'); beforeOp = pb ? String(pb.opacity) : ''; beforeBg0 = (pb && pb.background) ? String(pb.background).slice(0, 200) : ''; } } catch (e) {}
-                fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'c1e5d2' }, body: JSON.stringify({ sessionId: 'c1e5d2', runId: 'pre-fix', hypothesisId: 'A', location: 'battle.html:applyDesktopGameScale', message: 'desktop scale applied', data: { vw: vw, vh: vh, s: s, dpr: dpr, sDeltaFromSnap: s - sSnap, rootTransformComputed: rootF, battleFilter: battleF, beforeOpacity: beforeOp, beforeGradientStart: beforeBg0, hypothesisB_vignette: (beforeOp !== '0' && beforeOp !== '') ? 1 : 0 }, timestamp: Date.now() }) }).catch(function() {});
+                fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'c1e5d2' }, body: JSON.stringify({ sessionId: 'c1e5d2', runId: 'post-fix', hypothesisId: 'A', location: 'battle.html:applyDesktopGameScale', message: 'desktop scale applied', data: { vw: vw, vh: vh, dpr: dpr, sRaw: sRaw, sSnapped: s, widthTighter: widthTighter, resampleDelta: sRaw - s, rootTransformComputed: rootF, battleFilter: battleF, beforeOpacity: beforeOp, beforeGradientStart: beforeBg0, hypothesisB_vignette: (beforeOp !== '0' && beforeOp !== '') ? 1 : 0 }, timestamp: Date.now() }) }).catch(function() {});
             })();
             // #endregion
         }
@@ -11954,6 +11965,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (await checkFaints()) return;
 
                 if (state.pendingEoT) {
+                    // #region agent log
+                    fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8448b0'},body:JSON.stringify({sessionId:'8448b0',runId:'pre-fix',hypothesisId:'H5',location:'battle.html:11968',message:'Forced switch path consumed pendingEoT',data:{turnNumber:state.turnNumber,pActive:state.pActive&&state.pActive.name,pHp:state.pActive&&state.pActive.currentHp,fActive:state.fActive&&state.fActive.name,fHp:state.fActive&&state.fActive.currentHp,isLocked:state.isLocked,pendingEoT:state.pendingEoT},timestamp:Date.now()})}).catch(()=>{});
+                    // #endregion
                     state.pendingEoT = false;
                     runVolatileTimers();
                     runWishHealing();
@@ -11972,6 +11986,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
 
                 state.isLocked = false; 
+                // #region agent log
+                fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8448b0'},body:JSON.stringify({sessionId:'8448b0',runId:'pre-fix',hypothesisId:'H1',location:'battle.html:11986',message:'Forced switch path unlocked turn and restored command menu',data:{turnNumber:state.turnNumber,isLocked:state.isLocked,pendingEoT:state.pendingEoT,modalPartyHidden:document.getElementById('modal-party').classList.contains('hidden')},timestamp:Date.now()})}).catch(()=>{});
+                // #endregion
                 if (state.mode === 'pvp') state.currentPlayer = 1;
                 document.getElementById('command-menu').classList.remove('hidden');
             } else {
@@ -12227,7 +12244,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         window.playTurn = async function(pMoveIndex, pSwitchIndex) {
-            if(state.isLocked) return;
+            // #region agent log
+            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8448b0'},body:JSON.stringify({sessionId:'8448b0',runId:'pre-fix',hypothesisId:'H1',location:'battle.html:12247',message:'playTurn invoked',data:{turnNumber:state.turnNumber,pMoveIndex,pSwitchIndex,isLocked:state.isLocked,pendingEoT:state.pendingEoT,mode:state.mode,pActive:state.pActive&&state.pActive.name,pHp:state.pActive&&state.pActive.currentHp,fActive:state.fActive&&state.fActive.name,fHp:state.fActive&&state.fActive.currentHp},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
+            if(state.isLocked) {
+                // #region agent log
+                fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8448b0'},body:JSON.stringify({sessionId:'8448b0',runId:'pre-fix',hypothesisId:'H1',location:'battle.html:12248',message:'playTurn ignored because state.isLocked was true',data:{turnNumber:state.turnNumber,pendingEoT:state.pendingEoT,modalPartyHidden:document.getElementById('modal-party').classList.contains('hidden')},timestamp:Date.now()})}).catch(()=>{});
+                // #endregion
+                return;
+            }
             // VGC: Cannot voluntarily switch while Dynamaxed
             if (pSwitchIndex !== null && state.pActive && state.pActive.dynamaxed) {
                 logMsg(`${state.pActive.name} cannot switch out while Dynamaxed!`, 'info');
@@ -12290,6 +12315,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         window.__runLockedPvPTurnResolution = async function() {
             state.isLocked = true;
+            // #region agent log
+            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8448b0'},body:JSON.stringify({sessionId:'8448b0',runId:'pre-fix',hypothesisId:'H1',location:'battle.html:12310',message:'Turn resolution lock acquired',data:{turnNumber:state.turnNumber,pendingEoT:state.pendingEoT,p1Action:state.p1Action,p2Action:state.p2Action,pActive:state.pActive&&state.pActive.name,fActive:state.fActive&&state.fActive.name},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
             state.turnNumber++;
             // VGC: Enforce turn limit to prevent stall wars (200 turns → draw)
             if (state.turnNumber > 200) {
@@ -12479,13 +12507,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         let fainted = await checkFaints();
                         if (state.isOver) return;
                         if (fainted) {
-                            if (!document.getElementById('modal-party').classList.contains('hidden')) { state.pendingEoT = true; return; }
+                            if (!document.getElementById('modal-party').classList.contains('hidden')) {
+                                // #region agent log
+                                fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8448b0'},body:JSON.stringify({sessionId:'8448b0',runId:'pre-fix',hypothesisId:'H2',location:'battle.html:12493',message:'Set pendingEoT after faint with forced party modal open',data:{turnNumber:state.turnNumber,pActive:state.pActive&&state.pActive.name,pHp:state.pActive&&state.pActive.currentHp,fActive:state.fActive&&state.fActive.name,fHp:state.fActive&&state.fActive.currentHp,isLocked:state.isLocked,pendingEoTBefore:state.pendingEoT,modalPartyHidden:document.getElementById('modal-party').classList.contains('hidden')},timestamp:Date.now()})}).catch(()=>{});
+                                // #endregion
+                                state.pendingEoT = true; return;
+                            }
                         } else {
                             await performAction(false, fMove);
                             let fainted2 = await checkFaints();
                             if (state.isOver) return;
                             if (fainted2) {
-                                if (!document.getElementById('modal-party').classList.contains('hidden')) { state.pendingEoT = true; return; }
+                                if (!document.getElementById('modal-party').classList.contains('hidden')) {
+                                    // #region agent log
+                                    fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8448b0'},body:JSON.stringify({sessionId:'8448b0',runId:'pre-fix',hypothesisId:'H2',location:'battle.html:12499',message:'Set pendingEoT after second-action faint with party modal open',data:{turnNumber:state.turnNumber,pActive:state.pActive&&state.pActive.name,pHp:state.pActive&&state.pActive.currentHp,fActive:state.fActive&&state.fActive.name,fHp:state.fActive&&state.fActive.currentHp,isLocked:state.isLocked,pendingEoTBefore:state.pendingEoT,modalPartyHidden:document.getElementById('modal-party').classList.contains('hidden')},timestamp:Date.now()})}).catch(()=>{});
+                                    // #endregion
+                                    state.pendingEoT = true; return;
+                                }
                             }
                         }
                     } else { 
@@ -12493,13 +12531,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         let fainted = await checkFaints();
                         if (state.isOver) return;
                         if (fainted) {
-                            if (!document.getElementById('modal-party').classList.contains('hidden')) { state.pendingEoT = true; return; }
+                            if (!document.getElementById('modal-party').classList.contains('hidden')) {
+                                // #region agent log
+                                fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8448b0'},body:JSON.stringify({sessionId:'8448b0',runId:'pre-fix',hypothesisId:'H2',location:'battle.html:12507',message:'Set pendingEoT after foe-first faint with party modal open',data:{turnNumber:state.turnNumber,pActive:state.pActive&&state.pActive.name,pHp:state.pActive&&state.pActive.currentHp,fActive:state.fActive&&state.fActive.name,fHp:state.fActive&&state.fActive.currentHp,isLocked:state.isLocked,pendingEoTBefore:state.pendingEoT,modalPartyHidden:document.getElementById('modal-party').classList.contains('hidden')},timestamp:Date.now()})}).catch(()=>{});
+                                // #endregion
+                                state.pendingEoT = true; return;
+                            }
                         } else {
                             await performAction(true, pMove);
                             let fainted2 = await checkFaints();
                             if (state.isOver) return;
                             if (fainted2) {
-                                if (!document.getElementById('modal-party').classList.contains('hidden')) { state.pendingEoT = true; return; }
+                                if (!document.getElementById('modal-party').classList.contains('hidden')) {
+                                    // #region agent log
+                                    fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8448b0'},body:JSON.stringify({sessionId:'8448b0',runId:'pre-fix',hypothesisId:'H2',location:'battle.html:12513',message:'Set pendingEoT after foe-first second-action faint with party modal open',data:{turnNumber:state.turnNumber,pActive:state.pActive&&state.pActive.name,pHp:state.pActive&&state.pActive.currentHp,fActive:state.fActive&&state.fActive.name,fHp:state.fActive&&state.fActive.currentHp,isLocked:state.isLocked,pendingEoTBefore:state.pendingEoT,modalPartyHidden:document.getElementById('modal-party').classList.contains('hidden')},timestamp:Date.now()})}).catch(()=>{});
+                                    // #endregion
+                                    state.pendingEoT = true; return;
+                                }
                             }
                         }
                     }
@@ -13735,6 +13783,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (defender.ability === "Battle Armor" || defender.ability === "Shell Armor") critStage = -99;
                 let critRate = critStage <= 0 ? 1/24 : critStage === 1 ? 1/8 : critStage === 2 ? 1/2 : 1;
                 let crit = Math.random() < critRate ? (attacker.ability === "Sniper" ? 2.25 : 1.5) : 1;
+                if (defender.ability === "Battle Armor" || defender.ability === "Shell Armor" || crit > 1) {
+                    // #region agent log
+                    fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8448b0'},body:JSON.stringify({sessionId:'8448b0',runId:'pre-fix',hypothesisId:'H4',location:'battle.html:13749',message:'Critical calculation around suspected freeze scenario',data:{turnNumber:state.turnNumber,attacker:attacker&&attacker.name,defender:defender&&defender.name,move:move&&move.name,defenderAbility:defender&&defender.ability,critStage,critRate,crit},timestamp:Date.now()})}).catch(()=>{});
+                    // #endregion
+                }
 
                 // Attack and Defense stats
                 let A, D;
@@ -14863,6 +14916,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         async function checkFaints() {
             let foeFainted = state.fActive.currentHp <= 0;
             let playerFainted = state.pActive.currentHp <= 0;
+            // #region agent log
+            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8448b0'},body:JSON.stringify({sessionId:'8448b0',runId:'pre-fix',hypothesisId:'H1',location:'battle.html:14877',message:'checkFaints entry state snapshot',data:{turnNumber:state.turnNumber,foeFainted,playerFainted,pActive:state.pActive&&state.pActive.name,pHp:state.pActive&&state.pActive.currentHp,fActive:state.fActive&&state.fActive.name,fHp:state.fActive&&state.fActive.currentHp,isLocked:state.isLocked,pendingEoT:state.pendingEoT,modalPartyHidden:document.getElementById('modal-party').classList.contains('hidden')},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
 
             // Check for simultaneous faint (draw condition)
             if (foeFainted && playerFainted) {
@@ -15021,6 +15077,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 state.pActive.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', recharge: false, charging: null, lockMove: null, lockTurns: 0 };
 
                 if (state.playerParty.some(m => m.currentHp > 0)) {
+                    // #region agent log
+                    fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8448b0'},body:JSON.stringify({sessionId:'8448b0',runId:'pre-fix',hypothesisId:'H3',location:'battle.html:15035',message:'Player fainted and forced party selection opened',data:{turnNumber:state.turnNumber,pActive:state.pActive&&state.pActive.name,pHp:state.pActive&&state.pActive.currentHp,isLocked:state.isLocked,pendingEoT:state.pendingEoT},timestamp:Date.now()})}).catch(()=>{});
+                    // #endregion
                     await sleep(500); state.currentPlayer = 1; window.openParty(true); return true;
                 } else {
                     if (state.mode === 'gauntlet') {
@@ -17581,7 +17640,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [0,'City','City0',null,0,['Professor','Link Station','Pokemart','Move Tutor','Nature Rater','Battle Dojo','Leave City']],
           [1,'Battle','Basic Trainer',{g1:0,g2:0,g3:0,g4:100},1400,null],
           [2,'Battle','Basic Trainer',{g1:0,g2:0,g3:20,g4:80},1400,null],
-          [3,'Battle','Basic Trainer',{g1:0,g2:0,g3:50,g4:50},1400,null],
+          [3,'Battle','Basic Trainer',{g1:0,g2:0,g3:30,g4:70},1400,null],
           [4,'City','City1',null,0,['Professor','Link Station','Pokemart','Gym Battle','Leave City']],
           [5,'Battle','Gym Trainer',{g1:0,g2:0,g3:50,g4:50},1500,null],
           [6,'Battle','Gym Leader 1',{g1:0,g2:0,g3:80,g4:20},2000,null],
@@ -17639,19 +17698,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [58,'City','City8',null,0,['Link Station','Pokemart','Move Tutor','Gym Battle','Leave City']],
           [59,'Battle','Gym Trainer',{g1:35,g2:65,g3:0,g4:0},3000,null],
           [60,'Battle','Gym Trainer',{g1:40,g2:60,g3:0,g4:0},3000,null],
-          [61,'Battle','Gym Leader 8',{g1:45,g2:55,g3:0,g4:0},5000,null],
+          [61,'Battle','Gym Leader 8',{g1:17,g2:83,g3:0,g4:0},5000,null],
           [62,'Battle','Rival',{g1:60,g2:35,g3:5,g4:0},2800,null],
           [63,'City','City8',null,0,['Link Station','Pokemart','Move Tutor','Leave City']],
           [64,'Battle','Elite Trainer',{g1:55,g2:45,g3:0,g4:0},4200,null],
           [65,'Battle','Elite Trainer',{g1:65,g2:35,g3:0,g4:0},4800,null],
           [66,'Battle','Elite Trainer',{g1:75,g2:25,g3:0,g4:0},5200,null],
           [67,'City','City9',null,0,['Link Station','Department Store','Move Tutor','Nature Rater','Battle Dojo','Power Up','Enter Pokemon League']],
-          [68,'Battle','E1',{g1:90,g2:10,g3:0,g4:0},5000,null],
-          [69,'Battle','E2',{g1:95,g2:5,g3:0,g4:0},5000,null],
-          [70,'Battle','E3',{g1:95,g2:5,g3:0,g4:0},5000,null],
-          [71,'Battle','E4',{g1:100,g2:0,g3:0,g4:0},5000,null],
-          [72,'Battle','Champion',{g1:100,g2:0,g3:0,g4:0},7500,null],
-          [73,'Battle','Rival',{g1:95,g2:5,g3:0,g4:0},5000,null],
+          [68,'Battle','E1',{g1:30,g2:70,g3:0,g4:0},5000,null],
+          [69,'Battle','E2',{g1:33,g2:67,g3:0,g4:0},5000,null],
+          [70,'Battle','E3',{g1:36,g2:64,g3:0,g4:0},5000,null],
+          [71,'Battle','E4',{g1:39,g2:61,g3:0,g4:0},5000,null],
+          [72,'Battle','Champion',{g1:50,g2:50,g3:0,g4:0},7500,null],
+          [73,'Battle','Rival',{g1:50,g2:50,g3:0,g4:0},5000,null],
           [74,'Hall of Fame','Hall of Fame',null,0,null],
           [75,'Battle','Mystery Figure',{g1:100,g2:0,g3:0,g4:0},12000,null],
         ];
