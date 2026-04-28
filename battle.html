@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -3858,6 +3858,8 @@
                     <button type="button" onclick="window.closeModal('modal-settings'); typeof window.startKoBugTestBattle==='function' && window.startKoBugTestBattle();" title="Opens ?kobugtest=1 sandbox: SR on your field, 2x Shedinja bench (die on switch), Machamp foe — use to repro faint / pendingEoT bugs.">Debug: KO / hazard test</button>
                     <button type="button" onclick="window.closeModal('modal-settings'); typeof window.startChampionTestBattle==='function' && window.startChampionTestBattle('steven');" title="Same as battle.html?championtest=1 — random strong 6 vs Steven’s squad; Mega+Dyna on for builds.">Debug: Champion test (Steven)</button>
                     <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && typeof window.StoryMode.seedStoryChampionWeakTestFromUrl==='function' && window.StoryMode.seedStoryChampionWeakTestFromUrl();" title="Same as ?storychampionweak=1 — story mode, Champion event, strong team vs weak foe (overwrites story save).">Debug: Story Champion (weak foe)</button>
+                    <button type="button" onclick="window.closeModal('modal-settings'); typeof window.__recoverBattleSoftLock==='function' && window.__recoverBattleSoftLock();" title="If the battle freezes with no buttons: restores Fight menu. Also works from console: __recoverBattleSoftLock()">Unstick battle UI</button>
+                    <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && typeof window.StoryMode.clearCurrentEnemyLock==='function' && window.StoryMode.clearCurrentEnemyLock();" title="Clears the frozen opponent-team snapshot (pbs_story_save). Use before re-entering Champion if a crash left a bad lock.">Clear story foe lock</button>
                     <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && window.StoryMode.previewHallOfFame();">Preview Hall of Fame</button>
                 </div>
             </details>
@@ -12432,6 +12434,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (state.turnNumber > 200) {
                 logMsg(`Turn limit reached! The battle ends in a draw.`, 'info');
                 state.isOver = true;
+                state.isLocked = false;
                 if (state.mode === 'gauntlet') {
                     showEndScreen("GAUNTLET OVER!", `Draw by turn limit. You cleared ${state.score} round${state.score !== 1 ? 's' : ''}!`);
                 } else {
@@ -12503,7 +12506,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     await performAction(false, pursuitMove);
                     let fainted = await checkFaints();
                     if (state.isOver) return;
-                    if (fainted) { state.isLocked = false; document.getElementById('command-menu').classList.remove('hidden'); return; }
+                    if (fainted) {
+                        if (!document.getElementById('modal-party').classList.contains('hidden')) {
+                            state.pendingEoT = true;
+                            return;
+                        }
+                    }
                     fMove = null; // Pursuit already used
                 }
                 if (state.p2Action.switchIndex !== null && pMove && pMove.name === "Pursuit") {
@@ -12512,7 +12520,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     await performAction(true, pursuitMove);
                     let fainted = await checkFaints();
                     if (state.isOver) return;
-                    if (fainted) { state.isLocked = false; document.getElementById('command-menu').classList.remove('hidden'); return; }
+                    if (fainted) {
+                        if (!document.getElementById('modal-party').classList.contains('hidden')) {
+                            state.pendingEoT = true;
+                            return;
+                        }
+                    }
                     pMove = null;
                 }
 
@@ -12687,6 +12700,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 document.getElementById('command-menu').classList.remove('hidden');
             }
         }
+
+        /** If the resolver exited mid-turn while locked (save-specific edge cases), restore command menu. Console: __recoverBattleSoftLock() */
+        window.__recoverBattleSoftLock = function() {
+            try {
+                if (typeof state === 'undefined' || !state || state.isOver) return false;
+                const party = document.getElementById('modal-party');
+                const cmd = document.getElementById('command-menu');
+                const move = document.getElementById('move-menu');
+                if (!party || !cmd) return false;
+                if (!state.isLocked) return false;
+                const partyHidden = party.classList.contains('hidden');
+                const cmdHidden = cmd.classList.contains('hidden');
+                const moveHidden = !move || move.classList.contains('hidden');
+                if (partyHidden && cmdHidden && moveHidden) {
+                    state.pendingEoT = false;
+                    state.isLocked = false;
+                    cmd.classList.remove('hidden');
+                    try { if (typeof syncBattleActiveHighlight === 'function') syncBattleActiveHighlight(); } catch (e) {}
+                    try { if (window.syncBattlePhaseClass) window.syncBattlePhaseClass(); } catch (e) {}
+                    if (typeof logMsg === 'function') {
+                        logMsg('Battle UI was stuck — lock cleared. If the battle still looks wrong, use Settings → Clear story foe lock, or leave and rematch.', 'info');
+                    }
+                    return true;
+                }
+            } catch (e) { console.warn('[recoverBattleSoftLock]', e); }
+            return false;
+        };
 
         function getEffectiveSpeed(mon, weather) {
             let spe = mon.stats.spe * getStageMult(mon.stages.spe);
@@ -19144,6 +19184,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterBattleEvent(STORY_EVENTS_RAW[CHAMPION_STORY_IDX]);
         }
 
+        /** Clears sm.currentEnemyLock so the next story battle rolls a fresh foe team (fixes stuck saves tied to a bad frozen lock). */
+        function clearCurrentEnemyLock() {
+            sm.currentEnemyLock = null;
+            try { save(); } catch (e) { console.warn('[Story] clearCurrentEnemyLock save', e); }
+            try {
+                if (typeof window.showGameAlert === 'function') {
+                    window.showGameAlert('Foe team lock cleared. Leave the battle if needed, then start the fight again from the story map.');
+                } else if (typeof logMsg === 'function') {
+                    logMsg('Foe team lock cleared — re-enter the battle from the map.', 'info');
+                }
+            } catch (e2) {}
+        }
+
         function enterCity() {
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             const cidx = getCityIndex(ev);
@@ -22331,7 +22384,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterTutor, tutorChangeMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
             enterColress, colressApplyMega, colressApplyDmax, colressApplyZ, colressApplyZSig, colressApplyTera,
             openTeamTester, openTeamTesterSyncFromStory, runTeamTester, copyTeamTesterText, closeTeamTester,
-            previewHallOfFame, seedDebugMysteryLegendGate, seedTestMegaFromUrl, seedStoryChampionWeakTestFromUrl,
+            previewHallOfFame, seedDebugMysteryLegendGate, seedTestMegaFromUrl, seedStoryChampionWeakTestFromUrl, clearCurrentEnemyLock,
         };
         })(); // end StoryMode IIFE
 
