@@ -3857,6 +3857,7 @@
                     <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && window.StoryMode.seedDebugMysteryLegendGate && window.StoryMode.seedDebugMysteryLegendGate();" title="localhost or ?debugMystery=1 — City8, 8 badges, full party, then open Mystery Figure">Debug: Mystery legend gate</button>
                     <button type="button" onclick="window.closeModal('modal-settings'); typeof window.startKoBugTestBattle==='function' && window.startKoBugTestBattle();" title="Opens ?kobugtest=1 sandbox: SR on your field, 2x Shedinja bench (die on switch), Machamp foe — use to repro faint / pendingEoT bugs.">Debug: KO / hazard test</button>
                     <button type="button" onclick="window.closeModal('modal-settings'); typeof window.startChampionTestBattle==='function' && window.startChampionTestBattle('steven');" title="Same as battle.html?championtest=1 — random strong 6 vs Steven’s squad; Mega+Dyna on for builds.">Debug: Champion test (Steven)</button>
+                    <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && typeof window.StoryMode.seedStoryChampionWeakTestFromUrl==='function' && window.StoryMode.seedStoryChampionWeakTestFromUrl();" title="Same as ?storychampionweak=1 — story mode, Champion event, strong team vs weak foe (overwrites story save).">Debug: Story Champion (weak foe)</button>
                     <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && window.StoryMode.previewHallOfFame();">Preview Hall of Fame</button>
                 </div>
             </details>
@@ -5591,6 +5592,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
             return false;
         }
+        /** Story Champion debug: real `state.mode === 'story'`, Champion intro, strong party vs weak locked foe (`seedStoryChampionWeakTestFromUrl`). */
+        function __storyChampionWeakTestUrlRequested() {
+            try {
+                let v = new URLSearchParams(location.search).get('storychampionweak');
+                if (v !== null) {
+                    v = String(v).trim().toLowerCase();
+                    if (v === '' || v === '1' || v === 'true' || v === 'yes') return true;
+                }
+                var h = String(location.hash || '').replace(/^#/, '');
+                var hp = h.split('=');
+                if ((hp[0] || '').toLowerCase() === 'storychampionweak') return true;
+            } catch (e) {}
+            return false;
+        }
         /** Champion boss sandbox: ?championtest=1 & ?championtest=steven | cynthia (see startChampionTestBattle). */
         function __championtestChampionKey() {
             try {
@@ -5634,7 +5649,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { window.startKoBugTestBattle(); } catch (e) { console.warn('[kobugtest]', e); }
                 }, 0);
             } else {
-                var _ctKey = __championtestChampionKey();
+                var _ctKey = (__storyChampionWeakTestUrlRequested && __storyChampionWeakTestUrlRequested()) ? null : __championtestChampionKey();
                 if (_ctKey !== null && typeof window.startChampionTestBattle === 'function') {
                     setTimeout(function() {
                         try { window.startChampionTestBattle(_ctKey); } catch (e) { console.warn('[championtest]', e); }
@@ -19054,6 +19069,81 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             console.log('[testmega] Seeded City6 (event 46). Use "Colress — Awaken battle mechanics" — 10,000G per swap. Global mechanics synced from run flags.');
         }
 
+        /** Dev: `battle.html?storychampionweak=1` — real story-mode Champion battle (event 72): your team is strong OU-ish, foe is locked weak route mons. Overwrites story save. */
+        function seedStoryChampionWeakTestFromUrl() {
+            const CHAMPION_STORY_IDX = STORY_EVENTS_RAW.findIndex(function (row) { return row && row[1] === 'Battle' && row[2] === 'Champion'; });
+            if (CHAMPION_STORY_IDX < 0) {
+                console.warn('[storychampionweak] Champion event row not found');
+                return;
+            }
+            if (!sm.profUsed) sm.profUsed = {};
+            _pendingProfChoices = null;
+            _pendingProfCityIdx = null;
+            sm.active = true;
+            sm.version = SAVE_VER;
+            if (sm.runSeed == null || sm.runSeed === undefined) sm.runSeed = 0x4348414D;
+            sm._strngState = null;
+            sm.eventIndex = CHAMPION_STORY_IDX;
+            sm.badges = 8;
+            sm.gold = 50000;
+            sm.storyDifficulty = sm.storyDifficulty || 'normal';
+            sm.inventory = {
+                potion: 10, superPotion: 10, hyperPotion: 10, maxPotion: 5, fullRestore: 5, fullHeal: 5,
+                antidote: 5, burnHeal: 5, maxElixir: 3,
+                xAttack: 3, xDefense: 3, xSpAtk: 3, xSpDef: 3, xSpeed: 3, xAccuracy: 2,
+                direHit: 2, guardSpec: 2, revive: 3, maxRevive: 1,
+                sunOrb: 0, rainOrb: 0, hailOrb: 0, sandOrb: 0, electricOrb: 0, grassyOrb: 0, psychicOrb: 0, mistyOrb: 0, emergencyTeleporter: 0,
+            };
+            if (!sm.settings) sm.settings = { megaOn: false, zOn: false, dynaOn: false, teraOn: false, classicMode: true, noItemRun: false };
+            if (!sm.settings.enabledGens || !sm.settings.enabledGens.length) {
+                sm.settings.enabledGens = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+                sm.settings.minGen = 1;
+                sm.settings.maxGen = 9;
+            }
+            sm.settings.megaOn = true;
+            sm.settings.zOn = true;
+            sm.settings.dynaOn = true;
+            sm.settings.teraOn = true;
+            sm.settings.classicMode = sm.settings.classicMode !== false;
+            sm.settings.noItemRun = false;
+            const _megaCb = document.getElementById('story-mech-mega');
+            const _zCb = document.getElementById('story-mech-z');
+            const _dynaCb = document.getElementById('story-mech-dyna');
+            const _teraCb = document.getElementById('story-mech-tera');
+            if (_megaCb) _megaCb.checked = true;
+            if (_zCb) _zCb.checked = true;
+            if (_dynaCb) _dynaCb.checked = true;
+            if (_teraCb) _teraCb.checked = true;
+            applyMechanicsToSettings();
+            assignTrainers(normalizeEnabledGens(sm.settings.enabledGens));
+            const strongPool = ['Garchomp', 'Lucario', 'Dragapult', 'Heatran', 'Gyarados', 'Excadrill'];
+            const team = [];
+            for (const name of strongPool) {
+                try { team.push({ name: name, build: makeBuild(name, { forceGimmick: 'STANDARD' }) }); } catch (e) { console.warn('[storychampionweak] makeBuild', name, e); }
+            }
+            sm.team = team.slice(0, 6);
+            const weakNames = ['Rattata', 'Sentret', 'Hoothoot', 'Ledyba', 'Pidgey', 'Zubat'];
+            const weakDraft = [];
+            for (const name of weakNames) {
+                try { weakDraft.push({ name: name, build: makeBuild(name, { forceGimmick: 'STANDARD' }) }); } catch (e) { console.warn('[storychampionweak] weak makeBuild', name, e); }
+            }
+            sm.currentEnemyLock = { eventIdx: CHAMPION_STORY_IDX, team: storyFreezeFoeTeamForPersistence(weakDraft) };
+            if (!sm.gymCleared) sm.gymCleared = {};
+            for (let gi = 1; gi <= 8; gi++) sm.gymCleared[gi] = true;
+            {
+                const order = [];
+                if (sm.settings.megaOn) order.push('mega');
+                if (sm.settings.dynaOn) order.push('dmax');
+                if (sm.settings.teraOn) order.push('tera');
+                if (sm.settings.zOn) order.push('z');
+                sm.unlockedGimmicks = order.slice(0, Math.min(8, order.length));
+            }
+            save();
+            const loc = (typeof location !== 'undefined' && location.pathname) ? location.pathname : 'battle.html';
+            console.log('[storychampionweak] Story Champion — strong:', strongPool.join(', '), '| weak foe:', weakNames.join(', '), '| reopen:', loc + '?storychampionweak=1');
+            enterBattleEvent(STORY_EVENTS_RAW[CHAMPION_STORY_IDX]);
+        }
+
         function enterCity() {
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             const cidx = getCityIndex(ev);
@@ -22241,7 +22331,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterTutor, tutorChangeMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
             enterColress, colressApplyMega, colressApplyDmax, colressApplyZ, colressApplyZSig, colressApplyTera,
             openTeamTester, openTeamTesterSyncFromStory, runTeamTester, copyTeamTesterText, closeTeamTester,
-            previewHallOfFame, seedDebugMysteryLegendGate, seedTestMegaFromUrl,
+            previewHallOfFame, seedDebugMysteryLegendGate, seedTestMegaFromUrl, seedStoryChampionWeakTestFromUrl,
         };
         })(); // end StoryMode IIFE
 
@@ -22273,6 +22363,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             } catch (e) {
                 console.warn('[testmega] schedule', e);
+            }
+        })();
+
+        // ?storychampionweak=1 — story-mode Champion with weak locked foe (same scheduling as testmega).
+        (function scheduleStoryChampionWeakTestFromUrl() {
+            try {
+                if (typeof __storyChampionWeakTestUrlRequested !== 'function' || !__storyChampionWeakTestUrlRequested()) return;
+                if (!window.StoryMode || typeof window.StoryMode.seedStoryChampionWeakTestFromUrl !== 'function') return;
+                const runSeed = function() {
+                    setTimeout(function() {
+                        try {
+                            window.StoryMode.seedStoryChampionWeakTestFromUrl();
+                        } catch (e) {
+                            console.warn('[storychampionweak] seed failed', e);
+                            try {
+                                if (typeof window.showGameAlert === 'function') {
+                                    window.showGameAlert('storychampionweak=1 failed — open the browser console (F12) for details.');
+                                }
+                            } catch (_) {}
+                        }
+                    }, 0);
+                };
+                if (typeof dataReady !== 'undefined' && dataReady && typeof dataReady.then === 'function') {
+                    dataReady.then(runSeed, function(err) {
+                        console.warn('[storychampionweak] game data failed to load', err);
+                    });
+                } else {
+                    runSeed();
+                }
+            } catch (e) {
+                console.warn('[storychampionweak] schedule', e);
             }
         })();
 
