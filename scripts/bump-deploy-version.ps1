@@ -1,16 +1,19 @@
 # Increments deploy patch in battle.html and commits. Called from hooks/pre-push.
-# Exit: 0 = no bump / skip, 1 = committed (caller re-runs git push), 2 = error (abort push)
+# Git runs the hook before packing objects; the same push then includes the new commit.
+# Exit: 0 = ok (bumped or skipped), 2 = error (abort push)
 
 $ErrorActionPreference = 'Stop'
-$root = git rev-parse --show-toplevel 2>$null
-if (-not $root) { exit 0 }
-
+$root = Split-Path -Parent $PSScriptRoot
 $file = Join-Path $root 'battle.html'
-if (-not (Test-Path -LiteralPath $file)) { exit 2 }
 
-git diff HEAD --quiet -- battle.html 2>$null
+if (-not (Test-Path -LiteralPath $file)) {
+    Write-Host "deploy-version: battle.html not found at $file" -ForegroundColor Red
+    exit 2
+}
+
+git -C $root diff HEAD --quiet -- battle.html 2>$null
 if ($LASTEXITCODE -ne 0) {
-    Write-Host 'deploy-version: skip bump — commit or discard battle.html changes first.' -ForegroundColor Yellow
+    Write-Host 'deploy-version: skip bump — commit or stash battle.html changes first.' -ForegroundColor Yellow
     exit 0
 }
 
@@ -31,19 +34,19 @@ $newContent = $content.Substring(0, $m.Index) + $newFragment + $content.Substrin
 $utf8 = New-Object System.Text.UTF8Encoding $false
 [System.IO.File]::WriteAllText($file, $newContent, $utf8)
 
-git add -- battle.html
-git diff --cached --quiet -- battle.html
+git -C $root add -- battle.html
+git -C $root diff --cached --quiet -- battle.html
 if ($LASTEXITCODE -eq 0) {
-    git checkout -- battle.html 2>$null
+    git -C $root checkout -- battle.html 2>$null
     exit 0
 }
 
 $newVer = "v$major.$minor.$patch"
-git commit -m "chore: deploy $newVer"
-if ($LASTEXITCODE -ne 0) {
-    git checkout -- battle.html 2>$null
+git -C $root commit -m "chore: deploy $newVer"
+if (-not $?) {
+    git -C $root checkout -- battle.html 2>$null
     exit 2
 }
 
 Write-Host "deploy-version: committed $newVer" -ForegroundColor DarkGray
-exit 1
+exit 0
