@@ -19200,6 +19200,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
             sm._strngState = null;
             _storyBattleInventorySnapshot = null;
+            resetProfessorPickSession();
             applyMechanicsToSettings();
             if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.onStoryNewJourney === 'function') {
                 try { AudioSystem.onStoryNewJourney(); } catch (e) {}
@@ -19211,6 +19212,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function continueRun() {
             if (!load()) { showMenu(true); return; }
+            resetProfessorPickSession();
             applyMechanicsToSettings();
             processNextEvent();
         }
@@ -19988,6 +19990,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         let _profLegendaryMysteryMode = false;
         // (legacy _pendingProfRoll kept for safety)
         let _pendingProfRoll    = null;
+
+        /** In-memory professor draft cache must not survive abandon or a fresh run (same cityIdx would reuse stale picks). */
+        function resetProfessorPickSession() {
+            _pendingProfRolls = null;
+            _pendingProfChoices = null;
+            _profSelectedIdx = null;
+            _pendingProfCityIdx = null;
+            _pendingProfWasMystery = false;
+            _profLegendaryMysteryMode = false;
+            _profMysteryMode = false;
+            _pendingProfRoll = null;
+        }
 
         const PROF_QUOTES = [
             '"Choose wisely — your Pokémon will grow with you!"',
@@ -21546,6 +21560,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.active = false;
             sm.storyRetryInventorySnapshot = null;
             _storyBattleInventorySnapshot = null;
+            resetProfessorPickSession();
             deleteSave();
             document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
             document.getElementById('screen-menu').classList.remove('hidden');
