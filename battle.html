@@ -654,6 +654,7 @@
         #screen-story-shop,
         #screen-story-tutor,
         #screen-story-colress,
+        #screen-story-evtrainer,
         #screen-story-link {
             font-family: var(--battle-font);
         }
@@ -662,6 +663,7 @@
         #screen-story-shop h1, #screen-story-shop h2, #screen-story-shop h3, #screen-story-shop h4, #screen-story-shop p, #screen-story-shop span, #screen-story-shop button, #screen-story-shop label,
         #screen-story-tutor h1, #screen-story-tutor h2, #screen-story-tutor h3, #screen-story-tutor h4, #screen-story-tutor p, #screen-story-tutor span, #screen-story-tutor button, #screen-story-tutor label,
         #screen-story-colress h1, #screen-story-colress h2, #screen-story-colress h3, #screen-story-colress h4, #screen-story-colress p, #screen-story-colress span, #screen-story-colress button, #screen-story-colress label,
+        #screen-story-evtrainer h1, #screen-story-evtrainer h2, #screen-story-evtrainer h3, #screen-story-evtrainer h4, #screen-story-evtrainer p, #screen-story-evtrainer span, #screen-story-evtrainer button, #screen-story-evtrainer label,
         #screen-story-link h1, #screen-story-link h2, #screen-story-link h3, #screen-story-link h4, #screen-story-link p, #screen-story-link span, #screen-story-link button, #screen-story-link label {
             font-family: var(--battle-font);
             letter-spacing: 0.03em;
@@ -714,6 +716,7 @@
         #screen-story-shop > .story-shop-stack > div:last-child,
         #screen-story-tutor > .story-shop-stack > div:last-child,
         #screen-story-colress > .story-shop-stack > div:last-child,
+        #screen-story-evtrainer > .story-shop-stack > div:last-child,
         #screen-story-link > .story-link-stack > div:last-child {
             border-top: 2px solid #555 !important;
             background: linear-gradient(180deg, rgba(22, 24, 34, 0.95) 0%, rgba(12, 14, 22, 0.96) 100%) !important;
@@ -4389,6 +4392,27 @@
         </div>
     </div>
 
+    <div id="screen-story-evtrainer" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div id="story-evtrainer-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
+        <div class="story-shop-stack">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;gap:10px;">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+                <img id="story-evtrainer-portrait" src="sprites/trainers/Buck.png" alt="Buck" style="width:36px;height:36px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.visibility='hidden'">
+                <div style="min-width:0;">
+                    <h3 class="story-screen-head-title" style="color:#9ccc65;font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_dojo.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">EV Trainer</span></h3>
+                </div>
+            </div>
+            <span id="story-evtrainer-gold" style="color:#ffd700;font-size:13px;font-weight:bold;flex-shrink:0;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
+            <div id="story-evtrainer-team" style="display:flex;flex-direction:column;gap:12px;"></div>
+        </div>
+        <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+            <button onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
+        </div>
+        </div>
+    </div>
+
     <div id="screen-story-link" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-link-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-link-stack">
@@ -4397,7 +4421,7 @@
             <span id="story-link-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
-            <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Reroll, upgrade, or rebuild your team. Changes are permanent for this run.</p>
+            <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Reroll, upgrade, or rebuild your team. Changes are permanent for this run. <span style="color:#9ccc65;">Rebuild rerolls the entire build (including EVs); to change only EVs, visit the EV Trainer.</span></p>
             <div id="story-link-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
@@ -10933,6 +10957,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         /** Full Overview/Moves/Matchups modal for pool picks, story picks, gauntlet swap cards, etc. */
         window.showDraftPokemonSummary = function(draftItem, opts) {
             opts = opts || {};
+            // Story-mode-only EV display: callers explicitly opt in via opts.showEVs.
+            // All other callers (draft pool, in-battle info, online PVP) leave it falsy.
+            window._summaryShowEVs = !!opts.showEVs;
             const build = draftItem && (draftItem.build || draftItem.buildData);
             // #region agent log
             fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b98117'},body:JSON.stringify({sessionId:'b98117',runId:'pre-fix',hypothesisId:'H2',location:'battle.html:showDraftPokemonSummary:entry',message:'show draft summary called',data:{name:draftItem&&draftItem.name,hasBuild:!!build,partyListLen:opts&&opts.partyList?opts.partyList.length:0,index:opts&&opts.index},timestamp:Date.now()})}).catch(()=>{});
@@ -10969,6 +10996,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         window.showSummary = function(index, isP1 = true, opts) {
             opts = opts || {};
+            window._summaryShowEVs = false;
             window._summaryDraftPoolMode = false;
             window._summaryDraftPartyList = null;
             let reorderRow = document.getElementById('story-team-reorder-row');
@@ -11176,6 +11204,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <div class="sum-overview-stats">
                             ${statBarsHtml}
                             <div class="sum-overview-total">Total: ${total}</div>
+                            ${(window._summaryShowEVs && bd && bd.evs) ? `<div class="sum-ev-row" style="font-size:10px;color:#aaa;margin-top:4px;border-top:1px dashed #333;padding-top:4px;"><b style="color:#9ccc65;">EVs</b>: HP ${bd.evs.hp||0} · Atk ${bd.evs.atk||0} · Def ${bd.evs.def||0} · SpA ${bd.evs.spa||0} · SpD ${bd.evs.spd||0} · Spe ${bd.evs.spe||0}</div>` : ''}
                         </div>
                     </div>
                     <div class="sum-overview-details">
@@ -17969,7 +17998,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Early route payouts set to 1400G so a few wins better cover Link G1 rerolls (4000G base).
         // Exactly 8 gym badges (Gym Leader 1–8 once); then Victory Road (3 Elite), League City (City9, Dept store), E1–E4, Champion, Rival, HoF.
         const STORY_EVENTS_RAW = [
-          [0,'City','City0',null,0,['Professor','Link Station','Pokemart','Move Tutor','Nature Rater','Battle Dojo','Leave City']],
+          [0,'City','City0',null,0,['Professor','Link Station','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Leave City']],
           [1,'Battle','Basic Trainer',{g1:0,g2:0,g3:0,g4:100},1400,null],
           [2,'Battle','Basic Trainer',{g1:0,g2:0,g3:20,g4:80},1400,null],
           [3,'Battle','Basic Trainer',{g1:0,g2:0,g3:30,g4:70},1400,null],
@@ -17995,10 +18024,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [23,'Battle','Basic Trainer',{g1:0,g2:22,g3:78,g4:0},1700,null],
           [24,'Battle','Basic Trainer',{g1:0,g2:22,g3:78,g4:0},1700,null],
           [25,'Battle','Basic Trainer',{g1:0,g2:28,g3:72,g4:0},1700,null],
-          [26,'City','City4',null,0,['Professor','Link Station','Pokemart','Move Tutor','Gym Battle','Leave City']],
+          [26,'City','City4',null,0,['Professor','Link Station','Pokemart','Move Tutor','EV Trainer','Gym Battle','Leave City']],
           [27,'Battle','Gym Trainer',{g1:0,g2:50,g3:50,g4:0},2300,null],
           [28,'Battle','Gym Leader 4',{g1:0,g2:60,g3:40,g4:0},3200,null],
-          [29,'City','City4',null,0,['Professor','Link Station','Pokemart','Move Tutor','Leave City']],
+          [29,'City','City4',null,0,['Professor','Link Station','Pokemart','Move Tutor','EV Trainer','Leave City']],
           [30,'Battle','Basic Trainer',{g1:0,g2:32,g3:68,g4:0},2000,null],
           [31,'Battle','Basic Trainer',{g1:0,g2:32,g3:68,g4:0},2000,null],
           [32,'Battle','Basic Trainer',{g1:0,g2:42,g3:58,g4:0},2000,null],
@@ -18036,7 +18065,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [64,'Battle','Elite Trainer',{g1:26,g2:74,g3:0,g4:0},4200,null],
           [65,'Battle','Elite Trainer',{g1:28,g2:72,g3:0,g4:0},4800,null],
           [66,'Battle','Elite Trainer',{g1:29,g2:71,g3:0,g4:0},5200,null],
-          [67,'City','City9',null,0,['Link Station','Department Store','Move Tutor','Nature Rater','Battle Dojo','Power Up','Enter Pokemon League']],
+          [67,'City','City9',null,0,['Link Station','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Enter Pokemon League']],
           [68,'Battle','E1',{g1:30,g2:70,g3:0,g4:0},5000,null],
           [69,'Battle','E2',{g1:35,g2:65,g3:0,g4:0},5000,null],
           [70,'Battle','E3',{g1:40,g2:60,g3:0,g4:0},5000,null],
@@ -18540,6 +18569,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function syncStoryColressBackground() {
             applyStoryBgLayer(document.getElementById('story-colress-bg-layer'), getStoryBgManifest().shopDept || getStoryBgManifest().shopMart || '');
+        }
+        function syncStoryEVTrainerBackground() {
+            applyStoryBgLayer(document.getElementById('story-evtrainer-bg-layer'), getStoryBgManifest().shopDept || getStoryBgManifest().shopMart || '');
         }
         (function loadStoryBgManifestFetch() {
             fetch('sprites/story/backgrounds/manifest.json')
@@ -19578,6 +19610,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (actions.includes('Battle Dojo') && _tutorTeam) {
                 btn.innerHTML += makeActionBtn('🥋 Battle Dojo — Held items & abilities','dojo','window.StoryMode.enterTutor(\'loadout\')','training');
             }
+            if (actions.includes('EV Trainer') && _tutorTeam) {
+                btn.innerHTML += makeActionBtn('🏋️ EV Trainer — Reshape effort values','evtrainer','window.StoryMode.enterEVTrainer()','training',{ soft:true });
+            }
             const _colressMechAny = !!(sm.settings && (sm.settings.megaOn || sm.settings.zOn || sm.settings.dynaOn || sm.settings.teraOn));
             if (actions.includes('Power Up') && _tutorTeam && _colressMechAny) {
                 btn.innerHTML += makeActionBtn('🧪 Colress — Awaken battle mechanics','colress','window.StoryMode.enterColress()','training',{ soft:true });
@@ -19615,6 +19650,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             tutor: 'icons/story/story_tutor.png?v=20260429b',
             nature: 'icons/story/story_nature.png?v=20260429b',
             dojo: 'icons/story/story_dojo.png?v=20260429b',
+            evtrainer: 'icons/story/story_dojo.png?v=20260429b',
             colress: 'icons/story/story_colress.png?v=20260429b',
             artifacts: 'icons/story/story_artifacts.png?v=20260429b',
             center: 'icons/story/story_center.png?v=20260429b',
@@ -19774,6 +19810,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const statBlock = mon ? `
                     <div style="font-size:11px;font-weight:bold;color:var(--accent);margin-top:6px;">Stats</div>
                     <div style="display:flex;flex-direction:column;gap:3px;">${statBarHTML('HP', mon.maxHp)}${statBarHTML('Atk', mon.stats.atk)}${statBarHTML('Def', mon.stats.def)}${statBarHTML('SpA', mon.stats.spa)}${statBarHTML('SpD', mon.stats.spd)}${statBarHTML('Spe', mon.stats.spe)}</div>` : '';
+            const _ev = b.evs || {};
+            const evLine = `<div style="font-size:10px;color:#9ccc65;margin-top:2px;">EVs: HP ${_ev.hp||0} / Atk ${_ev.atk||0} / Def ${_ev.def||0} / SpA ${_ev.spa||0} / SpD ${_ev.spd||0} / Spe ${_ev.spe||0}</div>`;
             return `
                 <div class="draft-card" style="padding:8px;flex-direction:column;align-items:stretch;gap:6px;">
                     <div style="display:flex;gap:10px;align-items:flex-start;">
@@ -19786,6 +19824,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </div>
                     <div style="font-size:10px;color:#888;">Ability: ${b.a || '—'}</div>
                     ${statBlock}
+                    ${evLine}
                     <div style="font-size:11px;font-weight:bold;color:var(--accent);margin-top:4px;">Moves</div>
                     ${movRows}
                 </div>`;
@@ -19793,7 +19832,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function profOpenSummary(idx) {
             const ch = (_pendingProfChoices || [])[idx];
             if (!ch) return;
-            window.showDraftPokemonSummary({ name: ch.name, build: safeCloneBuild(ch.build || {}) });
+            window.showDraftPokemonSummary({ name: ch.name, build: safeCloneBuild(ch.build || {}) }, { showEVs: true });
         }
         function renderTeamPanel() {
             const panel = document.getElementById('story-team-panel');
@@ -19889,7 +19928,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try {
                     window.showDraftPokemonSummary(
                         { name: String(t.name).trim(), build: safeCloneBuild(rawBuild) },
-                        { partyList: partyList, index: i, storyReorder: true }
+                        { partyList: partyList, index: i, storyReorder: true, showEVs: true }
                     );
                 } catch (e) {
                     // #region agent log
@@ -22784,6 +22823,176 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _colressFinish();
         }
 
+        // ── EV TRAINER ────────────────────────────────────────────────────
+        const EVTRAINER_COST = 5000;
+        const EV_PRESETS_UNIVERSAL = [
+            { id:'none',  label:'No EVs',        evs:{ hp:0,  atk:0,  def:0,  spa:0,  spd:0,  spe:0  } },
+            { id:'equal', label:'Equal Spread',  evs:{ hp:84, atk:84, def:84, spa:84, spd:84, spe:84 } },
+        ];
+        const EV_PRESETS_ROLE = [
+            { id:'phys_sweep', label:'Physical Sweeper', evs:{ hp:4,   atk:252, def:0,   spa:0,   spd:0,   spe:252 } },
+            { id:'spec_sweep', label:'Special Sweeper',  evs:{ hp:4,   atk:0,   def:0,   spa:252, spd:0,   spe:252 } },
+            { id:'phys_tank',  label:'Physical Tank',    evs:{ hp:252, atk:4,   def:252, spa:0,   spd:0,   spe:0   } },
+            { id:'spec_wall',  label:'Special Wall',     evs:{ hp:252, atk:0,   def:0,   spa:4,   spd:252, spe:0   } },
+            { id:'bulky_atk',  label:'Bulky Attacker',   evs:{ hp:252, atk:252, def:0,   spa:0,   spd:4,   spe:0   } },
+            { id:'bulky_spa',  label:'Bulky Special',    evs:{ hp:252, atk:0,   def:0,   spa:252, spd:4,   spe:0   } },
+        ];
+        const _EV_KEYS = ['hp','atk','def','spa','spd','spe'];
+        const _evTrainerMetaCache = {}; // teamIdx → meta presets array (rebuilt every render)
+
+        function _evsEqual(a, b) {
+            if (!a || !b) return false;
+            return _EV_KEYS.every(k => (a[k]||0) === (b[k]||0));
+        }
+        function _evTotal(evs) {
+            if (!evs) return 0;
+            return _EV_KEYS.reduce((s, k) => s + (evs[k]||0), 0);
+        }
+        function _evTrainerMetaSpreadsFor(name) {
+            let entry;
+            try { entry = (typeof resolveCsvBuildEntry === 'function') ? resolveCsvBuildEntry(name) : null; }
+            catch (e) { entry = null; }
+            entry = entry || {};
+            const all = [].concat(entry.regular||[], entry.weather||[], entry.mega||[], entry.tera||[], entry['z-attack']||[]);
+            const counts = new Map();
+            for (const b of all) {
+                if (!b || !b.evs) continue;
+                const norm = {
+                    hp:  b.evs.hp  || 0, atk: b.evs.atk || 0, def: b.evs.def || 0,
+                    spa: b.evs.spa || 0, spd: b.evs.spd || 0, spe: b.evs.spe || 0
+                };
+                const key = JSON.stringify(norm);
+                const cur = counts.get(key);
+                if (cur) { cur.n++; }
+                else { counts.set(key, { evs: norm, archetype: b.archetype || 'Meta Spread', n: 1 }); }
+            }
+            return Array.from(counts.values()).sort((a,b) => b.n - a.n).slice(0, 4)
+                .map((m, i) => ({ id: 'meta_'+i, label: m.archetype, evs: m.evs }));
+        }
+        function _evTrainerCharge() {
+            if (sm.gold < EVTRAINER_COST) {
+                if (typeof window !== 'undefined' && typeof window.showGameAlert === 'function') {
+                    window.showGameAlert(`EV Trainer charges ${EVTRAINER_COST.toLocaleString()}G — you only have ${sm.gold.toLocaleString()}G.`);
+                }
+                return false;
+            }
+            sm.gold -= EVTRAINER_COST;
+            return true;
+        }
+        function _evTrainerFinish() {
+            try { save(); } catch (e) {}
+            try { renderEVTrainerTeam(); } catch (e) {}
+            try { renderTeamPanel(); } catch (e) {}
+            try { if (typeof updateHUD === 'function') updateHUD(); } catch (e) {}
+        }
+        function _evSpreadShortLine(evs) {
+            const e = evs || {};
+            return `HP ${e.hp||0} · Atk ${e.atk||0} · Def ${e.def||0} · SpA ${e.spa||0} · SpD ${e.spd||0} · Spe ${e.spe||0}`;
+        }
+        function _evSpreadCompact(evs) {
+            const e = evs || {};
+            return `${e.hp||0}/${e.atk||0}/${e.def||0}/${e.spa||0}/${e.spd||0}/${e.spe||0}`;
+        }
+
+        function enterEVTrainer() {
+            const goldEl = document.getElementById('story-evtrainer-gold');
+            if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
+            try { syncStoryEVTrainerBackground(); } catch (e) {}
+            showScreen('screen-story-evtrainer');
+            renderEVTrainerTeam();
+        }
+
+        function renderEVTrainerTeam() {
+            const el = document.getElementById('story-evtrainer-team');
+            const goldEl = document.getElementById('story-evtrainer-gold');
+            if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
+            if (!el) return;
+            if (!sm.team || !sm.team.length) {
+                el.innerHTML = '<div style="color:#555;font-size:12px;">No Pokémon in party.</div>';
+                return;
+            }
+            // Reset cache then render
+            for (const k in _evTrainerMetaCache) delete _evTrainerMetaCache[k];
+            el.innerHTML = sm.team.map((t, idx) => _renderEVTrainerMonCard(t, idx)).join('');
+        }
+
+        function _evTrainerRenderPresetButton(idx, p, currentEvs, cantAfford) {
+            const isCurrent = _evsEqual(currentEvs, p.evs);
+            const dis = (cantAfford || isCurrent) ? 'disabled' : '';
+            const activeFlag = isCurrent ? ' data-current="1"' : '';
+            const compact = `<span style="opacity:0.7;font-size:10px;">(${_evSpreadCompact(p.evs)})</span>`;
+            const priceTag = `<span class="story-tutor-price">${storyGoldHtml(EVTRAINER_COST.toLocaleString(), false)}</span>`;
+            const safeId = String(p.id).replace(/'/g, "\\'");
+            return `<div class="story-tutor-choice"${activeFlag}><div class="story-tutor-choice-actions">`
+                + `<button type="button" class="story-tutor-btn" ${dis} onclick="window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')">`
+                + `${_esc(p.label)} ${compact}</button>`
+                + priceTag + `</div></div>`;
+        }
+
+        function _renderEVTrainerMonCard(t, idx) {
+            const b = (t && t.build) || {};
+            const cur = b.evs || {};
+            const cantAfford = sm.gold < EVTRAINER_COST;
+            const spriteUrl = (typeof getSprite === 'function') ? getSprite(t.name) : '';
+            let typeHtml = '';
+            try {
+                const mon = (typeof buildPokemon === 'function') ? buildPokemon(t.name, { ...b, m: [...(b.m || [])] }) : null;
+                if (mon && typeof getTypeHTML === 'function') typeHtml = getTypeHTML(mon.type1, mon.type2 || '');
+            } catch (e) {}
+
+            const meta = _evTrainerMetaSpreadsFor(t.name);
+            _evTrainerMetaCache[idx] = meta;
+
+            const universalBtns = EV_PRESETS_UNIVERSAL.map(p => _evTrainerRenderPresetButton(idx, p, cur, cantAfford)).join('');
+            const roleBtns = EV_PRESETS_ROLE.map(p => _evTrainerRenderPresetButton(idx, p, cur, cantAfford)).join('');
+            const metaBtns = meta.map(p => _evTrainerRenderPresetButton(idx, p, cur, cantAfford)).join('');
+
+            const universalSection = `<div class="story-tutor-section">`
+                + `<div class="story-tutor-section-title" style="color:#9ccc65;">Universal</div>`
+                + `<div class="story-tutor-choice-list">${universalBtns}</div></div>`;
+
+            const roleSection = `<div class="story-tutor-section">`
+                + `<div class="story-tutor-section-title" style="color:#9ccc65;">Roles</div>`
+                + `<div class="story-tutor-choice-list">${roleBtns}</div></div>`;
+
+            const metaSection = meta.length
+                ? `<div class="story-tutor-section">`
+                    + `<div class="story-tutor-section-title" style="color:#9ccc65;">Meta</div>`
+                    + `<div class="story-tutor-choice-list">${metaBtns}</div></div>`
+                : '';
+
+            const summaryLine = `${_evSpreadCompact(cur)}`;
+
+            return `<div class="story-tutor-mon">
+                <div class="story-tutor-mon-main" style="display:flex;align-items:center;gap:10px;padding:8px 10px;">
+                    <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.visibility='hidden'">
+                    <div style="min-width:0;flex:1;">
+                        <div class="story-tutor-mon-name">${_esc(t.name)} ${typeHtml}</div>
+                        <div class="story-tutor-mon-meta" style="font-size:10px;color:#9ccc65;">${summaryLine}</div>
+                    </div>
+                </div>
+                <div class="story-tutor-mon-body">${universalSection}${roleSection}${metaSection}</div>
+            </div>`;
+        }
+
+        function evTrainerApplyPreset(idx, presetId) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                const mon = sm.team[idx];
+                if (!mon || !mon.build) return;
+                const meta = _evTrainerMetaCache[idx] || [];
+                const all = [].concat(EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta);
+                const preset = all.find(p => p.id === presetId);
+                if (!preset) return;
+                if (_evsEqual(mon.build.evs || {}, preset.evs)) return;
+                if (!_evTrainerCharge()) return;
+                mon.build.evs = { ...preset.evs };
+                _evTrainerFinish();
+            } finally {
+                _storyEndInteraction();
+            }
+        }
+
         // ── PUBLIC API ────────────────────────────────────────────────────
         return {
             showMenu, startNewRun, continueRun, retryFromGameOver, retreatToLastPokemonCenter, isActive, hasSave,
@@ -22797,6 +23006,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterArtifactHall, toggleArtifactDisabled,
             enterTutor, tutorChangeMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
             enterColress, colressApplyMega, colressApplyDmax, colressApplyZ, colressApplyZSig, colressApplyTera,
+            enterEVTrainer, evTrainerApplyPreset,
             openTeamTester, openTeamTesterSyncFromStory, runTeamTester, copyTeamTesterText, closeTeamTester,
             previewHallOfFame, seedDebugMysteryLegendGate, seedTestMegaFromUrl, seedStoryChampionWeakTestFromUrl, clearCurrentEnemyLock,
         };
