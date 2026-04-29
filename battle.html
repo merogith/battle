@@ -634,39 +634,46 @@
             gap: 8px;
             flex-shrink: 0;
         }
-        #story-hud-city {
-            color: var(--accent);
-            font-size: 12px;
+        #story-hud-city,
+        #story-hud-gold,
+        #story-hud-badges {
+            display: inline-flex;
+            align-items: center;
+            min-height: 34px;
+            padding: 6px 11px;
+            border: 2px solid #555;
+            border-radius: 0;
+            background: linear-gradient(180deg, #1e2030 0%, #12141e 100%);
+            box-shadow: inset -2px -2px 0 0 #212529, inset 2px 2px 0 0 #495057;
+            font-size: 11px;
             font-weight: bold;
             font-family: var(--battle-font);
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
             text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.7);
+            white-space: nowrap;
         }
-        #story-hud-gold {
-            color: #ffd700;
-            font-size: 12px;
-            font-weight: bold;
-            font-family: var(--battle-font);
-            text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.7);
-        }
+        #story-hud-city { color: var(--accent); }
+        #story-hud-gold { color: #ffd700; }
+        #story-hud-badges { color: #ffcc80; }
         .story-hud-abandon {
             font-family: var(--battle-font);
-            font-size: 9px;
+            font-size: 10px;
             letter-spacing: 0.5px;
             padding: 8px 14px;
             min-height: 40px;
             box-sizing: border-box;
             color: #ffcdd2;
-            background: rgba(80, 20, 20, 0.35);
-            border: 1px solid rgba(244, 67, 54, 0.5);
-            border-radius: 2px;
+            background: linear-gradient(180deg, #2a1218 0%, #1a0808 100%);
+            border: 2px solid #ff6b6b;
+            border-radius: 0;
+            box-shadow: inset -3px -3px 0 0 #3a1520, inset 3px 3px 0 0 #5a2030;
             cursor: pointer;
             touch-action: manipulation;
             transition: background 0.15s, border-color 0.15s, color 0.15s;
         }
         .story-hud-abandon:hover {
-            background: rgba(120, 30, 30, 0.45);
-            border-color: #f44336;
+            background: linear-gradient(180deg, #321620 0%, #220a0a 100%);
+            border-color: #ff8a8a;
             color: #fff;
         }
         .story-hud-settings {
@@ -681,18 +688,19 @@
             box-sizing: border-box;
             font-size: 17px;
             line-height: 1;
-            color: #e8e8e8;
-            background: rgba(0, 0, 0, 0.4);
-            border: 2px solid rgba(255, 255, 255, 0.28);
+            color: var(--accent);
+            background: linear-gradient(180deg, #1e2030 0%, #12141e 100%);
+            border: 2px solid #555;
             border-radius: 0;
+            box-shadow: inset -3px -3px 0 0 #212529, inset 3px 3px 0 0 #495057;
             cursor: pointer;
             touch-action: manipulation;
             transition: background 0.15s, border-color 0.15s, color 0.15s;
         }
         .story-hud-settings:hover {
-            border-color: var(--accent);
-            background: rgba(36, 32, 18, 0.9);
-            color: var(--accent);
+            border-color: #80deea;
+            background: linear-gradient(180deg, #263248 0%, #1a2232 100%);
+            color: #80deea;
         }
         .story-city-main-row {
             display: flex;
@@ -2688,12 +2696,11 @@
             .story-hud-primary {
                 gap: 8px 10px;
             }
-            #story-hud-city, #story-hud-gold {
+            #story-hud-city, #story-hud-gold, #story-hud-badges {
                 font-size: 12px;
                 padding: 5px 10px;
-                border-radius: 999px;
-                background: rgba(255, 255, 255, 0.06);
-                white-space: normal;
+                min-height: 34px;
+                white-space: nowrap;
             }
             .story-hud-abandon {
                 min-height: 44px;
@@ -4128,6 +4135,7 @@
             <div class="story-hud-primary">
                 <span id="story-hud-city">City 0</span>
                 <span id="story-hud-gold">&#128176; 0G</span>
+                <span id="story-hud-badges">0/8 Badges</span>
             </div>
             <div class="story-hud-actions">
                 <button type="button" class="story-hud-abandon" onclick="window.StoryMode.confirmAbandon()">Abandon</button>
@@ -19232,6 +19240,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             setT('story-hud-city', cityName);
             setT('story-hud-gold', `🪙 ${sm.gold.toLocaleString()}G`);
+            setT('story-hud-badges', `${sm.badges || 0}/8 Badges`);
         }
 
         function renderCityActions(ev) {
@@ -19340,11 +19349,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const routeBlockedByMysteryGate = legendMysteryGate && !profUsedHere;
             if (actions.includes('Leave City')) {
                 if (routeLocked) {
-                    btn.innerHTML += `<button class="story-action-btn primary" disabled title="Clear this area's challenge first" style="opacity:0.45;cursor:not-allowed;">→ Continue on Route <span style="font-size:10px;color:#aaa;">(Complete challenge first)</span></button>`;
+                    btn.innerHTML += `<button class="story-action-btn primary" disabled title="Clear this area's challenge first" style="opacity:0.45;cursor:not-allowed;">→ Continue Route <span style="font-size:10px;color:#aaa;">(Complete challenge first)</span></button>`;
                 } else if (routeBlockedByMysteryGate) {
-                    btn.innerHTML += `<button class="story-action-btn primary" disabled title="Talk to the Mystery Figure first" style="opacity:0.45;cursor:not-allowed;">→ Continue on Route <span style="font-size:10px;color:#aaa;">(Talk to Mystery Figure first)</span></button>`;
+                    btn.innerHTML += `<button class="story-action-btn primary" disabled title="Talk to the Mystery Figure first" style="opacity:0.45;cursor:not-allowed;">→ Continue Route <span style="font-size:10px;color:#aaa;">(Talk to Mystery Figure first)</span></button>`;
                 } else if (!hasLeague) {
-                    btn.innerHTML += makeActionBtn('→ Continue on Route','route','window.StoryMode.proceedToNextBattle()','primary',{ soft:true });
+                    btn.innerHTML += makeActionBtn('→ Continue Route','route','window.StoryMode.proceedToNextBattle()','primary',{ soft:true });
                 }
             }
             if (hasVR) {
@@ -19363,10 +19372,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Shops
             if (actions.includes('Pokemart')) {
-                btn.innerHTML += makeActionBtn('🛒 Pokémart — Buy items','mart','window.StoryMode.enterShop(\'mart\')','shop');
+                btn.innerHTML += makeActionBtn('🛒 Pokémart — Buy Items','mart','window.StoryMode.enterShop(\'mart\')','shop');
             }
             if (actions.includes('Link Station')) {
-                btn.innerHTML += makeActionBtn('📡 Cable Link Station — Reroll team','link','window.StoryMode.enterLink()','link');
+                btn.innerHTML += makeActionBtn('📡 Cable Link Station — Reroll Team','link','window.StoryMode.enterLink()','link');
             }
             if (actions.includes('Department Store')) {
                 btn.innerHTML += makeActionBtn('🏬 Department Store — Premium items & Artifacts','dept','window.StoryMode.enterShop(\'dept\')','dept');
@@ -19389,11 +19398,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 btn.innerHTML += makeActionBtn('✨ Artifact Hall — Toggle run artifacts','artifacts','window.StoryMode.enterArtifactHall()','dept',{ soft:true });
             }
             // Pokémon Center — full party heal, free, unlimited (all difficulties)
-            btn.innerHTML += makeActionBtn('🏥 Pokémon Center — Restore your party','center','window.StoryMode.enterPokemonCenter()','center');
+            btn.innerHTML += makeActionBtn('🏥 Pokémon Center — Restore Your Party','center','window.StoryMode.enterPokemonCenter()','center');
             const _partyN = sm.team.length;
             const _partyLabel = _partyN
-                ? `Party — Team & order (${_partyN}/6)`
-                : 'Party — Empty (visit Professor)';
+                ? `👥 Party — Team & Order (${_partyN}/6)`
+                : '👥 Party — Empty (Visit Professor)';
             btn.innerHTML += makeActionBtn(_partyLabel, 'party', 'window.StoryMode.openPartyModal()', 'party');
             // Bag — always accessible in city to view inventory and sell items
             const _invCount = Object.keys(sm.inventory || {}).filter(k => sm.inventory[k] > 0).length;
