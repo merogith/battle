@@ -13124,7 +13124,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Heal Block: cannot use healing moves
             const _hbHealMoves = new Set(["Recover","Roost","Moonlight","Morning Sun","Synthesis","Slack Off","Soft-Boiled","Milk Drink","Heal Order","Shore Up","Strength Sap","Wish","Ingrain","Aqua Ring","Drain Punch","Giga Drain","Mega Drain","Horn Leech","Parabolic Charge","Rest","Oblivion Wing","Draining Kiss","Absorb","Leech Life"]);
-            if (attacker.volatile.healBlock > 0 && _hbHealMoves.has(move.name)) {
+            if (attacker.volatile.healBlock > 0 && _hbHealMoves.has(move.name) && move.name !== "Strength Sap") {
                 logMsg(`${attacker.name} can't use ${move.name} due to Heal Block!`, 'status'); abortPostCanMoveBlock(attacker); await sleep(1000); return;
             }
             // Throat Chop: cannot use sound-based moves
@@ -15462,7 +15462,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function getStageMult(stage) { return stage >= 0 ? (2 + stage) / 2 : 2 / (2 + Math.abs(stage)); }
         function getAccEvaMult(stage) { return stage >= 0 ? (3 + stage) / 3 : 3 / (3 + Math.abs(stage)); }
-        
+
+        /** Target's Attack value before Strength Sap's stage change — mirrors physical `A` stat modifiers (VGC). */
+        function computeStrengthSapAttackStat(mon) {
+            if (!mon || !mon.stats) return 0;
+            let hugePowerMult = (mon.ability === "Huge Power" || mon.ability === "Pure Power") ? 2 : 1;
+            if (mon.ability === "Gorilla Tactics") hugePowerMult *= 1.5;
+            let A = mon.stats.atk * hugePowerMult * getStageMult(mon.stages.atk || 0);
+            const _atkItemActive = state.magicRoom === 0 && !(mon.volatile && mon.volatile.embargo > 0);
+            if (_atkItemActive && mon.item === "Choice Band") A *= 1.5;
+            if (_atkItemActive && mon.item === "Thick Club" && (mon.name === "Marowak" || mon.name === "Marowak-Alola")) A *= 2;
+            if (_atkItemActive && mon.item === "Light Ball" && (mon.name === "Pikachu" || (mon.name && mon.name.startsWith("Pikachu-")))) A *= 2;
+            if (mon.ability === "Hustle") A *= 1.5;
+            if (mon.ability === "Guts" && mon.status) A *= 1.5;
+            if (mon.ability === "Flower Gift" && (getCurrentWeather() === "Sun" || getCurrentWeather() === "HarshSun")) A *= 1.5;
+            if (mon.ability === "Toxic Boost" && (mon.status === "PSN" || mon.status === "TOX")) A *= 1.5;
+            if (mon.status === "BRN" && mon.ability !== "Guts") A *= 0.5;
+            const _soParty = (mon === state.pActive) ? state.playerParty : state.foeParty;
+            const _soFainted = _soParty ? Math.min(5, _soParty.filter(m => m !== mon && m.currentHp <= 0).length) : 0;
+            if (mon.ability === "Supreme Overlord" && _soFainted > 0) A *= (1 + 0.1 * _soFainted);
+            return Math.max(0, Math.floor(A));
+        }
+
         function applySwitchInAbilities(mon, foe) {
             if(mon.currentHp <= 0 || foe.currentHp <= 0) return;
             // Neutralizing Gas suppresses all switch-in abilities on both sides
@@ -15906,7 +15927,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             // === Magic Bounce: reflect non-damaging moves ===
-            const magicBounceMoves = new Set(["Will-O-Wisp","Thunder Wave","Stun Spore","Sleep Powder","Spore","Toxic","Leech Seed","Taunt","Encore","Disable","Heal Block","Torment","Mean Look","Spider Web","Block","Tickle","Growl","Leer","Tail Whip","Screech","Metal Sound","String Shot","Smokescreen","Sand Attack","Flash","Kinesis","Charm","Baby-Doll Eyes","Captivate","Sweet Scent","Swagger","Flatter","Noble Roar","Tearful Look","Spikes","Stealth Rock","Toxic Spikes","Sticky Web"]);
+            const magicBounceMoves = new Set(["Will-O-Wisp","Thunder Wave","Stun Spore","Sleep Powder","Spore","Toxic","Leech Seed","Strength Sap","Taunt","Encore","Disable","Heal Block","Torment","Mean Look","Spider Web","Block","Tickle","Growl","Leer","Tail Whip","Screech","Metal Sound","String Shot","Smokescreen","Sand Attack","Flash","Kinesis","Charm","Baby-Doll Eyes","Captivate","Sweet Scent","Swagger","Flatter","Noble Roar","Tearful Look","Spikes","Stealth Rock","Toxic Spikes","Sticky Web"]);
             if (defender.ability === "Magic Bounce" && magicBounceMoves.has(move.name)) {
                 logMsg(`${defender.name}'s Magic Bounce reflected ${move.name}!`, 'info');
                 // Swap attacker/defender and re-call
@@ -15915,7 +15936,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             // === Substitute: blocks opponent-targeting status moves ===
-            const _subBypassMoves = new Set(["Hyper Voice","Bug Buzz","Boomburst","Perish Song","Heal Bell","Aromatherapy","Snore","Round","Uproar","Clanging Scales","Echoed Voice","Disarming Voice","Relic Song","Snarl","Sparkling Aria","Overdrive"]);
+            const _subBypassMoves = new Set(["Hyper Voice","Bug Buzz","Boomburst","Perish Song","Heal Bell","Aromatherapy","Snore","Round","Uproar","Clanging Scales","Echoed Voice","Disarming Voice","Relic Song","Snarl","Sparkling Aria","Overdrive","Strength Sap"]);
             const _selfTargetMoves = new Set(["Swords Dance","Nasty Plot","Calm Mind","Dragon Dance","Quiver Dance","Shell Smash","Belly Drum","Agility","Rock Polish","Bulk Up","Iron Defense","Amnesia","Wish","Roost","Recover","Soft-Boiled","Slack Off","Milk Drink","Heal Order","Shore Up","Rest","Ingrain","Aqua Ring","Baton Pass","Parting Shot","Heal Bell","Aromatherapy","Trick Room","Sunny Day","Rain Dance","Sandstorm","Hail","Snowscape","Stealth Rock","Spikes","Toxic Spikes","Sticky Web","Defog","Reflect","Light Screen","Aurora Veil","Substitute","Focus Energy","Stockpile","Spit Up","Swallow","Geomancy","Coil","Haze","Imprison","Healing Wish","Lunar Dance","Destiny Bond","Perish Song"]);
             if (move.cat === "Status" && defender.volatile.sub > 0 && !_subBypassMoves.has(move.name) && !_selfTargetMoves.has(move.name) && attacker.ability !== "Infiltrator") {
                 logMsg(`${attacker.name}'s ${move.name} was blocked by ${defender.name}'s substitute!`, 'info');
@@ -16923,6 +16944,48 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_lbActual > 0) attacker.currentHp += _lbActual;
                 logMsg(`${attacker.name}'s Lunar Blessing healed the team's status and restored HP!`, 'heal');
                 updateUI(); return;
+            }
+
+            // === STRENGTH SAP: heal HP = target's Attack (before drop), −1 foe Attack; fails at −6 (unless Contrary inverts) ===
+            if (move.name === "Strength Sap") {
+                const _mb = attacker.ability === "Mold Breaker" || attacker.ability === "Teravolt" || attacker.ability === "Turboblaze";
+                const _defAbilityActive = !(defender.volatile && defender.volatile.abilityGastroAcid) && !_mb;
+                if (_defAbilityActive && defender.ability === "Sap Sipper") {
+                    logMsg(`${defender.name}'s Sap Sipper absorbed the Grass move!`, 'info');
+                    changeStage(defender, 'atk', 1);
+                    updateUI();
+                    return;
+                }
+                if (defender.ability !== "Contrary" && (defender.stages.atk || 0) <= -6) {
+                    logMsg(`But it failed!`, 'info');
+                    return;
+                }
+                let sapHealRaw = computeStrengthSapAttackStat(defender);
+                changeStage(defender, 'atk', -1, true);
+                let healAmt = sapHealRaw;
+                const _userItemAtk = state.magicRoom === 0 && !(attacker.volatile && attacker.volatile.embargo > 0);
+                if (_userItemAtk && attacker.item === "Big Root") healAmt = Math.floor(healAmt * 1.3);
+                const healBlocked = attacker.volatile.healBlock > 0;
+                if (_defAbilityActive && defender.ability === "Liquid Ooze") {
+                    let ooze = Math.max(0, healAmt);
+                    if (ooze > 0) {
+                        let actDmg = Math.min(attacker.currentHp, ooze);
+                        attacker.currentHp -= actDmg;
+                        logMsg(`${defender.name}'s Liquid Ooze hurt ${attacker.name} for ${actDmg}!`, 'dmg');
+                    }
+                } else if (!healBlocked && healAmt > 0) {
+                    let actHeal = Math.min(attacker.maxHp - attacker.currentHp, healAmt);
+                    if (actHeal > 0) {
+                        attacker.currentHp += actHeal;
+                        logMsg(`${attacker.name} restored ${actHeal} HP!`, 'heal');
+                    } else {
+                        logMsg(`${attacker.name}'s HP is full!`, 'info');
+                    }
+                } else if (healBlocked) {
+                    logMsg(`${attacker.name} can't heal due to Heal Block!`, 'status');
+                }
+                updateUI();
+                return;
             }
 
             // === TAKE HEART: cure own status + +1 SpA/SpD ===
