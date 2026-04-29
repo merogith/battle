@@ -419,8 +419,18 @@
         .hover-text:hover, .hover-text:active { color: var(--accent); background: rgba(255,213,79,0.08); }
 
         /* Party */
-        .party-slot { display: flex; align-items: center; padding: 10px; border: 1px solid #333; background: var(--surface); cursor: pointer; border-radius: 4px; gap: 10px; transition: all 0.15s; }
-        .party-slot:hover { border-color: #666; background: var(--surface2); } .party-slot.active-mon { border-color: var(--accent); background: #1a1800; } .party-slot.fainted { opacity: 0.4; cursor: not-allowed; } .party-actions { display: flex; gap: 8px; }
+        .party-slot { display: flex; align-items: center; padding: 10px; border: 1px solid #333; background: var(--surface); cursor: pointer; border-radius: 4px; gap: 10px; transition: all 0.15s; box-sizing: border-box; max-width: 100%; }
+        .party-slot > div:not(.party-actions) { flex: 1; min-width: 0; }
+        .party-slot:hover { border-color: #666; background: var(--surface2); } .party-slot.active-mon { border-color: var(--accent); background: #1a1800; } .party-slot.fainted { opacity: 0.4; cursor: not-allowed; } .party-actions { display: flex; gap: 8px; flex-shrink: 0; }
+        /* Battle party modal — narrow phones: stack actions so Summary/Switch stay fully tappable */
+        @media (max-width: 520px) {
+            #modal-party #party-list { min-width: 0; width: 100%; box-sizing: border-box; }
+            #modal-party .modal-content { overflow-x: hidden; box-sizing: border-box; }
+            #modal-party .party-slot { flex-wrap: wrap; align-items: flex-start; }
+            #modal-party .party-slot > div:not(.party-actions) { font-size: clamp(10px, 2.9vw, 12px); overflow-wrap: anywhere; }
+            #modal-party .party-slot .party-actions { flex: 1 1 100%; flex-shrink: 0; justify-content: flex-end; flex-wrap: wrap; }
+            #modal-party .party-slot .party-actions button { flex: 1 1 auto; min-width: 0; max-width: 100%; }
+        }
 
         /* Summary */
         .summary-stat-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
@@ -8128,9 +8138,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function getSummaryStatBoosts(mon) {
-            // #region agent log
-            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b98117'},body:JSON.stringify({sessionId:'b98117',runId:'pre-fix',hypothesisId:'H3',location:'battle.html:getSummaryStatBoosts:entry',message:'summary boosts entry',data:{monName:mon&&mon.name,hasMon:!!mon,hasVolatile:!!(mon&&mon.volatile)},timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
             const boosts = {};
             const item = mon.item || '';
             const ab = mon.ability || '';
@@ -10961,9 +10968,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // All other callers (draft pool, in-battle info, online PVP) leave it falsy.
             window._summaryShowEVs = !!opts.showEVs;
             const build = draftItem && (draftItem.build || draftItem.buildData);
-            // #region agent log
-            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b98117'},body:JSON.stringify({sessionId:'b98117',runId:'pre-fix',hypothesisId:'H2',location:'battle.html:showDraftPokemonSummary:entry',message:'show draft summary called',data:{name:draftItem&&draftItem.name,hasBuild:!!build,partyListLen:opts&&opts.partyList?opts.partyList.length:0,index:opts&&opts.index},timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
             if (!draftItem || !draftItem.name || !build) return;
             const sumModal = document.getElementById('modal-summary');
             if (!sumModal) {
