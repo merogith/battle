@@ -44,7 +44,8 @@
             --battle-panel-pad: var(--battle-space-2);
             --battle-btn-radius: 6px;
             --battle-btn-gap: var(--battle-space-1);
-            --ui-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            /* Single UI typeface everywhere (menus, story, battle, inputs). */
+            --ui-font: var(--battle-font);
         }
         /* Polish: native dark scrollbars/inputs, crisp text, readable selection, keyboard focus */
         html { height: 100%; overscroll-behavior: none; color-scheme: dark; }
@@ -85,7 +86,9 @@
             pointer-events: none;
             user-select: none;
             letter-spacing: 0.04em;
+            display: none;
         }
+        body:has(#screen-menu:not(.hidden)) .deploy-version-patch { display: block; }
         body { background-color: #000; color: var(--text-color); font-family: var(--ui-font); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; min-height: 100dvh; min-height: 100svh; height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior: none; padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); box-sizing: border-box; }
         .screen { width: 100%; max-width: 1280px; height: 100vh; max-height: 720px; position: relative; background: var(--bg-color); overflow: hidden; }
         /* Desktop: outer box matches scaled 1280×720 footprint so the game centers and fills the window */
@@ -512,13 +515,23 @@
             background-size: cover;
             background-position: center;
         }
-        .story-tutor-mon { border:1px solid #444; border-radius:6px; padding:12px; background:var(--surface); }
-        .story-tutor-mon-name { font-size:14px; font-weight:bold; color:var(--accent); margin-bottom:8px; display:flex; align-items:center; gap:8px; }
-        .story-tutor-section { margin-top:8px; }
-        .story-tutor-section-title { font-size:11px; color:#888; text-transform:uppercase; margin-bottom:4px; }
+        .story-tutor-mon { border:1px solid #3f4352; border-radius:8px; background:linear-gradient(180deg, rgba(17,20,30,0.9), rgba(11,14,21,0.9)); overflow:hidden; }
+        .story-tutor-mon-toggle {
+            width:100%; border:0; background:transparent; color:inherit; cursor:pointer;
+            display:flex; align-items:center; justify-content:space-between; gap:10px;
+            padding:10px 12px; text-align:left;
+        }
+        .story-tutor-mon-toggle:hover { background:rgba(255,255,255,0.03); }
+        .story-tutor-mon-main { display:flex; align-items:center; gap:8px; min-width:0; }
+        .story-tutor-mon-name { font-size:14px; font-weight:bold; color:var(--accent); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .story-tutor-mon-meta { font-size:10px; color:#9fa7b7; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:50vw; }
+        .story-tutor-mon-chev { color:#9aa0aa; font-size:14px; line-height:1; }
+        .story-tutor-mon-body { border-top:1px solid #303646; padding:10px 12px 12px; display:flex; flex-direction:column; gap:8px; }
+        .story-tutor-section { margin-top:6px; }
+        .story-tutor-section-title { font-size:10px; color:#8b92a4; text-transform:uppercase; margin-bottom:4px; letter-spacing:0.06em; }
         .story-tutor-option-row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:4px; }
         .story-tutor-option-row .current { font-size:11px; color:#aaa; min-width:80px; }
-        .story-tutor-btn { font-size:10px; padding:2px 7px; border:1px solid #555; border-radius:4px; background:transparent; color:#ccc; cursor:pointer; }
+        .story-tutor-btn { font-size:11px; padding:5px 9px; border:1px solid #4f5668; border-radius:5px; background:rgba(0,0,0,0.18); color:#d2d7df; cursor:pointer; }
         .story-tutor-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
         .story-tutor-btn:disabled { opacity: 0.55; cursor: not-allowed; color: #9a9a9a; border-color: #444; }
         .story-tutor-apply-move:disabled {
@@ -579,7 +592,7 @@
             font-size: 10px; color: #ffb74d; margin: 6px 0 0; line-height: 1.4; padding: 6px 8px;
             border-radius: 4px; background: rgba(80, 50, 20, 0.35); border: 1px solid #5a4030;
         }
-        .story-tutor-choice-list { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; width: 100%; }
+        .story-tutor-choice-list { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; width: 100%; max-height: 280px; overflow: auto; padding-right: 2px; }
         .story-tutor-choice { border: 1px solid #333; border-radius: 6px; padding: 8px 10px; background: rgba(0,0,0,0.18); }
         .story-tutor-choice-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
         .story-tutor-choice-desc {
@@ -600,10 +613,111 @@
             .story-tutor-move-picker .story-tutor-move-picker-footer {
                 grid-column: 1 / -1; grid-row: 3; margin-top: 0;
             }
+            .story-tutor-mon-meta { max-width: 42vw; }
+        }
+        @media (max-width: 719px) {
+            #screen-story-tutor .story-shop-header-row {
+                position: sticky;
+                top: 0;
+                z-index: 4;
+                padding: 8px 10px !important;
+                gap: 8px;
+            }
+            #screen-story-tutor #story-tutor-head-title {
+                min-width: 0;
+                flex: 1;
+            }
+            #screen-story-tutor #story-tutor-gold {
+                flex-shrink: 0;
+                white-space: nowrap;
+                font-size: 12px !important;
+            }
+            #screen-story-tutor .story-shop-stack > div:last-child {
+                position: sticky;
+                bottom: 0;
+                z-index: 4;
+                padding: 8px 10px !important;
+                backdrop-filter: blur(3px);
+            }
+            #screen-story-tutor .story-shop-stack > div:last-child button {
+                min-height: 42px;
+                font-size: 12px;
+            }
         }
         .story-city-stack, .story-shop-stack, .story-link-stack {
             position: relative; z-index: 1; display: flex; flex-direction: column;
             height: 100%; min-height: 0; flex: 1;
+        }
+        /* Story screen chrome normalization: keep text/borders consistent with main UI theme. */
+        #screen-story-city,
+        #screen-story-professor,
+        #screen-story-shop,
+        #screen-story-tutor,
+        #screen-story-colress,
+        #screen-story-link {
+            font-family: var(--battle-font);
+        }
+        #screen-story-city h1, #screen-story-city h2, #screen-story-city h3, #screen-story-city h4, #screen-story-city p, #screen-story-city span, #screen-story-city button, #screen-story-city label,
+        #screen-story-professor h1, #screen-story-professor h2, #screen-story-professor h3, #screen-story-professor h4, #screen-story-professor p, #screen-story-professor span, #screen-story-professor button, #screen-story-professor label,
+        #screen-story-shop h1, #screen-story-shop h2, #screen-story-shop h3, #screen-story-shop h4, #screen-story-shop p, #screen-story-shop span, #screen-story-shop button, #screen-story-shop label,
+        #screen-story-tutor h1, #screen-story-tutor h2, #screen-story-tutor h3, #screen-story-tutor h4, #screen-story-tutor p, #screen-story-tutor span, #screen-story-tutor button, #screen-story-tutor label,
+        #screen-story-colress h1, #screen-story-colress h2, #screen-story-colress h3, #screen-story-colress h4, #screen-story-colress p, #screen-story-colress span, #screen-story-colress button, #screen-story-colress label,
+        #screen-story-link h1, #screen-story-link h2, #screen-story-link h3, #screen-story-link h4, #screen-story-link p, #screen-story-link span, #screen-story-link button, #screen-story-link label {
+            font-family: var(--battle-font);
+            letter-spacing: 0.03em;
+        }
+        .story-shop-header-row,
+        .story-link-header-row {
+            background: linear-gradient(180deg, #1e2030 0%, #12141e 100%) !important;
+            border-bottom: 2px solid #555 !important;
+            box-shadow: inset -2px -2px 0 0 #212529, inset 2px 2px 0 0 #495057;
+        }
+        #story-city-left {
+            border-right: 2px solid #555 !important;
+            background: linear-gradient(180deg, rgba(20, 22, 34, 0.88) 0%, rgba(12, 14, 22, 0.9) 100%) !important;
+            box-shadow: inset -2px -2px 0 0 #161922, inset 2px 2px 0 0 #2d3342;
+        }
+        .story-dialog-nameplate {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            padding: 4px 12px 2px;
+            margin-left: 8px;
+            position: relative;
+            z-index: 2;
+            color: #111 !important;
+            background: linear-gradient(180deg, #ffd54f 0%, #ffb300 100%) !important;
+            border: 2px solid #555 !important;
+            border-bottom: none !important;
+            border-radius: 0 !important;
+            box-shadow: inset -1px -1px 0 0 #c48a00, inset 1px 1px 0 0 #ffe082;
+        }
+        .story-dialog-box {
+            border: 2px solid #555 !important;
+            border-radius: 0 !important;
+            background: linear-gradient(180deg, #1e2030 0%, #12141e 100%) !important;
+            box-shadow: inset -2px -2px 0 0 #212529, inset 2px 2px 0 0 #495057 !important;
+            padding: 12px 14px;
+            min-height: 48px;
+        }
+        .story-dialog-box .story-dialog-text {
+            margin: 0;
+            font-size: 12px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: var(--text-color) !important;
+            font-style: normal;
+        }
+        #screen-story-shop > .story-shop-stack > div:last-child,
+        #screen-story-tutor > .story-shop-stack > div:last-child,
+        #screen-story-colress > .story-shop-stack > div:last-child,
+        #screen-story-link > .story-link-stack > div:last-child {
+            border-top: 2px solid #555 !important;
+            background: linear-gradient(180deg, rgba(22, 24, 34, 0.95) 0%, rgba(12, 14, 22, 0.96) 100%) !important;
+            box-shadow: inset -2px -2px 0 0 #161922, inset 2px 2px 0 0 #2d3342;
         }
         #screen-story-city { background: var(--bg-color); }
         /* Story city top bar: location + gold | abandon + settings (settings lives here so it aligns with Abandon) */
@@ -655,6 +769,38 @@
         #story-hud-city { color: var(--accent); }
         #story-hud-gold { color: #ffd700; }
         #story-hud-badges { color: #ffcc80; }
+        .story-gold-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            line-height: 1;
+            vertical-align: middle;
+        }
+        .story-gold-icon {
+            width: 21px;
+            height: 16px;
+            flex-shrink: 0;
+            align-self: center;
+            object-fit: contain;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            vertical-align: middle;
+            filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.45));
+        }
+        .story-screen-head-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+        }
+        .story-screen-head-ico {
+            width: 22px;
+            height: 22px;
+            flex-shrink: 0;
+            object-fit: contain;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
         .story-hud-abandon {
             font-family: var(--battle-font);
             font-size: 10px;
@@ -711,29 +857,14 @@
         }
         #story-city-left .story-city-portrait-wrap {
             position: relative; display: flex; align-items: center; justify-content: center;
-            width: 150px; height: 150px; border-radius: 50%;
-            background: radial-gradient(ellipse at 50% 80%, rgba(255,213,79,0.12) 0%, transparent 55%);
-            border: 2px solid rgba(255,213,79,0.25); box-shadow: inset 0 0 18px rgba(0,0,0,0.45);
+            width: 150px; height: 150px; border-radius: 0;
+            background: linear-gradient(180deg, #1e2030 0%, #12141e 100%);
+            border: 2px solid #555;
+            box-shadow: inset -2px -2px 0 0 #212529, inset 2px 2px 0 0 #495057;
         }
         #story-city-left .story-city-portrait-wrap img { width: 135px; height: 135px; }
         #story-city-npc-name { font-size: 10px; }
         .story-dialog-host { margin-bottom: 10px; width: 100%; max-width: 640px; }
-        .story-dialog-nameplate {
-            display: inline-block; font-size: 11px; font-weight: bold; letter-spacing: 0.06em;
-            text-transform: uppercase; color: #1a1a1a; background: linear-gradient(180deg, #ffe082 0%, #ffb300 100%);
-            padding: 4px 12px 2px; border-radius: 4px 4px 0 0; border: 1px solid rgba(0,0,0,0.35);
-            border-bottom: none; margin-left: 8px; position: relative; z-index: 2;
-        }
-        .story-dialog-box {
-            border: 2px solid rgba(255,213,79,0.45); border-radius: 0 8px 8px 8px;
-            background: linear-gradient(165deg, rgba(28,32,48,0.97) 0%, rgba(12,14,22,0.98) 100%);
-            box-shadow: 0 8px 28px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06);
-            padding: 12px 14px; min-height: 48px;
-        }
-        .story-dialog-box .story-dialog-text {
-            margin: 0; font-size: 12px; color: #e8e8ec; font-style: italic; line-height: 1.55;
-            white-space: pre-wrap; word-break: break-word;
-        }
         .story-shop-item-row { display: flex; gap: 10px; align-items: flex-start; }
         .story-shop-item-icon {
             flex-shrink: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
@@ -775,7 +906,7 @@
         }
         /* Story: Hall of Fame (Gen-3 style — 2×3 sprites + welcome banner) */
         .story-hof-gb-overlay {
-            font-family: 'Courier New', Consolas, ui-monospace, monospace;
+            font-family: var(--battle-font);
             -webkit-font-smoothing: antialiased;
         }
         .story-hof-gba-panel {
@@ -915,6 +1046,20 @@
         .story-action-btn.center:hover { background:linear-gradient(180deg,#16222e 0%,#0c1420 100%); box-shadow:inset -3px -3px 0 #1a2834,inset 3px 3px 0 #2a4050, 0 0 12px rgba(129,212,250,0.2); border-color:#a5d6fa; color:#e1f5fe; }
         .story-action-btn.party { border-color:#4dd0e1; color:#80deea; background:linear-gradient(180deg,#0a2226 0%,#061418 100%); }
         .story-action-btn.party:hover { background:linear-gradient(180deg,#0e2a30 0%,#081c20 100%); box-shadow:inset -3px -3px 0 #0a3038,inset 3px 3px 0 #1a4858, 0 0 12px rgba(77,208,225,0.18); border-color:#80deea; color:#b2ebf2; }
+        .story-action-ico {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+            object-fit: contain;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            pointer-events: none;
+        }
+        .story-action-btn-text {
+            flex: 1;
+            min-width: 0;
+            line-height: 1.35;
+        }
         /* Same hue family, lighter/dimmer accent (alternate NPC, secondary service, bag vs mart) */
         .story-action-btn.primary.story-action-btn--soft { border-color:#c98888; color:#d4a0a0; background:linear-gradient(180deg,#221818 0%,#151010 100%); }
         .story-action-btn.primary.story-action-btn--soft:hover { background:linear-gradient(180deg,#2a1c1c 0%,#1a1212 100%); box-shadow:inset -3px -3px 0 #302020,inset 3px 3px 0 #483030, 0 0 10px rgba(200,136,136,0.12); border-color:#d4a0a0; color:#e0b4b4; }
@@ -925,6 +1070,7 @@
         .story-action-btn.dept.story-action-btn--soft { border-color:#8e6aaf; color:#e1bee7; background:linear-gradient(180deg,#1a1220 0%,#100c18 100%); }
         .story-action-btn.dept.story-action-btn--soft:hover { background:linear-gradient(180deg,#221a28 0%,#16101e 100%); box-shadow:inset -3px -3px 0 #281e34,inset 3px 3px 0 #403050, 0 0 12px rgba(225,190,231,0.12); border-color:#f3e5f5; color:#fce4fc; }
         .story-action-btn.disabled, .story-action-btn:disabled { opacity:0.35; cursor:not-allowed; }
+        .story-action-btn .story-action-ico { flex: 0 0 auto; }
         .story-team-slot { display:flex; align-items:center; gap:6px; padding:4px 6px; border:1px solid #2a2a2a; border-radius:4px; background:var(--surface); font-size:11px; }
         .story-team-slot img { width:40px; height:40px; image-rendering:pixelated; border:none; background:transparent; }
         .story-team-slot .draft-card-info-btn { flex-shrink: 0; }
@@ -3111,9 +3257,8 @@
         /* --- Reset NES.css globals that would break our layout --- */
         html, body { font-size: inherit; }
         *, *::before, *::after { box-sizing: border-box; }
-        /* NES.css sets a global font — override back to our ui-font everywhere,
-           then opt-in to the pixel font only where we want it */
-        body, button, input, select, textarea {
+        /* NES.css sets a global font — force our single game typeface on all controls */
+        body, button, input, select, textarea, pre, code, kbd, samp {
             font-family: var(--ui-font) !important;
         }
 
@@ -3300,6 +3445,9 @@
             color: var(--accent) !important;
             text-shadow: 1px 1px 0 #000;
             margin-top: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
         }
         #story-bag-grid.story-bag-grid {
             display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: 320px; overflow-y: auto;
@@ -3327,6 +3475,9 @@
             color: var(--accent) !important;
             text-shadow: 1px 1px 0 #000;
             margin-top: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
         }
         #modal-story-party .story-party-modal-hint {
             font-size: 10px !important;
@@ -3349,6 +3500,11 @@
             gap: 6px;
         }
         #modal-story-party .story-team-slot { width: 100%; box-sizing: border-box; }
+        #modal-story-party .story-party-card-hit {
+            cursor: pointer;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
         #modal-story-party .party-sort-col {
             display: flex !important;
             flex-direction: column;
@@ -3599,11 +3755,7 @@
             .battle-cmd-label { font-size: 9px !important; }
         }
 
-        /* --- Pokemon Logo Style --- */
-        @font-face {
-            font-family: 'Pokemon Solid';
-            src: url('https://fonts.cdnfonts.com/s/17890/Pokemon Solid.woff') format('woff');
-        }
+        /* --- Main menu title (same pixel font as battle UI) --- */
         .logo-container {
             text-align: center;
             margin-bottom: 20px;
@@ -3611,7 +3763,7 @@
             transform: perspective(500px) rotateX(5deg);
         }
         .title-pokemon {
-            font-family: 'Pokemon Solid', sans-serif;
+            font-family: var(--battle-font);
             font-size: clamp(3rem, 6vw, 6rem);
             color: #ffcb05;
             margin: 0;
@@ -3626,7 +3778,7 @@
                 10px 10px 0 #1c3266;
         }
         .title-arena {
-            font-family: 'Arial Black', sans-serif;
+            font-family: var(--battle-font);
             font-size: clamp(1.5rem, 3.5vw, 3.5rem);
             color: #e3350d;
             margin: -10px 0 0 0;
@@ -3804,7 +3956,7 @@
             <p style="margin:0;color:#aaa;font-size:12px;line-height:1.5;max-width:340px;">Share the room code below with your friend. Draft starts once they join.</p>
             <div style="background:rgba(255,255,255,0.07);border:2px solid #4fc3f7;border-radius:8px;padding:12px 24px;display:flex;flex-direction:column;align-items:center;gap:6px;">
                 <span style="font-size:10px;color:#4fc3f7;letter-spacing:2px;text-transform:uppercase;">Room Code</span>
-                <p id="online-waiting-code" style="margin:0;font-size:32px;letter-spacing:0.25em;font-family:ui-monospace,monospace;color:#fff;font-weight:bold;"></p>
+                <p id="online-waiting-code" style="margin:0;font-size:32px;letter-spacing:0.25em;font-family:var(--battle-font);color:#fff;font-weight:bold;"></p>
                 <button type="button" onclick="(function(){const c=window.OnlineBattle&&window.OnlineBattle.getCode?window.OnlineBattle.getCode():'';if(c&&navigator.clipboard)navigator.clipboard.writeText(c).then(function(){window.logMsg('Code copied!','info')}).catch(function(){});})()" style="padding:5px 14px;font-size:11px;background:rgba(79,195,247,0.15);border-color:#4fc3f7;color:#4fc3f7;border-radius:4px;margin-top:2px;">Copy code</button>
             </div>
             <button type="button" onclick="window.copyOnlineInviteLink && window.copyOnlineInviteLink()" style="padding:10px 16px;max-width:280px;width:100%;">Copy full invite link</button>
@@ -4028,9 +4180,9 @@
     <div id="modal-summary" class="modal hidden">
         <div class="modal-content white-outline modal-summary-shell" style="position: relative;">
             <div class="sum-tabs">
-                <button type="button" class="sum-tab active" id="sum-tab-1" onclick="window.switchSummaryTab(1)">&#9670; Overview</button>
-                <button type="button" class="sum-tab" id="sum-tab-2" onclick="window.switchSummaryTab(2)">&#9654; Moves</button>
-                <button type="button" class="sum-tab" id="sum-tab-3" onclick="window.switchSummaryTab(3)">&#9741; Matchups</button>
+                <button type="button" class="sum-tab active" id="sum-tab-1" onclick="window.switchSummaryTab(1)">Overview</button>
+                <button type="button" class="sum-tab" id="sum-tab-2" onclick="window.switchSummaryTab(2)">Moves</button>
+                <button type="button" class="sum-tab" id="sum-tab-3" onclick="window.switchSummaryTab(3)">Matchups</button>
             </div>
             <div class="summary-body-row">
                 <div id="summary-pages-scroll" class="summary-pages-scroll">
@@ -4039,9 +4191,9 @@
                     <div id="sum-page-3" class="sum-page"></div>
                 </div>
                 <div class="summary-party-nav" title="Party">
-                    <button type="button" id="sum-nav-up" class="sum-nav-btn" onclick="window.summaryNavigateParty(-1)" aria-label="Previous Pokémon">&#9650;</button>
+                    <button type="button" id="sum-nav-up" class="sum-nav-btn" onclick="window.summaryNavigateParty(-1)" aria-label="Previous Pokémon">Prev</button>
                     <span id="summary-party-slot" class="summary-party-slot-label">1/1</span>
-                    <button type="button" id="sum-nav-down" class="sum-nav-btn" onclick="window.summaryNavigateParty(1)" aria-label="Next Pokémon">&#9660;</button>
+                    <button type="button" id="sum-nav-down" class="sum-nav-btn" onclick="window.summaryNavigateParty(1)" aria-label="Next Pokémon">Next</button>
                 </div>
             </div>
             <div id="story-team-reorder-row" class="hidden" style="display:none;flex-direction:row;gap:8px;margin-top:10px;flex-shrink:0;">
@@ -4134,7 +4286,7 @@
         <div id="story-hud" class="story-hud-bar">
             <div class="story-hud-primary">
                 <span id="story-hud-city">City 0</span>
-                <span id="story-hud-gold">&#128176; 0G</span>
+                <span id="story-hud-gold"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
                 <span id="story-hud-badges">0/8 Badges</span>
             </div>
             <div class="story-hud-actions">
@@ -4187,8 +4339,8 @@
         <div id="story-shop-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
-            <h3 id="story-shop-title" style="color:var(--accent);margin:0;font-size:14px;">Pokémart</h3>
-            <span id="story-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;">&#128176; 0G</span>
+            <h3 id="story-shop-title" class="story-screen-head-title" style="color:var(--accent);font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_mart.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Pokémart</span></h3>
+            <span id="story-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div id="story-shop-grid" style="flex:1;overflow-y:auto;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:0;"></div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
@@ -4201,8 +4353,8 @@
         <div id="story-tutor-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
-            <h3 id="story-tutor-head-title" style="color:#ce93d8;margin:0;font-size:14px;">📖 Move Tutor</h3>
-            <span id="story-tutor-gold" style="color:#ffd700;font-size:13px;font-weight:bold;">&#128176; 0G</span>
+            <h3 id="story-tutor-head-title" class="story-screen-head-title" style="color:#ce93d8;font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_tutor.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Move Tutor</span></h3>
+            <span id="story-tutor-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
             <p id="story-tutor-head-desc" style="font-size:12px;color:#aaa;margin:0 0 12px;">Swap battle moves. Options come from known competitive sets and learnsets.</p>
@@ -4221,11 +4373,11 @@
             <div style="display:flex;align-items:center;gap:10px;min-width:0;">
                 <img id="story-colress-portrait" src="sprites/trainers/Colress.png" alt="Colress" style="width:36px;height:36px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.visibility='hidden'">
                 <div style="min-width:0;">
-                    <h3 style="color:#ce93d8;margin:0;font-size:14px;">🧪 Colress — Power Awakening</h3>
+                    <h3 class="story-screen-head-title" style="color:#ce93d8;font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_colress.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Colress — Power Awakening</span></h3>
                     <div style="font-size:10px;color:#888;margin-top:2px;">"Splendid! Let's draw out your Pokémon's hidden potential."</div>
                 </div>
             </div>
-            <span id="story-colress-gold" style="color:#ffd700;font-size:13px;font-weight:bold;flex-shrink:0;">&#128176; 0G</span>
+            <span id="story-colress-gold" style="color:#ffd700;font-size:13px;font-weight:bold;flex-shrink:0;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
             <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Set or swap a Pokémon's battle gimmick. Each change costs <strong style="color:#ffd700;">10,000G</strong>. The proper Mega Stone or Z-Crystal is auto-equipped (replaces current held item).</p>
@@ -4241,8 +4393,8 @@
         <div id="story-link-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-link-stack">
         <div class="story-link-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
-            <h3 style="color:#00e5ff;margin:0;font-size:14px;">&#128225; Cable Link Station</h3>
-            <span id="story-link-gold" style="color:#ffd700;font-size:13px;font-weight:bold;">&#128176; 0G</span>
+            <h3 class="story-screen-head-title" style="color:#00e5ff;font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_link.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Cable Link Station</span></h3>
+            <span id="story-link-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
             <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Reroll, upgrade, or rebuild your team. Changes are permanent for this run.</p>
@@ -4254,7 +4406,7 @@
         </div>
     </div>
 
-    <div id="screen-story-gameover" class="screen hidden" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:20px;">
+    <div id="screen-story-gameover" class="screen hidden" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:20px;font-family:var(--battle-font);">
         <h1 style="color:#f44336;font-size:32px;margin:0;letter-spacing:3px;">DEFEATED</h1>
         <p id="story-gameover-desc" style="color:#aaa;font-size:14px;text-align:center;margin:0;max-width:400px;"></p>
         <p id="story-gameover-center-hint" style="color:#888;font-size:11px;text-align:center;margin:0;max-width:400px;line-height:1.45;"></p>
@@ -4280,7 +4432,7 @@
 
     <div id="screen-story-artifacts" class="screen hidden" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div style="padding:10px 14px;background:#0d0d0d;border-bottom:1px solid #333;">
-            <h3 style="color:#ce93d8;margin:0;font-size:15px;">Artifact Hall</h3>
+            <h3 class="story-screen-head-title" style="color:#ce93d8;font-size:15px;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Artifact Hall</span></h3>
             <p style="font-size:11px;color:#888;margin:6px 0 0;">Toggle artifacts off to disable their battle effects.</p>
         </div>
         <div id="story-artifact-hall-list" style="flex:1;overflow-y:auto;padding:12px;"></div>
@@ -4291,7 +4443,7 @@
 
     <div id="modal-story-bag" class="modal hidden">
         <div class="modal-content white-outline story-bag-modal-content">
-            <h3 class="story-bag-modal-title">Battle Bag</h3>
+            <h3 class="story-bag-modal-title"><img class="story-screen-head-ico" src="icons/story/story_bag.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span>Battle Bag</span></h3>
             <p class="story-bag-hint">Select an item to use</p>
             <div id="story-bag-grid" class="story-bag-grid"></div>
             <div id="story-bag-target" style="display:none;margin-bottom:12px;">
@@ -4304,8 +4456,8 @@
 
     <div id="modal-story-party" class="modal hidden">
         <div class="modal-content white-outline story-party-modal-content">
-            <h3 class="story-party-modal-title">Party <span id="story-party-count" style="color:#9aa0aa;font-size:10px;letter-spacing:0;font-weight:normal;"></span></h3>
-            <p class="story-party-modal-hint">Tap a Pokémon for the full summary. Use ▲ ▼ to change lead order.</p>
+            <h3 class="story-party-modal-title"><img class="story-screen-head-ico" src="icons/story/story_party.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span>Party <span id="story-party-count" style="color:#9aa0aa;font-size:10px;letter-spacing:0;font-weight:normal;"></span></span></h3>
+            <p class="story-party-modal-hint">Tap a Pokémon for the full summary. Use Move Up/Move Down to change lead order.</p>
             <div id="story-party-modal-scroll" class="story-party-modal-scroll">
                 <div id="story-team-panel" style="display:flex;flex-direction:column;gap:4px;"></div>
             </div>
@@ -4315,7 +4467,7 @@
 
     <div id="modal-story-artifact" class="modal hidden">
         <div class="modal-content white-outline" style="max-width:550px;">
-            <h3 style="color:#9c27b0;margin-top:0;">&#10024; Run Artifacts</h3>
+            <h3 class="story-screen-head-title" style="color:#9c27b0;margin-top:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Run Artifacts</span></h3>
             <p style="font-size:12px;color:#aaa;">These artifacts affect BOTH you and the enemy for your entire run.</p>
             <div id="story-artifact-list" style="display:flex;flex-direction:column;gap:10px;max-height:350px;overflow-y:auto;margin-bottom:12px;"></div>
             <button onclick="window.closeModal('modal-story-artifact')" style="width:100%;">Close</button>
@@ -4330,7 +4482,7 @@
             </div>
             <p style="color:#888;font-size:11px;margin:0 0 10px;max-width:720px;">Generates the same <code>assignTrainers</code> + <code>rollTrainerTeam</code> pipeline as a New Adventure (sequential RNG). City screens and other story actions are not simulated, so a live run can diverge slightly; trainer picks and team rolls match a clean generator pass.</p>
             <div style="display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end;margin-bottom:10px;font-size:12px;">
-                <label style="color:#aaa;">Seed: <input id="tester-seed" type="text" inputmode="numeric" placeholder="e.g. 42" style="width:100px;padding:4px 8px;background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;font-family:monospace;"></label>
+                <label style="color:#aaa;">Seed: <input id="tester-seed" type="text" inputmode="numeric" placeholder="e.g. 42" style="width:100px;padding:4px 8px;background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;font-family:inherit;"></label>
                 <label style="color:#aaa;">Party size (non–late-boss): <input id="tester-party-size" type="number" min="1" max="6" value="6" style="width:48px;padding:4px 8px;background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;"></label>
                 <label style="color:#aaa;">Difficulty: <select id="tester-difficulty" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;padding:3px 8px;font-size:12px;max-width:200px;">
                     <option value="veryeasy">Very Easy</option>
@@ -4682,6 +4834,26 @@
         /** Deep clone plain data (build snapshots, settings); falls back to JSON on old browsers. */
         function deepClone(o) {
             return typeof structuredClone === 'function' ? structuredClone(o) : JSON.parse(JSON.stringify(o));
+        }
+        /** Pokémon build snapshots may pick up non-cloneable fields; used before summary UI. */
+        function safeCloneBuild(b) {
+            if (!b || typeof b !== 'object') return {};
+            try {
+                return deepClone(b);
+            } catch (_) {
+                try {
+                    return JSON.parse(JSON.stringify(b));
+                } catch (_) {
+                    return {
+                        m: Array.isArray(b.m) ? b.m.slice() : [],
+                        i: b.i, a: b.a, n: b.n,
+                        evs: b.evs && typeof b.evs === 'object' ? { ...b.evs } : undefined,
+                        ivs: b.ivs && typeof b.ivs === 'object' ? { ...b.ivs } : undefined,
+                        gimmick: b.gimmick, teraType: b.teraType,
+                        _isShiny: b._isShiny, _gender: b._gender
+                    };
+                }
+            }
         }
 
         const battleEls = { player: null, foe: null };
@@ -7932,6 +8104,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function getSummaryStatBoosts(mon) {
+            // #region agent log
+            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b98117'},body:JSON.stringify({sessionId:'b98117',runId:'pre-fix',hypothesisId:'H3',location:'battle.html:getSummaryStatBoosts:entry',message:'summary boosts entry',data:{monName:mon&&mon.name,hasMon:!!mon,hasVolatile:!!(mon&&mon.volatile)},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
             const boosts = {};
             const item = mon.item || '';
             const ab = mon.ability || '';
@@ -10759,7 +10934,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window.showDraftPokemonSummary = function(draftItem, opts) {
             opts = opts || {};
             const build = draftItem && (draftItem.build || draftItem.buildData);
+            // #region agent log
+            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b98117'},body:JSON.stringify({sessionId:'b98117',runId:'pre-fix',hypothesisId:'H2',location:'battle.html:showDraftPokemonSummary:entry',message:'show draft summary called',data:{name:draftItem&&draftItem.name,hasBuild:!!build,partyListLen:opts&&opts.partyList?opts.partyList.length:0,index:opts&&opts.index},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
             if (!draftItem || !draftItem.name || !build) return;
+            const sumModal = document.getElementById('modal-summary');
+            if (!sumModal) {
+                console.warn('[Summary] #modal-summary not in DOM');
+                return;
+            }
             summaryTarget = buildPokemon(draftItem.name, build);
             window._summaryDraftPoolMode = !opts.partyList;
             window._summaryDraftPartyList = opts.partyList || null;
@@ -10767,7 +10950,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             window._summaryIdx = window._summaryDraftPartyIdx;
             window._summaryIsP1 = true;
             window.switchSummaryTab(1);
-            document.getElementById('modal-summary').classList.remove('hidden');
+            sumModal.classList.remove('hidden');
             let nav = document.querySelector('.summary-party-nav');
             if (nav) {
                 const showNav = window._summaryDraftPartyList && window._summaryDraftPartyList.length > 1;
@@ -10954,29 +11137,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Gimmick dashboard
                 let gimBadges = '';
                 if (bd.gimmick === 'MEGA' || s.megaEvolved) {
-                    let active = s.megaEvolved ? '' : '◆';
-                    gimBadges += `<span class="sum-gimm-badge" style="background:#7b1fa2;color:#fff;">&#9830; MEGA${active}</span>`;
+                    let active = s.megaEvolved ? '' : ' (ready)';
+                    gimBadges += `<span class="sum-gimm-badge" style="background:#7b1fa2;color:#fff;">MEGA${active}</span>`;
                 }
                 if (bd.gimmick === 'GMAXDYNAMAX' || bd.gimmick === 'DYNAMAX' || s.dynamaxed) {
                     let label = bd.gimmick === 'GMAXDYNAMAX' ? 'G-MAX' : 'DYNAMAX';
-                    let active = s.dynamaxed ? '' : '◆';
-                    gimBadges += `<span class="sum-gimm-badge" style="background:#b71c1c;color:#fff;">&#128165; ${label}${active}</span>`;
+                    let active = s.dynamaxed ? '' : ' (ready)';
+                    gimBadges += `<span class="sum-gimm-badge" style="background:#b71c1c;color:#fff;">${label}${active}</span>`;
                 }
                 if (bd.gimmick === 'ZMOVE' || s.zMoveUsed) {
-                    let used = s.zMoveUsed ? ' ✔' : '◆';
-                    gimBadges += `<span class="sum-gimm-badge" style="background:#f9a825;color:#000;">&#9889; Z-MOVE${used}</span>`;
+                    let used = s.zMoveUsed ? ' (used)' : ' (ready)';
+                    gimBadges += `<span class="sum-gimm-badge" style="background:#f9a825;color:#000;">Z-MOVE${used}</span>`;
                 }
                 if (bd.teraType || s.teraActivated) {
                     let ttype = bd.teraType || '';
-                    let active = s.teraActivated ? '' : '◆';
-                    gimBadges += `<span class="sum-gimm-badge" style="background:#0277bd;color:#fff;">&#11045; TERA ${ttype}${active}</span>`;
+                    let active = s.teraActivated ? '' : ' (ready)';
+                    gimBadges += `<span class="sum-gimm-badge" style="background:#0277bd;color:#fff;">TERA ${ttype}${active}</span>`;
                 }
-                if (s.isShiny) gimBadges += `<span class="sum-gimm-badge" style="background:#ffd700;color:#000;">&#10024; SHINY</span>`;
+                if (s.isShiny) gimBadges += `<span class="sum-gimm-badge" style="background:#ffd700;color:#000;">SHINY</span>`;
 
                 // Effective typing display (changes if tera activated)
                 let effType1 = s.teraActivated ? bd.teraType : s.type1;
                 let effType2 = s.teraActivated ? null : s.type2;
-                let typingNote = s.teraActivated ? `<div style="font-size:10px;color:#0277bd;margin-top:2px;">&#11045; Terastallized — type changed</div>` : '';
+                let typingNote = s.teraActivated ? `<div style="font-size:10px;color:#0277bd;margin-top:2px;">Terastallized - type changed</div>` : '';
 
                 let natureLine = s.nature + (nMod ? ` <span style="color:#ff6b6b;font-size:10px;">+${statLabels[nMod.up]}</span> <span style="color:#6b9fff;font-size:10px;">-${statLabels[nMod.down]}</span>` : '');
 
@@ -10985,7 +11168,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div class="sum-overview-top">
                         <div class="sum-overview-left">
                             <img class="sum-overview-img" src="${getSprite(s.name, s.isShiny)}" alt="${s.name}" onerror="handleSpriteError(this)" style="${s.isShiny?'filter:drop-shadow(0 0 6px gold);':''}">
-                            <div class="sum-overview-name">${s.isShiny?'&#10024; ':''}${s.name}</div>
+                            <div class="sum-overview-name">${s.name}</div>
                             <div class="sum-overview-types">${getTypeHTML(effType1, effType2)}</div>
                             ${typingNote}
                             ${gimBadges ? `<div class="sum-gimmick-row sum-gimmick-row--tight">${gimBadges}</div>` : ''}
@@ -11005,14 +11188,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } else if (page === 2) {
                 // === PAGE 2: MOVES ===
                 const sereneGraceNote = s.ability === 'Serene Grace'
-                    ? `<div style="font-size:10px;color:#e1bee7;background:rgba(40,20,50,0.55);border:1px solid #7b1fa2;border-radius:3px;padding:4px 8px;margin-bottom:8px;">&#9733; Serene Grace: secondary effect odds are doubled in battle (capped at 100%).</div>`
+                    ? `<div style="font-size:10px;color:#e1bee7;background:rgba(40,20,50,0.55);border:1px solid #7b1fa2;border-radius:3px;padding:4px 8px;margin-bottom:8px;">Serene Grace: secondary effect odds are doubled in battle (capped at 100%).</div>`
                     : '';
                 let canUpgradeZ = bd.gimmick === 'ZMOVE' && !s.zMoveUsed;
                 let canUpgradeDyna = bd.gimmick === 'DYNAMAX' || bd.gimmick === 'GMAXDYNAMAX';
                 let upgradeMode = window._sumUpgradeMode || 'base';
                 let summarySpriteHeader = `<div class="sum-overview-left" style="margin-bottom:8px;">
                     <img class="sum-overview-img" src="${getSprite(s.name, s.isShiny)}" alt="${s.name}" onerror="handleSpriteError(this)" style="${s.isShiny?'filter:drop-shadow(0 0 6px gold);':''}">
-                    <div class="sum-overview-name" style="margin-top:6px;">${s.isShiny?'&#10024; ':''}${s.name}</div>
+                    <div class="sum-overview-name" style="margin-top:6px;">${s.name}</div>
                     <div class="sum-overview-types">${getTypeHTML(s.type1, s.type2)}</div>
                 </div>`;
 
@@ -11060,18 +11243,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (canUpgradeZ && canUpgradeDyna) {
                     upgradeBtns = `<div style="display:flex;gap:6px;margin-bottom:6px;">
                         <button type="button" onclick="window._sumUpgradeMode='base';window.switchSummaryTab(2)" style="${upgradeMode==='base'?'border-color:var(--accent);':''}" class="sum-mode-btn">Base Moves</button>
-                        <button type="button" onclick="window._sumUpgradeMode='z';window.switchSummaryTab(2)" style="${upgradeMode==='z'?'border-color:#f9a825;color:#f9a825;':''}" class="sum-mode-btn">&#9889; Z-Power</button>
-                        <button type="button" onclick="window._sumUpgradeMode='max';window.switchSummaryTab(2)" style="${upgradeMode==='max'?'border-color:#ef5350;color:#ef5350;':''}" class="sum-mode-btn">&#128165; Max Moves</button>
+                        <button type="button" onclick="window._sumUpgradeMode='z';window.switchSummaryTab(2)" style="${upgradeMode==='z'?'border-color:#f9a825;color:#f9a825;':''}" class="sum-mode-btn">Z-Power</button>
+                        <button type="button" onclick="window._sumUpgradeMode='max';window.switchSummaryTab(2)" style="${upgradeMode==='max'?'border-color:#ef5350;color:#ef5350;':''}" class="sum-mode-btn">Max Moves</button>
                     </div>`;
                 } else if (canUpgradeZ) {
                     upgradeBtns = `<div style="display:flex;gap:6px;margin-bottom:6px;">
                         <button type="button" onclick="window._sumUpgradeMode='base';window.switchSummaryTab(2)" style="${upgradeMode==='base'?'border-color:var(--accent);':''}" class="sum-mode-btn">Base Moves</button>
-                        <button type="button" onclick="window._sumUpgradeMode='z';window.switchSummaryTab(2)" style="${upgradeMode==='z'?'border-color:#f9a825;color:#f9a825;':''}" class="sum-mode-btn">&#9889; View Z-Power</button>
+                        <button type="button" onclick="window._sumUpgradeMode='z';window.switchSummaryTab(2)" style="${upgradeMode==='z'?'border-color:#f9a825;color:#f9a825;':''}" class="sum-mode-btn">View Z-Power</button>
                     </div>`;
                 } else if (canUpgradeDyna) {
                     upgradeBtns = `<div style="display:flex;gap:6px;margin-bottom:6px;">
                         <button type="button" onclick="window._sumUpgradeMode='base';window.switchSummaryTab(2)" style="${upgradeMode==='base'?'border-color:var(--accent);':''}" class="sum-mode-btn">Base Moves</button>
-                        <button type="button" onclick="window._sumUpgradeMode='max';window.switchSummaryTab(2)" style="${upgradeMode==='max'?'border-color:#ef5350;color:#ef5350;':''}" class="sum-mode-btn">&#128165; View Max Moves</button>
+                        <button type="button" onclick="window._sumUpgradeMode='max';window.switchSummaryTab(2)" style="${upgradeMode==='max'?'border-color:#ef5350;color:#ef5350;':''}" class="sum-mode-btn">View Max Moves</button>
                     </div>`;
                 }
 
@@ -11083,7 +11266,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let teraType = bd.teraType || null;
                 let summarySpriteHeader = `<div class="sum-overview-left" style="margin-bottom:8px;">
                     <img class="sum-overview-img" src="${getSprite(s.name, s.isShiny)}" alt="${s.name}" onerror="handleSpriteError(this)" style="${s.isShiny?'filter:drop-shadow(0 0 6px gold);':''}">
-                    <div class="sum-overview-name" style="margin-top:6px;">${s.isShiny?'&#10024; ':''}${s.name}</div>
+                    <div class="sum-overview-name" style="margin-top:6px;">${s.name}</div>
                     <div class="sum-overview-types">${getTypeHTML(s.type1, s.type2)}</div>
                 </div>`;
 
@@ -11091,7 +11274,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let defHtml = renderMatchupDefSection(baseType1, baseType2, `Defending as ${baseType1}${baseType2 ? '/' + baseType2 : ''}`);
                 let teraDefHtml = '';
                 if (teraType) {
-                    teraDefHtml = `<div class="tera-note">&#11045; If Terastallized (${teraType}): defensive type changes to pure ${teraType}.</div>`;
+                    teraDefHtml = `<div class="tera-note">If Terastallized (${teraType}): defensive type changes to pure ${teraType}.</div>`;
                     teraDefHtml += renderMatchupDefSection(teraType, null, `Defending as TERA ${teraType}`);
                 }
 
@@ -15606,6 +15789,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function getCurrentWeather() {
+            // #region agent log
+            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b98117'},body:JSON.stringify({sessionId:'b98117',runId:'pre-fix',hypothesisId:'H4',location:'battle.html:getCurrentWeather:entry',message:'getCurrentWeather state check',data:{hasState:typeof state!=='undefined'&&!!state,hasPActive:typeof state!=='undefined'&&!!(state&&state.pActive),hasFActive:typeof state!=='undefined'&&!!(state&&state.fActive),weather:typeof state!=='undefined'&&state?state.weather:null},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
+            if (!state || !state.pActive || !state.fActive) {
+                // #region agent log
+                fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b98117'},body:JSON.stringify({sessionId:'b98117',runId:'post-fix',hypothesisId:'H4',location:'battle.html:getCurrentWeather:guard',message:'missing active mons; safe weather return',data:{hasState:!!state,hasPActive:!!(state&&state.pActive),hasFActive:!!(state&&state.fActive),weather:state?state.weather:null},timestamp:Date.now()})}).catch(()=>{});
+                // #endregion
+                return state ? state.weather : null;
+            }
             if (state.pActive.ability === "Cloud Nine" || state.fActive.ability === "Cloud Nine" ||
                 state.pActive.ability === "Air Lock" || state.fActive.ability === "Air Lock") return null;
             return state.weather;
@@ -18253,7 +18445,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (e === 'Elite Trainer') return 'Ace Trainer';
             return 'Trainer';
         }
-        // City NPC flavor (index = City N from event name). Picked with storyRngNext when in run.
+        // City NPC flavor (index = City N from event name). Uses Math.random only — must not advance story battle RNG.
         const CITY_PROFESSOR_QUOTES = [
           ['…Welcome, trainer. Choose wisely—your partner matters.','The Pokédex can wait. Your bond cannot.','Research never sleeps… but you should heal often!'],
           ['New town, new discoveries!','The lab\'s quiet… perfect for a new teammate.','Young trainer—what will you find on Route?'],
@@ -18283,10 +18475,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           ['Elite trainers still gather here… legends never rest!','The Hall of Fame plaque could use your name again.','Another lap around the region?'],
         ];
         function _pickCityQuoteLine(poolArr, cityIdx) {
-            const rng = (sm && sm.active) ? storyRngNext : Math.random;
             const idx = Math.min(Math.max(0, cityIdx|0), poolArr.length - 1);
             const lines = poolArr[idx] || poolArr[0];
-            return lines[Math.floor(rng() * lines.length)];
+            return lines[Math.floor(Math.random() * lines.length)];
         }
 
         // Story city hub + professor screen: HUD label must match `sprites/trainers/<spriteFile>.png` on disk.
@@ -18356,37 +18547,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 .then(function(j) { if (j && j.version) _storyBgManifest = j; })
                 .catch(function() { /* keep default */ });
         })();
-        function _storyIconSvg(fill, label) {
-            return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="4" fill="' + fill + '" opacity="0.9"/><text x="12" y="16" text-anchor="middle" font-size="11" font-weight="bold" fill="#111">' + label + '</text></svg>';
-        }
-        // Official item artwork filenames (same as github.com/PokeAPI/sprites — sprites/items/*.png)
+        // Official item artwork filenames (PokeAPI / Gen3-style sprites in sprites/items/*.png)
         const STORY_SHOP_ITEM_SPRITE_SLUG = {
             maxPotion:'max-potion', fullRestore:'full-restore', fullHeal:'full-heal',
-            maxElixir:'max-elixir',
+            maxElixir:'max-ether',
             xAttack:'x-attack', xDefense:'x-defense', xSpAtk:'x-sp-atk', xSpDef:'x-sp-def',
             xSpeed:'x-speed', xAccuracy:'x-accuracy', direHit:'dire-hit', guardSpec:'guard-spec',
-            revive:'revive', maxRevive:'max-revive', revivalHerb:'revival-herb'
+            revive:'revive', maxRevive:'max-revive', revivalHerb:'revival-herb',
+            sunOrb:'heat-rock', rainOrb:'damp-rock', hailOrb:'icy-rock', sandOrb:'smooth-rock',
+            electricOrb:'electric-seed', grassyOrb:'grassy-seed', psychicOrb:'psychic-seed', mistyOrb:'misty-seed',
+            emergencyTeleporter:'escape-rope',
+            tricksterWatch:'lagging-tail', vampiricFangs:'big-root', heavyGravity:'iron-ball',
+            berserkerSerum:'flame-orb', chaosAmulet:'scope-lens', stagnationCore:'white-herb',
+            evioliteBlessing:'eviolite', typeAmplifier:'expert-belt', typeNullifier:'shed-shell',
+            typeMagnetizer:'wide-lens', eternalSunLens:'heat-rock', eternalRainDrum:'damp-rock',
+            eternalHailCrown:'icy-rock', eternalSandTotem:'smooth-rock', thunderstoneEarrings:'electric-seed',
+            verdantCore:'grassy-seed', astralAntenna:'psychic-seed', moonveilIncense:'misty-seed',
+            glassCannonPact:'life-orb', reapersToll:'spell-tag', cursedCoinPouch:'amulet-coin'
         };
-        const STORY_SHOP_ICON_HTML = (function() {
-            const H = _storyIconSvg;
-            return {
-                maxPotion: H('#e57373','HP'), fullRestore: H('#ba68c8','+'), fullHeal: H('#64b5f6','Fx'),
-                maxElixir: H('#1e88e5','PP'),
-                xAttack: H('#ff8a65','Atk'), xDefense: H('#4db6ac','Def'), xSpAtk: H('#9575cd','SpA'),
-                xSpDef: H('#7986cb','SpD'), xSpeed: H('#aed581','Spe'), xAccuracy: H('#fff176','Acc'),
-                direHit: H('#ff7043','!'), guardSpec: H('#78909c','Gs'),
-                revive: H('#a1887f','50'), maxRevive: H('#8d6e63','Rv'), revivalHerb: H('#6d4c41','H'),
-                sunOrb: H('#ffb300','Sn'), rainOrb: H('#039be5','Rn'), hailOrb: H('#b3e5fc','Hi'),
-                sandOrb: H('#d7ccc8','~'),
-                electricOrb: H('#fdd835','El'), grassyOrb: H('#66bb6a','Gr'), psychicOrb: H('#ba68c8','Ps'), mistyOrb: H('#ef9a9a','Mi'),
-                emergencyTeleporter: H('#26c6da','T'),
-                tricksterWatch: H('#ffd54f','W'), vampiricFangs: H('#e53935','V'), heavyGravity: H('#5c6bc0','G'),
-                berserkerSerum: H('#ec407a','B'), chaosAmulet: H('#ab47bc','C'), stagnationCore: H('#78909c','S'),
-                evioliteBlessing: H('#ce93d8','E'), typeAmplifier: H('#ffca28','+'), typeNullifier: H('#9e9e9e','0'),
-                typeMagnetizer: H('#29b6f6','@'),
-                _default: H('#546e7a','?')
-            };
-        })();
+        const STORY_SHOP_ICON_HTML = {
+            _default: '<img class="story-shop-item-img" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="30" height="30" loading="lazy" decoding="async">'
+        };
         function storyShopIconInnerHtml(id) {
             if (typeof id === 'string') {
                 if (id.startsWith('mega_')) return storyShopIconInnerHtml(id.slice(5));
@@ -18400,6 +18581,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function storyShopIconCellHtml(id) {
             return '<span class="story-shop-item-icon">' + storyShopIconInnerHtml(id) + '</span>';
+        }
+        function storyGoldIconHtml() {
+            return '<img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async">';
+        }
+        function storyGoldHtml(amount, pad = true, prefix = '') {
+            let raw = String(amount);
+            let sign = prefix || '';
+            if (raw.charAt(0) === '-') {
+                sign = '-';
+                raw = raw.slice(1);
+            }
+            const sep = pad ? ' ' : '';
+            return '<span class="story-gold-inline">' + storyGoldIconHtml() + sep + sign + raw + 'G</span>';
         }
         function storySpawnConfetti(container, count) {
             if (!container) return;
@@ -19239,7 +19433,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 cityName = rawName || 'Town';
             }
             setT('story-hud-city', cityName);
-            setT('story-hud-gold', `🪙 ${sm.gold.toLocaleString()}G`);
+            const hudGoldEl = el('story-hud-gold');
+            if (hudGoldEl) hudGoldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             setT('story-hud-badges', `${sm.badges || 0}/8 Badges`);
         }
 
@@ -19301,13 +19496,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.storyMilestoneTips.m4 = true;
                 save();
             }
-            if (Math.random() < 0.06) {
-                const find = 100 + Math.floor(Math.random() * 401);
-                sm.gold += find;
-                quoteText += `\n\n✨ You found ${find}G on the ground!`;
-                save();
-                updateHUD();
-            }
             if (quoteEl) quoteEl.textContent = quoteText;
 
             const btn = document.getElementById('story-action-buttons');
@@ -19338,7 +19526,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const gymBlocked = hasProf && !profUsedHere;
             if (hasGym) {
                 if (gymBlocked) {
-                    btn.innerHTML += `<button class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;">⚔ Challenge the Gym Leader! <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></button>`;
+                    btn.innerHTML += `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_gym.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Challenge the Gym Leader! <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`;
                 } else {
                     btn.innerHTML += makeActionBtn('⚔ Challenge the Gym Leader!','gym','window.StoryMode.proceedToNextBattle()','primary');
                 }
@@ -19349,23 +19537,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const routeBlockedByMysteryGate = legendMysteryGate && !profUsedHere;
             if (actions.includes('Leave City')) {
                 if (routeLocked) {
-                    btn.innerHTML += `<button class="story-action-btn primary" disabled title="Clear this area's challenge first" style="opacity:0.45;cursor:not-allowed;">→ Continue Route <span style="font-size:10px;color:#aaa;">(Complete challenge first)</span></button>`;
+                    btn.innerHTML += `<button type="button" class="story-action-btn primary" disabled title="Clear this area's challenge first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Complete challenge first)</span></span></button>`;
                 } else if (routeBlockedByMysteryGate) {
-                    btn.innerHTML += `<button class="story-action-btn primary" disabled title="Talk to the Mystery Figure first" style="opacity:0.45;cursor:not-allowed;">→ Continue Route <span style="font-size:10px;color:#aaa;">(Talk to Mystery Figure first)</span></button>`;
+                    btn.innerHTML += `<button type="button" class="story-action-btn primary" disabled title="Talk to the Mystery Figure first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Talk to Mystery Figure first)</span></span></button>`;
                 } else if (!hasLeague) {
                     btn.innerHTML += makeActionBtn('→ Continue Route','route','window.StoryMode.proceedToNextBattle()','primary',{ soft:true });
                 }
             }
             if (hasVR) {
                 if (gymBlocked) {
-                    btn.innerHTML += `<button class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;">🏔 Enter Victory Road <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></button>`;
+                    btn.innerHTML += `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_vr.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Enter Victory Road <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`;
                 } else {
                     btn.innerHTML += makeActionBtn('🏔 Enter Victory Road','vr','window.StoryMode.proceedToNextBattle()','primary');
                 }
             }
             if (hasTrainerRoad) {
                 if (gymBlocked) {
-                    btn.innerHTML += `<button class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;">⚔ Pre-League challenge <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></button>`;
+                    btn.innerHTML += `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_gym.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Pre-League challenge <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`;
                 } else {
                     btn.innerHTML += makeActionBtn('⚔ Pre-League challenge (trainers)','tr','window.StoryMode.proceedToNextBattle()','primary');
                 }
@@ -19401,8 +19589,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             btn.innerHTML += makeActionBtn('🏥 Pokémon Center — Restore Your Party','center','window.StoryMode.enterPokemonCenter()','center');
             const _partyN = sm.team.length;
             const _partyLabel = _partyN
-                ? `👥 Party — Team & Order (${_partyN}/6)`
-                : '👥 Party — Empty (Visit Professor)';
+                ? `Party — Team & Order (${_partyN}/6)`
+                : 'Party — Empty (Visit Professor)';
             btn.innerHTML += makeActionBtn(_partyLabel, 'party', 'window.StoryMode.openPartyModal()', 'party');
             // Bag — always accessible in city to view inventory and sell items
             const _invCount = Object.keys(sm.inventory || {}).filter(k => sm.inventory[k] > 0).length;
@@ -19412,9 +19600,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             btn.innerHTML += makeActionBtn(_bagLabel, 'bag', 'window.StoryMode.openCityBag()', 'shop',{ soft:true });
         }
 
+        /** FireRed/LeafGreen–style item & UI rips (pret/pokefirered, plus link strip from graphics/link). */
+        const STORY_ACTION_ICON_URLS = {
+            professor: 'icons/story/story_professor.png?v=20260429b',
+            mystery: 'icons/story/story_mystery.png?v=20260429b',
+            gym: 'icons/story/story_gym.png?v=20260429b',
+            league: 'icons/story/story_league.png?v=20260429b',
+            route: 'icons/story/story_route.png?v=20260429b',
+            vr: 'icons/story/story_vr.png?v=20260429b',
+            tr: 'icons/story/story_gym.png?v=20260429b',
+            mart: 'icons/story/story_mart.png?v=20260429b',
+            link: 'icons/story/story_link.png?v=20260429b',
+            dept: 'icons/story/story_dept.png?v=20260429b',
+            tutor: 'icons/story/story_tutor.png?v=20260429b',
+            nature: 'icons/story/story_nature.png?v=20260429b',
+            dojo: 'icons/story/story_dojo.png?v=20260429b',
+            colress: 'icons/story/story_colress.png?v=20260429b',
+            artifacts: 'icons/story/story_artifacts.png?v=20260429b',
+            center: 'icons/story/story_center.png?v=20260429b',
+            party: 'icons/story/story_party.png?v=20260429b',
+            bag: 'icons/story/story_bag.png?v=20260429b'
+        };
+        function storyActionStripLeadingDecor(label) {
+            if (!label || typeof label !== 'string') return '';
+            let s = label.trim();
+            s = s.replace(/^[\u2190-\u2193\u21A9\u21AA]+\s*/u, '');
+            try {
+                s = s.replace(/^(\p{Extended_Pictographic}[\uFE0F\u200D]*)+/u, '').trimStart();
+            } catch (e) {}
+            s = s.replace(/^[\u203C\u2049\u2753-\u2755\u3030\u3299]+\s*/u, '');
+            return s.trim();
+        }
         function makeActionBtn(label, key, onclick, cls, opts) {
             const soft = (opts && opts.soft) ? ' story-action-btn--soft' : '';
-            return `<button class="story-action-btn ${cls || ''}${soft}" onclick="${onclick}">${label}</button>`;
+            const src = STORY_ACTION_ICON_URLS[key] || '';
+            const text = storyActionStripLeadingDecor(label);
+            const iconHtml = src
+                ? `<img class="story-action-ico" src="${src}" alt="" width="24" height="24" decoding="async">`
+                : '';
+            return `<button type="button" class="story-action-btn ${cls || ''}${soft}" onclick="${onclick}">${iconHtml}<span class="story-action-btn-text">${text}</span></button>`;
         }
 
         function getCityIndex(ev) {
@@ -19569,11 +19793,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function profOpenSummary(idx) {
             const ch = (_pendingProfChoices || [])[idx];
             if (!ch) return;
-            window.showDraftPokemonSummary({ name: ch.name, build: ch.build });
+            window.showDraftPokemonSummary({ name: ch.name, build: safeCloneBuild(ch.build || {}) });
         }
         function renderTeamPanel() {
             const panel = document.getElementById('story-team-panel');
             if (!panel) return;
+            if (!panel._storyPartyHitBound) {
+                panel._storyPartyHitBound = true;
+                panel.addEventListener('click', function (ev) {
+                    const hit = ev.target.closest('.story-party-card-hit');
+                    if (!hit || !panel.contains(hit)) return;
+                    const idx = parseInt(hit.getAttribute('data-party-idx'), 10);
+                    if (Number.isNaN(idx)) return;
+                    openSummary(idx);
+                });
+                panel.addEventListener('keydown', function (ev) {
+                    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+                    const hit = ev.target.closest('.story-party-card-hit');
+                    if (!hit || !panel.contains(hit)) return;
+                    ev.preventDefault();
+                    const idx = parseInt(hit.getAttribute('data-party-idx'), 10);
+                    if (Number.isNaN(idx)) return;
+                    openSummary(idx);
+                });
+            }
             const countEl = document.getElementById('story-party-count');
             if (countEl) countEl.textContent = sm.team.length ? `(${sm.team.length}/6)` : '';
             if (!sm.team.length) {
@@ -19583,11 +19826,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             panel.innerHTML = sm.team.map((t,i) => {
                 const g = t.name ? getMonGrade(t.name, getBST(t.name)) : 4;
                 const n = sm.team.length;
-                return `<div class="story-team-slot tier-${g}" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;box-sizing:border-box;" role="button" onclick="window.StoryMode.openSummary(${i})" title="View summary">
-                    <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;">
-                        <img src="${getSprite(t.name,false)}" onerror="this.src=''" alt="${t.name}">
-                        <div><div style="font-weight:bold;font-size:11px;">${t.name}</div>
-                        <span class="tier-badge bg-tier-${g}" style="font-size:9px;">G${g}</span></div>
+                const rawBuild = (t && (t.build || t.buildData)) ? (t.build || t.buildData) : {};
+                const mon = buildPokemon(String(t.name || '').trim(), deepClone(rawBuild));
+                const moveNames = (rawBuild.m || []).slice(0, 4).map(m => (String(m || '').split('/')[0] || '—'));
+                while (moveNames.length < 4) moveNames.push('—');
+                const details = `${displayItem(mon, false)} · ${mon.ability || 'None'} · ${mon.nature || 'Hardy'}`;
+                const movesHtml = moveNames.map(mn => `<div>${mn}</div>`).join('');
+                return `<div class="story-team-slot draft-card tier-${g}" style="align-items:stretch;justify-content:space-between;gap:8px;width:100%;box-sizing:border-box;">
+                    <div class="story-party-card-hit" style="display:flex;align-items:stretch;gap:8px;min-width:0;flex:1;" role="button" tabindex="0" data-party-idx="${i}" title="View summary">
+                        <div class="draft-card-sprite">
+                            <img src="${getSprite(t.name, !!rawBuild._isShiny)}" onerror="handleSpriteError(this)" alt="${t.name}" data-shiny="${rawBuild._isShiny ? 'true' : 'false'}" class="mini-sprite" style="${rawBuild._isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}">
+                            <span class="tier-badge bg-tier-${g}" title="Power tier (1 = strongest pool tier, 4 = cutest/weakest)">T${g}</span>
+                        </div>
+                        <div class="draft-card-body" style="min-width:0;flex:1;">
+                            <div class="draft-card-header">
+                                <span>${rawBuild._isShiny ? '&#10024; ' : ''}${t.name} ${getTypeHTML(mon.type1, mon.type2)}</span>
+                            </div>
+                            <div class="draft-card-details">${details}</div>
+                            <div class="draft-card-moves">${movesHtml}</div>
+                        </div>
                     </div>
                     <div class="party-sort-col" style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;" onclick="event.stopPropagation()">
                         <button type="button" class="party-sort-btn" title="Move up in party" ${i===0?'disabled':''} onclick="event.stopPropagation();window.StoryMode.moveInParty(${i},-1)">▲</button>
@@ -19612,14 +19869,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function openSummary(i) {
-            window.closeModal('modal-story-party');
             const t = sm.team[i];
-            if (!t) return;
+            // #region agent log
+            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b98117'},body:JSON.stringify({sessionId:'b98117',runId:'pre-fix',hypothesisId:'H1',location:'battle.html:openSummary:entry',message:'story openSummary called',data:{index:i,teamLen:sm&&sm.team?sm.team.length:null,name:t&&t.name,hasBuild:!!(t&&(t.build||t.buildData))},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
+            if (!t || !String(t.name || '').trim()) return;
+            const rawBuild = t.build || t.buildData;
+            if (!rawBuild || typeof rawBuild !== 'object') {
+                try { if (typeof window.showGameAlert === 'function') window.showGameAlert('Missing build data for this Pokémon.'); } catch (_) {}
+                return;
+            }
+            window.closeModal('modal-story-party');
             _storySumIdx = i;
-            window.showDraftPokemonSummary(
-                { name: t.name, build: t.build },
-                { partyList: sm.team.map(x => ({ name: x.name, build: x.build })), index: i, storyReorder: true }
-            );
+            const partyList = sm.team.map(function (x) {
+                const b = x.build || x.buildData;
+                return { name: x.name, build: (b && typeof b === 'object') ? safeCloneBuild(b) : {} };
+            });
+            requestAnimationFrame(function () {
+                try {
+                    window.showDraftPokemonSummary(
+                        { name: String(t.name).trim(), build: safeCloneBuild(rawBuild) },
+                        { partyList: partyList, index: i, storyReorder: true }
+                    );
+                } catch (e) {
+                    // #region agent log
+                    fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b98117'},body:JSON.stringify({sessionId:'b98117',runId:'post-fix',hypothesisId:'H5',location:'battle.html:openSummary:catch',message:'openSummary catch triggered',data:{index:i,error:e&&e.message?String(e.message):String(e),stack:e&&e.stack?String(e.stack).slice(0,260):null},timestamp:Date.now()})}).catch(()=>{});
+                    // #endregion
+                    console.warn('[Story] openSummary', e);
+                    try { if (typeof window.showGameAlert === 'function') window.showGameAlert('Could not open summary — see console (F12).'); } catch (_) {}
+                }
+            });
         }
         function summaryMove(delta) {
             const j = _storySumIdx + delta;
@@ -19712,7 +19991,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? (_profLegendaryMysteryMode
                     ? '"The League gate opens only for the prepared. Take one legendary ace and choose who leaves your party."'
                     : '"Your party is full, trainer. Choose one mystery partner and decide who to leave behind."')
-                : PROF_QUOTES[Math.floor(storyRngNext()*PROF_QUOTES.length)];
+                : PROF_QUOTES[Math.floor(Math.random() * PROF_QUOTES.length)];
             document.getElementById('story-prof-sprite').src = getTrainerSprite(isFull ? 'Cyrus' : { spriteFile: hub.spriteFile });
 
             const statusEl = document.getElementById('story-prof-status');
@@ -19902,7 +20181,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     slot.style.cssText = 'cursor:pointer;min-width:130px;padding:10px;transition:all 0.15s;';
                     slot.innerHTML = `
                         <img src="${getSprite(t.name,false)}" onerror="this.src=''" style="width:56px;height:56px;image-rendering:pixelated;">
-                        <div style="font-size:12px;"><b>${t.name}</b><br><span class="tier-badge bg-tier-${g}" style="font-size:9px;">G${g}</span></div>`;
+                        <div style="font-size:12px;"><b>${t.name}</b><br><span class="tier-badge bg-tier-${g}" style="font-size:9px;" title="Power tier (1–4)">T${g}</span></div>`;
                     slot.onclick = () => window.StoryMode._mysteryDoSwap(i);
                     cardEl.appendChild(slot);
                 });
@@ -20204,7 +20483,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (seedEl && sm.runSeed != null && sm.runSeed !== undefined) {
                     seedEl.style.display = 'block';
                     const sv = (sm.runSeed >>> 0).toString();
-                    seedEl.innerHTML = `Run seed: <code style="color:#888;">${sv}</code><br><button type="button" style="margin-top:8px;font-size:11px;padding:4px 10px;" onclick="navigator.clipboard.writeText('${sv}').then(function(){window.showGameAlert('Seed copied');}).catch(function(){})">Copy seed</button>`;
+                    seedEl.innerHTML = `Run seed: <code style="color:#888;font-family:inherit;">${sv}</code><br><button type="button" style="margin-top:8px;font-size:11px;padding:4px 10px;font-family:inherit;" onclick="navigator.clipboard.writeText('${sv}').then(function(){window.showGameAlert('Seed copied');}).catch(function(){})">Copy seed</button>`;
                 } else if (seedEl) seedEl.style.display = 'none';
                 refreshStoryGameOverRetreatUI();
                 showScreen('screen-story-gameover');
@@ -20324,8 +20603,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div style="font-size:28px;color:#ffd700;font-weight:bold;">VICTORY!</div>
                 ${isGymBadgeEvent?`<div style="font-size:16px;color:#4caf50;">Milestone victory! (${sm.badges} / 8 gym badges)</div>` : (gotBadge?`<div style="font-size:16px;color:#4caf50;">Milestone victory!</div>`:'')}
                 ${badgeFlavor}
-                <div style="font-size:14px;color:#ffeb3b;">+${(coins||0).toLocaleString()}G</div>
-                <div style="font-size:13px;color:#888;">Total Gold: ${sm.gold.toLocaleString()}G</div></div>`;
+                <div style="font-size:14px;color:#ffeb3b;">${storyGoldHtml((coins || 0).toLocaleString(), true, '+')}</div>
+                <div style="font-size:13px;color:#888;">Total Gold: ${storyGoldHtml(sm.gold.toLocaleString())}</div></div>`;
             const conf = ov.querySelector('.story-fx-confetti');
             storySpawnConfetti(conf, gotBadge ? 32 : 16);
             ov.appendChild(contBtn);
@@ -20420,7 +20699,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const gridEl  = document.getElementById('story-shop-grid');
             if (!gridEl) return;
             if (titleEl) titleEl.textContent = type==='dept' ? '🏬 Department Store' : '🛒 Pokémart';
-            if (goldEl)  goldEl.textContent  = `🪙 ${sm.gold.toLocaleString()}G`;
+            if (goldEl)  goldEl.innerHTML  = storyGoldHtml(sm.gold.toLocaleString());
             gridEl.innerHTML = '';
 
             const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
@@ -20445,7 +20724,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                 </div>
                             </div>
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-                                <span class="price">🪙 ${item.price.toLocaleString()}G</span>
+                                <span class="price">${storyGoldHtml(item.price.toLocaleString())}</span>
                                 <button onclick="window.StoryMode.buyItem('${item.id}',${item.price})" ${canAfford?'':'disabled'} style="font-size:11px;padding:3px 8px;${canAfford?'color:#ffb74d;border-color:#ffb74d;':'opacity:0.4;'}">Buy</button>
                             </div>
                         </div>`;
@@ -20467,7 +20746,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         </div>
                     </div>
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-                        <span class="price">🪙 ${item.price.toLocaleString()}G</span>
+                        <span class="price">${storyGoldHtml(item.price.toLocaleString())}</span>
                         <button onclick="window.StoryMode.buyItem('${item.id}',${item.price})" ${canAfford?'':'disabled'} style="font-size:11px;padding:3px 8px;${canAfford?`color:${buyColor};border-color:${buyColor};`:'opacity:0.4;'}">Buy</button>
                     </div>
                 </div>`;
@@ -20495,7 +20774,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             <h4 style="flex:1;margin:0;">${artName} ${owned?'<span style="color:#4caf50;">[ACTIVE]</span>':''}</h4>
                         </div>
                         <div class="desc">${artDesc}</div>
-                        ${!owned?`<button onclick="window.StoryMode.buyArtifact('${art.id}',${art.cost})" ${canBuy?'':'disabled'} style="margin-top:6px;font-size:11px;padding:3px 8px;${canBuy?'color:#9c27b0;border-color:#9c27b0;':'opacity:0.4;'}">Buy 🪙 ${art.cost.toLocaleString()}G</button>`:''}
+                        ${!owned?`<button onclick="window.StoryMode.buyArtifact('${art.id}',${art.cost})" ${canBuy?'':'disabled'} style="margin-top:6px;font-size:11px;padding:3px 8px;${canBuy?'color:#9c27b0;border-color:#9c27b0;':'opacity:0.4;'}">Buy ${storyGoldHtml(art.cost.toLocaleString())}</button>`:''}
                     </div>`;
                 });
                 gridEl.appendChild(artifactSection);
@@ -20552,13 +20831,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const UPGRADE_COSTS    = { 4:3500, 3:9000, 2:22000 };
         const EVOLVE_COSTS     = { 4:1500, 3:5000, 2:14000 };
         const REBUILD_COST     = 1200;
+        const STORY_INTERACTION_WARN_COOLDOWN_MS = 1200;
+        let _storyInteractionBusy = false;
+        let _storyInteractionWarnLastAt = 0;
+
+        function _storyWarnInteractionBusy() {
+            const now = Date.now();
+            if (now - _storyInteractionWarnLastAt < STORY_INTERACTION_WARN_COOLDOWN_MS) return;
+            _storyInteractionWarnLastAt = now;
+            try {
+                window.showToast('Already interacting. Finish the current action first.');
+            } catch (e) {
+                try { window.showGameAlert('Already interacting. Finish the current action first.'); } catch (_) {}
+            }
+        }
+
+        function _storyTryBeginInteraction() {
+            if (_storyInteractionBusy || !!window._gameConfirmResolve) {
+                _storyWarnInteractionBusy();
+                return false;
+            }
+            _storyInteractionBusy = true;
+            return true;
+        }
+
+        function _storyEndInteraction() {
+            _storyInteractionBusy = false;
+        }
 
 
         function enterLink() {
-            updateHUD();
-            renderLinkTeam();
-            syncStoryLinkBackground();
-            showScreen('screen-story-link');
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                updateHUD();
+                renderLinkTeam();
+                syncStoryLinkBackground();
+                showScreen('screen-story-link');
+            } finally {
+                _storyEndInteraction();
+            }
         }
 
         // Get valid evolutions for a Pokémon within the generation range.
@@ -20582,7 +20893,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function renderLinkTeam() {
             const el = document.getElementById('story-link-team');
             if (!el) return;
-            document.getElementById('story-link-gold').textContent = `🪙 ${sm.gold.toLocaleString()}G`;
+            document.getElementById('story-link-gold').innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             if (!sm.team.length) { el.innerHTML='<div style="color:#555;font-size:12px;">No Pokémon in party.</div>'; return; }
             const sg = storySettingsGens();
 
@@ -20647,22 +20958,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </div>
                     ${buildBlock}
                     <div class="story-link-btns">
-                        <button class="story-link-btn" onclick="window.StoryMode.linkReroll(${i})" ${canR?'':'disabled'} title="Swap for a random different G${g} Pokémon">🔄 Reroll G${g} (🪙${rCost}G)</button>
+                        <button class="story-link-btn" onclick="window.StoryMode.linkReroll(${i})" ${canR?'':'disabled'} title="Swap for a random different G${g} Pokémon">🔄 Reroll G${g} (${storyGoldHtml(rCost, false)})</button>
                         ${evoCost!==null
-                            ? `<button class="story-link-btn" onclick="window.StoryMode.linkEvolve(${i})" ${canEvo?'':'disabled'} title="Evolve into ${evoLabel}" style="${canEvo?'color:#76ff03;border-color:#76ff03;':''}">⬆️ Evolve → ${evoLabel} (🪙${evoCost}G)</button>`
+                            ? `<button class="story-link-btn" onclick="window.StoryMode.linkEvolve(${i})" ${canEvo?'':'disabled'} title="Evolve into ${evoLabel}" style="${canEvo?'color:#76ff03;border-color:#76ff03;':''}">⬆️ Evolve → ${evoLabel} (${storyGoldHtml(evoCost, false)})</button>`
                             : ''}
                         ${uCost!==null
-                            ? `<button class="story-link-btn" onclick="window.StoryMode.linkUpgrade(${i})" ${canU?'':'disabled'} title="Replace with a random G${g-1} Pokémon">🌟 Upgrade→G${g-1} (🪙${uCost}G)</button>`
+                            ? `<button class="story-link-btn" onclick="window.StoryMode.linkUpgrade(${i})" ${canU?'':'disabled'} title="Replace with a random G${g-1} Pokémon">🌟 Upgrade→G${g-1} (${storyGoldHtml(uCost, false)})</button>`
                             : `<button class="story-link-btn" disabled title="Already max grade">⭐ Max Grade</button>`}
-                        <button class="story-link-btn" onclick="window.StoryMode.linkRebuild(${i})" ${canBld?'':'disabled'} title="Re-roll moves/item/nature, keep species">🔃 Rebuild Set (🪙${rebB}G)</button>
-                        <button class="story-link-btn" onclick="window.StoryMode.linkMoveUp(${i})" ${i===0?'disabled':''} title="Move earlier in party order">⬆ Up</button>
-                        <button class="story-link-btn" onclick="window.StoryMode.linkMoveDown(${i})" ${i===sm.team.length-1?'disabled':''} title="Move later in party order">⬇ Down</button>
+                        <button class="story-link-btn" onclick="window.StoryMode.linkRebuild(${i})" ${canBld?'':'disabled'} title="Re-roll moves/item/nature, keep species">🔃 Rebuild Set (${storyGoldHtml(rebB, false)})</button>
                     </div>
                 </div>`;
             }).join('');
         }
 
         function linkReroll(idx) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
             const mon = sm.team[idx]; if (!mon) return;
             const g   = getMonGrade(mon.name, getBST(mon.name));
             const rk = `r_${idx}`;
@@ -20688,9 +20999,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             save();
             renderLinkTeam();
             renderTeamPanel();
+            } finally {
+                _storyEndInteraction();
+            }
         }
 
         function linkUpgrade(idx) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
             const mon = sm.team[idx]; if (!mon) return;
             const g   = getMonGrade(mon.name, getBST(mon.name));
             if (g <= 1) return;
@@ -20717,9 +21033,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             save();
             renderLinkTeam();
             renderTeamPanel();
+            } finally {
+                _storyEndInteraction();
+            }
         }
 
         async function linkEvolve(idx) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
             const mon = sm.team[idx]; if (!mon) return;
             const evos = _getValidEvos(mon.name, storySettingsGens());
             if (!evos.length) { window.showGameAlert(`${mon.name} cannot evolve with the selected generations.`); return; }
@@ -20748,9 +21069,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             save();
             renderLinkTeam();
             renderTeamPanel();
+            } finally {
+                _storyEndInteraction();
+            }
         }
 
         function linkRebuild(idx) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
             const mon = sm.team[idx]; if (!mon) return;
             const bk = `b_${idx}`;
             const bn = (sm.cityRerollsUsed[bk] || 0) + 1;
@@ -20770,6 +21096,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.team[idx] = { name:mon.name, build:newBuild };
             save();
             renderLinkTeam();
+            } finally {
+                _storyEndInteraction();
+            }
         }
 
         function _swapLinkTeamSlots(i, j) {
@@ -20789,12 +21118,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             renderTeamPanel();
         }
         function linkMoveUp(idx) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
             if (idx <= 0 || !sm.team[idx]) return;
             _swapLinkTeamSlots(idx - 1, idx);
+            } finally {
+                _storyEndInteraction();
+            }
         }
         function linkMoveDown(idx) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
             if (idx < 0 || idx >= sm.team.length - 1 || !sm.team[idx]) return;
             _swapLinkTeamSlots(idx, idx + 1);
+            } finally {
+                _storyEndInteraction();
+            }
         }
 
         // ── BATTLE BAG (IN-BATTLE ITEM USE) ───────────────────────────────
@@ -20961,7 +21300,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>
                 <button onclick="window.StoryMode.sellItem('${item.id}',${sellPrice});event.stopPropagation();"
                     style="font-size:11px;padding:4px 10px;color:#ffd700;border-color:#ffd700;flex-shrink:0;align-self:center;line-height:1.4;">
-                    Sell<br><span style="font-size:10px;">🪙 ${sellPrice.toLocaleString()}G</span>
+                    Sell<br><span style="font-size:10px;">${storyGoldHtml(sellPrice.toLocaleString())}</span>
                 </button>`;
                 bagEl.appendChild(div);
             });
@@ -21503,6 +21842,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const TUTOR_COST_NATURE  = 2000;
         /** 'moves' | 'nature' | 'loadout' — set by enterTutor(mode); renderTutorTeam reads this */
         let _storyTutorMode = 'moves';
+        let _storyTutorOpenIdx = 0;
 
         function _applyStoryTutorHeader() {
             const mode = _storyTutorMode || 'moves';
@@ -21789,12 +22129,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (ap) ap.disabled = !ev.target.value || sm.gold < TUTOR_COST_MOVE;
             });
             el.addEventListener('click', function(ev) {
-                if (!ev.target.classList || !ev.target.classList.contains('story-tutor-apply-move')) return;
-                const row = ev.target.closest('.story-tutor-move-slot');
+                const toggleBtn = ev.target && ev.target.closest ? ev.target.closest('.story-tutor-mon-toggle') : null;
+                if (toggleBtn) {
+                    const nextIdx = parseInt(toggleBtn.dataset.team, 10);
+                    if (Number.isFinite(nextIdx) && _storyTutorOpenIdx !== nextIdx) {
+                        _storyTutorOpenIdx = nextIdx;
+                        void renderTutorTeam();
+                    }
+                    return;
+                }
+                const applyBtn = ev.target && ev.target.closest ? ev.target.closest('.story-tutor-apply-move') : null;
+                if (!applyBtn) return;
+                const row = applyBtn.closest('.story-tutor-move-slot');
                 if (!row) return;
                 const sel = row.querySelector('.story-tutor-move-select');
                 const v = sel && sel.value;
-                if (!v || ev.target.disabled || sm.gold < TUTOR_COST_MOVE) return;
+                if (!v || applyBtn.disabled || sm.gold < TUTOR_COST_MOVE) return;
                 const teamIdx = parseInt(row.dataset.team, 10);
                 const moveSlot = parseInt(row.dataset.slot, 10);
                 if (window.StoryMode && typeof window.StoryMode.tutorChangeMove === 'function')
@@ -21803,12 +22153,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function enterTutor(mode) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
             const m = mode === 'nature' ? 'nature' : mode === 'loadout' ? 'loadout' : 'moves';
             _storyTutorMode = m;
+            _storyTutorOpenIdx = 0;
             _applyStoryTutorHeader();
             const el = document.getElementById('story-tutor-team');
             const goldEl = document.getElementById('story-tutor-gold');
-            if (goldEl) goldEl.textContent = `🪙 ${sm.gold.toLocaleString()}G`;
+            if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             if (!el) return;
             if (!sm.team.length) {
                 el.innerHTML = '<div style="color:#555;font-size:12px;">No Pokémon in party.</div>';
@@ -21822,12 +22175,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             syncStoryTutorBackground();
             showScreen('screen-story-tutor');
             void renderTutorTeam();
+            } finally {
+                _storyEndInteraction();
+            }
         }
 
         async function renderTutorTeam() {
             const el = document.getElementById('story-tutor-team');
             const goldEl = document.getElementById('story-tutor-gold');
-            if (goldEl) goldEl.textContent = `🪙 ${sm.gold.toLocaleString()}G`;
+            if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             if (!el) return;
             _initTutorMovePickerDelegationOnce();
 
@@ -21835,6 +22191,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const showMoves = mode === 'moves';
             const showNature = mode === 'nature';
             const showLoadout = mode === 'loadout';
+            if (_storyTutorOpenIdx < 0 || _storyTutorOpenIdx >= sm.team.length) _storyTutorOpenIdx = 0;
 
             const movePools = [];
             if (showMoves) {
@@ -21858,6 +22215,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 const typeHtml = mon ? getTypeHTML(mon.type1, mon.type2 || '') : '';
                 const spriteUrl = getSprite(t.name);
+                const expanded = idx === _storyTutorOpenIdx;
+                const currentMovesCount = Array.isArray(b.m) ? b.m.length : 0;
+                const summary = showMoves
+                    ? `${currentMovesCount} move slot${currentMovesCount === 1 ? '' : 's'}`
+                    : showNature
+                        ? `Nature: ${_esc(b.n || 'Hardy')}`
+                        : `Item: ${_esc(b.i || '(none)')} | Ability: ${_esc(b.a || '(none)')}`;
+
+                if (!expanded) {
+                    return `<div class="story-tutor-mon">
+                        <button type="button" class="story-tutor-mon-toggle" data-team="${idx}" aria-expanded="false">
+                            <div class="story-tutor-mon-main">
+                                <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
+                                <div style="min-width:0;">
+                                    <div class="story-tutor-mon-name">${t.name} ${typeHtml}</div>
+                                    <div class="story-tutor-mon-meta">${summary}</div>
+                                </div>
+                            </div>
+                            <span class="story-tutor-mon-chev" aria-hidden="true">▾</span>
+                        </button>
+                    </div>`;
+                }
 
                 let moveRows = '';
                 if (showMoves) {
@@ -21879,7 +22258,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                               + ` — short by ${Math.max(0, TUTOR_COST_MOVE - sm.gold).toLocaleString()}G. You can still preview moves; teach when you can afford it.</p>`
                             : '';
                         return `<div class="story-tutor-move-slot" data-has-moves="1" data-team="${idx}" data-slot="${mi}" data-slot-key="${slotKey}">`
-                            + `<div class="story-tutor-option-row"><span class="current">Slot ${mi + 1}: <strong>${_esc(cm)}</strong> →</span><span class="story-tutor-price">🪙${TUTOR_COST_MOVE}G</span></div>`
+                            + `<div class="story-tutor-option-row"><span class="current">Slot ${mi + 1}: <strong>${_esc(cm)}</strong> →</span><span class="story-tutor-price">${storyGoldHtml(TUTOR_COST_MOVE, false)}</span></div>`
                             + `<div class="story-tutor-move-detail story-tutor-move-detail--static story-tutor-current-equip" aria-label="Current move">${_formatMoveTutorDetailHtml(cm)}</div>`
                             + `<div class="story-tutor-move-picker">`
                             + `<input type="search" class="story-tutor-move-filter" placeholder="Filter moves…" autocomplete="off" />`
@@ -21913,7 +22292,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                               + ` onmouseenter="window.showTutorTextTooltip(this,event)"`
                               + ` onmousemove="window.showTutorTextTooltip(this,event)"`
                               + ` onmouseleave="window.hideTextTooltip()">${_esc(it)}</button>`
-                              + `<span class="story-tutor-price">🪙${TUTOR_COST_ITEM}G</span></div>`
+                              + `<span class="story-tutor-price">${storyGoldHtml(TUTOR_COST_ITEM, false)}</span></div>`
                               + _tutorChoiceDescBlockFromKey(it)
                               + `</div>`
                           ).join('')
@@ -21939,7 +22318,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                               + ` onmouseenter="window.showTutorTextTooltip(this,event)"`
                               + ` onmousemove="window.showTutorTextTooltip(this,event)"`
                               + ` onmouseleave="window.hideTextTooltip()">${_esc(a)}</button>`
-                              + `<span class="story-tutor-price">🪙${TUTOR_COST_ABILITY}G</span></div>`
+                              + `<span class="story-tutor-price">${storyGoldHtml(TUTOR_COST_ABILITY, false)}</span></div>`
                               + _tutorChoiceDescBlockFromKey(a)
                               + `</div>`
                           ).join('')
@@ -21971,7 +22350,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                               + ` onmouseenter="window.showTutorTextTooltip(this,event)"`
                               + ` onmousemove="window.showTutorTextTooltip(this,event)"`
                               + ` onmouseleave="window.hideTextTooltip()">${_esc(n)}</button>`
-                              + `<span class="story-tutor-price">🪙${TUTOR_COST_NATURE}G</span></div>`
+                              + `<span class="story-tutor-price">${storyGoldHtml(TUTOR_COST_NATURE, false)}</span></div>`
                               + _tutorChoiceDescBlockFromKey(n)
                               + `</div>`;
                           }).join('')
@@ -21981,24 +22360,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
 
                 const moveSection = showMoves
-                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Moves</div><p class="story-tutor-moves-hint">Each box shows the effect of your <strong>current</strong> slotted move, then a replacer list: the list preview shows a selected replacement (wider screens put it beside the list).</p>${moveRows}</div>`
+                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Moves</div><p class="story-tutor-moves-hint">Pick one slot, preview a replacement, then confirm.</p>${moveRows}</div>`
                     : '';
                 const itemSection = showLoadout
-                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Held Item</div><p class="story-tutor-moves-hint">Your equipped item is described under <strong>Now:</strong>; each swap option repeats the same style of text under its button (hover on desktop also works).</p>${itemRow}</div>`
+                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Held Item</div><p class="story-tutor-moves-hint">Current item first, then swap options.</p>${itemRow}</div>`
                     : '';
                 const abilSection = showLoadout
-                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Ability</div><p class="story-tutor-moves-hint">Current ability and each option show short text below the line (hover on desktop also works).</p>${abilRow}</div>`
+                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Ability</div><p class="story-tutor-moves-hint">Current ability first, then swap options.</p>${abilRow}</div>`
                     : '';
                 const natureSection = showNature
-                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Nature</div><p class="story-tutor-moves-hint">Your current nature and each option show the stat spread below the name (hover on desktop also works).</p>${natureRow}</div>`
+                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Nature</div><p class="story-tutor-moves-hint">Choose a nature; stat effects are shown with each option.</p>${natureRow}</div>`
                     : '';
 
                 return `<div class="story-tutor-mon">
-                    <div class="story-tutor-mon-name">
-                        <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
-                        ${t.name} ${typeHtml}
-                    </div>
-                    ${moveSection}${itemSection}${abilSection}${natureSection}
+                    <button type="button" class="story-tutor-mon-toggle" data-team="${idx}" aria-expanded="true">
+                        <div class="story-tutor-mon-main">
+                            <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
+                            <div style="min-width:0;">
+                                <div class="story-tutor-mon-name">${t.name} ${typeHtml}</div>
+                                <div class="story-tutor-mon-meta">${summary}</div>
+                            </div>
+                        </div>
+                        <span class="story-tutor-mon-chev" aria-hidden="true">▴</span>
+                    </button>
+                    <div class="story-tutor-mon-body">${moveSection}${itemSection}${abilSection}${natureSection}</div>
                 </div>`;
             }).join('');
 
@@ -22017,6 +22402,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function tutorChangeMove(teamIdx, moveSlot, newMove) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (sm.gold < TUTOR_COST_MOVE) return;
             const currentMoves = (mon.build.m || []).map(m => m.split('/')[0]);
@@ -22029,9 +22416,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             save();
             void renderTutorTeam();
             renderTeamPanel();
+            } finally {
+                _storyEndInteraction();
+            }
         }
 
         async function tutorChangeItem(teamIdx, newItem) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (sm.gold < TUTOR_COST_ITEM) return;
             if (isMegaStone(newItem) || Z_TYPE_MAP_VALUES.has(newItem) || BANNED_ITEMS.has(newItem)) return;
@@ -22052,9 +22444,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             save();
             void renderTutorTeam();
             renderTeamPanel();
+            } finally {
+                _storyEndInteraction();
+            }
         }
 
         function tutorChangeAbility(teamIdx, newAbility) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (sm.gold < TUTOR_COST_ABILITY) return;
             sm.gold -= TUTOR_COST_ABILITY;
@@ -22062,9 +22459,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             save();
             void renderTutorTeam();
             renderTeamPanel();
+            } finally {
+                _storyEndInteraction();
+            }
         }
 
         function tutorChangeNature(teamIdx, newNature) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (sm.gold < TUTOR_COST_NATURE) return;
             if (!Object.prototype.hasOwnProperty.call(natureModifiers, newNature)) return;
@@ -22074,6 +22476,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             save();
             void renderTutorTeam();
             renderTeamPanel();
+            } finally {
+                _storyEndInteraction();
+            }
         }
 
         // ── COLRESS — POWER AWAKENING NPC ────────────────────────────────
@@ -22140,7 +22545,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function enterColress() {
             const goldEl = document.getElementById('story-colress-gold');
-            if (goldEl) goldEl.textContent = `🪙 ${sm.gold.toLocaleString()}G`;
+            if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             syncStoryColressBackground();
             showScreen('screen-story-colress');
             renderColressTeam();
@@ -22149,7 +22554,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function renderColressTeam() {
             const el = document.getElementById('story-colress-team');
             const goldEl = document.getElementById('story-colress-gold');
-            if (goldEl) goldEl.textContent = `🪙 ${sm.gold.toLocaleString()}G`;
+            if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             if (!el) return;
             if (!sm.team || !sm.team.length) {
                 el.innerHTML = '<div style="color:#555;font-size:12px;">No Pokémon in party.</div>';
@@ -22170,7 +22575,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const badge = _colressGimmickBadge(b);
             const heldItem = b.i || '(none)';
             const cantAfford = sm.gold < COLRESS_COST;
-            const priceTag = `<span class="story-tutor-price">🪙${COLRESS_COST.toLocaleString()}G</span>`;
+            const priceTag = `<span class="story-tutor-price">${storyGoldHtml(COLRESS_COST.toLocaleString(), false)}</span>`;
             const noneEligible = !(elig.mega || elig.dmax || elig.z || elig.tera);
 
             const sections = [];
@@ -22257,7 +22662,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     `<div class="story-tutor-section"><div class="story-tutor-section-title" style="color:#81d4fa;">◆ Terastallization</div>`
                     + `<p class="story-tutor-moves-hint">Pick any of the 18 Tera types. No item change. Cost applies per change.</p>`
                     + `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;">${buttons}</div>`
-                    + `<div style="font-size:10px;color:#ffd54f;margin-top:6px;text-align:right;">Each pick: 🪙${COLRESS_COST.toLocaleString()}G</div>`
+                    + `<div style="font-size:10px;color:#ffd54f;margin-top:6px;text-align:right;">Each pick: ${storyGoldHtml(COLRESS_COST.toLocaleString(), false)}</div>`
                     + `</div>`
                 );
             }
