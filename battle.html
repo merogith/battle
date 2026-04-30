@@ -10869,6 +10869,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.getElementById('command-menu').classList.add('hidden'); document.getElementById('move-menu').classList.add('hidden');
             try { syncBattleActiveHighlight(); } catch (e) {}
             if (state.mode === 'story' && window.StoryMode) {
+                // Story handoff runs outside the turn resolver's normal unlock; release lock so overlays/settings stay usable even if resolver unwind is delayed.
+                try { state.isLocked = false; } catch (e) {}
                 const won = typeof storyPlayerWon === 'boolean' ? storyPlayerWon : title.includes('VICTORY');
                 window.StoryMode.onBattleEnd(won, title, desc);
                 return;
@@ -12598,6 +12600,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if(state.isLocked) {
                 return;
             }
+            if (state.isOver) return;
             // VGC: Cannot voluntarily switch while Dynamaxed
             if (pSwitchIndex !== null && state.pActive && state.pActive.dynamaxed) {
                 logMsg(`${state.pActive.name} cannot switch out while Dynamaxed!`, 'info');
@@ -15335,9 +15338,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (state.mode === 'gauntlet') {
                         // Draw in gauntlet: advance but no swap reward and no score increment
                         logMsg(`Both sides are out of Pokémon! It's a DRAW!`, 'info');
+                        state.isOver = true;
                         showEndScreen("DRAW", "Both teams were eliminated simultaneously. In gauntlet, you advance but receive no reward.", false);
                         // Advance without score increment or swap
-                        state.isOver = true;
                         // Auto-advance after showing draw
                         setTimeout(() => {
                             document.getElementById('modal-end-screen').classList.add('hidden');
@@ -15356,19 +15359,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             updateUI(); document.getElementById('command-menu').classList.remove('hidden');
                         }, 2000);
                     } else {
+                        state.isOver = true;
                         showEndScreen("DRAW", "Both teams were eliminated simultaneously!", false);
                     }
-                    state.isOver = true;
                     return true;
                 }
                 // If only one side has mons left, handle normally (fall through below)
                 if (foeHasNext && !playerHasNext) {
-                    showEndScreen("GAME OVER", "You have no Pokémon left.", false); state.isOver = true; return true;
+                    state.isOver = true;
+                    showEndScreen("GAME OVER", "You have no Pokémon left.", false);
+                    return true;
                 }
                 if (!foeHasNext && playerHasNext) {
                     if (state.mode === 'gauntlet') window.showGauntletSwap();
-                    else showEndScreen("VICTORY!", "You defeated the opponent.", true);
-                    state.isOver = true; return true;
+                    else {
+                        state.isOver = true;
+                        showEndScreen("VICTORY!", "You defeated the opponent.", true);
+                    }
+                    if (state.mode === 'gauntlet') state.isOver = true;
+                    return true;
                 }
                 // Both have next mons — send them out
                 if (state.mode === 'pvp') {
@@ -15433,8 +15442,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 } else {
                     if (state.mode === 'gauntlet') window.showGauntletSwap();
-                    else showEndScreen("VICTORY!", "You defeated the opponent.", true);
-                    state.isOver = true;
+                    else {
+                        state.isOver = true;
+                        showEndScreen("VICTORY!", "You defeated the opponent.", true);
+                    }
+                    if (state.mode === 'gauntlet') state.isOver = true;
                     return true;
                 }
             }
@@ -15470,12 +15482,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (state.playerParty.some(m => m.currentHp > 0)) {
                     await sleep(500); state.currentPlayer = 1; window.openParty(true); return true;
                 } else {
+                    state.isOver = true;
                     if (state.mode === 'gauntlet') {
                         showEndScreen("GAUNTLET OVER!", `You cleared ${state.score} round${state.score !== 1 ? 's' : ''}! Your team was defeated.`);
                     } else {
                         showEndScreen("GAME OVER", "You have no Pokémon left.", false);
                     }
-                    state.isOver = true; return true;
+                    return true;
                 }
             }
             return false;
