@@ -11370,6 +11370,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return intent.kind;
         }
 
+        /** Queued Dynamax or G-Max (intent.kind) — must match everywhere we treat pending D-max for AV, Max moves, and activation. */
+        function gimmickIntentIsDynamaxLike(isP1Side) {
+            const k = resolveGimmickIntentForActive(isP1Side);
+            return k === 'DYNAMAX' || k === 'GMAXDYNAMAX';
+        }
+
         function setGimmickIntentToggle(isP1Side, key) {
             let party = isP1Side ? state.playerParty : state.foeParty;
             let active = isP1Side ? state.pActive : state.fActive;
@@ -11458,8 +11464,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             moveScroll.className = 'move-menu-scroll command-grid';
             menu.appendChild(moveScroll);
 
-            // Treat DYNAMAX pending same as dynamaxed for display — player sees Max moves immediately on clicking DYNAMAX
-            const isDynaDisplay = activeMon.dynamaxed || pending === 'DYNAMAX';
+            // Treat Dynamax / G-Max pending same as dynamaxed for display — player sees Max moves immediately on clicking the button
+            const isDynaDisplay = activeMon.dynamaxed || gimmickIntentIsDynamaxLike(isP1);
 
             // Determine displayed moves (Max Moves if Dynamaxed or DYNAMAX pending)
             let displayMoves = activeMon.moves.map((move, i) => {
@@ -11630,7 +11636,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return gb;
                 };
                 if (canUseMega) gDiv.appendChild(mkGBtn(' MEGA', 'MEGA', '#7b1fa2', '#fff'));
-                if (canUseDyna) gDiv.appendChild(mkGBtn(' DYNAMAX', 'DYNAMAX', '#b71c1c', '#fff'));
+                if (canUseDyna) {
+                    const dynaKey = (activeMon.buildData.gimmick === 'GMAXDYNAMAX') ? 'GMAXDYNAMAX' : 'DYNAMAX';
+                    const dynaLabel = (activeMon.buildData.gimmick === 'GMAXDYNAMAX') ? ' G-MAX' : ' DYNAMAX';
+                    gDiv.appendChild(mkGBtn(dynaLabel, dynaKey, '#b71c1c', '#fff'));
+                }
                 if (canUseTera) gDiv.appendChild(mkGBtn(`◆ TERA<span style="font-size:9px"> ${activeMon.buildData.teraType}</span>`, 'TERA', '#0277bd', '#fff'));
                 if (canUseZ) gDiv.appendChild(mkGBtn('⚡ Z-MOVE', 'ZMOVE', '#f9a825', '#000'));
                 menu.appendChild(gDiv);
@@ -11803,7 +11813,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if ((bd.gimmick === 'DYNAMAX' || bd.gimmick === 'GMAXDYNAMAX') && !attacker.dynamaxed && !attacker.dynamaxUsed && (!settings.classicMode || !state.fUsedDyna)) {
                 let defHasSEMove = defender.moves.some(m => m.cat !== 'Status' && getMoveEffectiveness(m.type, attacker.type1, attacker.type2) >= 2);
                 let isEndgame = state.foeParty.filter(m => m.currentHp > 0).length <= 1;
-                if (hpPct < 0.5 || defHpPct < 0.4 || (defHasSEMove && hpPct < 0.75) || isEndgame) return 'DYNAMAX';
+                if (hpPct < 0.5 || defHpPct < 0.4 || (defHasSEMove && hpPct < 0.75) || isEndgame) return bd.gimmick === 'GMAXDYNAMAX' ? 'GMAXDYNAMAX' : 'DYNAMAX';
             }
 
             // TERA: activate when the Tera type eliminates a threatening weakness
@@ -11847,8 +11857,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         if (attacker.item === "Assault Vest" && m.cat === "Status" && m.name !== "Substitute") {
             if (!attacker.dynamaxed) {
                 const avIsPlayer = attacker === state.pActive;
-                const avG = resolveGimmickIntentForActive(avIsPlayer);
-                if (avG !== 'DYNAMAX') return false;
+                if (!gimmickIntentIsDynamaxLike(avIsPlayer)) return false;
             }
         }
         return true;
@@ -12835,8 +12844,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else if (state.p1Action.switchIndex === null && state.p2Action.switchIndex === null && pMove && fMove) {
                     // Reset protect counter unless a protect-type move is being used
                     const _protectMoveNames = new Set(["Protect","Detect","Endure","Spiky Shield","King's Shield","Baneful Bunker","Silk Trap","Obstruct","Burning Bulwark","Max Guard","Wide Guard","Quick Guard"]);
-                    const _pIsProtect = _protectMoveNames.has(pMove.name) || ((state.pActive.dynamaxed || resolveGimmickIntentForActive(true) === 'DYNAMAX') && pMove.cat === 'Status');
-                    const _fIsProtect = _protectMoveNames.has(fMove.name) || ((state.fActive.dynamaxed || resolveGimmickIntentForActive(false) === 'DYNAMAX') && fMove.cat === 'Status');
+                    const _pIsProtect = _protectMoveNames.has(pMove.name) || ((state.pActive.dynamaxed || gimmickIntentIsDynamaxLike(true)) && pMove.cat === 'Status');
+                    const _fIsProtect = _protectMoveNames.has(fMove.name) || ((state.fActive.dynamaxed || gimmickIntentIsDynamaxLike(false)) && fMove.cat === 'Status');
                     if (!_pIsProtect) state.pActive.volatile.protectCount = 0;
                     if (!_fIsProtect) state.fActive.volatile.protectCount = 0;
 
@@ -12846,8 +12855,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                     // Apply ability-based priority modifiers before comparing
                     // Dynamax status moves become Max Guard (priority +4) — must be evaluated before turn order
-                    const _pDynaxing = state.pActive.dynamaxed || resolveGimmickIntentForActive(true) === 'DYNAMAX';
-                    const _fDynaxing = state.fActive.dynamaxed || resolveGimmickIntentForActive(false) === 'DYNAMAX';
+                    const _pDynaxing = state.pActive.dynamaxed || gimmickIntentIsDynamaxLike(true);
+                    const _fDynaxing = state.fActive.dynamaxed || gimmickIntentIsDynamaxLike(false);
                     let pPri = (_pDynaxing && pMove.cat === 'Status') ? 4 : (pMove.pri || 0);
                     let fPri = (_fDynaxing && fMove.cat === 'Status') ? 4 : (fMove.pri || 0);
                     const drainingMoves = ["Drain Punch", "Draining Kiss", "Giga Drain", "Leech Life", "Mega Drain", "Horn Leech", "Parabolic Charge", "Strength Sap", "Absorb"];
@@ -13196,8 +13205,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Assault Vest blocks status moves (but not when Dynamaxed — status moves become Max Guard, which is allowed)
             {
-                let _avGimmickPending = resolveGimmickIntentForActive(isPlayer);
-                if (attacker.item === "Assault Vest" && move.cat === "Status" && move.name !== "Substitute" && !attacker.dynamaxed && _avGimmickPending !== 'DYNAMAX') {
+                if (attacker.item === "Assault Vest" && move.cat === "Status" && move.name !== "Substitute" && !attacker.dynamaxed && !gimmickIntentIsDynamaxLike(isPlayer)) {
                     logMsg(`${attacker.name} can't use ${move.name} due to the Assault Vest!`, 'status'); abortPostCanMoveBlock(attacker); await sleep(1000); return;
                 }
             }
@@ -13334,7 +13342,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let ok = attacker.buildData && attacker.buildData.gimmick === 'MEGA' && !attacker.megaEvolved && (!settings.classicMode || !(isPlayer ? state.usedMega : state.fUsedMega));
                     if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
                 }
-                if (gimmickPending === 'DYNAMAX') {
+                if (gimmickPending === 'DYNAMAX' || gimmickPending === 'GMAXDYNAMAX') {
                     let ok = attacker.buildData && (attacker.buildData.gimmick === 'DYNAMAX' || attacker.buildData.gimmick === 'GMAXDYNAMAX') && !attacker.dynamaxed && !attacker.dynamaxUsed && (!settings.classicMode || !(isPlayer ? state.usedDyna : state.fUsedDyna));
                     if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
                 }
@@ -13349,7 +13357,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (gimmickPending === 'MEGA' && !attacker.megaEvolved) {
                     activateMega(attacker, isPlayer);
                     clearGimmickIntent(isPlayer);
-                } else if (gimmickPending === 'DYNAMAX' && !attacker.dynamaxed) {
+                } else if ((gimmickPending === 'DYNAMAX' || gimmickPending === 'GMAXDYNAMAX') && !attacker.dynamaxed) {
                     activateDynamax(attacker, isPlayer);
                     clearGimmickIntent(isPlayer);
                     // Convert move immediately on the activation turn (attacker.dynamaxed is now true)
