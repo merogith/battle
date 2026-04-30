@@ -386,8 +386,7 @@
         .draft-card-moves { font-size: 11px; color: #8bb8d0; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
         .draft-card-moves > div { padding: 2px 5px; border: 1px solid #2a2a2a; border-radius: 3px; cursor: help; transition: all 0.15s; }
         .draft-card-moves > div:hover { background: #2a2a2a; color: var(--accent); border-color: #444; }
-        /* Professor pick = same as draft cards */
-        .story-prof-card-wrap { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: stretch; margin: 12px 0; width: 100%; max-width: 920px; }
+        /* Professor pick = same as draft cards; .story-prof-card-wrap layout is defined with other Story styles below */
         .story-prof-actions { width: 100%; max-width: 920px; justify-content: center !important; }
         #story-prof-rolled-card .prof-pick-card { flex: 1 1 200px; max-width: 300px; min-width: 0; }
         .prof-pick-header { flex-wrap: wrap; gap: 4px; align-items: center; }
@@ -11835,6 +11834,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         if (m.name === "Fake Out" && !attacker.fakeOutOk) return false;
         if (attacker.volatile.disabled && m.name === attacker.volatile.disabled) return false;
         if (attacker.volatile.torment && attacker.volatile.lastMoveUsed === m.name) return false;
+        // Assault Vest (mirror performAction): no Status except Substitute; waived when Dynamaxed or D-Max is queued
+        if (attacker.item === "Assault Vest" && m.cat === "Status" && m.name !== "Substitute") {
+            if (!attacker.dynamaxed) {
+                const avIsPlayer = attacker === state.pActive;
+                const avG = resolveGimmickIntentForActive(avIsPlayer);
+                if (avG !== 'DYNAMAX') return false;
+            }
+        }
         return true;
     });
     if (validMoves.length === 0) {
@@ -12310,7 +12317,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 await playPokeballAnimation(sid, isP1);
                 await sleep(1000);
                 if (await checkFaints()) {
-                    if (state.isOver) return;
+                    if (state.isOver) { state.isLocked = false; return; }
                     if (!document.getElementById('modal-party').classList.contains('hidden')) return;
                 }
 
@@ -12328,7 +12335,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     state.fActive.turnCount++;
                     updateUI(); await sleep(1000);
                     let eotFaint = await checkFaints();
-                    if (state.isOver) return;
+                    if (state.isOver) { state.isLocked = false; return; }
                     if (eotFaint) { if (!document.getElementById('modal-party').classList.contains('hidden')) return; }
                 }
 
@@ -12729,7 +12736,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let pursuitMove = { ...fMove, pow: 80 }; // doubled from 40
                     await performAction(false, pursuitMove);
                     let fainted = await checkFaints();
-                    if (state.isOver) return;
+                    if (state.isOver) { state.isLocked = false; return; }
                     if (fainted) {
                         if (!document.getElementById('modal-party').classList.contains('hidden')) {
                             state.pendingEoT = true;
@@ -12743,7 +12750,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let pursuitMove = { ...pMove, pow: 80 };
                     await performAction(true, pursuitMove);
                     let fainted = await checkFaints();
-                    if (state.isOver) return;
+                    if (state.isOver) { state.isLocked = false; return; }
                     if (fainted) {
                         if (!document.getElementById('modal-party').classList.contains('hidden')) {
                             state.pendingEoT = true;
@@ -12767,7 +12774,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     await playPokeballAnimation('player-sprite', true);
                     await sleep(500);
                     if (await checkFaints()) {
-                        if (state.isOver) return;
+                        if (state.isOver) { state.isLocked = false; return; }
                         if (!document.getElementById('modal-party').classList.contains('hidden')) { state.pendingEoT = true; return; }
                     }
                 }
@@ -12786,7 +12793,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     await playPokeballAnimation('foe-sprite', false);
                     await sleep(500);
                     if (await checkFaints()) {
-                        if (state.isOver) return;
+                        if (state.isOver) { state.isLocked = false; return; }
                         if (!document.getElementById('modal-party').classList.contains('hidden')) { state.pendingEoT = true; return; }
                     }
                 }
@@ -12803,7 +12810,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (state.pActive.currentHp > 0 && fMove) {
                         await performAction(false, fMove);
                         let fainted = await checkFaints();
-                        if (state.isOver) return;
+                        if (state.isOver) { state.isLocked = false; return; }
                         if (fainted) { if (!document.getElementById('modal-party').classList.contains('hidden')) { state.pendingEoT = true; return; } }
                     }
                 } else if (state.p2Action.switchIndex !== null && state.p1Action.switchIndex === null) {
@@ -12812,7 +12819,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (state.fActive.currentHp > 0 && pMove) {
                         await performAction(true, pMove);
                         let fainted = await checkFaints();
-                        if (state.isOver) return;
+                        if (state.isOver) { state.isLocked = false; return; }
                         if (fainted) { if (!document.getElementById('modal-party').classList.contains('hidden')) { state.pendingEoT = true; return; } }
                     }
                 } else if (state.p1Action.switchIndex === null && state.p2Action.switchIndex === null && pMove && fMove) {
@@ -12857,7 +12864,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (pGoesFirst) { 
                         await performAction(true, pMove);
                         let fainted = await checkFaints();
-                        if (state.isOver) return;
+                        if (state.isOver) { state.isLocked = false; return; }
                         if (fainted) {
                             if (!document.getElementById('modal-party').classList.contains('hidden')) {
                                 state.pendingEoT = true; return;
@@ -12865,7 +12872,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         } else {
                             await performAction(false, fMove);
                             let fainted2 = await checkFaints();
-                            if (state.isOver) return;
+                            if (state.isOver) { state.isLocked = false; return; }
                             if (fainted2) {
                                 if (!document.getElementById('modal-party').classList.contains('hidden')) {
                                     state.pendingEoT = true; return;
@@ -12875,7 +12882,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     } else { 
                         await performAction(false, fMove);
                         let fainted = await checkFaints();
-                        if (state.isOver) return;
+                        if (state.isOver) { state.isLocked = false; return; }
                         if (fainted) {
                             if (!document.getElementById('modal-party').classList.contains('hidden')) {
                                 state.pendingEoT = true; return;
@@ -12883,7 +12890,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         } else {
                             await performAction(true, pMove);
                             let fainted2 = await checkFaints();
-                            if (state.isOver) return;
+                            if (state.isOver) { state.isLocked = false; return; }
                             if (fainted2) {
                                 if (!document.getElementById('modal-party').classList.contains('hidden')) {
                                     state.pendingEoT = true; return;
@@ -12907,7 +12914,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 updateUI(); await sleep(1000);
                 
                 let eotFaint = await checkFaints();
-                if (state.isOver) return;
+                if (state.isOver) { state.isLocked = false; return; }
                 if (eotFaint) {
                     if (!document.getElementById('modal-party').classList.contains('hidden')) return;
                 }
@@ -15843,13 +15850,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function getCurrentWeather() {
-            // #region agent log
-            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b98117'},body:JSON.stringify({sessionId:'b98117',runId:'pre-fix',hypothesisId:'H4',location:'battle.html:getCurrentWeather:entry',message:'getCurrentWeather state check',data:{hasState:typeof state!=='undefined'&&!!state,hasPActive:typeof state!=='undefined'&&!!(state&&state.pActive),hasFActive:typeof state!=='undefined'&&!!(state&&state.fActive),weather:typeof state!=='undefined'&&state?state.weather:null},timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
             if (!state || !state.pActive || !state.fActive) {
-                // #region agent log
-                fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b98117'},body:JSON.stringify({sessionId:'b98117',runId:'post-fix',hypothesisId:'H4',location:'battle.html:getCurrentWeather:guard',message:'missing active mons; safe weather return',data:{hasState:!!state,hasPActive:!!(state&&state.pActive),hasFActive:!!(state&&state.fActive),weather:state?state.weather:null},timestamp:Date.now()})}).catch(()=>{});
-                // #endregion
                 return state ? state.weather : null;
             }
             if (state.pActive.ability === "Cloud Nine" || state.fActive.ability === "Cloud Nine" ||
@@ -19978,9 +19979,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function openSummary(i) {
             const t = sm.team[i];
-            // #region agent log
-            fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b98117'},body:JSON.stringify({sessionId:'b98117',runId:'pre-fix',hypothesisId:'H1',location:'battle.html:openSummary:entry',message:'story openSummary called',data:{index:i,teamLen:sm&&sm.team?sm.team.length:null,name:t&&t.name,hasBuild:!!(t&&(t.build||t.buildData))},timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
             if (!t || !String(t.name || '').trim()) return;
             const rawBuild = t.build || t.buildData;
             if (!rawBuild || typeof rawBuild !== 'object') {
@@ -20000,9 +19998,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         { partyList: partyList, index: i, storyReorder: true, showEVs: true }
                     );
                 } catch (e) {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7373/ingest/4c3a7b30-9d77-40f1-9fd4-a954487fbbab',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b98117'},body:JSON.stringify({sessionId:'b98117',runId:'post-fix',hypothesisId:'H5',location:'battle.html:openSummary:catch',message:'openSummary catch triggered',data:{index:i,error:e&&e.message?String(e.message):String(e),stack:e&&e.stack?String(e.stack).slice(0,260):null},timestamp:Date.now()})}).catch(()=>{});
-                    // #endregion
                     console.warn('[Story] openSummary', e);
                     try { if (typeof window.showGameAlert === 'function') window.showGameAlert('Could not open summary — see console (F12).'); } catch (_) {}
                 }
@@ -20541,7 +20536,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _storyBattleInventorySnapshot = null;
                 sm.storyRetryInventorySnapshot = null;
                 const ev = STORY_EVENTS_RAW[sm.eventIndex];
-                if (!ev) return;
+                if (!ev) {
+                    console.warn('[Story] onBattleEnd(win): missing STORY_EVENTS_RAW at eventIndex', sm.eventIndex);
+                    try { if (typeof state !== 'undefined' && state) state.isLocked = false; } catch (e) {}
+                    return;
+                }
                 const [idx, type, event, , coins] = ev;
                 let coinMult = 1;
                 const diff = sm.storyDifficulty || 'normal';
