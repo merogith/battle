@@ -10139,6 +10139,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         async function startBattle() {
+            // Every path that opens a fight must start from a clean turn machine (draft, story, gauntlet, tests).
+            // Otherwise returnToHome / prior end can leave state.isOver true and playTurn will no-op — looks like a freeze on the first "KO" click.
+            state.isOver = false;
+            state.isLocked = false;
+            state.pendingEoT = false;
+            state.p1Action = null;
+            state.p2Action = null;
             AudioSystem.startNewBattle();
             document.getElementById('screen-draft').classList.add('hidden'); document.getElementById('screen-battle').classList.remove('hidden');
             try { window.runScreenTransition('fade'); } catch (e) {}
