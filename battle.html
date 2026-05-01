@@ -1881,6 +1881,52 @@
         #game-stage:has(#screen-story-city:not(.hidden)) > .settings-btn {
             display: none;
         }
+
+        /* ── Battle screen: settings FAB (global .settings-btn stays hidden during battle) ── */
+        .battle-settings-btn {
+            position: absolute;
+            z-index: 25;
+            top: calc(6px + var(--safe-top, 0px));
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
+            min-height: 40px;
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.38);
+            background: rgba(0, 0, 0, 0.55);
+            color: #fff;
+            font-size: 17px;
+            line-height: 1;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.15s, border-color 0.15s, transform 0.08s ease;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+        }
+        .battle-settings-btn:hover {
+            background: rgba(0, 0, 0, 0.78);
+            border-color: rgba(255, 255, 255, 0.58);
+        }
+        .battle-settings-btn:active { transform: scale(0.96); }
+        /* Default: top-right (portrait strip + mobile landscape strip beside foe card) */
+        #screen-battle .battle-settings-btn {
+            right: calc(6px + var(--safe-right, 0px));
+            left: auto;
+        }
+        /* Desktop / ultrawide / narrow-window desktop: foe card sits top-right — keep gear top-left */
+        #screen-battle[data-battle-layout="desktop"] .battle-settings-btn,
+        #screen-battle[data-battle-layout="ultrawide"] .battle-settings-btn,
+        body:not(.is-mobile) #screen-battle[data-battle-layout="landscape-touch"] .battle-settings-btn {
+            left: calc(8px + var(--safe-left, 0px));
+            right: auto;
+        }
         .mob-info-btn {
             display: none; align-items: center; justify-content: center;
             width: 36px; height: 36px; min-width: 36px; min-height: 36px;
@@ -2001,6 +2047,18 @@
             #player-sprite { width: min(124px, 25vw); height: min(124px, 25vw); max-width: 100%; max-height: 88%; object-fit: contain; bottom: 10px; }
             .icon-btn { width: 34px; height: 34px; right: calc(8px + var(--safe-right, 0px)); font-size: 14px; }
             .settings-btn { top: calc(6px + var(--safe-top, 0px)); }
+            .battle-settings-btn {
+                width: 34px; height: 34px; min-width: 34px; min-height: 34px; font-size: 15px;
+                top: calc(6px + var(--safe-top, 0px));
+                left: auto;
+                right: calc(6px + var(--safe-right, 0px));
+            }
+            #screen-battle[data-battle-layout="desktop"] .battle-settings-btn,
+            #screen-battle[data-battle-layout="ultrawide"] .battle-settings-btn,
+            body:not(.is-mobile) #screen-battle[data-battle-layout="landscape-touch"] .battle-settings-btn {
+                left: calc(6px + var(--safe-left, 0px));
+                right: auto;
+            }
             #field-conditions {
                 top: calc(52px + var(--safe-top, 0px)); left: calc(4px + var(--safe-left, 0px));
                 transform: none; flex-direction: column; align-items: flex-start;
@@ -2152,7 +2210,7 @@
         #screen-battle[data-battle-layout="portrait"] #foe-stat-box {
             top: 0; left: 0; right: 0; width: 100%; box-sizing: border-box;
             border-radius: 0; border-left: none; border-right: none; border-top: none;
-            padding: 5px 10px 5px 10px; font-size: clamp(11px, 3vw, 13px); z-index: 6;
+            padding: 5px calc(46px + var(--safe-right, 0px)) 5px 10px; font-size: clamp(11px, 3vw, 13px); z-index: 6;
         }
         #screen-battle[data-battle-layout="portrait"] #battle-bottom-stack #player-stat-box {
             bottom: auto; left: auto; right: auto; width: 100%; box-sizing: border-box;
@@ -2227,6 +2285,10 @@
             #screen-battle .battle-bottom-stack { padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; }
             .mob-info-btn { display: inline-flex; width: 32px; height: 32px; min-width: 32px; min-height: 32px; font-size: 14px; }
             .icon-btn { width: 32px; height: 32px; min-width: 32px; min-height: 32px; right: calc(6px + var(--safe-right, 0px)); font-size: 14px; }
+            .battle-settings-btn {
+                width: 36px; height: 36px; min-width: 36px; min-height: 36px; font-size: 16px;
+                top: calc(6px + var(--safe-top, 0px)); right: calc(6px + var(--safe-right, 0px));
+            }
             .hp-bar-container { height: 7px; margin-top: 3px; }
             #player-hp-text, #foe-hp-text { font-size: 10px; color: #bbb; }
             #foe-types, #player-types { font-size: 9px; }
@@ -4021,6 +4083,10 @@
                 <span>Help &amp; controls</span>
                 <button type="button" onclick="window.closeModal('modal-settings'); window.showHelp();" style="color: var(--accent); min-height:40px; padding:6px 14px;">VIEW</button>
             </div>
+            <div class="settings-row">
+                <span>Frozen battle (no Fight / moves)</span>
+                <button type="button" onclick="window.closeModal('modal-settings'); typeof window.__recoverBattleSoftLock==='function' && window.__recoverBattleSoftLock();" style="color: var(--hp-amber, #ffb74d); min-height:40px; padding:6px 14px;" title="Clears input lock and shows Fight again if the turn resolver left the UI stuck. Same as console: __recoverBattleSoftLock()">Unstick</button>
+            </div>
             <details class="settings-dev-block">
                 <summary>Developer / Story tools</summary>
                 <div class="settings-dev-inner">
@@ -4029,9 +4095,9 @@
                     <button type="button" onclick="window.closeModal('modal-settings'); typeof window.startKoBugTestBattle==='function' && window.startKoBugTestBattle();" title="Opens ?kobugtest=1 sandbox: SR on your field, 2x Shedinja bench (die on switch), Machamp foe — use to repro faint / pendingEoT bugs.">Debug: KO / hazard test</button>
                     <button type="button" onclick="window.closeModal('modal-settings'); typeof window.startChampionTestBattle==='function' && window.startChampionTestBattle('steven');" title="Same as battle.html?championtest=1 — random strong 6 vs Steven’s squad; Mega+Dyna on for builds.">Debug: Champion test (Steven)</button>
                     <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && typeof window.StoryMode.seedStoryChampionWeakTestFromUrl==='function' && window.StoryMode.seedStoryChampionWeakTestFromUrl();" title="Same as ?storychampionweak=1 — story mode, Champion event, strong team vs weak foe (overwrites story save).">Debug: Story Champion (weak foe)</button>
-                    <button type="button" onclick="window.closeModal('modal-settings'); typeof window.__recoverBattleSoftLock==='function' && window.__recoverBattleSoftLock();" title="If the battle freezes with no buttons: restores Fight menu. Also works from console: __recoverBattleSoftLock()">Unstick battle UI</button>
                     <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && typeof window.StoryMode.clearCurrentEnemyLock==='function' && window.StoryMode.clearCurrentEnemyLock();" title="Clears the frozen opponent-team snapshot (pbs_story_save). Use before re-entering Champion if a crash left a bad lock.">Clear story foe lock</button>
                     <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && window.StoryMode.previewHallOfFame();">Preview Hall of Fame</button>
+                    <button type="button" onclick="window.closeModal('modal-settings'); typeof window.__devAutoWinBattle==='function' && window.__devAutoWinBattle();" style="color:var(--hp-green);" title="Ends the current battle as a win (Story, PvE, local PvP, Gauntlet). Gauntlet opens the round swap screen. Disabled for online PvP. Console: __devAutoWinBattle()">Dev: Auto-win battle</button>
                 </div>
             </details>
             <button onclick="window.returnToHome()" style="width:100%; margin: 14px 0 10px; color:var(--hp-red);">Forfeit &amp; Exit</button>
@@ -4287,7 +4353,7 @@
             <button class="story-menu-btn story-menu-btn--continue" id="story-continue-btn" onclick="window.StoryMode.continueRun()" style="display:none;">&#9654; Continue Journey</button>
             <button class="story-menu-btn story-menu-btn--abandon" id="story-abandon-btn" onclick="window.StoryMode.confirmAbandon()" style="display:none;">&#10006; Abandon Run</button>
             <button class="story-menu-btn story-menu-btn--back" onclick="window.StoryMode.showMenu(false)">&#8592; Back to Main Menu</button>
-            <p style="font-size:9px;color:#555;text-align:center;margin:2px 0 0;text-shadow:1px 1px 0 rgba(0,0,0,0.5);">Story tools: open <strong>Settings</strong> (gear) → Developer.</p>
+            <p style="font-size:9px;color:#555;text-align:center;margin:2px 0 0;text-shadow:1px 1px 0 rgba(0,0,0,0.5);">Stuck in battle? <strong>Settings</strong> (gear) → <strong>Unstick</strong>. More tools: Developer.</p>
         </div>
     </div>
 
@@ -4562,6 +4628,7 @@
     <!-- ===== END STORY MODE SCREENS ===== -->
 
     <div id="screen-battle" class="screen hidden">
+        <button type="button" class="battle-settings-btn" onclick="window.openSettings()" title="Settings" aria-label="Settings">⚙</button>
         <div id="weather-indicator" class="hidden" style="display:none;"></div>
         <div id="terrain-overlay" class="terrain-overlay"></div>
         <div id="weather-overlay" class="weather-overlay"></div>
@@ -10915,6 +10982,58 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.getElementById('modal-end-screen').classList.remove('hidden');
         }
 
+        /**
+         * Developer: end the current fight as a win (same handoff as a normal KO win), including Story Mode
+         * (`showEndScreen` → `StoryMode.onBattleEnd`). Skips online PvP (Supabase sync). Console: __devAutoWinBattle()
+         */
+        window.__devAutoWinBattle = function() {
+            try {
+                if (typeof state === 'undefined' || !state || !state.pActive || !state.fActive) {
+                    if (typeof window.showGameAlert === 'function') window.showGameAlert('No active battle — start a fight first.');
+                    return false;
+                }
+                if (state.isOver) {
+                    if (typeof window.showGameAlert === 'function') window.showGameAlert('This battle already ended.');
+                    return false;
+                }
+                const battleEl = document.getElementById('screen-battle');
+                const battleScreenUp = !!(battleEl && !battleEl.classList.contains('hidden'));
+                const storyFightUi = state.mode === 'story' && (state.playerParty && state.playerParty.length) && (state.foeParty && state.foeParty.length);
+                if (!battleScreenUp && !storyFightUi) {
+                    if (typeof window.showGameAlert === 'function') window.showGameAlert('No active battle screen — start or resume a fight first.');
+                    return false;
+                }
+                if (state.mode === 'pvp' && window.OnlineBattle && typeof window.OnlineBattle.isActive === 'function' && window.OnlineBattle.isActive()) {
+                    if (typeof window.showGameAlert === 'function') window.showGameAlert('Auto-win is disabled for online PvP. Use local PvP or offline modes.');
+                    return false;
+                }
+                state.isLocked = false;
+                state.pendingEoT = false;
+                document.getElementById('command-menu').classList.add('hidden');
+                document.getElementById('move-menu').classList.add('hidden');
+                try { const party = document.getElementById('modal-party'); if (party) party.classList.add('hidden'); } catch (e) {}
+                if (state.mode === 'story') {
+                    try { state.storyItemUsedThisTurn = false; state.foeStoryItemUsedThisTurn = false; } catch (e) {}
+                    try { if (typeof window !== 'undefined') window._storyBagPassAfterItem = false; } catch (e) {}
+                    try { window.closeModal && window.closeModal('modal-story-bag'); } catch (e) {}
+                    try { window.closeModal && window.closeModal('modal-story-party'); } catch (e) {}
+                }
+                try { syncBattleActiveHighlight(); } catch (e) {}
+                try { if (typeof window.syncBattlePhaseClass === 'function') window.syncBattlePhaseClass(); } catch (e) {}
+                if (typeof logMsg === 'function') logMsg('[Dev] Auto-win battle.', 'info');
+                state.isOver = true;
+                if (state.mode === 'gauntlet') {
+                    window.showGauntletSwap();
+                } else {
+                    showEndScreen('VICTORY!', 'You defeated the opponent.', true);
+                }
+                return true;
+            } catch (e) {
+                console.warn('[__devAutoWinBattle]', e);
+                return false;
+            }
+        };
+
         let summaryTarget = null;
         window.openParty = function(isForced) {
             if (state.isLocked && !isForced) return;
@@ -12354,10 +12473,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     updateUI(); await sleep(1000);
                     let eotFaint = await checkFaints();
                     if (state.isOver) { state.isLocked = false; return; }
-                    if (eotFaint) { if (!document.getElementById('modal-party').classList.contains('hidden')) return; }
+                    if (eotFaint) {
+                        if (!document.getElementById('modal-party').classList.contains('hidden')) {
+                            state.pendingEoT = true;
+                            return;
+                        }
+                    }
                 }
 
-                state.isLocked = false; 
+                state.isLocked = false;
                 if (state.mode === 'pvp') state.currentPlayer = 1;
                 document.getElementById('command-menu').classList.remove('hidden');
             } else {
@@ -12935,7 +13059,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let eotFaint = await checkFaints();
                 if (state.isOver) return;
                 if (eotFaint) {
-                    if (!document.getElementById('modal-party').classList.contains('hidden')) return;
+                    if (!document.getElementById('modal-party').classList.contains('hidden')) {
+                        state.pendingEoT = true;
+                        return;
+                    }
                 }
 
                 state.isLocked = false;
@@ -13203,22 +13330,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     logMsg(`${attacker.name}'s ${move.name} is sealed by Imprison!`, 'status'); abortPostCanMoveBlock(attacker); await sleep(1000); return;
                 }
             }
-            // Assault Vest blocks status moves (but not when Dynamaxed — status moves become Max Guard, which is allowed)
+            // Encore forces specific move (Taunt / Assault Vest run on the resolved move below)
+            if (attacker.volatile.encore > 0 && attacker.volatile.encoreMove) {
+                let encMove = attacker.moves.find(m => m.name === attacker.volatile.encoreMove);
+                if (encMove && encMove.pp > 0) { move = encMove; }
+                else { attacker.volatile.encore = 0; attacker.volatile.encoreMove = null; }
+            }
+
+            // Assault Vest blocks status moves (after Encore may replace the move). Waived when Dynamaxed / D-Max queued (status → Max Guard).
             {
                 if (attacker.item === "Assault Vest" && move.cat === "Status" && move.name !== "Substitute" && !attacker.dynamaxed && !gimmickIntentIsDynamaxLike(isPlayer)) {
                     logMsg(`${attacker.name} can't use ${move.name} due to the Assault Vest!`, 'status'); abortPostCanMoveBlock(attacker); await sleep(1000); return;
                 }
             }
-            // Taunt blocks status moves
+            // Taunt blocks status moves (after Encore / AV so the real move is checked)
             if (attacker.volatile.taunt > 0 && move.cat === "Status") {
                 logMsg(`${attacker.name} can't use ${move.name} due to Taunt!`, 'status'); abortPostCanMoveBlock(attacker); await sleep(1000); return;
-            }
-            
-            // Encore forces specific move
-            if (attacker.volatile.encore > 0 && attacker.volatile.encoreMove) {
-                let encMove = attacker.moves.find(m => m.name === attacker.volatile.encoreMove);
-                if (encMove && encMove.pp > 0) { move = encMove; }
-                else { attacker.volatile.encore = 0; attacker.volatile.encoreMove = null; }
             }
 
             // FAKE OUT: Only works on first turn after switch-in
@@ -13324,6 +13451,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (sleepTalkMove && sleepTalkMove.pp > 0) sleepTalkMove.pp--;
                 if (!_isMultiTurnContinuation && defender.ability === "Pressure" && sleepTalkMove && sleepTalkMove.pp > 0) sleepTalkMove.pp--;
                 move = sleepTalkPick;
+                if (attacker.item === "Assault Vest" && move.cat === "Status" && move.name !== "Substitute" && !attacker.dynamaxed && !gimmickIntentIsDynamaxLike(isPlayer)) {
+                    logMsg(`${attacker.name} can't use ${move.name} due to the Assault Vest!`, 'status'); abortPostCanMoveBlock(attacker); await sleep(1000); return;
+                }
+                if (attacker.volatile.taunt > 0 && move.cat === "Status") {
+                    logMsg(`${attacker.name} can't use ${move.name} due to Taunt!`, 'status'); abortPostCanMoveBlock(attacker); await sleep(1000); return;
+                }
             } else {
                 if (!_isMultiTurnContinuation && move.pp > 0) move.pp--;
                 // Pressure: Opponent moves cost 2 PP (only on initial use)
@@ -13904,16 +14037,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Step 1: Attacker lunges forward (anime.js enhanced)
                 if(settings.animations) {
                     let atkSprite = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
-                    const lungeX = isPlayer ? 50 : -50;
-                    const lungeY = isPlayer ? -10 : 10;
-                    const dur = move.cat === 'Physical' ? 220 : 280;
-                    await anime({
-                        targets: atkSprite,
-                        translateX: [0, lungeX, 0],
-                        translateY: [0, lungeY, 0],
-                        duration: dur,
-                        easing: 'easeInOutQuad'
-                    }).finished;
+                    if (atkSprite) {
+                        const lungeX = isPlayer ? 50 : -50;
+                        const lungeY = isPlayer ? -10 : 10;
+                        const dur = move.cat === 'Physical' ? 220 : 280;
+                        await anime({
+                            targets: atkSprite,
+                            translateX: [0, lungeX, 0],
+                            translateY: [0, lungeY, 0],
+                            duration: dur,
+                            easing: 'easeInOutQuad'
+                        }).finished;
+                    }
                 }
                 // Step 2: Type-colored hit effect on target (now with category + move name)
                 showMoveEffect(move.type, !isPlayer, move.name, move.cat);
@@ -14939,9 +15074,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Step 3: Hit flash on the target sprite (enhanced for gimmick moves)
                     let targetSprite = document.getElementById(!isPlayer ? 'foe-sprite' : 'player-sprite');
                     let attackerSprite = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
-                    let screenEl = document.querySelector('.screen');
+                    let screenEl = document.querySelector('.screen') || document.getElementById('screen-battle');
                     let isGmaxMove = move.isMaxMove && attacker.buildData && attacker.buildData.gimmick === 'GMAXDYNAMAX';
-                    if (settings.animations) {
+                    if (settings.animations && targetSprite && attackerSprite) {
                         if (move.isZMove && !move.zStatusEffect) {
                             attackerSprite.classList.add('anim-zmove-attacker');
                             await sleep(400);
@@ -14980,11 +15115,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Step 4: Show effectiveness/crit text + anime.js screen shake
                     if (crit > 1) {
                         logMsg("A critical hit!", 'dmg'); showBattlePopup('CRITICAL!', 'popup-crit', !isPlayer);
-                        if(settings.animations) anime({ targets: screenEl, translateX: [0,-5,5,-4,3,-2,0], translateY: [0,3,-3,2,-1,0], duration: 350, easing:'easeInOutQuad' });
+                        if(settings.animations && screenEl) anime({ targets: screenEl, translateX: [0,-5,5,-4,3,-2,0], translateY: [0,3,-3,2,-1,0], duration: 350, easing:'easeInOutQuad' });
                     }
                     if (typeEff > 1) {
                         logMsg("It's super effective!", 'dmg'); showBattlePopup('Super Effective!', 'popup-super', !isPlayer);
-                        if(settings.animations) anime({ targets: screenEl, translateX: [0,-6,6,-4,3,0], translateY: [0,4,-4,2,0], duration: 400, easing:'easeInOutQuad' });
+                        if(settings.animations && screenEl) anime({ targets: screenEl, translateX: [0,-6,6,-4,3,0], translateY: [0,4,-4,2,0], duration: 400, easing:'easeInOutQuad' });
                     }
                     if (typeEff < 1) { logMsg("It's not very effective...", 'info'); showBattlePopup('Not very effective...', 'popup-nve', !isPlayer); }
                     await sleep(200);
