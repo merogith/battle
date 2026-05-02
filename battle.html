@@ -223,6 +223,29 @@
         body.is-mobile #screen-battle[data-battle-layout="portrait"] .battle-bottom-stack {
             background: #0a0e14 !important;
         }
+        /* Portrait: bias crop so the arena band sits higher (~3–4cm); scales with screen via dvh.
+           Pan x: +1cm vs prior (−1cm) → centered; y unchanged */
+        body.is-mobile #screen-battle[data-battle-layout="portrait"] {
+            background-position: center calc(40% + 11dvh - 9cm);
+        }
+        /* Portrait: vignette + terrain/weather track backdrop pan */
+        body.is-mobile #screen-battle[data-battle-layout="portrait"]::before {
+            transform: translateY(-9cm);
+        }
+        body.is-mobile #screen-battle[data-battle-layout="portrait"] #terrain-overlay,
+        body.is-mobile #screen-battle[data-battle-layout="portrait"] #weather-overlay {
+            transform: translateY(-9cm);
+        }
+        /* Portrait: overlap chrome like GBA; z-index 5 < .battle-bottom-stack (6) so HP row paints on top */
+        body.is-mobile #screen-battle[data-battle-layout="portrait"] #player-sprite-container {
+            z-index: 5;
+            /* Anchor just above chrome; +y on transform nudges feet toward the stat bar (no big −Y — that lifted the mon into mid-arena) */
+            bottom: calc(var(--battle-player-hud-est) + var(--battle-ui-h) + max(0px, env(safe-area-inset-bottom, 0px)) + 6px - 0.5cm);
+            transform: translate(-0.5cm, 0.45cm);
+        }
+        body.is-mobile #screen-battle[data-battle-layout="portrait"] #foe-sprite-container {
+            transform: translateX(0.2cm);
+        }
         /* Landscape: avoid a tall “film” over the arena — tint only the chrome rows, not the whole stack */
         @media screen and (orientation: landscape) and ((hover: none) or (pointer: coarse)) {
             body.is-mobile #screen-battle .battle-bottom-stack { background: transparent !important; }
@@ -254,13 +277,6 @@
             body.is-mobile #screen-battle .battle-bottom-stack,
             body.is-mobile #screen-battle .ui-bottom {
                 overflow: hidden;
-            }
-            body.is-mobile #screen-battle .mob-info-btn {
-                width: 26px;
-                height: 26px;
-                min-width: 26px;
-                min-height: 26px;
-                font-size: 11px;
             }
             body.is-mobile #screen-battle[data-battle-layout="landscape-touch"] #move-menu.white-outline,
             body.is-mobile #screen-battle[data-battle-layout="landscape-touch"] #command-menu.white-outline {
@@ -403,7 +419,7 @@
             #story-prof-rolled-card .prof-pick-card .prof-summary-icon-btn { display: inline-flex !important; }
         }
         /* Compact move tiles — stats row (replaces .move-btn-eff-bottom) */
-        .battle-btn-move .move-tile-meta { margin-top: var(--battle-space-1); font-size: 10px; color: #888; line-height: 1.35; }
+        .battle-btn-move .move-tile-meta { margin-top: var(--battle-space-1); font-size: 9px; color: #888; line-height: 1.35; }
 
         /* Stat bar mini (for draft cards) */
         .stat-mini { display: flex; align-items: center; gap: 3px; font-size: 11px; }
@@ -1224,6 +1240,33 @@
         #screen-battle[data-battle-layout="desktop"] .stat-box-header .stat-box-name,
         #screen-battle[data-battle-layout="ultrawide"] .stat-box-header .stat-box-name { display: block; white-space: nowrap; text-overflow: ellipsis; }
         .stat-info-row { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin-top: 4px; min-height: 0; }
+        .stat-volatile-row {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 4px 5px;
+            margin-top: 5px; min-height: 0; max-width: 100%;
+        }
+        .stat-volatile-row:empty { display: none !important; }
+        .battle-vchip {
+            flex: 0 0 auto;
+            font-size: clamp(8px, 2.55vw, 10px);
+            font-weight: 700;
+            line-height: 1.2;
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid transparent;
+            background: rgba(0, 0, 0, 0.38);
+            white-space: nowrap;
+            cursor: default;
+            box-sizing: border-box;
+        }
+        .battle-vchip--buff {
+            border-color: rgba(129, 199, 132, 0.85); color: #a5d6a7; text-shadow: 0 1px 2px rgba(0,0,0,0.75);
+        }
+        .battle-vchip--debuff {
+            border-color: rgba(239, 83, 80, 0.85); color: #ffcdd2; text-shadow: 0 1px 2px rgba(0,0,0,0.75);
+        }
+        .battle-vchip--neutral {
+            border-color: rgba(178, 190, 200, 0.75); color: #cfd8dc; text-shadow: 0 1px 2px rgba(0,0,0,0.75);
+        }
         .stat-info-row .status-indicator { margin-top: 0; font-size: 10px; padding: 1px 4px; background: rgba(0,0,0,0.3); border-radius: 3px; }
         #foe-stages, #player-stages { display: flex; flex-wrap: wrap; gap: 2px; max-width: 100%; }
         .gimmick-badge { display: inline-block; font-size: 9px; font-weight: bold; padding: 1px 5px; border-radius: 3px; letter-spacing: 0.5px; vertical-align: middle; flex-shrink: 0; }
@@ -1254,6 +1297,7 @@
             background: var(--battle-chrome-bg);
         }
         #foe-stat-box .stat-box-name { font-size: 1.1em; }
+        #player-stat-box .stat-box-name { font-size: 1.1em; }
         #foe-stat-box .hp-bar-container { height: 10px; }
         /* Desktop / ultrawide / narrow “desktop” window: foe UI on the right (enemy side), player UI on the left.
            landscape-touch on non-mobile = width ≤900px or short landscape — same side-matching as desktop. */
@@ -1331,7 +1375,7 @@
         /* Portrait: DS-style depth — foe upper-right, player front lower-left */
         /* Inset from top/right; foe lower for headroom; object-position = feet baseline; slight size skew = classic depth */
         #screen-battle[data-battle-layout="portrait"] #foe-sprite-container {
-            top: clamp(70px, 10.5dvh, 102px);
+            top: clamp(96px, 15dvh, 132px);
             right: calc(clamp(14px, 3.5vw, 26px) + env(safe-area-inset-right, 0px)); left: auto; bottom: auto;
             width: min(35vw, 142px); height: min(37vw, 150px);
         }
@@ -1351,21 +1395,80 @@
             object-position: bottom center;
         }
 
+        /* Foe bar + field pills: one column in portrait; layout-neutral wrapper elsewhere */
+        .battle-foe-head { display: contents; }
+        #screen-battle[data-battle-layout="portrait"] .battle-foe-head {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 6;
+            pointer-events: none;
+        }
+        #screen-battle[data-battle-layout="portrait"] .battle-foe-head > * {
+            pointer-events: auto;
+        }
+
         /* ── Field conditions ─────────────────────────────────────────────── */
         #field-conditions {
             position: absolute;
             top: clamp(62px, 10dvh, 80px); left: 4px; transform: none;
             display: flex; flex-direction: column; align-items: flex-start;
             justify-content: flex-start; flex-wrap: wrap;
-            gap: 3px; z-index: 4; max-width: 180px;
+            gap: 3px; z-index: 5; max-width: 180px;
         }
-        #screen-battle[data-battle-layout="portrait"] #field-conditions:empty { display: none; }
+        #screen-battle[data-battle-layout="portrait"] #field-conditions:empty {
+            display: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            max-height: 0 !important;
+            min-height: 0 !important;
+            border: none !important;
+        }
         #screen-battle[data-battle-layout="portrait"] #field-conditions:not(:empty) {
-            top: clamp(48px, 7dvh, 62px); left: 42px; right: 6px; bottom: auto;
-            max-width: none; flex-direction: row; flex-wrap: wrap;
-            justify-content: flex-start; gap: 4px; pointer-events: none;
+            position: relative;
+            top: auto;
+            left: auto;
+            right: auto;
+            transform: none;
+            width: 100%;
+            max-width: none;
+            flex: 0 0 auto;
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: center;
+            align-content: flex-start;
+            justify-content: flex-start;
+            gap: 5px;
+            row-gap: 5px;
+            padding: 4px max(10px, env(safe-area-inset-left, 0px)) 6px max(10px, env(safe-area-inset-right, 0px));
+            box-sizing: border-box;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            z-index: 6;
+            max-height: min(30vh, 152px);
+            overflow-x: hidden;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            pointer-events: auto;
         }
-        #screen-battle[data-battle-layout="portrait"] #field-conditions:not(:empty) .field-pill { pointer-events: auto; }
+        #screen-battle[data-battle-layout="portrait"] #field-conditions:not(:empty) .field-pill {
+            pointer-events: auto;
+            flex: 0 1 auto;
+            min-width: 0;
+            max-width: 100%;
+            white-space: normal;
+            text-align: center;
+            line-height: 1.25;
+            hyphens: auto;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
         #screen-battle[data-battle-layout="desktop"] #field-conditions,
         #screen-battle[data-battle-layout="ultrawide"] #field-conditions {
             top: 6px; left: 50%; transform: translateX(-50%);
@@ -1442,7 +1545,7 @@
             background: var(--battle-chrome-bg); box-sizing: border-box;
             padding: 6px 10px; font-size: clamp(11px, 2.8vw, 13px);
         }
-        #battle-bottom-stack #player-stat-box .hp-bar-container { height: 9px; }
+        #battle-bottom-stack #player-stat-box .hp-bar-container { height: 10px; }
         #screen-battle[data-battle-layout="desktop"] .battle-player-hud-row,
         #screen-battle[data-battle-layout="ultrawide"] .battle-player-hud-row,
         body:not(.is-mobile) #screen-battle[data-battle-layout="landscape-touch"] .battle-player-hud-row {
@@ -1456,9 +1559,15 @@
         #screen-battle[data-battle-layout="desktop"] #battle-bottom-stack #player-stat-box,
         #screen-battle[data-battle-layout="ultrawide"] #battle-bottom-stack #player-stat-box,
         body:not(.is-mobile) #screen-battle[data-battle-layout="landscape-touch"] #battle-bottom-stack #player-stat-box {
-            width: min(300px, 34vw); max-width: min(320px, 40vw); align-self: flex-end;
-            border-radius: 6px; border: 1px solid var(--border-color);
-            background: var(--surface); margin: 0; padding: 8px 12px;
+            width: 300px;
+            max-width: min(300px, 42vw);
+            align-self: flex-end;
+            border-radius: var(--battle-radius);
+            border: 1px solid var(--border-color);
+            background: var(--battle-panel-bg);
+            margin: 0;
+            padding: 8px 12px;
+            font-size: 13px;
         }
         #screen-battle[data-battle-layout="desktop"] #battle-bottom-stack #player-stat-box .stat-info-row,
         #screen-battle[data-battle-layout="ultrawide"] #battle-bottom-stack #player-stat-box .stat-info-row,
@@ -1496,7 +1605,7 @@
             flex: 0 1 auto; align-self: flex-start;
             width: auto; max-width: min(280px, 36vw);
             min-width: 0; min-height: 0;
-            max-height: calc(1.55em * 4 + 12px);
+            max-height: calc(1.5em * 4 + 28px);
             overflow-x: hidden; overflow-y: auto;
             -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
             font-size: 13px; line-height: 1.55; padding: 5px 8px;
@@ -1508,9 +1617,9 @@
         }
         body.is-mobile #battle-log {
             align-self: stretch; width: 100%; max-width: 100%; flex: 0 0 auto;
-            max-height: calc(1.5em * 4 + 10px); font-size: 12px; line-height: 1.5;
+            max-height: calc(1.5em * 4 + 28px); font-size: 12px; line-height: 1.5;
         }
-        body.is-mobile #screen-battle.battle-phase-moves #battle-log { max-height: calc(1.5em * 4 + 10px); }
+        body.is-mobile #screen-battle.battle-phase-moves #battle-log { max-height: calc(1.5em * 4 + 28px); }
         .log-dmg { color: #ef5350; font-weight: 600; }
         .log-heal { color: #66bb6a; font-weight: 600; }
         .log-status { color: #ce93d8; }
@@ -1795,17 +1904,17 @@
         .battle-btn-move .move-tile-head .move-tile-cat { padding-top: 2px; }
         .battle-btn-move .move-tile-head .type-badge { flex-shrink: 0; font-size: 9px; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.04em; margin-right: 0; }
         .battle-btn-move .move-tile-name {
-            flex: 1; min-width: 0; font-weight: 700; font-size: 14px; line-height: 1.2;
+            flex: 1; min-width: 0; font-weight: 700; font-size: 12px; line-height: 1.2;
             text-align: left; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical;
             -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; word-break: break-word;
             -webkit-font-smoothing: antialiased; letter-spacing: 0.03em;
             color: #e8e0d0; text-shadow: 0 1px 2px rgba(0,0,0,0.6);
         }
         #screen-battle[data-battle-layout="desktop"] .battle-btn-move .move-tile-name,
-        #screen-battle[data-battle-layout="ultrawide"] .battle-btn-move .move-tile-name { font-size: 15px; }
-        .battle-btn-move .move-tile-cat { flex-shrink: 0; font-size: 13px; line-height: 1; width: 1.1em; text-align: center; }
-        .battle-btn-move .move-tile-eff { flex-shrink: 0; font-size: 11px; line-height: 1; }
-        .battle-btn-move .move-tile-meta { margin-top: 3px; font-size: 10px; color: #8a8a8a; opacity: 0.85; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
+        #screen-battle[data-battle-layout="ultrawide"] .battle-btn-move .move-tile-name { font-size: 13px; }
+        .battle-btn-move .move-tile-cat { flex-shrink: 0; font-size: 12px; line-height: 1; width: 1.1em; text-align: center; }
+        .battle-btn-move .move-tile-eff { flex-shrink: 0; font-size: 10px; line-height: 1; }
+        .battle-btn-move .move-tile-meta { margin-top: 3px; font-size: 9px; color: #8a8a8a; opacity: 0.85; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
         .battle-btn-move .move-tile-meta strong { color: #ddd; font-weight: 600; }
         .battle-btn-move .move-tile-sep { color: #555; margin: 0 4px; user-select: none; }
         .battle-btn-move .move-info-hit { align-self: center; margin: 0; width: 28px; height: 28px; font-size: 12px; opacity: 0.55; }
@@ -1814,7 +1923,7 @@
         #screen-battle[data-battle-layout="ultrawide"] .battle-btn-move .move-info-hit { display: none; }
         /* Landscape-touch / non-portrait mobile: compact tiles */
         body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) .battle-btn-move { padding: 3px 5px; }
-        body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) .battle-btn-move .move-tile-name { font-size: 12px; line-height: 1.2; }
+        body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) .battle-btn-move .move-tile-name { font-size: 10px; line-height: 1.2; }
         body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) .battle-btn-move .move-tile-meta { margin-top: 1px; font-size: 9px; gap: 1px 4px; }
         body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) .move-info-hit { width: 28px; height: 28px; min-width: 28px; min-height: 28px; font-size: 12px; opacity: 0.55; }
         body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) #move-menu .move-menu-back { min-height: 38px; padding: 5px 8px; }
@@ -1839,10 +1948,10 @@
             align-items: center; gap: 5px; flex-wrap: nowrap;
         }
         #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-name {
-            font-size: 13px; line-height: 1.2; -webkit-line-clamp: 2; line-clamp: 2;
+            font-size: 11px; line-height: 1.2; -webkit-line-clamp: 2; line-clamp: 2;
         }
         #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-meta {
-            margin-top: 4px; font-size: 10px; gap: 2px 5px; opacity: 1; color: #bbb;
+            margin-top: 4px; font-size: 9px; gap: 2px 5px; opacity: 1; color: #bbb;
         }
         #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-meta strong {
             color: #eee;
@@ -1851,7 +1960,7 @@
             font-size: 9px; padding: 2px 5px; flex-shrink: 0;
         }
         #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-tile-cat {
-            font-size: 13px; flex-shrink: 0;
+            font-size: 12px; flex-shrink: 0;
         }
         /* Hide the per-move ℹ button in portrait — info is in the stat box */
         #screen-battle[data-battle-layout="portrait"] .battle-btn-move .move-info-hit {
@@ -1860,7 +1969,7 @@
         #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-back {
             min-height: 36px; padding: 4px 8px; font-size: 13px;
         }
-        body.layout-tablet-preset #move-menu .move-menu-scroll button.battle-btn-move { min-height: 48px; font-size: 13px; }
+        body.layout-tablet-preset #move-menu .move-menu-scroll button.battle-btn-move { min-height: 48px; font-size: 11px; }
 
         /* ── Icon buttons ─────────────────────────────────────────────────── */
         .icon-btn {
@@ -1927,14 +2036,6 @@
             left: calc(8px + var(--safe-left, 0px));
             right: auto;
         }
-        .mob-info-btn {
-            display: none; align-items: center; justify-content: center;
-            width: 36px; height: 36px; min-width: 36px; min-height: 36px;
-            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4);
-            border-radius: 50%; color: #fff; font-size: 16px; padding: 0;
-            cursor: pointer; flex-shrink: 0; line-height: 1;
-            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
-        }
         .move-info-hit {
             flex-shrink: 0; width: 36px; height: 36px; min-width: 36px; min-height: 36px;
             display: inline-flex; align-items: center; justify-content: center;
@@ -1965,8 +2066,7 @@
         #text-tooltip.tooltip-tap-mode { pointer-events: auto; z-index: 8000; max-width: min(94vw, 320px); }
         #text-tooltip .tip-close-x { float: right; margin: -6px -6px 6px 8px; min-width: 36px; min-height: 36px; border-radius: 6px; border: 1px solid #555; background: var(--surface2); color: #fff; font-size: 16px; cursor: pointer; }
         #screen-battle #command-menu .battle-cmd-btn:active:not(:disabled),
-        #screen-battle #move-menu .move-menu-back:active:not(:disabled),
-        #screen-battle .mob-info-btn:active:not(:disabled) { filter: brightness(0.9); }
+        #screen-battle #move-menu .move-menu-back:active:not(:disabled) { filter: brightness(0.9); }
 
         /* ── Rotate overlay ───────────────────────────────────────────────── */
         #rotate-overlay {
@@ -2002,7 +2102,6 @@
             body.is-mobile #screen-battle.battle-phase-moves { --battle-ui-h: clamp(138px, 38dvh, 190px); }
             body { align-items: stretch; justify-content: stretch; }
             .screen, #app-root { max-width: 100vw; width: 100vw; height: 100dvh; max-height: 100dvh; font-size: 11px; }
-            .mob-info-btn { display: inline-flex; }
             #foe-stat-box {
                 top: calc(4px + var(--safe-top, 0px)); left: auto;
                 right: calc(48px + var(--safe-right, 0px));
@@ -2017,13 +2116,15 @@
                 padding: 4px max(6px, env(safe-area-inset-left, 0px)) 2px max(6px, env(safe-area-inset-right, 0px));
             }
             body.is-mobile #battle-bottom-stack #player-stat-box {
-                width: min(220px, 44vw); max-width: min(240px, 48vw);
+                width: min(210px, 42vw);
+                max-width: min(210px, 42vw);
                 margin: 0; padding: 5px 7px; font-size: 9px;
                 border-radius: var(--battle-radius); border: 1px solid var(--border-color);
                 background: var(--battle-panel-bg);
             }
             body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] #battle-bottom-stack #player-stat-box {
-                width: min(240px, 52vw); max-width: min(252px, 54vw);
+                width: min(230px, 50vw);
+                max-width: min(230px, 50vw);
             }
             .battle-bottom-stack .ui-bottom { flex: 0 0 var(--battle-ui-h); height: var(--battle-ui-h); }
             #player-hp-text, #foe-hp-text { font-size: 7px; }
@@ -2064,7 +2165,7 @@
                 transform: none; flex-direction: column; align-items: flex-start;
                 justify-content: flex-start; max-width: min(200px, 42vw); right: auto; gap: 2px;
             }
-            .field-pill { min-height: 20px; font-size: 7px; padding: 1px 4px; border-radius: 0; }
+            .field-pill { min-height: 21px; font-size: 8px; padding: 2px 4px; border-radius: 0; }
             #gauntlet-score {
                 top: auto; bottom: calc(var(--battle-ui-h) + clamp(56px, 14dvh, 72px));
                 left: auto; right: calc(8px + var(--safe-right, 0px));
@@ -2102,7 +2203,7 @@
             .command-grid { gap: 3px; }
             button { font-size: 10px; padding: 2px 4px; min-height: 32px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
             #command-menu button { min-height: 40px; font-size: 10px; }
-            #move-menu button.battle-btn-move { min-height: 48px; padding: 5px 6px; font-size: 10px; }
+            #move-menu button.battle-btn-move { min-height: 48px; padding: 5px 6px; font-size: 9px; }
             #move-menu .move-menu-back { min-height: 36px; padding: 5px 8px; font-size: 10px; }
             #move-menu button:not(.battle-btn-move) { min-height: 34px; }
             #move-tooltip { bottom: calc(var(--battle-ui-h) + 8px); right: auto; left: 8px; width: min(220px, 48vw); font-size: 10px; }
@@ -2132,7 +2233,6 @@
             .screen, #app-root { max-width: 100vw; width: 100vw; height: 100dvh; max-height: 100dvh; box-sizing: border-box; }
             #screen-battle { --battle-ui-h: clamp(140px, 20svh, 200px); }
             body.is-mobile #screen-battle.battle-phase-moves { --battle-ui-h: clamp(140px, 20svh, 200px); }
-            .mob-info-btn { display: inline-flex; }
             #foe-stat-box {
                 width: min(228px, 40vw); top: 6px; left: auto; right: 52px;
                 padding: 6px 9px; font-size: 11px;
@@ -2146,12 +2246,16 @@
                 padding: 5px max(8px, env(safe-area-inset-left, 0px)) 3px max(8px, env(safe-area-inset-right, 0px));
             }
             body.is-mobile #battle-bottom-stack #player-stat-box {
-                width: min(220px, 40vw); max-width: min(240px, 42vw);
-                padding: 6px 9px; font-size: 11px; border-radius: 6px; border: 1px solid var(--border-color);
+                width: min(228px, 40vw);
+                max-width: min(228px, 40vw);
+                padding: 6px 9px; font-size: 11px;
+                border-radius: var(--battle-radius);
+                border: 1px solid var(--border-color);
                 background: var(--battle-panel-bg);
             }
             body.is-mobile #screen-battle[data-battle-layout="landscape-touch"][data-party-size="6"] #battle-bottom-stack #player-stat-box {
-                width: min(236px, 42vw); max-width: min(252px, 46vw);
+                width: min(248px, 44vw);
+                max-width: min(248px, 44vw);
             }
             .battle-bottom-stack .ui-bottom { flex: 0 0 var(--battle-ui-h); height: var(--battle-ui-h); }
             .ui-bottom {
@@ -2202,13 +2306,14 @@
                 max-width: min(380px, 48vw);
                 max-height: none;
             }
-            #screen-battle .battle-bottom-stack #move-menu .move-menu-scroll button.battle-btn-move { min-height: 50px; padding: 5px 7px; font-size: 12px; }
+            #screen-battle .battle-bottom-stack #move-menu .move-menu-scroll button.battle-btn-move { min-height: 50px; padding: 5px 7px; font-size: 10px; }
         }
 
-        /* ── Portrait layout: all battle sizing via data-battle-layout="portrait" ── */
-        /* These rules apply whenever the JS sets portrait layout, regardless of screen size */
+        /* ── Portrait layout: sizing via data-battle-layout="portrait" ── */
         #screen-battle[data-battle-layout="portrait"] #foe-stat-box {
-            top: 0; left: 0; right: 0; width: 100%; box-sizing: border-box;
+            position: relative;
+            top: auto; left: auto; right: auto;
+            width: 100%; box-sizing: border-box;
             border-radius: 0; border-left: none; border-right: none; border-top: none;
             padding: 5px calc(46px + var(--safe-right, 0px)) 5px 10px; font-size: clamp(11px, 3vw, 13px); z-index: 6;
         }
@@ -2239,12 +2344,12 @@
         }
         #screen-battle[data-battle-layout="portrait"] #battle-log {
             align-self: stretch; width: 100%; max-width: 100%;
-            flex: 0 0 auto; min-height: 0; max-height: calc(1.45em * 5 + 12px);
+            flex: 0 0 auto; min-height: 0; max-height: calc(1.5em * 5 + 28px);
             font-size: 11px; line-height: 1.45; padding: 4px 6px;
             overflow-x: hidden; overflow-y: auto;
         }
         #screen-battle[data-battle-layout="portrait"].battle-phase-moves .ui-bottom #battle-log {
-            max-height: calc(1.45em * 5 + 12px); max-width: 100%;
+            max-height: calc(1.5em * 5 + 28px); max-width: 100%;
         }
         #screen-battle[data-battle-layout="portrait"] .ui-bottom-menus {
             flex: 1 1 0;
@@ -2283,7 +2388,6 @@
         @media screen and (max-width: 768px) and (orientation: portrait) {
             .screen, #app-root { max-width: 100vw; width: 100vw; height: 100dvh; max-height: 100dvh; }
             #screen-battle .battle-bottom-stack { padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; }
-            .mob-info-btn { display: inline-flex; width: 32px; height: 32px; min-width: 32px; min-height: 32px; font-size: 14px; }
             .icon-btn { width: 32px; height: 32px; min-width: 32px; min-height: 32px; right: calc(6px + var(--safe-right, 0px)); font-size: 14px; }
             .battle-settings-btn {
                 width: 36px; height: 36px; min-width: 36px; min-height: 36px; font-size: 16px;
@@ -3220,10 +3324,10 @@
             flex: 0 0 auto !important;
         }
         body.is-mobile #screen-battle[data-battle-layout="portrait"].battle-phase-moves #battle-log.battle-log--peek:not(.battle-log--peek-expanded) {
-            max-height: calc(1.45em * 5 + 12px) !important;
+            max-height: calc(1.5em * 5 + 28px) !important;
         }
         body.is-mobile #screen-battle:not([data-battle-layout="portrait"]).battle-phase-moves #battle-log.battle-log--peek:not(.battle-log--peek-expanded) {
-            max-height: calc(1.45em * 2 + 10px) !important;
+            max-height: calc(1.5em * 2 + 24px) !important;
         }
         @media screen and (orientation: landscape) and ((hover: none) or (pointer: coarse)) {
             body.is-mobile #screen-battle.battle-phase-moves #battle-log.battle-log--peek:not(.battle-log--peek-expanded) {
@@ -3416,11 +3520,12 @@
 
         /* --- Battle log: Pokemon text box style --- */
         #battle-log {
-            font-size: 11px !important;
-            line-height: 1.8 !important;
+            font-size: 9px !important;
+            line-height: 1.5 !important;
             letter-spacing: 0.3px;
             text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
             background: linear-gradient(180deg, #0a0a14 0%, #050510 100%) !important;
+            padding: 10px 12px !important;
         }
 
         /* --- Command buttons: Pokemon menu style --- */
@@ -4315,9 +4420,12 @@
                         <option value="easy">Easy</option>
                         <option value="normal" selected>Normal</option>
                         <option value="hard">Hard</option>
-                        <option value="challenge">Challenge</option>
+                        <option value="challenge">Very Hard</option>
                         <option value="hardcore">Hardcore</option>
                     </select>
+                </div>
+                <div style="font-size:10px;color:#888;line-height:1.5;margin:-4px 0 10px;max-width:560px;">
+                    Foe stats: Very Easy −30% · Easy −15% · Normal · Hard +15% · Very Hard +30%. Hardcore: normal stats but <b style="color:#ff8a65;">no healing between battles or in cities</b> — bring potions.
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;margin-bottom:10px;">
                     <label style="color:#888;text-transform:uppercase;letter-spacing:0.5px;font-size:10px;">Seed:</label>
@@ -4588,7 +4696,7 @@
                     <option value="easy">Easy</option>
                     <option value="normal" selected>Normal</option>
                     <option value="hard">Hard</option>
-                    <option value="challenge">Challenge</option>
+                    <option value="challenge">Very Hard</option>
                     <option value="hardcore">Hardcore</option>
                 </select></label>
                 <label style="color:#aaa;">Filter: <select id="tester-filter" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;padding:3px 8px;font-size:12px;max-width:200px;">
@@ -4632,7 +4740,6 @@
         <div id="weather-indicator" class="hidden" style="display:none;"></div>
         <div id="terrain-overlay" class="terrain-overlay"></div>
         <div id="weather-overlay" class="weather-overlay"></div>
-        <div id="field-conditions"></div>
         <div id="gauntlet-score" class="hidden">Score: 0</div>
         <div id="online-battle-score" class="hidden" style="position:absolute;top:4px;left:50%;transform:translateX(-50%);z-index:8;background:rgba(0,0,0,0.75);border:1px solid #444;border-radius:12px;padding:3px 12px;font-size:11px;color:#ccc;white-space:nowrap;pointer-events:none;display:flex;align-items:center;gap:8px;">
             <span id="obs-p1-name" style="color:var(--hp-green);font-weight:bold;">P1</span>
@@ -4643,12 +4750,12 @@
             <span id="obs-round-info" style="color:#555;font-size:10px;"></span>
         </div>
 
-        <!-- Side-matched HUD: player mon + HP row on the left; foe mon + stat card on the right (enemy side). -->
+        <!-- Side-matched HUD: foe column + global field pills (stacked below foe strip in portrait). -->
+        <div class="battle-foe-head" id="battle-foe-head">
         <div class="stat-box white-outline" id="foe-stat-box">
             <div class="stat-box-header">
                 <span id="foe-name" class="stat-box-name">MissingNo</span>
                 <span id="foe-hp-text" class="stat-hp-text">0/0</span>
-                <button class="mob-info-btn" onclick="window.showActiveInfo(false)" title="Info">ℹ</button>
                 <div id="foe-party-bar" style="display:flex; gap:3px; flex-shrink:0;"></div>
             </div>
             <div class="hp-bar-container border-white"><div id="foe-hp-bar" class="hp-fill"></div></div>
@@ -4657,6 +4764,9 @@
                 <div class="status-indicator" id="foe-status"></div>
                 <div id="foe-stages"></div>
             </div>
+            <div class="stat-volatile-row" id="foe-volatiles" aria-label="Ongoing effects"></div>
+        </div>
+        <div id="field-conditions" aria-live="polite"></div>
         </div>
 
         <!-- Foe sprite: upper-back (CSS positions per layout; inline = desktop fallback) -->
@@ -4680,7 +4790,6 @@
             <div class="stat-box-header">
                 <span id="player-name" class="stat-box-name">MissingNo</span>
                 <span id="player-hp-text" class="stat-hp-text">0/0</span>
-                <button class="mob-info-btn" onclick="window.showActiveInfo(true)" title="Info">ℹ</button>
                 <div id="player-party-bar" style="display:flex; gap:3px; flex-shrink:0;"></div>
             </div>
             <div class="hp-bar-container border-white"><div id="player-hp-bar" class="hp-fill"></div></div>
@@ -4689,6 +4798,7 @@
                 <div class="status-indicator" id="player-status"></div>
                 <div id="player-stages"></div>
             </div>
+            <div class="stat-volatile-row" id="player-volatiles" aria-label="Ongoing effects"></div>
         </div>
         </div>
 
@@ -5079,6 +5189,14 @@
             if (s === 'special') return 'Special';
             if (s === 'status') return 'Status';
             return 'Physical';
+        }
+
+        /** Vendored Showdown-style category icons (icons/categories/*.png); sized like icons/story/*.png (22×22). */
+        function moveCategoryTooltipHtml(cat) {
+            const c = normalizeMoveCategory(cat);
+            return '<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle;">' +
+                '<img class="story-screen-head-ico" src="icons/categories/' + c + '.png" alt="" width="22" height="22" decoding="async">' +
+                '<strong class="cat-' + c + '">' + c + '</strong></span>';
         }
 
         function ensureMoveData(moveName) {
@@ -5817,7 +5935,7 @@ Build a balanced team! Consider type coverage, speed tiers, and offensive/defens
 <b>Sand</b> — Damages non-Rock/Ground/Steel. Rock types get +SpD<br>
 <b>Hail</b> — Damages non-Ice types</div>
 <div><h3 style="color:var(--accent);margin:0 0 6px;">Stat Stages</h3>
-Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplier, -1 = x0.67. <b>Tap</b> a Pokémon's name (or the ℹ button) for the full summary with matchups. Weather and terrain pills are tappable. On the move grid, priority and accuracy are shown on each button; tap <b>i</b> for the full move breakdown. Switching out resets your stat changes!</div>`
+Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplier, -1 = x0.67. Accuracy and evasion stages change whether moves hit. <b>Tap</b> a Pokémon name (or chips under the HP bar) for effects like Leech Seed, confusion, or trapping. Tap any field pill for weather, terrain, screens, Trick Room, and entry hazards — numbers are full turns (both Pokémon choose a move once). On the move grid, priority and accuracy are on each tile; tap <b>i</b> for detail. Switching out resets staged stats on the Pokémon that leaves!</div>`
         };
         let showTipsEnabled = true;
         // Dynamically load @pkmn/dex + learnsets (learnsets required for Dex.learnsets.get — see npm readme)
@@ -8008,7 +8126,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let tt = getTextTooltipEl();
             let pri = formatMovePriority(move.pri);
             const adaptive = window._adaptiveTypeBadge(moveName, move, window._activeViewerMon());
-            tt.innerHTML = `<div style="margin-bottom:6px;"><strong style="font-size:14px; color:var(--hp-yellow);">${moveName}</strong> <span class="type-badge type-${move.type}" style="font-size:10px;">${move.type}</span>${adaptive}</div><div style="display:grid; grid-template-columns:1fr 1fr; gap:3px; font-size:12px;"><div>Cat: <strong class="cat-${move.cat}">${move.cat}</strong></div><div>Power: <strong>${move.pow > 0 ? move.pow : '---'}</strong></div><div>Acc: <strong>${move.acc > 0 ? move.acc + '%' : '---'}</strong></div><div>PP: <strong>${move.pp}</strong></div><div style="grid-column:1/-1;">Priority: <strong>${pri}</strong> <span style="color:#888;font-size:10px;">(same bracket: faster Spe first)</span></div></div>${move.eff ? `<div style="margin-top:6px; font-size:11px; color:#ccc; font-style:italic; border-top:1px dashed #555; padding-top:4px;">${move.eff}</div>` : ''}`;
+            tt.innerHTML = `<div style="margin-bottom:6px;"><strong style="font-size:14px; color:var(--hp-yellow);">${moveName}</strong> <span class="type-badge type-${move.type}" style="font-size:10px;">${move.type}</span>${adaptive}</div><div style="display:grid; grid-template-columns:1fr 1fr; gap:3px; font-size:12px;"><div>Cat: ${moveCategoryTooltipHtml(move.cat)}</div><div>Power: <strong>${move.pow > 0 ? move.pow : '---'}</strong></div><div>Acc: <strong>${move.acc > 0 ? move.acc + '%' : '---'}</strong></div><div>PP: <strong>${move.pp}</strong></div><div style="grid-column:1/-1;">Priority: <strong>${pri}</strong> <span style="color:#888;font-size:10px;">(same bracket: faster Spe first)</span></div></div>${move.eff ? `<div style="margin-top:6px; font-size:11px; color:#ccc; font-style:italic; border-top:1px dashed #555; padding-top:4px;">${move.eff}</div>` : ''}`;
             tt.classList.remove('tooltip-tap-mode');
             window._posTooltip(tt, e); tt.classList.remove('hidden');
         }
@@ -8017,7 +8135,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let move = movesDB[moveName]; if (!move) return;
             let tt = getTextTooltipEl();
             let pri = formatMovePriority(move.pri);
-            tt.innerHTML = '<div style="margin-bottom:6px;"><strong style="font-size:14px; color:var(--hp-yellow);">' + moveName + '</strong> <span class="type-badge type-' + move.type + '" style="font-size:10px;">' + move.type + '</span></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:3px; font-size:12px;"><div>Cat: <strong class="cat-' + move.cat + '">' + move.cat + '</strong></div><div>Power: <strong>' + (move.pow > 0 ? move.pow : '---') + '</strong></div><div>Acc: <strong>' + (move.acc > 0 ? move.acc + '%' : '---') + '</strong></div><div>PP: <strong>' + move.pp + '</strong></div><div style="grid-column:1/-1;">Priority: <strong>' + pri + '</strong></div></div>' + (move.eff ? '<div style="margin-top:6px; font-size:11px; color:#ccc; font-style:italic; border-top:1px dashed #555; padding-top:4px;">' + move.eff + '</div>' : '');
+            tt.innerHTML = '<div style="margin-bottom:6px;"><strong style="font-size:14px; color:var(--hp-yellow);">' + moveName + '</strong> <span class="type-badge type-' + move.type + '" style="font-size:10px;">' + move.type + '</span></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:3px; font-size:12px;"><div>Cat: ' + moveCategoryTooltipHtml(move.cat) + '</div><div>Power: <strong>' + (move.pow > 0 ? move.pow : '---') + '</strong></div><div>Acc: <strong>' + (move.acc > 0 ? move.acc + '%' : '---') + '</strong></div><div>PP: <strong>' + move.pp + '</strong></div><div style="grid-column:1/-1;">Priority: <strong>' + pri + '</strong></div></div>' + (move.eff ? '<div style="margin-top:6px; font-size:11px; color:#ccc; font-style:italic; border-top:1px dashed #555; padding-top:4px;">' + move.eff + '</div>' : '');
             tt.classList.remove('tooltip-tap-mode');
             window._posTooltip(tt, e); tt.classList.remove('hidden');
         };
@@ -8038,7 +8156,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let pri = formatMovePriority(move.pri);
             tt.classList.add('tooltip-tap-mode');
             const _adaptTap = window._adaptiveTypeBadge(moveName, move, window._activeViewerMon());
-            tt.innerHTML = '<button type="button" class="tip-close-x" onclick="window.hideTextTooltip()">×</button><div style="clear:both"><div style="margin-bottom:6px;"><strong style="font-size:14px; color:var(--hp-yellow);">' + moveName + '</strong> <span class="type-badge type-' + move.type + '" style="font-size:10px;">' + move.type + '</span>' + _adaptTap + '</div><div style="display:grid; grid-template-columns:1fr 1fr; gap:3px; font-size:12px;"><div>Cat: <strong class="cat-' + move.cat + '">' + move.cat + '</strong></div><div>Power: <strong>' + (move.pow > 0 ? move.pow : '---') + '</strong></div><div>Acc: <strong>' + (move.acc > 0 ? move.acc + '%' : '---') + '</strong></div><div>PP: <strong>' + move.pp + '</strong></div><div style="grid-column:1/-1;">Priority: <strong>' + pri + '</strong></div></div>' + (move.eff ? '<div style="margin-top:6px; font-size:11px; color:#ccc; font-style:italic; border-top:1px dashed #555; padding-top:4px;">' + move.eff + '</div>' : '') + '</div>';
+            tt.innerHTML = '<button type="button" class="tip-close-x" onclick="window.hideTextTooltip()">×</button><div style="clear:both"><div style="margin-bottom:6px;"><strong style="font-size:14px; color:var(--hp-yellow);">' + moveName + '</strong> <span class="type-badge type-' + move.type + '" style="font-size:10px;">' + move.type + '</span>' + _adaptTap + '</div><div style="display:grid; grid-template-columns:1fr 1fr; gap:3px; font-size:12px;"><div>Cat: ' + moveCategoryTooltipHtml(move.cat) + '</div><div>Power: <strong>' + (move.pow > 0 ? move.pow : '---') + '</strong></div><div>Acc: <strong>' + (move.acc > 0 ? move.acc + '%' : '---') + '</strong></div><div>PP: <strong>' + move.pp + '</strong></div><div style="grid-column:1/-1;">Priority: <strong>' + pri + '</strong></div></div>' + (move.eff ? '<div style="margin-top:6px; font-size:11px; color:#ccc; font-style:italic; border-top:1px dashed #555; padding-top:4px;">' + move.eff + '</div>' : '') + '</div>';
             window._posTooltip(tt, e); tt.classList.remove('hidden');
         };
         // Tooltip for Max Moves / Z-Moves not in movesDB
@@ -8472,6 +8590,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return mon.originalItem || mon.item || 'No Item';
         }
         window.displayItem = displayItem;
+
+        // Story-mode foe stat multiplier (difficulty knob).
+        // Multiplies HP and the five non-HP stats post-build. Damage formula stays Showdown-correct.
+        window.applyFoeDifficultyScaling = function(mon) {
+            if (!mon) return;
+            const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
+            const d = (sm && sm.storyDifficulty) || 'normal';
+            let mult = 1.0;
+            if (d === 'veryeasy') mult = 0.70;
+            else if (d === 'easy') mult = 0.85;
+            else if (d === 'hard') mult = 1.15;
+            else if (d === 'challenge') mult = 1.30; // labeled "Very Hard" in UI
+            if (mult === 1.0) return;
+            const newMaxHp = Math.max(1, Math.floor(mon.maxHp * mult));
+            mon.maxHp = newMaxHp;
+            mon.currentHp = newMaxHp;
+            if (mon.stats) {
+                mon.stats.atk = Math.max(1, Math.floor(mon.stats.atk * mult));
+                mon.stats.def = Math.max(1, Math.floor(mon.stats.def * mult));
+                mon.stats.spa = Math.max(1, Math.floor(mon.stats.spa * mult));
+                mon.stats.spd = Math.max(1, Math.floor(mon.stats.spd * mult));
+                mon.stats.spe = Math.max(1, Math.floor(mon.stats.spe * mult));
+            }
+        };
 
         function buildPokemon(monName, build) {
             monName = monName.trim();
@@ -10219,6 +10361,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { applyBattleLayoutMode(); } catch (e) {}
             if (state.mode === 'gauntlet') document.getElementById('gauntlet-score').classList.remove('hidden'); else document.getElementById('gauntlet-score').classList.add('hidden');
             state.playerParty = state.p1Draft.map(d => buildPokemon(d.name, d.build)); state.foeParty = state.p2Draft.map(d => buildPokemon(d.name, d.build));
+            // Story-mode difficulty: scale foe stats (Very Easy/Easy weaken, Hard/Very Hard strengthen)
+            if (state.mode === 'story' && typeof window.applyFoeDifficultyScaling === 'function') {
+                state.foeParty.forEach(window.applyFoeDifficultyScaling);
+            }
             // Hardcore story mode: restore persisted HP/status/PP before first turn
             if (state.mode === 'story' && window.StoryMode && typeof window.StoryMode.applyHardcoreState === 'function') {
                 window.StoryMode.applyHardcoreState(state.playerParty);
@@ -10646,6 +10792,61 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        function escBattleAttr(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        /** Short labels on HUD chips for partial trapping moves */
+        function abbrevTrapMoveDisplay(name) {
+            if (!name) return 'Trap';
+            if (name.length <= 10) return name;
+            return name.replace(/\s+/g, '').slice(0, 8);
+        }
+
+        /** Build HUD chips for Substitute / Leech Seed / confusion / wrap / Focus Energy crit / etc. */
+        function buildBattleVolatileChipsHtml(mon) {
+            if (!mon || mon.currentHp <= 0) return '';
+            const v = mon.volatile || {};
+            const parts = [];
+            const chip = (label, tip, mod) => {
+                parts.push(`<span class="battle-vchip battle-vchip--${mod || 'neutral'}" title="${escBattleAttr(tip)}">${label}</span>`);
+            };
+            if (v.sub > 0) chip(`Sub(${v.sub})`, 'Substitute — absorbs hits until HP chunk breaks', 'neutral');
+            if (v.taunt > 0) chip(`Taunt ${v.taunt}`, 'Taunted — can only use attacking moves (' + v.taunt + ' turn(s) left)', 'debuff');
+            if (v.encore > 0) chip(`Encore ${v.encore}`, 'Encore — locked into repeating the same move', 'debuff');
+            if (v.leechSeed) chip('Seed', 'Leech Seed — loses HP each turn; heals the seeder', 'debuff');
+            if (v.confusion > 0) chip(`Conf ${v.confusion}`, 'Confused — hurt self or snap out (' + v.confusion + ' turn(s) until next check)', 'debuff');
+            if (v.partialTrap > 0) {
+                const src = v.partialTrapSrc || 'Trap';
+                const sticky = src === 'Octolock' || v.partialTrap > 120;
+                if (sticky) chip('Octolock', src + ': cannot flee or switch until the user leaves battle', 'debuff');
+                else chip(`${abbrevTrapMoveDisplay(src)} ${v.partialTrap}`, src + ': partial trapping — damage end of turn, ' + v.partialTrap + ' turn(s) left', 'debuff');
+            }
+            if (v.yawnTurns > 0) chip(`Yawn ${v.yawnTurns}`, 'Drowsy — falls asleep soon (' + v.yawnTurns + ' turn(s))', 'debuff');
+            if (v.perishCount >= 0) chip(`Perish ${v.perishCount}`, 'Perish Song count — KO at 0', 'debuff');
+            const fe = v.focusEnergy;
+            if (fe) {
+                const st = typeof fe === 'number' ? fe : 2;
+                chip(`Crit +${st}`, 'Focus Energy (or stack) — higher critical-hit stage', 'buff');
+            }
+            if (v.aquaRing) chip('Aqua', 'Aqua Ring — heals a little HP each turn', 'buff');
+            if (v.ingrain) chip('Root', 'Ingrain — heals each turn but cannot switch out voluntarily', 'neutral');
+            if (v.healBlock > 0) chip(`Hb ${v.healBlock}`, 'Heal Block — cannot heal (' + v.healBlock + ' turn(s))', 'debuff');
+            if (v.throatChop > 0) chip(`Throat ${v.throatChop}`, 'Throat Chop — cannot use sound moves', 'debuff');
+            if (v.embargo > 0) chip(`Emb ${v.embargo}`, 'Embargo — item disabled', 'debuff');
+            if (v.disabledTurns > 0 && v.disabled) chip(`Dis ${v.disabledTurns}`, 'Disabled: ' + v.disabled, 'debuff');
+            else if (v.disabled) chip('Disabled', 'Move disabled', 'debuff');
+            if (v.torment) chip('Torment', 'Torment — cannot use same move twice in a row', 'debuff');
+            if (v.magnetRise) chip('Mag', 'Magnet Rise — airborne (Ground immunity rules)', 'buff');
+            if (v.destinyBond) chip('DBond', 'Destiny Bond — if KO\'d user, KO\'s attacker', 'neutral');
+            if (v.cursed) chip('Curse', 'Cursed — takes damage each turn', 'debuff');
+            if (v.lockMove && v.lockTurns > 0) chip(`Lock ${v.lockTurns}`, 'Forced to repeat ' + v.lockMove + ' (' + v.lockTurns + ' turn(s))', 'debuff');
+            if (v.futureSightTurns > 0) chip(`Fs ${v.futureSightTurns}`, (v.futureSightName || 'Future Sight') + ' inbound', 'neutral');
+            if (v.recharge) chip('Charge+', 'Must recharge — cannot move this turn', 'debuff');
+            if (v.charging && typeof v.charging === 'string') chip('Charging', 'Charging — ' + v.charging, 'neutral');
+            return parts.join('');
+        }
+
         function updateUI() {
             if (!battleEls.player || !battleEls.player.name) cacheBattleEls();
             const be = battleEls;
@@ -10701,12 +10902,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 hpBar.style.width = `${hpPct}%`;
                 hpBar.className = 'hp-fill' + (hpPct <= 10 ? ' hp-critical' : hpPct <= 20 ? ' hp-low' : hpPct <= 50 ? ' hp-mid' : ' hp-high');
                 // count element removed (pokeballs replaced it)
-                let statBox = el.status; 
-                let str = mon.status || ""; 
-                if(mon.volatile.sub > 0) str += (str?" | SUB":"SUB");
-                if(mon.volatile.taunt > 0) str += (str?" | TAUNT":"TAUNT");
-                if(mon.volatile.encore > 0) str += (str?" | ENCORE":"ENCORE");
-                statBox.innerText = str; statBox.style.color = mon.status === "BRN" ? "#ff4500" : (mon.status === "PSN" || mon.status === "TOX" ? "#a040a0" : (mon.status === "PAR" ? "#ffd700" : (mon.status === "SLP" ? "#888888" : "#fff")));
+                let statBox = el.status;
+                statBox.innerText = mon.status || '';
+                statBox.style.color = mon.status ? (mon.status === "BRN" ? "#ff4500" : (mon.status === "PSN" || mon.status === "TOX" ? "#a040a0" : (mon.status === "PAR" ? "#ffd700" : (mon.status === "SLP" ? "#888888" : (mon.status === "FRZ" ? "#81d4fa" : '#fff'))))) : '#9e9e9e';
+                if (el.volatiles) el.volatiles.innerHTML = buildBattleVolatileChipsHtml(mon);
                 // Show tera type when active, otherwise show base typing
                 let dispType1 = mon.type1, dispType2 = mon.type2;
                 let teraIndicator = '';
@@ -10733,7 +10932,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (val !== 0) {
                             let color = val > 0 ? '#4caf50' : '#f44336';
                             let sign = val > 0 ? '+' : '';
-                            badges.push(`<span style="font-size:10px;padding:1px 4px;background:rgba(0,0,0,0.5);border-radius:3px;color:${color};border:1px solid ${color};" title="${stageNames[key]} ${sign}${val}">${stageNames[key]}${sign}${val}</span>`);
+                            let extraTip = (key === 'acc' || key === 'eva') ? ' — affects whether moves hit' : '';
+                            badges.push(`<span style="font-size:10px;padding:1px 4px;background:rgba(0,0,0,0.5);border-radius:3px;color:${color};border:1px solid ${color};" title="${stageNames[key]} ${sign}${val}${extraTip}">${stageNames[key]}${sign}${val}</span>`);
                         }
                     }
                     stageEl.innerHTML = badges.join(' ');
@@ -10801,7 +11001,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let pills = [];
                 const mkPill = (label, turns, color, bg, tipHtml) => {
                     let t = turns > 0 ? ` <b>${turns}</b>` : '';
-                    return `<span class="field-pill" role="button" tabindex="0" style="background:${bg};color:${color};border:1px solid ${color};" data-tip="${encodeURIComponent(tipHtml)}" onclick="window.showFieldTooltipFromData(event)" onkeydown="if(event.key==='Enter'||event.key===' ')window.showFieldTooltipFromData(event)">${label}${t}</span>`;
+                    let tip = tipHtml;
+                    if (turns > 0) tip += `<br><span style="color:#9e9e9e;font-size:10px;font-weight:normal;line-height:1.35">One battle turn = each active Pokémon selects one move (full round).</span>`;
+                    return `<span class="field-pill" role="button" tabindex="0" style="background:${bg};color:${color};border:1px solid ${color};" data-tip="${encodeURIComponent(tip)}" onclick="window.showFieldTooltipFromData(event)" onkeydown="if(event.key==='Enter'||event.key===' ')window.showFieldTooltipFromData(event)">${label}${t}</span>`;
                 };
                 const isPerm = v => v === 'HarshSun' || v === 'HeavyRain' || v === 'StrongWinds';
                 if (w) {
@@ -10830,6 +11032,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (state.trickRoom > 0) {
                     pills.push(mkPill('🔀 TR', state.trickRoom, '#e040fb','rgba(156,39,176,0.2)', `<b>Trick Room</b><br>Slower Pokémon move first<br>Turns left: ${state.trickRoom}`));
                 }
+                if (typeof state.gravity === 'number' && state.gravity > 0) {
+                    const gFix = state.gravity >= 500;
+                    const gTurns = gFix ? 0 : state.gravity;
+                    const gTip = gFix
+                        ? `<b>Gravity</b> (strong field)<br>Grounds Flying-types; several moves behave differently`
+                        : `<b>Gravity</b><br>Grounds Pokémon; some accuracy rules change<br>Turns left: ${state.gravity}`;
+                    pills.push(mkPill('Grav', gTurns, '#b39ddb','rgba(103,58,183,0.22)', gTip));
+                }
+                if (state.magicRoom > 0) {
+                    pills.push(mkPill('Magic', state.magicRoom, '#ffa726','rgba(255,152,0,0.2)', `<b>Magic Room</b><br>Held items have no effect<br>Turns left: ${state.magicRoom}`));
+                }
+                if (state.wonderRoom > 0) {
+                    pills.push(mkPill('Wonder', state.wonderRoom, '#9575cd','rgba(149,117,207,0.22)', `<b>Wonder Room</b><br>Physical damage uses foe SpDef stats (and vice versa)<br>Turns left: ${state.wonderRoom}`));
+                }
                 // Player-side screens (blue tones) — swap pSide/fSide for guest
                 const _gvSide = isGuestPerspective(); const _mySide = _gvSide ? state.fSide : state.pSide; const _foeSide = _gvSide ? state.pSide : state.fSide;
                 if (_mySide && _mySide.reflect > 0)     pills.push(mkPill('REF',  _mySide.reflect,     '#42a5f5','rgba(13,71,161,0.2)',   `<b>Reflect</b> (your side)<br>Halves physical damage<br>Turns left: ${_mySide.reflect}`));
@@ -10841,6 +11057,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_foeSide && _foeSide.auroraVeil > 0)  pills.push(mkPill('fVEIL', _foeSide.auroraVeil,  '#80cbc4','rgba(0,105,92,0.2)',    `<b>Aurora Veil</b> (foe side)<br>Halves all damage<br>Turns left: ${_foeSide.auroraVeil}`));
                 if (_mySide && _mySide.tailwind > 0)    pills.push(mkPill('TW',   _mySide.tailwind,    '#66bb6a','rgba(46,125,50,0.2)',   `<b>Tailwind</b> (your side)<br>Doubles Speed<br>Turns left: ${_mySide.tailwind}`));
                 if (_foeSide && _foeSide.tailwind > 0)    pills.push(mkPill('fTW',  _foeSide.tailwind,    '#ef6c00','rgba(230,81,0,0.2)',     `<b>Tailwind</b> (foe side)<br>Doubles Speed<br>Turns left: ${_foeSide.tailwind}`));
+                const pushSideConditions = (side, mine) => {
+                    if (!side) return;
+                    const pref = mine ? '' : 'f';
+                    const who = mine ? '(your side)' : "(foe's side)";
+                    if (side.stealthRock) pills.push(mkPill(`${pref}SR`, 0, mine ? '#78909c' : '#a1887f', mine ? 'rgba(96,125,139,0.22)' : 'rgba(161,136,127,0.2)', `<b>Stealth Rock</b> ${who}<br>Rock-type chip when switching in`));
+                    const sp = side.spikes | 0;
+                    if (sp > 0) pills.push(mkPill(`${pref}Spk×${sp}`, 0, mine ? '#5c6bc0' : '#e53935', mine ? 'rgba(92,107,204,0.2)' : 'rgba(229,57,53,0.15)', `<b>Spikes</b> ${who} (${sp} layer${sp!==1?'s':''})<br>Chip when a grounded Pokémon switches in`));
+                    const ts = side.toxicSpikes | 0;
+                    if (ts > 0) pills.push(mkPill(`${pref}TS×${ts}`, 0, mine ? '#8e24aa' : '#ab47bc', mine ? 'rgba(171,71,188,0.2)' : 'rgba(171,71,188,0.18)', `<b>Toxic Spikes</b> ${who}<br>Poisons grounded switch-ins`));
+                    if (side.stickyWeb) pills.push(mkPill(`${pref}Web`, 0, mine ? '#546e7a' : '#6d4c41', mine ? 'rgba(69,90,100,0.2)' : 'rgba(109,76,65,0.2)', `<b>Sticky Web</b> ${who}<br>Grounded switch-ins get a Speed drop`));
+                    const sg = side.safeguard | 0;
+                    if (sg > 0) pills.push(mkPill(`${pref}SG`, sg, mine ? '#29b6f6' : '#ff7043', mine ? 'rgba(3,169,244,0.15)' : 'rgba(255,112,67,0.15)', `<b>Safeguard</b> ${who}<br>Blocks most opposing status moves`));
+                    const mist = side.mist | 0;
+                    if (mist > 0) pills.push(mkPill(`${pref}Mt`, mist, mine ? '#4fc3f7' : '#90a4ae', mine ? 'rgba(79,195,247,0.15)' : 'rgba(144,164,174,0.2)', `<b>Mist</b> ${who}<br>Protects allies from hostile stat drops`));
+                    const lc = side.luckychant | 0;
+                    if (lc > 0) pills.push(mkPill(`${pref}Lk`, lc, mine ? '#81d4fa' : '#ffab91', mine ? 'rgba(129,212,250,0.15)' : 'rgba(255,171,145,0.15)', `<b>Lucky Chant</b> ${who}<br>No critical hits against that side`));
+                    const wt = side.wishTurns | 0, wh = side.wishHp | 0;
+                    if (wt > 0 && wh > 0) pills.push(mkPill(`${pref}Wish`, wt, mine ? '#f06292' : '#f8bbd0', mine ? 'rgba(236,72,153,0.18)' : 'rgba(236,72,153,0.12)', `<b>Wish</b> ${mine ? '(your bench)' : '(foe bench)'}<br>Delayed heal (${wh} HP) in ${wt} turn(s)`));
+                };
+                pushSideConditions(_mySide, true);
+                pushSideConditions(_foeSide, false);
                 fcDiv.innerHTML = pills.join('');
             }
             if (state.mode === 'gauntlet' && be.gauntletScore) be.gauntletScore.innerText = `Score: ${state.score}`;
@@ -10900,7 +11137,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 container.querySelectorAll('.stage-badge').forEach(el => el.remove());
 
                 let boosts = [], drops = [];
-                let statNames = {atk:'Atk', def:'Def', spa:'SpA', spd:'SpD', spe:'Spe'};
+                let statNames = {atk:'Atk', def:'Def', spa:'SpA', spd:'SpD', spe:'Spe', acc:'Acc', eva:'Eva'};
                 for (let key in statNames) {
                     if (mon.stages[key] > 0) boosts.push(`${statNames[key]}+${mon.stages[key]}`);
                     if (mon.stages[key] < 0) drops.push(`${statNames[key]}${mon.stages[key]}`);
@@ -11625,7 +11862,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     : ('Keys ' + (i + 1) + ': ' + shownMove.name + ' — hover for details');
                 let effString = shownMove.cat === "Status" ? "Status Move" : (eff > 1 ? "<span style='color:var(--hp-green)'>Super Effective!</span>" : (eff === 0 ? "<span style='color:#888'>No Effect.</span>" : (eff < 1 ? "<span style='color:var(--hp-red)'>Not Very Effective.</span>" : "Normal Damage")));
                 let _effDesc = shownMove.effectStr || shownMove.eff || (shownMove.isMaxMove ? 'Max Move: bypasses protect. Cannot miss.' : 'No additional effects.');
-                let moveTipHtml = `<div style="display:flex;justify-content:space-between;margin-bottom:10px;"><strong style="font-size:16px;color:var(--hp-yellow);">${shownMove.name}</strong><span class="type-badge type-${shownMove.type}">${shownMove.type}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;font-size:12px;gap:5px;"><div>Cat: <strong class="cat-${shownMove.cat}">${shownMove.cat}</strong></div><div>Power: <strong>${_powStr}</strong></div><div>Acc: <strong>${_accStr}</strong></div><div>PP: <strong>${_ppStr}</strong></div><div style="grid-column:1/-1;font-size:11px;">Priority: <strong>${priStr}</strong> <span style="color:#888;">(within bracket: faster / Trick Room)</span></div></div><div style="margin-top:8px;font-size:11px;font-style:italic;color:#ccc;">${_effDesc}</div><div style="margin-top:8px;font-size:12px;font-weight:bold;border-top:1px dashed #555;padding-top:5px;">${effString}</div>`;
+                let moveTipHtml = `<div style="display:flex;justify-content:space-between;margin-bottom:10px;"><strong style="font-size:16px;color:var(--hp-yellow);">${shownMove.name}</strong><span class="type-badge type-${shownMove.type}">${shownMove.type}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;font-size:12px;gap:5px;"><div>Cat: ${moveCategoryTooltipHtml(shownMove.cat)}</div><div>Power: <strong>${_powStr}</strong></div><div>Acc: <strong>${_accStr}</strong></div><div>PP: <strong>${_ppStr}</strong></div><div style="grid-column:1/-1;font-size:11px;">Priority: <strong>${priStr}</strong> <span style="color:#888;">(within bracket: faster / Trick Room)</span></div></div><div style="margin-top:8px;font-size:11px;font-style:italic;color:#ccc;">${_effDesc}</div><div style="margin-top:8px;font-size:12px;font-weight:bold;border-top:1px dashed #555;padding-top:5px;">${effString}</div>`;
                 btn.onmouseenter = () => {
                     let tt = getMoveTooltipEl();
                     tt.innerHTML = moveTipHtml;
@@ -18257,78 +18494,78 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const STORY_EVENTS_RAW = [
           [0,'City','City0',null,0,['Professor','Link Station','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Leave City']],
           [1,'Battle','Basic Trainer',{g1:0,g2:0,g3:0,g4:100},1400,null],
-          [2,'Battle','Basic Trainer',{g1:0,g2:0,g3:20,g4:80},1400,null],
-          [3,'Battle','Basic Trainer',{g1:0,g2:0,g3:30,g4:70},1400,null],
+          [2,'Battle','Basic Trainer',{g1:0,g2:0,g3:0,g4:100},1400,null],
+          [3,'Battle','Basic Trainer',{g1:0,g2:0,g3:0,g4:100},1400,null],
           [4,'City','City1',null,0,['Professor','Link Station','Pokemart','Gym Battle','Leave City']],
-          [5,'Battle','Gym Trainer',{g1:0,g2:0,g3:50,g4:50},1500,null],
-          [6,'Battle','Gym Leader 1',{g1:0,g2:0,g3:80,g4:20},2000,null],
+          [5,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:20,g4:80},1500,null],
+          [6,'Battle','Gym Leader 1',{g1:0,g2:0,g3:100,g4:0},2000,null],
           [7,'City','City1',null,0,['Professor','Link Station','Pokemart','Leave City']],
-          [8,'Battle','Basic Trainer',{g1:0,g2:0,g3:65,g4:35},1200,null],
-          [9,'Battle','Basic Trainer',{g1:0,g2:0,g3:65,g4:35},1200,null],
-          [10,'Battle','Basic Trainer',{g1:0,g2:0,g3:100,g4:0},1200,null],
+          [8,'Battle','Basic Trainer',{g1:0,g2:0,g3:50,g4:50},1200,null],
+          [9,'Battle','Basic Trainer',{g1:0,g2:0,g3:60,g4:40},1200,null],
+          [10,'Battle','Basic Trainer',{g1:0,g2:0,g3:70,g4:30},1200,null],
           [11,'City','City2',null,0,['Professor','Link Station','Pokemart','Nature Rater','Gym Battle','Leave City']],
-          [12,'Battle','Gym Trainer',{g1:0,g2:10,g3:90,g4:0},1700,null],
-          [13,'Battle','Gym Leader 2',{g1:0,g2:20,g3:80,g4:0},2500,null],
-          [14,'Battle','Rival',{g1:0,g2:15,g3:85,g4:0},1500,null],
+          [12,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:80,g4:20},1700,null],
+          [13,'Battle','Gym Leader 2',{g1:0,g2:0,g3:100,g4:0},2500,null],
+          [14,'Battle','Rival',{g1:0,g2:0,g3:90,g4:10},1500,null],
           [15,'City','City2',null,0,['Professor','Link Station','Pokemart','Nature Rater','Leave City']],
-          [16,'Battle','Basic Trainer',{g1:0,g2:5,g3:95,g4:0},1500,null],
-          [17,'Battle','Basic Trainer',{g1:0,g2:5,g3:95,g4:0},1500,null],
-          [18,'Battle','Basic Trainer',{g1:0,g2:12,g3:88,g4:0},1500,null],
+          [16,'Battle','Basic Trainer',{g1:0,g2:0,g3:80,g4:20},1500,null],
+          [17,'Battle','Basic Trainer',{g1:0,g2:0,g3:80,g4:20},1500,null],
+          [18,'Battle','Basic Trainer',{g1:0,g2:0,g3:90,g4:10},1500,null],
           [19,'City','City3',null,0,['Professor','Link Station','Department Store','Battle Dojo','Gym Battle']],
-          [20,'Battle','Gym Trainer',{g1:0,g2:32,g3:68,g4:0},2000,null],
-          [21,'Battle','Gym Leader 3',{g1:0,g2:40,g3:60,g4:0},3000,null],
+          [20,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:95,g4:5},2000,null],
+          [21,'Battle','Gym Leader 3',{g1:0,g2:30,g3:70,g4:0},3000,null],
           [22,'City','City3',null,0,['Professor','Link Station','Department Store','Battle Dojo','Leave City']],
-          [23,'Battle','Basic Trainer',{g1:0,g2:22,g3:78,g4:0},1700,null],
-          [24,'Battle','Basic Trainer',{g1:0,g2:22,g3:78,g4:0},1700,null],
-          [25,'Battle','Basic Trainer',{g1:0,g2:28,g3:72,g4:0},1700,null],
+          [23,'Battle','Basic Trainer',{g1:0,g2:10,g3:90,g4:0},1700,null],
+          [24,'Battle','Basic Trainer',{g1:0,g2:10,g3:90,g4:0},1700,null],
+          [25,'Battle','Basic Trainer',{g1:0,g2:15,g3:85,g4:0},1700,null],
           [26,'City','City4',null,0,['Professor','Link Station','Pokemart','Move Tutor','EV Trainer','Gym Battle','Leave City']],
-          [27,'Battle','Gym Trainer',{g1:0,g2:50,g3:50,g4:0},2300,null],
-          [28,'Battle','Gym Leader 4',{g1:0,g2:60,g3:40,g4:0},3200,null],
+          [27,'Battle','Gym Trainer 1',{g1:0,g2:30,g3:70,g4:0},2300,null],
+          [28,'Battle','Gym Leader 4',{g1:0,g2:50,g3:50,g4:0},3200,null],
           [29,'City','City4',null,0,['Professor','Link Station','Pokemart','Move Tutor','EV Trainer','Leave City']],
-          [30,'Battle','Basic Trainer',{g1:0,g2:32,g3:68,g4:0},2000,null],
-          [31,'Battle','Basic Trainer',{g1:0,g2:32,g3:68,g4:0},2000,null],
-          [32,'Battle','Basic Trainer',{g1:0,g2:42,g3:58,g4:0},2000,null],
+          [30,'Battle','Basic Trainer',{g1:0,g2:25,g3:75,g4:0},2000,null],
+          [31,'Battle','Basic Trainer',{g1:0,g2:25,g3:75,g4:0},2000,null],
+          [32,'Battle','Basic Trainer',{g1:0,g2:35,g3:65,g4:0},2000,null],
           [33,'City','City5',null,0,['Professor','Link Station','Pokemart','Gym Battle','Leave City']],
-          [34,'Battle','Gym Trainer',{g1:0,g2:68,g3:32,g4:0},2500,null],
-          [35,'Battle','Gym Trainer',{g1:0,g2:72,g3:28,g4:0},2500,null],
-          [36,'Battle','Gym Leader 5',{g1:0,g2:80,g3:20,g4:0},3500,null],
+          [34,'Battle','Gym Trainer 1',{g1:0,g2:50,g3:50,g4:0},2500,null],
+          [35,'Battle','Gym Trainer 2',{g1:0,g2:60,g3:40,g4:0},2500,null],
+          [36,'Battle','Gym Leader 5',{g1:0,g2:70,g3:30,g4:0},3500,null],
           [37,'City','City5',null,0,['Professor','Link Station','Pokemart','Leave City']],
-          [38,'Battle','Basic Trainer',{g1:0,g2:58,g3:42,g4:0},2200,null],
-          [39,'Battle','Basic Trainer',{g1:0,g2:58,g3:42,g4:0},2200,null],
-          [40,'Battle','Elite Trainer',{g1:0,g2:82,g3:18,g4:0},2700,null],
+          [38,'Battle','Basic Trainer',{g1:0,g2:50,g3:50,g4:0},2200,null],
+          [39,'Battle','Basic Trainer',{g1:0,g2:50,g3:50,g4:0},2200,null],
+          [40,'Battle','Elite Trainer',{g1:0,g2:70,g3:30,g4:0},2700,null],
           [41,'City','City6',null,0,['Link Station','Department Store','Nature Rater','Power Up','Gym Battle','Leave City']],
-          [42,'Battle','Gym Trainer',{g1:0,g2:88,g3:12,g4:0},2700,null],
-          [43,'Battle','Gym Trainer',{g1:0,g2:90,g3:10,g4:0},2700,null],
-          [44,'Battle','Gym Leader 6',{g1:0,g2:100,g3:0,g4:0},4700,null],
-          [45,'Battle','Rival',{g1:0,g2:93,g3:7,g4:0},2500,null],
+          [42,'Battle','Gym Trainer 1',{g1:0,g2:75,g3:25,g4:0},2700,null],
+          [43,'Battle','Gym Trainer 2',{g1:0,g2:80,g3:20,g4:0},2700,null],
+          [44,'Battle','Gym Leader 6',{g1:0,g2:90,g3:10,g4:0},4700,null],
+          [45,'Battle','Rival',{g1:5,g2:95,g3:0,g4:0},2500,null],
           [46,'City','City6',null,0,['Link Station','Pokemart','Nature Rater','Power Up','Leave City']],
-          [47,'Battle','Basic Trainer',{g1:0,g2:72,g3:28,g4:0},2500,null],
-          [48,'Battle','Basic Trainer',{g1:0,g2:72,g3:28,g4:0},2500,null],
-          [49,'Battle','Elite Trainer',{g1:0,g2:92,g3:8,g4:0},2900,null],
+          [47,'Battle','Basic Trainer',{g1:0,g2:100,g3:0,g4:0},2500,null],
+          [48,'Battle','Basic Trainer',{g1:0,g2:100,g3:0,g4:0},2500,null],
+          [49,'Battle','Elite Trainer',{g1:5,g2:95,g3:0,g4:0},2900,null],
           [50,'City','City7',null,0,['Link Station','Pokemart','Battle Dojo','Gym Battle','Leave City']],
-          [51,'Battle','Gym Trainer',{g1:6,g2:94,g3:0,g4:0},2900,null],
-          [52,'Battle','Gym Trainer',{g1:7,g2:93,g3:0,g4:0},2900,null],
-          [53,'Battle','Gym Leader 7',{g1:10,g2:90,g3:0,g4:0},4900,null],
+          [51,'Battle','Gym Trainer 1',{g1:5,g2:95,g3:0,g4:0},2900,null],
+          [52,'Battle','Gym Trainer 2',{g1:8,g2:92,g3:0,g4:0},2900,null],
+          [53,'Battle','Gym Leader 7',{g1:15,g2:85,g3:0,g4:0},4900,null],
           [54,'City','City7',null,0,['Link Station','Pokemart','Battle Dojo','Leave City']],
-          [55,'Battle','Basic Trainer',{g1:4,g2:96,g3:0,g4:0},2600,null],
-          [56,'Battle','Elite Trainer',{g1:8,g2:92,g3:0,g4:0},3000,null],
-          [57,'Battle','Elite Trainer',{g1:9,g2:91,g3:0,g4:0},3000,null],
+          [55,'Battle','Basic Trainer',{g1:5,g2:95,g3:0,g4:0},2600,null],
+          [56,'Battle','Elite Trainer',{g1:10,g2:90,g3:0,g4:0},3000,null],
+          [57,'Battle','Elite Trainer',{g1:12,g2:88,g3:0,g4:0},3000,null],
           [58,'City','City8',null,0,['Link Station','Pokemart','Move Tutor','Gym Battle','Leave City']],
-          [59,'Battle','Gym Trainer',{g1:16,g2:84,g3:0,g4:0},3000,null],
-          [60,'Battle','Gym Trainer',{g1:18,g2:82,g3:0,g4:0},3000,null],
-          [61,'Battle','Gym Leader 8',{g1:20,g2:80,g3:0,g4:0},5000,null],
-          [62,'Battle','Rival',{g1:25,g2:75,g3:0,g4:0},2800,null],
+          [59,'Battle','Gym Trainer 1',{g1:15,g2:85,g3:0,g4:0},3000,null],
+          [60,'Battle','Gym Trainer 2',{g1:20,g2:80,g3:0,g4:0},3000,null],
+          [61,'Battle','Gym Leader 8',{g1:25,g2:75,g3:0,g4:0},5000,null],
+          [62,'Battle','Rival',{g1:30,g2:70,g3:0,g4:0},2800,null],
           [63,'City','City8',null,0,['Link Station','Pokemart','Move Tutor','Leave City']],
-          [64,'Battle','Elite Trainer',{g1:26,g2:74,g3:0,g4:0},4200,null],
-          [65,'Battle','Elite Trainer',{g1:28,g2:72,g3:0,g4:0},4800,null],
-          [66,'Battle','Elite Trainer',{g1:29,g2:71,g3:0,g4:0},5200,null],
+          [64,'Battle','Elite Trainer',{g1:30,g2:70,g3:0,g4:0},4200,null],
+          [65,'Battle','Elite Trainer',{g1:35,g2:65,g3:0,g4:0},4800,null],
+          [66,'Battle','Elite Trainer',{g1:40,g2:60,g3:0,g4:0},5200,null],
           [67,'City','City9',null,0,['Link Station','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Enter Pokemon League']],
-          [68,'Battle','E1',{g1:30,g2:70,g3:0,g4:0},5000,null],
-          [69,'Battle','E2',{g1:35,g2:65,g3:0,g4:0},5000,null],
-          [70,'Battle','E3',{g1:40,g2:60,g3:0,g4:0},5000,null],
-          [71,'Battle','E4',{g1:45,g2:55,g3:0,g4:0},5000,null],
-          [72,'Battle','Champion',{g1:50,g2:50,g3:0,g4:0},7500,null],
-          [73,'Battle','Rival',{g1:50,g2:50,g3:0,g4:0},5000,null],
+          [68,'Battle','E1',{g1:35,g2:65,g3:0,g4:0},5000,null],
+          [69,'Battle','E2',{g1:45,g2:55,g3:0,g4:0},5000,null],
+          [70,'Battle','E3',{g1:55,g2:45,g3:0,g4:0},5000,null],
+          [71,'Battle','E4',{g1:65,g2:35,g3:0,g4:0},5000,null],
+          [72,'Battle','Champion',{g1:80,g2:20,g3:0,g4:0},7500,null],
+          [73,'Battle','Rival',{g1:75,g2:25,g3:0,g4:0},5000,null],
           [74,'Hall of Fame','Hall of Fame',null,0,null],
           [75,'Battle','Mystery Figure',{g1:100,g2:0,g3:0,g4:0},12000,null],
         ];
@@ -18722,7 +18959,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function storyDisplayRoleLabel(eventType) {
             const e = String(eventType || '');
             if (/^Gym Leader/i.test(e)) return 'Gym Leader';
-            if (/^E[1-4]$/.test(e)) return 'Elite Four';
+            const eliteSlot = e.match(/^E([1-4])$/);
+            if (eliteSlot) return 'Elite ' + eliteSlot[1];
             if (e === 'Champion') return 'Champion';
             if (e === 'Gym Trainer') return 'Gym Trainer';
             if (e === 'Rival') return 'Rival';
@@ -19017,7 +19255,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (d === 'easy' || d === 'veryeasy') { o.g1 *= 0.88; o.g4 *= 1.12; }
             else if (d === 'hard') { o.g1 *= 1.1; o.g4 *= 0.9; }
             else if (d === 'challenge') { o.g1 *= 1.18; o.g4 *= 0.82; }
-            else if (d === 'hardcore') { o.g1 *= 1.25; o.g4 *= 0.75; }
+            // Hardcore intentionally mirrors Normal team-grading; difficulty is expressed via no-heal rule.
             return o;
         }
 
@@ -19027,7 +19265,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (d === 'easy' || d === 'veryeasy') x *= 0.92;
             else if (d === 'hard') x *= 1.04;
             else if (d === 'challenge') x *= 1.08;
-            else if (d === 'hardcore') x *= 1.12;
+            // Hardcore intentionally mirrors Normal sig-mon probability.
             return Math.min(1, x);
         }
 
@@ -19059,72 +19297,125 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function _storyEnemyMechKeys() {
             const k = [];
+            if (sm.settings.dynaOn) k.push('gmax');
             if (sm.settings.megaOn) k.push('mega');
             if (sm.settings.dynaOn) k.push('dmax');
-            if (sm.settings.teraOn) k.push('tera');
             if (sm.settings.zOn) k.push('z');
+            if (sm.settings.teraOn) k.push('tera');
             return k;
         }
-        function _requiredEnemyKindCount(badges) {
-            const n = _storyEnemyMechKeys().length;
-            if (badges <= 2 || n === 0) return 0;
-            if (badges === 3 || badges === 4) return 1;
-            if (badges === 5 || badges === 6) return 2;
-            if (badges === 7) return Math.min(3, n);
-            return Math.min(4, n);
-        }
-        function _extraEnemyGimmickP(badges) {
-            if (badges <= 2) return 0;
-            if (badges === 3) return 0.10;
-            if (badges === 4) return 0.25;
-            if (badges === 5) return 0.30;
-            if (badges === 6) return 0.40;
-            if (badges === 7) return 0.50;
-            return 0.70;
-        }
-        function _kindToForcedTag(kind, species) {
+        function _kindToForcedTag(kind) {
+            if (kind === 'gmax') return 'GMAXDYNAMAX';
             if (kind === 'mega') return 'MEGA';
+            if (kind === 'dmax') return 'DYNAMAX';
             if (kind === 'z') return 'ZMOVE';
             if (kind === 'tera') return 'TERA';
-            if (kind === 'dmax') return (typeof GMAX_SPECIES !== 'undefined' && GMAX_SPECIES.has(species)) ? 'GMAXDYNAMAX' : 'DYNAMAX';
             return 'STANDARD';
         }
-        function _applyEnemyGimmickDistribution(team) {
+        function _eligibleKindsForSpecies(species, enabledKinds) {
+            const out = [];
+            for (const k of enabledKinds) {
+                if (k === 'gmax') {
+                    if (typeof GMAX_SPECIES !== 'undefined' && GMAX_SPECIES.has(species)) out.push('gmax');
+                } else if (k === 'mega') {
+                    if (typeof MEGA_SPECIES !== 'undefined' && MEGA_SPECIES.has(species) && species !== 'Rayquaza') out.push('mega');
+                } else if (k === 'dmax') {
+                    if (typeof DYNAMAX_BANNED === 'undefined' || !DYNAMAX_BANNED.has(species)) out.push('dmax');
+                } else {
+                    out.push(k);
+                }
+            }
+            return out;
+        }
+        function _trainerTierForEvent(eventType) {
+            const e = String(eventType || '');
+            if (e === 'Mystery Figure') return 1.00;
+            if (e === 'Champion') return 0.85;
+            if (e === 'Rival') return (sm && (sm.badges|0) >= 8) ? 0.85 : 0.55;
+            if (e === 'E4') return 0.75;
+            if (e === 'E3') return 0.65;
+            if (e === 'E2') return 0.55;
+            if (e === 'E1') return 0.45;
+            const gl = e.match(/^Gym Leader\s*(\d)$/);
+            if (gl) {
+                const tiers = {1:0.10, 2:0.15, 3:0.20, 4:0.25, 5:0.30, 6:0.35, 7:0.40, 8:0.45};
+                return tiers[+gl[1]] || 0.20;
+            }
+            if (e === 'Gym Trainer 2' || e === 'Elite Trainer') return 0.08;
+            if (e === 'Gym Trainer 1' || e === 'Gym Trainer' || e === 'Basic Trainer') return 0.04;
+            if (e === 'Victory Road') return 0.50;
+            return 0.04;
+        }
+        function _storyProgressFactor(badges) {
+            const b = badges|0;
+            if (b <= 3) return 0.00;
+            if (b === 4) return 0.40;
+            if (b === 5) return 0.60;
+            if (b === 6) return 0.80;
+            if (b === 7) return 0.95;
+            return 1.00;
+        }
+        function _perMonMechChance(eventType) {
+            const e = String(eventType || '');
+            if (e === 'Mystery Figure') return 1.0;
+            const tier = _trainerTierForEvent(e);
+            const prog = _storyProgressFactor(sm && sm.badges);
+            return Math.max(0, Math.min(1, tier * prog));
+        }
+        function _applyEnemyGimmickDistribution(team, eventType) {
             const keys = _storyEnemyMechKeys();
-            if (!keys.length) return team;
-            const badges = sm.badges || 0;
-            const need = _requiredEnemyKindCount(badges);
-            const priority = ['mega', 'dmax', 'tera', 'z'].filter(k => keys.includes(k)).slice(0, need);
-            const used = new Set();
+            if (!keys.length || !team || !team.length) return team;
+            const rng = (sm && sm.active) ? storyRngNext : Math.random;
+            const classic = !(sm && sm.settings && sm.settings.classicMode === false);
+            const priority = ['gmax', 'mega', 'dmax', 'z', 'tera'].filter(k => keys.includes(k));
+            const evt = eventType || (sm && STORY_EVENTS_RAW[sm.eventIndex] && STORY_EVENTS_RAW[sm.eventIndex][2]) || '';
+            const pPerMon = _perMonMechChance(evt);
+            if (pPerMon <= 0) return team;
+            const eligibility = team.map(m => _eligibleKindsForSpecies(m.name, keys));
+            const assigned = new Array(team.length).fill(null);
+
             const tryAssign = (idx, kind) => {
                 const nm = team[idx].name;
-                const tag = _kindToForcedTag(kind, nm);
+                const tag = _kindToForcedTag(kind);
                 const b = makeBuild(nm, { forceGimmick: tag });
-                if (b.gimmick && b.gimmick !== 'STANDARD') { team[idx].build = b; return true; }
+                if (b.gimmick && b.gimmick !== 'STANDARD') { team[idx].build = b; assigned[idx] = kind; return true; }
                 return false;
             };
-            let pi = 0;
-            const rng = (sm && sm.active) ? storyRngNext : Math.random;
-            const order = team.map((_, i) => i).sort(() => rng() - 0.5);
-            for (const idx of order) {
-                if (pi >= priority.length) break;
-                if (tryAssign(idx, priority[pi])) { used.add(idx); pi++; }
-            }
-            while (pi < priority.length) {
-                let progressed = false;
-                for (let idx = 0; idx < team.length; idx++) {
-                    if (used.has(idx)) continue;
-                    if (tryAssign(idx, priority[pi])) { used.add(idx); pi++; progressed = true; break; }
+
+            if (classic) {
+                const usedKinds = new Set();
+                for (const kind of priority) {
+                    if (usedKinds.has(kind)) continue;
+                    const candIdx = [];
+                    for (let i = 0; i < team.length; i++) {
+                        if (assigned[i]) continue;
+                        if (!eligibility[i].includes(kind)) continue;
+                        if (rng() >= pPerMon) continue;
+                        candIdx.push(i);
+                    }
+                    if (!candIdx.length) continue;
+                    let minOpts = Infinity;
+                    for (const i of candIdx) minOpts = Math.min(minOpts, eligibility[i].length);
+                    const tight = candIdx.filter(i => eligibility[i].length === minOpts);
+                    const pick = tight[Math.floor(rng() * tight.length)];
+                    if (tryAssign(pick, kind)) usedKinds.add(kind);
                 }
-                if (!progressed) break;
-            }
-            const pX = _extraEnemyGimmickP(badges);
-            for (let i = 0; i < team.length; i++) {
-                if (used.has(i)) continue;
-                if (rng() >= pX) continue;
-                const shuf = keys.slice().sort(() => rng() - 0.5);
-                for (const kind of shuf) {
-                    if (tryAssign(i, kind)) break;
+            } else {
+                const order = team.map((_, i) => i).sort(() => rng() - 0.5);
+                for (const idx of order) {
+                    if (assigned[idx]) continue;
+                    if (rng() >= pPerMon) continue;
+                    const elig = eligibility[idx];
+                    if (!elig.length) continue;
+                    const ranked = priority.filter(k => elig.includes(k));
+                    if (!ranked.length) continue;
+                    if (ranked[0] === 'gmax' && ranked.includes('mega')) {
+                        const choice = rng() < 0.5 ? 'gmax' : 'mega';
+                        if (tryAssign(idx, choice)) continue;
+                    }
+                    for (const kind of ranked) {
+                        if (tryAssign(idx, kind)) break;
+                    }
                 }
             }
             return team;
@@ -19132,7 +19423,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function _signatureProbabilityForEvent(eventType) {
             const e = String(eventType || '');
-            if (/^Gym Trainer$/i.test(e)) return 0.75;
+            if (/^Gym Trainer 2$/i.test(e)) return 0.85;
+            if (/^Gym Trainer( 1)?$/i.test(e)) return 0.70;
             if (/^Gym Leader/i.test(e) || e === 'Rival' || /^E[1-4]$/.test(e) || e === 'Champion' || e === 'Victory Road') return 0.85;
             return 0.70;
         }
@@ -19293,7 +19585,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const build = makeBuild(chosen, { forceGimmick: 'STANDARD' });
                 team.push({ name: chosen, build });
             }
-            return _applyEnemyGimmickDistribution(team);
+            return _applyEnemyGimmickDistribution(team, battleEventType);
         }
         function rollMysteryFigureFinalBossTeam(partySize, enabledGensIn) {
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
@@ -19343,7 +19635,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.settings.teraOn = true;
                 sm.settings.zOn = true;
                 sm.badges = 8;
-                return _applyEnemyGimmickDistribution(picks);
+                return _applyEnemyGimmickDistribution(picks, 'Mystery Figure');
             } finally {
                 sm.settings.megaOn = oldMech.megaOn;
                 sm.settings.dynaOn = oldMech.dynaOn;
@@ -19879,8 +20171,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if ((sm.artifacts || []).length > 0) {
                 btn.innerHTML += makeActionBtn('✨ Artifact Hall — Toggle run artifacts','artifacts','window.StoryMode.enterArtifactHall()','dept',{ soft:true });
             }
-            // Pokémon Center — full party heal, free, unlimited (all difficulties)
-            btn.innerHTML += makeActionBtn('🏥 Pokémon Center — Restore Your Party','center','window.StoryMode.enterPokemonCenter()','center');
+            // Pokémon Center — full party heal, free, unlimited (disabled in Hardcore: bring potions)
+            if ((sm.storyDifficulty || 'normal') === 'hardcore') {
+                btn.innerHTML += `<button type="button" class="story-action-btn" disabled title="No Pokémon Center service in Hardcore — bring potions" style="opacity:0.45;cursor:not-allowed;"><span class="story-action-btn-text">🏥 Pokémon Center <span style="font-size:10px;color:#aaa;">(Disabled in Hardcore)</span></span></button>`;
+            } else {
+                btn.innerHTML += makeActionBtn('🏥 Pokémon Center — Restore Your Party','center','window.StoryMode.enterPokemonCenter()','center');
+            }
             const _partyN = sm.team.length;
             const _partyLabel = _partyN
                 ? `Party — Team & Order (${_partyN}/6)`
@@ -19989,6 +20285,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function _storyFullHealPartySlots() {
+            // Hardcore: never auto-heal between battles or on retreat. Caller is responsible for state preservation.
+            if ((sm.storyDifficulty || 'normal') === 'hardcore') return;
             (sm.team || []).forEach(slot => {
                 if (!slot) return;
                 slot.currentHp = null;
@@ -20738,7 +21036,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (diff === 'veryeasy') coinMult = 1.60;
                 else if (diff === 'hard') coinMult = 0.92;
                 else if (diff === 'challenge') coinMult = 1.05;
-                else if (diff === 'hardcore') coinMult = 1.20; // attrition risk rewarded
+                else if (diff === 'hardcore') coinMult = 1.30; // mirrors Normal — difficulty is expressed via no-heal rule
                 // Cursed Coin Pouch: ×2 coin gain (applied after difficulty mult)
                 if ((sm.artifacts||[]).includes('cursedCoinPouch') && !(sm.artifactsDisabled||[]).includes('cursedCoinPouch')) coinMult *= 2;
                 const coinsAwarded = Math.floor((coins || 0) * coinMult);
@@ -20899,7 +21197,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (gotBadge && battleEventName) {
                 const evn = String(battleEventName);
                 if (/^Gym Leader [1-8]$/i.test(evn)) badgeFlavor = `<div style="font-size:14px;color:#81c784;">You received a Gym Badge!</div>`;
-                else if (/^E[1-4]$/.test(evn)) badgeFlavor = `<div style="font-size:14px;color:#81c784;">Elite Four passed—one step closer!</div>`;
+                else if (/^E[1-4]$/.test(evn)) {
+                    const n = evn.slice(1);
+                    badgeFlavor = `<div style="font-size:14px;color:#81c784;">Elite ${n} passed—one step closer!</div>`;
+                }
                 else if (evn === 'Champion') badgeFlavor = `<div style="font-size:14px;color:#81c784;">You defeated the Champion!</div>`;
                 else if (evn === 'Rival') badgeFlavor = `<div style="font-size:14px;color:#81c784;">Your rival challenges the new Champion!</div>`;
             }
@@ -20922,6 +21223,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── SHOPS ─────────────────────────────────────────────────────────
         function enterPokemonCenter() {
+            // Hardcore: no healing between battles — guard even if button is somehow invoked
+            if ((sm.storyDifficulty || 'normal') === 'hardcore') {
+                const quoteEl = document.getElementById('story-city-quote');
+                if (quoteEl) quoteEl.textContent = '"The Center is closed for Hardcore trainers. You\'ll have to manage with what you carry."';
+                return;
+            }
             _storyFullHealPartySlots();
             save();
             renderTeamPanel();
@@ -21906,7 +22213,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const badges = sm.badges | 0;
             const diff = sm.storyDifficulty || 'normal';
             if ((diff === 'easy' || diff === 'veryeasy') && gymCount < 3) return emptyInv();
-            const sc = diff === 'hardcore' ? 1.3 : diff === 'challenge' ? 1.2 : (diff === 'easy' || diff === 'veryeasy') ? 0.75 : diff === 'hard' ? 1.15 : 1;
+            const sc = diff === 'challenge' ? 1.2 : (diff === 'easy' || diff === 'veryeasy') ? 0.75 : diff === 'hard' ? 1.15 : 1; /* hardcore mirrors normal */
             let maxPotion = 0, fullRestore = 0, fullHeal = 0, revive = 0, maxRevive = 0;
             // Fewer Max Potions: first at 4+ badges, second at 7+ (was 2+ and 4+)
             if (badges >= 4) maxPotion += 1;
@@ -21916,13 +22223,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (badges >= 7) fullRestore = Math.max(1, Math.round(1 * sc));
             // Challenge: extra Full Heal from 6+ badges only (no free Max Potion at 0–1 badges)
             if (diff === 'challenge' && badges >= 6) fullHeal += 1;
-            // Hardcore: extra Max Potion from 5+, extra Full Heal from 6+
-            if (diff === 'hardcore') {
-                if (badges >= 5) maxPotion += 1;
-                if (badges >= 6) fullHeal += 1;
-            }
+            // Hardcore mirrors Normal foe inventory — its difficulty is the player's no-heal rule, not extra foe items.
             // Hard+ bench items: stagger Revive (5–6) then Max Revive (7+); −1 Max Potion trade each
-            const hardPlus = diff === 'hard' || diff === 'challenge' || diff === 'hardcore';
+            const hardPlus = diff === 'hard' || diff === 'challenge';
             if (hardPlus) {
                 if (badges >= 5 && badges <= 6) {
                     revive = 1;
@@ -22193,7 +22496,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 + '<div class="story-tutor-move-detail-head"><strong class="story-tutor-move-detail-name">' + _esc(moveName) + '</strong> '
                 + '<span class="type-badge type-' + typ + '" style="font-size:10px;">' + _esc(typ) + '</span></div>'
                 + '<div class="story-tutor-move-detail-grid">'
-                + '<span>Cat: <strong class="cat-' + move.cat + '">' + _esc(move.cat) + '</strong></span>'
+                + '<span>Cat: ' + moveCategoryTooltipHtml(move.cat) + '</span>'
                 + '<span>Pow: <strong>' + powStr + '</strong></span>'
                 + '<span>Acc: <strong>' + _esc(accStr) + '</strong></span>'
                 + '<span>PP: <strong>' + _esc(String(move.pp)) + '</strong></span>'

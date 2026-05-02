@@ -1,0 +1,27 @@
+---
+description: How this repo is structured so you can fix bugs without loading all of battle.html
+alwaysApply: true
+---
+
+# Pokémon Arena — repo map
+
+- **Main app**: `battle.html` is a single large file (HTML + CSS + inline JS). Before reading thousands of lines, **search section markers**: `// ===` and `<!-- =====` (and CSS blocks like `=== DISPLAY MODES ===`). Those labels name subsystems (data load, Smogon builds, battle loop, Story Mode, URL debug seeds, etc.).
+- **Scripts loaded before inline code**: `online-pvp.js`, `move-sfx-map.js`, `move-anim-map.js` (see `<script src=` near the top of the body).
+- **JSON data**: `data/species.json`, `moves.json`, `items.json`, `abilities.json`, `natures.json`, `builds/gen*.json`, etc. Edit data there; game logic is mostly in `battle.html`.
+- **Dev server**: `npm start` runs `scripts/dev-server.cjs` (default **http://localhost:5173/battle.html**). See `README.md` for ports and story-save notes (`pbs_story_save` in localStorage).
+- **When changing UI**: Prefer existing **`--battle-*` / `--surface` CSS variables** in `:root` instead of new parallel color palettes.
+- **Low-risk habit**: Fix one subsystem at a time; use the nearest `=== ... ===` comment as the anchor for related code.
+
+## Pokémon “card” UI (several families — not one component)
+
+The game uses **different class families on purpose** (screen + layout), not a single reusable card component:
+
+| Pattern | Role |
+|--------|------|
+| `.draft-card` (+ `.draft-card-sprite`, `-body`, `-header`, `-moves`, …) | Draft pool, swap foe/player grids, story team rows when combined with `.story-team-slot` |
+| `.party-slot` | Battle **Switch** modal — list row with Summary / Switch |
+| `.stat-box` / `#player-stat-box` / `#foe-stat-box` | In-battle HP chrome |
+| `.story-shop-item`, `.story-link-mon`, `.story-artifact-card`, `.story-bag-item` | Story shop / link trade / artifacts / bag — similar borders, different chrome |
+| `.prof-pick-card` + `.draft-card` | Professor starter pick; selection toggles class **`prof-pick-card-selected`** |
+
+CSS for `.draft-card` appears **twice**: base layout (~rounded) and later a **Story/modal pixel theme** (`border-radius: 0`, gradients) — layered overrides, not accidental forks. Search `draft-card` before adding a third variant.
