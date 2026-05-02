@@ -213,8 +213,6 @@
             height: 100%;
             flex: 1;
             box-sizing: border-box;
-            background-size: cover;
-            background-position: center 40%;
         }
         body.is-mobile #screen-battle .battle-bottom-stack {
             background: linear-gradient(180deg, rgba(12,18,28,0.5) 0%, rgba(8,11,18,0.9) 100%) !important;
@@ -223,19 +221,7 @@
         body.is-mobile #screen-battle[data-battle-layout="portrait"] .battle-bottom-stack {
             background: #0a0e14 !important;
         }
-        /* Portrait: bias crop so the arena band sits higher (~3–4cm); scales with screen via dvh.
-           Pan x: +1cm vs prior (−1cm) → centered; y unchanged */
-        body.is-mobile #screen-battle[data-battle-layout="portrait"] {
-            background-position: center calc(40% + 11dvh - 9cm);
-        }
-        /* Portrait: vignette + terrain/weather track backdrop pan */
-        body.is-mobile #screen-battle[data-battle-layout="portrait"]::before {
-            transform: translateY(-9cm);
-        }
-        body.is-mobile #screen-battle[data-battle-layout="portrait"] #terrain-overlay,
-        body.is-mobile #screen-battle[data-battle-layout="portrait"] #weather-overlay {
-            transform: translateY(-9cm);
-        }
+        /* Portrait crop, vignette pan, and overlay pan removed — bg/vignette/overlays now anchor to --battle-ui-h directly */
         /* Portrait: overlap chrome like GBA; z-index 5 < .battle-bottom-stack (6) so HP row paints on top */
         body.is-mobile #screen-battle[data-battle-layout="portrait"] #player-sprite-container {
             z-index: 5;
@@ -1158,12 +1144,15 @@
             --battle-player-hud-est: clamp(56px, 9dvh, 76px);
             --sprite-foe-w: min(52vw, 210px);
             --sprite-player-w: min(54vw, 220px);
+            /* Nudge arena art downward (−Y in Y-up framing): smaller bottom inset ≈ field sits lower behind sprites */
+            --arena-bg-shift-y: 5cm;
             font-family: var(--battle-font);
             position: relative;
             background-image: url('sprites/backgrounds/battle/desktop/bg_neutral.png');
             background-color: #0a1a0a;
             background-size: cover;
-            background-position: center 42%;
+            /* Anchor the image's bottom edge to the top of the HUD on every layout — sprite ground line stays put */
+            background-position: center bottom max(0px, calc(var(--battle-ui-h, 190px) - var(--arena-bg-shift-y)));
             background-repeat: no-repeat;
             transition: background-image 0.8s ease-in-out;
         }
@@ -1204,7 +1193,9 @@
         /* ── Vignette ─────────────────────────────────────────────────────── */
         #screen-battle::before {
             content: '';
-            position: absolute; inset: 0;
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            bottom: var(--battle-ui-h, 190px);
             background:
                 radial-gradient(ellipse 80% 60% at 50% 100%, rgba(0,0,0,0.0) 40%, rgba(0,0,0,0.55) 100%),
                 radial-gradient(ellipse 100% 40% at 50% 0%, rgba(0,0,0,0.35) 0%, transparent 70%);
@@ -2884,7 +2875,7 @@
         @keyframes statArrowDown { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(30px); } }
 
         /* Weather & Terrain overlays */
-        .weather-overlay, .terrain-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; opacity: 0; transition: opacity 0.5s; }
+        .weather-overlay, .terrain-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: var(--battle-ui-h, 190px); pointer-events: none; z-index: 1; opacity: 0; transition: opacity 0.5s; }
         .weather-overlay.active, .terrain-overlay.active { opacity: 1; }
         
         .weather-sun { background: radial-gradient(ellipse at top, rgba(255,200,0,0.15) 0%, transparent 70%); animation: sunPulse 4s ease-in-out infinite; }
@@ -12236,15 +12227,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     let isTrickRoom = state.trickRoom > 0;
     let outsped = isTrickRoom ? (atkSpe > defSpe) : (defSpe > atkSpe);
     let threat = aiThreatScore(defender, attacker);
+    // Min-roll threat (Showdown low-roll = 0.85). When the foe's best hit can't OHKO at min roll,
+    // we treat ourselves as "safe enough to set up / heal" rather than panicking.
+    let minThreat = threat * 0.85;
     let aboutToBeKOd = outsped && threat >= attacker.currentHp;
+    let guaranteedKOd = outsped && minThreat >= attacker.currentHp;
     let isEarlyGame = state.turnNumber <= 2;
     let side = state.pSide;
+    let ownSide = state.fSide;
 
-    // Calculate best potential damage we can deal
+    // Calculate best potential damage we can deal (avg roll) and min-roll for guaranteed-KO checks
     let maxOwnDmg = 0;
     validMoves.forEach(m => { if (m.cat !== "Status") { let d = aiEstimateDmg(attacker, defender, m); if (d > maxOwnDmg) maxOwnDmg = d; } });
     let canKO = maxOwnDmg >= defender.currentHp;
+    let canGuaranteeKO = (maxOwnDmg * 0.85) >= defender.currentHp;
     let can2HKO = maxOwnDmg * 2 >= defender.currentHp;
+    // Phazers / clear-stats threats from the player's bench — penalize setup heavily when present.
+    const _phazerMoves = new Set(["Whirlwind","Roar","Dragon Tail","Circle Throw","Haze","Clear Smog","Topsy-Turvy"]);
+    let benchHasPhazer = state.playerParty.some(m => m !== defender && m.currentHp > 0 && (m.moves||[]).some(mv => _phazerMoves.has(mv.name)));
+    let defHasPhazer = (defender.moves||[]).some(mv => _phazerMoves.has(mv.name));
+    let defHasUnaware = defender.ability === "Unaware";
     let defHasSub = defender.volatile && defender.volatile.sub > 0;
     // Count remaining foe bench
     let foeBench = state.foeParty.filter(m => m !== attacker && m.currentHp > 0).length;
@@ -12275,11 +12277,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (eff >= 2) score *= 1.4;
             else if (eff > 1) score *= 1.2;
 
-            // KO bonus — scale by urgency
-            if (dmg >= defender.currentHp) {
-                score *= aboutToBeKOd ? 4.0 : 2.5;
-                // Priority KO when outsped is massive
+            // KO bonus — scale by urgency. Distinguish guaranteed (min-roll KO) vs likely (avg KO).
+            // Guaranteed beats likely so the AI doesn't gamble on a high roll when a safe KO exists.
+            const _minRoll = dmg * 0.85;
+            if (_minRoll >= defender.currentHp) {
+                score *= aboutToBeKOd ? 4.5 : 2.9; // Guaranteed KO
                 if (outsped && move.pri > 0) score *= 3.0;
+            } else if (dmg >= defender.currentHp) {
+                score *= aboutToBeKOd ? 3.6 : 2.2; // Likely (avg) KO
+                if (outsped && move.pri > 0) score *= 2.6;
             }
 
             // Priority logic
@@ -12395,28 +12401,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 score = defHpPct > 0.6 ? baseScore : baseScore * 0.7;
                 if (defender.type1 === "Grass" || defender.type2 === "Grass") score *= 0.3; // Sleep immune
             }
-            // Recovery
+            // Recovery — heal when (currentHp - threat) leaves us low and we either move first or
+            // the threat can't OHKO. Avoid healing when KO'ing the foe is the better trade.
             else if (["Roost","Recover","Soft-Boiled","Synthesis","Morning Sun","Slack Off","Rest","Wish","Milk Drink","Shore Up","Moonlight"].includes(move.name)) {
-                if (hpPct < 0.2) score = 100;
-                else if (hpPct < 0.35) score = 88;
-                else if (hpPct < 0.5) score = 72;
-                else if (hpPct < 0.65) score = 45;
+                const postHpPct = Math.max(0, (attacker.currentHp - threat)) / attacker.maxHp;
+                const survivesHit = threat < attacker.currentHp;
+                if (!survivesHit && outsped) {
+                    score = 4; // Healing won't matter — we die first
+                } else if (postHpPct < 0.15) score = 100;
+                else if (postHpPct < 0.30) score = 90;
+                else if (postHpPct < 0.45) score = 70;
+                else if (postHpPct < 0.60) score = 40;
                 else score = 3;
-                // Don't heal if we can KO
-                if (canKO && hpPct > 0.25) score *= 0.3;
+                // Don't heal if we can guaranteed-KO the foe and they can't kill us
+                if (canGuaranteeKO && survivesHit) score *= 0.2;
                 // Rest is less desirable (puts to sleep)
                 if (move.name === "Rest") score *= 0.8;
-                // Wish is delayed — less urgent
+                // Wish is delayed — less urgent. Worth more if we have a slow pivot to pass it to.
                 if (move.name === "Wish") score *= 0.85;
+                // Heal Block / sleep / taunt blocks recovery
+                if (attacker.volatile.healBlock > 0 || attacker.status === "SLP") score = 0;
             }
-            // Setup moves
+            // Setup moves — buff stats. Avoid against Unaware/phazers/priority-KO threats.
             else if (["Swords Dance","Nasty Plot","Calm Mind","Agility","Rock Polish","Cosmic Power","Dragon Dance","Quiver Dance","Shell Smash","Coil","Belly Drum","Iron Defense","Amnesia","Bulk Up","Work Up","Shift Gear","Growth","Geomancy"].includes(move.name)) {
-                let canSurvive = threat < attacker.currentHp;
+                let canSurvive = (threat * 0.85) < attacker.currentHp; // min-roll survival
                 let relevantStat = ["Swords Dance","Dragon Dance","Belly Drum","Coil","Bulk Up","Shift Gear"].includes(move.name) ? 'atk' : 'spa';
                 let currentBoost = attacker.stages[relevantStat] || 0;
+                // Does the player have a priority move that can KO us right now?
+                let defPriorityKO = (defender.moves||[]).some(mv => mv.pri > 0 && mv.cat !== "Status" && (aiEstimateDmg(defender, attacker, mv) >= attacker.currentHp));
 
                 if (!canSurvive) { score = 2; }
                 else if (currentBoost >= 4) { score = 3; }
+                else if (defPriorityKO) { score = 4; } // Sucker Punch / Extreme Speed will erase the setup
                 else {
                     // Base setup value
                     if (hpPct > 0.8) score = 80;
@@ -12435,6 +12451,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                     // Don't setup if opponent is low — just KO them
                     if (canKO) score *= 0.2;
+
+                    // Phazer / Haze / Unaware on the field or bench — setup will be undone or ignored.
+                    if (defHasPhazer || defHasUnaware) score *= 0.25;
+                    else if (benchHasPhazer) score *= 0.55;
                 }
             }
             // Status infliction
@@ -12516,11 +12536,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (defHpPct > 0.7) score += 10;
                 }
             }
-            // Hazard removal
-            else if (move.name === "Defog" || move.name === "Rapid Spin") {
-                let ownSide = state.fSide;
-                let hazardValue = (ownSide.stealthRock ? 25 : 0) + (ownSide.spikes * 12) + (ownSide.toxicSpikes * 15) + (ownSide.stickyWeb ? 15 : 0);
-                score = hazardValue > 0 ? hazardValue + 15 : 8;
+            // Hazard removal — Defog also clears the foe's screens; Rapid Spin only clears our hazards.
+            // Mortal Spin adds Poison status; Tidy Up clears hazards both sides AND boosts atk/spe.
+            else if (move.name === "Defog" || move.name === "Rapid Spin" || move.name === "Mortal Spin" || move.name === "Tidy Up") {
+                const ours = state.fSide; // our hazards (we want gone)
+                const theirs = state.pSide; // their screens (Defog/Tidy Up clear too)
+                let hazardValue = (ours.stealthRock ? 28 : 0) + (ours.spikes * 13) + (ours.toxicSpikes * 16) + (ours.stickyWeb ? 18 : 0);
+                // Bench survivors that would benefit from clean field
+                const benchAlive = state.foeParty.filter(m => m !== attacker && m.currentHp > 0).length;
+                if (benchAlive > 0 && hazardValue > 0) hazardValue += 10;
+                // Defog also strips opposing screens
+                if (move.name === "Defog") {
+                    hazardValue += (theirs.reflect > 0 ? 10 : 0) + (theirs.lightScreen > 0 ? 10 : 0) + (theirs.auroraVeil > 0 ? 18 : 0);
+                }
+                // Tidy Up: bonus for the +1 atk/+1 spe self-boost (it's a setup move too)
+                if (move.name === "Tidy Up") hazardValue += 18;
+                // Mortal Spin: bonus for poisoning the foe
+                if (move.name === "Mortal Spin" && !defender.status && !defHasSub &&
+                    !(defender.type1 === "Poison" || defender.type2 === "Poison" || defender.type1 === "Steel" || defender.type2 === "Steel")) {
+                    hazardValue += 14;
+                }
+                score = hazardValue > 0 ? hazardValue + 15 : 6;
+                // Don't waste a turn clearing hazards if we're about to die and can't OHKO back
+                if (aboutToBeKOd && !canGuaranteeKO) score *= 0.4;
             }
             // U-turn / Volt Switch / Flip Turn (pivoting)
             else if (["U-turn","Volt Switch","Flip Turn","Parting Shot"].includes(move.name)) {
@@ -12554,7 +12592,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else score *= 0.94;
         }
 
-        // Small random factor
+        // PP conservation: when a move has very low PP and we're not finishing the foe with it,
+        // mildly discount it so we save it for when it matters. Doesn't apply to KO moves.
+        if (move.maxPp >= 5 && move.pp <= Math.max(1, Math.floor(move.maxPp / 3)) && !canGuaranteeKO) {
+            score *= 0.92;
+        }
+
+        // Choice-lock awareness: if we'd lock into this move, prefer ones that aren't walled
+        // by a known surviving switch-in. Conservative weight (~0.85) to avoid over-thinking.
+        if (move.cat !== "Status" && (attacker.item === "Choice Band" || attacker.item === "Choice Specs" || attacker.item === "Choice Scarf")) {
+            const survivors = state.playerParty.filter(m => m !== defender && m.currentHp > 0);
+            if (survivors.length > 0) {
+                let walledCount = 0;
+                survivors.forEach(s => {
+                    const sEff = getMoveEffectiveness(move.type, s.type1, s.type2);
+                    if (sEff === 0 || abilityImmunity(move, s)) walledCount++;
+                    else if (sEff > 0 && sEff < 1) walledCount += 0.5;
+                });
+                if (walledCount > 0) score *= Math.max(0.6, 1 - 0.18 * (walledCount / survivors.length) * 2);
+            }
+        }
+
+        // Look-ahead tie-breaker (uniform across all difficulties): tiny nudge for moves that
+        // leave us in a better position next turn — outspeed after a Sticky Web / speed drop,
+        // or leaving the foe with a status that ticks. We add a small additive bonus, then random.
+        if (move.cat !== "Status") {
+            // Speed-drop moves on a faster foe = future outspeed
+            if (!outsped && (move.name === "Icy Wind" || move.name === "Bulldoze" || move.name === "Electroweb" || move.name === "Rock Tomb" || move.name === "Glaciate" || move.name === "Drum Beating")) score += 4;
+            // Contact + Static / Flame Body / Poison Point on opponent — handled by engine; no AI bonus
+        }
+
+        // Small random factor (kept tiny so the scoring system dominates)
         score += Math.random() * 6;
         if (score > maxScore) { maxScore = score; bestMove = move; }
     });
@@ -12590,8 +12658,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
     // Will we be KO'd before we move?
     let willDieFirst = outsped && threat >= attacker.currentHp;
-    // Are we walled?
+    // Are we walled? (low-damage AND opponent isn't already low enough that we can chip-finish)
     let walled = myBestDmg < defender.maxHp * 0.08 && myBestDmg < defender.currentHp * 0.12;
+    // Predicted-switch check: if the player is likely to swap to a hard counter (e.g. we're a
+    // Choice-locked specialist), our follow-up turn becomes a free KO for them. If our best
+    // move is also walled by their bench's best resist, give a nudge toward switching first.
+    let bestResist = null, bestResistEff = 1;
+    state.playerParty.forEach(m => {
+        if (m === defender || m.currentHp <= 0) return;
+        // Pick the move our attacker is "best at" — proxy by max damage's type
+        let bestType = null, bestTypeDmg = 0;
+        attacker.moves.forEach(mv => {
+            if (mv.cat !== "Status" && mv.pp > 0) {
+                const d = aiEstimateDmg(attacker, m, mv);
+                if (d > bestTypeDmg) { bestTypeDmg = d; bestType = mv.type; }
+            }
+        });
+        if (bestType) {
+            const eff = getMoveEffectiveness(bestType, m.type1, m.type2);
+            if (eff < bestResistEff) { bestResistEff = eff; bestResist = m; }
+        }
+    });
+    let benchHasHardResist = bestResist && bestResistEff <= 0.5;
     // Can we KO?
     let canKO = myBestDmg >= defender.currentHp;
     // Do we have priority that KOs?
@@ -12603,8 +12691,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     // Don't switch if boosted significantly
     if ((attacker.stages.atk >= 2 || attacker.stages.spa >= 2) && !willDieFirst) return null;
 
-    // Check if any bench mon is better
-    let shouldSwitch = willDieFirst || (walled && hpPct > 0.35);
+    // Check if any bench mon is better. Also switch if a hard resist on the player's bench
+    // means continuing to attack just feeds them a free turn (especially when we're at decent HP).
+    let shouldSwitch = willDieFirst || (walled && hpPct > 0.35) || (benchHasHardResist && hpPct > 0.5 && !canKO);
 
     if (shouldSwitch) {
         let switchTo = aiBestSwitch(bench, defender);
