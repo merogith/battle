@@ -4146,6 +4146,14 @@
             <label class="settings-row" for="sw-animations"><span>Battle animations</span><input type="checkbox" class="pbs-switch" id="sw-animations" role="switch" onchange="window.applySettingSwitch('animations', this.checked)"></label>
             <label class="settings-row" for="sw-weather-anim"><span>Weather animation</span><input type="checkbox" class="pbs-switch" id="sw-weather-anim" role="switch" onchange="window.applySettingSwitch('weatherAnimation', this.checked)"></label>
             <label class="settings-row" for="sw-terrain-bg"><span>Terrain background</span><input type="checkbox" class="pbs-switch" id="sw-terrain-bg" role="switch" onchange="window.applySettingSwitch('terrainBackground', this.checked)"></label>
+            <div class="settings-row" style="border-bottom:1px solid #444;" title="Override automatic device detection. Reload may be needed for some screens.">
+                <span>Display</span>
+                <select id="setting-display-mode" onchange="settings.displayMode=this.value; persistMiscSettings(); window.applyDisplayMode && window.applyDisplayMode();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
+                    <option value="auto">Auto (detect)</option>
+                    <option value="phone">Phone</option>
+                    <option value="desktop">Desktop</option>
+                </select>
+            </div>
             <div class="settings-section-title">Audio</div>
             <label class="settings-row" for="sw-music"><span>Music</span><input type="checkbox" class="pbs-switch" id="sw-music" role="switch" onchange="window.applySettingSwitch('musicEnabled', this.checked)"></label>
             <div class="settings-row" style="flex-wrap:wrap;">
@@ -4814,11 +4822,21 @@
 
     <script>
         // === 0. DEVICE DETECTION ===
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        const _autoIsMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
             || (navigator.maxTouchPoints > 1 && /MacIntel/.test(navigator.platform))
             || window.matchMedia('(hover: none) and (pointer: coarse)').matches
             /* WebViews / “Desktop site” / devtools can miss UA; coarse pointer + narrow viewport ≈ phone/tablet */
             || (navigator.maxTouchPoints > 0 && window.matchMedia('(pointer: coarse)').matches && window.matchMedia('(max-width: 1024px)').matches);
+        let _displayModeOverride = 'auto';
+        try {
+            const _pbsEarly = JSON.parse(localStorage.getItem('pbs_settings') || '{}');
+            if (_pbsEarly && (_pbsEarly.displayMode === 'phone' || _pbsEarly.displayMode === 'desktop' || _pbsEarly.displayMode === 'auto')) {
+                _displayModeOverride = _pbsEarly.displayMode;
+            }
+        } catch (e) {}
+        const isMobile = _displayModeOverride === 'phone' ? true
+            : _displayModeOverride === 'desktop' ? false
+            : _autoIsMobile;
 
         if (isMobile) document.body.classList.add('is-mobile');
         function applyLayoutPresetClasses() {
@@ -6059,7 +6077,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             aiProfile: 'balanced', /* aggro | balanced | stall — vs AI only */
             storyBattleItems: true, /* story in-battle bag */
             pvpBattleItems: false,  /* reserved: symmetric items in PvP */
-            battleLogDock: true     /* landscape tablets/desktop: dock log when wide enough */
+            battleLogDock: true,    /* landscape tablets/desktop: dock log when wide enough */
+            displayMode: 'auto'     /* 'auto' | 'phone' | 'desktop' — manual override of UA detection */
         };
         try {
             const _pbs = JSON.parse(localStorage.getItem('pbs_settings') || '{}');
@@ -6068,6 +6087,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.pvpBattleItems === 'boolean') settings.pvpBattleItems = _pbs.pvpBattleItems;
             if (typeof _pbs.battleLogDock === 'boolean') settings.battleLogDock = _pbs.battleLogDock;
             if (typeof _pbs.smartDraftPool === 'boolean') settings.smartDraftPool = _pbs.smartDraftPool;
+            if (_pbs.displayMode === 'phone' || _pbs.displayMode === 'desktop' || _pbs.displayMode === 'auto') settings.displayMode = _pbs.displayMode;
         } catch (e) {}
         function persistMiscSettings() {
             try {
@@ -6076,10 +6096,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     storyBattleItems: settings.storyBattleItems,
                     pvpBattleItems: settings.pvpBattleItems,
                     battleLogDock: settings.battleLogDock,
-                    smartDraftPool: settings.smartDraftPool
+                    smartDraftPool: settings.smartDraftPool,
+                    displayMode: settings.displayMode
                 }));
             } catch (e) {}
         }
+        window.applyDisplayMode = function() {
+            const m = settings.displayMode || 'auto';
+            const wantMobile = m === 'phone' ? true : m === 'desktop' ? false : _autoIsMobile;
+            document.body.classList.toggle('is-mobile', wantMobile);
+            try { window.applyBattleLayoutMode && window.applyBattleLayoutMode(); } catch (e) {}
+            try { applyDesktopGameScale && applyDesktopGameScale(); } catch (e) {}
+            try { window.applyBattleLogDockClass && window.applyBattleLogDockClass(); } catch (e) {}
+        };
 
         // ============================================================
         // AUDIO SYSTEM
@@ -7738,6 +7767,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             dismissTextTooltipForModal();
             const ap = document.getElementById('setting-ai-profile');
             if (ap) ap.value = settings.aiProfile || 'balanced';
+            const dm = document.getElementById('setting-display-mode');
+            if (dm) dm.value = settings.displayMode || 'auto';
             try { window.syncSettingsModalSwitches(); } catch (e) {}
             try { _updateFullscreenUI(); } catch (e) {}
             document.getElementById('modal-settings').classList.remove('hidden');
