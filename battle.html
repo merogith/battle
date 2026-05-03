@@ -19028,7 +19028,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           'Gym Trainer':    ['You won\'t reach the Leader!','Hmph! Prove yourself first!','This gym\'s counting on me!','I train every day for this!','…Not bad. But not enough!'],
           'Gym Leader':     ['Enough talk. Let\'s go!','This badge isn\'t for tourists!','Show me what you\'ve got!','…Don\'t disappoint me.','You\'ve come far. Now show it!','My Pokémon and I won\'t hold back!'],
           'Elite Trainer':  ['I\'ve waited for a challenge like this!','Technique beats raw power—usually.','…Impressive. But I\'m stronger.','Think you can keep up?','This won\'t be a cakewalk!'],
-          'Rival':          ['You again?!','I\'ve been training for this!','I won\'t lose to you!','…This time it\'s different!','Let\'s settle this!','Don\'t go easy on me!'],
+          'Rival':          ['You again?!','I\'ve been training for this!','I won\'t lose to you!','…This time it\'s different!','Let\'s settle this!','Don\'t go easy on me!','En garde—allons-y!','C\'est parti—no holding back!'],
           'E1':             ['Elite Four, first gate.','…So you made it.','Welcome to the big leagues.','First test—don\'t blink!'],
           'E2':             ['Round two. Ready?','…Still standing? Good.','I won\'t repeat my predecessor\'s mistake.','The path gets steeper here!'],
           'E3':             ['Almost at the top…','…Feel the pressure yet?','Two down. I\'m next.','Give me everything!'],
@@ -19259,7 +19259,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── STATE ─────────────────────────────────────────────────────────
         const SAVE_KEY = 'pbs_story_save';
-        const SAVE_VER = 7;
+        const SAVE_VER = 8;
         let sm = { active:false, eventIndex:0, badges:0, gold:1000, team:[],
                    inventory:{}, artifacts:[], activeArtifactType:null,
                    trainerAssignments:{}, currentTrainerData:null,
@@ -19270,6 +19270,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    storyDifficulty:'normal', runSeed:null,
                    storyMilestoneTips:{ m4:false, m8:false },
                    storyRetryInventorySnapshot: null,
+                   storyRunRivalName: null,
                    version:SAVE_VER };
         /** Deterministic RNG for story rolls (team picks, etc.). Sequence continues from saved _strngState. */
         function storyRngNext() {
@@ -19327,6 +19328,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (sm.settings && typeof sm.settings.classicMode !== 'boolean') sm.settings.classicMode = true;
                 if (!('storyRetryInventorySnapshot' in sm)) sm.storyRetryInventorySnapshot = null;
+                if (!('storyRunRivalName' in sm)) sm.storyRunRivalName = null;
                 return true;
             } catch(e) { return false; }
         }
@@ -19667,27 +19669,62 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 return pool.length ? pool[Math.floor(rng() * pool.length)] : null;
             }
+            /** Thematic (type-fitting) or fully random within allowed gens — never consumes a signature slot. */
+            function pickNonSignatureFill() {
+                let c = pickThematic();
+                if (!c || usedNames.has(c)) {
+                    for (let t = 0; t < 8; t++) {
+                        const x = pickThematic();
+                        if (x && !usedNames.has(x)) { c = x; break; }
+                    }
+                }
+                if (!c || usedNames.has(c)) c = pickFromUnionExcluding(usedNames);
+                if (!c || usedNames.has(c)) c = pickRandomInGenWindow();
+                if (!c) c = 'Rattata';
+                return c;
+            }
+
+            const sigCapMax = Math.ceil(Math.max(1, partySize | 0) / 2);
+            const sigCap = Math.min(sigCapMax, S.length);
+            let sigUsed = 0;
 
             const team = [];
             const usedNames = new Set();
             for (let i = 0; i < partySize; i++) {
                 let chosen = null;
+                let choseFromSig = false;
                 const R = rng();
-                if (R <= sigP && S.length > 0) {
+                if (S.length > 0 && sigUsed < sigCap && R <= sigP) {
+                    choseFromSig = true;
                     const idx = Math.floor(rng() * S.length);
-                    chosen = S[idx]; S.splice(idx,1);
+                    chosen = S[idx];
                 } else {
                     chosen = pickThematic();
                 }
                 if (!chosen || usedNames.has(chosen)) {
+                    choseFromSig = false;
                     for (let t = 0; t < 8; t++) {
                         const c = pickThematic();
                         if (c && !usedNames.has(c)) { chosen = c; break; }
                     }
                 }
-                if (!chosen || usedNames.has(chosen)) chosen = pickFromUnionExcluding(usedNames);
-                if (!chosen || usedNames.has(chosen)) chosen = pickRandomInGenWindow();
+                if (!chosen || usedNames.has(chosen)) {
+                    choseFromSig = false;
+                    chosen = pickFromUnionExcluding(usedNames);
+                }
+                if (!chosen || usedNames.has(chosen)) {
+                    choseFromSig = false;
+                    chosen = pickRandomInGenWindow();
+                }
                 if (!chosen) chosen = 'Rattata';
+                if (choseFromSig && usedNames.has(chosen)) {
+                    choseFromSig = false;
+                    chosen = pickNonSignatureFill();
+                }
+                if (choseFromSig && sigUsed >= sigCap) {
+                    choseFromSig = false;
+                    chosen = pickNonSignatureFill();
+                }
                 if (isMixed && partySize >= 4 && chosen) {
                     const t1c = (baseStats[chosen] || {}).t1 || '';
                     const othersSame = team.filter(t => t && baseStats[t.name] && (baseStats[t.name].t1 || '') === t1c).length;
@@ -19695,12 +19732,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         for (let r = 0; r < 6; r++) {
                             const alt = pickThematic();
                             if (!alt || usedNames.has(alt)) continue;
+                            if (sigUsed >= sigCap && S.indexOf(alt) >= 0) continue;
                             const t1a = (baseStats[alt] || {}).t1 || '';
                             const oc = team.filter(t => t && baseStats[t.name] && (baseStats[t.name].t1 || '') === t1a).length;
-                            if (oc < 2) { chosen = alt; break; }
+                            if (oc < 2) {
+                                chosen = alt;
+                                break;
+                            }
                         }
                     }
                 }
+                choseFromSig = choseFromSig && sigUsed < sigCap && (S.indexOf(chosen) >= 0);
+                const jSig = S.indexOf(chosen);
+                if (jSig >= 0) S.splice(jSig, 1);
+                if (choseFromSig) sigUsed++;
                 usedNames.add(chosen);
                 const build = makeBuild(chosen, { forceGimmick: 'STANDARD' });
                 team.push({ name: chosen, build });
@@ -19816,10 +19861,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function assignTrainers(enabledGens) {
             const eg = normalizeEnabledGens(enabledGens);
             sm.trainerAssignments = {};
+            sm.storyRunRivalName = null;
             const usedBase = new Set();
+            const rivalEventIdxs = [];
+            STORY_EVENTS_RAW.forEach(ev => {
+                const [idx, type, event] = ev;
+                if (type !== 'Battle' || String(event) !== 'Rival') return;
+                rivalEventIdxs.push(idx);
+            });
+            let lockedRivalPick = null;
+            if (rivalEventIdxs.length) {
+                const rivalPool = TRAINER_DATA.filter(t => t.isRival);
+                const inGen = rivalPool.filter(t => eg.includes(t.charGen));
+                const pool = inGen.length ? inGen : rivalPool;
+                if (pool.length) {
+                    const rng = (sm && sm.active) ? storyRngNext : Math.random;
+                    lockedRivalPick = pool[Math.floor(rng() * pool.length)];
+                    sm.storyRunRivalName = lockedRivalPick.name;
+                }
+            }
             STORY_EVENTS_RAW.forEach(ev => {
                 const [idx, type, event] = ev;
                 if (type !== 'Battle') return;
+                if (String(event) === 'Rival' && lockedRivalPick) {
+                    sm.trainerAssignments[idx] = lockedRivalPick.name;
+                    return;
+                }
                 const t = selectTrainerForRole(event, eg, usedBase);
                 if (t) {
                     sm.trainerAssignments[idx] = t.name;
@@ -19866,6 +19933,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 profIntroThemePending: true,
                 storyMilestoneTips: { m4: false, m8: false },
                 storyRetryInventorySnapshot: null,
+                storyRunRivalName: null,
             };
             sm._strngState = null;
             _storyBattleInventorySnapshot = null;
@@ -22476,6 +22544,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.team = Array.from({ length: partySizeN }, () => ({ name: 'Tester', build: { gimmick: 'STANDARD' } }));
                 sm.badges = 0;
                 sm.eventIndex = 0;
+                sm.storyRunRivalName = null;
                 applyMechanicsToSettings();
                 assignTrainers(ng);
                 const sg = storySettingsGens();
