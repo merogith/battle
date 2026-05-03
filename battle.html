@@ -15141,8 +15141,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _soundMovesPR = new Set(["Boomburst","Hyper Voice","Bug Buzz","Snarl","Overdrive","Round","Echoed Voice","Disarming Voice","Relic Song","Sparkling Aria","Clanging Scales","Clangorous Soul","Chatter","Uproar","Snore","Sing","Supersonic","Screech","Metal Sound","Growl","Roar"]);
                 if (attacker.ability === "Punk Rock" && _soundMovesPR.has(move.name)) basePower = Math.floor(basePower * 1.3);
 
-                // Flash Fire immunity (bypassed by Mold Breaker)
-                if (_defAbilityActive && defender.ability === "Flash Fire" && move.type === "Fire") {
+                // Fire moves thaw a frozen defender (before Flash Fire check)
+                if (move.type === "Fire" && defender.status === "FRZ") {
+                    defender.status = null; defender.statusTurns = 0;
+                    logMsg(`${defender.name} was thawed out by the fire move!`, 'info');
+                    await sleep(800);
+                }
+                // Flash Fire immunity (bypassed by Mold Breaker; does not activate if defender was frozen)
+                if (_defAbilityActive && defender.ability === "Flash Fire" && move.type === "Fire" && defender.status !== "FRZ") {
                     defender.flashFireBoost = true;
                     logMsg(`${defender.name}'s Flash Fire absorbed the fire move!`, 'info');
                     await sleep(1000); return;
@@ -17795,11 +17801,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // 3. Non-Volatile Status Damage
             if (mon.ability !== "Magic Guard") {
-                // Burn: 1/16 max HP (Gen 5+ standard); Heatproof halves it to 1/32
+                // Burn: 1/8 max HP per turn (Gen 2+); Heatproof halves it to 1/16
                 if (mon.status === "BRN") {
                     let dmg = mon.ability === "Heatproof"
-                        ? Math.max(1, Math.floor(mon.maxHp / 32))
-                        : Math.max(1, Math.floor(mon.maxHp / 16));
+                        ? Math.max(1, Math.floor(mon.maxHp / 16))
+                        : Math.max(1, Math.floor(mon.maxHp / 8));
                     let actDmg = Math.min(mon.currentHp, dmg);
                     mon.currentHp -= actDmg;
                     logMsg(`${mon.name} took ${actDmg} damage from its burn!`, 'dmg');
