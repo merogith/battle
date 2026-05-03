@@ -17882,37 +17882,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Persim Berry cures confusion
             if (!unnerved && mon.item === "Persim Berry" && mon.volatile.confusion > 0) { logMsg(`${mon.name}'s Persim Berry snapped it out of confusion!`, 'heal'); mon.volatile.confusion = 0; mon.item = null; mon.itemConsumed = true; }
 
-            if (!unnerved && mon.item === "Salac Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
+            // Gluttony: pinch berries activate at ≤50% HP instead of ≤25%
+            const pinchThreshold = mon.ability === "Gluttony" ? 0.5 : 0.25;
+
+            if (!unnerved && mon.item === "Salac Berry" && mon.currentHp <= mon.maxHp * pinchThreshold && mon.currentHp > 0) {
                 changeStage(mon, 'spe', 1);
                 logMsg(`${mon.name} ate its Salac Berry!`, 'info');
                 mon.item = null; mon.itemConsumed = true;
             }
-            if (!unnerved && mon.item === "Liechi Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
+            if (!unnerved && mon.item === "Liechi Berry" && mon.currentHp <= mon.maxHp * pinchThreshold && mon.currentHp > 0) {
                 changeStage(mon, 'atk', 1);
                 logMsg(`${mon.name} ate its Liechi Berry!`, 'info');
                 mon.item = null; mon.itemConsumed = true;
             }
-            if (!unnerved && mon.item === "Ganlon Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
+            if (!unnerved && mon.item === "Ganlon Berry" && mon.currentHp <= mon.maxHp * pinchThreshold && mon.currentHp > 0) {
                 changeStage(mon, 'def', 1);
                 logMsg(`${mon.name} ate its Ganlon Berry!`, 'info');
                 mon.item = null; mon.itemConsumed = true;
             }
-            if (!unnerved && mon.item === "Petaya Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
+            if (!unnerved && mon.item === "Petaya Berry" && mon.currentHp <= mon.maxHp * pinchThreshold && mon.currentHp > 0) {
                 changeStage(mon, 'spa', 1);
                 logMsg(`${mon.name} ate its Petaya Berry!`, 'info');
                 mon.item = null; mon.itemConsumed = true;
             }
-            if (!unnerved && mon.item === "Apicot Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
+            if (!unnerved && mon.item === "Apicot Berry" && mon.currentHp <= mon.maxHp * pinchThreshold && mon.currentHp > 0) {
                 changeStage(mon, 'spd', 1);
                 logMsg(`${mon.name} ate its Apicot Berry!`, 'info');
                 mon.item = null; mon.itemConsumed = true;
             }
-            if (!unnerved && mon.item === "Lansat Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
+            if (!unnerved && mon.item === "Lansat Berry" && mon.currentHp <= mon.maxHp * pinchThreshold && mon.currentHp > 0) {
                 mon.volatile.focusEnergy = (mon.volatile.focusEnergy || 0) + 2;
                 logMsg(`${mon.name} ate its Lansat Berry and raised its critical-hit ratio!`, 'info');
                 mon.item = null; mon.itemConsumed = true;
             }
-            if (!unnerved && mon.item === "Starf Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
+            if (!unnerved && mon.item === "Starf Berry" && mon.currentHp <= mon.maxHp * pinchThreshold && mon.currentHp > 0) {
                 const starfStats = ['atk', 'def', 'spa', 'spd', 'spe'];
                 const starfStat = starfStats[Math.floor(Math.random() * starfStats.length)];
                 changeStage(mon, starfStat, 2);
@@ -17930,26 +17933,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (actHeal > 0) { mon.currentHp += actHeal; logMsg(`${mon.name} ate its Sitrus Berry and restored ${actHeal} HP!`, 'heal'); }
                 mon.item = null; mon.itemConsumed = true;
             }
-            // Flavor berries (Figy/Wiki/Mago/Aguav/Iapapa): heal 1/2 max HP at ≤25% (Gen 8+: no confusion)
-            const _flavorBerries = ["Figy Berry","Wiki Berry","Mago Berry","Aguav Berry"];
-            if (!unnerved && _flavorBerries.includes(mon.item) && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
-                let heal = Math.floor(mon.maxHp / 2);
+            // Flavor berries (Figy/Wiki/Mago/Aguav/Iapapa): heal 1/3 max HP at ≤25% (or ≤50% with Gluttony)
+            const _flavorBerries = ["Figy Berry","Wiki Berry","Mago Berry","Aguav Berry","Iapapa Berry"];
+            if (!unnerved && _flavorBerries.includes(mon.item) && mon.currentHp <= mon.maxHp * pinchThreshold && mon.currentHp > 0) {
+                let heal = Math.floor(mon.maxHp / 3);
                 let actHeal = Math.min(mon.maxHp - mon.currentHp, heal);
                 if (actHeal > 0) { mon.currentHp += actHeal; logMsg(`${mon.name} ate its ${mon.item} and restored ${actHeal} HP!`, 'heal'); }
                 mon.item = null; mon.itemConsumed = true;
             }
-            if (!unnerved && mon.item === "Iapapa Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
-                let heal = Math.floor(mon.maxHp / 3);
-                let actHeal = Math.min(mon.maxHp - mon.currentHp, heal);
-                if (actHeal > 0) { mon.currentHp += actHeal; logMsg(`${mon.name} ate its Iapapa Berry and restored ${actHeal} HP!`, 'heal'); }
-                mon.item = null; mon.itemConsumed = true;
-            }
-            if (!unnerved && mon.item === "Custap Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
+            if (!unnerved && mon.item === "Custap Berry" && mon.currentHp <= mon.maxHp * pinchThreshold && mon.currentHp > 0) {
                 logMsg(`${mon.name}'s Custap Berry lets it move first next turn!`, 'info');
                 mon.volatile.custapReady = true;
                 mon.item = null; mon.itemConsumed = true;
             }
-            if (!unnerved && mon.item === "Micle Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
+            if (!unnerved && mon.item === "Micle Berry" && mon.currentHp <= mon.maxHp * pinchThreshold && mon.currentHp > 0) {
                 logMsg(`${mon.name}'s Micle Berry boosts its next move's accuracy!`, 'info');
                 mon.volatile.micleBerry = true;
                 mon.item = null; mon.itemConsumed = true;
