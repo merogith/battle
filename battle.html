@@ -15661,6 +15661,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         attacker.volatile.infatuated = true;
                         logMsg(`${attacker.name} was drawn in by ${defender.name}'s Destiny Knot!`, 'status');
                     }
+                    // Pickpocket: steal attacker's item when hit by a contact move (defender has no item)
+                    if (defender.ability === "Pickpocket" && !defender.item && attacker.item && attacker.currentHp > 0 && isContactMove(move)) {
+                        const _pkDummy = {megaEvolved: attacker.megaEvolved || false};
+                        if (!isKnockOffImmuneHeldItem(_pkDummy, attacker.item)) {
+                            const _pkStolen = attacker.item;
+                            defender.item = _pkStolen; defender.originalItem = _pkStolen;
+                            attacker.item = null; attacker.itemConsumed = true; attacker.knockedOff = true;
+                            logMsg(`${defender.name}'s Pickpocket stole ${attacker.name}'s ${_pkStolen}!`, 'info');
+                            updateUI();
+                        }
+                    }
                 }
 
                 // Knock Off: Remove item (or register knock-off if Focus Sash broke this hit — item already cleared in precalc).
@@ -15688,6 +15699,43 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
 
+                // Thief / Covet: steal target's item after dealing damage (attacker has no item)
+                if ((move.name === "Thief" || move.name === "Covet") && !hitSub && attacker.currentHp > 0 && !attacker.item && defender.item) {
+                    const _thDummy = {megaEvolved: defender.megaEvolved || false};
+                    if (defender.ability !== "Sticky Hold" && !isKnockOffImmuneHeldItem(_thDummy, defender.item) && defender.item !== "Mail") {
+                        const _thStolen = defender.item;
+                        attacker.item = _thStolen; attacker.originalItem = _thStolen;
+                        defender.item = null; defender.itemConsumed = true; defender.knockedOff = true;
+                        logMsg(`${attacker.name} stole ${defender.name}'s ${_thStolen}!`, 'info');
+                        updateUI(); await sleep(500);
+                    }
+                }
+                // Magician: steal target's item when attacker hits (attacker has no item)
+                if (attacker.ability === "Magician" && !hitSub && !attacker.item && defender.item && attacker.currentHp > 0) {
+                    const _mgDummy = {megaEvolved: defender.megaEvolved || false};
+                    if (defender.ability !== "Sticky Hold" && !isKnockOffImmuneHeldItem(_mgDummy, defender.item)) {
+                        const _mgStolen = defender.item;
+                        attacker.item = _mgStolen; attacker.originalItem = _mgStolen;
+                        defender.item = null; defender.itemConsumed = true; defender.knockedOff = true;
+                        logMsg(`${attacker.name}'s Magician stole ${defender.name}'s ${_mgStolen}!`, 'info');
+                        updateUI(); await sleep(500);
+                    }
+                }
+                // Bug Bite / Pluck: eat target's berry and gain its effect
+                if ((move.name === "Bug Bite" || move.name === "Pluck") && !hitSub && attacker.currentHp > 0 && isBerry(defender.item)) {
+                    const _bbBerry = defender.item;
+                    defender.item = null; defender.itemConsumed = true; defender.knockedOff = true;
+                    logMsg(`${attacker.name} ate ${defender.name}'s ${_bbBerry}!`, 'info');
+                    applyInstantBerryEffect(attacker, _bbBerry);
+                    updateUI(); await sleep(500);
+                }
+                // Incinerate: destroy target's berry without benefit
+                if (move.name === "Incinerate" && !hitSub && isBerry(defender.item) && defender.ability !== "Sticky Hold") {
+                    const _incBerry = defender.item;
+                    defender.item = null; defender.itemConsumed = true; defender.knockedOff = true;
+                    logMsg(`${attacker.name} incinerated ${defender.name}'s ${_incBerry}!`, 'info');
+                    updateUI(); await sleep(500);
+                }
                 // Moxie: Atk +1 per KO
                 if (attacker.ability === "Moxie" && defender.currentHp <= 0 && attacker.currentHp > 0) {
                     changeStage(attacker, 'atk', 1);
@@ -15773,8 +15821,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             // Fling / Natural Gift: consume held item after the attack (including through Substitute; not on Protect — blocked earlier)
+            const _flingItemHeld = move.name === "Fling" ? attacker.item : null;
             if (move.cat !== "Status" && (move.name === "Fling" || move.name === "Natural Gift") && attacker.item) {
                 consumeFlingNaturalGiftIfHeld(attacker, move.name);
+            }
+            // Fling: apply the flung item's effect to the target on hit
+            if (_flingItemHeld && defender.currentHp > 0) {
+                if (isBerry(_flingItemHeld)) {
+                    logMsg(`${defender.name} was hit by the ${_flingItemHeld}!`, 'info');
+                    applyInstantBerryEffect(defender, _flingItemHeld);
+                } else if (_flingItemHeld === "Flame Orb") { applyStatus(defender, "BRN");
+                } else if (_flingItemHeld === "Toxic Orb") { applyStatus(defender, "TOX");
+                } else if (_flingItemHeld === "Poison Barb") { applyStatus(defender, "PSN");
+                } else if (_flingItemHeld === "Light Ball") { applyStatus(defender, "PAR");
+                } else if (_flingItemHeld === "King's Rock" || _flingItemHeld === "Razor Fang") { defender.volatile.flinch = true;
+                }
+                updateUI();
             }
 
             // Secondary effects (for damaging moves with secondaries, and for status moves)
@@ -15808,6 +15870,79 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (eff.foeDebuff && defender.currentHp > 0) {
                     changeStage(defender, eff.foeDebuff, eff.amount, true);
                     logMsg(`${defender.name}'s ${eff.foeDebuff.toUpperCase()} fell from the Max Move!`, 'info');
+                }
+                // G-Max specific effects (fire after the standard Max effect)
+                if (move.isGmaxMove && move.name && attacker.currentHp > 0) {
+                    const _gn = move.name;
+                    const _atkParty = isPlayer ? state.playerParty : state.foeParty;
+                    const _foeSide  = isPlayer ? state.fSide : state.pSide;
+                    const _atkSide  = isPlayer ? state.pSide : state.fSide;
+                    if (_gn === "G-Max Replenish") {
+                        let _rep = 0;
+                        _atkParty.forEach(m => {
+                            if (m.currentHp > 0 && !m.item && m.itemConsumed && !m.knockedOff && isBerry(m.originalItem) && Math.random() < 0.5) {
+                                m.item = m.originalItem; m.itemConsumed = false; _rep++;
+                                logMsg(`${m.name}'s Berry was restored by G-Max Replenish!`, 'heal');
+                            }
+                        });
+                        if (_rep === 0) logMsg(`G-Max Replenish found no Berries to restore!`, 'info');
+                    } else if (_gn === "G-Max Volt Crash") {
+                        if (defender.currentHp > 0) applyStatus(defender, "PAR");
+                    } else if (_gn === "G-Max Gold Rush" || _gn === "G-Max Smite") {
+                        if (defender.currentHp > 0 && !defender.volatile.confusion) {
+                            defender.volatile.confusion = Math.floor(Math.random() * 4) + 2;
+                            logMsg(`${defender.name} was confused by ${_gn}!`, 'status');
+                        }
+                    } else if (_gn === "G-Max Cuddle") {
+                        if (defender.currentHp > 0 && attacker.gender !== null && defender.gender !== null && attacker.gender !== defender.gender && defender.ability !== "Oblivious") {
+                            defender.volatile.infatuated = true;
+                            logMsg(`${defender.name} was infatuated by G-Max Cuddle!`, 'status');
+                        }
+                    } else if (_gn === "G-Max Malodor") {
+                        if (defender.currentHp > 0) applyStatus(defender, "PSN");
+                    } else if (_gn === "G-Max Stun Shock") {
+                        if (defender.currentHp > 0) { if (Math.random() < 0.5) applyStatus(defender, "PSN"); else applyStatus(defender, "PAR"); }
+                    } else if (_gn === "G-Max Foam Burst") {
+                        if (defender.currentHp > 0) { changeStage(defender, 'spe', -2, true); logMsg(`G-Max Foam Burst harshly lowered ${defender.name}'s Speed!`, 'info'); }
+                    } else if (_gn === "G-Max Resonance") {
+                        _atkSide.auroraVeil = 5; logMsg(`G-Max Resonance set Aurora Veil for 5 turns!`, 'info');
+                    } else if (_gn === "G-Max Finale") {
+                        let _fh = Math.min(attacker.maxHp - attacker.currentHp, Math.floor(attacker.maxHp / 6));
+                        if (_fh > 0) { attacker.currentHp += _fh; logMsg(`G-Max Finale restored ${_fh} HP!`, 'heal'); }
+                    } else if (_gn === "G-Max Sweetness") {
+                        _atkParty.forEach(m => { if (m.currentHp > 0 && m.status) { m.status = null; m.statusTurns = 0; logMsg(`${m.name}'s status was cured by G-Max Sweetness!`, 'heal'); } });
+                    } else if (_gn === "G-Max Chi Strike") {
+                        attacker.volatile.focusEnergy = Math.min(3, (attacker.volatile.focusEnergy || 0) + 1);
+                        logMsg(`G-Max Chi Strike raised ${attacker.name}'s critical-hit ratio!`, 'info');
+                    } else if (_gn === "G-Max Terror") {
+                        if (defender.currentHp > 0) { defender.volatile.partialTrap = 5; defender.volatile.partialTrapSrc = "G-Max Terror"; logMsg(`${defender.name} can't escape G-Max Terror!`, 'status'); }
+                    } else if (_gn === "G-Max Meltdown") {
+                        if (defender.currentHp > 0 && !defender.volatile.torment) { defender.volatile.torment = true; logMsg(`G-Max Meltdown applied Torment to ${defender.name}!`, 'status'); }
+                    } else if (_gn === "G-Max Snooze") {
+                        if (defender.currentHp > 0) { defender.volatile.yawnTurns = 2; logMsg(`G-Max Snooze made ${defender.name} drowsy!`, 'status'); }
+                    } else if (_gn === "G-Max Tartness") {
+                        if (defender.currentHp > 0) { changeStage(defender, 'eva', -1, true); logMsg(`G-Max Tartness lowered ${defender.name}'s evasiveness!`, 'info'); }
+                    } else if (_gn === "G-Max Wind Rage") {
+                        let _wr = false;
+                        if (_foeSide.reflect > 0)     { _foeSide.reflect = 0;      _wr = true; }
+                        if (_foeSide.lightScreen > 0) { _foeSide.lightScreen = 0;  _wr = true; }
+                        if (_foeSide.auroraVeil > 0)  { _foeSide.auroraVeil = 0;   _wr = true; }
+                        if (_foeSide.stealthRock)      { _foeSide.stealthRock = false; _wr = true; }
+                        if (_foeSide.spikes > 0)       { _foeSide.spikes = 0;       _wr = true; }
+                        if (_foeSide.toxicSpikes > 0)  { _foeSide.toxicSpikes = 0;  _wr = true; }
+                        if (_foeSide.stickyWeb)        { _foeSide.stickyWeb = false; _wr = true; }
+                        if (_wr) logMsg(`G-Max Wind Rage cleared hazards and screens from the foe's side!`, 'info');
+                    } else if (_gn === "G-Max Gravitas") {
+                        if (!state.gravity || state.gravity <= 0) { state.gravity = 5; logMsg(`G-Max Gravitas set Gravity for 5 turns!`, 'info'); }
+                        else logMsg(`Gravity is already in effect!`, 'info');
+                    } else if (_gn === "G-Max Stonesurge") {
+                        _foeSide.stealthRock = true; logMsg(`G-Max Stonesurge set Stealth Rock on the foe's side!`, 'info');
+                    } else if (_gn === "G-Max Depletion") {
+                        if (defender.currentHp > 0 && defender.volatile.lastMoveUsed) {
+                            const _dm = defender.moves && defender.moves.find(m => m.name === defender.volatile.lastMoveUsed);
+                            if (_dm) { _dm.pp = Math.max(0, _dm.pp - 2); logMsg(`G-Max Depletion reduced ${defender.name}'s ${_dm.name}'s PP by 2!`, 'info'); }
+                        }
+                    }
                 }
                 updateUI();
             }
@@ -16362,6 +16497,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (item === "Rusted Sword" || item === "Rusted Shield" || item === "Red Orb" || item === "Blue Orb" || item === "Griseous Orb") return true;
             if (isMegaStoneItemName(item)) return true;
             return false;
+        }
+
+        function isBerry(item) { return !!(item && / Berry$/.test(item)); }
+        function getRipenMult(mon) { return (mon && mon.ability === "Ripen") ? 2 : 1; }
+        function applyCheekPouchHeal(mon) {
+            if (mon.ability === "Cheek Pouch" && mon.currentHp > 0 && mon.currentHp < mon.maxHp) {
+                let h = Math.min(mon.maxHp - mon.currentHp, Math.floor(mon.maxHp / 3));
+                if (h > 0) { mon.currentHp += h; logMsg(`${mon.name}'s Cheek Pouch restored ${h} HP!`, 'heal'); }
+            }
+        }
+        // Applies the immediate effect of eating a berry (Bug Bite, Pluck, Fling, Cud Chew re-eat).
+        // Does NOT clear mon.item — caller must null it and set itemConsumed.
+        function applyInstantBerryEffect(eater, berry) {
+            if (!berry || !isBerry(berry)) return;
+            const rM = getRipenMult(eater);
+            const statusMap = { "Lum Berry":null,"Chesto Berry":"SLP","Pecha Berry":["PSN","TOX"],"Rawst Berry":"BRN","Aspear Berry":"FRZ","Cheri Berry":"PAR" };
+            if (Object.prototype.hasOwnProperty.call(statusMap, berry)) {
+                const cures = statusMap[berry];
+                const ok = cures === null || (Array.isArray(cures) ? cures.includes(eater.status) : eater.status === cures);
+                if (ok && eater.status) { eater.status = null; eater.statusTurns = 0; logMsg(`${eater.name}'s ${berry} cured its status!`, 'heal'); }
+            }
+            if (berry === "Persim Berry" && eater.volatile && eater.volatile.confusion > 0) { eater.volatile.confusion = 0; logMsg(`${eater.name}'s Persim Berry snapped it out of confusion!`, 'heal'); }
+            if (berry === "Oran Berry")   { let h = Math.min(eater.maxHp - eater.currentHp, 10 * rM); if (h > 0) { eater.currentHp += h; logMsg(`${eater.name} restored ${h} HP from the ${berry}!`, 'heal'); } }
+            if (berry === "Sitrus Berry") { let h = Math.min(eater.maxHp - eater.currentHp, Math.floor(eater.maxHp / 4) * rM); if (h > 0) { eater.currentHp += h; logMsg(`${eater.name} restored ${h} HP from the ${berry}!`, 'heal'); } }
+            const flavorHeal = { "Figy Berry":Math.floor(eater.maxHp/2),"Wiki Berry":Math.floor(eater.maxHp/2),"Mago Berry":Math.floor(eater.maxHp/2),"Aguav Berry":Math.floor(eater.maxHp/2),"Iapapa Berry":Math.floor(eater.maxHp/3) };
+            if (flavorHeal[berry] != null) { let h = Math.min(eater.maxHp - eater.currentHp, flavorHeal[berry] * rM); if (h > 0) { eater.currentHp += h; logMsg(`${eater.name} restored ${h} HP from the ${berry}!`, 'heal'); } }
+            const pinchStat = { "Liechi Berry":"atk","Ganlon Berry":"def","Petaya Berry":"spa","Apicot Berry":"spd","Salac Berry":"spe" };
+            if (pinchStat[berry]) { changeStage(eater, pinchStat[berry], 1 * rM); logMsg(`${eater.name} ate the ${berry}!`, 'info'); }
+            if (berry === "Lansat Berry") { eater.volatile.focusEnergy = (eater.volatile.focusEnergy||0) + (2*rM); logMsg(`${eater.name} ate the Lansat Berry!`, 'info'); }
+            if (berry === "Starf Berry")  { const ss=['atk','def','spa','spd','spe']; changeStage(eater, ss[Math.floor(Math.random()*ss.length)], 2*rM); logMsg(`${eater.name} ate the Starf Berry!`, 'info'); }
+            if (berry === "Micle Berry"  && eater.volatile) { eater.volatile.micleBerry = true; logMsg(`${eater.name}'s Micle Berry boosts next move accuracy!`, 'info'); }
+            if (berry === "Custap Berry" && eater.volatile) { eater.volatile.custapReady = true; logMsg(`${eater.name}'s Custap Berry lets it move first!`, 'info'); }
+            if (berry === "Enigma Berry") { let h = Math.min(eater.maxHp - eater.currentHp, Math.floor(eater.maxHp/4)*rM); if (h > 0) { eater.currentHp += h; logMsg(`${eater.name} restored ${h} HP from the ${berry}!`, 'heal'); } }
+            applyCheekPouchHeal(eater);
+            if (eater.ability === "Cud Chew" && eater.volatile) eater.volatile.cudChewBerry = berry;
         }
         /** Fling base power; 0 = cannot be flung. Berries default to 10; unknown flingable items default to 30. */
         function getFlingBasePower(item) {
@@ -16978,10 +17148,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Recycle: restore the last consumed item
             if (move.name === "Recycle") {
-                if (attacker.originalItem && !attacker.item && attacker.itemConsumed) {
+                if (attacker.originalItem && !attacker.item && attacker.itemConsumed && !attacker.knockedOff) {
                     attacker.item = attacker.originalItem;
                     attacker.itemConsumed = false;
-                    attacker.knockedOff = false;
                     logMsg(`${attacker.name} recycled its ${attacker.item}!`, 'heal');
                 } else { logMsg(`But it failed!`, 'info'); }
                 return;
@@ -17024,18 +17193,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "Trick" || move.name === "Switcheroo") {
                 if (defender.ability === "Sticky Hold") { logMsg(`${defender.name}'s Sticky Hold prevented the trick!`, 'info'); return; }
-                let atkMega = attacker.megaEvolved || isMegaStoneItemName(attacker.item);
-                let defMega = defender.megaEvolved || isMegaStoneItemName(defender.item);
-                if (atkMega || defMega) { logMsg(`But it failed!`); return; }
+                if (!attacker.item && !defender.item) { logMsg(`But it failed!`, 'info'); return; }
+                if (attacker.item === "Mail" || defender.item === "Mail") { logMsg(`Mail can't be swapped!`, 'info'); return; }
+                const _trickDummy = {megaEvolved: false};
+                if (isKnockOffImmuneHeldItem(_trickDummy, attacker.item) || isKnockOffImmuneHeldItem(_trickDummy, defender.item)) { logMsg(`But it failed!`, 'info'); return; }
+                if (attacker.megaEvolved || defender.megaEvolved) { logMsg(`But it failed!`); return; }
                 let atkItem = attacker.item || 'nothing';
                 let defItem = defender.item || 'nothing';
                 let temp = attacker.item; attacker.item = defender.item; defender.item = temp;
+                // Update originalItem so Harvest/Recycle references the newly held item
+                attacker.originalItem = attacker.item || null;
+                defender.originalItem = defender.item || null;
                 attacker.knockedOff = false;
                 defender.knockedOff = false;
                 // Item changed — clear choice locks on both sides; new lock applies on next move
                 attacker.volatile.choiceLock = null;
                 defender.volatile.choiceLock = null;
                 logMsg(`${attacker.name} swapped its ${atkItem} for ${defender.name}'s ${defItem}!`, 'info');
+                updateUI(); return;
+            }
+            // Bestow: give user's item to target (fails if user has no item, target already has one, or item is restricted)
+            if (move.name === "Bestow") {
+                const _bestDummy = {megaEvolved: attacker.megaEvolved || false};
+                if (!attacker.item || defender.item || isKnockOffImmuneHeldItem(_bestDummy, attacker.item) || attacker.item === "Mail") {
+                    logMsg(`But it failed!`, 'info'); return;
+                }
+                const _bestItem = attacker.item;
+                defender.item = _bestItem; defender.originalItem = _bestItem;
+                attacker.item = null; attacker.itemConsumed = true;
+                logMsg(`${attacker.name} gave its ${_bestItem} to ${defender.name}!`, 'info');
                 updateUI(); return;
             }
             // === Self-debuff moves (after damage) ===
@@ -17872,87 +18058,110 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let unnerved = (foe && foe.ability === "Unnerve") || state.magicRoom > 0 || mon.volatile.embargo > 0;
             // Status-curing berries (end-of-turn activation for existing statuses)
             if (!unnerved && mon.status && mon.currentHp > 0) {
-                if (mon.item === "Lum Berry") { logMsg(`${mon.name}'s Lum Berry cured its ${mon.status}!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; }
-                else if (mon.item === "Chesto Berry" && mon.status === "SLP") { logMsg(`${mon.name}'s Chesto Berry woke it up!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; }
-                else if (mon.item === "Pecha Berry" && (mon.status === "PSN" || mon.status === "TOX")) { logMsg(`${mon.name}'s Pecha Berry cured its poison!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; }
-                else if (mon.item === "Rawst Berry" && mon.status === "BRN") { logMsg(`${mon.name}'s Rawst Berry cured its burn!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; }
-                else if (mon.item === "Aspear Berry" && mon.status === "FRZ") { logMsg(`${mon.name}'s Aspear Berry thawed it out!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; }
-                else if (mon.item === "Cheri Berry" && mon.status === "PAR") { logMsg(`${mon.name}'s Cheri Berry cured its paralysis!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; }
+                let _sbUsed = null;
+                if (mon.item === "Lum Berry") { logMsg(`${mon.name}'s Lum Berry cured its ${mon.status}!`, 'heal'); mon.status = null; mon.statusTurns = 0; _sbUsed = mon.item; }
+                else if (mon.item === "Chesto Berry" && mon.status === "SLP") { logMsg(`${mon.name}'s Chesto Berry woke it up!`, 'heal'); mon.status = null; mon.statusTurns = 0; _sbUsed = mon.item; }
+                else if (mon.item === "Pecha Berry" && (mon.status === "PSN" || mon.status === "TOX")) { logMsg(`${mon.name}'s Pecha Berry cured its poison!`, 'heal'); mon.status = null; mon.statusTurns = 0; _sbUsed = mon.item; }
+                else if (mon.item === "Rawst Berry" && mon.status === "BRN") { logMsg(`${mon.name}'s Rawst Berry cured its burn!`, 'heal'); mon.status = null; mon.statusTurns = 0; _sbUsed = mon.item; }
+                else if (mon.item === "Aspear Berry" && mon.status === "FRZ") { logMsg(`${mon.name}'s Aspear Berry thawed it out!`, 'heal'); mon.status = null; mon.statusTurns = 0; _sbUsed = mon.item; }
+                else if (mon.item === "Cheri Berry" && mon.status === "PAR") { logMsg(`${mon.name}'s Cheri Berry cured its paralysis!`, 'heal'); mon.status = null; mon.statusTurns = 0; _sbUsed = mon.item; }
+                if (_sbUsed) { if (mon.ability === "Cud Chew") mon.volatile.cudChewBerry = _sbUsed; mon.item = null; mon.itemConsumed = true; applyCheekPouchHeal(mon); }
             }
             // Persim Berry cures confusion
-            if (!unnerved && mon.item === "Persim Berry" && mon.volatile.confusion > 0) { logMsg(`${mon.name}'s Persim Berry snapped it out of confusion!`, 'heal'); mon.volatile.confusion = 0; mon.item = null; mon.itemConsumed = true; }
+            if (!unnerved && mon.item === "Persim Berry" && mon.volatile.confusion > 0) {
+                logMsg(`${mon.name}'s Persim Berry snapped it out of confusion!`, 'heal');
+                mon.volatile.confusion = 0;
+                if (mon.ability === "Cud Chew") mon.volatile.cudChewBerry = mon.item;
+                mon.item = null; mon.itemConsumed = true; applyCheekPouchHeal(mon);
+            }
 
             if (!unnerved && mon.item === "Salac Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
-                changeStage(mon, 'spe', 1);
+                const _rM = getRipenMult(mon); changeStage(mon, 'spe', 1 * _rM);
                 logMsg(`${mon.name} ate its Salac Berry!`, 'info');
-                mon.item = null; mon.itemConsumed = true;
+                if (mon.ability === "Cud Chew") mon.volatile.cudChewBerry = mon.item;
+                mon.item = null; mon.itemConsumed = true; applyCheekPouchHeal(mon);
             }
             if (!unnerved && mon.item === "Liechi Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
-                changeStage(mon, 'atk', 1);
+                const _rM = getRipenMult(mon); changeStage(mon, 'atk', 1 * _rM);
                 logMsg(`${mon.name} ate its Liechi Berry!`, 'info');
-                mon.item = null; mon.itemConsumed = true;
+                if (mon.ability === "Cud Chew") mon.volatile.cudChewBerry = mon.item;
+                mon.item = null; mon.itemConsumed = true; applyCheekPouchHeal(mon);
             }
             if (!unnerved && mon.item === "Ganlon Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
-                changeStage(mon, 'def', 1);
+                const _rM = getRipenMult(mon); changeStage(mon, 'def', 1 * _rM);
                 logMsg(`${mon.name} ate its Ganlon Berry!`, 'info');
-                mon.item = null; mon.itemConsumed = true;
+                if (mon.ability === "Cud Chew") mon.volatile.cudChewBerry = mon.item;
+                mon.item = null; mon.itemConsumed = true; applyCheekPouchHeal(mon);
             }
             if (!unnerved && mon.item === "Petaya Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
-                changeStage(mon, 'spa', 1);
+                const _rM = getRipenMult(mon); changeStage(mon, 'spa', 1 * _rM);
                 logMsg(`${mon.name} ate its Petaya Berry!`, 'info');
-                mon.item = null; mon.itemConsumed = true;
+                if (mon.ability === "Cud Chew") mon.volatile.cudChewBerry = mon.item;
+                mon.item = null; mon.itemConsumed = true; applyCheekPouchHeal(mon);
             }
             if (!unnerved && mon.item === "Apicot Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
-                changeStage(mon, 'spd', 1);
+                const _rM = getRipenMult(mon); changeStage(mon, 'spd', 1 * _rM);
                 logMsg(`${mon.name} ate its Apicot Berry!`, 'info');
-                mon.item = null; mon.itemConsumed = true;
+                if (mon.ability === "Cud Chew") mon.volatile.cudChewBerry = mon.item;
+                mon.item = null; mon.itemConsumed = true; applyCheekPouchHeal(mon);
             }
             if (!unnerved && mon.item === "Lansat Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
-                mon.volatile.focusEnergy = (mon.volatile.focusEnergy || 0) + 2;
+                const _rM = getRipenMult(mon);
+                mon.volatile.focusEnergy = (mon.volatile.focusEnergy || 0) + 2 * _rM;
                 logMsg(`${mon.name} ate its Lansat Berry and raised its critical-hit ratio!`, 'info');
-                mon.item = null; mon.itemConsumed = true;
+                if (mon.ability === "Cud Chew") mon.volatile.cudChewBerry = mon.item;
+                mon.item = null; mon.itemConsumed = true; applyCheekPouchHeal(mon);
             }
             if (!unnerved && mon.item === "Starf Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
+                const _rM = getRipenMult(mon);
                 const starfStats = ['atk', 'def', 'spa', 'spd', 'spe'];
                 const starfStat = starfStats[Math.floor(Math.random() * starfStats.length)];
-                changeStage(mon, starfStat, 2);
+                changeStage(mon, starfStat, 2 * _rM);
                 logMsg(`${mon.name} ate its Starf Berry!`, 'info');
-                mon.item = null; mon.itemConsumed = true;
+                if (mon.ability === "Cud Chew") mon.volatile.cudChewBerry = mon.item;
+                mon.item = null; mon.itemConsumed = true; applyCheekPouchHeal(mon);
             }
             if (!unnerved && mon.item === "Oran Berry" && mon.currentHp <= mon.maxHp * 0.5 && mon.currentHp > 0) {
-                let actHeal = Math.min(mon.maxHp - mon.currentHp, 10);
+                const _rM = getRipenMult(mon);
+                let actHeal = Math.min(mon.maxHp - mon.currentHp, 10 * _rM);
                 if (actHeal > 0) { mon.currentHp += actHeal; logMsg(`${mon.name} ate its Oran Berry and restored ${actHeal} HP!`, 'heal'); }
-                mon.item = null; mon.itemConsumed = true;
+                if (mon.ability === "Cud Chew") mon.volatile.cudChewBerry = mon.item;
+                mon.item = null; mon.itemConsumed = true; applyCheekPouchHeal(mon);
             }
             if (!unnerved && mon.item === "Sitrus Berry" && mon.currentHp <= mon.maxHp * 0.5 && mon.currentHp > 0) {
-                let heal = Math.floor(mon.maxHp / 4);
-                let actHeal = Math.min(mon.maxHp - mon.currentHp, heal);
+                const _rM = getRipenMult(mon);
+                let actHeal = Math.min(mon.maxHp - mon.currentHp, Math.floor(mon.maxHp / 4) * _rM);
                 if (actHeal > 0) { mon.currentHp += actHeal; logMsg(`${mon.name} ate its Sitrus Berry and restored ${actHeal} HP!`, 'heal'); }
-                mon.item = null; mon.itemConsumed = true;
+                if (mon.ability === "Cud Chew") mon.volatile.cudChewBerry = mon.item;
+                mon.item = null; mon.itemConsumed = true; applyCheekPouchHeal(mon);
             }
-            // Flavor berries (Figy/Wiki/Mago/Aguav/Iapapa): heal 1/2 max HP at ≤25% (Gen 8+: no confusion)
+            // Flavor berries (Figy/Wiki/Mago/Aguav/Iapapa): heal at ≤25% (Gen 8+: no confusion)
             const _flavorBerries = ["Figy Berry","Wiki Berry","Mago Berry","Aguav Berry"];
             if (!unnerved && _flavorBerries.includes(mon.item) && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
-                let heal = Math.floor(mon.maxHp / 2);
-                let actHeal = Math.min(mon.maxHp - mon.currentHp, heal);
+                const _rM = getRipenMult(mon);
+                let actHeal = Math.min(mon.maxHp - mon.currentHp, Math.floor(mon.maxHp / 2) * _rM);
                 if (actHeal > 0) { mon.currentHp += actHeal; logMsg(`${mon.name} ate its ${mon.item} and restored ${actHeal} HP!`, 'heal'); }
-                mon.item = null; mon.itemConsumed = true;
+                if (mon.ability === "Cud Chew") mon.volatile.cudChewBerry = mon.item;
+                mon.item = null; mon.itemConsumed = true; applyCheekPouchHeal(mon);
             }
             if (!unnerved && mon.item === "Iapapa Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
-                let heal = Math.floor(mon.maxHp / 3);
-                let actHeal = Math.min(mon.maxHp - mon.currentHp, heal);
+                const _rM = getRipenMult(mon);
+                let actHeal = Math.min(mon.maxHp - mon.currentHp, Math.floor(mon.maxHp / 3) * _rM);
                 if (actHeal > 0) { mon.currentHp += actHeal; logMsg(`${mon.name} ate its Iapapa Berry and restored ${actHeal} HP!`, 'heal'); }
-                mon.item = null; mon.itemConsumed = true;
+                if (mon.ability === "Cud Chew") mon.volatile.cudChewBerry = mon.item;
+                mon.item = null; mon.itemConsumed = true; applyCheekPouchHeal(mon);
             }
             if (!unnerved && mon.item === "Custap Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
                 logMsg(`${mon.name}'s Custap Berry lets it move first next turn!`, 'info');
                 mon.volatile.custapReady = true;
-                mon.item = null; mon.itemConsumed = true;
+                if (mon.ability === "Cud Chew") mon.volatile.cudChewBerry = mon.item;
+                mon.item = null; mon.itemConsumed = true; applyCheekPouchHeal(mon);
             }
             if (!unnerved && mon.item === "Micle Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
                 logMsg(`${mon.name}'s Micle Berry boosts its next move's accuracy!`, 'info');
                 mon.volatile.micleBerry = true;
-                mon.item = null; mon.itemConsumed = true;
+                if (mon.ability === "Cud Chew") mon.volatile.cudChewBerry = mon.item;
+                mon.item = null; mon.itemConsumed = true; applyCheekPouchHeal(mon);
             }
 
             // Perish Song countdown — decrement first, then check for faint at 0
@@ -17993,15 +18202,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
-            // Harvest: 50% chance (100% in Sun) to restore the last consumed berry
-            if (mon.ability === "Harvest" && mon.itemConsumed && !mon.item && mon.currentHp > 0) {
+            // Harvest: 50% chance (100% in Sun) to restore the last consumed berry (not if stolen/knocked off)
+            if (mon.ability === "Harvest" && mon.itemConsumed && !mon.item && mon.currentHp > 0 && !mon.knockedOff && isBerry(mon.originalItem)) {
                 let _w = getCurrentWeather();
                 let _harvestChance = (_w === "Sun" || _w === "HarshSun") ? 1.0 : 0.5;
-                if (Math.random() < _harvestChance && mon.originalItem) {
+                if (Math.random() < _harvestChance) {
                     mon.item = mon.originalItem;
                     mon.itemConsumed = false;
                     logMsg(`${mon.name}'s Harvest restored its ${mon.item}!`, 'heal');
                 }
+            }
+            // Cud Chew: re-eat the berry consumed on the previous turn
+            if (mon.ability === "Cud Chew" && mon.volatile && mon.volatile.cudChewBerry && mon.currentHp > 0) {
+                let _cudBerry = mon.volatile.cudChewBerry;
+                mon.volatile.cudChewBerry = null;
+                logMsg(`${mon.name}'s Cud Chew lets it eat the ${_cudBerry} again!`, 'heal');
+                applyInstantBerryEffect(mon, _cudBerry);
+                updateUI();
             }
 
             // Screen countdown (only run for first mon to avoid double-decrement)
