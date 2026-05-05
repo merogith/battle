@@ -12069,6 +12069,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        // isContactMove: shared helper for both battle and AI damage estimation
+        function isContactMove(mv, atkMon) {
+            if (!mv) return false;
+            // Long Reach: all moves lose contact
+            if (atkMon && atkMon.ability === "Long Reach") return false;
+            // Punching Glove: punch moves lose contact
+            if (atkMon && atkMon.item === "Punching Glove") {
+                const _punchMoves = new Set(["Drain Punch","Mach Punch","Ice Punch","Fire Punch","Thunder Punch","Focus Punch","Bullet Punch","Hammer Arm","Power-Up Punch","Shadow Punch","Meteor Mash","Mega Punch","Comet Punch","Dynamic Punch","Close Combat"]);
+                if (_punchMoves.has(mv.name)) return false;
+            }
+            if (mv.flags && mv.flags.contact) return true;
+            const _nonContactPhys = new Set(["Earthquake","Magnitude","Bulldoze","Rock Slide","Rock Blast","Explosion","Self-Destruct","Hyper Voice","Surf","Muddy Water","Blizzard","Heat Wave","Sludge Wave","Discharge","Lava Plume","Icy Wind","Razor Wind","Whirlpool","Twister","Sky Attack","Bone Club","Bone Rush","Bonemerang","Pin Missile","Barrage","Spike Cannon","Present","Spore","Powder","Precipice Blades","Origin Pulse","Land's Wrath","Thousand Arrows","Thousand Waves","Diamond Storm","Petal Blizzard","Boomburst"]);
+            const _contactSpec = new Set(["Grass Knot","Draining Kiss","Grass Pledge","Fire Pledge","Water Pledge","Parabolic Charge","Petal Dance"]);
+            if (mv.cat === "Physical" && !_nonContactPhys.has(mv.name)) return true;
+            if (_contactSpec.has(mv.name)) return true;
+            return false;
+        }
+
         // AI: check if defender's ability grants immunity to this move's type
         function abilityImmunity(move, defender) {
             if (!move || move.cat === "Status") return false;
@@ -12102,7 +12120,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (ab === "Ice Scales" && move.cat === "Special") m *= 0.5;
             if (ab === "Fluffy") {
                 if (move.type === "Fire") m *= 2;
-                if (isContactMove(move)) m *= 0.5;
+                if (isContactMove(move, attacker)) m *= 0.5;
             }
             if ((ab === "Multiscale" || ab === "Shadow Shield") && defender.currentHp === defender.maxHp) m *= 0.5;
             return m;
@@ -12147,7 +12165,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (attacker.ability === "Rocky Payload" && move.type === "Rock") _aiPow = Math.floor(_aiPow * 1.5);
             if (attacker.ability === "Sharpness" && _aiSlice.includes(move.name)) _aiPow = Math.floor(_aiPow * 1.5);
             if ((attacker.ability === "Steelworker" || attacker.ability === "Steely Spirit") && move.type === "Steel") _aiPow = Math.floor(_aiPow * 1.5);
-            if (attacker.ability === "Tough Claws" && isContactMove(move)) _aiPow = Math.floor(_aiPow * 1.3);
+            if (attacker.ability === "Tough Claws" && isContactMove(move, attacker)) _aiPow = Math.floor(_aiPow * 1.3);
             // Marvel Scale: reduce physical damage vs statused defender
             if (defender.ability === "Marvel Scale" && defender.status && move.cat === "Physical") abMod *= (2/3);
             let dmg = ((22 * _aiPow * A / D) / 50 + 2) * stab * eff * lifeOrb * accFactor * abMod;
@@ -14053,18 +14071,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // === STATUS MOVE HANDLING ===
 
             // Helper: determine if a move makes contact (used for protect-variant reactions)
-            function isContactMove(mv, atkMon) {
-                // Long Reach: all moves lose contact flag
-                if (atkMon && atkMon.ability === "Long Reach") return false;
-                if (mv.flags && mv.flags.contact) return true;
-                // Non-contact physical moves (spread/indirect/non-touch)
-                const _nonContactPhys = new Set(["Earthquake","Magnitude","Bulldoze","Rock Slide","Rock Blast","Explosion","Self-Destruct","Hyper Voice","Surf","Muddy Water","Blizzard","Heat Wave","Sludge Wave","Discharge","Discharge","Lava Plume","Icy Wind","Razor Wind","Whirlpool","Twister","Sky Attack","Bone Club","Bone Rush","Bonemerang","Pin Missile","Barrage","Spike Cannon","Present","Spore","Powder","Precipice Blades","Origin Pulse","Land's Wrath","Thousand Arrows","Thousand Waves","Diamond Storm","Petal Blizzard","Boomburst"]);
-                // Contact special moves
-                const _contactSpec = new Set(["Grass Knot","Draining Kiss","Grass Pledge","Fire Pledge","Water Pledge","Parabolic Charge","Petal Dance"]);
-                if (mv.cat === "Physical" && !_nonContactPhys.has(mv.name)) return true;
-                if (_contactSpec.has(mv.name)) return true;
-                return false;
-            }
             // Wide Guard: multi-target damaging moves (Showdown target tags)
             function isSpreadMoveForWideGuard(mv) {
                 let t = mv.target;
@@ -14253,7 +14259,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else {
                     logMsg(`${defender.name} protected itself!`);
                     AudioSystem.playMissSound();
-                    const _contact = isContactMove(move);
+                    const _contact = isContactMove(move, attacker);
                     if (defender.volatile.spikyShield && _contact) {
                         let spikeDmg = Math.max(1, Math.floor(attacker.maxHp / 8));
                         attacker.currentHp = Math.max(0, attacker.currentHp - spikeDmg);
@@ -15183,7 +15189,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Steelworker / Steely Spirit: x1.5 Steel-type moves
                 if ((attacker.ability === "Steelworker" || attacker.ability === "Steely Spirit") && move.type === "Steel") basePower = Math.floor(basePower * 1.5);
                 // Tough Claws: x1.3 contact moves
-                if (attacker.ability === "Tough Claws" && isContactMove(move)) basePower = Math.floor(basePower * 1.3);
+                if (attacker.ability === "Tough Claws" && isContactMove(move, attacker)) basePower = Math.floor(basePower * 1.3);
                 // Liquid Voice: sound moves become Water-type
                 const _soundMovesLV = new Set(["Hyper Voice","Bug Buzz","Boomburst","Uproar","Snarl","Overdrive","Round","Echoed Voice","Disarming Voice","Relic Song","Clanging Scales","Chatter","Sparkling Aria","Snore","Clangorous Soul"]);
                 if (attacker.ability === "Liquid Voice" && _soundMovesLV.has(move.name)) move = {...move, type: "Water"};
@@ -15279,7 +15285,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_defAbilityActive && defender.ability === "Purifying Salt" && move.type === "Ghost") modifier *= 0.5;
                 // Fluffy: halves contact damage; doubles Fire damage taken (bypassed by Mold Breaker for the halving)
                 if (defender.ability === "Fluffy") {
-                    if (_defAbilityActive && isContactMove(move)) modifier *= 0.5; // contact moves only
+                    if (_defAbilityActive && isContactMove(move, attacker)) modifier *= 0.5; // contact moves only
                     if (move.type === "Fire") modifier *= 2; // fire doubled always (even with Mold Breaker)
                 }
                 // Punk Rock: halves sound move damage taken
@@ -15699,40 +15705,43 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     logMsg(`${attacker.name} took ${actRecoil} recoil from Struggle!`, 'dmg');
                 }
 
-                // Contact abilities (physical moves that make contact)
-                if (move.cat === "Physical" && !hitSub && defender.currentHp > 0) {
-                    if (defender.ability === "Static" && Math.random() < 0.3) applyStatus(attacker, "PAR");
-                    if (defender.ability === "Poison Point" && Math.random() < 0.3) applyStatus(attacker, "PSN");
-                    if (defender.ability === "Flame Body" && Math.random() < 0.3) applyStatus(attacker, "BRN");
-                    if (defender.ability === "Cute Charm" && Math.random() < 0.3 && attacker.gender !== null && defender.gender !== null && attacker.gender !== defender.gender && attacker.ability !== "Oblivious") {
+                // Contact abilities (moves that make contact)
+                const _trueContact = isContactMove(move, attacker);
+                // Protective Pads: blocks all contact-based effects FROM the defender
+                const _protPads = _trueContact && attacker.item === "Protective Pads";
+                if (_trueContact && !hitSub && defender.currentHp > 0) {
+                    if (!_protPads && defender.ability === "Static" && Math.random() < 0.3) applyStatus(attacker, "PAR");
+                    if (!_protPads && defender.ability === "Poison Point" && Math.random() < 0.3) applyStatus(attacker, "PSN");
+                    if (!_protPads && defender.ability === "Flame Body" && Math.random() < 0.3) applyStatus(attacker, "BRN");
+                    if (!_protPads && defender.ability === "Cute Charm" && Math.random() < 0.3 && attacker.gender !== null && defender.gender !== null && attacker.gender !== defender.gender && attacker.ability !== "Oblivious") {
                         attacker.volatile.infatuated = true;
                         logMsg(`${attacker.name} fell in love from Cute Charm!`, 'status');
                     }
-                    if (defender.ability === "Effect Spore" && Math.random() < 0.3) {
+                    if (!_protPads && defender.ability === "Effect Spore" && Math.random() < 0.3) {
                         let roll = Math.random();
                         if (roll < 0.33) applyStatus(attacker, "PSN");
                         else if (roll < 0.66) applyStatus(attacker, "PAR");
                         else applyStatus(attacker, "SLP");
                     }
                     if (attacker.ability === "Poison Touch" && Math.random() < 0.3) applyStatus(defender, "PSN");
-                    if (defender.ability === "Cursed Body" && Math.random() < 0.3 && move.name) {
+                    if (!_protPads && defender.ability === "Cursed Body" && Math.random() < 0.3 && move.name) {
                         attacker.volatile.disabled = move.name; attacker.volatile.disabledTurns = 4;
                         logMsg(`${attacker.name}'s ${move.name} was disabled by Cursed Body!`, 'status');
                     }
                     // Rocky Helmet: 1/6 damage on contact
-                    if (_defItemActive && defender.item === "Rocky Helmet" && attacker.currentHp > 0) {
+                    if (!_protPads && _defItemActive && defender.item === "Rocky Helmet" && attacker.currentHp > 0) {
                         let rhDmg = Math.max(1, Math.floor(attacker.maxHp / 6));
                         let actRh = Math.min(attacker.currentHp, rhDmg);
                         attacker.currentHp -= actRh;
                         logMsg(`${attacker.name} was hurt by ${defender.name}'s Rocky Helmet! (${actRh} damage)`, 'dmg');
                     }
                     // Gooey / Tangling Hair: lowers attacker's Speed by 1 on contact
-                    if ((defender.ability === "Gooey" || defender.ability === "Tangling Hair") && isContactMove(move) && attacker.currentHp > 0) {
+                    if (!_protPads && (defender.ability === "Gooey" || defender.ability === "Tangling Hair") && attacker.currentHp > 0) {
                         changeStage(attacker, 'spe', -1);
                         logMsg(`${defender.name}'s ${defender.ability} lowered ${attacker.name}'s Speed!`, 'info');
                     }
                     // Rough Skin / Iron Barbs: 1/8 damage on contact
-                    if ((defender.ability === "Rough Skin" || defender.ability === "Iron Barbs") && attacker.currentHp > 0 && attacker.ability !== "Magic Guard") {
+                    if (!_protPads && (defender.ability === "Rough Skin" || defender.ability === "Iron Barbs") && attacker.currentHp > 0 && attacker.ability !== "Magic Guard") {
                         let rsDmg = Math.max(1, Math.floor(attacker.maxHp / 8));
                         let actRs = Math.min(attacker.currentHp, rsDmg);
                         attacker.currentHp -= actRs;
@@ -15946,7 +15955,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     logMsg(`${attacker.name}'s Magician stole ${defender.name}'s ${attacker.item}!`, 'info'); updateUI();
                 }
                 // Pickpocket ability: steal item when hit by a contact move
-                if (defender.ability === "Pickpocket" && !defender.item && attacker.item && isContactMove(move) && !hitSub && defender.currentHp > 0) {
+                if (defender.ability === "Pickpocket" && !defender.item && attacker.item && isContactMove(move, attacker) && !hitSub && defender.currentHp > 0) {
                     defender.item = attacker.item; attacker.item = null; attacker.itemConsumed = true;
                     logMsg(`${defender.name}'s Pickpocket stole ${attacker.name}'s ${defender.item}!`, 'info'); updateUI();
                 }
@@ -15963,7 +15972,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     applyStatus(defender, "TOX");
                 }
                 // Wandering Spirit: swap abilities on contact
-                if (defender.ability === "Wandering Spirit" && isContactMove(move) && !hitSub && attacker.currentHp > 0 && defender.currentHp > 0) {
+                if (defender.ability === "Wandering Spirit" && isContactMove(move, attacker) && !hitSub && attacker.currentHp > 0 && defender.currentHp > 0) {
                     const _wsNoSwap = new Set(["Wonder Guard","Wandering Spirit","Disguise","Multitype","Power Construct","Stance Change","Schooling","Comatose","Shields Down","RKS System","Battle Bond","Ice Face","Hunger Switch"]);
                     if (!_wsNoSwap.has(attacker.ability)) {
                         let _wsSwap = attacker.ability;
@@ -16277,9 +16286,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.ability === "Intimidate") {
                 // Gen 8+: Ghost-types, Inner Focus, Oblivious, Own Tempo are immune to Intimidate
                 const intimidateImmune = foe.type1 === "Ghost" || foe.type2 === "Ghost" ||
-                    foe.ability === "Inner Focus" || foe.ability === "Oblivious" || foe.ability === "Own Tempo";
+                    foe.ability === "Inner Focus" || foe.ability === "Oblivious" || foe.ability === "Own Tempo" ||
+                    foe.item === "Ability Shield";
                 if (intimidateImmune) {
-                    logMsg(`${foe.name}'s ${foe.ability || 'Ghost type'} prevents Intimidate!`, 'info');
+                    logMsg(`${foe.name}'s ${foe.item === "Ability Shield" ? "Ability Shield" : (foe.ability || "Ghost type")} prevents Intimidate!`, 'info');
                 } else if (foe.ability === "Guard Dog") {
                     logMsg(`${foe.name}'s Guard Dog raised its Attack!`, 'info');
                     changeStage(foe, 'atk', 1);
@@ -16617,6 +16627,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (/^(Douse|Shock|Burn|Chill) Drive$/.test(it)) return true;
             if (/ Memory$/.test(it)) return true;
             if (it === "Wellspring Mask" || it === "Hearthflame Mask" || it === "Cornerstone Mask") return true;
+            // Mail cannot be removed or stolen
+            if (/ Mail$/.test(it) || it === "Mail") return true;
             return false;
         }
 
@@ -16749,6 +16761,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Swap attacker/defender and re-call
                 await parseMoveEffects(defender, attacker, move, !isPlayer);
                 return;
+            }
+
+            // === Rebound: reflects stat-lowering and status moves back (like a passive Magic Coat) ===
+            if (defender.ability === "Rebound" && magicBounceMoves.has(move.name)) {
+                logMsg(`${defender.name}'s Rebound sent back ${move.name}!`, 'info');
+                await parseMoveEffects(defender, attacker, move, !isPlayer);
+                return;
+            }
+
+            // === Aroma Veil: blocks moves that target the mind (Taunt, Encore, Disable, Attract, Torment, Heal Block, Taunt) ===
+            const _aromaVeilMoves = new Set(["Taunt","Encore","Disable","Attract","Torment","Heal Block","Infatuation","Captivate"]);
+            if (defender.ability === "Aroma Veil" && _aromaVeilMoves.has(move.name)) {
+                logMsg(`${defender.name}'s Aroma Veil protects it from ${move.name}!`, 'info'); return;
+            }
+
+            // === Ability Shield: blocks ability-changing/suppressing moves ===
+            const _abilityChangeMoves = new Set(["Gastro Acid","Worry Seed","Entrainment","Role Play","Skill Swap","Simple Beam","Core Enforcer"]);
+            if (defender.item === "Ability Shield" && _abilityChangeMoves.has(move.name)) {
+                logMsg(`${defender.name}'s Ability Shield protects its ability!`, 'info'); return;
             }
 
             // === Substitute: blocks opponent-targeting status moves ===
