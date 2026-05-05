@@ -10391,6 +10391,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (state.mode === 'story' && window.StoryMode && typeof window.StoryMode.applyHardcoreState === 'function') {
                 window.StoryMode.applyHardcoreState(state.playerParty);
             }
+            // Lead selection: AI picks its best opener vs the player's team (skip PvP)
+            if (state.mode !== 'pvp' && state.foeParty.length > 1 && state.playerParty.length > 0) {
+                let bestLeadIdx = 0, bestLeadScore = -Infinity;
+                state.foeParty.forEach((foe, idx) => {
+                    let sc = 0;
+                    state.playerParty.forEach(pl => {
+                        let myBest = 0;
+                        foe.moves.forEach(m => { if (m.cat !== 'Status') { let d = aiEstimateDmg(foe, pl, m); if (d > myBest) myBest = d; } });
+                        let theirBest = 0;
+                        pl.moves.forEach(m => { if (m.cat !== 'Status') { let d = aiEstimateDmg(pl, foe, m); if (d > theirBest) theirBest = d; } });
+                        sc += myBest - theirBest * 0.6;
+                    });
+                    if (sc > bestLeadScore) { bestLeadScore = sc; bestLeadIdx = idx; }
+                });
+                if (bestLeadIdx > 0) {
+                    let tmp = state.foeParty[0];
+                    state.foeParty[0] = state.foeParty[bestLeadIdx];
+                    state.foeParty[bestLeadIdx] = tmp;
+                }
+            }
             state.pActive = state.playerParty[0]; state.fActive = state.foeParty[0];
             state.turnNumber = 0;
             if (state.mode === 'story') {
@@ -10403,6 +10423,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             state.revealedFoe = new Set();
             state.revealedFoe.add(state.fActive.name);
+            state.revealedPlayerMoves = new Map(); // monName -> Set of move names the AI has seen
 
             state.weather = null; state.weatherTurns = 0;
             state.trickRoom = 0;
@@ -12147,13 +12168,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // AI: evaluate how threatening defender is to attacker
         function aiThreatScore(defender, attacker) {
             let maxDmg = 0;
+            // Only discount unrevealed moves for player mons (AI hasn't seen them yet)
+            const revealed = state.revealedPlayerMoves && state.revealedPlayerMoves.get(defender.name);
             defender.moves.forEach(m => {
                 if (m.cat !== "Status" && m.pp > 0) {
                     let d = aiEstimateDmg(defender, attacker, m);
+                    // Unrevealed moves: AI gives 60% weight — it suspects coverage but hasn't confirmed it
+                    if (revealed && !revealed.has(m.name)) d *= 0.6;
                     if (d > maxDmg) maxDmg = d;
                 }
             });
             return maxDmg;
+        }
+
+        // AI: estimate entry hazard damage a foe bench mon would take on switch-in
+        function aiEstimateHazardDamage(mon) {
+            const side = state.fSide;
+            if (mon.ability === "Magic Guard" || mon.item === "Heavy-Duty Boots") return 0;
+            const isFlying = mon.type1 === "Flying" || mon.type2 === "Flying";
+            const isGrounded = !isFlying && mon.ability !== "Levitate" && mon.item !== "Air Balloon";
+            let dmg = 0;
+            if (side.stealthRock) {
+                let eff = getMoveEffectiveness("Rock", mon.type1, mon.type2);
+                if (eff > 0) dmg += Math.max(1, Math.floor(mon.maxHp * 0.125 * eff));
+            }
+            if (side.spikes > 0 && isGrounded) {
+                dmg += Math.max(1, Math.floor(mon.maxHp * [0, 0.125, 1/6, 0.25][side.spikes]));
+            }
+            return dmg;
         }
 
         // AI: pick best switch-in from bench
@@ -12161,11 +12203,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let best = null, bestScore = -Infinity;
             bench.forEach(mon => {
                 if (mon.currentHp <= 0) return;
-                // Score: how well does this mon handle the player's best moves?
+                let hazardChip = aiEstimateHazardDamage(mon);
+                let effectiveHp = mon.currentHp - hazardChip;
+                if (effectiveHp <= 0) return; // Would faint on entry — skip
                 let threat = aiThreatScore(playerMon, mon);
                 let myDmg = 0;
                 mon.moves.forEach(m => { let d = aiEstimateDmg(mon, playerMon, m); if (d > myDmg) myDmg = d; });
-                let score = myDmg - threat * 0.7 + (mon.currentHp / mon.maxHp) * 30;
+                let score = myDmg - threat * 0.7 + (effectiveHp / mon.maxHp) * 30;
                 if (score > bestScore) { bestScore = score; best = mon; }
             });
             return best;
@@ -12221,6 +12265,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             return null;
+        }
+
+        // AI noise factor: higher = noisier decisions (easier), lower = near-deterministic (harder)
+        function aiNoiseFactor() {
+            const sm = window.StoryMode && window.StoryMode.state ? window.StoryMode.state : null;
+            const d = sm ? (sm.storyDifficulty || 'normal') : null;
+            if (d === 'veryeasy') return 30;
+            if (d === 'easy') return 18;
+            if (d === 'hard') return 3;
+            if (d === 'challenge') return 1;
+            return 8;
         }
 
         window.getBestMove = function(attacker, defender) {
@@ -12283,6 +12338,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     let foeBench = state.foeParty.filter(m => m !== attacker && m.currentHp > 0).length;
     let playerBench = state.playerParty.filter(m => m !== defender && m.currentHp > 0).length;
     let isEndgame = foeBench === 0 || playerBench === 0;
+    // Anti-setup: measure how much the player's active mon has boosted offensively
+    let playerOffensiveThreat = Math.max(0, defender.stages.atk || 0, defender.stages.spa || 0);
 
     let bestMove = validMoves[0]; let maxScore = -Infinity;
     validMoves.forEach(move => {
@@ -12346,6 +12403,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // 2HKO awareness: if we can 2HKO and survive, value consistency
             if (!canKO && can2HKO && !aboutToBeKOd) score *= 1.15;
+
+            // Anti-setup urgency: player is dangerously boosted — every hit matters more
+            if (playerOffensiveThreat >= 2) score *= (1 + playerOffensiveThreat * 0.15);
 
             // Burn halves physical attack — prefer special moves if burned
             if (attacker.status === "BRN" && move.cat === "Physical") score *= 0.7;
@@ -12611,7 +12671,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let abilityWeather = { "Swift Swim": "Rain", "Chlorophyll": "Sun", "Sand Rush": "Sandstorm", "Slush Rush": "Hail" };
                 if (abilityWeather[attacker.ability] && move.name.includes(abilityWeather[attacker.ability])) score = 70;
             }
+            // Haze / Topsy-Turvy: urgency scales with how much the player has boosted
+            else if (move.name === "Haze" || move.name === "Topsy-Turvy") {
+                let defBestStage = Math.max(0, defender.stages.atk || 0, defender.stages.spa || 0, defender.stages.spe || 0);
+                if (defBestStage >= 3) score = 90;
+                else if (defBestStage >= 2) score = 72;
+                else if (defBestStage >= 1) score = 42;
+                else score = 10;
+            }
             else { score = 12; }
+
+            // Anti-setup: when player has significant offensive boosts, passive status moves are near-useless
+            if (playerOffensiveThreat >= 2) {
+                const _disruptors = new Set(["Taunt","Whirlwind","Roar","Dragon Tail","Circle Throw","Haze","Topsy-Turvy","Will-O-Wisp","Thunder Wave","Glare","Nuzzle"]);
+                if (!_disruptors.has(move.name)) score *= Math.max(0.12, 1 - playerOffensiveThreat * 0.28);
+            }
         }
 
         const _pf = settings.aiProfile || 'balanced';
@@ -12653,8 +12727,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Contact + Static / Flame Body / Poison Point on opponent — handled by engine; no AI bonus
         }
 
-        // Small random factor (kept tiny so the scoring system dominates)
-        score += Math.random() * 6;
+        // Random noise: scales with difficulty — easy AI makes more random mistakes
+        score += Math.random() * aiNoiseFactor();
         if (score > maxScore) { maxScore = score; bestMove = move; }
     });
     return bestMove;
@@ -12730,9 +12804,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         let switchTo = aiBestSwitch(bench, defender);
         if (switchTo) {
             let switchIdx = state.foeParty.indexOf(switchTo);
-            // Validate the switch target won't just die immediately
+            // Validate the switch target won't just die immediately (account for entry hazards too)
             let switchThreat = aiThreatScore(defender, switchTo);
-            if (switchThreat >= switchTo.currentHp && !walled) return null; // Don't switch into a KO
+            let switchHazard = aiEstimateHazardDamage(switchTo);
+            if ((switchThreat + switchHazard) >= switchTo.currentHp && !walled) return null; // Don't switch into a combined KO
 
             let newBestDmg = 0;
             switchTo.moves.forEach(m => { if (m.cat !== "Status") { let d = aiEstimateDmg(switchTo, defender, m); if (d > newBestDmg) newBestDmg = d; } });
@@ -13631,6 +13706,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let attacker = isPlayer ? state.pActive : state.fActive;
             let defender = isPlayer ? state.fActive : state.pActive;
             if (attacker.currentHp <= 0) return;
+            // Reveal tracking: record player moves the AI has now seen
+            if (isPlayer && move && move.name && !move.name.startsWith('__') && move.name !== 'Struggle') {
+                if (!state.revealedPlayerMoves) state.revealedPlayerMoves = new Map();
+                if (!state.revealedPlayerMoves.has(attacker.name)) state.revealedPlayerMoves.set(attacker.name, new Set());
+                state.revealedPlayerMoves.get(attacker.name).add(move.name);
+            }
             if (move.name === '__StoryItemPass') {
                 logMsg(`${attacker.name}'s turn was spent using an item.`, 'info');
                 await sleep(400);
