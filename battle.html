@@ -21660,7 +21660,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const canBld = sm.gold >= rebB;
                 // Label: show all options for ≤3 evos; for 4+ say "random (N options)" (confirm always shows the exact pick)
                 const evoLabel = evos.length === 1 ? evos[0] : evos.length <= 3 ? evos.join(' or ') : `random (${evos.length} options)`;
-                const evoAllLabel = evos.join(', ');
+                const evoAllLabel = evos.map(e => e.replace(/"/g, '&quot;')).join(', ');
 
                 const gimmickTag = t.build?.gimmick && t.build.gimmick !== 'STANDARD'
                     ? `<span style="font-size:9px;background:#333;padding:1px 4px;border-radius:3px;color:#ff9800;margin-left:4px;">${t.build.gimmick}</span>` : '';
@@ -21733,6 +21733,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pool = buildGradePool(storySettingsGens(), g).filter(n=>n!==mon.name&&!sm.team.some((t,i)=>i!==idx&&t.name===n));
             if (!pool.length) { window.showGameAlert('No other Pokémon of this grade available!'); return; }
             sm.cityRerollsUsed[rk] = rn;
+            // New Pokémon occupies this slot — wipe evolve/upgrade/rebuild history so it
+            // doesn't inherit inflated costs from whoever was here before.
+            delete sm.cityRerollsUsed[`e_${idx}`];
+            delete sm.cityRerollsUsed[`u_${idx}`];
+            delete sm.cityRerollsUsed[`b_${idx}`];
             const newName  = pool[Math.floor(storyRngNext() * pool.length)];
             let newBuild;
             try {
@@ -21767,6 +21772,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pool = buildGradePool(storySettingsGens(), newG).filter(n=>!sm.team.some((t,i)=>i!==idx&&t.name===n));
             if (!pool.length) { window.showGameAlert('No Pokémon of that grade available!'); return; }
             sm.cityRerollsUsed[uk] = un;
+            // New higher-grade Pokémon — wipe evolve/reroll/rebuild history for this slot.
+            delete sm.cityRerollsUsed[`e_${idx}`];
+            delete sm.cityRerollsUsed[`r_${idx}`];
+            delete sm.cityRerollsUsed[`b_${idx}`];
             const newName  = pool[Math.floor(storyRngNext() * pool.length)];
             let newBuild;
             try {
