@@ -5713,9 +5713,52 @@
             return csvBuilds[name] || {};
         }
 
-        // Central build factory — used by draft, gauntlet rounds, and draw recovery
+        // Abilities that swing matchups hard enough to warrant a soft-cap when sampling builds.
+        // Wonder Guard / Huge Power / Pure Power / Speed Boost / Imposter / Moody all create lopsided
+        // encounters when rolled at full archetype weight — soft-cap with a 50% one-shot reroll keeps
+        // them as memorable spice rather than every-other-battle staples.
+        const SMART_POOL_OP_ABILITIES = new Set([
+            'Wonder Guard', 'Huge Power', 'Pure Power',
+            'Speed Boost', 'Imposter', 'Moody'
+        ]);
+
+        // Central smart-pool selector. Used by makeBuild for both initial pick and the post-validate
+        // fallback. When `useSmart` is true, picks an archetype first (uniform across archetypes),
+        // then a build within it — preserving variety even when one archetype dominates the CSV
+        // (Lando-T has 148 sets, mostly the same physical-attacker template). Also applies a 50%
+        // one-shot reroll when the chosen build's ability is in SMART_POOL_OP_ABILITIES, so swingy
+        // abilities still appear but don't dominate.
+        function pickBuildFromSmartPool(pool, useSmart) {
+            if (!pool || !pool.length) return null;
+            const pickOnce = () => {
+                if (useSmart && pool.length > 1) {
+                    const groups = {};
+                    for (const bd of pool) {
+                        const a = bd.archetype || 'other';
+                        (groups[a] = groups[a] || []).push(bd);
+                    }
+                    const archs = Object.keys(groups);
+                    const pick = archs[Math.floor(Math.random() * archs.length)];
+                    return groups[pick][Math.floor(Math.random() * groups[pick].length)];
+                }
+                return pool[Math.floor(Math.random() * pool.length)];
+            };
+            let bd = pickOnce();
+            if (useSmart && pool.length > 1 && bd && SMART_POOL_OP_ABILITIES.has(bd.a) && Math.random() < 0.5) {
+                const second = pickOnce();
+                if (second && !SMART_POOL_OP_ABILITIES.has(second.a)) bd = second;
+            }
+            return bd;
+        }
+
+        // Central build factory — used by draft, gauntlet rounds, story foe teams, and draw recovery.
+        // gimmickOpts.forceGimmick: pin a specific gimmick tag (STANDARD/MEGA/ZMOVE/TERA/DYNAMAX/GMAXDYNAMAX)
+        // gimmickOpts.forceSmart:   force smart-pool sampling regardless of player's UI toggle. All
+        //                           foe-team-gen call sites pass this so foe variety doesn't depend
+        //                           on the player turning their own draft variety setting on.
         function makeBuild(name, gimmickOpts) {
             const gimmick = gimmickOpts && gimmickOpts.forceGimmick ? rollGimmick(name, gimmickOpts.forceGimmick) : rollGimmick(name);
+            const useSmart = !!(settings.smartDraftPool || (gimmickOpts && gimmickOpts.forceSmart));
             const base    = baseStats[name] || {};
             const entry   = resolveCsvBuildEntry(name);
             let b = null;
@@ -5736,18 +5779,8 @@
             if (!pool.length) pool = (entry.regular || []).concat(entry.weather || []);
 
             if (pool.length) {
-                if (settings.smartDraftPool && pool.length > 1) {
-                    const groups = {};
-                    for (const bd of pool) {
-                        const a = bd.archetype || 'other';
-                        (groups[a] = groups[a] || []).push(bd);
-                    }
-                    const archs = Object.keys(groups);
-                    const pick = archs[Math.floor(Math.random() * archs.length)];
-                    b = { ...groups[pick][Math.floor(Math.random() * groups[pick].length)] };
-                } else {
-                    b = { ...pool[Math.floor(Math.random() * pool.length)] };
-                }
+                const picked = pickBuildFromSmartPool(pool, useSmart);
+                b = { ...picked };
                 b.m = b.m.map(m => {
                     if (!m.includes('/')) return m;
                     const opts = m.split('/').map(s => s.trim()).filter(Boolean);
@@ -5806,15 +5839,7 @@
                 // Re-pull a clean regular build if available
                 const fallbackPool2 = (entry.regular || []).concat(entry.weather || []);
                 if (fallbackPool2.length) {
-                    let fb;
-                    if (settings.smartDraftPool && fallbackPool2.length > 1) {
-                        const fg = {};
-                        for (const bd of fallbackPool2) { const a = bd.archetype || 'other'; (fg[a] = fg[a] || []).push(bd); }
-                        const fk = Object.keys(fg); const fp = fk[Math.floor(Math.random() * fk.length)];
-                        fb = { ...fg[fp][Math.floor(Math.random() * fg[fp].length)] };
-                    } else {
-                        fb = { ...fallbackPool2[Math.floor(Math.random() * fallbackPool2.length)] };
-                    }
+                    let fb = { ...pickBuildFromSmartPool(fallbackPool2, useSmart) };
                     fb.m = fb.m.map(m => {
                         if (!m.includes('/')) return m;
                         const parts = m.split('/').map(s => s.trim()).filter(Boolean);
@@ -15855,7 +15880,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             state.playerParty.forEach((m, i) => { state.playerParty[i] = buildPokemon(m.name, m.buildData); });
                             let drawEligible = getDraftPool(state.enabledGens || rangeToEnabledGens(state.minGen != null ? state.minGen : 1, state.maxGen != null ? state.maxGen : 9), settings.draftGrades);
                             const drawKeys = shuffleInPlace([...drawEligible]).slice(0, settings.partySize);
-                            state.foeParty = drawKeys.map(name => buildPokemon(name, makeBuild(name)));
+                            state.foeParty = drawKeys.map(name => buildPokemon(name, makeBuild(name, { forceSmart: true })));
                             state.pActive = state.playerParty[0]; state.fActive = state.foeParty[0];
                             state.weather = null; state.weatherTurns = 0;
                             state.pSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 }; state.fSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 };
@@ -18119,11 +18144,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 state.playerParty[i] = buildPokemon(bn, m.buildData);
             });
             // Generate new foe team (same gen range + grades as player)
-            // Exclude species already on the player's team to avoid same-species matchups
+            // Exclude species already on the player's team AND species the foe just used last round
+            // (anti-repetition keeps gauntlet rounds feeling fresh instead of fighting the same Garchomp
+            // build three rounds in a row).
             let allEligible = getDraftPool(state.enabledGens || rangeToEnabledGens(state.minGen != null ? state.minGen : 1, state.maxGen != null ? state.maxGen : 9), settings.draftGrades);
             let playerSpecies = new Set(state.playerParty.map(m => m._baseName || m.name));
-            let foeEligible = allEligible.filter(n => !playerSpecies.has(n));
-            if (foeEligible.length < settings.partySize) foeEligible = allEligible; // fallback if pool too small
+            let prevFoeSpecies = new Set((state.foeParty || []).map(m => m._baseName || m.name));
+            let foeEligible = allEligible.filter(n => !playerSpecies.has(n) && !prevFoeSpecies.has(n));
+            if (foeEligible.length < settings.partySize) foeEligible = allEligible.filter(n => !playerSpecies.has(n));
+            if (foeEligible.length < settings.partySize) foeEligible = allEligible; // ultimate fallback if pool too small
             // Shuffle and pick unique species equal to partySize
             shuffleInPlace(foeEligible);
             const foeKeys = [];
@@ -18132,7 +18161,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!foeSeen.has(name)) { foeSeen.add(name); foeKeys.push(name); }
                 if (foeKeys.length === settings.partySize) break;
             }
-            state.foeParty = foeKeys.map(name => buildPokemon(name, makeBuild(name)));
+            state.foeParty = foeKeys.map(name => buildPokemon(name, makeBuild(name, { forceSmart: true })));
             state.pActive = state.playerParty[0]; state.fActive = state.foeParty[0];
             state.weather = null; state.weatherTurns = 0;
             state.terrain = null; state.terrainTurns = 0;
@@ -19497,7 +19526,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const tryAssign = (idx, kind) => {
                 const nm = team[idx].name;
                 const tag = _kindToForcedTag(kind);
-                const b = makeBuild(nm, { forceGimmick: tag });
+                const b = makeBuild(nm, { forceGimmick: tag, forceSmart: true });
                 if (b.gimmick && b.gimmick !== 'STANDARD') { team[idx].build = b; assigned[idx] = kind; return true; }
                 return false;
             };
@@ -19702,7 +19731,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
                 usedNames.add(chosen);
-                const build = makeBuild(chosen, { forceGimmick: 'STANDARD' });
+                const build = makeBuild(chosen, { forceGimmick: 'STANDARD', forceSmart: true });
                 team.push({ name: chosen, build });
             }
             return _applyEnemyGimmickDistribution(team, battleEventType);
@@ -19739,7 +19768,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 usedNames.add(chosen);
                 const t1 = (baseStats[chosen] && baseStats[chosen].t1) || '';
                 if (t1) usedTypes.add(t1);
-                picks.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD' }) });
+                picks.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD', forceSmart: true }) });
             }
             const oldMech = {
                 megaOn: !!sm.settings.megaOn,
