@@ -20106,7 +20106,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             const cidx = getCityIndex(ev);
             if (sm.storyCityVisit !== cidx) {
-                sm.cityRerollsUsed = {};
+                // Rerolls, upgrades, and rebuilds reset per city (intended).
+                // Evolve counters (e_N) persist across cities so players can't
+                // chain-evolve their entire team at base cost in every city.
+                const preserved = {};
+                for (const [k, v] of Object.entries(sm.cityRerollsUsed || {})) {
+                    if (k.startsWith('e_')) preserved[k] = v;
+                }
+                sm.cityRerollsUsed = preserved;
                 sm.storyCityVisit = cidx;
                 try { save(); } catch (e) { console.warn('[Story] enterCity save', e); }
             }
@@ -21564,8 +21571,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── LINK STATION ──────────────────────────────────────────────────
         const REROLL_COSTS     = { 1:4000, 2:2000, 3:900, 4:400 };
         const UPGRADE_COSTS    = { 4:3500, 3:9000, 2:22000 };
-        const EVOLVE_COSTS     = { 4:1500, 3:5000, 2:14000 };
-        const REBUILD_COST     = 1200;
+        const EVOLVE_COSTS     = { 4:2000, 3:6500, 2:17000 };
+        const REBUILD_COST     = 1500;
         const STORY_INTERACTION_WARN_COOLDOWN_MS = 1200;
         let _storyInteractionBusy = false;
         let _storyInteractionWarnLastAt = 0;
@@ -21646,7 +21653,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const canU   = uCost  !== null && sm.gold >= uCost;
                 const canEvo = evoCost !== null && sm.gold >= evoCost;
                 const canBld = sm.gold >= rebB;
-                const evoLabel = evos.length === 1 ? evos[0] : (evos.length > 1 ? `${evos[0]} or ${evos[1]}` : '');
+                const evoLabel = evos.length === 1 ? evos[0] : (evos.length > 1 ? evos.slice(0, 3).join(' or ') : '');
 
                 const gimmickTag = t.build?.gimmick && t.build.gimmick !== 'STANDARD'
                     ? `<span style="font-size:9px;background:#333;padding:1px 4px;border-radius:3px;color:#ff9800;margin-left:4px;">${t.build.gimmick}</span>` : '';
