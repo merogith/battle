@@ -21646,14 +21646,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const uCostBase = g > 1 ? (UPGRADE_COSTS[g] || 9999) : null;
                 const uCost    = uCostBase !== null ? Math.ceil(uCostBase * Math.pow(1.5, (sm.cityRerollsUsed[`u_${i}`]||0))) : null;
                 const evos   = _getValidEvos(t.name, sg);
-                const evoB   = evos.length ? (EVOLVE_COSTS[g] || 2000) : null;
+                // Cost uses target grade so grade-skipping mons (Eevee G4→G2, Larvesta G4→G1)
+                // pay proportionally more than a plain one-step evolve.
+                // Formula: EVOLVE_COSTS[min(4, targetGrade+1)] — same as source-grade for normal chains.
+                const minEvoGrade = evos.length ? Math.min(...evos.map(e => getMonGrade(e, getBST(e)))) : null;
+                const evoCostKey = minEvoGrade !== null ? Math.min(4, minEvoGrade + 1) : null;
+                const evoB   = evoCostKey !== null ? (EVOLVE_COSTS[evoCostKey] || 2000) : null;
                 const evoCost= evoB !== null ? Math.ceil(evoB * Math.pow(1.5, (sm.cityRerollsUsed[`e_${i}`]||0))) : null;
                 const rebB   = Math.ceil(REBUILD_COST * Math.pow(1.5, (sm.cityRerollsUsed[`b_${i}`]||0)));
                 const canR   = sm.gold >= rCost;
                 const canU   = uCost  !== null && sm.gold >= uCost;
                 const canEvo = evoCost !== null && sm.gold >= evoCost;
                 const canBld = sm.gold >= rebB;
-                const evoLabel = evos.length === 1 ? evos[0] : (evos.length > 1 ? evos.slice(0, 3).join(' or ') : '');
+                // Label: show all options for ≤3 evos; for 4+ say "random (N options)" (confirm always shows the exact pick)
+                const evoLabel = evos.length === 1 ? evos[0] : evos.length <= 3 ? evos.join(' or ') : `random (${evos.length} options)`;
+                const evoAllLabel = evos.join(', ');
 
                 const gimmickTag = t.build?.gimmick && t.build.gimmick !== 'STANDARD'
                     ? `<span style="font-size:9px;background:#333;padding:1px 4px;border-radius:3px;color:#ff9800;margin-left:4px;">${t.build.gimmick}</span>` : '';
@@ -21702,7 +21709,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div class="story-link-btns">
                         <button class="story-link-btn" onclick="window.StoryMode.linkReroll(${i})" ${canR?'':'disabled'} title="Swap for a random different G${g} Pokémon">🔄 Reroll G${g} (${storyGoldHtml(rCost, false)})</button>
                         ${evoCost!==null
-                            ? `<button class="story-link-btn" onclick="window.StoryMode.linkEvolve(${i})" ${canEvo?'':'disabled'} title="Evolve into ${evoLabel}" style="${canEvo?'color:#76ff03;border-color:#76ff03;':''}">⬆️ Evolve → ${evoLabel} (${storyGoldHtml(evoCost, false)})</button>`
+                            ? `<button class="story-link-btn" onclick="window.StoryMode.linkEvolve(${i})" ${canEvo?'':'disabled'} title="Evolve into: ${evoAllLabel}" style="${canEvo?'color:#76ff03;border-color:#76ff03;':''}">⬆️ Evolve → ${evoLabel} (${storyGoldHtml(evoCost, false)})</button>`
                             : ''}
                         ${uCost!==null
                             ? `<button class="story-link-btn" onclick="window.StoryMode.linkUpgrade(${i})" ${canU?'':'disabled'} title="Replace with a random G${g-1} Pokémon">🌟 Upgrade→G${g-1} (${storyGoldHtml(uCost, false)})</button>`
@@ -21789,11 +21796,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const g    = getMonGrade(mon.name, getBST(mon.name));
             const ek = `e_${idx}`;
             const en = (sm.cityRerollsUsed[ek] || 0) + 1;
-            const cost = Math.ceil((EVOLVE_COSTS[g] || 2000) * Math.pow(1.5, en - 1));
-            if (sm.gold < cost) { window.showGameAlert(`Need ${cost.toLocaleString()}G to evolve! (You have ${sm.gold.toLocaleString()}G)`); return; }
+            // Pre-check cost using the most-powerful possible branch (highest potential cost) so the
+            // player is guaranteed to afford whichever evo is actually picked after the RNG roll.
+            const _preMinGrade = Math.min(...evos.map(e => getMonGrade(e, getBST(e))));
+            const _preCost = Math.ceil((EVOLVE_COSTS[Math.min(4, _preMinGrade + 1)] || 2000) * Math.pow(1.5, en - 1));
+            if (sm.gold < _preCost) { window.showGameAlert(`Need ${_preCost.toLocaleString()}G to evolve! (You have ${sm.gold.toLocaleString()}G)`); return; }
             // Pick random valid evo (handles branched evolution)
             const evoName = evos[Math.floor(storyRngNext() * evos.length)];
             const evoGrade = getMonGrade(evoName, getBST(evoName));
+            // Actual cost: target-grade-aware so grade-skipping mons (Eevee G4→G2) pay proportionally more
+            const cost = Math.ceil((EVOLVE_COSTS[Math.min(4, evoGrade + 1)] || 2000) * Math.pow(1.5, en - 1));
             const ok = await window.showGameConfirm(`Evolve ${mon.name} → ${evoName} (Grade ${evoGrade}) for ${cost.toLocaleString()}G?`);
             if (!ok) return;
             sm.cityRerollsUsed[ek] = en;
