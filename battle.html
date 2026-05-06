@@ -12166,10 +12166,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // AI: evaluate how threatening defender is to attacker
-        function aiThreatScore(defender, attacker) {
+        // conservative=true: use full threat even for unrevealed moves (for safety checks — can't gamble on unseen coverage)
+        function aiThreatScore(defender, attacker, conservative) {
             let maxDmg = 0;
-            // Only discount unrevealed moves for player mons (AI hasn't seen them yet)
-            const revealed = state.revealedPlayerMoves && state.revealedPlayerMoves.get(defender.name);
+            // Only discount unrevealed moves when NOT in a safety context
+            const revealed = !conservative && state.revealedPlayerMoves && state.revealedPlayerMoves.get(defender.name);
             defender.moves.forEach(m => {
                 if (m.cat !== "Status" && m.pp > 0) {
                     let d = aiEstimateDmg(defender, attacker, m);
@@ -12753,8 +12754,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     let myBestDmg = 0;
     attacker.moves.forEach(m => { if (m.cat !== "Status" && m.pp > 0) { let d = aiEstimateDmg(attacker, defender, m); if (d > myBestDmg) myBestDmg = d; } });
 
-    let threat = aiThreatScore(defender, attacker);
+    // Safety checks must use full threat — can't gamble that unseen moves are safe
+    let threat = aiThreatScore(defender, attacker, true);
     let hpPct = attacker.currentHp / attacker.maxHp;
+    let defHpPct = defender.currentHp / defender.maxHp;
     let w = getCurrentWeather();
     let atkSpe = getEffectiveSpeed(attacker, w);
     let defSpe = getEffectiveSpeed(defender, w);
@@ -12787,6 +12790,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     let benchHasHardResist = bestResist && bestResistEff <= 0.5;
     // Can we KO?
     let canKO = myBestDmg >= defender.currentHp;
+    let can2HKO = myBestDmg * 2 >= defender.currentHp;
     // Do we have priority that KOs?
     let hasPriorityKO = attacker.moves.some(m => m.pri > 0 && m.pp > 0 && m.cat !== "Status" && aiEstimateDmg(attacker, defender, m) >= defender.currentHp);
 
@@ -12796,24 +12800,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     // Don't switch if boosted significantly
     if ((attacker.stages.atk >= 2 || attacker.stages.spa >= 2) && !willDieFirst) return null;
 
+    // Don't flee an attrition win: if we can 2HKO and the player is already low, stay and finish
+    let playerIsNearKO = can2HKO && defHpPct < 0.4;
+
     // Check if any bench mon is better. Also switch if a hard resist on the player's bench
     // means continuing to attack just feeds them a free turn (especially when we're at decent HP).
-    let shouldSwitch = willDieFirst || (walled && hpPct > 0.35) || (benchHasHardResist && hpPct > 0.5 && !canKO);
+    let shouldSwitch = !playerIsNearKO && (willDieFirst || (walled && hpPct > 0.35) || (benchHasHardResist && hpPct > 0.5 && !canKO));
 
     if (shouldSwitch) {
         let switchTo = aiBestSwitch(bench, defender);
         if (switchTo) {
             let switchIdx = state.foeParty.indexOf(switchTo);
-            // Validate the switch target won't just die immediately (account for entry hazards too)
-            let switchThreat = aiThreatScore(defender, switchTo);
+            // Validate the switch target won't just die immediately — use full threat, no reveal discount
+            let switchThreat = aiThreatScore(defender, switchTo, true);
             let switchHazard = aiEstimateHazardDamage(switchTo);
             if ((switchThreat + switchHazard) >= switchTo.currentHp && !walled) return null; // Don't switch into a combined KO
 
             let newBestDmg = 0;
             switchTo.moves.forEach(m => { if (m.cat !== "Status") { let d = aiEstimateDmg(switchTo, defender, m); if (d > newBestDmg) newBestDmg = d; } });
 
-            // Switch if the new mon is meaningfully better, or if we're dying anyway
-            if (newBestDmg > myBestDmg * 1.2 || willDieFirst || walled) return switchIdx;
+            // Require a substantial improvement (40%) before committing to switch — giving a free turn costs real momentum
+            if (newBestDmg > myBestDmg * 1.4 || willDieFirst || walled) return switchIdx;
         }
     }
     return null;
