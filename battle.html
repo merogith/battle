@@ -5713,22 +5713,30 @@
             return csvBuilds[name] || {};
         }
 
-        // Abilities that swing matchups hard enough to warrant a soft-cap when sampling builds.
-        // Wonder Guard / Huge Power / Pure Power / Speed Boost / Imposter / Moody all create lopsided
-        // encounters when rolled at full archetype weight — soft-cap with a 50% one-shot reroll keeps
-        // them as memorable spice rather than every-other-battle staples.
-        const SMART_POOL_OP_ABILITIES = new Set([
-            'Wonder Guard', 'Huge Power', 'Pure Power',
-            'Speed Boost', 'Imposter', 'Moody'
-        ]);
+        // Some Smogon CSV rows come from AAA / hackmons / Almost-Any-Ability formats where a
+        // species has been given an ability it cannot legally hold (e.g. Wonder Guard on a non-Shedinja,
+        // Huge Power on a mon that doesn't naturally get it, or Slaking / Regigigas / Archeops with
+        // their crippling ability replaced). Canonical OP abilities — Wonder Guard Shedinja, Huge
+        // Power Azumarill, Pure Power Medicham, Speed Boost Blaziken, Imposter Ditto — stay at full
+        // weight because they're the species' actual ability. We only soft-cap the off-format swaps.
+        function buildHasIllegalAbility(name, build) {
+            if (!build || !build.a || build.a === 'None') return false;
+            const base = baseStats[name];
+            if (!base || !base.abilities) return false;
+            for (const k of ['0', '1', 'H', 'S']) {
+                if (base.abilities[k] === build.a) return false;
+            }
+            return true;
+        }
 
         // Central smart-pool selector. Used by makeBuild for both initial pick and the post-validate
         // fallback. When `useSmart` is true, picks an archetype first (uniform across archetypes),
         // then a build within it — preserving variety even when one archetype dominates the CSV
         // (Lando-T has 148 sets, mostly the same physical-attacker template). Also applies a 50%
-        // one-shot reroll when the chosen build's ability is in SMART_POOL_OP_ABILITIES, so swingy
-        // abilities still appear but don't dominate.
-        function pickBuildFromSmartPool(pool, useSmart) {
+        // one-shot reroll when the picked build's ability is not legal for this species (AAA /
+        // hackmons leakage), so off-format builds still appear occasionally for novelty but don't
+        // dominate the pool with un-Truant Slakings or Wonder-Guard-on-anything.
+        function pickBuildFromSmartPool(name, pool, useSmart) {
             if (!pool || !pool.length) return null;
             const pickOnce = () => {
                 if (useSmart && pool.length > 1) {
@@ -5744,9 +5752,9 @@
                 return pool[Math.floor(Math.random() * pool.length)];
             };
             let bd = pickOnce();
-            if (useSmart && pool.length > 1 && bd && SMART_POOL_OP_ABILITIES.has(bd.a) && Math.random() < 0.5) {
+            if (useSmart && pool.length > 1 && bd && buildHasIllegalAbility(name, bd) && Math.random() < 0.5) {
                 const second = pickOnce();
-                if (second && !SMART_POOL_OP_ABILITIES.has(second.a)) bd = second;
+                if (second && !buildHasIllegalAbility(name, second)) bd = second;
             }
             return bd;
         }
@@ -5779,7 +5787,7 @@
             if (!pool.length) pool = (entry.regular || []).concat(entry.weather || []);
 
             if (pool.length) {
-                const picked = pickBuildFromSmartPool(pool, useSmart);
+                const picked = pickBuildFromSmartPool(name, pool, useSmart);
                 b = { ...picked };
                 b.m = b.m.map(m => {
                     if (!m.includes('/')) return m;
@@ -5839,7 +5847,7 @@
                 // Re-pull a clean regular build if available
                 const fallbackPool2 = (entry.regular || []).concat(entry.weather || []);
                 if (fallbackPool2.length) {
-                    let fb = { ...pickBuildFromSmartPool(fallbackPool2, useSmart) };
+                    let fb = { ...pickBuildFromSmartPool(name, fallbackPool2, useSmart) };
                     fb.m = fb.m.map(m => {
                         if (!m.includes('/')) return m;
                         const parts = m.split('/').map(s => s.trim()).filter(Boolean);
