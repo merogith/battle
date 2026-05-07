@@ -1900,24 +1900,28 @@
                         0 2px 0 #080810, 0 3px 5px rgba(0,0,0,0.4);
             transition: transform 0.06s ease, box-shadow 0.06s ease, background 0.1s ease, border-color 0.1s ease;
         }
-        #move-menu button.battle-btn-move:has(.type-Normal)   { background: #22201a; border-top-color: #6a6848; border-left-color: #6a6848; border-bottom-color: #14130c; border-right-color: #14130c; }
-        #move-menu button.battle-btn-move:has(.type-Fire)     { background: #281a12; border-top-color: #884820; border-left-color: #884820; border-bottom-color: #180c06; border-right-color: #180c06; }
-        #move-menu button.battle-btn-move:has(.type-Water)    { background: #141c2a; border-top-color: #385088; border-left-color: #385088; border-bottom-color: #0a0e18; border-right-color: #0a0e18; }
-        #move-menu button.battle-btn-move:has(.type-Grass)    { background: #1a2414; border-top-color: #487830; border-left-color: #487830; border-bottom-color: #0c1408; border-right-color: #0c1408; }
-        #move-menu button.battle-btn-move:has(.type-Electric) { background: #28241a; border-top-color: #907818; border-left-color: #907818; border-bottom-color: #18140c; border-right-color: #18140c; }
-        #move-menu button.battle-btn-move:has(.type-Ice)      { background: #1a2424; border-top-color: #588080; border-left-color: #588080; border-bottom-color: #0c1414; border-right-color: #0c1414; }
-        #move-menu button.battle-btn-move:has(.type-Fighting) { background: #281414; border-top-color: #701818; border-left-color: #701818; border-bottom-color: #180808; border-right-color: #180808; }
-        #move-menu button.battle-btn-move:has(.type-Poison)   { background: #221422; border-top-color: #602060; border-left-color: #602060; border-bottom-color: #140814; border-right-color: #140814; }
-        #move-menu button.battle-btn-move:has(.type-Ground)   { background: #262018; border-top-color: #887038; border-left-color: #887038; border-bottom-color: #18140c; border-right-color: #18140c; }
-        #move-menu button.battle-btn-move:has(.type-Flying)   { background: #1c1a28; border-top-color: #605088; border-left-color: #605088; border-bottom-color: #0e0c18; border-right-color: #0e0c18; }
-        #move-menu button.battle-btn-move:has(.type-Psychic)  { background: #281420; border-top-color: #903050; border-left-color: #903050; border-bottom-color: #180810; border-right-color: #180810; }
-        #move-menu button.battle-btn-move:has(.type-Bug)      { background: #202014; border-top-color: #606810; border-left-color: #606810; border-bottom-color: #101008; border-right-color: #101008; }
-        #move-menu button.battle-btn-move:has(.type-Rock)     { background: #242018; border-top-color: #685820; border-left-color: #685820; border-bottom-color: #14100c; border-right-color: #14100c; }
-        #move-menu button.battle-btn-move:has(.type-Ghost)    { background: #1c1420; border-top-color: #403058; border-left-color: #403058; border-bottom-color: #0e0810; border-right-color: #0e0810; }
-        #move-menu button.battle-btn-move:has(.type-Dragon)   { background: #181028; border-top-color: #402090; border-left-color: #402090; border-bottom-color: #0c0618; border-right-color: #0c0618; }
-        #move-menu button.battle-btn-move:has(.type-Dark)     { background: #1e1814; border-top-color: #403028; border-left-color: #403028; border-bottom-color: #100c08; border-right-color: #100c08; }
-        #move-menu button.battle-btn-move:has(.type-Steel)    { background: #1e1e24; border-top-color: #686878; border-left-color: #686878; border-bottom-color: #0e0e14; border-right-color: #0e0e14; }
-        #move-menu button.battle-btn-move:has(.type-Fairy)    { background: #261a20; border-top-color: #885868; border-left-color: #885868; border-bottom-color: #140c10; border-right-color: #140c10; }
+        /* Type-coloured move buttons. Keyed off [data-type] on the button itself for resilience —
+           the colour holds even if the inner type-badge moves or is removed by future markup changes.
+           The legacy :has(.type-X) form is retained as a fallback for any caller that hasn't
+           migrated to setting data-type. */
+        #move-menu button.battle-btn-move[data-type="normal"],   #move-menu button.battle-btn-move:has(.type-Normal)   { background: #22201a; border-top-color: #6a6848; border-left-color: #6a6848; border-bottom-color: #14130c; border-right-color: #14130c; }
+        #move-menu button.battle-btn-move[data-type="fire"],     #move-menu button.battle-btn-move:has(.type-Fire)     { background: #281a12; border-top-color: #884820; border-left-color: #884820; border-bottom-color: #180c06; border-right-color: #180c06; }
+        #move-menu button.battle-btn-move[data-type="water"],    #move-menu button.battle-btn-move:has(.type-Water)    { background: #141c2a; border-top-color: #385088; border-left-color: #385088; border-bottom-color: #0a0e18; border-right-color: #0a0e18; }
+        #move-menu button.battle-btn-move[data-type="grass"],    #move-menu button.battle-btn-move:has(.type-Grass)    { background: #1a2414; border-top-color: #487830; border-left-color: #487830; border-bottom-color: #0c1408; border-right-color: #0c1408; }
+        #move-menu button.battle-btn-move[data-type="electric"], #move-menu button.battle-btn-move:has(.type-Electric) { background: #28241a; border-top-color: #907818; border-left-color: #907818; border-bottom-color: #18140c; border-right-color: #18140c; }
+        #move-menu button.battle-btn-move[data-type="ice"],      #move-menu button.battle-btn-move:has(.type-Ice)      { background: #1a2424; border-top-color: #588080; border-left-color: #588080; border-bottom-color: #0c1414; border-right-color: #0c1414; }
+        #move-menu button.battle-btn-move[data-type="fighting"], #move-menu button.battle-btn-move:has(.type-Fighting) { background: #281414; border-top-color: #701818; border-left-color: #701818; border-bottom-color: #180808; border-right-color: #180808; }
+        #move-menu button.battle-btn-move[data-type="poison"],   #move-menu button.battle-btn-move:has(.type-Poison)   { background: #221422; border-top-color: #602060; border-left-color: #602060; border-bottom-color: #140814; border-right-color: #140814; }
+        #move-menu button.battle-btn-move[data-type="ground"],   #move-menu button.battle-btn-move:has(.type-Ground)   { background: #262018; border-top-color: #887038; border-left-color: #887038; border-bottom-color: #18140c; border-right-color: #18140c; }
+        #move-menu button.battle-btn-move[data-type="flying"],   #move-menu button.battle-btn-move:has(.type-Flying)   { background: #1c1a28; border-top-color: #605088; border-left-color: #605088; border-bottom-color: #0e0c18; border-right-color: #0e0c18; }
+        #move-menu button.battle-btn-move[data-type="psychic"],  #move-menu button.battle-btn-move:has(.type-Psychic)  { background: #281420; border-top-color: #903050; border-left-color: #903050; border-bottom-color: #180810; border-right-color: #180810; }
+        #move-menu button.battle-btn-move[data-type="bug"],      #move-menu button.battle-btn-move:has(.type-Bug)      { background: #202014; border-top-color: #606810; border-left-color: #606810; border-bottom-color: #101008; border-right-color: #101008; }
+        #move-menu button.battle-btn-move[data-type="rock"],     #move-menu button.battle-btn-move:has(.type-Rock)     { background: #242018; border-top-color: #685820; border-left-color: #685820; border-bottom-color: #14100c; border-right-color: #14100c; }
+        #move-menu button.battle-btn-move[data-type="ghost"],    #move-menu button.battle-btn-move:has(.type-Ghost)    { background: #1c1420; border-top-color: #403058; border-left-color: #403058; border-bottom-color: #0e0810; border-right-color: #0e0810; }
+        #move-menu button.battle-btn-move[data-type="dragon"],   #move-menu button.battle-btn-move:has(.type-Dragon)   { background: #181028; border-top-color: #402090; border-left-color: #402090; border-bottom-color: #0c0618; border-right-color: #0c0618; }
+        #move-menu button.battle-btn-move[data-type="dark"],     #move-menu button.battle-btn-move:has(.type-Dark)     { background: #1e1814; border-top-color: #403028; border-left-color: #403028; border-bottom-color: #100c08; border-right-color: #100c08; }
+        #move-menu button.battle-btn-move[data-type="steel"],    #move-menu button.battle-btn-move:has(.type-Steel)    { background: #1e1e24; border-top-color: #686878; border-left-color: #686878; border-bottom-color: #0e0e14; border-right-color: #0e0e14; }
+        #move-menu button.battle-btn-move[data-type="fairy"],    #move-menu button.battle-btn-move:has(.type-Fairy)    { background: #261a20; border-top-color: #885868; border-left-color: #885868; border-bottom-color: #140c10; border-right-color: #140c10; }
         #move-menu button.battle-btn-move:hover:not(:disabled) {
             transform: translateY(-1px);
             filter: brightness(1.15);
@@ -11916,6 +11920,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let typeShort = (mv.type||'Normal').length > 4 ? mv.type.slice(0,4) : (mv.type||'Normal');
                     let catG = mv.cat === 'Physical' ? '⚔' : (mv.cat === 'Special' ? '✦' : '◎');
                     let catColor = mv.cat === 'Physical' ? '#ff6b6b' : mv.cat === 'Special' ? '#6b9fff' : '#888';
+                    b.dataset.type = (mv.type || 'Normal').toLowerCase();
                     if (isLocked) {
                         b.className = 'battle-btn-move locked-rampage';
                         b.innerHTML = `<div class="battle-btn-move-inner"><div class="move-tile-core"><div class="move-tile-head"><span class="type-badge type-${mv.type||'Normal'}">${typeShort}</span><span class="move-tile-name">${mv.name}</span><span class="move-tile-cat" style="color:${catColor}">${catG}</span><span class="lock-rampage-badge">🔒</span></div><div class="move-tile-meta" style="color:#ff8a65;font-weight:bold;">LOCKED IN</div></div></div>`;
@@ -11990,6 +11995,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let metaTail = effLabelShort ? `<span class="move-tile-sep">·</span>${effLabelShort}` : '';
                 let infoHit = isMobile ? '<span class="move-info-hit" title="Move details" role="button">i</span>' : '';
                 btn.className = 'battle-btn-move';
+                btn.dataset.type = (shownMove.type || 'Normal').toLowerCase();
                 btn.setAttribute('aria-label', `${shownMove.name}, ${shownMove.type}, ${shownMove.cat}, Power ${_powStr}, Acc ${_accStr}, PP ${_ppStr}, Pri ${priStr}`);
                 btn.innerHTML = '<div class="battle-btn-move-inner"><div class="move-tile-core"><div class="move-tile-head"><span class="type-badge type-' + shownMove.type + '">' + typeShort + '</span><span class="move-tile-name">' + shownMove.name + dynaLabel + zLabel + '</span><span class="move-tile-cat" style="color:' + catColor + '" title="' + shownMove.cat + '">' + catG + '</span></div><div class="move-tile-meta"><span title="Power"><strong>' + _powStr + '</strong></span><span class="move-tile-sep">·</span><span title="Accuracy"><strong>' + _accStr + '</strong></span><span class="move-tile-sep">·</span><span title="Priority" style="color:#aed581;font-weight:bold;">' + priStr + '</span><span class="move-tile-sep">·</span><span title="PP" style="color:' + ppColor + '"><strong>' + ppDisplay + '</strong></span>' + metaTail + '</div></div>' + infoHit + '</div>';
                 btn.title = isMobile
