@@ -46,7 +46,102 @@
             --battle-btn-gap: var(--battle-space-1);
             /* Single UI typeface everywhere (menus, story, battle, inputs). */
             --ui-font: var(--battle-font);
+
+            /* ─── Design system tokens (added for consistency) ─────────────── */
+            /* Typography scale — 6 steps, integer sizes for crisp pixel rendering */
+            --fs-xs: 10px;   /* badges, secondary metadata, PP counters */
+            --fs-sm: 12px;   /* card body, default button text, labels */
+            --fs-md: 14px;   /* card titles (compact/default), modal labels */
+            --fs-lg: 16px;   /* card titles (expanded), modal headers */
+            --fs-xl: 20px;   /* screen titles, dialogue speaker name */
+            --fs-2xl: 28px;  /* battle damage numbers, victory text */
+
+            /* Spacing scale — strict 4pt rhythm; battle-space-* aliases preserved */
+            --sp-1: 4px;
+            --sp-2: 8px;
+            --sp-3: 12px;
+            --sp-4: 16px;
+            --sp-5: 24px;
+            --sp-6: 32px;
+
+            /* Sprite size scale — three card densities */
+            --sprite-compact: 40px;
+            --sprite-default: 64px;
+            --sprite-expanded: 80px;
+
+            /* Semantic color aliases — components consume these, not raw hex */
+            --surface-default: var(--surface);
+            --surface-raised: var(--surface2);
+            --surface-sunken: #0e0e0e;
+            --text-default: var(--text-color);
+            --text-muted: #888;
+            --text-dim: #555;
+            --text-accent: var(--accent);
+            --border-default: var(--border-color);
+            --border-subtle: #2a2a2a;
+            --border-strong: #555;
+            --border-focus: var(--accent);
+
+            /* HP thresholds (aliases for consistent reuse) */
+            --hp-high: var(--hp-green);
+            --hp-mid: var(--hp-yellow);
+            --hp-low: var(--hp-red);
+
+            /* Service brand colors (city-mode action buttons) */
+            --service-primary: #ff6b6b;
+            --service-shop: #4caf50;
+            --service-link: #00e5ff;
+            --service-dept: #9c27b0;
+            --service-training: #ffb74d;
+            --service-center: #81d4fa;
+            --service-party: #4dd0e1;
+
+            /* Type colors — Smogon palette (used by [data-type] selectors) */
+            --type-normal: #a8a878;
+            --type-fire: #f08030;
+            --type-water: #6890f0;
+            --type-electric: #f8d030;
+            --type-grass: #78c850;
+            --type-ice: #98d8d8;
+            --type-fighting: #c03028;
+            --type-poison: #a040a0;
+            --type-ground: #e0c068;
+            --type-flying: #a890f0;
+            --type-psychic: #f85888;
+            --type-bug: #a8b820;
+            --type-rock: #b8a038;
+            --type-ghost: #705898;
+            --type-dragon: #7038f8;
+            --type-dark: #705848;
+            --type-steel: #b8b8d0;
+            --type-fairy: #ee99ac;
+
+            /* Z-index tiers — 5 documented layers */
+            --z-base: 0;       /* page content */
+            --z-sprite: 10;    /* battle sprites; +1/+2 within */
+            --z-hud: 100;      /* battle UI, party bar, command menu */
+            --z-overlay: 1000; /* modals, fullscreen dialogs */
+            --z-tooltip: 2000; /* tooltips above modals */
+            --z-toast: 3000;   /* toasts, save indicators */
         }
+
+        /* ─── Detail Mode (Casual / Standard / Competitive) ─────────────── */
+        /* Default is Standard. Settings toggle sets data-detail on <html>. */
+        /* Casual: hide stat bars + numeric stats + EV/IV + move BP/Acc/PP inline */
+        html[data-detail="casual"] .dm-stat-bars,
+        html[data-detail="casual"] .dm-stat-numbers,
+        html[data-detail="casual"] .dm-evs-ivs,
+        html[data-detail="casual"] .dm-move-meta { display: none !important; }
+        /* Standard: hide only EV/IV + numeric stats; bars stay */
+        html:not([data-detail="competitive"]) .dm-stat-numbers,
+        html:not([data-detail="competitive"]) .dm-evs-ivs { display: none !important; }
+        html[data-detail="standard"] .dm-stat-bars,
+        html[data-detail="standard"] .dm-move-meta { display: ''; }
+        /* Competitive: everything visible */
+        html[data-detail="competitive"] .dm-stat-bars,
+        html[data-detail="competitive"] .dm-stat-numbers,
+        html[data-detail="competitive"] .dm-evs-ivs,
+        html[data-detail="competitive"] .dm-move-meta { display: ''; }
         /* Polish: native dark scrollbars/inputs, crisp text, readable selection, keyboard focus */
         html { height: 100%; overscroll-behavior: none; color-scheme: dark; }
         body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-family: var(--ui-font); line-height: 1.5; }
