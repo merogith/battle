@@ -126,22 +126,17 @@
         }
 
         /* ─── Detail Mode (Casual / Standard / Competitive) ─────────────── */
-        /* Default is Standard. Settings toggle sets data-detail on <html>. */
+        /* Default is Standard. Settings toggle sets data-detail on <html>.
+           Components opt in by tagging optional sections with .dm-* classes. */
         /* Casual: hide stat bars + numeric stats + EV/IV + move BP/Acc/PP inline */
         html[data-detail="casual"] .dm-stat-bars,
         html[data-detail="casual"] .dm-stat-numbers,
         html[data-detail="casual"] .dm-evs-ivs,
         html[data-detail="casual"] .dm-move-meta { display: none !important; }
-        /* Standard: hide only EV/IV + numeric stats; bars stay */
+        /* Standard (default — also applies before the JS sets the attr): hide EV/IV + exact stat numbers; bars stay. */
         html:not([data-detail="competitive"]) .dm-stat-numbers,
         html:not([data-detail="competitive"]) .dm-evs-ivs { display: none !important; }
-        html[data-detail="standard"] .dm-stat-bars,
-        html[data-detail="standard"] .dm-move-meta { display: ''; }
-        /* Competitive: everything visible */
-        html[data-detail="competitive"] .dm-stat-bars,
-        html[data-detail="competitive"] .dm-stat-numbers,
-        html[data-detail="competitive"] .dm-evs-ivs,
-        html[data-detail="competitive"] .dm-move-meta { display: ''; }
+        /* Competitive: everything visible (default visibility, no rule needed). */
         /* Polish: native dark scrollbars/inputs, crisp text, readable selection, keyboard focus */
         html { height: 100%; overscroll-behavior: none; color-scheme: dark; }
         body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-family: var(--ui-font); line-height: 1.5; }
@@ -4249,6 +4244,14 @@
                     <option value="desktop">Desktop</option>
                 </select>
             </div>
+            <div class="settings-row" style="border-bottom:1px solid #444;" title="Casual hides stat bars and move power/accuracy. Standard shows them. Competitive adds IVs/EVs and exact stat numbers.">
+                <span>Detail level</span>
+                <select id="setting-detail-mode" onchange="settings.detailMode=this.value; persistMiscSettings(); window.applyDetailMode && window.applyDetailMode();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
+                    <option value="casual">Casual</option>
+                    <option value="standard">Standard</option>
+                    <option value="competitive">Competitive</option>
+                </select>
+            </div>
             <div class="settings-section-title">Audio</div>
             <label class="settings-row" for="sw-music"><span>Music</span><input type="checkbox" class="pbs-switch" id="sw-music" role="switch" onchange="window.applySettingSwitch('musicEnabled', this.checked)"></label>
             <div class="settings-row" style="flex-wrap:wrap;">
@@ -6173,7 +6176,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             storyBattleItems: true, /* story in-battle bag */
             pvpBattleItems: false,  /* reserved: symmetric items in PvP */
             battleLogDock: true,    /* landscape tablets/desktop: dock log when wide enough */
-            displayMode: 'auto'     /* 'auto' | 'phone' | 'desktop' — manual override of UA detection */
+            displayMode: 'auto',    /* 'auto' | 'phone' | 'desktop' — manual override of UA detection */
+            detailMode: 'standard'  /* 'casual' | 'standard' | 'competitive' — info density across cards/UI */
         };
         try {
             const _pbs = JSON.parse(localStorage.getItem('pbs_settings') || '{}');
@@ -6183,6 +6187,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.battleLogDock === 'boolean') settings.battleLogDock = _pbs.battleLogDock;
             if (typeof _pbs.smartDraftPool === 'boolean') settings.smartDraftPool = _pbs.smartDraftPool;
             if (_pbs.displayMode === 'phone' || _pbs.displayMode === 'desktop' || _pbs.displayMode === 'auto') settings.displayMode = _pbs.displayMode;
+            if (_pbs.detailMode === 'casual' || _pbs.detailMode === 'standard' || _pbs.detailMode === 'competitive') settings.detailMode = _pbs.detailMode;
         } catch (e) {}
         function persistMiscSettings() {
             try {
@@ -6192,7 +6197,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     pvpBattleItems: settings.pvpBattleItems,
                     battleLogDock: settings.battleLogDock,
                     smartDraftPool: settings.smartDraftPool,
-                    displayMode: settings.displayMode
+                    displayMode: settings.displayMode,
+                    detailMode: settings.detailMode
                 }));
             } catch (e) {}
         }
@@ -6204,6 +6210,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { applyDesktopGameScale && applyDesktopGameScale(); } catch (e) {}
             try { window.applyBattleLogDockClass && window.applyBattleLogDockClass(); } catch (e) {}
         };
+        // Detail Mode — controls info density on Pokemon cards via [data-detail] gates.
+        // Casual hides stat bars + numeric stats + EV/IV + move BP/Acc/PP.
+        // Standard (default) shows stat bars + ability/nature stat-effect, hides EV/IV.
+        // Competitive shows everything, including IVs/EVs and inline move metadata.
+        window.applyDetailMode = function() {
+            const m = settings.detailMode || 'standard';
+            const valid = (m === 'casual' || m === 'standard' || m === 'competitive') ? m : 'standard';
+            try { document.documentElement.setAttribute('data-detail', valid); } catch (e) {}
+        };
+        try { window.applyDetailMode(); } catch (e) {}
 
         // ============================================================
         // AUDIO SYSTEM
@@ -7864,6 +7880,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (ap) ap.value = settings.aiProfile || 'balanced';
             const dm = document.getElementById('setting-display-mode');
             if (dm) dm.value = settings.displayMode || 'auto';
+            const det = document.getElementById('setting-detail-mode');
+            if (det) det.value = settings.detailMode || 'standard';
             try { window.syncSettingsModalSwitches(); } catch (e) {}
             try { _updateFullscreenUI(); } catch (e) {}
             document.getElementById('modal-settings').classList.remove('hidden');
