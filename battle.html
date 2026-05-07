@@ -433,7 +433,30 @@
         }
         .modal-content::-webkit-scrollbar { width: 8px; }
         .modal-header-row { display: flex; align-items: center; justify-content: flex-end; position: relative; min-height: 40px; margin: -4px 0 10px; gap: 8px; }
-        .modal-header-row h2 { position: absolute; left: 50%; transform: translateX(-50%); margin: 0; pointer-events: none; }
+        /* Base modal title — was previously unset and inherited body sizing.
+           Components may still set inline styles (e.g. specific colour) which override these defaults. */
+        .modal-header-row h2 {
+            position: absolute; left: 50%; transform: translateX(-50%); margin: 0;
+            pointer-events: none;
+            font-size: var(--fs-md);
+            font-weight: bold;
+            line-height: 1.2;
+            max-width: calc(100% - 80px);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        /* Reusable .modal-title class for non-h2 headers (e.g. story bag/party modals using h3). */
+        .modal-title {
+            font-size: var(--fs-md);
+            font-weight: bold;
+            line-height: 1.2;
+            margin: 0;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: var(--sp-2);
+        }
         .modal-close-x {
             flex-shrink: 0; width: 40px; height: 40px; min-width: 40px; min-height: 40px; margin-left: auto;
             border-radius: 50%; border: 1px solid #555; background: var(--surface2); color: #fff;
