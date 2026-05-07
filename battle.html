@@ -127,12 +127,16 @@
 
         /* ─── Detail Mode (Casual / Standard / Competitive) ─────────────── */
         /* Default is Standard. Settings toggle sets data-detail on <html>.
-           Components opt in by tagging optional sections with .dm-* classes. */
-        /* Casual: hide stat bars + numeric stats + EV/IV + move BP/Acc/PP inline */
+           Components opt in by tagging optional sections with .dm-* classes.
+           The existing class names (.draft-card-stats, .move-tile-meta) are
+           also targeted directly so the toggle has effect without any markup change. */
+        /* Casual: hide stat bars on draft cards + inline move BP/Acc/PP in battle. */
         html[data-detail="casual"] .dm-stat-bars,
+        html[data-detail="casual"] .draft-card-stats,
         html[data-detail="casual"] .dm-stat-numbers,
         html[data-detail="casual"] .dm-evs-ivs,
-        html[data-detail="casual"] .dm-move-meta { display: none !important; }
+        html[data-detail="casual"] .dm-move-meta,
+        html[data-detail="casual"] .battle-btn-move .move-tile-meta:has(strong) { display: none !important; }
         /* Standard (default — also applies before the JS sets the attr): hide EV/IV + exact stat numbers; bars stay. */
         html:not([data-detail="competitive"]) .dm-stat-numbers,
         html:not([data-detail="competitive"]) .dm-evs-ivs { display: none !important; }
