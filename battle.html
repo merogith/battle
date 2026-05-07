@@ -18186,12 +18186,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Each gauntlet round rolls its own theme, so consecutive rounds feel mechanically
             // distinct even when species overlap. No ace concept (gauntlet has no signatures).
-            const gauntletTheme = rollTrainerTheme(Math.random);
+            // Surprise picks clamped to attacker archetypes so wild cards stay dangerous; theme
+            // integrity post-pass guarantees weather/TR setter is on the field.
+            const gauntletTheme = rollTrainerTheme(Math.random, null);
             const gauntletWeights = THEME_PROFILES[gauntletTheme].archetypeWeights;
-            state.foeParty = foeKeys.map(name => {
+            const _gauntletTeam = foeKeys.map(name => {
                 const surprise = Math.random() < SURPRISE_PICK_RATE;
-                return buildPokemon(name, makeBuild(name, { forceSmart: true, archetypeWeights: surprise ? null : gauntletWeights }));
+                const slotWeights = surprise ? SURPRISE_THREAT_WEIGHTS : gauntletWeights;
+                return { name, build: makeBuild(name, { forceSmart: true, archetypeWeights: slotWeights }) };
             });
+            enforceThemeIntegrity(_gauntletTeam, gauntletTheme);
+            state.foeParty = _gauntletTeam.map(t => buildPokemon(t.name, t.build));
             state.pActive = state.playerParty[0]; state.fActive = state.foeParty[0];
             state.weather = null; state.weatherTurns = 0;
             state.terrain = null; state.terrainTurns = 0;
@@ -19672,27 +19677,217 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'trick-room':     { weight: 1, archetypeWeights: { 'setup-sweeper': 3, 'physical-attacker': 3, 'special-attacker': 3, 'bulky-support': 2 } },
         };
         const SURPRISE_PICK_RATE = 1 / 6; // ~17% per non-ace slot — rare-but-noticeable wild cards
+        // When a slot rolls the surprise bypass on a BOSS team, we still want it to be a threat —
+        // not a random bulky-support that hands the player a free turn. Surprise picks roll inside
+        // attacker-only archetypes so wild cards stay dangerous.
+        const SURPRISE_THREAT_WEIGHTS = { 'setup-sweeper': 3, 'physical-attacker': 3, 'special-attacker': 3, 'mixed-attacker': 2 };
+
+        // Canon theme bias for ~70 named bosses. Multiplied into the base theme weights when this
+        // trainer rolls a theme, so Wallace usually rolls Rain, Raihan usually rolls Sand, Cynthia
+        // leans Bulky Offense — matching their canon team identity. Theme is still rolled, never
+        // hard-locked, so replays still vary. Trainer base name is used (Brock-Elite → Brock).
+        const TRAINER_CANON_THEMES = {
+            // Gen 1
+            'Brock':       { sand: 3, 'bulky-offense': 2 },
+            'Misty':       { rain: 5 },
+            'Lt. Surge':   { 'hyper-offense': 4 },
+            'Erika':       { sun: 4 },
+            'Sabrina':     { 'trick-room': 4 },
+            'Koga':        { 'hazard-stack': 4 },
+            'Blaine':      { sun: 5 },
+            'Giovanni':    { sand: 4, 'bulky-offense': 2 },
+            // Gen 2
+            'Falkner':     { 'hyper-offense': 3, sun: 2 },
+            'Bugsy':       { 'hazard-stack': 3 },
+            'Whitney':     { 'bulky-offense': 3 },
+            'Morty':       { 'trick-room': 3, 'hazard-stack': 2 },
+            'Chuck':       { 'hyper-offense': 4 },
+            'Jasmine':     { 'bulky-offense': 4, stall: 2 },
+            'Pryce':       { 'bulky-offense': 3 },
+            'Clair':       { 'hyper-offense': 4 },
+            // Gen 3
+            'Roxanne':     { sand: 3 },
+            'Brawly':      { 'hyper-offense': 4 },
+            'Wattson':     { rain: 3 },
+            'Flannery':    { sun: 5 },
+            'Norman':      { 'bulky-offense': 3 },
+            'Winona':      { sun: 3, 'hyper-offense': 2 },
+            'Tate':        { 'trick-room': 4 },
+            'Wallace':     { rain: 6 },
+            // Gen 4
+            'Roark':       { sand: 3 },
+            'Gardenia':    { sun: 4 },
+            'Maylene':     { 'hyper-offense': 4 },
+            'Crasher Wake':{ rain: 5 },
+            'Fantina':     { 'trick-room': 4 },
+            'Byron':       { 'bulky-offense': 3, stall: 2 },
+            'Volkner':     { 'hyper-offense': 4 },
+            // Gen 5
+            'Cilan':       { sun: 3 },
+            'Lenora':      { 'bulky-offense': 3 },
+            'Burgh':       { 'hazard-stack': 3 },
+            'Elesa':       { 'hyper-offense': 4 },
+            'Clay':        { sand: 4 },
+            'Skyla':       { 'hyper-offense': 4 },
+            'Drayden':     { 'hyper-offense': 5 },
+            // Gen 6
+            'Viola':       { sun: 2, 'hazard-stack': 3 },
+            'Grant':       { sand: 4 },
+            'Korrina':     { 'hyper-offense': 4 },
+            'Ramos':       { sun: 4 },
+            'Clemont':     { 'hyper-offense': 4 },
+            'Valerie':     { 'bulky-offense': 3 },
+            'Olympia':     { 'trick-room': 4 },
+            'Wulfric':     { 'bulky-offense': 3 },
+            // Gen 8
+            'Milo':        { sun: 4 },
+            'Nessa':       { rain: 5 },
+            'Kabu':        { sun: 5 },
+            'Bea':         { 'hyper-offense': 4 },
+            'Allister':    { 'trick-room': 3, 'hazard-stack': 2 },
+            'Opal':        { 'bulky-offense': 3 },
+            'Gordie':      { sand: 4 },
+            'Melony':      { 'bulky-offense': 3 },
+            'Piers':       { 'hyper-offense': 4 },
+            'Raihan':      { sand: 6 }, // canon Sand storm trainer
+            // Gen 9
+            'Katy':        { 'hazard-stack': 4 },
+            'Brassius':    { sun: 4 },
+            'Iono':        { 'hyper-offense': 4 },
+            'Kofu':        { rain: 5 },
+            'Larry':       { 'bulky-offense': 3 },
+            'Ryme':        { 'trick-room': 3 },
+            'Tulip':       { 'trick-room': 4 },
+            'Grusha':      { 'bulky-offense': 3 },
+            // Elite Four / Champions / Rivals / Villains
+            'Lorelei':     { 'bulky-offense': 3 },
+            'Bruno':       { 'hyper-offense': 4 },
+            'Agatha':      { 'hazard-stack': 3, 'trick-room': 2 },
+            'Lance':       { 'hyper-offense': 5 },
+            'Steven':      { 'bulky-offense': 3, sand: 2 },
+            'Cynthia':     { 'bulky-offense': 4, 'hazard-stack': 2 },
+            'Leon':        { 'hyper-offense': 5 },
+            'Diantha':     { 'bulky-offense': 2, 'hyper-offense': 2 },
+            'Geeta':       { 'bulky-offense': 3 },
+            'Blue':        { 'hyper-offense': 4 },
+            'Silver':      { 'hyper-offense': 4 },
+            'Barry':       { 'hyper-offense': 5 },
+            'Gladion':     { 'hyper-offense': 4 },
+            'Marnie':      { 'hyper-offense': 3 },
+            'Nemona':      { 'hyper-offense': 5 },
+            'Cyrus':       { 'hazard-stack': 4 },
+            'Ghetsis':     { 'hazard-stack': 4 },
+            'Guzma':       { 'hyper-offense': 4 },
+        };
 
         function _isBossTrainerEvent(eventType) {
             const e = String(eventType || '');
             return /^Gym Leader|^E[1-4]$|^Champion$|^Victory Road$|^Mystery Figure$|^Rival$/i.test(e);
         }
 
-        function rollTrainerTheme(rng) {
+        function rollTrainerTheme(rng, trainerName) {
             const themes = Object.keys(THEME_PROFILES);
-            const total = themes.reduce((s, k) => s + THEME_PROFILES[k].weight, 0);
+            const baseName = trainerName ? _storyTrainerBaseName(trainerName) : '';
+            const canonBias = (baseName && TRAINER_CANON_THEMES[baseName]) || null;
+            const total = themes.reduce((s, k) => s + THEME_PROFILES[k].weight * (canonBias && canonBias[k] || 1), 0);
             let r = (rng || Math.random)() * total;
             for (const k of themes) {
-                r -= THEME_PROFILES[k].weight;
+                r -= THEME_PROFILES[k].weight * (canonBias && canonBias[k] || 1);
                 if (r <= 0) return k;
             }
             return 'balanced';
         }
 
+        // ── Theme integrity + ace polish ─────────────────────────────────────────
+        // After a themed team is rolled, guarantee the theme actually works: weather themes need
+        // a setter (ability OR move), Trick Room needs a Trick Room move on a slow-ish mon. Without
+        // this, "Rain team" can collapse to "5 Water types with no rain on the field" — the single
+        // biggest immersion break in the previous logic.
+        const THEME_WEATHER_SETTERS = {
+            rain: { setterAbilities: ['Drizzle'], setterMove: 'Rain Dance', flavorType: 'Water' },
+            sun:  { setterAbilities: ['Drought'], setterMove: 'Sunny Day',  flavorType: 'Fire' },
+            sand: { setterAbilities: ['Sand Stream'], setterMove: 'Sandstorm', flavorType: 'Rock' },
+        };
+        function enforceThemeIntegrity(team, theme) {
+            if (!theme || !team || !team.length) return;
+            const w = THEME_WEATHER_SETTERS[theme];
+            if (w) {
+                const hasSetter = team.some(t => {
+                    if (!t || !t.build) return false;
+                    if (w.setterAbilities.includes(t.build.a)) return true;
+                    return Array.isArray(t.build.m) && t.build.m.includes(w.setterMove);
+                });
+                if (hasSetter) return;
+                // Pick the most flavor-fitting slot to inject the setter move (prefer the boost-type
+                // mon so Damp Rock lives on the Water mon, etc.). Fall back to any slot.
+                let bestIdx = -1, bestScore = -1;
+                for (let i = 0; i < team.length; i++) {
+                    const t = team[i]; if (!t) continue;
+                    const base = baseStats[t.name] || {};
+                    const isFlavor = base.t1 === w.flavorType || base.t2 === w.flavorType;
+                    const score = (isFlavor ? 2 : 1) + (i === team.length - 1 ? -0.5 : 0); // mild ace-protect
+                    if (score > bestScore) { bestScore = score; bestIdx = i; }
+                }
+                if (bestIdx >= 0) {
+                    const t = team[bestIdx];
+                    const base = baseStats[t.name] || {};
+                    replaceForWeatherSetter(t.build, w.setterMove, base);
+                }
+                return;
+            }
+            if (theme === 'trick-room') {
+                const hasTR = team.some(t => t && t.build && Array.isArray(t.build.m) && t.build.m.includes('Trick Room'));
+                if (hasTR) return;
+                // Slowest mon gets Trick Room — TR thrives on slow attackers.
+                let slowIdx = -1, slowSpe = Infinity;
+                for (let i = 0; i < team.length; i++) {
+                    const t = team[i]; if (!t) continue;
+                    const base = baseStats[t.name] || {};
+                    const spe = base.spe == null ? 100 : base.spe;
+                    if (spe < slowSpe) { slowSpe = spe; slowIdx = i; }
+                }
+                if (slowIdx >= 0) {
+                    const t = team[slowIdx];
+                    const base = baseStats[t.name] || {};
+                    replaceForWeatherSetter(t.build, 'Trick Room', base);
+                }
+            }
+        }
+
+        // Theme-aware ace item override. Only swaps when current item is generic (Leftovers / Life
+        // Orb / Sitrus etc.); preserves Mega Stones, Z-Crystals, and Choice items so the ace's
+        // existing offensive identity isn't accidentally overwritten.
+        const ACE_ITEM_PROTECTED = new Set(['Choice Band', 'Choice Specs', 'Choice Scarf', 'Eviolite', 'Focus Sash']);
+        function applyThemeAceItem(aceBuild, theme) {
+            if (!aceBuild) return;
+            if (aceBuild.i && (isMegaStone(aceBuild.i) || Z_TYPE_MAP_VALUES.has(aceBuild.i) || ACE_ITEM_PROTECTED.has(aceBuild.i))) return;
+            const ab = aceBuild.a;
+            const moves = aceBuild.m || [];
+            if (theme === 'rain' && ab === 'Drizzle') aceBuild.i = 'Damp Rock';
+            else if (theme === 'sun' && ab === 'Drought') aceBuild.i = 'Heat Rock';
+            else if (theme === 'sand' && ab === 'Sand Stream') aceBuild.i = 'Smooth Rock';
+            else if (theme === 'trick-room' && moves.includes('Trick Room')) aceBuild.i = 'Mental Herb';
+        }
+
+        // Late-game Mega-ace force. Champion / E1-E4 / Mystery Figure always Mega-ace when the
+        // species supports it. Gym Leader 6+ has a high chance. Earlier gym leaders only Mega when
+        // rolled naturally. Skipped if mega is disabled in settings or species has no Mega form.
+        function shouldForceMegaAce(eventType, badges) {
+            const e = String(eventType || '');
+            if (/^Champion$|^E[1-4]$|^Mystery Figure$|^Victory Road$/i.test(e)) return true;
+            if (/^Gym Leader [678]$/i.test(e)) return true;
+            if (/^Rival$/i.test(e) && (badges | 0) >= 6) return true;
+            return false;
+        }
+        function speciesHasMega(name) {
+            if (typeof MEGA_SPECIES === 'undefined') return false;
+            return MEGA_SPECIES.has(name) && name !== 'Rayquaza';
+        }
+
         function rollTrainerTeam(trainer, partySize, gradeWeights, enabledGensIn, battleEventType) {
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
             const isBoss = _isBossTrainerEvent(battleEventType);
-            const theme = isBoss ? rollTrainerTheme(rng) : null;
+            const theme = isBoss ? rollTrainerTheme(rng, trainer && trainer.name) : null;
             const themeWeights = theme ? THEME_PROFILES[theme].archetypeWeights : null;
             const gwIn = applyDifficultyToGradeWeights(gradeWeights || { g1: 0, g2: 0, g3: 50, g4: 50 });
             let allowedGens = normalizeEnabledGens(enabledGensIn != null ? enabledGensIn : storySettingsGens());
@@ -19722,11 +19917,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // ace always shows up dramatic-final in battle order. Removed from S so other slots
             // don't re-pick it. Skipped for non-boss roles (chaotic basics) and 1-mon teams (the
             // single mon IS the ace — current sigP logic handles it).
+            // 1/8 "rare ace swap": when the trainer has 2+ valid sigs, occasionally promote a
+            // non-canonical signature to ace for replay variety (Brock occasionally aces Aerodactyl
+            // instead of Onix). Canon ace still appears 87.5% of the time.
             let aceName = null;
             const aceSlot = partySize - 1;
             if (isBoss && partySize >= 2 && S.length > 0) {
-                aceName = S[0];
-                S = S.slice(1);
+                if (S.length >= 2 && rng() < 1 / 8) {
+                    const altIdx = 1 + Math.floor(rng() * (S.length - 1));
+                    aceName = S[altIdx];
+                    S = S.slice(0, altIdx).concat(S.slice(altIdx + 1));
+                } else {
+                    aceName = S[0];
+                    S = S.slice(1);
+                }
             }
             const T = {1:[],2:[],3:[],4:[]};
             for (const name of Object.keys(baseStats)) {
@@ -19812,9 +20016,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 usedNames.add(chosen);
                 // Theme bias on archetype roll, with a per-slot ~1/6 surprise that bypasses theme
-                // for a chaos pick (matches "rare wild card per ~5-6 mons" design intent).
+                // for a chaos pick. On boss teams, surprise is clamped to attacker archetypes so
+                // wild cards stay dangerous instead of accidentally weakening the team.
                 const surprise = isBoss && rng() < SURPRISE_PICK_RATE;
-                const slotWeights = surprise ? null : themeWeights;
+                const slotWeights = surprise ? (isBoss ? SURPRISE_THREAT_WEIGHTS : null) : themeWeights;
                 const build = makeBuild(chosen, { forceGimmick: 'STANDARD', forceSmart: true, archetypeWeights: slotWeights });
                 team[i] = { name: chosen, build };
             }
@@ -19823,14 +20028,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const aceBuild = makeBuild(aceName, { forceGimmick: 'STANDARD', forceSmart: true, archetypeWeights: themeWeights });
                 team[aceSlot] = { name: aceName, build: aceBuild };
             }
-            return _applyEnemyGimmickDistribution(team, battleEventType);
+            // Theme integrity: ensure rain/sun/sand/TR teams actually have their setter on the field.
+            if (theme) enforceThemeIntegrity(team, theme);
+            // Apply gimmick distribution first (so we know which slots got mega/dyna/etc naturally).
+            const distributed = _applyEnemyGimmickDistribution(team, battleEventType);
+            // Late-game Mega-ace force: if ace didn't naturally roll a gimmick AND the species has
+            // a Mega AND mega is enabled AND we're in the late-game tier, force the ace to Mega.
+            if (aceName && shouldForceMegaAce(battleEventType, sm && sm.badges) && sm && sm.settings && sm.settings.megaOn && speciesHasMega(aceName)) {
+                const aceCurrent = distributed[aceSlot] && distributed[aceSlot].build;
+                if (aceCurrent && (!aceCurrent.gimmick || aceCurrent.gimmick === 'STANDARD')) {
+                    const megaBuild = makeBuild(aceName, { forceGimmick: 'MEGA', forceSmart: true, archetypeWeights: themeWeights });
+                    if (megaBuild && megaBuild.gimmick === 'MEGA') {
+                        distributed[aceSlot] = { name: aceName, build: megaBuild };
+                    }
+                }
+            }
+            // Theme-aware ace item: weather rock for matching weather setter, Mental Herb for TR.
+            if (aceName && theme) applyThemeAceItem(distributed[aceSlot] && distributed[aceSlot].build, theme);
+            return distributed;
         }
         function rollMysteryFigureFinalBossTeam(partySize, enabledGensIn) {
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
             // Mystery Figure is THE final boss — always themed, with the same per-slot surprise
             // chance and full theme bias on the ace slot. The all-Grade-1 type-diversity rule
             // already produces a coherent legendary spread; theme just sharpens build cohesion.
-            const theme = rollTrainerTheme(rng);
+            const theme = rollTrainerTheme(rng, 'Mystery Figure');
             const themeWeights = THEME_PROFILES[theme].archetypeWeights;
             const allowedGens = normalizeEnabledGens(enabledGensIn != null ? enabledGensIn : storySettingsGens());
             const genSet = new Set(allowedGens);
@@ -19865,9 +20087,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (t1) usedTypes.add(t1);
                 const isAce = (i === aceSlot);
                 const surprise = !isAce && rng() < SURPRISE_PICK_RATE;
-                const slotWeights = surprise ? null : themeWeights;
+                const slotWeights = surprise ? SURPRISE_THREAT_WEIGHTS : themeWeights;
                 picks.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD', forceSmart: true, archetypeWeights: slotWeights }) });
             }
+            // Theme integrity + ace polish (mirror rollTrainerTeam, but ace = last slot of legendary picks)
+            enforceThemeIntegrity(picks, theme);
+            applyThemeAceItem(picks[aceSlot] && picks[aceSlot].build, theme);
             const oldMech = {
                 megaOn: !!sm.settings.megaOn,
                 dynaOn: !!sm.settings.dynaOn,
