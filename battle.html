@@ -451,8 +451,8 @@
         /* Draft Cards - Compact with big sprite */
         .draft-card { display: flex; flex-direction: row; align-items: stretch; text-align: left; padding: 10px; font-size: 12px; background: var(--surface); border: 2px solid #333; cursor: pointer; transition: all 0.15s; border-radius: 4px; gap: 10px; }
         .draft-card:hover { transform: translateY(-2px); background: var(--surface2); box-shadow: 0 4px 20px rgba(255,255,255,0.08); border-color: #666; }
-        .draft-card-sprite { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 72px; }
-        .draft-card-sprite .mini-sprite { width: 72px; height: 72px; margin: 0; }
+        .draft-card-sprite { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: var(--sprite-expanded); }
+        .draft-card-sprite .mini-sprite { width: var(--sprite-expanded); height: var(--sprite-expanded); margin: 0; }
         .draft-card-body { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
         .draft-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; font-size: 15px; font-weight: bold; }
         .draft-card-header > span:first-child { flex: 1; min-width: 0; line-height: 1.25; }
@@ -1181,7 +1181,7 @@
         .story-action-btn.disabled, .story-action-btn:disabled { opacity:0.35; cursor:not-allowed; }
         .story-action-btn .story-action-ico { flex: 0 0 auto; }
         .story-team-slot { display:flex; align-items:center; gap:6px; padding:4px 6px; border:1px solid #2a2a2a; border-radius:4px; background:var(--surface); font-size:11px; }
-        .story-team-slot img { width:40px; height:40px; image-rendering:pixelated; border:none; background:transparent; }
+        .story-team-slot img { width:var(--sprite-compact); height:var(--sprite-compact); image-rendering:pixelated; border:none; background:transparent; }
         .story-team-slot .draft-card-info-btn { flex-shrink: 0; }
         /* Party panel sort buttons */
         .party-sort-btn { width:22px; height:19px; font-size:9px; padding:0; line-height:1; border-radius:2px; }
@@ -1208,7 +1208,7 @@
         .story-link-mon-header { display:flex; align-items:flex-start; gap:8px; margin-bottom:8px; width:100%; box-sizing:border-box; }
         .story-link-mon-header > div:first-of-type { flex:1; min-width:0; }
         .story-link-mon-header .draft-card-info-btn { flex-shrink:0; align-self:flex-start; }
-        .story-link-mon-header img { width:56px; height:56px; image-rendering:pixelated; border:none; background:transparent; }
+        .story-link-mon-header img { width:var(--sprite-default); height:var(--sprite-default); image-rendering:pixelated; border:none; background:transparent; }
         .story-link-title-row { font-size:14px; font-weight:bold; line-height:1.25; display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; }
         .story-link-build {
             display:flex; flex-direction:column; gap:6px; margin-bottom:8px; width:100%; box-sizing:border-box;
@@ -4140,10 +4140,10 @@
             <p id="gen-range-note" style="font-size:10px; color:#666; margin:8px 0 0; text-align:center;">Pokémon from Gen 1–2 in pool</p>
             <div class="grade-filter-row menu-filter-row" style="margin-top:12px;">
                 <span style="font-size:11px; color:#aaa;">Grades:</span>
-                <label><input type="checkbox" id="grade-1-cb" checked onchange="window.updatePoolCount()"> <span class="tier-badge bg-tier-1">G1</span></label>
-                <label><input type="checkbox" id="grade-2-cb" checked onchange="window.updatePoolCount()"> <span class="tier-badge bg-tier-2">G2</span></label>
-                <label><input type="checkbox" id="grade-3-cb" checked onchange="window.updatePoolCount()"> <span class="tier-badge bg-tier-3">G3</span></label>
-                <label><input type="checkbox" id="grade-4-cb" checked onchange="window.updatePoolCount()"> <span class="tier-badge bg-tier-4">G4</span></label>
+                <label><input type="checkbox" id="grade-1-cb" checked onchange="window.updatePoolCount()"> <span class="tier-badge bg-tier-1" title="Grade 1 — strongest pool">G1</span></label>
+                <label><input type="checkbox" id="grade-2-cb" checked onchange="window.updatePoolCount()"> <span class="tier-badge bg-tier-2" title="Grade 2 — strong pool">G2</span></label>
+                <label><input type="checkbox" id="grade-3-cb" checked onchange="window.updatePoolCount()"> <span class="tier-badge bg-tier-3" title="Grade 3 — mid pool">G3</span></label>
+                <label><input type="checkbox" id="grade-4-cb" checked onchange="window.updatePoolCount()"> <span class="tier-badge bg-tier-4" title="Grade 4 — weakest pool">G4</span></label>
             </div>
             <div class="menu-section-title" style="margin-top:14px;">Battle mechanics</div>
             <div class="menu-filter-row">
@@ -10265,7 +10265,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const gb = (draftItem.build.gimmick && gimmickBadge[draftItem.build.gimmick]) || '';
                 const tera = draftItem.build.teraType ? `<span class="tera-tip-hover" style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:pointer;touch-action:manipulation;" data-tera="${encodeURIComponent(draftItem.build.teraType)}" data-o1="${encodeURIComponent(tempMon.type1)}" data-o2="${encodeURIComponent(tempMon.type2||'')}" onclick="event.stopPropagation();window.showTeraFromEl(event)" onmousemove="event.stopPropagation();window.showTeraTooltip('${draftItem.build.teraType}','${tempMon.type1}','${tempMon.type2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${draftItem.build.teraType}</span>` : '';
                 btn.innerHTML = `
-                    <div class="draft-card-sprite"><img src="${getSprite(tempMon.name, tempMon.isShiny)}" alt="${tempMon.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
+                    <div class="draft-card-sprite"><img src="${getSprite(tempMon.name, tempMon.isShiny)}" alt="${tempMon.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}" title="Grade ${tier} — pool strength (1 strongest, 4 weakest)">G${tier}</span></div>
                     <div class="draft-card-body">
                         <div class="draft-card-header"><span>${tempMon.isShiny ? '&#10024; ' : ''}${draftItem.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}</span><button type="button" class="draft-card-info-btn" aria-label="Full summary" title="Full summary">&#8505;</button></div>
                         <div class="draft-card-bst-mob">BST ${draftBst}</div>
@@ -10302,7 +10302,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let row = document.createElement('div');
                     row.className = `draft-card tier-${tier}`;
                     row.innerHTML = `
-                        <div class="draft-card-sprite"><img src="${getSprite(tempMon.name, tempMon.isShiny)}" alt="${tempMon.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
+                        <div class="draft-card-sprite"><img src="${getSprite(tempMon.name, tempMon.isShiny)}" alt="${tempMon.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}" title="Grade ${tier} — pool strength (1 strongest, 4 weakest)">G${tier}</span></div>
                         <div class="draft-card-body">
                             <div class="draft-card-header"><span>${tempMon.isShiny ? '&#10024; ' : ''}${draftItem.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}</span><button type="button" class="draft-card-info-btn" aria-label="Full summary" title="Full summary">&#8505;</button></div>
                             <div class="draft-card-details">
@@ -18118,7 +18118,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 row.innerHTML = `<span style="color:#888; font-size:12px; width:18px; text-align:center;">${i+1}</span>
                     <img src="${getSprite(mon.name, mon.isShiny)}" alt="${mon.name}" onerror="handleSpriteError(this)" style="width:36px;height:36px;image-rendering:pixelated;">
                     <span style="flex:1; font-size:13px; font-weight:bold;">${mon.isShiny ? '&#10024; ' : ''}${mon.name}</span>
-                    <span class="tier-badge bg-tier-${tier}" style="margin-right:4px;">G${tier}</span>
+                    <span class="tier-badge bg-tier-${tier}" style="margin-right:4px;" title="Grade ${tier} — pool strength (1 strongest, 4 weakest)">G${tier}</span>
                     <button onclick="window.reorderPartyUp(${i})" ${i===0?'disabled':''} style="min-width:32px;min-height:32px;padding:2px 6px;font-size:14px;" title="Move up">▲</button>
                     <button onclick="window.reorderPartyDown(${i})" ${i===state.playerParty.length-1?'disabled':''} style="min-width:32px;min-height:32px;padding:2px 6px;font-size:14px;" title="Move down">▼</button>`;
                 list.appendChild(row);
@@ -18158,7 +18158,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let _gb = _gimBadgeHTML(mon.buildData && mon.buildData.gimmick);
                 let _tb = _teraBadgeHTML(mon.buildData && mon.buildData.teraType);
                 btn.innerHTML = `
-                    <div class="draft-card-sprite"><img src="${getSprite(mon.name, mon.isShiny)}" alt="${mon.name}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${mon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
+                    <div class="draft-card-sprite"><img src="${getSprite(mon.name, mon.isShiny)}" alt="${mon.name}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${mon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}" title="Grade ${tier} — pool strength (1 strongest, 4 weakest)">G${tier}</span></div>
                     <div class="draft-card-body">
                         <div class="draft-card-header"><span>${mon.isShiny ? '&#10024; ' : ''}${mon.name} ${getTypeHTML(mon.type1, mon.type2)}${_gb}${_tb}</span><button type="button" class="draft-card-info-btn" aria-label="Full summary" title="Full summary">&#8505;</button></div>
                         <div class="draft-card-details"><span class="hover-text" data-tip-key="${encodeURIComponent(mon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${mon.nature}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(mon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${mon.ability}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(displayItem(mon,false))}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${displayItem(mon,false)}</span></div>
@@ -18175,7 +18175,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let _gb2 = _gimBadgeHTML(mon.buildData && mon.buildData.gimmick);
                 let _tb2 = _teraBadgeHTML(mon.buildData && mon.buildData.teraType);
                 btn.innerHTML = `
-                    <div class="draft-card-sprite"><img src="${getSprite(mon.name, mon.isShiny)}" alt="${mon.name}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${mon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
+                    <div class="draft-card-sprite"><img src="${getSprite(mon.name, mon.isShiny)}" alt="${mon.name}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${mon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}" title="Grade ${tier} — pool strength (1 strongest, 4 weakest)">G${tier}</span></div>
                     <div class="draft-card-body">
                         <div class="draft-card-header"><span>${mon.isShiny ? '&#10024; ' : ''}${mon.name} ${getTypeHTML(mon.type1, mon.type2)}${_gb2}${_tb2}</span><button type="button" class="draft-card-info-btn" aria-label="Full summary" title="Full summary">&#8505;</button></div>
                         <div class="draft-card-details"><span class="hover-text" data-tip-key="${encodeURIComponent(mon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${mon.nature}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(mon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${mon.ability}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(displayItem(mon,false))}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${displayItem(mon,false)}</span></div>
@@ -20647,7 +20647,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div class="story-party-card-hit" style="display:flex;align-items:stretch;gap:8px;min-width:0;flex:1;" role="button" tabindex="0" data-party-idx="${i}" title="View summary">
                         <div class="draft-card-sprite">
                             <img src="${getSprite(t.name, !!rawBuild._isShiny)}" onerror="handleSpriteError(this)" alt="${t.name}" data-shiny="${rawBuild._isShiny ? 'true' : 'false'}" class="mini-sprite" style="${rawBuild._isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}">
-                            <span class="tier-badge bg-tier-${g}" title="Power tier (1 = strongest pool tier, 4 = cutest/weakest)">T${g}</span>
+                            <span class="tier-badge bg-tier-${g}" title="Grade ${g} — pool strength (1 strongest, 4 weakest)">G${g}</span>
                         </div>
                         <div class="draft-card-body" style="min-width:0;flex:1;">
                             <div class="draft-card-header">
@@ -20888,7 +20888,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const card = document.createElement('div');
             card.className = `draft-card prof-pick-card tier-${tier}`;
             card.innerHTML = `
-                <div class="draft-card-sprite"><img src="${getSprite(tempMon.name, tempMon.isShiny)}" alt="${ch.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
+                <div class="draft-card-sprite"><img src="${getSprite(tempMon.name, tempMon.isShiny)}" alt="${ch.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}" title="Grade ${tier} — pool strength (1 strongest, 4 weakest)">G${tier}</span></div>
                 <div class="draft-card-body">
                     <div class="draft-card-header">
                         <span>${tempMon.isShiny ? '&#10024; ' : ''}${ch.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}</span>
@@ -20997,8 +20997,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     slot.className = `story-team-slot tier-${g}`;
                     slot.style.cssText = 'cursor:pointer;min-width:130px;padding:10px;transition:all 0.15s;';
                     slot.innerHTML = `
-                        <img src="${getSprite(t.name,false)}" onerror="this.src=''" style="width:56px;height:56px;image-rendering:pixelated;">
-                        <div style="font-size:12px;"><b>${t.name}</b><br><span class="tier-badge bg-tier-${g}" style="font-size:9px;" title="Power tier (1–4)">T${g}</span></div>`;
+                        <img src="${getSprite(t.name,false)}" onerror="this.src=''" style="width:var(--sprite-default);height:var(--sprite-default);image-rendering:pixelated;">
+                        <div style="font-size:12px;"><b>${t.name}</b><br><span class="tier-badge bg-tier-${g}" style="font-size:9px;" title="Grade ${g} — pool strength (1 strongest, 4 weakest)">G${g}</span></div>`;
                     slot.onclick = () => window.StoryMode._mysteryDoSwap(i);
                     cardEl.appendChild(slot);
                 });
@@ -21782,7 +21782,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <img src="${getSprite(t.name,false)}" onerror="this.src=''" alt="${t.name}">
                         <div>
                             <div class="story-link-title-row">${shinyPre}${t.name}${gimmickTag} ${typeHtml}${teraHtml}</div>
-                            <span class="tier-badge bg-tier-${g}">Grade ${g}</span>
+                            <span class="tier-badge bg-tier-${g}" title="Grade ${g} — pool strength (1 strongest, 4 weakest)">G${g}</span>
                         </div>
                         <button type="button" class="draft-card-info-btn" style="width:26px;height:26px;min-width:26px;font-size:12px;" onclick="window.StoryMode.openSummary(${i})" aria-label="Full summary" title="Full summary">&#8505;</button>
                     </div>
