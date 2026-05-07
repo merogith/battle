@@ -5730,13 +5730,14 @@
         }
 
         // Central smart-pool selector. Used by makeBuild for both initial pick and the post-validate
-        // fallback. When `useSmart` is true, picks an archetype first (uniform across archetypes),
-        // then a build within it — preserving variety even when one archetype dominates the CSV
-        // (Lando-T has 148 sets, mostly the same physical-attacker template). Also applies a 50%
-        // one-shot reroll when the picked build's ability is not legal for this species (AAA /
-        // hackmons leakage), so off-format builds still appear occasionally for novelty but don't
-        // dominate the pool with un-Truant Slakings or Wonder-Guard-on-anything.
-        function pickBuildFromSmartPool(name, pool, useSmart) {
+        // fallback. When `useSmart` is true, picks an archetype first (uniform across archetypes,
+        // or weighted by `archetypeWeights` when a trainer theme is in play), then a build within
+        // it — preserving variety even when one archetype dominates the CSV (Lando-T has 148 sets,
+        // mostly the same physical-attacker template). Also applies a 50% one-shot reroll when the
+        // picked build's ability is not legal for this species (AAA / hackmons leakage), so
+        // off-format builds still appear occasionally for novelty but don't dominate the pool with
+        // un-Truant Slakings or Wonder-Guard-on-anything.
+        function pickBuildFromSmartPool(name, pool, useSmart, archetypeWeights) {
             if (!pool || !pool.length) return null;
             const pickOnce = () => {
                 if (useSmart && pool.length > 1) {
@@ -5746,7 +5747,18 @@
                         (groups[a] = groups[a] || []).push(bd);
                     }
                     const archs = Object.keys(groups);
-                    const pick = archs[Math.floor(Math.random() * archs.length)];
+                    let pick;
+                    if (archetypeWeights) {
+                        // Weighted archetype choice: archetypes missing from the bias get a 0.25
+                        // floor weight so they can still appear (rare surprise) but theme dominates.
+                        const w = archs.map(a => Math.max(0.25, archetypeWeights[a] || 0));
+                        const sum = w.reduce((s, x) => s + x, 0);
+                        let r = Math.random() * sum;
+                        pick = archs[0];
+                        for (let i = 0; i < archs.length; i++) { r -= w[i]; if (r <= 0) { pick = archs[i]; break; } }
+                    } else {
+                        pick = archs[Math.floor(Math.random() * archs.length)];
+                    }
                     return groups[pick][Math.floor(Math.random() * groups[pick].length)];
                 }
                 return pool[Math.floor(Math.random() * pool.length)];
@@ -5760,13 +5772,16 @@
         }
 
         // Central build factory — used by draft, gauntlet rounds, story foe teams, and draw recovery.
-        // gimmickOpts.forceGimmick: pin a specific gimmick tag (STANDARD/MEGA/ZMOVE/TERA/DYNAMAX/GMAXDYNAMAX)
-        // gimmickOpts.forceSmart:   force smart-pool sampling regardless of player's UI toggle. All
-        //                           foe-team-gen call sites pass this so foe variety doesn't depend
-        //                           on the player turning their own draft variety setting on.
+        // gimmickOpts.forceGimmick:      pin a specific gimmick tag (STANDARD/MEGA/ZMOVE/TERA/DYNAMAX/GMAXDYNAMAX)
+        // gimmickOpts.forceSmart:        force smart-pool sampling regardless of player's UI toggle. All
+        //                                foe-team-gen call sites pass this so foe variety doesn't depend
+        //                                on the player turning their own draft variety setting on.
+        // gimmickOpts.archetypeWeights:  optional bias for which archetype to favor (used by boss-trainer
+        //                                themes — e.g. rain theme weights `weather-attacker` heavily).
         function makeBuild(name, gimmickOpts) {
             const gimmick = gimmickOpts && gimmickOpts.forceGimmick ? rollGimmick(name, gimmickOpts.forceGimmick) : rollGimmick(name);
             const useSmart = !!(settings.smartDraftPool || (gimmickOpts && gimmickOpts.forceSmart));
+            const archetypeWeights = (gimmickOpts && gimmickOpts.archetypeWeights) || null;
             const base    = baseStats[name] || {};
             const entry   = resolveCsvBuildEntry(name);
             let b = null;
@@ -5787,7 +5802,7 @@
             if (!pool.length) pool = (entry.regular || []).concat(entry.weather || []);
 
             if (pool.length) {
-                const picked = pickBuildFromSmartPool(name, pool, useSmart);
+                const picked = pickBuildFromSmartPool(name, pool, useSmart, archetypeWeights);
                 b = { ...picked };
                 b.m = b.m.map(m => {
                     if (!m.includes('/')) return m;
@@ -5847,7 +5862,7 @@
                 // Re-pull a clean regular build if available
                 const fallbackPool2 = (entry.regular || []).concat(entry.weather || []);
                 if (fallbackPool2.length) {
-                    let fb = { ...pickBuildFromSmartPool(name, fallbackPool2, useSmart) };
+                    let fb = { ...pickBuildFromSmartPool(name, fallbackPool2, useSmart, archetypeWeights) };
                     fb.m = fb.m.map(m => {
                         if (!m.includes('/')) return m;
                         const parts = m.split('/').map(s => s.trim()).filter(Boolean);
@@ -18169,7 +18184,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!foeSeen.has(name)) { foeSeen.add(name); foeKeys.push(name); }
                 if (foeKeys.length === settings.partySize) break;
             }
-            state.foeParty = foeKeys.map(name => buildPokemon(name, makeBuild(name, { forceSmart: true })));
+            // Each gauntlet round rolls its own theme, so consecutive rounds feel mechanically
+            // distinct even when species overlap. No ace concept (gauntlet has no signatures).
+            const gauntletTheme = rollTrainerTheme(Math.random);
+            const gauntletWeights = THEME_PROFILES[gauntletTheme].archetypeWeights;
+            state.foeParty = foeKeys.map(name => {
+                const surprise = Math.random() < SURPRISE_PICK_RATE;
+                return buildPokemon(name, makeBuild(name, { forceSmart: true, archetypeWeights: surprise ? null : gauntletWeights }));
+            });
             state.pActive = state.playerParty[0]; state.fActive = state.foeParty[0];
             state.weather = null; state.weatherTurns = 0;
             state.terrain = null; state.terrainTurns = 0;
@@ -19632,8 +19654,46 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return uniq.slice(0, 12);
         }
 
+        // ── Boss-trainer team themes ─────────────────────────────────────────────
+        // Per-battle strategy themes, rolled fresh each boss fight. Each theme biases the
+        // archetype-roll inside pickBuildFromSmartPool so the team feels coherent (a Sand team
+        // gets weather abusers, a Trick Room team gets slow attackers, etc.). A small per-slot
+        // "surprise" chance bypasses the bias to inject a coverage pick — matching how real
+        // competitive teams rarely run pure theme without a wild card.
+        const THEME_PROFILES = {
+            'balanced':       { weight: 3, archetypeWeights: { 'physical-attacker': 3, 'special-attacker': 3, 'bulky-support': 2, 'setup-sweeper': 2, 'lead-hazards': 1, 'mixed-attacker': 1 } },
+            'hyper-offense':  { weight: 1, archetypeWeights: { 'setup-sweeper': 4, 'physical-attacker': 3, 'special-attacker': 3, 'mixed-attacker': 2, 'lead-hazards': 1 } },
+            'bulky-offense':  { weight: 1, archetypeWeights: { 'bulky-support': 3, 'physical-attacker': 2, 'special-attacker': 2, 'setup-sweeper': 1, 'lead-hazards': 1 } },
+            'hazard-stack':   { weight: 1, archetypeWeights: { 'lead-hazards': 4, 'bulky-support': 2, 'physical-attacker': 1, 'special-attacker': 1, 'setup-sweeper': 1 } },
+            'stall':          { weight: 1, archetypeWeights: { 'bulky-support': 5, 'lead-hazards': 2, 'special-attacker': 1 } },
+            'rain':           { weight: 1, archetypeWeights: { 'weather-attacker': 4, 'special-attacker': 2, 'physical-attacker': 1, 'bulky-support': 1, 'lead-hazards': 1 } },
+            'sun':            { weight: 1, archetypeWeights: { 'weather-attacker': 4, 'special-attacker': 2, 'physical-attacker': 1, 'bulky-support': 1, 'lead-hazards': 1 } },
+            'sand':           { weight: 1, archetypeWeights: { 'weather-attacker': 3, 'physical-attacker': 3, 'bulky-support': 2, 'lead-hazards': 1, 'setup-sweeper': 1 } },
+            'trick-room':     { weight: 1, archetypeWeights: { 'setup-sweeper': 3, 'physical-attacker': 3, 'special-attacker': 3, 'bulky-support': 2 } },
+        };
+        const SURPRISE_PICK_RATE = 1 / 6; // ~17% per non-ace slot — rare-but-noticeable wild cards
+
+        function _isBossTrainerEvent(eventType) {
+            const e = String(eventType || '');
+            return /^Gym Leader|^E[1-4]$|^Champion$|^Victory Road$|^Mystery Figure$|^Rival$/i.test(e);
+        }
+
+        function rollTrainerTheme(rng) {
+            const themes = Object.keys(THEME_PROFILES);
+            const total = themes.reduce((s, k) => s + THEME_PROFILES[k].weight, 0);
+            let r = (rng || Math.random)() * total;
+            for (const k of themes) {
+                r -= THEME_PROFILES[k].weight;
+                if (r <= 0) return k;
+            }
+            return 'balanced';
+        }
+
         function rollTrainerTeam(trainer, partySize, gradeWeights, enabledGensIn, battleEventType) {
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
+            const isBoss = _isBossTrainerEvent(battleEventType);
+            const theme = isBoss ? rollTrainerTheme(rng) : null;
+            const themeWeights = theme ? THEME_PROFILES[theme].archetypeWeights : null;
             const gwIn = applyDifficultyToGradeWeights(gradeWeights || { g1: 0, g2: 0, g3: 50, g4: 50 });
             let allowedGens = normalizeEnabledGens(enabledGensIn != null ? enabledGensIn : storySettingsGens());
             const pg = trainer && trainer.pkmGens;
@@ -19658,6 +19718,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }).slice();
             if (_trainerIsPlaceholder) S = buildSyntheticSignaturePool({ ...trainer, type: 'Mixed' }, genSet, rng);
             else if (!S.length) S = buildSyntheticSignaturePool(trainer, genSet, rng);
+            // Boss-only ace: lock the trainer's first listed signature to the LAST team slot so the
+            // ace always shows up dramatic-final in battle order. Removed from S so other slots
+            // don't re-pick it. Skipped for non-boss roles (chaotic basics) and 1-mon teams (the
+            // single mon IS the ace — current sigP logic handles it).
+            let aceName = null;
+            const aceSlot = partySize - 1;
+            if (isBoss && partySize >= 2 && S.length > 0) {
+                aceName = S[0];
+                S = S.slice(1);
+            }
             const T = {1:[],2:[],3:[],4:[]};
             for (const name of Object.keys(baseStats)) {
                 if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
@@ -19705,9 +19775,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return pool.length ? pool[Math.floor(rng() * pool.length)] : null;
             }
 
-            const team = [];
+            const team = new Array(partySize);
             const usedNames = new Set();
+            if (aceName) usedNames.add(aceName);
             for (let i = 0; i < partySize; i++) {
+                if (aceName && i === aceSlot) continue; // ace placed at end
                 let chosen = null;
                 const R = rng();
                 if (R <= sigP && S.length > 0) {
@@ -19739,13 +19811,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
                 usedNames.add(chosen);
-                const build = makeBuild(chosen, { forceGimmick: 'STANDARD', forceSmart: true });
-                team.push({ name: chosen, build });
+                // Theme bias on archetype roll, with a per-slot ~1/6 surprise that bypasses theme
+                // for a chaos pick (matches "rare wild card per ~5-6 mons" design intent).
+                const surprise = isBoss && rng() < SURPRISE_PICK_RATE;
+                const slotWeights = surprise ? null : themeWeights;
+                const build = makeBuild(chosen, { forceGimmick: 'STANDARD', forceSmart: true, archetypeWeights: slotWeights });
+                team[i] = { name: chosen, build };
+            }
+            // Place ace last with full theme bias (no surprise — ace always commits to the theme).
+            if (aceName) {
+                const aceBuild = makeBuild(aceName, { forceGimmick: 'STANDARD', forceSmart: true, archetypeWeights: themeWeights });
+                team[aceSlot] = { name: aceName, build: aceBuild };
             }
             return _applyEnemyGimmickDistribution(team, battleEventType);
         }
         function rollMysteryFigureFinalBossTeam(partySize, enabledGensIn) {
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
+            // Mystery Figure is THE final boss — always themed, with the same per-slot surprise
+            // chance and full theme bias on the ace slot. The all-Grade-1 type-diversity rule
+            // already produces a coherent legendary spread; theme just sharpens build cohesion.
+            const theme = rollTrainerTheme(rng);
+            const themeWeights = THEME_PROFILES[theme].archetypeWeights;
             const allowedGens = normalizeEnabledGens(enabledGensIn != null ? enabledGensIn : storySettingsGens());
             const genSet = new Set(allowedGens);
             const gradeOnePool = [];
@@ -19759,6 +19845,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const usedNames = new Set();
             const usedTypes = new Set();
             const picks = [];
+            const aceSlot = partySize - 1;
             for (let i = 0; i < partySize; i++) {
                 let chosen = null;
                 const uniqueTypeCandidates = gradeOnePool.filter((n) => {
@@ -19776,7 +19863,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 usedNames.add(chosen);
                 const t1 = (baseStats[chosen] && baseStats[chosen].t1) || '';
                 if (t1) usedTypes.add(t1);
-                picks.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD', forceSmart: true }) });
+                const isAce = (i === aceSlot);
+                const surprise = !isAce && rng() < SURPRISE_PICK_RATE;
+                const slotWeights = surprise ? null : themeWeights;
+                picks.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD', forceSmart: true, archetypeWeights: slotWeights }) });
             }
             const oldMech = {
                 megaOn: !!sm.settings.megaOn,
