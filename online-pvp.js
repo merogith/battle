@@ -154,6 +154,7 @@
             revealedFoe: revealed,
             score: state.score,
             pendingEoT: !!state.pendingEoT,
+            residualPhaseComplete: !!state.residualPhaseComplete,
             currentPlayer: (state.currentPlayer === 2 ? 2 : 1)
         };
         return JSON.stringify(snap);
@@ -197,6 +198,7 @@
         state.revealedFoe = new Set(o.revealedFoe || []);
         state.score = o.score || 0;
         state.pendingEoT = !!o.pendingEoT;
+        state.residualPhaseComplete = !!o.residualPhaseComplete;
         state.p1Action = null;
         state.p2Action = null;
         state.currentPlayer = (typeof o.currentPlayer === 'number' && o.currentPlayer === 2) ? 2 : 1;

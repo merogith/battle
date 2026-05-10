@@ -3027,6 +3027,11 @@
                 min-width: 44px;
                 min-height: 44px;
             }
+            .story-hud-runinfo {
+                min-width: 44px;
+                min-height: 44px;
+                padding: 0 10px;
+            }
             /* No tap highlight, disable iOS long-press callout */
             * { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
             /* Install hint toast */
@@ -4209,6 +4214,15 @@
         </div>
     </div>
 
+    <div id="modal-story-run-summary" class="modal hidden" onclick="if (event.target === event.currentTarget) window.closeModal('modal-story-run-summary')">
+        <div class="modal-content white-outline" style="max-width: 500px;" onclick="event.stopPropagation()">
+            <h2 style="color: var(--accent); margin-top: 0; text-align: center; font-size: 15px;">Current Story run</h2>
+            <p style="font-size: 11px; color: #888; margin: -4px 0 12px; line-height: 1.45; text-align: center;">Locked in when you started this run (same as Continue Journey). League &amp; grade rules help you plan matchups.</p>
+            <div id="story-run-summary-body" style="font-size: 12px; line-height: 1.55; color: #ccc;"></div>
+            <button type="button" onclick="window.closeModal('modal-story-run-summary')" style="width: 100%; margin-top: 14px;">Close</button>
+        </div>
+    </div>
+
     <div id="modal-story-abandon-confirm" class="modal hidden">
         <div class="modal-content white-outline" style="max-width: 380px;">
             <h2 style="color: var(--hp-red); margin-top: 0; text-align: center;">Abandon run?</h2>
@@ -4476,6 +4490,7 @@
             </div>
             <div class="story-hud-actions">
                 <button type="button" class="story-hud-abandon" onclick="window.StoryMode.confirmAbandon()">Abandon</button>
+                <button type="button" class="story-hud-runinfo" onclick="window.StoryMode.openRunSummary()" title="Current run rules — difficulty, League foe boosts, grade curve, artifacts">Run</button>
                 <button type="button" class="story-hud-settings" onclick="window.openSettings()" aria-label="Settings">⚙</button>
             </div>
         </div>
@@ -7771,6 +7786,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (dm) dm.value = settings.displayMode || 'auto';
             try { window.syncSettingsModalSwitches(); } catch (e) {}
             try { _updateFullscreenUI(); } catch (e) {}
+            const srr = document.getElementById('settings-story-run-summary-row');
+            if (srr) {
+                const show = !!(window.StoryMode && typeof window.StoryMode.isActive === 'function' && window.StoryMode.isActive());
+                srr.classList.toggle('hidden', !show);
+            }
             document.getElementById('modal-settings').classList.remove('hidden');
         };
         window.applyBattleLogDockClass = function() {
@@ -9410,7 +9430,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { window.runScreenTransition('slide'); } catch (e) {}
             const pools = await buildDraftPoolsForCurrentSettings(mode);
             let { enabledGens, minGen, maxGen, p1Pool, p2Pool } = pools;
-            state = { mode: mode, draftTurn: 1, score: 0, enabledGens, minGen, maxGen, p1Pool, p2Pool, p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, fieldLastMove: null, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
+            state = { mode: mode, draftTurn: 1, score: 0, enabledGens, minGen, maxGen, p1Pool, p2Pool, p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, residualPhaseComplete: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, fieldLastMove: null, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
             renderDraft();
         };
 
@@ -9735,7 +9755,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 window.__onlineHostDraftDeadlinePrimed = false;
                 const serPool = (pl) => pl.map((x) => ({ name: x.name, build: x.build }));
                 await window.OnlineBattle.createRoom(match, pools.enabledGens, { p1_pool: serPool(pools.p1Pool), p2_pool: serPool(pools.p2Pool) });
-                state = { mode: 'pvp', draftTurn: 1, score: 0, enabledGens: pools.enabledGens, minGen: pools.minGen, maxGen: pools.maxGen, p1Pool: pools.p1Pool, p2Pool: pools.p2Pool, p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, fieldLastMove: null, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
+                state = { mode: 'pvp', draftTurn: 1, score: 0, enabledGens: pools.enabledGens, minGen: pools.minGen, maxGen: pools.maxGen, p1Pool: pools.p1Pool, p2Pool: pools.p2Pool, p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, residualPhaseComplete: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, fieldLastMove: null, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
                 window.__hostOnlineBattleStarted = false;
                 window.__guestLastResolved = 0;
                 window.__guestBattleStartApplied = false;
@@ -9791,7 +9811,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 window.updateMechanics();
                 const jMin = Math.min(...joinedGens);
                 const jMax = Math.max(...joinedGens);
-                state = { mode: 'pvp', draftTurn: d.draft_turn || 1, score: 0, enabledGens: joinedGens, minGen: jMin, maxGen: jMax, p1Pool: [], p2Pool: [], p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, fieldLastMove: null, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
+                state = { mode: 'pvp', draftTurn: d.draft_turn || 1, score: 0, enabledGens: joinedGens, minGen: jMin, maxGen: jMax, p1Pool: [], p2Pool: [], p1Draft: [], p2Draft: [], playerParty: [], foeParty: [], pActive: null, fActive: null, isOver: false, isLocked: false, pendingEoT: false, residualPhaseComplete: false, weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, fieldLastMove: null, pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 }, currentPlayer: 1, p1Action: null, p2Action: null, turnNumber: 0 };
                 mergeOnlineDraftFromPayload(d);
                 if (d.battle_turn_deadline_iso !== undefined) window.__onlineBattleDeadlineIso = d.battle_turn_deadline_iso;
                 window.__hostOnlineBattleStarted = false;
@@ -10375,14 +10395,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.isOver = false;
             state.isLocked = false;
             state.pendingEoT = false;
+            state.residualPhaseComplete = false;
             state.p1Action = null;
             state.p2Action = null;
+            try { state._lockedAt = 0; } catch (e) {}
+            // Clear any stray bag-pass marker. If a prior battle ended mid-bag-flow (e.g. the user
+            // popped a Hyper Potion on the foe's KO turn), the global flag could otherwise silently
+            // overwrite the player's first move in the new battle with __StoryItemPass.
+            try { if (typeof window !== 'undefined') window._storyBagPassAfterItem = false; } catch (e) {}
             AudioSystem.startNewBattle();
             document.getElementById('screen-draft').classList.add('hidden'); document.getElementById('screen-battle').classList.remove('hidden');
             try { window.runScreenTransition('fade'); } catch (e) {}
             try { applyBattleLayoutMode(); } catch (e) {}
             if (state.mode === 'gauntlet') document.getElementById('gauntlet-score').classList.remove('hidden'); else document.getElementById('gauntlet-score').classList.add('hidden');
             state.playerParty = state.p1Draft.map(d => buildPokemon(d.name, d.build)); state.foeParty = state.p2Draft.map(d => buildPokemon(d.name, d.build));
+            // Story League (E4 line / Champion / post-HoF boss): tiered stat boosts, then global difficulty mult.
+            if (state.mode === 'story' && typeof window.applyStoryLeagueFoeStatBoost === 'function') {
+                state.foeParty.forEach(window.applyStoryLeagueFoeStatBoost);
+            }
             // Story-mode difficulty: scale foe stats (Very Easy/Easy weaken, Hard/Very Hard strengthen)
             if (state.mode === 'story' && typeof window.applyFoeDifficultyScaling === 'function') {
                 state.foeParty.forEach(window.applyFoeDifficultyScaling);
@@ -10391,7 +10421,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (state.mode === 'story' && window.StoryMode && typeof window.StoryMode.applyHardcoreState === 'function') {
                 window.StoryMode.applyHardcoreState(state.playerParty);
             }
-            state.pActive = state.playerParty[0]; state.fActive = state.foeParty[0];
+            state.pActive = state.playerParty[0];
+            {
+                const _foeAlive = state.foeParty.filter(m => m.currentHp > 0);
+                const _foeLead = _foeAlive.length ? aiBestSwitch(_foeAlive, state.pActive) : null;
+                state.fActive = _foeLead || state.foeParty[0];
+            }
             state.turnNumber = 0;
             if (state.mode === 'story') {
                 state.storyItemUsedThisTurn = false;
@@ -10476,7 +10511,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 p2Draft: [{ name: 'Blissey', build: bb }],
                 playerParty: [], foeParty: [],
                 pActive: null, fActive: null,
-                isOver: false, isLocked: false, pendingEoT: false,
+                isOver: false, isLocked: false, pendingEoT: false, residualPhaseComplete: false,
                 weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, fieldLastMove: null,
                 pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 },
                 fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 },
@@ -10531,7 +10566,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 p2Draft: p2Draft,
                 playerParty: [], foeParty: [],
                 pActive: null, fActive: null,
-                isOver: false, isLocked: false, pendingEoT: false,
+                isOver: false, isLocked: false, pendingEoT: false, residualPhaseComplete: false,
                 weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, fieldLastMove: null,
                 pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 },
                 fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 },
@@ -10583,7 +10618,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 p2Draft: p2Draft,
                 playerParty: [], foeParty: [],
                 pActive: null, fActive: null,
-                isOver: false, isLocked: false, pendingEoT: false,
+                isOver: false, isLocked: false, pendingEoT: false, residualPhaseComplete: false,
                 weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, fieldLastMove: null,
                 pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 },
                 fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 },
@@ -10647,7 +10682,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 p2Draft: p2Draft,
                 playerParty: [], foeParty: [],
                 pActive: null, fActive: null,
-                isOver: false, isLocked: false, pendingEoT: false,
+                isOver: false, isLocked: false, pendingEoT: false, residualPhaseComplete: false,
                 weather: null, weatherTurns: 0, trickRoom: 0, terrain: null, terrainTurns: 0, fieldLastMove: null,
                 pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 },
                 fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 },
@@ -11268,6 +11303,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 state.isLocked = false;
                 state.pendingEoT = false;
+                state.residualPhaseComplete = false;
                 document.getElementById('command-menu').classList.add('hidden');
                 document.getElementById('move-menu').classList.add('hidden');
                 try { const party = document.getElementById('modal-party'); if (party) party.classList.add('hidden'); } catch (e) {}
@@ -12156,16 +12192,67 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return maxDmg;
         }
 
+        /** Normalize weather tags so redundant checks work across Sand/Sandstorm etc. */
+        function aiNormalizeWeatherTag(w) {
+            if (!w) return null;
+            if (w === "Sand") return "Sandstorm";
+            return w;
+        }
+
+        /** True if this weather move would only refresh what's already active. */
+        function aiWeatherMoveRedundant(moveName) {
+            let cw = getCurrentWeather();
+            cw = aiNormalizeWeatherTag(cw);
+            if (!cw) return false;
+            const sets = {
+                "Rain Dance": ["Rain", "HeavyRain"],
+                "Sunny Day": ["Sun", "HarshSun"],
+                "Sandstorm": ["Sandstorm"],
+                "Hail": ["Hail"],
+                "Snowscape": ["Hail"],
+                "Chilly Reception": ["Hail"],
+            };
+            const want = sets[moveName];
+            if (!want) return false;
+            return want.includes(cw);
+        }
+
+        /** Status moves absorbed/blocked by abilities the same way as damaging immunities */
+        function aiAbilityBlocksMoveForAi(attacker, defender, move) {
+            if (!move || !defender) return false;
+            const ab = defender.ability;
+            if (!ab) return false;
+            const t = move.type;
+            if (t === "Electric" && (ab === "Lightning Rod" || ab === "Lightningrod" || ab === "Volt Absorb" || ab === "Motor Drive")) return true;
+            if (t === "Water" && (ab === "Water Absorb" || ab === "Storm Drain" || ab === "Dry Skin")) return true;
+            if (t === "Fire" && ab === "Flash Fire") return true;
+            if (t === "Grass" && ab === "Sap Sipper") return true;
+            return false;
+        }
+
         // AI: pick best switch-in from bench
         function aiBestSwitch(bench, playerMon) {
             let best = null, bestScore = -Infinity;
+            if (!bench || !bench.length || !playerMon) return null;
             bench.forEach(mon => {
                 if (mon.currentHp <= 0) return;
-                // Score: how well does this mon handle the player's best moves?
                 let threat = aiThreatScore(playerMon, mon);
                 let myDmg = 0;
                 mon.moves.forEach(m => { let d = aiEstimateDmg(mon, playerMon, m); if (d > myDmg) myDmg = d; });
-                let score = myDmg - threat * 0.7 + (mon.currentHp / mon.maxHp) * 30;
+                let priThreatDmg = 0, priThreatType = null;
+                playerMon.moves.forEach(m => {
+                    if (m.cat === "Status" || m.pp <= 0) return;
+                    let d = aiEstimateDmg(playerMon, mon, m);
+                    if (d > priThreatDmg) { priThreatDmg = d; priThreatType = m.type; }
+                });
+                let typingAdj = 0;
+                if (priThreatType) {
+                    let e = getMoveEffectiveness(priThreatType, mon.type1, mon.type2);
+                    if (e === 0) typingAdj += 48;
+                    else if (e < 1) typingAdj += 24;
+                    else if (e >= 2) typingAdj -= 38;
+                }
+                let score = myDmg - threat * 0.65 + (mon.currentHp / mon.maxHp) * 28 + typingAdj * 0.9;
                 if (score > bestScore) { bestScore = score; best = mon; }
             });
             return best;
@@ -12353,6 +12440,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         } else {
             // === STATUS MOVE AI ===
 
+            // Ability-absorbed status (Lightning Rod + Thunder Wave, Flash Fire + Will-O-Wisp, …)
+            if (aiAbilityBlocksMoveForAi(attacker, defender, move)) {
+                score = 0;
+                score += Math.random() * 2;
+                if (score > maxScore) { maxScore = score; bestMove = move; }
+                return;
+            }
+
             // Never use status when about to die (unless Protect to scout/stall)
             if (aboutToBeKOd) {
                 if (move.name === "Protect" || move.name === "Detect") {
@@ -12427,14 +12522,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else score = 0;
             }
             // Sleep moves
-            else if (["Spore","Sleep Powder","Hypnosis","Lovely Kiss","Sing","Dark Void","Yawn"].includes(move.name) && !defender.status && !defHasSub) {
-                let baseScore = move.name === "Spore" ? 100 : 75; // Spore is 100% acc
-                score = defHpPct > 0.6 ? baseScore : baseScore * 0.7;
-                if (defender.type1 === "Grass" || defender.type2 === "Grass") score *= 0.3; // Sleep immune
+            else if (["Spore","Sleep Powder","Hypnosis","Lovely Kiss","Sing","Dark Void","Yawn"].includes(move.name)) {
+                if (defender.status === "SLP") score = 0;
+                else if (!defender.status && !defHasSub) {
+                    let baseScore = move.name === "Spore" ? 100 : 75; // Spore is 100% acc
+                    score = defHpPct > 0.6 ? baseScore : baseScore * 0.7;
+                    if (defender.type1 === "Grass" || defender.type2 === "Grass") score *= 0.3; // Sleep immune
+                } else score = 0;
             }
             // Recovery — heal when (currentHp - threat) leaves us low and we either move first or
             // the threat can't OHKO. Avoid healing when KO'ing the foe is the better trade.
             else if (["Roost","Recover","Soft-Boiled","Synthesis","Morning Sun","Slack Off","Rest","Wish","Milk Drink","Shore Up","Moonlight"].includes(move.name)) {
+                if (attacker.currentHp >= attacker.maxHp) {
+                    score = 0;
+                } else {
                 const postHpPct = Math.max(0, (attacker.currentHp - threat)) / attacker.maxHp;
                 const survivesHit = threat < attacker.currentHp;
                 if (!survivesHit && outsped) {
@@ -12452,6 +12553,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (move.name === "Wish") score *= 0.85;
                 // Heal Block / sleep / taunt blocks recovery
                 if (attacker.volatile.healBlock > 0 || attacker.status === "SLP") score = 0;
+                }
             }
             // Setup moves — buff stats. Avoid against Unaware/phazers/priority-KO threats.
             else if (["Swords Dance","Nasty Plot","Calm Mind","Agility","Rock Polish","Cosmic Power","Dragon Dance","Quiver Dance","Shell Smash","Coil","Belly Drum","Iron Defense","Amnesia","Bulk Up","Work Up","Shift Gear","Growth","Geomancy"].includes(move.name)) {
@@ -12541,8 +12643,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (defender.status === "TOX" || attacker.volatile.leechSeed || attacker.status === "BRN") score = 55;
                 // Protect is great for scouting choice-locked opponents
                 if (state.turnNumber <= 1) score += 10;
-                // Don't spam protect (success rate drops)
-                if (attacker.volatile.protectCount > 0) score *= 0.3;
+                // Success rate collapses when chained — treat as near-worthless
+                if (attacker.volatile.protectCount > 0) score = Math.min(score * 0.06, 3);
             }
             // Endure
             else if (move.name === "Endure") {
@@ -12557,7 +12659,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 score = 15;
                 if (defender.status === "TOX" || attacker.volatile.leechSeed || attacker.status === "BRN") score = 55;
                 if (state.turnNumber <= 1) score += 10;
-                if (attacker.volatile.protectCount > 0) score *= 0.3;
+                if (attacker.volatile.protectCount > 0) score = Math.min(score * 0.06, 3);
             }
             // Leech Seed
             else if (move.name === "Leech Seed") {
@@ -12604,12 +12706,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (isTrickRoom) score = outsped ? 5 : 55; // End TR if it helps opponent
                 else score = outsped ? 60 : 5; // Set TR if we're slow
             }
-            // Rain Dance / Sunny Day / etc
-            else if (["Rain Dance","Sunny Day","Sandstorm","Hail","Snowscape"].includes(move.name)) {
-                score = 40;
-                // Higher if ability benefits
-                let abilityWeather = { "Swift Swim": "Rain", "Chlorophyll": "Sun", "Sand Rush": "Sandstorm", "Slush Rush": "Hail" };
-                if (abilityWeather[attacker.ability] && move.name.includes(abilityWeather[attacker.ability])) score = 70;
+            // Rain Dance / Sunny Day / etc — skip useless re-setting of the same weather
+            else if (["Rain Dance","Sunny Day","Sandstorm","Hail","Snowscape","Chilly Reception"].includes(move.name)) {
+                if (aiWeatherMoveRedundant(move.name)) {
+                    score = 3;
+                } else {
+                    score = 40;
+                    let aw = attacker.ability;
+                    let wantsHigh = (
+                        (aw === "Swift Swim" && move.name === "Rain Dance") ||
+                        (aw === "Chlorophyll" && move.name === "Sunny Day") ||
+                        ((aw === "Sand Rush" || aw === "Sand Force") && move.name === "Sandstorm") ||
+                        (aw === "Slush Rush" && (move.name === "Hail" || move.name === "Snowscape" || move.name === "Chilly Reception"))
+                    );
+                    if (wantsHigh) score = 70;
+                }
             }
             else { score = 12; }
         }
@@ -12790,60 +12901,94 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let playerName = isP1 ? "Player 1" : "Player 2";
 
             if (isForced) {
-                // Forced replacement: any gimmick queued for the fainted battler must not apply here.
-                clearGimmickIntent(isP1);
-                state[activeTarget] = state[partyTarget][index];
-                state[activeTarget].turnCount = 0;
-                state[activeTarget].fakeOutOk = true;
-                logMsg(`${playerName} sent out ${state[activeTarget].name}!`, "info");
-                // Healing Wish: fully heal the incoming pokemon
-                if (isP1 && state._healingWish) {
-                    state[activeTarget].currentHp = state[activeTarget].maxHp; state[activeTarget].status = null; state[activeTarget].statusTurns = 0;
-                    state._healingWish = false; logMsg(`${state[activeTarget].name} was fully restored by the Healing Wish!`, 'heal');
-                } else if (!isP1 && state._healingWishFoe) {
-                    state[activeTarget].currentHp = state[activeTarget].maxHp; state[activeTarget].status = null; state[activeTarget].statusTurns = 0;
-                    state._healingWishFoe = false; logMsg(`${state[activeTarget].name} was fully restored by the Healing Wish!`, 'heal');
-                }
-                applySwitchInAbilities(state[activeTarget], isP1 ? state.fActive : state.pActive);
-                applyEntryHazards(state[activeTarget], isP1);
-                updateUI();
-                let sid = isP1 ? 'player-sprite' : 'foe-sprite';
-                await playPokeballAnimation(sid, isP1);
-                await sleep(1000);
-                if (await checkFaints()) {
-                    if (state.isOver) { state.isLocked = false; return; }
-                    if (!document.getElementById('modal-party').classList.contains('hidden')) return;
-                }
-
-                if (state.pendingEoT) {
-                    state.pendingEoT = false;
-                    runVolatileTimers();
-                    runWishHealing();
-                    endOfTurnEffects(state.pActive, state.fActive); endOfTurnEffects(state.fActive, state.pActive);
-                    tickWeather();
-                    // Dynamax turn countdown
-                    if (state.pActive.dynamaxed) { state.pActive.dynamaxTurns--; if (state.pActive.dynamaxTurns <= 0) deactivateDynamax(state.pActive, true); }
-                    if (state.fActive.dynamaxed) { state.fActive.dynamaxTurns--; if (state.fActive.dynamaxTurns <= 0) deactivateDynamax(state.fActive, false); }
-                    // Increment turn counts
-                    state.pActive.turnCount++;
-                    state.fActive.turnCount++;
-                    updateUI(); await sleep(1000);
-                    let eotFaint = await checkFaints();
-                    if (state.isOver) { state.isLocked = false; return; }
-                    if (eotFaint) {
+                // Forced-switch path is the ONLY code that clears the lock after a mid-turn faint.
+                // Inline-onclick callers don't await this function, so any throw here becomes an
+                // unhandled rejection: state.isLocked stays true, modal-party already closed,
+                // command-menu hidden — the user is stranded with no UI. Wrap defensively.
+                try {
+                    // Forced replacement: any gimmick queued for the fainted battler must not apply here.
+                    clearGimmickIntent(isP1);
+                    state[activeTarget] = state[partyTarget][index];
+                    if (!state[activeTarget]) throw new Error('selectPartyMember: invalid party slot ' + index);
+                    state[activeTarget].turnCount = 0;
+                    state[activeTarget].fakeOutOk = true;
+                    // Re-stamp the watchdog clock so multi-replacement chains stay observable to the safety net.
+                    try { state._lockedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); } catch (e) {}
+                    logMsg(`${playerName} sent out ${state[activeTarget].name}!`, "info");
+                    // Healing Wish: fully heal the incoming pokemon
+                    if (isP1 && state._healingWish) {
+                        state[activeTarget].currentHp = state[activeTarget].maxHp; state[activeTarget].status = null; state[activeTarget].statusTurns = 0;
+                        state._healingWish = false; logMsg(`${state[activeTarget].name} was fully restored by the Healing Wish!`, 'heal');
+                    } else if (!isP1 && state._healingWishFoe) {
+                        state[activeTarget].currentHp = state[activeTarget].maxHp; state[activeTarget].status = null; state[activeTarget].statusTurns = 0;
+                        state._healingWishFoe = false; logMsg(`${state[activeTarget].name} was fully restored by the Healing Wish!`, 'heal');
+                    }
+                    try { applySwitchInAbilities(state[activeTarget], isP1 ? state.fActive : state.pActive); }
+                    catch (e) { console.warn('[selectPartyMember] applySwitchInAbilities threw — continuing without it:', e); }
+                    try { applyEntryHazards(state[activeTarget], isP1); }
+                    catch (e) { console.warn('[selectPartyMember] applyEntryHazards threw — continuing without it:', e); }
+                    updateUI();
+                    let sid = isP1 ? 'player-sprite' : 'foe-sprite';
+                    await playPokeballAnimation(sid, isP1);
+                    await sleep(1000);
+                    if (await checkFaints()) {
+                        if (state.isOver) { state.isLocked = false; return; }
                         if (!document.getElementById('modal-party').classList.contains('hidden')) {
-                            // EoT already ran this turn — do NOT re-set pendingEoT.
-                            // Re-setting it would cause sandstorm/burn/leech-seed to tick again
-                            // when the player picks the next replacement (a real bug that bit
-                            // 6-mon league fights with multiple weak survivors).
+                            // Re-stamp again — another forced switch is queued and the watchdog must
+                            // measure THIS replacement's wait, not the prior one.
+                            try { state._lockedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); } catch (e) {}
                             return;
                         }
                     }
-                }
 
-                state.isLocked = false;
-                if (state.mode === 'pvp') state.currentPlayer = 1;
-                document.getElementById('command-menu').classList.remove('hidden');
+                    if (state.pendingEoT) {
+                        state.pendingEoT = false;
+                        // Mid-turn faint returns before the normal residual block — run it once after the replacement.
+                        // If this faint happened *after* residual already ran (burn/poison/orb at end of turn), do not
+                        // run residual again: Flame/Toxic Orb would re-trigger and burn newly switched Pokémon early.
+                        if (!state.residualPhaseComplete) {
+                            runVolatileTimers();
+                            runWishHealing();
+                            endOfTurnEffects(state.pActive, state.fActive); endOfTurnEffects(state.fActive, state.pActive);
+                            tickWeather();
+                            // Dynamax turn countdown
+                            if (state.pActive.dynamaxed) { state.pActive.dynamaxTurns--; if (state.pActive.dynamaxTurns <= 0) deactivateDynamax(state.pActive, true); }
+                            if (state.fActive.dynamaxed) { state.fActive.dynamaxTurns--; if (state.fActive.dynamaxTurns <= 0) deactivateDynamax(state.fActive, false); }
+                            // Increment turn counts
+                            state.pActive.turnCount++;
+                            state.fActive.turnCount++;
+                            state.residualPhaseComplete = true;
+                            updateUI(); await sleep(1000);
+                            let eotFaint = await checkFaints();
+                            if (state.isOver) { state.isLocked = false; return; }
+                            if (eotFaint) {
+                                if (!document.getElementById('modal-party').classList.contains('hidden')) {
+                                    // Residual already ran this turn — do NOT re-set pendingEoT.
+                                    // Re-setting it would cause sandstorm/burn/leech-seed to tick again
+                                    // when the player picks the next replacement (a real bug that bit
+                                    // 6-mon league fights with multiple weak survivors).
+                                    try { state._lockedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); } catch (e) {}
+                                    return;
+                                }
+                            }
+                        }
+                    }
+
+                    state.isLocked = false;
+                    try { state._lockedAt = 0; } catch (e) {}
+                    if (state.mode === 'pvp') state.currentPlayer = 1;
+                    document.getElementById('command-menu').classList.remove('hidden');
+                } catch (err) {
+                    console.error('[selectPartyMember:forced] threw — recovering UI:', err);
+                    try { logMsg(`[Error during switch: ${err && err.message ? err.message : err}. UI restored.]`, 'dmg'); } catch (e) {}
+                    try { state.isLocked = false; } catch (e) {}
+                    try { state.pendingEoT = false; } catch (e) {}
+                    try { state._lockedAt = 0; } catch (e) {}
+                    try { document.getElementById('command-menu').classList.remove('hidden'); } catch (e) {}
+                    try { document.getElementById('move-menu').classList.add('hidden'); } catch (e) {}
+                    try { const party = document.getElementById('modal-party'); if (party) party.classList.add('hidden'); } catch (e) {}
+                    try { if (typeof syncBattleActiveHighlight === 'function') syncBattleActiveHighlight(); } catch (e) {}
+                }
             } else {
                 let foe = isP1 ? state.fActive : state.pActive;
                 let activeMon = state[activeTarget];
@@ -12893,8 +13038,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (bench.length === 0) return; // No one to switch to
 
             if (state.mode !== 'pvp' && !isPlayer) {
-                // AI picks random bench mon
-                let newMon = bench[Math.floor(Math.random() * bench.length)];
+                let newMon = aiBestSwitch(bench, state.pActive) || bench[0];
                 let oldMon = state.fActive;
                 if (move.name === "Baton Pass") {
                     // Pass stat stages, sub, and certain beneficial volatiles — NOT Leech Seed (it's a hazard)
@@ -13098,9 +13242,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         window.playTurn = async function(pMoveIndex, pSwitchIndex) {
             if(state.isLocked) {
+                // The move-button onclick already hid move-menu before calling us. If we early-return
+                // here, the player is staring at an empty battle screen with no menu. The watchdog
+                // will eventually rescue (since isLocked is true) but we restore visibility first.
+                // Critical: do NOT consume window._storyBagPassAfterItem here — the user's bag-item
+                // turn never actually started, so the flag must persist for the legitimate next call.
+                try { document.getElementById('move-menu').classList.add('hidden'); } catch (e) {}
                 return;
             }
-            if (state.isOver) return;
+            if (state.isOver) {
+                // Battle ended already — restore command menu so the player can navigate the end-screen UI,
+                // and clear stale story-mode markers so a new battle doesn't inherit them.
+                try { document.getElementById('move-menu').classList.add('hidden'); } catch (e) {}
+                try { document.getElementById('command-menu').classList.remove('hidden'); } catch (e) {}
+                try { if (typeof window !== 'undefined') window._storyBagPassAfterItem = false; } catch (e) {}
+                return;
+            }
             // VGC: Cannot voluntarily switch while Dynamaxed
             if (pSwitchIndex !== null && state.pActive && state.pActive.dynamaxed) {
                 logMsg(`${state.pActive.name} cannot switch out while Dynamaxed!`, 'info');
@@ -13142,38 +13299,48 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // resolver never started — the exact "click KO move → nothing happens → frozen"
                 // symptom we keep chasing in league chains. Each helper now degrades to a safe
                 // fallback action so the turn ALWAYS reaches the resolver and clears the lock.
-                let usedFoeItem = false;
-                if (state.mode === 'story' && settings.storyBattleItems !== false && typeof window.tryFoeStoryBattleItem === 'function') {
-                    try { usedFoeItem = window.tryFoeStoryBattleItem(); }
-                    catch (e) { console.warn('[playTurn] tryFoeStoryBattleItem threw — skipping foe item this turn:', e); usedFoeItem = false; }
-                }
-                if (usedFoeItem) {
-                    state.p2GimmickIntent = null;
-                    state.p2Action = { moveIndex: null, switchIndex: null, aiMove: { name: '__FoeItemPass', type: 'Normal', cat: 'Status', pow: 0, acc: 100, pri: 0, pp: 999, eff: '', effectStr: '' } };
-                } else {
-                let switchIdx = null;
-                try { switchIdx = aiDecision(); }
-                catch (e) { console.warn('[playTurn] aiDecision threw — AI will not switch this turn:', e); switchIdx = null; }
-                if (switchIdx !== null) {
-                    state.p2Action = { moveIndex: null, switchIndex: switchIdx };
-                } else {
-                    let fMove = null;
-                    try { fMove = window.getBestMove(state.fActive, state.pActive); }
-                    catch (e) { console.warn('[playTurn] getBestMove threw — falling back to first usable foe move:', e); fMove = null; }
-                    if (!fMove) {
-                        // Defensive fallback: first move with PP, else Struggle. Keeps the turn moving.
-                        const _fa = state.fActive;
-                        const _firstWithPp = (_fa && Array.isArray(_fa.moves)) ? _fa.moves.find(m => m && m.pp > 0) : null;
-                        fMove = _firstWithPp || { name: "Struggle", type: "Normal", cat: "Physical", pow: 50, acc: 100, pri: 0, pp: 1, maxPp: 1, eff: "", effectStr: "" };
+                // Outer try wraps the ENTIRE AI-action assembly. Any throw here (including the
+                // bare state.foeParty.indexOf / state.fActive.moves.indexOf calls below) used to
+                // escape playTurn and leave both menus hidden with no recovery. Now we always
+                // synthesize a Struggle action so the turn reaches the resolver.
+                try {
+                    let usedFoeItem = false;
+                    if (state.mode === 'story' && settings.storyBattleItems !== false && typeof window.tryFoeStoryBattleItem === 'function') {
+                        try { usedFoeItem = window.tryFoeStoryBattleItem(); }
+                        catch (e) { console.warn('[playTurn] tryFoeStoryBattleItem threw — skipping foe item this turn:', e); usedFoeItem = false; }
                     }
-                    let _aiG = null;
-                    try { _aiG = aiChooseGimmick(state.fActive, state.pActive); }
-                    catch (e) { console.warn('[playTurn] aiChooseGimmick threw — foe will not gimmick this turn:', e); _aiG = null; }
-                    let _aiSlot = state.foeParty.indexOf(state.fActive);
-                    state.p2GimmickIntent = (_aiG && _aiSlot >= 0) ? { kind: _aiG, slot: _aiSlot } : null;
-                    const _moveIdx = state.fActive.moves.indexOf(fMove);
-                    state.p2Action = { moveIndex: _moveIdx, switchIndex: null, aiMove: fMove };
-                }
+                    if (usedFoeItem) {
+                        state.p2GimmickIntent = null;
+                        state.p2Action = { moveIndex: null, switchIndex: null, aiMove: { name: '__FoeItemPass', type: 'Normal', cat: 'Status', pow: 0, acc: 100, pri: 0, pp: 999, eff: '', effectStr: '' } };
+                    } else {
+                        let switchIdx = null;
+                        try { switchIdx = aiDecision(); }
+                        catch (e) { console.warn('[playTurn] aiDecision threw — AI will not switch this turn:', e); switchIdx = null; }
+                        if (switchIdx !== null) {
+                            state.p2Action = { moveIndex: null, switchIndex: switchIdx };
+                        } else {
+                            let fMove = null;
+                            try { fMove = window.getBestMove(state.fActive, state.pActive); }
+                            catch (e) { console.warn('[playTurn] getBestMove threw — falling back to first usable foe move:', e); fMove = null; }
+                            if (!fMove) {
+                                // Defensive fallback: first move with PP, else Struggle. Keeps the turn moving.
+                                const _fa = state.fActive;
+                                const _firstWithPp = (_fa && Array.isArray(_fa.moves)) ? _fa.moves.find(m => m && m.pp > 0) : null;
+                                fMove = _firstWithPp || { name: "Struggle", type: "Normal", cat: "Physical", pow: 50, acc: 100, pri: 0, pp: 1, maxPp: 1, eff: "", effectStr: "" };
+                            }
+                            let _aiG = null;
+                            try { _aiG = aiChooseGimmick(state.fActive, state.pActive); }
+                            catch (e) { console.warn('[playTurn] aiChooseGimmick threw — foe will not gimmick this turn:', e); _aiG = null; }
+                            const _aiSlot = (state.foeParty && state.fActive) ? state.foeParty.indexOf(state.fActive) : -1;
+                            state.p2GimmickIntent = (_aiG && _aiSlot >= 0) ? { kind: _aiG, slot: _aiSlot } : null;
+                            const _moveIdx = (state.fActive && Array.isArray(state.fActive.moves)) ? state.fActive.moves.indexOf(fMove) : -1;
+                            state.p2Action = { moveIndex: _moveIdx, switchIndex: null, aiMove: fMove };
+                        }
+                    }
+                } catch (e) {
+                    console.error('[playTurn] AI assembly threw — falling back to Struggle:', e);
+                    state.p2GimmickIntent = null;
+                    state.p2Action = { moveIndex: -1, switchIndex: null, aiMove: { name: "Struggle", type: "Normal", cat: "Physical", pow: 50, acc: 100, pri: 0, pp: 1, maxPp: 1, eff: "", effectStr: "" } };
                 }
             }
 
@@ -13185,7 +13352,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // so the player isn't stuck staring at an empty battle screen.
                 console.error('[playTurn] resolver threw outside its catch:', e);
                 try { state.isLocked = false; } catch (e2) {}
-                try { state.pendingEoT = false; } catch (e2) {}
+                try { state.pendingEoT = false; state.residualPhaseComplete = false; } catch (e2) {}
                 try { document.getElementById('command-menu').classList.remove('hidden'); } catch (e2) {}
                 try { document.getElementById('move-menu').classList.add('hidden'); } catch (e2) {}
             }
@@ -13197,6 +13364,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { state._lockedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); } catch (e) {}
             try {
                 state.turnNumber++;
+                state.residualPhaseComplete = false;
                 // VGC: Enforce turn limit to prevent stall wars (200 turns → draw)
                 if (state.turnNumber > 200) {
                     logMsg(`Turn limit reached! The battle ends in a draw.`, 'info');
@@ -13280,6 +13448,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         }
                     }
                     fMove = null; // Pursuit already used
+                    // If Pursuit KO'd the player's switching mon, the queued switchIndex now points
+                    // at the freshly fainted mon. Drop it so the resolver doesn't try to send in a
+                    // 0-HP Pokémon and trigger broken hazard / animation states.
+                    const _swMon = state.playerParty[state.p1Action.switchIndex];
+                    if (!_swMon || _swMon.currentHp <= 0) state.p1Action.switchIndex = null;
                 }
                 if (state.p2Action.switchIndex !== null && pMove && pMove.name === "Pursuit") {
                     logMsg(`${state.pActive.name} caught the fleeing Pokémon with Pursuit!`, 'info');
@@ -13294,6 +13467,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         }
                     }
                     pMove = null;
+                    const _swMon = state.foeParty[state.p2Action.switchIndex];
+                    if (!_swMon || _swMon.currentHp <= 0) state.p2Action.switchIndex = null;
                 }
 
                 // Process switches first
@@ -13447,6 +13622,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Increment turn counts for active mons
                 state.pActive.turnCount++;
                 state.fActive.turnCount++;
+                state.residualPhaseComplete = true;
                 updateUI(); await sleep(1000);
                 
                 let eotFaint = await checkFaints();
@@ -13481,7 +13657,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try {
                     if (typeof state !== 'undefined' && state && state.isOver) state.isLocked = false;
                 } catch (e) {}
-                try { state._lockedAt = 0; } catch (e) {}
+                // Only clear the watchdog timestamp if the lock has actually been released.
+                // Mid-turn faints leave state.isLocked=true on purpose (selectPartyMember finishes
+                // the turn). If we zeroed _lockedAt unconditionally, the watchdog would compute
+                // since=0 and stay disarmed for that entire forced-switch window — exactly the
+                // scenario where we most need it.
+                try { if (typeof state !== 'undefined' && state && !state.isLocked) state._lockedAt = 0; } catch (e) {}
             }
         }
 
@@ -13497,6 +13678,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Battle already ended but the lock was never cleared (e.g. rare resolver edge) — safe to release; do not force menus (story / end screens own UI).
                 if (state.isOver) {
                     state.pendingEoT = false;
+                    state.residualPhaseComplete = false;
                     state.isLocked = false;
                     if (typeof logMsg === 'function') {
                         logMsg('Battle finished but input stayed locked — lock cleared. If anything still looks wrong, reload the page.', 'info');
@@ -13508,6 +13690,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const moveHidden = !move || move.classList.contains('hidden');
                 if (partyHidden && cmdHidden && moveHidden) {
                     state.pendingEoT = false;
+                    state.residualPhaseComplete = false;
                     state.isLocked = false;
                     cmd.classList.remove('hidden');
                     try { if (typeof syncBattleActiveHighlight === 'function') syncBattleActiveHighlight(); } catch (e) {}
@@ -15888,6 +16071,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         async function checkFaints() {
+            // Re-stamp the watchdog clock on every faint check. Chained foe KOs (Stealth Rock +
+            // Spikes + 4× weak bench, Lance's three Dragonites, etc.) can legitimately stack
+            // multiple seconds of awaited animations. We measure from the LAST progress point
+            // so the watchdog only fires for genuine hangs, not for long-but-progressing chains.
+            try {
+                if (typeof state !== 'undefined' && state && state.isLocked) {
+                    state._lockedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+                }
+            } catch (e) {}
             let foeFainted = state.fActive.currentHp <= 0;
             let playerFainted = state.pActive.currentHp <= 0;
             // Check for simultaneous faint (draw condition)
@@ -15928,7 +16120,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             state.pActive = state.playerParty[0]; state.fActive = state.foeParty[0];
                             state.weather = null; state.weatherTurns = 0;
                             state.pSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 }; state.fSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 };
-                            state.isLocked = false; state.isOver = false; state.pendingEoT = false; state.turnNumber = 0;
+                            state.isLocked = false; state.isOver = false; state.pendingEoT = false; state.residualPhaseComplete = false; state.turnNumber = 0;
                             state.p1GimmickIntent = null; state.p2GimmickIntent = null;
                             logMsg(`Gauntlet next round begins!`, 'info');
                             applySwitchInAbilities(state.pActive, state.fActive); applySwitchInAbilities(state.fActive, state.pActive);
@@ -15959,7 +16151,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (state.mode === 'pvp') {
                     state.currentPlayer = 2; window.openParty(true); return true;
                 } else {
-                    let foeNext = state.foeParty.find(m => m.currentHp > 0);
+                    const _foeSurv = state.foeParty.filter(m => m.currentHp > 0);
+                    let foeNext = _foeSurv.length ? (aiBestSwitch(_foeSurv, state.pActive) || _foeSurv[0]) : null;
                     state.fActive = foeNext; state.fActive.turnCount = 0; state.fActive.fakeOutOk = true;
                     if (state.revealedFoe) state.revealedFoe.add(state.fActive.name);
                     logMsg(`Foe sent out ${foeNext.name}!`);
@@ -15999,7 +16192,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 state.fActive.stages = {atk:0,def:0,spa:0,spd:0,spe:0,acc:0,eva:0};
                 state.fActive.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', octolock: false, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', recharge: false, charging: null, lockMove: null, lockTurns: 0, boostedThisTurn: false };
 
-                let next = state.foeParty.find(m => m.currentHp > 0);
+                const _foeSurv2 = state.foeParty.filter(m => m.currentHp > 0);
+                let next = _foeSurv2.length ? (aiBestSwitch(_foeSurv2, state.pActive) || _foeSurv2[0]) : null;
                 if (next) {
                     await sleep(500);
                     if (state.mode === 'pvp') {
@@ -16199,13 +16393,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${mon.name}'s Intrepid Sword raised its Attack!`, 'info');
             }
             if (mon.ability === "Imposter") {
-                if (foe.currentHp > 0 && !foe.transformedInto) {
+                // Defensive: a partially built / story-locked foe could have null moves or stats.
+                // Without these guards an unhandled TypeError escapes applySwitchInAbilities → checkFaints
+                // → resolver, mid-recursion, leaving state.fActive half-mutated for the next click.
+                if (foe && foe.currentHp > 0 && !foe.transformedInto && Array.isArray(foe.moves) && foe.stats) {
                     let noImposterAbilities = new Set(["Wonder Guard","Imposter","Flower Gift","Illusion","Power Construct","Stance Change","Schooling","Comatose","Shields Down","Disguise","RKS System","Battle Bond","Neutralizing Gas","Ice Face","Hunger Switch"]);
                     mon.stats = { ...foe.stats };
                     mon.type1 = foe.type1; mon.type2 = foe.type2;
                     mon.stages = { ...foe.stages };
-                    if (!noImposterAbilities.has(foe.ability)) mon.ability = foe.ability;
-                    mon.moves = foe.moves.map(m => ({...m, pp: Math.min(5, m.pp || 5), maxPp: Math.min(5, m.maxPp || 5)}));
+                    if (foe.ability && !noImposterAbilities.has(foe.ability)) mon.ability = foe.ability;
+                    mon.moves = foe.moves.filter(Boolean).map(m => ({...m, pp: Math.min(5, m.pp || 5), maxPp: Math.min(5, m.maxPp || 5)}));
                     mon.transformedInto = foe.name;
                     mon.transformTargetShiny = !!foe.isShiny;
                     logMsg(`${mon.name} transformed into ${foe.name} via Imposter!`, 'info');
@@ -16230,10 +16427,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     changeStage(mon, 'spa', 1);
                 }
             }
-            if (mon.ability === "Trace" && foe.ability && foe.ability !== "Trace") {
+            if (mon.ability === "Trace" && foe && foe.ability && foe.ability !== "Trace") {
                 logMsg(`${mon.name} traced ${foe.name}'s ${foe.ability}!`, 'info');
                 mon.ability = foe.ability;
-                applySwitchInAbilities(mon, foe); // re-check with new ability
+                try { applySwitchInAbilities(mon, foe); }
+                catch (e) { console.warn('[Trace] re-check applySwitchInAbilities threw — keeping new ability without re-trigger:', e); }
             }
             // Protosynthesis / Quark Drive / Booster Energy
             const paradoxAbility = mon.ability === "Protosynthesis" || mon.ability === "Quark Drive";
@@ -16366,6 +16564,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function applyEntryHazards(mon, isPlayer) {
+            if (!mon) return;
+            // Defensive: a botched bag-revive (or a pre-Dynamax-deactivate state where baseMaxHp
+            // wasn't restored) can leave maxHp/currentHp non-finite. NaN propagates through every
+            // damage calc and produces the "move animates but no damage applied" symptom — every
+            // subsequent comparison (currentHp <= 0, eff > 0, etc.) silently evaluates false.
+            if (!Number.isFinite(mon.maxHp) || mon.maxHp <= 0) {
+                console.warn('[applyEntryHazards] mon has invalid maxHp; skipping hazards:', mon && mon.name, mon && mon.maxHp);
+                return;
+            }
+            if (!Number.isFinite(mon.currentHp)) {
+                console.warn('[applyEntryHazards] mon has non-finite currentHp; clamping:', mon && mon.name);
+                mon.currentHp = mon.maxHp;
+            }
+            mon.currentHp = Math.max(0, Math.min(mon.maxHp, mon.currentHp));
             let side = isPlayer ? state.pSide : state.fSide;
             if (mon.ability === "Magic Guard") return;
             if (mon.item === "Heavy-Duty Boots") return;
@@ -16533,7 +16745,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return true;
         }
 
-        async function parseMoveEffects(attacker, defender, move, isPlayer) {
+        async function parseMoveEffects(attacker, defender, move, isPlayer, _bouncedDepth) {
             let eff = (move.effectStr || move.eff || "").toLowerCase();
             // Serene Grace: double secondary effect chance
             let sereneGrace = attacker.ability === "Serene Grace";
@@ -16548,10 +16760,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // === Magic Bounce: reflect non-damaging moves ===
             const magicBounceMoves = new Set(["Will-O-Wisp","Thunder Wave","Stun Spore","Sleep Powder","Spore","Toxic","Leech Seed","Strength Sap","Taunt","Encore","Disable","Heal Block","Torment","Mean Look","Spider Web","Block","Tickle","Growl","Leer","Tail Whip","Screech","Metal Sound","String Shot","Smokescreen","Sand Attack","Flash","Kinesis","Charm","Baby-Doll Eyes","Captivate","Sweet Scent","Swagger","Flatter","Noble Roar","Tearful Look","Spikes","Stealth Rock","Toxic Spikes","Sticky Web"]);
-            if (defender.ability === "Magic Bounce" && magicBounceMoves.has(move.name)) {
+            if (defender.ability === "Magic Bounce" && magicBounceMoves.has(move.name) && !_bouncedDepth) {
+                // Cartridge rule: a Magic-Bounced move can't be re-bounced. Without the depth flag,
+                // two Magic Bounce mons (e.g. Espeon vs Hatterene) infinite-recurse and stack-overflow.
                 logMsg(`${defender.name}'s Magic Bounce reflected ${move.name}!`, 'info');
-                // Swap attacker/defender and re-call
-                await parseMoveEffects(defender, attacker, move, !isPlayer);
+                await parseMoveEffects(defender, attacker, move, !isPlayer, true);
                 return;
             }
 
@@ -16751,6 +16964,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 side.stickyWeb = true; logMsg(`A sticky web has been laid out on the foe's side!`, 'status'); return;
             }
             if (move.name === "Rapid Spin") {
+                // Clears entry hazards on user's side, frees user from binding moves
+                // (Wrap/Bind/Fire Spin/Magma Storm/Whirlpool/Infestation/Sand Tomb/Clamp/Snap Trap/Thunder Cage),
+                // removes Leech Seed, and (Gen 8+) boosts user's Speed by 1.
                 let side = isPlayer ? state.pSide : state.fSide;
                 let cleared = false;
                 if (side.stealthRock) { side.stealthRock = false; cleared = true; }
@@ -16758,6 +16974,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (side.spikes > 0) { side.spikes = 0; cleared = true; }
                 if (side.stickyWeb) { side.stickyWeb = false; cleared = true; }
                 if (attacker.volatile.leechSeed) { attacker.volatile.leechSeed = false; cleared = true; }
+                if (attacker.volatile.partialTrap > 0) {
+                    attacker.volatile.partialTrap = 0;
+                    if ('partialTrapSrc' in attacker.volatile) attacker.volatile.partialTrapSrc = null;
+                    cleared = true;
+                }
                 if (cleared) logMsg(`${attacker.name} blew away the hazards!`, 'info');
                 changeStage(attacker, 'spe', 1);
                 return;
@@ -16847,11 +17068,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${attacker.name} created an Aurora Veil!`, 'info'); return;
             }
             if (move.name === "Defog") {
-                // Clears both sides' hazards, screens, terrain, and evasion -1 on target
+                // Per Showdown/Bulbapedia (Gen 6+): clears entry hazards on BOTH sides
+                // (Spikes, Toxic Spikes, Stealth Rock, Sticky Web), clears screens + Safeguard
+                // + Mist on TARGET side only, clears active terrain (Gen 8+), and -1 eva on target.
+                // Defog does NOT clear weather, Tailwind, or Lucky Chant.
                 let foeSide = isPlayer ? state.fSide : state.pSide;
                 let userSide = isPlayer ? state.pSide : state.fSide;
                 let cleared = false;
-                // Foe side: hazards + all screens + field moves
+                // Target side: hazards + screens + Safeguard + Mist
                 if (foeSide.stealthRock) { foeSide.stealthRock = false; cleared = true; }
                 if (foeSide.spikes > 0) { foeSide.spikes = 0; cleared = true; }
                 if (foeSide.toxicSpikes > 0) { foeSide.toxicSpikes = 0; cleared = true; }
@@ -16859,19 +17083,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (foeSide.reflect > 0) { foeSide.reflect = 0; cleared = true; }
                 if (foeSide.lightScreen > 0) { foeSide.lightScreen = 0; cleared = true; }
                 if (foeSide.auroraVeil > 0) { foeSide.auroraVeil = 0; cleared = true; }
-                if (foeSide.tailwind > 0) { foeSide.tailwind = 0; cleared = true; }
                 if (foeSide.safeguard > 0) { foeSide.safeguard = 0; cleared = true; }
                 if (foeSide.mist > 0) { foeSide.mist = 0; cleared = true; }
-                if (foeSide.luckychant > 0) { foeSide.luckychant = 0; cleared = true; }
-                // User side: screens only (no hazards removed from own side by Defog)
-                if (userSide.reflect > 0) { userSide.reflect = 0; cleared = true; }
-                if (userSide.lightScreen > 0) { userSide.lightScreen = 0; cleared = true; }
-                if (userSide.auroraVeil > 0) { userSide.auroraVeil = 0; cleared = true; }
-                if (userSide.tailwind > 0) { userSide.tailwind = 0; cleared = true; }
-                if (userSide.safeguard > 0) { userSide.safeguard = 0; cleared = true; }
-                if (userSide.mist > 0) { userSide.mist = 0; cleared = true; }
-                if (userSide.luckychant > 0) { userSide.luckychant = 0; cleared = true; }
-                // Clear terrain
+                // User side: hazards only (screens/Safeguard/Mist/Tailwind/Lucky Chant are NOT removed)
+                if (userSide.stealthRock) { userSide.stealthRock = false; cleared = true; }
+                if (userSide.spikes > 0) { userSide.spikes = 0; cleared = true; }
+                if (userSide.toxicSpikes > 0) { userSide.toxicSpikes = 0; cleared = true; }
+                if (userSide.stickyWeb) { userSide.stickyWeb = false; cleared = true; }
+                // Field: clear terrain (Gen 8+); weather is NOT cleared
                 if (state.terrain) { state.terrain = null; state.terrainTurns = 0; cleared = true; }
                 changeStage(defender, 'eva', -1, true);
                 logMsg(`${attacker.name} blew away${cleared ? ' hazards, screens, and terrain' : ' nothing'}!`, 'info');
@@ -17395,11 +17614,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
 
-            // === COURT CHANGE: swap all side conditions between player and foe ===
+            // === COURT CHANGE: swap side conditions between player and foe ===
+            // Per Bulbapedia/Showdown: swaps Mist, Light Screen, Reflect, Spikes, Safeguard,
+            // Tailwind, Toxic Spikes, Stealth Rock, Sticky Web, Aurora Veil (and pledges/G-Max
+            // effects we don't model). Does NOT swap Wishes (tied to a Pokémon) or Lucky Chant.
             if (move.name === "Court Change") {
-                let tmp = { ...state.pSide };
-                // Swap all side condition fields
-                const _sideFields = ['stealthRock','toxicSpikes','spikes','stickyWeb','reflect','lightScreen','auroraVeil','tailwind','safeguard','mist','luckychant','wishHp','wishTurns'];
+                const _sideFields = ['stealthRock','toxicSpikes','spikes','stickyWeb','reflect','lightScreen','auroraVeil','tailwind','safeguard','mist'];
                 _sideFields.forEach(f => { let v = state.pSide[f]; state.pSide[f] = state.fSide[f]; state.fSide[f] = v; });
                 logMsg(`${attacker.name} used Court Change and swapped the field conditions!`, 'info');
                 updateUI(); return;
@@ -18202,12 +18422,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (foeKeys.length === settings.partySize) break;
             }
             state.foeParty = foeKeys.map(name => buildPokemon(name, makeBuild(name)));
-            state.pActive = state.playerParty[0]; state.fActive = state.foeParty[0];
+            state.pActive = state.playerParty[0];
+            {
+                const _fa = state.foeParty.filter(m => m.currentHp > 0);
+                const _fl = _fa.length ? aiBestSwitch(_fa, state.pActive) : null;
+                state.fActive = _fl || state.foeParty[0];
+            }
             state.weather = null; state.weatherTurns = 0;
             state.terrain = null; state.terrainTurns = 0;
             state.trickRoom = 0;
             state.pSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 }; state.fSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 };
-            state.isLocked = false; state.isOver = false; state.pendingEoT = false; state.turnNumber = 0;
+            state.isLocked = false; state.isOver = false; state.pendingEoT = false; state.residualPhaseComplete = false; state.turnNumber = 0;
             // Reset gimmick usage for both sides each round (each gauntlet round is a fresh battle)
             state.usedMega = false; state.usedZ = false; state.usedDyna = false; state.usedTera = false;
             state.fUsedMega = false; state.fUsedZ = false; state.fUsedDyna = false; state.fUsedTera = false;
@@ -19092,12 +19317,43 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _storyTrainerBaseName(name) {
             return String(name||'').replace(/\s*\([^)]*\)\s*/g, '').replace(/\s+Rival\s*$/i,'').trim();
         }
+        /** Story `STORY_EVENTS_RAW` row ids for the four fixed Rival battles (same trainer + sprite for the run). League rival row must match STORY_LEAGUE_RIVAL_ROW below. */
+        const STORY_RIVAL_ROW_EARLY = 14;
+        const STORY_RIVAL_ROW_MID = 45;
+        const STORY_RIVAL_ROW_LATE = 62;
+        const STORY_RIVAL_ROW_LEAGUE = 73;
+        function getRivalEncounterPhase(storyRowIdx) {
+            const id = storyRowIdx | 0;
+            if (id === STORY_RIVAL_ROW_EARLY) return 1;
+            if (id === STORY_RIVAL_ROW_MID) return 2;
+            if (id === STORY_RIVAL_ROW_LATE) return 3;
+            if (id === STORY_RIVAL_ROW_LEAGUE) return 4;
+            return null;
+        }
+        /** Progression-aware lines (mixed with character quotes). Sprite may differ from canon — wording stays in-universe. */
+        const RIVAL_PROGRESS_PRIMARY_QUOTES = {
+            1: ['Early routes were practice—this is the real check.','Two badges already? Cute. Let me stress-test your team.','First rival clash: I memorized your strengths since we started.'],
+            2: ['Half the gyms down—thought you\'d slow down. You didn\'t. Good.','Mid-game reality check: my roster\'s different than last time.','Six badges… okay. You\'re serious. So am I.'],
+            3: ['Eight badges. League breath on our necks—no holding back.','Full badge case—time to see if your team holds together.','Elite Four prep starts with surviving me.'],
+            4: ['You wear the crown now—I\'m still your rival.','Champion means nothing if you slack against me.','Hall of Fame… then right back to proving it against me.'],
+        };
+        function mergeRivalQuotePools(trainerName, phase) {
+            const nm = String(trainerName || '');
+            const byKey = nm && TRAINER_QUOTES_BY_NAME[nm];
+            const base = nm && TRAINER_QUOTES_BY_NAME[_storyTrainerBaseName(nm)];
+            const charPool = (byKey && byKey.length) ? byKey.slice() : (base && base.length ? base.slice() : []);
+            const prog = (phase && RIVAL_PROGRESS_PRIMARY_QUOTES[phase]) ? RIVAL_PROGRESS_PRIMARY_QUOTES[phase].slice() : [];
+            const generic = (TRAINER_QUOTES['Rival'] || []).slice();
+            const merged = prog.concat(charPool).concat(generic);
+            return merged.length ? merged : generic;
+        }
+
         const TRAINER_QUOTES = {
           'Basic Trainer':  ["Hey! You\'re in my way!",'Let\'s battle!','No turning back!','I\'m not losing this one!','…You want a fight?','Smell ya later—after I win!'],
           'Gym Trainer':    ['You won\'t reach the Leader!','Hmph! Prove yourself first!','This gym\'s counting on me!','I train every day for this!','…Not bad. But not enough!'],
           'Gym Leader':     ['Enough talk. Let\'s go!','This badge isn\'t for tourists!','Show me what you\'ve got!','…Don\'t disappoint me.','You\'ve come far. Now show it!','My Pokémon and I won\'t hold back!'],
           'Elite Trainer':  ['I\'ve waited for a challenge like this!','Technique beats raw power—usually.','…Impressive. But I\'m stronger.','Think you can keep up?','This won\'t be a cakewalk!'],
-          'Rival':          ['You again?!','I\'ve been training for this!','I won\'t lose to you!','…This time it\'s different!','Let\'s settle this!','Don\'t go easy on me!'],
+          'Rival':          ['You again?!','I\'ve been training for this!','I won\'t lose to you!','…This time it\'s different!','Let\'s settle this!','Don\'t go easy on me!','I built this lineup to answer yours—no excuses!','…You always rely on the same typings. I came prepared.','Scouted your team. Still confident?','Adapt or lose—that\'s what rivals do!','Same rival, new angle—I rotated partners for this route.'],
           'E1':             ['Elite Four, first gate.','…So you made it.','Welcome to the big leagues.','First test—don\'t blink!'],
           'E2':             ['Round two. Ready?','…Still standing? Good.','I won\'t repeat my predecessor\'s mistake.','The path gets steeper here!'],
           'E3':             ['Almost at the top…','…Feel the pressure yet?','Two down. I\'m next.','Give me everything!'],
@@ -19116,6 +19372,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           'Hop (Rival)': ['Mate! This is it!','I\'m not the little brother anymore!','Leon\'s not here—it\'s just us!'],
           'Marnie (Rival)': ['…Let\'s make this loud.','Team Yell\'s got my back—in spirit!','Don\'t hold back. I won\'t.'],
           'Nemona (Rival)': ['Battle time! Full power!','I\'ve been itching for this!','Let\'s go all out!'],
+          'Ethan': ['Johto\'s watching—don\'t embarrass either of us!','Still walking tall? Keep up with me!','Typhlosion-level heat—or we lose together.'],
+          'Lyra': ['I practiced extra after last time!','Let\'s make this one count!','Same journey, different outcome—maybe!'],
+          'May': ['Hoenn\'s tough—so am I!','Contest polish or battle grit—pick your poison!','You\'re not the only one improving out here!'],
+          'Brendan': ['Route training paid off—feel it!','I charted counters for your team.','Sharpedo-speed—can you match it?'],
           'Brock': ['My rock-hard defense will grind you down!','Take your best shot!','Geology isn\'t just study—it\'s battle!'],
           'Misty': ['My policy is an all-out offensive!','You\'re a drip compared to my Pokémon!','Water types—showtime!'],
           'Lt. Surge': ['Electric types—ten-hut!','You\'re in my gym now!','One zap is all it takes!'],
@@ -19133,9 +19393,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
             return pool[Math.floor(rng() * pool.length)];
         }
-        function getTrainerQuoteForBattle(trainer, quoteRole) {
+        function getTrainerQuoteForBattle(trainer, quoteRole, storyBattleRowIdx) {
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
             const nm = trainer && trainer.name ? String(trainer.name) : '';
+            if (quoteRole === 'Rival' && storyBattleRowIdx != null && storyBattleRowIdx !== undefined) {
+                const phase = getRivalEncounterPhase(storyBattleRowIdx);
+                if (phase) {
+                    const pool = mergeRivalQuotePools(nm, phase);
+                    return pool[Math.floor(rng() * pool.length)];
+                }
+            }
             const byKey = nm && TRAINER_QUOTES_BY_NAME[nm];
             if (byKey && byKey.length) return byKey[Math.floor(rng() * byKey.length)];
             const base = nm && TRAINER_QUOTES_BY_NAME[_storyTrainerBaseName(nm)];
@@ -19144,6 +19411,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return trainer.introQuotes[Math.floor(rng() * trainer.introQuotes.length)];
             const pool = TRAINER_QUOTES[quoteRole] || TRAINER_QUOTES['Basic Trainer'];
             return pool[Math.floor(rng() * pool.length)];
+        }
+        /** Second line for rival intro overlay (Math.random — does not advance story RNG). */
+        function pickRivalSecondaryIntroLine(phase, badges) {
+            const b = Math.max(0, badges | 0);
+            const pools = {
+                1: [`${b} badge${b === 1 ? '' : 's'} on your case—I built typings around what you run.`, 'Route two of our rivalry: counters incoming.', 'Fresh badges won\'t save lazy switches.'],
+                2: [`${b} badges deep—I studied your last fights anyway.`, 'Mid-game checkpoint: same rival, sharper toolkit.', 'You escalated—so did my bench.'],
+                3: [`Full badge slate—${b}/8 means League eyes on both of us.`, 'Last dance before Victory Road… make it sting.', 'Elite tier starts when this bell rings.'],
+                4: ['Title match energy—even if it\'s just us.', 'Hall of Fame\'s watching two trainers who never quit.', 'Champion or challenger—I\'m still here to push you.'],
+            };
+            const arr = pools[phase] || pools[1];
+            const copy = arr.slice();
+            copy.push(`You've earned ${b} badge${b === 1 ? '' : 's'}—I'm still not backing down.`);
+            return copy[Math.floor(Math.random() * copy.length)];
         }
         function storyDisplayRoleLabel(eventType) {
             const e = String(eventType || '');
@@ -19183,7 +19464,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           ['Waterfront or mountaintop—this city has both!','Trainers here don\'t tap out easy.','Victory Road whispers to those who listen…'],
           ['…Quiet before the storm.','Every stair climbed is progress.','The League logo shines at night.'],
           ['Almost there—feel the tension?','Champion energy radiates from the stadium!','Crowds cheer for underdogs. Be one!'],
-          ['Champions train here between titles.','The Hall of Fame remembers every name.','Sunrise over the city—new day, new rival!'],
+          ['Champions train here between titles.','The Hall of Fame remembers every name.','Sunrise over the city—your rival might be up early too.'],
           ['This is it. No more towns after—only glory!','Nerves? Good. Means you care.','The gate opens for the worthy.'],
           ['Elite trainers still gather here… legends never rest!','The Hall of Fame plaque could use your name again.','Another lap around the region?'],
         ];
@@ -19328,6 +19609,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── STATE ─────────────────────────────────────────────────────────
         const SAVE_KEY = 'pbs_story_save';
+        const STORY_MENU_DEFAULTS_KEY = 'pbs_story_run_menu_defaults';
         const SAVE_VER = 7;
         let sm = { active:false, eventIndex:0, badges:0, gold:1000, team:[],
                    inventory:{}, artifacts:[], activeArtifactType:null,
@@ -19339,7 +19621,66 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    storyDifficulty:'normal', runSeed:null,
                    storyMilestoneTips:{ m4:false, m8:false },
                    storyRetryInventorySnapshot: null,
+                   runRivalSpriteFile: null,
                    version:SAVE_VER };
+
+        function normalizeStoryRivalLock() {
+            try {
+                const rivalIds = [];
+                for (const ev of STORY_EVENTS_RAW) {
+                    if (ev[1] === 'Battle' && ev[2] === 'Rival') rivalIds.push(ev[0]);
+                }
+                if (!rivalIds.length || !sm.trainerAssignments || typeof sm.trainerAssignments !== 'object') return;
+                const canon = sm.trainerAssignments[rivalIds[0]];
+                if (!canon) return;
+                for (let i = 1; i < rivalIds.length; i++) sm.trainerAssignments[rivalIds[i]] = canon;
+                if (sm.runRivalSpriteFile == null || sm.runRivalSpriteFile === '') {
+                    const td = TRAINER_DATA.find(t => t.name === canon);
+                    if (td && td.spriteFile) sm.runRivalSpriteFile = td.spriteFile;
+                }
+            } catch (e) {}
+        }
+
+        // Pokémon League arc: per-stat foe boosts (startBattle applies this before applyFoeDifficultyScaling).
+        // Hard / Very Hard still multiply on top via applyFoeDifficultyScaling. E1–E4 / Champion / league Rival / post-HoF Mystery.
+        const STORY_LEAGUE_RIVAL_ROW = 73;
+        const STORY_POST_HOF_MYSTERY_ROW = 75;
+        window.applyStoryLeagueFoeStatBoost = function(mon) {
+            if (!mon || !sm.active) return;
+            const ev = STORY_EVENTS_RAW[sm.eventIndex];
+            if (!ev || ev[1] !== 'Battle') return;
+            const rowIdx = ev[0] | 0;
+            const eventName = String(ev[2] || '');
+            let hpM = 1;
+            let bulkM = 1;
+            let speM = 1;
+            if (/^E[1-4]$/.test(eventName)) {
+                hpM = 1.20;
+                bulkM = 1.15;
+                speM = 1.10;
+            } else if (eventName === 'Champion' || (eventName === 'Rival' && rowIdx === STORY_LEAGUE_RIVAL_ROW)) {
+                hpM = 1.30;
+                bulkM = 1.15;
+                speM = 1.15;
+            } else if (eventName === 'Mystery Figure' && rowIdx === STORY_POST_HOF_MYSTERY_ROW) {
+                hpM = 1.35;
+                bulkM = 1.20;
+                speM = 1.20;
+            } else {
+                return;
+            }
+            const newMaxHp = Math.max(1, Math.floor(mon.maxHp * hpM));
+            mon.maxHp = newMaxHp;
+            mon.currentHp = newMaxHp;
+            if (mon.stats) {
+                mon.stats.atk = Math.max(1, Math.floor(mon.stats.atk * bulkM));
+                mon.stats.def = Math.max(1, Math.floor(mon.stats.def * bulkM));
+                mon.stats.spa = Math.max(1, Math.floor(mon.stats.spa * bulkM));
+                mon.stats.spd = Math.max(1, Math.floor(mon.stats.spd * bulkM));
+                mon.stats.spe = Math.max(1, Math.floor(mon.stats.spe * speM));
+            }
+        };
+
         /** Deterministic RNG for story rolls (team picks, etc.). Sequence continues from saved _strngState. */
         function storyRngNext() {
             if (sm.runSeed == null || sm.runSeed === undefined) {
@@ -19396,12 +19737,64 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (sm.settings && typeof sm.settings.classicMode !== 'boolean') sm.settings.classicMode = true;
                 if (!('storyRetryInventorySnapshot' in sm)) sm.storyRetryInventorySnapshot = null;
+                normalizeStoryRivalLock();
                 return true;
             } catch(e) { return false; }
         }
         function hasSave() { try { return !!localStorage.getItem(SAVE_KEY); } catch(e) { return false; } }
         function deleteSave() { try { localStorage.removeItem(SAVE_KEY); } catch(e) {} }
         function isActive() { return sm.active; }
+
+        function persistStoryMenuDefaultsFromRun() {
+            try {
+                if (!sm || !sm.settings) return;
+                const d = {
+                    enabledGens: normalizeEnabledGens(sm.settings.enabledGens || rangeToEnabledGens(sm.settings.minGen ?? 1, sm.settings.maxGen ?? 9)),
+                    storyDifficulty: sm.storyDifficulty || 'normal',
+                    megaOn: !!sm.settings.megaOn,
+                    zOn: !!sm.settings.zOn,
+                    dynaOn: !!sm.settings.dynaOn,
+                    teraOn: !!sm.settings.teraOn,
+                    classicMode: sm.settings.classicMode !== false,
+                    noItemRun: !!sm.settings.noItemRun,
+                    seedDisplay: sm.runSeed != null ? String(sm.runSeed >>> 0) : ''
+                };
+                localStorage.setItem(STORY_MENU_DEFAULTS_KEY, JSON.stringify(d));
+            } catch (e) { /* ignore */ }
+        }
+        function applyStoryMenuDefaultsFromStorage() {
+            try {
+                const raw = localStorage.getItem(STORY_MENU_DEFAULTS_KEY);
+                if (!raw) return;
+                const d = JSON.parse(raw);
+                if (!d || typeof d !== 'object') return;
+                if (Array.isArray(d.enabledGens) && d.enabledGens.length)
+                    setStoryGenCheckboxes(normalizeEnabledGens(d.enabledGens));
+                const sd = document.getElementById('story-difficulty');
+                if (sd && typeof d.storyDifficulty === 'string') {
+                    const v = d.storyDifficulty;
+                    if (['veryeasy', 'easy', 'normal', 'hard', 'challenge', 'hardcore'].indexOf(v) >= 0) sd.value = v;
+                }
+                const mega = document.getElementById('story-mech-mega');
+                const z = document.getElementById('story-mech-z');
+                const dyna = document.getElementById('story-mech-dyna');
+                const tera = document.getElementById('story-mech-tera');
+                if (mega && typeof d.megaOn === 'boolean') mega.checked = d.megaOn;
+                if (z && typeof d.zOn === 'boolean') z.checked = d.zOn;
+                if (dyna && typeof d.dynaOn === 'boolean') dyna.checked = d.dynaOn;
+                if (tera && typeof d.teraOn === 'boolean') tera.checked = d.teraOn;
+                const sClassic = document.getElementById('story-mode-classic-rb');
+                const sUnlim = document.getElementById('story-mode-unlimited-rb');
+                if (sClassic && sUnlim && typeof d.classicMode === 'boolean') {
+                    sClassic.checked = d.classicMode;
+                    sUnlim.checked = !d.classicMode;
+                }
+                const nir = document.getElementById('story-no-item-run');
+                if (nir && typeof d.noItemRun === 'boolean') nir.checked = d.noItemRun;
+                const si = document.getElementById('story-setting-seed');
+                if (si && typeof d.seedDisplay === 'string') si.value = d.seedDisplay;
+            } catch (e) { /* ignore */ }
+        }
 
         // ── GRADE POOL HELPERS ────────────────────────────────────────────
         // Existing getMonGrade: 1=best(BST≥530), 4=worst(<350). CSV G4=weakest ↔ grade 4.
@@ -19446,6 +19839,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (d === 'challenge') { o.g1 *= 1.18; o.g4 *= 0.82; }
             // Hardcore intentionally mirrors Normal team-grading; difficulty is expressed via no-heal rule.
             return o;
+        }
+
+        // Story route progression: shift foe grade weights toward stronger tiers (g1 best, g4 weakest).
+        // STORY_EVENTS_RAW indices of Gym Leader battles 2 / 4 / 6 — phases are (GL2, GL4], (GL4, GL6], GL6+.
+        const STORY_GRADE_BIAS_ROW_AFTER_GL2 = 13;
+        const STORY_GRADE_BIAS_ROW_GL4 = 28;
+        const STORY_GRADE_BIAS_ROW_GL6 = 44;
+        // After GL6, each further story battle adds a small amount to k (grade-1 pressure), capped.
+        const STORY_GRADE_POST_GL6_RAMP_PER_ROW = 0.0048;
+        const STORY_GRADE_POST_GL6_RAMP_CAP = 0.14;
+        const STORY_GRADE_BIAS_K_CEILING = 0.62;
+        /** @param {number|undefined} storyRowIdx first column of STORY_EVENTS_RAW for this battle */
+        function applyStoryProgressToGradeWeights(gw, storyRowIdx) {
+            if (!gw || storyRowIdx == null || !(sm && sm.active)) return gw;
+            let k = 0;
+            if (storyRowIdx >= STORY_GRADE_BIAS_ROW_GL6) k = 0.40;
+            else if (storyRowIdx >= STORY_GRADE_BIAS_ROW_GL4) k = 0.30;
+            else if (storyRowIdx > STORY_GRADE_BIAS_ROW_AFTER_GL2) k = 0.20;
+            else return gw;
+            if (storyRowIdx > STORY_GRADE_BIAS_ROW_GL6) {
+                const steps = (storyRowIdx | 0) - STORY_GRADE_BIAS_ROW_GL6;
+                k += Math.min(STORY_GRADE_POST_GL6_RAMP_CAP, Math.max(0, steps) * STORY_GRADE_POST_GL6_RAMP_PER_ROW);
+                if (k > STORY_GRADE_BIAS_K_CEILING) k = STORY_GRADE_BIAS_K_CEILING;
+            }
+            return {
+                g1: (gw.g1 || 0) * (1 + k),
+                g2: (gw.g2 || 0) * (1 + k * 0.70),
+                g3: (gw.g3 || 0) * (1 - k * 0.40),
+                g4: (gw.g4 || 0) * (1 - k),
+            };
         }
 
         function applyDifficultyToSigProbability(p) {
@@ -19626,6 +20049,128 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return true;
         }
+        const RIVAL_ATTACK_TYPE_DECAY = 70;
+
+        function _rivalCombinedEffVsMon(atkType, d1, d2) {
+            const ch = typeChart[atkType];
+            if (!ch || !d1) return 1;
+            const m1 = ch[d1] !== undefined ? ch[d1] : 1;
+            const m2 = d2 ? (ch[d2] !== undefined ? ch[d2] : 1) : 1;
+            return m1 * m2;
+        }
+        /** Higher = better offensive type vs current player party (SE emphasis). */
+        function _rivalScoreAttackTypeVsParty(atkType) {
+            if (!sm || !Array.isArray(sm.team) || !sm.team.length) return 0;
+            let s = 0;
+            for (const slot of sm.team) {
+                if (!slot || !slot.name) continue;
+                const pb = baseStats[slot.name];
+                if (!pb || !pb.t1) continue;
+                const m = _rivalCombinedEffVsMon(atkType, pb.t1, pb.t2 || null);
+                if (m >= 2) s += m * m;
+                else if (m === 1) s += 0.12;
+            }
+            return s;
+        }
+        function _rivalInitMutableTypeWeights() {
+            const w = {};
+            for (const atk of Object.keys(typeChart)) {
+                w[atk] = _rivalScoreAttackTypeVsParty(atk) + 0.35;
+            }
+            return w;
+        }
+        function _rivalPickWeightedType(weights, rng) {
+            let sum = 0;
+            const keys = Object.keys(weights);
+            for (const k of keys) sum += Math.max(0, weights[k]);
+            if (sum <= 0) return keys[Math.floor(rng() * keys.length)];
+            let r = rng() * sum;
+            for (const k of keys) {
+                r -= Math.max(0, weights[k]);
+                if (r <= 0) return k;
+            }
+            return keys[keys.length - 1];
+        }
+        function _rivalDecayAttackType(t, weights) {
+            if (t != null && weights && Object.prototype.hasOwnProperty.call(weights, t)) weights[t] /= RIVAL_ATTACK_TYPE_DECAY;
+        }
+        function _rivalDecaySpeciesStabTypes(speciesName, weights) {
+            const bs = baseStats[speciesName];
+            if (!bs || !weights) return;
+            if (bs.t1) _rivalDecayAttackType(bs.t1, weights);
+            if (bs.t2 && bs.t2 !== bs.t1) _rivalDecayAttackType(bs.t2, weights);
+        }
+        function _rivalSpeciesHasType(name, t) {
+            const b = baseStats[name];
+            return !!(b && t && (b.t1 === t || b.t2 === t));
+        }
+        function _rivalRollGrade(gwIn, rng) {
+            const total = (gwIn.g1 || 0) + (gwIn.g2 || 0) + (gwIn.g3 || 0) + (gwIn.g4 || 0);
+            if (total <= 0) return 4;
+            let r = rng() * total;
+            r -= (gwIn.g4 || 0);
+            if (r <= 0) return 4;
+            r -= (gwIn.g3 || 0);
+            if (r <= 0) return 3;
+            r -= (gwIn.g2 || 0);
+            if (r <= 0) return 2;
+            return 1;
+        }
+        /** Pick species with STAB `targetType`, same grade distribution as normal story rolls. */
+        function _rivalPickSpeciesForAttackType(targetType, gwIn, T, usedNames, rng) {
+            let g = _rivalRollGrade(gwIn, rng);
+            let pool = (T[g] || []).filter((n) => !usedNames.has(n) && _rivalSpeciesHasType(n, targetType));
+            if (!pool.length) {
+                for (let delta = 1; delta <= 3; delta++) {
+                    const stronger = g - delta;
+                    const weaker = g + delta;
+                    if (stronger >= 1 && T[stronger]) {
+                        const p = T[stronger].filter((n) => !usedNames.has(n) && _rivalSpeciesHasType(n, targetType));
+                        if (p.length) {
+                            pool = p;
+                            g = stronger;
+                            break;
+                        }
+                    }
+                    if (weaker <= 4 && T[weaker]) {
+                        const p = T[weaker].filter((n) => !usedNames.has(n) && _rivalSpeciesHasType(n, targetType));
+                        if (p.length) {
+                            pool = p;
+                            g = weaker;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!pool.length) {
+                for (let gg = 1; gg <= 4; gg++) {
+                    for (const n of T[gg] || []) {
+                        if (!usedNames.has(n) && _rivalSpeciesHasType(n, targetType)) pool.push(n);
+                    }
+                }
+            }
+            return pool.length ? pool[Math.floor(rng() * pool.length)] : null;
+        }
+        function _rivalPickWeightedSignature(S, weights, usedNames, rng) {
+            const pool = S.filter((nm) => !usedNames.has(nm));
+            if (!pool.length) return null;
+            const scored = pool.map((nm) => {
+                const bs = baseStats[nm];
+                let sc = 0.02;
+                if (bs && bs.t1) sc += Math.max(0, weights[bs.t1] || 0);
+                if (bs && bs.t2) sc += Math.max(0, weights[bs.t2] || 0);
+                return { nm, sc };
+            });
+            let sum = 0;
+            for (const x of scored) sum += x.sc;
+            let r = rng() * sum;
+            for (const x of scored) {
+                r -= x.sc;
+                if (r <= 0) return x.nm;
+            }
+            return pool[Math.floor(rng() * pool.length)];
+        }
+
         function buildSyntheticSignaturePool(trainer, genSet, rng) {
             const types = parseTrainerTypes(trainer && trainer.type);
             const isMixed = types.some(t => t === 'Mixed' || t === 'All-Rounder');
@@ -19664,9 +20209,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return uniq.slice(0, 12);
         }
 
-        function rollTrainerTeam(trainer, partySize, gradeWeights, enabledGensIn, battleEventType) {
+        function rollTrainerTeam(trainer, partySize, gradeWeights, enabledGensIn, battleEventType, storyRowIdx) {
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
-            const gwIn = applyDifficultyToGradeWeights(gradeWeights || { g1: 0, g2: 0, g3: 50, g4: 50 });
+            let gwIn = applyDifficultyToGradeWeights(gradeWeights || { g1: 0, g2: 0, g3: 50, g4: 50 });
+            gwIn = applyStoryProgressToGradeWeights(gwIn, storyRowIdx);
             let allowedGens = normalizeEnabledGens(enabledGensIn != null ? enabledGensIn : storySettingsGens());
             const pg = trainer && trainer.pkmGens;
             if (pg && pg.length) {
@@ -19702,9 +20248,86 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const g = getMonGrade(name, getBST(name));
                 T[g].push(name);
             }
+
+            // Rival: score offensive typings vs your party, weighted-roll STAB types with heavy decay after each pick (÷70), then normal grade % for species.
+            if (String(battleEventType) === 'Rival' && sm && Array.isArray(sm.team) && sm.team.length > 0) {
+                const typeWeights = _rivalInitMutableTypeWeights();
+                function pickFromUnionPlain(usedNames) {
+                    const all = [...T[1], ...T[2], ...T[3], ...T[4]].filter((n) => !usedNames.has(n));
+                    return all.length ? all[Math.floor(rng() * all.length)] : null;
+                }
+                function pickRandomInGenPlain(usedNames) {
+                    const pool = [];
+                    for (const name of Object.keys(baseStats)) {
+                        if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
+                        const b = baseStats[name];
+                        if (b && genSet.has(b.gen)) pool.push(name);
+                    }
+                    const avail = pool.filter((n) => !usedNames.has(n));
+                    return avail.length ? avail[Math.floor(rng() * avail.length)] : null;
+                }
+                const teamR = [];
+                const usedR = new Set();
+                for (let i = 0; i < partySize; i++) {
+                    let chosen = null;
+                    const R = rng();
+                    if (R <= sigP && S.length > 0) {
+                        chosen = _rivalPickWeightedSignature(S, typeWeights, usedR, rng);
+                        if (chosen) {
+                            const si = S.indexOf(chosen);
+                            if (si >= 0) S.splice(si, 1);
+                            _rivalDecaySpeciesStabTypes(chosen, typeWeights);
+                        }
+                    }
+                    if (!chosen) {
+                        const targetType = _rivalPickWeightedType(typeWeights, rng);
+                        chosen = _rivalPickSpeciesForAttackType(targetType, gwIn, T, usedR, rng);
+                        if (chosen) _rivalDecayAttackType(targetType, typeWeights);
+                    }
+                    if (!chosen || usedR.has(chosen)) {
+                        for (let t = 0; t < 10; t++) {
+                            const tt = _rivalPickWeightedType(typeWeights, rng);
+                            const c = _rivalPickSpeciesForAttackType(tt, gwIn, T, usedR, rng);
+                            if (c && !usedR.has(c)) {
+                                chosen = c;
+                                _rivalDecayAttackType(tt, typeWeights);
+                                break;
+                            }
+                        }
+                    }
+                    if (!chosen || usedR.has(chosen)) chosen = pickFromUnionPlain(usedR);
+                    if (!chosen || usedR.has(chosen)) chosen = pickRandomInGenPlain(usedR);
+                    if (!chosen) chosen = 'Rattata';
+                    if (isMixed && partySize >= 4 && chosen) {
+                        const t1c = (baseStats[chosen] || {}).t1 || '';
+                        const othersSame = teamR.filter((x) => x && baseStats[x.name] && (baseStats[x.name].t1 || '') === t1c).length;
+                        if (othersSame >= 2) {
+                            for (let r = 0; r < 8; r++) {
+                                const tt = _rivalPickWeightedType(typeWeights, rng);
+                                const alt = _rivalPickSpeciesForAttackType(tt, gwIn, T, usedR, rng);
+                                if (!alt || usedR.has(alt)) continue;
+                                const t1a = (baseStats[alt] || {}).t1 || '';
+                                const oc = teamR.filter((x) => x && baseStats[x.name] && (baseStats[x.name].t1 || '') === t1a).length;
+                                if (oc < 2) {
+                                    chosen = alt;
+                                    _rivalDecayAttackType(tt, typeWeights);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    usedR.add(chosen);
+                    teamR.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD' }) });
+                }
+                return _applyEnemyGimmickDistribution(teamR, battleEventType);
+            }
+
             function pickThematic() {
                 const total = (gwIn.g1||0)+(gwIn.g2||0)+(gwIn.g3||0)+(gwIn.g4||0);
-                if (total === 0) { const all=[...T[1],...T[2],...T[3],...T[4]]; return all.length?all[Math.floor(rng()*all.length)]:null; }
+                if (total === 0) {
+                    const all = [...T[1],...T[2],...T[3],...T[4]];
+                    return all.length ? all[Math.floor(rng() * all.length)] : null;
+                }
                 let r = rng() * total;
                 let g = 4;
                 r -= (gwIn.g4||0); if (r<=0) g=4;
@@ -19721,7 +20344,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (weaker   <= 4 && T[weaker].length)   { pool = T[weaker];   break; }
                     }
                 }
-                return pool.length ? pool[Math.floor(rng()*pool.length)] : null;
+                return pool.length ? pool[Math.floor(rng() * pool.length)] : null;
             }
             function pickFromUnionExcluding(usedNames) {
                 const all = [...T[1],...T[2],...T[3],...T[4]].filter(n => !usedNames.has(n));
@@ -19744,7 +20367,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const R = rng();
                 if (R <= sigP && S.length > 0) {
                     const idx = Math.floor(rng() * S.length);
-                    chosen = S[idx]; S.splice(idx,1);
+                    chosen = S[idx];
+                    const si = S.indexOf(chosen);
+                    if (si >= 0) S.splice(si, 1);
                 } else {
                     chosen = pickThematic();
                 }
@@ -19882,13 +20507,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return candidates[Math.floor(_rng() * candidates.length)];
         }
 
+        /** Sprite filenames from every rival whose gen is enabled — pick one per run for visual variety while dialogue/stats stay on the locked rival row. */
+        function pickStoryRivalSpriteFile(enabledGens) {
+            const eg = normalizeEnabledGens(enabledGens);
+            const genSet = new Set(eg);
+            const files = [];
+            const seen = new Set();
+            for (const t of TRAINER_DATA) {
+                if (!t.isRival) continue;
+                if (!genSet.has(t.charGen)) continue;
+                const sf = (t.spriteFile && String(t.spriteFile).trim())
+                    ? String(t.spriteFile).trim()
+                    : String(t.name || '').replace(/\s+/g, '_').replace(/[().\/]/g, '');
+                if (!sf || seen.has(sf)) continue;
+                seen.add(sf);
+                files.push(sf);
+            }
+            if (!files.length) return null;
+            files.sort();
+            const rng = (sm && sm.active && sm.runSeed != null && sm.runSeed !== undefined) ? storyRngNext : Math.random;
+            return files[Math.floor(rng() * files.length)];
+        }
+
         function assignTrainers(enabledGens) {
             const eg = normalizeEnabledGens(enabledGens);
             sm.trainerAssignments = {};
             const usedBase = new Set();
+            let lockedRivalName = null;
+            const tRival = selectTrainerForRole('Rival', eg, null);
+            if (tRival) lockedRivalName = tRival.name;
+            sm.runRivalSpriteFile = lockedRivalName ? pickStoryRivalSpriteFile(eg) : null;
+            const rivalBase = lockedRivalName ? _baseTrainerName(lockedRivalName) : null;
+            if (rivalBase) usedBase.add(rivalBase);
             STORY_EVENTS_RAW.forEach(ev => {
                 const [idx, type, event] = ev;
                 if (type !== 'Battle') return;
+                if (event === 'Rival') {
+                    if (lockedRivalName) sm.trainerAssignments[idx] = lockedRivalName;
+                    return;
+                }
                 const t = selectTrainerForRole(event, eg, usedBase);
                 if (t) {
                     sm.trainerAssignments[idx] = t.name;
@@ -19935,6 +20592,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 profIntroThemePending: true,
                 storyMilestoneTips: { m4: false, m8: false },
                 storyRetryInventorySnapshot: null,
+                runRivalSpriteFile: null,
             };
             sm._strngState = null;
             _storyBattleInventorySnapshot = null;
@@ -19945,6 +20603,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             assignTrainers(enabledGens);
             save();
+            persistStoryMenuDefaultsFromRun();
             processNextEvent();
         }
 
@@ -21085,7 +21744,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const trainerName = sm.trainerAssignments[idx];
             const prefType = preferredTypeBeforeGymBattle(battleIdx);
             const isMysteryFinal = String(event || '') === 'Mystery Figure';
-            const trainer = isMysteryFinal
+            let trainer = isMysteryFinal
                 ? {
                     role: 'Mystery Figure',
                     name: '??? Mystery Figure',
@@ -21094,6 +21753,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     introQuotes: ['So we meet again, Champion.', 'Your Hall of Fame crown means nothing here.', 'Show me your strongest six.']
                 }
                 : (TRAINER_DATA.find(t=>t.name===trainerName) || selectTrainerForRole(event, sg, null, prefType));
+            if (!isMysteryFinal && event === 'Rival' && sm.runRivalSpriteFile) {
+                trainer = { ...trainer, spriteFile: sm.runRivalSpriteFile };
+            }
             sm.currentTrainerData = trainer;
 
             // Party size mirrors player's current team (so opponents scale with your roster).
@@ -21115,25 +21777,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         save();
                     } catch (e) { console.warn('[Story] enemy lock refresh save', e); }
                     startFight(team);
-                });
+                }, idx);
                 return;
             }
 
             showBattleIntro(trainer, event, () => {
                 const enemyTeam = isMysteryFinal
                     ? rollMysteryFigureFinalBossTeam(6, sg)
-                    : rollTrainerTeam(trainer, partySize, gradeWeights || {g1:0,g2:0,g3:50,g4:50}, sg, event);
+                    : rollTrainerTeam(trainer, partySize, gradeWeights || {g1:0,g2:0,g3:50,g4:50}, sg, event, idx);
                 const frozenTeam = storyFreezeFoeTeamForPersistence(enemyTeam);
                 try {
                     sm.currentEnemyLock = { eventIdx: battleIdx, team: deepClone(frozenTeam) };
                     save();
                 } catch (e) { console.warn('[Story] enemy lock save', e); }
                 startFight(frozenTeam);
-            });
+            }, idx);
         }
 
-        function showBattleIntro(trainer, eventType, callback) {
-            // Simple overlay: trainer sprite + name + quote for 2s then launch
+        function showBattleIntro(trainer, eventType, callback, storyBattleRowIdx) {
+            // Overlay: trainer sprite + quote(s); longer pause for Rival (extra line). Uses Math.random for rival secondary line only — does not advance story battle RNG.
             const overlay = document.createElement('div');
             overlay.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;';
             const roleLookup = {
@@ -21146,8 +21808,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'Mystery Figure':'Rival',
             };
             const quoteRole = roleLookup[eventType] || 'Basic Trainer';
-            const quote = getTrainerQuoteForBattle(trainer, quoteRole);
+            const quote = getTrainerQuoteForBattle(trainer, quoteRole, storyBattleRowIdx);
             const roleLabel = storyDisplayRoleLabel(eventType);
+            const isRivalBattle = String(eventType) === 'Rival';
+            const rivalPhase = isRivalBattle && storyBattleRowIdx != null ? getRivalEncounterPhase(storyBattleRowIdx) : null;
+            const badgesNow = (sm && sm.badges) | 0;
+            const extraLine = isRivalBattle && rivalPhase
+                ? pickRivalSecondaryIntroLine(rivalPhase, badgesNow)
+                : '';
             overlay.innerHTML = `
                 <img src="${getTrainerSprite(trainer)}" onerror="this.style.display='none'" style="width:200px;height:200px;object-fit:contain;image-rendering:pixelated;border:none;">
                 <div style="color:var(--accent);font-size:20px;font-weight:bold;">${trainer.name}</div>
@@ -21155,11 +21823,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div class="story-dialog-nameplate">${roleLabel}</div>
                     <div class="story-dialog-box">
                         <p class="story-dialog-text">"${quote}"</p>
+                        ${isRivalBattle ? `<p class="story-dialog-text" style="margin-top:10px;font-size:14px;opacity:0.92;">"${extraLine}"</p>` : ''}
                     </div>
                 </div>
                 <div style="font-size:11px;color:#555;margin-top:8px;">Battle starting…</div>`;
             document.body.appendChild(overlay);
-            setTimeout(() => { overlay.remove(); callback(); }, 2200);
+            const introMs = isRivalBattle ? 3400 : 2200;
+            setTimeout(() => {
+                try { overlay.remove(); } catch (e) {}
+                // Defensive: callback() is launchBattle → startBattle (async, NOT awaited). If
+                // startBattle throws synchronously (corrupt lock team, missing build, bad foe
+                // sprite), the unhandled rejection silently strands the player on a half-built
+                // battle screen. Catch + bail back to the city is much better than infinite black.
+                try { callback(); }
+                catch (e) {
+                    console.error('[showBattleIntro] callback threw — recovering to city:', e);
+                    try { if (window.StoryMode && typeof window.StoryMode.afterBattleReturn === 'function') window.StoryMode.afterBattleReturn(); } catch (e2) {}
+                    try { window.showGameAlert && window.showGameAlert('Could not start that battle (corrupt team data). Returned to city — try the fight again from the map.'); } catch (e2) {}
+                }
+            }, introMs);
         }
 
         function applyHardcoreState(playerParty) {
@@ -21191,7 +21873,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.minGen = Math.min(...sg);
             state.maxGen = Math.max(...sg);
             state.score  = sm.badges;
-            state.isOver = false; state.isLocked = false; state.pendingEoT = false;
+            state.isOver = false; state.isLocked = false; state.pendingEoT = false; state.residualPhaseComplete = false;
             state.draftTurn = 1; state.currentPlayer = 1;
             state.pSide = {stealthRock:false,toxicSpikes:0,spikes:0,stickyWeb:false,reflect:0,lightScreen:0,auroraVeil:0,wishHp:0,wishTurns:0,safeguard:0,mist:0,tailwind:0,luckychant:0};
             state.fSide = {stealthRock:false,toxicSpikes:0,spikes:0,stickyWeb:false,reflect:0,lightScreen:0,auroraVeil:0,wishHp:0,wishTurns:0,safeguard:0,mist:0,tailwind:0,luckychant:0};
@@ -21256,7 +21938,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 showVictoryOverlay(title, coinsAwarded, isMilestoneVictory, () => {
                     document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
                     processNextEvent();
-                }, event);
+                }, event, idx);
             } else {
                 // Defeat: keep consumed bag on save; stash pre-fight inventory for Retry only
                 try {
@@ -21272,8 +21954,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { save(); } catch (e) { console.warn('[Story] Defeat save', e); }
                 document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
                 const ev = STORY_EVENTS_RAW[sm.eventIndex];
+                let lossHint = ev ? `Event: ${ev[2]}` : '';
+                if (ev && ev[2] === 'Rival') {
+                    const rp = getRivalEncounterPhase(ev[0] | 0);
+                    if (rp === 4) lossHint = 'League rival fight — adjust your leads and try again.';
+                    else if (rp) lossHint = `Rival clash ${rp}/4 — heal up, then rematch from the city.`;
+                }
                 document.getElementById('story-gameover-desc').textContent =
-                    `You were defeated by ${sm.currentTrainerData?.name||'the opponent'}. ${ev?`Event: ${ev[2]}`:''}. Don't give up!`;
+                    `You were defeated by ${sm.currentTrainerData?.name||'the opponent'}. ${lossHint}. Don't give up!`;
                 const seedEl = document.getElementById('story-gameover-seed');
                 if (seedEl && sm.runSeed != null && sm.runSeed !== undefined) {
                     seedEl.style.display = 'block';
@@ -21366,7 +22054,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             processNextEvent();
         }
 
-        function showVictoryOverlay(title, coins, gotBadge, cb, battleEventName) {
+        function showVictoryOverlay(title, coins, gotBadge, cb, battleEventName, storyRowIdx) {
             const ov = document.createElement('div');
             ov.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;';
             const contBtn = document.createElement('button');
@@ -21378,7 +22066,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 finished = true;
                 clearTimeout(autoClose);
                 if (ov.parentElement) ov.remove();
-                cb();
+                // Defensive: cb() advances story flow (processNextEvent → enterBattleEvent → startBattle).
+                // If anything throws, fall back to the city so we don't strand the player on the
+                // overlay's now-removed DOM with no UI.
+                try { cb(); }
+                catch (e) {
+                    console.error('[showVictoryOverlay] callback threw — recovering to city:', e);
+                    try { if (window.StoryMode && typeof window.StoryMode.afterBattleReturn === 'function') window.StoryMode.afterBattleReturn(); } catch (e2) {}
+                }
             };
             const autoClose = setTimeout(dismiss, 3500);
             contBtn.onclick = (e) => { e.stopPropagation(); dismiss(); };
@@ -21391,7 +22086,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     badgeFlavor = `<div style="font-size:14px;color:#81c784;">Elite ${n} passed—one step closer!</div>`;
                 }
                 else if (evn === 'Champion') badgeFlavor = `<div style="font-size:14px;color:#81c784;">You defeated the Champion!</div>`;
-                else if (evn === 'Rival') badgeFlavor = `<div style="font-size:14px;color:#81c784;">Your rival challenges the new Champion!</div>`;
+                else if (evn === 'Rival') {
+                    const rp = storyRowIdx != null ? getRivalEncounterPhase(storyRowIdx) : null;
+                    if (rp === 4) {
+                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">The League duel with your rival is settled—for now.</div>`;
+                    } else if (rp === 3) {
+                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">Rival round three: badge case full, stakes higher.</div>`;
+                    } else if (rp === 2) {
+                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">Mid-journey rival win—your lead grows.</div>`;
+                    } else {
+                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">First major rival upset—onward to the next gym!</div>`;
+                    }
+                }
             }
             const isGymBadgeEvent = gotBadge && battleEventName && /^Gym Leader [1-8]$/i.test(String(battleEventName));
             ov.innerHTML = `
@@ -22017,6 +22723,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function applyBagItem(item, monIdx) {
             const mon = monIdx!==null ? state.playerParty[monIdx] : null;
+            // Sanity-clamp HP fields before any heal/revive math: NaN propagating from a corrupt
+            // save / botched Dynamax revert would otherwise produce a "fully healed" mon at NaN HP
+            // and downstream every damage/check evaluates falsy ("move applied no damage" symptom).
+            if (mon) {
+                if (!Number.isFinite(mon.maxHp) || mon.maxHp <= 0) {
+                    console.warn('[applyBagItem] mon has invalid maxHp; aborting:', mon.name, mon.maxHp);
+                    return;
+                }
+                if (!Number.isFinite(mon.currentHp)) mon.currentHp = 0;
+                mon.currentHp = Math.max(0, Math.min(mon.maxHp, mon.currentHp));
+            }
             const eff = item.effect;
             const tier = item && item.tier ? item.tier : (item && typeof item.id === 'string' && item.id.startsWith('ultra_') ? 'ultra' : (item && typeof item.id === 'string' && item.id.startsWith('mega_') ? 'mega' : 'base'));
             const effMul = tier === 'ultra' ? 2 : 1;
@@ -22275,25 +22992,39 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 document.getElementById('screen-menu').classList.remove('hidden');
                 return;
             }
-            // Update continue/abandon button visibility
             const hasSv = hasSave();
+            if (hasSv) {
+                try { load(); } catch (e) { /* use in-memory sm */ }
+            }
             const cb = document.getElementById('story-continue-btn');
             if (cb) cb.style.display = hasSv ? '' : 'none';
             const ab = document.getElementById('story-abandon-btn');
             if (ab) ab.style.display = hasSv ? '' : 'none';
             const sd = document.getElementById('story-difficulty');
-            if (sd && sm.storyDifficulty) sd.value = sm.storyDifficulty;
             if (hasSv && sm.settings) {
                 setStoryGenCheckboxes(sm.settings.enabledGens || rangeToEnabledGens(sm.settings.minGen ?? 1, sm.settings.maxGen ?? 9));
+                const mega = document.getElementById('story-mech-mega');
+                const z = document.getElementById('story-mech-z');
+                const dyna = document.getElementById('story-mech-dyna');
+                const tera = document.getElementById('story-mech-tera');
+                if (mega) mega.checked = !!sm.settings.megaOn;
+                if (z) z.checked = !!sm.settings.zOn;
+                if (dyna) dyna.checked = !!sm.settings.dynaOn;
+                if (tera) tera.checked = !!sm.settings.teraOn;
+                const nir = document.getElementById('story-no-item-run');
+                if (nir) nir.checked = !!sm.settings.noItemRun;
+            } else if (!hasSv) {
+                applyStoryMenuDefaultsFromStorage();
             }
+            if (sd && hasSv && sm.storyDifficulty) sd.value = sm.storyDifficulty;
             const sClassic = document.getElementById('story-mode-classic-rb');
-            const sUnlim   = document.getElementById('story-mode-unlimited-rb');
+            const sUnlim = document.getElementById('story-mode-unlimited-rb');
             if (sClassic && sUnlim) {
-                const cl = (hasSv && sm.settings) ? (sm.settings.classicMode !== false) : (sClassic.checked !== false);
-                sClassic.checked = cl;
-                sUnlim.checked = !cl;
+                if (hasSv && sm.settings) {
+                    sClassic.checked = sm.settings.classicMode !== false;
+                    sUnlim.checked = sm.settings.classicMode === false;
+                }
             }
-            // Show current run seed so player can share it
             const si = document.getElementById('story-setting-seed');
             if (si && hasSv && sm.runSeed != null) si.value = String(sm.runSeed >>> 0);
             showScreen('screen-story-menu');
@@ -22476,6 +23207,101 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;');
         }
+        function buildStoryRunSummaryHtml() {
+            const diffMap = { veryeasy: 'Very Easy', easy: 'Easy', normal: 'Normal', hard: 'Hard', challenge: 'Very Hard', hardcore: 'Hardcore' };
+            const st = sm.settings || {};
+            const eg = normalizeEnabledGens(st.enabledGens || rangeToEnabledGens(st.minGen ?? 1, st.maxGen ?? 9));
+            const genStr = eg.length >= 9 ? 'All (G1–G9)' : ('G' + eg.join(', G'));
+            const diffLabel = diffMap[sm.storyDifficulty] || sm.storyDifficulty || 'Normal';
+            const mechs = [];
+            if (st.megaOn) mechs.push('Mega');
+            if (st.zOn) mechs.push('Z-Move');
+            if (st.dynaOn) mechs.push('Dynamax');
+            if (st.teraOn) mechs.push('Tera');
+            let bagLine = 'On';
+            try {
+                if (typeof settings !== 'undefined' && settings && settings.storyBattleItems === false) bagLine = 'Off';
+            } catch (e) { /* */ }
+            const cIdx = cityIndexFromEventIndex(sm.eventIndex);
+            const owned = sm.artifacts || [];
+            const disabled = new Set(sm.artifactsDisabled || []);
+            let artBlock = '';
+            if (owned.length) {
+                artBlock = '<ul style="margin:6px 0 0 18px;padding:0;">';
+                for (const id of owned) {
+                    const art = ALL_ARTIFACTS.find(a => a.id === id);
+                    if (!art) continue;
+                    const name = _artifactNameForCity(art, cIdx);
+                    const off = disabled.has(id) ? ' <span style="color:#888;">(off)</span>' : '';
+                    artBlock += '<li style="margin-bottom:4px;">' + _esc(name) + off + '</li>';
+                }
+                artBlock += '</ul>';
+            } else {
+                artBlock = '<div style="color:#888;margin-top:4px;">None</div>';
+            }
+            const sdif = sm.storyDifficulty || 'normal';
+            let globalFoeHtml = '';
+            if (sdif === 'veryeasy') globalFoeHtml = 'All story foes: <strong style="color:#ce93d8;">×0.70</strong> HP &amp; stats.';
+            else if (sdif === 'easy') globalFoeHtml = 'All story foes: <strong style="color:#ce93d8;">×0.85</strong> HP &amp; stats.';
+            else if (sdif === 'normal') globalFoeHtml = 'Global foe mult <strong style="color:#ce93d8;">×1.0</strong>. League fights add the bonuses below, then this mult applies on top.';
+            else if (sdif === 'hard') globalFoeHtml = 'All story foes: <strong style="color:#ce93d8;">×1.15</strong> HP &amp; stats — applied <em>after</em> League per-battle bonuses where those fights use them.';
+            else if (sdif === 'challenge') globalFoeHtml = 'All story foes: <strong style="color:#ce93d8;">×1.30</strong> HP &amp; stats — applied <em>after</em> League per-battle bonuses where those fights use them.';
+            else if (sdif === 'hardcore') globalFoeHtml = 'Hardcore: global foe mult <strong style="color:#ce93d8;">×1.0</strong> (challenge is no-heal). League / post-game fights still use the League stat table below.';
+            else globalFoeHtml = 'Global foe scaling follows your difficulty.';
+            const foeRulesHtml =
+                '<div style="margin-bottom:12px;border-top:1px solid #333;padding-top:12px;">'
+                + '<strong style="color:var(--accent);">Opponent stats — Pokémon League</strong>'
+                + '<p style="margin:6px 0 8px;color:#aaa;font-size:11px;line-height:1.45;">Only these battles. “Bulk” = Atk, Def, SpA, SpD. Values multiply base stats; Hard / Very Hard multiply again on top.</p>'
+                + '<table style="width:100%;border-collapse:collapse;font-size:11px;color:#ddd;margin-bottom:8px;">'
+                + '<thead><tr style="color:#aaa;"><th style="text-align:left;padding:4px 6px;border-bottom:1px solid #444;">Fight</th>'
+                + '<th style="text-align:left;padding:4px 6px;border-bottom:1px solid #444;">HP</th>'
+                + '<th style="text-align:left;padding:4px 6px;border-bottom:1px solid #444;">Bulk</th>'
+                + '<th style="text-align:left;padding:4px 6px;border-bottom:1px solid #444;">Spe</th></tr></thead><tbody>'
+                + '<tr><td style="padding:6px;border-bottom:1px solid #333;">Elite Four</td><td style="padding:6px;border-bottom:1px solid #333;">+20%</td>'
+                + '<td style="padding:6px;border-bottom:1px solid #333;">+15%</td><td style="padding:6px;border-bottom:1px solid #333;">+10%</td></tr>'
+                + '<tr><td style="padding:6px;border-bottom:1px solid #333;">Champion &amp; league Rival</td><td style="padding:6px;border-bottom:1px solid #333;">+30%</td>'
+                + '<td style="padding:6px;border-bottom:1px solid #333;">+15%</td><td style="padding:6px;border-bottom:1px solid #333;">+15%</td></tr>'
+                + '<tr><td style="padding:6px;">Post–Hall of Fame Mystery</td><td style="padding:6px;">+35%</td>'
+                + '<td style="padding:6px;">+20%</td><td style="padding:6px;">+20%</td></tr>'
+                + '</tbody></table>'
+                + '<p style="margin:0 0 10px;font-size:11px;color:#9ccc65;line-height:1.45;">' + globalFoeHtml + '</p>'
+                + '</div>'
+                + '<div style="margin-bottom:12px;border-top:1px solid #333;padding-top:12px;">'
+                + '<strong style="color:var(--accent);">Opponent team rolls — grade curve</strong>'
+                + '<p style="margin:6px 0 8px;color:#aaa;font-size:11px;line-height:1.45;">'
+                + 'Enemies are rolled by <strong>grade</strong> (G1 = strongest BST tier, G4 = weakest). The route shifts toward stronger grades over time; '
+                + 'after Gym Leader 6, <em>each later battle</em> nudges Grade 1 odds up a bit more toward endgame (capped). '
+                + 'Matches your route progression phases after Gym 2 / Gym 4 / Gym 6.'
+                + '</p>'
+                + '</div>';
+            const rows = [
+                '<div style="margin-bottom:12px;"><strong style="color:var(--accent);">Difficulty</strong><br>' + _esc(diffLabel) + '</div>',
+                '<div style="margin-bottom:12px;"><strong style="color:var(--accent);">RNG seed</strong><br>' + _esc(sm.runSeed != null ? String(sm.runSeed >>> 0) : '—') + '</div>',
+                '<div style="margin-bottom:12px;"><strong style="color:var(--accent);">Species pool</strong><br>' + _esc(genStr) + '</div>',
+                '<div style="margin-bottom:12px;"><strong style="color:var(--accent);">Battle gimmicks</strong><br>' + (mechs.length ? _esc(mechs.join(', ')) : '<span style="color:#888;">None</span>') + '</div>',
+                '<div style="margin-bottom:12px;"><strong style="color:var(--accent);">Gimmick mode</strong><br>' + (st.classicMode !== false ? 'Classic (one per team)' : 'Unlimited') + '</div>',
+                '<div style="margin-bottom:12px;"><strong style="color:var(--accent);">No Item Run</strong><br>' + (st.noItemRun ? 'Yes' : 'No') + '</div>',
+                '<div style="margin-bottom:12px;"><strong style="color:var(--accent);">Story battle bag</strong><br>Global setting: ' + bagLine + '</div>',
+                '<div style="margin-bottom:4px;"><strong style="color:var(--accent);">Artifacts owned</strong></div>' + artBlock,
+                foeRulesHtml
+            ];
+            return rows.join('');
+        }
+        function openRunSummary() {
+            try {
+                if (hasSave() && (!sm.settings || !sm.active)) load();
+                if (!sm || !sm.settings) {
+                    if (typeof window.showGameAlert === 'function') window.showGameAlert('No Story run to show.');
+                    return;
+                }
+                const body = document.getElementById('story-run-summary-body');
+                if (body) body.innerHTML = buildStoryRunSummaryHtml();
+                const mod = document.getElementById('modal-story-run-summary');
+                if (mod) mod.classList.remove('hidden');
+            } catch (e) {
+                console.warn('[Story] openRunSummary', e);
+            }
+        }
         function openTeamTester() {
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             const st = document.getElementById('screen-story-tester');
@@ -22563,7 +23389,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sm.eventIndex = pos;
                     const isLate = /Gym Leader [678]|E1|E2|E3|E4|Champion|Victory Road/i.test(eventName);
                     const ps = isLate ? 6 : Math.min(Math.max(sm.team.length, 1), 6);
-                    const enemyTeam = rollTrainerTeam(trainer, ps, gw || { g1:0, g2:0, g3: 50, g4: 50 }, sg, eventName);
+                    const enemyTeam = rollTrainerTeam(trainer, ps, gw || { g1:0, g2:0, g3: 50, g4: 50 }, sg, eventName, eid);
                     rowsOut.push({ pos, eid, eventName, trainer: trainer.name, trainerType: trainer.type, badges: sm.badges, partySize: ps, gradeWeights: gw, coins, team: enemyTeam });
                     let line = `#${eid} row@${pos} ${eventName} | ${trainer.name} (${trainer.type}) | pre-fight badges=${sm.badges} | size=${ps} | g ${JSON.stringify(gw || {})}`;
                     enemyTeam.forEach((slot, i) => {
@@ -23757,6 +24583,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── PUBLIC API ────────────────────────────────────────────────────
         return {
+            get state() { return sm; },
             showMenu, startNewRun, continueRun, retryFromGameOver, retreatToLastPokemonCenter, isActive, hasSave,
             enterCity, enterProfessor, profRoll, profAccept, profDecline, profSelectChoice, _mysteryDoSwap,
             proceedToNextBattle, onBattleEnd, afterBattleReturn, applyHardcoreState,
@@ -23771,6 +24598,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterEVTrainer, evTrainerApplyPreset,
             openTeamTester, openTeamTesterSyncFromStory, runTeamTester, copyTeamTesterText, closeTeamTester,
             previewHallOfFame, seedDebugMysteryLegendGate, seedTestMegaFromUrl, seedStoryChampionWeakTestFromUrl, clearCurrentEnemyLock,
+            openRunSummary,
         };
         })(); // end StoryMode IIFE
 
