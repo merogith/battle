@@ -6127,36 +6127,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ============================================================
         // AUDIO SYSTEM
-        // First user gesture → field BGM (unless story intro is playing a one-shot theme).
-        // New story: random Pokémon-style intro once; then resume the same field BGM from where it was (menu/field) and keep looping.
+        // Field BGM: exactly one of three local tracks, chosen at random once per assignment
+        // (restored from localStorage on return visits), then looped. No remote BGM.
+        // First user gesture → start BGM.
         // Entering battles/cities should not interrupt already-playing BGM.
         // ============================================================
         const AudioSystem = (function() {
-            const THEME_TRACKS = [
-                'music/themes/Theme1.mp3',
-                'music/themes/Theme2.mp3',
-                'music/themes/Theme3.mp3',
-                'music/themes/Theme4.mp3'
-            ];
             const BACKGROUND_TRACKS = [
                 'music/background/background1.mp3',
                 'music/background/background2.mp3',
                 'music/background/background3.mp3',
-                'https://play.pokemonshowdown.com/audio/dpp-trainer.mp3',
-                'https://play.pokemonshowdown.com/audio/bw-trainer.mp3',
-                'https://play.pokemonshowdown.com/audio/xy-trainer.mp3',
-                'https://play.pokemonshowdown.com/audio/sm-trainer.mp3',
-                'https://play.pokemonshowdown.com/audio/oras-trainer.mp3',
-                'https://play.pokemonshowdown.com/audio/bw-rival.mp3',
-                'https://play.pokemonshowdown.com/audio/xy-rival.mp3',
-                'https://play.pokemonshowdown.com/audio/sm-rival.mp3',
-                'https://play.pokemonshowdown.com/audio/hgss-johto-trainer.mp3',
-                'https://play.pokemonshowdown.com/audio/hgss-kanto-trainer.mp3',
-                'https://play.pokemonshowdown.com/audio/bw2-rival.mp3',
-                'https://play.pokemonshowdown.com/audio/oras-rival.mp3',
-                'https://play.pokemonshowdown.com/audio/bw-subway-trainer.mp3',
-                'https://play.pokemonshowdown.com/audio/bw2-kanto-gym-leader.mp3',
-                'https://play.pokemonshowdown.com/audio/dpp-rival.mp3',
             ];
             const BG_TRACK_STORAGE_KEY = 'pbs_bg_track_idx';
             const BG_TIME_STORAGE_KEY = 'pbs_bg_time';
@@ -6205,23 +6185,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             let bgAudio = null;
             let _sessionBackgroundIdx = null;
-            let _storyThemePlaying = false;
-            let _pendingProfThemeCallback = null;
             let _musicVol = 0.45;
             let _soundVol = 0.55;
             let _currentAudioKind = null; // 'background' | 'theme'
             let _resumeBackgroundTime = 0;
-            /** Set when starting a new story run: next BGM start uses a random seek within the track. */
-            let _nextBackgroundRandomStart = false;
 
             function _readPersistedBackgroundState() {
                 try {
-                    const hasIdx = localStorage.getItem(BG_TRACK_STORAGE_KEY) != null;
-                    const hasT = localStorage.getItem(BG_TIME_STORAGE_KEY) != null;
-                    if (!hasIdx && !hasT) _nextBackgroundRandomStart = true;
                     const idx = parseInt(localStorage.getItem(BG_TRACK_STORAGE_KEY), 10);
                     const t = parseFloat(localStorage.getItem(BG_TIME_STORAGE_KEY));
-                    if (!Number.isNaN(idx) && idx >= 0) _sessionBackgroundIdx = idx % Math.max(1, BACKGROUND_TRACKS.length);
+                    const n = Math.max(1, BACKGROUND_TRACKS.length);
+                    if (!Number.isNaN(idx) && idx >= 0) _sessionBackgroundIdx = idx % n;
                     if (!Number.isNaN(t) && t >= 0) _resumeBackgroundTime = t;
                 } catch (e) {}
             }
@@ -6260,15 +6234,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 audio.loop = true;
                 audio.addEventListener('loadedmetadata', () => {
                     const maxStart = Math.max(0, (audio.duration || 0) - 0.25);
-                    let t;
-                    if (_nextBackgroundRandomStart) {
-                        t = maxStart > 0.5 ? Math.random() * maxStart : 0;
-                    } else if (typeof startAtSec === 'number' && Number.isFinite(startAtSec)) {
-                        t = startAtSec;
-                    } else {
-                        t = _resumeBackgroundTime;
-                    }
-                    if (_nextBackgroundRandomStart) _nextBackgroundRandomStart = false;
+                    const t = (typeof startAtSec === 'number' && Number.isFinite(startAtSec))
+                        ? startAtSec
+                        : _resumeBackgroundTime;
                     audio.currentTime = Math.max(0, Math.min(t, maxStart));
                     _resumeBackgroundTime = Math.max(0, Math.min(t, maxStart));
                     _persistBackgroundState(_resumeBackgroundTime);
@@ -6290,13 +6258,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let started = false;
                     const _tryStart = () => {
                         if (started) return;
-                        // If city → Professor opened on this click, story one-shot is playing; don't also start field BGM.
-                        if (_storyThemePlaying) {
-                            started = true;
-                            document.removeEventListener('click', _tryStart);
-                            document.removeEventListener('keydown', _tryStart);
-                            return;
-                        }
                         started = true;
                         if (settings.musicEnabled) _playBackgroundTrack();
                         document.removeEventListener('click', _tryStart);
@@ -6307,7 +6268,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 },
 
                 /**
-                 * Call when starting a new story save: keep field BGM track + time (menu/field) so the one-shot intro can resume there; do not clear BGM localStorage.
+                 * Call when starting a new story save: pause menu BGM; field track index + resume time stay in localStorage for when BGM restarts.
                  */
                 onStoryNewJourney() {
                     if (bgAudio) {
@@ -6320,41 +6281,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     _currentAudioKind = null;
                 },
 
-                playProfIntroThemeThenResume(onComplete) {
-                    _pendingProfThemeCallback = typeof onComplete === 'function' ? onComplete : null;
-                    const finishIntro = () => {
-                        _storyThemePlaying = false;
-                        const cb = _pendingProfThemeCallback;
-                        _pendingProfThemeCallback = null;
-                        try { if (cb) cb(); } catch(e) {}
-                    };
-                    if (!settings.musicEnabled) { finishIntro(); return; }
-                    if (bgAudio) {
-                        _captureBackgroundResumePointFromCurrentAudio();
-                        bgAudio.pause();
-                        bgAudio.onended = null;
-                        bgAudio = null;
-                    }
-                    _storyThemePlaying = true;
-                    const idx = Math.floor(Math.random() * THEME_TRACKS.length);
-                    const audio = new Audio(THEME_TRACKS[idx]);
-                    audio.volume = _musicVol;
-                    audio.onended = () => {
-                        finishIntro();
-                        _nextBackgroundRandomStart = false;
-                        _playBackgroundTrack(_resumeBackgroundTime);
-                    };
-                    audio.play().catch(() => {
-                        finishIntro();
-                        _nextBackgroundRandomStart = false;
-                        _playBackgroundTrack(_resumeBackgroundTime);
-                    });
-                    bgAudio = audio;
-                    _currentAudioKind = 'theme';
-                },
-
                 startNewBattle() {
-                    if (_storyThemePlaying) return;
                     if (!settings.musicEnabled) return;
                     // Keep the current BGM flowing between battles; only start if none is active.
                     if (bgAudio && !bgAudio.paused && !bgAudio.ended) return;
@@ -6370,12 +6297,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (bgAudio) {
                             _captureBackgroundResumePointFromCurrentAudio();
                             bgAudio.pause();
-                        }
-                        if (_storyThemePlaying) {
-                            _storyThemePlaying = false;
-                            const cb = _pendingProfThemeCallback;
-                            _pendingProfThemeCallback = null;
-                            try { if (cb) cb(); } catch(e) {}
                         }
                     }
                 },
@@ -19753,7 +19674,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    settings:{ minGen:1, maxGen:9, enabledGens:[1,2,3,4,5,6,7,8,9], megaOn:false, zOn:false, dynaOn:false, teraOn:false, classicMode:true },
                    gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{}, currentEnemyLock:null,
                    artifactsDisabled:[], storyCityVisit:null,
-                   profIntroThemePending:false,
                    storyDifficulty:'normal', runSeed:null,
                    storyMilestoneTips:{ m4:false, m8:false },
                    storyRetryInventorySnapshot: null,
@@ -19856,7 +19776,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.deptArtifactTypesByCity || typeof sm.deptArtifactTypesByCity !== 'object') sm.deptArtifactTypesByCity = {};
                 if (!sm.artifactTypeById || typeof sm.artifactTypeById !== 'object') sm.artifactTypeById = {};
                 if (!sm.deptItemOffersByCity || typeof sm.deptItemOffersByCity !== 'object') sm.deptItemOffersByCity = {};
-                if (!('profIntroThemePending' in sm)) sm.profIntroThemePending = false;
+                try { delete sm.profIntroThemePending; } catch (e) {}
                 if (!sm.storyDifficulty) sm.storyDifficulty = 'normal';
                 if (sm.settings && !('noItemRun' in sm.settings)) sm.settings.noItemRun = false;
                 if (sm.runSeed == null || sm.runSeed === undefined) sm.runSeed = (Math.random() * 0xFFFFFFFF) | 0;
@@ -20736,7 +20656,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 runSeed: (() => { const v = document.getElementById('story-setting-seed')?.value?.trim(); return (v && /^\d+$/.test(v)) ? (parseInt(v, 10) >>> 0) : ((Math.random() * 0xFFFFFFFF) | 0); })(),
                 version: SAVE_VER,
                 storyCityVisit: null,
-                profIntroThemePending: true,
                 storyMilestoneTips: { m4: false, m8: false },
                 storyRetryInventorySnapshot: null,
                 runRivalSpriteFile: null,
@@ -21670,12 +21589,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _profSelectedIdx = _profMysteryMode ? 0 : null;
             }
             _renderProfChoices();
-            if (sm.profIntroThemePending && typeof AudioSystem !== 'undefined' && AudioSystem.playProfIntroThemeThenResume) {
-                AudioSystem.playProfIntroThemeThenResume(() => {
-                    sm.profIntroThemePending = false;
-                    save();
-                });
-            }
             showScreen('screen-story-professor');
         }
 
