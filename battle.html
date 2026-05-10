@@ -19034,72 +19034,75 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Tier aim (pool strength): Mystery > Champion ≈ Rival (League) > E4 > E3 > E2 > E1 > GL8 > … > GL1 > Rival (route) > Elite Trainer > Gym Trainer > Basic Trainer.
         // Economy: ~65 main-path battles; starting 1000-2000G (by difficulty) + battle rewards scale with route.
         // Early route payouts set to 1400G so a few wins better cover Link G1 rerolls (4000G base).
+        // Party < 4: STORY_EASE_AUTO_SKIP_ROW_IDS trims some route trainers but pays their coin reward (see processNextEvent).
+        // Gym Trainer / Gym Leader base coins are bumped (see mod comment 2026-05) to keep economy strong vs fewer early route fights.
         // Exactly 8 gym badges (Gym Leader 1–8 once); then Victory Road (3 Elite), League City (City9, Dept store), E1–E4, Champion, Rival, HoF.
+        // City actions: each hub has ≥2 training NPCs (tutor / rater / dojo / EV / Colress), mixed across visits; Department Store only on four hubs (see rows 22, 41, 58, 67).
         const STORY_EVENTS_RAW = [
-          [0,'City','City0',null,0,['Professor','Link Station','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Leave City']],
+          [0,'City','City0',null,0,['Professor','Link Station','Pokemart','Move Tutor','Nature Rater','Leave City']],
           [1,'Battle','Basic Trainer',{g1:0,g2:0,g3:0,g4:100},1400,null],
           [2,'Battle','Basic Trainer',{g1:0,g2:0,g3:0,g4:100},1400,null],
           [3,'Battle','Basic Trainer',{g1:0,g2:0,g3:0,g4:100},1400,null],
-          [4,'City','City1',null,0,['Professor','Link Station','Pokemart','Gym Battle','Leave City']],
-          [5,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:20,g4:80},1500,null],
-          [6,'Battle','Gym Leader 1',{g1:0,g2:0,g3:100,g4:0},2000,null],
-          [7,'City','City1',null,0,['Professor','Link Station','Pokemart','Leave City']],
+          [4,'City','City1',null,0,['Professor','Link Station','Pokemart','Battle Dojo','EV Trainer','Gym Battle','Leave City']],
+          [5,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:20,g4:80},1850,null],
+          [6,'Battle','Gym Leader 1',{g1:0,g2:0,g3:100,g4:0},2350,null],
+          [7,'City','City1',null,0,['Professor','Link Station','Pokemart','Move Tutor','Nature Rater','Leave City']],
           [8,'Battle','Basic Trainer',{g1:0,g2:0,g3:50,g4:50},1200,null],
           [9,'Battle','Basic Trainer',{g1:0,g2:0,g3:60,g4:40},1200,null],
           [10,'Battle','Basic Trainer',{g1:0,g2:0,g3:70,g4:30},1200,null],
-          [11,'City','City2',null,0,['Professor','Link Station','Pokemart','Nature Rater','Gym Battle','Leave City']],
-          [12,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:80,g4:20},1700,null],
-          [13,'Battle','Gym Leader 2',{g1:0,g2:0,g3:100,g4:0},2500,null],
-          [14,'Battle','Rival',{g1:0,g2:0,g3:90,g4:10},1500,null],
-          [15,'City','City2',null,0,['Professor','Link Station','Pokemart','Nature Rater','Leave City']],
+          [11,'City','City2',null,0,['Professor','Link Station','Pokemart','Move Tutor','Battle Dojo','Gym Battle','Leave City']],
+          [12,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:80,g4:20},2100,null],
+          [13,'Battle','Gym Leader 2',{g1:0,g2:0,g3:100,g4:0},2950,null],
+          [14,'Battle','Rival',{g1:0,g2:0,g3:100,g4:0},1500,null],
+          [15,'City','City2',null,0,['Professor','Link Station','Pokemart','Nature Rater','EV Trainer','Leave City']],
           [16,'Battle','Basic Trainer',{g1:0,g2:0,g3:80,g4:20},1500,null],
           [17,'Battle','Basic Trainer',{g1:0,g2:0,g3:80,g4:20},1500,null],
           [18,'Battle','Basic Trainer',{g1:0,g2:0,g3:90,g4:10},1500,null],
-          [19,'City','City3',null,0,['Professor','Link Station','Department Store','Battle Dojo','Gym Battle']],
-          [20,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:95,g4:5},2000,null],
-          [21,'Battle','Gym Leader 3',{g1:0,g2:30,g3:70,g4:0},3000,null],
-          [22,'City','City3',null,0,['Professor','Link Station','Department Store','Battle Dojo','Leave City']],
+          [19,'City','City3',null,0,['Professor','Link Station','Pokemart','Move Tutor','Nature Rater','Gym Battle']],
+          [20,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:95,g4:5},2450,null],
+          [21,'Battle','Gym Leader 3',{g1:0,g2:30,g3:70,g4:0},3550,null],
+          [22,'City','City3',null,0,['Professor','Link Station','Department Store','Move Tutor','Battle Dojo','EV Trainer','Leave City']],
           [23,'Battle','Basic Trainer',{g1:0,g2:10,g3:90,g4:0},1700,null],
           [24,'Battle','Basic Trainer',{g1:0,g2:10,g3:90,g4:0},1700,null],
           [25,'Battle','Basic Trainer',{g1:0,g2:15,g3:85,g4:0},1700,null],
           [26,'City','City4',null,0,['Professor','Link Station','Pokemart','Move Tutor','EV Trainer','Gym Battle','Leave City']],
-          [27,'Battle','Gym Trainer 1',{g1:0,g2:30,g3:70,g4:0},2300,null],
-          [28,'Battle','Gym Leader 4',{g1:0,g2:50,g3:50,g4:0},3200,null],
-          [29,'City','City4',null,0,['Professor','Link Station','Pokemart','Move Tutor','EV Trainer','Leave City']],
+          [27,'Battle','Gym Trainer 1',{g1:0,g2:30,g3:70,g4:0},2800,null],
+          [28,'Battle','Gym Leader 4',{g1:0,g2:50,g3:50,g4:0},3800,null],
+          [29,'City','City4',null,0,['Professor','Link Station','Pokemart','Nature Rater','Battle Dojo','Leave City']],
           [30,'Battle','Basic Trainer',{g1:0,g2:25,g3:75,g4:0},2000,null],
           [31,'Battle','Basic Trainer',{g1:0,g2:25,g3:75,g4:0},2000,null],
           [32,'Battle','Basic Trainer',{g1:0,g2:35,g3:65,g4:0},2000,null],
-          [33,'City','City5',null,0,['Professor','Link Station','Pokemart','Gym Battle','Leave City']],
-          [34,'Battle','Gym Trainer 1',{g1:0,g2:50,g3:50,g4:0},2500,null],
-          [35,'Battle','Gym Trainer 2',{g1:0,g2:60,g3:40,g4:0},2500,null],
-          [36,'Battle','Gym Leader 5',{g1:0,g2:70,g3:30,g4:0},3500,null],
-          [37,'City','City5',null,0,['Professor','Link Station','Pokemart','Leave City']],
+          [33,'City','City5',null,0,['Professor','Link Station','Pokemart','Move Tutor','Nature Rater','Gym Battle','Leave City']],
+          [34,'Battle','Gym Trainer 1',{g1:0,g2:50,g3:50,g4:0},3050,null],
+          [35,'Battle','Gym Trainer 2',{g1:0,g2:60,g3:40,g4:0},3050,null],
+          [36,'Battle','Gym Leader 5',{g1:0,g2:70,g3:30,g4:0},4150,null],
+          [37,'City','City5',null,0,['Professor','Link Station','Pokemart','Battle Dojo','EV Trainer','Leave City']],
           [38,'Battle','Basic Trainer',{g1:0,g2:50,g3:50,g4:0},2200,null],
           [39,'Battle','Basic Trainer',{g1:0,g2:50,g3:50,g4:0},2200,null],
           [40,'Battle','Elite Trainer',{g1:0,g2:70,g3:30,g4:0},2700,null],
-          [41,'City','City6',null,0,['Link Station','Department Store','Nature Rater','Power Up','Gym Battle','Leave City']],
-          [42,'Battle','Gym Trainer 1',{g1:0,g2:75,g3:25,g4:0},2700,null],
-          [43,'Battle','Gym Trainer 2',{g1:0,g2:80,g3:20,g4:0},2700,null],
-          [44,'Battle','Gym Leader 6',{g1:0,g2:90,g3:10,g4:0},4700,null],
+          [41,'City','City6',null,0,['Link Station','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
+          [42,'Battle','Gym Trainer 1',{g1:0,g2:75,g3:25,g4:0},3300,null],
+          [43,'Battle','Gym Trainer 2',{g1:0,g2:80,g3:20,g4:0},3300,null],
+          [44,'Battle','Gym Leader 6',{g1:0,g2:90,g3:10,g4:0},5550,null],
           [45,'Battle','Rival',{g1:5,g2:95,g3:0,g4:0},2500,null],
-          [46,'City','City6',null,0,['Link Station','Pokemart','Nature Rater','Power Up','Leave City']],
+          [46,'City','City6',null,0,['Link Station','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
           [47,'Battle','Basic Trainer',{g1:0,g2:100,g3:0,g4:0},2500,null],
           [48,'Battle','Basic Trainer',{g1:0,g2:100,g3:0,g4:0},2500,null],
           [49,'Battle','Elite Trainer',{g1:5,g2:95,g3:0,g4:0},2900,null],
-          [50,'City','City7',null,0,['Link Station','Pokemart','Battle Dojo','Gym Battle','Leave City']],
-          [51,'Battle','Gym Trainer 1',{g1:5,g2:95,g3:0,g4:0},2900,null],
-          [52,'Battle','Gym Trainer 2',{g1:8,g2:92,g3:0,g4:0},2900,null],
-          [53,'Battle','Gym Leader 7',{g1:15,g2:85,g3:0,g4:0},4900,null],
-          [54,'City','City7',null,0,['Link Station','Pokemart','Battle Dojo','Leave City']],
+          [50,'City','City7',null,0,['Link Station','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
+          [51,'Battle','Gym Trainer 1',{g1:5,g2:95,g3:0,g4:0},3550,null],
+          [52,'Battle','Gym Trainer 2',{g1:8,g2:92,g3:0,g4:0},3550,null],
+          [53,'Battle','Gym Leader 7',{g1:15,g2:85,g3:0,g4:0},5800,null],
+          [54,'City','City7',null,0,['Link Station','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
           [55,'Battle','Basic Trainer',{g1:5,g2:95,g3:0,g4:0},2600,null],
           [56,'Battle','Elite Trainer',{g1:10,g2:90,g3:0,g4:0},3000,null],
           [57,'Battle','Elite Trainer',{g1:12,g2:88,g3:0,g4:0},3000,null],
-          [58,'City','City8',null,0,['Link Station','Pokemart','Move Tutor','Gym Battle','Leave City']],
-          [59,'Battle','Gym Trainer 1',{g1:15,g2:85,g3:0,g4:0},3000,null],
-          [60,'Battle','Gym Trainer 2',{g1:20,g2:80,g3:0,g4:0},3000,null],
-          [61,'Battle','Gym Leader 8',{g1:25,g2:75,g3:0,g4:0},5000,null],
+          [58,'City','City8',null,0,['Link Station','Pokemart','Department Store','Move Tutor','Nature Rater','Power Up','Gym Battle','Leave City']],
+          [59,'Battle','Gym Trainer 1',{g1:15,g2:85,g3:0,g4:0},3650,null],
+          [60,'Battle','Gym Trainer 2',{g1:20,g2:80,g3:0,g4:0},3650,null],
+          [61,'Battle','Gym Leader 8',{g1:25,g2:75,g3:0,g4:0},5950,null],
           [62,'Battle','Rival',{g1:30,g2:70,g3:0,g4:0},2800,null],
-          [63,'City','City8',null,0,['Link Station','Pokemart','Move Tutor','Leave City']],
+          [63,'City','City8',null,0,['Link Station','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
           [64,'Battle','Elite Trainer',{g1:30,g2:70,g3:0,g4:0},4200,null],
           [65,'Battle','Elite Trainer',{g1:35,g2:65,g3:0,g4:0},4800,null],
           [66,'Battle','Elite Trainer',{g1:40,g2:60,g3:0,g4:0},5200,null],
@@ -19113,6 +19116,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [74,'Hall of Fame','Hall of Fame',null,0,null],
           [75,'Battle','Mystery Figure',{g1:100,g2:0,g3:0,g4:0},12000,null],
         ];
+
+        /** While party has fewer than 4 Pokémon, these story battle row ids auto-clear with full gold (same multiplier as a win). */
+        const STORY_EASE_AUTO_SKIP_ROW_IDS = new Set([2, 3, 10, 18, 25, 32, 40, 49, 57, 66]);
 
         // Professor grade rolls per city (0-based city index)
         // With 3-choice system: weights determine what appears across 3 options
@@ -19752,6 +19758,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    storyMilestoneTips:{ m4:false, m8:false },
                    storyRetryInventorySnapshot: null,
                    runRivalSpriteFile: null,
+                   deferredEarlyRivalPos: null,
                    version:SAVE_VER };
 
         function normalizeStoryRivalLock() {
@@ -19867,6 +19874,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (sm.settings && typeof sm.settings.classicMode !== 'boolean') sm.settings.classicMode = true;
                 if (!('storyRetryInventorySnapshot' in sm)) sm.storyRetryInventorySnapshot = null;
+                if (!('deferredEarlyRivalPos' in sm)) sm.deferredEarlyRivalPos = null;
                 normalizeStoryRivalLock();
                 return true;
             } catch(e) { return false; }
@@ -19969,6 +19977,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (d === 'challenge') { o.g1 *= 1.18; o.g4 *= 0.82; }
             // Hardcore intentionally mirrors Normal team-grading; difficulty is expressed via no-heal rule.
             return o;
+        }
+
+        /** Once the story party has 4+ Pokémon, remove all grade-4 probability from weight rolls (mass moves to g3). Foes + Professor. */
+        function storyStripGrade4IfPartyMature(gw) {
+            if (!gw || !sm || !sm.active || !Array.isArray(sm.team) || sm.team.length < 4) return gw;
+            const g1 = gw.g1 || 0, g2 = gw.g2 || 0, g3 = gw.g3 || 0, g4 = gw.g4 || 0;
+            if (g4 <= 0) return { g1, g2, g3, g4: 0 };
+            return { g1, g2, g3: g3 + g4, g4: 0 };
         }
 
         // Story route progression: shift foe grade weights toward stronger tiers (g1 best, g4 weakest).
@@ -20343,6 +20359,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
             let gwIn = applyDifficultyToGradeWeights(gradeWeights || { g1: 0, g2: 0, g3: 50, g4: 50 });
             gwIn = applyStoryProgressToGradeWeights(gwIn, storyRowIdx);
+            gwIn = storyStripGrade4IfPartyMature(gwIn);
             let allowedGens = normalizeEnabledGens(enabledGensIn != null ? enabledGensIn : storySettingsGens());
             const pg = trainer && trainer.pkmGens;
             if (pg && pg.length) {
@@ -20723,6 +20740,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 storyMilestoneTips: { m4: false, m8: false },
                 storyRetryInventorySnapshot: null,
                 runRivalSpriteFile: null,
+                deferredEarlyRivalPos: null,
             };
             sm._strngState = null;
             _storyBattleInventorySnapshot = null;
@@ -20764,7 +20782,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const [idx, type, event] = ev;
             if (type === 'City') { enterCity(); return; }
             if (type === 'Hall of Fame') { showHallOfFame(); return; }
-            if (type === 'Battle') { enterBattleEvent(ev); return; }
+            if (type === 'Battle') {
+                if ((idx | 0) === STORY_RIVAL_ROW_EARLY && event === 'Rival' && sm.team.length < 4) {
+                    sm.deferredEarlyRivalPos = sm.eventIndex;
+                    sm.eventIndex++;
+                    save();
+                    processNextEvent();
+                    return;
+                }
+                if (STORY_EASE_AUTO_SKIP_ROW_IDS.has(idx | 0) && sm.team.length < 4) {
+                    sm.gold += storyGrantEaseSkipBattleCoins(ev);
+                    sm.eventIndex++;
+                    save();
+                    processNextEvent();
+                    return;
+                }
+                enterBattleEvent(ev);
+                return;
+            }
         }
 
         // ── CITY SCREEN ───────────────────────────────────────────────────
@@ -21557,9 +21592,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _profMysteryMode = isFull;
             _profLegendaryMysteryMode = _profMysteryMode && isPreLeagueLegendaryMysteryGate(cityIdx);
             // Mystery Figure: G1/G2 rolls, except guaranteed legendary gate before Victory Road.
-            const rolls = _profLegendaryMysteryMode
+            const rollsBase = _profLegendaryMysteryMode
                 ? {g1:100,g2:0,g3:0,g4:0}
                 : (_profMysteryMode ? mysteryFigureRollsForBadges(sm.badges) : (PROF_ROLLS[cityIdx] || PROF_ROLLS[0]));
+            const rolls = !_profLegendaryMysteryMode && sm.team.length >= 4
+                ? storyStripGrade4IfPartyMature({ g1: rollsBase.g1 || 0, g2: rollsBase.g2 || 0, g3: rollsBase.g3 || 0, g4: rollsBase.g4 || 0 })
+                : rollsBase;
             _pendingProfRolls = rolls;
 
             const hub = cityProfessorHubSlot(cityIdx);
@@ -21847,11 +21885,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // After blacking out and returning to a city hub, eventIndex sits on the City row while
             // currentEnemyLock still points at the trainer you lost to. Skip already-cleared route
             // battles and resume that rematch (same frozen foe team as enterBattleEvent uses).
+            let lockForcedRematch = false;
             const lock = sm.currentEnemyLock;
             if (lock && lock.eventIdx != null && Array.isArray(lock.team) && lock.team.length) {
                 const le = lock.eventIdx | 0;
                 const row = STORY_EVENTS_RAW[le];
-                if (row && row[1] === 'Battle' && le > nextBattleIdx) nextBattleIdx = le;
+                if (row && row[1] === 'Battle' && le > nextBattleIdx) {
+                    nextBattleIdx = le;
+                    lockForcedRematch = true;
+                }
+            }
+            const def = sm.deferredEarlyRivalPos;
+            // Owe first Rival (party was <4): must not start later route fights until party ≥4, then fight Rival before other upcoming battles (unless rematching a loss).
+            if (def != null && !lockForcedRematch) {
+                if (sm.team.length < 4 && nextBattleIdx > def) {
+                    window.showGameAlert('Grow your party to 4 Pokémon (Professor, wild catches, or Link Station) — your rival is waiting.');
+                    return;
+                }
+                if (sm.team.length >= 4) {
+                    nextBattleIdx = Math.min(nextBattleIdx, def);
+                    if (nextBattleIdx === def) sm.deferredEarlyRivalPos = null;
+                }
             }
             sm.eventIndex = nextBattleIdx;
             save();
