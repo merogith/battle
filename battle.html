@@ -4193,8 +4193,8 @@
                 <button type="button" onclick="window.closeModal('modal-settings'); window.showHelp();" style="color: var(--accent); min-height:40px; padding:6px 14px;">VIEW</button>
             </div>
             <div class="settings-row">
-                <span>Frozen battle (no Fight / moves)</span>
-                <button type="button" onclick="window.closeModal('modal-settings'); typeof window.__recoverBattleSoftLock==='function' && window.__recoverBattleSoftLock();" style="color: var(--hp-amber, #ffb74d); min-height:40px; padding:6px 14px;" title="Clears input lock and shows Fight again if the turn resolver left the UI stuck. Same as console: __recoverBattleSoftLock()">Unstick</button>
+                <span>Frozen battle (continue safely)</span>
+                <button type="button" onclick="window.closeModal('modal-settings'); typeof window.__forceBattleContinue==='function' && window.__forceBattleContinue();" style="color: var(--hp-amber, #ffb74d); min-height:40px; padding:6px 14px;" title="Checks faint/end/switch/menu state and forces the safest next battle UI. Console: __forceBattleContinue()">Force Continue</button>
             </div>
             <details class="settings-dev-block">
                 <summary>Developer / Story tools</summary>
@@ -10422,6 +10422,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 window.StoryMode.applyHardcoreState(state.playerParty);
             }
             state.pActive = state.playerParty[0];
+            // Field must match this battle before aiBestSwitch — aiEstimateDmg(getCurrentWeather) must not see the previous battle's weather.
+            state.weather = null; state.weatherTurns = 0;
+            state.terrain = null; state.terrainTurns = 0;
+            state.trickRoom = 0;
+            state.gravity = 0;
+            state.magicRoom = 0;
+            state.wonderRoom = 0;
+            state.pSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, stickyWeb: false, tailwind: 0, luckychant: 0 };
+            state.fSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, stickyWeb: false, tailwind: 0, luckychant: 0 };
+            state.usedMega = false; state.usedZ = false; state.usedDyna = false; state.usedTera = false;
+            state.fUsedMega = false; state.fUsedZ = false; state.fUsedDyna = false; state.fUsedTera = false;
+            state.p1GimmickIntent = null; state.p2GimmickIntent = null;
+            if (settings.randomWeather) rollRandomWeather();
+            if (settings.randomTerrain) rollRandomTerrain();
             {
                 const _foeAlive = state.foeParty.filter(m => m.currentHp > 0);
                 const _foeLead = _foeAlive.length ? aiBestSwitch(_foeAlive, state.pActive) : null;
@@ -10438,28 +10452,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             state.revealedFoe = new Set();
             state.revealedFoe.add(state.fActive.name);
-
-            state.weather = null; state.weatherTurns = 0;
-            state.trickRoom = 0;
-            state.gravity = 0;
-            state.magicRoom = 0;
-            state.wonderRoom = 0;
-            state.pSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, stickyWeb: false, tailwind: 0, luckychant: 0 };
-            state.fSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, stickyWeb: false, tailwind: 0, luckychant: 0 };
-            // Classic mode: one gimmick use per team
-            state.usedMega = false; state.usedZ = false; state.usedDyna = false; state.usedTera = false;
-            state.fUsedMega = false; state.fUsedZ = false; state.fUsedDyna = false; state.fUsedTera = false;
-            state.p1GimmickIntent = null; state.p2GimmickIntent = null;
-
-            // Start with random weather if setting is on
-            if (settings.randomWeather) {
-                rollRandomWeather();
-            }
-            
-            // Start with random terrain if setting is on
-            if (settings.randomTerrain) {
-                rollRandomTerrain();
-            }
 
             logMsg(`Battle started!`, 'info');
             // Apply Story Mode artifact effects (Trick Room, Gravity, etc.) after field init
@@ -13666,6 +13658,149 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        function __battleModalVisible(id) {
+            const el = document.getElementById(id);
+            return !!(el && !el.classList.contains('hidden'));
+        }
+
+        function __battleHasActiveScreen() {
+            const sb = document.getElementById('screen-battle');
+            return !!(sb && !sb.classList.contains('hidden'));
+        }
+
+        function __restoreBattleCommandMenu(reason) {
+            try { window.closeStickyMoveTooltip && window.closeStickyMoveTooltip(); } catch (e) {}
+            try { const tip = document.getElementById('move-tooltip'); if (tip) tip.classList.add('hidden'); } catch (e) {}
+            try { const party = document.getElementById('modal-party'); if (party) party.classList.add('hidden'); } catch (e) {}
+            try { const bag = document.getElementById('modal-story-bag'); if (bag) bag.classList.add('hidden'); } catch (e) {}
+            try { const storyParty = document.getElementById('modal-story-party'); if (storyParty) storyParty.classList.add('hidden'); } catch (e) {}
+            try { document.getElementById('move-menu').classList.add('hidden'); } catch (e) {}
+            try { document.getElementById('command-menu').classList.remove('hidden'); } catch (e) {}
+            try { if (typeof syncBattleActiveHighlight === 'function') syncBattleActiveHighlight(); } catch (e) {}
+            try { if (window.syncBattlePhaseClass) window.syncBattlePhaseClass(); } catch (e) {}
+            if (reason && typeof logMsg === 'function') logMsg(reason, 'info');
+        }
+
+        /**
+         * Settings button: force the safest next battle step.
+         *
+         * This is intentionally stronger than __recoverBattleSoftLock():
+         * - checks unresolved faints first (can open forced switch / end screen)
+         * - clears stale story bag-pass markers
+         * - handles both locked and unlocked "both menus hidden" states
+         * - never tries to replay a lost move; that would be unsafe without the original promise stack.
+         *
+         * Console: __forceBattleContinue()
+         */
+        window.__forceBattleContinue = async function() {
+            if (window.__forceBattleContinueRunning) return false;
+            window.__forceBattleContinueRunning = true;
+            try {
+                if (typeof state === 'undefined' || !state || !__battleHasActiveScreen()) {
+                    try { window.showGameAlert && window.showGameAlert('No active battle to continue.'); } catch (e) {}
+                    return false;
+                }
+                const party = document.getElementById('modal-party');
+                const cmd = document.getElementById('command-menu');
+                const move = document.getElementById('move-menu');
+                if (!cmd) return false;
+
+                // Stale bag pass is a common "my next move did nothing" source after an interrupted bag turn.
+                try { if (typeof window !== 'undefined') window._storyBagPassAfterItem = false; } catch (e) {}
+                try { state._lockedAt = 0; } catch (e) {}
+
+                const pDead = !!(state.pActive && Number.isFinite(state.pActive.currentHp) && state.pActive.currentHp <= 0);
+                const fDead = !!(state.fActive && Number.isFinite(state.fActive.currentHp) && state.fActive.currentHp <= 0);
+
+                // If HP says something fainted but the resolver never advanced, run the real faint handler.
+                if (!state.isOver && (pDead || fDead) && typeof checkFaints === 'function') {
+                    try {
+                        const handled = await checkFaints();
+                        if (handled) {
+                            if (state.isOver) {
+                                state.isLocked = false;
+                                state.pendingEoT = false;
+                                state.residualPhaseComplete = false;
+                                if (typeof logMsg === 'function') logMsg('Battle end/faint state was completed by Force Continue.', 'info');
+                                return true;
+                            }
+                            if (party && !party.classList.contains('hidden')) {
+                                // Real forced-switch state: keep lock so only the replacement modal is used.
+                                state.isLocked = true;
+                                try { state._lockedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); } catch (e) {}
+                                if (typeof logMsg === 'function') logMsg('Force Continue opened the required switch screen.', 'info');
+                                return true;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('[ForceContinue] checkFaints failed, restoring menu instead:', e);
+                    }
+                }
+
+                // pendingEoT is only meaningful while a forced replacement is being chosen. If no
+                // replacement modal is visible and both active mons are alive, it is stale.
+                if (state.pendingEoT && (!party || party.classList.contains('hidden')) && !pDead && !fDead) {
+                    state.pendingEoT = false;
+                    state.residualPhaseComplete = false;
+                }
+
+                const partyVisible = !!(party && !party.classList.contains('hidden'));
+                const storyBagVisible = __battleModalVisible('modal-story-bag');
+                const storyPartyVisible = __battleModalVisible('modal-story-party');
+                const endVisible = __battleModalVisible('modal-end-screen');
+                const anyModalVisible = partyVisible || storyBagVisible || storyPartyVisible || endVisible;
+                const cmdHidden = cmd.classList.contains('hidden');
+                const moveHidden = !move || move.classList.contains('hidden');
+
+                if (state.isOver) {
+                    state.isLocked = false;
+                    state.pendingEoT = false;
+                    state.residualPhaseComplete = false;
+                    if (!endVisible && typeof logMsg === 'function') logMsg('Battle is already over; lock cleared.', 'info');
+                    return true;
+                }
+
+                if (partyVisible) {
+                    // Correct forced-switch state; do not close it.
+                    state.isLocked = true;
+                    try { state._lockedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); } catch (e) {}
+                    if (typeof logMsg === 'function') logMsg('Choose a replacement Pokémon to continue.', 'info');
+                    return true;
+                }
+
+                // Main useful recovery: both command panels hidden, no active modal. This covers
+                // locked resolver loss and unlocked click-handler early returns.
+                if ((state.isLocked || (cmdHidden && moveHidden)) && !anyModalVisible) {
+                    state.isLocked = false;
+                    state.pendingEoT = false;
+                    state.residualPhaseComplete = false;
+                    __restoreBattleCommandMenu('Force Continue restored the battle commands.');
+                    return true;
+                }
+
+                // If only the move menu is gone, return to the safe command menu.
+                if (!anyModalVisible && cmdHidden && !moveHidden) {
+                    state.isLocked = false;
+                    __restoreBattleCommandMenu('Force Continue returned to the battle commands.');
+                    return true;
+                }
+
+                if (typeof logMsg === 'function') logMsg('Force Continue checked the battle state; no unsafe stuck state was found.', 'info');
+                return false;
+            } catch (e) {
+                console.warn('[ForceContinue]', e);
+                try {
+                    state.isLocked = false;
+                    state.pendingEoT = false;
+                    state.residualPhaseComplete = false;
+                    __restoreBattleCommandMenu('Force Continue recovered after an internal error.');
+                } catch (e2) {}
+                return true;
+            } finally {
+                window.__forceBattleContinueRunning = false;
+            }
+        };
+
         /** If the resolver exited mid-turn while locked (save-specific edge cases), restore command menu. Console: __recoverBattleSoftLock() */
         window.__recoverBattleSoftLock = function() {
             try {
@@ -13674,7 +13809,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const cmd = document.getElementById('command-menu');
                 const move = document.getElementById('move-menu');
                 if (!party || !cmd) return false;
-                if (!state.isLocked) return false;
                 // Battle already ended but the lock was never cleared (e.g. rare resolver edge) — safe to release; do not force menus (story / end screens own UI).
                 if (state.isOver) {
                     state.pendingEoT = false;
@@ -13688,16 +13822,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const partyHidden = party.classList.contains('hidden');
                 const cmdHidden = cmd.classList.contains('hidden');
                 const moveHidden = !move || move.classList.contains('hidden');
+                if (state.isLocked && !partyHidden) return false;
                 if (partyHidden && cmdHidden && moveHidden) {
                     state.pendingEoT = false;
                     state.residualPhaseComplete = false;
                     state.isLocked = false;
-                    cmd.classList.remove('hidden');
-                    try { if (typeof syncBattleActiveHighlight === 'function') syncBattleActiveHighlight(); } catch (e) {}
-                    try { if (window.syncBattlePhaseClass) window.syncBattlePhaseClass(); } catch (e) {}
-                    if (typeof logMsg === 'function') {
-                        logMsg('Battle UI was stuck — lock cleared. If the battle still looks wrong, use Settings → Clear story foe lock, or leave and rematch.', 'info');
-                    }
+                    __restoreBattleCommandMenu('Battle UI was stuck — commands restored. If the battle still looks wrong, use Force Continue again or reload.');
                     return true;
                 }
             } catch (e) { console.warn('[recoverBattleSoftLock]', e); }
@@ -18423,15 +18553,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             state.foeParty = foeKeys.map(name => buildPokemon(name, makeBuild(name)));
             state.pActive = state.playerParty[0];
+            state.weather = null; state.weatherTurns = 0;
+            state.terrain = null; state.terrainTurns = 0;
+            state.trickRoom = 0;
+            state.pSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 }; state.fSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 };
             {
                 const _fa = state.foeParty.filter(m => m.currentHp > 0);
                 const _fl = _fa.length ? aiBestSwitch(_fa, state.pActive) : null;
                 state.fActive = _fl || state.foeParty[0];
             }
-            state.weather = null; state.weatherTurns = 0;
-            state.terrain = null; state.terrainTurns = 0;
-            state.trickRoom = 0;
-            state.pSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 }; state.fSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 };
             state.isLocked = false; state.isOver = false; state.pendingEoT = false; state.residualPhaseComplete = false; state.turnNumber = 0;
             // Reset gimmick usage for both sides each round (each gauntlet round is a fresh battle)
             state.usedMega = false; state.usedZ = false; state.usedDyna = false; state.usedTera = false;
