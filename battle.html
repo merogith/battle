@@ -12832,7 +12832,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (state.isOver) { state.isLocked = false; return; }
                     if (eotFaint) {
                         if (!document.getElementById('modal-party').classList.contains('hidden')) {
-                            state.pendingEoT = true;
+                            // EoT already ran this turn — do NOT re-set pendingEoT.
+                            // Re-setting it would cause sandstorm/burn/leech-seed to tick again
+                            // when the player picks the next replacement (a real bug that bit
+                            // 6-mon league fights with multiple weak survivors).
                             return;
                         }
                     }
@@ -13133,51 +13136,84 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             } else {
                 state.p1Action = action;
+                // AI/inventory helpers are synchronous and can throw on rare data shapes
+                // (Lance's duplicate-Dragonite squad, late-game Z/Mega/Tera intents, etc.).
+                // Any throw here would leave move-menu hidden / command-menu hidden with the
+                // resolver never started — the exact "click KO move → nothing happens → frozen"
+                // symptom we keep chasing in league chains. Each helper now degrades to a safe
+                // fallback action so the turn ALWAYS reaches the resolver and clears the lock.
                 let usedFoeItem = false;
                 if (state.mode === 'story' && settings.storyBattleItems !== false && typeof window.tryFoeStoryBattleItem === 'function') {
-                    usedFoeItem = window.tryFoeStoryBattleItem();
+                    try { usedFoeItem = window.tryFoeStoryBattleItem(); }
+                    catch (e) { console.warn('[playTurn] tryFoeStoryBattleItem threw — skipping foe item this turn:', e); usedFoeItem = false; }
                 }
                 if (usedFoeItem) {
                     state.p2GimmickIntent = null;
                     state.p2Action = { moveIndex: null, switchIndex: null, aiMove: { name: '__FoeItemPass', type: 'Normal', cat: 'Status', pow: 0, acc: 100, pri: 0, pp: 999, eff: '', effectStr: '' } };
                 } else {
-                let switchIdx = aiDecision();
+                let switchIdx = null;
+                try { switchIdx = aiDecision(); }
+                catch (e) { console.warn('[playTurn] aiDecision threw — AI will not switch this turn:', e); switchIdx = null; }
                 if (switchIdx !== null) {
                     state.p2Action = { moveIndex: null, switchIndex: switchIdx };
                 } else {
-                    let fMove = window.getBestMove(state.fActive, state.pActive);
-                    // AI gimmick decision (bound to foe active party slot)
-                    let _aiG = aiChooseGimmick(state.fActive, state.pActive);
+                    let fMove = null;
+                    try { fMove = window.getBestMove(state.fActive, state.pActive); }
+                    catch (e) { console.warn('[playTurn] getBestMove threw — falling back to first usable foe move:', e); fMove = null; }
+                    if (!fMove) {
+                        // Defensive fallback: first move with PP, else Struggle. Keeps the turn moving.
+                        const _fa = state.fActive;
+                        const _firstWithPp = (_fa && Array.isArray(_fa.moves)) ? _fa.moves.find(m => m && m.pp > 0) : null;
+                        fMove = _firstWithPp || { name: "Struggle", type: "Normal", cat: "Physical", pow: 50, acc: 100, pri: 0, pp: 1, maxPp: 1, eff: "", effectStr: "" };
+                    }
+                    let _aiG = null;
+                    try { _aiG = aiChooseGimmick(state.fActive, state.pActive); }
+                    catch (e) { console.warn('[playTurn] aiChooseGimmick threw — foe will not gimmick this turn:', e); _aiG = null; }
                     let _aiSlot = state.foeParty.indexOf(state.fActive);
                     state.p2GimmickIntent = (_aiG && _aiSlot >= 0) ? { kind: _aiG, slot: _aiSlot } : null;
-                    state.p2Action = { moveIndex: state.fActive.moves.indexOf(fMove), switchIndex: null, aiMove: fMove };
+                    const _moveIdx = state.fActive.moves.indexOf(fMove);
+                    state.p2Action = { moveIndex: _moveIdx, switchIndex: null, aiMove: fMove };
                 }
                 }
             }
 
-            await window.__runLockedPvPTurnResolution();
+            try {
+                await window.__runLockedPvPTurnResolution();
+            } catch (e) {
+                // Resolver has its own try/catch/finally, but if it ever rejects synchronously
+                // (e.g. before its try block) we still need to release the lock + restore menus
+                // so the player isn't stuck staring at an empty battle screen.
+                console.error('[playTurn] resolver threw outside its catch:', e);
+                try { state.isLocked = false; } catch (e2) {}
+                try { state.pendingEoT = false; } catch (e2) {}
+                try { document.getElementById('command-menu').classList.remove('hidden'); } catch (e2) {}
+                try { document.getElementById('move-menu').classList.add('hidden'); } catch (e2) {}
+            }
         };
 
         window.__runLockedPvPTurnResolution = async function() {
             state.isLocked = true;
-            state.turnNumber++;
-            // VGC: Enforce turn limit to prevent stall wars (200 turns → draw)
-            if (state.turnNumber > 200) {
-                logMsg(`Turn limit reached! The battle ends in a draw.`, 'info');
-                state.isOver = true;
-                state.isLocked = false;
-                if (state.mode === 'gauntlet') {
-                    showEndScreen("GAUNTLET OVER!", `Draw by turn limit. You cleared ${state.score} round${state.score !== 1 ? 's' : ''}!`);
-                } else {
-                    showEndScreen("DRAW", "The battle reached the turn limit.", false);
-                }
-                return;
-            }
-            document.getElementById('command-menu').classList.add('hidden');
-            document.getElementById('move-menu').classList.add('hidden');
-            try { syncBattleActiveHighlight(); } catch (e) {}
-
+            // Stamp WHEN we locked. The watchdog uses this to recover dead-lock cases.
+            try { state._lockedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); } catch (e) {}
             try {
+                state.turnNumber++;
+                // VGC: Enforce turn limit to prevent stall wars (200 turns → draw)
+                if (state.turnNumber > 200) {
+                    logMsg(`Turn limit reached! The battle ends in a draw.`, 'info');
+                    state.isOver = true;
+                    state.isLocked = false;
+                    if (state.mode === 'gauntlet') {
+                        showEndScreen("GAUNTLET OVER!", `Draw by turn limit. You cleared ${state.score} round${state.score !== 1 ? 's' : ''}!`);
+                    } else {
+                        showEndScreen("DRAW", "The battle reached the turn limit.", false);
+                    }
+                    return;
+                }
+                try { document.getElementById('command-menu').classList.add('hidden'); } catch (e) {}
+                try { document.getElementById('move-menu').classList.add('hidden'); } catch (e) {}
+                try { syncBattleActiveHighlight(); } catch (e) {}
+
+                try {
                 // Reset per-turn flags
                 state.pActive.tookDamageThisTurn = false;
                 state.fActive.tookDamageThisTurn = false;
@@ -13428,15 +13464,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             } catch(err) {
                 console.error("Battle error:", err);
-                logMsg(`[Error: ${err.message}. Turn skipped.]`, 'dmg');
+                try { logMsg(`[Error: ${err && err.message ? err.message : err}. Turn skipped.]`, 'dmg'); } catch (e) {}
                 state.isLocked = false;
                 if (state.mode === 'story') { state.storyItemUsedThisTurn = false; state.foeStoryItemUsedThisTurn = false; }
-                document.getElementById('command-menu').classList.remove('hidden');
+                try { document.getElementById('command-menu').classList.remove('hidden'); } catch (e) {}
             } finally {
                 // Defense in depth: any path that ends the battle but returns before the normal unlock must release the input lock.
                 try {
                     if (typeof state !== 'undefined' && state && state.isOver) state.isLocked = false;
                 } catch (e) {}
+            }
+            } finally {
+                // OUTER finally — covers earlier lines (turnNumber++, hide menus) that historically lived
+                // outside the inner try and could leave state.isLocked = true if they ever threw.
+                // Also covers the turn-limit-draw early return above.
+                try {
+                    if (typeof state !== 'undefined' && state && state.isOver) state.isLocked = false;
+                } catch (e) {}
+                try { state._lockedAt = 0; } catch (e) {}
             }
         }
 
@@ -13486,6 +13531,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!ev.persisted) return;
                 try { if (typeof window.__recoverBattleSoftLock === 'function') window.__recoverBattleSoftLock(); } catch (e) {}
             });
+            // Passive watchdog: rescue dead-locked battles where the resolver promise was lost
+            // (rare async failures, e.g. an anime() promise that never resolves on a tab that
+            // throttled while a foe was being KO'd in a league chain). Fires every ~5s.
+            // Threshold (LOCK_HARD_LIMIT_MS) is generous so legitimately long animations and
+            // chained foe KOs (Lance: 3 Dragonites + hazards) don't trigger false positives.
+            const LOCK_HARD_LIMIT_MS = 30000;
+            setInterval(function () {
+                try {
+                    if (typeof state === 'undefined' || !state) return;
+                    if (!state.isLocked) return;
+                    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+                    const since = state._lockedAt ? (now - state._lockedAt) : 0;
+                    if (since < LOCK_HARD_LIMIT_MS) return;
+                    const sb = document.getElementById('screen-battle');
+                    if (!sb || sb.classList.contains('hidden')) return;
+                    if (typeof window.__recoverBattleSoftLock === 'function') {
+                        const recovered = window.__recoverBattleSoftLock();
+                        if (recovered) {
+                            try { state._lockedAt = 0; } catch (e) {}
+                            console.warn('[battle-watchdog] Auto-recovered after', Math.round(since), 'ms locked.');
+                        }
+                    }
+                } catch (e) { /* watchdog must never throw */ }
+            }, 5000);
         })();
 
         function getEffectiveSpeed(mon, weather) {
