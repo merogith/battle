@@ -2725,10 +2725,10 @@
             width: 6px; height: 6px; border-radius: 50%; background: #fff; z-index: 2;
         }
         .pokeball-throw-player {
-            animation: pokeballThrowPlayer 0.6s ease-out forwards;
+            animation: pokeballThrowPlayer 0.35s ease-out forwards;
         }
         .pokeball-throw-foe {
-            animation: pokeballThrowFoe 0.6s ease-out forwards;
+            animation: pokeballThrowFoe 0.35s ease-out forwards;
         }
         @keyframes pokeballThrowPlayer {
             0% { transform: translate(-120px, 60px) rotate(0deg) scale(0.6); opacity: 1; }
@@ -2746,7 +2746,7 @@
             position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
             width: 10px; height: 10px; border-radius: 50%;
             background: #fff; z-index: 61; pointer-events: none;
-            animation: pokeballFlash 0.5s ease-out forwards;
+            animation: pokeballFlash 0.3s ease-out forwards;
         }
         @keyframes pokeballFlash {
             0% { width: 10px; height: 10px; opacity: 1; background: #fff; box-shadow: 0 0 30px #fff, 0 0 60px #ffd54f; }
@@ -10323,14 +10323,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             pokeContainer.appendChild(pokeball);
             parent.appendChild(pokeContainer);
 
-            await sleep(550);
+            await sleep(300);
 
             // Flash
             let flash = document.createElement('div');
             flash.className = 'pokeball-flash';
             parent.appendChild(flash);
 
-            await sleep(150);
+            await sleep(80);
             pokeContainer.remove();
             spriteEl.style.visibility = 'visible';
             spriteEl.style.opacity = '1';
@@ -10344,7 +10344,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 translateX: '-50%',
                 scale: [0.3 * sEnd, 1.06 * sEnd, sEnd],
                 opacity: [0, 1, 1],
-                duration: 420,
+                duration: 280,
                 easing: 'easeOutBack'
             }).finished;
             if (mon) spriteEl.style.transform = getSpriteTransformStyle(mon);
@@ -10922,7 +10922,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let statBox = el.status;
                 statBox.innerText = mon.status || '';
                 statBox.style.color = mon.status ? (mon.status === "BRN" ? "#ff4500" : (mon.status === "PSN" || mon.status === "TOX" ? "#a040a0" : (mon.status === "PAR" ? "#ffd700" : (mon.status === "SLP" ? "#888888" : (mon.status === "FRZ" ? "#81d4fa" : '#fff'))))) : '#9e9e9e';
-                if (el.volatiles) el.volatiles.innerHTML = buildBattleVolatileChipsHtml(mon);
+                if (el.volatiles) {
+                    const _vHtml = buildBattleVolatileChipsHtml(mon);
+                    if (el.volatiles._vHtml !== _vHtml) { el.volatiles._vHtml = _vHtml; el.volatiles.innerHTML = _vHtml; }
+                }
                 // Show tera type when active, otherwise show base typing
                 let dispType1 = mon.type1, dispType2 = mon.type2;
                 let teraIndicator = '';
@@ -10932,7 +10935,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let origT1 = mon.originalType1 || mon.type1, origT2 = mon.originalType2 || mon.type2;
                     teraIndicator = `<span class="tera-tip-hover" style="font-size:9px;color:#4fc3f7;margin-left:3px;cursor:pointer;text-decoration:underline dotted;" data-tera="${encodeURIComponent(tt)}" data-o1="${encodeURIComponent(origT1)}" data-o2="${encodeURIComponent(origT2||'')}" onclick="window.showTeraFromEl(event)" onmousemove="window.showTeraTooltip('${tt}','${origT1}','${origT2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045;TERA</span>`;
                 }
-                el.types.innerHTML = getTypeHTML(dispType1, dispType2) + teraIndicator;
+                const _tHtml = getTypeHTML(dispType1, dispType2) + teraIndicator;
+                if (el.types._tHtml !== _tHtml) { el.types._tHtml = _tHtml; el.types.innerHTML = _tHtml; }
                 el.hpText.innerText = `${mon.currentHp}/${mon.maxHp}`;
                 // Status icon on sprite
                 let sIcon = el.statusIcon;
@@ -10953,7 +10957,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             badges.push(`<span style="font-size:10px;padding:1px 4px;background:rgba(0,0,0,0.5);border-radius:3px;color:${color};border:1px solid ${color};" title="${stageNames[key]} ${sign}${val}${extraTip}">${stageNames[key]}${sign}${val}</span>`);
                         }
                     }
-                    stageEl.innerHTML = badges.join(' ');
+                    const _sHtml = badges.join(' ');
+                    if (stageEl._sHtml !== _sHtml) { stageEl._sHtml = _sHtml; stageEl.innerHTML = _sHtml; }
                 }
 
                 // Substitute + Protect overlays
@@ -11015,6 +11020,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // === Field Condition Icons ===
             let fcDiv = be.fieldConditions;
             if (fcDiv) {
+                // Skip rebuild if relevant state is unchanged — pill innerHTML is the largest single cost in updateUI.
+                const _gvSide = isGuestPerspective(); const _mySide = _gvSide ? state.fSide : state.pSide; const _foeSide = _gvSide ? state.pSide : state.fSide;
+                const fcSig = w + '|' + (state.weatherTurns|0) + '|' + (state.terrain||'') + '|' + (state.terrainTurns|0) + '|' + (state.trickRoom|0) + '|' + (state.gravity|0) + '|' + (state.magicRoom|0) + '|' + (state.wonderRoom|0) + '|' + JSON.stringify(_mySide) + '|' + JSON.stringify(_foeSide);
+                if (fcDiv._fcSig === fcSig) {
+                    // unchanged — no innerHTML rewrite needed
+                } else {
+                fcDiv._fcSig = fcSig;
                 let pills = [];
                 const mkPill = (label, turns, color, bg, tipHtml) => {
                     let t = turns > 0 ? ` <b>${turns}</b>` : '';
@@ -11065,8 +11077,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (state.wonderRoom > 0) {
                     pills.push(mkPill('Wonder', state.wonderRoom, '#9575cd','rgba(149,117,207,0.22)', `<b>Wonder Room</b><br>Physical damage uses foe SpDef stats (and vice versa)<br>Turns left: ${state.wonderRoom}`));
                 }
-                // Player-side screens (blue tones) — swap pSide/fSide for guest
-                const _gvSide = isGuestPerspective(); const _mySide = _gvSide ? state.fSide : state.pSide; const _foeSide = _gvSide ? state.pSide : state.fSide;
+                // Player-side screens (blue tones) — swap pSide/fSide for guest (_mySide/_foeSide already defined above for signature)
                 if (_mySide && _mySide.reflect > 0)     pills.push(mkPill('REF',  _mySide.reflect,     '#42a5f5','rgba(13,71,161,0.2)',   `<b>Reflect</b> (your side)<br>Halves physical damage<br>Turns left: ${_mySide.reflect}`));
                 if (_mySide && _mySide.lightScreen > 0) pills.push(mkPill('LSC',  _mySide.lightScreen, '#ffee58','rgba(249,168,37,0.2)',  `<b>Light Screen</b> (your side)<br>Halves special damage<br>Turns left: ${_mySide.lightScreen}`));
                 if (_mySide && _mySide.auroraVeil > 0)  pills.push(mkPill('VEIL', _mySide.auroraVeil,  '#80deea','rgba(0,188,212,0.2)',  `<b>Aurora Veil</b> (your side)<br>Halves all damage<br>Turns left: ${_mySide.auroraVeil}`));
@@ -11098,6 +11109,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 pushSideConditions(_mySide, true);
                 pushSideConditions(_foeSide, false);
                 fcDiv.innerHTML = pills.join('');
+                }
             }
             if (state.mode === 'gauntlet' && be.gauntletScore) be.gauntletScore.innerText = `Score: ${state.score}`;
 
@@ -13610,7 +13622,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 state.pActive.turnCount++;
                 state.fActive.turnCount++;
                 state.residualPhaseComplete = true;
-                updateUI(); await sleep(1000);
+                updateUI(); await sleep(400);
                 
                 let eotFaint = await checkFaints();
                 if (state.isOver) return;
