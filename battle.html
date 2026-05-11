@@ -10337,18 +10337,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Play Pokemon cry on entrance
             const mon = isPlayer ? state.pActive : state.fActive;
             if (mon && mon.name) AudioSystem.playCry(mon.name, 0.45);
-            // anime.js — bounce in; scale keyframes use lore + Dynamax (same as getSpriteTransformStyle)
+            // anime.js — bounce in; scale keyframes use lore + Dynamax (same as getSpriteTransformStyle).
+            // anime.js loads from a CDN; if it failed (offline, blocked, cert error) we must still finish
+            // the send-out without throwing — otherwise startBattle's Promise.all rejects and the
+            // command menu never appears (battle appears frozen on entry).
             const sEnd = mon ? getSpriteLoreScaleNumber(mon) : 1;
-            await anime({
-                targets: spriteEl,
-                translateX: '-50%',
-                scale: [0.3 * sEnd, 1.06 * sEnd, sEnd],
-                opacity: [0, 1, 1],
-                duration: 420,
-                easing: 'easeOutBack'
-            }).finished;
+            if (typeof anime === 'function') {
+                try {
+                    await anime({
+                        targets: spriteEl,
+                        translateX: '-50%',
+                        scale: [0.3 * sEnd, 1.06 * sEnd, sEnd],
+                        opacity: [0, 1, 1],
+                        duration: 420,
+                        easing: 'easeOutBack'
+                    }).finished;
+                    anime.remove(spriteEl);
+                } catch (e) { /* fall through to static transform below */ }
+            }
             if (mon) spriteEl.style.transform = getSpriteTransformStyle(mon);
-            anime.remove(spriteEl);
+            spriteEl.style.opacity = '1';
 
             flash.remove();
         }
@@ -10427,10 +10435,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Pokeball throw animations
             logMsg(`Player 1 sent out ${state.pActive.name}!`, 'info');
             logMsg(`${state.mode === 'pvp' ? 'Player 2' : 'Foe'} sent out ${state.fActive.name}!`, 'info');
-            await Promise.all([
-                playPokeballAnimation('player-sprite', true),
-                playPokeballAnimation('foe-sprite', false)
-            ]);
+            // If a send-out animation throws (e.g. anime.js failed to load), we still need to fall through
+            // so the command menu is un-hidden below — otherwise the player has no way to take a turn.
+            try {
+                await Promise.all([
+                    playPokeballAnimation('player-sprite', true),
+                    playPokeballAnimation('foe-sprite', false)
+                ]);
+            } catch (e) {
+                console.warn('[startBattle] send-out animation failed:', e);
+                ['player-sprite', 'foe-sprite'].forEach((id, i) => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    el.style.opacity = '1';
+                    el.style.visibility = 'visible';
+                    const mon = i === 0 ? state.pActive : state.fActive;
+                    if (mon) el.style.transform = getSpriteTransformStyle(mon);
+                });
+            }
 
             applySwitchInAbilities(state.pActive, state.fActive); applySwitchInAbilities(state.fActive, state.pActive);
             updateUI();
@@ -16457,7 +16479,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return Math.max(0, Math.floor(A));
         }
 
-        function applySwitchInAbilities(mon, foe) {
+        function applySwitchInAbilities(mon, foe, _storySwitchDepth = 0) {
             if(mon.currentHp <= 0 || foe.currentHp <= 0) return;
             // Neutralizing Gas suppresses all switch-in abilities on both sides
             const _gasActive = (foe.ability === "Neutralizing Gas" && foe.currentHp > 0) ||
