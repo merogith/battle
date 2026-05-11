@@ -663,6 +663,7 @@
         #screen-story-city,
         #screen-story-professor,
         #screen-story-shop,
+        #screen-story-artifact-shop,
         #screen-story-tutor,
         #screen-story-colress,
         #screen-story-evtrainer,
@@ -673,6 +674,7 @@
         #screen-story-city h1, #screen-story-city h2, #screen-story-city h3, #screen-story-city h4, #screen-story-city p, #screen-story-city span, #screen-story-city button, #screen-story-city label,
         #screen-story-professor h1, #screen-story-professor h2, #screen-story-professor h3, #screen-story-professor h4, #screen-story-professor p, #screen-story-professor span, #screen-story-professor button, #screen-story-professor label,
         #screen-story-shop h1, #screen-story-shop h2, #screen-story-shop h3, #screen-story-shop h4, #screen-story-shop p, #screen-story-shop span, #screen-story-shop button, #screen-story-shop label,
+        #screen-story-artifact-shop h1, #screen-story-artifact-shop h2, #screen-story-artifact-shop h3, #screen-story-artifact-shop h4, #screen-story-artifact-shop p, #screen-story-artifact-shop span, #screen-story-artifact-shop button, #screen-story-artifact-shop label,
         #screen-story-tutor h1, #screen-story-tutor h2, #screen-story-tutor h3, #screen-story-tutor h4, #screen-story-tutor p, #screen-story-tutor span, #screen-story-tutor button, #screen-story-tutor label,
         #screen-story-colress h1, #screen-story-colress h2, #screen-story-colress h3, #screen-story-colress h4, #screen-story-colress p, #screen-story-colress span, #screen-story-colress button, #screen-story-colress label,
         #screen-story-evtrainer h1, #screen-story-evtrainer h2, #screen-story-evtrainer h3, #screen-story-evtrainer h4, #screen-story-evtrainer p, #screen-story-evtrainer span, #screen-story-evtrainer button, #screen-story-evtrainer label,
@@ -727,6 +729,7 @@
             font-style: normal;
         }
         #screen-story-shop > .story-shop-stack > div:last-child,
+        #screen-story-artifact-shop > .story-shop-stack > div:last-child,
         #screen-story-tutor > .story-shop-stack > div:last-child,
         #screen-story-colress > .story-shop-stack > div:last-child,
         #screen-story-evtrainer > .story-shop-stack > div:last-child,
@@ -2099,6 +2102,7 @@
         body:has([id^="screen-story"]:not(.hidden)) #story-hud,
         body:has([id^="screen-story"]:not(.hidden)) .story-shop-header-row,
         body:has([id^="screen-story"]:not(.hidden)) .story-link-header-row,
+        body:has(#screen-story-artifact-shop:not(.hidden)) #screen-story-artifact-shop .story-shop-header-row { padding-right: 52px !important; box-sizing: border-box !important; }
         body:has(#screen-story-artifacts:not(.hidden)) #screen-story-artifacts > div:first-child { padding-right: 52px !important; box-sizing: border-box !important; }
         body:has(#screen-story-menu:not(.hidden)) #screen-story-menu { padding-top: 52px; box-sizing: border-box; }
         body:has(#screen-story-professor:not(.hidden)) #screen-story-professor { padding-top: 52px; box-sizing: border-box; }
@@ -2960,7 +2964,7 @@
                 padding-left: env(safe-area-inset-left);
                 padding-right: env(safe-area-inset-right);
             }
-            #screen-story-city, #screen-story-professor, #screen-story-shop, #screen-story-tutor, #screen-story-link, #screen-story-casino {
+            #screen-story-city, #screen-story-professor, #screen-story-shop, #screen-story-artifact-shop, #screen-story-tutor, #screen-story-link, #screen-story-casino {
                 padding-top: max(8px, env(safe-area-inset-top));
                 padding-bottom: max(8px, env(safe-area-inset-bottom));
             }
@@ -4572,6 +4576,21 @@
         </div>
     </div>
 
+    <div id="screen-story-artifact-shop" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div id="story-artifact-shop-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
+        <div class="story-shop-stack">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+            <h3 id="story-artifact-shop-title" class="story-screen-head-title" style="color:#ce93d8;font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relic Annex</span></h3>
+            <span id="story-artifact-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
+        </div>
+        <p id="story-artifact-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#888;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;"></p>
+        <div id="story-artifact-shop-grid" style="flex:1;overflow-y:auto;padding:12px;display:grid;grid-template-columns:1fr;gap:12px;min-height:0;"></div>
+        <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+            <button type="button" onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
+        </div>
+        </div>
+    </div>
+
     <div id="screen-story-tutor" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-tutor-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
@@ -4657,6 +4676,7 @@
         <div id="story-gameover-seed" style="font-size:11px;color:#666;text-align:center;max-width:420px;display:none;"></div>
         <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;">
             <button type="button" onclick="window.StoryMode.retryFromGameOver()" style="padding:14px;color:#4caf50;border-color:#4caf50;">&#9654; Retry from Save</button>
+            <button type="button" id="story-gameover-btn-rival-concede" onclick="window.StoryMode.acceptRivalLossAndContinue()" style="display:none;padding:14px;color:#ffd54f;border-color:#ffd54f;font-weight:bold;">Accept Rival Is Better</button>
             <button type="button" id="story-gameover-btn-center" onclick="window.StoryMode.retreatToLastPokemonCenter()" style="padding:14px;color:#f48fb1;border-color:#f48fb1;font-weight:bold;">Return to last city hub</button>
             <button type="button" onclick="window.StoryMode.confirmAbandon()" style="padding:12px;color:#f44336;border-color:#f44336;">&#128465; Abandon Run</button>
         </div>
@@ -14625,6 +14645,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (defender.ability === "Sand Veil" && getCurrentWeather() === "Sandstorm") evaMod *= 0.8;
             if (defender.ability === "Snow Cloak" && getCurrentWeather() === "Hail") evaMod *= 0.8;
             let neverMiss = !move.acc || move.acc <= 0 || move.isZMove || move.name === "Swift" || move.name === "Aerial Ace" || move.name === "Aura Sphere" || (move.mathEff && move.mathEff.includes('bypass_accuracy')) || attacker.ability === "No Guard" || defender.ability === "No Guard" || attacker.volatile.lockOn;
+            // Story artifact: [Type] Magnetizer — moves involving the bonded type never miss
+            if (state && state.mode === 'story' && state._typeMagnetizerType && move.cat !== "Status") {
+                const _Tm = state._typeMagnetizerType;
+                if ((attacker.type1 === _Tm || attacker.type2 === _Tm) || (defender.type1 === _Tm || defender.type2 === _Tm)) neverMiss = true;
+            }
             // Micle Berry: +20% accuracy for next move (consumed after use)
             let micleMod = 1;
             if (attacker.volatile.micleBerry) { micleMod = 1.2; attacker.volatile.micleBerry = false; }
@@ -14632,6 +14657,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let defEvaStage = (attacker.ability === "Keen Eye") ? Math.min(0, defender.stages.eva) : defender.stages.eva;
             let accStage = attacker.stages.acc - defEvaStage;
             let finalAcc = neverMiss ? 999 : (move.acc * accMod * evaMod * getAccEvaMult(accStage) * micleMod);
+            // Story artifact: Amulet of Chaos — −10% accuracy (does not remove never-miss moves)
+            if (state && state.mode === 'story' && state._chaosAmuletActive && !neverMiss) finalAcc *= 0.9;
             // Gravity: boosts all move accuracy by 5/3
             if (state.gravity > 0) finalAcc = neverMiss ? 999 : Math.min(100, finalAcc * 5 / 3);
 
@@ -15016,6 +15043,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     critStage += (typeof fe === 'number') ? fe : 2;
                 }
                 if (attacker.ability === "Super Luck") critStage++;
+                if (state && state.mode === 'story' && state._chaosAmuletActive) critStage += 2;
                 const armorBlocksCrit = _defAbilityActive && (defender.ability === "Battle Armor" || defender.ability === "Shell Armor");
                 let critRate = armorBlocksCrit ? 0 : (critStage <= 0 ? 1/24 : critStage === 1 ? 1/8 : critStage === 2 ? 1/2 : 1);
                 let crit = (!armorBlocksCrit && Math.random() < critRate) ? (attacker.ability === "Sniper" ? 2.25 : 1.5) : 1;
@@ -15569,6 +15597,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 damage = Math.max(1, Math.floor(damage));
                 // Glass Cannon Pact artifact: +25% all damage, both sides
                 if (state._glassCannonPact) damage = Math.floor(damage * 1.25);
+                // Story artifact: [Type] Amplifier — attacks of that type +30%; Pokémon of that type take +15% from hits
+                if (state && state.mode === 'story' && state._typeAmplifierType) {
+                    if (move.type === state._typeAmplifierType) damage = Math.floor(damage * 1.3);
+                    if (typeof _storyMonHasType === 'function' && _storyMonHasType(defender, state._typeAmplifierType)) damage = Math.floor(damage * 1.15);
+                }
                 // Final Gambit: damage = user's current HP exactly; user faints
                 if (move.name === "Final Gambit") damage = attacker.currentHp;
                 // Level-based flat damage (always equal to user's level = 50 at Lv50)
@@ -15702,6 +15735,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (typeEff > 1) { logMsg("It's super effective!", 'dmg'); showBattlePopup('Super Effective!', 'popup-super', !isPlayer); }
                     if (typeEff < 1) { logMsg("It's not very effective...", 'info'); showBattlePopup('Not very effective...', 'popup-nve', !isPlayer); }
                     logMsg(`Hit ${hitsLanded} time${hitsLanded !== 1 ? 's' : ''}! Dealt ${actualDamage} total damage!`, 'dmg');
+                    if (state && state.mode === 'story' && state._vampiricFangsActive && actualDamage > 0 && move.cat !== "Status") {
+                        let vh = Math.max(1, Math.floor(actualDamage * 0.1));
+                        vh = Math.min(attacker.maxHp - attacker.currentHp, vh);
+                        if (vh > 0) { attacker.currentHp += vh; logMsg(`Vampiric Fangs restored ${vh} HP to ${attacker.name}!`, 'heal'); }
+                    }
                     updateUI(); await sleep(1000);
                     // Recoil for multi-hit (Life Orb etc.)
                     if (_atkItemActive && attacker.item === "Life Orb" && attacker.ability !== "Magic Guard" && !sheerForceActive) {
@@ -15735,6 +15773,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else if (defender.volatile.sub > 0 && !(attacker.ability === "Infiltrator")) {
                     let subDamage = Math.min(defender.volatile.sub, damage); defender.volatile.sub -= subDamage;
                     logMsg(`The substitute took ${subDamage} damage for ${defender.name}!`, 'dmg');
+                    if (state && state.mode === 'story' && state._vampiricFangsActive && subDamage > 0 && move.cat !== "Status") {
+                        let vhs = Math.max(1, Math.floor(subDamage * 0.1));
+                        vhs = Math.min(attacker.maxHp - attacker.currentHp, vhs);
+                        if (vhs > 0) { attacker.currentHp += vhs; logMsg(`Vampiric Fangs restored ${vhs} HP to ${attacker.name}!`, 'heal'); }
+                    }
                     if (defender.volatile.sub <= 0) { defender.volatile.sub = 0; logMsg(`${defender.name}'s substitute faded!`, 'info'); }
                     hitSub = true;
                     hitSubFromSubstitute = true;
@@ -15809,6 +15852,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                     // Step 5: Damage number and HP bar animation
                     logMsg(`It dealt ${actualDamage} damage!`, 'dmg');
+                    if (state && state.mode === 'story' && state._vampiricFangsActive && actualDamage > 0 && move.cat !== "Status") {
+                        let vhd = Math.max(1, Math.floor(actualDamage * 0.1));
+                        vhd = Math.min(attacker.maxHp - attacker.currentHp, vhd);
+                        if (vhd > 0) { attacker.currentHp += vhd; logMsg(`Vampiric Fangs restored ${vhd} HP to ${attacker.name}!`, 'heal'); }
+                    }
                     if(settings.animations){
                         anime({ targets: targetSprite, opacity:[1,0.2,1,0.2,1], duration:400, easing:'linear' });
                         setTimeout(() => targetSprite.classList.remove('anim-zmove-hit', 'anim-maxmove-hit', 'anim-gmaxmove-hit'), 450);
@@ -16015,12 +16063,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
 
                 // Moxie: Atk +1 per KO
-                if (attacker.ability === "Moxie" && defender.currentHp <= 0 && attacker.currentHp > 0) {
+                if (attacker.ability === "Moxie" && defender.currentHp <= 0 && attacker.currentHp > 0 && !(state && state.mode === 'story' && state._stagnationCoreActive)) {
                     changeStage(attacker, 'atk', 1);
                     logMsg(`${attacker.name}'s Moxie raised its Attack!`, 'info');
                 }
                 // Beast Boost: boost highest base stat on KO
-                if (attacker.ability === "Beast Boost" && defender.currentHp <= 0 && attacker.currentHp > 0) {
+                if (attacker.ability === "Beast Boost" && defender.currentHp <= 0 && attacker.currentHp > 0 && !(state && state.mode === 'story' && state._stagnationCoreActive)) {
                     let monBase = (baseStats[attacker.name] || {});
                     let statVals = {atk: monBase.atk||0, def: monBase.def||0, spa: monBase.spa||0, spd: monBase.spd||0, spe: monBase.spe||0};
                     let bestStat = Object.entries(statVals).sort((a,b)=>b[1]-a[1])[0][0];
@@ -16395,7 +16443,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     logMsg(`${foe.name}'s ${foe.ability || 'Ghost type'} prevents Intimidate!`, 'info');
                 } else if (foe.ability === "Guard Dog") {
                     logMsg(`${foe.name}'s Guard Dog raised its Attack!`, 'info');
-                    changeStage(foe, 'atk', 1);
+                    changeStage(foe, 'atk', 1, false, { bypassStagnation: true });
                 } else {
                     // Gen 5+: Intimidate goes through Substitute
                     logMsg(`${mon.name}'s Intimidate cuts ${foe.name}'s Attack!`, 'info');
@@ -16504,7 +16552,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.ability === "Trace" && foe && foe.ability && foe.ability !== "Trace") {
                 logMsg(`${mon.name} traced ${foe.name}'s ${foe.ability}!`, 'info');
                 mon.ability = foe.ability;
-                try { applySwitchInAbilities(mon, foe); }
+                try { applySwitchInAbilities(mon, foe, _storySwitchDepth + 1); }
                 catch (e) { console.warn('[Trace] re-check applySwitchInAbilities threw — keeping new ability without re-trigger:', e); }
             }
             // Protosynthesis / Quark Drive / Booster Energy
@@ -16529,6 +16577,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let src = consumed ? "Booster Energy" : mon.ability;
                     logMsg(`${mon.name}'s ${src} boosted its ${best.toUpperCase()}!`, 'info');
                 }
+            }
+            // Story artifact: Berserker's Serum — once per switch-in (skip nested Trace re-entry)
+            if (_storySwitchDepth === 0 && state && state.mode === 'story' && state._berserkerSerumActive && mon && mon.currentHp > 0) {
+                const _bsOpts = { bypassStagnation: true, bypassNullifier: true };
+                changeStage(mon, 'atk', 1, false, _bsOpts);
+                changeStage(mon, 'spa', 1, false, _bsOpts);
+                changeStage(mon, 'def', -1, false, _bsOpts);
+                changeStage(mon, 'spd', -1, false, _bsOpts);
+                if (typeof logMsg === 'function') logMsg(`Berserker's Serum: ${mon.name} is hyped (+Atk/+SpA, −Def/−SpD)!`, 'info');
             }
         }
 
@@ -16656,21 +16713,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.ability === "Magic Guard") return;
             if (mon.item === "Heavy-Duty Boots") return;
             let isGrounded = mon.type1 !== "Flying" && mon.type2 !== "Flying" && mon.ability !== "Levitate";
+            const _hazardMult = (state && state._heavyGravityHazardMult > 1 && state.gravity > 0) ? state._heavyGravityHazardMult : 1;
             if (side.stealthRock) {
                 let eff = getMoveEffectiveness("Rock", mon.type1, mon.type2);
                 if (eff > 0) {
-                    let dmg = Math.max(1, Math.floor(mon.maxHp * (0.125 * eff)));
+                    if (state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon)) {
+                        logMsg(`Type Nullifier: pointed stones could not harm ${mon.name}!`, 'info');
+                    } else {
+                    let dmg = Math.max(1, Math.floor(mon.maxHp * (0.125 * eff) * _hazardMult));
                     let actualDmg = Math.min(mon.currentHp, dmg);
                     mon.currentHp -= actualDmg;
                     logMsg(`Pointed stones dealt ${actualDmg} damage to ${mon.name}!`, 'dmg');
+                    }
                 }
             }
             if (side.spikes > 0 && isGrounded && mon.currentHp > 0) {
+                if (state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon)) {
+                    logMsg(`Type Nullifier: spikes could not harm ${mon.name}!`, 'info');
+                } else {
                 let spikesDmg = [0, 1/8, 1/6, 1/4][side.spikes];
-                let dmg = Math.max(1, Math.floor(mon.maxHp * spikesDmg));
+                let dmg = Math.max(1, Math.floor(mon.maxHp * spikesDmg * _hazardMult));
                 let actualDmg = Math.min(mon.currentHp, dmg);
                 mon.currentHp -= actualDmg;
                 logMsg(`${mon.name} was hurt by the spikes! (${actualDmg} damage)`, 'dmg');
+                }
             }
             if (side.toxicSpikes > 0 && isGrounded && mon.currentHp > 0) {
                 if (mon.type1 === "Poison" || mon.type2 === "Poison") {
@@ -17959,7 +18025,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        function changeStage(mon, stat, amount, byOpponent) {
+        function _storyMonHasType(mon, t) {
+            return !!(t && mon && (mon.type1 === t || mon.type2 === t));
+        }
+        /** Story artifact: [Type] Nullifier — blocks passive / residual damage (not direct move hits). */
+        function _storyTypeNullifierBlocksIndirect(mon) {
+            if (!state || state.mode !== 'story' || !state._typeNullifierType || !mon) return false;
+            return _storyMonHasType(mon, state._typeNullifierType);
+        }
+
+        function changeStage(mon, stat, amount, byOpponent, opts) {
+            opts = opts || null;
             // Substitute only blocks opponent-sourced stat drops, not self-inflicted ones (Gen 5+)
             if (mon.volatile.sub > 0 && amount < 0 && byOpponent) return;
             // Mist: block opponent-sourced stat drops
@@ -17969,6 +18045,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Contrary: reverse stat changes
             if (mon.ability === "Contrary") amount = -amount;
+            // Stagnation Core (Story): no stat boosts; no opponent-sourced drops (abilities like Intimidate, Sticky Web)
+            if (state && state.mode === 'story' && state._stagnationCoreActive && !(opts && opts.bypassStagnation)) {
+                if (amount > 0 || (amount < 0 && byOpponent)) {
+                    if (typeof logMsg === 'function') logMsg(`Stagnation Core: ${mon.name}'s stat shift was sealed!`, 'info');
+                    return;
+                }
+            }
+            // [Type] Nullifier: Pokémon of that type cannot gain stat boosts (self or foe-sourced)
+            if (state && state.mode === 'story' && state._typeNullifierType && amount > 0 && !(opts && opts.bypassNullifier) && _storyMonHasType(mon, state._typeNullifierType)) {
+                if (typeof logMsg === 'function') logMsg(`Type Nullifier: ${mon.name} cannot raise stats!`, 'info');
+                return;
+            }
             // Mirror Armor: reflect opponent-sourced stat drops back to the source
             if (amount < 0 && byOpponent && mon.ability === "Mirror Armor") {
                 let source = (mon === state.pActive) ? state.fActive : state.pActive;
@@ -18050,7 +18138,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.volatile.burningBulwark = false;
 
             // Speed Boost: +1 Speed stage per turn (after first turn)
-            if (mon.ability === "Speed Boost" && mon.turnCount > 0) {
+            if (mon.ability === "Speed Boost" && mon.turnCount > 0 && !(state && state.mode === 'story' && state._stagnationCoreActive)) {
                 changeStage(mon, 'spe', 1);
             }
 
@@ -18063,31 +18151,44 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.ability !== "Magic Guard" && mon.item !== "Safety Goggles" && mon.ability !== "Overcoat") {
                 // 1. Weather damage
                 let w = getCurrentWeather();
+                const _nullInd = state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon);
                 if (mon.ability === "Dry Skin" && (w === "Sun" || w === "HarshSun")) {
+                    if (_nullInd) logMsg(`Type Nullifier: ${mon.name} ignored the sun's bite!`, 'info');
+                    else {
                     let dmg = Math.max(1, Math.floor(mon.maxHp / 8));
                     let actDmg = Math.min(mon.currentHp, dmg);
                     mon.currentHp -= actDmg;
                     logMsg(`${mon.name} took ${actDmg} damage from the harsh sunlight!`, 'dmg');
+                    }
                 }
                 if (mon.ability === "Solar Power" && (w === "Sun" || w === "HarshSun")) {
+                    if (_nullInd) logMsg(`Type Nullifier: ${mon.name} ignored Solar Power's strain!`, 'info');
+                    else {
                     let dmg = Math.max(1, Math.floor(mon.maxHp / 8));
                     let actDmg = Math.min(mon.currentHp, dmg);
                     mon.currentHp -= actDmg;
                     logMsg(`${mon.name} took ${actDmg} damage from Solar Power!`, 'dmg');
+                    }
                 }
                 // Hail deals 1/16 damage to non-Ice types; Snow (Gen 9) deals NO damage
                 if (w === "Hail" && mon.type1 !== "Ice" && mon.type2 !== "Ice") {
+                    if (_nullInd) logMsg(`Type Nullifier: ${mon.name} ignored the hail!`, 'info');
+                    else {
                     let dmg = Math.max(1, Math.floor(mon.maxHp / 16));
                     let actDmg = Math.min(mon.currentHp, dmg);
                     mon.currentHp -= actDmg;
                     logMsg(`${mon.name} took ${actDmg} damage from hail!`, 'dmg');
+                    }
                 }
                 // Sandstorm damage (non-Rock/Ground/Steel types)
                 if (w === "Sandstorm" && mon.type1 !== "Rock" && mon.type2 !== "Rock" && mon.type1 !== "Ground" && mon.type2 !== "Ground" && mon.type1 !== "Steel" && mon.type2 !== "Steel") {
+                    if (_nullInd) logMsg(`Type Nullifier: ${mon.name} ignored the sandstorm!`, 'info');
+                    else {
                     let dmg = Math.max(1, Math.floor(mon.maxHp / 16));
                     let actDmg = Math.min(mon.currentHp, dmg);
                     mon.currentHp -= actDmg;
                     logMsg(`${mon.name} took ${actDmg} damage from the sandstorm!`, 'dmg');
+                    }
                 }
             }
 
@@ -18146,10 +18247,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let actHeal = Math.min(mon.maxHp - mon.currentHp, heal);
                     if (actHeal > 0) { mon.currentHp += actHeal; logMsg(`${mon.name} restored ${actHeal} HP with Black Sludge!`, 'heal'); }
                 } else if (mon.ability !== "Magic Guard") {
+                    if (state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon)) {
+                        logMsg(`Type Nullifier: ${mon.name} ignored Black Sludge!`, 'info');
+                    } else {
                     let dmg = Math.max(1, Math.floor(mon.maxHp / 8));
                     let actDmg = Math.min(mon.currentHp, dmg);
                     mon.currentHp -= actDmg;
                     logMsg(`${mon.name} took ${actDmg} damage from Black Sludge!`, 'dmg');
+                    }
                 }
             }
             // Flame Orb / Toxic Orb (apply status as item effect)
@@ -18158,14 +18263,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // 3. Non-Volatile Status Damage
             if (mon.ability !== "Magic Guard") {
+                const _nullInd2 = state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon);
                 // Burn: 1/16 max HP (Gen 5+ standard); Heatproof halves it to 1/32
                 if (mon.status === "BRN") {
+                    if (_nullInd2) logMsg(`Type Nullifier: ${mon.name} ignored its burn damage!`, 'info');
+                    else {
                     let dmg = mon.ability === "Heatproof"
                         ? Math.max(1, Math.floor(mon.maxHp / 32))
                         : Math.max(1, Math.floor(mon.maxHp / 16));
                     let actDmg = Math.min(mon.currentHp, dmg);
                     mon.currentHp -= actDmg;
                     logMsg(`${mon.name} took ${actDmg} damage from its burn!`, 'dmg');
+                    }
                 }
                 // Poison Heal: heal instead of taking poison damage
                 else if ((mon.status === "PSN" || mon.status === "TOX") && mon.ability === "Poison Heal") {
@@ -18176,24 +18285,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 // Poison: 1/8 max HP
                 else if (mon.status === "PSN") {
+                    if (_nullInd2) logMsg(`Type Nullifier: ${mon.name} ignored poison damage!`, 'info');
+                    else {
                     let dmg = Math.max(1, Math.floor(mon.maxHp / 8));
                     let actDmg = Math.min(mon.currentHp, dmg);
                     mon.currentHp -= actDmg;
                     logMsg(`${mon.name} took ${actDmg} damage from poison!`, 'dmg');
+                    }
                 }
                 // Toxic: Escalating damage
                 else if (mon.status === "TOX") {
                     mon.statusTurns++;
+                    if (_nullInd2) logMsg(`Type Nullifier: ${mon.name} resisted toxic damage!`, 'info');
+                    else {
                     let dmg = Math.max(1, Math.floor(mon.maxHp * (mon.statusTurns / 16)));
                     let actDmg = Math.min(mon.currentHp, dmg);
                     mon.currentHp -= actDmg;
                     logMsg(`${mon.name} took ${actDmg} damage from toxic poison!`, 'dmg');
+                    }
                 }
             }
 
             // 4. Binding/Trap Damage
             // Leech Seed
             if (mon.volatile.leechSeed) {
+                if (state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon)) {
+                    logMsg(`Type Nullifier: ${mon.name} ignored Leech Seed's drain!`, 'info');
+                } else {
                 let drain = Math.max(1, Math.floor(mon.maxHp / 8));
                 let actualDrain = Math.min(mon.currentHp, drain);
                 mon.currentHp -= actualDrain;
@@ -18202,19 +18320,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     foe.currentHp += actualHeal;
                 }
                 logMsg(`${mon.name} had ${actualDrain} HP sapped by Leech Seed!`, 'dmg');
+                }
             }
 
             // Curse (Ghost-type): 1/4 max HP damage per turn
             if (mon.volatile.cursed && mon.ability !== "Magic Guard") {
+                if (state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon)) {
+                    logMsg(`Type Nullifier: ${mon.name} ignored the curse's drain!`, 'info');
+                } else {
                 let curseDmg = Math.max(1, Math.floor(mon.maxHp / 4));
                 let actCurseDmg = Math.min(mon.currentHp, curseDmg);
                 mon.currentHp -= actCurseDmg;
                 logMsg(`${mon.name} took ${actCurseDmg} damage from the curse!`, 'dmg');
+                }
             }
 
             // Partial trap (Wrap, Bind, Fire Spin, etc.) end-of-turn damage
             if (mon.volatile.partialTrap > 0 && mon.volatile.partialTrapSrc !== "Octolock") {
                 mon.volatile.partialTrap--;
+                if (state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon)) {
+                    logMsg(`Type Nullifier: ${mon.name} ignored the trap's squeeze!`, 'info');
+                } else {
                 let trapDmg = Math.max(1, Math.floor(mon.maxHp / 8));
                 let actTrapDmg = Math.min(mon.currentHp, trapDmg);
                 mon.currentHp -= actTrapDmg;
@@ -18222,6 +18348,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (mon.volatile.partialTrap === 0) {
                     logMsg(`${mon.name} was freed from ${mon.volatile.partialTrapSrc}!`, 'info');
                     mon.volatile.partialTrapSrc = '';
+                }
                 }
             }
             // Octolock: lower Def and SpDef by -1 each end of turn; no damage, no end-timer
@@ -18246,27 +18373,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!unnerved && mon.item === "Persim Berry" && mon.volatile.confusion > 0) { logMsg(`${mon.name}'s Persim Berry snapped it out of confusion!`, 'heal'); mon.volatile.confusion = 0; mon.item = null; mon.itemConsumed = true; }
 
             if (!unnerved && mon.item === "Salac Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
-                changeStage(mon, 'spe', 1);
+                changeStage(mon, 'spe', 1, false, { bypassStagnation: true });
                 logMsg(`${mon.name} ate its Salac Berry!`, 'info');
                 mon.item = null; mon.itemConsumed = true;
             }
             if (!unnerved && mon.item === "Liechi Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
-                changeStage(mon, 'atk', 1);
+                changeStage(mon, 'atk', 1, false, { bypassStagnation: true });
                 logMsg(`${mon.name} ate its Liechi Berry!`, 'info');
                 mon.item = null; mon.itemConsumed = true;
             }
             if (!unnerved && mon.item === "Ganlon Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
-                changeStage(mon, 'def', 1);
+                changeStage(mon, 'def', 1, false, { bypassStagnation: true });
                 logMsg(`${mon.name} ate its Ganlon Berry!`, 'info');
                 mon.item = null; mon.itemConsumed = true;
             }
             if (!unnerved && mon.item === "Petaya Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
-                changeStage(mon, 'spa', 1);
+                changeStage(mon, 'spa', 1, false, { bypassStagnation: true });
                 logMsg(`${mon.name} ate its Petaya Berry!`, 'info');
                 mon.item = null; mon.itemConsumed = true;
             }
             if (!unnerved && mon.item === "Apicot Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
-                changeStage(mon, 'spd', 1);
+                changeStage(mon, 'spd', 1, false, { bypassStagnation: true });
                 logMsg(`${mon.name} ate its Apicot Berry!`, 'info');
                 mon.item = null; mon.itemConsumed = true;
             }
@@ -18278,7 +18405,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!unnerved && mon.item === "Starf Berry" && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
                 const starfStats = ['atk', 'def', 'spa', 'spd', 'spe'];
                 const starfStat = starfStats[Math.floor(Math.random() * starfStats.length)];
-                changeStage(mon, starfStat, 2);
+                changeStage(mon, starfStat, 2, false, { bypassStagnation: true });
                 logMsg(`${mon.name} ate its Starf Berry!`, 'info');
                 mon.item = null; mon.itemConsumed = true;
             }
@@ -18318,6 +18445,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.item = null; mon.itemConsumed = true;
             }
 
+            // Story artifact: Vampiric Fangs — all Pokémon lose 1/16 max HP at end of turn (Magic Guard immune)
+            if (state && state.mode === 'story' && state._vampiricFangsActive && mon.currentHp > 0 && mon.ability !== "Magic Guard") {
+                let vf = Math.max(1, Math.floor(mon.maxHp / 16));
+                vf = Math.min(mon.currentHp, vf);
+                mon.currentHp -= vf;
+                logMsg(`${mon.name} lost ${vf} HP to Vampiric Fangs' hunger!`, 'dmg');
+            }
+
             // Perish Song countdown — decrement first, then check for faint at 0
             if (mon.volatile.perishCount >= 0) {
                 mon.volatile.perishCount--;
@@ -18332,14 +18467,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Bad Dreams: deal 1/8 HP to sleeping foe each turn
             if (mon.ability === "Bad Dreams" && foe && foe.currentHp > 0 && foe.status === "SLP" && foe.ability !== "Magic Guard") {
+                if (state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(foe)) {
+                    if (typeof logMsg === 'function') logMsg(`Type Nullifier: ${foe.name} shrugged off Bad Dreams!`, 'info');
+                } else {
                 let bdDmg = Math.max(1, Math.floor(foe.maxHp / 8));
                 let actBdDmg = Math.min(foe.currentHp, bdDmg);
                 foe.currentHp -= actBdDmg;
                 logMsg(`${foe.name} was afflicted by ${mon.name}'s Bad Dreams! (-${actBdDmg} HP)`, 'dmg');
+                }
             }
 
             // Moody: +2 to a random stat, -1 to a different stat each turn
-            if (mon.ability === "Moody" && mon.currentHp > 0) {
+            if (mon.ability === "Moody" && mon.currentHp > 0 && !(state && state.mode === 'story' && state._stagnationCoreActive)) {
                 const _moodStats = ['atk', 'def', 'spa', 'spd', 'spe'];
                 const _boostable = _moodStats.filter(s => (mon.stages[s] || 0) < 6);
                 const _droppable = _moodStats.filter(s => (mon.stages[s] || 0) > -6);
@@ -18529,7 +18668,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── INLINE DATA ──────────────────────────────────────────────────
         const TRAINER_DATA = [
-          // Basic Trainers
+          // Basic Trainers — route/job classes, Ace Trainer uniforms, Aether employees, and team grunts only (iconic NPCs use Elite Trainer rows below).
           { role:'Basic Trainer', name:'Youngster',   type:'Normal',         sigs:['Rattata','Sentret','Zigzagoon','Bidoof','Fletchling'],                  charGen:1, pkmGens:[1,2,3,4,6] },
           { role:'Basic Trainer', name:'Bug Catcher', type:'Bug',            sigs:['Metapod','Butterfree','Beedrill','Wurmple','Caterpie'],                  charGen:1, pkmGens:[1,3] },
           { role:'Basic Trainer', name:'Lass',        type:'Normal',         sigs:['Jigglypuff','Clefairy','Oddish','Nidoran-F','Marill'],                  charGen:1, pkmGens:[1,2] },
@@ -18539,18 +18678,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Basic Trainer', name:'Black Belt',  type:'Fighting',       sigs:['Machoke','Hariyama','Hitmonlee','Hitmonchan','Throh'],                  charGen:1, pkmGens:[1,3,5] },
           { role:'Basic Trainer', name:'Bird Keeper', type:'Flying',         sigs:['Pidgeotto','Staravia','Doduo','Fearow','Swellow'],                      charGen:1, pkmGens:[1,3,4] },
           { role:'Basic Trainer', name:'Dragon Tamer',type:'Dragon',         sigs:['Dratini','Dragonair','Fraxure','Bagon','Goomy'],                       charGen:1, pkmGens:[1,3,5,6] },
-          // Elite Trainers (Rivals)
-          { role:'Elite Trainer', name:'Blue (Rival)',  type:'Mixed',        sigs:['Pidgeot','Alakazam','Rhydon','Exeggutor','Arcanine'],                  charGen:1, pkmGens:[1], isRival:true },
-          { role:'Elite Trainer', name:'Silver (Rival)',type:'Mixed',        sigs:['Crobat','Weavile','Alakazam','Gengar','Magneton'],                     charGen:2, pkmGens:[1,2,4], isRival:true },
-          { role:'Elite Trainer', name:'Wally (Rival)', type:'Mixed',        sigs:['Gallade','Roserade','Magnezone','Altaria','Garchomp'],                 charGen:3, pkmGens:[3,4], isRival:true },
-          { role:'Elite Trainer', name:'Barry (Rival)', type:'Mixed',        sigs:['Staraptor','Snorlax','Heracross','Floatzel','Rapidash'],               charGen:4, pkmGens:[1,2,4], isRival:true },
-          { role:'Elite Trainer', name:'N (Rival)',     type:'Mixed',        sigs:['Zoroark','Klinklang','Vanilluxe','Archeops','Carracosta'],              charGen:5, pkmGens:[5], isRival:true },
-          { role:'Elite Trainer', name:'Gladion (Rival)',type:'Mixed',       sigs:['Silvally','Lycanroc','Weavile','Lucario','Crobat'],                    charGen:7, pkmGens:[2,4,7], isRival:true },
-          { role:'Elite Trainer', name:'Hop (Rival)',   type:'Mixed',        sigs:['Dubwool','Corviknight','Snorlax','Cramorant','Boltund'],               charGen:8, pkmGens:[1,8], isRival:true },
-          { role:'Elite Trainer', name:'Marnie (Rival)',type:'Dark',         sigs:['Morpeko','Grimmsnarl','Scrafty','Toxicroak','Liepard'],                charGen:8, pkmGens:[5,8], isRival:true },
-          { role:'Elite Trainer', name:'Nemona (Rival)',type:'Mixed',        sigs:['Pawmot','Lycanroc','Goodra','Orthworm','Dudunsparce'],                  charGen:9, pkmGens:[6,7,9], isRival:true },
+          // Elite Trainers (named NPCs / villains; story "Elite Trainer" battles exclude isRival — rivals use event "Rival" only)
+          { role:'Elite Trainer', name:'Blue',  type:'Mixed',        sigs:['Pidgeot','Alakazam','Rhydon','Exeggutor','Arcanine'],                  charGen:1, pkmGens:[1], isRival:true },
+          { role:'Elite Trainer', name:'Silver',type:'Mixed',        sigs:['Crobat','Weavile','Alakazam','Gengar','Magneton'],                     charGen:2, pkmGens:[1,2,4], isRival:true },
+          { role:'Elite Trainer', name:'Wally', type:'Mixed',        sigs:['Gallade','Roserade','Magnezone','Altaria','Garchomp'],                 charGen:3, pkmGens:[3,4], isRival:true },
+          { role:'Elite Trainer', name:'Barry', type:'Mixed',        sigs:['Staraptor','Snorlax','Heracross','Floatzel','Rapidash'],               charGen:4, pkmGens:[1,2,4], isRival:true },
+          { role:'Elite Trainer', name:'N',     type:'Mixed',        sigs:['Zoroark','Klinklang','Vanilluxe','Archeops','Carracosta'],              charGen:5, pkmGens:[5], isRival:true },
+          { role:'Elite Trainer', name:'Gladion',type:'Mixed',       sigs:['Silvally','Lycanroc','Weavile','Lucario','Crobat'],                    charGen:7, pkmGens:[2,4,7], isRival:true },
+          { role:'Elite Trainer', name:'Hop',   type:'Mixed',        sigs:['Dubwool','Corviknight','Snorlax','Cramorant','Boltund'],               charGen:8, pkmGens:[1,8], isRival:true, spriteFile:'Barry' },
+          { role:'Elite Trainer', name:'Marnie',type:'Dark',         sigs:['Morpeko','Grimmsnarl','Scrafty','Toxicroak','Liepard'],                charGen:8, pkmGens:[5,8], isRival:true, spriteFile:'Gladion' },
+          { role:'Elite Trainer', name:'Nemona',type:'Mixed',        sigs:['Pawmot','Lycanroc','Goodra','Orthworm','Dudunsparce'],                  charGen:9, pkmGens:[6,7,9], isRival:true, spriteFile:'May' },
+          { role:'Elite Trainer', name:'Ethan', type:'Mixed', sigs:['Typhlosion','Feraligatr','Alakazam','Ampharos','Snorlax'], charGen:2, pkmGens:[1,2], isRival:true },
+          { role:'Elite Trainer', name:'Lyra', type:'Mixed', sigs:['Meganium','Ampharos','Red Gyarados','Noctowl','Clefable'], charGen:2, pkmGens:[1,2], isRival:true },
+          { role:'Elite Trainer', name:'May', type:'Mixed', sigs:['Blaziken','Beautifly','Breloom','Swellow','Aggron'], charGen:3, pkmGens:[3], isRival:true },
+          { role:'Elite Trainer', name:'Brendan', type:'Mixed', sigs:['Sceptile','Swellow','Sharpedo','Magcargo','Minun'], charGen:3, pkmGens:[3], isRival:true },
           // Elite Trainers (Villains)
-          { role:'Elite Trainer', name:'Giovanni',    type:'Ground',         sigs:['Nidoking','Nidoqueen','Rhyperior','Persian','Kangaskhan'],              charGen:1, pkmGens:[1,4] },
           { role:'Elite Trainer', name:'Cyrus',       type:'Dark',           sigs:['Weavile','Honchkrow','Gyarados','Crobat','Houndoom'],                  charGen:4, pkmGens:[1,2,4] },
           { role:'Elite Trainer', name:'Ghetsis',     type:'Mixed',          sigs:['Hydreigon','Cofagrigus','Eelektross','Drapion','Toxicroak'],            charGen:5, pkmGens:[4,5] },
           { role:'Elite Trainer', name:'Guzma',       type:'Bug',            sigs:['Golisopod','Pinsir','Ariados','Masquerain','Scizor'],                  charGen:7, pkmGens:[1,2,3,7] },
@@ -18619,15 +18761,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Gym Leader 7', name:'Olympia',  type:'Psychic', sigs:['Meowstic','Sigilyph','Slowking','Gardevoir'],                   charGen:6, pkmGens:[1,2,3,5,6] },
           { role:'Gym Leader 7', name:'Piers',    type:'Dark',    sigs:['Obstagoon','Scrafty','Malamar','Skuntank','Pangoro'],            charGen:8, pkmGens:[4,5,6,8] },
           { role:'Gym Leader 7', name:'Tulip',    type:'Psychic', sigs:['Espathra','Farigiraf','Gallade','Gardevoir'],                   charGen:9, pkmGens:[3,6,9] },
-          // Gym Leader 8
-          // Classic-leader "elite rematch" variants: full 6-mon OG signature teams.
-          { role:'Gym Leader 8', name:'Brock (Elite)',  type:'Rock/Ground', sigs:['Rhyperior','Golem','Onix','Tyranitar','Aerodactyl','Kabutops'], charGen:1, pkmGens:[1,2,3,4] },
-          { role:'Gym Leader 8', name:'Misty (Elite)',  type:'Water',       sigs:['Starmie','Gyarados','Lapras','Vaporeon','Golduck','Kingdra'],   charGen:1, pkmGens:[1,2] },
-          { role:'Gym Leader 8', name:'Erika (Elite)',  type:'Grass',       sigs:['Vileplume','Tangrowth','Victreebel','Bellossom','Jumpluff','Exeggutor'], charGen:1, pkmGens:[1,2,4] },
-          { role:'Gym Leader 8', name:'Sabrina (Elite)',type:'Psychic',     sigs:['Alakazam','Espeon','Mr. Mime','Jynx','Starmie','Gallade'],       charGen:1, pkmGens:[1,2,3,4] },
-          { role:'Gym Leader 8', name:'Blaine (Elite)', type:'Fire',        sigs:['Arcanine','Magmortar','Rapidash','Ninetales','Charizard','Magmar'], charGen:1, pkmGens:[1,4] },
-          { role:'Gym Leader 8', name:'Koga (Elite)',   type:'Poison',      sigs:['Crobat','Muk','Weezing','Venomoth','Toxicroak','Drapion'],       charGen:1, pkmGens:[1,2,4] },
-          { role:'Gym Leader 8', name:'Giovanni (Gym)',type:'Ground',sigs:['Rhydon','Dugtrio','Nidoqueen','Nidoking','Rhyperior'],        charGen:1, pkmGens:[1,4] },
+          // Gym Leader 8 — final badge (no Kanto repeats: Brock–Blaine/Koga already appear in GL1–7; Giovanni stays as Viridian-only GL8)
+          { role:'Gym Leader 8', name:'Giovanni',type:'Ground',sigs:['Rhydon','Dugtrio','Nidoqueen','Nidoking','Rhyperior'],        charGen:1, pkmGens:[1,4] },
           { role:'Gym Leader 8', name:'Clair',    type:'Dragon',  sigs:['Kingdra','Dragonair','Gyarados','Dragonite','Salamence'],        charGen:2, pkmGens:[1,2,3] },
           { role:'Gym Leader 8', name:'Wallace',  type:'Water',   sigs:['Milotic','Luvdisc','Sealeo','Whiscash','Walrein'],              charGen:3, pkmGens:[3] },
           { role:'Gym Leader 8', name:'Volkner',  type:'Electric',sigs:['Electivire','Luxray','Raichu','Jolteon','Rotom'],               charGen:4, pkmGens:[1,4] },
@@ -18671,7 +18806,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'E4', name:'Kahili',   type:'Flying',   sigs:['Toucannon','Skarmory','Crobat','Oricorio','Mandibuzz'],               charGen:7, pkmGens:[2,5,6,7] },
           { role:'E4', name:'Hassel',   type:'Dragon',   sigs:['Baxcalibur','Noivern','Haxorus','Dragalge','Flapple'],               charGen:9, pkmGens:[5,6,8,9] },
           // Champions
-          { role:'Champion', name:'Blue',          type:'Mixed', sigs:['Blastoise','Pidgeot','Alakazam','Rhydon','Arcanine','Exeggutor'],     charGen:1, pkmGens:[1,2] },
+          { role:'Champion', name:'Blue',          type:'Mixed', sigs:['Blastoise','Pidgeot','Alakazam','Rhydon','Arcanine','Exeggutor'],     charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Blue-Champion' },
           { role:'Champion', name:'Lance',         type:'Dragon',sigs:['Dragonite','Dragonite','Dragonite','Aerodactyl','Gyarados','Charizard'],charGen:2, pkmGens:[1,3,4] },
           { role:'Champion', name:'Steven Stone',  type:'Steel', sigs:['Metagross','Aggron','Skarmory','Claydol','Cradily','Armaldo'],        charGen:3, pkmGens:[1,3,6] },
           { role:'Champion', name:'Wallace',       type:'Water', sigs:['Milotic','Wailord','Tentacruel','Ludicolo','Gyarados'],               charGen:3, pkmGens:[1,3] },
@@ -18682,6 +18817,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Champion', name:'Prof. Kukui',   type:'Mixed', sigs:['Lycanroc','Ninetales','Braviary','Magnezone','Snorlax'],              charGen:7, pkmGens:[1,4,5,7] },
           { role:'Champion', name:'Leon',          type:'Mixed', sigs:['Charizard','Aegislash','Dragapult','Haxorus','Seismitoad'],            charGen:8, pkmGens:[1,5,6,8] },
           { role:'Champion', name:'Geeta',         type:'Mixed', sigs:['Glimmora','Espathra','Kingambit','Avalugg','Veluza'],                 charGen:9, pkmGens:[6,9] },
+          { role:'Champion', name:'Red',           type:'Mixed', sigs:['Pikachu','Venusaur','Charizard','Blastoise','Snorlax'],               charGen:1, pkmGens:[1] },
           { role:'Basic Trainer', name:'Team Rocket Grunt', type:'Poison', sigs:['Ekans','Rattata','Zubat','Koffing','Meowth'], charGen:1, pkmGens:[1,2] },
           { role:'Basic Trainer', name:'Team Aqua Grunt', type:'Water', sigs:['Carvanha','Poochyena','Wailmer','Corphish','Mightyena'], charGen:3, pkmGens:[3] },
           { role:'Basic Trainer', name:'Team Magma Grunt', type:'Fire', sigs:['Numel','Poochyena','Mightyena','Camerupt','Houndour'], charGen:3, pkmGens:[3] },
@@ -18689,11 +18825,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Basic Trainer', name:'Team Plasma Grunt', type:'Dark', sigs:['Watchog','Liepard','Scraggy','Trubbish','Krookodile'], charGen:5, pkmGens:[5] },
           { role:'Basic Trainer', name:'Team Flare Grunt', type:'Fire', sigs:['Houndour','Sneasel','Swirlix','Pawniard','Liepard'], charGen:6, pkmGens:[6] },
           { role:'Basic Trainer', name:'Team Skull Grunt', type:'Dark', sigs:['Salandit','Rattata','Fomantis','Drowzee','Spinarak'], charGen:7, pkmGens:[7] },
-          { role:'Basic Trainer', name:'Ethan', type:'Mixed', sigs:['Typhlosion','Feraligatr','Alakazam','Ampharos','Snorlax'], charGen:2, pkmGens:[1,2], isRival:true },
-          { role:'Basic Trainer', name:'Lyra', type:'Mixed', sigs:['Meganium','Ampharos','Red Gyarados','Noctowl','Clefable'], charGen:2, pkmGens:[1,2], isRival:true },
-          { role:'Basic Trainer', name:'May', type:'Mixed', sigs:['Blaziken','Beautifly','Breloom','Swellow','Aggron'], charGen:3, pkmGens:[3], isRival:true },
-          { role:'Basic Trainer', name:'Brendan', type:'Mixed', sigs:['Sceptile','Swellow','Sharpedo','Magcargo','Minun'], charGen:3, pkmGens:[3], isRival:true },
-          { role:'Elite Trainer', name:'Red', type:'Mixed', sigs:['Pikachu','Venusaur','Charizard','Blastoise','Snorlax'], charGen:1, pkmGens:[1] },
           { role:'Basic Trainer', name:'Ace Trainer', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Ace_Trainer' },
           { role:'Basic Trainer', name:'Ace Trainer F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Ace_Trainer~F' },
           { role:'Basic Trainer', name:'Ace Trainer F Snow', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Ace_Trainer~F-Snow' },
@@ -18702,22 +18833,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Basic Trainer', name:'Aether Foundation Employee', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Aether_Foundation_Employee' },
           { role:'Basic Trainer', name:'Aether Foundation Employee F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Aether_Foundation_Employee~F' },
           { role:'Basic Trainer', name:'Aether Foundation F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Aether_Foundation~F' },
-          { role:'Basic Trainer', name:'Anabel', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Anabel' },
-          { role:'Basic Trainer', name:'Archer', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Archer' },
-          { role:'Basic Trainer', name:'Archie', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Archie' },
-          { role:'Basic Trainer', name:'Argenta', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Argenta' },
-          { role:'Basic Trainer', name:'Ariana', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Ariana' },
+          { role:'Elite Trainer', name:'Anabel', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Anabel' },
+          { role:'Elite Trainer', name:'Archer', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Archer' },
+          { role:'Elite Trainer', name:'Archie', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Archie' },
+          { role:'Elite Trainer', name:'Argenta', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Argenta' },
+          { role:'Elite Trainer', name:'Ariana', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Ariana' },
           { role:'Basic Trainer', name:'Aroma Lady', type:'Grass', sigs:['Oddish','Seedot','Shroomish','Petilil','Grookey'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Aroma_Lady' },
           { role:'Basic Trainer', name:'Artist', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Artist' },
-          { role:'Basic Trainer', name:'Ash', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Ash' },
-          { role:'Basic Trainer', name:'Ash Alola', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Ash-Alola' },
-          { role:'Basic Trainer', name:'Ash Cap Backward', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Ash-Cap_Backward' },
-          { role:'Basic Trainer', name:'Ash Hoenn', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Ash-Hoenn' },
-          { role:'Basic Trainer', name:'Ash Johto', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Ash-Johto' },
-          { role:'Basic Trainer', name:'Ash Kalos', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Ash-Kalos' },
-          { role:'Basic Trainer', name:'Ash Sinnoh', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Ash-Sinnoh' },
-          { role:'Basic Trainer', name:'Ash Unova', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Ash-Unova' },
-          { role:'Basic Trainer', name:'AZ', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'AZ' },
+          { role:'Elite Trainer', name:'Ash', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Ash' },
+          { role:'Elite Trainer', name:'Ash Alola', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Ash-Alola' },
+          { role:'Elite Trainer', name:'Ash Cap Backward', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Ash-Cap_Backward' },
+          { role:'Elite Trainer', name:'Ash Hoenn', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Ash-Hoenn' },
+          { role:'Elite Trainer', name:'Ash Johto', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Ash-Johto' },
+          { role:'Elite Trainer', name:'Ash Kalos', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Ash-Kalos' },
+          { role:'Elite Trainer', name:'Ash Sinnoh', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Ash-Sinnoh' },
+          { role:'Elite Trainer', name:'Ash Unova', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Ash-Unova' },
+          { role:'Elite Trainer', name:'AZ', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'AZ' },
           { role:'Basic Trainer', name:'Backers', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Backers' },
           { role:'Basic Trainer', name:'Backers F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Backers~F' },
           { role:'Basic Trainer', name:'Backpacker', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Backpacker' },
@@ -18727,61 +18858,59 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Basic Trainer', name:'Beauty', type:'Fairy', sigs:['Cleffa','Ralts','Azurill','Spritzee','Milcery'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Beauty' },
           { role:'Basic Trainer', name:'Beauty JPN', type:'Fairy', sigs:['Cleffa','Ralts','Azurill','Spritzee','Milcery'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Beauty-JPN' },
           { role:'Basic Trainer', name:'Belle & Pa', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Belle___0026_Pa' },
-          { role:'Basic Trainer', name:'Bianca', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Bianca' },
+          { role:'Elite Trainer', name:'Bianca', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Bianca' },
           { role:'Basic Trainer', name:'Biker', type:'Dark', sigs:['Maschiff','Poochyena','Purrloin','Zorua','Nickit'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Biker' },
-          { role:'Basic Trainer', name:'Bill', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Bill' },
-          { role:'Basic Trainer', name:'Birch', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Birch' },
+          { role:'Elite Trainer', name:'Bill', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Bill' },
+          { role:'Elite Trainer', name:'Birch', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Birch' },
           { role:'Basic Trainer', name:'Blackbelt', type:'Fighting', sigs:['Croagunk','Stufful','Machop','Makuhita','Meditite'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Blackbelt' },
-          { role:'Basic Trainer', name:'Blue 2', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Blue-2' },
-          { role:'Elite Trainer', name:'Blue Champion', type:'Mixed', sigs:['Blastoise','Pidgeot','Alakazam','Rhydon','Arcanine','Exeggutor'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Blue-Champion' },
           { role:'Basic Trainer', name:'Boarder', type:'Ice', sigs:['Spheal','Vanillite','Snorunt','Snom','Cubchoo'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Boarder' },
-          { role:'Basic Trainer', name:'Brandon', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Brandon' },
-          { role:'Basic Trainer', name:'Bryony', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Bryony' },
-          { role:'Basic Trainer', name:'Buck', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Buck' },
+          { role:'Elite Trainer', name:'Brandon', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Brandon' },
+          { role:'Elite Trainer', name:'Bryony', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Bryony' },
+          { role:'Elite Trainer', name:'Buck', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Buck' },
           { role:'Basic Trainer', name:'Bug Maniac', type:'Bug', sigs:['Sewaddle','Grubbin','Caterpie','Weedle','Wurmple'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Bug_Maniac' },
           { role:'Basic Trainer', name:'Burglar', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Burglar' },
-          { role:'Basic Trainer', name:'Burnet', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Burnet' },
+          { role:'Elite Trainer', name:'Burnet', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Burnet' },
           { role:'Basic Trainer', name:'Cameraman', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Cameraman' },
           { role:'Basic Trainer', name:'Camper', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Camper' },
           { role:'Basic Trainer', name:'Channeler', type:'Psychic', sigs:['Spoink','Gothita','Espurr','Abra','Drowzee'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Channeler' },
-          { role:'Basic Trainer', name:'Cheren', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Cheren' },
-          { role:'Basic Trainer', name:'Cheryl', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Cheryl' },
-          { role:'Basic Trainer', name:'Chili', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Chili' },
+          { role:'Elite Trainer', name:'Cheren', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Cheren' },
+          { role:'Elite Trainer', name:'Cheryl', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Cheryl' },
+          { role:'Elite Trainer', name:'Chili', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Chili' },
           { role:'Basic Trainer', name:'Clerk', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Clerk' },
           { role:'Basic Trainer', name:'Clerk F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Clerk~F' },
           { role:'Basic Trainer', name:'Clerk 2', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Clerk-2' },
           { role:'Basic Trainer', name:'Clown', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Clown' },
           { role:'Basic Trainer', name:'Collector', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Collector' },
-          { role:'Basic Trainer', name:'Colress', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Colress' },
+          { role:'Elite Trainer', name:'Colress', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Colress' },
           { role:'Basic Trainer', name:'Cool Couple', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Cool_Couple' },
           { role:'Basic Trainer', name:'Cooltrainer', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Cooltrainer' },
           { role:'Basic Trainer', name:'Cooltrainer F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Cooltrainer~F' },
           { role:'Basic Trainer', name:'Cooltrainer JPN', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Cooltrainer-JPN' },
-          { role:'Basic Trainer', name:'Courtney', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Courtney' },
+          { role:'Elite Trainer', name:'Courtney', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Courtney' },
           { role:'Basic Trainer', name:'Cowgirl', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Cowgirl' },
-          { role:'Basic Trainer', name:'Cress', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Cress' },
+          { role:'Elite Trainer', name:'Cress', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Cress' },
           { role:'Basic Trainer', name:'Crush Girl', type:'Fighting', sigs:['Croagunk','Stufful','Machop','Makuhita','Meditite'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Crush_Girl' },
           { role:'Basic Trainer', name:'Crush Kin', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Crush_Kin' },
           { role:'Basic Trainer', name:'Cue Ball', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Cue_Ball' },
           { role:'Basic Trainer', name:'Cyclist', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Cyclist' },
           { role:'Basic Trainer', name:'Cyclist F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Cyclist~F' },
-          { role:'Basic Trainer', name:'Dahlia', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Dahlia' },
+          { role:'Elite Trainer', name:'Dahlia', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Dahlia' },
           { role:'Basic Trainer', name:'Dancer', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Dancer' },
-          { role:'Basic Trainer', name:'Darach', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Darach' },
-          { role:'Basic Trainer', name:'Dawn', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Dawn' },
+          { role:'Elite Trainer', name:'Darach', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Darach' },
+          { role:'Elite Trainer', name:'Dawn', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Dawn' },
           { role:'Basic Trainer', name:'Depot Agent', type:'Steel', sigs:['Aron','Beldum','Shieldon','Klink','Togedemaru'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Depot_Agent' },
-          { role:'Basic Trainer', name:'Dexio', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Dexio' },
+          { role:'Elite Trainer', name:'Dexio', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Dexio' },
           { role:'Basic Trainer', name:'Doctor', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Doctor' },
           { role:'Basic Trainer', name:'Double Team', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Double_Team' },
-          { role:'Basic Trainer', name:'Elio', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Elio' },
-          { role:'Basic Trainer', name:'Emmet', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Emmet' },
+          { role:'Elite Trainer', name:'Elio', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Elio' },
+          { role:'Elite Trainer', name:'Emmet', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Emmet' },
           { role:'Basic Trainer', name:'Engineer', type:'Steel', sigs:['Aron','Beldum','Shieldon','Klink','Togedemaru'], charGen:9, pkmGens:[7,8,9], spriteFile:'Engineer' },
-          { role:'Basic Trainer', name:'Ethan Pokeathlon', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Ethan-Poke__0301athlon' },
-          { role:'Basic Trainer', name:'Eusine', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Eusine' },
-          { role:'Basic Trainer', name:'Evelyn', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Evelyn' },
+          { role:'Elite Trainer', name:'Ethan Pokeathlon', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Ethan-Poke__0301athlon' },
+          { role:'Elite Trainer', name:'Eusine', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Eusine' },
+          { role:'Elite Trainer', name:'Evelyn', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Evelyn' },
           { role:'Basic Trainer', name:'Expert', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Expert' },
           { role:'Basic Trainer', name:'Expert F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Expert~F' },
-          { role:'Basic Trainer', name:'Faba', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Faba' },
+          { role:'Elite Trainer', name:'Faba', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Faba' },
           { role:'Basic Trainer', name:'Firebreather', type:'Fire', sigs:['Litleo','Vulpix','Growlithe','Slugma','Numel'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Firebreather' },
           { role:'Basic Trainer', name:'Fisherman JPN', type:'Water', sigs:['Wooper','Marill','Lotad','Wingull','Arrokuda'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Fisherman-JPN' },
           { role:'Basic Trainer', name:'Furisode Girl Black', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Furisode_Girl-Black' },
@@ -18791,87 +18920,85 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Basic Trainer', name:'Gambler', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Gambler' },
           { role:'Basic Trainer', name:'Gamer', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Gamer' },
           { role:'Basic Trainer', name:'Gentleman', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Gentleman' },
-          { role:'Basic Trainer', name:'Gladion 2', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Gladion-2' },
-          { role:'Basic Trainer', name:'Greta', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Greta' },
+          { role:'Elite Trainer', name:'Greta', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Greta' },
           { role:'Basic Trainer', name:'Guitarist', type:'Electric', sigs:['Blitzle','Toxel','Pichu','Mareep','Electrike'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Guitarist' },
-          { role:'Basic Trainer', name:'Hapu', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Hapu' },
+          { role:'Elite Trainer', name:'Hapu', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Hapu' },
           { role:'Basic Trainer', name:'Harlequin', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Harlequin' },
-          { role:'Basic Trainer', name:'Hau', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Hau' },
-          { role:'Basic Trainer', name:'Hau 2', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Hau-2' },
+          { role:'Elite Trainer', name:'Hau', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Hau' },
+          { role:'Elite Trainer', name:'Hau 2', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Hau-2' },
           { role:'Basic Trainer', name:'Hex Maniac JPN', type:'Psychic', sigs:['Spoink','Gothita','Espurr','Abra','Drowzee'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Hex_Maniac-JPN' },
-          { role:'Basic Trainer', name:'Hilbert', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Hilbert' },
-          { role:'Basic Trainer', name:'Hilbert 2', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Hilbert-2' },
-          { role:'Basic Trainer', name:'Hilda', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Hilda' },
-          { role:'Basic Trainer', name:'Hilda 2', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Hilda-2' },
+          { role:'Elite Trainer', name:'Hilbert', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Hilbert' },
+          { role:'Elite Trainer', name:'Hilbert 2', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Hilbert-2' },
+          { role:'Elite Trainer', name:'Hilda', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Hilda' },
+          { role:'Elite Trainer', name:'Hilda 2', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Hilda-2' },
           { role:'Basic Trainer', name:'Hooligans', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Hooligans' },
           { role:'Basic Trainer', name:'Hoopster', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Hoopster' },
           { role:'Basic Trainer', name:'Idol', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Idol' },
-          { role:'Basic Trainer', name:'Ilima', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Ilima' },
+          { role:'Elite Trainer', name:'Ilima', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Ilima' },
           { role:'Basic Trainer', name:'Infielder', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Infielder' },
-          { role:'Basic Trainer', name:'Ingo', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Ingo' },
-          { role:'Basic Trainer', name:'Interviewers', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Interviewers' },
-          { role:'Basic Trainer', name:'Janine', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Janine' },
+          { role:'Elite Trainer', name:'Ingo', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Ingo' },
+          { role:'Elite Trainer', name:'Interviewers', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Interviewers' },
+          { role:'Elite Trainer', name:'Janine', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Janine' },
           { role:'Basic Trainer', name:'Janitor', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Janitor' },
           { role:'Basic Trainer', name:'Jogger', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Jogger' },
           { role:'Basic Trainer', name:'Jr. Trainer', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Jr._Trainer' },
           { role:'Basic Trainer', name:'Jr. Trainer F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Jr._Trainer~F' },
-          { role:'Basic Trainer', name:'Juan', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Juan' },
+          { role:'Elite Trainer', name:'Juan', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Juan' },
           { role:'Basic Trainer', name:'Juggler', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Juggler' },
-          { role:'Basic Trainer', name:'Juniper', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Juniper' },
-          { role:'Basic Trainer', name:'Jupiter', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Jupiter' },
-          { role:'Basic Trainer', name:'Kiawe', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Kiawe' },
+          { role:'Elite Trainer', name:'Juniper', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Juniper' },
+          { role:'Elite Trainer', name:'Jupiter', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Jupiter' },
+          { role:'Elite Trainer', name:'Kiawe', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Kiawe' },
           { role:'Basic Trainer', name:'Kimono Girl', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Kimono_Girl' },
           { role:'Basic Trainer', name:'Kindler', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Kindler' },
-          { role:'Basic Trainer', name:'Kris', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Kris' },
-          { role:'Basic Trainer', name:'Kukui 2', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Kukui-2' },
+          { role:'Elite Trainer', name:'Kris', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Kris' },
+          { role:'Elite Trainer', name:'Kukui 2', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Kukui-2' },
           { role:'Basic Trainer', name:'Lady', type:'Fairy', sigs:['Cleffa','Ralts','Azurill','Spritzee','Milcery'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Lady' },
-          { role:'Basic Trainer', name:'Lana', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Lana' },
-          { role:'Basic Trainer', name:'Leaf', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Leaf' },
-          { role:'Basic Trainer', name:'Li', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Li' },
-          { role:'Basic Trainer', name:'Lillie', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Lillie' },
-          { role:'Basic Trainer', name:'Lillie 2', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Lillie-2' },
+          { role:'Elite Trainer', name:'Lana', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Lana' },
+          { role:'Elite Trainer', name:'Leaf', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Leaf' },
+          { role:'Elite Trainer', name:'Li', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Li' },
+          { role:'Elite Trainer', name:'Lillie', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Lillie' },
+          { role:'Elite Trainer', name:'Lillie 2', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Lillie-2' },
           { role:'Basic Trainer', name:'Linebacker', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Linebacker' },
-          { role:'Basic Trainer', name:'Lt. Surge (2)', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Lt._Surge' },
-          { role:'Basic Trainer', name:'Lucas', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Lucas' },
-          { role:'Basic Trainer', name:'Lucy', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Lucy' },
-          { role:'Basic Trainer', name:'Lusamine', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Lusamine' },
-          { role:'Basic Trainer', name:'Lusamine 2', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Lusamine-2' },
-          { role:'Basic Trainer', name:'Lyra Pokeathlon', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Lyra-Poke__0301athlon' },
+          { role:'Elite Trainer', name:'Lucas', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Lucas' },
+          { role:'Elite Trainer', name:'Lucy', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Lucy' },
+          { role:'Elite Trainer', name:'Lusamine', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Lusamine' },
+          { role:'Elite Trainer', name:'Lusamine 2', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Lusamine-2' },
+          { role:'Elite Trainer', name:'Lyra Pokeathlon', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Lyra-Poke__0301athlon' },
           { role:'Basic Trainer', name:'Maid', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Maid' },
-          { role:'Basic Trainer', name:'Mallow', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Mallow' },
-          { role:'Basic Trainer', name:'Marley', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Marley' },
-          { role:'Basic Trainer', name:'Mars', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Mars' },
-          { role:'Basic Trainer', name:'Masked Royal', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Masked_Royal' },
-          { role:'Basic Trainer', name:'Matt', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Matt' },
-          { role:'Basic Trainer', name:'Maxie', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Maxie' },
+          { role:'Elite Trainer', name:'Mallow', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Mallow' },
+          { role:'Elite Trainer', name:'Marley', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Marley' },
+          { role:'Elite Trainer', name:'Mars', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Mars' },
+          { role:'Elite Trainer', name:'Masked Royal', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Masked_Royal' },
+          { role:'Elite Trainer', name:'Matt', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Matt' },
+          { role:'Elite Trainer', name:'Maxie', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Maxie' },
           { role:'Basic Trainer', name:'Medium', type:'Psychic', sigs:['Spoink','Gothita','Espurr','Abra','Drowzee'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Medium' },
           { role:'Basic Trainer', name:'Medium JPN', type:'Psychic', sigs:['Spoink','Gothita','Espurr','Abra','Drowzee'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Medium-JPN' },
-          { role:'Basic Trainer', name:'Mina', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Mina' },
-          { role:'Basic Trainer', name:'Mira', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Mira' },
-          { role:'Basic Trainer', name:'Molayne', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Molayne' },
-          { role:'Basic Trainer', name:'Mr. Fuji', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Mr._Fuji' },
+          { role:'Elite Trainer', name:'Mina', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Mina' },
+          { role:'Elite Trainer', name:'Mira', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Mira' },
+          { role:'Elite Trainer', name:'Molayne', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Molayne' },
+          { role:'Elite Trainer', name:'Mr. Fuji', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Mr._Fuji' },
           { role:'Basic Trainer', name:'Musician', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Musician' },
-          { role:'Basic Trainer', name:'Nanu', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Nanu' },
+          { role:'Elite Trainer', name:'Nanu', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Nanu' },
           { role:'Basic Trainer', name:'Ninja Boy', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Ninja_Boy' },
-          { role:'Basic Trainer', name:'Nita', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Nita' },
-          { role:'Basic Trainer', name:'Noland', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Noland' },
+          { role:'Elite Trainer', name:'Nita', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Nita' },
+          { role:'Elite Trainer', name:'Noland', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Noland' },
           { role:'Basic Trainer', name:'Nurse', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Nurse' },
           { role:'Basic Trainer', name:'Nursery Aide', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Nursery_Aide' },
-          { role:'Basic Trainer', name:'N Young', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'N-Young' },
-          { role:'Basic Trainer', name:'Oak', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Oak' },
+          { role:'Elite Trainer', name:'N Young', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'N-Young' },
+          { role:'Elite Trainer', name:'Oak', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Oak' },
           { role:'Basic Trainer', name:'Office Worker', type:'Normal', sigs:['Pidgey','Rattata','Furret','Chatot','Bidoof'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Office_Worker' },
           { role:'Basic Trainer', name:'Officer', type:'Normal', sigs:['Growlithe','Arcanine','Herdier','Stoutland','Snubbull'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Officer' },
           { role:'Basic Trainer', name:'Old Couple', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Old_Couple' },
           { role:'Basic Trainer', name:'Painter', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Painter' },
-          { role:'Basic Trainer', name:'Palmer', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Palmer' },
+          { role:'Elite Trainer', name:'Palmer', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Palmer' },
           { role:'Basic Trainer', name:'Parasol Lady', type:'Fairy', sigs:['Cleffa','Ralts','Azurill','Spritzee','Milcery'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Parasol_Lady' },
-          { role:'Basic Trainer', name:'Petrel', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Petrel' },
-          { role:'Basic Trainer', name:'PI', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'PI' },
+          { role:'Elite Trainer', name:'Petrel', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Petrel' },
+          { role:'Elite Trainer', name:'PI', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'PI' },
           { role:'Basic Trainer', name:'Picnicker', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Picnicker' },
           { role:'Basic Trainer', name:'Pilot', type:'Flying', sigs:['Starly','Pidove','Fletchling','Rookidee','Pidgey'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Pilot' },
           { role:'Basic Trainer', name:'Plasma Grunt', type:'Poison', sigs:['Zubat','Trubbish','Salazzle','Gulpin','Ekans'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Plasma_Grunt' },
           { role:'Basic Trainer', name:'Plasma Grunt F', type:'Poison', sigs:['Zubat','Trubbish','Salazzle','Gulpin','Ekans'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Plasma_Grunt~F' },
-          { role:'Basic Trainer', name:'Plumeria', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Plumeria' },
+          { role:'Elite Trainer', name:'Plumeria', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Plumeria' },
           { role:'Basic Trainer', name:'Poke Kid', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Poke__0301_Kid' },
           { role:'Basic Trainer', name:'Poke Maniac', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Poke__0301_Maniac' },
           { role:'Basic Trainer', name:'Pokefan', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Poke__0301fan' },
@@ -18884,52 +19011,51 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Basic Trainer', name:'Preschooler', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Preschooler' },
           { role:'Basic Trainer', name:'Preschooler F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Preschooler~F' },
           { role:'Basic Trainer', name:'Preschoolers', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Preschoolers' },
-          { role:'Basic Trainer', name:'Proton', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Proton' },
+          { role:'Elite Trainer', name:'Proton', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Proton' },
           { role:'Basic Trainer', name:'Psychic', type:'Psychic', sigs:['Spoink','Gothita','Espurr','Abra','Drowzee'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Psychic' },
           { role:'Basic Trainer', name:'Psychic F', type:'Psychic', sigs:['Spoink','Gothita','Espurr','Abra','Drowzee'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Psychic~F' },
           { role:'Basic Trainer', name:'Psychic F JPN', type:'Psychic', sigs:['Spoink','Gothita','Espurr','Abra','Drowzee'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Psychic~F-JPN' },
           { role:'Basic Trainer', name:'Rancher', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Rancher' },
-          { role:'Basic Trainer', name:'Red Title', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Red-Title' },
-          { role:'Basic Trainer', name:'Red Title JPN', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Red-Title~JPN' },
+          { role:'Elite Trainer', name:'Red Title', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Red-Title' },
+          { role:'Elite Trainer', name:'Red Title JPN', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Red-Title~JPN' },
           { role:'Basic Trainer', name:'Reporter', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Reporter' },
           { role:'Basic Trainer', name:'Rich Boy', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Rich_Boy' },
-          { role:'Basic Trainer', name:'Riley', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Riley' },
+          { role:'Elite Trainer', name:'Riley', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Riley' },
           { role:'Basic Trainer', name:'Rising Star', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Rising_Star' },
           { role:'Basic Trainer', name:'Rising Star F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Rising_Star~F' },
           { role:'Basic Trainer', name:'Rocker', type:'Rock', sigs:['Rolycoly','Geodude','Roggenrola','Nosepass','Bonsly'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Rocker' },
-          { role:'Basic Trainer', name:'Rocket', type:'Poison', sigs:['Zubat','Trubbish','Salazzle','Gulpin','Ekans'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Rocket' },
-          { role:'Basic Trainer', name:'Rocket Executive', type:'Poison', sigs:['Zubat','Trubbish','Salazzle','Gulpin','Ekans'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Rocket_Executive' },
-          { role:'Basic Trainer', name:'Rocket Executive F', type:'Poison', sigs:['Zubat','Trubbish','Salazzle','Gulpin','Ekans'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Rocket_Executive~F' },
+          { role:'Elite Trainer', name:'Rocket', type:'Poison', sigs:['Zubat','Trubbish','Salazzle','Gulpin','Ekans'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Rocket' },
+          { role:'Elite Trainer', name:'Rocket Executive', type:'Poison', sigs:['Zubat','Trubbish','Salazzle','Gulpin','Ekans'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Rocket_Executive' },
+          { role:'Elite Trainer', name:'Rocket Executive F', type:'Poison', sigs:['Zubat','Trubbish','Salazzle','Gulpin','Ekans'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Rocket_Executive~F' },
           { role:'Basic Trainer', name:'Rocket Grunt', type:'Poison', sigs:['Zubat','Trubbish','Salazzle','Gulpin','Ekans'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Rocket_Grunt' },
           { role:'Basic Trainer', name:'Rocket Grunt F', type:'Poison', sigs:['Zubat','Trubbish','Salazzle','Gulpin','Ekans'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Rocket_Grunt~F' },
           { role:'Basic Trainer', name:'Roughneck', type:'Dark', sigs:['Maschiff','Poochyena','Purrloin','Zorua','Nickit'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Roughneck' },
           { role:'Basic Trainer', name:'Ruin Maniac', type:'Ground', sigs:['Phanpy','Trapinch','Drilbur','Silicobra','Diglett'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Ruin_Maniac' },
-          { role:'Basic Trainer', name:'Ryuki', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Ryuki' },
+          { role:'Elite Trainer', name:'Ryuki', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Ryuki' },
           { role:'Basic Trainer', name:'Sage', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Sage' },
           { role:'Basic Trainer', name:'Sage JPN', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Sage-JPN' },
           { role:'Basic Trainer', name:'Sage KOR', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Sage-KOR' },
           { role:'Basic Trainer', name:'Sailor', type:'Water', sigs:['Wooper','Marill','Lotad','Wingull','Arrokuda'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Sailor' },
           { role:'Basic Trainer', name:'Sailor JPN', type:'Water', sigs:['Wooper','Marill','Lotad','Wingull','Arrokuda'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Sailor-JPN' },
-          { role:'Basic Trainer', name:'Samson Oak', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Samson_Oak' },
-          { role:'Basic Trainer', name:'Saturn', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Saturn' },
+          { role:'Elite Trainer', name:'Samson Oak', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Samson_Oak' },
+          { role:'Elite Trainer', name:'Saturn', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Saturn' },
           { role:'Basic Trainer', name:'School Kid', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'School_Kid' },
           { role:'Basic Trainer', name:'School Kid F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'School_Kid~F' },
           { role:'Basic Trainer', name:'Schoolboy', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Schoolboy' },
           { role:'Basic Trainer', name:'Scientist', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Scientist' },
           { role:'Basic Trainer', name:'Scientist F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Scientist~F' },
-          { role:'Basic Trainer', name:'Selene', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Selene' },
-          { role:'Basic Trainer', name:'Shelly', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Shelly' },
+          { role:'Elite Trainer', name:'Selene', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Selene' },
+          { role:'Elite Trainer', name:'Shelly', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Shelly' },
           { role:'Basic Trainer', name:'Sightseer', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Sightseer' },
-          { role:'Basic Trainer', name:'Silver 2', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Silver-2' },
-          { role:'Basic Trainer', name:'Sina', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Sina' },
+          { role:'Elite Trainer', name:'Sina', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Sina' },
           { role:'Basic Trainer', name:'Sis and Bro', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Sis_and_Bro' },
           { role:'Basic Trainer', name:'Sis and Bro Beta', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Sis_and_Bro-Beta' },
           { role:'Basic Trainer', name:'Skier', type:'Ice', sigs:['Spheal','Vanillite','Snorunt','Snom','Cubchoo'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Skier' },
           { role:'Basic Trainer', name:'Skier F', type:'Ice', sigs:['Spheal','Vanillite','Snorunt','Snom','Cubchoo'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Skier~F' },
           { role:'Basic Trainer', name:'Smasher', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Smasher' },
           { role:'Basic Trainer', name:'Socialite', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Socialite' },
-          { role:'Basic Trainer', name:'Sophocles', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Sophocles' },
-          { role:'Basic Trainer', name:'Spenser', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Spenser' },
+          { role:'Elite Trainer', name:'Sophocles', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Sophocles' },
+          { role:'Elite Trainer', name:'Spenser', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Spenser' },
           { role:'Basic Trainer', name:'Sr. and Jr.', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Sr._and_Jr.' },
           { role:'Basic Trainer', name:'Striker', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Striker' },
           { role:'Basic Trainer', name:'Super Nerd', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Super_Nerd' },
@@ -18937,17 +19063,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Basic Trainer', name:'Swimmer F', type:'Water', sigs:['Wooper','Marill','Lotad','Wingull','Arrokuda'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Swimmer~F' },
           { role:'Basic Trainer', name:'Swimmer F JPN', type:'Water', sigs:['Wooper','Marill','Lotad','Wingull','Arrokuda'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Swimmer~F-JPN' },
           { role:'Basic Trainer', name:'Swimmer JPN', type:'Water', sigs:['Wooper','Marill','Lotad','Wingull','Arrokuda'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Swimmer-JPN' },
-          { role:'Basic Trainer', name:'Tabitha', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Tabitha' },
+          { role:'Elite Trainer', name:'Tabitha', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Tabitha' },
           { role:'Basic Trainer', name:'Tamer', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Tamer' },
-          { role:'Basic Trainer', name:'Tate and Liza', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Tate_and_Liza' },
+          { role:'Elite Trainer', name:'Tate and Liza', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Tate_and_Liza' },
           { role:'Basic Trainer', name:'Teacher', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Teacher' },
           { role:'Basic Trainer', name:'Team Aqua Grunt F', type:'Water', sigs:['Wooper','Marill','Lotad','Wingull','Arrokuda'], charGen:9, pkmGens:[7,8,9], spriteFile:'Team_Aqua_Grunt~F' },
           { role:'Basic Trainer', name:'Team Aqua Grunt Beta', type:'Water', sigs:['Wooper','Marill','Lotad','Wingull','Arrokuda'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Team_Aqua_Grunt-Beta' },
           { role:'Basic Trainer', name:'Team Magma Grunt F', type:'Fire', sigs:['Litleo','Vulpix','Growlithe','Slugma','Numel'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Team_Magma_Grunt~F' },
-          { role:'Basic Trainer', name:'Team Rocket', type:'Poison', sigs:['Zubat','Trubbish','Salazzle','Gulpin','Ekans'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Team_Rocket' },
+          { role:'Elite Trainer', name:'Team Rocket', type:'Poison', sigs:['Zubat','Trubbish','Salazzle','Gulpin','Ekans'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Team_Rocket' },
           { role:'Basic Trainer', name:'Team Rocket Grunt F', type:'Poison', sigs:['Zubat','Trubbish','Salazzle','Gulpin','Ekans'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Team_Rocket_Grunt~F' },
-          { role:'Basic Trainer', name:'Thorton', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Thorton' },
-          { role:'Basic Trainer', name:'Tierno', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Tierno' },
+          { role:'Elite Trainer', name:'Thorton', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Thorton' },
+          { role:'Elite Trainer', name:'Tierno', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Tierno' },
           { role:'Basic Trainer', name:'Triathlete F Biker', type:'Dark', sigs:['Maschiff','Poochyena','Purrloin','Zorua','Nickit'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Triathlete~F-Biker' },
           { role:'Basic Trainer', name:'Triathlete F Runner', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:2, pkmGens:[1,2,3,4,5,6], spriteFile:'Triathlete~F-Runner' },
           { role:'Basic Trainer', name:'Triathlete F Swimmer', type:'Water', sigs:['Wooper','Marill','Lotad','Wingull','Arrokuda'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Triathlete~F-Swimmer' },
@@ -18956,21 +19082,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Basic Trainer', name:'Triathlete Swimmer', type:'Water', sigs:['Wooper','Marill','Lotad','Wingull','Arrokuda'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Triathlete-Swimmer' },
           { role:'Basic Trainer', name:'tuber', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'tuber' },
           { role:'Basic Trainer', name:'Tuber F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Tuber~F' },
-          { role:'Basic Trainer', name:'Tucker', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Tucker' },
+          { role:'Elite Trainer', name:'Tucker', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Tucker' },
           { role:'Basic Trainer', name:'Twins', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Twins' },
           { role:'Basic Trainer', name:'Veteran', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Veteran' },
           { role:'Basic Trainer', name:'Veteran F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Veteran~F' },
           { role:'Basic Trainer', name:'Waiter', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Waiter' },
           { role:'Basic Trainer', name:'Waitress', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Waitress' },
-          { role:'Basic Trainer', name:'Wicke', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Wicke' },
+          { role:'Elite Trainer', name:'Wicke', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Wicke' },
           { role:'Basic Trainer', name:'Worker', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Worker' },
           { role:'Basic Trainer', name:'Worker Snow', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Worker-Snow' },
-          { role:'Basic Trainer', name:'Xerosic', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Xerosic' },
-          { role:'Basic Trainer', name:'Yellow', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Yellow' },
+          { role:'Elite Trainer', name:'Xerosic', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:8, pkmGens:[6,7,8,9], spriteFile:'Xerosic' },
+          { role:'Elite Trainer', name:'Yellow', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Yellow' },
           { role:'Basic Trainer', name:'Young Athlete', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Young_Athlete' },
           { role:'Basic Trainer', name:'Young Athlete F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Young_Athlete~F' },
           { role:'Basic Trainer', name:'Young Couple', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Young_Couple' },
-          { role:'Basic Trainer', name:'Zinnia', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Zinnia' },
+          { role:'Elite Trainer', name:'Zinnia', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Zinnia' },
         ];
 
         // Story events: [idx, type, event, gradeWeights{g1,g2,g3,g4}, coins, cityActions]
@@ -18978,14 +19104,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Tier aim (pool strength): Mystery > Champion ≈ Rival (League) > E4 > E3 > E2 > E1 > GL8 > … > GL1 > Rival (route) > Elite Trainer > Gym Trainer > Basic Trainer.
         // Economy: ~65 main-path battles; starting 2000G base + difficulty bonus + early-route coin taper (+15% first battle → 0% last).
         // Early route payouts set to 1400G so a few wins better cover Link G1 rerolls (4000G base).
-        // Party < 4: STORY_EASE_AUTO_SKIP_ROW_IDS trims some route trainers but pays their coin reward (see processNextEvent).
-        // Gym Trainer / Gym Leader base coins are bumped (see mod comment 2026-05) to keep economy strong vs fewer early route fights.
-        // Exactly 8 gym badges (Gym Leader 1–8 once); then Victory Road (3 Elite), League City (City9, Dept store), E1–E4, Champion, Rival, HoF.
-        // City actions: each hub has ≥2 training NPCs (tutor / rater / dojo / EV / Colress), mixed across visits; Department Store only on four hubs (see rows 19, 35, 50, 59). Poké Casino: first Dept hub (row 19) + League City (row 59).
+        // Gym Trainer / Gym Leader base coins are bumped (see mod comment 2026-05) for economy.
+        // Intro Rival after City0 (from hub); one Basic route fight before City1; eight badges; Victory Road (3 Elite); League City; E1–E4, Champion, Rival, HoF, Mystery.
+        // Rival row ids 68 / 12 / 39 are fought from the city hub (button) before Leave / Continue Route, like Gym checks.
+        // City actions: each hub has ≥2 training NPCs (tutor / rater / dojo / EV / Colress), mixed across visits; Department Store on hubs 19, 35, 50, 59. Poké Casino: row 19 + 59.
         const STORY_EVENTS_RAW = [
           [0,'City','City0',null,0,['Professor','Link Station','Pokemart','Move Tutor','Nature Rater','Leave City']],
+          [68,'Battle','Rival',{g1:0,g2:0,g3:0,g4:100},2000,null],
           [1,'Battle','Basic Trainer',{g1:0,g2:0,g3:0,g4:100},1400,null],
-          [2,'Battle','Basic Trainer',{g1:0,g2:0,g3:0,g4:100},1400,null],
           [3,'City','City1',null,0,['Professor','Link Station','Pokemart','Battle Dojo','EV Trainer','Gym Battle','Leave City']],
           [4,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:20,g4:80},1850,null],
           [5,'Battle','Gym Leader 1',{g1:0,g2:0,g3:100,g4:0},2350,null],
@@ -18995,7 +19121,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [9,'City','City2',null,0,['Professor','Link Station','Pokemart','Move Tutor','Battle Dojo','Gym Battle','Leave City']],
           [10,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:80,g4:20},2100,null],
           [11,'Battle','Gym Leader 2',{g1:0,g2:0,g3:100,g4:0},2950,null],
-          [12,'Battle','Rival',{g1:0,g2:0,g3:100,g4:0},1500,null],
           [13,'City','City2',null,0,['Professor','Link Station','Pokemart','Nature Rater','EV Trainer','Leave City']],
           [14,'Battle','Basic Trainer',{g1:0,g2:0,g3:80,g4:20},1500,null],
           [15,'Battle','Basic Trainer',{g1:0,g2:0,g3:90,g4:10},1500,null],
@@ -19003,6 +19128,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [17,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:95,g4:5},2450,null],
           [18,'Battle','Gym Leader 3',{g1:0,g2:30,g3:70,g4:0},3550,null],
           [19,'City','City3',null,0,['Professor','Link Station','Department Store','Poké Casino','Move Tutor','Battle Dojo','EV Trainer','Leave City']],
+          [12,'Battle','Rival',{g1:0,g2:0,g3:100,g4:0},3500,null],
           [20,'Battle','Basic Trainer',{g1:0,g2:10,g3:90,g4:0},1700,null],
           [21,'Battle','Basic Trainer',{g1:0,g2:15,g3:85,g4:0},1700,null],
           [22,'City','City4',null,0,['Professor','Link Station','Pokemart','Move Tutor','EV Trainer','Gym Battle','Leave City']],
@@ -19022,8 +19148,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [36,'Battle','Gym Trainer 1',{g1:0,g2:75,g3:25,g4:0},3300,null],
           [37,'Battle','Gym Trainer 2',{g1:0,g2:80,g3:20,g4:0},3300,null],
           [38,'Battle','Gym Leader 6',{g1:0,g2:90,g3:10,g4:0},5550,null],
-          [39,'Battle','Rival',{g1:5,g2:95,g3:0,g4:0},2500,null],
           [40,'City','City6',null,0,['Link Station','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
+          [39,'Battle','Rival',{g1:5,g2:95,g3:0,g4:0},5400,null],
           [41,'Battle','Basic Trainer',{g1:0,g2:100,g3:0,g4:0},2500,null],
           [42,'Battle','Elite Trainer',{g1:5,g2:95,g3:0,g4:0},2900,null],
           [43,'City','City7',null,0,['Link Station','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
@@ -19037,7 +19163,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [51,'Battle','Gym Trainer 1',{g1:15,g2:85,g3:0,g4:0},3650,null],
           [52,'Battle','Gym Trainer 2',{g1:20,g2:80,g3:0,g4:0},3650,null],
           [53,'Battle','Gym Leader 8',{g1:25,g2:75,g3:0,g4:0},5950,null],
-          [54,'Battle','Rival',{g1:30,g2:70,g3:0,g4:0},2800,null],
           [55,'City','City8',null,0,['Link Station','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
           [56,'Battle','Elite Trainer',{g1:30,g2:70,g3:0,g4:0},4200,null],
           [57,'Battle','Elite Trainer',{g1:35,g2:65,g3:0,g4:0},4800,null],
@@ -19048,13 +19173,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [62,'Battle','E3',{g1:55,g2:45,g3:0,g4:0},5000,null],
           [63,'Battle','E4',{g1:65,g2:35,g3:0,g4:0},5000,null],
           [64,'Battle','Champion',{g1:80,g2:20,g3:0,g4:0},7500,null],
-          [65,'Battle','Rival',{g1:75,g2:25,g3:0,g4:0},5000,null],
+          [65,'Battle','Rival',{g1:75,g2:25,g3:0,g4:0},7200,null],
           [66,'Hall of Fame','Hall of Fame',null,0,null],
           [67,'Battle','Mystery Figure',{g1:100,g2:0,g3:0,g4:0},12000,null],
         ];
-
-        /** While party has fewer than 4 Pokémon, these story battle row ids auto-clear with full gold (same multiplier as a win). */
-        const STORY_EASE_AUTO_SKIP_ROW_IDS = new Set([2, 8, 15, 21, 27, 34, 42, 49, 58]);
 
         const STORY_MAIN_PATH_BATTLE_COUNT = STORY_EVENTS_RAW.reduce(function (acc, row) {
             return acc + (row && row[1] === 'Battle' ? 1 : 0);
@@ -19087,13 +19209,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (diff === 'challenge') return 1.05;
             if (diff === 'hardcore') return 1.30;
             return 1;
-        }
-        function storyGrantEaseSkipBattleCoins(ev) {
-            const [, , , , coins] = ev;
-            let coinMult = storyDifficultyCoinMult();
-            if ((sm.artifacts || []).includes('cursedCoinPouch') && !(sm.artifactsDisabled || []).includes('cursedCoinPouch')) coinMult *= 2;
-            coinMult *= storyProgressCoinMultForEventIndex(sm.eventIndex);
-            return Math.floor((coins || 0) * coinMult);
         }
 
         // Professor grade rolls per city (0-based city index)
@@ -19177,14 +19292,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Olympia':          'Anistar City',
             'Piers':            'Spikemuth',
             'Tulip':            'Alfornada',
-            // Gym Leader 8
-            'Brock (Elite)':    'Pewter City',
-            'Misty (Elite)':    'Cerulean City',
-            'Erika (Elite)':    'Celadon City',
-            'Sabrina (Elite)':  'Saffron City',
-            'Blaine (Elite)':   'Cinnabar Island',
-            'Koga (Elite)':     'Fuchsia City',
-            'Giovanni (Gym)':   'Viridian City',
+            // Gym Leader 8 (Kanto rematch leaders share city keys with GL1–7 above)
+            'Giovanni':         'Viridian City',
             'Clair':            'Blackthorn City',
             'Wallace':          'Sootopolis City',
             'Volkner':          'Sunyshore City',
@@ -19382,9 +19491,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           'Youngster':'Youngster','Bug Catcher':'Bug_Catcher','Lass':'Lass','Hiker':'Hiker',
           'Fisherman':'Fisherman','Hex Maniac':'Hex_Maniac','Black Belt':'Blackbelt','Bird Keeper':'Bird_Keeper',
           'Dragon Tamer':'Dragon_Tamer',
-          'Blue (Rival)':'Blue','Silver (Rival)':'Silver','Wally (Rival)':'Wally','Barry (Rival)':'Barry',
-          'N (Rival)':'N','Gladion (Rival)':'Gladion','Hop (Rival)':'Barry','Marnie (Rival)':'Gladion',
-          'Nemona (Rival)':'May','Giovanni':'Giovanni','Cyrus':'Cyrus','Ghetsis':'Ghetsis','Guzma':'Guzma',
+          'Hop':'Barry','Marnie':'Gladion','Nemona':'May','Giovanni':'Giovanni','Cyrus':'Cyrus','Ghetsis':'Ghetsis','Guzma':'Guzma',
           'Brock':'Brock','Misty':'Misty','Lt. Surge':'Lt._Surge','Erika':'Erika','Koga':'Koga',
           'Sabrina':'Sabrina','Blaine':'Blaine','Falkner':'Falkner','Bugsy':'Bugsy','Whitney':'Whitney',
           'Morty':'Morty','Chuck':'Chuck','Jasmine':'Jasmine','Pryce':'Pryce','Clair':'Clair',
@@ -19393,7 +19500,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           'Roark':'Roark','Gardenia':'Gardenia','Maylene':'Maylene','Crasher Wake':'Crasher_Wake',
           'Fantina':'Fantina','Byron':'Byron','Candice':'Candice','Volkner':'Volkner',
           'Cilan':'Cilan','Chili':'Chili','Cress':'Cress','Lenora':'Lenora','Burgh':'Burgh','Elesa':'Elesa',
-          'Clay':'Clay','Skyla':'Skyla','Brycen':'Brycen','Drayden':'Drayden','Iris (Gym)':'Iris',
+          'Clay':'Clay','Skyla':'Skyla','Brycen':'Brycen','Drayden':'Drayden',
           'Viola':'Viola','Grant':'Hiker','Korrina':'Korrina','Ramos':'Ramos','Clemont':'Clemont',
           'Valerie':'Valerie','Olympia':'Olympia','Wulfric':'Wulfric',
           'Milo':'Gardenia','Nessa':'Swimmer','Kabu':'Firebreather','Bea':'Blackbelt','Allister':'Hex_Maniac','Opal':'Beauty',
@@ -19408,9 +19515,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           'Wikstrom':'Wikstrom','Drasna':'Drasna','Diantha':'Battle_Girl','Hala':'Hala','Olivia':'Olivia',
           'Acerola':'Acerola','Kahili':'Kahili','Prof. Kukui':'Kukui','Rika':'Ace_Trainer','Poppy':'Lass',
           'Hassel':'Dragon_Tamer','Geeta':'Cynthia','Leon':'Blue-Champion',
-          'Giovanni (Gym)':'Giovanni',
-          'Brock (Elite)':'Brock','Misty (Elite)':'Misty','Erika (Elite)':'Erika','Sabrina (Elite)':'Sabrina',
-          'Blaine (Elite)':'Blaine','Koga (Elite)':'Koga',
           'Team Galactic Grunt':'Galactic_Grunt','Team Plasma Grunt':'Plasma_Grunt','Team Flare Grunt':'Firebreather','Team Skull Grunt':'Roughneck',
         };
         function getTrainerSprite(nameOrTrainer) {
@@ -19429,34 +19533,57 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _storyTrainerBaseName(name) {
             return String(name||'').replace(/\s*\([^)]*\)\s*/g, '').replace(/\s+Rival\s*$/i,'').trim();
         }
-        /** Story `STORY_EVENTS_RAW` row ids for the four fixed Rival battles (same trainer + sprite for the run). League rival row must match STORY_LEAGUE_RIVAL_ROW below. */
+        /** Story `STORY_EVENTS_RAW` row ids for the fixed Rival battles (same trainer + sprite for the run). League rival row must match STORY_LEAGUE_RIVAL_ROW below. */
+        const STORY_RIVAL_ROW_INTRO = 68;
         const STORY_RIVAL_ROW_EARLY = 12;
         const STORY_RIVAL_ROW_MID = 39;
-        const STORY_RIVAL_ROW_LATE = 54;
         const STORY_RIVAL_ROW_LEAGUE = 65;
         function getRivalEncounterPhase(storyRowIdx) {
             const id = storyRowIdx | 0;
-            if (id === STORY_RIVAL_ROW_EARLY) return 1;
+            if (id === STORY_RIVAL_ROW_INTRO) return 0;
+            if (id === STORY_RIVAL_ROW_EARLY) return 2;
             if (id === STORY_RIVAL_ROW_MID) return 2;
-            if (id === STORY_RIVAL_ROW_LATE) return 3;
             if (id === STORY_RIVAL_ROW_LEAGUE) return 4;
             return null;
         }
+        /** First `Battle` row strictly after this `STORY_EVENTS_RAW` array index (for hub → next fight checks). */
+        function storyFirstBattleIndexAfter(ei) {
+            const cap = STORY_EVENTS_RAW.length;
+            for (let i = Math.max(0, (ei | 0) + 1); i < cap; i++) {
+                if (STORY_EVENTS_RAW[i][1] === 'Battle') return i;
+            }
+            return -1;
+        }
         /** Progression-aware lines (mixed with character quotes). Sprite may differ from canon — wording stays in-universe. */
         const RIVAL_PROGRESS_PRIMARY_QUOTES = {
+            0: ['You got your first partner? Good. Battle me before you leave town.','No route yet. First, prove that starter can stand up to mine.','Professor gave you a Pokemon. I brought a challenge.'],
             1: ['Early routes were practice—this is the real check.','Two badges already? Cute. Let me stress-test your team.','First rival clash: I memorized your strengths since we started.'],
             2: ['Half the gyms down—thought you\'d slow down. You didn\'t. Good.','Mid-game reality check: my roster\'s different than last time.','Six badges… okay. You\'re serious. So am I.'],
             3: ['Eight badges. League breath on our necks—no holding back.','Full badge case—time to see if your team holds together.','Elite Four prep starts with surviving me.'],
             4: ['You wear the crown now—I\'m still your rival.','Champion means nothing if you slack against me.','Hall of Fame… then right back to proving it against me.'],
         };
+        function rivalStandingPrimaryQuotePool(phase) {
+            const last = sm && sm.rivalLastWinner;
+            const rivalChamp = !!(sm && sm.rivalChampionClaimed);
+            if (last === 'rival') {
+                if (rivalChamp && phase === 4) return ['I took the Champion claim last time. Try taking it back.','Hall of Fame can write both names, but everyone knows who won our crown match.'];
+                return ['Last time, you admitted I was better. Ready to argue with a battle?','You moved on because I let you. This time, earn it.','That title of better trainer still sits with me.'];
+            }
+            if (last === 'player') {
+                if (phase === 4) return ['You beat me for the crown. I am here to drag that title back.','Champion or not, I only need one win to change the story.'];
+                return ['You took the last one. I trained for the rematch.','Enjoy being the better trainer while it lasts.','Last battle was yours. This one is mine to steal.'];
+            }
+            return [];
+        }
         function mergeRivalQuotePools(trainerName, phase) {
             const nm = String(trainerName || '');
             const byKey = nm && TRAINER_QUOTES_BY_NAME[nm];
             const base = nm && TRAINER_QUOTES_BY_NAME[_storyTrainerBaseName(nm)];
             const charPool = (byKey && byKey.length) ? byKey.slice() : (base && base.length ? base.slice() : []);
-            const prog = (phase && RIVAL_PROGRESS_PRIMARY_QUOTES[phase]) ? RIVAL_PROGRESS_PRIMARY_QUOTES[phase].slice() : [];
+            const prog = (phase !== null && phase !== undefined && RIVAL_PROGRESS_PRIMARY_QUOTES[phase]) ? RIVAL_PROGRESS_PRIMARY_QUOTES[phase].slice() : [];
             const generic = (TRAINER_QUOTES['Rival'] || []).slice();
-            const merged = prog.concat(charPool).concat(generic);
+            const standing = rivalStandingPrimaryQuotePool(phase);
+            const merged = standing.concat(prog).concat(charPool).concat(generic);
             return merged.length ? merged : generic;
         }
 
@@ -19475,15 +19602,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
         // Optional per-name lines (Game Boy–style). Key = trainer.name (see TRAINER_DATA).
         const TRAINER_QUOTES_BY_NAME = {
-          'Blue (Rival)': ['Smell ya later… if you can win!','Gramps was right—you\'re not half bad!','I\'m the real deal!'],
-          'Silver (Rival)': ['…Get out of my way.','I don\'t need weaklings.','I\'ll show you real strength!'],
-          'Wally (Rival)': ['I believe in my Pokémon!','…I\'ve grown since we last met!','Please—battle with everything you have!'],
-          'Barry (Rival)': ['I\'m fining you… this battle!','Wait, I\'m not waiting!','You\'re my obstacle!'],
-          'N (Rival)': ['…What is your truth?','Pokémon deserve better than this.','I will test your conviction!'],
-          'Gladion (Rival)': ['…I have to win.','Stay out of my way!','Silvally—let\'s go!'],
-          'Hop (Rival)': ['Mate! This is it!','I\'m not the little brother anymore!','Leon\'s not here—it\'s just us!'],
-          'Marnie (Rival)': ['…Let\'s make this loud.','Team Yell\'s got my back—in spirit!','Don\'t hold back. I won\'t.'],
-          'Nemona (Rival)': ['Battle time! Full power!','I\'ve been itching for this!','Let\'s go all out!'],
+          'Blue': ['Smell ya later… if you can win!','Gramps was right—you\'re not half bad!','I\'m the real deal!'],
+          'Silver': ['…Get out of my way.','I don\'t need weaklings.','I\'ll show you real strength!'],
+          'Wally': ['I believe in my Pokémon!','…I\'ve grown since we last met!','Please—battle with everything you have!'],
+          'Barry': ['I\'m fining you… this battle!','Wait, I\'m not waiting!','You\'re my obstacle!'],
+          'N': ['…What is your truth?','Pokémon deserve better than this.','I will test your conviction!'],
+          'Gladion': ['…I have to win.','Stay out of my way!','Silvally—let\'s go!'],
+          'Hop': ['Mate! This is it!','I\'m not the little brother anymore!','Leon\'s not here—it\'s just us!'],
+          'Marnie': ['…Let\'s make this loud.','Team Yell\'s got my back—in spirit!','Don\'t hold back. I won\'t.'],
+          'Nemona': ['Battle time! Full power!','I\'ve been itching for this!','Let\'s go all out!'],
           'Ethan': ['Johto\'s watching—don\'t embarrass either of us!','Still walking tall? Keep up with me!','Typhlosion-level heat—or we lose together.'],
           'Lyra': ['I practiced extra after last time!','Let\'s make this one count!','Same journey, different outcome—maybe!'],
           'May': ['Hoenn\'s tough—so am I!','Contest polish or battle grit—pick your poison!','You\'re not the only one improving out here!'],
@@ -19499,6 +19626,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           'Cynthia': ['…Let\'s enjoy this battle.','Garchomp and I won\'t disappoint!','The Champion\'s mantle is heavy—feel it!'],
           'Steven Stone': ['Steel and resolve—both unbreakable.','I collect rare stones… and victories.','Meteor falls—so will you if you slack!'],
           'Leon': ['Let\'s have a champion time!','Charizard—time to shine!','This is what it means to be unbeatable!'],
+          'Red': ['…','………………','…Don\'t need words.'],
         };
         function getTrainerQuote(role) {
             const pool = TRAINER_QUOTES[role] || TRAINER_QUOTES['Basic Trainer'];
@@ -19510,14 +19638,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const nm = trainer && trainer.name ? String(trainer.name) : '';
             if (quoteRole === 'Rival' && storyBattleRowIdx != null && storyBattleRowIdx !== undefined) {
                 const phase = getRivalEncounterPhase(storyBattleRowIdx);
-                if (phase) {
+                if (phase !== null && phase !== undefined) {
                     const pool = mergeRivalQuotePools(nm, phase);
                     return pool[Math.floor(rng() * pool.length)];
                 }
             }
-            const byKey = nm && TRAINER_QUOTES_BY_NAME[nm];
+            const skipNameQuotes = quoteRole === 'Champion' && trainer && trainer.role === 'Champion' && nm === 'Blue';
+            const byKey = !skipNameQuotes && nm && TRAINER_QUOTES_BY_NAME[nm];
             if (byKey && byKey.length) return byKey[Math.floor(rng() * byKey.length)];
-            const base = nm && TRAINER_QUOTES_BY_NAME[_storyTrainerBaseName(nm)];
+            const base = !skipNameQuotes && nm && TRAINER_QUOTES_BY_NAME[_storyTrainerBaseName(nm)];
             if (base && base.length) return base[Math.floor(rng() * base.length)];
             if (trainer && Array.isArray(trainer.introQuotes) && trainer.introQuotes.length)
                 return trainer.introQuotes[Math.floor(rng() * trainer.introQuotes.length)];
@@ -19528,6 +19657,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function pickRivalSecondaryIntroLine(phase, badges) {
             const b = Math.max(0, badges | 0);
             const pools = {
+                0: ['No route badges, no excuses. Starter versus starter energy.', 'First step out of town goes through me.', 'Professor gave us partners. Now we decide who leads.'],
                 1: [`${b} badge${b === 1 ? '' : 's'} on your case—I built typings around what you run.`, 'Route two of our rivalry: counters incoming.', 'Fresh badges won\'t save lazy switches.'],
                 2: [`${b} badges deep—I studied your last fights anyway.`, 'Mid-game checkpoint: same rival, sharper toolkit.', 'You escalated—so did my bench.'],
                 3: [`Full badge slate—${b}/8 means League eyes on both of us.`, 'Last dance before Victory Road… make it sting.', 'Elite tier starts when this bell rings.'],
@@ -19535,6 +19665,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
             const arr = pools[phase] || pools[1];
             const copy = arr.slice();
+            if (sm && sm.rivalLastWinner === 'rival') {
+                copy.push(sm.rivalChampionClaimed ? 'I am carrying the Champion bragging rights until you take them back.' : 'Last result says I am better. Want to rewrite it?');
+            } else if (sm && sm.rivalLastWinner === 'player') {
+                copy.push('You own the last win. I only need this one to flip the story.');
+            }
             copy.push(`You've earned ${b} badge${b === 1 ? '' : 's'}—I'm still not backing down.`);
             return copy[Math.floor(Math.random() * copy.length)];
         }
@@ -19639,6 +19774,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const u = shopType === 'dept' ? m.shopDept : m.shopMart;
             applyStoryBgLayer(document.getElementById('story-shop-bg-layer'), u || '');
         }
+        function syncStoryArtifactShopBackground() {
+            const m = getStoryBgManifest();
+            const u = m.shopDept || m.shopMart;
+            applyStoryBgLayer(document.getElementById('story-artifact-shop-bg-layer'), u || '');
+        }
         function syncStoryLinkBackground() {
             applyStoryBgLayer(document.getElementById('story-link-bg-layer'), getStoryBgManifest().linkStation || '');
         }
@@ -19728,7 +19868,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── STATE ─────────────────────────────────────────────────────────
         const SAVE_KEY = 'pbs_story_save';
         const STORY_MENU_DEFAULTS_KEY = 'pbs_story_run_menu_defaults';
-        const SAVE_VER = 8;
+        const SAVE_VER = 14;
         /** v8: eight filler Basic Trainer rows removed from `STORY_EVENTS_RAW` — remap saved indices from v7 and below. */
         const STORY_TIMELINE_REMOVED_ROW_IDS_PRE_V8 = new Set([3, 8, 16, 23, 30, 38, 47, 55]);
         function migrateStoryRowIdPreV8ToCurrent(oldId) {
@@ -19745,7 +19885,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const maxI = Math.max(0, STORY_EVENTS_RAW.length - 1);
             function clamp(i) { return Math.min(Math.max(0, i | 0), maxI); }
             if (typeof sm.eventIndex === 'number') sm.eventIndex = clamp(migrateStoryRowIdPreV8ToCurrent(sm.eventIndex));
-            if (sm.deferredEarlyRivalPos != null) sm.deferredEarlyRivalPos = clamp(migrateStoryRowIdPreV8ToCurrent(sm.deferredEarlyRivalPos | 0));
             if (sm.currentEnemyLock && sm.currentEnemyLock.eventIdx != null) {
                 sm.currentEnemyLock.eventIdx = clamp(migrateStoryRowIdPreV8ToCurrent(sm.currentEnemyLock.eventIdx | 0));
             }
@@ -19758,18 +19897,149 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.trainerAssignments = next;
             }
         }
+        /** v10: rival trainer display names no longer use a "(Rival)" suffix — remap saved assignments. */
+        const STORY_TRAINER_NAME_MIGRATE_PRE_V10 = {
+            'Blue (Rival)': 'Blue', 'Silver (Rival)': 'Silver', 'Wally (Rival)': 'Wally', 'Barry (Rival)': 'Barry',
+            'N (Rival)': 'N', 'Gladion (Rival)': 'Gladion', 'Hop (Rival)': 'Hop', 'Marnie (Rival)': 'Marnie', 'Nemona (Rival)': 'Nemona'
+        };
+        function migrateStoryTrainerDisplayNamesPreV10() {
+            if (!sm.trainerAssignments || typeof sm.trainerAssignments !== 'object') return;
+            for (const k of Object.keys(sm.trainerAssignments)) {
+                const v = sm.trainerAssignments[k];
+                if (typeof v !== 'string') continue;
+                const nv = STORY_TRAINER_NAME_MIGRATE_PRE_V10[v];
+                if (nv) sm.trainerAssignments[k] = nv;
+            }
+        }
+        /** v11: gym / sprite suffix names → plain trainer names (matches `TRAINER_DATA`). */
+        const STORY_TRAINER_LEGACY_NAMES_PRE_V11 = {
+            'Brock (Elite)': 'Brock', 'Misty (Elite)': 'Misty', 'Erika (Elite)': 'Erika', 'Sabrina (Elite)': 'Sabrina',
+            'Blaine (Elite)': 'Blaine', 'Koga (Elite)': 'Koga', 'Giovanni (Gym)': 'Giovanni',             'Lt. Surge (2)': 'Lt. Surge'
+        };
+        function migrateStoryTrainerLegacyNamesPreV11() {
+            if (!sm.trainerAssignments || typeof sm.trainerAssignments !== 'object') return;
+            for (const k of Object.keys(sm.trainerAssignments)) {
+                const v = sm.trainerAssignments[k];
+                if (typeof v !== 'string') continue;
+                const nv = STORY_TRAINER_LEGACY_NAMES_PRE_V11[v];
+                if (nv) sm.trainerAssignments[k] = nv;
+            }
+        }
+        /** v13: relic offers moved to `artifactShopOffersByCity` (3 slots); optional copy from legacy `deptArtifactOffersByCity`. */
+        function migrateStoryArtifactShopPreV13() {
+            if (!sm.artifactShopOffersByCity || typeof sm.artifactShopOffersByCity !== 'object') sm.artifactShopOffersByCity = {};
+            if (typeof sm.artifactFreeClaimUsed !== 'boolean') sm.artifactFreeClaimUsed = false;
+            const deptOld = sm.deptArtifactOffersByCity;
+            if (!deptOld || typeof deptOld !== 'object') return;
+            const allIds = new Set(ALL_ARTIFACTS.map(a => a.id));
+            const owned = new Set(sm.artifacts || []);
+            for (const key of Object.keys(deptOld)) {
+                const cur = sm.artifactShopOffersByCity[key];
+                if (Array.isArray(cur) && cur.length) continue;
+                const arr = deptOld[key];
+                if (!Array.isArray(arr) || !arr.length) continue;
+                const seen = new Set();
+                const migrated = [];
+                for (const id of arr) {
+                    if (migrated.length >= 3) break;
+                    if (!allIds.has(id) || owned.has(id) || seen.has(id)) continue;
+                    seen.add(id);
+                    migrated.push(id);
+                }
+                if (migrated.length) sm.artifactShopOffersByCity[key] = migrated;
+            }
+        }
+        /** v12: Giovanni no longer appears in story Elite Trainer pool — reassign saved Elite rows that still point at him. */
+        function migrateStoryTrainerAssignmentsPreV12() {
+            if (!sm.trainerAssignments || typeof sm.trainerAssignments !== 'object') return;
+            for (const k of Object.keys(sm.trainerAssignments)) {
+                const v = sm.trainerAssignments[k];
+                if (v !== 'Giovanni') continue;
+                const rowId = parseInt(k, 10) || 0;
+                const row = STORY_EVENTS_RAW.find(r => r && (r[0] | 0) === rowId);
+                if (row && row[1] === 'Battle' && String(row[2] || '') === 'Elite Trainer') {
+                    sm.trainerAssignments[k] = 'Cyrus';
+                }
+            }
+        }
+        /** v14: merged duplicate trainer rows; Red is Champion only; story Elites exclude rivals — remap old assignment names. */
+        function migrateStoryTrainerAssignmentsPreV14() {
+            if (!sm.trainerAssignments || typeof sm.trainerAssignments !== 'object') return;
+            const eliteFix = 'Cyrus';
+            for (const k of Object.keys(sm.trainerAssignments)) {
+                const v = sm.trainerAssignments[k];
+                if (typeof v !== 'string') continue;
+                const rowId = parseInt(k, 10) || 0;
+                const row = STORY_EVENTS_RAW.find(r => r && (r[0] | 0) === rowId);
+                const ev = row && row[1] === 'Battle' ? String(row[2] || '') : '';
+                if (v === 'Blue Champion') {
+                    sm.trainerAssignments[k] = ev === 'Champion' ? 'Blue' : eliteFix;
+                    continue;
+                }
+                if (v === 'Red' && ev === 'Elite Trainer') {
+                    sm.trainerAssignments[k] = eliteFix;
+                    continue;
+                }
+                if (v === 'Blue 2') {
+                    sm.trainerAssignments[k] = (ev === 'Rival' || ev === 'Champion') ? 'Blue' : eliteFix;
+                    continue;
+                }
+                if (v === 'Silver 2') {
+                    sm.trainerAssignments[k] = ev === 'Rival' ? 'Silver' : eliteFix;
+                    continue;
+                }
+                if (v === 'Gladion 2') {
+                    sm.trainerAssignments[k] = ev === 'Rival' ? 'Gladion' : eliteFix;
+                    continue;
+                }
+                if (v === 'Lt. Surge 2') {
+                    sm.trainerAssignments[k] = ev === 'Gym Leader 3' ? 'Lt. Surge' : eliteFix;
+                    continue;
+                }
+            }
+        }
+        /** v9: intro Rival inserted after City0, so timeline positions after City0 move forward one slot. */
+        function migrateStoryTimelineIndicesFromPreV9() {
+            const maxI = Math.max(0, STORY_EVENTS_RAW.length - 1);
+            function shift(i) {
+                const n = Math.max(0, i | 0);
+                return Math.min(n >= 1 ? n + 1 : n, maxI);
+            }
+            if (typeof sm.eventIndex === 'number') sm.eventIndex = shift(sm.eventIndex);
+            if (sm.currentEnemyLock && sm.currentEnemyLock.eventIdx != null) {
+                sm.currentEnemyLock.eventIdx = shift(sm.currentEnemyLock.eventIdx | 0);
+            }
+        }
         let sm = { active:false, eventIndex:0, badges:0, gold:2000, team:[],
                    inventory:{}, artifacts:[], activeArtifactType:null,
                    trainerAssignments:{}, currentTrainerData:null,
                    settings:{ minGen:1, maxGen:9, enabledGens:[1,2,3,4,5,6,7,8,9], megaOn:false, zOn:false, dynaOn:false, teraOn:false, classicMode:true },
                    gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{}, currentEnemyLock:null,
                    artifactsDisabled:[], storyCityVisit:null,
+                   artifactShopOffersByCity:{}, artifactFreeClaimUsed:false,
                    storyDifficulty:'normal', runSeed:null,
                    storyMilestoneTips:{ m4:false, m8:false },
                    storyRetryInventorySnapshot: null,
                    runRivalSpriteFile: null,
-                   deferredEarlyRivalPos: null,
+                   rivalLastWinner: 'none',
+                   rivalStanding: 'undecided',
+                   rivalChampionClaimed: false,
                    version:SAVE_VER };
+
+        function normalizeRivalStandingState() {
+            const last = sm.rivalLastWinner;
+            if (last !== 'player' && last !== 'rival') sm.rivalLastWinner = 'none';
+            if (sm.rivalStanding !== 'player' && sm.rivalStanding !== 'rival') sm.rivalStanding = 'undecided';
+            sm.rivalChampionClaimed = sm.rivalChampionClaimed === true;
+        }
+
+        function setRivalStanding(winner, storyRowIdx) {
+            const w = winner === 'rival' ? 'rival' : winner === 'player' ? 'player' : 'none';
+            sm.rivalLastWinner = w;
+            sm.rivalStanding = w === 'none' ? 'undecided' : w;
+            const isLeagueRival = (storyRowIdx | 0) === STORY_RIVAL_ROW_LEAGUE;
+            if (isLeagueRival) sm.rivalChampionClaimed = w === 'rival';
+        }
 
         function normalizeStoryRivalLock() {
             try {
@@ -19778,11 +20048,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (ev[1] === 'Battle' && ev[2] === 'Rival') rivalIds.push(ev[0]);
                 }
                 if (!rivalIds.length || !sm.trainerAssignments || typeof sm.trainerAssignments !== 'object') return;
-                const canon = sm.trainerAssignments[rivalIds[0]];
+                let canon = sm.trainerAssignments[rivalIds[0]];
+                if (!canon) {
+                    for (const id of rivalIds) {
+                        if (sm.trainerAssignments[id]) { canon = sm.trainerAssignments[id]; break; }
+                    }
+                }
                 if (!canon) return;
-                for (let i = 1; i < rivalIds.length; i++) sm.trainerAssignments[rivalIds[i]] = canon;
+                for (let i = 0; i < rivalIds.length; i++) sm.trainerAssignments[rivalIds[i]] = canon;
                 if (sm.runRivalSpriteFile == null || sm.runRivalSpriteFile === '') {
-                    const td = TRAINER_DATA.find(t => t.name === canon);
+                    const td = findTrainerDataByName(canon, 'Rival');
                     if (td && td.spriteFile) sm.runRivalSpriteFile = td.spriteFile;
                 }
             } catch (e) {}
@@ -19863,6 +20138,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!('currentEnemyLock' in sm)) sm.currentEnemyLock = null;
                 if (!('storyCityVisit' in sm)) sm.storyCityVisit = null;
                 if (!sm.deptArtifactOffersByCity || typeof sm.deptArtifactOffersByCity !== 'object') sm.deptArtifactOffersByCity = {};
+                if (!sm.artifactShopOffersByCity || typeof sm.artifactShopOffersByCity !== 'object') sm.artifactShopOffersByCity = {};
+                if (typeof sm.artifactFreeClaimUsed !== 'boolean') sm.artifactFreeClaimUsed = false;
                 if (!sm.deptArtifactTypesByCity || typeof sm.deptArtifactTypesByCity !== 'object') sm.deptArtifactTypesByCity = {};
                 if (!sm.artifactTypeById || typeof sm.artifactTypeById !== 'object') sm.artifactTypeById = {};
                 if (!sm.deptItemOffersByCity || typeof sm.deptItemOffersByCity !== 'object') sm.deptItemOffersByCity = {};
@@ -19884,16 +20161,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (sm.settings && typeof sm.settings.classicMode !== 'boolean') sm.settings.classicMode = true;
                 if (!('storyRetryInventorySnapshot' in sm)) sm.storyRetryInventorySnapshot = null;
-                if (!('deferredEarlyRivalPos' in sm)) sm.deferredEarlyRivalPos = null;
+                try { delete sm.deferredEarlyRivalPos; } catch (e) {}
+                if (!('rivalLastWinner' in sm)) sm.rivalLastWinner = 'none';
+                if (!('rivalStanding' in sm)) sm.rivalStanding = 'undecided';
+                if (!('rivalChampionClaimed' in sm)) sm.rivalChampionClaimed = false;
                 const _loadedVer = d.version | 0;
                 if (_loadedVer < 8) {
                     try { migrateStoryTimelineIndicesFromPreV8(); } catch (e) { console.warn('[Story] timeline migrate', e); }
+                }
+                if (_loadedVer < 9) {
+                    try { migrateStoryTimelineIndicesFromPreV9(); } catch (e) { console.warn('[Story] intro rival migrate', e); }
+                }
+                if (_loadedVer < 10) {
+                    try { migrateStoryTrainerDisplayNamesPreV10(); } catch (e) { console.warn('[Story] trainer name migrate', e); }
+                }
+                if (_loadedVer < 11) {
+                    try { migrateStoryTrainerLegacyNamesPreV11(); } catch (e) { console.warn('[Story] trainer legacy names v11', e); }
+                }
+                if (_loadedVer < 12) {
+                    try { migrateStoryTrainerAssignmentsPreV12(); } catch (e) { console.warn('[Story] trainer assignments v12', e); }
+                }
+                if (_loadedVer < 13) {
+                    try { migrateStoryArtifactShopPreV13(); } catch (e) { console.warn('[Story] relic shop v13', e); }
+                    try { migrateStoryTrainerAssignmentsPreV14(); } catch (e) { console.warn('[Story] trainer assignments v14', e); }
                 }
                 const _cap = Math.max(0, STORY_EVENTS_RAW.length - 1);
                 if (sm.eventIndex < 0 || sm.eventIndex > _cap) {
                     console.warn('[Story] eventIndex out of range — clamping', sm.eventIndex, '→', _cap);
                     sm.eventIndex = _cap;
                 }
+                normalizeRivalStandingState();
                 normalizeStoryRivalLock();
                 return true;
             } catch(e) { return false; }
@@ -20417,6 +20714,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Rival: score offensive typings vs your party, weighted-roll STAB types with heavy decay after each pick (÷70), then normal grade % for species.
             if (String(battleEventType) === 'Rival' && sm && Array.isArray(sm.team) && sm.team.length > 0) {
+                if ((storyRowIdx | 0) === STORY_RIVAL_ROW_INTRO) S = [];
                 const typeWeights = _rivalInitMutableTypeWeights();
                 function pickFromUnionPlain(usedNames) {
                     const all = [...T[1], ...T[2], ...T[3], ...T[4]].filter((n) => !usedNames.has(n));
@@ -20626,6 +20924,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── TRAINER SELECTION ─────────────────────────────────────────────
+        /** Resolve `TRAINER_DATA` when multiple rows share the same display `name` (e.g. Larry Gym vs E4, Lance, Blue rival vs Champion). */
+        function findTrainerDataByName(name, eventName) {
+            if (!name) return null;
+            const n = String(name);
+            const ev = String(eventName || '');
+            if (ev === 'Champion') {
+                const r = TRAINER_DATA.find(t => t.name === n && t.role === 'Champion');
+                if (r) return r;
+            } else if (ev === 'Rival') {
+                const r = TRAINER_DATA.find(t => t.name === n && t.isRival);
+                if (r) return r;
+            } else {
+                const m = ev.match(/^(E[1-4]|Gym Leader [1-8])$/);
+                if (m) {
+                    const r = TRAINER_DATA.find(t => t.name === n && t.role === ev);
+                    if (r) return r;
+                } else if (ev === 'Elite Trainer') {
+                    return TRAINER_DATA.find(t => t.name === n && t.role === 'Elite Trainer') || null;
+                } else if (ev === 'Basic Trainer' || ev === 'Gym Trainer' || ev === 'Gym Trainer 1' || ev === 'Gym Trainer 2') {
+                    const r = TRAINER_DATA.find(t => t.name === n && t.role === 'Basic Trainer');
+                    if (r) return r;
+                    const ex = TRAINER_DATA.find(t => t.name === n && t.role === 'Elite Trainer');
+                    if (ex) return ex;
+                }
+            }
+            return TRAINER_DATA.find(t => t.name === n) || null;
+        }
         function _baseTrainerName(name) {
             return _storyTrainerBaseName(name);
         }
@@ -20742,7 +21067,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 artifacts:[], activeArtifactType:null, trainerAssignments:{}, currentTrainerData:null,
                 profUsed:{}, usedTrainerNames:[], gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{},
                 currentEnemyLock:null, artifactsDisabled:[],
-                deptArtifactOffersByCity:{}, deptArtifactTypesByCity:{}, artifactTypeById:{}, deptItemOffersByCity:{},
+                deptArtifactOffersByCity:{}, artifactShopOffersByCity:{}, artifactFreeClaimUsed:false,
+                deptArtifactTypesByCity:{}, artifactTypeById:{}, deptItemOffersByCity:{},
                 settings:{ enabledGens, minGen, maxGen,
                     megaOn: document.getElementById('story-mech-mega')?.checked||false,
                     zOn:    document.getElementById('story-mech-z')?.checked||false,
@@ -20758,7 +21084,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 storyMilestoneTips: { m4: false, m8: false },
                 storyRetryInventorySnapshot: null,
                 runRivalSpriteFile: null,
-                deferredEarlyRivalPos: null,
+                rivalLastWinner: 'none',
+                rivalStanding: 'undecided',
+                rivalChampionClaimed: false,
             };
             sm._strngState = null;
             _storyBattleInventorySnapshot = null;
@@ -20807,20 +21135,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (type === 'City') { enterCity(); return; }
             if (type === 'Hall of Fame') { showHallOfFame(); return; }
             if (type === 'Battle') {
-                if ((idx | 0) === STORY_RIVAL_ROW_EARLY && event === 'Rival' && sm.team.length < 4) {
-                    sm.deferredEarlyRivalPos = sm.eventIndex;
-                    sm.eventIndex++;
-                    save();
-                    processNextEvent();
-                    return;
-                }
-                if (STORY_EASE_AUTO_SKIP_ROW_IDS.has(idx | 0) && sm.team.length < 4) {
-                    sm.gold += storyGrantEaseSkipBattleCoins(ev);
-                    sm.eventIndex++;
-                    save();
-                    processNextEvent();
-                    return;
-                }
                 enterBattleEvent(ev);
                 return;
             }
@@ -20845,7 +21159,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _pendingProfCityIdx = null;
             sm.active = true;
             sm.version = SAVE_VER;
-            sm.eventIndex = 55;
+            sm.eventIndex = STORY_EVENTS_RAW.findIndex(row => row && row[0] === 55);
+            if (sm.eventIndex < 0) sm.eventIndex = 56;
             sm.badges = 8;
             if (sm.runSeed == null || sm.runSeed === undefined) sm.runSeed = 0xDEADBEEF;
             sm._strngState = null;
@@ -20881,7 +21196,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.version = SAVE_VER;
             if (sm.runSeed == null || sm.runSeed === undefined) sm.runSeed = 0x7E574D45;
             sm._strngState = null;
-            sm.eventIndex = 40;
+            sm.eventIndex = STORY_EVENTS_RAW.findIndex(row => row && row[0] === 40);
+            if (sm.eventIndex < 0) sm.eventIndex = 41;
             sm.badges = 6;
             sm.gold = 50000;
             sm.storyDifficulty = sm.storyDifficulty || 'normal';
@@ -20928,7 +21244,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.gymCleared[6] = true;
             save();
             enterCity();
-            console.log('[testmega] Seeded City6 (hub array index 40). Use "Colress — Awaken battle mechanics" — 10,000G per swap. Global mechanics synced from run flags.');
+            console.log('[testmega] Seeded City6. Use "Colress — Awaken battle mechanics" — 10,000G per swap. Global mechanics synced from run flags.');
         }
 
         /** Dev: `battle.html?storychampionweak=1` — real story-mode Champion battle (row resolved via STORY_EVENTS_RAW): strong OU-ish team vs weak locked foe. Overwrites story save. */
@@ -21073,6 +21389,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const profUsedHere = !!(sm.profUsed && sm.profUsed[cityIdx]);
             const mysteryMode = hasProf && !hasTeamRoom && !profUsedHere;
             const legendMysteryGate = mysteryMode && isPreLeagueLegendaryMysteryGate(cityIdx);
+            const _storyNextBatIdx = storyFirstBattleIndexAfter(sm.eventIndex);
+            const _storyNextBat = _storyNextBatIdx >= 0 ? STORY_EVENTS_RAW[_storyNextBatIdx] : null;
+            const _storyNextBatId = _storyNextBat ? (_storyNextBat[0] | 0) : -1;
+            const nextIsRouteRival = !!(_storyNextBat && _storyNextBat[1] === 'Battle' && _storyNextBat[2] === 'Rival' && _storyNextBatId !== STORY_RIVAL_ROW_LEAGUE);
+            const introRivalNeedsProf = nextIsRouteRival && _storyNextBatId === STORY_RIVAL_ROW_INTRO && hasProf && !profUsedHere;
+            const rivalGateActive = nextIsRouteRival && sm.team.length > 0 && !introRivalNeedsProf;
 
             const spriteEl = document.getElementById('story-city-sprite');
             const npcNameEl = document.getElementById('story-city-npc-name');
@@ -21116,6 +21438,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.storyMilestoneTips.m4 = true;
                 save();
             }
+            if (rivalGateActive) {
+                quoteText += '\n\n⚔ Trainer tip: A stubborn challenger is posted by the route gate—they insist on a fair bout before anyone leaves town. Heal up, shop smart, then settle it.';
+            }
             if (quoteEl) quoteEl.textContent = quoteText;
 
             const btn = document.getElementById('story-action-buttons');
@@ -21140,8 +21465,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const hasLeague = actions.includes('Enter Pokemon League');
             if (!sm.gymCleared) sm.gymCleared = {};
             const gymBeat = !!(sm.gymCleared[cityIdx]);
-            // Block route until the city's gym (or Victor Road / pre-League gauntlet) is cleared
-            const routeLocked = (hasGym || hasVR || hasTrainerRoad) && !gymBeat;
+            const gymRoutePending = (hasGym || hasVR || hasTrainerRoad) && !gymBeat;
+            // Block route until gym / VR / trainer gauntlet is cleared, or until a route Rival (hub fight) is cleared
+            const routeLocked = gymRoutePending || rivalGateActive;
             // Block gym/league until professor is visited in this city (when professor is available)
             const gymBlocked = hasProf && !profUsedHere;
             if (hasGym) {
@@ -21186,7 +21512,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 btn.innerHTML += makeActionBtn('📡 Cable Link Station — Reroll Team','link','window.StoryMode.enterLink()','link');
             }
             if (actions.includes('Department Store')) {
-                btn.innerHTML += makeActionBtn('🏬 Department Store — Premium items & Artifacts','dept','window.StoryMode.enterShop(\'dept\')','dept');
+                btn.innerHTML += makeActionBtn('🏬 Department Store — Premium battle items','dept','window.StoryMode.enterShop(\'dept\')','dept');
+            }
+            const _relicCityIdx = getCityIndex(ev);
+            if (_relicCityIdx === 0 || actions.includes('Department Store')) {
+                btn.innerHTML += makeActionBtn('✨ Relic Annex — Run relics (3 picks)','relic','window.StoryMode.enterArtifactShop()','dept',{ soft:true });
             }
             if (actions.includes('Poké Casino')) {
                 btn.innerHTML += makeActionBtn('🎰 Poké Casino — Coin flip wagers','casino','window.StoryMode.enterCasino()','casino',{ soft:true });
@@ -21251,7 +21581,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             center: 'icons/story/story_center.png?v=20260429b',
             party: 'icons/story/story_party.png?v=20260429b',
             bag: 'icons/story/story_bag.png?v=20260429b',
-            casino: 'icons/story/story_dept.png?v=20260429b'
+            casino: 'icons/story/story_dept.png?v=20260429b',
+            relic: 'icons/story/story_artifacts.png?v=20260429b'
         };
         function storyActionStripLeadingDecor(label) {
             if (!label || typeof label !== 'string') return '';
@@ -21344,17 +21675,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const town = getStoryDisplayTownNameForCityRow(cityEv);
             const btn = document.getElementById('story-gameover-btn-center');
             const hint = document.getElementById('story-gameover-center-hint');
+            const concedeBtn = document.getElementById('story-gameover-btn-rival-concede');
+            const ev = STORY_EVENTS_RAW[sm.eventIndex];
+            const isRivalLoss = !!(ev && ev[1] === 'Battle' && ev[2] === 'Rival');
+            if (concedeBtn) {
+                concedeBtn.style.display = isRivalLoss ? 'block' : 'none';
+                const rp = isRivalLoss ? getRivalEncounterPhase(ev[0] | 0) : null;
+                concedeBtn.innerHTML = rp === 4
+                    ? 'Continue - Rival Takes Champion Claim<br><span style="font-size:11px;font-weight:normal;opacity:0.92;">Lose all gold and enter Hall of Fame</span>'
+                    : 'Accept Rival Is Better<br><span style="font-size:11px;font-weight:normal;opacity:0.92;">Lose all gold and continue the journey</span>';
+            }
             if (btn) {
                 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
                 btn.innerHTML = `Return to last city hub<br><span style="font-size:11px;font-weight:normal;opacity:0.92;">${esc(town)}</span>`;
             }
             if (hint) {
-                const d = sm.storyDifficulty || 'normal';
-                if (d === 'veryeasy' || d === 'easy') {
-                    hint.textContent = 'No gold cost on this difficulty. Used bag items stay used.';
+                if (isRivalLoss) {
+                    hint.textContent = 'Rival stakes: retry or retreat normally, or accept the loss, drop to 0G, and let the rivalry dialogue remember who won last.';
                 } else {
-                    const fee = _storyCalcRetreatGoldFee();
-                    hint.textContent = 'Heals your party. Lose ' + fee.toLocaleString() + 'G (half your gold, rounded up to the next 100G, min 100G, never more than you have). Used bag items stay used.';
+                    const d = sm.storyDifficulty || 'normal';
+                    if (d === 'veryeasy' || d === 'easy') {
+                        hint.textContent = 'No gold cost on this difficulty. Used bag items stay used.';
+                    } else {
+                        const fee = _storyCalcRetreatGoldFee();
+                        hint.textContent = 'Heals your party. Lose ' + fee.toLocaleString() + 'G (half your gold, rounded up to the next 100G, min 100G, never more than you have). Used bag items stay used.';
+                    }
                 }
             }
         }
@@ -21367,7 +21712,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const ev = String(next[2] || '');
             if (ev.indexOf('Gym Leader') !== 0) return null;
             const nm = sm.trainerAssignments[next[0]];
-            const td = nm && TRAINER_DATA.find(t => t.name === nm);
+            const td = nm && findTrainerDataByName(nm, ev);
             if (!td || !td.type) return null;
             const ts = parseTrainerTypes(td.type);
             return ts[0] || null;
@@ -21907,26 +22252,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // After blacking out and returning to a city hub, eventIndex sits on the City row while
             // currentEnemyLock still points at the trainer you lost to. Skip already-cleared route
             // battles and resume that rematch (same frozen foe team as enterBattleEvent uses).
-            let lockForcedRematch = false;
             const lock = sm.currentEnemyLock;
             if (lock && lock.eventIdx != null && Array.isArray(lock.team) && lock.team.length) {
                 const le = lock.eventIdx | 0;
                 const row = STORY_EVENTS_RAW[le];
                 if (row && row[1] === 'Battle' && le > nextBattleIdx) {
                     nextBattleIdx = le;
-                    lockForcedRematch = true;
-                }
-            }
-            const def = sm.deferredEarlyRivalPos;
-            // Owe first Rival (party was <4): must not start later route fights until party ≥4, then fight Rival before other upcoming battles (unless rematching a loss).
-            if (def != null && !lockForcedRematch) {
-                if (sm.team.length < 4 && nextBattleIdx > def) {
-                    window.showGameAlert('Grow your party to 4 Pokémon (Professor, wild catches, or Link Station) — your rival is waiting.');
-                    return;
-                }
-                if (sm.team.length >= 4) {
-                    nextBattleIdx = Math.min(nextBattleIdx, def);
-                    if (nextBattleIdx === def) sm.deferredEarlyRivalPos = null;
                 }
             }
             sm.eventIndex = nextBattleIdx;
@@ -21958,7 +22289,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sigs: ['Mewtwo', 'Rayquaza', 'Dialga', 'Giratina', 'Kyogre', 'Groudon'],
                     introQuotes: ['So we meet again, Champion.', 'Your Hall of Fame crown means nothing here.', 'Show me your strongest six.']
                 }
-                : (TRAINER_DATA.find(t=>t.name===trainerName) || selectTrainerForRole(event, sg, null, prefType));
+                : (findTrainerDataByName(trainerName, event) || selectTrainerForRole(event, sg, null, prefType));
             if (!isMysteryFinal && event === 'Rival' && sm.runRivalSpriteFile) {
                 trainer = { ...trainer, spriteFile: sm.runRivalSpriteFile };
             }
@@ -21966,8 +22297,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Party size mirrors player's current team (so opponents scale with your roster).
             // Floor at 1, cap at 6. Late-game bosses (Gym 6+, E4, Champion) always field a full 6.
+            const isIntroRival = String(event || '') === 'Rival' && (idx | 0) === STORY_RIVAL_ROW_INTRO;
             const isLateBoss = /Gym Leader [678]|E1|E2|E3|E4|Champion|Victory Road/i.test(event);
-            const partySize = isLateBoss ? 6 : Math.min(Math.max(sm.team.length, 1), 6);
+            const partySize = isIntroRival ? 1 : (isLateBoss ? 6 : Math.min(Math.max(sm.team.length, 1), 6));
 
             const startFight = (enemyTeam) => {
                 if (sm.team.length === 0) { window.showGameAlert('No Pokémon! Visit the Professor.'); enterCity(); return; }
@@ -22019,7 +22351,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const isRivalBattle = String(eventType) === 'Rival';
             const rivalPhase = isRivalBattle && storyBattleRowIdx != null ? getRivalEncounterPhase(storyBattleRowIdx) : null;
             const badgesNow = (sm && sm.badges) | 0;
-            const extraLine = isRivalBattle && rivalPhase
+            const extraLine = isRivalBattle && rivalPhase !== null && rivalPhase !== undefined
                 ? pickRivalSecondaryIntroLine(rivalPhase, badgesNow)
                 : '';
             overlay.innerHTML = `
@@ -22119,6 +22451,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!sm.gymCleared) sm.gymCleared = {};
                     sm.gymCleared[cityIndexFromEventIndex(sm.eventIndex)] = true;
                 }
+                if (en === 'Rival') setRivalStanding('player', idx);
                 const isMilestoneVictory = isGymBadge || /^(E1|E2|E3|E4|Champion|Rival)$/.test(en);
                 // Unlock player gimmicks in fixed order — one per gym badge (not league badges)
                 {
@@ -22157,8 +22490,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let lossHint = ev ? `Event: ${ev[2]}` : '';
                 if (ev && ev[2] === 'Rival') {
                     const rp = getRivalEncounterPhase(ev[0] | 0);
-                    if (rp === 4) lossHint = 'League rival fight — adjust your leads and try again.';
-                    else if (rp) lossHint = `Rival clash ${rp}/4 — heal up, then rematch from the city.`;
+                    if (rp === 0) lossHint = 'Opening rival fight — retry, retreat, abandon, or concede the better-trainer title and continue.';
+                    else if (rp === 4) lossHint = 'League rival fight — retry, retreat, abandon, or concede the Champion claim and continue.';
+                    else if (rp) lossHint = `Rival clash ${rp}/4 — retry, retreat, abandon, or concede the better-trainer title and continue.`;
                 }
                 document.getElementById('story-gameover-desc').textContent =
                     `You were defeated by ${sm.currentTrainerData?.name||'the opponent'}. ${lossHint}. Don't give up!`;
@@ -22228,6 +22562,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             processNextEvent();
         }
 
+        function acceptRivalLossAndContinue() {
+            if (!sm.active && !load()) { showMenu(true); return; }
+            const ev = STORY_EVENTS_RAW[sm.eventIndex];
+            if (!ev || ev[1] !== 'Battle' || ev[2] !== 'Rival') {
+                window.showGameAlert && window.showGameAlert('There is no rival loss to accept.');
+                refreshStoryGameOverRetreatUI();
+                return;
+            }
+            const rowIdx = ev[0] | 0;
+            setRivalStanding('rival', rowIdx);
+            sm.gold = 0;
+            sm.currentEnemyLock = null;
+            sm.storyRetryInventorySnapshot = null;
+            _storyBattleInventorySnapshot = null;
+            _storyFullHealPartySlots();
+            sm.eventIndex++;
+            try { save(); } catch (e) { console.warn('[Story] rival concede save', e); }
+            document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
+            const msg = rowIdx === STORY_RIVAL_ROW_LEAGUE
+                ? 'You conceded the Champion claim to your rival. Hall of Fame still awaits.'
+                : 'You conceded this round. Your rival is the better trainer until you take it back.';
+            try { window.showGameAlert && window.showGameAlert(msg); } catch (e) {}
+            processNextEvent();
+        }
+
         function afterBattleReturn() {
             // Called from returnToHome when story mode is active
             try {
@@ -22294,6 +22653,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         badgeFlavor = `<div style="font-size:14px;color:#81c784;">Rival round three: badge case full, stakes higher.</div>`;
                     } else if (rp === 2) {
                         badgeFlavor = `<div style="font-size:14px;color:#81c784;">Mid-journey rival win—your lead grows.</div>`;
+                    } else if (rp === 0) {
+                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">First steps, first rival win. The journey opens.</div>`;
                     } else {
                         badgeFlavor = `<div style="font-size:14px;color:#81c784;">First major rival upset—onward to the next gym!</div>`;
                     }
@@ -22341,28 +22702,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return arr;
         }
-        function _ensureDeptOfferForCity(cityIdx) {
+        /** Hometown (always) + major hubs that host a Department Store in the timeline (City3/6/8/9). */
+        function storyArtifactShopCityAllowed(cityIdx) {
+            const n = Math.max(0, cityIdx | 0);
+            return n === 0 || n === 3 || n === 6 || n === 8 || n === 9;
+        }
+        function _ensureArtifactShopOffersForCity(cityIdx) {
             const cKey = String(Math.max(0, cityIdx | 0));
-            if (!sm.deptArtifactOffersByCity || typeof sm.deptArtifactOffersByCity !== 'object') sm.deptArtifactOffersByCity = {};
+            if (!sm.artifactShopOffersByCity || typeof sm.artifactShopOffersByCity !== 'object') sm.artifactShopOffersByCity = {};
             if (!sm.deptArtifactTypesByCity || typeof sm.deptArtifactTypesByCity !== 'object') sm.deptArtifactTypesByCity = {};
             const owned = new Set(sm.artifacts || []);
             const allIds = ALL_ARTIFACTS.map(a => a.id);
-            let offers = Array.isArray(sm.deptArtifactOffersByCity[cKey]) ? sm.deptArtifactOffersByCity[cKey].slice() : [];
+            let offers = Array.isArray(sm.artifactShopOffersByCity[cKey]) ? sm.artifactShopOffersByCity[cKey].slice() : [];
             offers = offers.filter((id, idx, arr) => allIds.includes(id) && !owned.has(id) && arr.indexOf(id) === idx);
-            while (offers.length < 5) {
+            while (offers.length < 3) {
                 const candidates = allIds.filter(id => !owned.has(id) && !offers.includes(id));
                 if (!candidates.length) break;
                 const pick = candidates[Math.floor(storyRngNext() * candidates.length)];
                 offers.push(pick);
             }
-            sm.deptArtifactOffersByCity[cKey] = offers;
+            sm.artifactShopOffersByCity[cKey] = offers.slice(0, 3);
             if (!sm.deptArtifactTypesByCity[cKey] || typeof sm.deptArtifactTypesByCity[cKey] !== 'object') sm.deptArtifactTypesByCity[cKey] = {};
-            sm.deptArtifactOffersByCity[cKey].forEach(id => {
+            sm.artifactShopOffersByCity[cKey].forEach(id => {
                 if (STORY_TYPE_ARTIFACT_IDS.has(id) && !sm.deptArtifactTypesByCity[cKey][id]) {
                     sm.deptArtifactTypesByCity[cKey][id] = STORY_TYPES[Math.floor(storyRngNext() * STORY_TYPES.length)];
                 }
             });
-            return { offers: sm.deptArtifactOffersByCity[cKey], types: sm.deptArtifactTypesByCity[cKey] };
+            return { offers: sm.artifactShopOffersByCity[cKey], types: sm.deptArtifactTypesByCity[cKey] };
         }
         function _artifactTypeForDisplay(artId, cityIdx) {
             const cKey = String(Math.max(0, cityIdx | 0));
@@ -22462,34 +22828,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>`;
             });
             if (sm.settings && sm.settings.noItemRun && type === 'mart' && items.length === 0) {
-                gridEl.innerHTML += '<div style="grid-column:1/-1;color:#888;font-size:12px;padding:12px;line-height:1.4;">No battle items are stocked on a No Item Run. Run artifacts are sold at the Department Store.</div>';
+                gridEl.innerHTML += '<div style="grid-column:1/-1;color:#888;font-size:12px;padding:12px;line-height:1.4;">No battle items are stocked on a No Item Run. Run relics are at the <strong style="color:#ce93d8;">Relic Annex</strong> (hometown + major hubs).</div>';
             }
-            // Department Store: also show artifacts (appended inside gridEl to avoid leak across shop types)
-            if (type === 'dept') {
-                const offer = _ensureDeptOfferForCity(cityIdx);
-                const artifactSection = document.createElement('div');
-                artifactSection.style.cssText='grid-column:1/-1;border-top:1px solid #444;padding-top:12px;margin-top:4px;';
-                artifactSection.innerHTML='<h4 style="color:#9c27b0;margin:0 0 10px;">✨ Run Artifacts (5,000G each — affect both sides!)</h4>';
-                offer.offers.forEach(artId => {
-                    const art = ALL_ARTIFACTS.find(a => a.id === artId);
-                    if (!art) return;
-                    const owned = sm.artifacts.includes(art.id);
-                    const canBuy = !owned && sm.gold >= art.cost;
-                    const aicon = storyShopIconCellHtml(art.id);
-                    const artName = _artifactNameForCity(art, cityIdx);
-                    const artDesc = _artifactDescForCity(art, cityIdx);
-                    artifactSection.innerHTML += `<div class="story-artifact-card" style="margin-bottom:8px;opacity:${owned?'0.5':'1'}">
-                        <div class="story-shop-item-row" style="margin-bottom:6px;">
-                            ${aicon}
-                            <h4 style="flex:1;margin:0;">${artName} ${owned?'<span style="color:#4caf50;">[ACTIVE]</span>':''}</h4>
-                        </div>
-                        <div class="desc">${artDesc}</div>
-                        ${!owned?`<button onclick="window.StoryMode.buyArtifact('${art.id}',${art.cost})" ${canBuy?'':'disabled'} style="margin-top:6px;font-size:11px;padding:3px 8px;${canBuy?'color:#9c27b0;border-color:#9c27b0;':'opacity:0.4;'}">Buy ${storyGoldHtml(art.cost.toLocaleString())}</button>`:''}
-                    </div>`;
-                });
-                gridEl.appendChild(artifactSection);
-                save();
-            }
+            if (type === 'dept') save();
             syncStoryShopBackground(type === 'dept' ? 'dept' : 'mart');
             showScreen('screen-story-shop');
         }
@@ -22522,18 +22863,69 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function buyArtifact(artId, price) {
+            const relicScr = document.getElementById('screen-story-artifact-shop');
+            if (!relicScr || relicScr.classList.contains('hidden')) return;
             const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
-            const offer = _ensureDeptOfferForCity(cityIdx);
-            if (!offer.offers.includes(artId)) return;
-            if (sm.gold < price || sm.artifacts.includes(artId)) return;
-            sm.gold -= price;
+            if (!storyArtifactShopCityAllowed(cityIdx)) return;
+            const offer = _ensureArtifactShopOffersForCity(cityIdx);
+            if (!offer.offers.includes(artId) || sm.artifacts.includes(artId)) return;
+            const listPrice = (cityIdx === 0 && !sm.artifactFreeClaimUsed) ? 0 : 5000;
+            if ((price | 0) !== listPrice) return;
+            if (listPrice > 0 && sm.gold < listPrice) return;
+            if (listPrice > 0) sm.gold -= listPrice;
+            else sm.artifactFreeClaimUsed = true;
             sm.artifacts.push(artId);
             if (!sm.artifactTypeById || typeof sm.artifactTypeById !== 'object') sm.artifactTypeById = {};
             if (STORY_TYPE_ARTIFACT_IDS.has(artId) && !sm.artifactTypeById[artId]) {
                 sm.artifactTypeById[artId] = _artifactTypeForDisplay(artId, cityIdx);
             }
             save();
-            enterShop('dept');
+            enterArtifactShop();
+        }
+        function enterArtifactShop() {
+            const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
+            if (!storyArtifactShopCityAllowed(cityIdx)) {
+                try { enterCity(); } catch (e) {}
+                return;
+            }
+            const offer = _ensureArtifactShopOffersForCity(cityIdx);
+            const goldEl = document.getElementById('story-artifact-shop-gold');
+            const gridEl = document.getElementById('story-artifact-shop-grid');
+            const blurbEl = document.getElementById('story-artifact-shop-blurb');
+            if (!gridEl) return;
+            if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
+            if (blurbEl) {
+                if (cityIdx === 0) {
+                    blurbEl.innerHTML = 'Three unowned relics per visit. <strong style="color:#ce93d8;">Your first purchase in Pallet is free</strong> once per run; after that, and at other hubs, each relic is ' + storyGoldHtml('5,000', true) + '. Relics affect <em>both</em> sides for the whole run.';
+                } else {
+                    blurbEl.innerHTML = 'Three unowned relics per visit — ' + storyGoldHtml('5,000', true) + ' each. Relics affect <em>both</em> sides for the whole run.';
+                }
+            }
+            gridEl.innerHTML = '';
+            const listPrice = (cityIdx === 0 && !sm.artifactFreeClaimUsed) ? 0 : 5000;
+            offer.offers.forEach(artId => {
+                const art = ALL_ARTIFACTS.find(a => a.id === artId);
+                if (!art) return;
+                const owned = sm.artifacts.includes(artId);
+                const canBuy = !owned && (listPrice === 0 || sm.gold >= listPrice);
+                const aicon = storyShopIconCellHtml(art.id);
+                const artName = _artifactNameForCity(art, cityIdx);
+                const artDesc = _artifactDescForCity(art, cityIdx);
+                const priceLabel = listPrice === 0 ? '<span style="color:#ce93d8;">Free (first in Pallet only)</span>' : storyGoldHtml(listPrice.toLocaleString());
+                const btnLabel = listPrice === 0 ? 'Claim free' : ('Buy ' + storyGoldHtml(listPrice.toLocaleString()));
+                gridEl.innerHTML += `<div class="story-artifact-card" style="margin-bottom:8px;opacity:${owned ? '0.5' : '1'}">
+                    <div class="story-shop-item-row" style="margin-bottom:6px;">
+                        ${aicon}
+                        <h4 style="flex:1;margin:0;">${artName} ${owned ? '<span style="color:#4caf50;">[OWNED]</span>' : ''}</h4>
+                    </div>
+                    <div class="desc">${artDesc}</div>
+                    ${!owned ? `<div style="margin-top:6px;font-size:11px;color:#aaa;">Price: ${priceLabel}</div>
+                    <button type="button" onclick="window.StoryMode.buyArtifact('${art.id}',${listPrice})" ${canBuy ? '' : 'disabled'} style="margin-top:6px;font-size:11px;padding:3px 8px;${canBuy ? 'color:#9c27b0;border-color:#9c27b0;' : 'opacity:0.4;'}">${btnLabel}</button>` : ''}
+                </div>`;
+            });
+            syncStoryArtifactShopBackground();
+            showScreen('screen-story-artifact-shop');
+            save();
         }
 
         // ── LINK STATION ──────────────────────────────────────────────────
@@ -23242,6 +23634,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             welcome.className = 'story-hof-gba-welcome';
             welcome.innerHTML = 'Welcome to the <span class="story-hof-gba-hof">HALL OF FAME</span>!';
             lower.appendChild(welcome);
+            if (sm.rivalChampionClaimed) {
+                const rivalNote = document.createElement('p');
+                rivalNote.className = 'story-hof-gba-welcome';
+                rivalNote.style.fontSize = '11px';
+                rivalNote.style.color = '#ffd54f';
+                rivalNote.textContent = 'Your rival holds the Champion bragging rights. The Hall still records your journey.';
+                lower.appendChild(rivalNote);
+            }
             panel.appendChild(lower);
 
             const footer = document.createElement('div');
@@ -23362,6 +23762,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.artifacts || !sm.artifacts.length) return;
             const off = sm.artifactsDisabled || [];
             const active = id => sm.artifacts.includes(id) && !off.includes(id);
+            const _storyArtifactType = (key) => {
+                if (sm.artifactTypeById && sm.artifactTypeById[key]) return sm.artifactTypeById[key];
+                const rng = (sm && sm.active && typeof storyRngNext === 'function') ? storyRngNext : Math.random;
+                if (!sm.artifactTypeById) sm.artifactTypeById = {};
+                const t = STORY_TYPES[Math.floor(rng() * STORY_TYPES.length)];
+                sm.artifactTypeById[key] = t;
+                return t;
+            };
+            // Default artifact flags (avoid stale reads if hook order changes)
+            state._heavyGravityHazardMult = 1;
+            state._vampiricFangsActive = active('vampiricFangs');
+            state._berserkerSerumActive = active('berserkerSerum');
+            state._chaosAmuletActive = active('chaosAmulet');
+            state._stagnationCoreActive = active('stagnationCore');
+            state._typeAmplifierType = active('typeAmplifier') ? _storyArtifactType('typeAmplifier') : null;
+            state._typeNullifierType = active('typeNullifier') ? _storyArtifactType('typeNullifier') : null;
+            state._typeMagnetizerType = active('typeMagnetizer') ? _storyArtifactType('typeMagnetizer') : null;
+            if (state._typeAmplifierType && typeof logMsg === 'function') logMsg(`[Type] Amplifier run bond: ${state._typeAmplifierType}!`, 'info');
+            if (state._typeNullifierType && typeof logMsg === 'function') logMsg(`[Type] Nullifier run bond: ${state._typeNullifierType}!`, 'info');
+            if (state._typeMagnetizerType && typeof logMsg === 'function') logMsg(`[Type] Magnetizer run bond: ${state._typeMagnetizerType}!`, 'info');
+            if (state._vampiricFangsActive && typeof logMsg === 'function') logMsg('Vampiric Fangs: draining strikes and residual hunger…', 'info');
+            if (state._berserkerSerumActive && typeof logMsg === 'function') logMsg('Berserker\'s Serum: every switch-in trades bulk for fury!', 'info');
+            if (state._chaosAmuletActive && typeof logMsg === 'function') logMsg('Amulet of Chaos: wild accuracy and critical hits!', 'info');
+            if (state._stagnationCoreActive && typeof logMsg === 'function') logMsg('Stagnation Core: stat shifts from moves are sealed!', 'info');
             // Trick Room auto
             if (active('tricksterWatch')) {
                 state.trickRoom = 3;
@@ -23370,7 +23794,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Heavy Gravity
             if (active('heavyGravity')) {
                 state.gravity = 999;
-                if (typeof logMsg==='function') logMsg('Heavy Gravity Boots: Gravity is in effect!','info');
+                state._heavyGravityHazardMult = 1.5;
+                if (typeof logMsg==='function') logMsg('Heavy Gravity Boots: Gravity is in effect — entry hazards bite harder!','info');
             }
             // Eternal Sun Lens: permanent harsh sunlight
             if (active('eternalSunLens')) {
@@ -23416,16 +23841,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (active('cursedCoinPouch')) {
                 const statKeys = ['atk','def','spa','spd','spe'];
                 const rng = (sm && sm.active) ? storyRngNext : Math.random;
+                const curseEx = { bypassStagnation: true, bypassNullifier: true };
                 [...(state.playerParty||[]), ...(state.foeParty||[])].forEach(mon => {
+                    if (!mon) return;
                     const st = statKeys[Math.floor(rng() * statKeys.length)];
-                    mon.stages[st] = Math.max(-6, (mon.stages[st]||0) - 1);
+                    changeStage(mon, st, -1, false, curseEx);
                 });
                 if (typeof logMsg==='function') logMsg('Cursed Coin Pouch: All Pokémon feel the weight of the curse! (−1 random stat each)','info');
             }
             // Eviolite Blessing: +50% Def/SpDef for all NFE Pokémon (does not stack with Eviolite item)
             state._evioliteBlessing = active('evioliteBlessing');
             if (state._evioliteBlessing && typeof logMsg==='function') logMsg('Eviolite Blessing: All NFE Pokémon gain +50% Def and Sp. Def!','info');
-            // Berserker Serum / Stagnation Core: passive engine hooks (existing)
         }
 
         // Expose for battle engine to call after startBattle initialisation
@@ -23690,12 +24116,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sm.badges = countGymBadgesBeforeStoryRow(pos);
                     const trainerName = sm.trainerAssignments[eid];
                     const pref = preferredTypeBeforeGymBattle(pos);
-                    const trainer = (trainerName && TRAINER_DATA.find(t => t.name === trainerName))
+                    const trainer = (trainerName && findTrainerDataByName(trainerName, eventName))
                         || selectTrainerForRole(eventName, ng, null, pref);
                     if (!trainer) continue;
                     sm.eventIndex = pos;
+                    const isIntroRival = eventName === 'Rival' && (eid | 0) === STORY_RIVAL_ROW_INTRO;
                     const isLate = /Gym Leader [678]|E1|E2|E3|E4|Champion|Victory Road/i.test(eventName);
-                    const ps = isLate ? 6 : Math.min(Math.max(sm.team.length, 1), 6);
+                    const ps = isIntroRival ? 1 : (isLate ? 6 : Math.min(Math.max(sm.team.length, 1), 6));
                     const enemyTeam = rollTrainerTeam(trainer, ps, gw || { g1:0, g2:0, g3: 50, g4: 50 }, sg, eventName, eid);
                     rowsOut.push({ pos, eid, eventName, trainer: trainer.name, trainerType: trainer.type, badges: sm.badges, partySize: ps, gradeWeights: gw, coins, team: enemyTeam });
                     let line = `#${eid} row@${pos} ${eventName} | ${trainer.name} (${trainer.type}) | pre-fight badges=${sm.badges} | size=${ps} | g ${JSON.stringify(gw || {})}`;
@@ -24891,10 +25318,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── PUBLIC API ────────────────────────────────────────────────────
         return {
             get state() { return sm; },
-            showMenu, startNewRun, continueRun, retryFromGameOver, retreatToLastPokemonCenter, isActive, hasSave,
+            showMenu, startNewRun, continueRun, retryFromGameOver, acceptRivalLossAndContinue, retreatToLastPokemonCenter, isActive, hasSave,
             enterCity, enterProfessor, profRoll, profAccept, profDecline, profSelectChoice, _mysteryDoSwap,
             proceedToNextBattle, onBattleEnd, afterBattleReturn, applyHardcoreState,
-            enterShop, buyItem, buyArtifact, enterPokemonCenter,
+            enterShop, buyItem, buyArtifact, enterArtifactShop, enterPokemonCenter,
             enterLink, linkReroll, linkUpgrade, linkEvolve, linkRebuild, linkMoveUp, linkMoveDown,
             enterCasino, casinoSetBetChip, casinoPlay,
             openBattleBag, useBagItemOn, openCityBag, sellItem,
