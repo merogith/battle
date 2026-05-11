@@ -13998,7 +13998,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!ev.persisted) return;
                 try { if (typeof window.__recoverBattleSoftLock === 'function') window.__recoverBattleSoftLock(); } catch (e) {}
             });
-            // Passive watchdog: rescue dead-locked battles where the resolver promise was lost
+            // Fast persistent watchdog: catches the "battle open, no menu visible" state
+            // proactively (no tab-switch needed). Runs every 600ms, forever. Guards:
+            //   - battle screen must be visible
+            //   - state must exist and not be over
+            //   - state.isLocked must be false (a true value means a resolver is running)
+            //   - no modal or move-menu open (those are the legitimate "menu hidden" states)
+            //   - command-menu must have been hidden for >= 2 consecutive ticks (~1.2s) so
+            //     we never fight against a legitimate hide that's about to be re-shown by
+            //     the normal turn machine.
+            let _persistentMenuHiddenSince = 0;
+            setInterval(function () {
+                try {
+                    if (typeof state === 'undefined' || !state) { _persistentMenuHiddenSince = 0; return; }
+                    if (state.isOver) { _persistentMenuHiddenSince = 0; return; }
+                    if (state.isLocked) { _persistentMenuHiddenSince = 0; return; }
+                    const sb = document.getElementById('screen-battle');
+                    if (!sb || sb.classList.contains('hidden')) { _persistentMenuHiddenSince = 0; return; }
+                    const cmd = document.getElementById('command-menu');
+                    const mv = document.getElementById('move-menu');
+                    const partyModal = document.getElementById('modal-party');
+                    if (!cmd) { _persistentMenuHiddenSince = 0; return; }
+                    if (mv && !mv.classList.contains('hidden')) { _persistentMenuHiddenSince = 0; return; }
+                    if (partyModal && !partyModal.classList.contains('hidden')) { _persistentMenuHiddenSince = 0; return; }
+                    if (!cmd.classList.contains('hidden')) { _persistentMenuHiddenSince = 0; return; }
+                    // We're in the bad state: battle open, nothing locked, no modal, but menu hidden.
+                    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+                    if (_persistentMenuHiddenSince === 0) { _persistentMenuHiddenSince = now; return; }
+                    if (now - _persistentMenuHiddenSince < 1200) return;
+                    cmd.classList.remove('hidden');
+                    try { if (window.syncBattlePhaseClass) window.syncBattlePhaseClass(); } catch (e) {}
+                    try { if (typeof syncBattleActiveHighlight === 'function') syncBattleActiveHighlight(); } catch (e) {}
+                    console.warn('[persistent-watchdog] forced command-menu visible (stuck for ' + Math.round(now - _persistentMenuHiddenSince) + 'ms)');
+                    _persistentMenuHiddenSince = 0;
+                } catch (e) { /* watchdog must never throw */ }
+            }, 600);
+            // Original passive watchdog: rescue dead-locked battles where the resolver promise was lost
             // (rare async failures, e.g. an anime() promise that never resolves on a tab that
             // throttled while a foe was being KO'd in a league chain). Fires every ~5s.
             // Threshold (LOCK_HARD_LIMIT_MS) is generous so legitimately long animations and
