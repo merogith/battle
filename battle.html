@@ -8991,6 +8991,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (isPlayer) state.usedTera = true; else state.fUsedTera = true;
             mon.type1 = teraType; mon.type2 = '';
             logMsg(`${mon.name} Terastallized into the ${teraType} type!`, 'info');
+            // Embody Aspect (Ogerpon forms): boost one stat on Terastallize based on form
+            if (mon.ability === "Embody Aspect") {
+                const nm = mon.name || '';
+                let stat = null;
+                if (nm.includes("Wellspring")) stat = 'spd';
+                else if (nm.includes("Hearthflame")) stat = 'atk';
+                else if (nm.includes("Cornerstone")) stat = 'def';
+                else stat = 'spe'; // Teal mask (default Ogerpon)
+                if (stat) {
+                    logMsg(`${mon.name}'s Embody Aspect raised its ${stat.toUpperCase()}!`, 'info');
+                    changeStage(mon, stat, 1);
+                }
+            }
             let teraSprite = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
             if (teraSprite && settings.animations) { teraSprite.classList.add('anim-tera-activate'); setTimeout(() => teraSprite.classList.remove('anim-tera-activate'), 750); }
             updateUI();
@@ -12078,7 +12091,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 
                 if (isTeraSTAB && isOrigSTAB) return abilityBonus ? 2.25 : 2.0;
                 else if (isTeraSTAB) return abilityBonus ? 2.0 : 1.5;
-                else if (isOrigSTAB) return 1.5; // Adaptability lost if Tera type doesn't match original type
+                else if (isOrigSTAB) return abilityBonus ? 2.0 : 1.5; // Adaptability still boosts original-type STAB after Tera
                 return 1;
             } else {
                 let isSTAB = (move.type === attacker.type1 || move.type === attacker.type2);
@@ -12140,6 +12153,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (attacker.ability === "Toxic Boost" && attacker.status === "TOX" && move.cat === "Physical") A *= 1.5;
             if (attacker.ability === "Hustle" && move.cat === "Physical") A *= 1.5;
             if (attacker.ability === "Guts" && attacker.status) A *= 1.5;
+            if (attacker.ability === "Slow Start" && (attacker.volatile && attacker.volatile.slowStartTurns || 0) > 0 && move.cat === "Physical") A *= 0.5;
             if (attacker.ability === "Solar Power" && (getCurrentWeather() === "Sun" || getCurrentWeather() === "HarshSun") && move.cat === "Special") A *= 1.5;
             if (attacker.ability === "Supreme Overlord") {
                 const _aiSoParty = (state.playerParty || []).concat(state.foeParty || []).filter(m => m.ability === "Supreme Overlord").length > 0
@@ -13882,6 +13896,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.ability === "Slush Rush" && weather === "Hail") spe *= 2;
             if (mon.ability === "Surge Surfer" && state.terrain === "Electric" && state.terrainTurns > 0) spe *= 2;
             if (mon.ability === "Unburden" && mon.itemConsumed) spe *= 2;
+            // Slow Start: halve Spe for first 5 turns after switch-in
+            if (mon.ability === "Slow Start" && mon.volatile && (mon.volatile.slowStartTurns || 0) > 0) spe *= 0.5;
             // Speed Boost is handled via +1 spe stage per turn in endOfTurnEffects; no multiplier needed here
             if (_spdItemActive && mon.item === "Salac Berry" && mon.currentHp <= mon.maxHp * 0.25) spe *= 1.5;
             return spe;
@@ -14022,6 +14038,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (attacker.status === "FRZ" && move.type === "Fire") {
                 attacker.status = null; attacker.statusTurns = 0;
                 logMsg(`${attacker.name} thawed out by using ${move.name}!`, 'info');
+            }
+            // Stance Change (Aegislash): swap to Blade form on attacking move, Shield form on King's Shield
+            if (attacker.ability === "Stance Change" && (attacker.name === "Aegislash" || attacker.name === "Aegislash-Blade")) {
+                const useBlade = move.cat !== "Status";
+                const useShield = move.name === "King's Shield";
+                const targetName = useBlade ? "Aegislash-Blade" : (useShield ? "Aegislash" : attacker.name);
+                if (targetName !== attacker.name) {
+                    const base = baseStats[targetName];
+                    if (base && base.atk) {
+                        let evs = (attacker.buildData && attacker.buildData.evs) || {};
+                        let nMults = { atk: 1, def: 1, spa: 1, spd: 1, spe: 1 };
+                        let n = attacker.buildData && natureModifiers[attacker.buildData.n];
+                        if (n) { nMults[n.up] = 1.1; nMults[n.down] = 0.9; }
+                        attacker.stats = {
+                            atk: Math.floor((2*base.atk+Math.floor((evs.atk||0)/4)+5)*nMults.atk),
+                            def: Math.floor((2*base.def+Math.floor((evs.def||0)/4)+5)*nMults.def),
+                            spa: Math.floor((2*base.spa+Math.floor((evs.spa||0)/4)+5)*nMults.spa),
+                            spd: Math.floor((2*base.spd+Math.floor((evs.spd||0)/4)+5)*nMults.spd),
+                            spe: Math.floor((2*base.spe+Math.floor((evs.spe||0)/4)+5)*nMults.spe)
+                        };
+                        attacker.name = targetName;
+                        logMsg(`${targetName === "Aegislash-Blade" ? "Aegislash" : "Aegislash-Blade"} changed to ${targetName === "Aegislash-Blade" ? "Blade" : "Shield"} Form!`, 'info');
+                    }
+                }
             }
             // Outrage-style fatigue locks + two-turn charge cleanup live in shared helpers (see OUTRAGE_FAMILY_LOCKS).
             const lockingMoves = OUTRAGE_FAMILY_LOCKS;
@@ -14684,8 +14724,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Micle Berry: +20% accuracy for next move (consumed after use)
             let micleMod = 1;
             if (attacker.volatile.micleBerry) { micleMod = 1.2; attacker.volatile.micleBerry = false; }
-            // Keen Eye: ignore the defender's positive evasion stages (treat as 0)
-            let defEvaStage = (attacker.ability === "Keen Eye") ? Math.min(0, defender.stages.eva) : defender.stages.eva;
+            // Keen Eye / Mind's Eye: ignore the defender's positive evasion stages (treat as 0)
+            let defEvaStage = (attacker.ability === "Keen Eye" || attacker.ability === "Mind's Eye") ? Math.min(0, defender.stages.eva) : defender.stages.eva;
             let accStage = attacker.stages.acc - defEvaStage;
             let finalAcc = neverMiss ? 999 : (move.acc * accMod * evaMod * getAccEvaMult(accStage) * micleMod);
             // Story artifact: Amulet of Chaos — −10% accuracy (does not remove never-miss moves)
@@ -14754,6 +14794,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         await sleep(1000); return;
                     }
                 }
+            }
+
+            // Good as Gold (Gholdengo): immune to all opposing status moves
+            if (defender.ability === "Good as Gold" && move.cat === "Status" && attacker !== defender) {
+                logMsg(`${defender.name}'s Good as Gold made it immune to the status move!`, 'info');
+                AudioSystem.playMissSound();
+                registerMoveConnectionFailure(attacker, move);
+                await sleep(1000); return;
             }
 
             // Damp ability: prevents Explosion and Self-Destruct from being used
@@ -15174,6 +15222,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Ability boosts
                 if (attacker.ability === "Hustle" && _effectiveCat === "Physical") A *= 1.5;
                 if (attacker.ability === "Guts" && attacker.status) A *= 1.5;
+                // Slow Start: halve Atk for first 5 turns after switch-in
+                if (attacker.ability === "Slow Start" && (attacker.volatile.slowStartTurns || 0) > 0 && _effectiveCat === "Physical") A *= 0.5;
                 // Water Bubble (Araquanid): doubles Water move power; halves Fire damage taken (handled in modifier below)
                 if (attacker.ability === "Water Bubble" && move.type === "Water") A *= 2;
                 // Flower Gift: +50% Atk in Sun; +50% SpDef for ally (handled below)
@@ -15377,8 +15427,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         typeEff = 2 * otherMult; // Water is x2, then multiply by the other type's Ice effectiveness
                     }
                 }
-                // Scrappy: Normal/Fighting hit Ghost
-                if (attacker.ability === "Scrappy" && typeEff === 0 && (move.type === "Normal" || move.type === "Fighting") && (defender.type1 === "Ghost" || defender.type2 === "Ghost")) {
+                // Scrappy / Mind's Eye: Normal/Fighting hit Ghost
+                if ((attacker.ability === "Scrappy" || attacker.ability === "Mind's Eye") && typeEff === 0 && (move.type === "Normal" || move.type === "Fighting") && (defender.type1 === "Ghost" || defender.type2 === "Ghost")) {
                     // Recalculate without Ghost immunity
                     let t1eff = (defender.type1 === "Ghost") ? 1 : (typeChart[move.type] && typeChart[move.type][defender.type1] !== undefined ? typeChart[move.type][defender.type1] : 1);
                     let t2eff = (!defender.type2 || defender.type2 === "Ghost") ? 1 : (typeChart[move.type] && typeChart[move.type][defender.type2] !== undefined ? typeChart[move.type][defender.type2] : 1);
@@ -15787,6 +15837,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // True only when damage was absorbed by Substitute (not Disguise) — used so Knock Off still strips items through sub
                 let hitSubFromSubstitute = false;
                 let actualDamage = 0;
+                // Ice Face (Eiscue): absorb one physical hit; transforms to Noice form (no chip damage in canon)
+                if (defender.ability === "Ice Face" && !defender.volatile.iceFaceBroken && move.cat === "Physical") {
+                    defender.volatile.iceFaceBroken = true;
+                    logMsg(`${defender.name}'s Ice Face absorbed the hit!`, 'info');
+                    if(settings.animations){let ts=document.getElementById(!isPlayer?'foe-sprite':'player-sprite'); ts.classList.add('anim-hit-flash'); setTimeout(()=>ts.classList.remove('anim-hit-flash'),400);}
+                    updateUI(); await sleep(1000);
+                    hitSub = true; // skip damage application like Disguise
+                }
                 // Disguise (Mimikyu): absorb one hit, take 1/8 max HP chip damage, block full damage
                 if (defender.ability === "Disguise" && !defender.volatile.disguiseBroken) {
                     defender.volatile.disguiseBroken = true;
@@ -15924,6 +15982,99 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (!defender.volatile) defender.volatile = {};
                         defender.volatile.electromorphosisCharged = true;
                         logMsg(`${defender.name}'s Electromorphosis charged up an Electric move!`, 'info');
+                    }
+                    // Wind Power: charges next Electric move when hit by a wind-flagged move
+                    const _windMoves = new Set(["Aeroblast","Air Cutter","Air Slash","Blizzard","Bleakwind Storm","Fairy Wind","Gust","Heat Wave","Hurricane","Icy Wind","Petal Blizzard","Razor Wind","Sandsear Storm","Sandstorm","Springtide Storm","Tailwind","Twister","Whirlwind","Wildbolt Storm"]);
+                    if (defender.ability === "Wind Power" && defender.currentHp > 0 && _windMoves.has(move.name)) {
+                        if (!defender.volatile) defender.volatile = {};
+                        defender.volatile.electromorphosisCharged = true;
+                        logMsg(`${defender.name}'s Wind Power charged up an Electric move!`, 'info');
+                    }
+                    // Seed Sower: sets Grassy Terrain when hit by a damaging move
+                    if (defender.ability === "Seed Sower" && defender.currentHp > 0 && actualDamage > 0) {
+                        state.terrain = "Grassy"; state.terrainTurns = 5;
+                        logMsg(`${defender.name}'s Seed Sower scattered seeds on the battlefield!`, 'info');
+                    }
+                    // Anger Shell: when HP drops below 50% from a hit, -1 Def/SpD, +1 Atk/SpA/Spe
+                    if (defender.ability === "Anger Shell" && defender.currentHp > 0 && !defender.volatile.angerShellTriggered &&
+                        actualDamage > 0 && defender.currentHp <= Math.floor(defender.maxHp / 2)) {
+                        defender.volatile.angerShellTriggered = true;
+                        logMsg(`${defender.name}'s Anger Shell activated!`, 'info');
+                        changeStage(defender, 'atk', 1);
+                        changeStage(defender, 'spa', 1);
+                        changeStage(defender, 'spe', 1);
+                        changeStage(defender, 'def', -1);
+                        changeStage(defender, 'spd', -1);
+                    }
+                    // Toxic Debris: sets Toxic Spikes on opponent's side when hit by a physical move
+                    if (defender.ability === "Toxic Debris" && defender.currentHp > 0 && move.cat === "Physical" && actualDamage > 0) {
+                        const oppHazards = (attacker === state.pActive) ? state.pHazards : state.fHazards;
+                        if (oppHazards && (oppHazards.toxicSpikes || 0) < 2) {
+                            oppHazards.toxicSpikes = (oppHazards.toxicSpikes || 0) + 1;
+                            logMsg(`${defender.name}'s Toxic Debris scattered toxic spikes!`, 'info');
+                        }
+                    }
+                    // Pickpocket: steal attacker's item on contact (if defender has none)
+                    if (defender.ability === "Pickpocket" && defender.currentHp > 0 && move.flags && move.flags.contact &&
+                        !defender.item && attacker.item && attacker.ability !== "Sticky Hold" && attacker.currentHp > 0 &&
+                        !attacker.itemConsumed) {
+                        defender.item = attacker.item;
+                        attacker.item = null;
+                        logMsg(`${defender.name}'s Pickpocket stole ${attacker.name}'s item!`, 'info');
+                    }
+                    // Mummy / Lingering Aroma / Wandering Spirit: ability change on contact
+                    if (move.flags && move.flags.contact && defender.currentHp > 0 && attacker.currentHp > 0) {
+                        const _abilityChangeBlacklist = new Set(["Multitype","Stance Change","Schooling","Comatose","Shields Down","Disguise","RKS System","Battle Bond","Power Construct","Zen Mode","Ice Face","Hunger Switch","Mummy","Lingering Aroma","Wandering Spirit","Neutralizing Gas"]);
+                        if (defender.ability === "Mummy" && !_abilityChangeBlacklist.has(attacker.ability)) {
+                            logMsg(`${attacker.name}'s ability became Mummy!`, 'info');
+                            attacker.ability = "Mummy";
+                        } else if (defender.ability === "Lingering Aroma" && !_abilityChangeBlacklist.has(attacker.ability)) {
+                            logMsg(`${attacker.name}'s ability became Lingering Aroma!`, 'info');
+                            attacker.ability = "Lingering Aroma";
+                        } else if (defender.ability === "Wandering Spirit" && !_abilityChangeBlacklist.has(attacker.ability)) {
+                            const swap = attacker.ability;
+                            attacker.ability = defender.ability;
+                            defender.ability = swap;
+                            logMsg(`${attacker.name} and ${defender.name} swapped abilities via Wandering Spirit!`, 'info');
+                        }
+                    }
+                    // Magician (attacker): steal target's item on damaging hit (if attacker has none)
+                    if (attacker.ability === "Magician" && attacker.currentHp > 0 && !attacker.item &&
+                        defender.item && defender.ability !== "Sticky Hold" && actualDamage > 0 && !defender.itemConsumed) {
+                        attacker.item = defender.item;
+                        defender.item = null;
+                        logMsg(`${attacker.name}'s Magician stole ${defender.name}'s item!`, 'info');
+                    }
+                    // Toxic Chain (attacker): 30% chance to badly poison on damaging hit
+                    if (attacker.ability === "Toxic Chain" && actualDamage > 0 && defender.currentHp > 0 && !defender.status &&
+                        defender.type1 !== "Poison" && defender.type2 !== "Poison" &&
+                        defender.type1 !== "Steel" && defender.type2 !== "Steel" &&
+                        defender.ability !== "Immunity" && Math.random() < 0.3) {
+                        defender.status = "TOX"; defender.statusTurns = 1;
+                        logMsg(`${attacker.name}'s Toxic Chain badly poisoned ${defender.name}!`, 'status');
+                    }
+                    // Gulp Missile (Cramorant): if defender used Surf/Dive previously and is in Gulp form, counterattack now (when struck)
+                    if (defender.ability === "Gulp Missile" && defender.volatile && defender.volatile.gulpForm &&
+                        attacker.currentHp > 0 && actualDamage > 0 && attacker.ability !== "Magic Guard") {
+                        const gulpDmg = Math.max(1, Math.floor(attacker.maxHp / 4));
+                        const gAct = Math.min(attacker.currentHp, gulpDmg);
+                        attacker.currentHp -= gAct;
+                        logMsg(`${defender.name} spat out a Gulp Missile at ${attacker.name}! (-${gAct} HP)`, 'dmg');
+                        if (defender.volatile.gulpForm === "Gulping") {
+                            changeStage(attacker, 'def', -1, true);
+                        } else if (defender.volatile.gulpForm === "Gorging" && !attacker.status &&
+                                   attacker.type1 !== "Electric" && attacker.type2 !== "Electric") {
+                            attacker.status = "PAR"; attacker.statusTurns = 0;
+                            logMsg(`${attacker.name} is paralyzed!`, 'status');
+                        }
+                        defender.volatile.gulpForm = null;
+                    }
+                    // Gulp Missile setup: after Cramorant uses Surf or Dive, enter Gulp form
+                    if (attacker.ability === "Gulp Missile" && (attacker.name === "Cramorant" || attacker.name === "Cramorant-Gulping" || attacker.name === "Cramorant-Gorging") &&
+                        (move.name === "Surf" || move.name === "Dive") && attacker.currentHp > 0) {
+                        if (!attacker.volatile) attacker.volatile = {};
+                        attacker.volatile.gulpForm = (attacker.currentHp > Math.floor(attacker.maxHp / 2)) ? "Gulping" : "Gorging";
+                        logMsg(`${attacker.name} caught something with Gulp Missile!`, 'info');
                     }
                 }
 
@@ -16467,9 +16618,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             if (mon.ability === "Intimidate") {
-                // Gen 8+: Ghost-types, Inner Focus, Oblivious, Own Tempo are immune to Intimidate
+                // Gen 8+: Ghost-types, Inner Focus, Oblivious, Own Tempo, Scrappy, Mind's Eye are immune to Intimidate
                 const intimidateImmune = foe.type1 === "Ghost" || foe.type2 === "Ghost" ||
-                    foe.ability === "Inner Focus" || foe.ability === "Oblivious" || foe.ability === "Own Tempo";
+                    foe.ability === "Inner Focus" || foe.ability === "Oblivious" || foe.ability === "Own Tempo" ||
+                    foe.ability === "Scrappy" || foe.ability === "Mind's Eye";
                 if (intimidateImmune) {
                     logMsg(`${foe.name}'s ${foe.ability || 'Ghost type'} prevents Intimidate!`, 'info');
                 } else if (foe.ability === "Guard Dog") {
@@ -16617,6 +16769,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 changeStage(mon, 'def', -1, false, _bsOpts);
                 changeStage(mon, 'spd', -1, false, _bsOpts);
                 if (typeof logMsg === 'function') logMsg(`Berserker's Serum: ${mon.name} is hyped (+Atk/+SpA, −Def/−SpD)!`, 'info');
+            }
+            // Slow Start (Regigigas): halve Atk and Spe for 5 turns
+            if (mon.ability === "Slow Start") {
+                mon.volatile.slowStartTurns = 5;
+                logMsg(`${mon.name} can't get it going because of its Slow Start!`, 'info');
+            }
+            // Supersweet Syrup (Dipplin): -1 Eva on opposing Pokémon (once per battle per mon)
+            if (mon.ability === "Supersweet Syrup" && !mon.supersweetSyrupUsed) {
+                mon.supersweetSyrupUsed = true;
+                logMsg(`${mon.name}'s Supersweet Syrup wafted over!`, 'info');
+                changeStage(foe, 'eva', -1, true);
+            }
+            // Embody Aspect (Ogerpon forms): +1 stat depending on form, on Terastallization
+            // Switch-in does nothing; the boost applies when teraActivated flips. Handled in tera hook.
+            // Hospitality (Sinistcha): doubles-only; no-op in singles
+            if (mon.ability === "Hospitality") {
+                logMsg(`${mon.name} showed hospitality!`, 'info');
+            }
+            // Friend Guard / Commander / Power Spot: doubles-only stubs (no-op in singles)
+            if (mon.ability === "Friend Guard" || mon.ability === "Commander" || mon.ability === "Power Spot") {
+                // No mechanical effect in singles
             }
         }
 
@@ -17156,6 +17329,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "Taunt") {
                 if (defender.ability === "Oblivious") { logMsg(`${defender.name}'s Oblivious prevents Taunt!`, 'info'); return; }
+                if (defender.ability === "Aroma Veil") { logMsg(`${defender.name}'s Aroma Veil prevents Taunt!`, 'info'); return; }
                 if (defender.volatile.taunt > 0) { logMsg(`But it failed!`); return; }
                 defender.volatile.taunt = 3; logMsg(`${defender.name} fell for the Taunt!`, 'status'); return;
             }
@@ -17609,6 +17783,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Attract") {
                 if (attacker.gender === null || defender.gender === null || attacker.gender === defender.gender) { logMsg(`But it failed!`, 'info'); return; }
                 if (defender.ability === "Oblivious") { logMsg(`${defender.name}'s Oblivious prevents infatuation!`, 'info'); return; }
+                if (defender.ability === "Aroma Veil") { logMsg(`${defender.name}'s Aroma Veil prevents infatuation!`, 'info'); return; }
                 defender.volatile.infatuated = true;
                 logMsg(`${defender.name} fell in love!`, 'status'); return;
             }
@@ -18022,6 +18197,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (mon.ability === "Insomnia" && status === "SLP") { logMsg(`${mon.name}'s Insomnia prevents sleep!`, 'info'); return; }
             if (mon.ability === "Vital Spirit" && status === "SLP") { logMsg(`${mon.name}'s Vital Spirit prevents sleep!`, 'info'); return; }
+            if (mon.ability === "Sweet Veil" && status === "SLP") { logMsg(`${mon.name}'s Sweet Veil prevents sleep!`, 'info'); return; }
+            if (mon.ability === "Pastel Veil" && (status === "PSN" || status === "TOX")) { logMsg(`${mon.name}'s Pastel Veil prevents poison!`, 'info'); return; }
             // Leaf Guard: immune to all status conditions in Sun
             if (mon.ability === "Leaf Guard" && (getCurrentWeather() === "Sun" || getCurrentWeather() === "HarshSun")) {
                 logMsg(`${mon.name}'s Leaf Guard prevents status in the sunlight!`, 'info'); return;
@@ -18136,6 +18313,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${mon.name}'s Competitive sharply raised its Sp. Atk!`, 'info');
                 mon.stages.spa = Math.min(6, mon.stages.spa + 2);
             }
+            // Opportunist: copy positive stat changes the foe just received (avoid recursion via opts flag)
+            if (amount > 0 && !(opts && opts.fromOpportunist)) {
+                let opp = (mon === state.pActive) ? state.fActive : state.pActive;
+                if (opp && opp.currentHp > 0 && opp.ability === "Opportunist") {
+                    let cap = Math.min(6, opp.stages[stat] + amount) - opp.stages[stat];
+                    if (cap > 0) {
+                        logMsg(`${opp.name}'s Opportunist copied the stat boost!`, 'info');
+                        changeStage(opp, stat, cap, false, { fromOpportunist: true });
+                    }
+                }
+            }
             // White Herb: Restore lowered stats, consumed
             if (amount < 0 && mon.item === "White Herb") {
                 let restored = false;
@@ -18171,6 +18359,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Speed Boost: +1 Speed stage per turn (after first turn)
             if (mon.ability === "Speed Boost" && mon.turnCount > 0 && !(state && state.mode === 'story' && state._stagnationCoreActive)) {
                 changeStage(mon, 'spe', 1);
+            }
+            // Slow Start: decrement remaining turns; announce expiration
+            if (mon.ability === "Slow Start" && (mon.volatile.slowStartTurns || 0) > 0) {
+                mon.volatile.slowStartTurns -= 1;
+                if (mon.volatile.slowStartTurns === 0) {
+                    logMsg(`${mon.name} finally got its act together!`, 'info');
+                }
+            }
+            // Cud Chew: re-eat last consumed berry at end of next turn
+            if (mon.ability === "Cud Chew" && mon.volatile && mon.volatile.cudChewBerry && (mon.volatile.cudChewTurns || 0) > 0) {
+                mon.volatile.cudChewTurns -= 1;
+                if (mon.volatile.cudChewTurns === 0) {
+                    const berry = mon.volatile.cudChewBerry;
+                    mon.volatile.cudChewBerry = null;
+                    // Heal-berry shortlist (sufficient for most cases)
+                    const healAmt = (berry === "Sitrus Berry") ? Math.floor(mon.maxHp / 4)
+                                   : (berry === "Oran Berry") ? 10 : 0;
+                    if (healAmt > 0) {
+                        const actHeal = Math.min(mon.maxHp - mon.currentHp, healAmt);
+                        if (actHeal > 0) { mon.currentHp += actHeal; logMsg(`${mon.name}'s Cud Chew re-eaten ${berry} restored ${actHeal} HP!`, 'heal'); }
+                    } else {
+                        logMsg(`${mon.name}'s Cud Chew re-eaten ${berry}!`, 'info');
+                    }
+                }
+            }
+            // Pickup: recover last item the opponent consumed this turn (if mon has no item)
+            if (mon.ability === "Pickup" && !mon.item && foe && foe.lastConsumedItem) {
+                mon.item = foe.lastConsumedItem;
+                foe.lastConsumedItem = null;
+                logMsg(`${mon.name}'s Pickup picked up the ${mon.item}!`, 'info');
             }
 
             // === PHASE 4 END-OF-TURN ORDER (authoritative) ===
@@ -18391,6 +18609,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Berry activations (blocked by Unnerve and Magic Room/Embargo)
             let unnerved = (foe && foe.ability === "Unnerve") || state.magicRoom > 0 || mon.volatile.embargo > 0;
+            // Snapshot pre-berry item so Cud Chew can re-eat it and Pickup (foe-side) can recover it
+            let _preBerryItem = (mon.item && typeof mon.item === 'string' && mon.item.endsWith("Berry")) ? mon.item : null;
             // Status-curing berries (end-of-turn activation for existing statuses)
             if (!unnerved && mon.status && mon.currentHp > 0) {
                 if (mon.item === "Lum Berry") { logMsg(`${mon.name}'s Lum Berry cured its ${mon.status}!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; }
@@ -18474,6 +18694,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${mon.name}'s Micle Berry boosts its next move's accuracy!`, 'info');
                 mon.volatile.micleBerry = true;
                 mon.item = null; mon.itemConsumed = true;
+            }
+            // Cud Chew finalization: if mon ate its berry this turn, queue re-eat for end of next turn
+            if (_preBerryItem && !mon.item && mon.ability === "Cud Chew" && !(mon.volatile && mon.volatile.cudChewBerry)) {
+                mon.volatile.cudChewBerry = _preBerryItem;
+                mon.volatile.cudChewTurns = 1;
+            }
+            // Track berry consumption for Pickup recovery (singles)
+            if (_preBerryItem && !mon.item) {
+                mon.lastConsumedItem = _preBerryItem;
             }
 
             // Story artifact: Vampiric Fangs — all Pokémon lose 1/16 max HP at end of turn (Magic Guard immune)
