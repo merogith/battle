@@ -10427,10 +10427,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Pokeball throw animations
             logMsg(`Player 1 sent out ${state.pActive.name}!`, 'info');
             logMsg(`${state.mode === 'pvp' ? 'Player 2' : 'Foe'} sent out ${state.fActive.name}!`, 'info');
-            await Promise.all([
+            // Race with a safety timeout: anime.js's .finished relies on requestAnimationFrame,
+            // which is paused/throttled when the tab is hidden or throttled on mobile during load.
+            // Without this cap, the command menu (shown after this await) never appears until the
+            // user switches tabs to wake rAF — the visible "Battle UI was stuck" symptom.
+            const _entryAnim = Promise.all([
                 playPokeballAnimation('player-sprite', true),
                 playPokeballAnimation('foe-sprite', false)
             ]);
+            const _entryAnimCap = new Promise(res => setTimeout(res, settings.animations ? 4000 : 50));
+            await Promise.race([_entryAnim, _entryAnimCap]);
+            // Failsafe in case the timeout won the race: ensure sprites end up visible.
+            ['player-sprite', 'foe-sprite'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { el.style.opacity = '1'; el.style.visibility = 'visible'; }
+            });
 
             applySwitchInAbilities(state.pActive, state.fActive); applySwitchInAbilities(state.fActive, state.pActive);
             updateUI();
