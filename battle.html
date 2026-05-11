@@ -10376,6 +10376,39 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.p1Action = null;
             state.p2Action = null;
             try { state._lockedAt = 0; } catch (e) {}
+            // Last-resort safety net: if anything in the await chain below silently breaks
+            // (a hung CDN script, a thrown ability handler that escapes a try/catch, a stale
+            // playTurn promise from a previous battle that re-asserts state.isLocked=true and
+            // hides both menus, etc.) this guarantees the FIGHT/BAG/RUN menu shows within
+            // 2.5s of entering the battle screen on turn 0. We restrict the override to the
+            // pre-first-turn window (turnNumber === 0) so a legitimately resolving turn
+            // mid-battle can't be hijacked.
+            try {
+                if (window.__startBattleMenuSafetyTimer) { clearTimeout(window.__startBattleMenuSafetyTimer); }
+                window.__startBattleMenuSafetyTimer = setTimeout(function () {
+                    try {
+                        const sb = document.getElementById('screen-battle');
+                        if (!sb || sb.classList.contains('hidden')) return;
+                        if (!state || state.isOver) return;
+                        if ((state.turnNumber|0) !== 0) return; // only on the opening of a battle
+                        const cmd = document.getElementById('command-menu');
+                        const mv = document.getElementById('move-menu');
+                        const partyModal = document.getElementById('modal-party');
+                        const moveOpen = mv && !mv.classList.contains('hidden');
+                        const partyOpen = partyModal && !partyModal.classList.contains('hidden');
+                        if (moveOpen || partyOpen) return;
+                        if (cmd && cmd.classList.contains('hidden')) {
+                            try { state.isLocked = false; } catch (e) {}
+                            try { state._lockedAt = 0; } catch (e) {}
+                            cmd.classList.remove('hidden');
+                            try { if (window.syncBattlePhaseClass) window.syncBattlePhaseClass(); } catch (e) {}
+                            try { if (typeof syncBattleActiveHighlight === 'function') syncBattleActiveHighlight(); } catch (e) {}
+                            try { if (typeof logMsg === 'function') logMsg('Battle commands restored automatically.', 'info'); } catch (e) {}
+                            console.warn('[startBattle] safety net forced command-menu visible after 2.5s');
+                        }
+                    } catch (e) { console.warn('[startBattle] safety net threw:', e); }
+                }, 2500);
+            } catch (e) {}
             // Clear any stray bag-pass marker. If a prior battle ended mid-bag-flow (e.g. the user
             // popped a Hyper Potion on the foe's KO turn), the global flag could otherwise silently
             // overwrite the player's first move in the new battle with __StoryItemPass.
@@ -10445,10 +10478,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 playPokeballAnimation('foe-sprite', false)
             ]);
 
+            // Show the FIGHT/BAG/RUN menu BEFORE any of the optional post-throw work. If a later
+            // step throws or hangs (a bad ability handler, a flaky updateUI cache, a logMsg regex
+            // hot path on a huge tooltipDict, etc.), the menu is already on screen and clickable.
+            try { document.getElementById('move-menu').classList.add('hidden'); } catch (e) {}
+            try { document.getElementById('command-menu').classList.remove('hidden'); } catch (e) {}
+
             // Each of these can throw on unusual builds (Imposter on a half-built foe, an
             // ability that mutates state mid-call, getSprite errors, etc). If any throws here
-            // the await chain bails BEFORE the menu unhide and the battle looks frozen until
-            // Force Continue. Wrap them so the FIGHT/BAG/RUN menu always appears.
+            // the await chain previously bailed BEFORE the menu unhide and the battle looked
+            // frozen until Force Continue. Wrap them so the menu always stays interactive.
             try { applySwitchInAbilities(state.pActive, state.fActive); } catch (e) { console.warn('[startBattle] applySwitchInAbilities(player) threw:', e); }
             try { applySwitchInAbilities(state.fActive, state.pActive); } catch (e) { console.warn('[startBattle] applySwitchInAbilities(foe) threw:', e); }
             try { updateUI(); } catch (e) { console.warn('[startBattle] updateUI threw:', e); }
@@ -10459,8 +10498,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`Tip: Tap moves or "i" for info. ▲▼ = damage matchup. Tap names for stats.`, 'info');
             }
 
-            document.getElementById('move-menu').classList.add('hidden');
-            document.getElementById('command-menu').classList.remove('hidden');
             try { if (window.syncBattlePhaseClass) window.syncBattlePhaseClass(); } catch (e) {}
             try { syncBattleActiveHighlight(); } catch (e) {}
             if (typeof window.applyBattleLogDockClass === 'function') window.applyBattleLogDockClass();
