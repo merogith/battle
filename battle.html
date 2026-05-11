@@ -10878,21 +10878,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 nameEl.innerHTML = (mon.isShiny ? '&#10024; ' : '') + mon.name + gBadge;
                 nameEl.title = 'Tap for full summary · hover for quick stats';
-                // Cache event listeners (only set once, not on every updateUI call)
+                // Keep current mon/side on the node so the (once-attached) listeners always read fresh state.
+                // Without this, closures would lock onto whichever mon was active during the first updateUI()
+                // call — after a switch, hovering the name shows the OLD Pokémon's stats and downstream
+                // reads of a stale mon can throw mid-turn.
+                nameEl._mon = mon;
+                nameEl._side = s;
                 if (!nameEl._eventsAttached) {
                     nameEl._eventsAttached = true;
                     nameEl.addEventListener('mousemove', function(e) {
                         if (!window._prefersFinePointerHover()) return;
-                        let tt = be.textTooltip;
-                        tt.innerHTML = getStatTooltipHTML(mon);
+                        let tt = battleEls.textTooltip; if (!tt) return;
+                        let cur = nameEl._mon; if (!cur) return;
+                        tt.innerHTML = getStatTooltipHTML(cur);
                         tt.classList.remove('tooltip-tap-mode');
                         window._posTooltip(tt, e); tt.classList.remove('hidden');
                     });
-                    nameEl.addEventListener('mouseleave', function() { be.textTooltip.classList.add('hidden'); });
+                    nameEl.addEventListener('mouseleave', function() { if (battleEls.textTooltip) battleEls.textTooltip.classList.add('hidden'); });
                     nameEl.addEventListener('click', function(e) {
                         e.preventDefault();
                         e.stopPropagation();
-                        window.showActiveInfo(s === 'p');
+                        window.showActiveInfo(nameEl._side === 'p');
                     });
                 }
                 nameEl.style.cursor = 'pointer';
@@ -11020,9 +11026,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let t = turns > 0 ? ` <b>${turns}</b>` : '';
                     let tip = tipHtml;
                     if (turns > 0) tip += `<br><span style="color:#9e9e9e;font-size:10px;font-weight:normal;line-height:1.35">One battle turn = each active Pokémon selects one move (full round).</span>`;
-                    // Use data attribute without encoding to avoid expensive encodeURIComponent call
-                    const tipEsc = tip.replace(/"/g, '&quot;');
-                    return `<span class="field-pill" role="button" tabindex="0" style="background:${bg};color:${color};border:1px solid ${color};" data-tip="${tipEsc}" onclick="window.showFieldTooltipFromData(event)" onkeydown="if(event.key==='Enter'||event.key===' ')window.showFieldTooltipFromData(event)">${label}${t}</span>`;
+                    // Must stay URI-encoded — window.showFieldTooltipFromData decodes via decodeURIComponent.
+                    // Plain HTML-escape (the previous "perf" tweak) breaks on any tip containing % or & and
+                    // can throw URIError mid-render.
+                    return `<span class="field-pill" role="button" tabindex="0" style="background:${bg};color:${color};border:1px solid ${color};" data-tip="${encodeURIComponent(tip)}" onclick="window.showFieldTooltipFromData(event)" onkeydown="if(event.key==='Enter'||event.key===' ')window.showFieldTooltipFromData(event)">${label}${t}</span>`;
                 };
                 const isPerm = v => v === 'HarshSun' || v === 'HeavyRain' || v === 'StrongWinds';
                 if (w) {
@@ -11141,13 +11148,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let tipHp = revealed ? ` ${mon.currentHp}/${mon.maxHp}HP` : '';
                     let tipStatus = revealed && mon.status ? ` [${mon.status}]` : '';
                     ball.title = `${tipName}${tipHp}${tipStatus}`;
-                    // Clickable: open summary if revealed and alive
+                    // Clickable: open summary if revealed and alive. Reuse keeps the DOM node but idx /
+                    // _summaryP1 may change between renders, so rebind every iteration (cheap, and avoids
+                    // a stale closure pointing at a reordered party).
                     if (revealed) {
                         ball.style.cursor = 'pointer';
                         ball.style.filter = '';
+                        ball.onmouseenter = () => { ball.style.transform = 'scale(1.3)'; };
+                        ball.onmouseleave = () => { ball.style.transform = 'scale(1)'; };
+                        ball.onclick = () => { window.showSummary(idx, _summaryP1); };
                     } else {
                         ball.style.cursor = 'help';
                         ball.style.filter = 'brightness(0.4)';
+                        ball.onmouseenter = null;
+                        ball.onmouseleave = null;
+                        ball.onclick = null;
                     }
                 });
             });
@@ -11178,28 +11193,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     existingBadges = container.querySelectorAll('.stage-badge');
                 }
 
+                // cssText must be re-applied every time: a reused badge may have been the "drops" (red)
+                // one last frame and the "boosts" (green) one this frame.
+                const boostCss = 'position:absolute; top:2px; right:2px; font-size:8px; padding:1px 3px; background:rgba(76,175,80,0.8); color:#fff; border-radius:2px; z-index:10; cursor:help;';
+                const dropCss  = (top) => `position:absolute; top:${top}; right:2px; font-size:8px; padding:1px 3px; background:rgba(244,67,54,0.8); color:#fff; border-radius:2px; z-index:10; cursor:help;`;
                 let badgeIdx = 0;
                 if (boosts.length > 0) {
-                    let badge = existingBadges[badgeIdx] || (() => {
-                        let b = document.createElement('div');
-                        b.className = 'stage-badge';
-                        b.style.cssText = 'position:absolute; top:2px; right:2px; font-size:8px; padding:1px 3px; background:rgba(76,175,80,0.8); color:#fff; border-radius:2px; z-index:10; cursor:help;';
-                        container.appendChild(b);
-                        return b;
-                    })();
+                    let badge = existingBadges[badgeIdx];
+                    if (!badge) {
+                        badge = document.createElement('div');
+                        badge.className = 'stage-badge';
+                        container.appendChild(badge);
+                    }
+                    badge.style.cssText = boostCss;
                     badge.textContent = '\u25B2' + boosts.length;
                     badge.title = boosts.join(', ');
                     badgeIdx++;
                 }
                 if (drops.length > 0) {
-                    let badge = existingBadges[badgeIdx] || (() => {
-                        let b = document.createElement('div');
-                        b.className = 'stage-badge';
-                        b.style.cssText = 'position:absolute; right:2px; font-size:8px; padding:1px 3px; background:rgba(244,67,54,0.8); color:#fff; border-radius:2px; z-index:10; cursor:help;';
-                        container.appendChild(b);
-                        return b;
-                    })();
-                    badge.style.top = (boosts.length > 0 ? '16px' : '2px');
+                    let badge = existingBadges[badgeIdx];
+                    if (!badge) {
+                        badge = document.createElement('div');
+                        badge.className = 'stage-badge';
+                        container.appendChild(badge);
+                    }
+                    badge.style.cssText = dropCss(boosts.length > 0 ? '16px' : '2px');
                     badge.textContent = '\u25BC' + drops.length;
                     badge.title = drops.join(', ');
                 }
