@@ -6845,7 +6845,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 grade: 3, _fromAPI: true
             };
         }
-        const sleep = ms => new Promise(res => setTimeout(res, settings.animations ? ms : 10));
+        // Battle generation counter. Bumped at every startBattle() reset so that any in-flight
+        // sleep() / await chain from a PRIOR battle can be detected and aborted instead of
+        // silently mutating the new battle's state. Without this guard, a stale playTurn
+        // resolver from the previous battle (paused on `await sleep(1000)`) can wake up after
+        // the new battle has started, re-assert state.isLocked=true, hide the command-menu,
+        // and trigger the "Battle UI was stuck" watchdog ~30s later.
+        let _battleGen = 0;
+        const sleep = ms => {
+            const _gen = _battleGen;
+            return new Promise((res, rej) => {
+                setTimeout(() => {
+                    if (_gen !== _battleGen) {
+                        // Stale: the user started a new battle while we slept.
+                        // Reject so the holding await chain unwinds cleanly via the resolver's
+                        // catch block (which unhides the command-menu for the new battle).
+                        rej(new Error('battle-gen-changed'));
+                        return;
+                    }
+                    res();
+                }, settings.animations ? ms : 10);
+            });
+        };
         function showBattlePopup(text, cssClass, isPlayerSide) {
             if (!settings.animations) return;
             let container = document.getElementById('screen-battle');
@@ -10369,6 +10390,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         async function startBattle() {
             // Every path that opens a fight must start from a clean turn machine (draft, story, gauntlet, tests).
             // Otherwise returnToHome / prior end can leave state.isOver true and playTurn will no-op — looks like a freeze on the first "KO" click.
+            // Bump the battle generation FIRST so any in-flight sleep() / resolver from a
+            // previous battle bails out immediately (see sleep() definition above).
+            _battleGen++;
             state.isOver = false;
             state.isLocked = false;
             state.pendingEoT = false;
@@ -10376,38 +10400,66 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.p1Action = null;
             state.p2Action = null;
             try { state._lockedAt = 0; } catch (e) {}
-            // Last-resort safety net: if anything in the await chain below silently breaks
-            // (a hung CDN script, a thrown ability handler that escapes a try/catch, a stale
-            // playTurn promise from a previous battle that re-asserts state.isLocked=true and
-            // hides both menus, etc.) this guarantees the FIGHT/BAG/RUN menu shows within
-            // 2.5s of entering the battle screen on turn 0. We restrict the override to the
-            // pre-first-turn window (turnNumber === 0) so a legitimately resolving turn
-            // mid-battle can't be hijacked.
+            // Last-resort safety net: a stale `playTurn` promise from a previous battle (the
+            // resolver's awaited sleep() has no AbortSignal) can resume AFTER startBattle's
+            // reset and re-assert state.isLocked=true or re-hide the command-menu. Fire a brief
+            // recurring check that, on turn 0 with the battle screen open and no active modal,
+            // forces FIGHT/BAG/RUN visible — overriding any stale lock from a prior resolver.
+            // Runs every 750ms for up to 12s, then stops itself.
             try {
-                if (window.__startBattleMenuSafetyTimer) { clearTimeout(window.__startBattleMenuSafetyTimer); }
-                window.__startBattleMenuSafetyTimer = setTimeout(function () {
+                if (window.__startBattleMenuSafetyInterval) {
+                    clearInterval(window.__startBattleMenuSafetyInterval);
+                    window.__startBattleMenuSafetyInterval = null;
+                }
+                const _safetyStart = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+                let _forcedOnce = false;
+                window.__startBattleMenuSafetyInterval = setInterval(function () {
                     try {
+                        const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+                        const elapsed = now - _safetyStart;
+                        if (elapsed > 12000) {
+                            clearInterval(window.__startBattleMenuSafetyInterval);
+                            window.__startBattleMenuSafetyInterval = null;
+                            return;
+                        }
                         const sb = document.getElementById('screen-battle');
                         if (!sb || sb.classList.contains('hidden')) return;
                         if (!state || state.isOver) return;
-                        if ((state.turnNumber|0) !== 0) return; // only on the opening of a battle
+                        if ((state.turnNumber | 0) !== 0) {
+                            // First turn already started — stop watching, the normal turn machine handles unhide.
+                            clearInterval(window.__startBattleMenuSafetyInterval);
+                            window.__startBattleMenuSafetyInterval = null;
+                            return;
+                        }
                         const cmd = document.getElementById('command-menu');
                         const mv = document.getElementById('move-menu');
                         const partyModal = document.getElementById('modal-party');
                         const moveOpen = mv && !mv.classList.contains('hidden');
                         const partyOpen = partyModal && !partyModal.classList.contains('hidden');
                         if (moveOpen || partyOpen) return;
+                        // Only act if we've given the normal path at least ~1.2s to unhide on its own.
+                        if (elapsed < 1200) return;
                         if (cmd && cmd.classList.contains('hidden')) {
                             try { state.isLocked = false; } catch (e) {}
                             try { state._lockedAt = 0; } catch (e) {}
+                            try { state.pendingEoT = false; state.residualPhaseComplete = false; } catch (e) {}
                             cmd.classList.remove('hidden');
                             try { if (window.syncBattlePhaseClass) window.syncBattlePhaseClass(); } catch (e) {}
                             try { if (typeof syncBattleActiveHighlight === 'function') syncBattleActiveHighlight(); } catch (e) {}
-                            try { if (typeof logMsg === 'function') logMsg('Battle commands restored automatically.', 'info'); } catch (e) {}
-                            console.warn('[startBattle] safety net forced command-menu visible after 2.5s');
+                            if (!_forcedOnce) {
+                                _forcedOnce = true;
+                                try { if (typeof logMsg === 'function') logMsg('Battle commands restored automatically.', 'info'); } catch (e) {}
+                                console.warn('[startBattle] safety net forced command-menu visible after ' + Math.round(elapsed) + 'ms');
+                            }
+                        } else {
+                            // Menu is visible AND not in a sub-flow: success, stop watching.
+                            if (_forcedOnce || elapsed > 3000) {
+                                clearInterval(window.__startBattleMenuSafetyInterval);
+                                window.__startBattleMenuSafetyInterval = null;
+                            }
                         }
-                    } catch (e) { console.warn('[startBattle] safety net threw:', e); }
-                }, 2500);
+                    } catch (e) { /* safety net must never throw */ }
+                }, 750);
             } catch (e) {}
             // Clear any stray bag-pass marker. If a prior battle ended mid-bag-flow (e.g. the user
             // popped a Hyper Potion on the foe's KO turn), the global flag could otherwise silently
@@ -13401,6 +13453,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 await window.__runLockedPvPTurnResolution();
             } catch (e) {
+                // 'battle-gen-changed' means a new battle started while this resolver was
+                // mid-await: stop here without touching the new battle's state. Any other
+                // throw means we lost the resolver mid-turn and need to restore the menu.
+                if (e && e.message === 'battle-gen-changed') {
+                    console.warn('[playTurn] stale resolver aborted by battle-gen guard');
+                    return;
+                }
                 // Resolver has its own try/catch/finally, but if it ever rejects synchronously
                 // (e.g. before its try block) we still need to release the lock + restore menus
                 // so the player isn't stuck staring at an empty battle screen.
@@ -13693,6 +13752,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 document.getElementById('command-menu').classList.remove('hidden');
 
             } catch(err) {
+                // 'battle-gen-changed' is the sleep() guard signaling that a new battle
+                // started while we were mid-await. Re-throw so playTurn's outer catch can
+                // short-circuit without writing to the new battle's state or log.
+                if (err && err.message === 'battle-gen-changed') throw err;
                 console.error("Battle error:", err);
                 try { logMsg(`[Error: ${err && err.message ? err.message : err}. Turn skipped.]`, 'dmg'); } catch (e) {}
                 state.isLocked = false;
