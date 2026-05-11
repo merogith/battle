@@ -10525,10 +10525,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Pokeball throw animations
             logMsg(`Player 1 sent out ${state.pActive.name}!`, 'info');
             logMsg(`${state.mode === 'pvp' ? 'Player 2' : 'Foe'} sent out ${state.fActive.name}!`, 'info');
-            await Promise.all([
-                playPokeballAnimation('player-sprite', true),
-                playPokeballAnimation('foe-sprite', false)
-            ]);
+            // Pokeball throw animations. Wrap in try so a gen-changed rejection from sleep()
+            // (a stale battle bumping _battleGen mid-anim) — or a misbehaving anime() — does
+            // NOT skip the menu unhide below.
+            try {
+                await Promise.all([
+                    playPokeballAnimation('player-sprite', true),
+                    playPokeballAnimation('foe-sprite', false)
+                ]);
+            } catch (e) {
+                console.warn('[startBattle] pokeball animation rejected; continuing to menu unhide:', e && e.message ? e.message : e);
+                // Force sprites visible if the anime path didn't reach its show step.
+                ['player-sprite','foe-sprite'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) { el.style.opacity = '1'; el.style.visibility = 'visible'; }
+                });
+            }
 
             // Show the FIGHT/BAG/RUN menu BEFORE any of the optional post-throw work. If a later
             // step throws or hangs (a bad ability handler, a flaky updateUI cache, a logMsg regex
