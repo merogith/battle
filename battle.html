@@ -10878,19 +10878,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 nameEl.innerHTML = (mon.isShiny ? '&#10024; ' : '') + mon.name + gBadge;
                 nameEl.title = 'Tap for full summary · hover for quick stats';
-                nameEl.onmousemove = function(e) {
-                    if (!window._prefersFinePointerHover()) return;
-                    let tt = be.textTooltip;
-                    tt.innerHTML = getStatTooltipHTML(mon);
-                    tt.classList.remove('tooltip-tap-mode');
-                    window._posTooltip(tt, e); tt.classList.remove('hidden');
-                };
-                nameEl.onmouseleave = function() { be.textTooltip.classList.add('hidden'); };
-                nameEl.onclick = function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    window.showActiveInfo(s === 'p');
-                };
+                // Cache event listeners (only set once, not on every updateUI call)
+                if (!nameEl._eventsAttached) {
+                    nameEl._eventsAttached = true;
+                    nameEl.addEventListener('mousemove', function(e) {
+                        if (!window._prefersFinePointerHover()) return;
+                        let tt = be.textTooltip;
+                        tt.innerHTML = getStatTooltipHTML(mon);
+                        tt.classList.remove('tooltip-tap-mode');
+                        window._posTooltip(tt, e); tt.classList.remove('hidden');
+                    });
+                    nameEl.addEventListener('mouseleave', function() { be.textTooltip.classList.add('hidden'); });
+                    nameEl.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.showActiveInfo(s === 'p');
+                    });
+                }
                 nameEl.style.cursor = 'pointer';
                 let spriteEl = el.sprite;
                 let sprName = getBattleSpriteSpeciesName(mon);
@@ -11016,7 +11020,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let t = turns > 0 ? ` <b>${turns}</b>` : '';
                     let tip = tipHtml;
                     if (turns > 0) tip += `<br><span style="color:#9e9e9e;font-size:10px;font-weight:normal;line-height:1.35">One battle turn = each active Pokémon selects one move (full round).</span>`;
-                    return `<span class="field-pill" role="button" tabindex="0" style="background:${bg};color:${color};border:1px solid ${color};" data-tip="${encodeURIComponent(tip)}" onclick="window.showFieldTooltipFromData(event)" onkeydown="if(event.key==='Enter'||event.key===' ')window.showFieldTooltipFromData(event)">${label}${t}</span>`;
+                    // Use data attribute without encoding to avoid expensive encodeURIComponent call
+                    const tipEsc = tip.replace(/"/g, '&quot;');
+                    return `<span class="field-pill" role="button" tabindex="0" style="background:${bg};color:${color};border:1px solid ${color};" data-tip="${tipEsc}" onclick="window.showFieldTooltipFromData(event)" onkeydown="if(event.key==='Enter'||event.key===' ')window.showFieldTooltipFromData(event)">${label}${t}</span>`;
                 };
                 const isPerm = v => v === 'HarshSun' || v === 'HeavyRain' || v === 'StrongWinds';
                 if (w) {
@@ -11095,7 +11101,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (state.mode === 'gauntlet' && be.gauntletScore) be.gauntletScore.innerText = `Score: ${state.score}`;
 
-            // Party ball icons (clickable for summary if revealed)
+            // Party ball icons (clickable for summary if revealed) — reuse DOM elements instead of recreating
             ['player', 'foe'].forEach(side => {
                 const _gvPB = isGuestPerspective();
                 let bar = side === 'player' ? be.playerPartyBar : be.foePartyBar;
@@ -11103,15 +11109,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let party, isFoe, _summaryP1;
                 if (!_gvPB) { party = side === 'player' ? state.playerParty : state.foeParty; isFoe = side === 'foe'; _summaryP1 = side === 'player'; }
                 else { party = side === 'player' ? state.foeParty : state.playerParty; isFoe = false; _summaryP1 = side !== 'player'; }
-                bar.innerHTML = '';
+
+                // Reuse existing balls or create new ones only if needed
+                const existingBalls = Array.from(bar.querySelectorAll('.party-bar-ball'));
+                while (existingBalls.length > party.length) {
+                    existingBalls.pop().remove();
+                }
                 party.forEach((mon, idx) => {
-                    let ball = document.createElement('div');
-                    ball.className = 'party-bar-ball';
+                    let ball = existingBalls[idx];
+                    if (!ball) {
+                        ball = document.createElement('div');
+                        ball.className = 'party-bar-ball';
+                        ball.style.cssText = `width:14px; height:14px; border-radius:50%; border:1px solid #666; position:relative; transition:transform 0.1s;`;
+                        bar.appendChild(ball);
+                    }
+
                     let revealed = !isFoe || (state.revealedFoe && state.revealedFoe.has(mon.name));
-                    ball.style.cssText = `width:14px; height:14px; border-radius:50%; border:1px solid #666; position:relative; transition:transform 0.1s;`;
+                    // Update colors based on HP
                     if (mon.currentHp > 0) {
                         ball.style.background = 'linear-gradient(180deg, #ee3333 50%, #f5f5f5 50%)';
                         ball.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.4)';
+                        ball.style.opacity = '1';
+                        ball.style.borderColor = '#666';
                     } else {
                         ball.style.background = '#2a2a2a';
                         ball.style.borderColor = '#1a1a1a';
@@ -11125,14 +11144,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Clickable: open summary if revealed and alive
                     if (revealed) {
                         ball.style.cursor = 'pointer';
-                        ball.onmouseenter = () => { ball.style.transform = 'scale(1.3)'; };
-                        ball.onmouseleave = () => { ball.style.transform = 'scale(1)'; };
-                        ball.onclick = () => { window.showSummary(idx, _summaryP1); };
+                        ball.style.filter = '';
                     } else {
                         ball.style.cursor = 'help';
                         ball.style.filter = 'brightness(0.4)';
                     }
-                    bar.appendChild(ball);
                 });
             });
             try {
@@ -11141,13 +11157,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (sbParty && n >= 1 && n <= 6) sbParty.setAttribute('data-party-size', String(n));
             } catch (e) {}
 
-            // Stat stage indicators
+            // Stat stage indicators \u2014 reuse badges instead of recreating
             ['p', 'f'].forEach(s => {
                 const _gvSt = isGuestPerspective(); let mon = ((s === 'p') !== _gvSt) ? state.pActive : state.fActive;
                 let container = (s === 'p' ? be.player : be.foe).spriteContainer;
                 if (!container) return;
-                // Remove old badges
-                container.querySelectorAll('.stage-badge').forEach(el => el.remove());
 
                 let boosts = [], drops = [];
                 let statNames = {atk:'Atk', def:'Def', spa:'SpA', spd:'SpD', spe:'Spe', acc:'Acc', eva:'Eva'};
@@ -11156,21 +11170,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (mon.stages[key] < 0) drops.push(`${statNames[key]}${mon.stages[key]}`);
                 }
 
+                // Reuse existing badges or remove if no longer needed
+                let existingBadges = container.querySelectorAll('.stage-badge');
+                let badgeCount = (boosts.length > 0 ? 1 : 0) + (drops.length > 0 ? 1 : 0);
+                while (existingBadges.length > badgeCount) {
+                    existingBadges[existingBadges.length - 1].remove();
+                    existingBadges = container.querySelectorAll('.stage-badge');
+                }
+
+                let badgeIdx = 0;
                 if (boosts.length > 0) {
-                    let badge = document.createElement('div');
-                    badge.className = 'stage-badge';
-                    badge.style.cssText = 'position:absolute; top:2px; right:2px; font-size:8px; padding:1px 3px; background:rgba(76,175,80,0.8); color:#fff; border-radius:2px; z-index:10; cursor:help;';
+                    let badge = existingBadges[badgeIdx] || (() => {
+                        let b = document.createElement('div');
+                        b.className = 'stage-badge';
+                        b.style.cssText = 'position:absolute; top:2px; right:2px; font-size:8px; padding:1px 3px; background:rgba(76,175,80,0.8); color:#fff; border-radius:2px; z-index:10; cursor:help;';
+                        container.appendChild(b);
+                        return b;
+                    })();
                     badge.textContent = '\u25B2' + boosts.length;
                     badge.title = boosts.join(', ');
-                    container.appendChild(badge);
+                    badgeIdx++;
                 }
                 if (drops.length > 0) {
-                    let badge = document.createElement('div');
-                    badge.className = 'stage-badge';
-                    badge.style.cssText = 'position:absolute; top:' + (boosts.length > 0 ? '16px' : '2px') + '; right:2px; font-size:8px; padding:1px 3px; background:rgba(244,67,54,0.8); color:#fff; border-radius:2px; z-index:10; cursor:help;';
+                    let badge = existingBadges[badgeIdx] || (() => {
+                        let b = document.createElement('div');
+                        b.className = 'stage-badge';
+                        b.style.cssText = 'position:absolute; right:2px; font-size:8px; padding:1px 3px; background:rgba(244,67,54,0.8); color:#fff; border-radius:2px; z-index:10; cursor:help;';
+                        container.appendChild(b);
+                        return b;
+                    })();
+                    badge.style.top = (boosts.length > 0 ? '16px' : '2px');
                     badge.textContent = '\u25BC' + drops.length;
                     badge.title = drops.join(', ');
-                    container.appendChild(badge);
                 }
             });
             try { syncBattleActiveHighlight(); } catch (e) {}
