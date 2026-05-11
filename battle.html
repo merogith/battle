@@ -15079,6 +15079,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let critRate = armorBlocksCrit ? 0 : (critStage <= 0 ? 1/24 : critStage === 1 ? 1/8 : critStage === 2 ? 1/2 : 1);
                 let crit = (!armorBlocksCrit && Math.random() < critRate) ? (attacker.ability === "Sniper" ? 2.25 : 1.5) : 1;
 
+                // Spectral Thief: steal target's positive stat stages before computing damage,
+                // so the user's freshly-stolen boosts apply to this hit.
+                if (move.name === "Spectral Thief") {
+                    const _stKeys = ['atk','def','spa','spd','spe','acc','eva'];
+                    let _stStolen = false;
+                    _stKeys.forEach(k => {
+                        const v = defender.stages[k] || 0;
+                        if (v > 0) {
+                            attacker.stages[k] = Math.min(6, (attacker.stages[k] || 0) + v);
+                            defender.stages[k] = 0;
+                            _stStolen = true;
+                        }
+                    });
+                    if (_stStolen) logMsg(`${attacker.name} stole ${defender.name}'s boosted stats!`, 'info');
+                }
+
                 // Attack and Defense stats
                 let A, D;
                 // Darkest Lariat: ignores target's stat stages
@@ -15801,7 +15817,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (hitSub) {
                     // Disguise already handled above — skip normal damage application
-                } else if (defender.volatile.sub > 0 && !(attacker.ability === "Infiltrator")) {
+                } else if (defender.volatile.sub > 0 && !(attacker.ability === "Infiltrator") && move.name !== "Spectral Thief") {
                     let subDamage = Math.min(defender.volatile.sub, damage); defender.volatile.sub -= subDamage;
                     logMsg(`The substitute took ${subDamage} damage for ${defender.name}!`, 'dmg');
                     if (state && state.mode === 'story' && state._vampiricFangsActive && subDamage > 0 && move.cat !== "Status") {
@@ -16940,7 +16956,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             // === Substitute: blocks opponent-targeting status moves ===
-            const _subBypassMoves = new Set(["Hyper Voice","Bug Buzz","Boomburst","Perish Song","Heal Bell","Aromatherapy","Snore","Round","Uproar","Clanging Scales","Echoed Voice","Disarming Voice","Relic Song","Snarl","Sparkling Aria","Overdrive","Strength Sap"]);
+            const _subBypassMoves = new Set(["Hyper Voice","Bug Buzz","Boomburst","Perish Song","Heal Bell","Aromatherapy","Snore","Round","Uproar","Clanging Scales","Echoed Voice","Disarming Voice","Relic Song","Snarl","Sparkling Aria","Overdrive","Strength Sap","Heart Swap","Power Swap","Guard Swap","Psych Up","Haze"]);
             const _selfTargetMoves = new Set(["Swords Dance","Nasty Plot","Calm Mind","Dragon Dance","Quiver Dance","Shell Smash","Belly Drum","Agility","Rock Polish","Bulk Up","Iron Defense","Amnesia","Wish","Roost","Recover","Soft-Boiled","Slack Off","Milk Drink","Heal Order","Shore Up","Rest","Ingrain","Aqua Ring","Baton Pass","Parting Shot","Heal Bell","Aromatherapy","Trick Room","Sunny Day","Rain Dance","Sandstorm","Hail","Snowscape","Stealth Rock","Spikes","Toxic Spikes","Sticky Web","Defog","Reflect","Light Screen","Aurora Veil","Substitute","Focus Energy","Stockpile","Spit Up","Swallow","Geomancy","Coil","Haze","Imprison","Healing Wish","Lunar Dance","Destiny Bond","Perish Song"]);
             if (move.cat === "Status" && defender.volatile.sub > 0 && !_subBypassMoves.has(move.name) && !_selfTargetMoves.has(move.name) && attacker.ability !== "Infiltrator") {
                 logMsg(`${attacker.name}'s ${move.name} was blocked by ${defender.name}'s substitute!`, 'info');
@@ -17408,6 +17424,46 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Haze") {
                 [attacker, defender].forEach(mon => { mon.stages = {atk:0, def:0, spa:0, spd:0, spe:0, acc:0, eva:0}; });
                 logMsg(`All stat changes were eliminated!`, 'info'); return;
+            }
+            // Clear Smog: damaging Poison move that resets the target's stat stages on hit (post-damage).
+            if (move.name === "Clear Smog" && defender.currentHp > 0) {
+                defender.stages = {atk:0, def:0, spa:0, spd:0, spe:0, acc:0, eva:0};
+                logMsg(`${defender.name}'s stat changes were eliminated!`, 'info');
+                updateUI(); return;
+            }
+            // Topsy-Turvy: invert the target's stat stages (positive ↔ negative). Fails if all 0.
+            if (move.name === "Topsy-Turvy") {
+                const _ttKeys = ['atk','def','spa','spd','spe','acc','eva'];
+                if (_ttKeys.every(k => (defender.stages[k] || 0) === 0)) { logMsg(`But it failed!`, 'info'); return; }
+                _ttKeys.forEach(k => { defender.stages[k] = -(defender.stages[k] || 0); });
+                logMsg(`${defender.name}'s stat changes were inverted!`, 'info');
+                updateUI(); return;
+            }
+            // Heart Swap: swap all stat stages between user and target.
+            if (move.name === "Heart Swap") {
+                const _tmp = attacker.stages; attacker.stages = defender.stages; defender.stages = _tmp;
+                logMsg(`${attacker.name} swapped all stat changes with ${defender.name}!`, 'info');
+                updateUI(); return;
+            }
+            // Power Swap: swap Atk and SpA stages with the target.
+            if (move.name === "Power Swap") {
+                ['atk','spa'].forEach(k => {
+                    const t = attacker.stages[k] || 0;
+                    attacker.stages[k] = defender.stages[k] || 0;
+                    defender.stages[k] = t;
+                });
+                logMsg(`${attacker.name} swapped Attack and Sp. Atk changes with ${defender.name}!`, 'info');
+                updateUI(); return;
+            }
+            // Guard Swap: swap Def and SpD stages with the target.
+            if (move.name === "Guard Swap") {
+                ['def','spd'].forEach(k => {
+                    const t = attacker.stages[k] || 0;
+                    attacker.stages[k] = defender.stages[k] || 0;
+                    defender.stages[k] = t;
+                });
+                logMsg(`${attacker.name} swapped Defense and Sp. Def changes with ${defender.name}!`, 'info');
+                updateUI(); return;
             }
             if (move.name === "Rain Dance") { state.weather = "Rain"; state.weatherTurns = attacker.item === "Damp Rock" ? 8 : 5; logMsg("It started to rain!", 'info'); return; }
             if (move.name === "Pain Split") {
