@@ -19554,6 +19554,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return -1;
         }
+        /** Same battle index `proceedToNextBattle` would pick from the current hub (`sm.eventIndex`), including `currentEnemyLock` rematches. */
+        function storyEffectiveNextBattleIndexFromHub() {
+            let nextBattleIdx = -1;
+            const ei = sm.eventIndex | 0;
+            for (let i = ei; i < STORY_EVENTS_RAW.length; i++) {
+                if (STORY_EVENTS_RAW[i][1] === 'Battle') { nextBattleIdx = i; break; }
+            }
+            if (nextBattleIdx < 0) return -1;
+            const lock = sm.currentEnemyLock;
+            if (lock && lock.eventIdx != null && Array.isArray(lock.team) && lock.team.length) {
+                const le = lock.eventIdx | 0;
+                const row = STORY_EVENTS_RAW[le];
+                if (row && row[1] === 'Battle' && le > nextBattleIdx) nextBattleIdx = le;
+            }
+            return nextBattleIdx;
+        }
         /** Progression-aware lines (mixed with character quotes). Sprite may differ from canon — wording stays in-universe. */
         const RIVAL_PROGRESS_PRIMARY_QUOTES = {
             0: ['You got your first partner? Good. Battle me before you leave town.','No route yet. First, prove that starter can stand up to mine.','Professor gave you a Pokemon. I brought a challenge.'],
@@ -21389,7 +21405,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const profUsedHere = !!(sm.profUsed && sm.profUsed[cityIdx]);
             const mysteryMode = hasProf && !hasTeamRoom && !profUsedHere;
             const legendMysteryGate = mysteryMode && isPreLeagueLegendaryMysteryGate(cityIdx);
-            const _storyNextBatIdx = storyFirstBattleIndexAfter(sm.eventIndex);
+            const _storyNextBatIdx = storyEffectiveNextBattleIndexFromHub();
             const _storyNextBat = _storyNextBatIdx >= 0 ? STORY_EVENTS_RAW[_storyNextBatIdx] : null;
             const _storyNextBatId = _storyNextBat ? (_storyNextBat[0] | 0) : -1;
             const nextIsRouteRival = !!(_storyNextBat && _storyNextBat[1] === 'Battle' && _storyNextBat[2] === 'Rival' && _storyNextBatId !== STORY_RIVAL_ROW_LEAGUE);
@@ -21466,8 +21482,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.gymCleared) sm.gymCleared = {};
             const gymBeat = !!(sm.gymCleared[cityIdx]);
             const gymRoutePending = (hasGym || hasVR || hasTrainerRoad) && !gymBeat;
-            // Block route until gym / VR / trainer gauntlet is cleared, or until a route Rival (hub fight) is cleared
-            const routeLocked = gymRoutePending || rivalGateActive;
             // Block gym/league until professor is visited in this city (when professor is available)
             const gymBlocked = hasProf && !profUsedHere;
             if (hasGym) {
@@ -21482,10 +21496,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const routeBlockedByMysteryGate = legendMysteryGate && !profUsedHere;
             if (actions.includes('Leave City')) {
-                if (routeLocked) {
+                if (gymRoutePending) {
                     btn.innerHTML += `<button type="button" class="story-action-btn primary" disabled title="Clear this area's challenge first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Complete challenge first)</span></span></button>`;
                 } else if (routeBlockedByMysteryGate) {
                     btn.innerHTML += `<button type="button" class="story-action-btn primary" disabled title="Talk to the Mystery Figure first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Talk to Mystery Figure first)</span></span></button>`;
+                } else if (rivalGateActive) {
+                    btn.innerHTML += makeActionBtn('⚔ Face Rival at the Route Gate','route','window.StoryMode.proceedToNextBattle()','primary');
                 } else if (!hasLeague) {
                     btn.innerHTML += makeActionBtn('→ Continue Route','route','window.StoryMode.proceedToNextBattle()','primary',{ soft:true });
                 }
