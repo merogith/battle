@@ -10337,20 +10337,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Play Pokemon cry on entrance
             const mon = isPlayer ? state.pActive : state.fActive;
             if (mon && mon.name) AudioSystem.playCry(mon.name, 0.45);
-            // anime.js — bounce in; scale keyframes use lore + Dynamax (same as getSpriteTransformStyle)
-            const sEnd = mon ? getSpriteLoreScaleNumber(mon) : 1;
-            await anime({
-                targets: spriteEl,
-                translateX: '-50%',
-                scale: [0.3 * sEnd, 1.06 * sEnd, sEnd],
-                opacity: [0, 1, 1],
-                duration: 280,
-                easing: 'easeOutBack'
-            }).finished;
-            if (mon) spriteEl.style.transform = getSpriteTransformStyle(mon);
-            anime.remove(spriteEl);
+            // anime.js — bounce in; scale keyframes use lore + Dynamax (same as getSpriteTransformStyle).
+            // Defensive: if anime is unavailable (CDN slow / blocked) or .finished never resolves,
+            // a thrown / pending promise here aborts startBattle BEFORE the command-menu unhide.
+            // The user then sees both sprites but no FIGHT/BAG/RUN buttons until they Force Continue.
+            try {
+                if (typeof anime === 'function') {
+                    const sEnd = mon ? getSpriteLoreScaleNumber(mon) : 1;
+                    const _animeFinished = anime({
+                        targets: spriteEl,
+                        translateX: '-50%',
+                        scale: [0.3 * sEnd, 1.06 * sEnd, sEnd],
+                        opacity: [0, 1, 1],
+                        duration: 280,
+                        easing: 'easeOutBack'
+                    }).finished;
+                    await Promise.race([_animeFinished, sleep(600)]);
+                    if (mon) spriteEl.style.transform = getSpriteTransformStyle(mon);
+                    try { anime.remove(spriteEl); } catch (e) {}
+                } else if (mon) {
+                    spriteEl.style.transform = getSpriteTransformStyle(mon);
+                }
+            } catch (e) {
+                console.warn('[playPokeballAnimation] switch-in anime failed; continuing without it:', e);
+                if (mon) try { spriteEl.style.transform = getSpriteTransformStyle(mon); } catch (e2) {}
+            }
 
-            flash.remove();
+            try { flash.remove(); } catch (e) {}
         }
 
         async function startBattle() {
@@ -10432,8 +10445,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 playPokeballAnimation('foe-sprite', false)
             ]);
 
-            applySwitchInAbilities(state.pActive, state.fActive); applySwitchInAbilities(state.fActive, state.pActive);
-            updateUI();
+            // Each of these can throw on unusual builds (Imposter on a half-built foe, an
+            // ability that mutates state mid-call, getSprite errors, etc). If any throws here
+            // the await chain bails BEFORE the menu unhide and the battle looks frozen until
+            // Force Continue. Wrap them so the FIGHT/BAG/RUN menu always appears.
+            try { applySwitchInAbilities(state.pActive, state.fActive); } catch (e) { console.warn('[startBattle] applySwitchInAbilities(player) threw:', e); }
+            try { applySwitchInAbilities(state.fActive, state.pActive); } catch (e) { console.warn('[startBattle] applySwitchInAbilities(foe) threw:', e); }
+            try { updateUI(); } catch (e) { console.warn('[startBattle] updateUI threw:', e); }
 
             // Show contextual tip on first battle
             if (showTipsEnabled && !window._battleTipShown) {
