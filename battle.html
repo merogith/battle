@@ -2725,10 +2725,10 @@
             width: 6px; height: 6px; border-radius: 50%; background: #fff; z-index: 2;
         }
         .pokeball-throw-player {
-            animation: pokeballThrowPlayer 0.35s ease-out forwards;
+            animation: pokeballThrowPlayer 0.55s ease-out forwards;
         }
         .pokeball-throw-foe {
-            animation: pokeballThrowFoe 0.35s ease-out forwards;
+            animation: pokeballThrowFoe 0.55s ease-out forwards;
         }
         @keyframes pokeballThrowPlayer {
             0% { transform: translate(-120px, 60px) rotate(0deg) scale(0.6); opacity: 1; }
@@ -2746,7 +2746,7 @@
             position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
             width: 10px; height: 10px; border-radius: 50%;
             background: #fff; z-index: 61; pointer-events: none;
-            animation: pokeballFlash 0.3s ease-out forwards;
+            animation: pokeballFlash 0.45s ease-out forwards;
         }
         @keyframes pokeballFlash {
             0% { width: 10px; height: 10px; opacity: 1; background: #fff; box-shadow: 0 0 30px #fff, 0 0 60px #ffd54f; }
@@ -10344,14 +10344,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             pokeContainer.appendChild(pokeball);
             parent.appendChild(pokeContainer);
 
-            await sleep(300);
+            await sleep(500);
 
             // Flash
             let flash = document.createElement('div');
             flash.className = 'pokeball-flash';
             parent.appendChild(flash);
 
-            await sleep(80);
+            await sleep(130);
             pokeContainer.remove();
             spriteEl.style.visibility = 'visible';
             spriteEl.style.opacity = '1';
@@ -10370,10 +10370,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         translateX: '-50%',
                         scale: [0.3 * sEnd, 1.06 * sEnd, sEnd],
                         opacity: [0, 1, 1],
-                        duration: 280,
+                        duration: 400,
                         easing: 'easeOutBack'
                     }).finished;
-                    await Promise.race([_animeFinished, sleep(600)]);
+                    await Promise.race([_animeFinished, sleep(700)]);
                     if (mon) spriteEl.style.transform = getSpriteTransformStyle(mon);
                     try { anime.remove(spriteEl); } catch (e) {}
                 } else if (mon) {
@@ -13736,7 +13736,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 state.pActive.turnCount++;
                 state.fActive.turnCount++;
                 state.residualPhaseComplete = true;
-                updateUI(); await sleep(400);
+                updateUI(); await sleep(900);
                 
                 let eotFaint = await checkFaints();
                 if (state.isOver) return;
@@ -16587,8 +16587,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return Math.max(0, Math.floor(A));
         }
 
-        function applySwitchInAbilities(mon, foe) {
+        function applySwitchInAbilities(mon, foe, _storySwitchDepth) {
             if(mon.currentHp <= 0 || foe.currentHp <= 0) return;
+            // Default the recursion-depth counter so the Trace re-trigger at the bottom of
+            // this function (which passes `_storySwitchDepth + 1`) can safely read it on
+            // the top-level call too. Without this default, evaluating `_storySwitchDepth === 0`
+            // later throws "ReferenceError: _storySwitchDepth is not defined" and the in-progress
+            // turn aborts ("Turn skipped" in the log).
+            _storySwitchDepth = _storySwitchDepth | 0;
             // Neutralizing Gas suppresses all switch-in abilities on both sides
             const _gasActive = (foe.ability === "Neutralizing Gas" && foe.currentHp > 0) ||
                                (mon.ability === "Neutralizing Gas" && mon.currentHp > 0);
