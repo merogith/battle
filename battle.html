@@ -10878,13 +10878,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 nameEl.innerHTML = (mon.isShiny ? '&#10024; ' : '') + mon.name + gBadge;
                 nameEl.title = 'Tap for full summary · hover for quick stats';
-                // Cache event listeners (only set once, not on every updateUI call)
+                // Cache event listeners (only set once, not on every updateUI call).
+                // IMPORTANT: do not close over `mon` — it's reassigned each updateUI when the
+                // active Pokémon switches. Re-derive the current active mon at event time.
                 if (!nameEl._eventsAttached) {
                     nameEl._eventsAttached = true;
+                    const getCurrentMon = () => {
+                        const _gv2 = isGuestPerspective();
+                        const _ps2 = (s === 'p') !== _gv2;
+                        return _ps2 ? state.pActive : state.fActive;
+                    };
                     nameEl.addEventListener('mousemove', function(e) {
                         if (!window._prefersFinePointerHover()) return;
                         let tt = be.textTooltip;
-                        tt.innerHTML = getStatTooltipHTML(mon);
+                        tt.innerHTML = getStatTooltipHTML(getCurrentMon());
                         tt.classList.remove('tooltip-tap-mode');
                         window._posTooltip(tt, e); tt.classList.remove('hidden');
                     });
@@ -11148,6 +11155,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     } else {
                         ball.style.cursor = 'help';
                         ball.style.filter = 'brightness(0.4)';
+                    }
+                    // Stash dynamic state for one-time-attached listeners (do not close over loop vars).
+                    ball._partyIdx = idx;
+                    ball._isP1Summary = _summaryP1;
+                    ball._revealed = revealed;
+                    if (!ball._eventsAttached) {
+                        ball._eventsAttached = true;
+                        ball.addEventListener('mouseenter', () => { ball.style.transform = 'scale(1.3)'; });
+                        ball.addEventListener('mouseleave', () => { ball.style.transform = 'scale(1)'; });
+                        ball.addEventListener('click', () => {
+                            if (ball._revealed) window.showSummary(ball._partyIdx, ball._isP1Summary);
+                        });
                     }
                 });
             });
@@ -16457,7 +16476,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return Math.max(0, Math.floor(A));
         }
 
-        function applySwitchInAbilities(mon, foe) {
+        function applySwitchInAbilities(mon, foe, _storySwitchDepth = 0) {
             if(mon.currentHp <= 0 || foe.currentHp <= 0) return;
             // Neutralizing Gas suppresses all switch-in abilities on both sides
             const _gasActive = (foe.ability === "Neutralizing Gas" && foe.currentHp > 0) ||
