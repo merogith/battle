@@ -8679,7 +8679,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
 
             mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0;
-            mon.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, torment: false, healBlock: 0, throatChop: 0, imprisoned: false, yawnTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, ingrain: false, stockpile: 0, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false, lockOn: false, moveHistory: [], abilityGastroAcid: false, minimized: false, truanting: false, micleBerry: false, grudge: false, embargo: 0, roosting: false, roostType1: null, roostType2: null };
+            mon.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, torment: false, healBlock: 0, throatChop: 0, imprisoned: false, yawnTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, ingrain: false, stockpile: 0, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false, lockOn: false, moveHistory: [], abilityGastroAcid: false, minimized: false, truanting: false, micleBerry: false, grudge: false, embargo: 0, roosting: false, roostType1: null, roostType2: null, timesHit: 0, statLoweredThisTurn: false, lastMoveFailed: false, hasMoved: false };
             mon.stages = {atk:0, def:0, spa:0, spd:0, spe:0, acc:0, eva:0};
             mon.turnCount = 0;
             mon.fakeOutOk = true;
@@ -12160,6 +12160,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (attacker.ability === "Toxic Boost" && attacker.status === "TOX" && move.cat === "Physical") A *= 1.5;
             if (attacker.ability === "Hustle" && move.cat === "Physical") A *= 1.5;
             if (attacker.ability === "Guts" && attacker.status) A *= 1.5;
+            if (attacker.ability === "Defeatist" && attacker.currentHp * 2 <= attacker.maxHp && (move.cat === "Physical" || move.cat === "Special")) A *= 0.5;
+            if (attacker.ability === "Slow Start" && attacker.volatile && attacker.volatile.slowStartTurns > 0 && move.cat === "Physical") A *= 0.5;
             if (attacker.ability === "Solar Power" && (getCurrentWeather() === "Sun" || getCurrentWeather() === "HarshSun") && move.cat === "Special") A *= 1.5;
             if (attacker.ability === "Supreme Overlord") {
                 const _aiSoParty = (state.playerParty || []).concat(state.foeParty || []).filter(m => m.ability === "Supreme Overlord").length > 0
@@ -13399,6 +13401,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Reset Counter/Mirror Coat tracking
                 if (state.pActive) { state.pActive.volatile.lastPhysicalDmg = 0; state.pActive.volatile.lastSpecialDmg = 0; }
                 if (state.fActive) { state.fActive.volatile.lastPhysicalDmg = 0; state.fActive.volatile.lastSpecialDmg = 0; }
+                // Reset per-turn flags for Lash Out / Payback / Bolt Beak / Retaliate / etc.
+                if (state.pActive && state.pActive.volatile) { state.pActive.volatile.statLoweredThisTurn = false; state.pActive.volatile.hasMoved = false; state.pActive.volatile.lastMoveFailed = false; }
+                if (state.fActive && state.fActive.volatile) { state.fActive.volatile.statLoweredThisTurn = false; state.fActive.volatile.hasMoved = false; state.fActive.volatile.lastMoveFailed = false; }
+                if (state.playerParty) state.playerParty.forEach(m => { if (m && m._faintedLastTurn === 'aged') m._faintedLastTurn = false; else if (m && m._faintedLastTurn === true) m._faintedLastTurn = 'aged'; });
+                if (state.foeParty) state.foeParty.forEach(m => { if (m && m._faintedLastTurn === 'aged') m._faintedLastTurn = false; else if (m && m._faintedLastTurn === true) m._faintedLastTurn = 'aged'; });
 
                 let pMove = state.p1Action.switchIndex !== null ? null : (state.p1Action.moveIndex !== null ? state.pActive.moves[state.p1Action.moveIndex] : (state.p1Action.aiMove || null));
                 let fMove = state.p2Action.switchIndex !== null ? null : (state.p2Action.moveIndex !== null ? (state.mode === 'pvp' ? state.fActive.moves[state.p2Action.moveIndex] : state.p2Action.aiMove) : (state.p2Action.aiMove || null));
@@ -13911,12 +13918,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _fActiveIs = state.fActive === mon;
             if (_pActiveIs && state.pSide && state.pSide.tailwind > 0) spe *= 2;
             else if (_fActiveIs && state.fSide && state.fSide.tailwind > 0) spe *= 2;
-            if (mon.ability === "Chlorophyll" && (weather === "Sun" || weather === "HarshSun")) spe *= 2;
-            if (mon.ability === "Swift Swim" && (weather === "Rain" || weather === "HeavyRain")) spe *= 2;
+            const _umbrellaSpd = mon.item === "Utility Umbrella" && state.magicRoom === 0 && !(mon.volatile && mon.volatile.embargo > 0) && mon.ability !== "Klutz";
+            const _wxSpd = _umbrellaSpd && (weather === "Sun" || weather === "HarshSun" || weather === "Rain" || weather === "HeavyRain") ? null : weather;
+            if (mon.ability === "Chlorophyll" && (_wxSpd === "Sun" || _wxSpd === "HarshSun")) spe *= 2;
+            if (mon.ability === "Swift Swim" && (_wxSpd === "Rain" || _wxSpd === "HeavyRain")) spe *= 2;
             if (mon.ability === "Sand Rush" && weather === "Sandstorm") spe *= 2;
             if (mon.ability === "Slush Rush" && weather === "Hail") spe *= 2;
             if (mon.ability === "Surge Surfer" && state.terrain === "Electric" && state.terrainTurns > 0) spe *= 2;
             if (mon.ability === "Unburden" && mon.itemConsumed) spe *= 2;
+            // Slow Start: halves Speed for 5 turns after switch-in
+            if (mon.ability === "Slow Start" && mon.volatile && mon.volatile.slowStartTurns > 0) spe *= 0.5;
             // Speed Boost is handled via +1 spe stage per turn in endOfTurnEffects; no multiplier needed here
             if (_spdItemActive && mon.item === "Salac Berry" && mon.currentHp <= mon.maxHp * 0.25) spe *= 1.5;
             if (_spdItemActive && mon.item === "Quick Powder" && mon.name === "Ditto" && !mon.volatile.transformed) spe *= 2;
@@ -14016,6 +14027,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 consumeFlingNaturalGiftIfHeld(attacker, nm);
             }
             attacker.volatile._skipLockMgmtFinalize = true;
+            // Stomping Tantrum / Temper Flare check: previous move failed
+            attacker.volatile.lastMoveFailed = true;
         }
 
         /**
@@ -14046,6 +14059,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let defender = isPlayer ? state.fActive : state.pActive;
             if (attacker.currentHp <= 0) return;
             attacker.volatile.movedThisTurn = true;
+            // Metronome (item): consecutive same-move counter
+            if (move && move.name && move.cat !== "Status") {
+                if (attacker.volatile.metronomeLastMove === move.name) attacker.volatile.metronomeCount = Math.min(5, (attacker.volatile.metronomeCount | 0) + 1);
+                else { attacker.volatile.metronomeCount = 0; attacker.volatile.metronomeLastMove = move.name; }
+            }
             if (move.name === '__StoryItemPass') {
                 logMsg(`${attacker.name}'s turn was spent using an item.`, 'info');
                 await sleep(400);
@@ -14423,6 +14441,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _forcedTwoTurn = new Set(["Solar Beam","Solar Blade","Fly","Bounce","Dig","Dive","Phantom Force","Shadow Force","Sky Drop","Skull Bash","Sky Attack","Meteor Beam","Geomancy","Razor Wind","Electro Shot","Freeze Shock","Ice Burn"]);
             if ((move.mathEff || '').includes('two_turn_charge') || _forcedTwoTurn.has(move.name)) {
                 let _cw = getCurrentWeather();
+                const _umbrAtk = attacker.item === "Utility Umbrella" && state.magicRoom === 0 && !(attacker.volatile.embargo > 0) && attacker.ability !== "Klutz";
+                if (_umbrAtk && (_cw === 'Sun' || _cw === 'HarshSun' || _cw === 'Rain' || _cw === 'HeavyRain')) _cw = null;
                 let skipCharge = ((move.name === 'Solar Beam' || move.name === 'Solar Blade') && (_cw === 'Sun' || _cw === 'HarshSun')) ||
                                  (move.name === 'Electro Shot' && (_cw === 'Rain' || _cw === 'HeavyRain')) ||
                                  (attacker.item === 'Power Herb' && !attacker.volatile.charging);
@@ -15306,6 +15326,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Ability boosts
                 if (attacker.ability === "Hustle" && _effectiveCat === "Physical") A *= 1.5;
                 if (attacker.ability === "Guts" && attacker.status) A *= 1.5;
+                // Defeatist: x0.5 Atk and SpA when HP <= 50%
+                if (attacker.ability === "Defeatist" && attacker.currentHp * 2 <= attacker.maxHp && (_effectiveCat === "Physical" || _effectiveCat === "Special")) A *= 0.5;
+                // Slow Start: x0.5 Atk while counter active (physical only — Speed handled in speed calc)
+                if (attacker.ability === "Slow Start" && attacker.volatile && attacker.volatile.slowStartTurns > 0 && _effectiveCat === "Physical") A *= 0.5;
                 // Water Bubble (Araquanid): doubles Water move power; halves Fire damage taken (handled in modifier below)
                 if (attacker.ability === "Water Bubble" && move.type === "Water") A *= 2;
                 // Flower Gift: +50% Atk in Sun; +50% SpDef for ally (handled below)
@@ -15319,7 +15343,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Flash Fire boost
                 if (attacker.flashFireBoost && move.type === "Fire") A *= 1.5;
                 // Solar Power: SpA x1.5 in Sun (damage to self handled in endOfTurn)
-                if (attacker.ability === "Solar Power" && (getCurrentWeather() === "Sun" || getCurrentWeather() === "HarshSun") && _effectiveCat === "Special") A *= 1.5;
+                {
+                    let _spW = getCurrentWeather();
+                    const _spUmbr = attacker.item === "Utility Umbrella" && state.magicRoom === 0 && !(attacker.volatile.embargo > 0) && attacker.ability !== "Klutz";
+                    if (_spUmbr && (_spW === "Sun" || _spW === "HarshSun")) _spW = null;
+                    if (attacker.ability === "Solar Power" && (_spW === "Sun" || _spW === "HarshSun") && _effectiveCat === "Special") A *= 1.5;
+                }
                 // Dragon's Maw: x1.5 Dragon-type moves
                 if (attacker.ability === "Dragon's Maw" && move.type === "Dragon") A *= 1.5;
                 // Flare Boost: x1.5 SpA when burned
@@ -15451,8 +15480,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (move.name === "Brine" && defender.currentHp * 2 <= defender.maxHp) basePower = basePower * 2;
                 if (move.name === "Barb Barrage" && (defender.status === "PSN" || defender.status === "TOX")) basePower = basePower * 2;
                 if (move.name === "Wake-Up Slap" && defender.status === "SLP") basePower = basePower * 2;
-                if ((move.name === "Bolt Beak" || move.name === "Fishious Rend") && !defender.tookDamageThisTurn && !(defender.volatile && defender.volatile.hasMoved)) basePower = basePower * 2;
-                if (move.name === "Payback" && defender.volatile && defender.volatile.hasMoved) basePower = basePower * 2;
+                if ((move.name === "Bolt Beak" || move.name === "Fishious Rend") && !defender.tookDamageThisTurn && !(defender.volatile && defender.volatile.movedThisTurn)) basePower = basePower * 2;
+                if (move.name === "Payback" && defender.volatile && defender.volatile.movedThisTurn) basePower = basePower * 2;
                 if (move.name === "Retaliate") {
                     const _myPartyR = isPlayer ? state.playerParty : state.foeParty;
                     if (_myPartyR && _myPartyR.some(m => m && m._faintedLastTurn)) basePower = basePower * 2;
@@ -15763,6 +15792,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_defAbilityActive && defender.ability === "Flower Gift" && (getCurrentWeather() === "Sun" || getCurrentWeather() === "HarshSun") && _effectiveCat === "Special") modifier *= (2/3);
                 // Expert Belt: SE damage x1.2
                 if (_atkItemActive && attacker.item === "Expert Belt" && typeEff > 1) modifier *= 1.2;
+                // Metronome (item): +20% damage per consecutive same-move use, capped at 2.0x (5 stacks)
+                if (_atkItemActive && attacker.item === "Metronome" && move.cat !== "Status") {
+                    const _mc = Math.min(5, attacker.volatile.metronomeCount | 0);
+                    if (_mc > 0) modifier *= (1 + 0.2 * _mc);
+                }
                 // Soul Dew (Latios/Latias): Dragon & Psychic moves x1.2 (Gen 7+)
                 if (_atkItemActive && attacker.item === "Soul Dew" && (attacker.name === "Latios" || attacker.name === "Latias" || attacker.name.startsWith("Latios-") || attacker.name.startsWith("Latias-")) && (move.type === "Dragon" || move.type === "Psychic")) modifier *= 1.2;
                 // Adamant Orb (Dialga): Dragon & Steel moves x1.2
@@ -15920,9 +15954,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (attacker.ability !== "Unnerve" && _defItemActive && defender.item && typeResistBerries[defender.item]) {
                     let berryType = typeResistBerries[defender.item];
                     if (move.type === berryType && typeEff > 1) {
-                        damage = Math.floor(damage / 2);
+                        damage = Math.floor(damage / (defender.ability === "Ripen" ? 4 : 2));
                         logMsg(`${defender.name}'s ${defender.item} weakened the attack!`, 'info');
-                        defender.item = null; defender.itemConsumed = true;
+                        defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender);
                     }
                 }
                 // Substitute blocks Focus Sash unless Infiltrator lets this move strike the holder's HP directly
@@ -16042,6 +16076,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     actualDamage = Math.min(defender.currentHp, damage); defender.currentHp -= actualDamage;
                     if (attacker.volatile) attacker.volatile.dealtDamageThisTurn = (attacker.volatile.dealtDamageThisTurn|0) + actualDamage;
+                    // HP-threshold berries: check immediately after damage drop
+                    _checkBerriesAfterDamage(defender);
                     // Endure: survive at 1 HP (lets full damage through but prevents KO)
                     if (defender.volatile.endure && defender.currentHp <= 0) {
                         defender.currentHp = 1;
@@ -16323,6 +16359,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         changeStage(defender, 'atk', 1);
                         logMsg(`${defender.name}'s Justified raised its Attack!`, 'info');
                     }
+                    // Water Compaction (defender): Water-type hit raises Def +2 (only if damage was taken)
+                    if (defender.ability === "Water Compaction" && move.type === "Water" && defender.currentHp > 0 && actualDamage > 0) {
+                        changeStage(defender, 'def', 2);
+                        logMsg(`${defender.name}'s Water Compaction sharply raised its Defense!`, 'info');
+                    }
                     // Rattled (defender): Bug/Ghost/Dark hit raises Speed +1
                     if (defender.ability === "Rattled" && (move.type === "Bug" || move.type === "Ghost" || move.type === "Dark") && defender.currentHp > 0) {
                         changeStage(defender, 'spe', 1);
@@ -16340,6 +16381,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (_bkBefore > _bkHalf && defender.currentHp <= _bkHalf) {
                             changeStage(defender, 'spa', 1);
                             logMsg(`${defender.name}'s Berserk raised its Special Attack!`, 'info');
+                        }
+                    }
+                    // Anger Shell (defender): HP crosses to <=50% from damaging move -> -1 Def/SpD, +1 Atk/SpA/Spe
+                    if (defender.ability === "Anger Shell" && move.cat !== "Status" && defender.currentHp > 0 && actualDamage > 0) {
+                        let _asBefore = defender.currentHp + actualDamage;
+                        let _asHalf = defender.maxHp / 2;
+                        if (_asBefore > _asHalf && defender.currentHp <= _asHalf) {
+                            logMsg(`${defender.name}'s Anger Shell activated!`, 'info');
+                            changeStage(defender, 'def', -1);
+                            changeStage(defender, 'spd', -1);
+                            changeStage(defender, 'atk', 1);
+                            changeStage(defender, 'spa', 1);
+                            changeStage(defender, 'spe', 1);
+                        }
+                    }
+                    // Wimp Out / Emergency Exit (defender): HP crosses to <=50% from damaging move -> switch out
+                    if ((defender.ability === "Wimp Out" || defender.ability === "Emergency Exit") && move.cat !== "Status" && defender.currentHp > 0 && actualDamage > 0) {
+                        let _woBefore = defender.currentHp + actualDamage;
+                        let _woHalf = defender.maxHp / 2;
+                        if (_woBefore > _woHalf && defender.currentHp <= _woHalf && !defender.volatile.sub) {
+                            let _woParty = isPlayer ? state.foeParty : state.playerParty;
+                            let _woBench = _woParty.filter(m => m.currentHp > 0 && m !== defender);
+                            if (_woBench.length > 0) {
+                                let _woNew = _woBench[Math.floor(Math.random() * _woBench.length)];
+                                logMsg(`${defender.name}'s ${defender.ability} activated! It fled to safety!`, 'info');
+                                if (isPlayer) { clearVolatileOnSwitch(state.fActive); state.fActive = _woNew; state.fActive.turnCount = 0; applySwitchInAbilities(state.fActive, state.pActive); applyEntryHazards(state.fActive, false); }
+                                else { clearVolatileOnSwitch(state.pActive); state.pActive = _woNew; state.pActive.turnCount = 0; applySwitchInAbilities(state.pActive, state.fActive); applyEntryHazards(state.pActive, true); }
+                            }
                         }
                     }
                     // Shields Down (Minior): HP <=50% -> Core form (offensive stats)
@@ -16390,8 +16459,93 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         attacker.volatile.infatuated = true;
                         logMsg(`${attacker.name} was drawn in by ${defender.name}'s Destiny Knot!`, 'status');
                     }
+                    // Unswappable / un-overwritable ability list (used by Mummy, Lingering Aroma, Wandering Spirit)
+                    const _abilityLockSet = new Set([
+                        "Multitype","RKS System","Stance Change","Schooling","Comatose","Battle Bond",
+                        "Power Construct","Disguise","Shields Down","Ice Face","Hunger Switch","Gulp Missile",
+                        "Zen Mode","Zero to Hero","Tera Shift","Tera Shell","Teraform Zero","Embody Aspect",
+                        "Commander","As One","As One (Glastrier)","As One (Spectrier)","Wonder Guard",
+                        "Trace","Imposter","Forecast","Flower Gift","Illusion","Neutralizing Gas","Truant",
+                        "Mummy","Lingering Aroma","Wandering Spirit"
+                    ]);
+                    // Mummy / Lingering Aroma: contact overrides attacker's ability
+                    if ((defender.ability === "Mummy" || defender.ability === "Lingering Aroma") && isContactMove(move) && attacker.currentHp > 0) {
+                        if (!_abilityLockSet.has(attacker.ability) && attacker.ability !== defender.ability) {
+                            const _oldAb = attacker.ability;
+                            attacker.ability = defender.ability;
+                            logMsg(`${attacker.name}'s ${_oldAb} became ${defender.ability}!`, 'info');
+                        }
+                    }
+                    // Wandering Spirit: contact swaps user's and attacker's abilities
+                    if (defender.ability === "Wandering Spirit" && isContactMove(move) && attacker.currentHp > 0) {
+                        if (!_abilityLockSet.has(attacker.ability) && attacker.ability !== "Wandering Spirit") {
+                            const _atkOld = attacker.ability;
+                            attacker.ability = "Wandering Spirit";
+                            defender.ability = _atkOld;
+                            logMsg(`${attacker.name} and ${defender.name} swapped abilities via Wandering Spirit!`, 'info');
+                        }
+                    }
+                    // Toxic Debris: Physical hit -> lays a layer of Toxic Spikes on attacker's side (max 2)
+                    if (defender.ability === "Toxic Debris" && move.cat === "Physical" && defender.currentHp > 0) {
+                        const _atkSide = isPlayer ? state.pSide : state.fSide;
+                        if ((_atkSide.toxicSpikes | 0) < 2) {
+                            _atkSide.toxicSpikes = (_atkSide.toxicSpikes | 0) + 1;
+                            logMsg(`${defender.name}'s Toxic Debris scattered toxic spikes around ${attacker.name}'s feet!`, 'info');
+                        }
+                    }
+                    // Perish Body: contact -> both sides get a perish counter (4-tick, matches Perish Song)
+                    if (defender.ability === "Perish Body" && isContactMove(move) && attacker.currentHp > 0 && defender.currentHp > 0) {
+                        if (attacker.volatile.perishCount < 0 && defender.volatile.perishCount < 0) {
+                            attacker.volatile.perishCount = 4;
+                            defender.volatile.perishCount = 4;
+                            logMsg(`${defender.name}'s Perish Body! Both Pokémon will faint in 3 turns!`, 'status');
+                        }
+                    }
+                    // Pickpocket: contact -> steal attacker's item (if user has none and item is transferable)
+                    if (defender.ability === "Pickpocket" && isContactMove(move) && attacker.currentHp > 0 && defender.currentHp > 0
+                        && !defender.item && attacker.item
+                        && attacker.ability !== "Sticky Hold"
+                        && !isKnockOffImmuneHeldItem(attacker, attacker.item)
+                        && !defender.knockedOff) {
+                        const _stolen = attacker.item;
+                        defender.item = _stolen;
+                        attacker.item = null;
+                        if (/choice/i.test(String(_stolen || ''))) attacker.volatile.choiceLock = null;
+                        logMsg(`${defender.name}'s Pickpocket stole ${attacker.name}'s ${_stolen}!`, 'info');
+                    }
                 }
 
+                // Pluck / Bug Bite: eat target's berry, apply effect to attacker (Gen 4+)
+                if ((move.name === "Pluck" || move.name === "Bug Bite") && !hitSub && defender.currentHp > 0 && defender.item && /Berry$/.test(defender.item) && attacker.currentHp > 0) {
+                    const _stolen = defender.item;
+                    logMsg(`${attacker.name} stole and ate ${defender.name}'s ${_stolen}!`, 'info');
+                    defender.item = null; defender.itemConsumed = true;
+                    const _statBerryMap = { "Liechi Berry": "atk", "Ganlon Berry": "def", "Petaya Berry": "spa", "Apicot Berry": "spd", "Salac Berry": "spe" };
+                    if (_stolen === "Sitrus Berry") {
+                        let h = Math.min(attacker.maxHp - attacker.currentHp, _ripen(attacker, Math.floor(attacker.maxHp / 4)));
+                        if (h > 0) { attacker.currentHp += h; logMsg(`${attacker.name} restored ${h} HP!`, 'heal'); }
+                    } else if (_stolen === "Oran Berry") {
+                        let h = Math.min(attacker.maxHp - attacker.currentHp, _ripen(attacker, 10));
+                        if (h > 0) { attacker.currentHp += h; logMsg(`${attacker.name} restored ${h} HP!`, 'heal'); }
+                    } else if (["Figy Berry","Wiki Berry","Mago Berry","Aguav Berry","Iapapa Berry"].includes(_stolen)) {
+                        let h = Math.min(attacker.maxHp - attacker.currentHp, _ripen(attacker, Math.floor(attacker.maxHp / 2)));
+                        if (h > 0) { attacker.currentHp += h; logMsg(`${attacker.name} restored ${h} HP!`, 'heal'); }
+                    } else if (_statBerryMap[_stolen]) {
+                        changeStage(attacker, _statBerryMap[_stolen], _ripen(attacker, 1));
+                    } else if (_stolen === "Lansat Berry") {
+                        attacker.volatile.focusEnergy = (attacker.volatile.focusEnergy || 0) + _ripen(attacker, 2);
+                    } else if (_stolen === "Starf Berry") {
+                        const _ss = ['atk','def','spa','spd','spe'];
+                        changeStage(attacker, _ss[Math.floor(Math.random()*_ss.length)], _ripen(attacker, 2));
+                    } else if (_stolen === "Lum Berry" && attacker.status) { attacker.status = null; attacker.statusTurns = 0; logMsg(`${attacker.name}'s status was cured!`, 'heal'); }
+                    else if (_stolen === "Cheri Berry" && attacker.status === "PAR") { attacker.status = null; logMsg(`${attacker.name}'s paralysis was cured!`, 'heal'); }
+                    else if (_stolen === "Chesto Berry" && attacker.status === "SLP") { attacker.status = null; attacker.statusTurns = 0; logMsg(`${attacker.name} woke up!`, 'heal'); }
+                    else if (_stolen === "Pecha Berry" && (attacker.status === "PSN" || attacker.status === "TOX")) { attacker.status = null; logMsg(`${attacker.name}'s poison was cured!`, 'heal'); }
+                    else if (_stolen === "Rawst Berry" && attacker.status === "BRN") { attacker.status = null; logMsg(`${attacker.name}'s burn was cured!`, 'heal'); }
+                    else if (_stolen === "Aspear Berry" && attacker.status === "FRZ") { attacker.status = null; logMsg(`${attacker.name} thawed out!`, 'heal'); }
+                    else if (_stolen === "Persim Berry" && attacker.volatile.confusion > 0) { attacker.volatile.confusion = 0; logMsg(`${attacker.name}'s confusion ended!`, 'heal'); }
+                    _onBerryEaten(attacker);
+                }
                 // Knock Off: Remove item (or register knock-off if Focus Sash broke this hit — item already cleared in precalc).
                 // Gen 6+: item is removed even if Substitute took the damage; Disguise still blocks (hitSub without hitSubFromSubstitute).
                 if (move.name === "Knock Off" && (!hitSub || hitSubFromSubstitute) && defender.currentHp > 0) {
@@ -16417,10 +16571,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
 
-                // Moxie: Atk +1 per KO
-                if (attacker.ability === "Moxie" && defender.currentHp <= 0 && attacker.currentHp > 0 && !(state && state.mode === 'story' && state._stagnationCoreActive)) {
+                // Moxie / Chilling Neigh / As One (Glastrier): Atk +1 per KO
+                if ((attacker.ability === "Moxie" || attacker.ability === "Chilling Neigh" || attacker.ability === "As One (Glastrier)") && defender.currentHp <= 0 && attacker.currentHp > 0 && !(state && state.mode === 'story' && state._stagnationCoreActive)) {
                     changeStage(attacker, 'atk', 1);
-                    logMsg(`${attacker.name}'s Moxie raised its Attack!`, 'info');
+                    logMsg(`${attacker.name}'s ${attacker.ability} raised its Attack!`, 'info');
+                }
+                // Grim Neigh / As One (Spectrier) / Soul-Heart: SpA +1 per KO (in singles Soul-Heart fires same as Grim Neigh)
+                if ((attacker.ability === "Grim Neigh" || attacker.ability === "As One (Spectrier)" || attacker.ability === "Soul-Heart") && defender.currentHp <= 0 && attacker.currentHp > 0 && !(state && state.mode === 'story' && state._stagnationCoreActive)) {
+                    changeStage(attacker, 'spa', 1);
+                    logMsg(`${attacker.name}'s ${attacker.ability} raised its Sp. Atk!`, 'info');
                 }
                 // Battle Bond (Gen 9): KO + damaging move -> Atk/SpA/Spe +1, once per battle
                 if (attacker.ability === "Battle Bond" && defender.currentHp <= 0 && attacker.currentHp > 0 && move.cat !== "Status" && !attacker.battleBondUsed && !(state && state.mode === 'story' && state._stagnationCoreActive)) {
@@ -16446,9 +16605,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Enigma Berry: heals 1/4 max HP when hit by a super-effective move
                 if (!hitSub && defender.item === "Enigma Berry" && typeEff > 1 && defender.currentHp > 0 && state.magicRoom === 0 && !defender.volatile.embargo && attacker.ability !== "Unnerve") {
                     let enHeal = Math.floor(defender.maxHp / 4);
-                    let enAct = Math.min(defender.maxHp - defender.currentHp, enHeal);
+                    let enAct = Math.min(defender.maxHp - defender.currentHp, _ripen(defender, enHeal));
                     if (enAct > 0) { defender.currentHp += enAct; logMsg(`${defender.name}'s Enigma Berry restored ${enAct} HP!`, 'heal'); }
-                    defender.item = null; defender.itemConsumed = true;
+                    defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender);
                 }
                 // Grudge: if defender faints, drain PP of attacker's last move
                 if (!hitSub && defender.volatile.grudge && defender.currentHp <= 0 && attacker.currentHp > 0) {
@@ -16486,6 +16645,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let actAft = Math.min(attacker.currentHp, aftDmg);
                     attacker.currentHp -= actAft;
                     logMsg(`${defender.name}'s Aftermath hurt ${attacker.name} for ${actAft}!`, 'dmg');
+                }
+                // Innards Out: when KO'd by a damaging move, attacker loses HP equal to the damage that KO'd it.
+                // Bypasses Magic Guard (direct damage from KO source). Skips if attacker was already KO'd.
+                if (defender.ability === "Innards Out" && defender.currentHp <= 0 && attacker.currentHp > 0 && move.cat !== "Status" && (typeof actualDamage === 'number') && actualDamage > 0) {
+                    let ioDmg = Math.min(attacker.currentHp, actualDamage);
+                    attacker.currentHp -= ioDmg;
+                    logMsg(`${defender.name}'s Innards Out hurt ${attacker.name} for ${ioDmg}!`, 'dmg');
                 }
 
                 // Recharge moves: must rest next turn (Hyper Beam family)
@@ -16853,6 +17019,67 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function _ripen(mon, value) { return (mon && mon.ability === "Ripen") ? value * 2 : value; }
+        // Trigger eligible HP-threshold berries immediately after a damage event
+        function _checkBerriesAfterDamage(mon) {
+            if (!mon || mon.currentHp <= 0 || !mon.item) return;
+            if (state.magicRoom !== 0 || (mon.volatile && mon.volatile.embargo > 0) || mon.ability === "Klutz") return;
+            const unnerved = ((mon === state.pActive ? state.fActive : state.pActive) || {}).ability === "Unnerve";
+            const pinchThresh = _pinchThreshold(mon);
+            // Sitrus
+            if (!unnerved && mon.item === "Sitrus Berry" && mon.currentHp <= mon.maxHp * 0.5) {
+                let heal = Math.floor(mon.maxHp / 4);
+                let act = Math.min(mon.maxHp - mon.currentHp, _ripen(mon, heal));
+                if (act > 0) { mon.currentHp += act; logMsg(`${mon.name} ate its Sitrus Berry and restored ${act} HP!`, 'heal'); }
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); return;
+            }
+            // Oran
+            if (!unnerved && mon.item === "Oran Berry" && mon.currentHp <= mon.maxHp * 0.5) {
+                let act = Math.min(mon.maxHp - mon.currentHp, _ripen(mon, 10));
+                if (act > 0) { mon.currentHp += act; logMsg(`${mon.name} ate its Oran Berry and restored ${act} HP!`, 'heal'); }
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); return;
+            }
+            // Berry Juice (not a berry; Unnerve doesn't apply)
+            if (mon.item === "Berry Juice" && mon.currentHp <= mon.maxHp * 0.5) {
+                let act = Math.min(mon.maxHp - mon.currentHp, 20);
+                if (act > 0) { mon.currentHp += act; logMsg(`${mon.name} drank its Berry Juice and restored ${act} HP!`, 'heal'); }
+                mon.item = null; mon.itemConsumed = true; return;
+            }
+            // Flavor berries
+            if (!unnerved && ["Figy Berry","Wiki Berry","Mago Berry","Aguav Berry","Iapapa Berry"].includes(mon.item) && mon.currentHp <= mon.maxHp * pinchThresh) {
+                let heal = Math.floor(mon.maxHp / 2);
+                let act = Math.min(mon.maxHp - mon.currentHp, _ripen(mon, heal));
+                if (act > 0) { mon.currentHp += act; logMsg(`${mon.name} ate its ${mon.item} and restored ${act} HP!`, 'heal'); }
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); return;
+            }
+            // Pinch stat berries
+            const _pinchStat = { "Liechi Berry": "atk", "Ganlon Berry": "def", "Petaya Berry": "spa", "Apicot Berry": "spd", "Salac Berry": "spe" };
+            if (!unnerved && _pinchStat[mon.item] && mon.currentHp <= mon.maxHp * pinchThresh) {
+                changeStage(mon, _pinchStat[mon.item], _ripen(mon, 1), false, { bypassStagnation: true });
+                logMsg(`${mon.name} ate its ${mon.item}!`, 'info');
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); return;
+            }
+            if (!unnerved && mon.item === "Lansat Berry" && mon.currentHp <= mon.maxHp * pinchThresh) {
+                mon.volatile.focusEnergy = (mon.volatile.focusEnergy || 0) + _ripen(mon, 2);
+                logMsg(`${mon.name} ate its Lansat Berry!`, 'info');
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); return;
+            }
+            if (!unnerved && mon.item === "Starf Berry" && mon.currentHp <= mon.maxHp * pinchThresh) {
+                const _ss = ['atk','def','spa','spd','spe'];
+                changeStage(mon, _ss[Math.floor(Math.random()*_ss.length)], _ripen(mon, 2), false, { bypassStagnation: true });
+                logMsg(`${mon.name} ate its Starf Berry!`, 'info');
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); return;
+            }
+            if (!unnerved && mon.item === "Micle Berry" && mon.currentHp <= mon.maxHp * pinchThresh) {
+                mon.volatile.micleBerry = true;
+                logMsg(`${mon.name}'s Micle Berry boosts its next move's accuracy!`, 'info');
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); return;
+            }
+            if (!unnerved && mon.item === "Custap Berry" && mon.currentHp <= mon.maxHp * pinchThresh) {
+                mon.volatile.custapReady = true;
+                logMsg(`${mon.name}'s Custap Berry lets it move first next turn!`, 'info');
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); return;
+            }
+        }
         function _pinchThreshold(mon) { return (mon && mon.ability === "Gluttony") ? 0.5 : 0.25; }
         function _onBerryEaten(mon) {
             if (!mon || mon.currentHp <= 0) return;
@@ -16885,6 +17112,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function applySwitchInAbilities(mon, foe, _storySwitchDepth = 0) {
             if(mon.currentHp <= 0 || foe.currentHp <= 0) return;
+            // Slow Start: 5-turn debuff on switch-in
+            if (mon.ability === "Slow Start") {
+                mon.volatile.slowStartTurns = 5;
+                logMsg(`${mon.name} can't get it going due to its Slow Start!`, 'info');
+            }
             // Rusted Sword/Shield: Zacian/Zamazenta forme change on entry
             if (mon.item === "Rusted Sword" && mon.name === "Zacian") {
                 if (_setMonForm(mon, "Zacian-Crowned", { proportionalHp: true })) logMsg(`${mon.name}'s Rusted Sword transformed it into its Crowned forme!`, 'info');
@@ -18632,6 +18864,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.stages[stat] = Math.max(-6, Math.min(6, mon.stages[stat] + amount));
             if (mon.stages[stat] === oldStage) { logMsg(`${mon.name}'s ${stat.toUpperCase()} won't go any ${amount > 0 ? 'higher' : 'lower'}!`, 'info'); return; }
             if (amount > 0 && mon.volatile) mon.volatile.boostedThisTurn = true;
+            // Lash Out condition: any stat drop this turn flags the mon
+            if (amount < 0 && mon.volatile) mon.volatile.statLoweredThisTurn = true;
             let statName = stat.toUpperCase();
             if (amount > 0) AudioSystem.playUiSfx('statUp', 0.5);
             else AudioSystem.playUiSfx('statDown', 0.5);
@@ -18702,6 +18936,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.ability === "Speed Boost" && mon.turnCount > 0 && !(state && state.mode === 'story' && state._stagnationCoreActive)) {
                 changeStage(mon, 'spe', 1);
             }
+            // Slow Start: decrement counter; clear when it reaches 0
+            if (mon.ability === "Slow Start" && mon.volatile && mon.volatile.slowStartTurns > 0) {
+                mon.volatile.slowStartTurns--;
+                if (mon.volatile.slowStartTurns === 0) {
+                    logMsg(`${mon.name} finally got its act together!`, 'info');
+                }
+            }
 
             // === PHASE 4 END-OF-TURN ORDER (authoritative) ===
             // 1. Weather Damage
@@ -18764,7 +19005,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             // Dry Skin rain heal / Rain Dish (weather-based healing, phase 1 extension)
-            let ww = getCurrentWeather();
+            let _wwRaw = getCurrentWeather();
+            const _umbrEoT = mon.item === "Utility Umbrella" && state.magicRoom === 0 && !(mon.volatile && mon.volatile.embargo > 0) && mon.ability !== "Klutz";
+            let ww = (_umbrEoT && (_wwRaw === "Sun" || _wwRaw === "HarshSun" || _wwRaw === "Rain" || _wwRaw === "HeavyRain")) ? null : _wwRaw;
             if (mon.ability === "Dry Skin" && (ww === "Rain" || ww === "HeavyRain") && mon.currentHp > 0) {
                 let heal = Math.max(1, Math.floor(mon.maxHp / 8));
                 let actHeal = Math.min(mon.maxHp - mon.currentHp, heal);
@@ -18955,15 +19198,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let unnerved = (foe && foe.ability === "Unnerve") || state.magicRoom > 0 || mon.volatile.embargo > 0;
             // Status-curing berries (end-of-turn activation for existing statuses)
             if (!unnerved && mon.status && mon.currentHp > 0) {
-                if (mon.item === "Lum Berry") { logMsg(`${mon.name}'s Lum Berry cured its ${mon.status}!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; }
-                else if (mon.item === "Chesto Berry" && mon.status === "SLP") { logMsg(`${mon.name}'s Chesto Berry woke it up!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; }
-                else if (mon.item === "Pecha Berry" && (mon.status === "PSN" || mon.status === "TOX")) { logMsg(`${mon.name}'s Pecha Berry cured its poison!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; }
-                else if (mon.item === "Rawst Berry" && mon.status === "BRN") { logMsg(`${mon.name}'s Rawst Berry cured its burn!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; }
-                else if (mon.item === "Aspear Berry" && mon.status === "FRZ") { logMsg(`${mon.name}'s Aspear Berry thawed it out!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; }
-                else if (mon.item === "Cheri Berry" && mon.status === "PAR") { logMsg(`${mon.name}'s Cheri Berry cured its paralysis!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; }
+                if (mon.item === "Lum Berry") { logMsg(`${mon.name}'s Lum Berry cured its ${mon.status}!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); }
+                else if (mon.item === "Chesto Berry" && mon.status === "SLP") { logMsg(`${mon.name}'s Chesto Berry woke it up!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); }
+                else if (mon.item === "Pecha Berry" && (mon.status === "PSN" || mon.status === "TOX")) { logMsg(`${mon.name}'s Pecha Berry cured its poison!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); }
+                else if (mon.item === "Rawst Berry" && mon.status === "BRN") { logMsg(`${mon.name}'s Rawst Berry cured its burn!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); }
+                else if (mon.item === "Aspear Berry" && mon.status === "FRZ") { logMsg(`${mon.name}'s Aspear Berry thawed it out!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); }
+                else if (mon.item === "Cheri Berry" && mon.status === "PAR") { logMsg(`${mon.name}'s Cheri Berry cured its paralysis!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); }
             }
             // Persim Berry cures confusion
-            if (!unnerved && mon.item === "Persim Berry" && mon.volatile.confusion > 0) { logMsg(`${mon.name}'s Persim Berry snapped it out of confusion!`, 'heal'); mon.volatile.confusion = 0; mon.item = null; mon.itemConsumed = true; }
+            if (!unnerved && mon.item === "Persim Berry" && mon.volatile.confusion > 0) { logMsg(`${mon.name}'s Persim Berry snapped it out of confusion!`, 'heal'); mon.volatile.confusion = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); }
 
             if (!unnerved && mon.item === "Salac Berry" && mon.currentHp <= mon.maxHp * _pinchThreshold(mon) && mon.currentHp > 0) {
                 changeStage(mon, 'spe', _ripen(mon, 1), false, { bypassStagnation: true });
@@ -18991,27 +19234,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
             }
             if (!unnerved && mon.item === "Lansat Berry" && mon.currentHp <= mon.maxHp * _pinchThreshold(mon) && mon.currentHp > 0) {
-                mon.volatile.focusEnergy = (mon.volatile.focusEnergy || 0) + 2;
+                mon.volatile.focusEnergy = (mon.volatile.focusEnergy || 0) + _ripen(mon, 2);
                 logMsg(`${mon.name} ate its Lansat Berry and raised its critical-hit ratio!`, 'info');
-                mon.item = null; mon.itemConsumed = true;
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
             }
             if (!unnerved && mon.item === "Starf Berry" && mon.currentHp <= mon.maxHp * _pinchThreshold(mon) && mon.currentHp > 0) {
                 const starfStats = ['atk', 'def', 'spa', 'spd', 'spe'];
                 const starfStat = starfStats[Math.floor(Math.random() * starfStats.length)];
-                changeStage(mon, starfStat, 2, false, { bypassStagnation: true });
+                changeStage(mon, starfStat, _ripen(mon, 2), false, { bypassStagnation: true });
                 logMsg(`${mon.name} ate its Starf Berry!`, 'info');
-                mon.item = null; mon.itemConsumed = true;
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
             }
             if (!unnerved && mon.item === "Oran Berry" && mon.currentHp <= mon.maxHp * 0.5 && mon.currentHp > 0) {
-                let actHeal = Math.min(mon.maxHp - mon.currentHp, 10);
+                let actHeal = Math.min(mon.maxHp - mon.currentHp, _ripen(mon, 10));
                 if (actHeal > 0) { mon.currentHp += actHeal; logMsg(`${mon.name} ate its Oran Berry and restored ${actHeal} HP!`, 'heal'); }
-                mon.item = null; mon.itemConsumed = true;
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
             }
             if (!unnerved && mon.item === "Sitrus Berry" && mon.currentHp <= mon.maxHp * 0.5 && mon.currentHp > 0) {
                 let heal = Math.floor(mon.maxHp / 4);
-                let actHeal = Math.min(mon.maxHp - mon.currentHp, heal);
+                let actHeal = Math.min(mon.maxHp - mon.currentHp, _ripen(mon, heal));
                 if (actHeal > 0) { mon.currentHp += actHeal; logMsg(`${mon.name} ate its Sitrus Berry and restored ${actHeal} HP!`, 'heal'); }
-                mon.item = null; mon.itemConsumed = true;
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
             }
             // Berry Juice: restores 20 HP at ≤50% HP, consumed (not a berry — Unnerve doesn't apply)
             if (mon.item === "Berry Juice" && mon.currentHp <= mon.maxHp * 0.5 && mon.currentHp > 0
@@ -19022,21 +19265,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Flavor berries (Figy/Wiki/Mago/Aguav/Iapapa): heal 1/2 max HP at ≤25% (Gen 8+: no confusion)
             const _flavorBerries = ["Figy Berry","Wiki Berry","Mago Berry","Aguav Berry","Iapapa Berry"];
-            if (!unnerved && _flavorBerries.includes(mon.item) && mon.currentHp <= mon.maxHp * 0.25 && mon.currentHp > 0) {
+            if (!unnerved && _flavorBerries.includes(mon.item) && mon.currentHp <= mon.maxHp * _pinchThreshold(mon) && mon.currentHp > 0) {
                 let heal = Math.floor(mon.maxHp / 2);
-                let actHeal = Math.min(mon.maxHp - mon.currentHp, heal);
+                let actHeal = Math.min(mon.maxHp - mon.currentHp, _ripen(mon, heal));
                 if (actHeal > 0) { mon.currentHp += actHeal; logMsg(`${mon.name} ate its ${mon.item} and restored ${actHeal} HP!`, 'heal'); }
-                mon.item = null; mon.itemConsumed = true;
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
             }
             if (!unnerved && mon.item === "Custap Berry" && mon.currentHp <= mon.maxHp * _pinchThreshold(mon) && mon.currentHp > 0) {
                 logMsg(`${mon.name}'s Custap Berry lets it move first next turn!`, 'info');
                 mon.volatile.custapReady = true;
-                mon.item = null; mon.itemConsumed = true;
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
             }
             if (!unnerved && mon.item === "Micle Berry" && mon.currentHp <= mon.maxHp * _pinchThreshold(mon) && mon.currentHp > 0) {
                 logMsg(`${mon.name}'s Micle Berry boosts its next move's accuracy!`, 'info');
                 mon.volatile.micleBerry = true;
-                mon.item = null; mon.itemConsumed = true;
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
             }
 
             // Story artifact: Vampiric Fangs — all Pokémon lose 1/16 max HP at end of turn (Magic Guard immune)
