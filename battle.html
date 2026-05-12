@@ -22895,13 +22895,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function enterArtifactHall() {
             const el = document.getElementById('story-artifact-hall-list');
             if (el) {
+                const bothSidesBadge = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Relic effects apply to both you and your opponents while enabled">⚠ Affects both sides</span>';
                 el.innerHTML = (sm.artifacts || []).map(id => {
                     const art = ALL_ARTIFACTS.find(a => a.id === id);
                     const off = (sm.artifactsDisabled || []).includes(id);
                     const label = art ? art.name : id;
                     const desc = art ? art.desc : '';
+                    const statusChip = off
+                        ? '<span class="story-action-badge info" style="color:#888;border-color:#555;">Inactive</span>'
+                        : '<span class="story-action-badge free">Active</span>';
                     return `<div style="border:1px solid #444;border-radius:6px;padding:10px;margin-bottom:8px;background:#0d0013;">
-                        <div style="font-weight:bold;color:#ce93d8;">${label}</div>
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <div style="font-weight:bold;color:#ce93d8;flex:1;min-width:0;">${label}</div>
+                            ${statusChip}
+                            ${bothSidesBadge}
+                        </div>
                         <div style="font-size:11px;color:#aaa;margin:6px 0;">${desc}</div>
                         <button onclick="window.StoryMode.toggleArtifactDisabled('${id}')" style="font-size:11px;padding:4px 10px;">
                             ${off ? 'Enable (inactive now)' : 'Disable for battles'}
@@ -23917,10 +23925,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const artDesc = _artifactDescForCity(art, cityIdx);
                 const priceLabel = listPrice === 0 ? '<span style="color:#ce93d8;">Free (first in Pallet only)</span>' : storyGoldHtml(listPrice.toLocaleString());
                 const btnLabel = listPrice === 0 ? 'Claim free' : ('Buy ' + storyGoldHtml(listPrice.toLocaleString()));
+                const bothSidesBadge = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Relic effects apply to both you and your opponents for the rest of the run">⚠ Affects both sides</span>';
                 gridEl.innerHTML += `<div class="story-artifact-card" style="margin-bottom:8px;opacity:${owned ? '0.5' : '1'}">
                     <div class="story-shop-item-row" style="margin-bottom:6px;">
                         ${aicon}
                         <h4 style="flex:1;margin:0;">${artName} ${owned ? '<span style="color:#4caf50;">[OWNED]</span>' : ''}</h4>
+                        ${bothSidesBadge}
                     </div>
                     <div class="desc">${artDesc}</div>
                     ${!owned ? `<div style="margin-top:6px;font-size:11px;color:#aaa;">Price: ${priceLabel}</div>
