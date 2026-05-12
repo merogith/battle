@@ -16123,9 +16123,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let hitSub = false;
                     let endureTriggered = false;
                     for (let h = 0; h < numHits; h++) {
+                        // Triple Axel / Triple Kick: per-hit independent accuracy check (90%/90%/90% base, modified by user/target accuracy/evasion).
+                        // Loaded Dice bypasses these per-hit checks. (Skip the very first hit since the main acc check already passed it.)
+                        if (h > 0 && (move.name === "Triple Axel" || move.name === "Triple Kick") && attacker.item !== "Loaded Dice") {
+                            if (Math.random() * 100 > finalAcc) { break; }
+                        }
                         // Parental Bond: 2nd hit deals 0.25x damage
                         let _hitDmg = (parentalBondActive && h === 1) ? Math.max(1, Math.floor(damage * 0.25)) : damage;
                         if (parentalBondActive && h === 1) attacker.volatile.parentalBondHit = true;
+                        // Triple Axel / Triple Kick: power escalates per successful hit (BP 20/40/60). Recompute damage.
+                        if ((move.name === "Triple Axel" || move.name === "Triple Kick") && h > 0) {
+                            _hitDmg = Math.floor(damage * (h + 1));
+                        }
                         if (defender.volatile.sub > 0 && !(attacker.ability === "Infiltrator")) {
                             let sd = Math.min(defender.volatile.sub, _hitDmg); defender.volatile.sub -= sd;
                             hitsLanded++;
@@ -16808,6 +16817,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let pivotBench = pivotParty.filter(m => m.currentHp > 0 && m !== pivotActive);
                     if (pivotBench.length > 0) {
                         await handlePivotSwitch(isPlayer, move);
+                    }
+                }
+
+                // Dragon Tail / Circle Throw: force opponent to switch to a random ally (PvE only — PvP can't force opponent's hand)
+                if ((move.name === "Dragon Tail" || move.name === "Circle Throw") && defender.currentHp > 0 && state.mode !== 'pvp') {
+                    if (defender.ability === "Suction Cups" || defender.volatile.ingrain || defender.dynamaxed) {
+                        // immune to phazing
+                    } else {
+                        const _foeParty = isPlayer ? state.foeParty : state.playerParty;
+                        const _foeBench = _foeParty.filter(m => m.currentHp > 0 && m !== defender);
+                        if (_foeBench.length > 0) {
+                            const _newMon = _foeBench[Math.floor(Math.random() * _foeBench.length)];
+                            clearVolatileOnSwitch(defender);
+                            logMsg(`${defender.name} was forced out!`, 'info');
+                            if (isPlayer) {
+                                state.fActive = _newMon; state.fActive.turnCount = 0; state.fActive.fakeOutOk = true;
+                                if (state.revealedFoe) state.revealedFoe.add(state.fActive.name);
+                                applySwitchInAbilities(state.fActive, state.pActive);
+                                applyEntryHazards(state.fActive, false);
+                            } else {
+                                state.pActive = _newMon; state.pActive.turnCount = 0; state.pActive.fakeOutOk = true;
+                                applySwitchInAbilities(state.pActive, state.fActive);
+                                applyEntryHazards(state.pActive, true);
+                            }
+                            updateUI();
+                        }
                     }
                 }
 
@@ -18428,6 +18463,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // === Self-debuff moves (after damage) ===
             if (move.name === "Leaf Storm" || move.name === "Overheat" || move.name === "Draco Meteor") { changeStage(attacker, 'spa', -2); }
+            if (move.name === "Make It Rain" || move.name === "Psycho Boost") { changeStage(attacker, 'spa', -1 - (move.name === "Psycho Boost" ? 1 : 0)); }
             if (move.name === "Close Combat") { changeStage(attacker, 'def', -1); changeStage(attacker, 'spd', -1); }
             if (move.name === "Superpower") { changeStage(attacker, 'atk', -1); changeStage(attacker, 'def', -1); }
             // Rapid Spin: Speed +1 is handled inside the Rapid Spin named handler above (no duplicate here)
