@@ -4875,6 +4875,58 @@
         </div>
     </div>
 
+    <div id="modal-story-wild" class="modal hidden">
+        <div class="modal-content white-outline" style="max-width:460px;text-align:center;">
+            <h3 id="story-wild-title" class="story-party-modal-title" style="margin-bottom:6px;">A wild Pokémon appeared!</h3>
+            <img id="story-wild-sprite" src="" alt="" style="width:120px;height:120px;object-fit:contain;image-rendering:pixelated;border:none;background:transparent;margin:8px auto;display:block;">
+            <div id="story-wild-info" style="margin:4px 0;font-size:12px;"></div>
+            <div id="story-wild-status" style="font-size:11px;color:#ffb74d;min-height:14px;margin:6px 0;"></div>
+            <div id="story-wild-actions" style="display:flex;flex-wrap:wrap;justify-content:center;gap:2px;margin-top:8px;"></div>
+        </div>
+    </div>
+
+    <div id="modal-story-wager" class="modal hidden">
+        <div class="modal-content white-outline" style="max-width:480px;">
+            <h3 id="story-wager-title" class="story-party-modal-title" style="margin-bottom:6px;">Wager prompt</h3>
+            <div id="story-wager-body" style="margin:6px 0 12px;"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button id="story-wager-accept" type="button" onclick="window.StoryMode._wagerAccept()" style="font-size:12px;padding:6px 14px;color:#81c784;border-color:#81c784;">Accept Wager</button>
+                <button type="button" onclick="window.StoryMode._wagerDecline()" style="font-size:12px;padding:6px 14px;color:#9aa0aa;border-color:#9aa0aa;">Decline</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-story-trader" class="modal hidden">
+        <div class="modal-content white-outline" style="max-width:480px;">
+            <h3 id="story-trader-title" class="story-party-modal-title" style="margin-bottom:6px;">Pokémon Trader</h3>
+            <div id="story-trader-body" style="margin:6px 0 12px;"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button id="story-trader-accept" type="button" onclick="window.StoryMode._traderAccept()" style="font-size:12px;padding:6px 14px;color:#81c784;border-color:#81c784;">Accept Trade</button>
+                <button type="button" onclick="window.StoryMode._traderDecline()" style="font-size:12px;padding:6px 14px;color:#9aa0aa;border-color:#9aa0aa;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-story-blackmarket" class="modal hidden">
+        <div class="modal-content white-outline" style="max-width:580px;background:linear-gradient(180deg,#1a0d1f 0%,#0a0610 100%);">
+            <h3 class="story-party-modal-title" style="display:flex;align-items:center;gap:8px;color:#ce93d8;"><span>🕶 Black Market</span><span id="story-blackmarket-gold" style="margin-left:auto;font-size:12px;color:#ffeb3b;"></span></h3>
+            <p class="story-party-modal-hint" style="color:#9c83a8;font-size:11px;margin:4px 0 10px;">"Nothing legal here. Spend wisely — no refunds, no questions."</p>
+            <div id="story-blackmarket-grid" style="display:grid;grid-template-columns:1fr;gap:8px;max-height:380px;overflow-y:auto;"></div>
+            <button type="button" class="story-bag-close-btn" onclick="window.closeModal('modal-story-blackmarket')" style="margin-top:10px;">Close</button>
+        </div>
+    </div>
+
+    <div id="modal-story-dealer" class="modal hidden">
+        <div class="modal-content white-outline" style="max-width:480px;background:linear-gradient(180deg,#1a0d1f 0%,#0a0610 100%);">
+            <h3 class="story-party-modal-title" style="margin-bottom:6px;color:#ce93d8;">🕴 Illegal Dealer</h3>
+            <div id="story-dealer-body" style="margin:6px 0 12px;"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button id="story-dealer-accept" type="button" onclick="window.StoryMode._dealerAccept()" style="font-size:12px;padding:6px 14px;color:#ce93d8;border-color:#ce93d8;">Take Deal</button>
+                <button type="button" onclick="window.StoryMode._dealerDecline()" style="font-size:12px;padding:6px 14px;color:#9aa0aa;border-color:#9aa0aa;">Walk Away</button>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-story-artifact" class="modal hidden">
         <div class="modal-content white-outline" style="max-width:550px;">
             <h3 class="story-screen-head-title" style="color:#9c27b0;margin-top:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Run Artifacts</span></h3>
@@ -21942,9 +21994,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── STATE ─────────────────────────────────────────────────────────
         const SAVE_KEY = 'pbs_story_save';
         const STORY_MENU_DEFAULTS_KEY = 'pbs_story_run_menu_defaults';
-        const SAVE_VER = 15;
+        const SAVE_VER = 16;
         // Max Pokémon storable in the PC Box. Foundation-only cap; bump if multi-box screens get added.
         const PC_BOX_CAPACITY = 60;
+        // Safari Zone constants.
+        const SAFARI_FEE = 500;
+        const SAFARI_BALLS = 5;
+        const SAFARI_TYPES = ['Fire','Water','Grass','Electric','Bug','Rock','Ground','Psychic','Dark','Fairy','Dragon','Ice'];
+        // Catch rates by ball ID. Multiplier vs base catch chance derived from grade.
+        const BALL_CATCH_BONUS = { pokeball: 1.0, greatBall: 1.5, ultraBall: 2.0, masterBall: 999 };
+        // Wild encounter rate per route-battle slot when catchMode is on.
+        const WILD_ENCOUNTER_RATE = 0.50;
+        // Wager prompt rate on Basic Trainer route battles once unlocked.
+        const WAGER_PROMPT_RATE = 0.15;
         /** v8: eight filler Basic Trainer rows removed from `STORY_EVENTS_RAW` — remap saved indices from v7 and below. */
         const STORY_TIMELINE_REMOVED_ROW_IDS_PRE_V8 = new Set([3, 8, 16, 23, 30, 38, 47, 55]);
         function migrateStoryRowIdPreV8ToCurrent(oldId) {
@@ -22091,6 +22153,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    trainerAssignments:{}, currentTrainerData:null,
                    settings:{ minGen:1, maxGen:9, enabledGens:[1,2,3,4,5,6,7,8,9], megaOn:false, zOn:false, dynaOn:false, teraOn:false, classicMode:true },
                    catchMode:false,
+                   pendingInterrupts:[], itineraryDone:{}, blackMarketUnlocked:false, wagerUnlocked:false,
+                   traderOfferByCity:{}, dealerOfferByCityVisit:{}, shadyRepelRoutes:0, legendChipReady:false,
+                   pendingWager:null,
                    gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{}, currentEnemyLock:null,
                    artifactsDisabled:[], storyCityVisit:null,
                    artifactShopOffersByCity:{}, artifactFreeClaimUsed:false,
@@ -22249,6 +22314,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (typeof sm.inventory[k] !== 'number') sm.inventory[k] = 0;
                     }
                 }
+                if (!Array.isArray(sm.pendingInterrupts)) sm.pendingInterrupts = [];
+                if (!sm.itineraryDone || typeof sm.itineraryDone !== 'object') sm.itineraryDone = {};
+                if (typeof sm.blackMarketUnlocked !== 'boolean') sm.blackMarketUnlocked = false;
+                if (typeof sm.wagerUnlocked !== 'boolean') sm.wagerUnlocked = false;
+                if (!sm.traderOfferByCity || typeof sm.traderOfferByCity !== 'object') sm.traderOfferByCity = {};
+                if (!sm.dealerOfferByCityVisit || typeof sm.dealerOfferByCityVisit !== 'object') sm.dealerOfferByCityVisit = {};
+                if (typeof sm.shadyRepelRoutes !== 'number') sm.shadyRepelRoutes = 0;
+                if (typeof sm.legendChipReady !== 'boolean') sm.legendChipReady = false;
+                if (!('pendingWager' in sm)) sm.pendingWager = null;
                 const _loadedVer = d.version | 0;
                 if (_loadedVer < 8) {
                     try { migrateStoryTimelineIndicesFromPreV8(); } catch (e) { console.warn('[Story] timeline migrate', e); }
@@ -23172,6 +23246,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 deptArtifactOffersByCity:{}, artifactShopOffersByCity:{}, artifactFreeClaimUsed:false,
                 deptArtifactTypesByCity:{}, artifactTypeById:{}, deptItemOffersByCity:{},
                 catchMode: document.getElementById('story-catch-mode')?.checked || false,
+                pendingInterrupts: [], itineraryDone: {}, blackMarketUnlocked: false, wagerUnlocked: false,
+                traderOfferByCity: {}, dealerOfferByCityVisit: {}, shadyRepelRoutes: 0, legendChipReady: false,
+                pendingWager: null,
                 settings:{ enabledGens, minGen, maxGen,
                     megaOn: document.getElementById('story-mech-mega')?.checked||false,
                     zOn:    document.getElementById('story-mech-z')?.checked||false,
@@ -23208,6 +23285,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!load()) { showMenu(true); return; }
             resetProfessorPickSession();
             applyMechanicsToSettings();
+            // Discard any interrupt queue persisted from a mid-route reload — player is back at the
+            // city hub and will re-trigger from "Continue Route" cleanly.
+            sm.pendingInterrupts = [];
+            sm._pendingTrainerEventIdx = null;
+            sm.pendingWager = null;
             processNextEvent();
         }
 
@@ -23742,6 +23824,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     : '💾 PC Box — Empty';
                 _push('recover', makeActionBtn(_pcLabel, 'party', 'window.StoryMode.openPCBoxModal()', 'party', { soft:true, meta: _withNew('pcbox', [{label:'Free',tone:'free'}]) }));
             }
+            // Pokémon Trader — appears at City4 (first visit, once per city) when the player has a party
+            if (cityIdx === 4 && (sm.team || []).length > 0) {
+                const _trOffer = sm.traderOfferByCity && sm.traderOfferByCity[4];
+                const _trDone = _trOffer && _trOffer.used;
+                const _trLabel = _trDone ? '🤝 Pokémon Trader (trade complete)' : '🤝 Pokémon Trader — same-tier 1:1';
+                _push('shop', makeActionBtn(_trLabel, 'mart', 'window.StoryMode.enterTrader()', 'shop', { soft:true, meta: _withNew('trader', [{label: _trDone ? 'Done' : 'Trade', tone:'info'}]) }));
+            }
+            // Black Market — unlocks after badge 4, visible at City5+
+            if (_isBlackMarketAvailable()) {
+                _push('shop', makeActionBtn('🕶 Black Market — Smuggled goods', 'dept', 'window.StoryMode.enterBlackMarket()', 'dept', { soft:true, meta: _withNew('blackmarket', [{label:'Illegal',tone:'info'}]) }));
+            }
+            // Illegal Dealer NPC — City6 and City8 only, one contract per visit
+            if (_isDealerAvailable()) {
+                _push('shop', makeActionBtn('🕴 Illegal Dealer — One contract per visit', 'dept', 'window.StoryMode.enterIllegalDealer()', 'dept', { soft:true, meta: _withNew('dealer', [{label:'Risk',tone:'info'}]) }));
+            }
             if (actions.includes('Link Station')) {
                 _push('recover', makeActionBtn('📡 Cable Link Station — Reroll Team','link','window.StoryMode.enterLink()','link',{ meta: _withNew('link', [{label:'Free',tone:'free'}]) }));
             }
@@ -24233,6 +24330,762 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             renderPCBoxPanel();
         }
 
+        // ── BEST/WORST PICKERS (for wager and dealer contracts) ────────────
+        // Spec convention: lower grade number = stronger pool. Best = lowest grade, tie → highest BST.
+        // Worst = highest grade, tie → lowest BST.
+        function pickBestFromTeam(team) {
+            if (!Array.isArray(team) || !team.length) return -1;
+            let bestIdx = 0;
+            let bestG = getMonGrade(team[0].name, getBST(team[0].name));
+            let bestBst = getBST(team[0].name);
+            for (let i = 1; i < team.length; i++) {
+                const g = getMonGrade(team[i].name, getBST(team[i].name));
+                const bst = getBST(team[i].name);
+                if (g < bestG || (g === bestG && bst > bestBst)) { bestIdx = i; bestG = g; bestBst = bst; }
+            }
+            return bestIdx;
+        }
+        function pickWorstFromTeam(team) {
+            if (!Array.isArray(team) || !team.length) return -1;
+            let worstIdx = 0;
+            let worstG = getMonGrade(team[0].name, getBST(team[0].name));
+            let worstBst = getBST(team[0].name);
+            for (let i = 1; i < team.length; i++) {
+                const g = getMonGrade(team[i].name, getBST(team[i].name));
+                const bst = getBST(team[i].name);
+                if (g > worstG || (g === worstG && bst < worstBst)) { worstIdx = i; worstG = g; worstBst = bst; }
+            }
+            return worstIdx;
+        }
+
+        // ── SPECIES POOL HELPERS ───────────────────────────────────────────
+        function _storyRandSpeciesByGrade(grade, enabledGens) {
+            const pool = buildGradePool(enabledGens, grade);
+            if (!pool.length) return null;
+            return pool[Math.floor(storyRngNext() * pool.length)];
+        }
+        function _storyRandSpeciesByType(type, enabledGens, gradeBias) {
+            const gens = normalizeEnabledGens(enabledGens);
+            const genSet = new Set(gens);
+            const pool = [];
+            for (const name of Object.keys(baseStats)) {
+                if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
+                const b = baseStats[name];
+                if (!b || !genSet.has(b.gen)) continue;
+                if (b.type1 !== type && b.type2 !== type) continue;
+                const g = getMonGrade(name, getBST(name));
+                if (gradeBias && Array.isArray(gradeBias) && !gradeBias.includes(g)) continue;
+                pool.push(name);
+            }
+            if (!pool.length) return null;
+            return pool[Math.floor(storyRngNext() * pool.length)];
+        }
+        function _buildStorySlot(name) {
+            if (!name || !baseStats[name]) return null;
+            try { return { name, build: makeBuild(name) }; } catch (e) { console.warn('[Story] _buildStorySlot', name, e); return null; }
+        }
+
+        // ── PENDING INTERRUPT QUEUE ────────────────────────────────────────
+        // Spec section 8 order: itinerary beat → wild → wager prompt → trainer.
+        // proceedToNextBattle() composes this list; _processNextInterrupt() pops + fires; each
+        // handler calls _processNextInterrupt() again when the player is done.
+        function _queueInterrupt(item) {
+            if (!Array.isArray(sm.pendingInterrupts)) sm.pendingInterrupts = [];
+            sm.pendingInterrupts.push(item);
+        }
+        function _processNextInterrupt() {
+            if (!Array.isArray(sm.pendingInterrupts)) sm.pendingInterrupts = [];
+            const next = sm.pendingInterrupts.shift();
+            save();
+            if (!next) { _enterPendingTrainerBattle(); return; }
+            try {
+                switch (next.kind) {
+                    case 'itinerary': _runItineraryBeat(next.beat); return;
+                    case 'wild':      _enterWildEncounter(next); return;
+                    case 'wager':     _showWagerPrompt(next); return;
+                    case 'safari':    enterSafariZone(next.theme); return;
+                    default:
+                        console.warn('[Story] Unknown interrupt kind', next);
+                        _processNextInterrupt();
+                }
+            } catch (e) {
+                console.error('[Story] interrupt handler threw — continuing', e);
+                _processNextInterrupt();
+            }
+        }
+        function _enterPendingTrainerBattle() {
+            const targetIdx = sm._pendingTrainerEventIdx;
+            sm._pendingTrainerEventIdx = null;
+            if (targetIdx == null || targetIdx < 0 || targetIdx >= STORY_EVENTS_RAW.length) {
+                enterCity();
+                return;
+            }
+            sm.eventIndex = targetIdx;
+            save();
+            enterBattleEvent(STORY_EVENTS_RAW[targetIdx]);
+        }
+
+        // ── WILD ENCOUNTER ─────────────────────────────────────────────────
+        let _wildCurrent = null;        // {name, build, isSafari, ballsLeft}
+        let _wildCloseCallback = null;  // continuation after the player exits
+
+        /** Public-facing trigger from interrupts. opts: {gradeWeights, enabledGens, source:'route'|'safari', theme:string?} */
+        function _enterWildEncounter(opts) {
+            const sg = (opts && opts.enabledGens) || storySettingsGens();
+            let species = null;
+            if (opts && opts.theme) {
+                // Safari path: type filter, bias G2-G3
+                species = _storyRandSpeciesByType(opts.theme, sg, [2, 3]);
+                if (!species) species = _storyRandSpeciesByType(opts.theme, sg, null);
+            } else {
+                // Route wild: respect current grade weights (light bias to weaker grades)
+                const gw = opts && opts.gradeWeights ? opts.gradeWeights : { g1: 0, g2: 10, g3: 40, g4: 50 };
+                const total = (gw.g1||0)+(gw.g2||0)+(gw.g3||0)+(gw.g4||0) || 1;
+                let r = Math.floor(storyRngNext() * total);
+                let g;
+                if (r < (gw.g4||0)) g = 4;
+                else if (r < (gw.g4||0)+(gw.g3||0)) g = 3;
+                else if (r < (gw.g4||0)+(gw.g3||0)+(gw.g2||0)) g = 2;
+                else g = 1;
+                species = _storyRandSpeciesByGrade(g, sg);
+                if (!species) species = _storyRandSpeciesByGrade(3, sg);
+            }
+            if (!species) { _processNextInterrupt(); return; }
+            const slot = _buildStorySlot(species);
+            if (!slot) { _processNextInterrupt(); return; }
+            _wildCurrent = {
+                name: slot.name,
+                build: slot.build,
+                isSafari: !!(opts && opts.source === 'safari'),
+                ballsLeft: opts && opts.source === 'safari' ? (typeof opts.ballsLeft === 'number' ? opts.ballsLeft : SAFARI_BALLS) : null
+            };
+            _renderWildModal();
+            const m = document.getElementById('modal-story-wild');
+            if (m) m.classList.remove('hidden');
+        }
+
+        function _renderWildModal() {
+            const w = _wildCurrent;
+            if (!w) return;
+            const titleEl = document.getElementById('story-wild-title');
+            const spriteEl = document.getElementById('story-wild-sprite');
+            const infoEl = document.getElementById('story-wild-info');
+            const statusEl = document.getElementById('story-wild-status');
+            const actsEl = document.getElementById('story-wild-actions');
+            const g = getMonGrade(w.name, getBST(w.name));
+            const bs = baseStats[w.name] || {};
+            const t1 = bs.type1 || '';
+            const t2 = bs.type2 || '';
+            if (titleEl) titleEl.textContent = w.isSafari ? `Safari Zone — Wild ${w.name}!` : `A wild ${w.name} appeared!`;
+            if (spriteEl) {
+                spriteEl.src = getSprite(w.name, false);
+                spriteEl.alt = w.name;
+                spriteEl.onerror = function () { this.style.visibility = 'hidden'; };
+            }
+            if (infoEl) infoEl.innerHTML = `<span class="tier-badge bg-tier-${g}" style="display:inline-block;margin-right:6px;">T${g}</span> ${w.name} ${getTypeHTML(t1, t2)} <span style="color:#888;font-size:11px;">· BST ${getBST(w.name)}</span>`;
+            if (statusEl) statusEl.textContent = '';
+            if (!actsEl) return;
+            const partyFull = (sm.team || []).length >= 6;
+            const pcFull = (sm.pcBox || []).length >= PC_BOX_CAPACITY;
+            const storageFull = partyFull && pcFull;
+            let html = '';
+            if (storageFull) {
+                html += '<div style="color:#ef9a9a;font-size:11px;margin-bottom:6px;">Party and PC Box are both full — release a Pokémon first or run.</div>';
+            }
+            if (w.isSafari) {
+                const left = w.ballsLeft | 0;
+                html += `<div style="font-size:11px;color:#aaa;margin-bottom:6px;">Safari Balls left: <b style="color:#81c784;">${left}</b></div>`;
+                html += `<button type="button" onclick="window.StoryMode._wildThrowBall('safari')" ${left<=0||storageFull?'disabled':''} style="font-size:12px;padding:6px 12px;margin:2px;">🟢 Throw Safari Ball</button>`;
+                html += `<button type="button" onclick="window.StoryMode._wildSafariBait()" ${left<=0?'disabled':''} style="font-size:12px;padding:6px 12px;margin:2px;color:#ffb74d;border-color:#ffb74d;">🍎 Bait (easier catch)</button>`;
+                html += `<button type="button" onclick="window.StoryMode._wildSafariMud()" ${left<=0?'disabled':''} style="font-size:12px;padding:6px 12px;margin:2px;color:#a1887f;border-color:#a1887f;">💧 Mud (less likely to flee)</button>`;
+            } else {
+                const balls = [
+                    { id: 'pokeball',  label: 'Poké Ball' },
+                    { id: 'greatBall', label: 'Great Ball' },
+                    { id: 'ultraBall', label: 'Ultra Ball' },
+                    { id: 'masterBall',label: 'Master Ball' },
+                ];
+                balls.forEach(b => {
+                    const qty = (sm.inventory && sm.inventory[b.id]) | 0;
+                    html += `<button type="button" onclick="window.StoryMode._wildThrowBall('${b.id}')" ${qty<=0||storageFull?'disabled':''} style="font-size:12px;padding:6px 12px;margin:2px;">▣ ${b.label} <span style="color:#888;font-size:10px;">×${qty}</span></button>`;
+                });
+            }
+            html += `<button type="button" onclick="window.StoryMode._wildFlee()" style="font-size:12px;padding:6px 12px;margin:2px;color:#9aa0aa;border-color:#9aa0aa;">→ Run</button>`;
+            actsEl.innerHTML = html;
+        }
+
+        function _wildComputeCatchChance(species, ballId, modifier) {
+            const bst = getBST(species);
+            // BST 350 → ~85%, BST 530 → ~35%, BST 600 → ~25%, BST 680 → ~15%. Then ball multiplier.
+            let base = 1.0 - Math.min(0.85, Math.max(0, (bst - 300) / 500));
+            base = Math.max(0.05, base);
+            const ballMult = BALL_CATCH_BONUS[ballId] || 1.0;
+            if (ballMult > 100) return 1; // Master Ball
+            let chance = base * ballMult;
+            if (modifier === 'bait') chance *= 1.5;
+            if (modifier === 'mud')  chance *= 0.9; // weaker catch but Safari path keeps mon from fleeing
+            return Math.min(0.95, chance);
+        }
+
+        function _wildThrowBall(ballId) {
+            const w = _wildCurrent;
+            if (!w) return;
+            const statusEl = document.getElementById('story-wild-status');
+            if (w.isSafari) {
+                if ((w.ballsLeft | 0) <= 0) return;
+                w.ballsLeft = Math.max(0, w.ballsLeft - 1);
+                const chance = _wildComputeCatchChance(w.name, 'pokeball', null);
+                if (storyRngNext() < chance) {
+                    const where = gainPokemonToBoxOrParty({ name: w.name, build: w.build });
+                    if (!where) {
+                        if (statusEl) statusEl.textContent = 'Caught — but storage is full! Released.';
+                    } else if (statusEl) statusEl.textContent = `Caught ${w.name}! Sent to ${where === 'party' ? 'party' : 'PC Box'}.`;
+                    setTimeout(_wildClose, 900);
+                    return;
+                }
+                if (statusEl) statusEl.textContent = `${w.name} broke free!`;
+                if (w.ballsLeft <= 0) {
+                    if (statusEl) statusEl.textContent += ' Out of Safari Balls.';
+                    setTimeout(_wildClose, 900);
+                    return;
+                }
+                _renderWildModal();
+                return;
+            }
+            // Route wild: consume from inventory
+            if (!sm.inventory || !sm.inventory[ballId] || sm.inventory[ballId] <= 0) return;
+            sm.inventory[ballId]--;
+            if (sm.inventory[ballId] <= 0) delete sm.inventory[ballId];
+            const chance = _wildComputeCatchChance(w.name, ballId, null);
+            if (storyRngNext() < chance) {
+                const where = gainPokemonToBoxOrParty({ name: w.name, build: w.build });
+                if (!where) {
+                    if (statusEl) statusEl.textContent = 'Caught — but storage is full! Released.';
+                } else if (statusEl) statusEl.textContent = `Caught ${w.name}! Sent to ${where === 'party' ? 'party' : 'PC Box'}.`;
+                save();
+                setTimeout(_wildClose, 900);
+                return;
+            }
+            save();
+            if (statusEl) statusEl.textContent = `${w.name} broke free!`;
+            // Wild route mon may flee after a failed throw — keep simple: 30% flee chance.
+            if (storyRngNext() < 0.30) {
+                if (statusEl) statusEl.textContent += ` ${w.name} fled!`;
+                setTimeout(_wildClose, 900);
+                return;
+            }
+            _renderWildModal();
+        }
+        function _wildSafariBait() {
+            const w = _wildCurrent;
+            if (!w || !w.isSafari) return;
+            // No ball thrown; spends a turn (1 ball pip) but raises next throw odds via implicit boost.
+            // Simpler model: bait increments a transient bonus on w that next throw consumes.
+            w._baitedThrows = (w._baitedThrows | 0) + 1;
+            w.ballsLeft = Math.max(0, w.ballsLeft - 1);
+            const statusEl = document.getElementById('story-wild-status');
+            if (statusEl) statusEl.textContent = 'You threw bait — the Pokémon is distracted.';
+            if (w.ballsLeft <= 0) { setTimeout(_wildClose, 900); return; }
+            _renderWildModal();
+        }
+        function _wildSafariMud() {
+            const w = _wildCurrent;
+            if (!w || !w.isSafari) return;
+            w._muddedThrows = (w._muddedThrows | 0) + 1;
+            w.ballsLeft = Math.max(0, w.ballsLeft - 1);
+            const statusEl = document.getElementById('story-wild-status');
+            if (statusEl) statusEl.textContent = 'You threw mud — the Pokémon is angrier but less likely to flee.';
+            if (w.ballsLeft <= 0) { setTimeout(_wildClose, 900); return; }
+            _renderWildModal();
+        }
+        function _wildFlee() { _wildClose(); }
+        function _wildClose() {
+            // Safari Zone needs the post-encounter ball count synced back from the modal state
+            // before the wild state is discarded. Otherwise the safari counter desyncs from the
+            // modal display (player threw N balls, safari state still thinks they have all).
+            if (_wildCurrent && _wildCurrent.isSafari && _safariState) {
+                _safariState.ballsLeft = Math.max(0, _wildCurrent.ballsLeft | 0);
+            }
+            _wildCurrent = null;
+            const m = document.getElementById('modal-story-wild');
+            if (m) m.classList.add('hidden');
+            const cb = _wildCloseCallback; _wildCloseCallback = null;
+            if (typeof cb === 'function') { try { cb(); } catch (e) { console.warn('[Story] wild close cb', e); } return; }
+            _processNextInterrupt();
+        }
+
+        // ── WAGER (Battle for Pokémon) ─────────────────────────────────────
+        // Spec: Win → gain foe's worst; Lose → lose player's best. Requires ≥2 party + ≥1 foe.
+        function _showWagerPrompt(opts) {
+            const m = document.getElementById('modal-story-wager');
+            if (!m) { _processNextInterrupt(); return; }
+            // Look up the upcoming trainer by name from the pending event id.
+            const nextEvIdx = sm._pendingTrainerEventIdx;
+            const nextEv = (nextEvIdx != null) ? STORY_EVENTS_RAW[nextEvIdx] : null;
+            const nextId = nextEv ? (nextEv[0] | 0) : -1;
+            const trainerName = (nextId >= 0 && sm.trainerAssignments && sm.trainerAssignments[nextId])
+                ? sm.trainerAssignments[nextId]
+                : (nextEv ? String(nextEv[2] || 'The trainer') : 'The trainer');
+            // For the prompt we *peek* at the foe team: we don't have it yet (rolled inside enterBattleEvent).
+            // So describe it generally — the actual gained/lost mons are resolved at battle end.
+            const titleEl = document.getElementById('story-wager-title');
+            const bodyEl  = document.getElementById('story-wager-body');
+            const partyN = (sm.team || []).length;
+            const canAccept = partyN >= 2;
+            if (titleEl) titleEl.textContent = `${trainerName} wants to wager a Pokémon!`;
+            if (bodyEl) {
+                bodyEl.innerHTML = `
+                    <div style="font-size:12px;color:#cfd8dc;margin-bottom:8px;">
+                        Stake one of your best Pokémon. Win the next battle and you take the trainer's worst Pokémon home — lose and you forfeit yours.
+                    </div>
+                    <div style="font-size:11px;color:${canAccept?'#81c784':'#ef9a9a'};">
+                        ${canAccept ? '✓ You have at least two Pokémon — you can accept.' : '✗ You need at least two Pokémon to accept a wager.'}
+                    </div>`;
+            }
+            const acc = document.getElementById('story-wager-accept');
+            if (acc) acc.disabled = !canAccept;
+            m.classList.remove('hidden');
+        }
+        function _wagerAccept() {
+            const m = document.getElementById('modal-story-wager');
+            if (m) m.classList.add('hidden');
+            const partyN = (sm.team || []).length;
+            if (partyN < 2) { _processNextInterrupt(); return; }
+            const bestIdx = pickBestFromTeam(sm.team);
+            const bestMon = sm.team[bestIdx] ? { name: sm.team[bestIdx].name, build: deepClone(sm.team[bestIdx].build || {}) } : null;
+            sm.pendingWager = bestMon ? { stake: bestMon, stakeIdx: bestIdx, active: true } : null;
+            save();
+            _processNextInterrupt();
+        }
+        function _wagerDecline() {
+            const m = document.getElementById('modal-story-wager');
+            if (m) m.classList.add('hidden');
+            sm.pendingWager = null;
+            save();
+            _processNextInterrupt();
+        }
+
+        // Called from onBattleEnd. won=true → take foe worst; won=false → lose player best (the stake).
+        function _resolvePendingWager(won, foeTeam) {
+            const w = sm.pendingWager;
+            sm.pendingWager = null;
+            if (!w || !w.active) return null;
+            if (won) {
+                if (!Array.isArray(foeTeam) || !foeTeam.length) return null;
+                const wIdx = pickWorstFromTeam(foeTeam);
+                const taken = foeTeam[wIdx];
+                if (!taken || !taken.name) return null;
+                const dest = gainPokemonToBoxOrParty({ name: taken.name, build: deepClone(taken.build || {}) });
+                save();
+                return { outcome: 'won', mon: taken.name, dest };
+            } else {
+                // Remove the stake from the actual sm.team if it's still there
+                const stakeName = w.stake && w.stake.name;
+                if (stakeName) {
+                    const idx = (sm.team || []).findIndex(s => s && s.name === stakeName);
+                    if (idx >= 0 && sm.team.length > 1) {
+                        sm.team.splice(idx, 1);
+                        save();
+                        return { outcome: 'lost', mon: stakeName };
+                    }
+                }
+                return { outcome: 'lost', mon: stakeName };
+            }
+        }
+
+        // ── POKEMON TRADER (City4 one-shot, frozen offer) ──────────────────
+        function _ensureTraderOfferForCity(cityIdx) {
+            if (!sm.traderOfferByCity || typeof sm.traderOfferByCity !== 'object') sm.traderOfferByCity = {};
+            if (sm.traderOfferByCity[cityIdx]) return sm.traderOfferByCity[cityIdx];
+            // Pick a species at grade matching one of the player's party mons.
+            const team = sm.team || [];
+            if (!team.length) return null;
+            const targetMon = team[Math.floor(storyRngNext() * team.length)];
+            if (!targetMon || !targetMon.name) return null;
+            const grade = getMonGrade(targetMon.name, getBST(targetMon.name));
+            const sg = storySettingsGens();
+            let candidate = null;
+            for (let attempt = 0; attempt < 20; attempt++) {
+                const c = _storyRandSpeciesByGrade(grade, sg);
+                if (c && c !== targetMon.name) { candidate = c; break; }
+            }
+            if (!candidate) return null;
+            const offer = { want: targetMon.name, give: candidate, grade, used: false };
+            sm.traderOfferByCity[cityIdx] = offer;
+            save();
+            return offer;
+        }
+        function enterTrader() {
+            const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
+            const offer = _ensureTraderOfferForCity(cityIdx);
+            const m = document.getElementById('modal-story-trader');
+            if (!m) return;
+            const titleEl = document.getElementById('story-trader-title');
+            const bodyEl  = document.getElementById('story-trader-body');
+            const acceptBtn = document.getElementById('story-trader-accept');
+            if (titleEl) titleEl.textContent = '🤝 Pokémon Trader';
+            if (!offer) {
+                if (bodyEl) bodyEl.innerHTML = '<div style="color:#aaa;">The trader is asleep. Come back when you have a Pokémon to bring.</div>';
+                if (acceptBtn) acceptBtn.style.display = 'none';
+            } else if (offer.used) {
+                if (bodyEl) bodyEl.innerHTML = `<div style="color:#aaa;">You already traded ${offer.want} for ${offer.give} in this city.</div>`;
+                if (acceptBtn) acceptBtn.style.display = 'none';
+            } else {
+                const hasIt = (sm.team || []).some(s => s && s.name === offer.want);
+                if (bodyEl) {
+                    bodyEl.innerHTML = `
+                        <div style="font-size:12px;color:#cfd8dc;margin-bottom:8px;">
+                            "I'll trade my <b style="color:#81c784;">${offer.give}</b> for your <b style="color:#ffb74d;">${offer.want}</b>. Same power tier — fair deal."
+                        </div>
+                        <div style="font-size:11px;color:${hasIt?'#81c784':'#ef9a9a;'};">
+                            ${hasIt ? `✓ You have ${offer.want} in your party.` : `✗ You don't currently have ${offer.want} in your party.`}
+                        </div>`;
+                }
+                if (acceptBtn) {
+                    acceptBtn.style.display = '';
+                    acceptBtn.disabled = !hasIt;
+                }
+            }
+            m.classList.remove('hidden');
+        }
+        function _traderAccept() {
+            const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
+            const offer = sm.traderOfferByCity && sm.traderOfferByCity[cityIdx];
+            if (!offer || offer.used) return;
+            const idx = (sm.team || []).findIndex(s => s && s.name === offer.want);
+            if (idx < 0) return;
+            const slot = _buildStorySlot(offer.give);
+            if (!slot) return;
+            sm.team[idx] = { name: slot.name, build: deepClone(slot.build) };
+            offer.used = true;
+            save();
+            const m = document.getElementById('modal-story-trader');
+            if (m) m.classList.add('hidden');
+            try { window.showGameAlert && window.showGameAlert(`Traded ${offer.want} for ${offer.give}.`); } catch (_) {}
+            enterCity();
+        }
+        function _traderDecline() {
+            const m = document.getElementById('modal-story-trader');
+            if (m) m.classList.add('hidden');
+        }
+
+        // ── SAFARI ZONE ────────────────────────────────────────────────────
+        let _safariState = null;
+        function enterSafariZone(forcedType) {
+            const sg = storySettingsGens();
+            const theme = forcedType || SAFARI_TYPES[Math.floor(storyRngNext() * SAFARI_TYPES.length)];
+            if (sm.gold < SAFARI_FEE) {
+                try { window.showGameAlert && window.showGameAlert(`Safari Zone entry costs ${SAFARI_FEE}G — you don't have enough. Skipped.`); } catch (_) {}
+                _processNextInterrupt();
+                return;
+            }
+            const ok = (typeof window.confirm === 'function')
+                ? window.confirm(`Safari Zone — ${theme}-type day! Entry ${SAFARI_FEE}G for ${SAFARI_BALLS} Safari Balls. Enter?`)
+                : true;
+            if (!ok) { _processNextInterrupt(); return; }
+            sm.gold -= SAFARI_FEE;
+            save();
+            _safariState = { theme, ballsLeft: SAFARI_BALLS, caught: [] };
+            _safariNextEncounter();
+        }
+        function _safariNextEncounter() {
+            if (!_safariState) { _processNextInterrupt(); return; }
+            if (_safariState.ballsLeft <= 0) { _safariFinish(); return; }
+            // Set up a wild encounter scoped to safari rules, share its modal.
+            _wildCloseCallback = _safariOnEncounterClose;
+            _enterWildEncounter({
+                source: 'safari',
+                theme: _safariState.theme,
+                ballsLeft: _safariState.ballsLeft,
+                enabledGens: storySettingsGens()
+            });
+        }
+        function _safariOnEncounterClose() {
+            // _wildClose already synced ballsLeft from the wild modal state into _safariState
+            // before clearing _wildCurrent. We just decide whether to continue or finish.
+            if (!_safariState) { _processNextInterrupt(); return; }
+            if (_safariState.ballsLeft > 0) {
+                const cont = (typeof window.confirm === 'function')
+                    ? window.confirm(`Safari Balls left: ${_safariState.ballsLeft}. Search for another ${_safariState.theme}-type?`)
+                    : true;
+                if (cont) { _safariNextEncounter(); return; }
+            }
+            _safariFinish();
+        }
+        function _safariFinish() {
+            try { window.showGameAlert && window.showGameAlert(`Safari Zone closed. ${_safariState && _safariState.caught.length ? 'Captures recorded.' : ''}`); } catch (_) {}
+            _safariState = null;
+            _processNextInterrupt();
+        }
+
+        // ── BLACK MARKET ───────────────────────────────────────────────────
+        const BLACK_MARKET_ITEMS = [
+            { id: 'mysteryEgg',    name: 'Mystery Egg',     price: 1500, desc: 'Hatches into a random Pokémon (G3 bias). Adds to party or PC.' },
+            { id: 'forgedPass',    name: 'Forged Pass',     price: 3000, desc: 'Skip the next route trainer battle (no rewards, eventIndex advances).' },
+            { id: 'blackMarketTM', name: 'Black Market TM', price: 2500, desc: 'Replaces one move on a chosen Pokémon with a random strong move.' },
+            { id: 'intelDossier',  name: 'Intel Dossier',   price: 1000, desc: 'Reveals the next trainer\'s team in advance.' },
+            { id: 'shadyRepel',    name: 'Shady Repel',     price: 500,  desc: 'Suppresses wild encounters for 5 route slots.' },
+            { id: 'legendChip',    name: 'Legend Chip',     price: 10000,desc: 'One free Master-Ball-grade catch on the next legendary or rare wild.' },
+        ];
+        function _isBlackMarketAvailable() {
+            // Spec: unlocked after badge 4 (start of Black Market arc), cities 5+.
+            if (!sm.blackMarketUnlocked && (sm.badges|0) >= 4) sm.blackMarketUnlocked = true;
+            const ci = cityIndexFromEventIndex(sm.eventIndex);
+            return !!sm.blackMarketUnlocked && ci >= 5;
+        }
+        function enterBlackMarket() {
+            _markFacilitySeen('blackmarket');
+            const m = document.getElementById('modal-story-blackmarket');
+            const grid = document.getElementById('story-blackmarket-grid');
+            const goldEl = document.getElementById('story-blackmarket-gold');
+            if (!m || !grid) return;
+            if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
+            grid.innerHTML = BLACK_MARKET_ITEMS.map(item => {
+                const canAfford = sm.gold >= item.price;
+                return `<div class="story-shop-item" style="border-color:#7e57c2;">
+                    <div class="story-shop-item-row">
+                        <div style="flex:1;min-width:0;">
+                            <h4>${item.name}</h4>
+                            <div class="desc">${item.desc}</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+                        <span class="price">${storyGoldHtml(item.price.toLocaleString())}</span>
+                        <button onclick="window.StoryMode.blackMarketBuy('${item.id}',${item.price})" ${canAfford?'':'disabled'} style="font-size:11px;padding:3px 8px;${canAfford?'color:#ce93d8;border-color:#ce93d8;':'opacity:0.4;'}">Buy</button>
+                    </div>
+                </div>`;
+            }).join('');
+            m.classList.remove('hidden');
+        }
+        function blackMarketBuy(itemId, price) {
+            const item = BLACK_MARKET_ITEMS.find(i => i.id === itemId);
+            if (!item || item.price !== price) return;
+            if (sm.gold < price) return;
+            // Apply effect
+            switch (itemId) {
+                case 'mysteryEgg': {
+                    if (isPokemonStorageFull()) { try { window.showGameAlert && window.showGameAlert('No room — party and PC are both full.'); } catch (_) {} return; }
+                    const sg = storySettingsGens();
+                    const species = _storyRandSpeciesByGrade(3, sg) || _storyRandSpeciesByGrade(2, sg);
+                    const slot = _buildStorySlot(species);
+                    if (!slot) return;
+                    sm.gold -= price;
+                    const dest = gainPokemonToBoxOrParty(slot);
+                    try { window.showGameAlert && window.showGameAlert(`The egg hatched into ${species}! Sent to ${dest === 'party' ? 'party' : 'PC Box'}.`); } catch (_) {}
+                    break;
+                }
+                case 'forgedPass': {
+                    // Find next route Battle and advance to the City that follows it (avoid auto-launching another fight).
+                    let target = -1;
+                    for (let i = sm.eventIndex + 1; i < STORY_EVENTS_RAW.length; i++) {
+                        if (STORY_EVENTS_RAW[i][1] !== 'Battle') continue;
+                        const en = String(STORY_EVENTS_RAW[i][2] || '');
+                        if (/Gym Leader|Champion|^E[1-4]$|Rival|Mystery Figure/.test(en)) break; // never skip bosses
+                        target = i; break;
+                    }
+                    if (target < 0) { try { window.showGameAlert && window.showGameAlert('No route trainer ahead to forge past.'); } catch (_) {} return; }
+                    let landing = target + 1;
+                    for (let i = target + 1; i < STORY_EVENTS_RAW.length; i++) {
+                        if (STORY_EVENTS_RAW[i][1] === 'City') { landing = i; break; }
+                    }
+                    sm.gold -= price;
+                    sm.eventIndex = landing;
+                    save();
+                    try { window.showGameAlert && window.showGameAlert('You slipped past the next route trainer with a forged trainer card.'); } catch (_) {}
+                    const m = document.getElementById('modal-story-blackmarket');
+                    if (m) m.classList.add('hidden');
+                    processNextEvent();
+                    return;
+                }
+                case 'blackMarketTM': {
+                    if (!sm.team.length) return;
+                    const targetIdx = 0;
+                    const t = sm.team[targetIdx];
+                    if (!t || !t.build || !Array.isArray(t.build.m) || !t.build.m.length) return;
+                    // Pool of strong moves we know are valid in the game's move tables
+                    const tmPool = ['Close Combat','Earthquake','Knock Off','Stealth Rock','Volt Switch','U-turn','Thunderbolt','Flamethrower','Ice Beam','Shadow Ball','Dark Pulse','Dragon Pulse'];
+                    const m = tmPool[Math.floor(storyRngNext() * tmPool.length)];
+                    sm.gold -= price;
+                    t.build.m[t.build.m.length - 1] = m;
+                    try { window.showGameAlert && window.showGameAlert(`${t.name} learned ${m}!`); } catch (_) {}
+                    break;
+                }
+                case 'intelDossier': {
+                    let target = -1;
+                    for (let i = sm.eventIndex + 1; i < STORY_EVENTS_RAW.length; i++) {
+                        if (STORY_EVENTS_RAW[i][1] === 'Battle') { target = i; break; }
+                    }
+                    if (target < 0) { try { window.showGameAlert && window.showGameAlert('No upcoming trainer to spy on.'); } catch (_) {} return; }
+                    const row = STORY_EVENTS_RAW[target];
+                    const trName = sm.trainerAssignments[row[0]] || row[2];
+                    sm.gold -= price;
+                    try { window.showGameAlert && window.showGameAlert(`Intel: next battle vs ${trName} (${row[2]}). Grade weights: ${JSON.stringify(row[3])}.`); } catch (_) {}
+                    break;
+                }
+                case 'shadyRepel': {
+                    sm.gold -= price;
+                    sm.shadyRepelRoutes = Math.max(sm.shadyRepelRoutes || 0, 5);
+                    try { window.showGameAlert && window.showGameAlert('Wild encounters suppressed for the next 5 route slots.'); } catch (_) {}
+                    break;
+                }
+                case 'legendChip': {
+                    sm.gold -= price;
+                    sm.legendChipReady = true;
+                    try { window.showGameAlert && window.showGameAlert('Legend Chip armed. Next legendary encounter is a guaranteed catch.'); } catch (_) {}
+                    break;
+                }
+                default: return;
+            }
+            save();
+            enterBlackMarket();
+        }
+
+        // ── ILLEGAL DEALER NPC ─────────────────────────────────────────────
+        // One offer per (city, visit). Visits are tagged with sm.eventIndex when first generated.
+        const DEALER_CONTRACTS = [
+            { id: 'sellWorst',  label: 'Sell your worst Pokémon for 4,000G' },
+            { id: 'rollLegend', label: 'Pay 3,000G to roll for a legendary egg (5% odds)' },
+            { id: 'tradeRand',  label: 'Trade one party Pokémon for a random G2 mon' },
+            { id: 'gambleGold', label: 'Risk 2,000G — 50/50 for 5,000G' },
+        ];
+        function _ensureDealerOfferForCurrentVisit() {
+            const ci = cityIndexFromEventIndex(sm.eventIndex);
+            const key = `${ci}@${sm.eventIndex}`;
+            if (!sm.dealerOfferByCityVisit) sm.dealerOfferByCityVisit = {};
+            if (sm.dealerOfferByCityVisit[key]) return { key, offer: sm.dealerOfferByCityVisit[key] };
+            const pick = DEALER_CONTRACTS[Math.floor(storyRngNext() * DEALER_CONTRACTS.length)];
+            sm.dealerOfferByCityVisit[key] = { id: pick.id, label: pick.label, used: false };
+            save();
+            return { key, offer: sm.dealerOfferByCityVisit[key] };
+        }
+        function _isDealerAvailable() {
+            if (!sm.blackMarketUnlocked) return false;
+            const ci = cityIndexFromEventIndex(sm.eventIndex);
+            return ci === 6 || ci === 8;
+        }
+        function enterIllegalDealer() {
+            _markFacilitySeen('dealer');
+            const { offer } = _ensureDealerOfferForCurrentVisit();
+            const m = document.getElementById('modal-story-dealer');
+            const bodyEl = document.getElementById('story-dealer-body');
+            const acceptBtn = document.getElementById('story-dealer-accept');
+            if (!m) return;
+            if (bodyEl) {
+                if (offer.used) {
+                    bodyEl.innerHTML = `<div style="color:#aaa;">"I told you, kid — one deal a visit. Come back next stop."</div>`;
+                    if (acceptBtn) acceptBtn.style.display = 'none';
+                } else {
+                    bodyEl.innerHTML = `<div style="font-size:12px;color:#cfd8dc;">"One deal today, friend. Take it or walk." <br><br><b style="color:#ce93d8;">${offer.label}</b></div>`;
+                    if (acceptBtn) { acceptBtn.style.display = ''; acceptBtn.disabled = false; }
+                }
+            }
+            m.classList.remove('hidden');
+        }
+        function _dealerAccept() {
+            const ci = cityIndexFromEventIndex(sm.eventIndex);
+            const key = `${ci}@${sm.eventIndex}`;
+            const offer = sm.dealerOfferByCityVisit && sm.dealerOfferByCityVisit[key];
+            if (!offer || offer.used) return;
+            offer.used = true;
+            const closeModal = () => { const m = document.getElementById('modal-story-dealer'); if (m) m.classList.add('hidden'); };
+            switch (offer.id) {
+                case 'sellWorst': {
+                    if ((sm.team || []).length <= 1) { try { window.showGameAlert && window.showGameAlert('You need at least 2 Pokémon to fence one.'); } catch (_) {} offer.used = false; return; }
+                    const worstIdx = pickWorstFromTeam(sm.team);
+                    const name = sm.team[worstIdx].name;
+                    sm.team.splice(worstIdx, 1);
+                    sm.gold += 4000;
+                    try { window.showGameAlert && window.showGameAlert(`Fenced ${name} for 4,000G.`); } catch (_) {}
+                    break;
+                }
+                case 'rollLegend': {
+                    if (sm.gold < 3000) { try { window.showGameAlert && window.showGameAlert('Not enough gold.'); } catch (_) {} offer.used = false; return; }
+                    sm.gold -= 3000;
+                    if (storyRngNext() < 0.05) {
+                        // Pick a strong G1 species; insert via gainPokemonToBoxOrParty
+                        const sg = storySettingsGens();
+                        const candidate = _storyRandSpeciesByGrade(1, sg);
+                        if (candidate) {
+                            const slot = _buildStorySlot(candidate);
+                            if (slot) {
+                                const dest = gainPokemonToBoxOrParty(slot);
+                                try { window.showGameAlert && window.showGameAlert(`The egg hatched into a ${candidate}! Sent to ${dest === 'party' ? 'party' : 'PC Box'}.`); } catch (_) {}
+                                break;
+                            }
+                        }
+                    }
+                    try { window.showGameAlert && window.showGameAlert('The egg was a dud.'); } catch (_) {}
+                    break;
+                }
+                case 'tradeRand': {
+                    if (!sm.team.length) { offer.used = false; return; }
+                    const tradeIdx = Math.floor(storyRngNext() * sm.team.length);
+                    const replaced = sm.team[tradeIdx].name;
+                    const sg = storySettingsGens();
+                    const candidate = _storyRandSpeciesByGrade(2, sg);
+                    if (!candidate) { offer.used = false; return; }
+                    const slot = _buildStorySlot(candidate);
+                    if (!slot) { offer.used = false; return; }
+                    sm.team[tradeIdx] = { name: slot.name, build: deepClone(slot.build) };
+                    try { window.showGameAlert && window.showGameAlert(`Traded ${replaced} for ${candidate}.`); } catch (_) {}
+                    break;
+                }
+                case 'gambleGold': {
+                    if (sm.gold < 2000) { try { window.showGameAlert && window.showGameAlert('Not enough gold.'); } catch (_) {} offer.used = false; return; }
+                    sm.gold -= 2000;
+                    if (storyRngNext() < 0.5) { sm.gold += 5000; try { window.showGameAlert && window.showGameAlert('You won 5,000G!'); } catch (_) {} }
+                    else { try { window.showGameAlert && window.showGameAlert('The dealer pockets your money.'); } catch (_) {} }
+                    break;
+                }
+            }
+            save();
+            closeModal();
+        }
+        function _dealerDecline() {
+            const m = document.getElementById('modal-story-dealer');
+            if (m) m.classList.add('hidden');
+        }
+
+        // ── ITINERARY ENGINE (minimal beats only) ──────────────────────────
+        // Beats fire on routes between cities; they live in this fixed table so they
+        // synchronize cleanly with STORY_EVENTS_RAW row ids without authoring a full STORY_SCRIPT.
+        const STORY_ITINERARY_BEATS = [
+            // Fires at eventIndex pointing at row 20 (first route fight after City3) — Safari pre-empt
+            { id: 'safari_city3', triggerOnRowId: 20, requires: { minBadges: 3 }, action: { kind: 'safari' } },
+            // Wager unlock chime — show before row 26 (City4 second route fight)
+            { id: 'wager_unlock', triggerOnRowId: 26, requires: { minBadges: 4 }, action: { kind: 'wager_unlock' } },
+            // Black Market arc heads-up — first time entering City6 route
+            { id: 'blackmarket_unlock', triggerOnRowId: 41, requires: { minBadges: 5 }, action: { kind: 'blackmarket_unlock' } },
+        ];
+        function _itineraryBeatsForCurrentBattle(rowId) {
+            return STORY_ITINERARY_BEATS.filter(b => b.triggerOnRowId === rowId
+                && (!b.requires || (sm.badges | 0) >= (b.requires.minBadges | 0))
+                && !sm.itineraryDone[b.id]);
+        }
+        function _runItineraryBeat(beat) {
+            if (!beat) { _processNextInterrupt(); return; }
+            sm.itineraryDone[beat.id] = true;
+            save();
+            const a = beat.action || {};
+            if (a.kind === 'wager_unlock') {
+                sm.wagerUnlocked = true; save();
+                try { window.showGameAlert && window.showGameAlert('💬 A grizzled trainer flips his coin: "Trainers in these parts wager Pokémon on a fight. Brave enough?"'); } catch (_) {}
+                _processNextInterrupt();
+                return;
+            }
+            if (a.kind === 'blackmarket_unlock') {
+                sm.blackMarketUnlocked = true; save();
+                try { window.showGameAlert && window.showGameAlert('💬 A stranger slips you a card: "The Black Market is open in the back alley of City6."'); } catch (_) {}
+                _processNextInterrupt();
+                return;
+            }
+            if (a.kind === 'safari') {
+                enterSafariZone();
+                return;
+            }
+            _processNextInterrupt();
+        }
+
         function moveInParty(idx, dir) {
             const j = idx + dir;
             if (j < 0 || j >= sm.team.length) return;
@@ -24637,6 +25490,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── PROCEED TO BATTLE ─────────────────────────────────────────────
+        // Composes the pre-trainer interrupt queue (itinerary → wild → wager) before launching
+        // the trainer battle. Each interrupt resumes the queue from its own handler.
         function proceedToNextBattle() {
             if (sm.team.length === 0) { window.showGameAlert('You have no Pokémon! Visit the Professor first.'); return; }
             let nextBattleIdx = -1;
@@ -24649,9 +25504,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 enterCity();
                 return;
             }
-            // After blacking out and returning to a city hub, eventIndex sits on the City row while
-            // currentEnemyLock still points at the trainer you lost to. Skip already-cleared route
-            // battles and resume that rematch (same frozen foe team as enterBattleEvent uses).
             const lock = sm.currentEnemyLock;
             if (lock && lock.eventIdx != null && Array.isArray(lock.team) && lock.team.length) {
                 const le = lock.eventIdx | 0;
@@ -24660,9 +25512,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     nextBattleIdx = le;
                 }
             }
-            sm.eventIndex = nextBattleIdx;
+
+            const ev = STORY_EVENTS_RAW[nextBattleIdx];
+            const rowId = ev ? (ev[0] | 0) : -1;
+            const eventName = ev ? String(ev[2] || '') : '';
+            const isBossOrRival = /Gym Leader|Gym Trainer|Champion|^E[1-4]$|Rival|Mystery Figure|Victory Road/.test(eventName);
+            const isBasicTrainer = eventName === 'Basic Trainer' || eventName === 'Elite Trainer';
+
+            // Reset queue (interrupts are transient; carryover from previous routes shouldn't happen).
+            sm.pendingInterrupts = [];
+            sm._pendingTrainerEventIdx = nextBattleIdx;
+
+            // 1) Itinerary beats targeting this row
+            const beats = _itineraryBeatsForCurrentBattle(rowId);
+            for (const b of beats) _queueInterrupt({ kind: 'itinerary', beat: b });
+
+            // 2) Wild encounter (catch mode + non-boss + not under shady repel)
+            if (sm.catchMode && isBasicTrainer && (sm.shadyRepelRoutes | 0) <= 0) {
+                if (storyRngNext() < WILD_ENCOUNTER_RATE) {
+                    _queueInterrupt({ kind: 'wild', gradeWeights: ev[3] || null });
+                }
+            }
+            if ((sm.shadyRepelRoutes | 0) > 0) sm.shadyRepelRoutes = Math.max(0, sm.shadyRepelRoutes - 1);
+
+            // 3) Wager prompt (basic trainers only, once unlocked)
+            if (sm.wagerUnlocked && isBasicTrainer && (sm.team || []).length >= 2 && !isBossOrRival) {
+                if (storyRngNext() < WAGER_PROMPT_RATE) {
+                    _queueInterrupt({ kind: 'wager' });
+                }
+            }
             save();
-            enterBattleEvent(STORY_EVENTS_RAW[nextBattleIdx]);
+            _processNextInterrupt();
         }
 
         function enterBattleEvent(ev) {
@@ -24828,6 +25708,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── BATTLE END CALLBACK ───────────────────────────────────────────
         function onBattleEnd(won, title, desc) {
+            // Resolve any pending Battle-for-Pokémon wager BEFORE other post-battle logic.
+            // Capture frozen foe team for "win → take worst" before currentEnemyLock is cleared.
+            let _wagerResult = null;
+            try {
+                if (sm.pendingWager && sm.pendingWager.active) {
+                    const foeTeam = (sm.currentEnemyLock && Array.isArray(sm.currentEnemyLock.team))
+                        ? sm.currentEnemyLock.team : [];
+                    _wagerResult = _resolvePendingWager(won, foeTeam);
+                }
+            } catch (e) { console.warn('[Story] wager resolve', e); }
+            if (_wagerResult) {
+                try {
+                    const msg = _wagerResult.outcome === 'won'
+                        ? `Wager won! You took ${_wagerResult.mon} (${_wagerResult.dest === 'party' ? 'party' : 'PC Box'}).`
+                        : `Wager lost. ${_wagerResult.mon} left your team.`;
+                    window.showGameAlert && window.showGameAlert(msg);
+                } catch (_) {}
+            }
             if (won) {
                 _storyBattleInventorySnapshot = null;
                 sm.storyRetryInventorySnapshot = null;
@@ -27782,6 +28680,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openSummary, profOpenSummary, summaryMove, moveInParty, openPartyModal,
             openPCBoxModal, _pcSetTab, pcDeposit, pcWithdraw, pcSwap, pcRelease,
             gainPokemonToBoxOrParty, isPokemonStorageFull,
+            pickBestFromTeam, pickWorstFromTeam,
+            _wildThrowBall, _wildSafariBait, _wildSafariMud, _wildFlee,
+            _wagerAccept, _wagerDecline,
+            enterTrader, _traderAccept, _traderDecline,
+            enterSafariZone,
+            enterBlackMarket, blackMarketBuy,
+            enterIllegalDealer, _dealerAccept, _dealerDecline,
             enterArtifactHall, toggleArtifactDisabled,
             enterTutor, tutorChangeMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
             enterColress, colressApplyMega, colressApplyDmax, colressApplyZ, colressApplyZSig, colressApplyTera,
