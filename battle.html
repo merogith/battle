@@ -4167,6 +4167,7 @@
                 <label><input type="checkbox" id="mech-weather-cb" onchange="window.updateMechanics()"><span style="color:#78909c;">&#9729; Weather</span></label>
                 <label><input type="checkbox" id="mech-terrain-cb" onchange="window.updateMechanics()"><span style="color:#81c784;">&#127793; Terrain</span></label>
                 <label><input type="checkbox" id="smart-draft-cb" checked onchange="window.updateMechanics()"><span style="color:#4db6ac;">&#x1F9E0; Smart Pool</span></label>
+                <label title="Gauntlet rounds get progressively harder"><input type="checkbox" id="gauntlet-scaling-cb" checked onchange="window.updateMechanics()"><span style="color:#ffb74d;">&#x1F525; Gauntlet Scaling</span></label>
             </div>
             <div class="menu-filter-row" style="margin-top:10px; font-size:11px;">
                 <label><input type="radio" name="battle-mode-radio" id="mode-classic-rb" checked onchange="window.updateMechanics()"><span style="color:var(--hp-yellow);">Classic</span></label>
@@ -6228,7 +6229,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { window.showToast('Could not load all game data'); } catch (e) {}
         });
 
-        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, draftGrades: [1,2,3,4], mechanics: { mega: false, zmove: false, dynamax: false, tera: false }, classicMode: true, randomWeather: false, smartDraftPool: true, partySize: 3,
+        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, draftGrades: [1,2,3,4], mechanics: { mega: false, zmove: false, dynamax: false, tera: false }, classicMode: true, randomWeather: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, partySize: 3,
             aiProfile: 'balanced', /* aggro | balanced | stall — vs AI only */
             storyBattleItems: true, /* story in-battle bag */
             pvpBattleItems: false,  /* reserved: symmetric items in PvP */
@@ -6242,6 +6243,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.pvpBattleItems === 'boolean') settings.pvpBattleItems = _pbs.pvpBattleItems;
             if (typeof _pbs.battleLogDock === 'boolean') settings.battleLogDock = _pbs.battleLogDock;
             if (typeof _pbs.smartDraftPool === 'boolean') settings.smartDraftPool = _pbs.smartDraftPool;
+            if (typeof _pbs.gauntletProgressiveDifficulty === 'boolean') settings.gauntletProgressiveDifficulty = _pbs.gauntletProgressiveDifficulty;
             if (_pbs.displayMode === 'phone' || _pbs.displayMode === 'desktop' || _pbs.displayMode === 'auto') settings.displayMode = _pbs.displayMode;
         } catch (e) {}
         function persistMiscSettings() {
@@ -6252,6 +6254,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     pvpBattleItems: settings.pvpBattleItems,
                     battleLogDock: settings.battleLogDock,
                     smartDraftPool: settings.smartDraftPool,
+                    gauntletProgressiveDifficulty: settings.gauntletProgressiveDifficulty,
                     displayMode: settings.displayMode
                 }));
             } catch (e) {}
@@ -9394,6 +9397,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             settings.randomTerrain     = document.getElementById('mech-terrain-cb')?.checked || false;
             const sdCb = document.getElementById('smart-draft-cb');
             if (sdCb) settings.smartDraftPool = sdCb.checked;
+            const gsCb = document.getElementById('gauntlet-scaling-cb');
+            if (gsCb) settings.gauntletProgressiveDifficulty = gsCb.checked;
             settings.classicMode       = document.getElementById('mode-classic-rb')?.checked !== false;
             settings.partySize         = parseInt(document.getElementById('party-size-select')?.value) || 3;
             persistMiscSettings();
@@ -9403,6 +9408,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         (function() {
             const cb = document.getElementById('smart-draft-cb');
             if (cb) cb.checked = settings.smartDraftPool !== false;
+            const gs = document.getElementById('gauntlet-scaling-cb');
+            if (gs) gs.checked = settings.gauntletProgressiveDifficulty !== false;
         })();
 
         // Run once after data loads
@@ -9440,6 +9447,99 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let replacement = seen.has('Leftovers') ? '' : 'Leftovers';
                 entry.build.i = replacement;
                 if (replacement) seen.add(replacement);
+            }
+        }
+
+        // Role-coverage enforcement: ensure a team isn't all-attackers or all-walls.
+        // Strategy: classify each build by archetype; if no wall AND >=3 attackers,
+        // try to re-roll one attacker as bulky-support. If no sweeper-style mon AND
+        // >=2 walls, try to re-roll one wall as a sweeper. Single pass, best-effort.
+        function _entryArchetype(entry) {
+            if (!entry || !entry.build) return 'other';
+            return entry.build.archetype || classifyArchetype(entry.build) || 'other';
+        }
+        function _rerollBuildForArchetype(name, targetArchetypes, attempts) {
+            attempts = attempts || 6;
+            for (let i = 0; i < attempts; i++) {
+                const b = makeBuild(name);
+                const a = b && (b.archetype || classifyArchetype(b));
+                if (a && targetArchetypes.has(a)) return b;
+            }
+            return null;
+        }
+        function enforceRoleCoverage(pool, lockedIndices) {
+            if (!settings.smartDraftPool) return;
+            if (!Array.isArray(pool) || pool.length < 3) return;
+            const locked = lockedIndices instanceof Set ? lockedIndices : new Set();
+            const ATTACKERS = new Set(['physical-attacker','special-attacker','mixed-attacker','setup-sweeper','weather-attacker']);
+            const WALLS = new Set(['bulky-support']);
+            const archetypes = pool.map(_entryArchetype);
+            const wallCount = archetypes.filter(a => WALLS.has(a)).length;
+            const atkCount = archetypes.filter(a => ATTACKERS.has(a)).length;
+            if (wallCount === 0 && atkCount >= 3) {
+                for (let i = pool.length - 1; i >= 0; i--) {
+                    if (locked.has(i) || !ATTACKERS.has(archetypes[i])) continue;
+                    const nb = _rerollBuildForArchetype(pool[i].name, WALLS);
+                    if (nb) { pool[i].build = nb; return; }
+                }
+            } else if (atkCount === 0 && wallCount >= 2) {
+                for (let i = pool.length - 1; i >= 0; i--) {
+                    if (locked.has(i) || !WALLS.has(archetypes[i])) continue;
+                    const nb = _rerollBuildForArchetype(pool[i].name, ATTACKERS);
+                    if (nb) { pool[i].build = nb; return; }
+                }
+            }
+        }
+
+        // Type-balance enforcement: if 3+ team members share a type weakness, swap
+        // one unlocked slot with a re-rolled species from candidateNames that lacks
+        // that weakness. Best-effort, single pass.
+        function _weaknessTypesFor(t1, t2) {
+            const out = [];
+            for (const atk of Object.keys(typeChart || {})) {
+                const m1 = (typeChart[atk] && typeChart[atk][t1] !== undefined) ? typeChart[atk][t1] : 1;
+                const m2 = t2 ? ((typeChart[atk] && typeChart[atk][t2] !== undefined) ? typeChart[atk][t2] : 1) : 1;
+                if ((m1 * m2) > 1) out.push(atk);
+            }
+            return out;
+        }
+        function enforceTypeBalance(pool, candidateNames, lockedIndices) {
+            if (!settings.smartDraftPool) return;
+            if (!Array.isArray(pool) || pool.length < 4) return;
+            if (!Array.isArray(candidateNames) || candidateNames.length === 0) return;
+            const locked = lockedIndices instanceof Set ? lockedIndices : new Set();
+            const counts = {};
+            for (const entry of pool) {
+                const bs = baseStats[entry.name]; if (!bs) continue;
+                for (const w of _weaknessTypesFor(bs.t1, bs.t2 || '')) counts[w] = (counts[w] || 0) + 1;
+            }
+            let worstType = null, worstN = 0;
+            for (const t in counts) if (counts[t] > worstN) { worstN = counts[t]; worstType = t; }
+            const threshold = pool.length >= 5 ? 4 : 3;
+            if (!worstType || worstN < threshold) return;
+            const usedNames = new Set(pool.map(p => p.name));
+            // Find an unlocked slot that IS weak to worstType
+            let swapIdx = -1;
+            for (let i = pool.length - 1; i >= 0; i--) {
+                if (locked.has(i)) continue;
+                const bs = baseStats[pool[i].name]; if (!bs) continue;
+                if (_weaknessTypesFor(bs.t1, bs.t2 || '').includes(worstType)) { swapIdx = i; break; }
+            }
+            if (swapIdx < 0) return;
+            // Try up to 12 candidates that resist or are neutral to worstType
+            const shuffled = candidateNames.slice();
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            let tried = 0;
+            for (const cand of shuffled) {
+                if (tried++ >= 12) break;
+                if (usedNames.has(cand)) continue;
+                const bs = baseStats[cand]; if (!bs) continue;
+                if (_weaknessTypesFor(bs.t1, bs.t2 || '').includes(worstType)) continue;
+                pool[swapIdx] = { name: cand, build: makeBuild(cand) };
+                return;
             }
         }
 
@@ -9489,6 +9589,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const p2Pool = poolKeys.slice(poolSizePerPlayer, totalPool).map(name => ({ name, build: makeBuild(name) }));
             rebalanceWeatherBuilds(p1Pool);
             rebalanceWeatherBuilds(p2Pool);
+            enforceRoleCoverage(p1Pool);
+            enforceRoleCoverage(p2Pool);
+            enforceTypeBalance(p1Pool, uniqEligible);
+            enforceTypeBalance(p2Pool, uniqEligible);
             enforceItemClause(p1Pool);
             enforceItemClause(p2Pool);
             const minGen = Math.min(...enabledGens);
@@ -19946,16 +20050,73 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let playerSpecies = new Set(state.playerParty.map(m => _famOf(m._baseName || m.name)));
             let foeEligible = allEligible.filter(n => !playerSpecies.has(_famOf(n)));
             if (foeEligible.length < settings.partySize) foeEligible = allEligible; // fallback if pool too small
-            // Shuffle and pick unique species equal to partySize
-            shuffleInPlace(foeEligible);
+            // Progressive difficulty: bias selection toward higher grades as rounds climb.
+            // Only enabled grades participate; pure uniform shuffle when toggle off or round <= 3.
+            const _useScaling = settings.gauntletProgressiveDifficulty !== false && (state.score | 0) > 3;
             const foeKeys = [];
             const foeSeen = new Set();
-            for (let name of foeEligible) {
-                if (!foeSeen.has(name)) { foeSeen.add(name); foeKeys.push(name); }
-                if (foeKeys.length === settings.partySize) break;
+            if (_useScaling) {
+                const round = (state.score | 0);
+                // k ramps from 0 at round 4 to ~0.62 ceiling around round 60 (matches story curve cap).
+                let k = Math.min(0.62, Math.max(0, (round - 3) * 0.012));
+                // Base weights for all grades the player has enabled.
+                const enabled = new Set((settings.draftGrades && settings.draftGrades.length) ? settings.draftGrades : [1,2,3,4]);
+                const baseW = { g1: enabled.has(1) ? 10 : 0, g2: enabled.has(2) ? 25 : 0, g3: enabled.has(3) ? 35 : 0, g4: enabled.has(4) ? 30 : 0 };
+                const w = {
+                    g1: baseW.g1 * (1 + k * 2.5),
+                    g2: baseW.g2 * (1 + k * 1.2),
+                    g3: baseW.g3 * (1 - k * 0.40),
+                    g4: baseW.g4 * (1 - k * 0.85),
+                };
+                const byGrade = {1:[],2:[],3:[],4:[]};
+                for (const n of foeEligible) {
+                    const bs = baseStats[n]; if (!bs) continue;
+                    const g = getMonGrade(n, bs.hp+bs.atk+bs.def+bs.spa+bs.spd+bs.spe);
+                    if (byGrade[g]) byGrade[g].push(n);
+                }
+                const pickGrade = () => {
+                    const total = w.g1 + w.g2 + w.g3 + w.g4;
+                    if (total <= 0) return null;
+                    let r = Math.random() * total;
+                    if ((r -= w.g1) <= 0) return 1;
+                    if ((r -= w.g2) <= 0) return 2;
+                    if ((r -= w.g3) <= 0) return 3;
+                    return 4;
+                };
+                let safety = 0;
+                while (foeKeys.length < settings.partySize && safety++ < 200) {
+                    const g = pickGrade();
+                    const bucket = (g && byGrade[g] && byGrade[g].length) ? byGrade[g] : null;
+                    let candidate = null;
+                    if (bucket) {
+                        candidate = bucket[Math.floor(Math.random() * bucket.length)];
+                        if (foeSeen.has(candidate)) candidate = null;
+                    }
+                    if (!candidate) {
+                        // Spiral outward through other grades.
+                        for (const og of [3,4,2,1]) {
+                            if (!byGrade[og] || !byGrade[og].length) continue;
+                            const cand = byGrade[og].find(n => !foeSeen.has(n));
+                            if (cand) { candidate = cand; break; }
+                        }
+                    }
+                    if (!candidate) break;
+                    foeSeen.add(candidate);
+                    foeKeys.push(candidate);
+                }
+            }
+            if (foeKeys.length < settings.partySize) {
+                // Fallback / non-scaling path: uniform shuffle.
+                shuffleInPlace(foeEligible);
+                for (let name of foeEligible) {
+                    if (!foeSeen.has(name)) { foeSeen.add(name); foeKeys.push(name); }
+                    if (foeKeys.length === settings.partySize) break;
+                }
             }
             {
                 const _foeEntries = foeKeys.map(name => ({ name, build: makeBuild(name) }));
+                enforceRoleCoverage(_foeEntries);
+                enforceTypeBalance(_foeEntries, foeEligible);
                 enforceItemClause(_foeEntries);
                 state.foeParty = _foeEntries.map(e => buildPokemon(e.name, e.build));
             }
@@ -22123,6 +22284,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     usedR.add(chosen);
                     teamR.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD' }) });
                 }
+                const _origSigsR = new Set((trainer.sigs || []));
+                const _lockedR = new Set();
+                for (let _i = 0; _i < teamR.length; _i++) if (_origSigsR.has(teamR[_i].name)) _lockedR.add(_i);
+                const _candR = [...T[1], ...T[2], ...T[3], ...T[4]];
+                enforceRoleCoverage(teamR, _lockedR);
+                enforceTypeBalance(teamR, _candR, _lockedR);
+                enforceItemClause(teamR);
                 return _applyEnemyGimmickDistribution(teamR, battleEventType);
             }
 
@@ -22203,6 +22371,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const build = makeBuild(chosen, { forceGimmick: 'STANDARD' });
                 team.push({ name: chosen, build });
             }
+            const _origSigs = new Set((trainer.sigs || []));
+            const _locked = new Set();
+            for (let _i = 0; _i < team.length; _i++) if (_origSigs.has(team[_i].name)) _locked.add(_i);
+            const _cand = [...T[1], ...T[2], ...T[3], ...T[4]];
+            enforceRoleCoverage(team, _locked);
+            enforceTypeBalance(team, _cand, _locked);
+            enforceItemClause(team);
             return _applyEnemyGimmickDistribution(team, battleEventType);
         }
         function rollMysteryFigureFinalBossTeam(partySize, enabledGensIn) {
