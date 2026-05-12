@@ -4669,6 +4669,38 @@
         </div>
     </div>
 
+    <div id="screen-story-casino" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div id="story-casino-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
+        <div class="story-shop-stack">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+            <h3 class="story-screen-head-title" style="color:#ff6ec7;font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_dept.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">🎰 Poké Casino</span></h3>
+            <span id="story-casino-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:14px;min-height:0;background:rgba(6,10,18,0.2);display:flex;flex-direction:column;gap:14px;align-items:center;">
+            <p style="font-size:12px;color:#aaa;margin:0;text-align:center;max-width:520px;line-height:1.5;">Place a wager and call heads or tails. Win to double your bet. Lose it all on a wrong call. Whole gold only.</p>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;width:100%;max-width:340px;">
+                <label for="story-casino-bet" style="font-size:11px;color:#888;align-self:flex-start;">Wager (G)</label>
+                <input id="story-casino-bet" class="story-casino-bet-input" type="number" inputmode="numeric" min="0" step="1" value="0" autocomplete="off">
+                <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">
+                    <button type="button" class="story-link-btn" onclick="window.StoryMode.casinoSetBetChip(100)" style="font-size:11px;padding:4px 10px;">100G</button>
+                    <button type="button" class="story-link-btn" onclick="window.StoryMode.casinoSetBetChip(500)" style="font-size:11px;padding:4px 10px;">500G</button>
+                    <button type="button" class="story-link-btn" onclick="window.StoryMode.casinoSetBetChip(1000)" style="font-size:11px;padding:4px 10px;">1,000G</button>
+                    <button type="button" class="story-link-btn" onclick="window.StoryMode.casinoSetBetChip(5000)" style="font-size:11px;padding:4px 10px;">5,000G</button>
+                    <button type="button" class="story-link-btn" onclick="window.StoryMode.casinoSetBetChip('max')" style="font-size:11px;padding:4px 10px;color:#ffd54f;border-color:#ffd54f;">All-In</button>
+                </div>
+            </div>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;">
+                <button type="button" class="story-action-btn casino" onclick="window.StoryMode.casinoPlay('heads')" style="min-width:140px;justify-content:center;"><span class="story-action-btn-text">Call Heads</span></button>
+                <button type="button" class="story-action-btn casino story-action-btn--soft" onclick="window.StoryMode.casinoPlay('tails')" style="min-width:140px;justify-content:center;"><span class="story-action-btn-text">Call Tails</span></button>
+            </div>
+            <div id="story-casino-result" role="status" aria-live="polite" style="font-size:12px;color:#ffd54f;min-height:18px;text-align:center;max-width:520px;line-height:1.55;"></div>
+        </div>
+        <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+            <button type="button" onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
+        </div>
+        </div>
+    </div>
+
     <div id="screen-story-gameover" class="screen hidden" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:20px;font-family:var(--battle-font);">
         <h1 style="color:#f44336;font-size:32px;margin:0;letter-spacing:3px;">DEFEATED</h1>
         <p id="story-gameover-desc" style="color:#aaa;font-size:14px;text-align:center;margin:0;max-width:400px;"></p>
@@ -4679,6 +4711,15 @@
             <button type="button" id="story-gameover-btn-rival-concede" onclick="window.StoryMode.acceptRivalLossAndContinue()" style="display:none;padding:14px;color:#ffd54f;border-color:#ffd54f;font-weight:bold;">Accept Rival Is Better</button>
             <button type="button" id="story-gameover-btn-center" onclick="window.StoryMode.retreatToLastPokemonCenter()" style="padding:14px;color:#f48fb1;border-color:#f48fb1;font-weight:bold;">Return to last city hub</button>
             <button type="button" onclick="window.StoryMode.confirmAbandon()" style="padding:12px;color:#f44336;border-color:#f44336;">&#128465; Abandon Run</button>
+        </div>
+    </div>
+
+    <div id="modal-story-evo-picker" class="modal hidden">
+        <div class="modal-content white-outline" style="max-width:540px;max-height:85dvh;overflow-y:auto;">
+            <h3 id="story-evo-picker-title" style="color:var(--accent);margin-top:0;">Choose Evolution</h3>
+            <p style="font-size:11px;color:#888;margin:0 0 10px;">Pick which evolution to apply. You'll confirm the cost on the next screen.</p>
+            <div id="story-evo-picker-grid" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;"></div>
+            <button type="button" id="story-evo-picker-cancel" style="width:100%;margin-top:12px;color:#aaa;">Cancel</button>
         </div>
     </div>
 
@@ -20930,6 +20971,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{}, currentEnemyLock:null,
                    artifactsDisabled:[], storyCityVisit:null,
                    artifactShopOffersByCity:{}, artifactFreeClaimUsed:false,
+                   artifactBoughtByCity:{}, deptFeaturedBoughtByCity:{},
                    storyDifficulty:'normal', runSeed:null,
                    storyMilestoneTips:{ m4:false, m8:false },
                    storyRetryInventorySnapshot: null,
@@ -21056,6 +21098,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.deptArtifactTypesByCity || typeof sm.deptArtifactTypesByCity !== 'object') sm.deptArtifactTypesByCity = {};
                 if (!sm.artifactTypeById || typeof sm.artifactTypeById !== 'object') sm.artifactTypeById = {};
                 if (!sm.deptItemOffersByCity || typeof sm.deptItemOffersByCity !== 'object') sm.deptItemOffersByCity = {};
+                if (!sm.deptFeaturedBoughtByCity || typeof sm.deptFeaturedBoughtByCity !== 'object') sm.deptFeaturedBoughtByCity = {};
+                if (!sm.artifactBoughtByCity || typeof sm.artifactBoughtByCity !== 'object') sm.artifactBoughtByCity = {};
                 try { delete sm.profIntroThemePending; } catch (e) {}
                 if (!sm.storyDifficulty) sm.storyDifficulty = 'normal';
                 if (sm.settings && !('noItemRun' in sm.settings)) sm.settings.noItemRun = false;
@@ -21982,6 +22026,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 currentEnemyLock:null, artifactsDisabled:[],
                 deptArtifactOffersByCity:{}, artifactShopOffersByCity:{}, artifactFreeClaimUsed:false,
                 deptArtifactTypesByCity:{}, artifactTypeById:{}, deptItemOffersByCity:{},
+                deptFeaturedBoughtByCity:{}, artifactBoughtByCity:{},
                 settings:{ enabledGens, minGen, maxGen,
                     megaOn: document.getElementById('story-mech-mega')?.checked||false,
                     zOn:    document.getElementById('story-mech-z')?.checked||false,
@@ -23626,13 +23671,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.deptArtifactTypesByCity || typeof sm.deptArtifactTypesByCity !== 'object') sm.deptArtifactTypesByCity = {};
             const owned = new Set(sm.artifacts || []);
             const allIds = ALL_ARTIFACTS.map(a => a.id);
+            // First-time roll for this city picks 3 unowned artifacts. Once frozen, the same set is shown
+            // on every revisit (no refresh after gym wins) — bought ones stay in slot, marked [OWNED].
             let offers = Array.isArray(sm.artifactShopOffersByCity[cKey]) ? sm.artifactShopOffersByCity[cKey].slice() : [];
-            offers = offers.filter((id, idx, arr) => allIds.includes(id) && !owned.has(id) && arr.indexOf(id) === idx);
-            while (offers.length < 3) {
-                const candidates = allIds.filter(id => !owned.has(id) && !offers.includes(id));
-                if (!candidates.length) break;
-                const pick = candidates[Math.floor(storyRngNext() * candidates.length)];
-                offers.push(pick);
+            const firstRoll = offers.length === 0;
+            offers = offers.filter((id, idx, arr) => allIds.includes(id) && arr.indexOf(id) === idx);
+            if (firstRoll) {
+                while (offers.length < 3) {
+                    const candidates = allIds.filter(id => !owned.has(id) && !offers.includes(id));
+                    if (!candidates.length) break;
+                    const pick = candidates[Math.floor(storyRngNext() * candidates.length)];
+                    offers.push(pick);
+                }
             }
             sm.artifactShopOffersByCity[cKey] = offers.slice(0, 3);
             if (!sm.deptArtifactTypesByCity[cKey] || typeof sm.deptArtifactTypesByCity[cKey] !== 'object') sm.deptArtifactTypesByCity[cKey] = {};
@@ -23642,6 +23692,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             });
             return { offers: sm.artifactShopOffersByCity[cKey], types: sm.deptArtifactTypesByCity[cKey] };
+        }
+        function _artifactBoughtThisVisit(cityIdx) {
+            const cKey = String(Math.max(0, cityIdx | 0));
+            return !!(sm.artifactBoughtByCity && sm.artifactBoughtByCity[cKey]);
+        }
+        function _markArtifactBoughtThisVisit(cityIdx) {
+            const cKey = String(Math.max(0, cityIdx | 0));
+            if (!sm.artifactBoughtByCity || typeof sm.artifactBoughtByCity !== 'object') sm.artifactBoughtByCity = {};
+            sm.artifactBoughtByCity[cKey] = true;
         }
         function _artifactTypeForDisplay(artId, cityIdx) {
             const cKey = String(Math.max(0, cityIdx | 0));
@@ -23680,6 +23739,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const byId = new Map(catalog.map(i => [i.id, i]));
             return sm.deptItemOffersByCity[cKey].map(id => byId.get(id)).filter(Boolean);
         }
+        function _deptFeaturedBoughtSetForCity(cityIdx) {
+            const cKey = String(Math.max(0, cityIdx | 0));
+            if (!sm.deptFeaturedBoughtByCity || typeof sm.deptFeaturedBoughtByCity !== 'object') sm.deptFeaturedBoughtByCity = {};
+            const cur = sm.deptFeaturedBoughtByCity[cKey];
+            return new Set(Array.isArray(cur) ? cur : []);
+        }
+        function _markDeptFeaturedBought(cityIdx, itemId) {
+            const cKey = String(Math.max(0, cityIdx | 0));
+            if (!sm.deptFeaturedBoughtByCity || typeof sm.deptFeaturedBoughtByCity !== 'object') sm.deptFeaturedBoughtByCity = {};
+            const arr = Array.isArray(sm.deptFeaturedBoughtByCity[cKey]) ? sm.deptFeaturedBoughtByCity[cKey].slice() : [];
+            if (!arr.includes(itemId)) arr.push(itemId);
+            sm.deptFeaturedBoughtByCity[cKey] = arr;
+        }
         function enterShop(type) {
             const shopScreen = document.getElementById('screen-story-shop');
             if (shopScreen) shopScreen.setAttribute('data-shop-type', type === 'dept' ? 'dept' : 'mart');
@@ -23699,22 +23771,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (featuredItems.length) {
                     const featuredSection = document.createElement('div');
                     featuredSection.className = 'story-featured-section';
-                    featuredSection.innerHTML='<h4>⭐ Featured Battle Tech (3 per city)</h4>';
+                    featuredSection.innerHTML='<h4>⭐ Featured Battle Tech (3 per city · one each)</h4>';
+                    const boughtSet = _deptFeaturedBoughtSetForCity(cityIdx);
                     featuredItems.forEach(item => {
+                        const sold = boughtSet.has(item.id);
                         const canAfford = sm.gold >= item.price;
                         const qty = sm.inventory[item.id]||0;
                         const icon = storyShopIconCellHtml(item.id);
-                        featuredSection.innerHTML += `<div class="story-shop-item" style="border-color:${item.tier==='mega' ? '#43a047' : '#7e57c2'};">
+                        const canBuy = !sold && canAfford;
+                        const btnLabel = sold ? 'Sold out' : 'Buy';
+                        const btnStyle = sold
+                            ? 'opacity:0.4;'
+                            : (canAfford ? 'color:#ffb74d;border-color:#ffb74d;' : 'opacity:0.4;');
+                        featuredSection.innerHTML += `<div class="story-shop-item" style="border-color:${item.tier==='mega' ? '#43a047' : '#7e57c2'};opacity:${sold ? '0.55' : '1'};">
                             <div class="story-shop-item-row">
                                 ${icon}
                                 <div style="flex:1;min-width:0;">
-                                    <h4>${item.name} <span style="float:right;color:#888;font-size:10px;">×${qty}</span></h4>
+                                    <h4>${item.name} ${sold ? '<span style="color:#9ccc65;font-size:10px;">[SOLD]</span>' : ''}<span style="float:right;color:#888;font-size:10px;">×${qty}</span></h4>
                                     <div class="desc">${item.desc}</div>
                                 </div>
                             </div>
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
                                 <span class="price">${storyGoldHtml(item.price.toLocaleString())}</span>
-                                <button onclick="window.StoryMode.buyItem('${item.id}',${item.price})" ${canAfford?'':'disabled'} style="font-size:11px;padding:3px 8px;${canAfford?'color:#ffb74d;border-color:#ffb74d;':'opacity:0.4;'}">Buy</button>
+                                <button onclick="window.StoryMode.buyItem('${item.id}',${item.price})" ${canBuy?'':'disabled'} style="font-size:11px;padding:3px 8px;${btnStyle}">${btnLabel}</button>
                             </div>
                         </div>`;
                     });
@@ -23750,27 +23829,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function buyItem(itemId, price) {
             const st = document.getElementById('screen-story-shop')?.getAttribute('data-shop-type');
+            const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
+            let isFeaturedBuy = false;
             if (sm.settings && sm.settings.noItemRun) {
                 if (st === 'dept') {
-                    const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
                     const featuredOffers = _ensureDeptItemOfferForCity(cityIdx).filter(i => !isNoItemRunBattleBagExcluded(i));
                     const deptNormal = [...POKEMART_ITEMS, ...DEPT_ITEMS].filter(i => !isNoItemRunBattleBagExcluded(i));
                     const allowed = [...deptNormal, ...featuredOffers];
                     if (!allowed.some(i => i.id === itemId && i.price === price)) return;
+                    isFeaturedBuy = featuredOffers.some(i => i.id === itemId);
                 } else {
                     const martStock = POKEMART_ITEMS.filter(i => !isNoItemRunBattleBagExcluded(i));
                     if (!martStock.some(i => i.id === itemId && i.price === price)) return;
                 }
             } else if (st === 'dept') {
-                const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
                 const featuredOffers = _ensureDeptItemOfferForCity(cityIdx);
                 const normalDept = [...POKEMART_ITEMS, ...DEPT_ITEMS];
                 const allowed = [...normalDept, ...featuredOffers];
                 if (!allowed.some(i => i.id === itemId && i.price === price)) return;
+                isFeaturedBuy = featuredOffers.some(i => i.id === itemId);
             }
+            if (isFeaturedBuy && _deptFeaturedBoughtSetForCity(cityIdx).has(itemId)) return;
             if (sm.gold < price) return;
             sm.gold -= price;
             sm.inventory[itemId] = (sm.inventory[itemId]||0) + 1;
+            if (isFeaturedBuy) _markDeptFeaturedBought(cityIdx, itemId);
             save();
             enterShop(st === 'dept' ? 'dept' : 'mart');
         }
@@ -23780,6 +23863,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!relicScr || relicScr.classList.contains('hidden')) return;
             const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
             if (!storyArtifactShopCityAllowed(cityIdx)) return;
+            if (_artifactBoughtThisVisit(cityIdx)) return;
             const offer = _ensureArtifactShopOffersForCity(cityIdx);
             if (!offer.offers.includes(artId) || sm.artifacts.includes(artId)) return;
             const listPrice = (cityIdx === 0 && !sm.artifactFreeClaimUsed) ? 0 : 5000;
@@ -23788,6 +23872,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (listPrice > 0) sm.gold -= listPrice;
             else sm.artifactFreeClaimUsed = true;
             sm.artifacts.push(artId);
+            _markArtifactBoughtThisVisit(cityIdx);
             if (!sm.artifactTypeById || typeof sm.artifactTypeById !== 'object') sm.artifactTypeById = {};
             if (STORY_TYPE_ARTIFACT_IDS.has(artId) && !sm.artifactTypeById[artId]) {
                 sm.artifactTypeById[artId] = _artifactTypeForDisplay(artId, cityIdx);
@@ -23807,11 +23892,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const blurbEl = document.getElementById('story-artifact-shop-blurb');
             if (!gridEl) return;
             if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
+            const visitLocked = _artifactBoughtThisVisit(cityIdx);
             if (blurbEl) {
+                const lockedTag = visitLocked ? ' <span style="color:#9ccc65;">You already picked one relic in this city — no more this run.</span>' : '';
                 if (cityIdx === 0) {
-                    blurbEl.innerHTML = 'Three unowned relics per visit. <strong style="color:#ce93d8;">Your first purchase in Pallet is free</strong> once per run; after that, and at other hubs, each relic is ' + storyGoldHtml('5,000', true) + '. Relics affect <em>both</em> sides for the whole run.';
+                    blurbEl.innerHTML = 'Three relics per visit. <strong style="color:#ce93d8;">Your first purchase in Pallet is free</strong> once per run; after that, and at other hubs, each relic is ' + storyGoldHtml('5,000', true) + '. Limit one purchase per visit — revisits don\'t refresh the offer. Relics affect <em>both</em> sides for the whole run.' + lockedTag;
                 } else {
-                    blurbEl.innerHTML = 'Three unowned relics per visit — ' + storyGoldHtml('5,000', true) + ' each. Relics affect <em>both</em> sides for the whole run.';
+                    blurbEl.innerHTML = 'Three relics per visit — ' + storyGoldHtml('5,000', true) + ' each. Limit one purchase per visit — revisits don\'t refresh the offer. Relics affect <em>both</em> sides for the whole run.' + lockedTag;
                 }
             }
             gridEl.innerHTML = '';
@@ -23820,13 +23907,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const art = ALL_ARTIFACTS.find(a => a.id === artId);
                 if (!art) return;
                 const owned = sm.artifacts.includes(artId);
-                const canBuy = !owned && (listPrice === 0 || sm.gold >= listPrice);
+                const canBuy = !owned && !visitLocked && (listPrice === 0 || sm.gold >= listPrice);
                 const aicon = storyShopIconCellHtml(art.id);
                 const artName = _artifactNameForCity(art, cityIdx);
                 const artDesc = _artifactDescForCity(art, cityIdx);
                 const priceLabel = listPrice === 0 ? '<span style="color:#ce93d8;">Free (first in Pallet only)</span>' : storyGoldHtml(listPrice.toLocaleString());
-                const btnLabel = listPrice === 0 ? 'Claim free' : ('Buy ' + storyGoldHtml(listPrice.toLocaleString()));
-                gridEl.innerHTML += `<div class="story-artifact-card" style="margin-bottom:8px;opacity:${owned ? '0.5' : '1'}">
+                const btnLabel = visitLocked
+                    ? 'Visit limit reached'
+                    : (listPrice === 0 ? 'Claim free' : ('Buy ' + storyGoldHtml(listPrice.toLocaleString())));
+                gridEl.innerHTML += `<div class="story-artifact-card" style="margin-bottom:8px;opacity:${owned ? '0.5' : (visitLocked ? '0.6' : '1')}">
                     <div class="story-shop-item-row" style="margin-bottom:6px;">
                         ${aicon}
                         <h4 style="flex:1;margin:0;">${artName} ${owned ? '<span style="color:#4caf50;">[OWNED]</span>' : ''}</h4>
@@ -24093,7 +24182,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }).join('');
         }
 
-        function linkReroll(idx) {
+        async function linkReroll(idx) {
             if (!_storyTryBeginInteraction()) return;
             try {
             const mon = sm.team[idx]; if (!mon) return;
@@ -24105,6 +24194,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (sm.gold < cost) return;
             const pool = buildGradePool(storySettingsGens(), g).filter(n=>n!==mon.name&&!sm.team.some((t,i)=>i!==idx&&t.name===n));
             if (!pool.length) { window.showGameAlert('No other Pokémon of this grade available!'); return; }
+            const ok = await window.showGameConfirm(`Reroll ${mon.name} into a random different Grade ${g} Pokémon for ${cost.toLocaleString()}G?`);
+            if (!ok) return;
             sm.cityRerollsUsed[rk] = rn;
             const newName  = pool[Math.floor(storyRngNext() * pool.length)];
             let newBuild;
@@ -24126,7 +24217,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        function linkUpgrade(idx) {
+        async function linkUpgrade(idx) {
             if (!_storyTryBeginInteraction()) return;
             try {
             const mon = sm.team[idx]; if (!mon) return;
@@ -24139,6 +24230,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (sm.gold < cost) return;
             const pool = buildGradePool(storySettingsGens(), newG).filter(n=>!sm.team.some((t,i)=>i!==idx&&t.name===n));
             if (!pool.length) { window.showGameAlert('No Pokémon of that grade available!'); return; }
+            const ok = await window.showGameConfirm(`Upgrade ${mon.name} (G${g}) into a random Grade ${newG} Pokémon for ${cost.toLocaleString()}G?`);
+            if (!ok) return;
             sm.cityRerollsUsed[uk] = un;
             const newName  = pool[Math.floor(storyRngNext() * pool.length)];
             let newBuild;
@@ -24171,8 +24264,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const en = (sm.cityRerollsUsed[ek] || 0) + 1;
             const cost = Math.ceil((EVOLVE_COSTS[g] || 2000) * Math.pow(1.5, en - 1));
             if (sm.gold < cost) { window.showGameAlert(`Need ${cost.toLocaleString()}G to evolve! (You have ${sm.gold.toLocaleString()}G)`); return; }
-            // Pick random valid evo (handles branched evolution)
-            const evoName = evos[Math.floor(storyRngNext() * evos.length)];
+            // Let player choose branched evolutions (Eevee → 8 picks etc.); single-evo case auto-targets.
+            let evoName;
+            if (evos.length === 1) {
+                evoName = evos[0];
+            } else {
+                evoName = await _pickEvolutionChoice(mon.name, evos, cost);
+                if (!evoName) return;
+            }
             const evoGrade = getMonGrade(evoName, getBST(evoName));
             const ok = await window.showGameConfirm(`Evolve ${mon.name} → ${evoName} (Grade ${evoGrade}) for ${cost.toLocaleString()}G?`);
             if (!ok) return;
@@ -24196,7 +24295,50 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        function linkRebuild(idx) {
+        /** Branched-evolution picker (Eevee, Poliwhirl, Tyrogue, etc.) — returns chosen species name or null on cancel. */
+        function _pickEvolutionChoice(baseName, evoNames, cost) {
+            return new Promise(resolve => {
+                const modal = document.getElementById('modal-story-evo-picker');
+                const grid  = document.getElementById('story-evo-picker-grid');
+                const title = document.getElementById('story-evo-picker-title');
+                const cancelBtn = document.getElementById('story-evo-picker-cancel');
+                if (!modal || !grid || !title || !cancelBtn) {
+                    // Fallback: random (legacy behavior) if modal markup is missing.
+                    resolve(evoNames[Math.floor(storyRngNext() * evoNames.length)]);
+                    return;
+                }
+                title.textContent = `Choose ${baseName}'s Evolution (${cost.toLocaleString()}G)`;
+                grid.innerHTML = '';
+                evoNames.forEach(evo => {
+                    const grade = getMonGrade(evo, getBST(evo));
+                    const sprite = (typeof getSprite === 'function') ? getSprite(evo) : '';
+                    let typeHtml = '';
+                    try {
+                        const dexEntry = baseStats[evo];
+                        if (dexEntry && typeof getTypeHTML === 'function') {
+                            typeHtml = getTypeHTML(dexEntry.t1 || '', dexEntry.t2 || '');
+                        }
+                    } catch (e) {}
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'story-evo-picker-card';
+                    btn.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 10px;background:linear-gradient(180deg,#1e2030 0%,#12141e 100%);border:2px solid #555;color:#fff;font-family:inherit;font-size:11px;cursor:pointer;min-width:96px;';
+                    btn.innerHTML = `<img src="${sprite}" alt="${evo}" style="width:48px;height:48px;image-rendering:pixelated;" onerror="this.style.visibility='hidden'">`
+                        + `<div style="font-weight:bold;line-height:1.2;">${evo}</div>`
+                        + `<div style="display:flex;align-items:center;gap:4px;font-size:10px;">${typeHtml}<span style="color:#888;">G${grade}</span></div>`;
+                    btn.onclick = () => { cleanup(); resolve(evo); };
+                    grid.appendChild(btn);
+                });
+                function cleanup() {
+                    modal.classList.add('hidden');
+                    cancelBtn.onclick = null;
+                }
+                cancelBtn.onclick = () => { cleanup(); resolve(null); };
+                modal.classList.remove('hidden');
+            });
+        }
+
+        async function linkRebuild(idx) {
             if (!_storyTryBeginInteraction()) return;
             try {
             const mon = sm.team[idx]; if (!mon) return;
@@ -24204,6 +24346,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const bn = (sm.cityRerollsUsed[bk] || 0) + 1;
             const cost = Math.ceil(REBUILD_COST * Math.pow(1.5, bn - 1));
             if (sm.gold < cost) return;
+            const ok = await window.showGameConfirm(`Rebuild ${mon.name}'s set (moves, item, nature, EVs) for ${cost.toLocaleString()}G? This rerolls everything.`);
+            if (!ok) return;
             sm.cityRerollsUsed[bk] = bn;
             let newBuild;
             try {
@@ -25704,13 +25848,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        function tutorChangeMove(teamIdx, moveSlot, newMove) {
+        async function tutorChangeMove(teamIdx, moveSlot, newMove) {
             if (!_storyTryBeginInteraction()) return;
             try {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (sm.gold < TUTOR_COST_MOVE) return;
             const currentMoves = (mon.build.m || []).map(m => m.split('/')[0]);
             if (currentMoves.includes(newMove)) return;
+            const oldMove = currentMoves[moveSlot] || '(empty)';
+            const ok = await window.showGameConfirm(`Teach ${mon.name} ${newMove} (replacing ${oldMove}) for ${TUTOR_COST_MOVE.toLocaleString()}G?`);
+            if (!ok) return;
             sm.gold -= TUTOR_COST_MOVE;
             mon.build.m[moveSlot] = newMove;
             mon.currentHp = null;
@@ -25737,10 +25884,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (swappingAwayMegaStone || swappingAwayZCrystal) {
                 const which = swappingAwayMegaStone ? 'Mega Evolution' : 'Z-Move';
                 const ok = (typeof window !== 'undefined' && typeof window.showGameConfirm === 'function')
-                    ? await window.showGameConfirm(`Replacing the ${curItem} will disable ${which} on ${mon.name}. Visit Colress again (10,000G) to restore it. Continue?`)
+                    ? await window.showGameConfirm(`Replacing the ${curItem} with ${newItem} costs ${TUTOR_COST_ITEM.toLocaleString()}G and will disable ${which} on ${mon.name}. Visit Colress again (10,000G) to restore it. Continue?`)
                     : true;
                 if (!ok) return;
                 mon.build.gimmick = 'STANDARD';
+            } else {
+                const ok = await window.showGameConfirm(`Give ${mon.name} ${newItem} (replacing ${curItem || '(none)'}) for ${TUTOR_COST_ITEM.toLocaleString()}G?`);
+                if (!ok) return;
             }
             sm.gold -= TUTOR_COST_ITEM;
             mon.build.i = newItem;
@@ -25752,11 +25902,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        function tutorChangeAbility(teamIdx, newAbility) {
+        async function tutorChangeAbility(teamIdx, newAbility) {
             if (!_storyTryBeginInteraction()) return;
             try {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (sm.gold < TUTOR_COST_ABILITY) return;
+            const curAbility = (mon.build && mon.build.a) || '(current)';
+            const ok = await window.showGameConfirm(`Swap ${mon.name}'s ability from ${curAbility} to ${newAbility} for ${TUTOR_COST_ABILITY.toLocaleString()}G?`);
+            if (!ok) return;
             sm.gold -= TUTOR_COST_ABILITY;
             mon.build.a = newAbility;
             save();
@@ -25767,12 +25920,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        function tutorChangeNature(teamIdx, newNature) {
+        async function tutorChangeNature(teamIdx, newNature) {
             if (!_storyTryBeginInteraction()) return;
             try {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (sm.gold < TUTOR_COST_NATURE) return;
             if (!Object.prototype.hasOwnProperty.call(natureModifiers, newNature)) return;
+            const curNature = (mon.build && mon.build.n) || 'Hardy';
+            const ok = await window.showGameConfirm(`Set ${mon.name}'s nature to ${newNature} (was ${curNature}) for ${TUTOR_COST_NATURE.toLocaleString()}G?`);
+            if (!ok) return;
             sm.gold -= TUTOR_COST_NATURE;
             mon.build.n = newNature;
             mon.currentHp = null;
@@ -26007,7 +26163,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (isMegaStone(build.i) || Z_TYPE_MAP_VALUES.has(build.i)) build.i = 'Leftovers';
         }
 
-        function colressApplyMega(teamIdx, stone) {
+        async function _colressConfirm(message) {
+            if (sm.gold < COLRESS_COST) {
+                if (typeof window.showGameAlert === 'function') {
+                    window.showGameAlert(`Colress charges ${COLRESS_COST.toLocaleString()}G — you only have ${sm.gold.toLocaleString()}G.`);
+                }
+                return false;
+            }
+            return !!(await window.showGameConfirm(`${message} for ${COLRESS_COST.toLocaleString()}G?`));
+        }
+
+        async function colressApplyMega(teamIdx, stone) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('mega')) return;
             if (!MEGA_SPECIES.has(mon.name) || mon.name === 'Rayquaza') return;
@@ -26016,6 +26182,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const allowedList = Array.isArray(allowed) ? allowed : (allowed ? [allowed] : []);
             if (!allowedList.includes(stone)) return;
             if (mon.build.gimmick === 'MEGA' && mon.build.i === stone) return;
+            const ok = await _colressConfirm(`Awaken Mega Evolution on ${mon.name} with ${stone}`);
+            if (!ok) return;
             if (!_colressCharge()) return;
             mon.build.gimmick = 'MEGA';
             mon.build.i = stone;
@@ -26023,12 +26191,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _colressFinish();
         }
 
-        function colressApplyDmax(teamIdx) {
+        async function colressApplyDmax(teamIdx) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('dmax')) return;
             if (DYNAMAX_BANNED.has(mon.name)) return;
             const tag = GMAX_SPECIES.has(mon.name) ? 'GMAXDYNAMAX' : 'DYNAMAX';
             if (mon.build.gimmick === tag) return;
+            const label = GMAX_SPECIES.has(mon.name) ? 'Gigantamax' : 'Dynamax';
+            const ok = await _colressConfirm(`Awaken ${label} on ${mon.name}`);
+            if (!ok) return;
             if (!_colressCharge()) return;
             mon.build.gimmick = tag;
             _colressClearStaleGimmickItem(mon.build);
@@ -26036,7 +26207,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _colressFinish();
         }
 
-        function colressApplyZ(teamIdx, type) {
+        async function colressApplyZ(teamIdx, type) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('z')) return;
             if (!Z_TYPE_MAP[type]) return;
@@ -26044,6 +26215,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!eligibleTypes.includes(type)) return;
             const crystal = Z_TYPE_MAP[type];
             if (mon.build.gimmick === 'ZMOVE' && mon.build.i === crystal) return;
+            const ok = await _colressConfirm(`Equip ${crystal} on ${mon.name} (${type} Z-Move)`);
+            if (!ok) return;
             if (!_colressCharge()) return;
             mon.build.gimmick = 'ZMOVE';
             mon.build.i = crystal;
@@ -26051,12 +26224,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _colressFinish();
         }
 
-        function colressApplyZSig(teamIdx) {
+        async function colressApplyZSig(teamIdx) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('z')) return;
             const sigZ = SIGNATURE_Z[mon.name];
             if (!sigZ) return;
             if (mon.build.gimmick === 'ZMOVE' && mon.build.i === sigZ) return;
+            const ok = await _colressConfirm(`Equip signature ${sigZ} on ${mon.name}`);
+            if (!ok) return;
             if (!_colressCharge()) return;
             mon.build.gimmick = 'ZMOVE';
             mon.build.i = sigZ;
@@ -26075,11 +26250,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _colressFinish();
         }
 
-        function colressApplyTera(teamIdx, type) {
+        async function colressApplyTera(teamIdx, type) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('tera')) return;
             if (!COLRESS_ALL_TYPES.includes(type)) return;
             if (mon.build.gimmick === 'TERA' && mon.build.teraType === type) return;
+            const ok = await _colressConfirm(`Set ${mon.name}'s Tera type to ${type}`);
+            if (!ok) return;
             if (!_colressCharge()) return;
             mon.build.gimmick = 'TERA';
             mon.build.teraType = type;
@@ -26239,7 +26416,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             </div>`;
         }
 
-        function evTrainerApplyPreset(idx, presetId) {
+        async function evTrainerApplyPreset(idx, presetId) {
             if (!_storyTryBeginInteraction()) return;
             try {
                 const mon = sm.team[idx];
@@ -26249,6 +26426,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const preset = all.find(p => p.id === presetId);
                 if (!preset) return;
                 if (_evsEqual(mon.build.evs || {}, preset.evs)) return;
+                if (sm.gold < EVTRAINER_COST) {
+                    if (typeof window.showGameAlert === 'function') {
+                        window.showGameAlert(`EV Trainer charges ${EVTRAINER_COST.toLocaleString()}G — you only have ${sm.gold.toLocaleString()}G.`);
+                    }
+                    return;
+                }
+                const ok = await window.showGameConfirm(`Reshape ${mon.name}'s EVs to ${preset.label} (${_evSpreadCompact(preset.evs)}) for ${EVTRAINER_COST.toLocaleString()}G?`);
+                if (!ok) return;
                 if (!_evTrainerCharge()) return;
                 mon.build.evs = { ...preset.evs };
                 _evTrainerFinish();
