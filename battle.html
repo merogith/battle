@@ -6643,7 +6643,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             "Solganium Z":     "Searing Sunraze Smash",
             "Lunalium Z":      "Menacing Moonraze Maelstrom",
             "Ultranecrozium Z":"Light That Burns the Sky",
-            "Stakatium Z":     "Breakneck Blitz",
+            "Stakatium Z":     "Corkscrew Crash",
         };
 
         // Roll exactly one gimmick per Pokemon. Each eligible mechanic gets a 20% chance.
@@ -6712,21 +6712,46 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let sigZ = SIGNATURE_Z[name];
                 if (sigZ) {
                     build.i = sigZ;
-                    // Inject the required move if not already in the moveset
+                    // Inject the required move if not already in the moveset, preferring to overwrite
+                    // the weakest filler (status moves > non-STAB low-BP > else last slot).
                     let reqMove = SIGNATURE_Z_REQUIRED_MOVE[sigZ];
                     if (reqMove && !(build.m || []).includes(reqMove)) {
-                        // Replace the weakest non-STAB move, or last slot
                         build.m = build.m || [];
-                        let injIdx = build.m.length < 4 ? build.m.length : build.m.length - 1;
-                        build.m[injIdx] = reqMove;
+                        // If there's an empty slot, use it
+                        if (build.m.length < 4) { build.m.push(reqMove); return; }
+                        // Otherwise find weakest slot. Get species types for STAB ranking.
+                        let _D = (typeof getPssDex === 'function') ? getPssDex() : null;
+                        let _sp = (_D && _D.species && _D.species.get) ? _D.species.get(name) : null;
+                        let _tps = (_sp && _sp.types) || [];
+                        let t1 = _tps[0] || '', t2 = _tps[1] || '';
+                        let worstIdx = 0, worstScore = Infinity;
+                        for (let i = 0; i < build.m.length; i++) {
+                            let mv = movesDB[build.m[i]];
+                            if (!mv) { worstIdx = i; break; }
+                            // Score: status moves = lowest priority to keep (50), low-BP non-STAB = next, STAB damaging = highest
+                            let score;
+                            if (mv.cat === 'Status') score = 50;
+                            else {
+                                let isStab = mv.type === t1 || mv.type === t2;
+                                score = (mv.pow || 0) + (isStab ? 60 : 0);
+                            }
+                            if (score < worstScore) { worstScore = score; worstIdx = i; }
+                        }
+                        build.m[worstIdx] = reqMove;
                     }
                     return;
                 }
-                // Otherwise: find the highest-BP damaging move and assign matching Z-Crystal
-                let bestMove = null, bestBP = 0;
+                // Otherwise: pick best damaging move (prefer STAB, then BP) and assign matching Z-Crystal
+                let mon = (typeof pokedex !== 'undefined' && pokedex[name]) || {};
+                let t1 = mon.type1 || '', t2 = mon.type2 || '';
+                let bestMove = null, bestScore = -1;
                 for (let mname of (build.m || [])) {
                     let mv = movesDB[mname];
-                    if (mv && mv.cat !== 'Status' && (mv.pow || 0) > bestBP) { bestBP = mv.pow; bestMove = mv; }
+                    if (!mv || mv.cat === 'Status' || !(mv.pow > 0)) continue;
+                    if (!Z_TYPE_MAP[mv.type]) continue;
+                    let isStab = mv.type === t1 || mv.type === t2;
+                    let score = mv.pow + (isStab ? 40 : 0);
+                    if (score > bestScore) { bestScore = score; bestMove = mv; }
                 }
                 if (bestMove && Z_TYPE_MAP[bestMove.type]) build.i = Z_TYPE_MAP[bestMove.type];
                 // else: leave item as-is — validateGimmick will degrade if no match possible
@@ -8304,6 +8329,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'Twinkle Tackle':'Fairy-type Z-Move. Power based on base move BP.',
                 'Catastropika':'Pikachu exclusive. Extreme Electric-type Z-Move.',
                 'Pulverizing Pancake':'Snorlax exclusive. Extreme Normal-type Z-Move.',
+                '10,000,000 Volt Thunderbolt':'Cap-Pikachu exclusive. Extreme Electric-type Z-Move with a very high crit ratio.',
+                'Stoked Sparksurfer':'Alolan Raichu exclusive. Electric-type Z-Move that paralyzes the target.',
+                'Extreme Evoboost':'Eevee exclusive. Sharply raises all of the user’s stats (+2 to every stat).',
+                'Genesis Supernova':'Mew exclusive. Psychic-type Z-Move that sets Psychic Terrain.',
+                'Soul-Stealing 7-Star Strike':'Marshadow exclusive. Extreme Fighting/Ghost-type Z-Move.',
+                'Sinister Arrow Raid':'Decidueye exclusive. Extreme Ghost-type Z-Move.',
+                'Malicious Moonsault':'Incineroar exclusive. Extreme Dark-type Z-Move.',
+                'Oceanic Operetta':'Primarina exclusive. Extreme Water-type Z-Move.',
+                'Guardian of Alola':'Tapu exclusive. Reduces target’s HP to 1/4 of current.',
+                'Clangorous Soulblaze':'Kommo-o exclusive. Dragon-type Z-Move that boosts every stat by 1.',
+                'Splintered Stormshards':'Lycanroc exclusive. Rock-type Z-Move that clears terrain.',
+                "Let's Snuggle Forever":'Mimikyu exclusive. Extreme Fairy-type Z-Move.',
+                'Searing Sunraze Smash':'Solgaleo / Dusk Mane Necrozma exclusive. Extreme Steel-type Z-Move; ignores ability effects.',
+                'Menacing Moonraze Maelstrom':'Lunala / Dawn Wings Necrozma exclusive. Extreme Ghost-type Z-Move; ignores ability effects.',
+                'Light That Burns the Sky':'Ultra Necrozma exclusive. Psychic-type Z-Move using higher of Atk/SpA; ignores abilities.',
             };
             return maxDesc[moveName] || zDesc[moveName] || 'A powerful gimmick move.';
         }
@@ -8903,7 +8943,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Z-Move power table (base power → Z-Move power)
         function getZMovePower(bp) {
             if (!bp || bp === 0) return 0;
-            if (bp < 60) return 100; if (bp < 70) return 120; if (bp < 80) return 140;
+            // Canon (Showdown) table: 55-:100, 60:120, 65/70/75:140, 80/85:160,
+            // 90/95:175, 100:180, 110:185, 120/125:190, 130:195, 140+:200
+            if (bp < 60) return 100; if (bp < 65) return 120; if (bp < 80) return 140;
             if (bp < 90) return 160; if (bp < 100) return 175; if (bp < 110) return 180;
             if (bp < 120) return 185; if (bp < 130) return 190; if (bp < 140) return 195;
             return 200;
@@ -9130,11 +9172,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Quiver Dance':{spa:1,spd:1,spe:1},'Geomancy':{spa:1,spd:1,spe:1},
             'Toxic':{def:1},'Will-O-Wisp':{atk:1},'Thunder Wave':{spd:1},
             'Stealth Rock':{def:1},'Spikes':{def:1},'Toxic Spikes':{def:1},
-            'Defog':{acc:1},'Roost':{spe:1,def:1,spd:1},'Taunt':{atk:1},
+            'Defog':{eva:1},'Roost':{spe:1,def:1,spd:1},'Taunt':{atk:1},
             'Encore':{spe:1},'Disable':{def:1},'Leech Seed':{def:1,spd:1},
             'Sleep Powder':{spe:1},'Stun Spore':{spd:1},'Hypnosis':{spe:1},
             'Sing':{spe:1},'Lovely Kiss':{spe:1},'Dark Void':{spe:1},'Spore':{def:1},
-            'Trick Room':{acc:1},'Rain Dance':{spe:1},'Sunny Day':{spe:1},
+            'Trick Room':{spe:1},'Rain Dance':{spe:1},'Sunny Day':{spe:1},
             'Sandstorm':{spe:1},'Hail':{spe:1},'Wish':{spd:1},
             'Heal Bell':{spe:1,def:1,spd:1},'Aromatherapy':{spe:1,def:1,spd:1},
             'Rapid Spin':{def:1},'Sticky Web':{spe:1},'Parting Shot':{spe:1},
@@ -9191,7 +9233,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let _zBP = move.pow || _varPowerMoveBP[move.name] || 0;
                 let zPower = getZMovePower(_zBP);
                 let zName = SIGNATURE_Z_MOVE_NAMES[mon.item] || `Z-${move.name}`;
-                return { ...move, pow: zPower, isZMove: true, isSignatureZ: true, name: zName, pri: 0 };
+                // Z-Moves inherit the base move's priority
+                return { ...move, pow: zPower, isZMove: true, isSignatureZ: true, name: zName };
             }
             // Damaging Z-move: move type must match the Z-crystal's type
             let crystalType = getZCrystalType(mon.item);
@@ -9199,7 +9242,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let _zBP2 = move.pow || _varPowerMoveBP[move.name] || 0;
             let zPower = getZMovePower(_zBP2);
             let zName = Z_MOVE_NAMES[move.type] || `Z-${move.name}`;
-            return { ...move, pow: zPower, isZMove: true, name: zName, pri: 0 };
+            // Z-Moves inherit the base move's priority
+            return { ...move, pow: zPower, isZMove: true, name: zName };
         }
 
         // G-Max move names keyed by species base name → move type → G-Max move name
@@ -12173,6 +12217,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let canUseMega = activeMon.buildData && activeMon.buildData.gimmick === 'MEGA' && !activeMon.megaEvolved && (!settings.classicMode || !_usedMega);
             let canUseDyna = activeMon.buildData && (activeMon.buildData.gimmick === 'DYNAMAX' || activeMon.buildData.gimmick === 'GMAXDYNAMAX') && !activeMon.dynamaxed && !activeMon.dynamaxUsed && !_usedDyna;
             let canUseTera = activeMon.buildData && activeMon.buildData.teraType && !activeMon.teraActivated && (!settings.classicMode || !_usedTera);
+            // Cap depends on the Classic Mode toggle: one Z per team (Classic) vs one per Pokémon (off)
             let canUseZ = activeMon.buildData && activeMon.buildData.gimmick === 'ZMOVE' && !activeMon.zMoveUsed && (!settings.classicMode || !_usedZ);
             const hasGimmickButtons = canUseMega || canUseDyna || canUseTera || canUseZ;
             menu.classList.toggle('move-menu-no-gimmicks', !hasGimmickButtons);
@@ -12485,13 +12530,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             //  b) both sides low HP (now-or-never situation)
             //  c) opponent has screens/substitute that Z-Move bypasses
             if (bd.gimmick === 'ZMOVE' && !attacker.zMoveUsed && (!settings.classicMode || !state.fUsedZ)) {
-                let zMove = buildZMove(attacker, attacker.moves.find(m => m.pp > 0 && m.cat !== 'Status') || attacker.moves[0]);
-                let zDmg = zMove ? aiEstimateDmg(attacker, defender, zMove) : 0;
+                // Iterate all damaging moves, pick the highest Z damage option
+                let zDmg = 0;
+                for (let m of attacker.moves) {
+                    if (m.pp <= 0 || m.cat === 'Status') continue;
+                    let zBuild = buildZMove(attacker, m);
+                    if (!zBuild.isZMove) continue;
+                    let d = aiEstimateDmg(attacker, defender, zBuild);
+                    if (d > zDmg) zDmg = d;
+                }
                 let regularMax = Math.max(0, ...attacker.moves.filter(m => m.pp > 0 && m.cat !== 'Status').map(m => aiEstimateDmg(attacker, defender, m)));
                 let zCanKO = zDmg >= defender.currentHp;
                 let regularCanKO = regularMax >= defender.currentHp;
                 let defHasSub = defender.volatile && defender.volatile.sub > 0;
-                if ((zCanKO && !regularCanKO) || (hpPct < 0.35 && defHpPct < 0.6) || defHasSub) return 'ZMOVE';
+                if (zDmg > 0 && ((zCanKO && !regularCanKO) || (hpPct < 0.35 && defHpPct < 0.6) || defHasSub)) return 'ZMOVE';
             }
 
             return null;
@@ -14496,6 +14548,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
                 }
                 if (gimmickPending === 'ZMOVE') {
+                    // Cap is governed by the Classic Mode toggle (one per team if on, one per Pokémon if off)
                     let ok = attacker.buildData && attacker.buildData.gimmick === 'ZMOVE' && !attacker.zMoveUsed && (!settings.classicMode || !(isPlayer ? state.usedZ : state.fUsedZ));
                     if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
                 }
@@ -14527,17 +14580,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     if (zBuild.zStatusEffect) {
                         logMsg(`${attacker.name} used Z-${move.name}! A surge of power filled the battlefield!`, 'info');
-                        // Z-status boost: per-move official table, fallback +1 highest stat
+                        // Z-status boost: per-move official table, fallback +1 highest stage-modified stat
                         let boostMap = Z_STATUS_EFFECTS[move.name];
                         if (boostMap && Object.keys(boostMap).length > 0) {
+                            if (boostMap._reset) {
+                                // Reset all of the user's lowered stat stages back to 0 (clearnegativeboost)
+                                let cleared = false;
+                                for (let s of ['atk','def','spa','spd','spe','acc','eva']) {
+                                    if ((attacker.stages[s] || 0) < 0) { attacker.stages[s] = 0; cleared = true; }
+                                }
+                                if (cleared) logMsg(`${attacker.name}'s lowered stats were restored!`, 'info');
+                            }
                             for (let [stat, amt] of Object.entries(boostMap)) {
-                                if (stat === 'crit') { logMsg(`${attacker.name} is getting pumped! (Critical hit rate up!)`, 'info'); }
-                                else if (stat === 'acc') changeStage(attacker, 'acc', amt);
-                                else if (amt > 0) changeStage(attacker, stat, amt);
+                                if (stat === '_reset') continue;
+                                if (stat === 'crit') {
+                                    attacker.volatile.focusEnergy = true;
+                                    logMsg(`${attacker.name} is getting pumped! (Critical hit rate up!)`, 'info');
+                                } else if (amt > 0) {
+                                    changeStage(attacker, stat, amt);
+                                }
                             }
                         } else if (!boostMap) {
-                            let best = 'atk', bestVal = 0;
-                            for (let s of ['atk','def','spa','spd','spe']) { if ((attacker.stats[s]||0) > bestVal) { bestVal = attacker.stats[s]; best = s; } }
+                            // Pick highest stage-modified offensive/defensive stat (excludes acc/eva)
+                            let best = 'atk', bestVal = -1;
+                            for (let s of ['atk','def','spa','spd','spe']) {
+                                let mult = (typeof getStageMult === 'function') ? getStageMult(attacker.stages[s] || 0) : 1;
+                                let v = (attacker.stats[s] || 0) * mult;
+                                if (v > bestVal) { bestVal = v; best = s; }
+                            }
                             changeStage(attacker, best, 1);
                         }
                         await sleep(1000);
@@ -15020,7 +15090,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (defender.ability === "Sand Veil" && getCurrentWeather() === "Sandstorm") evaMod *= 0.8;
             if (defender.ability === "Snow Cloak" && getCurrentWeather() === "Hail") evaMod *= 0.8;
             const _neverMissMoves = new Set(["Swift","Aerial Ace","Aura Sphere","Magical Leaf","Faint Attack","Feint Attack","Shadow Punch","Smart Strike","Vital Throw","Disarming Voice","Shock Wave","Tachyon Cutter","Trump Card","Flower Trick","Clear Smog","Kowtow Cleave","Mighty Cleave"]);
-            let neverMiss = !move.acc || move.acc <= 0 || move.acc === true || move.isZMove || _neverMissMoves.has(move.name) || (move.mathEff && move.mathEff.includes('bypass_accuracy')) || attacker.ability === "No Guard" || defender.ability === "No Guard" || attacker.volatile.lockOn;
+            // Z-Moves keep the base move's accuracy; only those whose base move has no acc (acc<=0/true) auto-hit
+            let neverMiss = !move.acc || move.acc <= 0 || move.acc === true || _neverMissMoves.has(move.name) || (move.mathEff && move.mathEff.includes('bypass_accuracy')) || attacker.ability === "No Guard" || defender.ability === "No Guard" || attacker.volatile.lockOn;
             // Story artifact: [Type] Magnetizer — moves involving the bonded type never miss
             if (state && state.mode === 'story' && state._typeMagnetizerType && move.cat !== "Status") {
                 const _Tm = state._typeMagnetizerType;
