@@ -1102,6 +1102,20 @@
             display: flex; align-items: center; gap: 4px;
             flex: 0 0 auto; margin-left: 8px;
         }
+        .story-action-section-header {
+            display: flex; align-items: center; gap: 8px;
+            margin: 10px 0 4px 0;
+            font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase;
+            color: #8aa0bc; font-family: var(--battle-font) !important;
+        }
+        .story-action-section-header:first-child { margin-top: 0; }
+        .story-action-section-header::after {
+            content: ''; flex: 1; height: 1px;
+            background: linear-gradient(90deg, rgba(138,160,188,0.35) 0%, rgba(138,160,188,0) 100%);
+        }
+        .story-action-section-header .story-action-section-icon {
+            font-size: 11px; opacity: 0.85;
+        }
         .story-action-badge {
             display: inline-flex; align-items: center; gap: 3px;
             font-size: 10px; line-height: 1; letter-spacing: 0.5px;
@@ -22381,10 +22395,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!btn) return;
             btn.innerHTML = '';
 
+            const _sections = { quest: '', recover: '', shop: '', train: '' };
+            const _push = (key, html) => { _sections[key] += html; };
+
             // Professor / Mystery Figure (one visit per city)
             if (hasProf && !profUsedHere) {
                 if (hasTeamRoom) {
-                    btn.innerHTML += makeActionBtn('Professor — Receive a Pokémon','professor','window.StoryMode.enterProfessor()','primary',{ meta:[{label:'Free',tone:'free'}] });
+                    _push('quest', makeActionBtn('Professor — Receive a Pokémon','professor','window.StoryMode.enterProfessor()','primary',{ meta:[{label:'Free',tone:'free'}] }));
                 } else {
                     const mysteryLabel = legendMysteryGate
                         ? '❓ Mystery Figure — Legendary Grade 1 Swap'
@@ -22392,7 +22409,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const mysteryMeta = legendMysteryGate
                         ? [{label:'Required',tone:'info'}]
                         : [{label:'Free',tone:'free'}];
-                    btn.innerHTML += makeActionBtn(mysteryLabel,'mystery','window.StoryMode.enterProfessor()','primary',{ soft:true, meta: mysteryMeta });
+                    _push('quest', makeActionBtn(mysteryLabel,'mystery','window.StoryMode.enterProfessor()','primary',{ soft:true, meta: mysteryMeta }));
                 }
             }
             // Battle actions
@@ -22407,38 +22424,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const gymBlocked = hasProf && !profUsedHere;
             if (hasGym) {
                 if (gymBlocked) {
-                    btn.innerHTML += `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_gym.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Challenge the Gym Leader! <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`;
+                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_gym.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Challenge the Gym Leader! <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`);
                 } else {
-                    btn.innerHTML += makeActionBtn('⚔ Challenge the Gym Leader!','gym','window.StoryMode.proceedToNextBattle()','primary');
+                    _push('quest', makeActionBtn('⚔ Challenge the Gym Leader!','gym','window.StoryMode.proceedToNextBattle()','primary'));
                 }
             }
             if (hasLeague) {
-                btn.innerHTML += makeActionBtn('🏆 Enter the Pokémon League!','league','window.StoryMode.proceedToNextBattle()','primary');
+                _push('quest', makeActionBtn('🏆 Enter the Pokémon League!','league','window.StoryMode.proceedToNextBattle()','primary'));
             }
             const routeBlockedByMysteryGate = legendMysteryGate && !profUsedHere;
             if (actions.includes('Leave City')) {
                 if (gymRoutePending) {
-                    btn.innerHTML += `<button type="button" class="story-action-btn primary" disabled title="Clear this area's challenge first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Complete challenge first)</span></span></button>`;
+                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Clear this area's challenge first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Complete challenge first)</span></span></button>`);
                 } else if (routeBlockedByMysteryGate) {
-                    btn.innerHTML += `<button type="button" class="story-action-btn primary" disabled title="Talk to the Mystery Figure first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Talk to Mystery Figure first)</span></span></button>`;
+                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Talk to the Mystery Figure first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Talk to Mystery Figure first)</span></span></button>`);
                 } else if (rivalGateActive) {
-                    btn.innerHTML += makeActionBtn('⚔ Face Rival at the Route Gate','route','window.StoryMode.proceedToNextBattle()','primary');
+                    _push('quest', makeActionBtn('⚔ Face Rival at the Route Gate','route','window.StoryMode.proceedToNextBattle()','primary'));
                 } else if (!hasLeague) {
-                    btn.innerHTML += makeActionBtn('→ Continue Route','route','window.StoryMode.proceedToNextBattle()','primary',{ soft:true });
+                    _push('quest', makeActionBtn('→ Continue Route','route','window.StoryMode.proceedToNextBattle()','primary',{ soft:true }));
                 }
             }
             if (hasVR) {
                 if (gymBlocked) {
-                    btn.innerHTML += `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_vr.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Enter Victory Road <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`;
+                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_vr.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Enter Victory Road <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`);
                 } else {
-                    btn.innerHTML += makeActionBtn('🏔 Enter Victory Road','vr','window.StoryMode.proceedToNextBattle()','primary');
+                    _push('quest', makeActionBtn('🏔 Enter Victory Road','vr','window.StoryMode.proceedToNextBattle()','primary'));
                 }
             }
             if (hasTrainerRoad) {
                 if (gymBlocked) {
-                    btn.innerHTML += `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_gym.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Pre-League challenge <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`;
+                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_gym.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Pre-League challenge <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`);
                 } else {
-                    btn.innerHTML += makeActionBtn('⚔ Pre-League challenge (trainers)','tr','window.StoryMode.proceedToNextBattle()','primary');
+                    _push('quest', makeActionBtn('⚔ Pre-League challenge (trainers)','tr','window.StoryMode.proceedToNextBattle()','primary'));
                 }
             }
             // Shops
@@ -22447,13 +22464,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return { label: amount.toLocaleString() + 'G' + (suffix || ''), tone: 'cost', cantAfford: cant, title: cant ? `You have ${sm.gold.toLocaleString()}G — short by ${(amount - sm.gold).toLocaleString()}G` : '' };
             };
             if (actions.includes('Pokemart')) {
-                btn.innerHTML += makeActionBtn('🛒 Pokémart — Buy Items','mart','window.StoryMode.enterShop(\'mart\')','shop',{ meta:[{label:'Shop',tone:'info'}] });
-            }
-            if (actions.includes('Link Station')) {
-                btn.innerHTML += makeActionBtn('📡 Cable Link Station — Reroll Team','link','window.StoryMode.enterLink()','link',{ meta:[{label:'Free',tone:'free'}] });
+                _push('shop', makeActionBtn('🛒 Pokémart — Buy Items','mart','window.StoryMode.enterShop(\'mart\')','shop',{ meta:[{label:'Shop',tone:'info'}] }));
             }
             if (actions.includes('Department Store')) {
-                btn.innerHTML += makeActionBtn('🏬 Department Store — Premium battle items','dept','window.StoryMode.enterShop(\'dept\')','dept',{ meta:[{label:'Premium',tone:'info'}] });
+                _push('shop', makeActionBtn('🏬 Department Store — Premium battle items','dept','window.StoryMode.enterShop(\'dept\')','dept',{ meta:[{label:'Premium',tone:'info'}] }));
             }
             const _relicCityIdx = getCityIndex(ev);
             if (_relicCityIdx === 0 || actions.includes('Department Store')) {
@@ -22461,48 +22475,59 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const relicMeta = relicFree
                     ? [{label:'1st Free',tone:'free'}]
                     : [_costBadge(5000, ' each')];
-                btn.innerHTML += makeActionBtn('✨ Relic Annex — Run relics (3 picks)','relic','window.StoryMode.enterArtifactShop()','dept',{ soft:true, meta: relicMeta });
+                _push('shop', makeActionBtn('✨ Relic Annex — Run relics (3 picks)','relic','window.StoryMode.enterArtifactShop()','dept',{ soft:true, meta: relicMeta }));
             }
             if (actions.includes('Poké Casino')) {
-                btn.innerHTML += makeActionBtn('🎰 Poké Casino — Coin flip wagers','casino','window.StoryMode.enterCasino()','casino',{ soft:true, meta:[{label:'Wager',tone:'info'}] });
+                _push('shop', makeActionBtn('🎰 Poké Casino — Coin flip wagers','casino','window.StoryMode.enterCasino()','casino',{ soft:true, meta:[{label:'Wager',tone:'info'}] }));
             }
             const _tutorTeam = sm.team.length > 0;
             if (actions.includes('Move Tutor') && _tutorTeam) {
-                btn.innerHTML += makeActionBtn('📖 Move Tutor — Swap battle moves','tutor','window.StoryMode.enterTutor(\'moves\')','training',{ meta:[_costBadge(1500, '+')] });
+                _push('train', makeActionBtn('📖 Move Tutor — Swap battle moves','tutor','window.StoryMode.enterTutor(\'moves\')','training',{ meta:[_costBadge(1500, '+')] }));
             }
             if (actions.includes('Nature Rater') && _tutorTeam) {
-                btn.innerHTML += makeActionBtn('📛 Nature Rater — Adjust natures','nature','window.StoryMode.enterTutor(\'nature\')','training',{ soft:true, meta:[_costBadge(2000, '+')] });
+                _push('train', makeActionBtn('📛 Nature Rater — Adjust natures','nature','window.StoryMode.enterTutor(\'nature\')','training',{ soft:true, meta:[_costBadge(2000, '+')] }));
             }
             if (actions.includes('Battle Dojo') && _tutorTeam) {
-                btn.innerHTML += makeActionBtn('🥋 Battle Dojo — Held items & abilities','dojo','window.StoryMode.enterTutor(\'loadout\')','training',{ meta:[_costBadge(2000, '+')] });
+                _push('train', makeActionBtn('🥋 Battle Dojo — Held items & abilities','dojo','window.StoryMode.enterTutor(\'loadout\')','training',{ meta:[_costBadge(2000, '+')] }));
             }
             if (actions.includes('EV Trainer') && _tutorTeam) {
-                btn.innerHTML += makeActionBtn('🏋️ EV Trainer — Reshape effort values','evtrainer','window.StoryMode.enterEVTrainer()','training',{ soft:true, meta:[_costBadge(5000)] });
+                _push('train', makeActionBtn('🏋️ EV Trainer — Reshape effort values','evtrainer','window.StoryMode.enterEVTrainer()','training',{ soft:true, meta:[_costBadge(5000)] }));
             }
             const _colressMechAny = !!(sm.settings && (sm.settings.megaOn || sm.settings.zOn || sm.settings.dynaOn || sm.settings.teraOn));
             if (actions.includes('Power Up') && _tutorTeam && _colressMechAny) {
-                btn.innerHTML += makeActionBtn('🧪 Colress — Awaken battle mechanics','colress','window.StoryMode.enterColress()','training',{ soft:true, meta:[_costBadge(10000)] });
+                _push('train', makeActionBtn('🧪 Colress — Awaken battle mechanics','colress','window.StoryMode.enterColress()','training',{ soft:true, meta:[_costBadge(10000)] }));
             }
             if ((sm.artifacts || []).length > 0) {
-                btn.innerHTML += makeActionBtn('✨ Artifact Hall — Toggle run artifacts','artifacts','window.StoryMode.enterArtifactHall()','dept',{ soft:true, meta:[{label:'Free',tone:'free'}] });
+                _push('train', makeActionBtn('✨ Artifact Hall — Toggle run artifacts','artifacts','window.StoryMode.enterArtifactHall()','dept',{ soft:true, meta:[{label:'Free',tone:'free'}] }));
             }
             // Pokémon Center — full party heal, free, unlimited (disabled in Hardcore: bring potions)
             if ((sm.storyDifficulty || 'normal') === 'hardcore') {
-                btn.innerHTML += `<button type="button" class="story-action-btn" disabled title="No Pokémon Center service in Hardcore — bring potions" style="opacity:0.45;cursor:not-allowed;"><span class="story-action-btn-text">🏥 Pokémon Center <span style="font-size:10px;color:#aaa;">(Disabled in Hardcore)</span></span></button>`;
+                _push('recover', `<button type="button" class="story-action-btn" disabled title="No Pokémon Center service in Hardcore — bring potions" style="opacity:0.45;cursor:not-allowed;"><span class="story-action-btn-text">🏥 Pokémon Center <span style="font-size:10px;color:#aaa;">(Disabled in Hardcore)</span></span></button>`);
             } else {
-                btn.innerHTML += makeActionBtn('🏥 Pokémon Center — Restore Your Party','center','window.StoryMode.enterPokemonCenter()','center',{ meta:[{label:'Free',tone:'free'}] });
+                _push('recover', makeActionBtn('🏥 Pokémon Center — Restore Your Party','center','window.StoryMode.enterPokemonCenter()','center',{ meta:[{label:'Free',tone:'free'}] }));
             }
             const _partyN = sm.team.length;
             const _partyLabel = _partyN
                 ? `Party — Team & Order (${_partyN}/6)`
                 : 'Party — Empty (Visit Professor)';
-            btn.innerHTML += makeActionBtn(_partyLabel, 'party', 'window.StoryMode.openPartyModal()', 'party');
+            _push('recover', makeActionBtn(_partyLabel, 'party', 'window.StoryMode.openPartyModal()', 'party'));
+            if (actions.includes('Link Station')) {
+                _push('recover', makeActionBtn('📡 Cable Link Station — Reroll Team','link','window.StoryMode.enterLink()','link',{ meta:[{label:'Free',tone:'free'}] }));
+            }
             // Bag — always accessible in city to view inventory and sell items
             const _invCount = Object.keys(sm.inventory || {}).filter(k => sm.inventory[k] > 0).length;
             const _bagLabel = _invCount > 0
                 ? `🎒 Bag — View & Sell Items (${_invCount} type${_invCount !== 1 ? 's' : ''})`
                 : '🎒 Bag — Empty';
-            btn.innerHTML += makeActionBtn(_bagLabel, 'bag', 'window.StoryMode.openCityBag()', 'shop',{ soft:true });
+            _push('recover', makeActionBtn(_bagLabel, 'bag', 'window.StoryMode.openCityBag()', 'shop',{ soft:true }));
+
+            const _emit = (key, icon, title) => _sections[key]
+                ? `<div class="story-action-section-header"><span class="story-action-section-icon">${icon}</span>${title}</div>${_sections[key]}`
+                : '';
+            btn.innerHTML = _emit('quest', '⚔', 'Continue Your Journey')
+                          + _emit('recover', '🏥', 'Heal & Manage')
+                          + _emit('shop', '🛒', 'Shops')
+                          + _emit('train', '🎯', 'Train Your Team');
         }
 
         /** FireRed/LeafGreen–style item & UI rips (pret/pokefirered, plus link strip from graphics/link). */
