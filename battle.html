@@ -2706,6 +2706,24 @@
             100% { filter: brightness(1); transform: translateX(-50%) scale(1); }
         }
 
+        /* Gimmick activation banner (used for Mega Evolution / Primal Reversion announcements) */
+        .gimmick-banner {
+            position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%);
+            padding: 10px 28px; border-radius: 8px; z-index: 9000; pointer-events: none;
+            font-weight: 900; font-size: 24px; letter-spacing: 2px; color: #fff;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+            background: linear-gradient(135deg, rgba(0,0,0,0.55), rgba(0,0,0,0.25));
+            border: 2px solid #fff;
+            box-shadow: 0 0 24px currentColor, 0 0 60px currentColor;
+            animation: gimmickBanner 1.1s ease-out forwards;
+        }
+        @keyframes gimmickBanner {
+            0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(-6deg); }
+            25%  { opacity: 1; transform: translate(-50%, -50%) scale(1.15) rotate(2deg); }
+            70%  { opacity: 1; transform: translate(-50%, -50%) scale(1.0) rotate(0); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1.0) rotate(0); }
+        }
+
         /* Dynamax activation grow */
         .anim-dmax-activate { animation: dmaxActivate 0.9s ease-out; }
         @keyframes dmaxActivate {
@@ -6550,8 +6568,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             "Garchomp":"Garchompite","Lucario":"Lucarionite","Abomasnow":"Abomasite","Gallade":"Galladite",
             "Audino":"Audinite","Diancie":"Diancite","Sableye":"Sablenite","Sceptile":"Sceptilite",
             "Swampert":"Swampertite","Steelix":"Steelixite","Alakazam":"Alakazite",
-            "Groudon":"Red Orb","Kyogre":"Blue Orb","Rayquaza":null
+            "Groudon":"Red Orb","Kyogre":"Blue Orb","Rayquaza":"__RAYQUAZA_MEGA__"
         };
+        // Rayquaza Mega does not require a held item — it's gated by knowing Dragon Ascent.
+        // We use a sentinel stone key so the rest of the pipeline (validateGimmick / activateMega)
+        // can recognise the mega without conflicting with real items.
+        const RAYQUAZA_MEGA_SENTINEL = "__RAYQUAZA_MEGA__";
         const MEGA_SPECIES = new Set(Object.keys(MEGA_STONE_MAP));
         const MEGA_FORM_NAMES = {
             "Venusaurite":"Venusaur-Mega","Charizardite X":"Charizard-Mega-X","Charizardite Y":"Charizard-Mega-Y",
@@ -6570,7 +6592,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             "Galladite":"Gallade-Mega","Audinite":"Audino-Mega","Diancite":"Diancie-Mega",
             "Sablenite":"Sableye-Mega","Sceptilite":"Sceptile-Mega","Swampertite":"Swampert-Mega",
             "Red Orb":"Groudon-Primal","Blue Orb":"Kyogre-Primal",
-            "Mewtwonite X":"Mewtwo-Mega-X","Mewtwonite Y":"Mewtwo-Mega-Y"
+            "Mewtwonite X":"Mewtwo-Mega-X","Mewtwonite Y":"Mewtwo-Mega-Y",
+            "__RAYQUAZA_MEGA__":"Rayquaza-Mega"
         };
         const GMAX_SPECIES = new Set(["Venusaur","Blastoise","Charizard","Butterfree","Pikachu","Meowth","Machamp","Gengar","Kingler","Lapras","Eevee","Snorlax","Garbodor","Melmetal","Rillaboom","Cinderace","Inteleon","Corviknight","Orbeetle","Drednaw","Coalossal","Flapple","Appletun","Sandaconda","Toxtricity","Centiskorch","Hatterene","Grimmsnarl","Alcremie","Copperajah","Duraludon","Urshifu","Eternatus"]);
         const DYNAMAX_BANNED = new Set(["Zacian","Zamazenta","Eternatus"]);
@@ -6664,7 +6687,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function rollGimmick(name, forcedTag) {
             const mech = _mechForGimmickRoll();
             const candidates = [];
-            if (mech.mega && MEGA_SPECIES.has(name) && name !== "Rayquaza") candidates.push('MEGA');
+            if (mech.mega && MEGA_SPECIES.has(name)) candidates.push('MEGA');
             if (mech.zmove) candidates.push('ZMOVE');
             if (mech.dynamax && !DYNAMAX_BANNED.has(name)) {
                 candidates.push(GMAX_SPECIES.has(name) ? 'GMAXDYNAMAX' : 'DYNAMAX');
@@ -6701,9 +6724,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function assignGimmickToBuild(name, build, gimmick) {
             build.gimmick = gimmick;
             if (gimmick === 'MEGA') {
-                let stone = MEGA_STONE_MAP[name];
-                if (Array.isArray(stone)) stone = stone[Math.floor(Math.random() * stone.length)];
-                if (stone) build.i = stone;
+                // Mega Rayquaza is special-cased: knowing Dragon Ascent unlocks the mega,
+                // and Rayquaza cannot hold a mega stone in canon. Ensure Dragon Ascent is in the moveset.
+                if (name === "Rayquaza") {
+                    build.m = build.m || [];
+                    if (!build.m.includes("Dragon Ascent")) {
+                        let injIdx = build.m.length < 4 ? build.m.length : build.m.length - 1;
+                        build.m[injIdx] = "Dragon Ascent";
+                    }
+                    // No stone assigned — see activateMega() for sentinel handling.
+                } else {
+                    let stone = MEGA_STONE_MAP[name];
+                    if (Array.isArray(stone)) stone = stone[Math.floor(Math.random() * stone.length)];
+                    if (stone) build.i = stone;
+                }
                 // If no stone is available, degrade below — handled by validateGimmick
             } else if (gimmick === 'ZMOVE') {
                 // If the build already has a standard (non-signature) Z-Crystal, keep it
@@ -6766,8 +6800,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!gimmick || gimmick === 'STANDARD' || gimmick === 'DYNAMAX' || gimmick === 'GMAXDYNAMAX') return true;
             if (gimmick === 'TERA') return true; // Tera works with any build — no item required
             if (gimmick === 'MEGA') {
-                // Must be a Mega-capable species (excluding Rayquaza which has no stone)
-                if (!MEGA_SPECIES.has(name) || name === "Rayquaza") return false;
+                if (!MEGA_SPECIES.has(name)) return false;
+                // Mega Rayquaza: gated by knowing Dragon Ascent, no stone required.
+                if (name === "Rayquaza") {
+                    return Array.isArray(build.m) && build.m.includes("Dragon Ascent");
+                }
                 // Must have a valid mega stone item in the build
                 return isMegaStone(build.i) && MEGA_FORM_NAMES[build.i];
             }
@@ -8984,31 +9021,58 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
 
         // === GIMMICK ACTIVATION FUNCTIONS ===
+        function showGimmickBanner(text, color) {
+            const battle = document.getElementById('battle-screen') || document.getElementById('battle-arena') || document.body;
+            if (!battle) return;
+            const el = document.createElement('div');
+            el.className = 'gimmick-banner';
+            el.textContent = text;
+            if (color) el.style.color = color;
+            // Anchor inside the battle area if it's a positioned container.
+            const cs = window.getComputedStyle(battle);
+            if (cs.position === 'static') battle.style.position = 'relative';
+            battle.appendChild(el);
+            setTimeout(() => { try { el.remove(); } catch(e) {} }, 1150);
+        }
+
         function activateMega(mon, isPlayer) {
             if (mon.megaEvolved) return;
-            let stone = mon.item || (mon.buildData && mon.buildData.i);
-            let megaFormName = MEGA_FORM_NAMES[stone];
-            if (!megaFormName) return; // can't mega without a recognized stone
-
-            // Cross-validate: the mega form must belong to THIS species.
-            // Guards against Latios holding Latiasite (and similar mix-ups) evolving into the wrong form.
             let baseName = mon._baseName || mon.name;
-            if (!megaFormName.toLowerCase().startsWith(baseName.toLowerCase())) {
-                // Look up the correct stone for this species and re-derive the form name
-                let correctStone = MEGA_STONE_MAP[baseName];
-                if (Array.isArray(correctStone)) correctStone = correctStone[0];
-                if (correctStone && MEGA_FORM_NAMES[correctStone]) {
-                    console.warn(`[Mega] Stone mismatch: ${baseName} had ${stone} → corrected to ${correctStone}`);
-                    stone = correctStone;
-                    megaFormName = MEGA_FORM_NAMES[correctStone];
-                } else {
-                    console.warn(`[Mega] Cannot mega evolve ${baseName}: no valid stone found`);
+            let stone = mon.item || (mon.buildData && mon.buildData.i);
+            let megaFormName;
+
+            // Mega Rayquaza: stoneless mega, gated by Dragon Ascent in the moveset.
+            if (baseName === "Rayquaza") {
+                const hasDA = (mon.buildData && Array.isArray(mon.buildData.m) && mon.buildData.m.includes("Dragon Ascent"))
+                           || (Array.isArray(mon.moves) && mon.moves.some(m => (m && (m.name === "Dragon Ascent" || m === "Dragon Ascent"))));
+                if (!hasDA) {
+                    logMsg(`${mon.name} can't Mega Evolve without Dragon Ascent!`, 'info');
                     return;
+                }
+                megaFormName = MEGA_FORM_NAMES[RAYQUAZA_MEGA_SENTINEL];
+                stone = null; // Rayquaza never consumes a stone slot
+            } else {
+                megaFormName = MEGA_FORM_NAMES[stone];
+                if (!megaFormName) {
+                    logMsg(`${mon.name} can't Mega Evolve — no valid Mega Stone.`, 'info');
+                    return;
+                }
+                // Cross-validate: the mega form must belong to THIS species.
+                // Guards against Latios holding Latiasite (and similar mix-ups) evolving into the wrong form.
+                if (!megaFormName.toLowerCase().startsWith(baseName.toLowerCase())) {
+                    let correctStone = MEGA_STONE_MAP[baseName];
+                    if (Array.isArray(correctStone)) correctStone = correctStone[0];
+                    if (correctStone && MEGA_FORM_NAMES[correctStone] && correctStone !== RAYQUAZA_MEGA_SENTINEL) {
+                        logMsg(`${baseName}'s ${stone} doesn't match — using ${correctStone} instead.`, 'info');
+                        stone = correctStone;
+                        megaFormName = MEGA_FORM_NAMES[correctStone];
+                    } else {
+                        logMsg(`${baseName} can't Mega Evolve with ${stone}.`, 'info');
+                        return;
+                    }
                 }
             }
 
-            mon.megaEvolved = true;
-            if (isPlayer) state.usedMega = true; else state.fUsedMega = true;
             let oldName = mon.name;
             // Try @pkmn/dex for mega stats
             let D = getPssDex();
@@ -9034,7 +9098,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         let types = megaSpecies.types || [megaSpecies.type1 || mon.type1];
                         mon.type1 = types[0] || mon.type1;
                         mon.type2 = types[1] || '';
-                        let megaAbil = megaSpecies.abilities && (megaSpecies.abilities['0'] || megaSpecies.abilities['1']);
+                        // Mega forms always expose their locked ability at slot 0 in the dex.
+                        let megaAbil = megaSpecies.abilities && megaSpecies.abilities['0'];
                         if (megaAbil) mon.ability = megaAbil;
                         mon.name = megaFormName;
                         applied = true;
@@ -9046,12 +9111,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ['atk','def','spa','spd','spe'].forEach(s => { mon.stats[s] = Math.floor(mon.stats[s] * 1.2); });
                 mon.name = megaFormName;
             }
-            logMsg(`${oldName} Mega Evolved into ${mon.name}!`, 'info');
-            // Update sprite
+            // Commit once-per-battle / per-mon flags only after successful application.
+            mon.megaEvolved = true;
+            // Primal Reversion (Red Orb / Blue Orb) does NOT consume the once-per-battle Mega slot.
+            const _isPrimal = (stone === "Red Orb" || stone === "Blue Orb");
+            if (!_isPrimal) {
+                if (isPlayer) state.usedMega = true; else state.fUsedMega = true;
+            }
+            if (_isPrimal) {
+                logMsg(`${oldName} reverted to ${mon.name}!`, 'info');
+            } else {
+                logMsg(`${oldName} Mega Evolved into ${mon.name}!`, 'info');
+            }
+            // Update sprite + banner overlay
             let spriteEl = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
             if (spriteEl) {
                 spriteEl.src = getSprite(mon.name, mon.isShiny, isPlayer); spriteEl.alt = mon.name; spriteEl.dataset.shiny = mon.isShiny ? 'true' : 'false';
-                if (settings.animations) { spriteEl.classList.add('anim-mega-activate'); setTimeout(() => spriteEl.classList.remove('anim-mega-activate'), 850); }
+                if (settings.animations) {
+                    spriteEl.classList.add('anim-mega-activate'); setTimeout(() => spriteEl.classList.remove('anim-mega-activate'), 850);
+                    try { showGimmickBanner('MEGA EVOLUTION', '#7b1fa2'); } catch(e) {}
+                }
             }
             updateUI();
         }
@@ -12491,9 +12570,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let hpPct = attacker.currentHp / attacker.maxHp;
             let defHpPct = defender.currentHp / defender.maxHp;
 
-            // MEGA: activate immediately — always a net stat gain
+            // MEGA: previously activated unconditionally. Now apply a few cheap heuristics so
+            // the AI doesn't waste its once-per-battle slot on a turn it's about to switch or
+            // on a near-dead Pokémon. Mega is still high-value, so the bar to skip is low.
             if (bd.gimmick === 'MEGA' && !attacker.megaEvolved && (!settings.classicMode || !state.fUsedMega)) {
-                return 'MEGA';
+                // Skip if we're about to die anyway and can't recover (sub 25% HP + no recovery move).
+                const _recoveryMoves = new Set(["Recover","Roost","Slack Off","Soft-Boiled","Synthesis","Moonlight","Morning Sun","Milk Drink","Heal Order","Shore Up","Strength Sap","Wish","Pain Split","Rest"]);
+                const _hasRecovery = (attacker.moves || []).some(m => m && _recoveryMoves.has(m.name));
+                const _aboutToDie = hpPct < 0.25 && !_hasRecovery;
+                // Skip if we are >2x slower AND defender threatens an OHKO this turn — mega won't fix turn order.
+                const _foeOhkos = (defender.moves || []).some(m => m && m.cat !== 'Status'
+                    && getMoveEffectiveness(m.type, attacker.type1, attacker.type2) >= 2);
+                const _vastlySlower = (attacker.stats.spe || 0) * 2 < (defender.stats.spe || 0);
+                const _doomed = _aboutToDie || (_vastlySlower && _foeOhkos && hpPct < 0.4);
+                if (!_doomed) return 'MEGA';
             }
 
             // DYNAMAX: VGC-optimal — burn the 3-turn window early to maximize Max Move secondaries.
@@ -13812,6 +13902,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!_pIsProtect) state.pActive.volatile.protectCount = 0;
                     if (!_fIsProtect) state.fActive.volatile.protectCount = 0;
 
+                    // VGC fidelity: Mega Evolution is declared with move selection and resolves
+                    // BEFORE the turn-order speed comparison. Activate any pending mega here so
+                    // the post-mega Speed stat governs this turn's order (and Mega Lopunny /
+                    // Manectric / Beedrill actually function as designed).
+                    {
+                        const _pMegaPending = resolveGimmickIntentForActive(true) === 'MEGA';
+                        const _fMegaPending = resolveGimmickIntentForActive(false) === 'MEGA';
+                        const _canPMega = _pMegaPending && state.pActive.buildData && state.pActive.buildData.gimmick === 'MEGA'
+                            && !state.pActive.megaEvolved && (!settings.classicMode || !state.usedMega);
+                        const _canFMega = _fMegaPending && state.fActive.buildData && state.fActive.buildData.gimmick === 'MEGA'
+                            && !state.fActive.megaEvolved && (!settings.classicMode || !state.fUsedMega);
+                        // Resolve faster-trainer first for visual order (matches canon: faster
+                        // trainer's mega is announced first). Speed at this point is pre-mega.
+                        const _preW = getCurrentWeather();
+                        const _preP = _canPMega ? getEffectiveSpeed(state.pActive, _preW) : -1;
+                        const _preF = _canFMega ? getEffectiveSpeed(state.fActive, _preW) : -1;
+                        const _pFirst = _preP >= _preF;
+                        const _doP = () => { if (_canPMega) { activateMega(state.pActive, true); clearGimmickIntent(true); } };
+                        const _doF = () => { if (_canFMega) { activateMega(state.fActive, false); clearGimmickIntent(false); } };
+                        if (_pFirst) { _doP(); _doF(); } else { _doF(); _doP(); }
+                    }
+
                     let w = getCurrentWeather();
                     let pSpe = getEffectiveSpeed(state.pActive, w);
                     let fSpe = getEffectiveSpeed(state.fActive, w);
@@ -14552,8 +14664,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let ok = attacker.buildData && attacker.buildData.gimmick === 'ZMOVE' && !attacker.zMoveUsed && (!settings.classicMode || !(isPlayer ? state.usedZ : state.fUsedZ));
                     if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
                 }
-                if (gimmickPending === 'MEGA' && !attacker.megaEvolved) {
-                    activateMega(attacker, isPlayer);
+                if (gimmickPending === 'MEGA') {
+                    // Mega is normally pre-resolved before turn-order calc (see speed block).
+                    // This branch only fires for non-double-action paths (e.g. one side switched).
+                    if (!attacker.megaEvolved) activateMega(attacker, isPlayer);
                     clearGimmickIntent(isPlayer);
                 } else if ((gimmickPending === 'DYNAMAX' || gimmickPending === 'GMAXDYNAMAX') && !attacker.dynamaxed) {
                     activateDynamax(attacker, isPlayer);
@@ -17262,6 +17376,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${state.pActive.name} fainted!`, 'dmg');
                 if (state.fActive.dynamaxed) deactivateDynamax(state.fActive, false);
                 if (state.pActive.dynamaxed) deactivateDynamax(state.pActive, true);
+                if (state.fActive.megaEvolved && state.fActive._baseName) logMsg(`${state.fActive.name} reverted.`, 'info');
+                if (state.pActive.megaEvolved && state.pActive._baseName) logMsg(`${state.pActive.name} reverted.`, 'info');
                 state.fActive.dynamaxed = false; state.fActive.dynamaxTurns = 0;
                 state.pActive.dynamaxed = false; state.pActive.dynamaxTurns = 0;
                 if(settings.animations){ let fs = document.getElementById('foe-sprite'); let ps = document.getElementById('player-sprite'); const faintP = anime({targets:[fs,ps], translateY:[0,40], opacity:[1,0], filter:['brightness(1)','brightness(0)'], duration:700, easing:'easeInQuad'}).finished; await faintP; fs.style.opacity='0'; fs.style.visibility='hidden'; ps.style.opacity='0'; ps.style.visibility='hidden'; anime.remove(fs); anime.remove(ps); fs.style.filter=''; fs.style.transform=''; ps.style.filter=''; ps.style.transform=''; } ['foe-sprite','player-sprite'].forEach((id,ix)=>{let el=document.getElementById(id);if(el){el.style.filter=''; const mon=ix===0?state.fActive:state.pActive; el.style.transform=getSpriteTransformStyle(mon);}});
@@ -17339,6 +17455,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 clearGimmickIntent(false);
                 AudioSystem.playFaintCry(state.fActive.name);
                 logMsg(`${state.fActive.name} fainted!`, 'heal');
+                if (state.fActive.megaEvolved && state.fActive._baseName) logMsg(`${state.fActive.name} reverted.`, 'info');
                 // Reaper's Toll: foe's survivors heal 10% maxHp, one random survivor loses -1 SpD
                 if (state._reapersTollActive) {
                     const foeSurvivors = state.foeParty.filter(m => m !== state.fActive && m.currentHp > 0);
@@ -17396,6 +17513,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 clearGimmickIntent(true);
                 AudioSystem.playFaintCry(state.pActive.name);
                 logMsg(`${state.pActive.name} fainted!`, 'dmg');
+                if (state.pActive.megaEvolved && state.pActive._baseName) logMsg(`${state.pActive.name} reverted.`, 'info');
                 // Reaper's Toll: player's survivors heal 10% maxHp, one random survivor loses -1 SpD
                 if (state._reapersTollActive) {
                     const playerSurvivors = state.playerParty.filter(m => m !== state.pActive && m.currentHp > 0);
@@ -17665,6 +17783,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if(mon.currentHp <= 0 || foe.currentHp <= 0) return;
             // Cure incompatible status upon ability acquisition / switch-in
             _abilityStatusCure(mon);
+            // Primal Reversion: Groudon + Red Orb / Kyogre + Blue Orb auto-revert on entry.
+            // No once-per-battle limit; sets permanent harsh sunlight / heavy rain respectively.
+            try {
+                const _baseName = mon._baseName || mon.name;
+                const _orbForm = (_baseName === "Groudon" && mon.item === "Red Orb") ? "Groudon-Primal"
+                              : (_baseName === "Kyogre"  && mon.item === "Blue Orb") ? "Kyogre-Primal"
+                              : null;
+                if (_orbForm && !mon.megaEvolved) {
+                    const _isP = (state.pActive === mon);
+                    activateMega(mon, _isP);
+                    if (mon.megaEvolved) {
+                        logMsg(`${_baseName}'s ${mon.item} triggered Primal Reversion!`, 'info');
+                        const _baseW = (_baseName === "Groudon") ? "HarshSun" : "HeavyRain";
+                        state.weather = _baseW; state.weatherTurns = 0; // permanent
+                        logMsg(_baseName === "Groudon"
+                            ? "The sunlight turned extremely harsh!"
+                            : "A heavy rain began to fall!", 'info');
+                    }
+                }
+            } catch(e) { console.warn('[Primal] reversion failed:', e); }
             // Slow Start: 5-turn debuff on switch-in
             if (mon.ability === "Slow Start") {
                 mon.volatile.slowStartTurns = 5;
