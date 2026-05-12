@@ -14854,9 +14854,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     updateUI(); await sleep(1000); return;
                 }
             }
-            if (move.name === "Sunny Day") { state.weather = "Sun"; state.weatherTurns = attacker.item === "Heat Rock" ? 8 : 5; logMsg("The sunlight turned harsh!", 'info'); AudioSystem.playMoveSound(move); try { _applyWeatherFormChanges(); } catch(e) {} await sleep(1000); return; }
-            if (move.name === "Sandstorm") { state.weather = "Sandstorm"; state.weatherTurns = attacker.item === "Smooth Rock" ? 8 : 5; logMsg("A sandstorm brewed up!", 'info'); AudioSystem.playMoveSound(move); try { _applyWeatherFormChanges(); } catch(e) {} await sleep(1000); return; }
-            if (move.name === "Hail" || move.name === "Snowscape" || move.name === "Chilly Reception") { state.weather = "Hail"; state.weatherTurns = attacker.item === "Icy Rock" ? 8 : 5; logMsg(move.name === "Chilly Reception" ? "The cold reception chilled the air!" : "It started to hail!", 'info'); AudioSystem.playMoveSound(move); try { _applyWeatherFormChanges(); } catch(e) {} await sleep(1000); if (move.name === "Chilly Reception") await handlePivotSwitch(isPlayer, move); return; }
+            // Weather rock duration boost (8 turns vs 5) only if attacker's item is active (Magic Room / Embargo / Klutz suppress it)
+            const _wxRockActive = state.magicRoom === 0 && !(attacker.volatile && attacker.volatile.embargo > 0) && attacker.ability !== "Klutz";
+            if (move.name === "Sunny Day") { state.weather = "Sun"; state.weatherTurns = (_wxRockActive && attacker.item === "Heat Rock") ? 8 : 5; logMsg("The sunlight turned harsh!", 'info'); AudioSystem.playMoveSound(move); try { _applyWeatherFormChanges(); } catch(e) {} await sleep(1000); return; }
+            if (move.name === "Sandstorm") { state.weather = "Sandstorm"; state.weatherTurns = (_wxRockActive && attacker.item === "Smooth Rock") ? 8 : 5; logMsg("A sandstorm brewed up!", 'info'); AudioSystem.playMoveSound(move); try { _applyWeatherFormChanges(); } catch(e) {} await sleep(1000); return; }
+            if (move.name === "Hail" || move.name === "Snowscape" || move.name === "Chilly Reception") { state.weather = "Hail"; state.weatherTurns = (_wxRockActive && attacker.item === "Icy Rock") ? 8 : 5; logMsg(move.name === "Chilly Reception" ? "The cold reception chilled the air!" : "It started to hail!", 'info'); AudioSystem.playMoveSound(move); try { _applyWeatherFormChanges(); } catch(e) {} await sleep(1000); if (move.name === "Chilly Reception") await handlePivotSwitch(isPlayer, move); return; }
             // Future Sight / Doom Desire: intercept before damage engine (they are Special moves but deal NO immediate damage)
             if (move.name === "Future Sight" || move.name === "Doom Desire") {
                 if (defender.volatile.futureSightTurns > 0) { logMsg(`But it failed!`, 'info'); AudioSystem.playMissSound(); registerMoveConnectionFailure(attacker, move); await sleep(1000); return; }
@@ -14927,8 +14929,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // === WEATHER ACCURACY OVERRIDES ===
             let _curWeather = getCurrentWeather();
-            // Utility Umbrella negates weather effects on its holder (here, the attacker)
-            const _utilityUmbrella = (attacker.item === "Utility Umbrella");
+            // Utility Umbrella negates weather effects on its holder (here, the attacker). Suppressed by Magic Room / Embargo / Klutz.
+            const _utilityUmbrella = (attacker.item === "Utility Umbrella" && state.magicRoom === 0 && !(attacker.volatile.embargo > 0) && attacker.ability !== "Klutz");
             // Thunder & Hurricane: 100% in Rain, 50% in harsh Sun
             if (move.name === "Thunder" || move.name === "Hurricane") {
                 if (!_utilityUmbrella && (_curWeather === "Rain" || _curWeather === "HeavyRain")) { neverMiss = true; }
@@ -15284,11 +15286,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         let typeEff = getMoveEffectiveness(move.type || "Normal", defender.type1, defender.type2);
                         if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
                     }
-                    // Sturdy and Focus Sash block OHKOs
-                    if (defender.ability === "Sturdy" || defender.item === "Focus Sash") {
-                        logMsg(`${defender.name} withstood the OHKO with ${defender.ability === "Sturdy" ? "Sturdy" : "Focus Sash"}!`, 'info');
-                        defender.currentHp = 1; if (defender.item === "Focus Sash") { defender.item = null; defender.itemConsumed = true; }
-                        updateUI(); await sleep(1000); return;
+                    // Sturdy (any HP) and Focus Sash (only from full HP, item must be active) block OHKOs
+                    {
+                        const _sashItemActive = state.magicRoom === 0 && !(defender.volatile.embargo > 0) && defender.ability !== "Klutz";
+                        const _sturdy = defender.ability === "Sturdy";
+                        const _sash = _sashItemActive && defender.item === "Focus Sash" && defender.currentHp === defender.maxHp;
+                        if (_sturdy || _sash) {
+                            logMsg(`${defender.name} withstood the OHKO with ${_sturdy ? "Sturdy" : "Focus Sash"}!`, 'info');
+                            defender.currentHp = 1; if (_sash) { defender.item = null; defender.itemConsumed = true; }
+                            updateUI(); await sleep(1000); return;
+                        }
                     }
                     // Sheer Cold has 0% accuracy against Ice types
                     if (move.name === "Sheer Cold" && (defender.type1 === "Ice" || defender.type2 === "Ice")) {
@@ -15329,9 +15336,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // willCrit: always-crit moves (Flower Trick, Frost Breath, Storm Throw, Surging Strikes, Wicked Blow, Zippy Zap)
                 const _alwaysCritMoves = new Set(["Flower Trick","Frost Breath","Storm Throw","Surging Strikes","Wicked Blow","Zippy Zap"]);
                 if (move.willCrit || _alwaysCritMoves.has(move.name)) critStage = 99;
-                if (attacker.item === "Scope Lens" || attacker.item === "Razor Claw") critStage++;
-                if ((attacker.item === "Leek" || attacker.item === "Stick") && (attacker.name === "Farfetch'd" || attacker.name === "Sirfetch'd")) critStage += 2;
-                if (attacker.item === "Lucky Punch" && attacker.name === "Chansey") critStage += 2;
+                {
+                    const _critItemActive = state.magicRoom === 0 && !(attacker.volatile && attacker.volatile.embargo > 0) && attacker.ability !== "Klutz";
+                    if (_critItemActive && (attacker.item === "Scope Lens" || attacker.item === "Razor Claw")) critStage++;
+                    if (_critItemActive && (attacker.item === "Leek" || attacker.item === "Stick") && (attacker.name === "Farfetch'd" || attacker.name === "Sirfetch'd")) critStage += 2;
+                    if (_critItemActive && attacker.item === "Lucky Punch" && attacker.name === "Chansey") critStage += 2;
+                }
                 if (attacker.volatile && attacker.volatile.focusEnergy) {
                     const fe = attacker.volatile.focusEnergy;
                     critStage += (typeof fe === 'number') ? fe : 2;
@@ -15808,8 +15818,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 // Weather
                 let w = getCurrentWeather();
-                // Utility Umbrella: attacker or defender holding it ignores weather power changes
-                let umbrellaActive = attacker.item === "Utility Umbrella" || defender.item === "Utility Umbrella";
+                // Utility Umbrella: attacker holding it ignores weather power changes on their own attacks (item must be active)
+                let umbrellaActive = _atkItemActive && attacker.item === "Utility Umbrella";
                 if (!umbrellaActive) {
                     if ((w === "Sun" || w === "HarshSun") && move.type === "Fire") basePower = Math.floor(basePower * 1.5);
                     if ((w === "Sun" || w === "HarshSun") && move.type === "Water") basePower = Math.floor(basePower * 0.5);
@@ -16469,8 +16479,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         attacker.currentHp -= actRs;
                         logMsg(`${attacker.name} was hurt by ${defender.name}'s ${defender.ability}! (${actRs} damage)`, 'dmg');
                     }
-                    // King's Rock / Razor Fang: 10% flinch
-                    if (_atkItemActive && (attacker.item === "King's Rock" || attacker.item === "Razor Fang") && Math.random() < 0.1) {
+                    // King's Rock / Razor Fang: 10% flinch on damaging moves (blocked by Shield Dust / Inner Focus / Covert Cloak)
+                    if (_atkItemActive && (attacker.item === "King's Rock" || attacker.item === "Razor Fang")
+                        && move.cat !== "Status" && defender.currentHp > 0
+                        && defender.ability !== "Shield Dust" && defender.ability !== "Inner Focus"
+                        && defender.item !== "Covert Cloak"
+                        && Math.random() < 0.1) {
                         defender.volatile.flinch = true;
                     }
                     // Justified (defender): Dark-type hit raises Atk +1
@@ -17417,7 +17431,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const conditionMet = (mon.ability === "Protosynthesis" && sunActive) ||
                                      (mon.ability === "Quark Drive" && elecActive);
                 let consumed = false;
-                if (!conditionMet && mon.item === "Booster Energy") {
+                const _beItemActive = state.magicRoom === 0 && !(mon.volatile && mon.volatile.embargo > 0) && mon.ability !== "Klutz";
+                if (!conditionMet && _beItemActive && mon.item === "Booster Energy") {
                     mon.item = null; mon.itemConsumed = true;
                     consumed = true;
                 }
@@ -18071,16 +18086,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 side.tailwind = 4;
                 logMsg(`${attacker.name} whipped up a Tailwind!`, 'info'); return;
             }
+            // Light Clay extends screens to 8 turns only if attacker's item is active
+            const _lcActive = state.magicRoom === 0 && !(attacker.volatile && attacker.volatile.embargo > 0) && attacker.ability !== "Klutz";
             if (move.name === "Reflect") {
                 let side = isPlayer ? state.pSide : state.fSide;
                 if (side.reflect > 0) { logMsg(`But it failed!`, 'info'); return; }
-                side.reflect = attacker.item === "Light Clay" ? 8 : 5;
+                side.reflect = (_lcActive && attacker.item === "Light Clay") ? 8 : 5;
                 logMsg(`${attacker.name} put up a Reflect!`, 'info'); return;
             }
             if (move.name === "Light Screen") {
                 let side = isPlayer ? state.pSide : state.fSide;
                 if (side.lightScreen > 0) { logMsg(`But it failed!`, 'info'); return; }
-                side.lightScreen = attacker.item === "Light Clay" ? 8 : 5;
+                side.lightScreen = (_lcActive && attacker.item === "Light Clay") ? 8 : 5;
                 logMsg(`${attacker.name} set up a Light Screen!`, 'info'); return;
             }
             if (move.name === "Aurora Veil") {
@@ -18088,7 +18105,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (w !== "Hail" && w !== "Snowscape") { logMsg(`But it failed! Aurora Veil requires Hail or Snow!`, 'info'); return; }
                 let side = isPlayer ? state.pSide : state.fSide;
                 if (side.auroraVeil > 0) { logMsg(`But it failed!`, 'info'); return; }
-                side.auroraVeil = attacker.item === "Light Clay" ? 8 : 5;
+                side.auroraVeil = (_lcActive && attacker.item === "Light Clay") ? 8 : 5;
                 logMsg(`${attacker.name} created an Aurora Veil!`, 'info'); return;
             }
             if (move.name === "Defog") {
@@ -18262,7 +18279,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 [attacker, defender].forEach(mon => { mon.stages = {atk:0, def:0, spa:0, spd:0, spe:0, acc:0, eva:0}; });
                 logMsg(`All stat changes were eliminated!`, 'info'); return;
             }
-            if (move.name === "Rain Dance") { state.weather = "Rain"; state.weatherTurns = attacker.item === "Damp Rock" ? 8 : 5; logMsg("It started to rain!", 'info'); try { _applyWeatherFormChanges(); } catch(e) {} return; }
+            if (move.name === "Rain Dance") {
+                const _dampActive = state.magicRoom === 0 && !(attacker.volatile && attacker.volatile.embargo > 0) && attacker.ability !== "Klutz";
+                state.weather = "Rain"; state.weatherTurns = (_dampActive && attacker.item === "Damp Rock") ? 8 : 5;
+                logMsg("It started to rain!", 'info'); try { _applyWeatherFormChanges(); } catch(e) {} return;
+            }
             if (move.name === "Pain Split") {
                 let avg = Math.floor((attacker.currentHp + defender.currentHp) / 2);
                 attacker.currentHp = Math.min(attacker.maxHp, avg);
