@@ -17749,17 +17749,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const oldMax = mon.maxHp || 1;
             const oldCur = mon.currentHp;
             const evs = (mon.buildData && mon.buildData.evs) || {};
+            const ivs = (mon.buildData && mon.buildData.ivs) || {};
+            const getIV = s => (ivs[s] !== undefined ? ivs[s] : 31);
             const nMults = { atk:1, def:1, spa:1, spd:1, spe:1 };
             const n = mon.buildData && natureModifiers[mon.buildData.n];
             if (n) { nMults[n.up] = 1.1; nMults[n.down] = 0.9; }
             mon.stats = {
-                atk: Math.floor((2*newBase.atk+Math.floor((evs.atk||0)/4)+5)*nMults.atk),
-                def: Math.floor((2*newBase.def+Math.floor((evs.def||0)/4)+5)*nMults.def),
-                spa: Math.floor((2*newBase.spa+Math.floor((evs.spa||0)/4)+5)*nMults.spa),
-                spd: Math.floor((2*newBase.spd+Math.floor((evs.spd||0)/4)+5)*nMults.spd),
-                spe: Math.floor((2*newBase.spe+Math.floor((evs.spe||0)/4)+5)*nMults.spe)
+                atk: Math.floor((Math.floor((2*newBase.atk+getIV('atk')+Math.floor((evs.atk||0)/4))*50/100)+5)*nMults.atk),
+                def: Math.floor((Math.floor((2*newBase.def+getIV('def')+Math.floor((evs.def||0)/4))*50/100)+5)*nMults.def),
+                spa: Math.floor((Math.floor((2*newBase.spa+getIV('spa')+Math.floor((evs.spa||0)/4))*50/100)+5)*nMults.spa),
+                spd: Math.floor((Math.floor((2*newBase.spd+getIV('spd')+Math.floor((evs.spd||0)/4))*50/100)+5)*nMults.spd),
+                spe: Math.floor((Math.floor((2*newBase.spe+getIV('spe')+Math.floor((evs.spe||0)/4))*50/100)+5)*nMults.spe)
             };
-            const newMax = Math.floor((2*(newBase.hp||100)+Math.floor((evs.hp||0)/4)+110));
+            const newMax = (newName === 'Shedinja') ? 1 : (Math.floor((2*(newBase.hp||100)+getIV('hp')+Math.floor((evs.hp||0)/4))*50/100)+60);
             if (opts.proportionalHp) {
                 const ratio = oldCur / oldMax;
                 mon.maxHp = newMax;
@@ -18256,11 +18258,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let heroBase = (baseStats["Palafin-Hero"] || baseStats["Palafin"] || {});
                 if (heroBase.atk) {
                     let evs = (mon.buildData && mon.buildData.evs) || {};
+                    let ivs = (mon.buildData && mon.buildData.ivs) || {};
+                    let getIV = s => (ivs[s] !== undefined ? ivs[s] : 31);
                     let nMults = { atk: 1, def: 1, spa: 1, spd: 1, spe: 1 };
                     let n = mon.buildData && natureModifiers[mon.buildData.n];
                     if (n) { nMults[n.up] = 1.1; nMults[n.down] = 0.9; }
-                    mon.stats = { atk: Math.floor((2*heroBase.atk+Math.floor((evs.atk||0)/4)+5)*nMults.atk), def: Math.floor((2*heroBase.def+Math.floor((evs.def||0)/4)+5)*nMults.def), spa: Math.floor((2*heroBase.spa+Math.floor((evs.spa||0)/4)+5)*nMults.spa), spd: Math.floor((2*heroBase.spd+Math.floor((evs.spd||0)/4)+5)*nMults.spd), spe: Math.floor((2*heroBase.spe+Math.floor((evs.spe||0)/4)+5)*nMults.spe) };
-                    mon.maxHp = Math.floor((2*(heroBase.hp||100)+Math.floor(((mon.buildData&&mon.buildData.evs&&mon.buildData.evs.hp)||0)/4)+110));
+                    mon.stats = { atk: Math.floor((Math.floor((2*heroBase.atk+getIV('atk')+Math.floor((evs.atk||0)/4))*50/100)+5)*nMults.atk), def: Math.floor((Math.floor((2*heroBase.def+getIV('def')+Math.floor((evs.def||0)/4))*50/100)+5)*nMults.def), spa: Math.floor((Math.floor((2*heroBase.spa+getIV('spa')+Math.floor((evs.spa||0)/4))*50/100)+5)*nMults.spa), spd: Math.floor((Math.floor((2*heroBase.spd+getIV('spd')+Math.floor((evs.spd||0)/4))*50/100)+5)*nMults.spd), spe: Math.floor((Math.floor((2*heroBase.spe+getIV('spe')+Math.floor((evs.spe||0)/4))*50/100)+5)*nMults.spe) };
+                    mon.maxHp = Math.floor((2*(heroBase.hp||100)+getIV('hp')+Math.floor((evs.hp||0)/4))*50/100)+60;
                     mon.currentHp = Math.min(mon.currentHp, mon.maxHp);
                 }
                 logMsg(`Palafin transformed into Palafin-Hero!`, 'info');
@@ -18272,10 +18276,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let base = baseStats[mon.name];
                 if (base && mon.buildData) {
                     let evs = mon.buildData.evs || {};
+                    let ivs = mon.buildData.ivs || {};
+                    let getIV = s => (ivs[s] !== undefined ? ivs[s] : 31);
                     let nMults = { atk: 1, def: 1, spa: 1, spd: 1, spe: 1 };
                     let n = natureModifiers[mon.buildData.n];
                     if (n) { nMults[n.up] = 1.1; nMults[n.down] = 0.9; }
-                    mon.stats = { atk: Math.floor((2*base.atk+Math.floor((evs.atk||0)/4)+5)*nMults.atk), def: Math.floor((2*base.def+Math.floor((evs.def||0)/4)+5)*nMults.def), spa: Math.floor((2*base.spa+Math.floor((evs.spa||0)/4)+5)*nMults.spa), spd: Math.floor((2*base.spd+Math.floor((evs.spd||0)/4)+5)*nMults.spd), spe: Math.floor((2*base.spe+Math.floor((evs.spe||0)/4)+5)*nMults.spe) };
+                    mon.stats = { atk: Math.floor((Math.floor((2*base.atk+getIV('atk')+Math.floor((evs.atk||0)/4))*50/100)+5)*nMults.atk), def: Math.floor((Math.floor((2*base.def+getIV('def')+Math.floor((evs.def||0)/4))*50/100)+5)*nMults.def), spa: Math.floor((Math.floor((2*base.spa+getIV('spa')+Math.floor((evs.spa||0)/4))*50/100)+5)*nMults.spa), spd: Math.floor((Math.floor((2*base.spd+getIV('spd')+Math.floor((evs.spd||0)/4))*50/100)+5)*nMults.spd), spe: Math.floor((Math.floor((2*base.spe+getIV('spe')+Math.floor((evs.spe||0)/4))*50/100)+5)*nMults.spe) };
                     mon.type1 = base.t1; mon.type2 = base.t2;
                     mon.ability = mon.buildData.a || 'None';
                     mon.moves = mon.buildData.m.map(mName => buildMoveObject(mName));
