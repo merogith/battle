@@ -2706,6 +2706,24 @@
             100% { filter: brightness(1); transform: translateX(-50%) scale(1); }
         }
 
+        /* Gimmick activation banner (used for Mega Evolution / Primal Reversion announcements) */
+        .gimmick-banner {
+            position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%);
+            padding: 10px 28px; border-radius: 8px; z-index: 9000; pointer-events: none;
+            font-weight: 900; font-size: 24px; letter-spacing: 2px; color: #fff;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+            background: linear-gradient(135deg, rgba(0,0,0,0.55), rgba(0,0,0,0.25));
+            border: 2px solid #fff;
+            box-shadow: 0 0 24px currentColor, 0 0 60px currentColor;
+            animation: gimmickBanner 1.1s ease-out forwards;
+        }
+        @keyframes gimmickBanner {
+            0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(-6deg); }
+            25%  { opacity: 1; transform: translate(-50%, -50%) scale(1.15) rotate(2deg); }
+            70%  { opacity: 1; transform: translate(-50%, -50%) scale(1.0) rotate(0); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1.0) rotate(0); }
+        }
+
         /* Dynamax activation grow */
         .anim-dmax-activate { animation: dmaxActivate 0.9s ease-out; }
         @keyframes dmaxActivate {
@@ -2714,6 +2732,14 @@
             50% { filter: brightness(2.5) drop-shadow(0 0 30px #ff1744); transform: translateX(-50%) scale(1.4); }
             70% { filter: brightness(1.5) drop-shadow(0 0 15px #ef5350); transform: translateX(-50%) scale(1.2); }
             100% { filter: drop-shadow(0 0 8px #ef5350); transform: translateX(-50%) scale(1.25); }
+        }
+        /* Dynamax shrink-back */
+        .anim-dmax-deactivate { animation: dmaxDeactivate 0.6s ease-in; }
+        @keyframes dmaxDeactivate {
+            0%   { filter: drop-shadow(0 0 8px #ef5350); transform: translateX(-50%) scale(1.25); }
+            40%  { filter: brightness(1.4) drop-shadow(0 0 12px #ef5350); transform: translateX(-50%) scale(1.1); }
+            80%  { filter: brightness(1.1); transform: translateX(-50%) scale(0.95); }
+            100% { filter: brightness(1); transform: translateX(-50%) scale(1); }
         }
 
         /* Tera activation crystal flash */
@@ -5608,6 +5634,7 @@
             const evs = build.evs;
             const moves = (build.m || []).flatMap(m => m.split('/'));
             const ability = build.a || '';
+            const item = build.i || '';
 
             const hasSetup = moves.some(m => _SETUP_MOVES.has(m));
             const hasHazards = moves.some(m => _HAZARD_MOVES.has(m));
@@ -5615,8 +5642,12 @@
             const hasWeatherSetter = moves.some(m => _WEATHER_SETTER_MOVE_SET.has(m));
             const hasWeatherBoosted = moves.some(m => _WEATHER_BOOSTED.has(m));
 
-            const offAtk = evs.atk >= 200;
-            const offSpa = evs.spa >= 200;
+            const physItem = item === 'Choice Band';
+            const specItem = item === 'Choice Specs';
+            const offItem = physItem || specItem || item === 'Choice Scarf' || item === 'Life Orb' || item === 'Expert Belt';
+
+            const offAtk = evs.atk >= 200 || physItem;
+            const offSpa = evs.spa >= 200 || specItem;
             const bulky = (evs.hp >= 200) || (evs.def >= 200) || (evs.spd >= 200);
             const physNature = _ATK_NATURES.has(build.n);
             const specNature = _SPA_NATURES.has(build.n);
@@ -5627,17 +5658,19 @@
                 return 'lead-hazards';
             if (hasSetup && (offAtk || offSpa || physNature || specNature))
                 return 'setup-sweeper';
+            if (physItem && !specItem) return 'physical-attacker';
+            if (specItem && !physItem) return 'special-attacker';
             if (offAtk && offSpa)
                 return 'mixed-attacker';
-            if (offAtk || (physNature && evs.atk >= 100))
+            if (offAtk || (physNature && evs.atk >= 100 && evs.spa < 100))
                 return 'physical-attacker';
-            if (offSpa || (specNature && evs.spa >= 100))
+            if (offSpa || (specNature && evs.spa >= 100 && evs.atk < 100))
                 return 'special-attacker';
-            if (bulky)
+            if (bulky && !offItem)
                 return 'bulky-support';
-            if (physNature)
+            if (physNature && !specNature)
                 return 'physical-attacker';
-            if (specNature)
+            if (specNature && !physNature)
                 return 'special-attacker';
             return 'other';
         }
@@ -6004,15 +6037,21 @@
                         return mv && mv.type === b.teraType && mv.cat !== 'Status';
                     });
                     if (!b.m.includes('Tera Blast') && !hasSTABForTera) {
-                        ensureMoveData('Tera Blast');
+                        let damagingCount = 0;
                         let weakIdx = -1, weakBP = Infinity;
                         for (let i = 0; i < b.m.length; i++) {
                             const mv = movesDB[b.m[i]] || ensureMoveData(b.m[i]);
-                            if (mv && mv.cat !== 'Status' && mv.type !== base.t1 && mv.type !== (base.t2||'') && (mv.pow||0) < weakBP) {
-                                weakBP = mv.pow||0; weakIdx = i;
+                            if (mv && mv.cat !== 'Status') {
+                                damagingCount++;
+                                if (mv.type !== base.t1 && mv.type !== (base.t2||'') && (mv.pow||0) < weakBP) {
+                                    weakBP = mv.pow||0; weakIdx = i;
+                                }
                             }
                         }
-                        if (weakIdx >= 0) b.m[weakIdx] = 'Tera Blast';
+                        if (weakIdx >= 0 && weakBP <= 50 && damagingCount > 1) {
+                            ensureMoveData('Tera Blast');
+                            b.m[weakIdx] = 'Tera Blast';
+                        }
                     }
                 }
             } else {
@@ -6550,8 +6589,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             "Garchomp":"Garchompite","Lucario":"Lucarionite","Abomasnow":"Abomasite","Gallade":"Galladite",
             "Audino":"Audinite","Diancie":"Diancite","Sableye":"Sablenite","Sceptile":"Sceptilite",
             "Swampert":"Swampertite","Steelix":"Steelixite","Alakazam":"Alakazite",
-            "Groudon":"Red Orb","Kyogre":"Blue Orb","Rayquaza":null
+            "Groudon":"Red Orb","Kyogre":"Blue Orb","Rayquaza":"__RAYQUAZA_MEGA__"
         };
+        // Rayquaza Mega does not require a held item — it's gated by knowing Dragon Ascent.
+        // We use a sentinel stone key so the rest of the pipeline (validateGimmick / activateMega)
+        // can recognise the mega without conflicting with real items.
+        const RAYQUAZA_MEGA_SENTINEL = "__RAYQUAZA_MEGA__";
         const MEGA_SPECIES = new Set(Object.keys(MEGA_STONE_MAP));
         const MEGA_FORM_NAMES = {
             "Venusaurite":"Venusaur-Mega","Charizardite X":"Charizard-Mega-X","Charizardite Y":"Charizard-Mega-Y",
@@ -6570,7 +6613,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             "Galladite":"Gallade-Mega","Audinite":"Audino-Mega","Diancite":"Diancie-Mega",
             "Sablenite":"Sableye-Mega","Sceptilite":"Sceptile-Mega","Swampertite":"Swampert-Mega",
             "Red Orb":"Groudon-Primal","Blue Orb":"Kyogre-Primal",
-            "Mewtwonite X":"Mewtwo-Mega-X","Mewtwonite Y":"Mewtwo-Mega-Y"
+            "Mewtwonite X":"Mewtwo-Mega-X","Mewtwonite Y":"Mewtwo-Mega-Y",
+            "__RAYQUAZA_MEGA__":"Rayquaza-Mega"
         };
         const GMAX_SPECIES = new Set(["Venusaur","Blastoise","Charizard","Butterfree","Pikachu","Meowth","Machamp","Gengar","Kingler","Lapras","Eevee","Snorlax","Garbodor","Melmetal","Rillaboom","Cinderace","Inteleon","Corviknight","Orbeetle","Drednaw","Coalossal","Flapple","Appletun","Sandaconda","Toxtricity","Centiskorch","Hatterene","Grimmsnarl","Alcremie","Copperajah","Duraludon","Urshifu","Eternatus"]);
         const DYNAMAX_BANNED = new Set(["Zacian","Zamazenta","Eternatus"]);
@@ -6643,7 +6687,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             "Solganium Z":     "Searing Sunraze Smash",
             "Lunalium Z":      "Menacing Moonraze Maelstrom",
             "Ultranecrozium Z":"Light That Burns the Sky",
-            "Stakatium Z":     "Breakneck Blitz",
+            "Stakatium Z":     "Corkscrew Crash",
         };
 
         // Roll exactly one gimmick per Pokemon. Each eligible mechanic gets a 20% chance.
@@ -6664,7 +6708,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function rollGimmick(name, forcedTag) {
             const mech = _mechForGimmickRoll();
             const candidates = [];
-            if (mech.mega && MEGA_SPECIES.has(name) && name !== "Rayquaza") candidates.push('MEGA');
+            if (mech.mega && MEGA_SPECIES.has(name)) candidates.push('MEGA');
             if (mech.zmove) candidates.push('ZMOVE');
             if (mech.dynamax && !DYNAMAX_BANNED.has(name)) {
                 candidates.push(GMAX_SPECIES.has(name) ? 'GMAXDYNAMAX' : 'DYNAMAX');
@@ -6707,9 +6751,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function assignGimmickToBuild(name, build, gimmick) {
             build.gimmick = gimmick;
             if (gimmick === 'MEGA') {
-                let stone = MEGA_STONE_MAP[name];
-                if (Array.isArray(stone)) stone = stone[Math.floor(Math.random() * stone.length)];
-                if (stone) build.i = stone;
+                // Mega Rayquaza is special-cased: knowing Dragon Ascent unlocks the mega,
+                // and Rayquaza cannot hold a mega stone in canon. Ensure Dragon Ascent is in the moveset.
+                if (name === "Rayquaza") {
+                    build.m = build.m || [];
+                    if (!build.m.includes("Dragon Ascent")) {
+                        let injIdx = build.m.length < 4 ? build.m.length : build.m.length - 1;
+                        build.m[injIdx] = "Dragon Ascent";
+                    }
+                    // No stone assigned — see activateMega() for sentinel handling.
+                } else {
+                    let stone = MEGA_STONE_MAP[name];
+                    if (Array.isArray(stone)) stone = stone[Math.floor(Math.random() * stone.length)];
+                    if (stone) build.i = stone;
+                }
                 // If no stone is available, degrade below — handled by validateGimmick
             } else if (gimmick === 'ZMOVE') {
                 // If the build already has a standard (non-signature) Z-Crystal, keep it
@@ -6718,21 +6773,46 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let sigZ = SIGNATURE_Z[name];
                 if (sigZ) {
                     build.i = sigZ;
-                    // Inject the required move if not already in the moveset
+                    // Inject the required move if not already in the moveset, preferring to overwrite
+                    // the weakest filler (status moves > non-STAB low-BP > else last slot).
                     let reqMove = SIGNATURE_Z_REQUIRED_MOVE[sigZ];
                     if (reqMove && !(build.m || []).includes(reqMove)) {
-                        // Replace the weakest non-STAB move, or last slot
                         build.m = build.m || [];
-                        let injIdx = build.m.length < 4 ? build.m.length : build.m.length - 1;
-                        build.m[injIdx] = reqMove;
+                        // If there's an empty slot, use it
+                        if (build.m.length < 4) { build.m.push(reqMove); return; }
+                        // Otherwise find weakest slot. Get species types for STAB ranking.
+                        let _D = (typeof getPssDex === 'function') ? getPssDex() : null;
+                        let _sp = (_D && _D.species && _D.species.get) ? _D.species.get(name) : null;
+                        let _tps = (_sp && _sp.types) || [];
+                        let t1 = _tps[0] || '', t2 = _tps[1] || '';
+                        let worstIdx = 0, worstScore = Infinity;
+                        for (let i = 0; i < build.m.length; i++) {
+                            let mv = movesDB[build.m[i]];
+                            if (!mv) { worstIdx = i; break; }
+                            // Score: status moves = lowest priority to keep (50), low-BP non-STAB = next, STAB damaging = highest
+                            let score;
+                            if (mv.cat === 'Status') score = 50;
+                            else {
+                                let isStab = mv.type === t1 || mv.type === t2;
+                                score = (mv.pow || 0) + (isStab ? 60 : 0);
+                            }
+                            if (score < worstScore) { worstScore = score; worstIdx = i; }
+                        }
+                        build.m[worstIdx] = reqMove;
                     }
                     return;
                 }
-                // Otherwise: find the highest-BP damaging move and assign matching Z-Crystal
-                let bestMove = null, bestBP = 0;
+                // Otherwise: pick best damaging move (prefer STAB, then BP) and assign matching Z-Crystal
+                let mon = (typeof pokedex !== 'undefined' && pokedex[name]) || {};
+                let t1 = mon.type1 || '', t2 = mon.type2 || '';
+                let bestMove = null, bestScore = -1;
                 for (let mname of (build.m || [])) {
                     let mv = movesDB[mname];
-                    if (mv && mv.cat !== 'Status' && (mv.pow || 0) > bestBP) { bestBP = mv.pow; bestMove = mv; }
+                    if (!mv || mv.cat === 'Status' || !(mv.pow > 0)) continue;
+                    if (!Z_TYPE_MAP[mv.type]) continue;
+                    let isStab = mv.type === t1 || mv.type === t2;
+                    let score = mv.pow + (isStab ? 40 : 0);
+                    if (score > bestScore) { bestScore = score; bestMove = mv; }
                 }
                 if (bestMove && Z_TYPE_MAP[bestMove.type]) build.i = Z_TYPE_MAP[bestMove.type];
                 // else: leave item as-is — validateGimmick will degrade if no match possible
@@ -6747,8 +6827,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!gimmick || gimmick === 'STANDARD' || gimmick === 'DYNAMAX' || gimmick === 'GMAXDYNAMAX') return true;
             if (gimmick === 'TERA') return true; // Tera works with any build — no item required
             if (gimmick === 'MEGA') {
-                // Must be a Mega-capable species (excluding Rayquaza which has no stone)
-                if (!MEGA_SPECIES.has(name) || name === "Rayquaza") return false;
+                if (!MEGA_SPECIES.has(name)) return false;
+                // Mega Rayquaza: gated by knowing Dragon Ascent, no stone required.
+                if (name === "Rayquaza") {
+                    return Array.isArray(build.m) && build.m.includes("Dragon Ascent");
+                }
                 // Must have a valid mega stone item in the build
                 return isMegaStone(build.i) && MEGA_FORM_NAMES[build.i];
             }
@@ -8310,6 +8393,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'Twinkle Tackle':'Fairy-type Z-Move. Power based on base move BP.',
                 'Catastropika':'Pikachu exclusive. Extreme Electric-type Z-Move.',
                 'Pulverizing Pancake':'Snorlax exclusive. Extreme Normal-type Z-Move.',
+                '10,000,000 Volt Thunderbolt':'Cap-Pikachu exclusive. Extreme Electric-type Z-Move with a very high crit ratio.',
+                'Stoked Sparksurfer':'Alolan Raichu exclusive. Electric-type Z-Move that paralyzes the target.',
+                'Extreme Evoboost':'Eevee exclusive. Sharply raises all of the user’s stats (+2 to every stat).',
+                'Genesis Supernova':'Mew exclusive. Psychic-type Z-Move that sets Psychic Terrain.',
+                'Soul-Stealing 7-Star Strike':'Marshadow exclusive. Extreme Fighting/Ghost-type Z-Move.',
+                'Sinister Arrow Raid':'Decidueye exclusive. Extreme Ghost-type Z-Move.',
+                'Malicious Moonsault':'Incineroar exclusive. Extreme Dark-type Z-Move.',
+                'Oceanic Operetta':'Primarina exclusive. Extreme Water-type Z-Move.',
+                'Guardian of Alola':'Tapu exclusive. Reduces target’s HP to 1/4 of current.',
+                'Clangorous Soulblaze':'Kommo-o exclusive. Dragon-type Z-Move that boosts every stat by 1.',
+                'Splintered Stormshards':'Lycanroc exclusive. Rock-type Z-Move that clears terrain.',
+                "Let's Snuggle Forever":'Mimikyu exclusive. Extreme Fairy-type Z-Move.',
+                'Searing Sunraze Smash':'Solgaleo / Dusk Mane Necrozma exclusive. Extreme Steel-type Z-Move; ignores ability effects.',
+                'Menacing Moonraze Maelstrom':'Lunala / Dawn Wings Necrozma exclusive. Extreme Ghost-type Z-Move; ignores ability effects.',
+                'Light That Burns the Sky':'Ultra Necrozma exclusive. Psychic-type Z-Move using higher of Atk/SpA; ignores abilities.',
             };
             return maxDesc[moveName] || zDesc[moveName] || 'A powerful gimmick move.';
         }
@@ -8909,7 +9007,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Z-Move power table (base power → Z-Move power)
         function getZMovePower(bp) {
             if (!bp || bp === 0) return 0;
-            if (bp < 60) return 100; if (bp < 70) return 120; if (bp < 80) return 140;
+            // Canon (Showdown) table: 55-:100, 60:120, 65/70/75:140, 80/85:160,
+            // 90/95:175, 100:180, 110:185, 120/125:190, 130:195, 140+:200
+            if (bp < 60) return 100; if (bp < 65) return 120; if (bp < 80) return 140;
             if (bp < 90) return 160; if (bp < 100) return 175; if (bp < 110) return 180;
             if (bp < 120) return 185; if (bp < 130) return 190; if (bp < 140) return 195;
             return 200;
@@ -8948,31 +9048,58 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
 
         // === GIMMICK ACTIVATION FUNCTIONS ===
+        function showGimmickBanner(text, color) {
+            const battle = document.getElementById('battle-screen') || document.getElementById('battle-arena') || document.body;
+            if (!battle) return;
+            const el = document.createElement('div');
+            el.className = 'gimmick-banner';
+            el.textContent = text;
+            if (color) el.style.color = color;
+            // Anchor inside the battle area if it's a positioned container.
+            const cs = window.getComputedStyle(battle);
+            if (cs.position === 'static') battle.style.position = 'relative';
+            battle.appendChild(el);
+            setTimeout(() => { try { el.remove(); } catch(e) {} }, 1150);
+        }
+
         function activateMega(mon, isPlayer) {
             if (mon.megaEvolved) return;
-            let stone = mon.item || (mon.buildData && mon.buildData.i);
-            let megaFormName = MEGA_FORM_NAMES[stone];
-            if (!megaFormName) return; // can't mega without a recognized stone
-
-            // Cross-validate: the mega form must belong to THIS species.
-            // Guards against Latios holding Latiasite (and similar mix-ups) evolving into the wrong form.
             let baseName = mon._baseName || mon.name;
-            if (!megaFormName.toLowerCase().startsWith(baseName.toLowerCase())) {
-                // Look up the correct stone for this species and re-derive the form name
-                let correctStone = MEGA_STONE_MAP[baseName];
-                if (Array.isArray(correctStone)) correctStone = correctStone[0];
-                if (correctStone && MEGA_FORM_NAMES[correctStone]) {
-                    console.warn(`[Mega] Stone mismatch: ${baseName} had ${stone} → corrected to ${correctStone}`);
-                    stone = correctStone;
-                    megaFormName = MEGA_FORM_NAMES[correctStone];
-                } else {
-                    console.warn(`[Mega] Cannot mega evolve ${baseName}: no valid stone found`);
+            let stone = mon.item || (mon.buildData && mon.buildData.i);
+            let megaFormName;
+
+            // Mega Rayquaza: stoneless mega, gated by Dragon Ascent in the moveset.
+            if (baseName === "Rayquaza") {
+                const hasDA = (mon.buildData && Array.isArray(mon.buildData.m) && mon.buildData.m.includes("Dragon Ascent"))
+                           || (Array.isArray(mon.moves) && mon.moves.some(m => (m && (m.name === "Dragon Ascent" || m === "Dragon Ascent"))));
+                if (!hasDA) {
+                    logMsg(`${mon.name} can't Mega Evolve without Dragon Ascent!`, 'info');
                     return;
+                }
+                megaFormName = MEGA_FORM_NAMES[RAYQUAZA_MEGA_SENTINEL];
+                stone = null; // Rayquaza never consumes a stone slot
+            } else {
+                megaFormName = MEGA_FORM_NAMES[stone];
+                if (!megaFormName) {
+                    logMsg(`${mon.name} can't Mega Evolve — no valid Mega Stone.`, 'info');
+                    return;
+                }
+                // Cross-validate: the mega form must belong to THIS species.
+                // Guards against Latios holding Latiasite (and similar mix-ups) evolving into the wrong form.
+                if (!megaFormName.toLowerCase().startsWith(baseName.toLowerCase())) {
+                    let correctStone = MEGA_STONE_MAP[baseName];
+                    if (Array.isArray(correctStone)) correctStone = correctStone[0];
+                    if (correctStone && MEGA_FORM_NAMES[correctStone] && correctStone !== RAYQUAZA_MEGA_SENTINEL) {
+                        logMsg(`${baseName}'s ${stone} doesn't match — using ${correctStone} instead.`, 'info');
+                        stone = correctStone;
+                        megaFormName = MEGA_FORM_NAMES[correctStone];
+                    } else {
+                        logMsg(`${baseName} can't Mega Evolve with ${stone}.`, 'info');
+                        return;
+                    }
                 }
             }
 
-            mon.megaEvolved = true;
-            if (isPlayer) state.usedMega = true; else state.fUsedMega = true;
             let oldName = mon.name;
             // Try @pkmn/dex for mega stats
             let D = getPssDex();
@@ -8998,7 +9125,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         let types = megaSpecies.types || [megaSpecies.type1 || mon.type1];
                         mon.type1 = types[0] || mon.type1;
                         mon.type2 = types[1] || '';
-                        let megaAbil = megaSpecies.abilities && (megaSpecies.abilities['0'] || megaSpecies.abilities['1']);
+                        // Mega forms always expose their locked ability at slot 0 in the dex.
+                        let megaAbil = megaSpecies.abilities && megaSpecies.abilities['0'];
                         if (megaAbil) mon.ability = megaAbil;
                         mon.name = megaFormName;
                         applied = true;
@@ -9010,12 +9138,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ['atk','def','spa','spd','spe'].forEach(s => { mon.stats[s] = Math.floor(mon.stats[s] * 1.2); });
                 mon.name = megaFormName;
             }
-            logMsg(`${oldName} Mega Evolved into ${mon.name}!`, 'info');
-            // Update sprite
+            // Commit once-per-battle / per-mon flags only after successful application.
+            mon.megaEvolved = true;
+            // Primal Reversion (Red Orb / Blue Orb) does NOT consume the once-per-battle Mega slot.
+            const _isPrimal = (stone === "Red Orb" || stone === "Blue Orb");
+            if (!_isPrimal) {
+                if (isPlayer) state.usedMega = true; else state.fUsedMega = true;
+            }
+            if (_isPrimal) {
+                logMsg(`${oldName} reverted to ${mon.name}!`, 'info');
+            } else {
+                logMsg(`${oldName} Mega Evolved into ${mon.name}!`, 'info');
+            }
+            // Update sprite + banner overlay
             let spriteEl = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
             if (spriteEl) {
                 spriteEl.src = getSprite(mon.name, mon.isShiny, isPlayer); spriteEl.alt = mon.name; spriteEl.dataset.shiny = mon.isShiny ? 'true' : 'false';
-                if (settings.animations) { spriteEl.classList.add('anim-mega-activate'); setTimeout(() => spriteEl.classList.remove('anim-mega-activate'), 850); }
+                if (settings.animations) {
+                    spriteEl.classList.add('anim-mega-activate'); setTimeout(() => spriteEl.classList.remove('anim-mega-activate'), 850);
+                    try { showGimmickBanner('MEGA EVOLUTION', '#7b1fa2'); } catch(e) {}
+                }
             }
             updateUI();
         }
@@ -9091,6 +9233,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 spriteEl.alt = sprName;
                 spriteEl.dataset.shiny = sprShiny ? 'true' : 'false';
                 spriteEl.src = getSprite(sprName, sprShiny);
+                if (settings.animations) {
+                    spriteEl.classList.add('anim-dmax-deactivate');
+                    setTimeout(() => { spriteEl.classList.remove('anim-dmax-deactivate'); }, 650);
+                }
             }
             updateUI();
         }
@@ -9167,11 +9313,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Quiver Dance':{spa:1,spd:1,spe:1},'Geomancy':{spa:1,spd:1,spe:1},
             'Toxic':{def:1},'Will-O-Wisp':{atk:1},'Thunder Wave':{spd:1},
             'Stealth Rock':{def:1},'Spikes':{def:1},'Toxic Spikes':{def:1},
-            'Defog':{acc:1},'Roost':{spe:1,def:1,spd:1},'Taunt':{atk:1},
+            'Defog':{eva:1},'Roost':{spe:1,def:1,spd:1},'Taunt':{atk:1},
             'Encore':{spe:1},'Disable':{def:1},'Leech Seed':{def:1,spd:1},
             'Sleep Powder':{spe:1},'Stun Spore':{spd:1},'Hypnosis':{spe:1},
             'Sing':{spe:1},'Lovely Kiss':{spe:1},'Dark Void':{spe:1},'Spore':{def:1},
-            'Trick Room':{acc:1},'Rain Dance':{spe:1},'Sunny Day':{spe:1},
+            'Trick Room':{spe:1},'Rain Dance':{spe:1},'Sunny Day':{spe:1},
             'Sandstorm':{spe:1},'Hail':{spe:1},'Wish':{spd:1},
             'Heal Bell':{spe:1,def:1,spd:1},'Aromatherapy':{spe:1,def:1,spd:1},
             'Rapid Spin':{def:1},'Sticky Web':{spe:1},'Parting Shot':{spe:1},
@@ -9228,7 +9374,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let _zBP = move.pow || _varPowerMoveBP[move.name] || 0;
                 let zPower = getZMovePower(_zBP);
                 let zName = SIGNATURE_Z_MOVE_NAMES[mon.item] || `Z-${move.name}`;
-                return { ...move, pow: zPower, isZMove: true, isSignatureZ: true, name: zName, pri: 0 };
+                // Z-Moves inherit the base move's priority
+                return { ...move, pow: zPower, isZMove: true, isSignatureZ: true, name: zName };
             }
             // Damaging Z-move: move type must match the Z-crystal's type
             let crystalType = getZCrystalType(mon.item);
@@ -9236,7 +9383,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let _zBP2 = move.pow || _varPowerMoveBP[move.name] || 0;
             let zPower = getZMovePower(_zBP2);
             let zName = Z_MOVE_NAMES[move.type] || `Z-${move.name}`;
-            return { ...move, pow: zPower, isZMove: true, name: zName, pri: 0 };
+            // Z-Moves inherit the base move's priority
+            return { ...move, pow: zPower, isZMove: true, name: zName };
         }
 
         // G-Max move names keyed by species base name → move type → G-Max move name
@@ -9475,6 +9623,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch(e) {}
         });
 
+        // Item clause: each held item appears at most once per side (VGC rule).
+        // Empty/'NO_ITEM' is exempt (no held item is not a "shared item"). On conflict,
+        // replace duplicates with Leftovers; if Leftovers is itself taken, fall back to ''.
+        function enforceItemClause(pool) {
+            if (!Array.isArray(pool) || pool.length < 2) return;
+            const seen = new Set();
+            for (const entry of pool) {
+                if (!entry || !entry.build) continue;
+                const it = entry.build.i;
+                if (!it || it === 'NO_ITEM') continue;
+                if (!seen.has(it)) { seen.add(it); continue; }
+                let replacement = seen.has('Leftovers') ? '' : 'Leftovers';
+                entry.build.i = replacement;
+                if (replacement) seen.add(replacement);
+            }
+        }
+
         function rebalanceWeatherBuilds(pool) {
             if (!settings.smartDraftPool) return;
             const hasWeatherSetter = pool.some(p =>
@@ -9514,11 +9679,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const poolSizeMap = { 1: 3, 2: 4, 3: 6, 4: 6, 5: 8, 6: 8 };
             let poolSizePerPlayer = poolSizeMap[settings.partySize] || (settings.partySize + 2);
             let totalPool = poolSizePerPlayer * 2;
-            const poolKeys = shuffleInPlace([...eligible]).slice(0, totalPool);
+            // Species clause: ensure no duplicate species across the combined draft pool
+            const uniqEligible = [...new Set(eligible)];
+            const poolKeys = shuffleInPlace([...uniqEligible]).slice(0, totalPool);
             const p1Pool = poolKeys.slice(0, poolSizePerPlayer).map(name => ({ name, build: makeBuild(name) }));
             const p2Pool = poolKeys.slice(poolSizePerPlayer, totalPool).map(name => ({ name, build: makeBuild(name) }));
             rebalanceWeatherBuilds(p1Pool);
             rebalanceWeatherBuilds(p2Pool);
+            enforceItemClause(p1Pool);
+            enforceItemClause(p2Pool);
             const minGen = Math.min(...enabledGens);
             const maxGen = Math.max(...enabledGens);
             return { mode, enabledGens, minGen, maxGen, p1Pool, p2Pool };
@@ -11021,9 +11190,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let gBadge = '';
                 if (mon.dynamaxed) {
                     const isGmax = mon.buildData && mon.buildData.gimmick === 'GMAXDYNAMAX';
+                    const turnsLeft = Math.max(0, mon.dynamaxTurns || 0);
+                    const turnsTxt = turnsLeft > 0 ? ` ${turnsLeft}/3` : '';
                     gBadge = isGmax
-                        ? ' <span class="gimmick-badge gimmick-gmax">G-MAX</span>'
-                        : ' <span class="gimmick-badge gimmick-dmax">DMAX</span>';
+                        ? ` <span class="gimmick-badge gimmick-gmax">G-MAX${turnsTxt}</span>`
+                        : ` <span class="gimmick-badge gimmick-dmax">DMAX${turnsTxt}</span>`;
                 }
                 nameEl.innerHTML = (mon.isShiny ? '&#10024; ' : '') + mon.name + gBadge;
                 nameEl.title = 'Tap for full summary · hover for quick stats';
@@ -11506,6 +11677,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (activeMon.volatile.recharge) _switchLockReason = 'Must recharge this turn!';
                 else if (activeMon.volatile.charging) _switchLockReason = 'Cannot switch while charging!';
                 else if (activeMon.volatile.partialTrap > 0) _switchLockReason = `Trapped by ${activeMon.volatile.partialTrapSrc || 'a move'}!`;
+                else if (activeMon.volatile.cantEscape) _switchLockReason = 'Cannot escape!';
                 else if (activeMon.volatile.ingrain) _switchLockReason = 'Rooted! Cannot switch out!';
                 else if (activeMon.item === 'Shed Shell') { /* Shed Shell ignores all trapping abilities */ }
                 else if (activeMon.type1 === 'Ghost' || activeMon.type2 === 'Ghost') { /* Ghost types ignore trapping abilities */ }
@@ -12195,8 +12367,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // === GIMMICK BUTTONS ===
             const _usedMega = isP1 ? state.usedMega : state.fUsedMega; const _usedDyna = isP1 ? state.usedDyna : state.fUsedDyna; const _usedTera = isP1 ? state.usedTera : state.fUsedTera; const _usedZ = isP1 ? state.usedZ : state.fUsedZ;
             let canUseMega = activeMon.buildData && activeMon.buildData.gimmick === 'MEGA' && !activeMon.megaEvolved && (!settings.classicMode || !_usedMega);
-            let canUseDyna = activeMon.buildData && (activeMon.buildData.gimmick === 'DYNAMAX' || activeMon.buildData.gimmick === 'GMAXDYNAMAX') && !activeMon.dynamaxed && !activeMon.dynamaxUsed && (!settings.classicMode || !_usedDyna);
+            let canUseDyna = activeMon.buildData && (activeMon.buildData.gimmick === 'DYNAMAX' || activeMon.buildData.gimmick === 'GMAXDYNAMAX') && !activeMon.dynamaxed && !activeMon.dynamaxUsed && !_usedDyna;
             let canUseTera = activeMon.buildData && activeMon.buildData.teraType && !activeMon.teraActivated && !_usedTera;
+            // Cap depends on the Classic Mode toggle: one Z per team (Classic) vs one per Pokémon (off)
             let canUseZ = activeMon.buildData && activeMon.buildData.gimmick === 'ZMOVE' && !activeMon.zMoveUsed && (!settings.classicMode || !_usedZ);
             const hasGimmickButtons = canUseMega || canUseDyna || canUseTera || canUseZ;
             menu.classList.toggle('move-menu-no-gimmicks', !hasGimmickButtons);
@@ -12485,20 +12658,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let hpPct = attacker.currentHp / attacker.maxHp;
             let defHpPct = defender.currentHp / defender.maxHp;
 
-            // MEGA: activate immediately — always a net stat gain
+            // MEGA: previously activated unconditionally. Now apply a few cheap heuristics so
+            // the AI doesn't waste its once-per-battle slot on a turn it's about to switch or
+            // on a near-dead Pokémon. Mega is still high-value, so the bar to skip is low.
             if (bd.gimmick === 'MEGA' && !attacker.megaEvolved && (!settings.classicMode || !state.fUsedMega)) {
-                return 'MEGA';
+                // Skip if we're about to die anyway and can't recover (sub 25% HP + no recovery move).
+                const _recoveryMoves = new Set(["Recover","Roost","Slack Off","Soft-Boiled","Synthesis","Moonlight","Morning Sun","Milk Drink","Heal Order","Shore Up","Strength Sap","Wish","Pain Split","Rest"]);
+                const _hasRecovery = (attacker.moves || []).some(m => m && _recoveryMoves.has(m.name));
+                const _aboutToDie = hpPct < 0.25 && !_hasRecovery;
+                // Skip if we are >2x slower AND defender threatens an OHKO this turn — mega won't fix turn order.
+                const _foeOhkos = (defender.moves || []).some(m => m && m.cat !== 'Status'
+                    && getMoveEffectiveness(m.type, attacker.type1, attacker.type2) >= 2);
+                const _vastlySlower = (attacker.stats.spe || 0) * 2 < (defender.stats.spe || 0);
+                const _doomed = _aboutToDie || (_vastlySlower && _foeOhkos && hpPct < 0.4);
+                if (!_doomed) return 'MEGA';
             }
 
-            // DYNAMAX: activate when any of these conditions are met:
-            //  a) attacker HP < 50% (Dynamax doubles max HP, acts as emergency heal-buffer)
-            //  b) opponent HP < 40% (Max Move can secure the KO + field effect bonus)
-            //  c) opponent has a super-effective move and we can survive more with boosted HP
-            //  d) endgame (last mons standing) — go for the finish
-            if ((bd.gimmick === 'DYNAMAX' || bd.gimmick === 'GMAXDYNAMAX') && !attacker.dynamaxed && !attacker.dynamaxUsed && (!settings.classicMode || !state.fUsedDyna)) {
+            // DYNAMAX: VGC-optimal — burn the 3-turn window early to maximize Max Move secondaries.
+            // Activate when:
+            //  a) at full or near-full HP on turn 1 of the matchup (maximizes the buff window)
+            //  b) attacker has a synergistic Max effect setup (Flying = +Spe sweep, Steel = +Def wall, weather/terrain abuse)
+            //  c) opponent HP < 60% (Max Move likely secures KO + still gets field effect)
+            //  d) attacker HP < 50% (emergency heal-buffer use)
+            //  e) endgame (last mons standing) — last call, use it or lose it
+            //  f) opponent has a super-effective move and we're at ≥50% HP (HP buffer helps tank)
+            if ((bd.gimmick === 'DYNAMAX' || bd.gimmick === 'GMAXDYNAMAX') && !attacker.dynamaxed && !attacker.dynamaxUsed && !state.fUsedDyna) {
                 let defHasSEMove = defender.moves.some(m => m.cat !== 'Status' && getMoveEffectiveness(m.type, attacker.type1, attacker.type2) >= 2);
                 let isEndgame = state.foeParty.filter(m => m.currentHp > 0).length <= 1;
-                if (hpPct < 0.5 || defHpPct < 0.4 || (defHasSEMove && hpPct < 0.75) || isEndgame) return bd.gimmick === 'GMAXDYNAMAX' ? 'GMAXDYNAMAX' : 'DYNAMAX';
+                let isFreshMatchup = (attacker.turnCount || 0) <= 1;
+                let hasGoodMaxSetup = attacker.moves.some(m => m.cat !== 'Status' && (m.type === 'Flying' || m.type === 'Steel' || m.type === 'Fighting' || m.type === 'Poison' || m.type === 'Ground' || m.type === 'Fire' || m.type === 'Water' || m.type === 'Grass' || m.type === 'Electric'));
+                if (isFreshMatchup && hpPct >= 0.85 && hasGoodMaxSetup) return bd.gimmick === 'GMAXDYNAMAX' ? 'GMAXDYNAMAX' : 'DYNAMAX';
+                if (defHpPct < 0.6 || hpPct < 0.5 || (defHasSEMove && hpPct >= 0.5) || isEndgame) return bd.gimmick === 'GMAXDYNAMAX' ? 'GMAXDYNAMAX' : 'DYNAMAX';
             }
 
             // TERA: activate when any of:
@@ -12545,13 +12735,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             //  b) both sides low HP (now-or-never situation)
             //  c) opponent has screens/substitute that Z-Move bypasses
             if (bd.gimmick === 'ZMOVE' && !attacker.zMoveUsed && (!settings.classicMode || !state.fUsedZ)) {
-                let zMove = buildZMove(attacker, attacker.moves.find(m => m.pp > 0 && m.cat !== 'Status') || attacker.moves[0]);
-                let zDmg = zMove ? aiEstimateDmg(attacker, defender, zMove) : 0;
+                // Iterate all damaging moves, pick the highest Z damage option
+                let zDmg = 0;
+                for (let m of attacker.moves) {
+                    if (m.pp <= 0 || m.cat === 'Status') continue;
+                    let zBuild = buildZMove(attacker, m);
+                    if (!zBuild.isZMove) continue;
+                    let d = aiEstimateDmg(attacker, defender, zBuild);
+                    if (d > zDmg) zDmg = d;
+                }
                 let regularMax = Math.max(0, ...attacker.moves.filter(m => m.pp > 0 && m.cat !== 'Status').map(m => aiEstimateDmg(attacker, defender, m)));
                 let zCanKO = zDmg >= defender.currentHp;
                 let regularCanKO = regularMax >= defender.currentHp;
                 let defHasSub = defender.volatile && defender.volatile.sub > 0;
-                if ((zCanKO && !regularCanKO) || (hpPct < 0.35 && defHpPct < 0.6) || defHasSub) return 'ZMOVE';
+                if (zDmg > 0 && ((zCanKO && !regularCanKO) || (hpPct < 0.35 && defHpPct < 0.6) || defHasSub)) return 'ZMOVE';
             }
 
             return null;
@@ -13399,6 +13596,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (side.mist > 0) { side.mist--; if (side.mist === 0) logMsg(`${sideName} Mist cleared!`, 'info'); }
                 if (side.luckychant > 0) { side.luckychant--; if (side.luckychant === 0) logMsg(`${sideName} Lucky Chant faded!`, 'info'); }
             });
+            // G-Max chip residual: 1/6 max HP to active mons whose type doesn't match the chip type (4 turns)
+            [['pSide','pActive'], ['fSide','fActive']].forEach(([sideKey, activeKey]) => {
+                const side = state[sideKey]; const mon = state[activeKey];
+                if (!side || !side.gmaxChip || !mon || mon.currentHp <= 0) return;
+                const chip = side.gmaxChip;
+                if (mon.type1 !== chip.type && mon.type2 !== chip.type && mon.ability !== "Magic Guard") {
+                    const dmg = Math.max(1, Math.floor(mon.maxHp / 6));
+                    const actDmg = Math.min(mon.currentHp, dmg);
+                    mon.currentHp -= actDmg;
+                    logMsg(`${mon.name} is hurt by the lingering ${chip.type} damage! (${actDmg})`, 'dmg');
+                }
+                chip.turns--;
+                if (chip.turns <= 0) { side.gmaxChip = null; logMsg(`The lingering damage faded.`, 'info'); }
+            });
         }
 
         function runWishHealing() {
@@ -13805,6 +14016,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const _fIsProtect = _protectMoveNames.has(fMove.name) || ((state.fActive.dynamaxed || gimmickIntentIsDynamaxLike(false)) && fMove.cat === 'Status');
                     if (!_pIsProtect) state.pActive.volatile.protectCount = 0;
                     if (!_fIsProtect) state.fActive.volatile.protectCount = 0;
+
+                    // VGC fidelity: Mega Evolution is declared with move selection and resolves
+                    // BEFORE the turn-order speed comparison. Activate any pending mega here so
+                    // the post-mega Speed stat governs this turn's order (and Mega Lopunny /
+                    // Manectric / Beedrill actually function as designed).
+                    {
+                        const _pMegaPending = resolveGimmickIntentForActive(true) === 'MEGA';
+                        const _fMegaPending = resolveGimmickIntentForActive(false) === 'MEGA';
+                        const _canPMega = _pMegaPending && state.pActive.buildData && state.pActive.buildData.gimmick === 'MEGA'
+                            && !state.pActive.megaEvolved && (!settings.classicMode || !state.usedMega);
+                        const _canFMega = _fMegaPending && state.fActive.buildData && state.fActive.buildData.gimmick === 'MEGA'
+                            && !state.fActive.megaEvolved && (!settings.classicMode || !state.fUsedMega);
+                        // Resolve faster-trainer first for visual order (matches canon: faster
+                        // trainer's mega is announced first). Speed at this point is pre-mega.
+                        const _preW = getCurrentWeather();
+                        const _preP = _canPMega ? getEffectiveSpeed(state.pActive, _preW) : -1;
+                        const _preF = _canFMega ? getEffectiveSpeed(state.fActive, _preW) : -1;
+                        const _pFirst = _preP >= _preF;
+                        const _doP = () => { if (_canPMega) { activateMega(state.pActive, true); clearGimmickIntent(true); } };
+                        const _doF = () => { if (_canFMega) { activateMega(state.fActive, false); clearGimmickIntent(false); } };
+                        if (_pFirst) { _doP(); _doF(); } else { _doF(); _doP(); }
+                    }
 
                     let w = getCurrentWeather();
                     let pSpe = getEffectiveSpeed(state.pActive, w);
@@ -14534,7 +14767,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
                 }
                 if (gimmickPending === 'DYNAMAX' || gimmickPending === 'GMAXDYNAMAX') {
-                    let ok = attacker.buildData && (attacker.buildData.gimmick === 'DYNAMAX' || attacker.buildData.gimmick === 'GMAXDYNAMAX') && !attacker.dynamaxed && !attacker.dynamaxUsed && (!settings.classicMode || !(isPlayer ? state.usedDyna : state.fUsedDyna));
+                    let ok = attacker.buildData && (attacker.buildData.gimmick === 'DYNAMAX' || attacker.buildData.gimmick === 'GMAXDYNAMAX') && !attacker.dynamaxed && !attacker.dynamaxUsed && !(isPlayer ? state.usedDyna : state.fUsedDyna);
                     if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
                 }
                 if (gimmickPending === 'TERA') {
@@ -14542,11 +14775,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
                 }
                 if (gimmickPending === 'ZMOVE') {
+                    // Cap is governed by the Classic Mode toggle (one per team if on, one per Pokémon if off)
                     let ok = attacker.buildData && attacker.buildData.gimmick === 'ZMOVE' && !attacker.zMoveUsed && (!settings.classicMode || !(isPlayer ? state.usedZ : state.fUsedZ));
                     if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
                 }
-                if (gimmickPending === 'MEGA' && !attacker.megaEvolved) {
-                    activateMega(attacker, isPlayer);
+                if (gimmickPending === 'MEGA') {
+                    // Mega is normally pre-resolved before turn-order calc (see speed block).
+                    // This branch only fires for non-double-action paths (e.g. one side switched).
+                    if (!attacker.megaEvolved) activateMega(attacker, isPlayer);
                     clearGimmickIntent(isPlayer);
                 } else if ((gimmickPending === 'DYNAMAX' || gimmickPending === 'GMAXDYNAMAX') && !attacker.dynamaxed) {
                     activateDynamax(attacker, isPlayer);
@@ -14573,17 +14809,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     if (zBuild.zStatusEffect) {
                         logMsg(`${attacker.name} used Z-${move.name}! A surge of power filled the battlefield!`, 'info');
-                        // Z-status boost: per-move official table, fallback +1 highest stat
+                        // Z-status boost: per-move official table, fallback +1 highest stage-modified stat
                         let boostMap = Z_STATUS_EFFECTS[move.name];
                         if (boostMap && Object.keys(boostMap).length > 0) {
+                            if (boostMap._reset) {
+                                // Reset all of the user's lowered stat stages back to 0 (clearnegativeboost)
+                                let cleared = false;
+                                for (let s of ['atk','def','spa','spd','spe','acc','eva']) {
+                                    if ((attacker.stages[s] || 0) < 0) { attacker.stages[s] = 0; cleared = true; }
+                                }
+                                if (cleared) logMsg(`${attacker.name}'s lowered stats were restored!`, 'info');
+                            }
                             for (let [stat, amt] of Object.entries(boostMap)) {
-                                if (stat === 'crit') { logMsg(`${attacker.name} is getting pumped! (Critical hit rate up!)`, 'info'); }
-                                else if (stat === 'acc') changeStage(attacker, 'acc', amt);
-                                else if (amt > 0) changeStage(attacker, stat, amt);
+                                if (stat === '_reset') continue;
+                                if (stat === 'crit') {
+                                    attacker.volatile.focusEnergy = true;
+                                    logMsg(`${attacker.name} is getting pumped! (Critical hit rate up!)`, 'info');
+                                } else if (amt > 0) {
+                                    changeStage(attacker, stat, amt);
+                                }
                             }
                         } else if (!boostMap) {
-                            let best = 'atk', bestVal = 0;
-                            for (let s of ['atk','def','spa','spd','spe']) { if ((attacker.stats[s]||0) > bestVal) { bestVal = attacker.stats[s]; best = s; } }
+                            // Pick highest stage-modified offensive/defensive stat (excludes acc/eva)
+                            let best = 'atk', bestVal = -1;
+                            for (let s of ['atk','def','spa','spd','spe']) {
+                                let mult = (typeof getStageMult === 'function') ? getStageMult(attacker.stages[s] || 0) : 1;
+                                let v = (attacker.stats[s] || 0) * mult;
+                                if (v > bestVal) { bestVal = v; best = s; }
+                            }
                             changeStage(attacker, best, 1);
                         }
                         await sleep(1000);
@@ -14811,9 +15064,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
-            // Max Guard: functions like Protect
+            // Max Guard: functions like Protect (same 1/3^n chain rate as other protect variants)
             if (move.isMaxGuard) {
-                let successRate = Math.pow(0.5, attacker.volatile.protectCount || 0);
+                let successRate = Math.pow(1/3, attacker.volatile.protectCount || 0);
                 if (Math.random() < successRate) {
                     attacker.volatile.protect = true;
                     attacker.volatile.maxGuard = true; // Max Guard blocks Max Moves; regular Protect does not
@@ -14983,11 +15236,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Continue to damage calc - 0.25x modifier applied below
                 } else if (move.isMaxMove) {
                     // VGC: Max Moves are only blocked by Max Guard, NOT by regular Protect
-                    if (defender.volatile.maxGuard) {
+                    // EXCEPT G-Max One Blow and G-Max Rapid Flow, which bypass Max Guard
+                    const _bypassMaxGuard = (move.name === "G-Max One Blow" || move.name === "G-Max Rapid Flow");
+                    if (defender.volatile.maxGuard && !_bypassMaxGuard) {
                         logMsg(`${defender.name} protected itself from the Max Move with Max Guard!`);
                         AudioSystem.playMissSound();
                         registerMoveConnectionFailure(attacker, move);
                         await sleep(1000); return;
+                    }
+                    if (defender.volatile.maxGuard && _bypassMaxGuard) {
+                        logMsg(`${move.name} broke through ${defender.name}'s Max Guard!`, 'info');
+                        defender.volatile.maxGuard = false;
+                        defender.volatile.protect = false;
                     }
                     // Regular Protect fails against Max Moves — fall through to damage
                 } else {
@@ -15069,7 +15329,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (defender.ability === "Sand Veil" && getCurrentWeather() === "Sandstorm") evaMod *= 0.8;
             if (defender.ability === "Snow Cloak" && getCurrentWeather() === "Hail") evaMod *= 0.8;
             const _neverMissMoves = new Set(["Swift","Aerial Ace","Aura Sphere","Magical Leaf","Faint Attack","Feint Attack","Shadow Punch","Smart Strike","Vital Throw","Disarming Voice","Shock Wave","Tachyon Cutter","Trump Card","Flower Trick","Clear Smog","Kowtow Cleave","Mighty Cleave"]);
-            let neverMiss = !move.acc || move.acc <= 0 || move.acc === true || move.isZMove || _neverMissMoves.has(move.name) || (move.mathEff && move.mathEff.includes('bypass_accuracy')) || attacker.ability === "No Guard" || defender.ability === "No Guard" || attacker.volatile.lockOn;
+            // Z-Moves keep the base move's accuracy; only those whose base move has no acc (acc<=0/true) auto-hit
+            let neverMiss = !move.acc || move.acc <= 0 || move.acc === true || _neverMissMoves.has(move.name) || (move.mathEff && move.mathEff.includes('bypass_accuracy')) || attacker.ability === "No Guard" || defender.ability === "No Guard" || attacker.volatile.lockOn;
             // Story artifact: [Type] Magnetizer — moves involving the bonded type never miss
             if (state && state.mode === 'story' && state._typeMagnetizerType && move.cat !== "Status") {
                 const _Tm = state._typeMagnetizerType;
@@ -15218,7 +15479,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // === TYPE IMMUNITY ABILITIES ===
                 // Gastro Acid suppresses all defender abilities — skip all ability checks if active
                 // Mold Breaker / Teravolt / Turboblaze: attacker ignores all defensive abilities
-                const _moldBreaker = attacker.ability === "Mold Breaker" || attacker.ability === "Teravolt" || attacker.ability === "Turboblaze";
+                // G-Max Drum Solo / Fireball / Hydrosnipe also ignore the target's ability
+                const _gmaxIgnoresAbility = move.isMaxMove && (move.name === "G-Max Drum Solo" || move.name === "G-Max Fireball" || move.name === "G-Max Hydrosnipe");
+                const _moldBreaker = attacker.ability === "Mold Breaker" || attacker.ability === "Teravolt" || attacker.ability === "Turboblaze" || _gmaxIgnoresAbility;
                 // Mycelium Might: when attacker uses a status move, target's ability is ignored
                 const _myceliumBypass = attacker.ability === "Mycelium Might" && move.cat === "Status";
                 // Ability Shield: holder's ability cannot be ignored by Mold Breaker/etc.
@@ -15448,6 +15711,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // OHKO MOVES: Fissure, Horn Drill, Guillotine, Sheer Cold
                 const _ohkoMoves = new Set(["Fissure","Horn Drill","Guillotine","Sheer Cold"]);
                 if (_ohkoMoves.has(move.name)) {
+                    // VGC: OHKO moves fail against Dynamaxed targets
+                    if (defender.dynamaxed) { logMsg(`The move failed against the Dynamaxed ${defender.name}!`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
                     // Sheer Cold misses non-Ice types more (accuracy=20 in DB, no special override needed)
                     // Invulnerable targets are immune
                     if (defender.volatile.invulnerable) { logMsg(`${attacker.name}'s attack missed!`); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
@@ -15788,7 +16053,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (move.name === "Lash Out" && attacker.volatile && attacker.volatile.statLoweredThisTurn) basePower = basePower * 2;
                 if ((move.name === "Stomping Tantrum" || move.name === "Temper Flare") && attacker.volatile && attacker.volatile.lastMoveFailed) basePower = basePower * 2;
                 if (move.name === "Assurance" && defender.tookDamageThisTurn) basePower = basePower * 2;
-                if (["Behemoth Blade","Behemoth Bash","Dynamax Cannon"].includes(move.name) && defender.dynamax) basePower = basePower * 2;
+                if (["Behemoth Blade","Behemoth Bash","Dynamax Cannon"].includes(move.name) && defender.dynamaxed) basePower = basePower * 2;
                 if (move.name === "Last Respects") {
                     const _myPartyLR = isPlayer ? state.playerParty : state.foeParty;
                     const _fainted = _myPartyLR ? _myPartyLR.filter(m => m && m.currentHp <= 0).length : 0;
@@ -17119,6 +17384,118 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 updateUI();
             }
 
+            // === G-MAX SECONDARY EFFECTS ===
+            // Run after Max effects so they layer (e.g., G-Max Wildfire still sets Sun via type=Fire AND adds residual chip).
+            // Skipped if attacker fainted, or defender is fully fainted (chip moves still set the side-effect though).
+            if (move.isMaxMove && move.isGmaxMove && attacker.currentHp > 0) {
+                const gName = move.name;
+                const foeSide = isPlayer ? state.fSide : state.pSide;
+                const userSide = isPlayer ? state.pSide : state.fSide;
+                const userParty = isPlayer ? state.playerParty : state.foeParty;
+                // Residual chip damage (1/6 max HP for 4 turns to non-matching-type foes)
+                const _chip = (chipType) => {
+                    foeSide.gmaxChip = { type: chipType, turns: 4 };
+                    logMsg(`The foe's side was engulfed by ${gName}!`, 'status');
+                };
+                switch (gName) {
+                    case "G-Max Vine Lash":   _chip("Grass"); break;
+                    case "G-Max Wildfire":    _chip("Fire");  break;
+                    case "G-Max Cannonade":   _chip("Water"); break;
+                    case "G-Max Volcalith":   _chip("Rock");  break;
+                    case "G-Max Volt Crash":
+                        if (defender.currentHp > 0 && !defender.status) applyStatus(defender, "PAR");
+                        break;
+                    case "G-Max Stun Shock":
+                        if (defender.currentHp > 0 && !defender.status) applyStatus(defender, Math.random() < 0.5 ? "PAR" : "PSN");
+                        break;
+                    case "G-Max Malodor":
+                        if (defender.currentHp > 0 && !defender.status) applyStatus(defender, "PSN");
+                        break;
+                    case "G-Max Foam Burst":
+                        if (defender.currentHp > 0) { changeStage(defender, 'spe', -2, true); logMsg(`${defender.name}'s Speed was harshly lowered!`, 'info'); }
+                        break;
+                    case "G-Max Smite":
+                        if (defender.currentHp > 0 && (defender.volatile.confusion|0) === 0) { defender.volatile.confusion = 2 + Math.floor(Math.random()*3); logMsg(`${defender.name} became confused!`, 'status'); }
+                        break;
+                    case "G-Max Snooze":
+                        if (defender.currentHp > 0 && !defender.status && (defender.volatile.yawnTurns|0) === 0) { defender.volatile.yawnTurns = 2; logMsg(`${defender.name} grew drowsy!`, 'status'); }
+                        break;
+                    case "G-Max Cuddle":
+                        if (defender.currentHp > 0 && !defender.volatile.infatuated && attacker.gender !== null && defender.gender !== null && attacker.gender !== defender.gender && defender.ability !== "Oblivious") { defender.volatile.infatuated = true; logMsg(`${defender.name} became infatuated!`, 'status'); }
+                        break;
+                    case "G-Max Tartness":
+                        if (defender.currentHp > 0) { changeStage(defender, 'eva', -1, true); logMsg(`${defender.name}'s evasiveness fell!`, 'info'); }
+                        break;
+                    case "G-Max Stonesurge":
+                        if (!foeSide.stealthRock) { foeSide.stealthRock = true; logMsg(`Pointed stones float around the foe's side!`, 'status'); }
+                        break;
+                    case "G-Max Steelsurge":
+                        if (!foeSide.steelsurge) { foeSide.steelsurge = true; logMsg(`Sharp-steel spikes float around the foe's side!`, 'status'); }
+                        break;
+                    case "G-Max Wind Rage": {
+                        let cleared = false;
+                        ['stealthRock','stickyWeb','steelsurge'].forEach(k => { if (foeSide[k]) { foeSide[k] = false; cleared = true; } if (userSide[k]) { userSide[k] = false; cleared = true; } });
+                        ['spikes','toxicSpikes','reflect','lightScreen','auroraVeil','safeguard','mist'].forEach(k => { if ((foeSide[k]|0) > 0) { foeSide[k] = 0; cleared = true; } if ((userSide[k]|0) > 0) { userSide[k] = 0; cleared = true; } });
+                        if (cleared) logMsg(`${attacker.name}'s Wind Rage blew everything away!`, 'info');
+                        break;
+                    }
+                    case "G-Max Resonance":
+                        if (!userSide.auroraVeil) { userSide.auroraVeil = 5; logMsg(`Aurora Veil made ${attacker.name}'s side stronger to attacks!`, 'status'); }
+                        break;
+                    case "G-Max Gravitas":
+                        state.gravity = 5; logMsg(`Gravity intensified!`, 'status');
+                        break;
+                    case "G-Max Chi Strike":
+                        attacker.volatile.focusEnergy = true; logMsg(`${attacker.name} is getting pumped! (Critical-hit ratio rose!)`, 'info');
+                        break;
+                    case "G-Max Terror":
+                        if (defender.currentHp > 0) { defender.volatile.cantEscape = true; logMsg(`${defender.name} can no longer escape!`, 'status'); }
+                        break;
+                    case "G-Max Meltdown":
+                        if (defender.currentHp > 0 && !defender.volatile.torment) { defender.volatile.torment = true; logMsg(`${defender.name} can't use the same move twice in a row!`, 'status'); }
+                        break;
+                    case "G-Max Depletion":
+                        if (defender.currentHp > 0 && defender.volatile.lastMoveUsed) {
+                            const slot = defender.moves.find(m => m.name === defender.volatile.lastMoveUsed);
+                            if (slot && slot.pp > 0) { const drain = Math.min(slot.pp, 2); slot.pp -= drain; logMsg(`${defender.name}'s ${slot.name} lost ${drain} PP!`, 'info'); }
+                        }
+                        break;
+                    case "G-Max Sweetness":
+                        userParty.forEach(m => { if (m && m.currentHp > 0 && m.status) { m.status = null; m.statusTurns = 0; logMsg(`${m.name} was cured of its status!`, 'heal'); } });
+                        break;
+                    case "G-Max Finale": {
+                        const heal = Math.max(1, Math.floor(attacker.maxHp / 6));
+                        if (attacker.currentHp < attacker.maxHp) { attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + heal); logMsg(`${attacker.name} restored HP from G-Max Finale!`, 'heal'); }
+                        break;
+                    }
+                    case "G-Max Replenish": {
+                        let restored = 0;
+                        userParty.forEach(m => { if (m && m._usedBerry && !m.item) { m.item = m._usedBerry; m._usedBerry = null; restored++; } });
+                        if (restored > 0) logMsg(`${restored} ally's Berry was restored!`, 'heal');
+                        break;
+                    }
+                    case "G-Max Gold Rush":
+                        if (defender.currentHp > 0 && (defender.volatile.confusion|0) === 0) { defender.volatile.confusion = 2 + Math.floor(Math.random()*3); logMsg(`${defender.name} became confused by the shower of coins!`, 'status'); }
+                        break;
+                    case "G-Max Sandblast":
+                    case "G-Max Centiferno":
+                        if (defender.currentHp > 0 && (defender.volatile.partialTrap|0) === 0) {
+                            defender.volatile.partialTrap = 4 + Math.floor(Math.random()*2);
+                            defender.volatile.partialTrapSrc = gName;
+                            logMsg(`${defender.name} was trapped by ${gName}!`, 'status');
+                        }
+                        break;
+                    // G-Max Drum Solo / Fireball / Hydrosnipe ignore target ability — already handled by isMaxMove damage,
+                    // but emit a flavor log on cast (ability-ignore is applied by passing through Mold-Breaker-like path in damage calc).
+                    case "G-Max Drum Solo":
+                    case "G-Max Fireball":
+                    case "G-Max Hydrosnipe":
+                        // No additional secondary; flavor only (ability-ignore wired below in damage calc check).
+                        break;
+                }
+                updateUI();
+            }
+
             } finally {
                 finalizeLockingAndRollout(attacker, move, lockingMoves);
             }
@@ -17145,6 +17522,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${state.pActive.name} fainted!`, 'dmg');
                 if (state.fActive.dynamaxed) deactivateDynamax(state.fActive, false);
                 if (state.pActive.dynamaxed) deactivateDynamax(state.pActive, true);
+                if (state.fActive.megaEvolved && state.fActive._baseName) logMsg(`${state.fActive.name} reverted.`, 'info');
+                if (state.pActive.megaEvolved && state.pActive._baseName) logMsg(`${state.pActive.name} reverted.`, 'info');
                 state.fActive.dynamaxed = false; state.fActive.dynamaxTurns = 0;
                 state.pActive.dynamaxed = false; state.pActive.dynamaxTurns = 0;
                 if(settings.animations){ let fs = document.getElementById('foe-sprite'); let ps = document.getElementById('player-sprite'); const faintP = anime({targets:[fs,ps], translateY:[0,40], opacity:[1,0], filter:['brightness(1)','brightness(0)'], duration:700, easing:'easeInQuad'}).finished; await faintP; fs.style.opacity='0'; fs.style.visibility='hidden'; ps.style.opacity='0'; ps.style.visibility='hidden'; anime.remove(fs); anime.remove(ps); fs.style.filter=''; fs.style.transform=''; ps.style.filter=''; ps.style.transform=''; } ['foe-sprite','player-sprite'].forEach((id,ix)=>{let el=document.getElementById(id);if(el){el.style.filter=''; const mon=ix===0?state.fActive:state.pActive; el.style.transform=getSpriteTransformStyle(mon);}});
@@ -17222,6 +17601,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 clearGimmickIntent(false);
                 AudioSystem.playFaintCry(state.fActive.name);
                 logMsg(`${state.fActive.name} fainted!`, 'heal');
+                if (state.fActive.megaEvolved && state.fActive._baseName) logMsg(`${state.fActive.name} reverted.`, 'info');
                 // Reaper's Toll: foe's survivors heal 10% maxHp, one random survivor loses -1 SpD
                 if (state._reapersTollActive) {
                     const foeSurvivors = state.foeParty.filter(m => m !== state.fActive && m.currentHp > 0);
@@ -17279,6 +17659,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 clearGimmickIntent(true);
                 AudioSystem.playFaintCry(state.pActive.name);
                 logMsg(`${state.pActive.name} fainted!`, 'dmg');
+                if (state.pActive.megaEvolved && state.pActive._baseName) logMsg(`${state.pActive.name} reverted.`, 'info');
                 // Reaper's Toll: player's survivors heal 10% maxHp, one random survivor loses -1 SpD
                 if (state._reapersTollActive) {
                     const playerSurvivors = state.playerParty.filter(m => m !== state.pActive && m.currentHp > 0);
@@ -17548,6 +17929,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if(mon.currentHp <= 0 || foe.currentHp <= 0) return;
             // Cure incompatible status upon ability acquisition / switch-in
             _abilityStatusCure(mon);
+            // Primal Reversion: Groudon + Red Orb / Kyogre + Blue Orb auto-revert on entry.
+            // No once-per-battle limit; sets permanent harsh sunlight / heavy rain respectively.
+            try {
+                const _baseName = mon._baseName || mon.name;
+                const _orbForm = (_baseName === "Groudon" && mon.item === "Red Orb") ? "Groudon-Primal"
+                              : (_baseName === "Kyogre"  && mon.item === "Blue Orb") ? "Kyogre-Primal"
+                              : null;
+                if (_orbForm && !mon.megaEvolved) {
+                    const _isP = (state.pActive === mon);
+                    activateMega(mon, _isP);
+                    if (mon.megaEvolved) {
+                        logMsg(`${_baseName}'s ${mon.item} triggered Primal Reversion!`, 'info');
+                        const _baseW = (_baseName === "Groudon") ? "HarshSun" : "HeavyRain";
+                        state.weather = _baseW; state.weatherTurns = 0; // permanent
+                        logMsg(_baseName === "Groudon"
+                            ? "The sunlight turned extremely harsh!"
+                            : "A heavy rain began to fall!", 'info');
+                    }
+                }
+            } catch(e) { console.warn('[Primal] reversion failed:', e); }
             // Slow Start: 5-turn debuff on switch-in
             if (mon.ability === "Slow Start") {
                 mon.volatile.slowStartTurns = 5;
@@ -17843,6 +18244,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.volatile.recharge = false;
             mon.volatile.partialTrap = 0;
             mon.volatile.partialTrapSrc = '';
+            mon.volatile.cantEscape = false;
             mon.volatile.octolock = false;
             mon.volatile.ingrain = false;
             mon.volatile.infatuated = false;
@@ -17912,6 +18314,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     mon.currentHp -= actualDmg;
                     logMsg(`Pointed stones dealt ${actualDmg} damage to ${mon.name}!`, 'dmg');
                     }
+                }
+            }
+            // G-Max Steelsurge — Steel-typed entry hazard (same formula as Stealth Rock but Steel-typed)
+            if (side.steelsurge && mon.currentHp > 0) {
+                let eff = getMoveEffectiveness("Steel", mon.type1, mon.type2);
+                if (eff > 0) {
+                    let dmg = Math.max(1, Math.floor(mon.maxHp * (0.125 * eff) * _hazardMult));
+                    let actualDmg = Math.min(mon.currentHp, dmg);
+                    mon.currentHp -= actualDmg;
+                    logMsg(`Sharp-steel spikes dealt ${actualDmg} damage to ${mon.name}!`, 'dmg');
                 }
             }
             if (side.spikes > 0 && isGrounded && mon.currentHp > 0) {
@@ -18293,9 +18705,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 updateUI(); return;
             }
             if (move.name === "Substitute") {
-                let cost = Math.floor(attacker.maxHp / 4);
-                if (attacker.currentHp > cost) { attacker.currentHp -= cost; attacker.volatile.sub = cost; logMsg(`${attacker.name} put up a substitute! (Cost: ${cost} HP)`, 'info'); } 
-                else { logMsg(`But it was too weak to make a substitute!`, 'info'); } return; 
+                // Substitute uses pre-Dynamax max HP (Showdown convention) so Dmax doesn't disproportionately tax Sub users.
+                let _subBase = attacker.dynamaxed && attacker.baseMaxHp ? attacker.baseMaxHp : attacker.maxHp;
+                let cost = Math.floor(_subBase / 4);
+                if (attacker.currentHp > cost) { attacker.currentHp -= cost; attacker.volatile.sub = cost; logMsg(`${attacker.name} put up a substitute! (Cost: ${cost} HP)`, 'info'); }
+                else { logMsg(`But it was too weak to make a substitute!`, 'info'); } return;
             }
             if (move.name === "Rest") { 
                 if (attacker.currentHp === attacker.maxHp) { logMsg(`But it failed!`, 'info'); return; }
@@ -18519,6 +18933,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             if (move.name === "Roar" || move.name === "Whirlwind") {
+                if (defender.dynamaxed) { logMsg(`The move failed against the Dynamaxed ${defender.name}!`, 'info'); return; }
                 if (state.mode !== 'pvp') {
                     let target = isPlayer ? state.foeParty : state.playerParty;
                     let activeMon = isPlayer ? state.fActive : state.pActive;
@@ -18603,8 +19018,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Feather Dance" || move.name === "FeatherDance") { changeStage(defender, 'atk', -2); return; }
             if (move.name === "Belly Drum") {
                 if (attacker.stages.atk >= 6) { logMsg(`But it failed!`, 'info'); return; }
-                if (attacker.currentHp > Math.floor(attacker.maxHp / 2)) {
-                    attacker.currentHp -= Math.floor(attacker.maxHp / 2);
+                // Use pre-Dynamax max HP for the cost so Dmax users aren't forced to half their post-Dmax (= full base) HP.
+                const _bdBase = attacker.dynamaxed && attacker.baseMaxHp ? attacker.baseMaxHp : attacker.maxHp;
+                if (attacker.currentHp > Math.floor(_bdBase / 2)) {
+                    attacker.currentHp -= Math.floor(_bdBase / 2);
                     attacker.stages.atk = 6;
                     logMsg(`${attacker.name} cut its HP and maximized its Attack!`, 'info');
                 } else { logMsg(`But it failed!`, 'info'); }
@@ -20067,8 +20484,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Generate new foe team (same gen range + grades as player)
             // Exclude species already on the player's team to avoid same-species matchups
             let allEligible = getDraftPool(state.enabledGens || rangeToEnabledGens(state.minGen != null ? state.minGen : 1, state.maxGen != null ? state.maxGen : 9), settings.draftGrades);
-            let playerSpecies = new Set(state.playerParty.map(m => m._baseName || m.name));
-            let foeEligible = allEligible.filter(n => !playerSpecies.has(n));
+            const _famOf = n => { const bs = baseStats[n]; return (bs && bs.baseSpecies) ? bs.baseSpecies : n; };
+            let playerSpecies = new Set(state.playerParty.map(m => _famOf(m._baseName || m.name)));
+            let foeEligible = allEligible.filter(n => !playerSpecies.has(_famOf(n)));
             if (foeEligible.length < settings.partySize) foeEligible = allEligible; // fallback if pool too small
             // Shuffle and pick unique species equal to partySize
             shuffleInPlace(foeEligible);
@@ -20078,7 +20496,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!foeSeen.has(name)) { foeSeen.add(name); foeKeys.push(name); }
                 if (foeKeys.length === settings.partySize) break;
             }
-            state.foeParty = foeKeys.map(name => buildPokemon(name, makeBuild(name)));
+            {
+                const _foeEntries = foeKeys.map(name => ({ name, build: makeBuild(name) }));
+                enforceItemClause(_foeEntries);
+                state.foeParty = _foeEntries.map(e => buildPokemon(e.name, e.build));
+            }
             state.pActive = state.playerParty[0];
             state.weather = null; state.weatherTurns = 0;
             state.terrain = null; state.terrainTurns = 0;
@@ -21971,7 +22393,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return true;
         }
-        const RIVAL_ATTACK_TYPE_DECAY = 70;
+        const RIVAL_ATTACK_TYPE_DECAY = 30;
 
         function _rivalCombinedEffVsMon(atkType, d1, d2) {
             const ch = typeChart[atkType];
