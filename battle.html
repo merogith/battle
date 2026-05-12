@@ -5593,6 +5593,7 @@
             const evs = build.evs;
             const moves = (build.m || []).flatMap(m => m.split('/'));
             const ability = build.a || '';
+            const item = build.i || '';
 
             const hasSetup = moves.some(m => _SETUP_MOVES.has(m));
             const hasHazards = moves.some(m => _HAZARD_MOVES.has(m));
@@ -5600,8 +5601,12 @@
             const hasWeatherSetter = moves.some(m => _WEATHER_SETTER_MOVE_SET.has(m));
             const hasWeatherBoosted = moves.some(m => _WEATHER_BOOSTED.has(m));
 
-            const offAtk = evs.atk >= 200;
-            const offSpa = evs.spa >= 200;
+            const physItem = item === 'Choice Band';
+            const specItem = item === 'Choice Specs';
+            const offItem = physItem || specItem || item === 'Choice Scarf' || item === 'Life Orb' || item === 'Expert Belt';
+
+            const offAtk = evs.atk >= 200 || physItem;
+            const offSpa = evs.spa >= 200 || specItem;
             const bulky = (evs.hp >= 200) || (evs.def >= 200) || (evs.spd >= 200);
             const physNature = _ATK_NATURES.has(build.n);
             const specNature = _SPA_NATURES.has(build.n);
@@ -5612,17 +5617,19 @@
                 return 'lead-hazards';
             if (hasSetup && (offAtk || offSpa || physNature || specNature))
                 return 'setup-sweeper';
+            if (physItem && !specItem) return 'physical-attacker';
+            if (specItem && !physItem) return 'special-attacker';
             if (offAtk && offSpa)
                 return 'mixed-attacker';
-            if (offAtk || (physNature && evs.atk >= 100))
+            if (offAtk || (physNature && evs.atk >= 100 && evs.spa < 100))
                 return 'physical-attacker';
-            if (offSpa || (specNature && evs.spa >= 100))
+            if (offSpa || (specNature && evs.spa >= 100 && evs.atk < 100))
                 return 'special-attacker';
-            if (bulky)
+            if (bulky && !offItem)
                 return 'bulky-support';
-            if (physNature)
+            if (physNature && !specNature)
                 return 'physical-attacker';
-            if (specNature)
+            if (specNature && !physNature)
                 return 'special-attacker';
             return 'other';
         }
@@ -5983,15 +5990,21 @@
                         return mv && mv.type === b.teraType && mv.cat !== 'Status';
                     });
                     if (!b.m.includes('Tera Blast') && !hasSTABForTera) {
-                        ensureMoveData('Tera Blast');
+                        let damagingCount = 0;
                         let weakIdx = -1, weakBP = Infinity;
                         for (let i = 0; i < b.m.length; i++) {
                             const mv = movesDB[b.m[i]] || ensureMoveData(b.m[i]);
-                            if (mv && mv.cat !== 'Status' && mv.type !== base.t1 && mv.type !== (base.t2||'') && (mv.pow||0) < weakBP) {
-                                weakBP = mv.pow||0; weakIdx = i;
+                            if (mv && mv.cat !== 'Status') {
+                                damagingCount++;
+                                if (mv.type !== base.t1 && mv.type !== (base.t2||'') && (mv.pow||0) < weakBP) {
+                                    weakBP = mv.pow||0; weakIdx = i;
+                                }
                             }
                         }
-                        if (weakIdx >= 0) b.m[weakIdx] = 'Tera Blast';
+                        if (weakIdx >= 0 && weakBP <= 50 && damagingCount > 1) {
+                            ensureMoveData('Tera Blast');
+                            b.m[weakIdx] = 'Tera Blast';
+                        }
                     }
                 }
             } else {
@@ -9413,6 +9426,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch(e) {}
         });
 
+        // Item clause: each held item appears at most once per side (VGC rule).
+        // Empty/'NO_ITEM' is exempt (no held item is not a "shared item"). On conflict,
+        // replace duplicates with Leftovers; if Leftovers is itself taken, fall back to ''.
+        function enforceItemClause(pool) {
+            if (!Array.isArray(pool) || pool.length < 2) return;
+            const seen = new Set();
+            for (const entry of pool) {
+                if (!entry || !entry.build) continue;
+                const it = entry.build.i;
+                if (!it || it === 'NO_ITEM') continue;
+                if (!seen.has(it)) { seen.add(it); continue; }
+                let replacement = seen.has('Leftovers') ? '' : 'Leftovers';
+                entry.build.i = replacement;
+                if (replacement) seen.add(replacement);
+            }
+        }
+
         function rebalanceWeatherBuilds(pool) {
             if (!settings.smartDraftPool) return;
             const hasWeatherSetter = pool.some(p =>
@@ -9452,11 +9482,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const poolSizeMap = { 1: 3, 2: 4, 3: 6, 4: 6, 5: 8, 6: 8 };
             let poolSizePerPlayer = poolSizeMap[settings.partySize] || (settings.partySize + 2);
             let totalPool = poolSizePerPlayer * 2;
-            const poolKeys = shuffleInPlace([...eligible]).slice(0, totalPool);
+            // Species clause: ensure no duplicate species across the combined draft pool
+            const uniqEligible = [...new Set(eligible)];
+            const poolKeys = shuffleInPlace([...uniqEligible]).slice(0, totalPool);
             const p1Pool = poolKeys.slice(0, poolSizePerPlayer).map(name => ({ name, build: makeBuild(name) }));
             const p2Pool = poolKeys.slice(poolSizePerPlayer, totalPool).map(name => ({ name, build: makeBuild(name) }));
             rebalanceWeatherBuilds(p1Pool);
             rebalanceWeatherBuilds(p2Pool);
+            enforceItemClause(p1Pool);
+            enforceItemClause(p2Pool);
             const minGen = Math.min(...enabledGens);
             const maxGen = Math.max(...enabledGens);
             return { mode, enabledGens, minGen, maxGen, p1Pool, p2Pool };
@@ -19908,8 +19942,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Generate new foe team (same gen range + grades as player)
             // Exclude species already on the player's team to avoid same-species matchups
             let allEligible = getDraftPool(state.enabledGens || rangeToEnabledGens(state.minGen != null ? state.minGen : 1, state.maxGen != null ? state.maxGen : 9), settings.draftGrades);
-            let playerSpecies = new Set(state.playerParty.map(m => m._baseName || m.name));
-            let foeEligible = allEligible.filter(n => !playerSpecies.has(n));
+            const _famOf = n => { const bs = baseStats[n]; return (bs && bs.baseSpecies) ? bs.baseSpecies : n; };
+            let playerSpecies = new Set(state.playerParty.map(m => _famOf(m._baseName || m.name)));
+            let foeEligible = allEligible.filter(n => !playerSpecies.has(_famOf(n)));
             if (foeEligible.length < settings.partySize) foeEligible = allEligible; // fallback if pool too small
             // Shuffle and pick unique species equal to partySize
             shuffleInPlace(foeEligible);
@@ -19919,7 +19954,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!foeSeen.has(name)) { foeSeen.add(name); foeKeys.push(name); }
                 if (foeKeys.length === settings.partySize) break;
             }
-            state.foeParty = foeKeys.map(name => buildPokemon(name, makeBuild(name)));
+            {
+                const _foeEntries = foeKeys.map(name => ({ name, build: makeBuild(name) }));
+                enforceItemClause(_foeEntries);
+                state.foeParty = _foeEntries.map(e => buildPokemon(e.name, e.build));
+            }
             state.pActive = state.playerParty[0];
             state.weather = null; state.weatherTurns = 0;
             state.terrain = null; state.terrainTurns = 0;
@@ -21812,7 +21851,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return true;
         }
-        const RIVAL_ATTACK_TYPE_DECAY = 70;
+        const RIVAL_ATTACK_TYPE_DECAY = 30;
 
         function _rivalCombinedEffVsMon(atkType, d1, d2) {
             const ch = typeChart[atkType];
