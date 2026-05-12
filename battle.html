@@ -12423,6 +12423,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         if (attacker.volatile.taunt > 0 && m.cat === "Status") return false;
         if (attacker.volatile.encore > 0 && attacker.volatile.encoreMove !== m.name) return false;
         if (m.name === "Fake Out" && !attacker.fakeOutOk) return false;
+        if (m.name === "First Impression" && !attacker.fakeOutOk) return false;
         if (attacker.volatile.disabled && m.name === attacker.volatile.disabled) return false;
         if (attacker.volatile.torment && attacker.volatile.lastMoveUsed === m.name) return false;
         // Assault Vest (mirror performAction): no Status except Substitute; waived when Dynamaxed or D-Max is queued
@@ -13022,13 +13023,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Re-stamp the watchdog clock so multi-replacement chains stay observable to the safety net.
                     try { state._lockedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); } catch (e) {}
                     logMsg(`${playerName} sent out ${state[activeTarget].name}!`, "info");
-                    // Healing Wish: fully heal the incoming pokemon
+                    // Healing Wish / Lunar Dance: fully heal the incoming pokemon (Lunar Dance also restores PP)
                     if (isP1 && state._healingWish) {
                         state[activeTarget].currentHp = state[activeTarget].maxHp; state[activeTarget].status = null; state[activeTarget].statusTurns = 0;
-                        state._healingWish = false; logMsg(`${state[activeTarget].name} was fully restored by the Healing Wish!`, 'heal');
+                        if (state._lunarDance) { state[activeTarget].moves.forEach(mv => { mv.pp = mv.maxPp || mv.pp; }); state._lunarDance = false; }
+                        state._healingWish = false; logMsg(`${state[activeTarget].name} was fully restored!`, 'heal');
                     } else if (!isP1 && state._healingWishFoe) {
                         state[activeTarget].currentHp = state[activeTarget].maxHp; state[activeTarget].status = null; state[activeTarget].statusTurns = 0;
-                        state._healingWishFoe = false; logMsg(`${state[activeTarget].name} was fully restored by the Healing Wish!`, 'heal');
+                        if (state._lunarDanceFoe) { state[activeTarget].moves.forEach(mv => { mv.pp = mv.maxPp || mv.pp; }); state._lunarDanceFoe = false; }
+                        state._healingWishFoe = false; logMsg(`${state[activeTarget].name} was fully restored!`, 'heal');
                     }
                     try { applySwitchInAbilities(state[activeTarget], isP1 ? state.fActive : state.pActive); }
                     catch (e) { console.warn('[selectPartyMember] applySwitchInAbilities threw — continuing without it:', e); }
@@ -14258,6 +14261,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${attacker.name} can't use Fake Out — it's not the first turn!`, 'info');
                 abortPostCanMoveBlock(attacker); await sleep(1000); return;
             }
+            if (move.name === "First Impression" && !hadFakeOutOk) {
+                logMsg(`But it failed! First Impression only works on the first turn out.`, 'info');
+                abortPostCanMoveBlock(attacker); await sleep(1000); return;
+            }
             
             if (move.pp <= 0) {
                 const _allOutOfPP = attacker.moves.every(m => m.pp <= 0);
@@ -14345,7 +14352,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             if (move.name === "Sleep Talk") {
                 if (attacker.status !== "SLP") { logMsg("But it failed!"); abortPostCanMoveBlock(attacker); await sleep(1000); return; }
-                let validMoves = attacker.moves.filter(m => m.name !== "Sleep Talk" && m.name !== "Focus Punch");
+                const _stBanned = new Set(["Sleep Talk","Assist","Beak Blast","Belch","Bide","Celebrate","Chatter","Copycat","Dig","Dive","Dynamax Cannon","Electro Shot","Fly","Bounce","Phantom Force","Shadow Force","Focus Punch","Freeze Shock","Geomancy","Hold Hands","Ice Burn","Me First","Meteor Beam","Metronome","Mimic","Mirror Move","Nature Power","Razor Wind","Shell Trap","Sketch","Skull Bash","Sky Attack","Sky Drop","Solar Beam","Solar Blade"]);
+                let validMoves = attacker.moves.filter(m => !_stBanned.has(m.name));
                 if (validMoves.length === 0) { logMsg("But it failed!"); abortPostCanMoveBlock(attacker); await sleep(1000); return; }
                 let sleepTalkPick = validMoves[Math.floor(Math.random() * validMoves.length)];
                 logMsg(`${attacker.name} used Sleep Talk and called ${sleepTalkPick.name}!`);
@@ -14500,13 +14508,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // DESTINY BOND: User will co-faint its attacker if KO'd this turn
             if (move.name === "Destiny Bond") {
+                // Gen 7+ nerf: Destiny Bond fails if it was used successfully on the previous turn
+                if (attacker.volatile.destinyBondUsedLast) {
+                    logMsg(`But it failed!`, 'info');
+                    attacker.volatile.destinyBondUsedLast = false;
+                    await sleep(1000); return;
+                }
                 attacker.volatile.destinyBond = true;
+                attacker.volatile.destinyBondUsedLast = true;
                 logMsg(`${attacker.name} is trying to share its fate!`, 'status');
                 await sleep(1000); return;
             }
             // Clear Destiny Bond if user moves with a different move
             if (attacker.volatile.destinyBond && move.name !== "Destiny Bond") {
                 attacker.volatile.destinyBond = false;
+                attacker.volatile.destinyBondUsedLast = false;
             }
 
             // BIDE: First use — start storing (PP already decremented above)
@@ -14782,6 +14798,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`But it failed! There is no ally to help!`, 'info');
                 await sleep(1000); return;
             }
+            // Doubles-only ally-targeting support moves fail in singles
+            if (move.name === "Follow Me" || move.name === "Rage Powder" || move.name === "Spotlight"
+                || move.name === "Ally Switch" || move.name === "Decorate" || move.name === "Aromatic Mist"
+                || move.name === "Coaching" || move.name === "Hold Hands" || move.name === "Heal Pulse"
+                || move.name === "Floral Healing" || move.name === "Pollen Puff") {
+                // Heal Pulse/Pollen Puff/Floral Healing fail with no valid ally target in singles
+                if (move.name === "Pollen Puff") {
+                    // Pollen Puff vs opponent acts as a damaging move — fall through to damage handling
+                } else {
+                    logMsg(`But it failed!`, 'info');
+                    await sleep(1000); return;
+                }
+            }
             // Unseen Fist: contact moves bypass regular Protect/Detect (NOT King's Shield/Spiky Shield/Baneful Bunker/etc.)
             if (attacker.ability === "Unseen Fist" && isContactMove(move) && defender.volatile.protect
                 && !defender.volatile.kingShield && !defender.volatile.spikyShield && !defender.volatile.banefulBunker
@@ -14814,12 +14843,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         logMsg(`${attacker.name} was hurt by the Spiky Shield for ${spikeDmg}!`, 'dmg');
                     }
                     if (defender.volatile.kingShield && _contact) {
-                        changeStage(attacker, 'atk', -2, true);
-                        logMsg(`${attacker.name}'s Attack fell sharply!`, 'info');
+                        changeStage(attacker, 'atk', -1, true);
+                        logMsg(`${attacker.name}'s Attack fell!`, 'info');
                     }
                     if (defender.volatile.banefulBunker && _contact) {
-                        applyStatus(attacker, "TOX");
-                        logMsg(`${attacker.name} was badly poisoned by Baneful Bunker!`, 'status');
+                        applyStatus(attacker, "PSN");
+                        logMsg(`${attacker.name} was poisoned by Baneful Bunker!`, 'status');
                     }
                     if (defender.volatile.silkTrap && _contact) {
                         changeStage(attacker, 'spe', -1, true);
@@ -15591,7 +15620,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (move.name === "Last Respects") {
                     const _myPartyLR = isPlayer ? state.playerParty : state.foeParty;
                     const _fainted = _myPartyLR ? _myPartyLR.filter(m => m && m.currentHp <= 0).length : 0;
-                    basePower = Math.min(50 + 50 * _fainted, 50 + 50 * 5);
+                    basePower = 50 + 50 * Math.min(_fainted, 100);
                 }
                 if (move.name === "Rage Fist") {
                     const _hits = (attacker.volatile && attacker.volatile.timesHit) || 0;
@@ -15643,6 +15672,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     else if (ww === "Rain" || ww === "HeavyRain") { move = {...move, type: "Water"}; basePower = 100; }
                     else if (ww === "Sandstorm") { move = {...move, type: "Rock"}; basePower = 100; }
                     else if (ww === "Hail") { move = {...move, type: "Ice"}; basePower = 100; }
+                }
+                if (move.name === "Terrain Pulse" && state.terrain && state.terrainTurns > 0) {
+                    // Only doubles if user is grounded (typeof isGrounded === 'function' guard)
+                    const _grounded = (typeof isGrounded === 'function') ? isGrounded(attacker) : true;
+                    if (_grounded) {
+                        if (state.terrain === "Electric") { move = {...move, type: "Electric"}; basePower = 100; }
+                        else if (state.terrain === "Grassy") { move = {...move, type: "Grass"}; basePower = 100; }
+                        else if (state.terrain === "Psychic") { move = {...move, type: "Psychic"}; basePower = 100; }
+                        else if (state.terrain === "Misty") { move = {...move, type: "Fairy"}; basePower = 100; }
+                    }
+                }
+                if (move.name === "Acrobatics" && !attacker.item) {
+                    basePower = basePower * 2;
                 }
 
                 // -ate abilities: convert Normal-type moves to new type + 1.2x power
@@ -17762,7 +17804,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Sleep Powder" || move.name === "Spore" || move.name === "Hypnosis" || move.name === "Lovely Kiss" || move.name === "Sing") { applyStatus(defender, "SLP"); return; }
             if (move.name === "Yawn") {
                 if (defender.status || defender.volatile.yawnTurns > 0) { logMsg(`But it failed!`, 'info'); return; }
-                if (defender.ability === "Insomnia" || defender.ability === "Vital Spirit") { logMsg(`${defender.name}'s ${defender.ability} prevents sleep!`, 'info'); return; }
+                if (defender.ability === "Insomnia" || defender.ability === "Vital Spirit" || defender.ability === "Sweet Veil" || defender.ability === "Comatose") { logMsg(`${defender.name}'s ${defender.ability} prevents sleep!`, 'info'); return; }
+                const _defSide = isPlayer ? state.fSide : state.pSide;
+                if (_defSide && _defSide.safeguard > 0) { logMsg(`${defender.name} is protected by Safeguard!`, 'info'); return; }
                 const _yawnGrounded = (m) => m.type1 !== "Flying" && m.type2 !== "Flying" && m.ability !== "Levitate" && m.item !== "Air Balloon" && !m.volatile.magnetRise;
                 if (state.terrain === "Electric" && state.terrainTurns > 0 && _yawnGrounded(defender)) { logMsg(`Electric Terrain prevents sleep!`, 'info'); return; }
                 if (state.terrain === "Misty" && state.terrainTurns > 0 && _yawnGrounded(defender)) { logMsg(`Misty Terrain prevents sleep!`, 'info'); return; }
@@ -17780,11 +17824,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "Poison Powder" || move.name === "Poison Gas") { applyStatus(defender, "PSN"); return; }
             if (move.name === "Healing Wish" || move.name === "Lunar Dance") {
+                // Fails if no benched ally available to switch in
+                const _team = isPlayer ? state.pTeam : state.fTeam;
+                const _self = attacker;
+                const _hasBench = _team && _team.some(t => t && t !== _self && t.currentHp > 0);
+                if (!_hasBench) { logMsg(`But it failed!`, 'info'); return; }
                 attacker.currentHp = 0;
                 logMsg(`${attacker.name} fainted for the sake of its team!`, 'dmg');
-                // Mark next switch-in for full heal
-                let side = isPlayer ? state : null;
                 if (isPlayer) state._healingWish = true; else state._healingWishFoe = true;
+                if (move.name === "Lunar Dance") {
+                    if (isPlayer) state._lunarDance = true; else state._lunarDanceFoe = true;
+                }
                 return;
             }
             if (move.name === "Bounce" && Math.random() < 0.3) { applyStatus(defender, "PAR"); return; }
@@ -17834,7 +17884,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Copycat: copies the last move successfully used on the field (Showdown-style), not only the foe's last move
             if (move.name === "Copycat") {
-                const _ccBanned = new Set(["Copycat","Mirror Move","Me First","Sketch","Transform","Counter","Mirror Coat","Metal Burst","Feint","Focus Punch","Bide","Chatter","Assist","Sleep Talk","Metronome","Snatch","Nature Power","Struggle"]);
+                const _ccBanned = new Set(["Assist","Baneful Bunker","Beak Blast","Behemoth Bash","Behemoth Blade","Belch","Bestow","Celebrate","Chatter","Circle Throw","Copycat","Counter","Covet","Destiny Bond","Detect","Dragon Tail","Dynamax Cannon","Endure","Feint","Focus Punch","Follow Me","Helping Hand","Hold Hands","King's Shield","Mat Block","Me First","Metal Burst","Metronome","Mimic","Mirror Coat","Mirror Move","Nature Power","Obstruct","Protect","Quash","Rage Powder","Roar","Shell Trap","Silk Trap","Sketch","Sleep Talk","Snatch","Spiky Shield","Spotlight","Struggle","Switcheroo","Thief","Transform","Trick","Whirlwind","Bide","Burning Bulwark"]);
                 let lastUsed = state.fieldLastMove;
                 if (!lastUsed || _ccBanned.has(lastUsed)) { logMsg(`But it failed!`, 'info'); return; }
                 let ccMd = ensureMoveData(lastUsed);
@@ -17909,6 +17959,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Transform") {
                 let target = isPlayer ? state.fActive : state.pActive;
                 if (target.currentHp <= 0) { logMsg("But it failed!", 'info'); return; }
+                if (target.volatile && target.volatile.sub > 0) { logMsg("But it failed!", 'info'); return; }
+                if (target.transformedInto) { logMsg("But it failed!", 'info'); return; }
+                if (target.ability === "Illusion" && target.illusionActive) { logMsg("But it failed!", 'info'); return; }
                 let noTransformAbilities = new Set(["Wonder Guard","Imposter","Flower Gift","Illusion","Power Construct","Stance Change","Schooling","Comatose","Shields Down","Disguise","RKS System","Battle Bond","Neutralizing Gas","Ice Face","Hunger Switch"]);
                 attacker.stats = { ...target.stats };
                 attacker.type1 = target.type1; attacker.type2 = target.type2;
@@ -17940,10 +17993,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 attacker.status = "SLP"; attacker.statusTurns = 0; attacker.sleepDuration = 2;
                 logMsg(`${attacker.name} went to sleep and recovered ${healed} HP!`, 'heal'); return; 
             }
-            if (move.name === "Leech Seed") { 
-                if (defender.type1 === "Grass" || defender.type2 === "Grass") { logMsg(`It doesn't affect ${defender.name}...`); } 
+            if (move.name === "Leech Seed") {
+                if (defender.type1 === "Grass" || defender.type2 === "Grass") { logMsg(`It doesn't affect ${defender.name}...`); }
+                else if (defender.volatile.sub > 0) { logMsg(`But it failed!`, 'info'); }
                 else if (defender.volatile.leechSeed) { logMsg(`${defender.name} is already seeded!`); }
-                else { defender.volatile.leechSeed = true; logMsg(`${defender.name} was seeded!`, 'status'); } return; 
+                else { defender.volatile.leechSeed = true; logMsg(`${defender.name} was seeded!`, 'status'); } return;
             }
             if (move.name === "Stealth Rock") { 
                 let side = isPlayer ? state.fSide : state.pSide; 
@@ -17990,6 +18044,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (defender.ability === "Aroma Veil") { logMsg(`${defender.name}'s Aroma Veil protects it from Encore!`, 'info'); return; }
                 if (defender.dynamaxed) { logMsg(`But it failed against the Dynamaxed ${defender.name}!`); return; }
                 if (!defender.volatile.lastMoveUsed || defender.volatile.encore > 0) { logMsg(`But it failed!`); return; }
+                const _encoreBlacklist = new Set(["Encore","Mimic","Mirror Move","Sketch","Struggle","Transform","Assist","Copycat","Me First","Metronome","Nature Power","Sleep Talk"]);
+                if (_encoreBlacklist.has(defender.volatile.lastMoveUsed)) { logMsg(`But it failed!`); return; }
                 let encTarget = defender.moves.find(m => m.name === defender.volatile.lastMoveUsed);
                 if (!encTarget || encTarget.pp <= 0) { logMsg(`But it failed!`); return; }
                 defender.volatile.encore = 3;
@@ -18100,8 +18156,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "Heal Bell" || move.name === "Aromatherapy") {
                 let party = isPlayer ? state.playerParty : state.foeParty;
-                party.forEach(m => { m.status = null; m.statusTurns = 0; });
-                logMsg(`A soothing chime cured the team's status!`, 'heal'); return;
+                // Heal Bell is a sound move (Gen 5+): Soundproof allies aren't cured. Aromatherapy still cures them.
+                party.forEach(m => {
+                    if (move.name === "Heal Bell" && m && m.ability === "Soundproof" && m !== attacker) return;
+                    if (m) { m.status = null; m.statusTurns = 0; }
+                });
+                logMsg(`A soothing aroma wafted through the party!`, 'heal'); return;
             }
             if (move.name === "Psycho Shift") {
                 if (!attacker.status) { logMsg(`But it failed! ${attacker.name} has no status to transfer.`); return; }
@@ -18229,11 +18289,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Coil") { changeStage(attacker, 'atk', 1); changeStage(attacker, 'def', 1); changeStage(attacker, 'acc', 1); return; }
             if (move.name === "Feather Dance" || move.name === "FeatherDance") { changeStage(defender, 'atk', -2); return; }
             if (move.name === "Belly Drum") {
+                if (attacker.stages.atk >= 6) { logMsg(`But it failed!`, 'info'); return; }
                 if (attacker.currentHp > Math.floor(attacker.maxHp / 2)) {
                     attacker.currentHp -= Math.floor(attacker.maxHp / 2);
                     attacker.stages.atk = 6;
                     logMsg(`${attacker.name} cut its HP and maximized its Attack!`, 'info');
                 } else { logMsg(`But it failed!`, 'info'); }
+                return;
+            }
+            if (move.name === "No Retreat") {
+                if (attacker.volatile.noRetreatUsed) { logMsg(`But it failed!`, 'info'); return; }
+                attacker.volatile.noRetreatUsed = true;
+                attacker.volatile.trapped = true;
+                ['atk','def','spa','spd','spe'].forEach(s => changeStage(attacker, s, 1));
+                logMsg(`${attacker.name} cannot retreat now!`, 'info');
+                return;
+            }
+            if (move.name === "Trick-or-Treat") {
+                if (defender.type1 === "Ghost" || defender.type2 === "Ghost") { logMsg(`But it failed!`, 'info'); return; }
+                if (!defender.type2) defender.type2 = "Ghost"; else defender.type2 = "Ghost";
+                logMsg(`Ghost type was added to ${defender.name}!`, 'info');
+                return;
+            }
+            if (move.name === "Forest's Curse") {
+                if (defender.type1 === "Grass" || defender.type2 === "Grass") { logMsg(`But it failed!`, 'info'); return; }
+                if (!defender.type2) defender.type2 = "Grass"; else defender.type2 = "Grass";
+                logMsg(`Grass type was added to ${defender.name}!`, 'info');
+                return;
+            }
+            if (move.name === "Magic Coat") {
+                attacker.volatile.magicCoat = true;
+                logMsg(`${attacker.name} shrouded itself with Magic Coat!`, 'info');
+                return;
+            }
+            if (move.name === "Snatch") {
+                attacker.volatile.snatch = true;
+                logMsg(`${attacker.name} waits for a target to make a move!`, 'info');
                 return;
             }
             if (move.name === "Haze") {
@@ -18242,14 +18333,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "Rain Dance") { state.weather = "Rain"; state.weatherTurns = attacker.item === "Damp Rock" ? 8 : 5; logMsg("It started to rain!", 'info'); try { _applyWeatherFormChanges(); } catch(e) {} return; }
             if (move.name === "Pain Split") {
+                if (defender.volatile.sub > 0) { logMsg(`But it failed!`, 'info'); return; }
                 let avg = Math.floor((attacker.currentHp + defender.currentHp) / 2);
                 attacker.currentHp = Math.min(attacker.maxHp, avg);
                 defender.currentHp = Math.min(defender.maxHp, avg);
                 logMsg(`${attacker.name} and ${defender.name} shared their pain!`, 'info'); return;
             }
             if (move.name === "Perish Song") {
-                if (attacker.volatile.perishCount < 0) attacker.volatile.perishCount = 4;
-                if (defender.volatile.perishCount < 0) defender.volatile.perishCount = 4;
+                if (attacker.ability !== "Soundproof" && attacker.volatile.perishCount < 0) attacker.volatile.perishCount = 4;
+                if (defender.ability !== "Soundproof" && defender.volatile.perishCount < 0) defender.volatile.perishCount = 4;
                 logMsg(`All Pokemon that heard the song will faint in 3 turns!`, 'status'); return;
             }
             // Acupressure: random +2 to a random stat
@@ -18317,6 +18409,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let atkMega = attacker.megaEvolved || isMegaStoneItemName(attacker.item);
                 let defMega = defender.megaEvolved || isMegaStoneItemName(defender.item);
                 if (atkMega || defMega) { logMsg(`But it failed!`); return; }
+                const _trickUntradeable = (it) => {
+                    if (!it) return false;
+                    if (typeof isKnockOffImmuneHeldItem === 'function' && isKnockOffImmuneHeldItem(it, attacker, defender)) return true;
+                    return it === "Booster Energy" || /Z$/.test(it) || /ium Z$/.test(it);
+                };
+                if (_trickUntradeable(attacker.item) || _trickUntradeable(defender.item)) { logMsg(`But it failed!`); return; }
                 let atkItem = attacker.item || 'nothing';
                 let defItem = defender.item || 'nothing';
                 let temp = attacker.item; attacker.item = defender.item; defender.item = temp;
@@ -18462,7 +18560,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Bulk Up") { changeStage(attacker, 'atk', 1); changeStage(attacker, 'def', 1); return; }
             if (move.name === "Work Up") { changeStage(attacker, 'atk', 1); changeStage(attacker, 'spa', 1); return; }
             if (move.name === "Shift Gear") { changeStage(attacker, 'atk', 1); changeStage(attacker, 'spe', 2); return; }
-            if (move.name === "Clangorous Soul") { let cost = Math.max(1, Math.floor(attacker.maxHp / 3)); attacker.currentHp = Math.max(1, attacker.currentHp - cost); changeStage(attacker, 'atk', 1); changeStage(attacker, 'def', 1); changeStage(attacker, 'spa', 1); changeStage(attacker, 'spd', 1); changeStage(attacker, 'spe', 1); return; }
+            if (move.name === "Clangorous Soul") {
+                let cost = Math.max(1, Math.floor(attacker.maxHp / 3));
+                if (attacker.currentHp <= cost) { logMsg(`But it failed!`, 'info'); return; }
+                const _csStats = ['atk','def','spa','spd','spe'];
+                if (_csStats.every(s => (attacker.stages[s] || 0) >= 6)) { logMsg(`But it failed!`, 'info'); return; }
+                attacker.currentHp = Math.max(1, attacker.currentHp - cost);
+                _csStats.forEach(s => changeStage(attacker, s, 1));
+                return;
+            }
             if (move.name === "Geomancy") { changeStage(attacker, 'spa', 2); changeStage(attacker, 'spd', 2); changeStage(attacker, 'spe', 2); return; }
             if (move.name === "Stockpile") { attacker.volatile.stockpile = (attacker.volatile.stockpile || 0) + 1; changeStage(attacker, 'def', 1); changeStage(attacker, 'spd', 1); logMsg(`${attacker.name} stored energy! (${attacker.volatile.stockpile})`, 'info'); return; }
             if (move.name === "Spore" || move.name === "Sleep Powder") { applyStatus(defender, "SLP"); return; }
@@ -18490,8 +18596,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             if (move.name === "Tickle") { changeStage(defender, 'atk', -1, true); changeStage(defender, 'def', -1, true); return; }
-            if (move.name === "Parting Shot") { changeStage(defender, 'atk', -1, true); changeStage(defender, 'spa', -1, true); await handlePivotSwitch(isPlayer, move); return; }
-            if (move.name === "Memento") { attacker.currentHp = 0; changeStage(defender, 'atk', -2, true); changeStage(defender, 'spa', -2, true); logMsg(`${attacker.name} used Memento and fainted!`, 'dmg'); return; }
+            if (move.name === "Parting Shot") {
+                const _psTeam = isPlayer ? state.pTeam : state.fTeam;
+                const _psBench = _psTeam && _psTeam.some(t => t && t !== attacker && t.currentHp > 0);
+                if (!_psBench) { logMsg(`But it failed!`, 'info'); return; }
+                changeStage(defender, 'atk', -1, true); changeStage(defender, 'spa', -1, true);
+                await handlePivotSwitch(isPlayer, move); return;
+            }
+            if (move.name === "Memento") {
+                if (defender.volatile && defender.volatile.sub > 0) { logMsg(`But it failed!`, 'info'); return; }
+                attacker.currentHp = 0;
+                changeStage(defender, 'atk', -2, true); changeStage(defender, 'spa', -2, true);
+                logMsg(`${attacker.name} used Memento and fainted!`, 'dmg');
+                return;
+            }
             // Self-sacrifice/utility
             if (move.name === "Refresh") { if (attacker.status) { let old = attacker.status; attacker.status = null; attacker.statusTurns = 0; logMsg(`${attacker.name} cured its ${old}!`, 'heal'); } else { logMsg(`But it had no status!`, 'info'); } return; }
             // Fling / Natural Gift: item consumption happens in performAction damage path (including sub hits); nothing left here
