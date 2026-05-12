@@ -12168,8 +12168,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let canUseMega = activeMon.buildData && activeMon.buildData.gimmick === 'MEGA' && !activeMon.megaEvolved && (!settings.classicMode || !_usedMega);
             let canUseDyna = activeMon.buildData && (activeMon.buildData.gimmick === 'DYNAMAX' || activeMon.buildData.gimmick === 'GMAXDYNAMAX') && !activeMon.dynamaxed && !activeMon.dynamaxUsed && (!settings.classicMode || !_usedDyna);
             let canUseTera = activeMon.buildData && activeMon.buildData.teraType && !activeMon.teraActivated && (!settings.classicMode || !_usedTera);
-            // Canon VGC: one Z-Move per team per battle (enforced in all modes)
-            let canUseZ = activeMon.buildData && activeMon.buildData.gimmick === 'ZMOVE' && !activeMon.zMoveUsed && !_usedZ;
+            // Cap depends on the Classic Mode toggle: one Z per team (Classic) vs one per Pokémon (off)
+            let canUseZ = activeMon.buildData && activeMon.buildData.gimmick === 'ZMOVE' && !activeMon.zMoveUsed && (!settings.classicMode || !_usedZ);
             const hasGimmickButtons = canUseMega || canUseDyna || canUseTera || canUseZ;
             menu.classList.toggle('move-menu-no-gimmicks', !hasGimmickButtons);
 
@@ -12474,7 +12474,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             //  a) the Z-Move can KO the opponent (regular move cannot)
             //  b) both sides low HP (now-or-never situation)
             //  c) opponent has screens/substitute that Z-Move bypasses
-            if (bd.gimmick === 'ZMOVE' && !attacker.zMoveUsed && !state.fUsedZ) {
+            if (bd.gimmick === 'ZMOVE' && !attacker.zMoveUsed && (!settings.classicMode || !state.fUsedZ)) {
                 // Iterate all damaging moves, pick the highest Z damage option
                 let zDmg = 0;
                 for (let m of attacker.moves) {
@@ -14479,8 +14479,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
                 }
                 if (gimmickPending === 'ZMOVE') {
-                    // Canon VGC: one Z per team per battle, regardless of Classic toggle
-                    let ok = attacker.buildData && attacker.buildData.gimmick === 'ZMOVE' && !attacker.zMoveUsed && !(isPlayer ? state.usedZ : state.fUsedZ);
+                    // Cap is governed by the Classic Mode toggle (one per team if on, one per Pokémon if off)
+                    let ok = attacker.buildData && attacker.buildData.gimmick === 'ZMOVE' && !attacker.zMoveUsed && (!settings.classicMode || !(isPlayer ? state.usedZ : state.fUsedZ));
                     if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
                 }
                 if (gimmickPending === 'MEGA' && !attacker.megaEvolved) {
