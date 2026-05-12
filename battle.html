@@ -1098,6 +1098,27 @@
             min-width: 0;
             line-height: 1.35;
         }
+        .story-action-btn-meta {
+            display: flex; align-items: center; gap: 4px;
+            flex: 0 0 auto; margin-left: 8px;
+        }
+        .story-action-badge {
+            display: inline-flex; align-items: center; gap: 3px;
+            font-size: 10px; line-height: 1; letter-spacing: 0.5px;
+            padding: 3px 6px; border: 1px solid currentColor; border-radius: 2px;
+            font-family: var(--battle-font) !important;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .story-action-badge.cost { color: #ffd54f; border-color: #b8923a; background: rgba(255,213,79,0.08); }
+        .story-action-badge.cost.cant-afford { color: #ef5350; border-color: #b03a3a; background: rgba(239,83,80,0.08); }
+        .story-action-badge.free { color: #81c784; border-color: #4a8a4d; background: rgba(129,199,132,0.1); }
+        .story-action-badge.info { color: #b3c2d6; border-color: #5a6478; background: rgba(179,194,214,0.06); }
+        .story-action-badge.new { color: #fff; border-color: #ff6b6b; background: linear-gradient(180deg,#d83a3a 0%,#a02525 100%); animation: story-action-new-pulse 1.6s ease-in-out infinite; }
+        @keyframes story-action-new-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255,107,107,0.6); }
+            50% { box-shadow: 0 0 6px 2px rgba(255,107,107,0.35); }
+        }
         /* Same hue family, lighter/dimmer accent (alternate NPC, secondary service, bag vs mart) */
         .story-action-btn.primary.story-action-btn--soft { border-color:#c98888; color:#d4a0a0; background:linear-gradient(180deg,#221818 0%,#151010 100%); }
         .story-action-btn.primary.story-action-btn--soft:hover { background:linear-gradient(180deg,#2a1c1c 0%,#1a1212 100%); box-shadow:inset -3px -3px 0 #302020,inset 3px 3px 0 #483030, 0 0 10px rgba(200,136,136,0.12); border-color:#d4a0a0; color:#e0b4b4; }
@@ -22363,12 +22384,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Professor / Mystery Figure (one visit per city)
             if (hasProf && !profUsedHere) {
                 if (hasTeamRoom) {
-                    btn.innerHTML += makeActionBtn('Professor — Receive a Pokémon (Free)','professor','window.StoryMode.enterProfessor()','primary');
+                    btn.innerHTML += makeActionBtn('Professor — Receive a Pokémon','professor','window.StoryMode.enterProfessor()','primary',{ meta:[{label:'Free',tone:'free'}] });
                 } else {
                     const mysteryLabel = legendMysteryGate
-                        ? '❓ Mystery Figure — Legendary Grade 1 Swap (Required)'
+                        ? '❓ Mystery Figure — Legendary Grade 1 Swap'
                         : '❓ Mystery Figure — Swap in Grade 1/2 Pokémon';
-                    btn.innerHTML += makeActionBtn(mysteryLabel,'mystery','window.StoryMode.enterProfessor()','primary',{ soft:true });
+                    const mysteryMeta = legendMysteryGate
+                        ? [{label:'Required',tone:'info'}]
+                        : [{label:'Free',tone:'free'}];
+                    btn.innerHTML += makeActionBtn(mysteryLabel,'mystery','window.StoryMode.enterProfessor()','primary',{ soft:true, meta: mysteryMeta });
                 }
             }
             // Battle actions
@@ -22418,47 +22442,55 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             // Shops
+            const _costBadge = (amount, suffix) => {
+                const cant = sm.gold < amount;
+                return { label: amount.toLocaleString() + 'G' + (suffix || ''), tone: 'cost', cantAfford: cant, title: cant ? `You have ${sm.gold.toLocaleString()}G — short by ${(amount - sm.gold).toLocaleString()}G` : '' };
+            };
             if (actions.includes('Pokemart')) {
-                btn.innerHTML += makeActionBtn('🛒 Pokémart — Buy Items','mart','window.StoryMode.enterShop(\'mart\')','shop');
+                btn.innerHTML += makeActionBtn('🛒 Pokémart — Buy Items','mart','window.StoryMode.enterShop(\'mart\')','shop',{ meta:[{label:'Shop',tone:'info'}] });
             }
             if (actions.includes('Link Station')) {
-                btn.innerHTML += makeActionBtn('📡 Cable Link Station — Reroll Team','link','window.StoryMode.enterLink()','link');
+                btn.innerHTML += makeActionBtn('📡 Cable Link Station — Reroll Team','link','window.StoryMode.enterLink()','link',{ meta:[{label:'Free',tone:'free'}] });
             }
             if (actions.includes('Department Store')) {
-                btn.innerHTML += makeActionBtn('🏬 Department Store — Premium battle items','dept','window.StoryMode.enterShop(\'dept\')','dept');
+                btn.innerHTML += makeActionBtn('🏬 Department Store — Premium battle items','dept','window.StoryMode.enterShop(\'dept\')','dept',{ meta:[{label:'Premium',tone:'info'}] });
             }
             const _relicCityIdx = getCityIndex(ev);
             if (_relicCityIdx === 0 || actions.includes('Department Store')) {
-                btn.innerHTML += makeActionBtn('✨ Relic Annex — Run relics (3 picks)','relic','window.StoryMode.enterArtifactShop()','dept',{ soft:true });
+                const relicFree = (_relicCityIdx === 0 && !sm.artifactFreeClaimUsed);
+                const relicMeta = relicFree
+                    ? [{label:'1st Free',tone:'free'}]
+                    : [_costBadge(5000, ' each')];
+                btn.innerHTML += makeActionBtn('✨ Relic Annex — Run relics (3 picks)','relic','window.StoryMode.enterArtifactShop()','dept',{ soft:true, meta: relicMeta });
             }
             if (actions.includes('Poké Casino')) {
-                btn.innerHTML += makeActionBtn('🎰 Poké Casino — Coin flip wagers','casino','window.StoryMode.enterCasino()','casino',{ soft:true });
+                btn.innerHTML += makeActionBtn('🎰 Poké Casino — Coin flip wagers','casino','window.StoryMode.enterCasino()','casino',{ soft:true, meta:[{label:'Wager',tone:'info'}] });
             }
             const _tutorTeam = sm.team.length > 0;
             if (actions.includes('Move Tutor') && _tutorTeam) {
-                btn.innerHTML += makeActionBtn('📖 Move Tutor — Swap battle moves','tutor','window.StoryMode.enterTutor(\'moves\')','training');
+                btn.innerHTML += makeActionBtn('📖 Move Tutor — Swap battle moves','tutor','window.StoryMode.enterTutor(\'moves\')','training',{ meta:[_costBadge(1500, '+')] });
             }
             if (actions.includes('Nature Rater') && _tutorTeam) {
-                btn.innerHTML += makeActionBtn('📛 Nature Rater — Adjust natures','nature','window.StoryMode.enterTutor(\'nature\')','training',{ soft:true });
+                btn.innerHTML += makeActionBtn('📛 Nature Rater — Adjust natures','nature','window.StoryMode.enterTutor(\'nature\')','training',{ soft:true, meta:[_costBadge(2000, '+')] });
             }
             if (actions.includes('Battle Dojo') && _tutorTeam) {
-                btn.innerHTML += makeActionBtn('🥋 Battle Dojo — Held items & abilities','dojo','window.StoryMode.enterTutor(\'loadout\')','training');
+                btn.innerHTML += makeActionBtn('🥋 Battle Dojo — Held items & abilities','dojo','window.StoryMode.enterTutor(\'loadout\')','training',{ meta:[_costBadge(2000, '+')] });
             }
             if (actions.includes('EV Trainer') && _tutorTeam) {
-                btn.innerHTML += makeActionBtn('🏋️ EV Trainer — Reshape effort values','evtrainer','window.StoryMode.enterEVTrainer()','training',{ soft:true });
+                btn.innerHTML += makeActionBtn('🏋️ EV Trainer — Reshape effort values','evtrainer','window.StoryMode.enterEVTrainer()','training',{ soft:true, meta:[_costBadge(5000)] });
             }
             const _colressMechAny = !!(sm.settings && (sm.settings.megaOn || sm.settings.zOn || sm.settings.dynaOn || sm.settings.teraOn));
             if (actions.includes('Power Up') && _tutorTeam && _colressMechAny) {
-                btn.innerHTML += makeActionBtn('🧪 Colress — Awaken battle mechanics','colress','window.StoryMode.enterColress()','training',{ soft:true });
+                btn.innerHTML += makeActionBtn('🧪 Colress — Awaken battle mechanics','colress','window.StoryMode.enterColress()','training',{ soft:true, meta:[_costBadge(10000)] });
             }
             if ((sm.artifacts || []).length > 0) {
-                btn.innerHTML += makeActionBtn('✨ Artifact Hall — Toggle run artifacts','artifacts','window.StoryMode.enterArtifactHall()','dept',{ soft:true });
+                btn.innerHTML += makeActionBtn('✨ Artifact Hall — Toggle run artifacts','artifacts','window.StoryMode.enterArtifactHall()','dept',{ soft:true, meta:[{label:'Free',tone:'free'}] });
             }
             // Pokémon Center — full party heal, free, unlimited (disabled in Hardcore: bring potions)
             if ((sm.storyDifficulty || 'normal') === 'hardcore') {
                 btn.innerHTML += `<button type="button" class="story-action-btn" disabled title="No Pokémon Center service in Hardcore — bring potions" style="opacity:0.45;cursor:not-allowed;"><span class="story-action-btn-text">🏥 Pokémon Center <span style="font-size:10px;color:#aaa;">(Disabled in Hardcore)</span></span></button>`;
             } else {
-                btn.innerHTML += makeActionBtn('🏥 Pokémon Center — Restore Your Party','center','window.StoryMode.enterPokemonCenter()','center');
+                btn.innerHTML += makeActionBtn('🏥 Pokémon Center — Restore Your Party','center','window.StoryMode.enterPokemonCenter()','center',{ meta:[{label:'Free',tone:'free'}] });
             }
             const _partyN = sm.team.length;
             const _partyLabel = _partyN
@@ -22514,7 +22546,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const iconHtml = src
                 ? `<img class="story-action-ico" src="${src}" alt="" width="24" height="24" decoding="async">`
                 : '';
-            return `<button type="button" class="story-action-btn ${cls || ''}${soft}" onclick="${onclick}">${iconHtml}<span class="story-action-btn-text">${text}</span></button>`;
+            const meta = (opts && Array.isArray(opts.meta)) ? opts.meta : [];
+            const metaHtml = meta.length
+                ? `<span class="story-action-btn-meta">${meta.map(b => {
+                    const tone = (b && b.tone) ? String(b.tone) : 'info';
+                    const extra = (b && b.cantAfford) ? ' cant-afford' : '';
+                    const title = (b && b.title) ? ` title="${String(b.title).replace(/"/g,'&quot;')}"` : '';
+                    return `<span class="story-action-badge ${tone}${extra}"${title}>${b.label}</span>`;
+                  }).join('')}</span>`
+                : '';
+            return `<button type="button" class="story-action-btn ${cls || ''}${soft}" onclick="${onclick}">${iconHtml}<span class="story-action-btn-text">${text}</span>${metaHtml}</button>`;
         }
 
         function getCityIndex(ev) {
