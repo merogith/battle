@@ -755,6 +755,22 @@
             outline: none;
             border-color: #ff6ec7;
         }
+        /* Sticky header back button across shop/tutor/colress/evtrainer/link/artifact screens.
+           Always visible since the header row is flex-shrink:0 (does not scroll). */
+        .story-shop-back-btn {
+            flex: 0 0 auto;
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 32px; height: 28px; padding: 0 8px;
+            font-family: var(--battle-font) !important;
+            font-size: 14px; line-height: 1; color: #cfd6e3;
+            background: linear-gradient(180deg, #232634 0%, #161924 100%);
+            border: 1px solid #4a5060; border-radius: 3px;
+            cursor: pointer;
+            box-shadow: inset -2px -2px 0 0 #1a1d28, inset 2px 2px 0 0 #2e3344;
+            transition: all 0.12s;
+        }
+        .story-shop-back-btn:hover { color: #fff; border-color: #8a92a6; background: linear-gradient(180deg, #2a2e40 0%, #1d2030 100%); }
+        .story-shop-back-btn:active { transform: translateY(1px); }
         #screen-story-city { background: var(--bg-color); }
         /* Story city top bar: location + gold | abandon + settings (settings lives here so it aligns with Abandon) */
         #story-hud.story-hud-bar {
@@ -1097,6 +1113,64 @@
             flex: 1;
             min-width: 0;
             line-height: 1.35;
+        }
+        .story-action-btn-meta {
+            display: flex; align-items: center; gap: 4px;
+            flex: 0 0 auto; margin-left: 8px;
+        }
+        .story-action-section-header {
+            display: flex; align-items: center; gap: 8px;
+            margin: 10px 0 4px 0;
+            font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase;
+            color: #8aa0bc; font-family: var(--battle-font) !important;
+        }
+        .story-action-section-header:first-child { margin-top: 0; }
+        .story-action-section-header::after {
+            content: ''; flex: 1; height: 1px;
+            background: linear-gradient(90deg, rgba(138,160,188,0.35) 0%, rgba(138,160,188,0) 100%);
+        }
+        .story-action-section-header .story-action-section-icon {
+            font-size: 11px; opacity: 0.85;
+        }
+        .story-city-tips {
+            display: flex; flex-wrap: wrap; gap: 6px;
+            margin: 0; padding: 0;
+        }
+        .story-city-tips:empty { display: none; }
+        .story-city-tip {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 5px 9px;
+            font-size: 11px; line-height: 1.2;
+            font-family: var(--battle-font) !important;
+            color: #e3f0ff;
+            background: linear-gradient(180deg, #1c2944 0%, #121a2e 100%);
+            border: 1px solid #3a567f;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.12s;
+            box-shadow: inset -2px -2px 0 0 #0d1422, inset 2px 2px 0 0 #2a3e5e;
+        }
+        .story-city-tip:hover { color: #fff; border-color: #6da2dc; background: linear-gradient(180deg, #233458 0%, #16213d 100%); transform: translateY(-1px); }
+        .story-city-tip:active { transform: translateY(0); }
+        .story-city-tip .story-city-tip-ico { font-size: 13px; line-height: 1; }
+        .story-city-tip.urgent { color: #fff; background: linear-gradient(180deg, #5a2025 0%, #3a1416 100%); border-color: #c2484f; box-shadow: inset -2px -2px 0 0 #2a0e10, inset 2px 2px 0 0 #7a2a30; }
+        .story-city-tip.urgent:hover { background: linear-gradient(180deg, #6e272d 0%, #481a1c 100%); border-color: #ff8a90; }
+        .story-action-badge {
+            display: inline-flex; align-items: center; gap: 3px;
+            font-size: 10px; line-height: 1; letter-spacing: 0.5px;
+            padding: 3px 6px; border: 1px solid currentColor; border-radius: 2px;
+            font-family: var(--battle-font) !important;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .story-action-badge.cost { color: #ffd54f; border-color: #b8923a; background: rgba(255,213,79,0.08); }
+        .story-action-badge.cost.cant-afford { color: #ef5350; border-color: #b03a3a; background: rgba(239,83,80,0.08); }
+        .story-action-badge.free { color: #81c784; border-color: #4a8a4d; background: rgba(129,199,132,0.1); }
+        .story-action-badge.info { color: #b3c2d6; border-color: #5a6478; background: rgba(179,194,214,0.06); }
+        .story-action-badge.new { color: #fff; border-color: #ff6b6b; background: linear-gradient(180deg,#d83a3a 0%,#a02525 100%); animation: story-action-new-pulse 1.6s ease-in-out infinite; }
+        @keyframes story-action-new-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255,107,107,0.6); }
+            50% { box-shadow: 0 0 6px 2px rgba(255,107,107,0.35); }
         }
         /* Same hue family, lighter/dimmer accent (alternate NPC, secondary service, bag vs mart) */
         .story-action-btn.primary.story-action-btn--soft { border-color:#c98888; color:#d4a0a0; background:linear-gradient(180deg,#221818 0%,#151010 100%); }
@@ -4538,6 +4612,7 @@
                         <p class="story-dialog-text" id="story-city-quote"></p>
                     </div>
                 </div>
+                <div id="story-city-tips" class="story-city-tips"></div>
                 <div id="story-action-buttons" style="display:flex;flex-direction:column;gap:8px;"></div>
             </div>
         </div>
@@ -4565,8 +4640,9 @@
     <div id="screen-story-shop" class="screen hidden story-screen-root" data-shop-type="mart" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-shop-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
-        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
-            <h3 id="story-shop-title" class="story-screen-head-title" style="color:var(--accent);font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_mart.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Pokémart</span></h3>
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+            <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
+            <h3 id="story-shop-title" class="story-screen-head-title" style="color:var(--accent);font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_mart.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Pokémart</span></h3>
             <span id="story-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div id="story-shop-grid" style="flex:1;overflow-y:auto;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:0;"></div>
@@ -4579,8 +4655,9 @@
     <div id="screen-story-artifact-shop" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-artifact-shop-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
-        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
-            <h3 id="story-artifact-shop-title" class="story-screen-head-title" style="color:#ce93d8;font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relic Annex</span></h3>
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+            <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
+            <h3 id="story-artifact-shop-title" class="story-screen-head-title" style="color:#ce93d8;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Relic Annex</span></h3>
             <span id="story-artifact-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <p id="story-artifact-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#888;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;"></p>
@@ -4594,8 +4671,9 @@
     <div id="screen-story-tutor" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-tutor-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
-        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
-            <h3 id="story-tutor-head-title" class="story-screen-head-title" style="color:#ce93d8;font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_tutor.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Move Tutor</span></h3>
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+            <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
+            <h3 id="story-tutor-head-title" class="story-screen-head-title" style="color:#ce93d8;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_tutor.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Move Tutor</span></h3>
             <span id="story-tutor-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
@@ -4612,7 +4690,8 @@
         <div id="story-colress-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;gap:10px;">
-            <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+            <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
                 <img id="story-colress-portrait" src="sprites/trainers/Colress.png" alt="Colress" style="width:36px;height:36px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.visibility='hidden'">
                 <div style="min-width:0;">
                     <h3 class="story-screen-head-title" style="color:#ce93d8;font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_colress.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Colress — Power Awakening</span></h3>
@@ -4635,7 +4714,8 @@
         <div id="story-evtrainer-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;gap:10px;">
-            <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+            <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
                 <img id="story-evtrainer-portrait" src="sprites/trainers/Buck.png" alt="Buck" style="width:36px;height:36px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.visibility='hidden'">
                 <div style="min-width:0;">
                     <h3 class="story-screen-head-title" style="color:#9ccc65;font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_dojo.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">EV Trainer</span></h3>
@@ -4655,8 +4735,9 @@
     <div id="screen-story-link" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-link-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-link-stack">
-        <div class="story-link-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
-            <h3 class="story-screen-head-title" style="color:#00e5ff;font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_link.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Cable Link Station</span></h3>
+        <div class="story-link-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+            <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
+            <h3 class="story-screen-head-title" style="color:#00e5ff;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_link.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Cable Link Station</span></h3>
             <span id="story-link-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
@@ -4695,8 +4776,11 @@
     </div>
 
     <div id="screen-story-artifacts" class="screen hidden" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
-        <div style="padding:10px 14px;background:#0d0d0d;border-bottom:1px solid #333;">
-            <h3 class="story-screen-head-title" style="color:#ce93d8;font-size:15px;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Artifact Hall</span></h3>
+        <div style="padding:10px 14px;background:#0d0d0d;border-bottom:1px solid #333;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
+                <h3 class="story-screen-head-title" style="color:#ce93d8;font-size:15px;margin:0;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Artifact Hall</span></h3>
+            </div>
             <p style="font-size:11px;color:#888;margin:6px 0 0;">Toggle artifacts off to disable their battle effects.</p>
         </div>
         <div id="story-artifact-hall-list" style="flex:1;overflow-y:auto;padding:12px;"></div>
@@ -22341,6 +22425,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? _pickCityQuoteLine(CITY_PROFESSOR_QUOTES, cityIdx)
                 : _pickCityQuoteLine(CITY_GUIDE_QUOTES, cityIdx);
             quoteText = `"${quoteText}"`;
+            // Facility barker — call out one unseen-this-city facility so the player learns the menu in flavor text.
+            const _facilityBarkers = [
+                { key: 'casino',    actionKey: 'Poké Casino',      line: 'The Poké Casino is open — coin flips, double or nothing.' },
+                { key: 'colress',   actionKey: 'Power Up',         line: 'Colress is in town — he can awaken a Pokémon’s Mega, Dynamax, Z, or Tera form.' },
+                { key: 'dept',      actionKey: 'Department Store', line: 'The Department Store just stocked premium battle items.' },
+                { key: 'tutor',     actionKey: 'Move Tutor',       line: 'The Move Tutor here teaches sharper competitive moves.' },
+                { key: 'dojo',      actionKey: 'Battle Dojo',      line: 'The Battle Dojo swaps held items and abilities.' },
+                { key: 'evtrainer', actionKey: 'EV Trainer',       line: 'Buck the EV Trainer can reshape your team’s effort values.' },
+                { key: 'nature',    actionKey: 'Nature Rater',     line: 'The Nature Rater can change a Pokémon’s nature on the fly.' },
+                { key: 'relic',     actionKey: null,               line: 'Don’t miss the Relic Annex — run-wide artifacts that affect both sides.' },
+                { key: 'link',      actionKey: 'Link Station',     line: 'The Cable Link Station can reroll or upgrade your party.' },
+            ];
+            const _relicAvailHere = (cityIdx === 0 || actions.includes('Department Store'));
+            const _barker = _facilityBarkers.find(b => {
+                if (_isFacilitySeen(cityIdx, b.key)) return false;
+                if (b.actionKey === null) return _relicAvailHere;
+                if (!actions.includes(b.actionKey)) return false;
+                if (['tutor','nature','dojo','evtrainer','colress'].includes(b.key) && !sm.team.length) return false;
+                if (b.key === 'colress' && !(sm.settings && (sm.settings.megaOn || sm.settings.zOn || sm.settings.dynaOn || sm.settings.teraOn))) return false;
+                return true;
+            });
+            if (_barker) {
+                quoteText += `\n\n📻 ${_barker.line}`;
+            }
             if (!sm.storyMilestoneTips) sm.storyMilestoneTips = { m4: false, m8: false };
             if (sm.badges >= 8 && !sm.storyMilestoneTips.m8) {
                 quoteText += '\n\n📻 Trainer Tips: "Eight gym badges—you\'re practically a legend!"';
@@ -22356,19 +22464,62 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (quoteEl) quoteEl.textContent = quoteText;
 
+            // City Tips strip — short, actionable recommendations that jump to the right facility.
+            const tipsEl = document.getElementById('story-city-tips');
+            if (tipsEl) {
+                const tips = [];
+                const hardcore = (sm.storyDifficulty || 'normal') === 'hardcore';
+                const hasTeam = sm.team && sm.team.length > 0;
+                if (hasTeam) {
+                    const partyHurt = sm.team.some(s => s && (s.currentHp != null || s.status));
+                    if (partyHurt && !hardcore) {
+                        tips.push({ icon: '🩹', label: 'Party needs healing', click: 'window.StoryMode.enterPokemonCenter()', urgent: true });
+                    }
+                    if (actions.includes('Battle Dojo')) {
+                        const n = sm.team.filter(s => s && s.build && (!s.build.i || s.build.i === 'None' || s.build.i === '(none)')).length;
+                        if (n) tips.push({ icon: '🎒', label: `${n} mon${n===1?'':'s'} need held items`, click: "window.StoryMode.enterTutor('loadout')" });
+                    }
+                    if (actions.includes('Move Tutor')) {
+                        const n = sm.team.filter(s => s && s.build && Array.isArray(s.build.m) && s.build.m.length < 4).length;
+                        if (n) tips.push({ icon: '📚', label: `${n} mon${n===1?'':'s'} have empty move slots`, click: "window.StoryMode.enterTutor('moves')" });
+                    }
+                    if (actions.includes('EV Trainer')) {
+                        const n = sm.team.filter(s => {
+                            if (!s || !s.build) return false;
+                            const e = s.build.evs || {};
+                            return !((e.hp|0)||(e.atk|0)||(e.def|0)||(e.spa|0)||(e.spd|0)||(e.spe|0));
+                        }).length;
+                        if (n) tips.push({ icon: '🏋️', label: `${n} untrained EV spread${n===1?'':'s'}`, click: 'window.StoryMode.enterEVTrainer()' });
+                    }
+                }
+                const relicAvailableHere = (cityIdx === 0 || actions.includes('Department Store'));
+                if (relicAvailableHere && cityIdx === 0 && !sm.artifactFreeClaimUsed) {
+                    tips.push({ icon: '✨', label: 'Claim your free relic', click: 'window.StoryMode.enterArtifactShop()' });
+                }
+                tipsEl.innerHTML = tips.slice(0, 4).map(t =>
+                    `<button type="button" class="story-city-tip${t.urgent ? ' urgent' : ''}" onclick="${t.click}"><span class="story-city-tip-ico">${t.icon}</span><span>${t.label}</span></button>`
+                ).join('');
+            }
+
             const btn = document.getElementById('story-action-buttons');
             if (!btn) return;
             btn.innerHTML = '';
 
+            const _sections = { quest: '', recover: '', shop: '', train: '' };
+            const _push = (key, html) => { _sections[key] += html; };
+
             // Professor / Mystery Figure (one visit per city)
             if (hasProf && !profUsedHere) {
                 if (hasTeamRoom) {
-                    btn.innerHTML += makeActionBtn('Professor — Receive a Pokémon (Free)','professor','window.StoryMode.enterProfessor()','primary');
+                    _push('quest', makeActionBtn('Professor — Receive a Pokémon','professor','window.StoryMode.enterProfessor()','primary',{ meta:[{label:'Free',tone:'free'}] }));
                 } else {
                     const mysteryLabel = legendMysteryGate
-                        ? '❓ Mystery Figure — Legendary Grade 1 Swap (Required)'
+                        ? '❓ Mystery Figure — Legendary Grade 1 Swap'
                         : '❓ Mystery Figure — Swap in Grade 1/2 Pokémon';
-                    btn.innerHTML += makeActionBtn(mysteryLabel,'mystery','window.StoryMode.enterProfessor()','primary',{ soft:true });
+                    const mysteryMeta = legendMysteryGate
+                        ? [{label:'Required',tone:'info'}]
+                        : [{label:'Free',tone:'free'}];
+                    _push('quest', makeActionBtn(mysteryLabel,'mystery','window.StoryMode.enterProfessor()','primary',{ soft:true, meta: mysteryMeta }));
                 }
             }
             // Battle actions
@@ -22383,94 +22534,114 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const gymBlocked = hasProf && !profUsedHere;
             if (hasGym) {
                 if (gymBlocked) {
-                    btn.innerHTML += `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_gym.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Challenge the Gym Leader! <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`;
+                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_gym.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Challenge the Gym Leader! <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`);
                 } else {
-                    btn.innerHTML += makeActionBtn('⚔ Challenge the Gym Leader!','gym','window.StoryMode.proceedToNextBattle()','primary');
+                    _push('quest', makeActionBtn('⚔ Challenge the Gym Leader!','gym','window.StoryMode.proceedToNextBattle()','primary'));
                 }
             }
             if (hasLeague) {
-                btn.innerHTML += makeActionBtn('🏆 Enter the Pokémon League!','league','window.StoryMode.proceedToNextBattle()','primary');
+                _push('quest', makeActionBtn('🏆 Enter the Pokémon League!','league','window.StoryMode.proceedToNextBattle()','primary'));
             }
             const routeBlockedByMysteryGate = legendMysteryGate && !profUsedHere;
             if (actions.includes('Leave City')) {
                 if (gymRoutePending) {
-                    btn.innerHTML += `<button type="button" class="story-action-btn primary" disabled title="Clear this area's challenge first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Complete challenge first)</span></span></button>`;
+                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Clear this area's challenge first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Complete challenge first)</span></span></button>`);
                 } else if (routeBlockedByMysteryGate) {
-                    btn.innerHTML += `<button type="button" class="story-action-btn primary" disabled title="Talk to the Mystery Figure first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Talk to Mystery Figure first)</span></span></button>`;
+                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Talk to the Mystery Figure first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Talk to Mystery Figure first)</span></span></button>`);
                 } else if (rivalGateActive) {
-                    btn.innerHTML += makeActionBtn('⚔ Face Rival at the Route Gate','route','window.StoryMode.proceedToNextBattle()','primary');
+                    _push('quest', makeActionBtn('⚔ Face Rival at the Route Gate','route','window.StoryMode.proceedToNextBattle()','primary'));
                 } else if (!hasLeague) {
-                    btn.innerHTML += makeActionBtn('→ Continue Route','route','window.StoryMode.proceedToNextBattle()','primary',{ soft:true });
+                    _push('quest', makeActionBtn('→ Continue Route','route','window.StoryMode.proceedToNextBattle()','primary',{ soft:true }));
                 }
             }
             if (hasVR) {
                 if (gymBlocked) {
-                    btn.innerHTML += `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_vr.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Enter Victory Road <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`;
+                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_vr.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Enter Victory Road <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`);
                 } else {
-                    btn.innerHTML += makeActionBtn('🏔 Enter Victory Road','vr','window.StoryMode.proceedToNextBattle()','primary');
+                    _push('quest', makeActionBtn('🏔 Enter Victory Road','vr','window.StoryMode.proceedToNextBattle()','primary'));
                 }
             }
             if (hasTrainerRoad) {
                 if (gymBlocked) {
-                    btn.innerHTML += `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_gym.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Pre-League challenge <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`;
+                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_gym.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Pre-League challenge <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`);
                 } else {
-                    btn.innerHTML += makeActionBtn('⚔ Pre-League challenge (trainers)','tr','window.StoryMode.proceedToNextBattle()','primary');
+                    _push('quest', makeActionBtn('⚔ Pre-League challenge (trainers)','tr','window.StoryMode.proceedToNextBattle()','primary'));
                 }
             }
             // Shops
+            const _costBadge = (amount, suffix) => {
+                const cant = sm.gold < amount;
+                return { label: amount.toLocaleString() + 'G' + (suffix || ''), tone: 'cost', cantAfford: cant, title: cant ? `You have ${sm.gold.toLocaleString()}G — short by ${(amount - sm.gold).toLocaleString()}G` : '' };
+            };
+            const _withNew = (facKey, baseMeta) => {
+                if (_isFacilitySeen(cityIdx, facKey)) return baseMeta;
+                return [{ label: 'New!', tone: 'new' }].concat(baseMeta);
+            };
             if (actions.includes('Pokemart')) {
-                btn.innerHTML += makeActionBtn('🛒 Pokémart — Buy Items','mart','window.StoryMode.enterShop(\'mart\')','shop');
-            }
-            if (actions.includes('Link Station')) {
-                btn.innerHTML += makeActionBtn('📡 Cable Link Station — Reroll Team','link','window.StoryMode.enterLink()','link');
+                _push('shop', makeActionBtn('🛒 Pokémart — Buy Items','mart','window.StoryMode.enterShop(\'mart\')','shop',{ meta: _withNew('mart', [{label:'Shop',tone:'info'}]) }));
             }
             if (actions.includes('Department Store')) {
-                btn.innerHTML += makeActionBtn('🏬 Department Store — Premium battle items','dept','window.StoryMode.enterShop(\'dept\')','dept');
+                _push('shop', makeActionBtn('🏬 Department Store — Premium battle items','dept','window.StoryMode.enterShop(\'dept\')','dept',{ meta: _withNew('dept', [{label:'Premium',tone:'info'}]) }));
             }
             const _relicCityIdx = getCityIndex(ev);
             if (_relicCityIdx === 0 || actions.includes('Department Store')) {
-                btn.innerHTML += makeActionBtn('✨ Relic Annex — Run relics (3 picks)','relic','window.StoryMode.enterArtifactShop()','dept',{ soft:true });
+                const relicFree = (_relicCityIdx === 0 && !sm.artifactFreeClaimUsed);
+                const relicMeta = relicFree
+                    ? [{label:'1st Free',tone:'free'}]
+                    : [_costBadge(5000, ' each')];
+                _push('shop', makeActionBtn('✨ Relic Annex — Run relics (3 picks)','relic','window.StoryMode.enterArtifactShop()','dept',{ soft:true, meta: _withNew('relic', relicMeta) }));
             }
             if (actions.includes('Poké Casino')) {
-                btn.innerHTML += makeActionBtn('🎰 Poké Casino — Coin flip wagers','casino','window.StoryMode.enterCasino()','casino',{ soft:true });
+                _push('shop', makeActionBtn('🎰 Poké Casino — Coin flip wagers','casino','window.StoryMode.enterCasino()','casino',{ soft:true, meta: _withNew('casino', [{label:'Wager',tone:'info'}]) }));
             }
             const _tutorTeam = sm.team.length > 0;
             if (actions.includes('Move Tutor') && _tutorTeam) {
-                btn.innerHTML += makeActionBtn('📖 Move Tutor — Swap battle moves','tutor','window.StoryMode.enterTutor(\'moves\')','training');
+                _push('train', makeActionBtn('📖 Move Tutor — Swap battle moves','tutor','window.StoryMode.enterTutor(\'moves\')','training',{ meta: _withNew('tutor', [_costBadge(1500, '+')]) }));
             }
             if (actions.includes('Nature Rater') && _tutorTeam) {
-                btn.innerHTML += makeActionBtn('📛 Nature Rater — Adjust natures','nature','window.StoryMode.enterTutor(\'nature\')','training',{ soft:true });
+                _push('train', makeActionBtn('📛 Nature Rater — Adjust natures','nature','window.StoryMode.enterTutor(\'nature\')','training',{ soft:true, meta: _withNew('nature', [_costBadge(2000, '+')]) }));
             }
             if (actions.includes('Battle Dojo') && _tutorTeam) {
-                btn.innerHTML += makeActionBtn('🥋 Battle Dojo — Held items & abilities','dojo','window.StoryMode.enterTutor(\'loadout\')','training');
+                _push('train', makeActionBtn('🥋 Battle Dojo — Held items & abilities','dojo','window.StoryMode.enterTutor(\'loadout\')','training',{ meta: _withNew('dojo', [_costBadge(2000, '+')]) }));
             }
             if (actions.includes('EV Trainer') && _tutorTeam) {
-                btn.innerHTML += makeActionBtn('🏋️ EV Trainer — Reshape effort values','evtrainer','window.StoryMode.enterEVTrainer()','training',{ soft:true });
+                _push('train', makeActionBtn('🏋️ EV Trainer — Reshape effort values','evtrainer','window.StoryMode.enterEVTrainer()','training',{ soft:true, meta: _withNew('evtrainer', [_costBadge(5000)]) }));
             }
             const _colressMechAny = !!(sm.settings && (sm.settings.megaOn || sm.settings.zOn || sm.settings.dynaOn || sm.settings.teraOn));
             if (actions.includes('Power Up') && _tutorTeam && _colressMechAny) {
-                btn.innerHTML += makeActionBtn('🧪 Colress — Awaken battle mechanics','colress','window.StoryMode.enterColress()','training',{ soft:true });
+                _push('train', makeActionBtn('🧪 Colress — Awaken battle mechanics','colress','window.StoryMode.enterColress()','training',{ soft:true, meta: _withNew('colress', [_costBadge(10000)]) }));
             }
             if ((sm.artifacts || []).length > 0) {
-                btn.innerHTML += makeActionBtn('✨ Artifact Hall — Toggle run artifacts','artifacts','window.StoryMode.enterArtifactHall()','dept',{ soft:true });
+                _push('train', makeActionBtn('✨ Artifact Hall — Toggle run artifacts','artifacts','window.StoryMode.enterArtifactHall()','dept',{ soft:true, meta: _withNew('artifacts', [{label:'Free',tone:'free'}]) }));
             }
             // Pokémon Center — full party heal, free, unlimited (disabled in Hardcore: bring potions)
             if ((sm.storyDifficulty || 'normal') === 'hardcore') {
-                btn.innerHTML += `<button type="button" class="story-action-btn" disabled title="No Pokémon Center service in Hardcore — bring potions" style="opacity:0.45;cursor:not-allowed;"><span class="story-action-btn-text">🏥 Pokémon Center <span style="font-size:10px;color:#aaa;">(Disabled in Hardcore)</span></span></button>`;
+                _push('recover', `<button type="button" class="story-action-btn" disabled title="No Pokémon Center service in Hardcore — bring potions" style="opacity:0.45;cursor:not-allowed;"><span class="story-action-btn-text">🏥 Pokémon Center <span style="font-size:10px;color:#aaa;">(Disabled in Hardcore)</span></span></button>`);
             } else {
-                btn.innerHTML += makeActionBtn('🏥 Pokémon Center — Restore Your Party','center','window.StoryMode.enterPokemonCenter()','center');
+                _push('recover', makeActionBtn('🏥 Pokémon Center — Restore Your Party','center','window.StoryMode.enterPokemonCenter()','center',{ meta: _withNew('center', [{label:'Free',tone:'free'}]) }));
             }
             const _partyN = sm.team.length;
             const _partyLabel = _partyN
                 ? `Party — Team & Order (${_partyN}/6)`
                 : 'Party — Empty (Visit Professor)';
-            btn.innerHTML += makeActionBtn(_partyLabel, 'party', 'window.StoryMode.openPartyModal()', 'party');
+            _push('recover', makeActionBtn(_partyLabel, 'party', 'window.StoryMode.openPartyModal()', 'party'));
+            if (actions.includes('Link Station')) {
+                _push('recover', makeActionBtn('📡 Cable Link Station — Reroll Team','link','window.StoryMode.enterLink()','link',{ meta: _withNew('link', [{label:'Free',tone:'free'}]) }));
+            }
             // Bag — always accessible in city to view inventory and sell items
             const _invCount = Object.keys(sm.inventory || {}).filter(k => sm.inventory[k] > 0).length;
             const _bagLabel = _invCount > 0
                 ? `🎒 Bag — View & Sell Items (${_invCount} type${_invCount !== 1 ? 's' : ''})`
                 : '🎒 Bag — Empty';
-            btn.innerHTML += makeActionBtn(_bagLabel, 'bag', 'window.StoryMode.openCityBag()', 'shop',{ soft:true });
+            _push('recover', makeActionBtn(_bagLabel, 'bag', 'window.StoryMode.openCityBag()', 'shop',{ soft:true }));
+
+            const _emit = (key, icon, title) => _sections[key]
+                ? `<div class="story-action-section-header"><span class="story-action-section-icon">${icon}</span>${title}</div>${_sections[key]}`
+                : '';
+            btn.innerHTML = _emit('quest', '⚔', 'Continue Your Journey')
+                          + _emit('recover', '🏥', 'Heal & Manage')
+                          + _emit('shop', '🛒', 'Shops')
+                          + _emit('train', '🎯', 'Train Your Team');
         }
 
         /** FireRed/LeafGreen–style item & UI rips (pret/pokefirered, plus link strip from graphics/link). */
@@ -22514,13 +22685,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const iconHtml = src
                 ? `<img class="story-action-ico" src="${src}" alt="" width="24" height="24" decoding="async">`
                 : '';
-            return `<button type="button" class="story-action-btn ${cls || ''}${soft}" onclick="${onclick}">${iconHtml}<span class="story-action-btn-text">${text}</span></button>`;
+            const meta = (opts && Array.isArray(opts.meta)) ? opts.meta : [];
+            const metaHtml = meta.length
+                ? `<span class="story-action-btn-meta">${meta.map(b => {
+                    const tone = (b && b.tone) ? String(b.tone) : 'info';
+                    const extra = (b && b.cantAfford) ? ' cant-afford' : '';
+                    const title = (b && b.title) ? ` title="${String(b.title).replace(/"/g,'&quot;')}"` : '';
+                    return `<span class="story-action-badge ${tone}${extra}"${title}>${b.label}</span>`;
+                  }).join('')}</span>`
+                : '';
+            return `<button type="button" class="story-action-btn ${cls || ''}${soft}" onclick="${onclick}">${iconHtml}<span class="story-action-btn-text">${text}</span>${metaHtml}</button>`;
         }
 
         function getCityIndex(ev) {
             if (!ev) return 0;
             const m = String(ev[2]).match(/\d+/);
             return m ? +m[0] : 0;
+        }
+
+        /** Per-city, per-facility "seen" flag. Drives the New! badge on the city screen. */
+        function _markFacilitySeen(key) {
+            if (!sm || !key) return;
+            const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
+            if (cityIdx < 0) return;
+            if (!sm.facilitiesSeen || typeof sm.facilitiesSeen !== 'object') sm.facilitiesSeen = {};
+            const bucket = sm.facilitiesSeen[cityIdx] || (sm.facilitiesSeen[cityIdx] = {});
+            if (bucket[key]) return;
+            bucket[key] = true;
+            try { save(); } catch (e) {}
+        }
+        function _isFacilitySeen(cityIdx, key) {
+            return !!(sm.facilitiesSeen && sm.facilitiesSeen[cityIdx] && sm.facilitiesSeen[cityIdx][key]);
         }
 
         function cityIndexFromEventIndex(ei) {
@@ -22802,15 +22997,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function enterArtifactHall() {
+            _markFacilitySeen('artifacts');
             const el = document.getElementById('story-artifact-hall-list');
             if (el) {
+                const bothSidesBadge = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Relic effects apply to both you and your opponents while enabled">⚠ Affects both sides</span>';
                 el.innerHTML = (sm.artifacts || []).map(id => {
                     const art = ALL_ARTIFACTS.find(a => a.id === id);
                     const off = (sm.artifactsDisabled || []).includes(id);
                     const label = art ? art.name : id;
                     const desc = art ? art.desc : '';
+                    const statusChip = off
+                        ? '<span class="story-action-badge info" style="color:#888;border-color:#555;">Inactive</span>'
+                        : '<span class="story-action-badge free">Active</span>';
                     return `<div style="border:1px solid #444;border-radius:6px;padding:10px;margin-bottom:8px;background:#0d0013;">
-                        <div style="font-weight:bold;color:#ce93d8;">${label}</div>
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <div style="font-weight:bold;color:#ce93d8;flex:1;min-width:0;">${label}</div>
+                            ${statusChip}
+                            ${bothSidesBadge}
+                        </div>
                         <div style="font-size:11px;color:#aaa;margin:6px 0;">${desc}</div>
                         <button onclick="window.StoryMode.toggleArtifactDisabled('${id}')" style="font-size:11px;padding:4px 10px;">
                             ${off ? 'Enable (inactive now)' : 'Disable for battles'}
@@ -23598,9 +23802,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (quoteEl) quoteEl.textContent = '"The Center is closed for Hardcore trainers. You\'ll have to manage with what you carry."';
                 return;
             }
+            _markFacilitySeen('center');
             _storyFullHealPartySlots();
             save();
             renderTeamPanel();
+            renderCityActions(STORY_EVENTS_RAW[sm.eventIndex]);
             // Show heal confirmation in city dialog
             const quoteEl = document.getElementById('story-city-quote');
             if (quoteEl) quoteEl.textContent = '"Welcome to the Pokémon Center! Your Pokémon have been fully restored!"';
@@ -23681,6 +23887,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return sm.deptItemOffersByCity[cKey].map(id => byId.get(id)).filter(Boolean);
         }
         function enterShop(type) {
+            _markFacilitySeen(type === 'dept' ? 'dept' : 'mart');
             const shopScreen = document.getElementById('screen-story-shop');
             if (shopScreen) shopScreen.setAttribute('data-shop-type', type === 'dept' ? 'dept' : 'mart');
             const titleEl = document.getElementById('story-shop-title');
@@ -23801,6 +24008,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { enterCity(); } catch (e) {}
                 return;
             }
+            _markFacilitySeen('relic');
             const offer = _ensureArtifactShopOffersForCity(cityIdx);
             const goldEl = document.getElementById('story-artifact-shop-gold');
             const gridEl = document.getElementById('story-artifact-shop-grid');
@@ -23826,10 +24034,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const artDesc = _artifactDescForCity(art, cityIdx);
                 const priceLabel = listPrice === 0 ? '<span style="color:#ce93d8;">Free (first in Pallet only)</span>' : storyGoldHtml(listPrice.toLocaleString());
                 const btnLabel = listPrice === 0 ? 'Claim free' : ('Buy ' + storyGoldHtml(listPrice.toLocaleString()));
+                const bothSidesBadge = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Relic effects apply to both you and your opponents for the rest of the run">⚠ Affects both sides</span>';
                 gridEl.innerHTML += `<div class="story-artifact-card" style="margin-bottom:8px;opacity:${owned ? '0.5' : '1'}">
                     <div class="story-shop-item-row" style="margin-bottom:6px;">
                         ${aicon}
                         <h4 style="flex:1;margin:0;">${artName} ${owned ? '<span style="color:#4caf50;">[OWNED]</span>' : ''}</h4>
+                        ${bothSidesBadge}
                     </div>
                     <div class="desc">${artDesc}</div>
                     ${!owned ? `<div style="margin-top:6px;font-size:11px;color:#aaa;">Price: ${priceLabel}</div>
@@ -23878,6 +24088,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function enterLink() {
             if (!_storyTryBeginInteraction()) return;
             try {
+                _markFacilitySeen('link');
                 updateHUD();
                 renderLinkTeam();
                 syncStoryLinkBackground();
@@ -23906,6 +24117,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm || !sm.active) return;
             if (!_storyTryBeginInteraction()) return;
             try {
+                _markFacilitySeen('casino');
                 updateHUD();
                 _refreshStoryCasinoGold();
                 const res = document.getElementById('story-casino-result');
@@ -25459,6 +25671,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_storyTryBeginInteraction()) return;
             try {
             const m = mode === 'nature' ? 'nature' : mode === 'loadout' ? 'loadout' : 'moves';
+            _markFacilitySeen(m === 'nature' ? 'nature' : m === 'loadout' ? 'dojo' : 'tutor');
             _storyTutorMode = m;
             _storyTutorOpenIdx = 0;
             _applyStoryTutorHeader();
@@ -25847,6 +26060,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function enterColress() {
+            _markFacilitySeen('colress');
             const goldEl = document.getElementById('story-colress-gold');
             if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             syncStoryColressBackground();
@@ -25974,11 +26188,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? `<div class="story-tutor-option-row"><span class="current" style="color:#888;">No eligible mechanics for this Pokémon under current run settings.</span></div>`
                 : sections.join('');
 
+            const headerCostChip = noneEligible
+                ? ''
+                : `<span class="story-action-badge ${cantAfford ? 'cost cant-afford' : 'cost'}" style="margin-left:6px;"${cantAfford ? ` title="You have ${sm.gold.toLocaleString()}G — short by ${(COLRESS_COST - sm.gold).toLocaleString()}G"` : ''}>${COLRESS_COST.toLocaleString()}G / change</span>`;
             return `<div class="story-tutor-mon">
                 <div class="story-tutor-mon-name" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                     <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
                     <span>${_esc(t.name)}</span> ${typeHtml}
                     ${badge}
+                    ${headerCostChip}
                     <span style="font-size:10px;color:#888;margin-left:auto;">Held: <strong style="color:#bbb;">${_esc(heldItem)}</strong></span>
                 </div>
                 ${body}
@@ -26159,6 +26377,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function enterEVTrainer() {
+            _markFacilitySeen('evtrainer');
             const goldEl = document.getElementById('story-evtrainer-gold');
             if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             try { syncStoryEVTrainerBackground(); } catch (e) {}
@@ -26226,6 +26445,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 : '';
 
             const summaryLine = `${_evSpreadCompact(cur)}`;
+            const headerCostChip = `<span class="story-action-badge ${cantAfford ? 'cost cant-afford' : 'cost'}"${cantAfford ? ` title="You have ${sm.gold.toLocaleString()}G — short by ${(EVTRAINER_COST - sm.gold).toLocaleString()}G"` : ''}>${EVTRAINER_COST.toLocaleString()}G / preset</span>`;
 
             return `<div class="story-tutor-mon">
                 <div class="story-tutor-mon-main" style="display:flex;align-items:center;gap:10px;padding:8px 10px;">
@@ -26234,6 +26454,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <div class="story-tutor-mon-name">${_esc(t.name)} ${typeHtml}</div>
                         <div class="story-tutor-mon-meta" style="font-size:10px;color:#9ccc65;">${summaryLine}</div>
                     </div>
+                    ${headerCostChip}
                 </div>
                 <div class="story-tutor-mon-body">${universalSection}${roleSection}${metaSection}</div>
             </div>`;
