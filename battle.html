@@ -22065,7 +22065,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    settings:{ minGen:1, maxGen:9, enabledGens:[1,2,3,4,5,6,7,8,9], megaOn:false, zOn:false, dynaOn:false, teraOn:false, classicMode:true },
                    gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{}, currentEnemyLock:null,
                    artifactsDisabled:[], storyCityVisit:null,
-                   artifactShopOffersByCity:{}, artifactFreeClaimUsed:false,
+                   artifactShopOffersByCity:{}, artifactShopPurchasedByCity:{}, artifactFreeClaimUsed:false,
                    storyDifficulty:'normal', runSeed:null,
                    storyMilestoneTips:{ m4:false, m8:false },
                    storyRetryInventorySnapshot: null,
@@ -22188,6 +22188,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!('storyCityVisit' in sm)) sm.storyCityVisit = null;
                 if (!sm.deptArtifactOffersByCity || typeof sm.deptArtifactOffersByCity !== 'object') sm.deptArtifactOffersByCity = {};
                 if (!sm.artifactShopOffersByCity || typeof sm.artifactShopOffersByCity !== 'object') sm.artifactShopOffersByCity = {};
+                if (!sm.artifactShopPurchasedByCity || typeof sm.artifactShopPurchasedByCity !== 'object') sm.artifactShopPurchasedByCity = {};
                 if (typeof sm.artifactFreeClaimUsed !== 'boolean') sm.artifactFreeClaimUsed = false;
                 if (!sm.deptArtifactTypesByCity || typeof sm.deptArtifactTypesByCity !== 'object') sm.deptArtifactTypesByCity = {};
                 if (!sm.artifactTypeById || typeof sm.artifactTypeById !== 'object') sm.artifactTypeById = {};
@@ -23130,7 +23131,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 artifacts:[], activeArtifactType:null, trainerAssignments:{}, currentTrainerData:null,
                 profUsed:{}, usedTrainerNames:[], gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{},
                 currentEnemyLock:null, artifactsDisabled:[],
-                deptArtifactOffersByCity:{}, artifactShopOffersByCity:{}, artifactFreeClaimUsed:false,
+                deptArtifactOffersByCity:{}, artifactShopOffersByCity:{}, artifactShopPurchasedByCity:{}, artifactFreeClaimUsed:false,
                 deptArtifactTypesByCity:{}, artifactTypeById:{}, deptItemOffersByCity:{},
                 settings:{ enabledGens, minGen, maxGen,
                     megaOn: document.getElementById('story-mech-mega')?.checked||false,
@@ -24899,12 +24900,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const owned = new Set(sm.artifacts || []);
             const allIds = ALL_ARTIFACTS.map(a => a.id);
             let offers = Array.isArray(sm.artifactShopOffersByCity[cKey]) ? sm.artifactShopOffersByCity[cKey].slice() : [];
-            offers = offers.filter((id, idx, arr) => allIds.includes(id) && !owned.has(id) && arr.indexOf(id) === idx);
-            while (offers.length < 3) {
-                const candidates = allIds.filter(id => !owned.has(id) && !offers.includes(id));
-                if (!candidates.length) break;
-                const pick = candidates[Math.floor(storyRngNext() * candidates.length)];
-                offers.push(pick);
+            // Validate IDs and dedupe, but never strip an owned offer from a locked-in lineup —
+            // doing so would let the slot get refilled and re-roll the shop after each purchase.
+            offers = offers.filter((id, idx, arr) => allIds.includes(id) && arr.indexOf(id) === idx);
+            // Only generate offers when the lineup is empty (first visit to this city).
+            // Once the 3 are picked they stay fixed for the run, even after purchases or gym leader fights.
+            if (offers.length < 3) {
+                while (offers.length < 3) {
+                    const candidates = allIds.filter(id => !owned.has(id) && !offers.includes(id));
+                    if (!candidates.length) break;
+                    const pick = candidates[Math.floor(storyRngNext() * candidates.length)];
+                    offers.push(pick);
+                }
             }
             sm.artifactShopOffersByCity[cKey] = offers.slice(0, 3);
             if (!sm.deptArtifactTypesByCity[cKey] || typeof sm.deptArtifactTypesByCity[cKey] !== 'object') sm.deptArtifactTypesByCity[cKey] = {};
@@ -25053,6 +25060,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!relicScr || relicScr.classList.contains('hidden')) return;
             const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
             if (!storyArtifactShopCityAllowed(cityIdx)) return;
+            if (!sm.artifactShopPurchasedByCity || typeof sm.artifactShopPurchasedByCity !== 'object') sm.artifactShopPurchasedByCity = {};
+            const cKey = String(Math.max(0, cityIdx | 0));
+            // One relic per shop per run — lock persists across gym leader fights & re-visits.
+            if (sm.artifactShopPurchasedByCity[cKey]) return;
             const offer = _ensureArtifactShopOffersForCity(cityIdx);
             if (!offer.offers.includes(artId) || sm.artifacts.includes(artId)) return;
             const listPrice = (cityIdx === 0 && !sm.artifactFreeClaimUsed) ? 0 : 5000;
@@ -25061,6 +25072,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (listPrice > 0) sm.gold -= listPrice;
             else sm.artifactFreeClaimUsed = true;
             sm.artifacts.push(artId);
+            sm.artifactShopPurchasedByCity[cKey] = artId;
             if (!sm.artifactTypeById || typeof sm.artifactTypeById !== 'object') sm.artifactTypeById = {};
             if (STORY_TYPE_ARTIFACT_IDS.has(artId) && !sm.artifactTypeById[artId]) {
                 sm.artifactTypeById[artId] = _artifactTypeForDisplay(artId, cityIdx);
@@ -25080,12 +25092,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const gridEl = document.getElementById('story-artifact-shop-grid');
             const blurbEl = document.getElementById('story-artifact-shop-blurb');
             if (!gridEl) return;
+            if (!sm.artifactShopPurchasedByCity || typeof sm.artifactShopPurchasedByCity !== 'object') sm.artifactShopPurchasedByCity = {};
+            const _cKey = String(Math.max(0, cityIdx | 0));
+            const shopLocked = !!sm.artifactShopPurchasedByCity[_cKey];
             if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             if (blurbEl) {
                 if (cityIdx === 0) {
-                    blurbEl.innerHTML = 'Three unowned relics per visit. <strong style="color:#ce93d8;">Your first purchase in Pallet is free</strong> once per run; after that, and at other hubs, each relic is ' + storyGoldHtml('5,000', true) + '. Relics affect <em>both</em> sides for the whole run.';
+                    blurbEl.innerHTML = 'Three relics per shop — pick <strong>one</strong>. <strong style="color:#ce93d8;">Your first purchase in Pallet is free</strong> once per run; after that, and at other hubs, each relic is ' + storyGoldHtml('5,000', true) + '. Relics affect <em>both</em> sides for the whole run.';
                 } else {
-                    blurbEl.innerHTML = 'Three unowned relics per visit — ' + storyGoldHtml('5,000', true) + ' each. Relics affect <em>both</em> sides for the whole run.';
+                    blurbEl.innerHTML = 'Three relics per shop — pick <strong>one</strong>. ' + storyGoldHtml('5,000', true) + ' each. Relics affect <em>both</em> sides for the whole run.';
+                }
+                if (shopLocked) {
+                    blurbEl.innerHTML += ' <span style="color:#ffb74d;">You\'ve already claimed your relic here — the lineup is locked for the rest of the run.</span>';
                 }
             }
             gridEl.innerHTML = '';
@@ -25094,7 +25112,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const art = ALL_ARTIFACTS.find(a => a.id === artId);
                 if (!art) return;
                 const owned = sm.artifacts.includes(artId);
-                const canBuy = !owned && (listPrice === 0 || sm.gold >= listPrice);
+                const canBuy = !owned && !shopLocked && (listPrice === 0 || sm.gold >= listPrice);
                 const aicon = storyShopIconCellHtml(art.id);
                 const artName = _artifactNameForCity(art, cityIdx);
                 const artDesc = _artifactDescForCity(art, cityIdx);
