@@ -1132,6 +1132,29 @@
         .story-action-section-header .story-action-section-icon {
             font-size: 11px; opacity: 0.85;
         }
+        .story-city-tips {
+            display: flex; flex-wrap: wrap; gap: 6px;
+            margin: 0; padding: 0;
+        }
+        .story-city-tips:empty { display: none; }
+        .story-city-tip {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 5px 9px;
+            font-size: 11px; line-height: 1.2;
+            font-family: var(--battle-font) !important;
+            color: #e3f0ff;
+            background: linear-gradient(180deg, #1c2944 0%, #121a2e 100%);
+            border: 1px solid #3a567f;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.12s;
+            box-shadow: inset -2px -2px 0 0 #0d1422, inset 2px 2px 0 0 #2a3e5e;
+        }
+        .story-city-tip:hover { color: #fff; border-color: #6da2dc; background: linear-gradient(180deg, #233458 0%, #16213d 100%); transform: translateY(-1px); }
+        .story-city-tip:active { transform: translateY(0); }
+        .story-city-tip .story-city-tip-ico { font-size: 13px; line-height: 1; }
+        .story-city-tip.urgent { color: #fff; background: linear-gradient(180deg, #5a2025 0%, #3a1416 100%); border-color: #c2484f; box-shadow: inset -2px -2px 0 0 #2a0e10, inset 2px 2px 0 0 #7a2a30; }
+        .story-city-tip.urgent:hover { background: linear-gradient(180deg, #6e272d 0%, #481a1c 100%); border-color: #ff8a90; }
         .story-action-badge {
             display: inline-flex; align-items: center; gap: 3px;
             font-size: 10px; line-height: 1; letter-spacing: 0.5px;
@@ -4589,6 +4612,7 @@
                         <p class="story-dialog-text" id="story-city-quote"></p>
                     </div>
                 </div>
+                <div id="story-city-tips" class="story-city-tips"></div>
                 <div id="story-action-buttons" style="display:flex;flex-direction:column;gap:8px;"></div>
             </div>
         </div>
@@ -22415,6 +22439,43 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 quoteText += '\n\n⚔ Trainer tip: A stubborn challenger is posted by the route gate—they insist on a fair bout before anyone leaves town. Heal up, shop smart, then settle it.';
             }
             if (quoteEl) quoteEl.textContent = quoteText;
+
+            // City Tips strip — short, actionable recommendations that jump to the right facility.
+            const tipsEl = document.getElementById('story-city-tips');
+            if (tipsEl) {
+                const tips = [];
+                const hardcore = (sm.storyDifficulty || 'normal') === 'hardcore';
+                const hasTeam = sm.team && sm.team.length > 0;
+                if (hasTeam) {
+                    const partyHurt = sm.team.some(s => s && (s.currentHp != null || s.status));
+                    if (partyHurt && !hardcore) {
+                        tips.push({ icon: '🩹', label: 'Party needs healing', click: 'window.StoryMode.enterPokemonCenter()', urgent: true });
+                    }
+                    if (actions.includes('Battle Dojo')) {
+                        const n = sm.team.filter(s => s && s.build && (!s.build.i || s.build.i === 'None' || s.build.i === '(none)')).length;
+                        if (n) tips.push({ icon: '🎒', label: `${n} mon${n===1?'':'s'} need held items`, click: "window.StoryMode.enterTutor('loadout')" });
+                    }
+                    if (actions.includes('Move Tutor')) {
+                        const n = sm.team.filter(s => s && s.build && Array.isArray(s.build.m) && s.build.m.length < 4).length;
+                        if (n) tips.push({ icon: '📚', label: `${n} mon${n===1?'':'s'} have empty move slots`, click: "window.StoryMode.enterTutor('moves')" });
+                    }
+                    if (actions.includes('EV Trainer')) {
+                        const n = sm.team.filter(s => {
+                            if (!s || !s.build) return false;
+                            const e = s.build.evs || {};
+                            return !((e.hp|0)||(e.atk|0)||(e.def|0)||(e.spa|0)||(e.spd|0)||(e.spe|0));
+                        }).length;
+                        if (n) tips.push({ icon: '🏋️', label: `${n} untrained EV spread${n===1?'':'s'}`, click: 'window.StoryMode.enterEVTrainer()' });
+                    }
+                }
+                const relicAvailableHere = (cityIdx === 0 || actions.includes('Department Store'));
+                if (relicAvailableHere && cityIdx === 0 && !sm.artifactFreeClaimUsed) {
+                    tips.push({ icon: '✨', label: 'Claim your free relic', click: 'window.StoryMode.enterArtifactShop()' });
+                }
+                tipsEl.innerHTML = tips.slice(0, 4).map(t =>
+                    `<button type="button" class="story-city-tip${t.urgent ? ' urgent' : ''}" onclick="${t.click}"><span class="story-city-tip-ico">${t.icon}</span><span>${t.label}</span></button>`
+                ).join('');
+            }
 
             const btn = document.getElementById('story-action-buttons');
             if (!btn) return;
