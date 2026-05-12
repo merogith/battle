@@ -23019,9 +23019,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function selectTrainerForRole(roleKey, enabledGens, usedBaseNames, preferredType) {
             const rk = roleKey.toLowerCase().trim();
+            // 'Gym Trainer 1' and 'Gym Trainer 2' draw from the Basic Trainer pool (matching gym leader typing via preferredType).
+            const isBasicLike = (rk === 'basic trainer' || rk === 'gym trainer' || rk === 'gym trainer 1' || rk === 'gym trainer 2');
             let candidates = TRAINER_DATA.filter(t => {
                 const tr = t.role.toLowerCase();
-                if (rk === 'basic trainer' || rk === 'gym trainer') return tr === 'basic trainer';
+                if (isBasicLike) return tr === 'basic trainer';
                 if (rk === 'rival') return t.isRival;
                 if (rk === 'elite trainer') return tr === 'elite trainer' && !t.isRival;
                 return tr === rk;
@@ -23029,7 +23031,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const genSet = new Set(normalizeEnabledGens(enabledGens));
             const inRange = candidates.filter(t => genSet.has(t.charGen));
             if (inRange.length) candidates = inRange;
-            if (preferredType && (rk === 'basic trainer' || rk === 'gym trainer')) {
+            if (preferredType && isBasicLike) {
                 const want = String(preferredType).trim();
                 const pref = candidates.filter(t => {
                     const ts = parseTrainerTypes(t.type);
@@ -23038,7 +23040,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (pref.length) candidates = pref;
             }
             // Exclude any whose base name is already used this run (allow Basic/Gym Trainers to repeat).
-            if (usedBaseNames && rk !== 'basic trainer' && rk !== 'gym trainer') {
+            if (usedBaseNames && !isBasicLike) {
                 const fresh = candidates.filter(t => !usedBaseNames.has(_baseTrainerName(t.name)));
                 if (fresh.length) candidates = fresh;
             }
@@ -23046,7 +23048,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _rng = (sm && sm.active) ? storyRngNext : Math.random;
             // For Basic/Gym Trainer picks, avoid Normal-type numerical dominance by grouping
             // candidates by their effective type and picking the type first, then the trainer.
-            if (rk === 'basic trainer' || rk === 'gym trainer') {
+            if (isBasicLike) {
                 const byType = {};
                 for (const t of candidates) {
                     const key = isPlaceholderSignatureList(t.sigs || []) ? 'Mixed' : (t.type || 'Mixed');
@@ -23093,13 +23095,39 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.runRivalSpriteFile = lockedRivalName ? pickStoryRivalSpriteFile(eg) : null;
             const rivalBase = lockedRivalName ? _baseTrainerName(lockedRivalName) : null;
             if (rivalBase) usedBase.add(rivalBase);
+            // Pass 1: gym leaders — assigned first so gym trainer 1/2 can copy their typing.
             STORY_EVENTS_RAW.forEach(ev => {
                 const [idx, type, event] = ev;
                 if (type !== 'Battle') return;
+                if (!/^Gym Leader [1-8]$/.test(String(event))) return;
+                const t = selectTrainerForRole(event, eg, usedBase);
+                if (t) {
+                    sm.trainerAssignments[idx] = t.name;
+                    usedBase.add(_baseTrainerName(t.name));
+                }
+            });
+            // Pass 2: gym trainer 1 / 2 — type-matched to the upcoming gym leader.
+            STORY_EVENTS_RAW.forEach((ev, posInRaw) => {
+                const [idx, type, event] = ev;
+                if (type !== 'Battle') return;
+                if (!/^Gym Trainer( [12])?$/.test(String(event))) return;
+                const prefType = preferredTypeBeforeGymBattle(posInRaw);
+                const t = selectTrainerForRole(event, eg, usedBase, prefType);
+                if (t) {
+                    sm.trainerAssignments[idx] = t.name;
+                    usedBase.add(_baseTrainerName(t.name));
+                }
+            });
+            // Pass 3: rivals (locked) and remaining battles. Mystery Figure uses a synthetic trainer at battle time — skip to avoid name pollution.
+            STORY_EVENTS_RAW.forEach(ev => {
+                const [idx, type, event] = ev;
+                if (type !== 'Battle') return;
+                if (sm.trainerAssignments[idx]) return;
                 if (event === 'Rival') {
                     if (lockedRivalName) sm.trainerAssignments[idx] = lockedRivalName;
                     return;
                 }
+                if (event === 'Mystery Figure') return;
                 const t = selectTrainerForRole(event, eg, usedBase);
                 if (t) {
                     sm.trainerAssignments[idx] = t.name;
@@ -23880,13 +23908,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function preferredTypeBeforeGymBattle(battleIdx) {
             const row = STORY_EVENTS_RAW[battleIdx];
-            if (!row || row[1] !== 'Battle' || String(row[2]) !== 'Gym Trainer') return null;
-            const next = STORY_EVENTS_RAW[battleIdx + 1];
-            if (!next || next[1] !== 'Battle') return null;
-            const ev = String(next[2] || '');
-            if (ev.indexOf('Gym Leader') !== 0) return null;
-            const nm = sm.trainerAssignments[next[0]];
-            const td = nm && findTrainerDataByName(nm, ev);
+            if (!row || row[1] !== 'Battle') return null;
+            if (!/^Gym Trainer( [12])?$/.test(String(row[2]))) return null;
+            // Walk forward past further gym-trainer rows until we hit the upcoming gym leader battle.
+            let leader = null;
+            for (let i = battleIdx + 1; i < STORY_EVENTS_RAW.length; i++) {
+                const nx = STORY_EVENTS_RAW[i];
+                if (!nx || nx[1] !== 'Battle') continue;
+                const nEv = String(nx[2] || '');
+                if (/^Gym Trainer( [12])?$/.test(nEv)) continue;
+                if (nEv.indexOf('Gym Leader') === 0) leader = nx;
+                break;
+            }
+            if (!leader) return null;
+            const nm = sm.trainerAssignments[leader[0]];
+            const td = nm && findTrainerDataByName(nm, String(leader[2] || ''));
             if (!td || !td.type) return null;
             const ts = parseTrainerTypes(td.type);
             return ts[0] || null;
