@@ -2751,6 +2751,21 @@
             75% { filter: brightness(2.5) saturate(2); transform: translateX(-50%) scale(1.12); }
             100% { filter: brightness(1); transform: translateX(-50%) scale(1); }
         }
+        /* Persistent Tera-on crystal overlay — a glowing facet anchored to the sprite */
+        .tera-crystal-on { position: relative; }
+        .tera-crystal-on::before {
+            content: ''; position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+            width: 14px; height: 14px;
+            background: linear-gradient(135deg, #4fc3f7 0%, #b3e5fc 40%, #ffffff 55%, #4fc3f7 100%);
+            clip-path: polygon(50% 0%, 100% 38%, 80% 100%, 20% 100%, 0% 38%);
+            box-shadow: 0 0 6px 2px rgba(79,195,247,0.85), 0 0 12px 4px rgba(79,195,247,0.5);
+            pointer-events: none; z-index: 5;
+            animation: teraCrystalPulse 2s ease-in-out infinite;
+        }
+        @keyframes teraCrystalPulse {
+            0%, 100% { filter: brightness(1) drop-shadow(0 0 3px #4fc3f7); }
+            50% { filter: brightness(1.4) drop-shadow(0 0 8px #ffffff); }
+        }
 
         /* Z-Move activation pose */
         .anim-zmove-activate { animation: zMoveActivate 0.7s ease-out; }
@@ -6007,9 +6022,15 @@
                 }
             }
 
-            // Tera type assignment
+            // Tera type assignment.
+            // Terapagos always uses Stellar (canonical: requiredTeraType: "Stellar").
+            // Otherwise prefer curated Smogon-set teratypes when present, fall back to weighted roll.
             if (gimmick === 'TERA') {
-                b.teraType = rollTeraType(base.t1 || 'Normal', base.t2 || '');
+                if (name === 'Terapagos' || name === 'Terapagos-Terastal' || name === 'Terapagos-Stellar') {
+                    b.teraType = 'Stellar';
+                } else {
+                    b.teraType = rollTeraType(base.t1 || 'Normal', base.t2 || '', b._teratypes);
+                }
                 if (b.teraType !== base.t1 && b.teraType !== (base.t2 || '')) {
                     const hasSTABForTera = b.m.some(mName => {
                         const mv = movesDB[mName] || ensureMoveData(mName);
@@ -6708,11 +6729,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return 'STANDARD';
         }
 
-        // Only used when rollGimmick returns TERA — picks the actual tera type
-        function rollTeraType(type1, type2) {
+        // Only used when rollGimmick returns TERA — picks the actual tera type.
+        // If a curated pool is provided (Smogon set teratypes), draw uniformly from it;
+        // otherwise weight original typings ~2x to keep STAB-Tera meaningful while still
+        // surfacing off-type Tera (which dominates real VGC top-cut).
+        function rollTeraType(type1, type2, curatedPool) {
+            if (Array.isArray(curatedPool) && curatedPool.length) {
+                const validPool = curatedPool.filter(t => typeof t === 'string' && t.length);
+                if (validPool.length) return validPool[Math.floor(Math.random() * validPool.length)];
+            }
             const all = ["Normal","Fire","Water","Electric","Grass","Ice","Fighting","Poison","Ground","Flying","Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel","Fairy"];
-            // Weighted: original typings ~10x more likely than any other single type
-            const ORIG_WEIGHT = 10;
+            const ORIG_WEIGHT = 2;
             const weighted = [];
             for (const t of all) {
                 const w = (t === type1 || (type2 && t === type2)) ? ORIG_WEIGHT : 1;
@@ -9221,9 +9248,44 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.teraActivated = true;
             if (isPlayer) state.usedTera = true; else state.fUsedTera = true;
             mon.type1 = teraType; mon.type2 = '';
+            // Stellar: track per-type "first-use" boost set (Tera Blast / Tera Starstorm consume the bonus per move type)
+            if (teraType === 'Stellar') {
+                mon.stellarTypesUsed = new Set();
+            }
             logMsg(`${mon.name} Terastallized into the ${teraType} type!`, 'info');
+
+            // Embody Aspect (Ogerpon): on Terastallization, raise a stat based on form (mask).
+            // Teal/base → Spe, Wellspring → SpD, Hearthflame → Atk, Cornerstone → Def.
+            if (mon.ability === 'Embody Aspect' || /^Ogerpon/.test(mon.name)) {
+                let _stat = 'spe';
+                const it = (mon.item || '').toString();
+                if (/Wellspring/i.test(it) || /Wellspring/i.test(mon.name)) _stat = 'spd';
+                else if (/Hearthflame/i.test(it) || /Hearthflame/i.test(mon.name)) _stat = 'atk';
+                else if (/Cornerstone/i.test(it) || /Cornerstone/i.test(mon.name)) _stat = 'def';
+                try { changeStage(mon, _stat, 1); logMsg(`${mon.name}'s Embody Aspect raised its ${_stat.toUpperCase()}!`, 'info'); } catch (e) {}
+            }
+
+            // Terapagos Stellar form: clear weather + terrain via Teraform Zero on Terastallization
+            if (/^Terapagos/.test(mon.name) && teraType === 'Stellar') {
+                try {
+                    if (state.weather && !['HarshSun','HeavyRain','StrongWinds'].includes(state.weather)) {
+                        logMsg(`${mon.name}'s Teraform Zero cleared the weather and terrain!`, 'info');
+                        state.weather = ''; state.weatherTurns = 0;
+                    } else {
+                        logMsg(`${mon.name}'s Teraform Zero cleared the terrain!`, 'info');
+                    }
+                    state.terrain = ''; state.terrainTurns = 0;
+                } catch (e) {}
+                // Stellar form also bumps ability marker (used by Tera Shell to gate full-HP resist while still pre-Tera)
+                mon.ability = 'Teraform Zero';
+            }
+
             let teraSprite = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
-            if (teraSprite && settings.animations) { teraSprite.classList.add('anim-tera-activate'); setTimeout(() => teraSprite.classList.remove('anim-tera-activate'), 750); }
+            if (teraSprite && settings.animations) {
+                teraSprite.classList.add('anim-tera-activate');
+                teraSprite.classList.add('tera-crystal-on');
+                setTimeout(() => teraSprite.classList.remove('anim-tera-activate'), 750);
+            }
             updateUI();
         }
 
@@ -10565,6 +10627,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let spriteEl = document.getElementById(spriteId);
             if (!spriteEl) return;
             let parent = document.getElementById(isPlayer ? 'player-sprite-container' : 'foe-sprite-container') || spriteEl.parentElement;
+            // Drop Tera crystal overlay on switch-in; will be re-added if the new mon is already Terastallized
+            spriteEl.classList.remove('tera-crystal-on');
             spriteEl.style.opacity = '0';
             spriteEl.style.visibility = 'hidden';
 
@@ -11168,6 +11232,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else if (spriteEl.style.filter) {
                     spriteEl.style.filter = '';
                 }
+                // Persistent Tera crystal overlay reflects teraActivated for the *currently* active mon
+                if (mon.teraActivated) spriteEl.classList.add('tera-crystal-on');
+                else spriteEl.classList.remove('tera-crystal-on');
                 spriteEl.style.transform = getSpriteTransformStyle(mon);
                 // Charging state visuals (Dig → underground, Fly/Bounce → airborne, etc.)
                 updateSpriteChargingState(mon, spriteEl);
@@ -11871,7 +11938,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (bd.teraType || s.teraActivated) {
                     let ttype = bd.teraType || '';
                     let active = s.teraActivated ? '' : ' (ready)';
-                    gimBadges += `<span class="sum-gimm-badge" style="background:#0277bd;color:#fff;">TERA ${ttype}${active}</span>`;
+                    // Hide pre-activation Tera type on foe Pokémon (canonical VGC: opponent sees badge but not type).
+                    let _hideForFoe = !window._summaryIsP1 && !s.teraActivated;
+                    let _display = _hideForFoe ? '???' : ttype;
+                    gimBadges += `<span class="sum-gimm-badge" style="background:#0277bd;color:#fff;">TERA ${_display}${active}</span>`;
                 }
                 if (s.isShiny) gimBadges += `<span class="sum-gimm-badge" style="background:#ffd700;color:#000;">SHINY</span>`;
 
@@ -11993,9 +12063,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Defensive section
                 let defHtml = renderMatchupDefSection(baseType1, baseType2, `Defending as ${baseType1}${baseType2 ? '/' + baseType2 : ''}`);
                 let teraDefHtml = '';
-                if (teraType) {
+                let _hideFoeTera = !window._summaryIsP1 && !s.teraActivated;
+                if (teraType && !_hideFoeTera) {
                     teraDefHtml = `<div class="tera-note">If Terastallized (${teraType}): defensive type changes to pure ${teraType}.</div>`;
                     teraDefHtml += renderMatchupDefSection(teraType, null, `Defending as TERA ${teraType}`);
+                } else if (teraType && _hideFoeTera) {
+                    teraDefHtml = `<div class="tera-note">Carries a Tera Crystal — type undisclosed until activation.</div>`;
                 }
 
                 // Offensive coverage per move
@@ -12295,7 +12368,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _usedMega = isP1 ? state.usedMega : state.fUsedMega; const _usedDyna = isP1 ? state.usedDyna : state.fUsedDyna; const _usedTera = isP1 ? state.usedTera : state.fUsedTera; const _usedZ = isP1 ? state.usedZ : state.fUsedZ;
             let canUseMega = activeMon.buildData && activeMon.buildData.gimmick === 'MEGA' && !activeMon.megaEvolved && (!settings.classicMode || !_usedMega);
             let canUseDyna = activeMon.buildData && (activeMon.buildData.gimmick === 'DYNAMAX' || activeMon.buildData.gimmick === 'GMAXDYNAMAX') && !activeMon.dynamaxed && !activeMon.dynamaxUsed && !_usedDyna;
-            let canUseTera = activeMon.buildData && activeMon.buildData.teraType && !activeMon.teraActivated && (!settings.classicMode || !_usedTera);
+            let canUseTera = activeMon.buildData && activeMon.buildData.teraType && !activeMon.teraActivated && !_usedTera;
             // Cap depends on the Classic Mode toggle: one Z per team (Classic) vs one per Pokémon (off)
             let canUseZ = activeMon.buildData && activeMon.buildData.gimmick === 'ZMOVE' && !activeMon.zMoveUsed && (!settings.classicMode || !_usedZ);
             const hasGimmickButtons = canUseMega || canUseDyna || canUseTera || canUseZ;
@@ -12321,7 +12394,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const dynaLabel = (activeMon.buildData.gimmick === 'GMAXDYNAMAX') ? ' G-MAX' : ' DYNAMAX';
                     gDiv.appendChild(mkGBtn(dynaLabel, dynaKey, '#b71c1c', '#fff'));
                 }
-                if (canUseTera) gDiv.appendChild(mkGBtn(`◆ TERA<span style="font-size:9px"> ${activeMon.buildData.teraType}</span>`, 'TERA', '#0277bd', '#fff'));
+                if (canUseTera) gDiv.appendChild(mkGBtn(`◆ TERA<span style="font-size:9px"> ${activeMon.buildData.teraType}</span><span style="font-size:8px;opacity:0.75;display:block;">1× per battle</span>`, 'TERA', '#0277bd', '#fff'));
                 if (canUseZ) gDiv.appendChild(mkGBtn('⚡ Z-MOVE', 'ZMOVE', '#f9a825', '#000'));
                 menu.appendChild(gDiv);
             }
@@ -12345,7 +12418,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // === 6. TURN SEQUENCING ===
-        // General STAB calculation function supporting Terastallization
+        // General STAB calculation function supporting Terastallization (including Stellar)
         function calcSTAB(attacker, move) {
             let abilityBonus = attacker.ability === 'Adaptability';
             if (attacker.teraActivated) {
@@ -12353,11 +12426,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let origT1 = attacker.originalType1 || '';
                 let origT2 = attacker.originalType2 || '';
                 let isOrigSTAB = (move.type === origT1 || move.type === origT2);
+
+                // Stellar Tera: per-type first-use bonus (×2 if STAB, ×1.2 otherwise).
+                // After that move type is consumed, falls back to regular original-STAB (1.5) only.
+                if (teraType === 'Stellar') {
+                    const used = attacker.stellarTypesUsed instanceof Set ? attacker.stellarTypesUsed : (attacker.stellarTypesUsed = new Set());
+                    if (!used.has(move.type)) {
+                        // Mark consumed when the move is actually a damaging move (status moves don't burn the bonus)
+                        if (move.cat !== 'Status') used.add(move.type);
+                        if (isOrigSTAB) return abilityBonus ? 2.25 : 2.0;
+                        return 1.2;
+                    }
+                    // Bonus already spent for this type — degrade to plain STAB if applicable
+                    if (isOrigSTAB) return abilityBonus ? 2.0 : 1.5;
+                    return 1;
+                }
+
                 let isTeraSTAB = (move.type === teraType);
-                
                 if (isTeraSTAB && isOrigSTAB) return abilityBonus ? 2.25 : 2.0;
                 else if (isTeraSTAB) return abilityBonus ? 2.0 : 1.5;
-                else if (isOrigSTAB) return 1.5; // Adaptability lost if Tera type doesn't match original type
+                else if (isOrigSTAB) return abilityBonus ? 2.0 : 1.5; // Adaptability still applies to original-type STAB after off-type Tera
                 return 1;
             } else {
                 let isSTAB = (move.type === attacker.type1 || move.type === attacker.type2);
@@ -12603,16 +12691,43 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (defHpPct < 0.6 || hpPct < 0.5 || (defHasSEMove && hpPct >= 0.5) || isEndgame) return bd.gimmick === 'GMAXDYNAMAX' ? 'GMAXDYNAMAX' : 'DYNAMAX';
             }
 
-            // TERA: activate when the Tera type eliminates a threatening weakness
-            //  OR when HP is low and type change provides defensive value
-            if (bd.teraType && !attacker.teraActivated && (!settings.classicMode || !state.fUsedTera)) {
-                let weakToFoe = defender.moves.some(m => m.cat !== 'Status' && getMoveEffectiveness(m.type, attacker.type1, attacker.type2) >= 2);
-                let teraReducesThreat = weakToFoe && defender.moves.some(m => {
+            // TERA: activate when any of:
+            //  a) Tera type strictly reduces an incoming threat (x4->x2, x2->x1, x->immune)
+            //  b) Tera type unlocks a KO (STAB on Tera type, or Tera Blast, hits harder)
+            //  c) HP low and type change provides survival
+            //  d) Stellar Tera available — offensive boost is always strong
+            if (bd.teraType && !attacker.teraActivated && !state.fUsedTera) {
+                let teraReducesThreat = defender.moves.some(m => {
+                    if (m.cat === 'Status') return false;
                     let preTera = getMoveEffectiveness(m.type, attacker.type1, attacker.type2);
                     let postTera = getMoveEffectiveness(m.type, bd.teraType, null);
-                    return preTera >= 2 && postTera < 2;
+                    return preTera > postTera && preTera >= 2;
                 });
-                if (teraReducesThreat || hpPct < 0.45) return 'TERA';
+
+                // Offensive trigger: does Tera unlock a KO that base form can't?
+                let teraUnlocksKO = false;
+                try {
+                    const origActivated = attacker.teraActivated;
+                    const origT1 = attacker.type1, origT2 = attacker.type2;
+                    let baseDmg = Math.max(0, ...attacker.moves.filter(m => m.pp > 0 && m.cat !== 'Status').map(m => aiEstimateDmg(attacker, defender, m)));
+                    attacker.teraActivated = true; attacker.type1 = bd.teraType; attacker.type2 = '';
+                    let teraDmg = Math.max(0, ...attacker.moves.filter(m => m.pp > 0 && m.cat !== 'Status').map(m => aiEstimateDmg(attacker, defender, m)));
+                    attacker.teraActivated = origActivated; attacker.type1 = origT1; attacker.type2 = origT2;
+                    if (teraDmg >= defender.currentHp && baseDmg < defender.currentHp) teraUnlocksKO = true;
+                    // Also fire if Tera boosts top-move damage by ≥30% on a healthy foe (sweep setup)
+                    else if (defHpPct > 0.6 && teraDmg >= baseDmg * 1.3 && baseDmg > 0) teraUnlocksKO = true;
+                } catch (e) { /* fall through */ }
+
+                // Stellar: opportunistic offensive Tera once per type — very strong, fire eagerly.
+                let stellarOpportunity = (bd.teraType === 'Stellar') && (defHpPct > 0.4);
+
+                if (teraReducesThreat || teraUnlocksKO || stellarOpportunity || hpPct < 0.45) return 'TERA';
+                // Otherwise: hold Tera in reserve (log once per battle for feel/transparency)
+                let _wkToFoe = defender.moves.some(m => m.cat !== 'Status' && getMoveEffectiveness(m.type, attacker.type1, attacker.type2) >= 2);
+                if (!state._fTeraReserveLogged && _wkToFoe) {
+                    state._fTeraReserveLogged = true;
+                    try { logMsg(`${attacker.name} keeps its Tera Crystal in reserve...`, 'info'); } catch (e) {}
+                }
             }
 
             // Z-MOVE: use when:
@@ -14656,7 +14771,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
                 }
                 if (gimmickPending === 'TERA') {
-                    let ok = attacker.buildData && attacker.buildData.teraType && !attacker.teraActivated && (!settings.classicMode || !(isPlayer ? state.usedTera : state.fUsedTera));
+                    let ok = attacker.buildData && attacker.buildData.teraType && !attacker.teraActivated && !(isPlayer ? state.usedTera : state.fUsedTera);
                     if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
                 }
                 if (gimmickPending === 'ZMOVE') {
@@ -14737,15 +14852,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     move = buildMaxMove(attacker, move);
                 }
 
-                // Tera Blast: becomes Tera type and uses higher of boosted Atk/SpA when Terastallized
+                // Tera Blast: becomes Tera type and uses higher of boosted Atk/SpA when Terastallized.
+                // Stellar Tera: Tera Blast becomes Stellar-typed with 100 BP and always uses higher offense stat.
                 if (move.name === 'Tera Blast' && attacker.teraActivated && attacker.buildData && attacker.buildData.teraType) {
                     move = { ...move, type: attacker.buildData.teraType };
                     let boostedAtk = attacker.stats.atk * getStageMult(attacker.stages.atk);
                     let boostedSpa = attacker.stats.spa * getStageMult(attacker.stages.spa);
                     if (boostedAtk > boostedSpa) move = { ...move, cat: 'Physical' };
                 }
-                // Tera 60 BP floor: when Terastallized, moves matching Tera type with <60 BP are boosted to 60
+                // Tera Starstorm: Terapagos-Stellar signature — Stellar-typed when user is Stellar Tera form
+                if (move.name === 'Tera Starstorm' && attacker.teraActivated && attacker.buildData && attacker.buildData.teraType === 'Stellar') {
+                    move = { ...move, type: 'Stellar' };
+                    let boostedAtk = attacker.stats.atk * getStageMult(attacker.stages.atk);
+                    let boostedSpa = attacker.stats.spa * getStageMult(attacker.stages.spa);
+                    if (boostedAtk > boostedSpa) move = { ...move, cat: 'Physical' };
+                }
+                // Tera 60 BP floor: when Terastallized, moves matching Tera type with <60 BP are boosted to 60.
+                // Skipped for Stellar (Stellar is its own type, doesn't match standard 18-type move types).
                 if (attacker.teraActivated && attacker.buildData && attacker.buildData.teraType &&
+                    attacker.buildData.teraType !== 'Stellar' &&
                     move.type === attacker.buildData.teraType && move.pow > 0 && move.pow < 60) {
                     move = { ...move, pow: 60 };
                 }
@@ -16020,6 +16145,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
                 let typeEff = getMoveEffectiveness(move.type, defender.type1, defender.type2);
+                // Stellar-type moves: deal neutral damage to non-Terastallized targets;
+                // super-effective (x2) when the target is currently Terastallized (canonical Gen 9).
+                if (move.type === 'Stellar') {
+                    typeEff = defender.teraActivated ? 2 : 1;
+                }
                 // Gravity / Iron Ball: Flying-type Ground immunity is suppressed
                 const _ironBallActive = defender.item === "Iron Ball" && state.magicRoom === 0 && !(defender.volatile.embargo > 0) && defender.ability !== "Klutz";
                 if ((_gravityActive || _ironBallActive) && typeEff === 0 && move.type === "Ground" && (defender.type1 === "Flying" || defender.type2 === "Flying")) {
@@ -16055,6 +16185,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!defender.volatile.abilityGastroAcid && defender.ability === "Wonder Guard" && typeEff <= 1 && move.cat !== "Status") {
                     logMsg(`${attacker.name}'s attack was blocked by Wonder Guard!`, 'info');
                     await sleep(1000); return;
+                }
+                // Tera Shell (Terapagos-Terastal): at full HP, all damaging moves are resisted (effectiveness x0.5).
+                // Ignored if defender is naturally immune to the move type, or if attacker has Mold Breaker-class.
+                {
+                    const _mbForShell = attacker.ability === "Mold Breaker" || attacker.ability === "Teravolt" || attacker.ability === "Turboblaze";
+                    if (!defender.volatile.abilityGastroAcid && defender.ability === "Tera Shell"
+                        && defender.currentHp === defender.maxHp && typeEff > 0 && move.cat !== "Status" && !_mbForShell) {
+                        typeEff = typeEff * 0.5;
+                        logMsg(`${defender.name}'s Tera Shell deflected the attack!`, 'info');
+                    }
                 }
                 // Protean / Libero: change attacker type to move type before STAB calc
                 if ((attacker.ability === "Protean" || attacker.ability === "Libero") && !attacker.volatile.proteanUsed && !attacker.teraActivated) {
@@ -16454,9 +16594,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         // Parental Bond: 2nd hit deals 0.25x damage
                         let _hitDmg = (parentalBondActive && h === 1) ? Math.max(1, Math.floor(damage * 0.25)) : damage;
                         if (parentalBondActive && h === 1) attacker.volatile.parentalBondHit = true;
-                        // Triple Axel / Triple Kick: power escalates per successful hit (BP 20/40/60). Recompute damage.
+                        // Triple Axel / Triple Kick: power escalates per successful hit (BP 20/40/60).
+                        // When Terastallized into the move's type, each hit's BP is floored to 60 first,
+                        // so all three hits land at the 60 BP baseline instead of multiplying the floor.
                         if ((move.name === "Triple Axel" || move.name === "Triple Kick") && h > 0) {
-                            _hitDmg = Math.floor(damage * (h + 1));
+                            const _baseBP = (move.name === "Triple Axel") ? 20 : 10;
+                            const _teraFloor = (attacker.teraActivated && attacker.buildData && attacker.buildData.teraType === move.type) ? 60 : 0;
+                            const _scaledBP = Math.max(_baseBP * (h + 1), _teraFloor);
+                            const _hit1BP = Math.max(_baseBP, _teraFloor);
+                            _hitDmg = Math.max(1, Math.floor(damage * (_scaledBP / _hit1BP)));
                         }
                         if (defender.volatile.sub > 0 && !(attacker.ability === "Infiltrator")) {
                             let sd = Math.min(defender.volatile.sub, _hitDmg); defender.volatile.sub -= sd;
@@ -17875,6 +18021,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.ability === "Mold Breaker") logMsg(`${mon.name}'s Mold Breaker breaks through abilities!`, 'info');
             if (mon.ability === "Teravolt") logMsg(`${mon.name}'s Teravolt breaks through abilities!`, 'info');
             if (mon.ability === "Turboblaze") logMsg(`${mon.name}'s Turboblaze breaks through abilities!`, 'info');
+            // Tera Shift (Terapagos): on switch-in, transforms into Terastal form (stat boost + Tera Shell)
+            if (mon.ability === "Tera Shift" && /^Terapagos/.test(mon.name) && !mon._teraShifted) {
+                mon._teraShifted = true;
+                // Apply Terapagos → Terapagos-Terastal stat deltas (canonical baseStat diffs)
+                // base: 90/65/85/65/85/60 → terastal: 95/95/110/105/110/85
+                const _deltas = { hp: 5, atk: 30, def: 25, spa: 40, spd: 25, spe: 25 };
+                try {
+                    for (const k of Object.keys(_deltas)) { if (mon.stats[k] != null) mon.stats[k] += _deltas[k]; }
+                    if (mon.maxHp != null) { mon.maxHp += _deltas.hp; mon.currentHp += _deltas.hp; mon.baseMaxHp = mon.maxHp; }
+                } catch (e) {}
+                mon.ability = "Tera Shell";
+                logMsg(`${mon.name}'s Tera Shift transformed it into its Terastal form!`, 'info');
+            }
             // Unnerve: Prevent opponent berry usage (simplified — handled at berry activation checks)
             const _swItemActive = state.magicRoom === 0 && !(mon.volatile && mon.volatile.embargo > 0) && mon.ability !== "Klutz";
             if (mon.ability === "Snow Warning") {
