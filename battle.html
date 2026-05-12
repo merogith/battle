@@ -20629,9 +20629,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           ['Elite trainers still gather here… legends never rest!','The Hall of Fame plaque could use your name again.','Another lap around the region?'],
         ];
         function _pickCityQuoteLine(poolArr, cityIdx) {
+            // City identity must stay constant across renders in the same town (arrival → gym → post-gym).
+            // Seed the line index off cityIdx + runSeed so it varies between runs but is stable within one.
             const idx = Math.min(Math.max(0, cityIdx|0), poolArr.length - 1);
             const lines = poolArr[idx] || poolArr[0];
-            return lines[Math.floor(Math.random() * lines.length)];
+            const seed = (sm && sm.runSeed != null) ? (sm.runSeed >>> 0) : 0;
+            const pick = ((seed ^ (idx * 2654435761)) >>> 0) % lines.length;
+            return lines[pick];
         }
 
         // Story city hub + professor screen: HUD label must match `sprites/trainers/<spriteFile>.png` on disk.
@@ -21867,7 +21871,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _baseTrainerName(name) {
             return _storyTrainerBaseName(name);
         }
-        function selectTrainerForRole(roleKey, enabledGens, usedBaseNames, preferredType) {
+        function selectTrainerForRole(roleKey, enabledGens, usedBaseNames, preferredType, avoidTypes) {
             const rk = roleKey.toLowerCase().trim();
             let candidates = TRAINER_DATA.filter(t => {
                 const tr = t.role.toLowerCase();
@@ -21903,7 +21907,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!byType[key]) byType[key] = [];
                     byType[key].push(t);
                 }
-                const typeKeys = Object.keys(byType);
+                let typeKeys = Object.keys(byType);
+                // Bias away from recently-used types so adjacent route fights spread coverage —
+                // players still see a wide pool to adapt builds, but no back-to-back duplicates.
+                if (avoidTypes && typeof avoidTypes.has === 'function' && typeKeys.length > 1) {
+                    const fresh = typeKeys.filter(k => !avoidTypes.has(k));
+                    if (fresh.length) typeKeys = fresh;
+                }
                 const chosenType = typeKeys[Math.floor(_rng() * typeKeys.length)];
                 const typePool = byType[chosenType];
                 return typePool[Math.floor(_rng() * typePool.length)];
@@ -21943,6 +21953,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.runRivalSpriteFile = lockedRivalName ? pickStoryRivalSpriteFile(eg) : null;
             const rivalBase = lockedRivalName ? _baseTrainerName(lockedRivalName) : null;
             if (rivalBase) usedBase.add(rivalBase);
+            // Rolling window of the last two Basic/Gym Trainer types so consecutive route fights
+            // spread coverage across the journey — broad pool stays available for build adaptation.
+            const recentTrainerTypes = [];
+            const pushRecent = (typeKey) => {
+                if (!typeKey) return;
+                recentTrainerTypes.push(typeKey);
+                if (recentTrainerTypes.length > 2) recentTrainerTypes.shift();
+            };
             STORY_EVENTS_RAW.forEach(ev => {
                 const [idx, type, event] = ev;
                 if (type !== 'Battle') return;
@@ -21950,10 +21968,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (lockedRivalName) sm.trainerAssignments[idx] = lockedRivalName;
                     return;
                 }
-                const t = selectTrainerForRole(event, eg, usedBase);
+                const evKey = String(event || '').toLowerCase();
+                const isRouteTrainer = evKey === 'basic trainer' || evKey === 'gym trainer' || evKey === 'gym trainer 1' || evKey === 'gym trainer 2';
+                const avoid = isRouteTrainer ? new Set(recentTrainerTypes) : null;
+                const t = selectTrainerForRole(event, eg, usedBase, null, avoid);
                 if (t) {
                     sm.trainerAssignments[idx] = t.name;
                     usedBase.add(_baseTrainerName(t.name));
+                    if (isRouteTrainer) {
+                        const key = isPlaceholderSignatureList(t.sigs || []) ? 'Mixed' : (t.type || 'Mixed');
+                        pushRecent(key);
+                    }
                 }
             });
             sm.usedTrainerNames = [...usedBase];
@@ -22315,7 +22340,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const dialogNameEl = document.getElementById('story-city-dialog-name');
 
             let speakerLabel = 'City Guide';
-            let spriteTrainerArg = { spriteFile: CITY_GUIDE_SPRITES[(cityIdx + (sm.badges | 0)) % CITY_GUIDE_SPRITES.length] };
+            // Same town must show the same greeter sprite before and after the gym battle — index by cityIdx only.
+            const _cityGuideSpriteIdx = (Math.max(0, cityIdx | 0)) % CITY_GUIDE_SPRITES.length;
+            let spriteTrainerArg = { spriteFile: CITY_GUIDE_SPRITES[_cityGuideSpriteIdx] };
             if (hasProf && !profUsedHere) {
                 if (hasTeamRoom) {
                     const hub = cityProfessorHubSlot(cityIdx);
@@ -22327,7 +22354,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             } else if (hasProf && profUsedHere) {
                 speakerLabel = 'City Guide';
-                spriteTrainerArg = { spriteFile: CITY_GUIDE_SPRITES[(cityIdx + (sm.badges | 0)) % CITY_GUIDE_SPRITES.length] };
+                spriteTrainerArg = { spriteFile: CITY_GUIDE_SPRITES[_cityGuideSpriteIdx] };
             }
             if (spriteEl) {
                 spriteEl.style.visibility = 'visible';
