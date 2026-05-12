@@ -11440,6 +11440,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (activeMon.volatile.charging) _switchLockReason = 'Cannot switch while charging!';
                 else if (activeMon.volatile.partialTrap > 0) _switchLockReason = `Trapped by ${activeMon.volatile.partialTrapSrc || 'a move'}!`;
                 else if (activeMon.volatile.ingrain) _switchLockReason = 'Rooted! Cannot switch out!';
+                else if (activeMon.item === 'Shed Shell') { /* Shed Shell ignores all trapping abilities */ }
+                else if (activeMon.type1 === 'Ghost' || activeMon.type2 === 'Ghost') { /* Ghost types ignore trapping abilities */ }
                 else if (_foe && _foe.currentHp > 0 && _foe.ability === 'Shadow Tag' && activeMon.ability !== 'Shadow Tag') _switchLockReason = `Trapped by ${_foe.name}'s Shadow Tag!`;
                 else if (_foe && _foe.currentHp > 0 && _foe.ability === 'Magnet Pull' && (activeMon.type1 === 'Steel' || activeMon.type2 === 'Steel')) _switchLockReason = `Trapped by ${_foe.name}'s Magnet Pull!`;
                 else if (_foe && _foe.currentHp > 0 && _foe.ability === 'Arena Trap' && activeMon.type1 !== 'Flying' && activeMon.type2 !== 'Flying' && activeMon.ability !== 'Levitate' && activeMon.item !== 'Air Balloon' && !activeMon.volatile.magnetRise) _switchLockReason = `Trapped by ${_foe.name}'s Arena Trap!`;
@@ -12272,16 +12274,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (attacker.item === "Light Ball" && (attacker.name === "Pikachu" || attacker.name.startsWith("Pikachu-"))) A *= 2;
             if (attacker.ability === "Dragon's Maw" && move.type === "Dragon") A *= 1.5;
             if (attacker.ability === "Flare Boost" && attacker.status === "BRN" && move.cat === "Special") A *= 1.5;
-            if (attacker.ability === "Toxic Boost" && attacker.status === "TOX" && move.cat === "Physical") A *= 1.5;
+            if (attacker.ability === "Toxic Boost" && (attacker.status === "TOX" || attacker.status === "PSN") && move.cat === "Physical") A *= 1.5;
             if (attacker.ability === "Hustle" && move.cat === "Physical") A *= 1.5;
             if (attacker.ability === "Guts" && attacker.status) A *= 1.5;
             if (attacker.ability === "Defeatist" && attacker.currentHp * 2 <= attacker.maxHp && (move.cat === "Physical" || move.cat === "Special")) A *= 0.5;
             if (attacker.ability === "Slow Start" && attacker.volatile && attacker.volatile.slowStartTurns > 0 && move.cat === "Physical") A *= 0.5;
             if (attacker.ability === "Solar Power" && (getCurrentWeather() === "Sun" || getCurrentWeather() === "HarshSun") && move.cat === "Special") A *= 1.5;
+            // Hadron Engine: x4/3 SpA in Electric Terrain (grounded attacker)
+            if (attacker.ability === "Hadron Engine" && state.terrain === "Electric" && state.terrainTurns > 0 && move.cat === "Special"
+                && attacker.type1 !== "Flying" && attacker.type2 !== "Flying" && attacker.ability !== "Levitate" && attacker.item !== "Air Balloon"
+                && !(attacker.volatile && attacker.volatile.magnetRise)) A *= 4/3;
+            // Orichalcum Pulse: x4/3 Atk in Sun
+            if (attacker.ability === "Orichalcum Pulse" && (getCurrentWeather() === "Sun" || getCurrentWeather() === "HarshSun") && move.cat === "Physical") A *= 4/3;
             if (attacker.ability === "Supreme Overlord") {
-                const _aiSoParty = (state.playerParty || []).concat(state.foeParty || []).filter(m => m.ability === "Supreme Overlord").length > 0
-                    ? (state.foeParty || []).some(m => m === attacker) ? state.foeParty : state.playerParty : [];
-                const _aiSoFainted = Math.min(5, (_aiSoParty || []).filter(m => m !== attacker && m.currentHp <= 0).length);
+                const _aiSoOwn = (state.foeParty || []).includes(attacker) ? (state.foeParty || []) : (state.playerParty || []);
+                const _aiSoFainted = Math.min(5, _aiSoOwn.filter(m => m !== attacker && m.currentHp <= 0).length);
                 if (_aiSoFainted > 0) A *= (1 + 0.1 * _aiSoFainted);
             }
             let lifeOrb = attacker.item === "Life Orb" ? 1.3 : 1;
@@ -12289,9 +12296,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let abMod = abilityDamageMod(move, defender, attacker);
             // Base power boosts from abilities
             let _aiPow = move.pow || 0;
-            const _aiJaw = ["Crunch","Ice Fang","Fire Fang","Thunder Fang","Poison Fang","Bite","Hyper Fang","Bug Bite","Fishious Rend","Jaw Lock","Psychic Fangs"];
-            const _aiPulse = ["Aura Sphere","Dark Pulse","Dragon Pulse","Flash Cannon","Water Pulse","Origin Pulse","Terrain Pulse","Mystical Fire","Oblivion Wing","Signal Beam"];
-            const _aiSlice = ["Psycho Cut","Air Slash","Night Slash","Leaf Blade","X-Scissor","Sacred Sword","Razor Shell","Slash","Fury Cutter","Solar Blade","Ceaseless Edge","Stone Axe","Kowtow Cleave","Aqua Cutter"];
+            const _aiJaw = ["Bite","Crunch","Fire Fang","Ice Fang","Thunder Fang","Poison Fang","Psychic Fangs","Hyper Fang","Fishious Rend","Jaw Lock","Bug Bite"];
+            const _aiPulse = ["Aura Sphere","Dark Pulse","Dragon Pulse","Water Pulse","Origin Pulse","Heal Pulse","Terrain Pulse"];
+            const _aiSlice = ["Air Cutter","Air Slash","Aqua Cutter","Behemoth Blade","Bitter Blade","Ceaseless Edge","Cross Poison","Cut","Fury Cutter","Kowtow Cleave","Leaf Blade","Night Slash","Population Bomb","Psyblade","Psycho Cut","Razor Leaf","Razor Shell","Sacred Sword","Secret Sword","Slash","Solar Blade","Stone Axe","Storm Throw","Tachyon Cutter","X-Scissor"];
             if (attacker.ability === "Strong Jaw" && _aiJaw.includes(move.name)) _aiPow = Math.floor(_aiPow * 1.5);
             if (attacker.ability === "Mega Launcher" && _aiPulse.includes(move.name)) _aiPow = Math.floor(_aiPow * 1.5);
             if (attacker.ability === "Rocky Payload" && move.type === "Rock") _aiPow = Math.floor(_aiPow * 1.5);
@@ -12904,9 +12911,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     if (attacker.volatile.choiceLock) return null;
     if (attacker.volatile.lockMove && attacker.volatile.lockTurns > 0) return null;
     if (attacker.volatile.recharge) return null;
-    if (defender.ability === "Arena Trap" && attacker.type1 !== "Flying" && attacker.type2 !== "Flying" && attacker.ability !== "Levitate") return null;
-    if (defender.ability === "Shadow Tag" && attacker.ability !== "Shadow Tag") return null;
-    if (defender.ability === "Magnet Pull" && (attacker.type1 === "Steel" || attacker.type2 === "Steel")) return null;
+    // Ghost types and Shed Shell ignore all trapping abilities
+    const _aiGhost = attacker.type1 === "Ghost" || attacker.type2 === "Ghost";
+    const _aiShed = attacker.item === "Shed Shell";
+    if (!_aiGhost && !_aiShed) {
+        if (defender.ability === "Arena Trap" && attacker.type1 !== "Flying" && attacker.type2 !== "Flying" && attacker.ability !== "Levitate") return null;
+        if (defender.ability === "Shadow Tag" && attacker.ability !== "Shadow Tag") return null;
+        if (defender.ability === "Magnet Pull" && (attacker.type1 === "Steel" || attacker.type2 === "Steel")) return null;
+    }
     if (attacker.volatile.partialTrap > 0) return null;
     if (attacker.volatile.ingrain) return null;
 
@@ -13139,8 +13151,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
 
-                // --- Opponent trapping abilities ---
-                if (foe && foe.currentHp > 0 && activeMon) {
+                // --- Opponent trapping abilities (Ghost types and Shed Shell holders are immune) ---
+                if (foe && foe.currentHp > 0 && activeMon
+                    && activeMon.type1 !== "Ghost" && activeMon.type2 !== "Ghost"
+                    && activeMon.item !== "Shed Shell") {
                     if (foe.ability === "Shadow Tag" && activeMon.ability !== "Shadow Tag") {
                         logMsg(`${activeMon.name} is trapped by ${foe.name}'s Shadow Tag!`, 'info');
                         return;
@@ -14949,8 +14963,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let defEvaStage = (attacker.ability === "Keen Eye" || attacker.ability === "Illuminate" || attacker.ability === "Mind's Eye") ? Math.min(0, defender.stages.eva) : defender.stages.eva;
             let accStage = attacker.stages.acc - defEvaStage;
             let finalAcc = neverMiss ? 999 : (move.acc * accMod * evaMod * getAccEvaMult(accStage) * micleMod);
-            // Wonder Skin: status moves used against this Pokémon have accuracy reduced to 50% (if higher)
-            if (!neverMiss && defender.ability === "Wonder Skin" && move.cat === "Status" && finalAcc > 50) finalAcc = 50;
+            // Wonder Skin: status moves used against this Pokémon have accuracy reduced to 50% (bypassed by Mold Breaker)
+            const _wsMb = attacker.ability === "Mold Breaker" || attacker.ability === "Teravolt" || attacker.ability === "Turboblaze";
+            if (!neverMiss && !_wsMb && !(defender.volatile && defender.volatile.abilityGastroAcid) && defender.ability === "Wonder Skin" && move.cat === "Status" && finalAcc > 50) finalAcc = 50;
             // Story artifact: Amulet of Chaos — −10% accuracy (does not remove never-miss moves)
             if (state && state.mode === 'story' && state._chaosAmuletActive && !neverMiss) finalAcc *= 0.9;
             // Gravity: boosts all move accuracy by 5/3
@@ -15120,13 +15135,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     else logMsg(`${defender.name}'s Dry Skin made it immune!`, 'info');
                     await sleep(1000); return;
                 }
-                // Soundproof: Immune to sound moves
-                let soundMoves = ["Hyper Voice", "Bug Buzz", "Boomburst", "Uproar", "Snarl", "Overdrive", "Round", "Echoed Voice", "Disarming Voice", "Relic Song", "Clanging Scales", "Chatter", "Clangorous Soul", "Sparkling Aria", "Snore", "Torch Song", "Alluring Voice", "Psychic Noise", "Eerie Spell", "Hyper Voice"];
+                // Soundproof: Immune to sound moves (canonical sound-flag list)
+                let soundMoves = ["Alluring Voice","Boomburst","Bug Buzz","Chatter","Chatter","Clanging Scales","Clangorous Soul","Clangorous Soulblaze","Confide","Disarming Voice","Echoed Voice","Eerie Spell","Grass Whistle","Growl","Heal Bell","Howl","Hyper Voice","Metal Sound","Noble Roar","Overdrive","Parting Shot","Perish Song","Psychic Noise","Relic Song","Roar","Round","Screech","Shadow Panic","Sing","Snarl","Snore","Sparkling Aria","Supersonic","Tearful Look","Throat Chop","Torch Song","Uproar"];
                 if (_defAbilityActive && defender.ability === "Soundproof" && soundMoves.includes(move.name)) {
                     logMsg(`${defender.name}'s Soundproof blocks ${move.name}!`, 'info'); await sleep(1000); return;
                 }
-                // Bulletproof: Immune to ball/bomb moves
-                let bulletMoves = ["Acid Spray","Aura Sphere","Barrage","Beak Blast","Bullet Seed","Egg Bomb","Electro Ball","Energy Ball","Focus Blast","Gyro Ball","Ice Ball","Magnet Bomb","Mist Ball","Mud Bomb","Octazooka","Pollen Puff","Pyro Ball","Rock Blast","Rock Wrecker","Searing Shot","Seed Bomb","Shadow Ball","Sludge Bomb","Weather Ball","Zap Cannon"];
+                // Bulletproof: Immune to ball/bomb/cannon moves (canonical bullet-flag list)
+                let bulletMoves = ["Acid Spray","Aura Sphere","Barrage","Beak Blast","Bullet Seed","Egg Bomb","Electro Ball","Energy Ball","Focus Blast","Gyro Ball","Ice Ball","Magnet Bomb","Mist Ball","Mud Bomb","Octazooka","Pollen Puff","Pyro Ball","Rock Blast","Rock Wrecker","Searing Shot","Seed Bomb","Shadow Ball","Sludge Bomb","Weather Ball","Zap Cannon","Syrup Bomb","Ice Spinner","Aura Wheel","Steam Eruption"];
                 if (_defAbilityActive && defender.ability === "Bulletproof" && bulletMoves.includes(move.name)) {
                     logMsg(`${defender.name}'s Bulletproof blocks ${move.name}!`, 'info'); await sleep(1000); return;
                 }
@@ -15316,10 +15331,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         let typeEff = getMoveEffectiveness(move.type || "Normal", defender.type1, defender.type2);
                         if (typeEff === 0) { logMsg(`It doesn't affect ${defender.name}...`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
                     }
-                    // Sturdy (any HP) and Focus Sash (only from full HP, item must be active) block OHKOs
+                    // Sturdy (bypassed by Mold Breaker / Gastro Acid) and Focus Sash (full HP, item active) block OHKOs
                     {
                         const _sashItemActive = state.magicRoom === 0 && !(defender.volatile.embargo > 0) && defender.ability !== "Klutz";
-                        const _sturdy = defender.ability === "Sturdy";
+                        const _ohkoMb = attacker.ability === "Mold Breaker" || attacker.ability === "Teravolt" || attacker.ability === "Turboblaze";
+                        const _sturdy = defender.ability === "Sturdy" && !_ohkoMb && !(defender.volatile && defender.volatile.abilityGastroAcid);
                         const _sash = _sashItemActive && defender.item === "Focus Sash" && defender.currentHp === defender.maxHp;
                         if (_sturdy || _sash) {
                             logMsg(`${defender.name} withstood the OHKO with ${_sturdy ? "Sturdy" : "Focus Sash"}!`, 'info');
@@ -15816,33 +15832,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 if (attacker.ability === "Technician" && basePower <= 60) basePower = Math.floor(basePower * 1.5);
                 // Iron Fist: x1.2 punching moves
-                let punchMoves = ["Drain Punch", "Mach Punch", "Ice Punch", "Fire Punch", "Thunder Punch", "Focus Punch", "Bullet Punch", "Hammer Arm", "Power-Up Punch", "Shadow Punch", "Meteor Mash", "Mega Punch", "Comet Punch", "Dynamic Punch"];
+                let punchMoves = ["Drain Punch","Mach Punch","Ice Punch","Fire Punch","Thunder Punch","Focus Punch","Bullet Punch","Hammer Arm","Power-Up Punch","Shadow Punch","Meteor Mash","Mega Punch","Comet Punch","Dynamic Punch","Plasma Fists","Sucker Punch","Surging Strikes","Wicked Blow","Double Iron Bash","Sky Uppercut","Rage Fist","Ice Hammer","Headlong Rush","Dizzy Punch","Karate Chop","Cross Chop"];
                 if (attacker.ability === "Iron Fist" && punchMoves.includes(move.name)) basePower = Math.floor(basePower * 1.2);
                 // Punching Glove: x1.1 to punching moves (and makes them non-contact — see contact checks)
                 if (_atkItemActive && attacker.item === "Punching Glove" && punchMoves.includes(move.name)) basePower = Math.floor(basePower * 1.1);
-                // Reckless: x1.2 recoil moves
-                let recoilMoves = ["Brave Bird", "Flare Blitz", "Wild Charge", "Double-Edge", "Head Smash", "Wood Hammer", "Take Down", "Submission", "Volt Tackle"];
+                // Reckless: x1.2 recoil moves (includes crash-recoil like Hi Jump Kick)
+                let recoilMoves = ["Brave Bird","Flare Blitz","Wild Charge","Double-Edge","Head Smash","Wood Hammer","Take Down","Submission","Volt Tackle","Light of Ruin","Head Charge","Jump Kick","High Jump Kick","Hi Jump Kick","Axe Kick"];
                 if (attacker.ability === "Reckless" && recoilMoves.includes(move.name)) basePower = Math.floor(basePower * 1.2);
-                // Sheer Force: x1.3 if move has secondary effect, but suppress the effect
-                let sheerForceEff = (move.effectStr || move.eff || "").toLowerCase();
-                let hasSecondary = sheerForceEff.includes("chance") || sheerForceEff.includes("flinch") || sheerForceEff.includes("burn") || sheerForceEff.includes("paralyze") || sheerForceEff.includes("poison") || sheerForceEff.includes("freeze") || sheerForceEff.includes("confuse") || sheerForceEff.includes("lower");
+                // Sheer Force: x1.3 if move has a chance-based secondary effect; the effect is then suppressed.
+                // Hardcoded list (matches Showdown sheer-force flag). Excludes self-stat-boost moves (Power-Up Punch etc.) which Sheer Force does NOT boost in Gen 9.
+                const _sheerForceMoves = new Set([
+                    "Acid","Acid Spray","Air Slash","Astonish","Aurora Beam","Blaze Kick","Blizzard","Body Slam","Bone Club","Bounce","Bubble","Bubble Beam","Bug Buzz","Buzzy Buzz","Charge Beam","Chatter","Confusion","Constrict","Crunch","Crush Claw","Dark Pulse","Diamond Storm","Discharge","Dizzy Punch","Dragon Breath","Dragon Rush","DynamicPunch","Dynamic Punch","Earth Power","Ember","Energy Ball","Extrasensory","Fake Out","Fiery Wrath","Fire Blast","Fire Fang","Fire Punch","Flame Wheel","Flamethrower","Flash Cannon","Fling","Floaty Fall","Focus Blast","Force Palm","Freeze-Dry","Freeze Shock","Freezing Glare","Gunk Shot","Headbutt","Heart Stamp","Heat Wave","Hurricane","Hyper Fang","Ice Beam","Ice Burn","Ice Fang","Ice Punch","Icicle Crash","Icy Wind","Iron Head","Iron Tail","Lava Plume","Leaf Tornado","Lick","Liquidation","Luster Purge","Magical Leaf","Metal Claw","Meteor Mash","Mist Ball","Moonblast","Mud Bomb","Mud Shot","Mud-Slap","Muddy Water","Needle Arm","Night Daze","Octazooka","Ominous Wind","Plasma Fists","Poison Fang","Poison Jab","Poison Sting","Poison Tail","Powder Snow","Power-Up Punch","Psybeam","Psychic","Pyro Ball","Rock Climb","Rock Slide","Rock Smash","Rock Tomb","Rolling Kick","Sacred Fire","Salt Cure","Scald","Searing Shot","Secret Power","Seed Flare","Shadow Ball","Shadow Bone","Signal Beam","Silver Wind","Sky Attack","Sludge","Sludge Bomb","Sludge Wave","Smog","Snarl","Snore","Spark","Spirit Shackle","Steamroller","Steel Wing","Stomp","Strange Steam","Struggle Bug","Stuff Cheeks","Submission","Surf","Thunder","Thunder Fang","Thunder Punch","Thunder Shock","Thunderbolt","Tri Attack","Triple Arrows","Twineedle","Twister","Volt Tackle","Water Pulse","Waterfall","Wing Attack","Zap Cannon","Zen Headbutt","Zing Zap"
+                ]);
                 let sheerForceActive = false;
-                if (attacker.ability === "Sheer Force" && hasSecondary && move.cat !== "Status") {
+                if (attacker.ability === "Sheer Force" && move.cat !== "Status" && _sheerForceMoves.has(move.name)) {
                     basePower = Math.floor(basePower * 1.3);
                     sheerForceActive = true;
+                    move._sheerForceBoosted = true;
                 }
-                // Analytic: x1.3 if moving last
-                if (attacker.ability === "Analytic" && defender.volatile.lastMoveUsed) basePower = Math.floor(basePower * 1.3);
-                // Strong Jaw: x1.5 biting moves
-                const _jawMoves = ["Crunch","Ice Fang","Fire Fang","Thunder Fang","Poison Fang","Bite","Hyper Fang","Bug Bite","Fishious Rend","Jaw Lock","Psychic Fangs","Snap Trap"];
+                // Analytic: x1.3 if attacker moves after the target this turn
+                if (attacker.ability === "Analytic" && defender.volatile && defender.volatile.movedThisTurn === true) basePower = Math.floor(basePower * 1.3);
+                // Strong Jaw: x1.5 biting moves (Showdown canonical list)
+                const _jawMoves = ["Bite","Crunch","Fire Fang","Ice Fang","Thunder Fang","Poison Fang","Psychic Fangs","Hyper Fang","Fishious Rend","Jaw Lock","Bug Bite","Thunder Fang"];
                 if (attacker.ability === "Strong Jaw" && _jawMoves.includes(move.name)) basePower = Math.floor(basePower * 1.5);
-                // Mega Launcher: x1.5 aura/pulse moves
-                const _pulseMoves = ["Aura Sphere","Dark Pulse","Dragon Pulse","Flash Cannon","Water Pulse","Heal Pulse","Origin Pulse","Terrain Pulse","Mystical Fire","Oblivion Wing","Signal Beam","Mist Ball","Luster Purge"];
+                // Mega Launcher: x1.5 pulse/aura moves (canonical pulse-flagged list only)
+                const _pulseMoves = ["Aura Sphere","Dark Pulse","Dragon Pulse","Water Pulse","Origin Pulse","Heal Pulse","Terrain Pulse"];
                 if (attacker.ability === "Mega Launcher" && _pulseMoves.includes(move.name)) basePower = Math.floor(basePower * 1.5);
                 // Rocky Payload: x1.5 Rock-type moves
                 if (attacker.ability === "Rocky Payload" && move.type === "Rock") basePower = Math.floor(basePower * 1.5);
-                // Sharpness: x1.5 slicing/cutting moves
-                const _sliceMoves = ["Psycho Cut","Air Slash","Night Slash","Leaf Blade","X-Scissor","Sacred Sword","Razor Shell","Slash","Cut","Fury Cutter","False Swipe","Aerial Ace","Solar Blade","Ceaseless Edge","Stone Axe","Kowtow Cleave","Population Bomb","Bitter Blade","Temper Flare","Aqua Cutter","Razor Leaf","Slash","Guillotine"];
+                // Sharpness: x1.5 slicing moves (canonical slice-flag list)
+                const _sliceMoves = ["Air Cutter","Air Slash","Aqua Cutter","Behemoth Blade","Bitter Blade","Ceaseless Edge","Cross Poison","Cut","Fury Cutter","Kowtow Cleave","Leaf Blade","Night Slash","Population Bomb","Psyblade","Psycho Cut","Razor Leaf","Razor Shell","Sacred Sword","Secret Sword","Slash","Solar Blade","Stone Axe","Storm Throw","Tachyon Cutter","X-Scissor"];
                 if (attacker.ability === "Sharpness" && _sliceMoves.includes(move.name)) basePower = Math.floor(basePower * 1.5);
                 // Steelworker / Steely Spirit: x1.5 Steel-type moves
                 if ((attacker.ability === "Steelworker" || attacker.ability === "Steely Spirit") && move.type === "Steel") basePower = Math.floor(basePower * 1.5);
@@ -15952,10 +15971,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 // Punk Rock: halves sound move damage taken
                 if (defender.ability === "Punk Rock" && _soundMovesPR.has(move.name)) modifier *= 0.5;
-                // Filter / Solid Rock / Prism Armor: Super-effective damage x0.75
-                if ((defender.ability === "Filter" || defender.ability === "Solid Rock" || defender.ability === "Prism Armor") && typeEff > 1) modifier *= 0.75;
-                // Multiscale / Shadow Shield: Damage x0.5 at full HP
-                if ((defender.ability === "Multiscale" || defender.ability === "Shadow Shield") && defender.currentHp === defender.maxHp) modifier *= 0.5;
+                // Filter / Solid Rock: super-effective damage x0.75 (bypassed by Mold Breaker)
+                if (_defAbilityActive && (defender.ability === "Filter" || defender.ability === "Solid Rock") && typeEff > 1) modifier *= 0.75;
+                // Prism Armor: super-effective damage x0.75 (NOT bypassed by Mold Breaker — canonical)
+                if (defender.ability === "Prism Armor" && typeEff > 1) modifier *= 0.75;
+                // Multiscale: Damage x0.5 at full HP (bypassed by Mold Breaker)
+                if (_defAbilityActive && defender.ability === "Multiscale" && defender.currentHp === defender.maxHp) modifier *= 0.5;
+                // Shadow Shield: Damage x0.5 at full HP (NOT bypassed by Mold Breaker — canonical)
+                if (defender.ability === "Shadow Shield" && defender.currentHp === defender.maxHp) modifier *= 0.5;
                 // Fur Coat: Physical damage x0.5
                 if (defender.ability === "Fur Coat" && _effectiveCat === "Physical") modifier *= 0.5;
                 // Marvel Scale: 1.5x Def when statused → physical damage x(2/3)
@@ -16463,19 +16486,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
 
                 // Contact abilities (physical moves that make contact)
-                if (move.cat === "Physical" && !hitSub && defender.currentHp > 0) {
+                // Contact-triggered defender abilities: gated on contact (any category), not Physical category.
+                // Long Reach and Protective Pads block contact-effect abilities; Sheer Force suppresses secondary effects.
+                if (isContactMove(move) && !hitSub && defender.currentHp > 0
+                    && attacker.ability !== "Long Reach"
+                    && attacker.item !== "Protective Pads"
+                    && !(attacker.ability === "Sheer Force" && move._sheerForceBoosted)) {
                     if (defender.ability === "Static" && Math.random() < 0.3) applyStatus(attacker, "PAR");
                     if (defender.ability === "Poison Point" && Math.random() < 0.3) applyStatus(attacker, "PSN");
                     if (defender.ability === "Flame Body" && Math.random() < 0.3) applyStatus(attacker, "BRN");
-                    if (defender.ability === "Cute Charm" && Math.random() < 0.3 && attacker.gender !== null && defender.gender !== null && attacker.gender !== defender.gender && attacker.ability !== "Oblivious") {
+                    if (defender.ability === "Cute Charm" && Math.random() < 0.3 && attacker.gender !== null && defender.gender !== null && attacker.gender !== defender.gender && attacker.ability !== "Oblivious" && attacker.ability !== "Aroma Veil" && defender.ability !== "Aroma Veil") {
                         attacker.volatile.infatuated = true;
                         logMsg(`${attacker.name} fell in love from Cute Charm!`, 'status');
                     }
-                    if (defender.ability === "Effect Spore" && Math.random() < 0.3) {
-                        let roll = Math.random();
-                        if (roll < 0.33) applyStatus(attacker, "PSN");
-                        else if (roll < 0.66) applyStatus(attacker, "PAR");
-                        else applyStatus(attacker, "SLP");
+                    // Effect Spore: 9% poison / 10% paralyze / 11% sleep (Gen 5+ canonical distribution).
+                    // Grass types, Overcoat, and Safety Goggles are immune.
+                    if (defender.ability === "Effect Spore" && attacker.type1 !== "Grass" && attacker.type2 !== "Grass" && attacker.ability !== "Overcoat" && attacker.item !== "Safety Goggles") {
+                        let roll = Math.random() * 100;
+                        if (roll < 9) applyStatus(attacker, "PSN");
+                        else if (roll < 19) applyStatus(attacker, "PAR");
+                        else if (roll < 30) applyStatus(attacker, "SLP");
                     }
                     if (attacker.ability === "Poison Touch" && Math.random() < 0.3) applyStatus(defender, "PSN");
                 }
@@ -16483,8 +16513,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (attacker.ability === "Toxic Chain" && move.cat !== "Status" && !hitSub && defender.currentHp > 0 && !defender.status && defender.ability !== "Shield Dust" && defender.item !== "Covert Cloak" && Math.random() < 0.3) {
                     applyStatus(defender, "TOX");
                 }
-                if (move.cat === "Physical" && !hitSub && defender.currentHp > 0) {
-                    // (placeholder continuation block — original physical-contact section continues below)
+                // On-hit defender reactive abilities: gated on any damaging move (not just Physical).
+                // Inner clauses still gate themselves on contact / type / crit / HP-cross as appropriate.
+                if (move.cat !== "Status" && !hitSub && defender.currentHp > 0) {
                     if (defender.ability === "Cursed Body" && Math.random() < 0.3 && move.name) {
                         attacker.volatile.disabled = move.name; attacker.volatile.disabledTurns = 4;
                         logMsg(`${attacker.name}'s ${move.name} was disabled by Cursed Body!`, 'status');
@@ -16630,7 +16661,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         }
                     }
                     // Color Change (defender): type becomes move's type
-                    if (defender.ability === "Color Change" && typeEff > 0 && defender.currentHp > 0 && move.type !== defender.type1) {
+                    if (defender.ability === "Color Change" && typeEff > 0 && defender.currentHp > 0 && actualDamage > 0 && move.type && move.type !== defender.type1 && move.type !== defender.type2) {
                         defender.type1 = move.type; defender.type2 = '';
                         logMsg(`${defender.name}'s Color Change made it ${move.type}-type!`, 'info');
                     }
@@ -16663,8 +16694,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             logMsg(`${attacker.name}'s ${_oldAb} became ${defender.ability}!`, 'info');
                         }
                     }
-                    // Wandering Spirit: contact swaps user's and attacker's abilities
-                    if (defender.ability === "Wandering Spirit" && isContactMove(move) && attacker.currentHp > 0) {
+                    // Wandering Spirit: contact swaps abilities (Protective Pads / Long Reach / Ability Shield block)
+                    if (defender.ability === "Wandering Spirit" && isContactMove(move) && attacker.currentHp > 0
+                        && attacker.ability !== "Long Reach"
+                        && attacker.item !== "Protective Pads") {
                         if (!_abilityLockSet.has(attacker.ability) && attacker.ability !== "Wandering Spirit" && !hasAbilityShield(attacker) && !hasAbilityShield(defender)) {
                             const _atkOld = attacker.ability;
                             attacker.ability = "Wandering Spirit";
@@ -16688,10 +16721,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             logMsg(`${defender.name}'s Perish Body! Both Pokémon will faint in 3 turns!`, 'status');
                         }
                     }
-                    // Pickpocket: contact -> steal attacker's item (if user has none and item is transferable)
+                    // Pickpocket: contact -> steal attacker's item (Protective Pads / Long Reach block)
                     if (defender.ability === "Pickpocket" && isContactMove(move) && attacker.currentHp > 0 && defender.currentHp > 0
                         && !defender.item && attacker.item
                         && attacker.ability !== "Sticky Hold"
+                        && attacker.ability !== "Long Reach"
+                        && attacker.item !== "Protective Pads"
                         && !isKnockOffImmuneHeldItem(attacker, attacker.item)
                         && !defender.knockedOff) {
                         const _stolen = attacker.item;
@@ -16768,10 +16803,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     changeStage(attacker, 'spa', 1);
                     logMsg(`${attacker.name}'s ${attacker.ability} raised its Sp. Atk!`, 'info');
                 }
-                // Battle Bond (Gen 9): KO + damaging move -> Atk/SpA/Spe +1, once per battle
+                // Battle Bond (Gen 9): KO + damaging move -> Atk/SpA/Spe +1, once per battle.
+                // Also transforms Greninja -> Greninja-Ash on first activation.
                 if (attacker.ability === "Battle Bond" && defender.currentHp <= 0 && attacker.currentHp > 0 && move.cat !== "Status" && !attacker.battleBondUsed && !(state && state.mode === 'story' && state._stagnationCoreActive)) {
                     attacker.battleBondUsed = true;
                     logMsg(`${attacker.name}'s Battle Bond activated!`, 'info');
+                    if (attacker.name === "Greninja") {
+                        if (_setMonForm(attacker, "Greninja-Ash", { proportionalHp: true })) {
+                            logMsg(`${attacker.name} became Ash-Greninja!`, 'info');
+                        }
+                    }
                     changeStage(attacker, 'atk', 1);
                     changeStage(attacker, 'spa', 1);
                     changeStage(attacker, 'spe', 1);
@@ -16826,8 +16867,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         defender.item = null; defender.itemConsumed = true;
                     }
                 }
-                // Aftermath: 25% damage to attacker on KO
-                if (defender.ability === "Aftermath" && defender.currentHp <= 0 && attacker.currentHp > 0 && move.cat === "Physical") {
+                // Aftermath: 25% damage to attacker on KO via contact move. Blocked by Damp (any active), Magic Guard, Protective Pads.
+                if (defender.ability === "Aftermath" && defender.currentHp <= 0 && attacker.currentHp > 0
+                    && isContactMove(move)
+                    && attacker.ability !== "Magic Guard"
+                    && attacker.item !== "Protective Pads"
+                    && state.pActive.ability !== "Damp" && state.fActive.ability !== "Damp") {
                     let aftDmg = Math.max(1, Math.floor(attacker.maxHp / 4));
                     let actAft = Math.min(attacker.currentHp, aftDmg);
                     attacker.currentHp -= actAft;
@@ -17216,22 +17261,52 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let target = "Castform";
                     if (w === "Sun" || w === "HarshSun") target = "Castform-Sunny";
                     else if (w === "Rain" || w === "HeavyRain") target = "Castform-Rainy";
-                    else if (w === "Hail") target = "Castform-Snowy";
+                    else if (w === "Hail" || w === "Snow") target = "Castform-Snowy";
                     if (mon.name !== target) {
                         if (_setMonForm(mon, target)) logMsg(`${mon.name === target ? '' : ''}${mon.name} transformed via Forecast!`, 'info');
                     }
                 }
                 // Ice Face restoration: Snow/Hail restores Eiscue's Ice Face form
-                if (mon.ability === "Ice Face" && mon.name === "Eiscue-Noice" && w === "Hail") {
+                if (mon.ability === "Ice Face" && mon.name === "Eiscue-Noice" && (w === "Hail" || w === "Snow")) {
                     if (_setMonForm(mon, "Eiscue", { proportionalHp: true })) {
                         mon.volatile.iceFaceBroken = false;
                         logMsg(`${mon.name}'s Ice Face was restored!`, 'info');
+                    }
+                }
+                // Flower Gift: Cherrim transforms to Sunshine form in Sun, reverts otherwise
+                if (mon.ability === "Flower Gift" && (mon.name === "Cherrim" || mon.name === "Cherrim-Sunshine")) {
+                    const inSun = (w === "Sun" || w === "HarshSun");
+                    if (inSun && mon.name === "Cherrim") {
+                        if (_setMonForm(mon, "Cherrim-Sunshine", { proportionalHp: true })) logMsg(`${mon.name} bloomed from the sunlight!`, 'info');
+                    } else if (!inSun && mon.name === "Cherrim-Sunshine") {
+                        if (_setMonForm(mon, "Cherrim", { proportionalHp: true })) logMsg(`${mon.name} reverted to its Overcast form.`, 'info');
                     }
                 }
             }
         }
 
         function _ripen(mon, value) { return (mon && mon.ability === "Ripen") ? value * 2 : value; }
+        // Cure status that the mon's current ability makes it immune to (called on switch-in and after ability acquisition)
+        function _abilityStatusCure(mon) {
+            if (!mon || !mon.ability || !mon.status) return;
+            const ab = mon.ability, st = mon.status;
+            const cure = (
+                (ab === "Limber" && st === "PAR") ||
+                ((ab === "Insomnia" || ab === "Vital Spirit") && st === "SLP") ||
+                (ab === "Immunity" && (st === "PSN" || st === "TOX")) ||
+                ((ab === "Water Veil" || ab === "Water Bubble" || ab === "Thermal Exchange") && st === "BRN") ||
+                (ab === "Magma Armor" && st === "FRZ") ||
+                (ab === "Oblivious" && mon.volatile && mon.volatile.infatuated)
+            );
+            if (cure) {
+                logMsg(`${mon.name}'s ${ab} cured its ${st}!`, 'heal');
+                mon.status = null; mon.statusTurns = 0;
+            }
+            if (ab === "Oblivious" && mon.volatile && mon.volatile.infatuated) {
+                mon.volatile.infatuated = false;
+                logMsg(`${mon.name}'s Oblivious snapped it out of infatuation!`, 'heal');
+            }
+        }
         // Trigger eligible HP-threshold berries immediately after a damage event
         function _checkBerriesAfterDamage(mon) {
             if (!mon || mon.currentHp <= 0 || !mon.item) return;
@@ -17325,6 +17400,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function applySwitchInAbilities(mon, foe, _storySwitchDepth = 0) {
             if(mon.currentHp <= 0 || foe.currentHp <= 0) return;
+            // Cure incompatible status upon ability acquisition / switch-in
+            _abilityStatusCure(mon);
             // Slow Start: 5-turn debuff on switch-in
             if (mon.ability === "Slow Start") {
                 mon.volatile.slowStartTurns = 5;
@@ -18455,6 +18532,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_noSwap.has(attacker.ability) || _noSwap.has(defender.ability)) { logMsg(`But it failed!`, 'info'); return; }
                 if (hasAbilityShield(attacker) || hasAbilityShield(defender)) { logMsg(`But it failed!`, 'info'); return; }
                 let _tmpAb = attacker.ability; attacker.ability = defender.ability; defender.ability = _tmpAb;
+                try { _abilityStatusCure(attacker); _abilityStatusCure(defender); } catch(e) {}
                 logMsg(`${attacker.name} and ${defender.name} swapped their abilities!`, 'info'); return;
             }
             // Role Play: attacker copies defender's ability
@@ -18463,6 +18541,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_noRolePlay.has(defender.ability)) { logMsg(`But it failed!`, 'info'); return; }
                 if (hasAbilityShield(attacker) || hasAbilityShield(defender)) { logMsg(`But it failed!`, 'info'); return; }
                 attacker.ability = defender.ability;
+                try { _abilityStatusCure(attacker); } catch(e) {}
                 logMsg(`${attacker.name} copied ${defender.name}'s ${defender.ability}!`, 'info'); return;
             }
             // Simple Beam: defender's ability becomes Simple
@@ -18569,8 +18648,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
             }
-            // Stench ability: adds 10% flinch bonus to all damaging contact moves
-            if (attacker.ability === "Stench" && move.flags && move.flags.contact && !defender.volatile.flinch && Math.random() < 0.1) {
+            // Stench ability: adds 10% flinch chance to all damaging moves (any category, regardless of contact)
+            if (attacker.ability === "Stench" && move.cat !== "Status" && !defender.volatile.flinch && Math.random() < 0.1) {
                 defender.volatile.flinch = true;
             }
             // Locking moves (Outrage, Thrash, Petal Dance, etc.) confuse only the attacker after finishing — handled in locking move logic
@@ -19096,8 +19175,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.ability === "Synchronize" && !noSync && (status === "PSN" || status === "TOX" || status === "BRN" || status === "PAR")) {
                 let foe = (mon === state.pActive) ? state.fActive : state.pActive;
                 if (foe && foe.currentHp > 0) {
+                    // Canonical: Synchronize passes Toxic as regular Poison
+                    const passed = (status === "TOX") ? "PSN" : status;
                     logMsg(`${mon.name}'s Synchronize passed the status!`, 'info');
-                    applyStatus(foe, status, true);
+                    applyStatus(foe, passed, true);
                 }
             }
         }
@@ -19178,13 +19259,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (amount < -1) logMsg(`${mon.name}'s ${statName} harshly fell!`, 'dmg');
             else logMsg(`${mon.name}'s ${statName} fell!`, 'dmg');
             showStatArrow(amount > 0, mon === state.pActive);
-            // Defiant: Atk +2 when any stat lowered
-            if (amount < 0 && mon.ability === "Defiant") {
+            // Defiant: Atk +2 when an opponent-sourced stat drop lands (NOT self-induced like Close Combat)
+            if (amount < 0 && byOpponent && mon.ability === "Defiant") {
                 logMsg(`${mon.name}'s Defiant sharply raised its Attack!`, 'info');
                 mon.stages.atk = Math.min(6, mon.stages.atk + 2);
             }
-            // Competitive: SpA +2 when any stat lowered
-            if (amount < 0 && mon.ability === "Competitive") {
+            // Competitive: SpA +2 when an opponent-sourced stat drop lands
+            if (amount < 0 && byOpponent && mon.ability === "Competitive") {
                 logMsg(`${mon.name}'s Competitive sharply raised its Sp. Atk!`, 'info');
                 mon.stages.spa = Math.min(6, mon.stages.spa + 2);
             }
@@ -19668,12 +19749,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         }
                     }
                 }
-                // Schooling (Wishiwashi): HP>25% AND level>=20 -> School form
+                // Schooling (Wishiwashi): HP>25% AND level>=20 -> School form; HP<=25% -> Solo
                 if (mon.ability === "Schooling" && (mon.level || 100) >= 20) {
                     const q = mon.maxHp / 4;
                     if (mon.currentHp > q && mon.name === "Wishiwashi") {
                         if (_setMonForm(mon, "Wishiwashi-School", { proportionalHp: true })) {
                             logMsg(`${mon.name} formed a school!`, 'info');
+                        }
+                    } else if (mon.currentHp <= q && mon.name === "Wishiwashi-School") {
+                        if (_setMonForm(mon, "Wishiwashi", { proportionalHp: true })) {
+                            logMsg(`${mon.name} stopped schooling!`, 'info');
+                        }
+                    }
+                }
+                // Zen Mode (Darmanitan-Galar): HP<=50% -> Zen, HP>50% -> revert
+                if (mon.ability === "Zen Mode") {
+                    const halfG = mon.maxHp / 2;
+                    if (mon.currentHp <= halfG && mon.name === "Darmanitan-Galar") {
+                        if (_setMonForm(mon, "Darmanitan-Galar-Zen", { proportionalHp: true })) {
+                            logMsg(`${mon.name} entered Zen Mode!`, 'info');
+                        }
+                    } else if (mon.currentHp > halfG && mon.name === "Darmanitan-Galar-Zen") {
+                        if (_setMonForm(mon, "Darmanitan-Galar", { proportionalHp: true })) {
+                            logMsg(`${mon.name} snapped out of Zen Mode!`, 'info');
                         }
                     }
                 }
