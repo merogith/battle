@@ -12123,6 +12123,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return false;
         }
+        // Module-scope contact-move check. Mirrors the in-performAction helper so
+        // top-level callers (AI damage estimators, ability mod helpers) don't throw
+        // "isContactMove is not defined" when invoked outside performAction's closure.
+        function isContactMove(mv, attacker) {
+            if (!mv) return false;
+            try { if (attacker && attacker.ability === "Long Reach") return false; } catch (e) {}
+            if (mv.flags && mv.flags.contact) return true;
+            const _nonContactPhys = new Set(["Earthquake","Magnitude","Bulldoze","Rock Slide","Rock Blast","Explosion","Self-Destruct","Hyper Voice","Surf","Muddy Water","Blizzard","Heat Wave","Sludge Wave","Discharge","Lava Plume","Icy Wind","Razor Wind","Whirlpool","Twister","Sky Attack","Bone Club","Bone Rush","Bonemerang","Pin Missile","Barrage","Spike Cannon","Present","Spore","Powder","Precipice Blades","Origin Pulse","Land's Wrath","Thousand Arrows","Thousand Waves","Diamond Storm","Petal Blizzard","Boomburst"]);
+            const _contactSpec = new Set(["Grass Knot","Draining Kiss","Grass Pledge","Fire Pledge","Water Pledge","Parabolic Charge","Petal Dance"]);
+            if (mv.cat === "Physical" && !_nonContactPhys.has(mv.name)) return true;
+            if (_contactSpec.has(mv.name)) return true;
+            return false;
+        }
         // AI: defender ability damage modifier (halves/doubles). 1 = no change.
         function abilityDamageMod(move, defender, attacker) {
             if (!move || move.cat === "Status") return 1;
@@ -12135,7 +12148,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (ab === "Ice Scales" && move.cat === "Special") m *= 0.5;
             if (ab === "Fluffy") {
                 if (move.type === "Fire") m *= 2;
-                if (isContactMove(move)) m *= 0.5;
+                if (isContactMove(move, attacker)) m *= 0.5;
             }
             if ((ab === "Multiscale" || ab === "Shadow Shield") && defender.currentHp === defender.maxHp) m *= 0.5;
             return m;
@@ -12183,7 +12196,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (attacker.ability === "Sharpness" && _aiSlice.includes(move.name)) _aiPow = Math.floor(_aiPow * 1.5);
             if ((attacker.ability === "Steelworker" || attacker.ability === "Steely Spirit") && move.type === "Steel") _aiPow = Math.floor(_aiPow * 1.5);
             if (attacker.ability === "Transistor" && move.type === "Electric") _aiPow = Math.floor(_aiPow * 1.3);
-            if (attacker.ability === "Tough Claws" && isContactMove(move)) _aiPow = Math.floor(_aiPow * 1.3);
+            if (attacker.ability === "Tough Claws" && isContactMove(move, attacker)) _aiPow = Math.floor(_aiPow * 1.3);
             // Marvel Scale: reduce physical damage vs statused defender
             if (defender.ability === "Marvel Scale" && defender.status && move.cat === "Physical") abMod *= (2/3);
             let dmg = ((22 * _aiPow * A / D) / 50 + 2) * stab * eff * lifeOrb * accFactor * abMod;
