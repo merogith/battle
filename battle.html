@@ -4607,6 +4607,13 @@
                     </label>
                     <span style="color:#777;font-size:10px;">Stocks Poké Balls in the mart and unlocks the PC Box at city hubs.</span>
                 </div>
+                <div style="padding:8px 10px;border:2px solid #2a2444;background:linear-gradient(180deg,#100c1c 0%,#08061a 100%);display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:inset -2px -2px 0 #08061a,inset 2px 2px 0 #1d1d3d;margin-bottom:10px;">
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;">
+                        <input type="checkbox" id="story-events-on" checked>
+                        <span style="color:#9575cd;font-weight:bold;">&#127922; Story Events</span>
+                    </label>
+                    <span style="color:#777;font-size:10px;">Itinerary beats, wager prompts, Safari Zone, Black Market unlock. Off = pure battle path.</span>
+                </div>
                 <div style="font-size:10px;color:#666;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Battle mechanic mode:</div>
                 <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:11px;">
                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
@@ -4910,7 +4917,7 @@
     <div id="modal-story-blackmarket" class="modal hidden">
         <div class="modal-content white-outline" style="max-width:580px;background:linear-gradient(180deg,#1a0d1f 0%,#0a0610 100%);">
             <h3 class="story-party-modal-title" style="display:flex;align-items:center;gap:8px;color:#ce93d8;"><span>🕶 Black Market</span><span id="story-blackmarket-gold" style="margin-left:auto;font-size:12px;color:#ffeb3b;"></span></h3>
-            <p class="story-party-modal-hint" style="color:#9c83a8;font-size:11px;margin:4px 0 10px;">"Nothing legal here. Spend wisely — no refunds, no questions."</p>
+            <p id="story-blackmarket-line" class="story-party-modal-hint" style="color:#9c83a8;font-size:11px;margin:4px 0 10px;"></p>
             <div id="story-blackmarket-grid" style="display:grid;grid-template-columns:1fr;gap:8px;max-height:380px;overflow-y:auto;"></div>
             <button type="button" class="story-bag-close-btn" onclick="window.closeModal('modal-story-blackmarket')" style="margin-top:10px;">Close</button>
         </div>
@@ -4923,6 +4930,18 @@
             <div style="display:flex;gap:8px;justify-content:flex-end;">
                 <button id="story-dealer-accept" type="button" onclick="window.StoryMode._dealerAccept()" style="font-size:12px;padding:6px 14px;color:#ce93d8;border-color:#ce93d8;">Take Deal</button>
                 <button type="button" onclick="window.StoryMode._dealerDecline()" style="font-size:12px;padding:6px 14px;color:#9aa0aa;border-color:#9aa0aa;">Walk Away</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-story-bmt-picker" class="modal hidden">
+        <div class="modal-content white-outline" style="max-width:520px;background:linear-gradient(180deg,#1a0d1f 0%,#0a0610 100%);">
+            <h3 class="story-party-modal-title" style="margin-bottom:6px;color:#ce93d8;">🕶 Black Market TM</h3>
+            <p id="story-bmt-prompt" style="font-size:11px;color:#aaa;margin:4px 0 8px;"></p>
+            <div id="story-bmt-list" style="display:flex;flex-direction:column;gap:4px;max-height:380px;overflow-y:auto;"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
+                <button id="story-bmt-back" type="button" onclick="window.StoryMode._bmtBack()" style="font-size:12px;padding:6px 14px;color:#9aa0aa;border-color:#9aa0aa;display:none;">← Back</button>
+                <button type="button" onclick="window.StoryMode._bmtCancel()" style="font-size:12px;padding:6px 14px;color:#9aa0aa;border-color:#9aa0aa;">Cancel</button>
             </div>
         </div>
     </div>
@@ -22152,7 +22171,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    inventory:{}, artifacts:[], activeArtifactType:null,
                    trainerAssignments:{}, currentTrainerData:null,
                    settings:{ minGen:1, maxGen:9, enabledGens:[1,2,3,4,5,6,7,8,9], megaOn:false, zOn:false, dynaOn:false, teraOn:false, classicMode:true },
-                   catchMode:false,
+                   catchMode:false, eventsOn:true,
                    pendingInterrupts:[], itineraryDone:{}, blackMarketUnlocked:false, wagerUnlocked:false,
                    traderOfferByCity:{}, dealerOfferByCityVisit:{}, shadyRepelRoutes:0, legendChipReady:false,
                    pendingWager:null,
@@ -22316,6 +22335,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (!Array.isArray(sm.pendingInterrupts)) sm.pendingInterrupts = [];
                 if (!sm.itineraryDone || typeof sm.itineraryDone !== 'object') sm.itineraryDone = {};
+                if (typeof sm.eventsOn !== 'boolean') sm.eventsOn = true;
                 if (typeof sm.blackMarketUnlocked !== 'boolean') sm.blackMarketUnlocked = false;
                 if (typeof sm.wagerUnlocked !== 'boolean') sm.wagerUnlocked = false;
                 if (!sm.traderOfferByCity || typeof sm.traderOfferByCity !== 'object') sm.traderOfferByCity = {};
@@ -22370,6 +22390,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     classicMode: sm.settings.classicMode !== false,
                     noItemRun: !!sm.settings.noItemRun,
                     catchMode: !!sm.catchMode,
+                    eventsOn: sm.eventsOn !== false,
                     seedDisplay: sm.runSeed != null ? String(sm.runSeed >>> 0) : ''
                 };
                 localStorage.setItem(STORY_MENU_DEFAULTS_KEY, JSON.stringify(d));
@@ -22406,6 +22427,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (nir && typeof d.noItemRun === 'boolean') nir.checked = d.noItemRun;
                 const cm = document.getElementById('story-catch-mode');
                 if (cm && typeof d.catchMode === 'boolean') cm.checked = d.catchMode;
+                const eo = document.getElementById('story-events-on');
+                if (eo && typeof d.eventsOn === 'boolean') eo.checked = d.eventsOn;
                 const si = document.getElementById('story-setting-seed');
                 if (si && typeof d.seedDisplay === 'string') si.value = d.seedDisplay;
             } catch (e) { /* ignore */ }
@@ -23246,6 +23269,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 deptArtifactOffersByCity:{}, artifactShopOffersByCity:{}, artifactFreeClaimUsed:false,
                 deptArtifactTypesByCity:{}, artifactTypeById:{}, deptItemOffersByCity:{},
                 catchMode: document.getElementById('story-catch-mode')?.checked || false,
+                eventsOn: document.getElementById('story-events-on')?.checked !== false,
                 pendingInterrupts: [], itineraryDone: {}, blackMarketUnlocked: false, wagerUnlocked: false,
                 traderOfferByCity: {}, dealerOfferByCityVisit: {}, shadyRepelRoutes: 0, legendChipReady: false,
                 pendingWager: null,
@@ -24330,6 +24354,43 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             renderPCBoxPanel();
         }
 
+        // ── DIALOGUE BANKS (Section 9 stubs — 3-5 lines per new NPC) ───────
+        const STORY_NPC_DIALOGUE = {
+            safariAnnouncer: [
+                'The Safari Zone is themed today — only one type bites.',
+                'You get five Safari Balls. Don\'t waste them.',
+                'Bait keeps them eating long enough for a clean throw.',
+                'Today\'s pool tilts to mid-tier mons. Good catches if you read the bushes.',
+            ],
+            blackMarketVendor: [
+                '"Nothing legal here. Spend wisely — no refunds, no questions."',
+                '"Forged paperwork, Mystery Eggs, smuggled TMs. All untraceable."',
+                '"You didn\'t see me. You didn\'t see the back door. Got it?"',
+                '"Master Ball clones? Don\'t insult me. But I do have a Legend Chip…"',
+            ],
+            illegalDealer: [
+                '"One deal a visit, friend. Take it or walk."',
+                '"You know the rules — no second offers, no haggling."',
+                '"My contracts aren\'t pretty. They are profitable."',
+                '"Half my customers leave broke. The other half retire."',
+            ],
+            pokemonTrader: [
+                '"Same tier, same trade — that\'s the only fair rule."',
+                '"I don\'t do upgrades. I do swaps."',
+                '"Your friend over there\'s been with you a while. Ready for a new partner?"',
+            ],
+            wagerNpc: [
+                '"Trainers around here back their picks with the Pokémon themselves."',
+                '"Stake your best. Take my worst. That\'s the wager."',
+                '"You scared, or you in?"',
+            ],
+        };
+        function _pickStoryDialogue(key) {
+            const arr = STORY_NPC_DIALOGUE[key] || [];
+            if (!arr.length) return '';
+            return arr[Math.floor(storyRngNext() * arr.length)];
+        }
+
         // ── BEST/WORST PICKERS (for wager and dealer contracts) ────────────
         // Spec convention: lower grade number = stronger pool. Best = lowest grade, tie → highest BST.
         // Worst = highest grade, tie → lowest BST.
@@ -24433,11 +24494,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _enterWildEncounter(opts) {
             const sg = (opts && opts.enabledGens) || storySettingsGens();
             let species = null;
-            if (opts && opts.theme) {
+            // Contraband Capsule from the dealer: force the next wild encounter to be a G1 species.
+            const capsuleForce = !!sm.contrabandCapsule && !(opts && opts.source === 'safari');
+            if (capsuleForce) {
+                sm.contrabandCapsule = false;
+                species = _storyRandSpeciesByGrade(1, sg);
+            }
+            if (!species && opts && opts.theme) {
                 // Safari path: type filter, bias G2-G3
                 species = _storyRandSpeciesByType(opts.theme, sg, [2, 3]);
                 if (!species) species = _storyRandSpeciesByType(opts.theme, sg, null);
-            } else {
+            } else if (!species) {
                 // Route wild: respect current grade weights (light bias to weaker grades)
                 const gw = opts && opts.gradeWeights ? opts.gradeWeights : { g1: 0, g2: 10, g3: 40, g4: 50 };
                 const total = (gw.g1||0)+(gw.g2||0)+(gw.g3||0)+(gw.g4||0) || 1;
@@ -24508,6 +24575,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (totalBalls <= 0 && !storageFull) {
                     html += '<div style="color:#ef9a9a;font-size:11px;margin-bottom:6px;">You have no Poké Balls. Visit the Pokémart in town to stock up.</div>';
                 }
+                if (sm.legendChipReady) {
+                    html += '<div style="color:#ffd54f;font-size:11px;margin-bottom:6px;">⚡ Legend Chip armed — your next throw is a guaranteed catch.</div>';
+                }
                 balls.forEach(b => {
                     const qty = (sm.inventory && sm.inventory[b.id]) | 0;
                     html += `<button type="button" onclick="window.StoryMode._wildThrowBall('${b.id}')" ${qty<=0||storageFull?'disabled':''} style="font-size:12px;padding:6px 12px;margin:2px;">▣ ${b.label} <span style="color:#888;font-size:10px;">×${qty}</span></button>`;
@@ -24561,7 +24631,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.inventory || !sm.inventory[ballId] || sm.inventory[ballId] <= 0) return;
             sm.inventory[ballId]--;
             if (sm.inventory[ballId] <= 0) delete sm.inventory[ballId];
-            const chance = _wildComputeCatchChance(w.name, ballId, null);
+            // Legend Chip armed from Black Market: next throw is a guaranteed catch.
+            const legendChip = !!sm.legendChipReady;
+            if (legendChip) sm.legendChipReady = false;
+            const chance = legendChip ? 1 : _wildComputeCatchChance(w.name, ballId, null);
             if (storyRngNext() < chance) {
                 const where = gainPokemonToBoxOrParty({ name: w.name, build: w.build });
                 if (!where) {
@@ -24628,7 +24701,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const canAccept = partyN >= 2;
             if (titleEl) titleEl.textContent = `${trainerName} wants to wager a Pokémon!`;
             if (bodyEl) {
+                const bark = _pickStoryDialogue('wagerNpc');
                 bodyEl.innerHTML = `
+                    <div style="font-size:11px;color:#9fa8b0;margin-bottom:6px;font-style:italic;">"${bark}"</div>
                     <div style="font-size:12px;color:#cfd8dc;margin-bottom:8px;">
                         Stake one of your best Pokémon. Win the next battle and you take the trainer's worst Pokémon home — lose and you forfeit yours.
                     </div>
@@ -24727,7 +24802,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } else {
                 const hasIt = (sm.team || []).some(s => s && s.name === offer.want);
                 if (bodyEl) {
+                    const flavor = _pickStoryDialogue('pokemonTrader');
                     bodyEl.innerHTML = `
+                        <div style="font-size:11px;color:#9fa8b0;margin-bottom:6px;font-style:italic;">${flavor}</div>
                         <div style="font-size:12px;color:#cfd8dc;margin-bottom:8px;">
                             "I'll trade my <b style="color:#81c784;">${offer.give}</b> for your <b style="color:#ffb74d;">${offer.want}</b>. Same power tier — fair deal."
                         </div>
@@ -24779,8 +24856,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _processNextInterrupt();
                 return;
             }
+            const announce = _pickStoryDialogue('safariAnnouncer');
             const ok = (typeof window.confirm === 'function')
-                ? window.confirm(`Safari Zone — ${theme}-type day! Entry ${SAFARI_FEE}G for ${SAFARI_BALLS} Safari Balls. Enter?`)
+                ? window.confirm(`Safari Zone — ${theme}-type day!\n\n"${announce}"\n\nEntry ${SAFARI_FEE}G for ${SAFARI_BALLS} Safari Balls. Enter?`)
                 : true;
             if (!ok) { _processNextInterrupt(); return; }
             sm.gold -= SAFARI_FEE;
@@ -24828,7 +24906,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             { id: 'legendChip',    name: 'Legend Chip',     price: 10000,desc: 'One free Master-Ball-grade catch on the next legendary or rare wild.' },
         ];
         function _isBlackMarketAvailable() {
-            // Spec: unlocked after badge 4 (start of Black Market arc), cities 5+.
+            // Spec: unlocked after badge 4 (start of Black Market arc), cities 5+. eventsOn gated.
+            if (sm.eventsOn === false) return false;
             if (!sm.blackMarketUnlocked && (sm.badges|0) >= 4) sm.blackMarketUnlocked = true;
             const ci = cityIndexFromEventIndex(sm.eventIndex);
             return !!sm.blackMarketUnlocked && ci >= 5;
@@ -24838,8 +24917,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const m = document.getElementById('modal-story-blackmarket');
             const grid = document.getElementById('story-blackmarket-grid');
             const goldEl = document.getElementById('story-blackmarket-gold');
+            const lineEl = document.getElementById('story-blackmarket-line');
             if (!m || !grid) return;
             if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
+            if (lineEl) lineEl.textContent = _pickStoryDialogue('blackMarketVendor');
             grid.innerHTML = BLACK_MARKET_ITEMS.map(item => {
                 const canAfford = sm.gold >= item.price;
                 return `<div class="story-shop-item" style="border-color:#7e57c2;">
@@ -24857,6 +24938,89 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }).join('');
             m.classList.remove('hidden');
         }
+        // Black Market TM picker — 2-step: choose mon, then choose which of its 4 move slots to overwrite.
+        // Cost is only deducted on commit; cancel returns to the Black Market with no charge.
+        let _bmtPending = null; // { rolledMove, price, partyIdx?: number }
+        function _openBMTMPicker(rolledMove, price) {
+            _bmtPending = { rolledMove, price, partyIdx: null };
+            const bm = document.getElementById('modal-story-blackmarket');
+            if (bm) bm.classList.add('hidden');
+            _renderBMTPicker();
+            const m = document.getElementById('modal-story-bmt-picker');
+            if (m) m.classList.remove('hidden');
+        }
+        function _renderBMTPicker() {
+            if (!_bmtPending) return;
+            const prompt = document.getElementById('story-bmt-prompt');
+            const list = document.getElementById('story-bmt-list');
+            const back = document.getElementById('story-bmt-back');
+            if (!prompt || !list) return;
+            if (_bmtPending.partyIdx === null) {
+                prompt.innerHTML = `"Got <b style="color:#ce93d8;">${_bmtPending.rolledMove}</b> on tape. Pick the Pokémon — and pick wisely, no refunds." Cost: <b style="color:#ffeb3b;">${_bmtPending.price.toLocaleString()}G</b>`;
+                if (back) back.style.display = 'none';
+                list.innerHTML = sm.team.map((t, i) => {
+                    const g = t.name ? getMonGrade(t.name, getBST(t.name)) : 4;
+                    return `<button type="button" onclick="window.StoryMode._bmtPickMon(${i})" class="story-team-slot draft-card tier-${g}" style="width:100%;text-align:left;padding:6px 10px;display:flex;align-items:center;gap:8px;cursor:pointer;border:none;">
+                        <span class="tier-badge bg-tier-${g}" style="flex-shrink:0;">T${g}</span>
+                        <span style="font-weight:bold;flex:1;">${t.name}</span>
+                        <span style="color:#888;font-size:10px;">${(t.build && t.build.m ? t.build.m.length : 0)} moves</span>
+                    </button>`;
+                }).join('') || '<div style="color:#888;font-size:11px;padding:8px;">Your party is empty.</div>';
+                return;
+            }
+            // Step 2: pick which move slot to overwrite
+            const t = sm.team[_bmtPending.partyIdx];
+            if (!t || !t.build || !Array.isArray(t.build.m)) { _bmtCancel(); return; }
+            prompt.innerHTML = `Teach <b style="color:#ce93d8;">${_bmtPending.rolledMove}</b> to <b style="color:#ffb74d;">${t.name}</b> — overwrite which move?`;
+            if (back) back.style.display = '';
+            const moves = (t.build.m || []).slice(0, 4);
+            while (moves.length < 4) moves.push('—');
+            list.innerHTML = moves.map((mv, j) => {
+                const isEmpty = mv === '—';
+                return `<button type="button" onclick="window.StoryMode._bmtCommit(${j})" class="story-team-slot draft-card" style="width:100%;text-align:left;padding:6px 10px;display:flex;align-items:center;gap:8px;cursor:pointer;border:1px solid #455a64;background:#1a1f2a;">
+                    <span style="flex-shrink:0;color:#888;font-size:10px;width:48px;">Slot ${j+1}</span>
+                    <span style="flex:1;color:${isEmpty?'#888':'#cfd8dc'};">${mv}</span>
+                    <span style="color:#ce93d8;font-size:10px;">▶ replace</span>
+                </button>`;
+            }).join('');
+        }
+        function _bmtPickMon(i) {
+            if (!_bmtPending) return;
+            if (i < 0 || i >= sm.team.length) return;
+            _bmtPending.partyIdx = i;
+            _renderBMTPicker();
+        }
+        function _bmtBack() {
+            if (!_bmtPending) return;
+            _bmtPending.partyIdx = null;
+            _renderBMTPicker();
+        }
+        function _bmtCommit(slotIdx) {
+            if (!_bmtPending || _bmtPending.partyIdx === null) return;
+            if (sm.gold < _bmtPending.price) { try { window.showGameAlert && window.showGameAlert('Not enough gold.'); } catch (_) {} _bmtCancel(); return; }
+            const t = sm.team[_bmtPending.partyIdx];
+            if (!t || !t.build) { _bmtCancel(); return; }
+            if (!Array.isArray(t.build.m)) t.build.m = [];
+            // Pad slots so we can index up to 4
+            while (t.build.m.length < 4) t.build.m.push('Tackle');
+            const oldMove = t.build.m[slotIdx];
+            t.build.m[slotIdx] = _bmtPending.rolledMove;
+            sm.gold -= _bmtPending.price;
+            save();
+            const msg = `${t.name} forgot ${oldMove} and learned ${_bmtPending.rolledMove}!`;
+            _bmtPending = null;
+            const m = document.getElementById('modal-story-bmt-picker');
+            if (m) m.classList.add('hidden');
+            try { window.showGameAlert && window.showGameAlert(msg); } catch (_) {}
+            enterBlackMarket();
+        }
+        function _bmtCancel() {
+            _bmtPending = null;
+            const m = document.getElementById('modal-story-bmt-picker');
+            if (m) m.classList.add('hidden');
+            enterBlackMarket();
+        }
+
         function blackMarketBuy(itemId, price) {
             const item = BLACK_MARKET_ITEMS.find(i => i.id === itemId);
             if (!item || item.price !== price) return;
@@ -24898,17 +25062,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
                 case 'blackMarketTM': {
-                    if (!sm.team.length) return;
-                    const targetIdx = 0;
-                    const t = sm.team[targetIdx];
-                    if (!t || !t.build || !Array.isArray(t.build.m) || !t.build.m.length) return;
-                    // Pool of strong moves we know are valid in the game's move tables
+                    if (!sm.team.length) { try { window.showGameAlert && window.showGameAlert('You have no Pokémon to teach.'); } catch (_) {} return; }
+                    // Roll the move now (fixed for this purchase session), then open the picker.
                     const tmPool = ['Close Combat','Earthquake','Knock Off','Stealth Rock','Volt Switch','U-turn','Thunderbolt','Flamethrower','Ice Beam','Shadow Ball','Dark Pulse','Dragon Pulse'];
-                    const m = tmPool[Math.floor(storyRngNext() * tmPool.length)];
-                    sm.gold -= price;
-                    t.build.m[t.build.m.length - 1] = m;
-                    try { window.showGameAlert && window.showGameAlert(`${t.name} learned ${m}!`); } catch (_) {}
-                    break;
+                    const rolled = tmPool[Math.floor(storyRngNext() * tmPool.length)];
+                    _openBMTMPicker(rolled, price);
+                    return; // no save/refresh; picker handles commit
                 }
                 case 'intelDossier': {
                     let target = -1;
@@ -24955,6 +25114,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             { id: 'rollLegend', label: 'Pay 3,000G to roll for a legendary egg (5% odds)' },
             { id: 'tradeRand',  label: 'Trade one party Pokémon for a random G2 mon' },
             { id: 'gambleGold', label: 'Risk 2,000G — 50/50 for 5,000G' },
+            { id: 'cursedTrade', label: 'Trade your best Pokémon for two random G3 mons' },
+            { id: 'rivalIntel',  label: 'Pay 1,500G to learn your rival\'s next signature species' },
+            { id: 'doubleOrNothing', label: 'Wager all your gold on a coin flip (loses half on a fail)' },
+            { id: 'contrabandCapsule', label: 'Pay 2,500G — next wild encounter rolls a G1 species' },
         ];
         function _ensureDealerOfferForCurrentVisit() {
             const ci = cityIndexFromEventIndex(sm.eventIndex);
@@ -24967,6 +25130,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return { key, offer: sm.dealerOfferByCityVisit[key] };
         }
         function _isDealerAvailable() {
+            if (sm.eventsOn === false) return false;
             if (!sm.blackMarketUnlocked) return false;
             const ci = cityIndexFromEventIndex(sm.eventIndex);
             return ci === 6 || ci === 8;
@@ -24983,7 +25147,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     bodyEl.innerHTML = `<div style="color:#aaa;">"I told you, kid — one deal a visit. Come back next stop."</div>`;
                     if (acceptBtn) acceptBtn.style.display = 'none';
                 } else {
-                    bodyEl.innerHTML = `<div style="font-size:12px;color:#cfd8dc;">"One deal today, friend. Take it or walk." <br><br><b style="color:#ce93d8;">${offer.label}</b></div>`;
+                    const intro = _pickStoryDialogue('illegalDealer');
+                    bodyEl.innerHTML = `<div style="font-size:12px;color:#cfd8dc;">${intro}<br><br><b style="color:#ce93d8;">${offer.label}</b></div>`;
                     if (acceptBtn) { acceptBtn.style.display = ''; acceptBtn.disabled = false; }
                 }
             }
@@ -25045,6 +25210,59 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     else { try { window.showGameAlert && window.showGameAlert('The dealer pockets your money.'); } catch (_) {} }
                     break;
                 }
+                case 'cursedTrade': {
+                    if ((sm.team || []).length <= 1) { try { window.showGameAlert && window.showGameAlert('You need at least 2 Pokémon to risk one.'); } catch (_) {} offer.used = false; return; }
+                    const bestIdx = pickBestFromTeam(sm.team);
+                    const lost = sm.team[bestIdx].name;
+                    sm.team.splice(bestIdx, 1);
+                    const sg = storySettingsGens();
+                    const got = [];
+                    for (let i = 0; i < 2; i++) {
+                        if (isPokemonStorageFull()) break;
+                        const sp = _storyRandSpeciesByGrade(3, sg);
+                        const slot = sp ? _buildStorySlot(sp) : null;
+                        if (slot) {
+                            gainPokemonToBoxOrParty(slot);
+                            got.push(sp);
+                        }
+                    }
+                    try { window.showGameAlert && window.showGameAlert(`Gave up ${lost}; received ${got.join(', ') || '...nothing (storage full)'}.`); } catch (_) {}
+                    break;
+                }
+                case 'rivalIntel': {
+                    if (sm.gold < 1500) { try { window.showGameAlert && window.showGameAlert('Not enough gold.'); } catch (_) {} offer.used = false; return; }
+                    sm.gold -= 1500;
+                    // Find next Rival battle and reveal one of its locked signatures.
+                    let target = -1;
+                    for (let i = sm.eventIndex + 1; i < STORY_EVENTS_RAW.length; i++) {
+                        if (STORY_EVENTS_RAW[i][1] === 'Battle' && STORY_EVENTS_RAW[i][2] === 'Rival') { target = i; break; }
+                    }
+                    if (target < 0) { try { window.showGameAlert && window.showGameAlert('No rival ahead to spy on.'); } catch (_) {} break; }
+                    const rivalName = sm.trainerAssignments[STORY_EVENTS_RAW[target][0]] || 'Rival';
+                    const td = findTrainerDataByName(rivalName, 'Rival');
+                    const sig = td && Array.isArray(td.sigs) && td.sigs.length ? td.sigs[Math.floor(storyRngNext() * td.sigs.length)] : 'an unknown ace';
+                    try { window.showGameAlert && window.showGameAlert(`Whisper from the dealer: "${rivalName} packs a ${sig} on the next clash."`); } catch (_) {}
+                    break;
+                }
+                case 'doubleOrNothing': {
+                    const g = sm.gold | 0;
+                    if (g <= 0) { try { window.showGameAlert && window.showGameAlert('Nothing to wager.'); } catch (_) {} offer.used = false; return; }
+                    if (storyRngNext() < 0.5) {
+                        sm.gold = g * 2;
+                        try { window.showGameAlert && window.showGameAlert(`The coin flips your way — ${sm.gold.toLocaleString()}G total.`); } catch (_) {}
+                    } else {
+                        sm.gold = Math.floor(g / 2);
+                        try { window.showGameAlert && window.showGameAlert(`Tails. You leave with ${sm.gold.toLocaleString()}G.`); } catch (_) {}
+                    }
+                    break;
+                }
+                case 'contrabandCapsule': {
+                    if (sm.gold < 2500) { try { window.showGameAlert && window.showGameAlert('Not enough gold.'); } catch (_) {} offer.used = false; return; }
+                    sm.gold -= 2500;
+                    sm.contrabandCapsule = true; // consumed on next wild encounter to force G1 species
+                    try { window.showGameAlert && window.showGameAlert('Capsule armed. The next wild Pokémon will be a Tier 1.'); } catch (_) {}
+                    break;
+                }
             }
             save();
             closeModal();
@@ -25062,8 +25280,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             { id: 'safari_city3', triggerOnRowId: 20, requires: { minBadges: 3 }, action: { kind: 'safari' } },
             // Wager unlock chime — show before row 26 (City4 second route fight)
             { id: 'wager_unlock', triggerOnRowId: 26, requires: { minBadges: 4 }, action: { kind: 'wager_unlock' } },
+            // Mid-game lore / barker between City5 and City6
+            { id: 'pre_blackmarket_warn', triggerOnRowId: 33, requires: { minBadges: 5 }, action: { kind: 'narration', text: '💬 A scarred ranger spits: "City6 keeps its shadows. If you see a man in the alley with a briefcase — keep walking. Or don\'t. Your call."' } },
             // Black Market arc heads-up — first time entering City6 route
             { id: 'blackmarket_unlock', triggerOnRowId: 41, requires: { minBadges: 5 }, action: { kind: 'blackmarket_unlock' } },
+            // Second Safari — Dragon-type day before badge 7
+            { id: 'safari_city7', triggerOnRowId: 48, requires: { minBadges: 6 }, action: { kind: 'safari', theme: 'Dragon' } },
+            // Pre-League nerves
+            { id: 'pre_league', triggerOnRowId: 60, requires: { minBadges: 8 }, action: { kind: 'narration', text: '💬 The League herald straightens: "Champion candidate, your party is sealed. Walk into the gauntlet — no shops between Elites."' } },
         ];
         function _itineraryBeatsForCurrentBattle(rowId) {
             return STORY_ITINERARY_BEATS.filter(b => b.triggerOnRowId === rowId
@@ -25088,7 +25312,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             if (a.kind === 'safari') {
-                enterSafariZone();
+                enterSafariZone(a.theme || null);
+                return;
+            }
+            if (a.kind === 'narration') {
+                try { window.showGameAlert && window.showGameAlert(a.text || ''); } catch (_) {}
+                _processNextInterrupt();
                 return;
             }
             _processNextInterrupt();
@@ -25531,11 +25760,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.pendingInterrupts = [];
             sm._pendingTrainerEventIdx = nextBattleIdx;
 
-            // 1) Itinerary beats targeting this row
-            const beats = _itineraryBeatsForCurrentBattle(rowId);
-            for (const b of beats) _queueInterrupt({ kind: 'itinerary', beat: b });
+            // 1) Itinerary beats targeting this row (eventsOn gate)
+            if (sm.eventsOn !== false) {
+                const beats = _itineraryBeatsForCurrentBattle(rowId);
+                for (const b of beats) _queueInterrupt({ kind: 'itinerary', beat: b });
+            }
 
-            // 2) Wild encounter (catch mode + non-boss + not under shady repel)
+            // 2) Wild encounter (catch mode + non-boss + not under shady repel) — survives eventsOn off
             if (sm.catchMode && isBasicTrainer && (sm.shadyRepelRoutes | 0) <= 0) {
                 if (storyRngNext() < WILD_ENCOUNTER_RATE) {
                     _queueInterrupt({ kind: 'wild', gradeWeights: ev[3] || null });
@@ -25543,8 +25774,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if ((sm.shadyRepelRoutes | 0) > 0) sm.shadyRepelRoutes = Math.max(0, sm.shadyRepelRoutes - 1);
 
-            // 3) Wager prompt (basic trainers only, once unlocked)
-            if (sm.wagerUnlocked && isBasicTrainer && (sm.team || []).length >= 2 && !isBossOrRival) {
+            // 3) Wager prompt (basic trainers only, once unlocked) — eventsOn gated
+            if (sm.eventsOn !== false && sm.wagerUnlocked && isBasicTrainer && (sm.team || []).length >= 2 && !isBossOrRival) {
                 if (storyRngNext() < WAGER_PROMPT_RATE) {
                     _queueInterrupt({ kind: 'wager' });
                 }
@@ -28693,7 +28924,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _wagerAccept, _wagerDecline,
             enterTrader, _traderAccept, _traderDecline,
             enterSafariZone,
-            enterBlackMarket, blackMarketBuy,
+            enterBlackMarket, blackMarketBuy, _bmtPickMon, _bmtBack, _bmtCommit, _bmtCancel,
             enterIllegalDealer, _dealerAccept, _dealerDecline,
             enterArtifactHall, toggleArtifactDisabled,
             enterTutor, tutorChangeMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
