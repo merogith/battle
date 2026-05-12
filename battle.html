@@ -12366,10 +12366,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // === GIMMICK BUTTONS ===
             const _usedMega = isP1 ? state.usedMega : state.fUsedMega; const _usedDyna = isP1 ? state.usedDyna : state.fUsedDyna; const _usedTera = isP1 ? state.usedTera : state.fUsedTera; const _usedZ = isP1 ? state.usedZ : state.fUsedZ;
+            // Cap depends on the Classic Mode toggle: one mechanic per team (Classic) vs one per Pokémon (off)
             let canUseMega = activeMon.buildData && activeMon.buildData.gimmick === 'MEGA' && !activeMon.megaEvolved && (!settings.classicMode || !_usedMega);
-            let canUseDyna = activeMon.buildData && (activeMon.buildData.gimmick === 'DYNAMAX' || activeMon.buildData.gimmick === 'GMAXDYNAMAX') && !activeMon.dynamaxed && !activeMon.dynamaxUsed && !_usedDyna;
-            let canUseTera = activeMon.buildData && activeMon.buildData.teraType && !activeMon.teraActivated && !_usedTera;
-            // Cap depends on the Classic Mode toggle: one Z per team (Classic) vs one per Pokémon (off)
+            let canUseDyna = activeMon.buildData && (activeMon.buildData.gimmick === 'DYNAMAX' || activeMon.buildData.gimmick === 'GMAXDYNAMAX') && !activeMon.dynamaxed && !activeMon.dynamaxUsed && (!settings.classicMode || !_usedDyna);
+            let canUseTera = activeMon.buildData && activeMon.buildData.teraType && !activeMon.teraActivated && (!settings.classicMode || !_usedTera);
             let canUseZ = activeMon.buildData && activeMon.buildData.gimmick === 'ZMOVE' && !activeMon.zMoveUsed && (!settings.classicMode || !_usedZ);
             const hasGimmickButtons = canUseMega || canUseDyna || canUseTera || canUseZ;
             menu.classList.toggle('move-menu-no-gimmicks', !hasGimmickButtons);
@@ -12682,7 +12682,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             //  d) attacker HP < 50% (emergency heal-buffer use)
             //  e) endgame (last mons standing) — last call, use it or lose it
             //  f) opponent has a super-effective move and we're at ≥50% HP (HP buffer helps tank)
-            if ((bd.gimmick === 'DYNAMAX' || bd.gimmick === 'GMAXDYNAMAX') && !attacker.dynamaxed && !attacker.dynamaxUsed && !state.fUsedDyna) {
+            if ((bd.gimmick === 'DYNAMAX' || bd.gimmick === 'GMAXDYNAMAX') && !attacker.dynamaxed && !attacker.dynamaxUsed && (!settings.classicMode || !state.fUsedDyna)) {
                 let defHasSEMove = defender.moves.some(m => m.cat !== 'Status' && getMoveEffectiveness(m.type, attacker.type1, attacker.type2) >= 2);
                 let isEndgame = state.foeParty.filter(m => m.currentHp > 0).length <= 1;
                 let isFreshMatchup = (attacker.turnCount || 0) <= 1;
@@ -12696,7 +12696,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             //  b) Tera type unlocks a KO (STAB on Tera type, or Tera Blast, hits harder)
             //  c) HP low and type change provides survival
             //  d) Stellar Tera available — offensive boost is always strong
-            if (bd.teraType && !attacker.teraActivated && !state.fUsedTera) {
+            if (bd.teraType && !attacker.teraActivated && (!settings.classicMode || !state.fUsedTera)) {
                 let teraReducesThreat = defender.moves.some(m => {
                     if (m.cat === 'Status') return false;
                     let preTera = getMoveEffectiveness(m.type, attacker.type1, attacker.type2);
@@ -14766,16 +14766,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let ok = attacker.buildData && attacker.buildData.gimmick === 'MEGA' && !attacker.megaEvolved && (!settings.classicMode || !(isPlayer ? state.usedMega : state.fUsedMega));
                     if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
                 }
+                // Cap is governed by the Classic Mode toggle (one per team if on, one per Pokémon if off)
                 if (gimmickPending === 'DYNAMAX' || gimmickPending === 'GMAXDYNAMAX') {
-                    let ok = attacker.buildData && (attacker.buildData.gimmick === 'DYNAMAX' || attacker.buildData.gimmick === 'GMAXDYNAMAX') && !attacker.dynamaxed && !attacker.dynamaxUsed && !(isPlayer ? state.usedDyna : state.fUsedDyna);
+                    let ok = attacker.buildData && (attacker.buildData.gimmick === 'DYNAMAX' || attacker.buildData.gimmick === 'GMAXDYNAMAX') && !attacker.dynamaxed && !attacker.dynamaxUsed && (!settings.classicMode || !(isPlayer ? state.usedDyna : state.fUsedDyna));
                     if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
                 }
                 if (gimmickPending === 'TERA') {
-                    let ok = attacker.buildData && attacker.buildData.teraType && !attacker.teraActivated && !(isPlayer ? state.usedTera : state.fUsedTera);
+                    let ok = attacker.buildData && attacker.buildData.teraType && !attacker.teraActivated && (!settings.classicMode || !(isPlayer ? state.usedTera : state.fUsedTera));
                     if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
                 }
                 if (gimmickPending === 'ZMOVE') {
-                    // Cap is governed by the Classic Mode toggle (one per team if on, one per Pokémon if off)
                     let ok = attacker.buildData && attacker.buildData.gimmick === 'ZMOVE' && !attacker.zMoveUsed && (!settings.classicMode || !(isPlayer ? state.usedZ : state.fUsedZ));
                     if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
                 }
