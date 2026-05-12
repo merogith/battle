@@ -15057,8 +15057,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _defAbilityActive = !defender.volatile.abilityGastroAcid && (!_moldBreaker || _defAbilityShield) && (!_myceliumBypass || _defAbilityShield);
                 // Gravity: grounds all mons — Levitate and Flying-type Ground immunity are suppressed
                 const _gravityActive = state.gravity > 0;
-                // Levitate: Immune to Ground (suppressed by Gravity)
-                if (!_gravityActive && _defAbilityActive && defender.ability === "Levitate" && move.type === "Ground") {
+                // Levitate: Immune to Ground (suppressed by Gravity or by holding Iron Ball)
+                const _defIronBallGrounds = defender.item === "Iron Ball" && state.magicRoom === 0 && !(defender.volatile.embargo > 0) && defender.ability !== "Klutz";
+                if (!_gravityActive && !_defIronBallGrounds && _defAbilityActive && defender.ability === "Levitate" && move.type === "Ground") {
                     logMsg(`${defender.name}'s Levitate makes it immune to Ground moves!`, 'info'); await sleep(1000); return;
                 }
                 // Lightning Rod: Immune to Electric, SpAtk +1
@@ -16082,7 +16083,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 };
                 if (attacker.ability !== "Unnerve" && _defItemActive && defender.item && typeResistBerries[defender.item]) {
                     let berryType = typeResistBerries[defender.item];
-                    if (move.type === berryType && typeEff > 1) {
+                    // Chilan Berry triggers on any Normal-type attack; all other type-resist berries require super-effective
+                    const _berryTriggers = (move.type === berryType) && (defender.item === "Chilan Berry" || typeEff > 1);
+                    if (_berryTriggers) {
                         damage = Math.floor(damage / (defender.ability === "Ripen" ? 4 : 2));
                         logMsg(`${defender.name}'s ${defender.item} weakened the attack!`, 'info');
                         defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender);
@@ -17582,7 +17585,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.currentHp = Math.max(0, Math.min(mon.maxHp, mon.currentHp));
             let side = isPlayer ? state.pSide : state.fSide;
             if (mon.ability === "Magic Guard") return;
-            if (mon.item === "Heavy-Duty Boots") return;
+            if (mon.item === "Heavy-Duty Boots" && state.magicRoom === 0 && !(mon.volatile && mon.volatile.embargo > 0) && mon.ability !== "Klutz") return;
             let isGrounded = mon.type1 !== "Flying" && mon.type2 !== "Flying" && mon.ability !== "Levitate";
             const _hazardMult = (state && state._heavyGravityHazardMult > 1 && state.gravity > 0) ? state._heavyGravityHazardMult : 1;
             if (side.stealthRock) {
