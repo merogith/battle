@@ -2715,6 +2715,14 @@
             70% { filter: brightness(1.5) drop-shadow(0 0 15px #ef5350); transform: translateX(-50%) scale(1.2); }
             100% { filter: drop-shadow(0 0 8px #ef5350); transform: translateX(-50%) scale(1.25); }
         }
+        /* Dynamax shrink-back */
+        .anim-dmax-deactivate { animation: dmaxDeactivate 0.6s ease-in; }
+        @keyframes dmaxDeactivate {
+            0%   { filter: drop-shadow(0 0 8px #ef5350); transform: translateX(-50%) scale(1.25); }
+            40%  { filter: brightness(1.4) drop-shadow(0 0 12px #ef5350); transform: translateX(-50%) scale(1.1); }
+            80%  { filter: brightness(1.1); transform: translateX(-50%) scale(0.95); }
+            100% { filter: brightness(1); transform: translateX(-50%) scale(1); }
+        }
 
         /* Tera activation crystal flash */
         .anim-tera-activate { animation: teraActivate 0.7s ease-out; }
@@ -9064,6 +9072,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 spriteEl.alt = sprName;
                 spriteEl.dataset.shiny = sprShiny ? 'true' : 'false';
                 spriteEl.src = getSprite(sprName, sprShiny);
+                if (settings.animations) {
+                    spriteEl.classList.add('anim-dmax-deactivate');
+                    setTimeout(() => { spriteEl.classList.remove('anim-dmax-deactivate'); }, 650);
+                }
             }
             updateUI();
         }
@@ -10957,9 +10969,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let gBadge = '';
                 if (mon.dynamaxed) {
                     const isGmax = mon.buildData && mon.buildData.gimmick === 'GMAXDYNAMAX';
+                    const turnsLeft = Math.max(0, mon.dynamaxTurns || 0);
+                    const turnsTxt = turnsLeft > 0 ? ` ${turnsLeft}/3` : '';
                     gBadge = isGmax
-                        ? ' <span class="gimmick-badge gimmick-gmax">G-MAX</span>'
-                        : ' <span class="gimmick-badge gimmick-dmax">DMAX</span>';
+                        ? ` <span class="gimmick-badge gimmick-gmax">G-MAX${turnsTxt}</span>`
+                        : ` <span class="gimmick-badge gimmick-dmax">DMAX${turnsTxt}</span>`;
                 }
                 nameEl.innerHTML = (mon.isShiny ? '&#10024; ' : '') + mon.name + gBadge;
                 nameEl.title = 'Tap for full summary · hover for quick stats';
@@ -11439,6 +11453,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (activeMon.volatile.recharge) _switchLockReason = 'Must recharge this turn!';
                 else if (activeMon.volatile.charging) _switchLockReason = 'Cannot switch while charging!';
                 else if (activeMon.volatile.partialTrap > 0) _switchLockReason = `Trapped by ${activeMon.volatile.partialTrapSrc || 'a move'}!`;
+                else if (activeMon.volatile.cantEscape) _switchLockReason = 'Cannot escape!';
                 else if (activeMon.volatile.ingrain) _switchLockReason = 'Rooted! Cannot switch out!';
                 else if (activeMon.item === 'Shed Shell') { /* Shed Shell ignores all trapping abilities */ }
                 else if (activeMon.type1 === 'Ghost' || activeMon.type2 === 'Ghost') { /* Ghost types ignore trapping abilities */ }
@@ -12122,7 +12137,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // === GIMMICK BUTTONS ===
             const _usedMega = isP1 ? state.usedMega : state.fUsedMega; const _usedDyna = isP1 ? state.usedDyna : state.fUsedDyna; const _usedTera = isP1 ? state.usedTera : state.fUsedTera; const _usedZ = isP1 ? state.usedZ : state.fUsedZ;
             let canUseMega = activeMon.buildData && activeMon.buildData.gimmick === 'MEGA' && !activeMon.megaEvolved && (!settings.classicMode || !_usedMega);
-            let canUseDyna = activeMon.buildData && (activeMon.buildData.gimmick === 'DYNAMAX' || activeMon.buildData.gimmick === 'GMAXDYNAMAX') && !activeMon.dynamaxed && !activeMon.dynamaxUsed && (!settings.classicMode || !_usedDyna);
+            let canUseDyna = activeMon.buildData && (activeMon.buildData.gimmick === 'DYNAMAX' || activeMon.buildData.gimmick === 'GMAXDYNAMAX') && !activeMon.dynamaxed && !activeMon.dynamaxUsed && !_usedDyna;
             let canUseTera = activeMon.buildData && activeMon.buildData.teraType && !activeMon.teraActivated && (!settings.classicMode || !_usedTera);
             let canUseZ = activeMon.buildData && activeMon.buildData.gimmick === 'ZMOVE' && !activeMon.zMoveUsed && (!settings.classicMode || !_usedZ);
             const hasGimmickButtons = canUseMega || canUseDyna || canUseTera || canUseZ;
@@ -12402,15 +12417,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return 'MEGA';
             }
 
-            // DYNAMAX: activate when any of these conditions are met:
-            //  a) attacker HP < 50% (Dynamax doubles max HP, acts as emergency heal-buffer)
-            //  b) opponent HP < 40% (Max Move can secure the KO + field effect bonus)
-            //  c) opponent has a super-effective move and we can survive more with boosted HP
-            //  d) endgame (last mons standing) — go for the finish
-            if ((bd.gimmick === 'DYNAMAX' || bd.gimmick === 'GMAXDYNAMAX') && !attacker.dynamaxed && !attacker.dynamaxUsed && (!settings.classicMode || !state.fUsedDyna)) {
+            // DYNAMAX: VGC-optimal — burn the 3-turn window early to maximize Max Move secondaries.
+            // Activate when:
+            //  a) at full or near-full HP on turn 1 of the matchup (maximizes the buff window)
+            //  b) attacker has a synergistic Max effect setup (Flying = +Spe sweep, Steel = +Def wall, weather/terrain abuse)
+            //  c) opponent HP < 60% (Max Move likely secures KO + still gets field effect)
+            //  d) attacker HP < 50% (emergency heal-buffer use)
+            //  e) endgame (last mons standing) — last call, use it or lose it
+            //  f) opponent has a super-effective move and we're at ≥50% HP (HP buffer helps tank)
+            if ((bd.gimmick === 'DYNAMAX' || bd.gimmick === 'GMAXDYNAMAX') && !attacker.dynamaxed && !attacker.dynamaxUsed && !state.fUsedDyna) {
                 let defHasSEMove = defender.moves.some(m => m.cat !== 'Status' && getMoveEffectiveness(m.type, attacker.type1, attacker.type2) >= 2);
                 let isEndgame = state.foeParty.filter(m => m.currentHp > 0).length <= 1;
-                if (hpPct < 0.5 || defHpPct < 0.4 || (defHasSEMove && hpPct < 0.75) || isEndgame) return bd.gimmick === 'GMAXDYNAMAX' ? 'GMAXDYNAMAX' : 'DYNAMAX';
+                let isFreshMatchup = (attacker.turnCount || 0) <= 1;
+                let hasGoodMaxSetup = attacker.moves.some(m => m.cat !== 'Status' && (m.type === 'Flying' || m.type === 'Steel' || m.type === 'Fighting' || m.type === 'Poison' || m.type === 'Ground' || m.type === 'Fire' || m.type === 'Water' || m.type === 'Grass' || m.type === 'Electric'));
+                if (isFreshMatchup && hpPct >= 0.85 && hasGoodMaxSetup) return bd.gimmick === 'GMAXDYNAMAX' ? 'GMAXDYNAMAX' : 'DYNAMAX';
+                if (defHpPct < 0.6 || hpPct < 0.5 || (defHasSEMove && hpPct >= 0.5) || isEndgame) return bd.gimmick === 'GMAXDYNAMAX' ? 'GMAXDYNAMAX' : 'DYNAMAX';
             }
 
             // TERA: activate when the Tera type eliminates a threatening weakness
@@ -13283,6 +13304,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (side.safeguard > 0) { side.safeguard--; if (side.safeguard === 0) logMsg(`${sideName} Safeguard wore off!`, 'info'); }
                 if (side.mist > 0) { side.mist--; if (side.mist === 0) logMsg(`${sideName} Mist cleared!`, 'info'); }
                 if (side.luckychant > 0) { side.luckychant--; if (side.luckychant === 0) logMsg(`${sideName} Lucky Chant faded!`, 'info'); }
+            });
+            // G-Max chip residual: 1/6 max HP to active mons whose type doesn't match the chip type (4 turns)
+            [['pSide','pActive'], ['fSide','fActive']].forEach(([sideKey, activeKey]) => {
+                const side = state[sideKey]; const mon = state[activeKey];
+                if (!side || !side.gmaxChip || !mon || mon.currentHp <= 0) return;
+                const chip = side.gmaxChip;
+                if (mon.type1 !== chip.type && mon.type2 !== chip.type && mon.ability !== "Magic Guard") {
+                    const dmg = Math.max(1, Math.floor(mon.maxHp / 6));
+                    const actDmg = Math.min(mon.currentHp, dmg);
+                    mon.currentHp -= actDmg;
+                    logMsg(`${mon.name} is hurt by the lingering ${chip.type} damage! (${actDmg})`, 'dmg');
+                }
+                chip.turns--;
+                if (chip.turns <= 0) { side.gmaxChip = null; logMsg(`The lingering damage faded.`, 'info'); }
             });
         }
 
@@ -14419,7 +14454,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
                 }
                 if (gimmickPending === 'DYNAMAX' || gimmickPending === 'GMAXDYNAMAX') {
-                    let ok = attacker.buildData && (attacker.buildData.gimmick === 'DYNAMAX' || attacker.buildData.gimmick === 'GMAXDYNAMAX') && !attacker.dynamaxed && !attacker.dynamaxUsed && (!settings.classicMode || !(isPlayer ? state.usedDyna : state.fUsedDyna));
+                    let ok = attacker.buildData && (attacker.buildData.gimmick === 'DYNAMAX' || attacker.buildData.gimmick === 'GMAXDYNAMAX') && !attacker.dynamaxed && !attacker.dynamaxUsed && !(isPlayer ? state.usedDyna : state.fUsedDyna);
                     if (!ok) { clearGimmickIntent(isPlayer); gimmickPending = null; }
                 }
                 if (gimmickPending === 'TERA') {
@@ -14686,9 +14721,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
-            // Max Guard: functions like Protect
+            // Max Guard: functions like Protect (same 1/3^n chain rate as other protect variants)
             if (move.isMaxGuard) {
-                let successRate = Math.pow(0.5, attacker.volatile.protectCount || 0);
+                let successRate = Math.pow(1/3, attacker.volatile.protectCount || 0);
                 if (Math.random() < successRate) {
                     attacker.volatile.protect = true;
                     attacker.volatile.maxGuard = true; // Max Guard blocks Max Moves; regular Protect does not
@@ -14858,11 +14893,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Continue to damage calc - 0.25x modifier applied below
                 } else if (move.isMaxMove) {
                     // VGC: Max Moves are only blocked by Max Guard, NOT by regular Protect
-                    if (defender.volatile.maxGuard) {
+                    // EXCEPT G-Max One Blow and G-Max Rapid Flow, which bypass Max Guard
+                    const _bypassMaxGuard = (move.name === "G-Max One Blow" || move.name === "G-Max Rapid Flow");
+                    if (defender.volatile.maxGuard && !_bypassMaxGuard) {
                         logMsg(`${defender.name} protected itself from the Max Move with Max Guard!`);
                         AudioSystem.playMissSound();
                         registerMoveConnectionFailure(attacker, move);
                         await sleep(1000); return;
+                    }
+                    if (defender.volatile.maxGuard && _bypassMaxGuard) {
+                        logMsg(`${move.name} broke through ${defender.name}'s Max Guard!`, 'info');
+                        defender.volatile.maxGuard = false;
+                        defender.volatile.protect = false;
                     }
                     // Regular Protect fails against Max Moves — fall through to damage
                 } else {
@@ -15093,7 +15135,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // === TYPE IMMUNITY ABILITIES ===
                 // Gastro Acid suppresses all defender abilities — skip all ability checks if active
                 // Mold Breaker / Teravolt / Turboblaze: attacker ignores all defensive abilities
-                const _moldBreaker = attacker.ability === "Mold Breaker" || attacker.ability === "Teravolt" || attacker.ability === "Turboblaze";
+                // G-Max Drum Solo / Fireball / Hydrosnipe also ignore the target's ability
+                const _gmaxIgnoresAbility = move.isMaxMove && (move.name === "G-Max Drum Solo" || move.name === "G-Max Fireball" || move.name === "G-Max Hydrosnipe");
+                const _moldBreaker = attacker.ability === "Mold Breaker" || attacker.ability === "Teravolt" || attacker.ability === "Turboblaze" || _gmaxIgnoresAbility;
                 // Mycelium Might: when attacker uses a status move, target's ability is ignored
                 const _myceliumBypass = attacker.ability === "Mycelium Might" && move.cat === "Status";
                 // Ability Shield: holder's ability cannot be ignored by Mold Breaker/etc.
@@ -15323,6 +15367,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // OHKO MOVES: Fissure, Horn Drill, Guillotine, Sheer Cold
                 const _ohkoMoves = new Set(["Fissure","Horn Drill","Guillotine","Sheer Cold"]);
                 if (_ohkoMoves.has(move.name)) {
+                    // VGC: OHKO moves fail against Dynamaxed targets
+                    if (defender.dynamaxed) { logMsg(`The move failed against the Dynamaxed ${defender.name}!`, 'info'); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
                     // Sheer Cold misses non-Ice types more (accuracy=20 in DB, no special override needed)
                     // Invulnerable targets are immune
                     if (defender.volatile.invulnerable) { logMsg(`${attacker.name}'s attack missed!`); registerMoveConnectionFailure(attacker, move, false); await sleep(1000); return; }
@@ -15663,7 +15709,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (move.name === "Lash Out" && attacker.volatile && attacker.volatile.statLoweredThisTurn) basePower = basePower * 2;
                 if ((move.name === "Stomping Tantrum" || move.name === "Temper Flare") && attacker.volatile && attacker.volatile.lastMoveFailed) basePower = basePower * 2;
                 if (move.name === "Assurance" && defender.tookDamageThisTurn) basePower = basePower * 2;
-                if (["Behemoth Blade","Behemoth Bash","Dynamax Cannon"].includes(move.name) && defender.dynamax) basePower = basePower * 2;
+                if (["Behemoth Blade","Behemoth Bash","Dynamax Cannon"].includes(move.name) && defender.dynamaxed) basePower = basePower * 2;
                 if (move.name === "Last Respects") {
                     const _myPartyLR = isPlayer ? state.playerParty : state.foeParty;
                     const _fainted = _myPartyLR ? _myPartyLR.filter(m => m && m.currentHp <= 0).length : 0;
@@ -16973,6 +17019,118 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 updateUI();
             }
 
+            // === G-MAX SECONDARY EFFECTS ===
+            // Run after Max effects so they layer (e.g., G-Max Wildfire still sets Sun via type=Fire AND adds residual chip).
+            // Skipped if attacker fainted, or defender is fully fainted (chip moves still set the side-effect though).
+            if (move.isMaxMove && move.isGmaxMove && attacker.currentHp > 0) {
+                const gName = move.name;
+                const foeSide = isPlayer ? state.fSide : state.pSide;
+                const userSide = isPlayer ? state.pSide : state.fSide;
+                const userParty = isPlayer ? state.playerParty : state.foeParty;
+                // Residual chip damage (1/6 max HP for 4 turns to non-matching-type foes)
+                const _chip = (chipType) => {
+                    foeSide.gmaxChip = { type: chipType, turns: 4 };
+                    logMsg(`The foe's side was engulfed by ${gName}!`, 'status');
+                };
+                switch (gName) {
+                    case "G-Max Vine Lash":   _chip("Grass"); break;
+                    case "G-Max Wildfire":    _chip("Fire");  break;
+                    case "G-Max Cannonade":   _chip("Water"); break;
+                    case "G-Max Volcalith":   _chip("Rock");  break;
+                    case "G-Max Volt Crash":
+                        if (defender.currentHp > 0 && !defender.status) applyStatus(defender, "PAR");
+                        break;
+                    case "G-Max Stun Shock":
+                        if (defender.currentHp > 0 && !defender.status) applyStatus(defender, Math.random() < 0.5 ? "PAR" : "PSN");
+                        break;
+                    case "G-Max Malodor":
+                        if (defender.currentHp > 0 && !defender.status) applyStatus(defender, "PSN");
+                        break;
+                    case "G-Max Foam Burst":
+                        if (defender.currentHp > 0) { changeStage(defender, 'spe', -2, true); logMsg(`${defender.name}'s Speed was harshly lowered!`, 'info'); }
+                        break;
+                    case "G-Max Smite":
+                        if (defender.currentHp > 0 && (defender.volatile.confusion|0) === 0) { defender.volatile.confusion = 2 + Math.floor(Math.random()*3); logMsg(`${defender.name} became confused!`, 'status'); }
+                        break;
+                    case "G-Max Snooze":
+                        if (defender.currentHp > 0 && !defender.status && (defender.volatile.yawnTurns|0) === 0) { defender.volatile.yawnTurns = 2; logMsg(`${defender.name} grew drowsy!`, 'status'); }
+                        break;
+                    case "G-Max Cuddle":
+                        if (defender.currentHp > 0 && !defender.volatile.infatuated && attacker.gender !== null && defender.gender !== null && attacker.gender !== defender.gender && defender.ability !== "Oblivious") { defender.volatile.infatuated = true; logMsg(`${defender.name} became infatuated!`, 'status'); }
+                        break;
+                    case "G-Max Tartness":
+                        if (defender.currentHp > 0) { changeStage(defender, 'eva', -1, true); logMsg(`${defender.name}'s evasiveness fell!`, 'info'); }
+                        break;
+                    case "G-Max Stonesurge":
+                        if (!foeSide.stealthRock) { foeSide.stealthRock = true; logMsg(`Pointed stones float around the foe's side!`, 'status'); }
+                        break;
+                    case "G-Max Steelsurge":
+                        if (!foeSide.steelsurge) { foeSide.steelsurge = true; logMsg(`Sharp-steel spikes float around the foe's side!`, 'status'); }
+                        break;
+                    case "G-Max Wind Rage": {
+                        let cleared = false;
+                        ['stealthRock','stickyWeb','steelsurge'].forEach(k => { if (foeSide[k]) { foeSide[k] = false; cleared = true; } if (userSide[k]) { userSide[k] = false; cleared = true; } });
+                        ['spikes','toxicSpikes','reflect','lightScreen','auroraVeil','safeguard','mist'].forEach(k => { if ((foeSide[k]|0) > 0) { foeSide[k] = 0; cleared = true; } if ((userSide[k]|0) > 0) { userSide[k] = 0; cleared = true; } });
+                        if (cleared) logMsg(`${attacker.name}'s Wind Rage blew everything away!`, 'info');
+                        break;
+                    }
+                    case "G-Max Resonance":
+                        if (!userSide.auroraVeil) { userSide.auroraVeil = 5; logMsg(`Aurora Veil made ${attacker.name}'s side stronger to attacks!`, 'status'); }
+                        break;
+                    case "G-Max Gravitas":
+                        state.gravity = 5; logMsg(`Gravity intensified!`, 'status');
+                        break;
+                    case "G-Max Chi Strike":
+                        attacker.volatile.focusEnergy = true; logMsg(`${attacker.name} is getting pumped! (Critical-hit ratio rose!)`, 'info');
+                        break;
+                    case "G-Max Terror":
+                        if (defender.currentHp > 0) { defender.volatile.cantEscape = true; logMsg(`${defender.name} can no longer escape!`, 'status'); }
+                        break;
+                    case "G-Max Meltdown":
+                        if (defender.currentHp > 0 && !defender.volatile.torment) { defender.volatile.torment = true; logMsg(`${defender.name} can't use the same move twice in a row!`, 'status'); }
+                        break;
+                    case "G-Max Depletion":
+                        if (defender.currentHp > 0 && defender.volatile.lastMoveUsed) {
+                            const slot = defender.moves.find(m => m.name === defender.volatile.lastMoveUsed);
+                            if (slot && slot.pp > 0) { const drain = Math.min(slot.pp, 2); slot.pp -= drain; logMsg(`${defender.name}'s ${slot.name} lost ${drain} PP!`, 'info'); }
+                        }
+                        break;
+                    case "G-Max Sweetness":
+                        userParty.forEach(m => { if (m && m.currentHp > 0 && m.status) { m.status = null; m.statusTurns = 0; logMsg(`${m.name} was cured of its status!`, 'heal'); } });
+                        break;
+                    case "G-Max Finale": {
+                        const heal = Math.max(1, Math.floor(attacker.maxHp / 6));
+                        if (attacker.currentHp < attacker.maxHp) { attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + heal); logMsg(`${attacker.name} restored HP from G-Max Finale!`, 'heal'); }
+                        break;
+                    }
+                    case "G-Max Replenish": {
+                        let restored = 0;
+                        userParty.forEach(m => { if (m && m._usedBerry && !m.item) { m.item = m._usedBerry; m._usedBerry = null; restored++; } });
+                        if (restored > 0) logMsg(`${restored} ally's Berry was restored!`, 'heal');
+                        break;
+                    }
+                    case "G-Max Gold Rush":
+                        if (defender.currentHp > 0 && (defender.volatile.confusion|0) === 0) { defender.volatile.confusion = 2 + Math.floor(Math.random()*3); logMsg(`${defender.name} became confused by the shower of coins!`, 'status'); }
+                        break;
+                    case "G-Max Sandblast":
+                    case "G-Max Centiferno":
+                        if (defender.currentHp > 0 && (defender.volatile.partialTrap|0) === 0) {
+                            defender.volatile.partialTrap = 4 + Math.floor(Math.random()*2);
+                            defender.volatile.partialTrapSrc = gName;
+                            logMsg(`${defender.name} was trapped by ${gName}!`, 'status');
+                        }
+                        break;
+                    // G-Max Drum Solo / Fireball / Hydrosnipe ignore target ability — already handled by isMaxMove damage,
+                    // but emit a flavor log on cast (ability-ignore is applied by passing through Mold-Breaker-like path in damage calc).
+                    case "G-Max Drum Solo":
+                    case "G-Max Fireball":
+                    case "G-Max Hydrosnipe":
+                        // No additional secondary; flavor only (ability-ignore wired below in damage calc check).
+                        break;
+                }
+                updateUI();
+            }
+
             } finally {
                 finalizeLockingAndRollout(attacker, move, lockingMoves);
             }
@@ -17684,6 +17842,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.volatile.recharge = false;
             mon.volatile.partialTrap = 0;
             mon.volatile.partialTrapSrc = '';
+            mon.volatile.cantEscape = false;
             mon.volatile.octolock = false;
             mon.volatile.ingrain = false;
             mon.volatile.infatuated = false;
@@ -17753,6 +17912,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     mon.currentHp -= actualDmg;
                     logMsg(`Pointed stones dealt ${actualDmg} damage to ${mon.name}!`, 'dmg');
                     }
+                }
+            }
+            // G-Max Steelsurge — Steel-typed entry hazard (same formula as Stealth Rock but Steel-typed)
+            if (side.steelsurge && mon.currentHp > 0) {
+                let eff = getMoveEffectiveness("Steel", mon.type1, mon.type2);
+                if (eff > 0) {
+                    let dmg = Math.max(1, Math.floor(mon.maxHp * (0.125 * eff) * _hazardMult));
+                    let actualDmg = Math.min(mon.currentHp, dmg);
+                    mon.currentHp -= actualDmg;
+                    logMsg(`Sharp-steel spikes dealt ${actualDmg} damage to ${mon.name}!`, 'dmg');
                 }
             }
             if (side.spikes > 0 && isGrounded && mon.currentHp > 0) {
@@ -18134,9 +18303,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 updateUI(); return;
             }
             if (move.name === "Substitute") {
-                let cost = Math.floor(attacker.maxHp / 4);
-                if (attacker.currentHp > cost) { attacker.currentHp -= cost; attacker.volatile.sub = cost; logMsg(`${attacker.name} put up a substitute! (Cost: ${cost} HP)`, 'info'); } 
-                else { logMsg(`But it was too weak to make a substitute!`, 'info'); } return; 
+                // Substitute uses pre-Dynamax max HP (Showdown convention) so Dmax doesn't disproportionately tax Sub users.
+                let _subBase = attacker.dynamaxed && attacker.baseMaxHp ? attacker.baseMaxHp : attacker.maxHp;
+                let cost = Math.floor(_subBase / 4);
+                if (attacker.currentHp > cost) { attacker.currentHp -= cost; attacker.volatile.sub = cost; logMsg(`${attacker.name} put up a substitute! (Cost: ${cost} HP)`, 'info'); }
+                else { logMsg(`But it was too weak to make a substitute!`, 'info'); } return;
             }
             if (move.name === "Rest") { 
                 if (attacker.currentHp === attacker.maxHp) { logMsg(`But it failed!`, 'info'); return; }
@@ -18360,6 +18531,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             if (move.name === "Roar" || move.name === "Whirlwind") {
+                if (defender.dynamaxed) { logMsg(`The move failed against the Dynamaxed ${defender.name}!`, 'info'); return; }
                 if (state.mode !== 'pvp') {
                     let target = isPlayer ? state.foeParty : state.playerParty;
                     let activeMon = isPlayer ? state.fActive : state.pActive;
@@ -18444,8 +18616,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Feather Dance" || move.name === "FeatherDance") { changeStage(defender, 'atk', -2); return; }
             if (move.name === "Belly Drum") {
                 if (attacker.stages.atk >= 6) { logMsg(`But it failed!`, 'info'); return; }
-                if (attacker.currentHp > Math.floor(attacker.maxHp / 2)) {
-                    attacker.currentHp -= Math.floor(attacker.maxHp / 2);
+                // Use pre-Dynamax max HP for the cost so Dmax users aren't forced to half their post-Dmax (= full base) HP.
+                const _bdBase = attacker.dynamaxed && attacker.baseMaxHp ? attacker.baseMaxHp : attacker.maxHp;
+                if (attacker.currentHp > Math.floor(_bdBase / 2)) {
+                    attacker.currentHp -= Math.floor(_bdBase / 2);
                     attacker.stages.atk = 6;
                     logMsg(`${attacker.name} cut its HP and maximized its Attack!`, 'info');
                 } else { logMsg(`But it failed!`, 'info'); }
