@@ -24494,10 +24494,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (w.isSafari) {
                 const left = w.ballsLeft | 0;
-                html += `<div style="font-size:11px;color:#aaa;margin-bottom:6px;">Safari Balls left: <b style="color:#81c784;">${left}</b></div>`;
+                html += `<div style="font-size:11px;color:#aaa;margin-bottom:6px;">Safari Balls left: <b style="color:#81c784;">${left}</b>${w._baited ? ' · <span style="color:#ffb74d;">Bait active (+50% catch)</span>' : ''}</div>`;
                 html += `<button type="button" onclick="window.StoryMode._wildThrowBall('safari')" ${left<=0||storageFull?'disabled':''} style="font-size:12px;padding:6px 12px;margin:2px;">🟢 Throw Safari Ball</button>`;
-                html += `<button type="button" onclick="window.StoryMode._wildSafariBait()" ${left<=0?'disabled':''} style="font-size:12px;padding:6px 12px;margin:2px;color:#ffb74d;border-color:#ffb74d;">🍎 Bait (easier catch)</button>`;
-                html += `<button type="button" onclick="window.StoryMode._wildSafariMud()" ${left<=0?'disabled':''} style="font-size:12px;padding:6px 12px;margin:2px;color:#a1887f;border-color:#a1887f;">💧 Mud (less likely to flee)</button>`;
+                html += `<button type="button" onclick="window.StoryMode._wildSafariBait()" ${left<=0||w._baited?'disabled':''} style="font-size:12px;padding:6px 12px;margin:2px;color:#ffb74d;border-color:#ffb74d;">🍎 Bait (+50% next throw)</button>`;
             } else {
                 const balls = [
                     { id: 'pokeball',  label: 'Poké Ball' },
@@ -24505,6 +24504,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     { id: 'ultraBall', label: 'Ultra Ball' },
                     { id: 'masterBall',label: 'Master Ball' },
                 ];
+                const totalBalls = balls.reduce((acc, b) => acc + ((sm.inventory && sm.inventory[b.id]) | 0), 0);
+                if (totalBalls <= 0 && !storageFull) {
+                    html += '<div style="color:#ef9a9a;font-size:11px;margin-bottom:6px;">You have no Poké Balls. Visit the Pokémart in town to stock up.</div>';
+                }
                 balls.forEach(b => {
                     const qty = (sm.inventory && sm.inventory[b.id]) | 0;
                     html += `<button type="button" onclick="window.StoryMode._wildThrowBall('${b.id}')" ${qty<=0||storageFull?'disabled':''} style="font-size:12px;padding:6px 12px;margin:2px;">▣ ${b.label} <span style="color:#888;font-size:10px;">×${qty}</span></button>`;
@@ -24534,7 +24537,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (w.isSafari) {
                 if ((w.ballsLeft | 0) <= 0) return;
                 w.ballsLeft = Math.max(0, w.ballsLeft - 1);
-                const chance = _wildComputeCatchChance(w.name, 'pokeball', null);
+                const modifier = w._baited ? 'bait' : null;
+                w._baited = false; // bait is consumed on the next throw
+                const chance = _wildComputeCatchChance(w.name, 'pokeball', modifier);
                 if (storyRngNext() < chance) {
                     const where = gainPokemonToBoxOrParty({ name: w.name, build: w.build });
                     if (!where) {
@@ -24579,22 +24584,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _wildSafariBait() {
             const w = _wildCurrent;
             if (!w || !w.isSafari) return;
-            // No ball thrown; spends a turn (1 ball pip) but raises next throw odds via implicit boost.
-            // Simpler model: bait increments a transient bonus on w that next throw consumes.
-            w._baitedThrows = (w._baitedThrows | 0) + 1;
+            if (w._baited) return; // already baited; throwing again is a no-op
+            w._baited = true;
             w.ballsLeft = Math.max(0, w.ballsLeft - 1);
             const statusEl = document.getElementById('story-wild-status');
-            if (statusEl) statusEl.textContent = 'You threw bait — the Pokémon is distracted.';
-            if (w.ballsLeft <= 0) { setTimeout(_wildClose, 900); return; }
-            _renderWildModal();
-        }
-        function _wildSafariMud() {
-            const w = _wildCurrent;
-            if (!w || !w.isSafari) return;
-            w._muddedThrows = (w._muddedThrows | 0) + 1;
-            w.ballsLeft = Math.max(0, w.ballsLeft - 1);
-            const statusEl = document.getElementById('story-wild-status');
-            if (statusEl) statusEl.textContent = 'You threw mud — the Pokémon is angrier but less likely to flee.';
+            if (statusEl) statusEl.textContent = 'You threw bait — the Pokémon is distracted. Next throw +50%.';
             if (w.ballsLeft <= 0) { setTimeout(_wildClose, 900); return; }
             _renderWildModal();
         }
@@ -24753,9 +24747,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const offer = sm.traderOfferByCity && sm.traderOfferByCity[cityIdx];
             if (!offer || offer.used) return;
             const idx = (sm.team || []).findIndex(s => s && s.name === offer.want);
-            if (idx < 0) return;
+            if (idx < 0) {
+                try { window.showGameAlert && window.showGameAlert(`The trader still wants your ${offer.want} — but it's not in your party anymore.`); } catch (_) {}
+                return;
+            }
             const slot = _buildStorySlot(offer.give);
-            if (!slot) return;
+            if (!slot) {
+                try { window.showGameAlert && window.showGameAlert(`The trader couldn't ready ${offer.give} — try again later.`); } catch (_) {}
+                return;
+            }
             sm.team[idx] = { name: slot.name, build: deepClone(slot.build) };
             offer.used = true;
             save();
@@ -24918,8 +24918,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (target < 0) { try { window.showGameAlert && window.showGameAlert('No upcoming trainer to spy on.'); } catch (_) {} return; }
                     const row = STORY_EVENTS_RAW[target];
                     const trName = sm.trainerAssignments[row[0]] || row[2];
+                    const gw = row[3] || {};
+                    const tiers = [];
+                    if (gw.g1) tiers.push(`Tier 1 (strongest) ${gw.g1}%`);
+                    if (gw.g2) tiers.push(`Tier 2 ${gw.g2}%`);
+                    if (gw.g3) tiers.push(`Tier 3 ${gw.g3}%`);
+                    if (gw.g4) tiers.push(`Tier 4 (weakest) ${gw.g4}%`);
+                    const tierStr = tiers.length ? tiers.join(' · ') : 'pool unknown';
+                    const coin = row[4] || 0;
                     sm.gold -= price;
-                    try { window.showGameAlert && window.showGameAlert(`Intel: next battle vs ${trName} (${row[2]}). Grade weights: ${JSON.stringify(row[3])}.`); } catch (_) {}
+                    try { window.showGameAlert && window.showGameAlert(`📜 Intel — Next battle vs ${trName} (${row[2]}).\n\nPool: ${tierStr}.\nReward: ${coin.toLocaleString()}G.`); } catch (_) {}
                     break;
                 }
                 case 'shadyRepel': {
@@ -28681,7 +28689,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openPCBoxModal, _pcSetTab, pcDeposit, pcWithdraw, pcSwap, pcRelease,
             gainPokemonToBoxOrParty, isPokemonStorageFull,
             pickBestFromTeam, pickWorstFromTeam,
-            _wildThrowBall, _wildSafariBait, _wildSafariMud, _wildFlee,
+            _wildThrowBall, _wildSafariBait, _wildFlee,
             _wagerAccept, _wagerDecline,
             enterTrader, _traderAccept, _traderDecline,
             enterSafariZone,
