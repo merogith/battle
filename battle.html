@@ -26065,11 +26065,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? `<div class="story-tutor-option-row"><span class="current" style="color:#888;">No eligible mechanics for this Pokémon under current run settings.</span></div>`
                 : sections.join('');
 
+            const headerCostChip = noneEligible
+                ? ''
+                : `<span class="story-action-badge ${cantAfford ? 'cost cant-afford' : 'cost'}" style="margin-left:6px;"${cantAfford ? ` title="You have ${sm.gold.toLocaleString()}G — short by ${(COLRESS_COST - sm.gold).toLocaleString()}G"` : ''}>${COLRESS_COST.toLocaleString()}G / change</span>`;
             return `<div class="story-tutor-mon">
                 <div class="story-tutor-mon-name" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                     <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
                     <span>${_esc(t.name)}</span> ${typeHtml}
                     ${badge}
+                    ${headerCostChip}
                     <span style="font-size:10px;color:#888;margin-left:auto;">Held: <strong style="color:#bbb;">${_esc(heldItem)}</strong></span>
                 </div>
                 ${body}
@@ -26317,6 +26321,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 : '';
 
             const summaryLine = `${_evSpreadCompact(cur)}`;
+            const headerCostChip = `<span class="story-action-badge ${cantAfford ? 'cost cant-afford' : 'cost'}"${cantAfford ? ` title="You have ${sm.gold.toLocaleString()}G — short by ${(EVTRAINER_COST - sm.gold).toLocaleString()}G"` : ''}>${EVTRAINER_COST.toLocaleString()}G / preset</span>`;
 
             return `<div class="story-tutor-mon">
                 <div class="story-tutor-mon-main" style="display:flex;align-items:center;gap:10px;padding:8px 10px;">
@@ -26325,6 +26330,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <div class="story-tutor-mon-name">${_esc(t.name)} ${typeHtml}</div>
                         <div class="story-tutor-mon-meta" style="font-size:10px;color:#9ccc65;">${summaryLine}</div>
                     </div>
+                    ${headerCostChip}
                 </div>
                 <div class="story-tutor-mon-body">${universalSection}${roleSection}${metaSection}</div>
             </div>`;
