@@ -22066,6 +22066,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{}, currentEnemyLock:null,
                    artifactsDisabled:[], storyCityVisit:null,
                    artifactShopOffersByCity:{}, artifactShopPurchasedByCity:{}, artifactFreeClaimUsed:false,
+                   deptShopPurchasedByCity:{},
                    storyDifficulty:'normal', runSeed:null,
                    storyMilestoneTips:{ m4:false, m8:false },
                    storyRetryInventorySnapshot: null,
@@ -22193,6 +22194,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.deptArtifactTypesByCity || typeof sm.deptArtifactTypesByCity !== 'object') sm.deptArtifactTypesByCity = {};
                 if (!sm.artifactTypeById || typeof sm.artifactTypeById !== 'object') sm.artifactTypeById = {};
                 if (!sm.deptItemOffersByCity || typeof sm.deptItemOffersByCity !== 'object') sm.deptItemOffersByCity = {};
+                if (!sm.deptShopPurchasedByCity || typeof sm.deptShopPurchasedByCity !== 'object') sm.deptShopPurchasedByCity = {};
                 try { delete sm.profIntroThemePending; } catch (e) {}
                 if (!sm.storyDifficulty) sm.storyDifficulty = 'normal';
                 if (sm.settings && !('noItemRun' in sm.settings)) sm.settings.noItemRun = false;
@@ -23132,7 +23134,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 profUsed:{}, usedTrainerNames:[], gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{},
                 currentEnemyLock:null, artifactsDisabled:[],
                 deptArtifactOffersByCity:{}, artifactShopOffersByCity:{}, artifactShopPurchasedByCity:{}, artifactFreeClaimUsed:false,
-                deptArtifactTypesByCity:{}, artifactTypeById:{}, deptItemOffersByCity:{},
+                deptArtifactTypesByCity:{}, artifactTypeById:{}, deptItemOffersByCity:{}, deptShopPurchasedByCity:{},
                 settings:{ enabledGens, minGen, maxGen,
                     megaOn: document.getElementById('story-mech-mega')?.checked||false,
                     zOn:    document.getElementById('story-mech-z')?.checked||false,
@@ -24974,27 +24976,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
             const rawItems = type === 'dept' ? [...POKEMART_ITEMS, ...DEPT_ITEMS] : POKEMART_ITEMS;
             const items = rawItems.filter(item => !isNoItemRunBattleBagExcluded(item));
+            // Department store: each item is one-per-shop, lineup never refreshes (persists across gym leader fights via save state).
+            if (type === 'dept' && (!sm.deptShopPurchasedByCity || typeof sm.deptShopPurchasedByCity !== 'object')) sm.deptShopPurchasedByCity = {};
+            const _deptCKey = String(Math.max(0, cityIdx | 0));
+            const _deptBoughtHere = type === 'dept' ? (sm.deptShopPurchasedByCity[_deptCKey] || {}) : {};
             if (type === 'dept') {
                 const featuredItems = _ensureDeptItemOfferForCity(cityIdx).filter(item => !isNoItemRunBattleBagExcluded(item));
                 if (featuredItems.length) {
                     const featuredSection = document.createElement('div');
                     featuredSection.className = 'story-featured-section';
-                    featuredSection.innerHTML='<h4>⭐ Featured Battle Tech (3 per city)</h4>';
+                    featuredSection.innerHTML='<h4>⭐ Featured Battle Tech (3 per city — one each)</h4>';
                     featuredItems.forEach(item => {
                         const canAfford = sm.gold >= item.price;
+                        const alreadyBought = !!_deptBoughtHere[item.id];
+                        const canBuy = canAfford && !alreadyBought;
                         const qty = sm.inventory[item.id]||0;
                         const icon = storyShopIconCellHtml(item.id);
-                        featuredSection.innerHTML += `<div class="story-shop-item" style="border-color:${item.tier==='mega' ? '#43a047' : '#7e57c2'};">
+                        const btnLabel = alreadyBought ? 'Sold out' : 'Buy';
+                        featuredSection.innerHTML += `<div class="story-shop-item" style="border-color:${item.tier==='mega' ? '#43a047' : '#7e57c2'};opacity:${alreadyBought ? '0.5' : '1'};">
                             <div class="story-shop-item-row">
                                 ${icon}
                                 <div style="flex:1;min-width:0;">
-                                    <h4>${item.name} <span style="float:right;color:#888;font-size:10px;">×${qty}</span></h4>
+                                    <h4>${item.name} ${alreadyBought ? '<span style="color:#ffb74d;font-size:10px;">[Sold out]</span>' : ''}<span style="float:right;color:#888;font-size:10px;">×${qty}</span></h4>
                                     <div class="desc">${item.desc}</div>
                                 </div>
                             </div>
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
                                 <span class="price">${storyGoldHtml(item.price.toLocaleString())}</span>
-                                <button onclick="window.StoryMode.buyItem('${item.id}',${item.price})" ${canAfford?'':'disabled'} style="font-size:11px;padding:3px 8px;${canAfford?'color:#ffb74d;border-color:#ffb74d;':'opacity:0.4;'}">Buy</button>
+                                <button onclick="window.StoryMode.buyItem('${item.id}',${item.price})" ${canBuy?'':'disabled'} style="font-size:11px;padding:3px 8px;${canBuy?'color:#ffb74d;border-color:#ffb74d;':'opacity:0.4;'}">${btnLabel}</button>
                             </div>
                         </div>`;
                     });
@@ -25003,20 +25012,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             items.forEach(item => {
                 const canAfford = sm.gold >= item.price;
+                const alreadyBought = type === 'dept' && !!_deptBoughtHere[item.id];
+                const canBuy = canAfford && !alreadyBought;
                 const qty = sm.inventory[item.id]||0;
                 const icon = storyShopIconCellHtml(item.id);
                 const buyColor = item.tier === 'mega' || item.tier === 'ultra' ? '#ffb74d' : '#4caf50';
-                gridEl.innerHTML += `<div class="story-shop-item">
+                const btnLabel = alreadyBought ? 'Sold out' : 'Buy';
+                gridEl.innerHTML += `<div class="story-shop-item" style="opacity:${alreadyBought ? '0.5' : '1'};">
                     <div class="story-shop-item-row">
                         ${icon}
                         <div style="flex:1;min-width:0;">
-                            <h4>${item.name} <span style="float:right;color:#888;font-size:10px;">×${qty}</span></h4>
+                            <h4>${item.name} ${alreadyBought ? '<span style="color:#ffb74d;font-size:10px;">[Sold out]</span>' : ''}<span style="float:right;color:#888;font-size:10px;">×${qty}</span></h4>
                             <div class="desc">${item.desc}</div>
                         </div>
                     </div>
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
                         <span class="price">${storyGoldHtml(item.price.toLocaleString())}</span>
-                        <button onclick="window.StoryMode.buyItem('${item.id}',${item.price})" ${canAfford?'':'disabled'} style="font-size:11px;padding:3px 8px;${canAfford?`color:${buyColor};border-color:${buyColor};`:'opacity:0.4;'}">Buy</button>
+                        <button onclick="window.StoryMode.buyItem('${item.id}',${item.price})" ${canBuy?'':'disabled'} style="font-size:11px;padding:3px 8px;${canBuy?`color:${buyColor};border-color:${buyColor};`:'opacity:0.4;'}">${btnLabel}</button>
                     </div>
                 </div>`;
             });
@@ -25048,9 +25060,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const allowed = [...normalDept, ...featuredOffers];
                 if (!allowed.some(i => i.id === itemId && i.price === price)) return;
             }
+            // Department store: one of each item per city, lock persists across gym leader fights via save state.
+            if (st === 'dept') {
+                if (!sm.deptShopPurchasedByCity || typeof sm.deptShopPurchasedByCity !== 'object') sm.deptShopPurchasedByCity = {};
+                const _cKey = String(Math.max(0, cityIndexFromEventIndex(sm.eventIndex) | 0));
+                if (!sm.deptShopPurchasedByCity[_cKey]) sm.deptShopPurchasedByCity[_cKey] = {};
+                if (sm.deptShopPurchasedByCity[_cKey][itemId]) return;
+            }
             if (sm.gold < price) return;
             sm.gold -= price;
             sm.inventory[itemId] = (sm.inventory[itemId]||0) + 1;
+            if (st === 'dept') {
+                const _cKey = String(Math.max(0, cityIndexFromEventIndex(sm.eventIndex) | 0));
+                sm.deptShopPurchasedByCity[_cKey][itemId] = true;
+            }
             save();
             enterShop(st === 'dept' ? 'dept' : 'mart');
         }
