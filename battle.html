@@ -4600,6 +4600,13 @@
                     </label>
                     <span style="color:#777;font-size:10px;">Shops stay open; battle-bag stock is not sold. Neither side uses battle items.</span>
                 </div>
+                <div style="padding:8px 10px;border:2px solid #244a2a;background:linear-gradient(180deg,#0a1c10 0%,#06120a 100%);display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:inset -2px -2px 0 #051208,inset 2px 2px 0 #1d3d22;margin-bottom:10px;">
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;">
+                        <input type="checkbox" id="story-catch-mode">
+                        <span style="color:#81c784;font-weight:bold;">&#9899; Catch Pokémon</span>
+                    </label>
+                    <span style="color:#777;font-size:10px;">Stocks Poké Balls in the mart and unlocks the PC Box at city hubs.</span>
+                </div>
                 <div style="font-size:10px;color:#666;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Battle mechanic mode:</div>
                 <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:11px;">
                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
@@ -4852,6 +4859,19 @@
                 <div id="story-team-panel" style="display:flex;flex-direction:column;gap:4px;"></div>
             </div>
             <button type="button" class="story-bag-close-btn" onclick="window.closeModal('modal-story-party')">Close</button>
+        </div>
+    </div>
+
+    <div id="modal-story-pc-box" class="modal hidden">
+        <div class="modal-content white-outline" style="max-width:560px;">
+            <h3 class="story-party-modal-title" style="display:flex;align-items:center;gap:8px;"><span style="font-size:18px;">&#128190;</span><span>PC Box <span id="story-pc-count" style="color:#9aa0aa;font-size:10px;font-weight:normal;"></span></span></h3>
+            <p class="story-party-modal-hint" style="margin:4px 0 8px;">Deposit / withdraw / release Pokémon. Party must keep at least 1 Pokémon at all times.</p>
+            <div style="display:flex;gap:6px;margin-bottom:8px;font-size:11px;">
+                <button type="button" id="story-pc-tab-party" class="story-pc-tab" onclick="window.StoryMode._pcSetTab('party')" style="flex:1;padding:6px;background:#1a1f2a;color:#cfd8dc;border:1px solid #455a64;border-radius:4px;cursor:pointer;">Party → Box</button>
+                <button type="button" id="story-pc-tab-box" class="story-pc-tab" onclick="window.StoryMode._pcSetTab('box')" style="flex:1;padding:6px;background:#1a1f2a;color:#cfd8dc;border:1px solid #455a64;border-radius:4px;cursor:pointer;">Box → Party</button>
+            </div>
+            <div id="story-pc-panel" style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;"></div>
+            <button type="button" class="story-bag-close-btn" onclick="window.closeModal('modal-story-pc-box')" style="margin-top:8px;">Close</button>
         </div>
     </div>
 
@@ -21409,6 +21429,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { id:'xAccuracy',     name:'X Accuracy',    price:450,  desc:'+2 Accuracy stages for this battle.',       effect:'xAcc' },
           { id:'direHit',       name:'Dire Hit',      price:300,  desc:'Raises critical hit ratio.',          effect:'direHit' },
           { id:'guardSpec',     name:'Guard Spec.',   price:350,  desc:'Prevents stat drops for 5 turns.',   effect:'guardSpec' },
+          // Catch-mode-only stock — only visible when sm.catchMode is true. battleBag:false keeps them out of the in-battle bag.
+          { id:'pokeball',      name:'Poké Ball',     price:200,  desc:'A basic ball used to catch wild Pokémon.',      effect:'ball', catchOnly:true, battleBag:false },
+          { id:'greatBall',     name:'Great Ball',    price:300,  desc:'A higher-quality ball with a better catch rate.', effect:'ball', catchOnly:true, battleBag:false },
+          { id:'ultraBall',     name:'Ultra Ball',    price:500,  desc:'The best standard catch ball.',                 effect:'ball', catchOnly:true, battleBag:false },
+          { id:'masterBall',    name:'Master Ball',   price:2500, desc:'Catches any wild Pokémon without fail. Use it wisely.', effect:'ball', catchOnly:true, battleBag:false },
         ];
         const DEPT_ITEMS = [
           { id:'revive',        name:'Revive',        price:2200, desc:'Revives a fainted Pokémon to 50% HP.', effect:'revive50' },
@@ -21917,7 +21942,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── STATE ─────────────────────────────────────────────────────────
         const SAVE_KEY = 'pbs_story_save';
         const STORY_MENU_DEFAULTS_KEY = 'pbs_story_run_menu_defaults';
-        const SAVE_VER = 14;
+        const SAVE_VER = 15;
+        // Max Pokémon storable in the PC Box. Foundation-only cap; bump if multi-box screens get added.
+        const PC_BOX_CAPACITY = 60;
         /** v8: eight filler Basic Trainer rows removed from `STORY_EVENTS_RAW` — remap saved indices from v7 and below. */
         const STORY_TIMELINE_REMOVED_ROW_IDS_PRE_V8 = new Set([3, 8, 16, 23, 30, 38, 47, 55]);
         function migrateStoryRowIdPreV8ToCurrent(oldId) {
@@ -22059,10 +22086,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.currentEnemyLock.eventIdx = shift(sm.currentEnemyLock.eventIdx | 0);
             }
         }
-        let sm = { active:false, eventIndex:0, badges:0, gold:2000, team:[],
+        let sm = { active:false, eventIndex:0, badges:0, gold:2000, team:[], pcBox:[],
                    inventory:{}, artifacts:[], activeArtifactType:null,
                    trainerAssignments:{}, currentTrainerData:null,
                    settings:{ minGen:1, maxGen:9, enabledGens:[1,2,3,4,5,6,7,8,9], megaOn:false, zOn:false, dynaOn:false, teraOn:false, classicMode:true },
+                   catchMode:false,
                    gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{}, currentEnemyLock:null,
                    artifactsDisabled:[], storyCityVisit:null,
                    artifactShopOffersByCity:{}, artifactFreeClaimUsed:false,
@@ -22214,6 +22242,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!('rivalLastWinner' in sm)) sm.rivalLastWinner = 'none';
                 if (!('rivalStanding' in sm)) sm.rivalStanding = 'undecided';
                 if (!('rivalChampionClaimed' in sm)) sm.rivalChampionClaimed = false;
+                if (!Array.isArray(sm.pcBox)) sm.pcBox = [];
+                if (typeof sm.catchMode !== 'boolean') sm.catchMode = false;
+                if (sm.inventory && typeof sm.inventory === 'object') {
+                    for (const k of ['pokeball','greatBall','ultraBall','masterBall']) {
+                        if (typeof sm.inventory[k] !== 'number') sm.inventory[k] = 0;
+                    }
+                }
                 const _loadedVer = d.version | 0;
                 if (_loadedVer < 8) {
                     try { migrateStoryTimelineIndicesFromPreV8(); } catch (e) { console.warn('[Story] timeline migrate', e); }
@@ -22260,6 +22295,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     teraOn: !!sm.settings.teraOn,
                     classicMode: sm.settings.classicMode !== false,
                     noItemRun: !!sm.settings.noItemRun,
+                    catchMode: !!sm.catchMode,
                     seedDisplay: sm.runSeed != null ? String(sm.runSeed >>> 0) : ''
                 };
                 localStorage.setItem(STORY_MENU_DEFAULTS_KEY, JSON.stringify(d));
@@ -22294,6 +22330,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 const nir = document.getElementById('story-no-item-run');
                 if (nir && typeof d.noItemRun === 'boolean') nir.checked = d.noItemRun;
+                const cm = document.getElementById('story-catch-mode');
+                if (cm && typeof d.catchMode === 'boolean') cm.checked = d.catchMode;
                 const si = document.getElementById('story-setting-seed');
                 if (si && typeof d.seedDisplay === 'string') si.value = d.seedDisplay;
             } catch (e) { /* ignore */ }
@@ -23119,19 +23157,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // 2000 base + bonus; easy/normal starting totals rounded to 5000G / 3500G.
             const _startingGoldBonus = _storyDiff === 'veryeasy' ? 19000 : _storyDiff === 'easy' ? 4000 : _storyDiff === 'normal' ? 2500 : 0;
             sm = {
-                active:true, eventIndex:0, badges:0, gold:2000 + _startingGoldBonus, team:[],
+                active:true, eventIndex:0, badges:0, gold:2000 + _startingGoldBonus, team:[], pcBox:[],
                 inventory: {
                     potion:0,superPotion:0,hyperPotion:0,maxPotion:0,fullRestore:0,fullHeal:0,
                     antidote:0,burnHeal:0,maxElixir:0,
                     xAttack:0,xDefense:0,xSpAtk:0,xSpDef:0,xSpeed:0,xAccuracy:0,
                     direHit:0,guardSpec:0,revive:0,maxRevive:0,
                     sunOrb:0,rainOrb:0,hailOrb:0,sandOrb:0,electricOrb:0,grassyOrb:0,psychicOrb:0,mistyOrb:0,emergencyTeleporter:0,
+                    pokeball:0,greatBall:0,ultraBall:0,masterBall:0,
                 },
                 artifacts:[], activeArtifactType:null, trainerAssignments:{}, currentTrainerData:null,
                 profUsed:{}, usedTrainerNames:[], gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{},
                 currentEnemyLock:null, artifactsDisabled:[],
                 deptArtifactOffersByCity:{}, artifactShopOffersByCity:{}, artifactFreeClaimUsed:false,
                 deptArtifactTypesByCity:{}, artifactTypeById:{}, deptItemOffersByCity:{},
+                catchMode: document.getElementById('story-catch-mode')?.checked || false,
                 settings:{ enabledGens, minGen, maxGen,
                     megaOn: document.getElementById('story-mech-mega')?.checked||false,
                     zOn:    document.getElementById('story-mech-z')?.checked||false,
@@ -23271,6 +23311,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     xAttack:0,xDefense:0,xSpAtk:0,xSpDef:0,xSpeed:0,xAccuracy:0,
                     direHit:0,guardSpec:0,revive:0,maxRevive:0,
                     sunOrb:0,rainOrb:0,hailOrb:0,sandOrb:0,electricOrb:0,grassyOrb:0,psychicOrb:0,mistyOrb:0,emergencyTeleporter:0,
+                    pokeball:0,greatBall:0,ultraBall:0,masterBall:0,
                 };
             }
             if (!sm.settings) sm.settings = { megaOn: false, zOn: false, dynaOn: false, teraOn: false, classicMode: true, noItemRun: false };
@@ -23334,6 +23375,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 xAttack: 3, xDefense: 3, xSpAtk: 3, xSpDef: 3, xSpeed: 3, xAccuracy: 2,
                 direHit: 2, guardSpec: 2, revive: 3, maxRevive: 1,
                 sunOrb: 0, rainOrb: 0, hailOrb: 0, sandOrb: 0, electricOrb: 0, grassyOrb: 0, psychicOrb: 0, mistyOrb: 0, emergencyTeleporter: 0,
+                pokeball: 0, greatBall: 0, ultraBall: 0, masterBall: 0,
             };
             if (!sm.settings) sm.settings = { megaOn: false, zOn: false, dynaOn: false, teraOn: false, classicMode: true, noItemRun: false };
             if (!sm.settings.enabledGens || !sm.settings.enabledGens.length) {
@@ -23691,6 +23733,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? `Party — Team & Order (${_partyN}/6)`
                 : 'Party — Empty (Visit Professor)';
             _push('recover', makeActionBtn(_partyLabel, 'party', 'window.StoryMode.openPartyModal()', 'party'));
+            // PC Box — visible when catch mode is on, or after the box has ever held a Pokémon (so late toggles still work).
+            const _pcBoxArr = Array.isArray(sm.pcBox) ? sm.pcBox : [];
+            const _pcVisible = !!sm.catchMode || _pcBoxArr.length > 0;
+            if (_pcVisible) {
+                const _pcLabel = _pcBoxArr.length
+                    ? `💾 PC Box — Stored Pokémon (${_pcBoxArr.length}/${PC_BOX_CAPACITY})`
+                    : '💾 PC Box — Empty';
+                _push('recover', makeActionBtn(_pcLabel, 'party', 'window.StoryMode.openPCBoxModal()', 'party', { soft:true, meta: _withNew('pcbox', [{label:'Free',tone:'free'}]) }));
+            }
             if (actions.includes('Link Station')) {
                 _push('recover', makeActionBtn('📡 Cable Link Station — Reroll Team','link','window.StoryMode.enterLink()','link',{ meta: _withNew('link', [{label:'Free',tone:'free'}]) }));
             }
@@ -24014,6 +24065,172 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             renderTeamPanel();
             const m = document.getElementById('modal-story-party');
             if (m) m.classList.remove('hidden');
+        }
+
+        // ── PC BOX ─────────────────────────────────────────────────────────
+        let _pcBoxTab = 'party'; // 'party' = show party slots (to deposit); 'box' = show box slots (to withdraw)
+
+        function _pcBoxList() {
+            if (!Array.isArray(sm.pcBox)) sm.pcBox = [];
+            return sm.pcBox;
+        }
+
+        /** Returns false when both party (6) and PC (PC_BOX_CAPACITY) are full. */
+        function isPokemonStorageFull() {
+            const party = Array.isArray(sm.team) ? sm.team.length : 0;
+            const box   = _pcBoxList().length;
+            return party >= 6 && box >= PC_BOX_CAPACITY;
+        }
+
+        /** Accept a newly acquired Pokémon. Party first; auto-deposit to PC when party is full.
+         *  Returns 'party' | 'pcBox' | null (null means storage full — caller must reject the catch). */
+        function gainPokemonToBoxOrParty(mon) {
+            if (!mon || !mon.name) return null;
+            // Deep-clone the build so the source mon (e.g. wild/foe/trader instance) doesn't share refs with the stored copy.
+            const stored = { name: String(mon.name), build: (mon.build && typeof mon.build === 'object') ? deepClone(mon.build) : {} };
+            if (!Array.isArray(sm.team)) sm.team = [];
+            if (sm.team.length < 6) { sm.team.push(stored); save(); return 'party'; }
+            const box = _pcBoxList();
+            if (box.length < PC_BOX_CAPACITY) { box.push(stored); save(); return 'pcBox'; }
+            return null;
+        }
+
+        function _renderPCSlot(mon, idx, location) {
+            const g = mon && mon.name ? getMonGrade(mon.name, getBST(mon.name)) : 4;
+            const rawBuild = (mon && (mon.build || mon.buildData)) ? (mon.build || mon.buildData) : {};
+            const built = buildPokemon(String((mon && mon.name) || '').trim(), deepClone(rawBuild));
+            const moveNames = (rawBuild.m || []).slice(0, 4).map(m => (String(m || '').split('/')[0] || '—'));
+            while (moveNames.length < 4) moveNames.push('—');
+            const details = `${displayItem(built, false)} · ${built.ability || 'None'} · ${built.nature || 'Hardy'}`;
+            const movesHtml = moveNames.map(mn => `<div>${mn}</div>`).join('');
+            const isParty = location === 'party';
+            const primaryLabel = isParty ? 'Deposit ▶' : '◀ Withdraw';
+            const primaryAction = isParty
+                ? `window.StoryMode.pcDeposit(${idx})`
+                : `window.StoryMode.pcWithdraw(${idx})`;
+            const primaryDisabled = isParty
+                ? (sm.team.length <= 1 ? 'disabled title="Party cannot drop below 1"' : '')
+                : (sm.team.length >= 6 ? 'disabled title="Party already full — swap with a party member instead"' : '');
+            const swapBtn = !isParty
+                ? `<button type="button" class="party-sort-btn" title="Swap with first party slot" onclick="window.StoryMode.pcSwap(0,${idx})" style="font-size:10px;">⇄ Swap</button>`
+                : '';
+            const releaseBtn = `<button type="button" class="party-sort-btn" title="Release permanently" onclick="window.StoryMode.pcRelease('${location}',${idx})" style="font-size:10px;color:#ef5350;">Release</button>`;
+            return `<div class="story-team-slot draft-card tier-${g}" style="align-items:stretch;justify-content:space-between;gap:8px;width:100%;box-sizing:border-box;">
+                <div style="display:flex;align-items:stretch;gap:8px;min-width:0;flex:1;">
+                    <div class="draft-card-sprite">
+                        <img src="${getSprite(mon.name, !!rawBuild._isShiny)}" onerror="handleSpriteError(this)" alt="${mon.name}" data-shiny="${rawBuild._isShiny ? 'true' : 'false'}" class="mini-sprite" style="${rawBuild._isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}">
+                        <span class="tier-badge bg-tier-${g}" title="Power tier">T${g}</span>
+                    </div>
+                    <div class="draft-card-body" style="min-width:0;flex:1;">
+                        <div class="draft-card-header">
+                            <span>${rawBuild._isShiny ? '&#10024; ' : ''}${mon.name} ${getTypeHTML(built.type1, built.type2)}</span>
+                        </div>
+                        <div class="draft-card-details">${details}</div>
+                        <div class="draft-card-moves">${movesHtml}</div>
+                    </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;">
+                    <button type="button" class="party-sort-btn" ${primaryDisabled} onclick="${primaryAction}" style="font-size:10px;">${primaryLabel}</button>
+                    ${swapBtn}
+                    ${releaseBtn}
+                </div>
+            </div>`;
+        }
+
+        function renderPCBoxPanel() {
+            const panel = document.getElementById('story-pc-panel');
+            if (!panel) return;
+            const box = _pcBoxList();
+            const partyN = Array.isArray(sm.team) ? sm.team.length : 0;
+            const countEl = document.getElementById('story-pc-count');
+            if (countEl) countEl.textContent = `(party ${partyN}/6 · box ${box.length}/${PC_BOX_CAPACITY})`;
+            const tabParty = document.getElementById('story-pc-tab-party');
+            const tabBox   = document.getElementById('story-pc-tab-box');
+            if (tabParty) tabParty.style.background = _pcBoxTab === 'party' ? '#244a2a' : '#1a1f2a';
+            if (tabBox)   tabBox.style.background   = _pcBoxTab === 'box'   ? '#244a2a' : '#1a1f2a';
+            if (_pcBoxTab === 'party') {
+                if (!partyN) { panel.innerHTML = '<div style="font-size:11px;color:#888;padding:8px;">Party is empty — visit the Professor.</div>'; return; }
+                panel.innerHTML = sm.team.map((t, i) => _renderPCSlot(t, i, 'party')).join('');
+            } else {
+                if (!box.length) { panel.innerHTML = '<div style="font-size:11px;color:#888;padding:8px;">PC Box is empty. Caught Pokémon overflow here when your party is full.</div>'; return; }
+                panel.innerHTML = box.map((m, i) => _renderPCSlot(m, i, 'pcBox')).join('');
+            }
+        }
+
+        function openPCBoxModal() {
+            _markFacilitySeen('pcbox');
+            _pcBoxTab = 'party';
+            renderPCBoxPanel();
+            const m = document.getElementById('modal-story-pc-box');
+            if (m) m.classList.remove('hidden');
+        }
+
+        function _pcSetTab(tab) {
+            _pcBoxTab = (tab === 'box') ? 'box' : 'party';
+            renderPCBoxPanel();
+        }
+
+        function pcDeposit(partyIdx) {
+            if (!Array.isArray(sm.team) || partyIdx < 0 || partyIdx >= sm.team.length) return;
+            if (sm.team.length <= 1) {
+                try { window.showGameAlert && window.showGameAlert('You must keep at least one Pokémon in your party.'); } catch (_) {}
+                return;
+            }
+            const box = _pcBoxList();
+            if (box.length >= PC_BOX_CAPACITY) {
+                try { window.showGameAlert && window.showGameAlert('PC Box is full. Release a Pokémon first.'); } catch (_) {}
+                return;
+            }
+            const [moved] = sm.team.splice(partyIdx, 1);
+            // Clone to break any shared references that may have leaked HP/status between battles.
+            box.push({ name: moved.name, build: deepClone(moved.build || {}) });
+            save();
+            renderPCBoxPanel();
+        }
+
+        function pcWithdraw(boxIdx) {
+            const box = _pcBoxList();
+            if (boxIdx < 0 || boxIdx >= box.length) return;
+            if (!Array.isArray(sm.team)) sm.team = [];
+            if (sm.team.length >= 6) {
+                try { window.showGameAlert && window.showGameAlert('Party is full — swap with a party slot, or deposit one first.'); } catch (_) {}
+                return;
+            }
+            const [moved] = box.splice(boxIdx, 1);
+            sm.team.push({ name: moved.name, build: deepClone(moved.build || {}) });
+            save();
+            renderPCBoxPanel();
+        }
+
+        function pcSwap(partyIdx, boxIdx) {
+            if (!Array.isArray(sm.team)) sm.team = [];
+            const box = _pcBoxList();
+            if (partyIdx < 0 || partyIdx >= sm.team.length) return;
+            if (boxIdx < 0 || boxIdx >= box.length) return;
+            const p = sm.team[partyIdx];
+            const b = box[boxIdx];
+            sm.team[partyIdx] = { name: b.name, build: deepClone(b.build || {}) };
+            box[boxIdx]      = { name: p.name, build: deepClone(p.build || {}) };
+            save();
+            renderPCBoxPanel();
+        }
+
+        function pcRelease(location, idx) {
+            const isParty = location === 'party';
+            const arr = isParty ? sm.team : _pcBoxList();
+            if (!Array.isArray(arr) || idx < 0 || idx >= arr.length) return;
+            if (isParty && arr.length <= 1) {
+                try { window.showGameAlert && window.showGameAlert('You must keep at least one Pokémon in your party.'); } catch (_) {}
+                return;
+            }
+            const name = arr[idx] && arr[idx].name;
+            const ok = (typeof window.confirm === 'function')
+                ? window.confirm(`Release ${name}? This cannot be undone.`)
+                : true;
+            if (!ok) return;
+            arr.splice(idx, 1);
+            save();
+            renderPCBoxPanel();
         }
 
         function moveInParty(idx, dir) {
@@ -24966,7 +25183,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
             const rawItems = type === 'dept' ? [...POKEMART_ITEMS, ...DEPT_ITEMS] : POKEMART_ITEMS;
-            const items = rawItems.filter(item => !isNoItemRunBattleBagExcluded(item));
+            // catchOnly items (Poké Balls) only stock when catch mode is on, and never in Department Store.
+            const items = rawItems
+                .filter(item => !isNoItemRunBattleBagExcluded(item))
+                .filter(item => !item.catchOnly || (type === 'mart' && !!sm.catchMode));
             if (type === 'dept') {
                 const featuredItems = _ensureDeptItemOfferForCity(cityIdx).filter(item => !isNoItemRunBattleBagExcluded(item));
                 if (featuredItems.length) {
@@ -25023,6 +25243,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function buyItem(itemId, price) {
             const st = document.getElementById('screen-story-shop')?.getAttribute('data-shop-type');
+            // Catch-only items (balls) are mart-exclusive and require catch mode on.
+            const _allItemRows = [...POKEMART_ITEMS, ...DEPT_ITEMS];
+            const _itemRow = _allItemRows.find(r => r.id === itemId);
+            if (_itemRow && _itemRow.catchOnly && (!sm.catchMode || st !== 'mart')) return;
             if (sm.settings && sm.settings.noItemRun) {
                 if (st === 'dept') {
                     const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
@@ -27556,6 +27780,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openBattleBag, useBagItemOn, openCityBag, sellItem,
             confirmAbandon, abandonAndReturn, continuePostGame,
             openSummary, profOpenSummary, summaryMove, moveInParty, openPartyModal,
+            openPCBoxModal, _pcSetTab, pcDeposit, pcWithdraw, pcSwap, pcRelease,
+            gainPokemonToBoxOrParty, isPokemonStorageFull,
             enterArtifactHall, toggleArtifactDisabled,
             enterTutor, tutorChangeMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
             enterColress, colressApplyMega, colressApplyDmax, colressApplyZ, colressApplyZSig, colressApplyTera,
