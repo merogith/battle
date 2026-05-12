@@ -22425,6 +22425,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? _pickCityQuoteLine(CITY_PROFESSOR_QUOTES, cityIdx)
                 : _pickCityQuoteLine(CITY_GUIDE_QUOTES, cityIdx);
             quoteText = `"${quoteText}"`;
+            // Facility barker — call out one unseen-this-city facility so the player learns the menu in flavor text.
+            const _facilityBarkers = [
+                { key: 'casino',    actionKey: 'Poké Casino',      line: 'The Poké Casino is open — coin flips, double or nothing.' },
+                { key: 'colress',   actionKey: 'Power Up',         line: 'Colress is in town — he can awaken a Pokémon’s Mega, Dynamax, Z, or Tera form.' },
+                { key: 'dept',      actionKey: 'Department Store', line: 'The Department Store just stocked premium battle items.' },
+                { key: 'tutor',     actionKey: 'Move Tutor',       line: 'The Move Tutor here teaches sharper competitive moves.' },
+                { key: 'dojo',      actionKey: 'Battle Dojo',      line: 'The Battle Dojo swaps held items and abilities.' },
+                { key: 'evtrainer', actionKey: 'EV Trainer',       line: 'Buck the EV Trainer can reshape your team’s effort values.' },
+                { key: 'nature',    actionKey: 'Nature Rater',     line: 'The Nature Rater can change a Pokémon’s nature on the fly.' },
+                { key: 'relic',     actionKey: null,               line: 'Don’t miss the Relic Annex — run-wide artifacts that affect both sides.' },
+                { key: 'link',      actionKey: 'Link Station',     line: 'The Cable Link Station can reroll or upgrade your party.' },
+            ];
+            const _relicAvailHere = (cityIdx === 0 || actions.includes('Department Store'));
+            const _barker = _facilityBarkers.find(b => {
+                if (_isFacilitySeen(cityIdx, b.key)) return false;
+                if (b.actionKey === null) return _relicAvailHere;
+                if (!actions.includes(b.actionKey)) return false;
+                if (['tutor','nature','dojo','evtrainer','colress'].includes(b.key) && !sm.team.length) return false;
+                if (b.key === 'colress' && !(sm.settings && (sm.settings.megaOn || sm.settings.zOn || sm.settings.dynaOn || sm.settings.teraOn))) return false;
+                return true;
+            });
+            if (_barker) {
+                quoteText += `\n\n📻 ${_barker.line}`;
+            }
             if (!sm.storyMilestoneTips) sm.storyMilestoneTips = { m4: false, m8: false };
             if (sm.badges >= 8 && !sm.storyMilestoneTips.m8) {
                 quoteText += '\n\n📻 Trainer Tips: "Eight gym badges—you\'re practically a legend!"';
