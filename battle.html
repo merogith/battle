@@ -2207,6 +2207,20 @@
                 justify-content: flex-start;
                 padding: 4px max(6px, env(safe-area-inset-left, 0px)) 2px max(6px, env(safe-area-inset-right, 0px));
             }
+            /* Phone landscape: float player HP card to top-left so it mirrors the foe card top-right.
+               Fixed positioning is needed because the hud-row's parent #battle-bottom-stack is
+               position: absolute; bottom: 0 — an absolute top:0 would land near the screen bottom.
+               Safe on mobile: #app-root has no transform (cleared by applyDesktopGameScale on is-mobile). */
+            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"] #battle-player-hud-row {
+                position: fixed;
+                top: calc(4px + var(--safe-top, 0px));
+                left: calc(8px + var(--safe-left, 0px));
+                right: auto; bottom: auto;
+                width: auto; max-width: min(210px, 50vw);
+                padding: 0;
+                background: transparent !important;
+                z-index: 6;
+            }
             body.is-mobile #battle-bottom-stack #player-stat-box {
                 width: min(210px, 42vw);
                 max-width: min(210px, 42vw);
@@ -2232,13 +2246,16 @@
                 transform: none; z-index: 2;
             }
             #foe-sprite { width: min(128px, 26vw); height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; object-position: bottom center; bottom: 0; }
+            /* Player sprite: bottom-left, feet tucked ~12px behind the bottom UI for GBA-style depth.
+               Height capped against available arena so it never collides with the floated HP card. */
             #player-sprite-container {
-                width: min(140px, 28vw); height: min(148px, 30vw);
-                bottom: calc(var(--battle-ui-h) + clamp(48px, 12dvh, 64px));
-                left: calc(12px + min(5vw, 44px) + var(--safe-left, 0px)); right: auto;
+                width: min(150px, 30vw);
+                height: min(160px, 32vw, calc(100dvh - var(--battle-ui-h) - 64px));
+                bottom: calc(var(--battle-ui-h) - 12px);
+                left: calc(8px + min(4vw, 36px) + var(--safe-left, 0px)); right: auto; top: auto;
                 transform: none; z-index: 3;
             }
-            #player-sprite { width: min(124px, 25vw); height: min(124px, 25vw); max-width: 100%; max-height: 88%; object-fit: contain; bottom: 10px; }
+            #player-sprite { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; object-position: bottom center; bottom: 0; }
             .icon-btn { width: 34px; height: 34px; right: calc(8px + var(--safe-right, 0px)); font-size: 14px; }
             .settings-btn { top: calc(6px + var(--safe-top, 0px)); }
             .battle-settings-btn {
@@ -2338,6 +2355,18 @@
                 justify-content: flex-start;
                 padding: 5px max(8px, env(safe-area-inset-left, 0px)) 3px max(8px, env(safe-area-inset-right, 0px));
             }
+            /* Tablet landscape: same GBA-mirror — player HP card floated top-left, sprite bottom-left with feet tucked.
+               Fixed to escape #battle-bottom-stack's absolute bottom: 0 containing block. */
+            body.is-mobile #screen-battle[data-battle-layout="landscape-touch"] #battle-player-hud-row {
+                position: fixed;
+                top: calc(6px + var(--safe-top, 0px));
+                left: calc(10px + var(--safe-left, 0px));
+                right: auto; bottom: auto;
+                width: auto; max-width: min(248px, 48vw);
+                padding: 0;
+                background: transparent !important;
+                z-index: 6;
+            }
             body.is-mobile #battle-bottom-stack #player-stat-box {
                 width: min(228px, 40vw);
                 max-width: min(228px, 40vw);
@@ -2368,11 +2397,12 @@
             }
             #foe-sprite { width: min(164px, 27vw); height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; object-position: bottom center; bottom: 0; }
             #player-sprite-container {
-                width: min(168px, 29vw); height: min(182px, 31vw);
-                bottom: calc(var(--battle-ui-h) + clamp(52px, 11dvh, 72px));
-                left: calc(12px + min(2.5vw, 24px) + var(--safe-left, 0px)); right: auto; transform: none;
+                width: min(180px, 30vw);
+                height: min(200px, 32vw, calc(100dvh - var(--battle-ui-h) - 80px));
+                bottom: calc(var(--battle-ui-h) - 14px);
+                left: calc(10px + min(3vw, 32px) + var(--safe-left, 0px)); right: auto; top: auto; transform: none;
             }
-            #player-sprite { width: min(160px, 28vw); height: min(160px, 28vw); max-width: 100%; max-height: 90%; object-fit: contain; bottom: 14px; }
+            #player-sprite { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; object-position: bottom center; bottom: 0; }
             #field-conditions {
                 top: calc(58px + var(--safe-top, 0px)); left: calc(6px + var(--safe-left, 0px));
                 transform: none; flex-direction: column; align-items: flex-start;
