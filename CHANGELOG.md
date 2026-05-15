@@ -109,6 +109,64 @@ All notable user-visible changes land here. Sessions append entries under
   without name/build) so the engine rerolls a fresh team instead of
   crashing inside launchBattle.
 
+### Added — Round 3 (audit-and-fix loop)
+- **One-time tips system** (`_storyShowOneTimeTip` + `pbs_story_meta.tipsShown`).
+  Cross-run, so a tip seen in run 1 never re-fires. Wired to:
+  Pokémon Center first-visit, Relic Annex first-visit, Battle Frontier
+  first-visit, Crucible first-visit, first wild catch encounter,
+  Pallet Town welcome, and post-HoF orientation listing the three
+  endgame doors.
+- **Mystery Figure per-identity outro epilogues** (7 trainers). Each
+  rotates with the identity reveal in the post-defeat overlay —
+  Cynthia hands you tea, N kneels by your lead Pokémon, Red tips his
+  cap and is gone.
+- **Caged God cage-unlock celebration.** Final lead now fires an
+  alert pointing at the new "Enter the Cage — `<Boss>`" button.
+- **Subject Zero capture epilogue.** Expanded from one line to a
+  three-beat closer: cage shutting, sixty-years lore, unsellable bond.
+- **Master Ball / Ultra Ball gift flavor rewrite** + explicit inventory
+  chips. Elite-2 broker theft framing replaced with a League attendant
+  "the way a treasure is given."
+- **Wild Pokémon sprite on catch screen** (and boss HP-attrition phase).
+  Screen was text-only before.
+- **Catch wobble + flee + boss strike variety.** Each now picks from
+  4-line pools so a string of misses doesn't read identical. Boss
+  strikes also narrate per HP band — clean hits early, dread at <10%.
+- **Relic Keeper voice** (5-line rotating barker on every Annex visit).
+- **Crucible orientation tip** spelling out battle vs facility columns.
+- **Caged God lead status sidebar** got its own labelled box with a
+  3-of-3 counter and explicit Pokémon Center city locations.
+- **Stone Sage level-up flavor.** Function used to return empty string
+  for the most common evolution type (level-up). Added four rotating
+  flavor lines so the screen always speaks.
+- **Casino result variety** — 4 win and 4 loss flavor lines instead
+  of a single repeating string.
+- **Pallet Town welcome tip** — one-time, cross-run.
+
+### Added — Trainer pool variety
+- **9 new 2-type / type-coverage Basic Trainers** all charGen 1 with
+  `pkmGens` 1–9: Ace Diver, Mountain Guide, Glacial Trekker, Reactor
+  Tech, Tea Aroma, Mystic, Crooked Beat, Marsh Walker, Lab Rat.
+  Together they add Ground, Ice, Steel, Fairy, Psychic, Dark coverage
+  the original G1 set was missing. All reuse existing sprites.
+- **8 thematic Elite Trainer variants** (`tag:'eldritch'`): Shadow Blue,
+  Cursed Lance, Forsaken Cynthia, Eldritch N, Tarnished Steven, Pale
+  Ghetsis, Hollow Cyrus, Silent Red. Reuse canonical champion sprites
+  with darker pools; the `eldritch` tag lifts the gen-filter so a
+  G1-only run can still meet a Hydreigon under an old champion's mask.
+- **3 cursed Basic Trainer variants**: Cursed Vagrant, Scarred
+  Brawler, Charred Acolyte.
+- **`STORY_THEMED_BATTLES` map** marks four mid-run event ids
+  (34, 42, 48, 58) as themed slots; pass 3 of `assignTrainers`
+  consults it and prefers a tag-matched trainer when available.
+- **Type-coverage filter fallback** — when a gym's preferredType
+  yields zero trainers under the active gen filter, fall through to
+  the full role pool. Before: a G1-only run hitting a Pryce gym
+  silently fielded non-Ice trainers. After: Glacial Trekker covers Ice
+  for any gen.
+- **TRAINER_QUOTES_BY_NAME entries** for all 11 new thematic trainers
+  so they don't fall back to the generic role pool.
+
 ### Audited (no code change required)
 - **Generation toggle leakage.** Species-only filter confirmed; no
   leakage into learnsets, abilities, items, type chart, damage formula.
@@ -125,3 +183,10 @@ All notable user-visible changes land here. Sessions append entries under
   PC overflow, gen filter, ball economy, Frontier stat scaling
   (correctly applied via `applyStoryLeagueFoeStatBoost`), boss lead
   flavor consistency.
+- **No-Item Run mode** — battle bag disabled both sides, shops stay
+  open, balls usable for catches. Compliant with spec.
+- **PC last-mon protection** — `_pcTeamHasOnlyOneMon` blocks deposit
+  when team would empty; UI disables button with reason.
+- **Stone Sage carry-over** — fixed earlier this session to use the
+  correct build keys (`n`, `a`) so nature and ability survive
+  evolution.
