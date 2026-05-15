@@ -22208,9 +22208,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Professor grade rolls per city (0-based city index)
         // With 3-choice system: weights determine what appears across 3 options
         const PROF_ROLLS = [
-          {g1:0, g2:0,  g3:30, g4:70},  // City0
-          {g1:0, g2:0,  g3:50, g4:50},  // City1
-          {g1:0, g2:20, g3:50, g4:30},  // City2
+          {g1:0, g2:0,  g3:70, g4:30},  // City0  — starter pool, G3 floor so the Gym 1 (100% G3) wall isn't an immediate brick
+          {g1:0, g2:0,  g3:70, g4:30},  // City1
+          {g1:0, g2:20, g3:60, g4:20},  // City2
           {g1:0, g2:40, g3:60, g4:0},   // City3
           {g1:0, g2:50, g3:50, g4:0},   // City4
           {g1:0, g2:60, g3:40, g4:0},   // City5
@@ -23198,6 +23198,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.pokedex = { seen: [], caught: [] };
             }
             if (typeof sm.partyEverReached4 !== 'boolean') sm.partyEverReached4 = Array.isArray(sm.team) && sm.team.length >= 4;
+            if (typeof sm.partyEverReached2 !== 'boolean') sm.partyEverReached2 = Array.isArray(sm.team) && sm.team.length >= 2;
             if (typeof sm.catchUnlocked !== 'boolean') sm.catchUnlocked = false;
             if (sm.storyDifficulty === 'hardcore') sm.storyDifficulty = 'normal';
             if (Array.isArray(sm.team)) {
@@ -23239,6 +23240,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    balls: { poke: 5, great: 0, ultra: 0, master: 0 },
                    pokedex: { seen: [], caught: [] },
                    partyEverReached4: false,
+                   partyEverReached2: false,
                    catchUnlocked: false,
                    version:SAVE_VER };
 
@@ -23548,8 +23550,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         /** Once the story party has ever reached 4+ Pokémon (monotonic), remove all grade-4 probability from weight rolls (mass moves to g3). Foes + Professor. Keys off the monotonic flag so depositing to PC does not re-introduce G4. */
         function storyStripGrade4IfPartyMature(gw) {
             if (!gw || !sm || !sm.active) return gw;
-            if (Array.isArray(sm.team) && sm.team.length >= 4) sm.partyEverReached4 = true;
-            if (!sm.partyEverReached4) return gw;
+            const len = Array.isArray(sm.team) ? sm.team.length : 0;
+            if (len >= 4) sm.partyEverReached4 = true;
+            if (len >= 2) sm.partyEverReached2 = true;
+            // Spec §12 fix: a Gym 1/2 fight rolls 100% G3 trainers, so route trainers
+            // between gyms can't keep rolling G4 — that made the gym feel easier than
+            // the road to it. The strip now triggers once the player ever had 2+
+            // Pokémon (monotonic), not 4+.
+            if (!sm.partyEverReached4 && !sm.partyEverReached2) return gw;
             const g1 = gw.g1 || 0, g2 = gw.g2 || 0, g3 = gw.g3 || 0, g4 = gw.g4 || 0;
             if (g4 <= 0) return { g1, g2, g3, g4: 0 };
             return { g1, g2, g3: g3 + g4, g4: 0 };
@@ -23762,7 +23770,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return true;
         }
-        const RIVAL_ATTACK_TYPE_DECAY = 30;
+        // After each rival species is picked we divide that type's pick-weight by the
+        // decay constant so the second mon isn't a copy of the first. Old value (÷30)
+        // collapsed coverage after 2–3 picks, so rivals felt scattered even against
+        // monotype parties. ÷10 still spreads coverage but lets a dominant counter-type
+        // appear on two mons when the player's party deserves the answer.
+        const RIVAL_ATTACK_TYPE_DECAY = 10;
 
         function _rivalCombinedEffVsMon(atkType, d1, d2) {
             const ch = typeChart[atkType];
@@ -24380,6 +24393,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 rivalLastWinner: 'none',
                 rivalStanding: 'undecided',
                 rivalChampionClaimed: false,
+                pcBox: [],
+                balls: { poke: 5, great: 0, ultra: 0, master: 0 },
+                pokedex: { seen: [], caught: [] },
+                partyEverReached4: false,
+                partyEverReached2: false,
+                catchUnlocked: false,
             };
             sm._strngState = null;
             _storyBattleInventorySnapshot = null;
@@ -26804,6 +26823,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const [moved] = sm.pcBox.splice(found.index, 1);
             sm.team.push(moved);
             if (sm.team.length >= 4) sm.partyEverReached4 = true;
+            if (sm.team.length >= 2) sm.partyEverReached2 = true;
             save();
             _pcRefresh();
         }
@@ -27064,6 +27084,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!partyFull) {
                 sm.team.push(caught);
                 if (sm.team.length >= 4) sm.partyEverReached4 = true;
+                if (sm.team.length >= 2) sm.partyEverReached2 = true;
             } else {
                 sm.pcBox.push(caught);
             }
