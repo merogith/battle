@@ -5416,6 +5416,11 @@
             return typeof structuredClone === 'function' ? structuredClone(o) : JSON.parse(JSON.stringify(o));
         }
         /** Pokémon build snapshots may pick up non-cloneable fields; used before summary UI. */
+        /** buildPokemon mutates `build.m`; this returns a shallow copy with a detached moves array so the caller's build stays pristine. Used for display-time renders that don't need a full deepClone. */
+        function shallowCloneBuildForDisplay(b) {
+            if (!b || typeof b !== 'object') return { m: [] };
+            return { ...b, m: Array.isArray(b.m) ? b.m.slice() : [] };
+        }
         function safeCloneBuild(b) {
             if (!b || typeof b !== 'object') return {};
             try {
@@ -22281,16 +22286,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (diff === 'normal') return 1.30;
             if (diff === 'easy') return 1.50;
             if (diff === 'veryeasy') return 1.60;
-            if (diff === 'hard') return 0.92;
-            if (diff === 'challenge') return 1.05;
+            // Hard/Challenge used to pay below parity while late-game prices spike; floored at parity so the coin curve stops fighting the difficulty curve.
+            if (diff === 'hard') return 1.00;
+            if (diff === 'challenge') return 1.10;
             return 1;
         }
 
         // Professor grade rolls per city (0-based city index)
         // With 3-choice system: weights determine what appears across 3 options
         const PROF_ROLLS = [
-          {g1:0, g2:0,  g3:70, g4:30},  // City0  — starter pool, G3 floor so the Gym 1 (100% G3) wall isn't an immediate brick
-          {g1:0, g2:0,  g3:70, g4:30},  // City1
+          {g1:0, g2:0,  g3:90, g4:10},  // City0  — starter pool weighted to G3 so locked-in starters can handle the Gym-1 (100% G3) wall
+          {g1:0, g2:0,  g3:80, g4:20},  // City1
           {g1:0, g2:20, g3:60, g4:20},  // City2
           {g1:0, g2:40, g3:60, g4:0},   // City3
           {g1:0, g2:50, g3:50, g4:0},   // City4
@@ -22530,8 +22536,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Hau':"Hau: \"Alola! You're a malasada-sweet Champion now!\"",
         };
 
-        // Maps city index (1–8) to the STORY_EVENTS_RAW event index of its Gym Leader battle
-        const GYM_CITY_LEADER_EVENT = { 1:5, 2:11, 3:18, 4:24, 5:31, 6:38, 7:46, 8:53 };
+        // Maps city index (1–8) to the STORY_EVENTS_RAW event index of its Gym Leader battle.
+        // Derived at boot so future timeline shuffles or migrations don't silently desync.
+        const GYM_CITY_LEADER_EVENT = (function buildGymCityLeaderMap() {
+            const out = {};
+            for (let i = 0; i < STORY_EVENTS_RAW.length; i++) {
+                const row = STORY_EVENTS_RAW[i];
+                if (!row || row[1] !== 'Battle') continue;
+                const m = String(row[2] || '').match(/^Gym Leader (\d+)$/);
+                if (m) out[parseInt(m[1], 10)] = i;
+            }
+            return out;
+        })();
 
         // The Mystery Figure used to always wear Cyrus's face. Now a rotating cast: a
         // single identity is rolled at run start and pinned for the whole save, both
@@ -22699,6 +22715,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { id:'reapersToll',     name:"Reaper's Toll",             cost:5000, desc:'Whenever a Pokémon faints, every surviving ally on that side heals 10% of their max HP, and one random survivor loses 1 stage of Sp. Defense.' },
           { id:'cursedCoinPouch', name:'Cursed Amulet Coin',        cost:5000, desc:'Coin rewards from victories are doubled. In return, every Pokémon on YOUR team enters battle with one random stat lowered by 1 stage.' },
         ];
+        const ARTIFACT_BY_ID = Object.freeze(ALL_ARTIFACTS.reduce((acc, a) => { acc[a.id] = a; return acc; }, {}));
         const STORY_TYPES = ['Fire','Water','Grass','Electric','Ice','Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon','Dark','Steel','Fairy'];
         const STORY_TYPE_ARTIFACT_IDS = new Set(['typeAmplifier', 'typeNullifier', 'typeMagnetizer']);
         const FEATURED_MEGA_ITEM_IDS = new Set([
@@ -23030,7 +23047,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pool = TRAINER_QUOTES[quoteRole] || TRAINER_QUOTES['Basic Trainer'];
             return pool[Math.floor(rng() * pool.length)];
         }
-        /** Second line for rival intro overlay (Math.random — does not advance story RNG). */
+        /** Deterministic per-(seed, phase, badges) sub-RNG: keeps the secondary intro reproducible across shared seeds without touching the story RNG state. */
+        function _storySideRng(...keys) {
+            let h = 2166136261 >>> 0;
+            const seed = (sm && (sm.runSeed | 0)) || 0;
+            const mix = (n) => {
+                h ^= (n >>> 0);
+                h = Math.imul(h, 16777619) >>> 0;
+            };
+            mix(seed);
+            for (const k of keys) mix(k | 0);
+            return (h >>> 0) / 0x100000000;
+        }
         function pickRivalSecondaryIntroLine(phase, badges) {
             const b = Math.max(0, badges | 0);
             const pools = {
@@ -23048,7 +23076,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 copy.push('You own the last win. I only need this one to flip the story.');
             }
             copy.push(`You've earned ${b} badge${b === 1 ? '' : 's'}—I'm still not backing down.`);
-            return copy[Math.floor(Math.random() * copy.length)];
+            const r = (sm && sm.active) ? _storySideRng((phase | 0) + 1, b + 1) : Math.random();
+            return copy[Math.floor(r * copy.length)];
         }
         function storyDisplayRoleLabel(eventType) {
             const e = String(eventType || '');
@@ -23607,9 +23636,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function save() {
             try {
-                const d = deepClone(sm);
-                // _strngState is preserved so Continue Journey resumes the exact RNG sequence
-                localStorage.setItem(SAVE_KEY, JSON.stringify(d));
+                localStorage.setItem(SAVE_KEY, JSON.stringify(sm));
             } catch(e) { console.warn('[Story] Save failed', e); }
         }
         function load() {
@@ -24017,10 +24044,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function _signatureProbabilityForEvent(eventType) {
             const e = String(eventType || '');
-            if (/^Gym Trainer 2$/i.test(e)) return 0.85;
-            if (/^Gym Trainer( 1)?$/i.test(e)) return 0.70;
-            if (/^Gym Leader/i.test(e) || e === 'Rival' || /^E[1-4]$/.test(e) || e === 'Champion' || e === 'Victory Road') return 0.85;
-            return 0.70;
+            // Bosses keep heavy signature weighting — flavor matters most here.
+            if (/^Gym Leader/i.test(e) || e === 'Rival' || /^E[1-4]$/.test(e) || e === 'Champion') return 0.85;
+            if (/^Gym Trainer 2$/i.test(e)) return 0.80;
+            if (/^Gym Trainer( 1)?$/i.test(e)) return 0.65;
+            if (e === 'Victory Road') return 0.70;
+            // Elite Trainer: themed but not monotonous.
+            if (/^Elite Trainer$/i.test(e)) return 0.55;
+            // Basic Trainer: capped so a Youngster with sigs:['Rattata'] can't roll 2–3 Rattatas in a row.
+            if (/^Basic Trainer$/i.test(e)) return 0.30;
+            return 0.50;
         }
 
         const STORY_PLACEHOLDER_SIGS = ['Sentret', 'Zigzagoon', 'Bidoof', 'Patrat', 'Rattata'];
@@ -24777,6 +24810,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { AudioSystem.onStoryNewJourney(); } catch (e) {}
             }
             assignTrainers(enabledGens);
+            normalizeRivalStandingState();
             save();
             persistStoryMenuDefaultsFromRun();
             processNextEvent();
@@ -25563,9 +25597,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return rawName || 'Town';
         }
 
+        function _storyDifficulty() {
+            return (sm && sm.storyDifficulty) || 'normal';
+        }
+        function _storyDifficultyIsCasual(diff) {
+            const d = diff || _storyDifficulty();
+            return d === 'veryeasy' || d === 'easy';
+        }
         function _storyGoldFeeAppliesForRetreat() {
-            const d = sm.storyDifficulty || 'normal';
-            return d === 'normal' || d === 'hard' || d === 'challenge';
+            return !_storyDifficultyIsCasual();
         }
 
         function _storyCalcRetreatGoldFee() {
@@ -25613,8 +25653,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (isRivalLoss) {
                     hint.textContent = 'Rival stakes: retry or retreat normally, or accept the loss, drop to 0G, and let the rivalry dialogue remember who won last.';
                 } else {
-                    const d = sm.storyDifficulty || 'normal';
-                    if (d === 'veryeasy' || d === 'easy') {
+                    if (_storyDifficultyIsCasual()) {
                         hint.textContent = 'No gold cost on this difficulty. Used bag items stay used.';
                     } else {
                         const fee = _storyCalcRetreatGoldFee();
@@ -25737,7 +25776,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const g = t.name ? getMonGrade(t.name, getBST(t.name)) : 4;
                 const n = sm.team.length;
                 const rawBuild = (t && (t.build || t.buildData)) ? (t.build || t.buildData) : {};
-                const mon = buildPokemon(String(t.name || '').trim(), deepClone(rawBuild));
+                const mon = buildPokemon(String(t.name || '').trim(), shallowCloneBuildForDisplay(rawBuild));
                 const moveNames = (rawBuild.m || []).slice(0, 4).map(m => (String(m || '').split('/')[0] || '—'));
                 while (moveNames.length < 4) moveNames.push('—');
                 const details = `${displayItem(mon, false)} · ${mon.ability || 'None'} · ${mon.nature || 'Hardy'}`;
@@ -25823,7 +25862,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _bothSidesBadgeHtml = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Relic effects apply to both you and your opponents while enabled">⚠ Affects both sides</span>';
                 const _playerOnlyBadgeHtml = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Coin reward and curse both affect your side only">⚠ Affects your team only</span>';
                 el.innerHTML = (sm.artifacts || []).map(id => {
-                    const art = ALL_ARTIFACTS.find(a => a.id === id);
+                    const art = ARTIFACT_BY_ID[id];
                     const off = (sm.artifactsDisabled || []).includes(id);
                     const label = art ? art.name : id;
                     const desc = art ? art.desc : '';
@@ -26643,8 +26682,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sm.unlockedGimmicks = order.slice(0, Math.min(gymBeatCount, order.length));
                 }
                 sm.currentEnemyLock = null;
-                // Advance event index
-                sm.eventIndex++;
+                // Advance event index (clamp before persisting so a corrupted index never reaches storage).
+                sm.eventIndex = Math.min(STORY_EVENTS_RAW.length - 1, (sm.eventIndex | 0) + 1);
                 save();
                 // Show result overlay then continue
                 showVictoryOverlay(title, coinsAwarded, isMilestoneVictory, () => {
@@ -26746,7 +26785,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.storyRetryInventorySnapshot = null;
             _storyBattleInventorySnapshot = null;
             _storyFullHealPartySlots();
-            sm.eventIndex++;
+            sm.eventIndex = Math.min(STORY_EVENTS_RAW.length - 1, (sm.eventIndex | 0) + 1);
             try { save(); } catch (e) { console.warn('[Story] rival concede save', e); }
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             const msg = rowIdx === STORY_RIVAL_ROW_LEAGUE
@@ -28106,7 +28145,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!gridEl) return;
             if (titleEl) titleEl.textContent = type==='dept' ? '🏬 Department Store' : '🛒 Pokémart';
             if (goldEl)  goldEl.innerHTML  = storyGoldHtml(sm.gold.toLocaleString());
-            gridEl.innerHTML = '';
 
             const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
             const rawItems = type === 'dept' ? [...POKEMART_ITEMS, ...DEPT_ITEMS] : POKEMART_ITEMS;
@@ -28115,20 +28153,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (type === 'dept' && (!sm.deptShopPurchasedByCity || typeof sm.deptShopPurchasedByCity !== 'object')) sm.deptShopPurchasedByCity = {};
             const _deptCKey = String(Math.max(0, cityIdx | 0));
             const _deptBoughtHere = type === 'dept' ? (sm.deptShopPurchasedByCity[_deptCKey] || {}) : {};
+            const _gridParts = [];
             if (type === 'dept') {
                 const featuredItems = _ensureDeptItemOfferForCity(cityIdx).filter(item => !isNoItemRunBattleBagExcluded(item));
                 if (featuredItems.length) {
-                    const featuredSection = document.createElement('div');
-                    featuredSection.className = 'story-featured-section';
-                    featuredSection.innerHTML='<h4>⭐ Featured Battle Tech (3 per city — one each)</h4>';
-                    featuredItems.forEach(item => {
+                    const _featParts = ['<h4>⭐ Featured Battle Tech (3 per city — one each)</h4>'];
+                    for (let _fi = 0; _fi < featuredItems.length; _fi++) {
+                        const item = featuredItems[_fi];
                         const canAfford = sm.gold >= item.price;
                         const alreadyBought = !!_deptBoughtHere[item.id];
                         const canBuy = canAfford && !alreadyBought;
                         const qty = sm.inventory[item.id]||0;
                         const icon = storyShopIconCellHtml(item.id);
                         const btnLabel = alreadyBought ? 'Sold out' : 'Buy';
-                        featuredSection.innerHTML += `<div class="story-shop-item" style="border-color:${item.tier==='mega' ? '#43a047' : '#7e57c2'};opacity:${alreadyBought ? '0.5' : '1'};">
+                        _featParts.push(`<div class="story-shop-item" style="border-color:${item.tier==='mega' ? '#43a047' : '#7e57c2'};opacity:${alreadyBought ? '0.5' : '1'};">
                             <div class="story-shop-item-row">
                                 ${icon}
                                 <div style="flex:1;min-width:0;">
@@ -28140,12 +28178,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                 <span class="price">${storyGoldHtml(item.price.toLocaleString())}</span>
                                 <button onclick="window.StoryMode.buyItem('${item.id}',${item.price})" ${canBuy?'':'disabled'} style="font-size:11px;padding:3px 8px;${canBuy?'color:#ffb74d;border-color:#ffb74d;':'opacity:0.4;'}">${btnLabel}</button>
                             </div>
-                        </div>`;
-                    });
-                    gridEl.appendChild(featuredSection);
+                        </div>`);
+                    }
+                    _gridParts.push(`<div class="story-featured-section">${_featParts.join('')}</div>`);
                 }
             }
-            items.forEach(item => {
+            for (let _ii = 0; _ii < items.length; _ii++) {
+                const item = items[_ii];
                 const _isBall = item.kind === 'ball' && item.ballKey;
                 const canAfford = sm.gold >= item.price;
                 // Ball items are unlimited — bypass the dept "one per city" sold-out lockout.
@@ -28155,7 +28194,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const icon = storyShopIconCellHtml(item.id);
                 const buyColor = item.tier === 'mega' || item.tier === 'ultra' ? '#ffb74d' : '#4caf50';
                 const btnLabel = alreadyBought ? 'Sold out' : 'Buy';
-                gridEl.innerHTML += `<div class="story-shop-item" style="opacity:${alreadyBought ? '0.5' : '1'};">
+                _gridParts.push(`<div class="story-shop-item" style="opacity:${alreadyBought ? '0.5' : '1'};">
                     <div class="story-shop-item-row">
                         ${icon}
                         <div style="flex:1;min-width:0;">
@@ -28167,11 +28206,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <span class="price">${storyGoldHtml(item.price.toLocaleString())}</span>
                         <button onclick="window.StoryMode.buyItem('${item.id}',${item.price})" ${canBuy?'':'disabled'} style="font-size:11px;padding:3px 8px;${canBuy?`color:${buyColor};border-color:${buyColor};`:'opacity:0.4;'}">${btnLabel}</button>
                     </div>
-                </div>`;
-            });
-            if (sm.settings && sm.settings.noItemRun && type === 'mart' && items.length === 0) {
-                gridEl.innerHTML += '<div style="grid-column:1/-1;color:#888;font-size:12px;padding:12px;line-height:1.4;">No battle items are stocked on a No Item Run. Run relics are at the <strong style="color:#ce93d8;">Relic Annex</strong> (hometown + major hubs).</div>';
+                </div>`);
             }
+            if (sm.settings && sm.settings.noItemRun && type === 'mart' && items.length === 0) {
+                _gridParts.push('<div style="grid-column:1/-1;color:#888;font-size:12px;padding:12px;line-height:1.4;">No battle items are stocked on a No Item Run. Run relics are at the <strong style="color:#ce93d8;">Relic Annex</strong> (hometown + major hubs).</div>');
+            }
+            gridEl.innerHTML = _gridParts.join('');
             if (type === 'dept') save();
             syncStoryShopBackground(type === 'dept' ? 'dept' : 'mart');
             showScreen('screen-story-shop');
@@ -28291,11 +28331,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     blurbEl.innerHTML += ' <span style="color:#ffb74d;">You\'ve already claimed your relic here — the lineup is locked for the rest of the run.</span>';
                 }
             }
-            gridEl.innerHTML = '';
             const listPrice = (cityIdx === 0 && !sm.artifactFreeClaimUsed) ? 0 : 5000;
-            offer.offers.forEach(artId => {
-                const art = ALL_ARTIFACTS.find(a => a.id === artId);
-                if (!art) return;
+            const _artParts = [];
+            for (let _oi = 0; _oi < offer.offers.length; _oi++) {
+                const artId = offer.offers[_oi];
+                const art = ARTIFACT_BY_ID[artId];
+                if (!art) continue;
                 const owned = sm.artifacts.includes(artId);
                 const canBuy = !owned && !shopLocked && (listPrice === 0 || sm.gold >= listPrice);
                 const aicon = storyShopIconCellHtml(art.id);
@@ -28306,7 +28347,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const bothSidesBadge = art.id === 'cursedCoinPouch'
                     ? '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Coin reward and curse both affect your side only">⚠ Affects your team only</span>'
                     : '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Relic effects apply to both you and your opponents for the rest of the run">⚠ Affects both sides</span>';
-                gridEl.innerHTML += `<div class="story-artifact-card" style="margin-bottom:8px;opacity:${owned ? '0.5' : '1'}">
+                _artParts.push(`<div class="story-artifact-card" style="margin-bottom:8px;opacity:${owned ? '0.5' : '1'}">
                     <div class="story-shop-item-row" style="margin-bottom:6px;">
                         ${aicon}
                         <h4 style="flex:1;margin:0;">${artName} ${owned ? '<span style="color:#4caf50;">[OWNED]</span>' : ''}</h4>
@@ -28315,8 +28356,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div class="desc">${artDesc}</div>
                     ${!owned ? `<div style="margin-top:6px;font-size:11px;color:#aaa;">Price: ${priceLabel}</div>
                     <button type="button" onclick="window.StoryMode.buyArtifact('${art.id}',${listPrice})" ${canBuy ? '' : 'disabled'} style="margin-top:6px;font-size:11px;padding:3px 8px;${canBuy ? 'color:#9c27b0;border-color:#9c27b0;' : 'opacity:0.4;'}">${btnLabel}</button>` : ''}
-                </div>`;
-            });
+                </div>`);
+            }
+            gridEl.innerHTML = _artParts.join('');
             syncStoryArtifactShopBackground();
             showScreen('screen-story-artifact-shop');
             save();
@@ -28520,7 +28562,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             el.innerHTML = sm.team.map((t,i) => {
                 const g      = getMonGrade(t.name, getBST(t.name));
                 let rCost  = Math.ceil((REROLL_COSTS[g] || 100) * Math.pow(1.5, (sm.cityRerollsUsed[`r_${i}`]||0)));
-                if (((sm.storyDifficulty || 'normal') === 'easy' || (sm.storyDifficulty || 'normal') === 'veryeasy') && (sm.cityRerollsUsed[`r_${i}`]||0) === 0) rCost = Math.ceil(rCost * 0.78);
+                if (_storyDifficultyIsCasual() && (sm.cityRerollsUsed[`r_${i}`]||0) === 0) rCost = Math.ceil(rCost * 0.78);
                 const uCostBase = g > 1 ? (UPGRADE_COSTS[g] || 9999) : null;
                 const uCost    = uCostBase !== null ? Math.ceil(uCostBase * Math.pow(1.5, (sm.cityRerollsUsed[`u_${i}`]||0))) : null;
                 const rebB   = Math.ceil(REBUILD_COST * Math.pow(1.5, (sm.cityRerollsUsed[`b_${i}`]||0)));
@@ -28533,10 +28575,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 let tempMon = null;
                 try {
-                    if (t.build) {
-                        const bc = { ...t.build, m: [...(t.build.m || [])] };
-                        tempMon = buildPokemon(t.name, bc);
-                    }
+                    if (t.build) tempMon = buildPokemon(t.name, shallowCloneBuildForDisplay(t.build));
                 } catch (e) { /* ignore render-time build errors */ }
 
                 const typeHtml = tempMon ? getTypeHTML(tempMon.type1, tempMon.type2) : '';
@@ -28591,7 +28630,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const rk = `r_${idx}`;
                 const rn = (sm.cityRerollsUsed[rk] || 0) + 1;
                 let cost = Math.ceil((REROLL_COSTS[g]||100) * Math.pow(1.5, rn - 1));
-                if (((sm.storyDifficulty || 'normal') === 'easy' || (sm.storyDifficulty || 'normal') === 'veryeasy') && rn === 1) cost = Math.ceil(cost * 0.78);
+                if (_storyDifficultyIsCasual() && rn === 1) cost = Math.ceil(cost * 0.78);
                 if (sm.gold < cost) return;
                 const pool = buildGradePool(storySettingsGens(), g).filter(n=>n!==mon.name&&!sm.team.some((t,i)=>i!==idx&&t.name===n));
                 if (!pool.length) { window.showGameAlert('No other Pokémon of this grade available!'); return; }
@@ -28793,10 +28832,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 let tempMon = null;
                 try {
-                    if (t.build) {
-                        const bc = { ...t.build, m: [...(t.build.m || [])] };
-                        tempMon = buildPokemon(t.name, bc);
-                    }
+                    if (t.build) tempMon = buildPokemon(t.name, shallowCloneBuildForDisplay(t.build));
                 } catch (e) { /* ignore render-time build errors */ }
 
                 const typeHtml = tempMon ? getTypeHTML(tempMon.type1, tempMon.type2) : '';
@@ -29706,7 +29742,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (owned.length) {
                 artBlock = '<ul style="margin:6px 0 0 18px;padding:0;">';
                 for (const id of owned) {
-                    const art = ALL_ARTIFACTS.find(a => a.id === id);
+                    const art = ARTIFACT_BY_ID[id];
                     if (!art) continue;
                     const name = _artifactNameForCity(art, cIdx);
                     const off = disabled.has(id) ? ' <span style="color:#888;">(off)</span>' : '';
@@ -30349,7 +30385,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const mergedMoves = showMoves && (movePools[idx] && movePools[idx].length) ? movePools[idx] : pool.moves;
                 const b = t.build || {};
                 let mon = null;
-                try { if (b) mon = buildPokemon(t.name, { ...b, m: [...(b.m || [])] }); } catch (e) {}
+                try { if (b) mon = buildPokemon(t.name, shallowCloneBuildForDisplay(b)); } catch (e) {}
 
                 const typeHtml = mon ? getTypeHTML(mon.type1, mon.type2 || '') : '';
                 const spriteUrl = getSprite(t.name);
@@ -30725,7 +30761,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const spriteUrl = getSprite(t.name);
             let typeHtml = '';
             try {
-                const mon = buildPokemon(t.name, { ...b, m: [...(b.m || [])] });
+                const mon = buildPokemon(t.name, shallowCloneBuildForDisplay(b));
                 typeHtml = mon ? getTypeHTML(mon.type1, mon.type2 || '') : '';
             } catch (e) {}
             const badge = _colressGimmickBadge(b);
@@ -31080,7 +31116,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const spriteUrl = (typeof getSprite === 'function') ? getSprite(t.name) : '';
             let typeHtml = '';
             try {
-                const mon = (typeof buildPokemon === 'function') ? buildPokemon(t.name, { ...b, m: [...(b.m || [])] }) : null;
+                const mon = (typeof buildPokemon === 'function') ? buildPokemon(t.name, shallowCloneBuildForDisplay(b)) : null;
                 if (mon && typeof getTypeHTML === 'function') typeHtml = getTypeHTML(mon.type1, mon.type2 || '');
             } catch (e) {}
 
