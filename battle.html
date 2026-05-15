@@ -27350,9 +27350,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Boss-mode HP-attrition phase: show the boss + HP bar + Attack button until HP=0.
             if (_catchState.bossMode && _catchState.bossHp > 0) {
                 const pct = Math.max(0, Math.min(100, Math.round((_catchState.bossHp / _catchState.bossMaxHp) * 100)));
+                let bossSpriteHtml = '';
+                try {
+                    const spriteUrl = typeof getSprite === 'function' ? getSprite(enc.name, false) : '';
+                    if (spriteUrl) {
+                        bossSpriteHtml = `<img src="${spriteUrl}" alt="${_esc(enc.name)}" style="display:block;margin:0 auto 8px;width:96px;height:96px;image-rendering:pixelated;filter:drop-shadow(0 0 10px rgba(206,147,216,0.7));" onerror="this.style.display='none'">`;
+                    }
+                } catch (e) {}
                 body.innerHTML = `
                     <div style="text-align:center;padding:18px 12px;background:linear-gradient(180deg,rgba(40,16,52,0.7) 0%,rgba(14,8,20,0.7) 100%);border:1px solid #6a1b9a;">
                         <div style="font-size:11px;color:#ce93d8;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">🔮 The Caged God</div>
+                        ${bossSpriteHtml}
                         <h2 style="margin:0 0 6px;color:#fff;font-size:18px;">${_esc(enc.name)}</h2>
                         <div style="display:inline-block;font-size:9px;font-weight:bold;color:#111;background:#ce93d8;padding:1px 6px;letter-spacing:0.04em;">G${grade}</div>
                         <div style="margin-top:14px;height:14px;background:rgba(0,0,0,0.55);border:1px solid #444;position:relative;overflow:hidden;">
@@ -27395,9 +27403,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const headerBg = _catchState.bossMode ? 'rgba(20,8,28,0.7);border:1px solid #6a1b9a' : 'rgba(10,18,12,0.55);border:1px solid #4a6c44';
             const gradeBg = _catchState.bossMode ? '#ce93d8' : '#a5d6a7';
             const subText = _catchState.bossMode ? `Master Ball recommended — this catch is hard.` : 'Catch chance scales with grade and ball type.';
+            // Show the wild Pokémon's sprite — the screen was text-only before, which
+            // made every encounter feel like the same prompt.
+            let spriteHtml = '';
+            try {
+                const spriteUrl = typeof getSprite === 'function' ? getSprite(enc.name, false) : '';
+                if (spriteUrl) {
+                    spriteHtml = `<img src="${spriteUrl}" alt="${_esc(enc.name)}" style="display:block;margin:0 auto 6px;width:84px;height:84px;image-rendering:pixelated;${_catchState.bossMode ? 'filter:drop-shadow(0 0 8px rgba(206,147,216,0.6));' : ''}" onerror="this.style.display='none'">`;
+                }
+            } catch (e) {}
             body.innerHTML = `
                 <div style="text-align:center;padding:18px 12px;background:${headerBg};">
                     <div style="font-size:11px;color:${headerColor};letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">${headerLabel}</div>
+                    ${spriteHtml}
                     <h2 style="margin:0 0 6px;color:#fff;font-size:18px;">${_esc(enc.name)}</h2>
                     <div style="display:inline-block;font-size:9px;font-weight:bold;color:#111;background:${gradeBg};padding:1px 6px;letter-spacing:0.04em;">G${grade}</div>
                     <div style="margin-top:8px;font-size:10px;color:#888;">${subText}</div>
