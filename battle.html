@@ -22297,6 +22297,158 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Grusha':           'Glaseado Mountain',
         };
 
+        // Canonical badge name per gym leader (used in the victory overlay flavor line).
+        // Falls back to "Gym Badge" for any leader not mapped here.
+        const LEADER_BADGE_NAMES = {
+            'Brock':'Boulder Badge','Misty':'Cascade Badge','Lt. Surge':'Thunder Badge','Erika':'Rainbow Badge',
+            'Koga':'Soul Badge','Sabrina':'Marsh Badge','Blaine':'Volcano Badge','Giovanni':'Earth Badge',
+            'Falkner':'Zephyr Badge','Bugsy':'Hive Badge','Whitney':'Plain Badge','Morty':'Fog Badge',
+            'Chuck':'Storm Badge','Jasmine':'Mineral Badge','Pryce':'Glacier Badge','Clair':'Rising Badge',
+            'Roxanne':'Stone Badge','Brawly':'Knuckle Badge','Wattson':'Dynamo Badge','Flannery':'Heat Badge',
+            'Norman':'Balance Badge','Winona':'Feather Badge','Tate':'Mind Badge','Liza':'Mind Badge',
+            'Wallace':'Rain Badge','Juan':'Rain Badge',
+            'Roark':'Coal Badge','Gardenia':'Forest Badge','Maylene':'Cobble Badge','Crasher Wake':'Fen Badge',
+            'Fantina':'Relic Badge','Byron':'Mine Badge','Candice':'Icicle Badge','Volkner':'Beacon Badge',
+            'Cilan':'Trio Badge','Chili':'Trio Badge','Cress':'Trio Badge','Lenora':'Basic Badge',
+            'Burgh':'Insect Badge','Elesa':'Bolt Badge','Clay':'Quake Badge','Skyla':'Jet Badge',
+            'Brycen':'Freeze Badge','Drayden':'Legend Badge','Iris':'Legend Badge',
+            'Viola':'Bug Badge','Grant':'Cliff Badge','Korrina':'Rumble Badge','Ramos':'Plant Badge',
+            'Clemont':'Voltage Badge','Valerie':'Fairy Badge','Olympia':'Psychic Badge','Wulfric':'Iceberg Badge',
+            'Milo':'Grass Badge','Nessa':'Water Badge','Kabu':'Fire Badge','Bea':'Fighting Badge',
+            'Allister':'Ghost Badge','Opal':'Fairy Badge','Gordie':'Rock Badge','Melony':'Ice Badge',
+            'Piers':'Dark Badge','Raihan':'Dragon Badge',
+            'Katy':'Bug Badge','Brassius':'Grass Badge','Iono':'Electric Badge','Kofu':'Water Badge',
+            'Larry':'Normal Badge','Ryme':'Ghost Badge','Tulip':'Psychic Badge','Grusha':'Ice Badge',
+        };
+
+        // Per-leader victory flavor. Strings include the trainer's own voice; the engine
+        // prepends "{Name}:" so the line reads as direct speech. One short line each.
+        const LEADER_VICTORY_LINES = {
+            'Brock':"\"Your defense rivals stone. Take the Boulder Badge.\"",
+            'Misty':"\"You really do have water under control. Cascade Badge—yours.\"",
+            'Lt. Surge':"\"Electrifying match, kid! Take this Thunder Badge.\"",
+            'Erika':"\"…The scent of victory suits you. The Rainbow Badge, please.\"",
+            'Koga':"\"Your subterfuge eclipsed mine. The Soul Badge is yours.\"",
+            'Sabrina':"\"I foresaw this outcome. The Marsh Badge—as it must be.\"",
+            'Blaine':"\"You doused the inferno! Burn this Volcano Badge into memory!\"",
+            'Giovanni':"\"…Hmph. You've earned the Earth Badge. Don't make me regret it.\"",
+            'Falkner':"\"My birds soared—but yours flew higher. Zephyr Badge, yours.\"",
+            'Bugsy':"\"Fascinating data! Your strategy joins my notes. Hive Badge!\"",
+            'Whitney':"\"…I'm not crying! …Fine. Take the Plain Badge already.\"",
+            'Morty':"\"You walked through the fog with eyes open. Fog Badge.\"",
+            'Chuck':"\"Hyaaah! That training paid off—for both of us. Storm Badge!\"",
+            'Jasmine':"\"…Thank you for your spirited battle. The Mineral Badge.\"",
+            'Pryce':"\"You reminded an old man what fire feels like. Glacier Badge.\"",
+            'Clair':"\"…Tch. You're worthy. The Rising Badge—don't embarrass it.\"",
+            'Roxanne':"\"My textbook will note this match. Stone Badge—well-earned.\"",
+            'Brawly':"\"That fight crashed harder than any wave. Knuckle Badge!\"",
+            'Wattson':"\"Wahaha! Shocking! Dynamo Badge—earned with watts to spare!\"",
+            'Flannery':"\"…You doused me good. Heat Badge—and my pride along with it.\"",
+            'Norman':"\"…My child, you've grown. Balance Badge—wear it well.\"",
+            'Winona':"\"You ride the sky as I do. Feather Badge—soar farther.\"",
+            'Tate':"\"Liza and I salute you. Mind Badge—two minds well-bested.\"",
+            'Liza':"\"Tate and I salute you. Mind Badge—two minds well-bested.\"",
+            'Wallace':"\"A graceful battle deserves a graceful prize. Rain Badge.\"",
+            'Juan':"\"Magnifico! Your technique flowed like water. Rain Badge.\"",
+            'Roark':"\"My father's pickaxe is yours someday. Coal Badge—mined honest.\"",
+            'Gardenia':"\"Hahaha! You uprooted me! Forest Badge—planted in respect.\"",
+            'Maylene':"\"That match made me stronger. Cobble Badge—earned in full.\"",
+            'Crasher Wake':"\"BWAHAHA! A fellow wrestler of the deep! Fen Badge!\"",
+            'Fantina':"\"Quelle technique! Magnifique! Relic Badge for the moment.\"",
+            'Byron':"\"…My own son couldn't crack me. You did. Mine Badge.\"",
+            'Candice':"\"You melted me with focus alone. Icicle Badge—wear it proud.\"",
+            'Volkner':"\"…Finally. Something worth being shocked over. Beacon Badge.\"",
+            'Cilan':"\"A perfectly seasoned match. The Trio Badge—our compliments.\"",
+            'Chili':"\"Hot stuff! The Trio Badge sizzles in your hand!\"",
+            'Cress':"\"…Cool, composed, and yours. The Trio Badge.\"",
+            'Lenora':"\"Class dismissed! Basic Badge—first lesson, well learned.\"",
+            'Burgh':"\"Such art in your strategy! Insect Badge—an inspired piece.\"",
+            'Elesa':"\"Dazzling! The Bolt Badge sparks brighter in your hands.\"",
+            'Clay':"\"Buried me good, you did! Quake Badge—dug up fair and square.\"",
+            'Skyla':"\"Cleared for takeoff, ace pilot! Jet Badge—your wings now.\"",
+            'Brycen':"\"…An icy heart can still be moved. Freeze Badge.\"",
+            'Drayden':"\"…The Legend Badge passes to a worthy successor.\"",
+            'Iris':"\"You're even stronger than I dreamed! Legend Badge—it's yours!\"",
+            'Viola':"\"Snap! A picture-perfect battle. Bug Badge—my best shot today.\"",
+            'Grant':"\"You climbed past me. Cliff Badge—the next handhold up.\"",
+            'Korrina':"\"Lucario and I bow to a fellow aura. Rumble Badge!\"",
+            'Ramos':"\"You pruned an old tree well. Plant Badge—keep growing.\"",
+            'Clemont':"\"By my calculations… you exceeded them! Voltage Badge!\"",
+            'Valerie':"\"…What a lovely battle. The Fairy Badge—a delicate gift.\"",
+            'Olympia':"\"The stars foretold this. Psychic Badge—written in light.\"",
+            'Wulfric':"\"You crack ice with warmth—rare. Iceberg Badge for you.\"",
+            'Milo':"\"Whew, tough one! Grass Badge—you grew it yourself!\"",
+            'Nessa':"\"You churned my tide. Water Badge—a souvenir from the deep.\"",
+            'Kabu':"\"Your spirit burned brighter than mine today. Fire Badge!\"",
+            'Bea':"\"…I lost. So I train harder. Fighting Badge—earned cleanly.\"",
+            'Allister':"\"…The ghosts approve. Ghost Badge—for the brave.\"",
+            'Opal':"\"You're positively pink! Fairy Badge—wear it with poise!\"",
+            'Gordie':"\"You rocked the climb. Rock Badge—solid as the mountain.\"",
+            'Melony':"\"You melted my heart and my ice. Ice Badge—dear to me.\"",
+            'Piers':"\"…Not bad. Encore. Dark Badge—Spikemuth approves.\"",
+            'Raihan':"\"You broke through. Dragon Badge—I'll film the rematch.\"",
+            'Katy':"\"Sweet victory for you! Bug Badge—frosted with respect.\"",
+            'Brassius':"\"A sculpture of a match. Grass Badge—a masterwork.\"",
+            'Iono':"\"And the streamer is YOU! Electric Badge—stay zappy!\"",
+            'Kofu':"\"Crackin' battle, kid! Water Badge—fresh as the catch.\"",
+            'Larry':"\"…Normal day. Normal Badge. Well earned, though.\"",
+            'Ryme':"\"Bone-rattling rhymes, bone-rattling fight. Ghost Badge.\"",
+            'Tulip':"\"You bloomed beautifully. Psychic Badge—stay vivid.\"",
+            'Grusha':"\"…Hmph. You can ski my mountain anytime. Ice Badge.\"",
+        };
+
+        // Per-Elite Four post-battle line. Used when the matched trainer name is canonical;
+        // otherwise we fall through to the role-only "Elite N passed—one step closer!" line.
+        const ELITE_VICTORY_LINES = {
+            'Lorelei':"Lorelei: \"…You melted my ice. The next gate awaits.\"",
+            'Bruno':"Bruno: \"Hmm! Pure muscle wasn't enough. Move on, then.\"",
+            'Agatha':"Agatha: \"Heh heh… so the brat does bite. Onward.\"",
+            'Lance':"Lance: \"Dragons bow to your fire. The Champion is next.\"",
+            'Will':"Will: \"My psychic veil is lifted. Press onward.\"",
+            'Karen':"Karen: \"Strong trainers like what they like. You like winning.\"",
+            'Koga':"Koga: \"…I taught you nothing. You taught me. Onward.\"",
+            'Sidney':"Sidney: \"Heh. Couldn't roll you. Next gate's open.\"",
+            'Phoebe':"Phoebe: \"My ghosts hum your name now. Strange feeling.\"",
+            'Glacia':"Glacia: \"…Warm enough to melt me. Press on.\"",
+            'Drake':"Drake: \"You sail rougher seas than I expected. Sail on.\"",
+            'Aaron':"Aaron: \"Bzzt! You stung me clean. Onward, kid.\"",
+            'Bertha':"Bertha: \"Hee hee! The little one isn't so little. Move on.\"",
+            'Flint':"Flint: \"Hot match! You out-burned me. Press on.\"",
+            'Lucian':"Lucian: \"My calculations were off by exactly one—you. Onward.\"",
+            'Shauntal':"Shauntal: \"…I'll write you into a novel. Press on.\"",
+            'Marshal':"Marshal: \"Hmph! That was a true contest. Onward.\"",
+            'Grimsley':"Grimsley: \"…You played the long odds. They paid.\"",
+            'Caitlin':"Caitlin: \"…Magnificent. The path opens.\"",
+            'Malva':"Malva: \"You snuffed my fire. The next gate awaits.\"",
+            'Siebold':"Siebold: \"A meal well-cooked. Bon voyage to the next gate.\"",
+            'Wikstrom':"Wikstrom: \"En garde! …Or rather, well-fought. Onward.\"",
+            'Drasna':"Drasna: \"Oh my, what a sweet battle. Press on, dear.\"",
+            'Hala':"Hala: \"Alola! That was a thunderous fight. Move on.\"",
+            'Olivia':"Olivia: \"You polished the stones I set. Onward.\"",
+            'Acerola':"Acerola: \"Heehee! My ghosts liked you. Press on.\"",
+            'Kahili':"Kahili: \"Hole in one—of my pride. Move on, sharp shot.\"",
+            'Molayne':"Molayne: \"My circuits are humming. You earned the next gate.\"",
+            'Hassel':"Hassel: \"A dragon learned from you. Press on.\"",
+            'Poppy':"Poppy: \"Hee! That was so cool! Go, go, go!\"",
+            'Rika':"Rika: \"That was a SOLID match. Move on, champ.\"",
+        };
+
+        // Per-champion victory line. If the matched champion has no entry we still emit
+        // the generic "You defeated the Champion!" line as before.
+        const CHAMPION_VICTORY_LINES = {
+            'Blue':"Blue: \"Smell ya later… you actually did it.\"",
+            'Lance':"Lance: \"…A new Champion is crowned. The dragons salute you.\"",
+            'Steven Stone':"Steven Stone: \"My rarest find today—was you. Bravo.\"",
+            'Wallace':"Wallace: \"A graceful crown for a graceful trainer.\"",
+            'Cynthia':"Cynthia: \"…I enjoyed that. Garchomp and I yield, gladly.\"",
+            'Alder':"Alder: \"Hahaha! The next age belongs to you, friend.\"",
+            'Iris':"Iris: \"You're the best! …Now I have to train harder!\"",
+            'Diantha':"Diantha: \"Brava! The role of Champion suits you beautifully.\"",
+            'Leon':"Leon: \"Champion time… for YOU! That was unbeatable, mate.\"",
+            'Geeta':"Geeta: \"Indeed. The mantle was always yours, perhaps.\"",
+            'Hau':"Hau: \"Alola! You're a malasada-sweet Champion now!\"",
+        };
+
         // Maps city index (1–8) to the STORY_EVENTS_RAW event index of its Gym Leader battle
         const GYM_CITY_LEADER_EVENT = { 1:5, 2:11, 3:18, 4:24, 5:31, 6:38, 7:46, 8:53 };
 
@@ -25887,14 +26039,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const autoClose = setTimeout(dismiss, 3500);
             contBtn.onclick = (e) => { e.stopPropagation(); dismiss(); };
             let badgeFlavor = '';
+            const _trainerName = (sm && sm.currentTrainerData && sm.currentTrainerData.name) ? String(sm.currentTrainerData.name) : '';
+            const _baseTrainerName = _trainerName ? _storyTrainerBaseName(_trainerName) : '';
+            const _leaderLookup = (LEADER_VICTORY_LINES[_trainerName] || LEADER_VICTORY_LINES[_baseTrainerName] || '');
+            const _badgeName = (LEADER_BADGE_NAMES[_trainerName] || LEADER_BADGE_NAMES[_baseTrainerName] || 'Gym Badge');
+            const _eliteLookup = (ELITE_VICTORY_LINES[_trainerName] || ELITE_VICTORY_LINES[_baseTrainerName] || '');
+            const _champLookup = (CHAMPION_VICTORY_LINES[_trainerName] || CHAMPION_VICTORY_LINES[_baseTrainerName] || '');
             if (gotBadge && battleEventName) {
                 const evn = String(battleEventName);
-                if (/^Gym Leader [1-8]$/i.test(evn)) badgeFlavor = `<div style="font-size:14px;color:#81c784;">You received a Gym Badge!</div>`;
+                if (/^Gym Leader [1-8]$/i.test(evn)) {
+                    const speakerName = _trainerName || 'The Gym Leader';
+                    const line = _leaderLookup
+                        ? `${speakerName}: ${_leaderLookup}`
+                        : `You received the ${_badgeName}!`;
+                    badgeFlavor = `<div style="font-size:14px;color:#81c784;line-height:1.5;max-width:380px;">${line}</div>`;
+                }
                 else if (/^E[1-4]$/.test(evn)) {
                     const n = evn.slice(1);
-                    badgeFlavor = `<div style="font-size:14px;color:#81c784;">Elite ${n} passed—one step closer!</div>`;
+                    const line = _eliteLookup || `Elite ${n} passed—one step closer.`;
+                    badgeFlavor = `<div style="font-size:14px;color:#81c784;line-height:1.5;max-width:380px;">${line}</div>`;
                 }
-                else if (evn === 'Champion') badgeFlavor = `<div style="font-size:14px;color:#81c784;">You defeated the Champion!</div>`;
+                else if (evn === 'Champion') {
+                    const line = _champLookup || 'You defeated the Champion!';
+                    badgeFlavor = `<div style="font-size:14px;color:#81c784;line-height:1.5;max-width:380px;">${line}</div>`;
+                }
                 else if (evn === 'Rival') {
                     const rp = storyRowIdx != null ? getRivalEncounterPhase(storyRowIdx) : null;
                     if (rp === 4) {
