@@ -667,6 +667,7 @@
         #screen-story-tutor,
         #screen-story-colress,
         #screen-story-evtrainer,
+        #screen-story-evolab,
         #screen-story-link,
         #screen-story-casino {
             font-family: var(--battle-font);
@@ -678,6 +679,7 @@
         #screen-story-tutor h1, #screen-story-tutor h2, #screen-story-tutor h3, #screen-story-tutor h4, #screen-story-tutor p, #screen-story-tutor span, #screen-story-tutor button, #screen-story-tutor label,
         #screen-story-colress h1, #screen-story-colress h2, #screen-story-colress h3, #screen-story-colress h4, #screen-story-colress p, #screen-story-colress span, #screen-story-colress button, #screen-story-colress label,
         #screen-story-evtrainer h1, #screen-story-evtrainer h2, #screen-story-evtrainer h3, #screen-story-evtrainer h4, #screen-story-evtrainer p, #screen-story-evtrainer span, #screen-story-evtrainer button, #screen-story-evtrainer label,
+        #screen-story-evolab h1, #screen-story-evolab h2, #screen-story-evolab h3, #screen-story-evolab h4, #screen-story-evolab p, #screen-story-evolab span, #screen-story-evolab button, #screen-story-evolab label,
         #screen-story-link h1, #screen-story-link h2, #screen-story-link h3, #screen-story-link h4, #screen-story-link p, #screen-story-link span, #screen-story-link button, #screen-story-link label,
         #screen-story-casino h1, #screen-story-casino h2, #screen-story-casino h3, #screen-story-casino h4, #screen-story-casino p, #screen-story-casino span, #screen-story-casino button, #screen-story-casino label, #screen-story-casino input {
             font-family: var(--battle-font);
@@ -733,6 +735,7 @@
         #screen-story-tutor > .story-shop-stack > div:last-child,
         #screen-story-colress > .story-shop-stack > div:last-child,
         #screen-story-evtrainer > .story-shop-stack > div:last-child,
+        #screen-story-evolab > .story-shop-stack > div:last-child,
         #screen-story-link > .story-link-stack > div:last-child,
         #screen-story-casino > .story-shop-stack > div:last-child {
             border-top: 2px solid #555 !important;
@@ -4815,8 +4818,31 @@
             <span id="story-link-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
-            <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Reroll, upgrade, or rebuild your team. Changes are permanent for this run. <span style="color:#9ccc65;">Rebuild rerolls the entire build (including EVs); to change only EVs, visit the EV Trainer.</span></p>
+            <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Random trades from anonymous partners. Three options per Pokémon: same-tier swap, better-tier swap, or fresh build for the same species. <span style="color:#9ccc65;">To evolve, visit the Stone Sage at the Evolution Tutor.</span></p>
             <div id="story-link-team" style="display:flex;flex-direction:column;gap:12px;"></div>
+        </div>
+        <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+            <button onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
+        </div>
+        </div>
+    </div>
+
+    <div id="screen-story-evolab" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div id="story-evolab-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
+        <div class="story-shop-stack">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;gap:10px;">
+            <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
+                <img id="story-evolab-portrait" src="sprites/trainers/Sage.png" alt="Stone Sage" style="width:36px;height:36px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.visibility='hidden'">
+                <div style="min-width:0;">
+                    <h3 class="story-screen-head-title" style="color:#a5d6a7;font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_tutor.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Stone Sage — Evolution Tutor</span></h3>
+                </div>
+            </div>
+            <span id="story-evolab-gold" style="color:#ffd700;font-size:13px;font-weight:bold;flex-shrink:0;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
+            <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Pick which evolution path you want. The Stone Sage shows every branch — options outside your enabled generations are greyed out. <span style="color:#9ccc65;">Evolutions keep your nature, ability slot, item, and EVs; the moveset rerolls to match the new species.</span></p>
+            <div id="story-evolab-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
             <button onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
@@ -21213,65 +21239,65 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Rival row ids 68 / 12 / 39 are fought from the city hub (button) before Leave / Continue Route, like Gym checks.
         // City actions: each hub has ≥2 training NPCs (tutor / rater / dojo / EV / Colress), mixed across visits; Department Store on hubs 19, 35, 50, 59. Poké Casino: row 19 + 59.
         const STORY_EVENTS_RAW = [
-          [0,'City','City0',null,0,['Professor','Link Station','Pokemart','Move Tutor','Nature Rater','Leave City']],
+          [0,'City','City0',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Move Tutor','Nature Rater','Leave City']],
           [68,'Battle','Rival',{g1:0,g2:0,g3:0,g4:100},2000,null],
           [1,'Battle','Basic Trainer',{g1:0,g2:0,g3:0,g4:100},1400,null],
-          [3,'City','City1',null,0,['Professor','Link Station','Pokemart','Battle Dojo','EV Trainer','Gym Battle','Leave City']],
+          [3,'City','City1',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Battle Dojo','EV Trainer','Gym Battle','Leave City']],
           [4,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:20,g4:80},1850,null],
           [5,'Battle','Gym Leader 1',{g1:0,g2:0,g3:100,g4:0},2350,null],
-          [6,'City','City1',null,0,['Professor','Link Station','Pokemart','Move Tutor','Nature Rater','Leave City']],
+          [6,'City','City1',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Move Tutor','Nature Rater','Leave City']],
           [7,'Battle','Basic Trainer',{g1:0,g2:0,g3:60,g4:40},1200,null],
           [8,'Battle','Basic Trainer',{g1:0,g2:0,g3:70,g4:30},1200,null],
-          [9,'City','City2',null,0,['Professor','Link Station','Pokemart','Move Tutor','Battle Dojo','Gym Battle','Leave City']],
+          [9,'City','City2',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Move Tutor','Battle Dojo','Gym Battle','Leave City']],
           [10,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:80,g4:20},2100,null],
           [11,'Battle','Gym Leader 2',{g1:0,g2:0,g3:100,g4:0},2950,null],
-          [13,'City','City2',null,0,['Professor','Link Station','Pokemart','Nature Rater','EV Trainer','Leave City']],
+          [13,'City','City2',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Nature Rater','EV Trainer','Leave City']],
           [14,'Battle','Basic Trainer',{g1:0,g2:0,g3:80,g4:20},1500,null],
           [15,'Battle','Basic Trainer',{g1:0,g2:0,g3:90,g4:10},1500,null],
-          [16,'City','City3',null,0,['Professor','Link Station','Pokemart','Move Tutor','Nature Rater','Gym Battle']],
+          [16,'City','City3',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Move Tutor','Nature Rater','Gym Battle']],
           [17,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:95,g4:5},2450,null],
           [18,'Battle','Gym Leader 3',{g1:0,g2:30,g3:70,g4:0},3550,null],
-          [19,'City','City3',null,0,['Professor','Link Station','Department Store','Poké Casino','Move Tutor','Battle Dojo','EV Trainer','Leave City']],
+          [19,'City','City3',null,0,['Professor','Link Station','Evolution Tutor','Department Store','Poké Casino','Move Tutor','Battle Dojo','EV Trainer','Leave City']],
           [12,'Battle','Rival',{g1:0,g2:0,g3:100,g4:0},3500,null],
           [20,'Battle','Basic Trainer',{g1:0,g2:10,g3:90,g4:0},1700,null],
           [21,'Battle','Basic Trainer',{g1:0,g2:15,g3:85,g4:0},1700,null],
-          [22,'City','City4',null,0,['Professor','Link Station','Pokemart','Move Tutor','EV Trainer','Gym Battle','Leave City']],
+          [22,'City','City4',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Move Tutor','EV Trainer','Gym Battle','Leave City']],
           [23,'Battle','Gym Trainer 1',{g1:0,g2:30,g3:70,g4:0},2800,null],
           [24,'Battle','Gym Leader 4',{g1:0,g2:50,g3:50,g4:0},3800,null],
-          [25,'City','City4',null,0,['Professor','Link Station','Pokemart','Nature Rater','Battle Dojo','Leave City']],
+          [25,'City','City4',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Nature Rater','Battle Dojo','Leave City']],
           [26,'Battle','Basic Trainer',{g1:0,g2:25,g3:75,g4:0},2000,null],
           [27,'Battle','Basic Trainer',{g1:0,g2:35,g3:65,g4:0},2000,null],
-          [28,'City','City5',null,0,['Professor','Link Station','Pokemart','Move Tutor','Nature Rater','Gym Battle','Leave City']],
+          [28,'City','City5',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Move Tutor','Nature Rater','Gym Battle','Leave City']],
           [29,'Battle','Gym Trainer 1',{g1:0,g2:50,g3:50,g4:0},3050,null],
           [30,'Battle','Gym Trainer 2',{g1:0,g2:60,g3:40,g4:0},3050,null],
           [31,'Battle','Gym Leader 5',{g1:0,g2:70,g3:30,g4:0},4150,null],
-          [32,'City','City5',null,0,['Professor','Link Station','Pokemart','Battle Dojo','EV Trainer','Leave City']],
+          [32,'City','City5',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Battle Dojo','EV Trainer','Leave City']],
           [33,'Battle','Basic Trainer',{g1:0,g2:50,g3:50,g4:0},2200,null],
           [34,'Battle','Elite Trainer',{g1:0,g2:70,g3:30,g4:0},2700,null],
-          [35,'City','City6',null,0,['Link Station','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
+          [35,'City','City6',null,0,['Link Station','Evolution Tutor','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
           [36,'Battle','Gym Trainer 1',{g1:0,g2:75,g3:25,g4:0},3300,null],
           [37,'Battle','Gym Trainer 2',{g1:0,g2:80,g3:20,g4:0},3300,null],
           [38,'Battle','Gym Leader 6',{g1:0,g2:90,g3:10,g4:0},5550,null],
-          [40,'City','City6',null,0,['Link Station','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
+          [40,'City','City6',null,0,['Link Station','Evolution Tutor','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
           [39,'Battle','Rival',{g1:5,g2:95,g3:0,g4:0},5400,null],
           [41,'Battle','Basic Trainer',{g1:0,g2:100,g3:0,g4:0},2500,null],
           [42,'Battle','Elite Trainer',{g1:5,g2:95,g3:0,g4:0},2900,null],
-          [43,'City','City7',null,0,['Link Station','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
+          [43,'City','City7',null,0,['Link Station','Evolution Tutor','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
           [44,'Battle','Gym Trainer 1',{g1:5,g2:95,g3:0,g4:0},3550,null],
           [45,'Battle','Gym Trainer 2',{g1:8,g2:92,g3:0,g4:0},3550,null],
           [46,'Battle','Gym Leader 7',{g1:15,g2:85,g3:0,g4:0},5800,null],
-          [47,'City','City7',null,0,['Link Station','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
+          [47,'City','City7',null,0,['Link Station','Evolution Tutor','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
           [48,'Battle','Elite Trainer',{g1:10,g2:90,g3:0,g4:0},3000,null],
           [49,'Battle','Elite Trainer',{g1:12,g2:88,g3:0,g4:0},3000,null],
-          [50,'City','City8',null,0,['Link Station','Pokemart','Department Store','Move Tutor','Nature Rater','Power Up','Gym Battle','Leave City']],
+          [50,'City','City8',null,0,['Link Station','Evolution Tutor','Pokemart','Department Store','Move Tutor','Nature Rater','Power Up','Gym Battle','Leave City']],
           [51,'Battle','Gym Trainer 1',{g1:15,g2:85,g3:0,g4:0},3650,null],
           [52,'Battle','Gym Trainer 2',{g1:20,g2:80,g3:0,g4:0},3650,null],
           [53,'Battle','Gym Leader 8',{g1:25,g2:75,g3:0,g4:0},5950,null],
-          [55,'City','City8',null,0,['Link Station','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
+          [55,'City','City8',null,0,['Link Station','Evolution Tutor','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
           [56,'Battle','Elite Trainer',{g1:30,g2:70,g3:0,g4:0},4200,null],
           [57,'Battle','Elite Trainer',{g1:35,g2:65,g3:0,g4:0},4800,null],
           [58,'Battle','Elite Trainer',{g1:40,g2:60,g3:0,g4:0},5200,null],
-          [59,'City','City9',null,0,['Link Station','Department Store','Poké Casino','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Enter Pokemon League']],
+          [59,'City','City9',null,0,['Link Station','Evolution Tutor','Department Store','Poké Casino','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Enter Pokemon League']],
           [60,'Battle','E1',{g1:35,g2:65,g3:0,g4:0},5000,null],
           [61,'Battle','E2',{g1:45,g2:55,g3:0,g4:0},5000,null],
           [62,'Battle','E3',{g1:55,g2:45,g3:0,g4:0},5000,null],
@@ -21910,6 +21936,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function syncStoryEVTrainerBackground() {
             applyStoryBgLayer(document.getElementById('story-evtrainer-bg-layer'), getStoryBgManifest().shopDept || getStoryBgManifest().shopMart || '');
+        }
+        function syncStoryEvoLabBackground() {
+            applyStoryBgLayer(document.getElementById('story-evolab-bg-layer'), getStoryBgManifest().shopDept || getStoryBgManifest().shopMart || '');
         }
         function syncStoryCasinoBackground() {
             const m = getStoryBgManifest();
@@ -23603,14 +23632,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 { key: 'evtrainer', actionKey: 'EV Trainer',       line: 'Buck the EV Trainer can reshape your team’s effort values.' },
                 { key: 'nature',    actionKey: 'Nature Rater',     line: 'The Nature Rater can change a Pokémon’s nature on the fly.' },
                 { key: 'relic',     actionKey: null,               line: 'Don’t miss the Relic Annex — run-wide artifacts that affect both sides.' },
-                { key: 'link',      actionKey: 'Link Station',     line: 'The Cable Link Station can reroll or upgrade your party.' },
+                { key: 'link',      actionKey: 'Link Station',     line: 'The Cable Link Station handles random trades — same tier, better tier, or fresh build.' },
+                { key: 'evolab',    actionKey: 'Evolution Tutor',  line: 'The Stone Sage at the Evolution Tutor can evolve any party Pokémon.' },
             ];
             const _relicAvailHere = (cityIdx === 0 || actions.includes('Department Store'));
             const _barker = _facilityBarkers.find(b => {
                 if (_isFacilitySeen(cityIdx, b.key)) return false;
                 if (b.actionKey === null) return _relicAvailHere;
                 if (!actions.includes(b.actionKey)) return false;
-                if (['tutor','nature','dojo','evtrainer','colress'].includes(b.key) && !sm.team.length) return false;
+                if (['tutor','nature','dojo','evtrainer','colress','evolab'].includes(b.key) && !sm.team.length) return false;
                 if (b.key === 'colress' && !(sm.settings && (sm.settings.megaOn || sm.settings.zOn || sm.settings.dynaOn || sm.settings.teraOn))) return false;
                 return true;
             });
@@ -23794,7 +23824,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 : 'Party — Empty (Visit Professor)';
             _push('recover', makeActionBtn(_partyLabel, 'party', 'window.StoryMode.openPartyModal()', 'party'));
             if (actions.includes('Link Station')) {
-                _push('recover', makeActionBtn('📡 Cable Link Station — Reroll Team','link','window.StoryMode.enterLink()','link',{ meta: _withNew('link', [{label:'Free',tone:'free'}]) }));
+                _push('recover', makeActionBtn('📡 Cable Link Station — Random Trades','link','window.StoryMode.enterLink()','link',{ meta: _withNew('link', [{label:'Free',tone:'free'}]) }));
+            }
+            if (actions.includes('Evolution Tutor') && _tutorTeam) {
+                _push('train', makeActionBtn('🧬 Stone Sage — Evolve Pokémon','evolab','window.StoryMode.enterEvolutionLab()','training',{ meta: _withNew('evolab', [_costBadge(1500, '+')]) }));
             }
             // Bag — always accessible in city to view inventory and sell items
             const _invCount = Object.keys(sm.inventory || {}).filter(k => sm.inventory[k] > 0).length;
@@ -23828,6 +23861,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             nature: 'icons/story/story_nature.png?v=20260429b',
             dojo: 'icons/story/story_dojo.png?v=20260429b',
             evtrainer: 'icons/story/story_dojo.png?v=20260429b',
+            evolab: 'icons/story/story_tutor.png?v=20260429b',
             colress: 'icons/story/story_colress.png?v=20260429b',
             artifacts: 'icons/story/story_artifacts.png?v=20260429b',
             center: 'icons/story/story_center.png?v=20260429b',
@@ -25420,30 +25454,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        // Get valid evolutions for a Pokémon within the generation range.
-        // Returns array of species names (empty if none).
-        function _getValidEvos(monName, enabledGens) {
-            try {
-                const genSet = new Set(normalizeEnabledGens(enabledGens));
-                const D = typeof getPssDex === 'function' ? getPssDex() : null;
-                if (!D) return [];
-                const sp = D.species.get(monName);
-                if (!sp || !sp.evos || !sp.evos.length) return [];
-                return sp.evos.filter(evo => {
-                    const b = baseStats[evo];
-                    if (!b) return false;
-                    if (!genSet.has(b.gen)) return false;
-                    return true;
-                });
-            } catch(e) { return []; }
-        }
-
         function renderLinkTeam() {
             const el = document.getElementById('story-link-team');
             if (!el) return;
             document.getElementById('story-link-gold').innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             if (!sm.team.length) { el.innerHTML='<div style="color:#555;font-size:12px;">No Pokémon in party.</div>'; return; }
-            const sg = storySettingsGens();
 
             el.innerHTML = sm.team.map((t,i) => {
                 const g      = getMonGrade(t.name, getBST(t.name));
@@ -25451,15 +25466,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (((sm.storyDifficulty || 'normal') === 'easy' || (sm.storyDifficulty || 'normal') === 'veryeasy') && (sm.cityRerollsUsed[`r_${i}`]||0) === 0) rCost = Math.ceil(rCost * 0.78);
                 const uCostBase = g > 1 ? (UPGRADE_COSTS[g] || 9999) : null;
                 const uCost    = uCostBase !== null ? Math.ceil(uCostBase * Math.pow(1.5, (sm.cityRerollsUsed[`u_${i}`]||0))) : null;
-                const evos   = _getValidEvos(t.name, sg);
-                const evoB   = evos.length ? (EVOLVE_COSTS[g] || 2000) : null;
-                const evoCost= evoB !== null ? Math.ceil(evoB * Math.pow(1.5, (sm.cityRerollsUsed[`e_${i}`]||0))) : null;
                 const rebB   = Math.ceil(REBUILD_COST * Math.pow(1.5, (sm.cityRerollsUsed[`b_${i}`]||0)));
                 const canR   = sm.gold >= rCost;
                 const canU   = uCost  !== null && sm.gold >= uCost;
-                const canEvo = evoCost !== null && sm.gold >= evoCost;
                 const canBld = sm.gold >= rebB;
-                const evoLabel = evos.length === 1 ? evos[0] : (evos.length > 1 ? `${evos[0]} or ${evos[1]}` : '');
 
                 const gimmickTag = t.build?.gimmick && t.build.gimmick !== 'STANDARD'
                     ? `<span style="font-size:9px;background:#333;padding:1px 4px;border-radius:3px;color:#ff9800;margin-left:4px;">${t.build.gimmick}</span>` : '';
@@ -25506,14 +25516,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </div>
                     ${buildBlock}
                     <div class="story-link-btns">
-                        <button class="story-link-btn" onclick="window.StoryMode.linkReroll(${i})" ${canR?'':'disabled'} title="Swap for a random different G${g} Pokémon">🔄 Reroll G${g} (${storyGoldHtml(rCost, false)})</button>
-                        ${evoCost!==null
-                            ? `<button class="story-link-btn" onclick="window.StoryMode.linkEvolve(${i})" ${canEvo?'':'disabled'} title="Evolve into ${evoLabel}" style="${canEvo?'color:#76ff03;border-color:#76ff03;':''}">⬆️ Evolve → ${evoLabel} (${storyGoldHtml(evoCost, false)})</button>`
-                            : ''}
+                        <button class="story-link-btn" onclick="window.StoryMode.linkReroll(${i})" ${canR?'':'disabled'} title="Random trade — receive a different Grade ${g} Pokémon">🔄 Trade → Same Tier (${storyGoldHtml(rCost, false)})</button>
                         ${uCost!==null
-                            ? `<button class="story-link-btn" onclick="window.StoryMode.linkUpgrade(${i})" ${canU?'':'disabled'} title="Replace with a random G${g-1} Pokémon">🌟 Upgrade→G${g-1} (${storyGoldHtml(uCost, false)})</button>`
-                            : `<button class="story-link-btn" disabled title="Already max grade">⭐ Max Grade</button>`}
-                        <button class="story-link-btn" onclick="window.StoryMode.linkRebuild(${i})" ${canBld?'':'disabled'} title="Re-roll moves/item/nature, keep species">🔃 Rebuild Set (${storyGoldHtml(rebB, false)})</button>
+                            ? `<button class="story-link-btn" onclick="window.StoryMode.linkUpgrade(${i})" ${canU?'':'disabled'} title="Random trade — receive a Grade ${g-1} Pokémon">🌟 Trade → Better Tier G${g-1} (${storyGoldHtml(uCost, false)})</button>`
+                            : `<button class="story-link-btn" disabled title="Already top grade — no better-tier trade available">⭐ Top Grade</button>`}
+                        <button class="story-link-btn" onclick="window.StoryMode.linkRebuild(${i})" ${canBld?'':'disabled'} title="Random trade — same species, fresh build (moves/item/nature/EVs reroll)">🔃 Trade → Reroll Build (${storyGoldHtml(rebB, false)})</button>
                     </div>
                 </div>`;
             }).join('');
@@ -25586,37 +25593,153 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        async function linkEvolve(idx) {
+        // ── EVOLUTION TUTOR (Stone Sage) ─────────────────────────────────
+        // Returns every species-listed evolution for `monName` (no gen filter), each annotated
+        // with whether it's allowed under the current toggled gen settings.
+        function _getAllEvosWithStatus(monName, enabledGens) {
+            try {
+                const genSet = new Set(normalizeEnabledGens(enabledGens));
+                const D = typeof getPssDex === 'function' ? getPssDex() : null;
+                if (!D) return [];
+                const sp = D.species.get(monName);
+                if (!sp || !sp.evos || !sp.evos.length) return [];
+                return sp.evos.map(evo => {
+                    const b = baseStats[evo];
+                    const exists = !!b;
+                    const inGen = exists && genSet.has(b.gen);
+                    return { name: evo, gen: exists ? b.gen : null, exists, allowed: inGen };
+                });
+            } catch (e) { return []; }
+        }
+
+        function enterEvolutionLab() {
+            if (!sm || !sm.active) return;
             if (!_storyTryBeginInteraction()) return;
             try {
-            const mon = sm.team[idx]; if (!mon) return;
-            const evos = _getValidEvos(mon.name, storySettingsGens());
-            if (!evos.length) { window.showGameAlert(`${mon.name} cannot evolve with the selected generations.`); return; }
-            const g    = getMonGrade(mon.name, getBST(mon.name));
-            const ek = `e_${idx}`;
-            const en = (sm.cityRerollsUsed[ek] || 0) + 1;
-            const cost = Math.ceil((EVOLVE_COSTS[g] || 2000) * Math.pow(1.5, en - 1));
-            if (sm.gold < cost) { window.showGameAlert(`Need ${cost.toLocaleString()}G to evolve! (You have ${sm.gold.toLocaleString()}G)`); return; }
-            // Pick random valid evo (handles branched evolution)
-            const evoName = evos[Math.floor(storyRngNext() * evos.length)];
-            const evoGrade = getMonGrade(evoName, getBST(evoName));
-            const ok = await window.showGameConfirm(`Evolve ${mon.name} → ${evoName} (Grade ${evoGrade}) for ${cost.toLocaleString()}G?`);
-            if (!ok) return;
-            sm.cityRerollsUsed[ek] = en;
-            let newBuild;
-            try {
-                window._pbsStoryUsePlayerGimmickGate = true;
-                window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
-                newBuild = makeBuild(evoName);
+                _markFacilitySeen('evolab');
+                updateHUD();
+                renderEvoLabTeam();
+                syncStoryEvoLabBackground();
+                showScreen('screen-story-evolab');
             } finally {
-                window._pbsStoryUsePlayerGimmickGate = false;
-                delete window._pbsStoryUnlockedGimmicks;
+                _storyEndInteraction();
             }
-            sm.gold -= cost;
-            sm.team[idx] = { name: evoName, build: newBuild };
-            save();
-            renderLinkTeam();
-            renderTeamPanel();
+        }
+
+        function renderEvoLabTeam() {
+            const el = document.getElementById('story-evolab-team');
+            if (!el) return;
+            const goldEl = document.getElementById('story-evolab-gold');
+            if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
+            if (!sm.team.length) { el.innerHTML = '<div style="color:#555;font-size:12px;">No Pokémon in party. Talk to a Professor first.</div>'; return; }
+            const sg = storySettingsGens();
+            const sgList = Array.isArray(sg) ? sg : normalizeEnabledGens(sg);
+            const enabledGensLabel = sgList.length ? sgList.slice().sort((a,b)=>a-b).map(n => `Gen ${n}`).join(', ') : 'none';
+
+            el.innerHTML = sm.team.map((t, i) => {
+                const g       = getMonGrade(t.name, getBST(t.name));
+                const evosAll = _getAllEvosWithStatus(t.name, sg);
+                const ek = `e_${i}`;
+                const en = (sm.cityRerollsUsed[ek] || 0) + 1;
+                const baseCost = EVOLVE_COSTS[g] || 2000;
+                const cost = Math.ceil(baseCost * Math.pow(1.5, en - 1));
+
+                const gimmickTag = t.build?.gimmick && t.build.gimmick !== 'STANDARD'
+                    ? `<span style="font-size:9px;background:#333;padding:1px 4px;border-radius:3px;color:#ff9800;margin-left:4px;">${t.build.gimmick}</span>` : '';
+
+                let tempMon = null;
+                try {
+                    if (t.build) {
+                        const bc = { ...t.build, m: [...(t.build.m || [])] };
+                        tempMon = buildPokemon(t.name, bc);
+                    }
+                } catch (e) { /* ignore render-time build errors */ }
+
+                const typeHtml = tempMon ? getTypeHTML(tempMon.type1, tempMon.type2) : '';
+                const shinyPre = tempMon && tempMon.isShiny ? '&#10024; ' : '';
+
+                let evoBlockHtml;
+                if (!evosAll.length) {
+                    evoBlockHtml = `<div class="story-link-build" style="font-size:11px;color:#888;">Fully evolved — ${t.name} has no further evolutions.</div>`;
+                } else {
+                    const allowedAny = evosAll.some(e => e.allowed);
+                    const canAfford = sm.gold >= cost;
+                    const evoBtns = evosAll.map(e => {
+                        if (!e.exists) {
+                            return `<button class="story-link-btn" disabled title="No data for ${e.name} in this build">⛔ ${e.name} <span style="opacity:0.6;">(unavailable)</span></button>`;
+                        }
+                        const eg = getMonGrade(e.name, getBST(e.name));
+                        const evoBase = baseStats[e.name] || {};
+                        const evoTypes = evoBase.t1 ? getTypeHTML(evoBase.t1, evoBase.t2 || '') : '';
+                        const bst = getBST(e.name);
+                        if (!e.allowed) {
+                            return `<button class="story-link-btn" disabled title="${e.name} is Gen ${e.gen} — not in your enabled generations (${enabledGensLabel})" style="opacity:0.5;">⛔ ${e.name} <span style="font-size:9px;">G${eg} · BST ${bst} · Gen ${e.gen} off</span></button>`;
+                        }
+                        const disabled = !canAfford;
+                        const tipText = `Evolve into ${e.name} (Grade ${eg}, BST ${bst}, Gen ${e.gen})`;
+                        return `<button class="story-link-btn" onclick="window.StoryMode.evoLabEvolve(${i}, '${e.name.replace(/'/g, "\\'")}')" ${disabled?'disabled':''} title="${tipText}" style="${disabled?'':'color:#76ff03;border-color:#76ff03;'}">⬆️ ${e.name} ${evoTypes} <span style="font-size:9px;">G${eg} · BST ${bst} · Gen ${e.gen}</span></button>`;
+                    }).join('');
+                    const costHint = allowedAny
+                        ? `<div style="font-size:10px;color:#aaa;margin-top:6px;">Cost per evolution: ${storyGoldHtml(cost, false)}${en > 1 ? ` <span style="color:#888;">(× ${en} use here)</span>` : ''}</div>`
+                        : `<div style="font-size:10px;color:#ef9a9a;margin-top:6px;">No evolutions available with current generation toggles (enabled: ${enabledGensLabel}).</div>`;
+                    evoBlockHtml = `<div class="story-link-btns" style="margin-top:8px;">${evoBtns}</div>${costHint}`;
+                }
+
+                return `<div class="story-link-mon tier-${g}">
+                    <div class="story-link-mon-header">
+                        <img src="${getSprite(t.name,false)}" onerror="this.src=''" alt="${t.name}">
+                        <div>
+                            <div class="story-link-title-row">${shinyPre}${t.name}${gimmickTag} ${typeHtml}</div>
+                            <span class="tier-badge bg-tier-${g}">Grade ${g} · BST ${getBST(t.name)}</span>
+                        </div>
+                        <button type="button" class="draft-card-info-btn" style="width:26px;height:26px;min-width:26px;font-size:12px;" onclick="window.StoryMode.openSummary(${i})" aria-label="Full summary" title="Full summary">&#8505;</button>
+                    </div>
+                    ${evoBlockHtml}
+                </div>`;
+            }).join('');
+        }
+
+        async function evoLabEvolve(idx, evoName) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                const mon = sm.team[idx]; if (!mon) return;
+                if (!evoName || typeof evoName !== 'string') return;
+                const evosAll = _getAllEvosWithStatus(mon.name, storySettingsGens());
+                const target = evosAll.find(e => e.name === evoName);
+                if (!target || !target.allowed) {
+                    window.showGameAlert(`${evoName} isn't in your enabled generations.`);
+                    return;
+                }
+                const g = getMonGrade(mon.name, getBST(mon.name));
+                const ek = `e_${idx}`;
+                const en = (sm.cityRerollsUsed[ek] || 0) + 1;
+                const cost = Math.ceil((EVOLVE_COSTS[g] || 2000) * Math.pow(1.5, en - 1));
+                if (sm.gold < cost) { window.showGameAlert(`Need ${cost.toLocaleString()}G to evolve! (You have ${sm.gold.toLocaleString()}G)`); return; }
+                const evoGrade = getMonGrade(evoName, getBST(evoName));
+                const ok = await window.showGameConfirm(`Evolve ${mon.name} → ${evoName} (Grade ${evoGrade}) for ${cost.toLocaleString()}G?\n\nNature, ability slot, item, and EVs are kept; moves are rerolled to fit ${evoName}.`);
+                if (!ok) return;
+                sm.cityRerollsUsed[ek] = en;
+                // Generate a fresh build for the evolved species, then port over the carry-over slots.
+                let evoBuild;
+                try {
+                    window._pbsStoryUsePlayerGimmickGate = true;
+                    window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
+                    evoBuild = makeBuild(evoName);
+                } finally {
+                    window._pbsStoryUsePlayerGimmickGate = false;
+                    delete window._pbsStoryUnlockedGimmicks;
+                }
+                const old = mon.build || {};
+                if (old.nature) evoBuild.nature = old.nature;
+                if (old.evs)    evoBuild.evs    = { ...old.evs };
+                if (old.teraType) evoBuild.teraType = old.teraType;
+                // Item carries over only if it's not a pre-evo–specific item (Eviolite is removed on full evolution).
+                if (old.i && old.i !== 'Eviolite' && old.i !== '(none)') evoBuild.i = old.i;
+                sm.gold -= cost;
+                sm.team[idx] = { name: evoName, build: evoBuild };
+                save();
+                renderEvoLabTeam();
+                renderTeamPanel();
             } finally {
                 _storyEndInteraction();
             }
@@ -27699,7 +27822,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterCity, enterProfessor, profRoll, profAccept, profDecline, profSelectChoice, _mysteryDoSwap,
             proceedToNextBattle, onBattleEnd, afterBattleReturn, applyHardcoreState,
             enterShop, buyItem, buyArtifact, enterArtifactShop, enterPokemonCenter,
-            enterLink, linkReroll, linkUpgrade, linkEvolve, linkRebuild, linkMoveUp, linkMoveDown,
+            enterLink, linkReroll, linkUpgrade, linkRebuild, linkMoveUp, linkMoveDown,
+            enterEvolutionLab, evoLabEvolve,
             enterCasino, casinoSetBetChip, casinoPlay,
             openBattleBag, useBagItemOn, openCityBag, sellItem,
             confirmAbandon, abandonAndReturn, continuePostGame,
