@@ -4609,11 +4609,10 @@
                         <option value="normal" selected>Normal</option>
                         <option value="hard">Hard</option>
                         <option value="challenge">Very Hard</option>
-                        <option value="hardcore">Hardcore</option>
                     </select>
                 </div>
                 <div style="font-size:10px;color:#888;line-height:1.5;margin:-4px 0 10px;max-width:560px;">
-                    Foe stats: Very Easy −30% · Easy −15% · Normal · Hard +15% · Very Hard +30%. Hardcore: normal stats but <b style="color:#ff8a65;">no healing between battles or in cities</b> — bring potions.
+                    Foe stats: Very Easy −30% · Easy −15% · Normal · Hard +15% · Very Hard +30%.
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;margin-bottom:10px;">
                     <label style="color:#888;text-transform:uppercase;letter-spacing:0.5px;font-size:10px;">Seed:</label>
@@ -4944,7 +4943,6 @@
                     <option value="normal" selected>Normal</option>
                     <option value="hard">Hard</option>
                     <option value="challenge">Very Hard</option>
-                    <option value="hardcore">Hardcore</option>
                 </select></label>
                 <label style="color:#aaa;">Filter: <select id="tester-filter" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;padding:3px 8px;font-size:12px;max-width:200px;">
                     <option value="all">All battles</option>
@@ -10868,10 +10866,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Story-mode difficulty: scale foe stats (Very Easy/Easy weaken, Hard/Very Hard strengthen)
             if (state.mode === 'story' && typeof window.applyFoeDifficultyScaling === 'function') {
                 state.foeParty.forEach(window.applyFoeDifficultyScaling);
-            }
-            // Hardcore story mode: restore persisted HP/status/PP before first turn
-            if (state.mode === 'story' && window.StoryMode && typeof window.StoryMode.applyHardcoreState === 'function') {
-                window.StoryMode.applyHardcoreState(state.playerParty);
             }
             state.pActive = state.playerParty[0];
             // Field must match this battle before aiBestSwitch — aiEstimateDmg(getCurrentWeather) must not see the previous battle's weather.
@@ -21369,7 +21363,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (diff === 'veryeasy') return 1.60;
             if (diff === 'hard') return 0.92;
             if (diff === 'challenge') return 1.05;
-            if (diff === 'hardcore') return 1.30;
             return 1;
         }
 
@@ -22046,7 +22039,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── STATE ─────────────────────────────────────────────────────────
         const SAVE_KEY = 'pbs_story_save';
         const STORY_MENU_DEFAULTS_KEY = 'pbs_story_run_menu_defaults';
-        const SAVE_VER = 14;
+        const SAVE_VER = 15;
         /** v8: eight filler Basic Trainer rows removed from `STORY_EVENTS_RAW` — remap saved indices from v7 and below. */
         const STORY_TIMELINE_REMOVED_ROW_IDS_PRE_V8 = new Set([3, 8, 16, 23, 30, 38, 47, 55]);
         function migrateStoryRowIdPreV8ToCurrent(oldId) {
@@ -22176,6 +22169,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
         }
+        /** v15: catch / PC / balls / pokedex schema + hardcore difficulty removal. Adds new save fields, migrates hardcore→normal, assigns stable ids to existing team mons. */
+        function migrateStoryPreV15() {
+            if (!Array.isArray(sm.pcBox)) sm.pcBox = [];
+            if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke: 5, great: 0, ultra: 0, master: 0 };
+            if (!sm.pokedex || typeof sm.pokedex !== 'object' || !Array.isArray(sm.pokedex.seen) || !Array.isArray(sm.pokedex.caught)) {
+                sm.pokedex = { seen: [], caught: [] };
+            }
+            if (typeof sm.partyEverReached4 !== 'boolean') sm.partyEverReached4 = Array.isArray(sm.team) && sm.team.length >= 4;
+            if (typeof sm.catchUnlocked !== 'boolean') sm.catchUnlocked = false;
+            if (sm.storyDifficulty === 'hardcore') sm.storyDifficulty = 'normal';
+            if (Array.isArray(sm.team)) {
+                for (const slot of sm.team) {
+                    if (slot && typeof slot === 'object' && !slot.id) {
+                        slot.id = 'm_' + Math.random().toString(36).slice(2, 10);
+                    }
+                }
+            }
+        }
         /** v9: intro Rival inserted after City0, so timeline positions after City0 move forward one slot. */
         function migrateStoryTimelineIndicesFromPreV9() {
             const maxI = Math.max(0, STORY_EVENTS_RAW.length - 1);
@@ -22203,6 +22214,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    rivalLastWinner: 'none',
                    rivalStanding: 'undecided',
                    rivalChampionClaimed: false,
+                   pcBox: [],
+                   balls: { poke: 5, great: 0, ultra: 0, master: 0 },
+                   pokedex: { seen: [], caught: [] },
+                   partyEverReached4: false,
+                   catchUnlocked: false,
                    version:SAVE_VER };
 
         function normalizeRivalStandingState() {
@@ -22366,6 +22382,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { migrateStoryArtifactShopPreV13(); } catch (e) { console.warn('[Story] relic shop v13', e); }
                     try { migrateStoryTrainerAssignmentsPreV14(); } catch (e) { console.warn('[Story] trainer assignments v14', e); }
                 }
+                if (_loadedVer < 15) {
+                    try { migrateStoryPreV15(); } catch (e) { console.warn('[Story] v15 catch/PC schema migrate', e); }
+                }
                 const _cap = Math.max(0, STORY_EVENTS_RAW.length - 1);
                 if (sm.eventIndex < 0 || sm.eventIndex > _cap) {
                     console.warn('[Story] eventIndex out of range — clamping', sm.eventIndex, '→', _cap);
@@ -22408,7 +22427,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const sd = document.getElementById('story-difficulty');
                 if (sd && typeof d.storyDifficulty === 'string') {
                     const v = d.storyDifficulty;
-                    if (['veryeasy', 'easy', 'normal', 'hard', 'challenge', 'hardcore'].indexOf(v) >= 0) sd.value = v;
+                    if (['veryeasy', 'easy', 'normal', 'hard', 'challenge'].indexOf(v) >= 0) sd.value = v;
                 }
                 const mega = document.getElementById('story-mech-mega');
                 const z = document.getElementById('story-mech-z');
@@ -22472,13 +22491,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (d === 'easy' || d === 'veryeasy') { o.g1 *= 0.88; o.g4 *= 1.12; }
             else if (d === 'hard') { o.g1 *= 1.1; o.g4 *= 0.9; }
             else if (d === 'challenge') { o.g1 *= 1.18; o.g4 *= 0.82; }
-            // Hardcore intentionally mirrors Normal team-grading; difficulty is expressed via no-heal rule.
             return o;
         }
 
-        /** Once the story party has 4+ Pokémon, remove all grade-4 probability from weight rolls (mass moves to g3). Foes + Professor. */
+        /** Once the story party has ever reached 4+ Pokémon (monotonic), remove all grade-4 probability from weight rolls (mass moves to g3). Foes + Professor. Keys off the monotonic flag so depositing to PC does not re-introduce G4. */
         function storyStripGrade4IfPartyMature(gw) {
-            if (!gw || !sm || !sm.active || !Array.isArray(sm.team) || sm.team.length < 4) return gw;
+            if (!gw || !sm || !sm.active) return gw;
+            if (Array.isArray(sm.team) && sm.team.length >= 4) sm.partyEverReached4 = true;
+            if (!sm.partyEverReached4) return gw;
             const g1 = gw.g1 || 0, g2 = gw.g2 || 0, g3 = gw.g3 || 0, g4 = gw.g4 || 0;
             if (g4 <= 0) return { g1, g2, g3, g4: 0 };
             return { g1, g2, g3: g3 + g4, g4: 0 };
@@ -22520,7 +22540,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (d === 'easy' || d === 'veryeasy') x *= 0.92;
             else if (d === 'hard') x *= 1.04;
             else if (d === 'challenge') x *= 1.08;
-            // Hardcore intentionally mirrors Normal sig-mon probability.
             return Math.min(1, x);
         }
 
@@ -23694,13 +23713,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const tipsEl = document.getElementById('story-city-tips');
             if (tipsEl) {
                 const tips = [];
-                const hardcore = (sm.storyDifficulty || 'normal') === 'hardcore';
                 const hasTeam = sm.team && sm.team.length > 0;
                 if (hasTeam) {
-                    const partyHurt = sm.team.some(s => s && (s.currentHp != null || s.status));
-                    if (partyHurt && !hardcore) {
-                        tips.push({ icon: '🩹', label: 'Party needs healing', click: 'window.StoryMode.enterPokemonCenter()', urgent: true });
-                    }
                     if (actions.includes('Battle Dojo')) {
                         const n = sm.team.filter(s => s && s.build && (!s.build.i || s.build.i === 'None' || s.build.i === '(none)')).length;
                         if (n) tips.push({ icon: '🎒', label: `${n} mon${n===1?'':'s'} need held items`, click: "window.StoryMode.enterTutor('loadout')" });
@@ -23840,12 +23854,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if ((sm.artifacts || []).length > 0) {
                 _push('train', makeActionBtn('✨ Artifact Hall — Toggle run artifacts','artifacts','window.StoryMode.enterArtifactHall()','dept',{ soft:true, meta: _withNew('artifacts', [{label:'Free',tone:'free'}]) }));
             }
-            // Pokémon Center — full party heal, free, unlimited (disabled in Hardcore: bring potions)
-            if ((sm.storyDifficulty || 'normal') === 'hardcore') {
-                _push('recover', `<button type="button" class="story-action-btn" disabled title="No Pokémon Center service in Hardcore — bring potions" style="opacity:0.45;cursor:not-allowed;"><span class="story-action-btn-text">🏥 Pokémon Center <span style="font-size:10px;color:#aaa;">(Disabled in Hardcore)</span></span></button>`);
-            } else {
-                _push('recover', makeActionBtn('🏥 Pokémon Center — Restore Your Party','center','window.StoryMode.enterPokemonCenter()','center',{ meta: _withNew('center', [{label:'Free',tone:'free'}]) }));
-            }
+            // Pokémon Center — full party heal, free, unlimited
+            _push('recover', makeActionBtn('🏥 Pokémon Center — Restore Your Party','center','window.StoryMode.enterPokemonCenter()','center',{ meta: _withNew('center', [{label:'Free',tone:'free'}]) }));
             const _partyN = sm.team.length;
             const _partyLabel = _partyN
                 ? `Party — Team & Order (${_partyN}/6)`
@@ -23977,7 +23987,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function _storyGoldFeeAppliesForRetreat() {
             const d = sm.storyDifficulty || 'normal';
-            return d === 'normal' || d === 'hard' || d === 'challenge' || d === 'hardcore';
+            return d === 'normal' || d === 'hard' || d === 'challenge';
         }
 
         function _storyCalcRetreatGoldFee() {
@@ -23991,8 +24001,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function _storyFullHealPartySlots() {
-            // Hardcore: never auto-heal between battles or on retreat. Caller is responsible for state preservation.
-            if ((sm.storyDifficulty || 'normal') === 'hardcore') return;
             (sm.team || []).forEach(slot => {
                 if (!slot) return;
                 slot.currentHp = null;
@@ -24735,21 +24743,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }, introMs);
         }
 
-        function applyHardcoreState(playerParty) {
-            // Restore persisted HP/status/PP from sm.team into just-built battle party (hardcore only)
-            if (sm.storyDifficulty !== 'hardcore') return;
-            (playerParty || []).forEach((mon, i) => {
-                const slot = sm.team[i];
-                if (!slot) return;
-                if (slot.currentHp != null) mon.currentHp = Math.min(slot.currentHp, mon.maxHp);
-                if (slot.status) { mon.status = slot.status; mon.statusTurns = slot.statusTurns | 0; }
-                if (Array.isArray(slot.pp)) {
-                    slot.pp.forEach((pp, mi) => { if (mon.moves[mi] && pp != null) mon.moves[mi].pp = pp; });
-                }
-                if (slot.consumedItem) { mon.item = null; mon.originalItem = null; mon.itemConsumed = true; }
-            });
-        }
-
         function launchBattle(enemyTeam) {
             applyMechanicsToSettings();
             // Build player p1Draft and enemy p2Draft for state
@@ -24863,21 +24856,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.active) return;
             try {
                 if (typeof state !== 'undefined' && state.mode === 'story' && state.playerParty && state.playerParty.length && sm.team) {
-                    const isHardcore = sm.storyDifficulty === 'hardcore';
-                    sm.team = state.playerParty.map(m => {
-                        const slot = {
-                            name: m._baseName || m.name,
-                            build: m.buildData ? deepClone(m.buildData) : (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).build
-                        };
-                        if (isHardcore) {
-                            slot.currentHp = m.currentHp;
-                            slot.status = m.status || null;
-                            slot.statusTurns = m.statusTurns | 0;
-                            slot.pp = (m.moves || []).map(mv => mv.pp);
-                            slot.consumedItem = !!m.itemConsumed;
-                        }
-                        return slot;
-                    }).filter(t => t.build);
+                    sm.team = state.playerParty.map(m => ({
+                        name: m._baseName || m.name,
+                        build: m.buildData ? deepClone(m.buildData) : (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).build,
+                        id: (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).id
+                    })).filter(t => t.build);
                 }
             } catch (e) { console.warn('[Story] retreat team sync', e); }
             _storyFullHealPartySlots();
@@ -24944,21 +24927,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Called from returnToHome when story mode is active
             try {
                 if (typeof state !== 'undefined' && state.playerParty && state.playerParty.length && sm.team) {
-                    const isHardcore = sm.storyDifficulty === 'hardcore';
-                    sm.team = state.playerParty.map(m => {
-                        const slot = {
-                            name: m._baseName || m.name,
-                            build: m.buildData ? deepClone(m.buildData) : (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).build
-                        };
-                        if (isHardcore) {
-                            slot.currentHp = m.currentHp;
-                            slot.status = m.status || null;
-                            slot.statusTurns = m.statusTurns | 0;
-                            slot.pp = (m.moves || []).map(mv => mv.pp);
-                            slot.consumedItem = !!m.itemConsumed;
-                        }
-                        return slot;
-                    }).filter(t => t.build);
+                    sm.team = state.playerParty.map(m => ({
+                        name: m._baseName || m.name,
+                        build: m.buildData ? deepClone(m.buildData) : (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).build,
+                        id: (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).id
+                    })).filter(t => t.build);
                     save();
                 }
             } catch (e) { console.warn('[Story] team sync', e); }
@@ -25032,12 +25005,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── SHOPS ─────────────────────────────────────────────────────────
         function enterPokemonCenter() {
-            // Hardcore: no healing between battles — guard even if button is somehow invoked
-            if ((sm.storyDifficulty || 'normal') === 'hardcore') {
-                const quoteEl = document.getElementById('story-city-quote');
-                if (quoteEl) quoteEl.textContent = '"The Center is closed for Hardcore trainers. You\'ll have to manage with what you carry."';
-                return;
-            }
             _markFacilitySeen('center');
             _storyFullHealPartySlots();
             save();
@@ -26267,7 +26234,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const badges = sm.badges | 0;
             const diff = sm.storyDifficulty || 'normal';
             if ((diff === 'easy' || diff === 'veryeasy') && gymCount < 3) return emptyInv();
-            const sc = diff === 'challenge' ? 1.2 : (diff === 'easy' || diff === 'veryeasy') ? 0.75 : diff === 'hard' ? 1.15 : 1; /* hardcore mirrors normal */
+            const sc = diff === 'challenge' ? 1.2 : (diff === 'easy' || diff === 'veryeasy') ? 0.75 : diff === 'hard' ? 1.15 : 1;
             let maxPotion = 0, fullRestore = 0, fullHeal = 0, revive = 0, maxRevive = 0;
             // Fewer Max Potions: first at 4+ badges, second at 7+ (was 2+ and 4+)
             if (badges >= 4) maxPotion += 1;
@@ -26277,7 +26244,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (badges >= 7) fullRestore = Math.max(1, Math.round(1 * sc));
             // Challenge: extra Full Heal from 6+ badges only (no free Max Potion at 0–1 badges)
             if (diff === 'challenge' && badges >= 6) fullHeal += 1;
-            // Hardcore mirrors Normal foe inventory — its difficulty is the player's no-heal rule, not extra foe items.
             // Hard+ bench items: stagger Revive (5–6) then Max Revive (7+); −1 Max Potion trade each
             const hardPlus = diff === 'hard' || diff === 'challenge';
             if (hardPlus) {
@@ -26342,7 +26308,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 .replace(/"/g, '&quot;');
         }
         function buildStoryRunSummaryHtml() {
-            const diffMap = { veryeasy: 'Very Easy', easy: 'Easy', normal: 'Normal', hard: 'Hard', challenge: 'Very Hard', hardcore: 'Hardcore' };
+            const diffMap = { veryeasy: 'Very Easy', easy: 'Easy', normal: 'Normal', hard: 'Hard', challenge: 'Very Hard' };
             const st = sm.settings || {};
             const eg = normalizeEnabledGens(st.enabledGens || rangeToEnabledGens(st.minGen ?? 1, st.maxGen ?? 9));
             const genStr = eg.length >= 9 ? 'All (G1–G9)' : ('G' + eg.join(', G'));
@@ -26380,7 +26346,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (sdif === 'normal') globalFoeHtml = 'Global foe mult <strong style="color:#ce93d8;">×1.0</strong>. League fights add the bonuses below, then this mult applies on top.';
             else if (sdif === 'hard') globalFoeHtml = 'All story foes: <strong style="color:#ce93d8;">×1.15</strong> HP &amp; stats — applied <em>after</em> League per-battle bonuses where those fights use them.';
             else if (sdif === 'challenge') globalFoeHtml = 'All story foes: <strong style="color:#ce93d8;">×1.30</strong> HP &amp; stats — applied <em>after</em> League per-battle bonuses where those fights use them.';
-            else if (sdif === 'hardcore') globalFoeHtml = 'Hardcore: global foe mult <strong style="color:#ce93d8;">×1.0</strong> (challenge is no-heal). League / post-game fights still use the League stat table below.';
             else globalFoeHtml = 'Global foe scaling follows your difficulty.';
             const foeRulesHtml =
                 '<div style="margin-bottom:12px;border-top:1px solid #333;padding-top:12px;">'
@@ -27759,7 +27724,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             get state() { return sm; },
             showMenu, startNewRun, continueRun, retryFromGameOver, acceptRivalLossAndContinue, retreatToLastPokemonCenter, isActive, hasSave,
             enterCity, enterProfessor, profRoll, profAccept, profDecline, profSelectChoice, _mysteryDoSwap,
-            proceedToNextBattle, onBattleEnd, afterBattleReturn, applyHardcoreState,
+            proceedToNextBattle, onBattleEnd, afterBattleReturn,
             enterShop, buyItem, buyArtifact, enterArtifactShop, enterPokemonCenter,
             enterLink, linkReroll, linkUpgrade, linkEvolve, linkRebuild, linkMoveUp, linkMoveDown,
             enterCasino, casinoSetBetChip, casinoPlay,
