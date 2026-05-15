@@ -136,14 +136,14 @@ Money flows already in the game:
 
 The Underground + Safari combination forms a self-balancing loop: catch extras, sell weak ones, fund Safari for stronger pulls. The economy must be tuned so that pure Safari spam does **not** net-positive gold (G1/G2 wild catches sell for less than a PokéBall costs to make Safari spam unprofitable).
 
-Initial peg:
+Initial peg (G1 is the strongest tier per the existing `getMonGrade` convention — `data/species.json` G1 includes pseudo + legendary):
 
 | Sale | Grade | Gold |
 |---|---|---|
-| Sell G1 mon | 30 |
-| Sell G2 mon | 150 |
-| Sell G3 mon | 700 |
-| Sell G4 mon | 2500 |
+| Sell G1 mon | 2500 |
+| Sell G2 mon | 700 |
+| Sell G3 mon | 150 |
+| Sell G4 mon | 30 |
 
 ---
 
