@@ -26097,7 +26097,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── LINK STATION ──────────────────────────────────────────────────
         const REROLL_COSTS     = { 1:4000, 2:2000, 3:900, 4:400 };
         const UPGRADE_COSTS    = { 4:3500, 3:9000, 2:22000 };
-        const EVOLVE_COSTS     = { 4:1500, 3:5000, 2:14000 };
+        // Evolution is priced by the TARGET grade, not the source — so Magikarp → Gyarados
+        // (G4 → G1 in one step) costs the same as any other G1 evolution, and a G3 → G1
+        // pseudo-legend final pays the G1 tier instead of the G3 source tier.
+        const EVOLVE_COST_BY_TARGET = { 3: 1500, 2: 6000, 1: 16000 };
         const REBUILD_COST     = 1200;
         const STORY_INTERACTION_WARN_COOLDOWN_MS = 1200;
         let _storyInteractionBusy = false;
@@ -26455,6 +26458,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return '';
         }
 
+        // Cost for an evolution by TARGET grade, with the usual ×1.5 ramp per use in
+        // the same city. Mirrors the Cable Link reroll's first-use discount for
+        // easy/veryeasy difficulty so the difficulty dial feels consistent.
+        function _evoCostFor(targetGrade, useCount /* 1-based */) {
+            const base = EVOLVE_COST_BY_TARGET[targetGrade] || 2000;
+            let cost = Math.ceil(base * Math.pow(1.5, Math.max(0, useCount - 1)));
+            const d = (sm && sm.storyDifficulty) || 'normal';
+            if (useCount === 1 && (d === 'easy' || d === 'veryeasy')) cost = Math.ceil(cost * 0.78);
+            return cost;
+        }
+
         // Returns every species-listed evolution for `monName` (no gen filter), each annotated
         // with whether it's allowed under the current toggled gen settings.
         function _getAllEvosWithStatus(monName, enabledGens) {
@@ -26502,8 +26516,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const evosAll = _getAllEvosWithStatus(t.name, sg);
                 const ek = `e_${i}`;
                 const en = (sm.cityRerollsUsed[ek] || 0) + 1;
-                const baseCost = EVOLVE_COSTS[g] || 2000;
-                const cost = Math.ceil(baseCost * Math.pow(1.5, en - 1));
 
                 const gimmickTag = t.build?.gimmick && t.build.gimmick !== 'STANDARD'
                     ? `<span style="font-size:9px;background:#333;padding:1px 4px;border-radius:3px;color:#ff9800;margin-left:4px;">${t.build.gimmick}</span>` : '';
@@ -26524,7 +26536,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     evoBlockHtml = `<div class="story-link-build" style="font-size:11px;color:#888;">Fully evolved — ${t.name} has no further evolutions.</div>`;
                 } else {
                     const allowedAny = evosAll.some(e => e.allowed);
-                    const canAfford = sm.gold >= cost;
                     const evoBtns = evosAll.map(e => {
                         if (!e.exists) {
                             return `<button class="story-link-btn" disabled title="No data for ${e.name} in this build">⛔ ${e.name} <span style="opacity:0.6;">(unavailable)</span></button>`;
@@ -26536,12 +26547,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (!e.allowed) {
                             return `<button class="story-link-btn" disabled title="${e.name} is Gen ${e.gen} — not in your enabled generations (${enabledGensLabel})" style="opacity:0.5;">⛔ ${e.name} <span style="font-size:9px;">G${eg} · BST ${bst} · Gen ${e.gen} off</span></button>`;
                         }
+                        const cost = _evoCostFor(eg, en);
+                        const canAfford = sm.gold >= cost;
                         const disabled = !canAfford;
-                        const tipText = `Evolve into ${e.name} (Grade ${eg}, BST ${bst}, Gen ${e.gen}).${_evoReqHint(e.name)}`.replace(/"/g, '&quot;');
-                        return `<button class="story-link-btn" onclick="window.StoryMode.evoLabEvolve(${i}, '${e.name.replace(/'/g, "\\'")}')" ${disabled?'disabled':''} title="${tipText}" style="${disabled?'':'color:#76ff03;border-color:#76ff03;'}">⬆️ ${e.name} ${evoTypes} <span style="font-size:9px;">G${eg} · BST ${bst} · Gen ${e.gen}</span></button>`;
+                        const tipText = `Evolve into ${e.name} (Grade ${eg}, BST ${bst}, Gen ${e.gen}) for ${cost.toLocaleString()}G.${_evoReqHint(e.name)}`.replace(/"/g, '&quot;');
+                        return `<button class="story-link-btn" onclick="window.StoryMode.evoLabEvolve(${i}, '${e.name.replace(/'/g, "\\'")}')" ${disabled?'disabled':''} title="${tipText}" style="${disabled?'':'color:#76ff03;border-color:#76ff03;'}">⬆️ ${e.name} ${evoTypes} <span style="font-size:9px;">G${eg} · BST ${bst} · Gen ${e.gen}</span> <span style="font-size:10px;color:${disabled?'#aaa':'#ffd700'};">${storyGoldHtml(cost, false)}</span></button>`;
                     }).join('');
                     const costHint = allowedAny
-                        ? `<div style="font-size:10px;color:#aaa;margin-top:6px;">Cost per evolution: ${storyGoldHtml(cost, false)}${en > 1 ? ` <span style="color:#888;">(× ${en} use here)</span>` : ''}</div>`
+                        ? `<div style="font-size:10px;color:#aaa;margin-top:6px;">Prices by target tier — G3 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[3], false)} · G2 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[2], false)} · G1 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[1], false)}${en > 1 ? ` <span style="color:#888;">(× 1.5^${en-1} repeat use here)</span>` : ''}.</div>`
                         : `<div style="font-size:10px;color:#ef9a9a;margin-top:6px;">No evolutions available with current generation toggles (enabled: ${enabledGensLabel}).</div>`;
                     evoBlockHtml = `<div class="story-link-btns" style="margin-top:8px;">${evoBtns}</div>${costHint}`;
                 }
@@ -26571,12 +26584,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     window.showGameAlert(`${evoName} isn't in your enabled generations.`);
                     return;
                 }
-                const g = getMonGrade(mon.name, getBST(mon.name));
                 const ek = `e_${idx}`;
                 const en = (sm.cityRerollsUsed[ek] || 0) + 1;
-                const cost = Math.ceil((EVOLVE_COSTS[g] || 2000) * Math.pow(1.5, en - 1));
-                if (sm.gold < cost) { window.showGameAlert(`Need ${cost.toLocaleString()}G to evolve! (You have ${sm.gold.toLocaleString()}G)`); return; }
                 const evoGrade = getMonGrade(evoName, getBST(evoName));
+                const cost = _evoCostFor(evoGrade, en);
+                if (sm.gold < cost) { window.showGameAlert(`Need ${cost.toLocaleString()}G to evolve! (You have ${sm.gold.toLocaleString()}G)`); return; }
                 const flavor = _evoFlavorLine(evoName);
                 const head = `Evolve ${mon.name} → ${evoName} (Grade ${evoGrade}) for ${cost.toLocaleString()}G?`;
                 const tail = `Nature, ability slot, item, and EVs are kept; moves are rerolled to fit ${evoName}.`;
