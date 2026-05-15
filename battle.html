@@ -22452,6 +22452,39 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Maps city index (1–8) to the STORY_EVENTS_RAW event index of its Gym Leader battle
         const GYM_CITY_LEADER_EVENT = { 1:5, 2:11, 3:18, 4:24, 5:31, 6:38, 7:46, 8:53 };
 
+        // The Mystery Figure used to always wear Cyrus's face. Now a rotating cast: a
+        // single identity is rolled at run start and pinned for the whole save, both
+        // for the in-city "team is full" Mystery Figure flow and the post-HoF boss
+        // battle. Sprite + intro voice change together. Names stay hidden — the
+        // overlay still reads "??? Mystery Figure" until you face them.
+        const MYSTERY_FIGURE_IDENTITIES = {
+            cyrus:   { sprite:'Cyrus',   reveal:'Cyrus',
+                intros:['Your Hall of Fame crown means nothing here.','I have buried galaxies. One trainer is a small task.','Emotion is the failure. I will edit yours out.','Show me your strongest six — then I will quiet them.'] },
+            ghetsis: { sprite:'Ghetsis', reveal:'Ghetsis',
+                intros:['Useful tool. Bring me your six.','Ideals are toys for the weak. I prefer results.','Your bond with these creatures is a leash. I have shears.','Plasma had a plan. I have a better one. Begin.'] },
+            cynthia: { sprite:'Cynthia', reveal:'Cynthia',
+                intros:['…I enjoy battles like this. Let\'s begin.','You wore the crown well. Show me you can keep it.','Mythologies were warnings. You ignored them. Now answer for it.','Garchomp is here. Are you?'] },
+            steven:  { sprite:'Steven',  reveal:'Steven Stone',
+                intros:['I collect rare things. Today, your defeat would do nicely.','Hard stone, harder battler. Begin.','Your team is a meteor — burning bright before the impact.','I waited at Meteor Falls for a worthy fight. You\'ll have to do.'] },
+            n:       { sprite:'N',       reveal:'N',
+                intros:['…I hear them. Do you?','The Hall of Fame is a cage with prettier bars.','Tell me — when they faint, do you hear them sigh?','Truth or ideal — both lose to silence. Begin.'] },
+            red:     { sprite:'Red',     reveal:'Red',
+                intros:['…','………………','…(He raises his cap.)','…(Pikachu sparks. Once.)'] },
+            lance:   { sprite:'Lance',   reveal:'Lance',
+                intros:['Dragons remember insults longer than men. Show me what you remembered.','You climbed past me once. Climb again.','Hall of Fame paint dries slowly. I came to scratch yours.','My dragons hunger. So do I.'] },
+        };
+        function _storyPickMysteryIdentity() {
+            const keys = Object.keys(MYSTERY_FIGURE_IDENTITIES);
+            return keys[Math.floor(Math.random() * keys.length)];
+        }
+        function _storyEnsureMysteryIdentity() {
+            if (!sm.mysteryIdentity || !MYSTERY_FIGURE_IDENTITIES[sm.mysteryIdentity]) {
+                sm.mysteryIdentity = _storyPickMysteryIdentity();
+                try { save(); } catch (e) {}
+            }
+            return MYSTERY_FIGURE_IDENTITIES[sm.mysteryIdentity];
+        }
+
         function mysteryFigureRollsForBadges(badges) {
             const b = Math.max(0, badges | 0);
             const g1 = b >= 7 ? 30 : (b >= 4 ? 20 : 10);
@@ -24399,6 +24432,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 partyEverReached4: false,
                 partyEverReached2: false,
                 catchUnlocked: false,
+                mysteryIdentity: _storyPickMysteryIdentity(),
             };
             sm._strngState = null;
             _storyBattleInventorySnapshot = null;
@@ -25510,7 +25544,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ? '"The League gate opens only for the prepared. Take one legendary ace and choose who leaves your party."'
                     : '"Your party is full, trainer. Choose one mystery partner and decide who to leave behind."')
                 : PROF_QUOTES[Math.floor(Math.random() * PROF_QUOTES.length)];
-            document.getElementById('story-prof-sprite').src = getTrainerSprite(isFull ? 'Cyrus' : { spriteFile: hub.spriteFile });
+            const _mysteryFace = isFull ? _storyEnsureMysteryIdentity() : null;
+            document.getElementById('story-prof-sprite').src = getTrainerSprite(isFull ? (_mysteryFace && _mysteryFace.sprite ? _mysteryFace.sprite : 'Cyrus') : { spriteFile: hub.spriteFile });
 
             const statusEl = document.getElementById('story-prof-status');
             const btnsEl   = document.getElementById('story-prof-buttons');
@@ -25821,13 +25856,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const trainerName = sm.trainerAssignments[idx];
             const prefType = preferredTypeBeforeGymBattle(battleIdx);
             const isMysteryFinal = String(event || '') === 'Mystery Figure';
+            const _mysteryFinalFace = isMysteryFinal ? _storyEnsureMysteryIdentity() : null;
             let trainer = isMysteryFinal
                 ? {
                     role: 'Mystery Figure',
                     name: '??? Mystery Figure',
                     type: 'Mixed',
                     sigs: ['Mewtwo', 'Rayquaza', 'Dialga', 'Giratina', 'Kyogre', 'Groudon'],
-                    introQuotes: ['So we meet again, Champion.', 'Your Hall of Fame crown means nothing here.', 'Show me your strongest six.']
+                    spriteFile: (_mysteryFinalFace && _mysteryFinalFace.sprite) || 'Cyrus',
+                    introQuotes: (_mysteryFinalFace && _mysteryFinalFace.intros) || ['Your Hall of Fame crown means nothing here.', 'Show me your strongest six.']
                 }
                 : (findTrainerDataByName(trainerName, event) || selectTrainerForRole(event, sg, null, prefType));
             if (!isMysteryFinal && event === 'Rival' && sm.runRivalSpriteFile) {
@@ -26206,6 +26243,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     } else {
                         badgeFlavor = `<div style="font-size:14px;color:#81c784;">First major rival upset—onward to the next gym!</div>`;
                     }
+                }
+                else if (evn === 'Mystery Figure') {
+                    const face = (sm && sm.mysteryIdentity && MYSTERY_FIGURE_IDENTITIES[sm.mysteryIdentity]) || null;
+                    const reveal = face ? face.reveal : null;
+                    badgeFlavor = reveal
+                        ? `<div style="font-size:14px;color:#ce93d8;line-height:1.5;max-width:380px;">The mask falls. It was <strong>${reveal}</strong> all along.</div>`
+                        : `<div style="font-size:14px;color:#ce93d8;">The mask falls — but the figure dissolves before you can see who wore it.</div>`;
                 }
             }
             const isGymBadgeEvent = gotBadge && battleEventName && /^Gym Leader [1-8]$/i.test(String(battleEventName));
