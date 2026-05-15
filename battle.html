@@ -23511,6 +23511,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     console.warn('[Story] dropping malformed currentEnemyLock', sm.currentEnemyLock);
                     sm.currentEnemyLock = null;
                 }
+                // crucibleBattleSource is a transient flag set only while a Crucible/
+                // Frontier/Rematch fight is mid-flight. If the player closed the tab
+                // during such a fight, the flag persists in the save while the foe
+                // team does not — and the next main-timeline battle would wrongly
+                // route through _handleCrucibleBattleEnd. Always clear on load; the
+                // active battle is gone.
+                if (sm.crucibleBattleSource) sm.crucibleBattleSource = null;
+                if (sm._crucibleBattleJustEnded) sm._crucibleBattleJustEnded = false;
                 normalizeRivalStandingState();
                 normalizeStoryRivalLock();
                 return true;
