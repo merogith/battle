@@ -395,6 +395,59 @@ These remain valid from the prior docs:
 
 ---
 
+## 14b. The Crucible — endgame super-hub + Battle Frontier (M6)
+
+After Hall of Fame, every city's recover section shows a new action button:
+**🧨 The Crucible — All facilities + Battle Frontier**. It enters a post-game
+screen that consolidates every system the player has met, plus a new endless
+ladder mode.
+
+### The Crucible screen
+
+Two button grids in one screen:
+
+- **Battles**: ⛓ Battle Frontier · 🥷 Mystery Figure · 🌀 Rival Rematch ·
+  🏛️ League Run (E1→Champion in sequence) · 🥊 Random Gym Rematch · 🌿 Wild Encounter.
+- **Facilities**: 🏥 Pokémon Center · 🦒 Safari Zone · 🛒 PokéMart · 🏬 Department Store ·
+  ✨ Relic Annex · 📖 Move Tutor · 📛 Nature Rater · 🥋 Battle Dojo · 🏋️ EV Trainer ·
+  🧪 Colress · 🔌 Link Station · 🎰 Poké Casino.
+
+While `sm.atCrucible === true`, `enterCity()` short-circuits to `enterCrucible()`,
+so every "Back to City" button across facilities preserves the Crucible context.
+"Leave The Crucible" returns the player to the last visited city.
+
+### Battle Frontier
+
+Endless ladder of 6-on-6 battles. Each round scales:
+
+- **Stat boost** (foe mons only, via `applyStoryLeagueFoeStatBoost`):
+  HP × `min(2.50, 1.35 + (round−1) × 0.05)`,
+  bulk/speed × `min(1.80, 1.20 + (round−1) × 0.03)`.
+  Round 1 starts at the post-HoF Mystery Figure boost; caps at +250% HP.
+- **Grade pool** sharpens by round band:
+  rounds 1–2: 20/40/40/0,
+  3–4: 35/45/20/0,
+  5–6: 55/35/10/0,
+  7–8: 75/25/0/0,
+  9+: 100/0/0/0.
+- **Mechanics scaling** (gimmick rolls per round band) — deferred to a polish pass.
+
+A loss ends the streak. Final streak inserts into `sm.frontier.highscores`,
+sorted desc, capped at 10 entries (date stamped). Surrender at any time to lock
+in the current streak. New runs start at round 1.
+
+### Crucible-sourced battle flow
+
+A new flag `sm.crucibleBattleSource` (values: `frontier` / `mystery` / `rival` /
+`league` / `gym`) tells `onBattleEnd` to bypass the normal victory overlay /
+game-over screen and route back to the right hub. `_handleCrucibleBattleEnd`
+syncs the team, fires the source-specific outcome (frontier streak update,
+league next-stage chain, simple return-to-Crucible for others), then drops a
+`sm._crucibleBattleJustEnded` breadcrumb so `afterBattleReturn` short-circuits
+and `processNextEvent` does not advance the main timeline.
+
+---
+
 ## 15. Open items (not blocking M0)
 
 Things that need decisions before later milestones but don't block schema work:
