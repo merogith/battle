@@ -23075,14 +23075,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function readStoryMeta() {
             try {
                 const raw = localStorage.getItem(SAVE_KEY_META);
-                if (!raw) return { completedRuns: 0, lastClearSeed: '' };
+                if (!raw) return { completedRuns: 0, lastClearSeed: '', firstClears: {} };
                 const obj = JSON.parse(raw);
-                if (!obj || typeof obj !== 'object') return { completedRuns: 0, lastClearSeed: '' };
+                if (!obj || typeof obj !== 'object') return { completedRuns: 0, lastClearSeed: '', firstClears: {} };
                 return {
                     completedRuns: Math.max(0, obj.completedRuns | 0),
-                    lastClearSeed: typeof obj.lastClearSeed === 'string' ? obj.lastClearSeed : ''
+                    lastClearSeed: typeof obj.lastClearSeed === 'string' ? obj.lastClearSeed : '',
+                    firstClears: (obj.firstClears && typeof obj.firstClears === 'object') ? obj.firstClears : {}
                 };
-            } catch (e) { return { completedRuns: 0, lastClearSeed: '' }; }
+            } catch (e) { return { completedRuns: 0, lastClearSeed: '', firstClears: {} }; }
         }
         function writeStoryMeta(meta) {
             try { localStorage.setItem(SAVE_KEY_META, JSON.stringify(meta || {})); } catch (e) { console.warn('[Story] meta save', e); }
@@ -23093,6 +23094,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (sm && sm.runSeed != null) meta.lastClearSeed = String(sm.runSeed >>> 0);
             writeStoryMeta(meta);
             return meta;
+        }
+        /** Stamp this milestone as "ever cleared" in meta. Returns true iff this is the first time. */
+        function _storyMarkFirstClearMeta(key) {
+            if (!key) return false;
+            const meta = readStoryMeta();
+            if (!meta.firstClears || typeof meta.firstClears !== 'object') meta.firstClears = {};
+            if (meta.firstClears[key]) return false;
+            meta.firstClears[key] = true;
+            writeStoryMeta(meta);
+            return true;
+        }
+        /** Translate a battle event name into a stable cross-run milestone key. */
+        function _storyMilestoneKeyForEvent(evname, rowIdx) {
+            const ev = String(evname || '');
+            const gm = ev.match(/^Gym Leader ([1-8])$/);
+            if (gm) return 'gym' + gm[1];
+            if (/^E[1-4]$/.test(ev)) return ev.toLowerCase();
+            if (ev === 'Champion') return 'champion';
+            if (ev === 'Mystery Figure') return 'mystery';
+            if (ev === 'Rival') {
+                if ((rowIdx | 0) === STORY_RIVAL_ROW_LEAGUE) return 'rival_league';
+                if ((rowIdx | 0) === STORY_RIVAL_ROW_INTRO) return 'rival_intro';
+                return 'rival_mid';
+            }
+            return '';
         }
         /** v8: eight filler Basic Trainer rows removed from `STORY_EVENTS_RAW` — remap saved indices from v7 and below. */
         const STORY_TIMELINE_REMOVED_ROW_IDS_PRE_V8 = new Set([3, 8, 16, 23, 30, 38, 47, 55]);
@@ -24822,6 +24848,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const tipsEl = document.getElementById('story-city-tips');
             if (tipsEl) {
                 const tips = [];
+                // Always-on "what's next" preview: gives a clear answer to the
+                // ten-second "what now?" question on entering any city.
+                if (_storyNextBat) {
+                    const nxId = _storyNextBat[0] | 0;
+                    const nxEvent = String(_storyNextBat[2] || '');
+                    const trAssign = sm.trainerAssignments && sm.trainerAssignments[nxId];
+                    let nextLabel = nxEvent;
+                    const gm = nxEvent.match(/^Gym Leader ([1-8])$/);
+                    if (gm) nextLabel = `Gym ${gm[1]}` + (trAssign ? ` — ${trAssign}` : '');
+                    else if (nxEvent === 'Rival') nextLabel = trAssign ? `Rival — ${trAssign}` : 'Rival';
+                    else if (/^E[1-4]$/.test(nxEvent)) nextLabel = (trAssign ? `Elite ${nxEvent.slice(1)} — ${trAssign}` : `Elite ${nxEvent.slice(1)}`);
+                    else if (nxEvent === 'Champion') nextLabel = trAssign ? `Champion — ${trAssign}` : 'Champion';
+                    else if (nxEvent === 'Mystery Figure') nextLabel = 'Mystery Figure (???)';
+                    else if (nxEvent === 'Victory Road') nextLabel = 'Victory Road';
+                    tips.push({ icon: '🎯', label: `Next: ${nextLabel}`, click: 'window.StoryMode.proceedToNextBattle()' });
+                }
                 const hasTeam = sm.team && sm.team.length > 0;
                 if (hasTeam) {
                     if (actions.includes('Battle Dojo')) {
@@ -26212,6 +26254,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _badgeName = (LEADER_BADGE_NAMES[_trainerName] || LEADER_BADGE_NAMES[_baseTrainerName] || 'Gym Badge');
             const _eliteLookup = (ELITE_VICTORY_LINES[_trainerName] || ELITE_VICTORY_LINES[_baseTrainerName] || '');
             const _champLookup = (CHAMPION_VICTORY_LINES[_trainerName] || CHAMPION_VICTORY_LINES[_baseTrainerName] || '');
+            // Cross-run first-clear: stamp a meta flag only the very first time
+            // a player ever cleared THIS milestone (across all runs). Used below
+            // to pulse extra confetti and surface a "FIRST EVER" line.
+            const _milestoneKey = gotBadge ? _storyMilestoneKeyForEvent(battleEventName, storyRowIdx) : '';
+            const _isCareerFirstClear = _milestoneKey ? _storyMarkFirstClearMeta(_milestoneKey) : false;
             if (gotBadge && battleEventName) {
                 const evn = String(battleEventName);
                 if (/^Gym Leader [1-8]$/i.test(evn)) {
@@ -26253,17 +26300,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             const isGymBadgeEvent = gotBadge && battleEventName && /^Gym Leader [1-8]$/i.test(String(battleEventName));
+            const _firstClearBanner = _isCareerFirstClear
+                ? '<div style="font-size:13px;color:#ffd54f;letter-spacing:0.08em;text-transform:uppercase;text-shadow:0 0 6px rgba(255,213,79,0.4);">★ Career first ★</div>'
+                : '';
             ov.innerHTML = `
                 <div class="story-fx-confetti" style="position:absolute;inset:0;pointer-events:none;z-index:0;"></div>
                 <div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;width:100%;max-width:420px;padding:12px;">
                 ${gotBadge ? '<div class="story-victory-badge-slot" title="Milestone">🏅</div>' : ''}
                 <div style="font-size:28px;color:#ffd700;font-weight:bold;">VICTORY!</div>
+                ${_firstClearBanner}
                 ${isGymBadgeEvent?`<div style="font-size:16px;color:#4caf50;">Milestone victory! (${sm.badges} / 8 gym badges)</div>` : (gotBadge?`<div style="font-size:16px;color:#4caf50;">Milestone victory!</div>`:'')}
                 ${badgeFlavor}
                 <div style="font-size:14px;color:#ffeb3b;">${storyGoldHtml((coins || 0).toLocaleString(), true, '+')}</div>
                 <div style="font-size:13px;color:#888;">Total Gold: ${storyGoldHtml(sm.gold.toLocaleString())}</div></div>`;
             const conf = ov.querySelector('.story-fx-confetti');
-            storySpawnConfetti(conf, gotBadge ? 32 : 16);
+            storySpawnConfetti(conf, _isCareerFirstClear ? 96 : (gotBadge ? 32 : 16));
             ov.appendChild(contBtn);
             ov.onclick = () => dismiss();
             document.body.appendChild(ov);
