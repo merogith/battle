@@ -27,7 +27,7 @@ writing — they will drift as work proceeds.
 | Caught state | Full HP / full PP / no status. |
 | HP between battles | **Full-heal between every battle.** Attrition is removed; mart consumables matter only within a single battle. |
 | Difficulty modes | Keep `veryeasy / easy / normal / hard / challenge`. **Remove `hardcore`.** |
-| PC | Pure storage. Flat array, cap 60, oldest auto-released. Stable `id` per mon. |
+| PC | Pure storage. Flat array, **cap 10** (story is battle-focused, not a collection layer). Catch fails with an explicit message when party 6/6 and PC 10/10 — player must sell or release first. Stable `id` per mon. |
 | Underground | Built into every Pokémon Center hub button. Always visible. Sells your mons for gold (price scales with grade). Cannot sell your last party mon, the starter, or the boss-arc capture. |
 | Pokémon Center button | New city hub action. Contains PC + Underground. No heal function (battles auto-heal). |
 | Foe sizing | `clamp(player.length, eventMin, eventMin+2)` where event mins are: Basic 1, Gym Trainer 2, Gym Leader/Rival 3, E4 4, Champion 6 (caps at 6). |
@@ -151,7 +151,7 @@ Initial peg (G1 is the strongest tier per the existing `getMonGrade` convention 
 
 Every city gets a new hub action: **"Pokémon Center"**. Tapping it opens a screen with two tabs:
 
-- **PC Storage** — Deposit, withdraw, release. Capacity 60. Oldest auto-released when full (banner warning at ≤5 from cap).
+- **PC Storage** — Deposit, withdraw, release. **Capacity 10** — intentionally tight, since the run is battle-focused and the Underground is meant to drive sell decisions, not a long-term collection. At ≥ 8/10 the screen shows a "PC nearly full" warning banner; at 10/10 a new wild catch fails outright with a clear modal telling the player to sell or release first.
 - **Underground** — Sell mons for gold. Dark visual theme. Per-grade price table above. Unsellable: starter, current last party mon, the boss-arc capture ("Subject Zero").
 
 Selling shows a confirmation modal (`"Sold to the Underground. Gone for good."`) with no take-back.
@@ -382,7 +382,7 @@ This spec overrides these prior recommendations:
 These remain valid from the prior docs:
 
 - **A1**: Stable `id` on every mon
-- **A2**: Flat-array PC cap 60, oldest auto-released
+- **A2**: Flat-array PC, cap **10** (revised down from the prior audit's 60 — this is a battle-focused story mode, not a collection roguelike)
 - **A3**: Pokédex seen + caught, cross-run
 - **A4**: Rough wild builds (not full competitive)
 - **A5**: Extend slot in place with optional new fields
