@@ -26259,6 +26259,48 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 msg:'The Champion bows. "These are yours by right." +2 Ultra Balls, +1 Rare Candy, +2 Vitamin Packs.' }
         };
 
+        // Predictable enemy-party-size curve. Driven by trainer role and badge
+        // count — does NOT depend on the player's current roster size, so a player
+        // who released a few mons doesn't get easier fights. The floor is a soft
+        // courtesy: if the player still has only 1 mon (very early), non-boss
+        // fights cap at 2 to avoid lopsided wipes; bosses always field their full
+        // intended size regardless.
+        function _storyEnemyPartySize(event, badges, playerTeamLen) {
+            const e = String(event || '');
+            // League finale + Victory Road — always full 6.
+            if (/Champion/i.test(e) || /Victory Road/i.test(e) || /^E[1-4]$/i.test(e)) return 6;
+            // Gym Leaders — fixed ramp by gym number.
+            const gymMatch = e.match(/Gym Leader\s*(\d+)/i);
+            if (gymMatch) {
+                const gn = parseInt(gymMatch[1], 10) | 0;
+                if (gn >= 8) return 6;
+                if (gn === 7) return 6;
+                if (gn === 6) return 5;
+                if (gn === 5) return 5;
+                if (gn === 4) return 4;
+                if (gn === 3) return 4;
+                if (gn === 2) return 3;
+                return 2; // GL1
+            }
+            // Rival — scales between gym posts by badges collected.
+            if (/Rival/i.test(e)) {
+                if (badges >= 7) return 6;
+                if (badges >= 5) return 5;
+                if (badges >= 3) return 4;
+                if (badges >= 1) return 3;
+                return 2;
+            }
+            // Regular trainers (Basic / Gym Trainer / Elite Trainer / themed variants).
+            // Soft cap to avoid stomping a player still building their roster.
+            let size;
+            if (badges >= 7)      size = 4;
+            else if (badges >= 5) size = 3;
+            else if (badges >= 3) size = 3;
+            else if (badges >= 1) size = 2;
+            else                  size = 1;
+            const playerFloorCap = Math.max(2, (playerTeamLen | 0) + 1);
+            return Math.min(size, playerFloorCap, 6);
+        }
         function _storyEnsureBalls() {
             if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
         }
@@ -26492,17 +26534,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             sm.currentTrainerData = trainer;
 
-            // Party size mirrors player's current team (so opponents scale with your roster).
-            // Floor at 1, cap at 6. Late-game bosses (Gym 6+, E4, Champion) always field a full 6.
-            // Aggressive late curve: once the player has 4+ badges, every non-boss
-            // trainer brings one more mon than the player's party — so the "easy"
-            // basic-trainer fights between Gym 4 and Champion still demand thought.
-            // Intro Rival stays a 1-mon duel; pre-Gym-4 stays party-size-matched.
+            // Party size is now driven by story role + badge count, NOT by your
+            // current team length. Pre-v16 the foe matched your roster size and
+            // then jumped to player+1 once you had 4 badges, which made every
+            // mid-game fight feel inconsistent (3v3 here, 4v5 there, depending
+            // on how many you'd caught/released). The new curve is predictable:
+            // each trainer role has a fixed slot count that scales with badges,
+            // gym leaders & elites follow a baked-in ramp, and the intro rival
+            // stays a one-on-one duel.
             const isIntroRival = String(event || '') === 'Rival' && (idx | 0) === STORY_RIVAL_ROW_INTRO;
-            const isLateBoss = /Gym Leader [678]|E1|E2|E3|E4|Champion|Victory Road/i.test(event);
-            const _matched   = Math.min(Math.max(sm.team.length, 1), 6);
-            const _aggressive= (sm.badges | 0) >= 4 ? Math.min(_matched + 1, 6) : _matched;
-            const partySize = isIntroRival ? 1 : (isLateBoss ? 6 : _aggressive);
+            const partySize = isIntroRival ? 1 : _storyEnemyPartySize(event, sm.badges | 0, sm.team.length | 0);
 
             const startFight = (enemyTeam) => {
                 if (sm.team.length === 0) { window.showGameAlert('No Pokémon! Visit the Professor.'); enterCity(); return; }
@@ -27108,12 +27149,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── SAFARI ZONE ───────────────────────────────────────────────────
-        // Paid catching excursion. First visit per save is free; subsequent visits cost
-        // SAFARI_ENTRY_COST. Up to SAFARI_MAX_ENCOUNTERS sequential catch-screen rolls
-        // drawn from a richer grade pool than wild routes. Uses your own balls.
-        const SAFARI_ENTRY_COST = 800;
-        const SAFARI_MAX_ENCOUNTERS = 6;
-        const SAFARI_GRADE_WEIGHTS = { g1: 5, g2: 40, g3: 40, g4: 15 };
+        // Paid catching excursion. First visit per save is free; subsequent visits
+        // cost SAFARI_ENTRY_COST. Up to SAFARI_MAX_ENCOUNTERS encounters drawn from
+        // a richer grade pool than wild routes, using Safari Balls only.
+        //
+        // Differs from a wild route in four ways:
+        //   1. You get a fixed allotment of Safari Balls per visit (forfeited on exit).
+        //   2. Your own Poké/Great/Ultra/Master balls do NOT work here.
+        //   3. Bait and Rock actions let you trade flee risk for catch chance.
+        //   4. Encounter pool tilts richer than wild routes (more G1/G2 representation).
+        const SAFARI_ENTRY_COST = 1200;
+        const SAFARI_MAX_ENCOUNTERS = 8;
+        const SAFARI_GRADE_WEIGHTS = { g1: 8, g2: 40, g3: 38, g4: 14 };
         function enterSafariZone() {
             if (!sm.safari || typeof sm.safari !== 'object') sm.safari = { freeEntryUsed: false };
             const isFree = !sm.safari.freeEntryUsed;
@@ -27123,21 +27170,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (isFree) {
                 sm.safari.freeEntryUsed = true;
-                try { window.showGameAlert && window.showGameAlert('Welcome to the Safari Zone. Your first visit is on the house. Up to 6 encounters — bring your own balls.'); } catch (e) {}
+                try { window.showGameAlert && window.showGameAlert(`Welcome to the Safari Zone. Your first visit is on the house. ${SAFARI_BALLS_PER_SESSION} Safari Balls, up to ${SAFARI_MAX_ENCOUNTERS} encounters. Try Bait to calm wary mons, Rocks to weaken stubborn ones — leftover balls don't leave the gate.`); } catch (e) {}
             } else {
                 sm.gold = Math.max(0, (sm.gold | 0) - SAFARI_ENTRY_COST);
             }
+            _safariBeginSession();
             try { save(); } catch (e) {}
-            _safariRunIndex = 0;
             _safariNextEncounter();
         }
-        let _safariRunIndex = 0;
+        function _safariBeginSession() {
+            _safariSession = {
+                active: true,
+                ballsLeft: SAFARI_BALLS_PER_SESSION,
+                encountersUsed: 0,
+                baitCount: 0,
+                rockCount: 0
+            };
+        }
+        function _safariResetEncounterMods() {
+            if (!_safariSession) return;
+            _safariSession.baitCount = 0;
+            _safariSession.rockCount = 0;
+        }
         function _safariNextEncounter() {
-            if (_safariRunIndex >= SAFARI_MAX_ENCOUNTERS) {
-                _safariReturnToCity('Safari time is up. You leave with what you caught.');
+            if (!_safariSession || !_safariSession.active) return;
+            if (_safariSession.encountersUsed >= SAFARI_MAX_ENCOUNTERS) {
+                _safariReturnToCity('The warden waves you out — your time in the Safari Zone is up.');
                 return;
             }
-            _safariRunIndex++;
+            if (_safariSession.ballsLeft <= 0) {
+                _safariReturnToCity('You are out of Safari Balls. The warden ushers you back to the gate.');
+                return;
+            }
+            _safariSession.encountersUsed++;
+            _safariResetEncounterMods();
             const name = weightedPickFromGrades(SAFARI_GRADE_WEIGHTS, storySettingsGens());
             if (!name) {
                 _safariReturnToCity('The Safari pool is empty for the enabled generations.');
@@ -27154,13 +27220,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 wild: true,
                 safari: true
             };
-            enterCatchEncounter(enc, () => _safariNextEncounter());
+            enterCatchEncounter(enc, () => _safariNextEncounter(), { safari: true });
         }
         function _safariReturnToCity(message) {
-            _safariRunIndex = 0;
+            _safariSession = null;
             try { window.showGameAlert && window.showGameAlert(message); } catch (e) {}
             try { save(); } catch (e) {}
             enterCity();
+        }
+        function safariLeaveEarly() {
+            if (!_safariSession) return;
+            _catchState = null;
+            _safariReturnToCity('You hand the leftover Safari Balls back at the gate and head home with what you caught.');
         }
 
         // ── THE CRUCIBLE — endgame super-hub + Battle Frontier ────────────
@@ -27640,19 +27711,43 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── WILD CATCH MINIGAME ───────────────────────────────────────────
-        // A unified, no-fight catch screen used by route nodes (and later, Safari).
+        // A unified, no-fight catch screen used by route nodes and the Safari Zone.
         // Catch math: chance = baseRate(grade) × ballMult. G1 is strongest tier and
         // therefore hardest to catch; G4 is the weakest tier and easiest.
+        //
+        // Base rates were intentionally tightened (v15 → v16): the previous curve
+        // produced 80–100% catches on G3/G4 with an Ultra Ball, which made wild
+        // captures feel like free gifts. The new curve keeps Master Ball at 100%
+        // (the special arc reward) but makes every other catch a real decision
+        // — and rarer mons (G1/G2) also flee more often, so you only get a few
+        // throws before they bolt.
         const _CATCH_BALL_MULT = { poke: 1.0, great: 1.5, ultra: 2.0, master: Infinity };
-        const _CATCH_RATE_BY_GRADE = { 1: 0.05, 2: 0.20, 3: 0.40, 4: 0.60 };
-        const _CATCH_DEFAULT_FLEE_RATE = 0.25;
+        const _CATCH_RATE_BY_GRADE = { 1: 0.04, 2: 0.12, 3: 0.22, 4: 0.35 };
+        const _CATCH_FLEE_BY_GRADE = { 1: 0.55, 2: 0.40, 3: 0.28, 4: 0.20 };
+        const _CATCH_DEFAULT_FLEE_RATE = 0.30;
         const _BALL_DISPLAY = {
             poke:   { name: 'Poké Ball',   color: '#e57373' },
             great:  { name: 'Great Ball',  color: '#64b5f6' },
             ultra:  { name: 'Ultra Ball',  color: '#ffd54f' },
-            master: { name: 'Master Ball', color: '#ce93d8' }
+            master: { name: 'Master Ball', color: '#ce93d8' },
+            safari: { name: 'Safari Ball', color: '#a5d6a7' }
         };
+        // Safari Ball is a session-scoped resource that lives ONLY inside the
+        // Safari Zone. It is granted on entry, consumed on each throw, and
+        // forfeited on exit — it never enters sm.balls (cannot be used on wild
+        // routes). Mid-multiplier (1.5×, between Great and Ultra) — combined
+        // with the Bait/Rock loop it rewards play over pure ball stockpiling.
+        const SAFARI_BALL_MULT = 1.5;
+        const SAFARI_BALLS_PER_SESSION = 25;
+        // Bait calms the Pokémon (lower flee chance, lower catch chance).
+        // Rock angers it (higher catch chance, higher flee chance).
+        // Modifiers stack within an encounter and reset between encounters.
+        const SAFARI_BAIT_CATCH_MULT = 0.70;
+        const SAFARI_BAIT_FLEE_MULT  = 0.55;
+        const SAFARI_ROCK_CATCH_MULT = 1.45;
+        const SAFARI_ROCK_FLEE_MULT  = 1.70;
         let _catchState = null;
+        let _safariSession = null;
 
         function _shouldFireWildBeforeBattle(battleIdx) {
             if (battleIdx == null) return false;
@@ -27757,6 +27852,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 message: null,
                 ended: false,
                 bossMode: !!(options && options.boss),
+                safariMode: !!(options && options.safari),
                 forcedCatchRate: (options && typeof options.forcedCatchRate === 'number') ? options.forcedCatchRate : null,
                 forcedFleeRate: (options && typeof options.forcedFleeRate === 'number') ? options.forcedFleeRate : null,
                 roamingLabel: (options && typeof options.roamingLabel === 'string') ? options.roamingLabel : null,
@@ -27779,8 +27875,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             _catchRender();
             if (!_catchState.bossMode) {
-                try { _storyShowOneTimeTip('catch',
-                    'A wild Pokémon! Throw a Poké Ball (or stronger ball) to try to catch it. The percentage on each ball is your real chance — Pokémon graded G1 are hardest, G4 easiest. A failed throw may scare the Pokémon away. You can run, but the next wild encounter is the next route over.'); } catch (e) {}
+                if (_catchState.safariMode) {
+                    try { _storyShowOneTimeTip('safari-catch',
+                        'Safari Zone — only Safari Balls work here. Throw a Safari Ball to try to catch the wild Pokémon. Use Bait to calm it (lowers flee, lowers catch) or Rocks to anger it (raises catch, raises flee). Modifiers stack and reset between encounters. Rarer mons (G1/G2) bolt more often, so balance carefully.'); } catch (e) {}
+                } else {
+                    try { _storyShowOneTimeTip('catch',
+                        'A wild Pokémon! Throw a Poké Ball (or stronger ball) to try to catch it. The percentage on each ball is your real chance — Pokémon graded G1 are hardest and bolt half the time on a miss; G4 are easier and stick around longer. A failed throw may scare the Pokémon away.'); } catch (e) {}
+                }
                 if (_catchState.roamingLabel) {
                     try { _storyShowOneTimeTip('roaming',
                         'Roaming Pokémon — extremely rare. They appear once, on one route, after a gym victory. Catch rate is fixed at 30% × ball multiplier (a Master Ball still works for 100%). A missed throw means it bolts permanently.'); } catch (e) {}
@@ -27788,7 +27889,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const runBtn = document.getElementById('story-catch-run-btn');
             if (runBtn) {
-                runBtn.style.display = _catchState.bossMode ? 'none' : '';
+                // Safari has its own "Leave Safari" button inside the encounter card,
+                // and a per-encounter run is just "skip to next" — the floating Run
+                // button would be redundant. Hide it in safari mode and boss mode.
+                runBtn.style.display = (_catchState.bossMode || _catchState.safariMode) ? 'none' : '';
                 runBtn.disabled = false;
             }
             showScreen('screen-story-catch');
@@ -27832,18 +27936,58 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
 
-            const ballRows = ['poke', 'great', 'ultra', 'master'].map(k => {
-                const have = (sm.balls && (sm.balls[k] | 0)) || 0;
-                const mult = _CATCH_BALL_MULT[k];
-                const display = _BALL_DISPLAY[k];
-                const chance = mult === Infinity ? 1 : Math.min(1, baseRate * mult);
-                const pct = Math.round(chance * 100);
+            // ── Safari Mode: a different UI. Safari Ball only (session pool), plus
+            //    Bait and Rock actions that stack modifiers on this encounter. The
+            //    regular ball stack stays in your inventory — it cannot be used here.
+            let ballRows;
+            let safariActionRow = '';
+            let safariStatusRow = '';
+            if (_catchState.safariMode) {
+                const sess = _safariSession || { ballsLeft: 0, baitCount: 0, rockCount: 0, encountersUsed: 0 };
+                const baitMult = Math.pow(SAFARI_BAIT_CATCH_MULT, sess.baitCount | 0);
+                const rockMult = Math.pow(SAFARI_ROCK_CATCH_MULT, sess.rockCount | 0);
+                const safariCatchMult = Math.max(0.1, Math.min(4.0, SAFARI_BALL_MULT * baitMult * rockMult));
+                const safariChance = Math.min(1, baseRate * safariCatchMult);
+                const safariPct = Math.round(safariChance * 100);
+                const display = _BALL_DISPLAY.safari;
+                const have = sess.ballsLeft | 0;
                 const canThrow = have > 0;
-                return `<button type="button" onclick="window.StoryMode.catchThrow('${k}')" ${canThrow ? '' : 'disabled'} style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:rgba(20,28,40,0.6);border:1px solid ${display.color};color:${display.color};font-family:inherit;font-size:12px;${canThrow ? 'cursor:pointer;' : 'opacity:0.4;cursor:not-allowed;'}">
+                ballRows = `<button type="button" onclick="window.StoryMode.catchThrow('safari')" ${canThrow ? '' : 'disabled'} style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:rgba(20,28,40,0.6);border:1px solid ${display.color};color:${display.color};font-family:inherit;font-size:12px;${canThrow ? 'cursor:pointer;' : 'opacity:0.4;cursor:not-allowed;'}">
                     <span><strong>${display.name}</strong> ×${have}</span>
-                    <span style="color:#fff;">${pct}%</span>
+                    <span style="color:#fff;">${safariPct}%</span>
                 </button>`;
-            }).join('');
+                const baitLabel = sess.baitCount ? `🍓 Bait <span style="opacity:0.7;font-size:10px;">(fed ${sess.baitCount}×)</span>` : '🍓 Bait';
+                const rockLabel = sess.rockCount ? `🪨 Throw Rock <span style="opacity:0.7;font-size:10px;">(thrown ${sess.rockCount}×)</span>` : '🪨 Throw Rock';
+                safariActionRow = `<div style="display:flex;gap:6px;margin-top:4px;">
+                    <button type="button" onclick="window.StoryMode.safariBait()" style="flex:1;padding:8px;background:rgba(20,28,40,0.6);border:1px solid #f48fb1;color:#f48fb1;font-family:inherit;font-size:11px;cursor:pointer;">${baitLabel}</button>
+                    <button type="button" onclick="window.StoryMode.safariRock()" style="flex:1;padding:8px;background:rgba(20,28,40,0.6);border:1px solid #ffab91;color:#ffab91;font-family:inherit;font-size:11px;cursor:pointer;">${rockLabel}</button>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:4px;">
+                    <button type="button" onclick="window.StoryMode.catchRun()" style="flex:1;padding:8px;background:rgba(20,28,40,0.4);border:1px solid #5e7a90;color:#a8bccc;font-family:inherit;font-size:10px;cursor:pointer;">🏃 Skip encounter</button>
+                    <button type="button" onclick="window.StoryMode.safariLeaveEarly()" style="flex:1;padding:8px;background:rgba(20,28,40,0.4);border:1px solid #8b6b3a;color:#d7b489;font-family:inherit;font-size:10px;cursor:pointer;">⛺ Leave (forfeit balls)</button>
+                </div>`;
+                const _fleeBase = _CATCH_FLEE_BY_GRADE[grade] || _CATCH_DEFAULT_FLEE_RATE;
+                const _fleeMult = Math.pow(SAFARI_BAIT_FLEE_MULT, sess.baitCount | 0) * Math.pow(SAFARI_ROCK_FLEE_MULT, sess.rockCount | 0);
+                const _fleeThresh = Math.max(0, Math.min(0.85, _fleeBase * _fleeMult));
+                const _fleePct = Math.round(_fleeThresh * 100);
+                safariStatusRow = `<div style="display:flex;justify-content:space-between;font-size:10px;color:#aed581;padding:6px 8px;background:rgba(10,18,12,0.45);border:1px solid #4a6c44;margin-top:6px;">
+                    <span>Encounter ${sess.encountersUsed}/${SAFARI_MAX_ENCOUNTERS}</span>
+                    <span>Flee risk on miss: <strong style="color:#ffab91;">${_fleePct}%</strong></span>
+                </div>`;
+            } else {
+                ballRows = ['poke', 'great', 'ultra', 'master'].map(k => {
+                    const have = (sm.balls && (sm.balls[k] | 0)) || 0;
+                    const mult = _CATCH_BALL_MULT[k];
+                    const display = _BALL_DISPLAY[k];
+                    const chance = mult === Infinity ? 1 : Math.min(1, baseRate * mult);
+                    const pct = Math.round(chance * 100);
+                    const canThrow = have > 0;
+                    return `<button type="button" onclick="window.StoryMode.catchThrow('${k}')" ${canThrow ? '' : 'disabled'} style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:rgba(20,28,40,0.6);border:1px solid ${display.color};color:${display.color};font-family:inherit;font-size:12px;${canThrow ? 'cursor:pointer;' : 'opacity:0.4;cursor:not-allowed;'}">
+                        <span><strong>${display.name}</strong> ×${have}</span>
+                        <span style="color:#fff;">${pct}%</span>
+                    </button>`;
+                }).join('');
+            }
             // Boss-mode escape hatch: the Run button is hidden so the player can't flee
             // mid-fight, but if all four ball stacks are empty the catch screen has no
             // exit. Surface a retreat option that returns to the last city with the
@@ -27856,11 +28000,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                        <button type="button" onclick="window.StoryMode.bossRetreatToCity()" style="padding:8px 16px;background:rgba(0,0,0,0.4);border:1px solid #a060c0;color:#e0c0ff;font-family:inherit;font-size:12px;cursor:pointer;">↩ Retreat — bring more balls</button>
                    </div>`
                 : '';
-            const headerLabel = _catchState.bossMode ? "It's still breathing." : 'A wild Pokémon appeared!';
+            const headerLabel = _catchState.bossMode
+                ? "It's still breathing."
+                : _catchState.safariMode ? 'A Safari Pokémon emerges from the brush!' : 'A wild Pokémon appeared!';
             const headerColor = _catchState.bossMode ? '#ce93d8' : '#a5d6a7';
             const headerBg = _catchState.bossMode ? 'rgba(20,8,28,0.7);border:1px solid #6a1b9a' : 'rgba(10,18,12,0.55);border:1px solid #4a6c44';
             const gradeBg = _catchState.bossMode ? '#ce93d8' : '#a5d6a7';
-            const subText = _catchState.bossMode ? `Master Ball recommended — this catch is hard.` : 'Catch chance scales with grade and ball type.';
+            const subText = _catchState.bossMode
+                ? `Master Ball recommended — this catch is hard.`
+                : _catchState.safariMode ? 'Safari Balls only. Bait calms, Rock angers — both stack until you catch or it flees.' : 'Catch chance scales with grade and ball type.';
             // Show the wild Pokémon's sprite — the screen was text-only before, which
             // made every encounter feel like the same prompt.
             let spriteHtml = '';
@@ -27879,9 +28027,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div style="margin-top:8px;font-size:10px;color:#888;">${subText}</div>
                 </div>
                 ${message}
+                ${safariStatusRow}
                 <div style="display:flex;flex-direction:column;gap:6px;">
                     ${ballRows}
                 </div>
+                ${safariActionRow}
                 ${bossRetreat}
             `;
         }
@@ -27929,14 +28079,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (_catchState.bossMode && _catchState.bossHp > 0) return;
             const enc = _catchState.encounter;
             if (!enc) return;
-            if (!sm.balls || (sm.balls[ballKey] | 0) <= 0) return;
-            sm.balls[ballKey] = (sm.balls[ballKey] | 0) - 1;
+            const isSafariThrow = ballKey === 'safari';
+            // Safari Ball can ONLY be used in Safari Mode, and its supply lives on the
+            // session, not sm.balls. Regular balls cannot be used in Safari Mode.
+            if (isSafariThrow) {
+                if (!_catchState.safariMode || !_safariSession || _safariSession.ballsLeft <= 0) return;
+                _safariSession.ballsLeft = Math.max(0, (_safariSession.ballsLeft | 0) - 1);
+            } else {
+                if (_catchState.safariMode) return;
+                if (!sm.balls || (sm.balls[ballKey] | 0) <= 0) return;
+                sm.balls[ballKey] = (sm.balls[ballKey] | 0) - 1;
+            }
             const grade = (function () {
                 try { return getMonGrade(enc.name, getBST(enc.name)); }
                 catch (e) { return 4; }
             })();
             const baseRate = (_catchState.forcedCatchRate != null) ? _catchState.forcedCatchRate : (_CATCH_RATE_BY_GRADE[grade] || _CATCH_RATE_BY_GRADE[4]);
-            const mult = _CATCH_BALL_MULT[ballKey];
+            let mult;
+            if (isSafariThrow) {
+                const sess = _safariSession || { baitCount: 0, rockCount: 0 };
+                const baitMult = Math.pow(SAFARI_BAIT_CATCH_MULT, sess.baitCount | 0);
+                const rockMult = Math.pow(SAFARI_ROCK_CATCH_MULT, sess.rockCount | 0);
+                mult = Math.max(0.1, Math.min(4.0, SAFARI_BALL_MULT * baitMult * rockMult));
+            } else {
+                mult = _CATCH_BALL_MULT[ballKey];
+            }
             const chance = mult === Infinity ? 1 : Math.min(1, baseRate * mult);
             const roll = (sm && sm.active) ? storyRngNext() : Math.random();
             try { save(); } catch (e) {}
@@ -27952,7 +28119,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             const fleeRoll = (sm && sm.active) ? storyRngNext() : Math.random();
-            const fleeThreshold = (_catchState.forcedFleeRate != null) ? _catchState.forcedFleeRate : _CATCH_DEFAULT_FLEE_RATE;
+            let fleeThreshold;
+            if (_catchState.forcedFleeRate != null) {
+                fleeThreshold = _catchState.forcedFleeRate;
+            } else if (_catchState.safariMode) {
+                const sess = _safariSession || { baitCount: 0, rockCount: 0 };
+                const fleeBase = _CATCH_FLEE_BY_GRADE[grade] || _CATCH_DEFAULT_FLEE_RATE;
+                const fleeMult = Math.pow(SAFARI_BAIT_FLEE_MULT, sess.baitCount | 0) * Math.pow(SAFARI_ROCK_FLEE_MULT, sess.rockCount | 0);
+                fleeThreshold = Math.max(0, Math.min(0.85, fleeBase * fleeMult));
+            } else {
+                // Per-grade flee — rarer mons are more skittish. G1 bolts more than half
+                // the time on a miss, so a missed Ultra Ball on a G1 usually means it's gone.
+                fleeThreshold = _CATCH_FLEE_BY_GRADE[grade] || _CATCH_DEFAULT_FLEE_RATE;
+            }
             if (fleeRoll < fleeThreshold) {
                 const fleeMsgs = _catchState.roamingLabel
                     ? [
@@ -28000,12 +28179,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 caught.nickname = 'Subject Zero';
                 caught.bossArc = true;
             }
+            // Boss-arc catch always goes to party (or PC if full). No swap prompt —
+            // the story beat needs the unique mon in your hand right now.
             if (!partyFull) {
                 sm.team.push(caught);
                 if (sm.team.length >= 4) sm.partyEverReached4 = true;
                 if (sm.team.length >= 2) sm.partyEverReached2 = true;
-            } else {
+            } else if (bossMode) {
                 sm.pcBox.push(caught);
+            } else {
+                // Party full + PC has room — give the player a real choice rather
+                // than silently sending the new catch to PC. They can default to
+                // PC, or pick a party member to swap out. The swap path puts the
+                // newcomer in that party slot and sends the displaced mon to PC.
+                _pendingCaught = caught;
+                _renderPartySwapPrompt(caught);
+                return;
             }
             // Pokédex — record the catch + check milestone bundles (25/50/75/100).
             if (!sm.pokedex || typeof sm.pokedex !== 'object') sm.pokedex = { seen: [], caught: [] };
@@ -28019,8 +28208,69 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { save(); } catch (e) {}
             const successMsg = bossMode
                 ? `Subject Zero is yours.\n\nThe cage closes behind you. The lights flicker — once for the cage opening, once for it shutting. Sixty years, six brokers, three brokers left alive, one trainer at the end.\n\nThe specimen is in your party now, branded "Subject Zero." Unsellable. The Underground will not speak of this again. Neither will the trainer who came in before you. Neither, in time, will you.`
-                : (!partyFull ? `Gotcha! ${enc.name} was caught and joined your party.` : `Gotcha! ${enc.name} was caught and sent to the PC.`);
+                : `Gotcha! ${enc.name} was caught and joined your party.`;
             _catchFinishWithMessage(successMsg);
+        }
+        // Holds the just-caught mon while the player picks "send to PC" or
+        // "swap with party slot N". Cleared on resolution.
+        let _pendingCaught = null;
+        function _renderPartySwapPrompt(caught) {
+            if (!_catchState) return;
+            const body = document.getElementById('story-catch-body');
+            if (!body) return;
+            const partyList = (sm.team || []).map((slot, i) => {
+                if (!slot) return '';
+                const g = _pcMonGrade(slot);
+                const nameHtml = slot.nickname
+                    ? `"${_esc(slot.nickname)}" <span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>`
+                    : _esc(slot.name);
+                const disabled = slot.unsellable ? 'disabled' : '';
+                const reason = slot.unsellable ? ' title="Bonded — cannot be moved to PC"' : '';
+                return `<button type="button" onclick="window.StoryMode.catchResolveSwap(${i})" ${disabled} ${reason} style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;color:#fff;font-family:inherit;font-size:12px;${disabled ? 'opacity:0.4;cursor:not-allowed;' : 'cursor:pointer;'}">
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;">${nameHtml} ${_pcGradeChipHtml(g)}</span>
+                    <span style="color:#a5d6a7;font-size:10px;">→ PC</span>
+                </button>`;
+            }).join('');
+            body.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;padding:14px 6px;">
+                <div style="text-align:center;font-size:13px;color:#fff;line-height:1.5;">
+                    Gotcha! <strong>${_esc(caught.name)}</strong> was caught.<br/>
+                    <span style="color:#aed581;font-size:11px;">Your party is full (6/6). Send the newcomer to the PC, or swap with a team member.</span>
+                </div>
+                <button type="button" onclick="window.StoryMode.catchResolveSendToPC()" style="padding:10px;background:rgba(20,28,40,0.6);border:1px solid #ce93d8;color:#ce93d8;font-family:inherit;font-size:12px;cursor:pointer;">📦 Send ${_esc(caught.name)} to PC</button>
+                <div style="font-size:10px;color:#888;letter-spacing:0.06em;text-transform:uppercase;text-align:center;margin-top:4px;">— or pick a teammate to swap to PC —</div>
+                <div style="display:flex;flex-direction:column;gap:5px;">${partyList}</div>
+            </div>`;
+            const runBtn = document.getElementById('story-catch-run-btn');
+            if (runBtn) runBtn.style.display = 'none';
+        }
+        function _finalizeCatchPending(message) {
+            const caught = _pendingCaught;
+            _pendingCaught = null;
+            if (!caught) return;
+            // Pokédex — record the catch + check milestone bundles (25/50/75/100).
+            if (!sm.pokedex || typeof sm.pokedex !== 'object') sm.pokedex = { seen: [], caught: [] };
+            if (!Array.isArray(sm.pokedex.caught)) sm.pokedex.caught = [];
+            if (!sm.pokedex.caught.includes(caught.name)) sm.pokedex.caught.push(caught.name);
+            try { _storyCheckPokedexMilestones(); } catch (e) {}
+            try { save(); } catch (e) {}
+            _catchFinishWithMessage(message);
+        }
+        function catchResolveSendToPC() {
+            if (!_pendingCaught) return;
+            sm.pcBox.push(_pendingCaught);
+            _finalizeCatchPending(`${_pendingCaught.name} was sent to the PC.`);
+        }
+        function catchResolveSwap(slotIndex) {
+            if (!_pendingCaught) return;
+            const idx = slotIndex | 0;
+            const slot = (sm.team || [])[idx];
+            if (!slot) return;
+            if (slot.unsellable === true) return;
+            const caught = _pendingCaught;
+            // Place displaced party member in PC, drop newcomer into that party slot.
+            sm.pcBox.push(slot);
+            sm.team[idx] = caught;
+            _finalizeCatchPending(`${slot.name} was sent to the PC. ${caught.name} joined your party in their slot.`);
         }
         function _catchFinishWithMessage(message) {
             if (!_catchState) return;
@@ -28053,6 +28303,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof cb === 'function') {
                 try { cb(); } catch (e) { console.warn('[Story] catch run onComplete', e); }
             }
+        }
+        // Safari Bait — calms the wild Pokémon. Decreases catch chance, also
+        // decreases flee chance. Doesn't consume a ball. Can stack up to 3.
+        function safariBait() {
+            if (!_catchState || !_catchState.safariMode || _catchState.ended) return;
+            if (!_safariSession) return;
+            _safariSession.baitCount = Math.min(3, (_safariSession.baitCount | 0) + 1);
+            _catchState.message = `${_catchState.encounter.name} eats happily. It looks calmer — less likely to flee, but harder to catch with a ball.`;
+            _catchRender();
+        }
+        // Safari Rock — angers the wild Pokémon. Increases catch chance, but also
+        // increases flee chance dramatically. Doesn't consume a ball. Can stack up to 3.
+        function safariRock() {
+            if (!_catchState || !_catchState.safariMode || _catchState.ended) return;
+            if (!_safariSession) return;
+            _safariSession.rockCount = Math.min(3, (_safariSession.rockCount | 0) + 1);
+            _catchState.message = `${_catchState.encounter.name} is rattled. It's easier to catch now — but much more likely to bolt.`;
+            _catchRender();
         }
 
         function _storyShuffle(arr) {
@@ -31217,6 +31485,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterShop, buyItem, buyArtifact, enterArtifactShop, enterPokemonCenter,
             pcSwitchTab, pcDeposit, pcWithdraw, pcRelease, pcSell,
             catchThrow, catchRun, catchContinue,
+            catchResolveSendToPC, catchResolveSwap,
+            safariBait, safariRock, safariLeaveEarly,
             bossCollectLead, bossEnterCage, bossAttack, bossRetreatToCity,
             enterSafariZone,
             enterCrucible, leaveCrucible,
