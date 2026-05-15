@@ -3193,6 +3193,15 @@
                 min-height: 48px;
             }
             .story-action-btn { font-size: 14px; padding: 10px 14px; }
+            /* Tutor / Dojo / Nature / Colress / EV / Link option buttons —
+               mistyped taps on the 11px desktop layout were causing the
+               "I just spent 2,000G by accident" reports.  Bump touch
+               targets to 40px+ on phone portrait. */
+            .story-tutor-btn {
+                min-height: 40px;
+                padding: 8px 12px;
+                font-size: 12px;
+            }
             /* Story city HUD: keep one toolbar row; chips read cleanly on narrow portrait */
             #story-hud.story-hud-bar {
                 gap: 8px 10px;
@@ -6277,15 +6286,15 @@
         // === 2. GLOBAL UTILS & SETTINGS ===
         const helpData = {
             menu: `<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Game Modes</h3>
-<b style="color:#4caf50;">Player Vs AI</b> — Draft 3 Pokemon from a random pool and battle against the computer AI.<br>
+<b style="color:#4caf50;">Player Vs AI</b> — Draft 3 Pokémon from a random pool and battle against the computer AI.<br>
 <b style="color:#6890F0;">Local PvP</b> — Play with a friend on the same screen. Each player drafts from their own pool, then battles head-to-head.<br>
-<b style="color:#ffd700;">Gauntlet Mode</b> — A solo survival challenge! Your team persists across rounds. After each win, you can "loot" one of the defeated foe's Pokemon to replace one of yours. Your team is fully healed between rounds. How far can you go?</div>
+<b style="color:#ffd700;">Gauntlet Mode</b> — A solo survival challenge! Your team persists across rounds. After each win, you can "loot" one of the defeated foe's Pokémon to replace one of yours. Your team is fully healed between rounds. How far can you go?</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Drafting</h3>
-You pick from a pool of 6 randomly chosen Pokemon (from 84 total). Each Pokemon comes with a <b>competitive build</b> — preset Nature, Ability, Item, EVs, and 4 moves. Builds are graded by tier (T1 strongest, T4 weakest).</div>
+You pick from a pool of 6 randomly chosen Pokémon (from 84 total). Each Pokémon comes with a <b>competitive build</b> — preset Nature, Ability, Item, EVs, and 4 moves. Builds are graded by tier (T1 strongest, T4 weakest).</div>
 <div><h3 style="color:var(--accent);margin:0 0 6px;">Mechanics</h3>
-All Pokemon are <b>Level 50</b> with <b>31 IVs</b> and preset EVs. Natures boost one stat by 10% and lower another by 10%. Abilities and Items follow standard competitive rules.</div>`,
+All Pokémon are <b>Level 50</b> with <b>31 IVs</b> and preset EVs. Natures boost one stat by 10% and lower another by 10%. Abilities and Items follow standard competitive rules.</div>`,
             draft: `<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Building Your Team</h3>
-Click a card to add that Pokemon to your team. You need to pick 3.<br>
+Click a card to add that Pokémon to your team. You need to pick 3.<br>
 <b>Tap</b> Natures, Abilities, Items, and Moves for full descriptions (or hover on desktop). <b>Tap</b> a move name for stats, priority, and effects.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Tier System</h3>
 <span style="color:#ff8c00;font-weight:bold;">T1 (Orange)</span> — Strongest builds, top-tier threats<br>
@@ -6293,12 +6302,12 @@ Click a card to add that Pokemon to your team. You need to pick 3.<br>
 <span style="color:#1565c0;font-weight:bold;">T3 (Blue)</span> — Average, decent options<br>
 <span style="color:#2e7d32;font-weight:bold;">T4 (Green)</span> — Weaker builds, niche roles</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Type Badges</h3>
-Hover over the type badges to see defensive matchups — what types the Pokemon is weak to, resists, or immune to.</div>
+Hover over the type badges to see defensive matchups — what types the Pokémon is weak to, resists, or immune to.</div>
 <div><h3 style="color:var(--accent);margin:0 0 6px;">Strategy Tips</h3>
 Build a balanced team! Consider type coverage, speed tiers, and offensive/defensive roles. "Inspect Foe's Pool" shows all six of their possible builds (including ones they already picked), so you can plan without learning their hidden bench.</div>`,
             battle: `<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Commands</h3>
 <b style="color:var(--hp-yellow);">FIGHT</b> — Choose one of your 4 moves to attack or use a status move.<br>
-<b style="color:var(--hp-green);">POKEMON</b> — Switch your active Pokemon. <span style="color:#f44336;">This costs your turn!</span><br>
+<b style="color:var(--hp-green);">POKÉMON</b> — Switch your active Pokémon. <span style="color:#f44336;">This costs your turn!</span><br>
 <b style="color:#add8e6;">BAG</b> — No items in competitive format.<br>
 <b style="color:var(--hp-red);">RUN</b> — Forfeit the match.<br>
 <span style="color:#81d4fa;">Desktop:</span> <b>F</b> / <b>P</b> / <b>B</b> / <b>R</b> trigger the same four commands. On the move grid, <b>1</b>–<b>4</b> picks the move in that slot; <b>Esc</b> goes back.</div>
@@ -8209,7 +8218,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const ps = settings.partySize || 3;
             const poolPerPlayer = ({ 1: 3, 2: 4, 3: 6, 4: 6, 5: 8, 6: 8 })[ps] || (ps + 2);
             let text = helpData.menu
-                .replace(/\bDraft 3 Pokemon\b/g, `Draft ${ps} Pokemon`)
+                .replace(/\bDraft 3 Pokémon\b/g, `Draft ${ps} Pokémon`)
                 .replace(/\bpool of 6 randomly\b/g, `pool of ${poolPerPlayer} randomly`);
             if (!document.getElementById('screen-draft').classList.contains('hidden')) {
                 text = helpData.draft.replace(/\bYou need to pick 3\./g, `You need to pick ${ps}.`);
@@ -8403,7 +8412,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let fmtTypes = arr => arr.length ? arr.map(t => `<span class="type-badge type-${t}" style="font-size:9px;">${t}</span>`).join(' ') : '<span style="color:#555;">—</span>';
             let html = `<div style="font-weight:bold;color:#4fc3f7;margin-bottom:5px;">◆ Tera ${teraType} Type</div>`
                 + `<div style="margin-bottom:3px;font-size:11px;">${stabNote}</div>`
-                + `<div style="font-size:10px;color:#888;margin-bottom:4px;">Pokemon becomes pure ${teraType}-type. All other types are shed.</div>`
+                + `<div style="font-size:10px;color:#888;margin-bottom:4px;">Pokémon becomes pure ${teraType}-type. All other types are shed.</div>`
                 + `<div style="font-size:10px;margin-bottom:2px;"><span style="color:#4caf50;">SE vs:</span> ${fmtTypes(se)}</div>`
                 + (nve.length ? `<div style="font-size:10px;margin-bottom:2px;"><span style="color:#ff9800;">NVE vs:</span> ${fmtTypes(nve)}</div>` : '')
                 + (immune.length ? `<div style="font-size:10px;"><span style="color:#607d8b;">No effect vs:</span> ${fmtTypes(immune)}</div>` : '');
@@ -19764,7 +19773,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Perish Song") {
                 if (attacker.ability !== "Soundproof" && attacker.volatile.perishCount < 0) attacker.volatile.perishCount = 4;
                 if (defender.ability !== "Soundproof" && defender.volatile.perishCount < 0) defender.volatile.perishCount = 4;
-                logMsg(`All Pokemon that heard the song will faint in 3 turns!`, 'status'); return;
+                logMsg(`All Pokémon that heard the song will faint in 3 turns!`, 'status'); return;
             }
             // Acupressure: random +2 to a random stat
             if (move.name === "Acupressure") {
@@ -20770,7 +20779,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             mon.status = status; mon.statusTurns = 0;
             if (status === "SLP") mon.sleepDuration = Math.floor(Math.random() * 3) + 1;
-            let msgs = {"PSN":"was poisoned!","TOX":"was badly poisoned!","BRN":"was burned!","PAR":"is paralyzed!","SLP":"fell asleep!","FRZ":"was frozen solid!"};
+            let msgs = {"PSN":"was poisoned!","TOX":"was badly poisoned!","BRN":"was burned!","PAR":"was paralyzed!","SLP":"fell asleep!","FRZ":"was frozen solid!"};
             logMsg(`${mon.name} ${msgs[status]}`, 'status');
             // Synchronize: Mirror status to opponent
             if (mon.ability === "Synchronize" && !noSync && (status === "PSN" || status === "TOX" || status === "BRN" || status === "PAR")) {
@@ -21673,6 +21682,48 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Basic Trainer', name:'Black Belt',  type:'Fighting',       sigs:['Machoke','Hariyama','Hitmonlee','Hitmonchan','Throh'],                  charGen:1, pkmGens:[1,3,5] },
           { role:'Basic Trainer', name:'Bird Keeper', type:'Flying',         sigs:['Pidgeotto','Staravia','Doduo','Fearow','Swellow'],                      charGen:1, pkmGens:[1,3,4] },
           { role:'Basic Trainer', name:'Dragon Tamer',type:'Dragon',         sigs:['Dratini','Dragonair','Fraxure','Bagon','Goomy'],                       charGen:1, pkmGens:[1,3,5,6] },
+          // 2-type Basic Trainer variations + thematic fillers (reuse existing sprites; tag drives flavor).
+          // These exist so single-generation runs still surface every type as a possible Gym-Trainer match,
+          // and so the route between cities mixes more than 5 silhouettes.
+          { role:'Basic Trainer', name:'Ace Diver',     type:'Water',    sigs:['Wingull','Mantyke','Goldeen','Wailmer','Tentacool'],          charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Swimmer' },
+          { role:'Basic Trainer', name:'Mountain Guide',type:'Ground',   sigs:['Diglett','Sandshrew','Cubone','Trapinch','Hippopotas'],       charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Hiker' },
+          { role:'Basic Trainer', name:'Glacial Trekker',type:'Ice',     sigs:['Swinub','Snorunt','Spheal','Cubchoo','Vanillite'],            charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Skier' },
+          { role:'Basic Trainer', name:'Reactor Tech',  type:'Steel',    sigs:['Magnemite','Beldum','Aron','Ferroseed','Klink'],              charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Engineer' },
+          { role:'Basic Trainer', name:'Tea Aroma',     type:'Fairy',    sigs:['Cleffa','Igglybuff','Ralts','Spritzee','Milcery'],            charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Aroma_Lady' },
+          { role:'Basic Trainer', name:'Mystic',        type:'Psychic',  sigs:['Abra','Drowzee','Espurr','Munna','Solosis'],                  charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Psychic' },
+          { role:'Basic Trainer', name:'Crooked Beat',  type:'Dark',     sigs:['Houndour','Poochyena','Sneasel','Pawniard','Murkrow'],         charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Roughneck' },
+          { role:'Basic Trainer', name:'Marsh Walker',  type:'Poison',   sigs:['Grimer','Stunky','Skorupi','Trubbish','Croagunk'],             charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Janitor' },
+          { role:'Basic Trainer', name:'Lab Rat',       type:'Bug',      sigs:['Caterpie','Weedle','Wurmple','Joltik','Venonat'],              charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Bug_Catcher' },
+
+          // Thematic tagged variants: same sprites, darker pools. The "tag" field lets the build engine
+          // optionally bias signature selection toward the thematic type and (for 'eldritch') even pull
+          // from non-toggled generations so a single-gen run can still be ambushed by something foreign.
+          { role:'Basic Trainer', name:'Cursed Vagrant', type:'Ghost',   tag:'cursed',   sigs:['Phantump','Litwick','Misdreavus','Drifloon','Yamask'], charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Hex_Maniac' },
+          { role:'Basic Trainer', name:'Scarred Brawler',type:'Fighting',tag:'cursed',   sigs:['Scraggy','Pancham','Timburr','Mienfoo','Tyrogue'],     charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Roughneck' },
+          { role:'Basic Trainer', name:'Charred Acolyte',type:'Fire',    tag:'cursed',   sigs:['Slugma','Houndour','Litleo','Charmander','Litten'],    charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Firebreather' },
+
+          // Multi-type wanderers: roaming Ace Trainer-class fighters with 2–3 types in
+          // their sig list. parseTrainerTypes already splits on / and , so the rolling
+          // pool draws from each listed type. Designed to land in the new 'multitype'
+          // themed slots and read as "someone who's traveled all over."
+          { role:'Basic Trainer', name:'Tide-Frost Diver',  type:'Water/Ice',         tag:'multitype', sigs:['Lapras','Dewgong','Spheal','Walrein','Cloyster'],                 charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Swimmer' },
+          { role:'Basic Trainer', name:'Ash-Stone Climber', type:'Rock/Fire',         tag:'multitype', sigs:['Magcargo','Coalossal','Camerupt','Rolycoly','Aron'],              charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Hiker' },
+          { role:'Basic Trainer', name:'Marsh Mystic',      type:'Poison/Psychic',    tag:'multitype', sigs:['Drowzee','Munna','Tentacruel','Grimer','Slowking'],              charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Hex_Maniac' },
+          { role:'Basic Trainer', name:'Sky-Steel Ranger',  type:'Flying/Steel',      tag:'multitype', sigs:['Skarmory','Corviknight','Empoleon','Aerodactyl','Doduo'],         charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Bird_Keeper' },
+          { role:'Basic Trainer', name:'Twilight Hunter',   type:'Dark/Ghost/Psychic',tag:'multitype', sigs:['Sableye','Mismagius','Hypno','Honchkrow','Drapion'],              charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Roughneck' },
+          { role:'Basic Trainer', name:'Garden Mender',     type:'Grass/Fairy',       tag:'multitype', sigs:['Roserade','Whimsicott','Lilligant','Florges','Comfey'],          charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Aroma_Lady' },
+
+          // Villain encounters: higher-tier team operatives (Executive / Admin / Sage)
+          // not regular grunts. Their sigs already lean on bulky / pseudo-legendary
+          // mon so the roller naturally fields stronger teams when these get picked.
+          { role:'Basic Trainer', name:'Rocket Executive',  type:'Poison/Dark',  tag:'villain', sigs:['Tyranitar','Crobat','Houndoom','Honchkrow','Weezing'],   charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Galactic_Grunt' },
+          { role:'Basic Trainer', name:'Aqua Admin',        type:'Water/Dark',   tag:'villain', sigs:['Sharpedo','Crawdaunt','Toxapex','Mightyena','Walrein'],  charGen:3, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Roughneck' },
+          { role:'Basic Trainer', name:'Magma Admin',       type:'Fire/Ground',  tag:'villain', sigs:['Camerupt','Houndoom','Magcargo','Mightyena','Torkoal'],  charGen:3, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Firebreather' },
+          { role:'Basic Trainer', name:'Galactic Commander',type:'Dark/Poison',  tag:'villain', sigs:['Skuntank','Crobat','Toxicroak','Honchkrow','Drapion'],   charGen:4, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Galactic_Grunt' },
+          { role:'Basic Trainer', name:'Plasma Sage',       type:'Psychic/Dark', tag:'villain', sigs:['Bisharp','Sigilyph','Hydreigon','Cofagrigus','Krookodile'], charGen:5, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Plasma_Grunt' },
+          { role:'Basic Trainer', name:'Flare Scientist',   type:'Fire/Psychic', tag:'villain', sigs:['Pyroar','Delphox','Houndoom','Espurr','Slugma'],         charGen:6, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Firebreather' },
+          { role:'Basic Trainer', name:'Skull Boss',        type:'Dark/Poison',  tag:'villain', sigs:['Salazzle','Toxapex','Skuntank','Drapion','Krookodile'],  charGen:7, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Roughneck' },
+
           // Elite Trainers (named NPCs / villains; story "Elite Trainer" battles exclude isRival — rivals use event "Rival" only)
           { role:'Elite Trainer', name:'Blue',  type:'Mixed',        sigs:['Pidgeot','Alakazam','Rhydon','Exeggutor','Arcanine'],                  charGen:1, pkmGens:[1], isRival:true },
           { role:'Elite Trainer', name:'Silver',type:'Mixed',        sigs:['Crobat','Weavile','Alakazam','Gengar','Magneton'],                     charGen:2, pkmGens:[1,2,4], isRival:true },
@@ -21813,6 +21864,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Champion', name:'Leon',          type:'Mixed', sigs:['Charizard','Aegislash','Dragapult','Haxorus','Seismitoad'],            charGen:8, pkmGens:[1,5,6,8] },
           { role:'Champion', name:'Geeta',         type:'Mixed', sigs:['Glimmora','Espathra','Kingambit','Avalugg','Veluza'],                 charGen:9, pkmGens:[6,9] },
           { role:'Champion', name:'Red',           type:'Mixed', sigs:['Pikachu','Venusaur','Charizard','Blastoise','Snorlax'],               charGen:1, pkmGens:[1] },
+
+          // Thematic Elite Trainer variants — same sprite as the canonical character, darker pool.
+          // tag:'eldritch' lets the build engine reach beyond toggled gens (it knows this trainer's lineup
+          // is supposed to feel "out of this world"). They're discovery rewards for runs that toggle
+          // a single generation — the player can still meet familiar faces, but bent.
+          { role:'Elite Trainer', name:'Shadow Blue',     type:'Dark',  tag:'eldritch', sigs:['Honchkrow','Houndoom','Crobat','Sneasel','Weavile'],      charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Blue' },
+          { role:'Elite Trainer', name:'Cursed Lance',    type:'Ghost', tag:'eldritch', sigs:['Giratina','Dragapult','Hydreigon','Aegislash','Houndoom'], charGen:2, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Lance' },
+          { role:'Elite Trainer', name:'Forsaken Cynthia',type:'Dark',  tag:'eldritch', sigs:['Spiritomb','Houndoom','Honchkrow','Garchomp','Tyranitar'], charGen:4, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Cynthia' },
+          { role:'Elite Trainer', name:'Eldritch N',      type:'Psychic',tag:'eldritch', sigs:['Hatterene','Gardevoir','Hypno','Hatenna','Bruxish'],     charGen:5, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'N' },
+          { role:'Elite Trainer', name:'Tarnished Steven',type:'Steel', tag:'eldritch', sigs:['Metagross','Aegislash','Lucario','Excadrill','Bisharp'], charGen:3, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Steven' },
+          { role:'Elite Trainer', name:'Pale Ghetsis',    type:'Dark',  tag:'eldritch', sigs:['Hydreigon','Bisharp','Cofagrigus','Krookodile','Sableye'], charGen:5, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Ghetsis' },
+          { role:'Elite Trainer', name:'Hollow Cyrus',    type:'Dark',  tag:'eldritch', sigs:['Spiritomb','Sableye','Drapion','Murkrow','Crobat'],       charGen:4, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Cyrus' },
+          { role:'Elite Trainer', name:'Silent Red',      type:'Mixed', tag:'eldritch', sigs:['Pikachu','Mewtwo','Charizard','Lapras','Snorlax'],         charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Red' },
+
+          // Veteran gym leaders — old champions of their type who return as Elite Trainers,
+          // upgraded with cross-region species (so a Veteran Brock can run Rhyperior /
+          // Tyranitar / Excadrill, not just Onix / Geodude). They reuse the canonical leader
+          // sprite and inherit their voice; the tag puts them in the 'veteran' roster.
+          { role:'Elite Trainer', name:'Veteran Brock',    type:'Rock/Ground', tag:'veteran', sigs:['Tyranitar','Rhyperior','Steelix','Aerodactyl','Excadrill'],     charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Brock' },
+          { role:'Elite Trainer', name:'Veteran Misty',    type:'Water/Ice',   tag:'veteran', sigs:['Starmie','Gyarados','Lapras','Kingdra','Cloyster'],             charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Misty' },
+          { role:'Elite Trainer', name:'Veteran Lt. Surge',type:'Electric/Steel',tag:'veteran',sigs:['Raichu','Magnezone','Electivire','Manectric','Zapdos'],        charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Lt._Surge' },
+          { role:'Elite Trainer', name:'Veteran Erika',    type:'Grass/Fairy', tag:'veteran', sigs:['Venusaur','Vileplume','Tangrowth','Florges','Lilligant'],       charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Erika' },
+          { role:'Elite Trainer', name:'Veteran Koga',     type:'Poison/Bug',  tag:'veteran', sigs:['Crobat','Venomoth','Toxicroak','Scolipede','Galvantula'],       charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Koga' },
+          { role:'Elite Trainer', name:'Veteran Sabrina',  type:'Psychic',     tag:'veteran', sigs:['Alakazam','Espeon','Gardevoir','Slowking','Metagross'],         charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Sabrina' },
+          { role:'Elite Trainer', name:'Veteran Blaine',   type:'Fire',        tag:'veteran', sigs:['Charizard','Arcanine','Houndoom','Magmortar','Volcarona'],       charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Blaine' },
+          { role:'Elite Trainer', name:'Veteran Giovanni', type:'Ground/Dark', tag:'veteran', sigs:['Rhyperior','Garchomp','Tyranitar','Krookodile','Excadrill'],     charGen:1, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Giovanni' },
+          { role:'Elite Trainer', name:'Veteran Whitney',  type:'Normal/Fairy',tag:'veteran', sigs:['Miltank','Snorlax','Wigglytuff','Sylveon','Granbull'],          charGen:2, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Whitney' },
+          { role:'Elite Trainer', name:'Veteran Clair',    type:'Dragon/Ice',  tag:'veteran', sigs:['Dragonite','Kingdra','Garchomp','Mamoswine','Haxorus'],          charGen:2, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Clair' },
+          { role:'Elite Trainer', name:'Veteran Wallace',  type:'Water/Dragon',tag:'veteran', sigs:['Milotic','Kingdra','Gyarados','Dragalge','Goodra'],             charGen:3, pkmGens:[1,2,3,4,5,6,7,8,9], spriteFile:'Wallace' },
+
           { role:'Basic Trainer', name:'Team Rocket Grunt', type:'Poison', sigs:['Ekans','Rattata','Zubat','Koffing','Meowth'], charGen:1, pkmGens:[1,2] },
           { role:'Basic Trainer', name:'Team Aqua Grunt', type:'Water', sigs:['Carvanha','Poochyena','Wailmer','Corphish','Mightyena'], charGen:3, pkmGens:[3] },
           { role:'Basic Trainer', name:'Team Magma Grunt', type:'Fire', sigs:['Numel','Poochyena','Mightyena','Camerupt','Houndour'], charGen:3, pkmGens:[3] },
@@ -22208,9 +22289,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Professor grade rolls per city (0-based city index)
         // With 3-choice system: weights determine what appears across 3 options
         const PROF_ROLLS = [
-          {g1:0, g2:0,  g3:30, g4:70},  // City0
-          {g1:0, g2:0,  g3:50, g4:50},  // City1
-          {g1:0, g2:20, g3:50, g4:30},  // City2
+          {g1:0, g2:0,  g3:70, g4:30},  // City0  — starter pool, G3 floor so the Gym 1 (100% G3) wall isn't an immediate brick
+          {g1:0, g2:0,  g3:70, g4:30},  // City1
+          {g1:0, g2:20, g3:60, g4:20},  // City2
           {g1:0, g2:40, g3:60, g4:0},   // City3
           {g1:0, g2:50, g3:50, g4:0},   // City4
           {g1:0, g2:60, g3:40, g4:0},   // City5
@@ -22297,8 +22378,200 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Grusha':           'Glaseado Mountain',
         };
 
+        // Canonical badge name per gym leader (used in the victory overlay flavor line).
+        // Falls back to "Gym Badge" for any leader not mapped here.
+        const LEADER_BADGE_NAMES = {
+            'Brock':'Boulder Badge','Misty':'Cascade Badge','Lt. Surge':'Thunder Badge','Erika':'Rainbow Badge',
+            'Koga':'Soul Badge','Sabrina':'Marsh Badge','Blaine':'Volcano Badge','Giovanni':'Earth Badge',
+            'Falkner':'Zephyr Badge','Bugsy':'Hive Badge','Whitney':'Plain Badge','Morty':'Fog Badge',
+            'Chuck':'Storm Badge','Jasmine':'Mineral Badge','Pryce':'Glacier Badge','Clair':'Rising Badge',
+            'Roxanne':'Stone Badge','Brawly':'Knuckle Badge','Wattson':'Dynamo Badge','Flannery':'Heat Badge',
+            'Norman':'Balance Badge','Winona':'Feather Badge','Tate':'Mind Badge','Liza':'Mind Badge',
+            'Wallace':'Rain Badge','Juan':'Rain Badge',
+            'Roark':'Coal Badge','Gardenia':'Forest Badge','Maylene':'Cobble Badge','Crasher Wake':'Fen Badge',
+            'Fantina':'Relic Badge','Byron':'Mine Badge','Candice':'Icicle Badge','Volkner':'Beacon Badge',
+            'Cilan':'Trio Badge','Chili':'Trio Badge','Cress':'Trio Badge','Lenora':'Basic Badge',
+            'Burgh':'Insect Badge','Elesa':'Bolt Badge','Clay':'Quake Badge','Skyla':'Jet Badge',
+            'Brycen':'Freeze Badge','Drayden':'Legend Badge','Iris':'Legend Badge',
+            'Viola':'Bug Badge','Grant':'Cliff Badge','Korrina':'Rumble Badge','Ramos':'Plant Badge',
+            'Clemont':'Voltage Badge','Valerie':'Fairy Badge','Olympia':'Psychic Badge','Wulfric':'Iceberg Badge',
+            'Milo':'Grass Badge','Nessa':'Water Badge','Kabu':'Fire Badge','Bea':'Fighting Badge',
+            'Allister':'Ghost Badge','Opal':'Fairy Badge','Gordie':'Rock Badge','Melony':'Ice Badge',
+            'Piers':'Dark Badge','Raihan':'Dragon Badge',
+            'Katy':'Bug Badge','Brassius':'Grass Badge','Iono':'Electric Badge','Kofu':'Water Badge',
+            'Larry':'Normal Badge','Ryme':'Ghost Badge','Tulip':'Psychic Badge','Grusha':'Ice Badge',
+        };
+
+        // Per-leader victory flavor. Strings include the trainer's own voice; the engine
+        // prepends "{Name}:" so the line reads as direct speech. One short line each.
+        const LEADER_VICTORY_LINES = {
+            'Brock':"\"Your defense rivals stone. Take the Boulder Badge.\"",
+            'Misty':"\"You really do have water under control. Cascade Badge—yours.\"",
+            'Lt. Surge':"\"Electrifying match, kid! Take this Thunder Badge.\"",
+            'Erika':"\"…The scent of victory suits you. The Rainbow Badge, please.\"",
+            'Koga':"\"Your subterfuge eclipsed mine. The Soul Badge is yours.\"",
+            'Sabrina':"\"I foresaw this outcome. The Marsh Badge—as it must be.\"",
+            'Blaine':"\"You doused the inferno! Burn this Volcano Badge into memory!\"",
+            'Giovanni':"\"…Hmph. You've earned the Earth Badge. Don't make me regret it.\"",
+            'Falkner':"\"My birds soared—but yours flew higher. Zephyr Badge, yours.\"",
+            'Bugsy':"\"Fascinating data! Your strategy joins my notes. Hive Badge!\"",
+            'Whitney':"\"…I'm not crying! …Fine. Take the Plain Badge already.\"",
+            'Morty':"\"You walked through the fog with eyes open. Fog Badge.\"",
+            'Chuck':"\"Hyaaah! That training paid off—for both of us. Storm Badge!\"",
+            'Jasmine':"\"…Thank you for your spirited battle. The Mineral Badge.\"",
+            'Pryce':"\"You reminded an old man what fire feels like. Glacier Badge.\"",
+            'Clair':"\"…Tch. You're worthy. The Rising Badge—don't embarrass it.\"",
+            'Roxanne':"\"My textbook will note this match. Stone Badge—well-earned.\"",
+            'Brawly':"\"That fight crashed harder than any wave. Knuckle Badge!\"",
+            'Wattson':"\"Wahaha! Shocking! Dynamo Badge—earned with watts to spare!\"",
+            'Flannery':"\"…You doused me good. Heat Badge—and my pride along with it.\"",
+            'Norman':"\"…My child, you've grown. Balance Badge—wear it well.\"",
+            'Winona':"\"You ride the sky as I do. Feather Badge—soar farther.\"",
+            'Tate':"\"Liza and I salute you. Mind Badge—two minds well-bested.\"",
+            'Liza':"\"Tate and I salute you. Mind Badge—two minds well-bested.\"",
+            'Wallace':"\"A graceful battle deserves a graceful prize. Rain Badge.\"",
+            'Juan':"\"Magnifico! Your technique flowed like water. Rain Badge.\"",
+            'Roark':"\"My father's pickaxe is yours someday. Coal Badge—mined honest.\"",
+            'Gardenia':"\"Hahaha! You uprooted me! Forest Badge—planted in respect.\"",
+            'Maylene':"\"That match made me stronger. Cobble Badge—earned in full.\"",
+            'Crasher Wake':"\"BWAHAHA! A fellow wrestler of the deep! Fen Badge!\"",
+            'Fantina':"\"Quelle technique! Magnifique! Relic Badge for the moment.\"",
+            'Byron':"\"…My own son couldn't crack me. You did. Mine Badge.\"",
+            'Candice':"\"You melted me with focus alone. Icicle Badge—wear it proud.\"",
+            'Volkner':"\"…Finally. Something worth being shocked over. Beacon Badge.\"",
+            'Cilan':"\"A perfectly seasoned match. The Trio Badge—our compliments.\"",
+            'Chili':"\"Hot stuff! The Trio Badge sizzles in your hand!\"",
+            'Cress':"\"…Cool, composed, and yours. The Trio Badge.\"",
+            'Lenora':"\"Class dismissed! Basic Badge—first lesson, well learned.\"",
+            'Burgh':"\"Such art in your strategy! Insect Badge—an inspired piece.\"",
+            'Elesa':"\"Dazzling! The Bolt Badge sparks brighter in your hands.\"",
+            'Clay':"\"Buried me good, you did! Quake Badge—dug up fair and square.\"",
+            'Skyla':"\"Cleared for takeoff, ace pilot! Jet Badge—your wings now.\"",
+            'Brycen':"\"…An icy heart can still be moved. Freeze Badge.\"",
+            'Drayden':"\"…The Legend Badge passes to a worthy successor.\"",
+            'Iris':"\"You're even stronger than I dreamed! Legend Badge—it's yours!\"",
+            'Viola':"\"Snap! A picture-perfect battle. Bug Badge—my best shot today.\"",
+            'Grant':"\"You climbed past me. Cliff Badge—the next handhold up.\"",
+            'Korrina':"\"Lucario and I bow to a fellow aura. Rumble Badge!\"",
+            'Ramos':"\"You pruned an old tree well. Plant Badge—keep growing.\"",
+            'Clemont':"\"By my calculations… you exceeded them! Voltage Badge!\"",
+            'Valerie':"\"…What a lovely battle. The Fairy Badge—a delicate gift.\"",
+            'Olympia':"\"The stars foretold this. Psychic Badge—written in light.\"",
+            'Wulfric':"\"You crack ice with warmth—rare. Iceberg Badge for you.\"",
+            'Milo':"\"Whew, tough one! Grass Badge—you grew it yourself!\"",
+            'Nessa':"\"You churned my tide. Water Badge—a souvenir from the deep.\"",
+            'Kabu':"\"Your spirit burned brighter than mine today. Fire Badge!\"",
+            'Bea':"\"…I lost. So I train harder. Fighting Badge—earned cleanly.\"",
+            'Allister':"\"…The ghosts approve. Ghost Badge—for the brave.\"",
+            'Opal':"\"You're positively pink! Fairy Badge—wear it with poise!\"",
+            'Gordie':"\"You rocked the climb. Rock Badge—solid as the mountain.\"",
+            'Melony':"\"You melted my heart and my ice. Ice Badge—dear to me.\"",
+            'Piers':"\"…Not bad. Encore. Dark Badge—Spikemuth approves.\"",
+            'Raihan':"\"You broke through. Dragon Badge—I'll film the rematch.\"",
+            'Katy':"\"Sweet victory for you! Bug Badge—frosted with respect.\"",
+            'Brassius':"\"A sculpture of a match. Grass Badge—a masterwork.\"",
+            'Iono':"\"And the streamer is YOU! Electric Badge—stay zappy!\"",
+            'Kofu':"\"Crackin' battle, kid! Water Badge—fresh as the catch.\"",
+            'Larry':"\"…Normal day. Normal Badge. Well earned, though.\"",
+            'Ryme':"\"Bone-rattling rhymes, bone-rattling fight. Ghost Badge.\"",
+            'Tulip':"\"You bloomed beautifully. Psychic Badge—stay vivid.\"",
+            'Grusha':"\"…Hmph. You can ski my mountain anytime. Ice Badge.\"",
+        };
+
+        // Per-Elite Four post-battle line. Used when the matched trainer name is canonical;
+        // otherwise we fall through to the role-only "Elite N passed—one step closer!" line.
+        const ELITE_VICTORY_LINES = {
+            'Lorelei':"Lorelei: \"…You melted my ice. The next gate awaits.\"",
+            'Bruno':"Bruno: \"Hmm! Pure muscle wasn't enough. Move on, then.\"",
+            'Agatha':"Agatha: \"Heh heh… so the brat does bite. Onward.\"",
+            'Lance':"Lance: \"Dragons bow to your fire. The Champion is next.\"",
+            'Will':"Will: \"My psychic veil is lifted. Press onward.\"",
+            'Karen':"Karen: \"Strong trainers like what they like. You like winning.\"",
+            'Koga':"Koga: \"…I taught you nothing. You taught me. Onward.\"",
+            'Sidney':"Sidney: \"Heh. Couldn't roll you. Next gate's open.\"",
+            'Phoebe':"Phoebe: \"My ghosts hum your name now. Strange feeling.\"",
+            'Glacia':"Glacia: \"…Warm enough to melt me. Press on.\"",
+            'Drake':"Drake: \"You sail rougher seas than I expected. Sail on.\"",
+            'Aaron':"Aaron: \"Bzzt! You stung me clean. Onward, kid.\"",
+            'Bertha':"Bertha: \"Hee hee! The little one isn't so little. Move on.\"",
+            'Flint':"Flint: \"Hot match! You out-burned me. Press on.\"",
+            'Lucian':"Lucian: \"My calculations were off by exactly one—you. Onward.\"",
+            'Shauntal':"Shauntal: \"…I'll write you into a novel. Press on.\"",
+            'Marshal':"Marshal: \"Hmph! That was a true contest. Onward.\"",
+            'Grimsley':"Grimsley: \"…You played the long odds. They paid.\"",
+            'Caitlin':"Caitlin: \"…Magnificent. The path opens.\"",
+            'Malva':"Malva: \"You snuffed my fire. The next gate awaits.\"",
+            'Siebold':"Siebold: \"A meal well-cooked. Bon voyage to the next gate.\"",
+            'Wikstrom':"Wikstrom: \"En garde! …Or rather, well-fought. Onward.\"",
+            'Drasna':"Drasna: \"Oh my, what a sweet battle. Press on, dear.\"",
+            'Hala':"Hala: \"Alola! That was a thunderous fight. Move on.\"",
+            'Olivia':"Olivia: \"You polished the stones I set. Onward.\"",
+            'Acerola':"Acerola: \"Heehee! My ghosts liked you. Press on.\"",
+            'Kahili':"Kahili: \"Hole in one—of my pride. Move on, sharp shot.\"",
+            'Molayne':"Molayne: \"My circuits are humming. You earned the next gate.\"",
+            'Hassel':"Hassel: \"A dragon learned from you. Press on.\"",
+            'Poppy':"Poppy: \"Hee! That was so cool! Go, go, go!\"",
+            'Rika':"Rika: \"That was a SOLID match. Move on, champ.\"",
+        };
+
+        // Per-champion victory line. If the matched champion has no entry we still emit
+        // the generic "You defeated the Champion!" line as before.
+        const CHAMPION_VICTORY_LINES = {
+            'Blue':"Blue: \"Smell ya later… you actually did it.\"",
+            'Lance':"Lance: \"…A new Champion is crowned. The dragons salute you.\"",
+            'Steven Stone':"Steven Stone: \"My rarest find today—was you. Bravo.\"",
+            'Wallace':"Wallace: \"A graceful crown for a graceful trainer.\"",
+            'Cynthia':"Cynthia: \"…I enjoyed that. Garchomp and I yield, gladly.\"",
+            'Alder':"Alder: \"Hahaha! The next age belongs to you, friend.\"",
+            'Iris':"Iris: \"You're the best! …Now I have to train harder!\"",
+            'Diantha':"Diantha: \"Brava! The role of Champion suits you beautifully.\"",
+            'Leon':"Leon: \"Champion time… for YOU! That was unbeatable, mate.\"",
+            'Geeta':"Geeta: \"Indeed. The mantle was always yours, perhaps.\"",
+            'Hau':"Hau: \"Alola! You're a malasada-sweet Champion now!\"",
+        };
+
         // Maps city index (1–8) to the STORY_EVENTS_RAW event index of its Gym Leader battle
         const GYM_CITY_LEADER_EVENT = { 1:5, 2:11, 3:18, 4:24, 5:31, 6:38, 7:46, 8:53 };
+
+        // The Mystery Figure used to always wear Cyrus's face. Now a rotating cast: a
+        // single identity is rolled at run start and pinned for the whole save, both
+        // for the in-city "team is full" Mystery Figure flow and the post-HoF boss
+        // battle. Sprite + intro voice change together. Names stay hidden — the
+        // overlay still reads "??? Mystery Figure" until you face them.
+        const MYSTERY_FIGURE_IDENTITIES = {
+            cyrus:   { sprite:'Cyrus',   reveal:'Cyrus',
+                intros:['Your Hall of Fame crown means nothing here.','I have buried galaxies. One trainer is a small task.','Emotion is the failure. I will edit yours out.','Show me your strongest six — then I will quiet them.'],
+                outro:'Cyrus stands. The fight didn\'t shake him. He looks past you, past the room. "Emotion remains. So do you. Galaxies endure both. …Inconvenient." He walks into the dark hallway without a word more.' },
+            ghetsis: { sprite:'Ghetsis', reveal:'Ghetsis',
+                intros:['Useful tool. Bring me your six.','Ideals are toys for the weak. I prefer results.','Your bond with these creatures is a leash. I have shears.','Plasma had a plan. I have a better one. Begin.'],
+                outro:'Ghetsis snarls. His robe drags as he turns. "A tool that breaks its master is still a tool. I will keep that lesson." He vanishes — Plasma always knew how to vanish.' },
+            cynthia: { sprite:'Cynthia', reveal:'Cynthia',
+                intros:['…I enjoy battles like this. Let\'s begin.','You wore the crown well. Show me you can keep it.','Mythologies were warnings. You ignored them. Now answer for it.','Garchomp is here. Are you?'],
+                outro:'Cynthia smiles, eyes warm. "I thought I might enjoy this. I was right. The crown is yours — but you owe me a rematch, somewhere quieter. Bring tea."' },
+            steven:  { sprite:'Steven',  reveal:'Steven Stone',
+                intros:['I collect rare things. Today, your defeat would do nicely.','Hard stone, harder battler. Begin.','Your team is a meteor — burning bright before the impact.','I waited at Meteor Falls for a worthy fight. You\'ll have to do.'],
+                outro:'Steven brushes dust from his coat and offers a small, sharp smile. "I came for a rare specimen. I leave with one — you. Take care of those Pokémon. Stones don\'t forget."' },
+            n:       { sprite:'N',       reveal:'N',
+                intros:['…I hear them. Do you?','The Hall of Fame is a cage with prettier bars.','Tell me — when they faint, do you hear them sigh?','Truth or ideal — both lose to silence. Begin.'],
+                outro:'N kneels by your lead Pokémon. He listens — only he hears. "She says you keep your promises. That is enough for me." He stands, turns, and is gone before you can answer.' },
+            red:     { sprite:'Red',     reveal:'Red',
+                intros:['…','………………','…(He raises his cap.)','…(Pikachu sparks. Once.)'],
+                outro:'Red doesn\'t speak. He looks at your team for a long moment. Pikachu hops down, touches one of your Pokémon\'s noses, and hops back. Red touches the brim of his cap — and is gone.' },
+            lance:   { sprite:'Lance',   reveal:'Lance',
+                intros:['Dragons remember insults longer than men. Show me what you remembered.','You climbed past me once. Climb again.','Hall of Fame paint dries slowly. I came to scratch yours.','My dragons hunger. So do I.'],
+                outro:'Lance laughs, low and grudging. "Dragons do remember. So will I. Wear that crown well — I\'ll be at the foot of your mountain when you forget how to climb."' },
+        };
+        function _storyPickMysteryIdentity() {
+            const keys = Object.keys(MYSTERY_FIGURE_IDENTITIES);
+            return keys[Math.floor(Math.random() * keys.length)];
+        }
+        function _storyEnsureMysteryIdentity() {
+            if (!sm.mysteryIdentity || !MYSTERY_FIGURE_IDENTITIES[sm.mysteryIdentity]) {
+                sm.mysteryIdentity = _storyPickMysteryIdentity();
+                try { save(); } catch (e) {}
+            }
+            return MYSTERY_FIGURE_IDENTITIES[sm.mysteryIdentity];
+        }
 
         function mysteryFigureRollsForBadges(badges) {
             const b = Math.max(0, badges | 0);
@@ -22534,6 +22807,43 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const STORY_RIVAL_ROW_EARLY = 12;
         const STORY_RIVAL_ROW_MID = 39;
         const STORY_RIVAL_ROW_LEAGUE = 65;
+        /** Hand-picked mid-run battle eventIds that become THEMED on every run. The
+         * theme biases the trainer pool toward tagged variants; eldritch-tagged
+         * trainers also reach outside enabled gens so a single-G1 run can still get
+         * ambushed by a Gen-5 Hydreigon under the mask of an old champion. The
+         * slot's role stays the same; only the trainer voice and species pool shift.
+         *
+         * Progression curve (per design Q&A 2026-05-15):
+         *   26: multitype — first wanderer ("someone who's been everywhere")
+         *   33: villain   — Team operative arrives
+         *   34: cursed    — first hint something is wrong on the road
+         *   41: multitype — another roamer, stranger team
+         *   42: eldritch  — an old champion's silhouette in the fog
+         *   48: cursed
+         *   49: veteran   — returning gym leader as Elite Trainer
+         *   56: villain   — Team boss before the League
+         *   58: eldritch  — the curtain pulls back
+         */
+        const STORY_THEMED_BATTLES = {
+            26: 'multitype',
+            33: 'villain',
+            34: 'cursed',
+            41: 'multitype',
+            42: 'eldritch',
+            48: 'cursed',
+            49: 'veteran',
+            56: 'villain',
+            58: 'eldritch',
+        };
+        /** Soft-tease labels for the city Tips "🎯 Next:" chip when a themed battle
+         * is the next stop. The label hints at vibe without revealing identity. */
+        const STORY_THEMED_NEXT_LABELS = {
+            multitype: 'A roaming wanderer',
+            villain:   'Something villainous',
+            cursed:    'Something wrong on the road',
+            eldritch:  'A familiar silhouette in the fog',
+            veteran:   'An old face walks back',
+        };
         function getRivalEncounterPhase(storyRowIdx) {
             const id = storyRowIdx | 0;
             if (id === STORY_RIVAL_ROW_INTRO) return 0;
@@ -22568,7 +22878,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         /** Progression-aware lines (mixed with character quotes). Sprite may differ from canon — wording stays in-universe. */
         const RIVAL_PROGRESS_PRIMARY_QUOTES = {
-            0: ['You got your first partner? Good. Battle me before you leave town.','No route yet. First, prove that starter can stand up to mine.','Professor gave you a Pokemon. I brought a challenge.'],
+            0: ['You got your first partner? Good. Battle me before you leave town.','No route yet. First, prove that starter can stand up to mine.','Professor gave you a Pokémon. I brought a challenge.'],
             1: ['Early routes were practice—this is the real check.','Two badges already? Cute. Let me stress-test your team.','First rival clash: I memorized your strengths since we started.'],
             2: ['Half the gyms down—thought you\'d slow down. You didn\'t. Good.','Mid-game reality check: my roster\'s different than last time.','Six badges… okay. You\'re serious. So am I.'],
             3: ['Eight badges. League breath on our necks—no holding back.','Full badge case—time to see if your team holds together.','Elite Four prep starts with surviving me.'],
@@ -22638,17 +22948,62 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           'Cynthia': ['…Let\'s enjoy this battle.','Garchomp and I won\'t disappoint!','The Champion\'s mantle is heavy—feel it!'],
           'Steven Stone': ['Steel and resolve—both unbreakable.','I collect rare stones… and victories.','Meteor falls—so will you if you slack!'],
           'Leon': ['Let\'s have a champion time!','Charizard—time to shine!','This is what it means to be unbeatable!'],
-          'Red': ['…','………………','…Don\'t need words.'],
-          'Maxie': ['Magma rises!','I will reshape this region with land!','Step aside—or be left behind!'],
-          'Archie': ['The sea must rise!','Aqua washes away the old order!','My tide will not be turned!'],
-          'Cyrus': ['Spirit is a flaw.','I will erase this incomplete world.','Witness Galactic\'s perfection.'],
-          'Ghetsis': ['Pokémon are my tools.','Liberation? No—domination!','Hydreigon—silence them!'],
-          'Plumeria': ['Hurt my Skull family and I\'ll hurt you back.','Big sis is gonna teach you a lesson.','Salazzle—poison ‘em!'],
-          'Lusamine': ['Beautiful Pokémon belong with me.','Aether Foundation is paradise.','You don\'t understand my love…'],
-          'Hilbert': ['Unova\'s ideals are mine to prove.','Reshiram-grade fire—match it!','I battle for what is right!'],
-          'Hilda': ['Unova\'s truth is in every battle.','Zekrom-grade thunder—dodge it!','I won\'t back down!'],
-          'Geeta': ['The Top Champion accepts your challenge.','Glimmora, dazzle them!','Show me the cause of your rise.'],
-          'Iris': ['Dragons fly higher than I ever could!','Haxorus—our bond shines!','The Champion of Unova never gives in!'],
+          ‘Red’: [‘…’,’………………’,’…Don\’t need words.’,’…(Red\’s Pikachu sparks once.)’,’…(He raises his cap a little.)’,’…’,’…(The silence is louder than any boast.)’],
+          ‘Maxie’: [‘Magma rises!’,’I will reshape this region with land!’,’Step aside—or be left behind!’],
+          ‘Archie’: [‘The sea must rise!’,’Aqua washes away the old order!’,’My tide will not be turned!’],
+          ‘Cyrus’: [‘Spirit is a flaw.’,’I will erase this incomplete world.’,’Witness Galactic\’s perfection.’],
+          ‘Ghetsis’: [‘Pokémon are my tools.’,’Liberation? No—domination!’,’Hydreigon—silence them!’],
+          ‘Plumeria’: [‘Hurt my Skull family and I\’ll hurt you back.’,’Big sis is gonna teach you a lesson.’,’Salazzle—poison ‘em!’],
+          ‘Lusamine’: [‘Beautiful Pokémon belong with me.’,’Aether Foundation is paradise.’,’You don\’t understand my love…’],
+          ‘Hilbert’: [‘Unova\’s ideals are mine to prove.’,’Reshiram-grade fire—match it!’,’I battle for what is right!’],
+          ‘Hilda’: [‘Unova\’s truth is in every battle.’,’Zekrom-grade thunder—dodge it!’,’I won\’t back down!’],
+          ‘Geeta’: [‘The Top Champion accepts your challenge.’,’Glimmora, dazzle them!’,’Show me the cause of your rise.’],
+          ‘Iris’: [‘Dragons fly higher than I ever could!’,’Haxorus—our bond shines!’,’The Champion of Unova never gives in!’],
+
+          // Themed Elite Trainer variants — same face, wrong year.
+          ‘Shadow Blue’:      [‘Smell ya later — but the road got dark since last we met.’,’Gramps wouldn\’t recognize this team. Good.’,’I\’m the real deal. The bad version.’],
+          ‘Cursed Lance’:     [‘Dragons don\’t die. They wait. Watch.’,’You climbed the league. I climbed something… else.’,’My Pokémon don\’t obey me. They agree with me.’],
+          ‘Forsaken Cynthia’: [‘…The myths warned about this. You didn\’t listen.’,’I won my crown. Then I lost it to something quieter.’,’Garchomp is gone. The grin stayed.’],
+          ‘Eldritch N’:       [‘…They speak louder here. Can you hear them?’,’I freed them. They came back changed.’,’Truth, ideal, and… a third thing. Begin.’],
+          ‘Tarnished Steven’: [‘Hard stone, harder rust. I\’m the rust.’,’The League keeps its rare specimens. So do I.’,’I came back through Meteor Falls. Something came back with me.’],
+          ‘Pale Ghetsis’:     [‘Useful tool. Bring me your six.’,’Plasma\’s flag is rotted. I carry it anyway.’,’Ideals decay. Results don\’t. Begin.’],
+          ‘Hollow Cyrus’:     [‘Emotion was always the wound. I edited it.’,’Galaxies forgot me. I forgive them.’,’One trainer. One small task. Show me.’],
+          ‘Silent Red’:       [‘…’,’…(Pikachu\’s cheek sparks — yellow turned black.)’,’…(He doesn\’t raise the cap this time.)’],
+
+          // Cursed-tagged Basic Trainer variants.
+          ‘Cursed Vagrant’:   [‘…The road moves at night. You shouldn\’t.’,’I haven\’t slept since City 3. Neither will you.’,’Smile for the camera. There isn\’t one.’],
+          ‘Scarred Brawler’:  [‘I lost in this gym. Then I broke the gym.’,’Form ruined. Fists work fine.’,’Show me a clean punch. I forgot.’],
+          ‘Charred Acolyte’:  [‘Fire isn\’t worship. Worship is fire.’,’The flame remembers every coward. So do I.’,’Burn forward. There is no other direction.’],
+
+          // Multi-type wanderers — roamers with cross-region rosters.
+          ‘Tide-Frost Diver’:  [‘I dove the Hoenn shelf. I climbed the Sinnoh ice. Both teams came back with me.’,’Salt and frost ride the same current. Don\’t pick a side.’,’Wet, then cold. Most opponents drop at the second step.’],
+          ‘Ash-Stone Climber’: [‘Hiked Cinnabar. Then Stark Mountain. Then back. My team didn\’t cool off.’,’Stone holds heat the longest. So do I.’,’I sleep on warm rock. My team sleeps on me.’],
+          ‘Marsh Mystic’:      [‘Poison and mind play the same trick — patience.’,’Two routes. Same destination: you, lying down.’,’I trade premonitions for venom. Both sting.’],
+          ‘Sky-Steel Ranger’:  [‘Up where the air thins, only iron-feathered ones keep up.’,’I fly. I land. I cut. In that order.’,’My patrol is the whole region. So is yours, now.’],
+          ‘Twilight Hunter’:   [‘Three types, one shadow. Try to guess which moves first.’,’I work dusk to dawn. Dawn is your problem.’,’Dark, ghost, mind. Pick a fear.’],
+          ‘Garden Mender’:     [‘I grow vines and lullabies. One snares, one ends.’,’Petals fold around a punch. Watch.’,’Sweet smell, sharper teeth. Begin.’],
+
+          // Villain ranks — Team operatives at admin/executive tier.
+          ‘Rocket Executive’:  [‘Persistent, aren\’t you? Boss said you would be.’,’Rocket\’s footprint is bigger than its name. I am the heel.’,’You took my Boss\’s gym back. Don\’t take this one.’],
+          ‘Aqua Admin’:        [‘The tide rises. So do I. Step back.’,’You\’ll drown in this. We charge by the wave.’,’I admin the sea\’s admin team. Begin.’],
+          ‘Magma Admin’:       [‘Surface and crust both burn. We watch them.’,’You walk hot rock. Some of us live on it.’,’Land begins where the magma stops. Today the magma doesn\’t stop.’],
+          ‘Galactic Commander’:[‘Commander rank. Boss has plans. So do I.’,’Space is empty. So is your strategy. Begin.’,’Galactic counts the stars. I count your faints.’],
+          ‘Plasma Sage’:       [‘Truth, ideal, and a quiet third option.’,’Plasma\’s ribbon is rotted. The cause continues.’,’I read your team like a thesis. The footnotes hurt.’],
+          ‘Flare Scientist’:   [‘Beauty is a chemical process. Yours is wearing off.’,’Flare reviewed your data. We project a defeat.’,’The serum is ready. So am I. Begin.’],
+          ‘Skull Boss’:        [‘Yeeeah! Skull\’s top wears this jacket for a reason!’,’Spikemuth\’s acoustics carry. So does your loss.’,’Brawl your way out. I dare ya.’],
+
+          // Veteran gym leaders — old champions of their type, upgraded for the post-circuit road.
+          ‘Veteran Brock’:     [‘I retired the badge. I didn\’t retire. Begin.’,’Stone-cold defence wasn\’t enough. So I added stone-cold offence.’,’My old gym\’s tour goes through here now.’],
+          ‘Veteran Misty’:     [‘You took my badge. I took up everything else.’,’Ice with water. Water with steam. Same girl.’,’You\’re a drip compared to my new team.’],
+          ‘Veteran Lt. Surge’: [‘Electric-only was a gym rule. The road has different rules.’,’You wanted lightning. I brought thunder, hail, and rust.’,’Soldier\’s on tour. Show me a clean strike.’],
+          ‘Veteran Erika’:     [‘…I added a few thorns since the badge match.’,’The garden has a fence now. With teeth.’,’Sleep, ivy, and a sharper smile. Begin.’],
+          ‘Veteran Koga’:      [‘Poison was the old technique. I learned new ones.’,’Subtle is for indoor venues. The route lets me shout.’,’Crobat is still here. So am I. So are we.’],
+          ‘Veteran Sabrina’:   [‘I foresaw your shape weeks ago. Begin.’,’Psychic, still. But the boundaries are wider.’,’My old gym had walls. I left them.’],
+          ‘Veteran Blaine’:    [‘My riddle: what burns hotter than a Cinnabar gym? Answer it in battle.’,’Volcano cooled. I didn\’t.’,’I trained in the dark. The sun missed me.’],
+          ‘Veteran Giovanni’:  [‘…Persistent. Always. Begin.’,’Rocket folded. I stayed.’,’Earth Badge to Earth-shaker. Show me.’],
+          ‘Veteran Whitney’:   [‘…I trained! For real this time! Don\’t make me cry again!’,’Miltank says hi. With a Body Slam.’,’New team. Same headache.’],
+          ‘Veteran Clair’:     [‘…Tch. Dragons learned ice. So did I.’,’The badge wasn\’t enough. The mountain isn\’t either.’,’Show me a worthy fight. Or get out of my air.’],
+          ‘Veteran Wallace’:   [‘A grace match — please, take your time. Then lose.’,’Water and dragon. The river meets the storm.’,’Magnifico! Begin.’],
         };
         function getTrainerQuote(role) {
             const pool = TRAINER_QUOTES[role] || TRAINER_QUOTES['Basic Trainer'];
@@ -22893,7 +23248,72 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── STATE ─────────────────────────────────────────────────────────
         const SAVE_KEY = 'pbs_story_save';
         const STORY_MENU_DEFAULTS_KEY = 'pbs_story_run_menu_defaults';
+        // Cross-run meta. Holds permanent achievements that survive abandon/clear.
+        // Today: completedRuns + lastClearSeed. Future: Pokédex carryover, totals, marks.
+        const SAVE_KEY_META = 'pbs_story_meta';
         const SAVE_VER = 15;
+        function readStoryMeta() {
+            try {
+                const raw = localStorage.getItem(SAVE_KEY_META);
+                if (!raw) return { completedRuns: 0, lastClearSeed: '', firstClears: {}, tipsShown: {} };
+                const obj = JSON.parse(raw);
+                if (!obj || typeof obj !== 'object') return { completedRuns: 0, lastClearSeed: '', firstClears: {}, tipsShown: {} };
+                return {
+                    completedRuns: Math.max(0, obj.completedRuns | 0),
+                    lastClearSeed: typeof obj.lastClearSeed === 'string' ? obj.lastClearSeed : '',
+                    firstClears: (obj.firstClears && typeof obj.firstClears === 'object') ? obj.firstClears : {},
+                    tipsShown: (obj.tipsShown && typeof obj.tipsShown === 'object') ? obj.tipsShown : {}
+                };
+            } catch (e) { return { completedRuns: 0, lastClearSeed: '', firstClears: {}, tipsShown: {} }; }
+        }
+        /** Show a tutorial-style tip once per player across all runs. The shown-bit
+         * lives in pbs_story_meta so a tip the player saw in run 1 doesn't pop again
+         * in run 5. Returns true iff a tip was actually shown (caller can chain). */
+        function _storyShowOneTimeTip(key, message) {
+            if (!key) return false;
+            const meta = readStoryMeta();
+            if (!meta.tipsShown || typeof meta.tipsShown !== 'object') meta.tipsShown = {};
+            if (meta.tipsShown[key]) return false;
+            meta.tipsShown[key] = true;
+            writeStoryMeta(meta);
+            try { window.showGameAlert && window.showGameAlert(message); } catch (e) {}
+            return true;
+        }
+        function writeStoryMeta(meta) {
+            try { localStorage.setItem(SAVE_KEY_META, JSON.stringify(meta || {})); } catch (e) { console.warn('[Story] meta save', e); }
+        }
+        function recordStoryClearInMeta() {
+            const meta = readStoryMeta();
+            meta.completedRuns = (meta.completedRuns | 0) + 1;
+            if (sm && sm.runSeed != null) meta.lastClearSeed = String(sm.runSeed >>> 0);
+            writeStoryMeta(meta);
+            return meta;
+        }
+        /** Stamp this milestone as "ever cleared" in meta. Returns true iff this is the first time. */
+        function _storyMarkFirstClearMeta(key) {
+            if (!key) return false;
+            const meta = readStoryMeta();
+            if (!meta.firstClears || typeof meta.firstClears !== 'object') meta.firstClears = {};
+            if (meta.firstClears[key]) return false;
+            meta.firstClears[key] = true;
+            writeStoryMeta(meta);
+            return true;
+        }
+        /** Translate a battle event name into a stable cross-run milestone key. */
+        function _storyMilestoneKeyForEvent(evname, rowIdx) {
+            const ev = String(evname || '');
+            const gm = ev.match(/^Gym Leader ([1-8])$/);
+            if (gm) return 'gym' + gm[1];
+            if (/^E[1-4]$/.test(ev)) return ev.toLowerCase();
+            if (ev === 'Champion') return 'champion';
+            if (ev === 'Mystery Figure') return 'mystery';
+            if (ev === 'Rival') {
+                if ((rowIdx | 0) === STORY_RIVAL_ROW_LEAGUE) return 'rival_league';
+                if ((rowIdx | 0) === STORY_RIVAL_ROW_INTRO) return 'rival_intro';
+                return 'rival_mid';
+            }
+            return '';
+        }
         /** v8: eight filler Basic Trainer rows removed from `STORY_EVENTS_RAW` — remap saved indices from v7 and below. */
         const STORY_TIMELINE_REMOVED_ROW_IDS_PRE_V8 = new Set([3, 8, 16, 23, 30, 38, 47, 55]);
         function migrateStoryRowIdPreV8ToCurrent(oldId) {
@@ -23031,6 +23451,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.pokedex = { seen: [], caught: [] };
             }
             if (typeof sm.partyEverReached4 !== 'boolean') sm.partyEverReached4 = Array.isArray(sm.team) && sm.team.length >= 4;
+            if (typeof sm.partyEverReached2 !== 'boolean') sm.partyEverReached2 = Array.isArray(sm.team) && sm.team.length >= 2;
             if (typeof sm.catchUnlocked !== 'boolean') sm.catchUnlocked = false;
             if (sm.storyDifficulty === 'hardcore') sm.storyDifficulty = 'normal';
             if (Array.isArray(sm.team)) {
@@ -23072,6 +23493,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    balls: { poke: 5, great: 0, ultra: 0, master: 0 },
                    pokedex: { seen: [], caught: [] },
                    partyEverReached4: false,
+                   partyEverReached2: false,
                    catchUnlocked: false,
                    version:SAVE_VER };
 
@@ -23262,6 +23684,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     console.warn('[Story] eventIndex out of range — clamping', sm.eventIndex, '→', _cap);
                     sm.eventIndex = _cap;
                 }
+                // Validate currentEnemyLock — a corrupted lock crashes launchBattle. Drop it
+                // when malformed so the engine rerolls a fresh team instead of dying.
+                if (sm.currentEnemyLock && (
+                    typeof sm.currentEnemyLock !== 'object' ||
+                    sm.currentEnemyLock.eventIdx == null ||
+                    !Array.isArray(sm.currentEnemyLock.team) ||
+                    sm.currentEnemyLock.team.length === 0 ||
+                    sm.currentEnemyLock.team.some(t => !t || typeof t !== 'object' || !t.name || !t.build)
+                )) {
+                    console.warn('[Story] dropping malformed currentEnemyLock', sm.currentEnemyLock);
+                    sm.currentEnemyLock = null;
+                }
+                // crucibleBattleSource is a transient flag set only while a Crucible/
+                // Frontier/Rematch fight is mid-flight. If the player closed the tab
+                // during such a fight, the flag persists in the save while the foe
+                // team does not — and the next main-timeline battle would wrongly
+                // route through _handleCrucibleBattleEnd. Always clear on load; the
+                // active battle is gone.
+                if (sm.crucibleBattleSource) sm.crucibleBattleSource = null;
+                if (sm._crucibleBattleJustEnded) sm._crucibleBattleJustEnded = false;
                 normalizeRivalStandingState();
                 normalizeStoryRivalLock();
                 return true;
@@ -23369,8 +23811,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         /** Once the story party has ever reached 4+ Pokémon (monotonic), remove all grade-4 probability from weight rolls (mass moves to g3). Foes + Professor. Keys off the monotonic flag so depositing to PC does not re-introduce G4. */
         function storyStripGrade4IfPartyMature(gw) {
             if (!gw || !sm || !sm.active) return gw;
-            if (Array.isArray(sm.team) && sm.team.length >= 4) sm.partyEverReached4 = true;
-            if (!sm.partyEverReached4) return gw;
+            const len = Array.isArray(sm.team) ? sm.team.length : 0;
+            if (len >= 4) sm.partyEverReached4 = true;
+            if (len >= 2) sm.partyEverReached2 = true;
+            // Spec §12 fix: a Gym 1/2 fight rolls 100% G3 trainers, so route trainers
+            // between gyms can't keep rolling G4 — that made the gym feel easier than
+            // the road to it. The strip now triggers once the player ever had 2+
+            // Pokémon (monotonic), not 4+.
+            if (!sm.partyEverReached4 && !sm.partyEverReached2) return gw;
             const g1 = gw.g1 || 0, g2 = gw.g2 || 0, g3 = gw.g3 || 0, g4 = gw.g4 || 0;
             if (g4 <= 0) return { g1, g2, g3, g4: 0 };
             return { g1, g2, g3: g3 + g4, g4: 0 };
@@ -23583,7 +24031,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return true;
         }
-        const RIVAL_ATTACK_TYPE_DECAY = 30;
+        // After each rival species is picked we divide that type's pick-weight by the
+        // decay constant so the second mon isn't a copy of the first. Old value (÷30)
+        // collapsed coverage after 2–3 picks, so rivals felt scattered even against
+        // monotype parties. ÷10 still spreads coverage but lets a dominant counter-type
+        // appear on two mons when the player's party deserves the answer.
+        const RIVAL_ATTACK_TYPE_DECAY = 10;
 
         function _rivalCombinedEffVsMon(atkType, d1, d2) {
             const ch = typeChart[atkType];
@@ -23748,16 +24201,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let gwIn = applyDifficultyToGradeWeights(gradeWeights || { g1: 0, g2: 0, g3: 50, g4: 50 });
             gwIn = applyStoryProgressToGradeWeights(gwIn, storyRowIdx);
             gwIn = storyStripGrade4IfPartyMature(gwIn);
-            let allowedGens = normalizeEnabledGens(enabledGensIn != null ? enabledGensIn : storySettingsGens());
-            const pg = trainer && trainer.pkmGens;
-            if (pg && pg.length) {
-                const crossed = allowedGens.filter((g) => pg.includes(g));
-                if (crossed.length) allowedGens = crossed;
-                else {
-                    const lo = Math.min.apply(null, pg);
-                    const hi = Math.max.apply(null, pg);
-                    const spanCross = allowedGens.filter((g) => g >= lo && g <= hi);
-                    if (spanCross.length) allowedGens = spanCross;
+            // Eldritch-tagged trainers (Shadow Blue, Cursed Lance, Eldritch N, etc.) bypass
+            // the active-gens filter for their lineup — they're "out of this world"
+            // encounters specifically meant to surface species the player chose not to
+            // include. Their pkmGens already covers all 9 gens; the tag is the green light.
+            const _isEldritch = !!(trainer && trainer.tag === 'eldritch');
+            let allowedGens;
+            if (_isEldritch) {
+                allowedGens = [1,2,3,4,5,6,7,8,9];
+            } else {
+                allowedGens = normalizeEnabledGens(enabledGensIn != null ? enabledGensIn : storySettingsGens());
+                const pg = trainer && trainer.pkmGens;
+                if (pg && pg.length) {
+                    const crossed = allowedGens.filter((g) => pg.includes(g));
+                    if (crossed.length) allowedGens = crossed;
+                    else {
+                        const lo = Math.min.apply(null, pg);
+                        const hi = Math.max.apply(null, pg);
+                        const spanCross = allowedGens.filter((g) => g >= lo && g <= hi);
+                        if (spanCross.length) allowedGens = spanCross;
+                    }
                 }
             }
             const genSet = new Set(allowedGens);
@@ -24059,13 +24522,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const rk = roleKey.toLowerCase().trim();
             // 'Gym Trainer 1' and 'Gym Trainer 2' draw from the Basic Trainer pool (matching gym leader typing via preferredType).
             const isBasicLike = (rk === 'basic trainer' || rk === 'gym trainer' || rk === 'gym trainer 1' || rk === 'gym trainer 2');
-            let candidates = TRAINER_DATA.filter(t => {
+            const roleAll = TRAINER_DATA.filter(t => {
                 const tr = t.role.toLowerCase();
                 if (isBasicLike) return tr === 'basic trainer';
                 if (rk === 'rival') return t.isRival;
                 if (rk === 'elite trainer') return tr === 'elite trainer' && !t.isRival;
                 return tr === rk;
             });
+            let candidates = roleAll.slice();
             const genSet = new Set(normalizeEnabledGens(enabledGens));
             // Gen filter: generic class trainers (Hiker, Bug Catcher, etc.) are gen-agnostic so any
             // enabled-gen subset still rolls a diverse Basic Trainer pool. Regional team grunts and
@@ -24074,12 +24538,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? candidates.filter(t => !_isRegionalBasicTrainer(t) || genSet.has(t.charGen))
                 : candidates.filter(t => genSet.has(t.charGen));
             if (inRange.length) candidates = inRange;
+            // Type-coverage fallback: if a gym's preferredType yields zero trainers under
+            // the active gen filter (e.g. Fairy or Ice in a G1-only run), broaden to the
+            // full role pool — keeping every trainer whose pkmGens intersects enabled
+            // gens, plus a final fallback to "any charGen" so the gym never feels off-type.
+            // Without this, a Pryce/Glacia gym in a single-gen run would silently field
+            // non-Ice trainers.
             if (preferredType && isBasicLike) {
                 const want = String(preferredType).trim();
-                const pref = candidates.filter(t => {
+                let pref = candidates.filter(t => {
                     const ts = parseTrainerTypes(t.type);
                     return ts.some(x => x === want || x === 'Mixed');
                 });
+                if (!pref.length) {
+                    // Try the full role pool, preferring trainers who can actually field mons in enabled gens.
+                    const fullType = roleAll.filter(t => {
+                        const ts = parseTrainerTypes(t.type);
+                        return ts.some(x => x === want);
+                    });
+                    pref = fullType.filter(t => Array.isArray(t.pkmGens) && t.pkmGens.some(g => genSet.has(g)));
+                    if (!pref.length) pref = fullType;
+                }
                 if (pref.length) candidates = pref;
             }
             // Optional name whitelist (e.g. late-game Elite Trainer villain bias). Soft filter: if
@@ -24168,10 +24647,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             });
             // Pass 3: rivals (locked) and remaining battles. Mystery Figure uses a synthetic trainer at battle time — skip to avoid name pollution.
-            // The three pre-League Elite Trainer slots (row ids 56/57/58) bias toward villain admins
-            // for the "villain gauntlet" climax before the Pokémon League.
-            const VILLAIN_BIAS_ROWS = new Set([56, 57, 58]);
-            STORY_EVENTS_RAW.forEach(ev => {
+            const rng = (sm && sm.active) ? storyRngNext : Math.random;
+            STORY_EVENTS_RAW.forEach((ev, posInRaw) => {
                 const [idx, type, event] = ev;
                 if (type !== 'Battle') return;
                 if (sm.trainerAssignments[idx]) return;
@@ -24180,14 +24657,67 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
                 if (event === 'Mystery Figure') return;
-                const bias = (event === 'Elite Trainer' && VILLAIN_BIAS_ROWS.has(idx)) ? STORY_ELITE_VILLAIN_NAMES : null;
-                const t = selectTrainerForRole(event, eg, usedBase, undefined, bias);
+                // Themed slot? Try a tagged trainer first (Shadow Blue, Cursed Vagrant…).
+                const theme = STORY_THEMED_BATTLES[idx];
+                if (theme) {
+                    const tagged = _pickThemedTrainerForRole(event, eg, usedBase, theme);
+                    if (tagged) {
+                        sm.trainerAssignments[idx] = tagged.name;
+                        usedBase.add(_baseTrainerName(tagged.name));
+                        return;
+                    }
+                    // fall through to normal picker if no tagged candidate fits the role
+                }
+                // Veteran roll on untagged Elite Trainer slots — weighted by progression
+                // (badges already cleared before this slot). Quadratic ramp so early-game
+                // veterans are rare, late-game frequent.
+                if (event === 'Elite Trainer') {
+                    const badgesBefore = countGymBadgesBeforeStoryRow(posInRaw);
+                    const ramp = Math.min(1, badgesBefore / 8);
+                    const veteranOdds = ramp * ramp * 0.35; // up to 35% in the late game
+                    if (rng() < veteranOdds) {
+                        const vet = _pickThemedTrainerForRole(event, eg, usedBase, 'veteran');
+                        if (vet) {
+                            sm.trainerAssignments[idx] = vet.name;
+                            usedBase.add(_baseTrainerName(vet.name));
+                            return;
+                        }
+                    }
+                }
+                const t = selectTrainerForRole(event, eg, usedBase);
                 if (t) {
                     sm.trainerAssignments[idx] = t.name;
                     usedBase.add(_baseTrainerName(t.name));
                 }
             });
             sm.usedTrainerNames = [...usedBase];
+        }
+
+        /** Find a trainer whose `tag` matches `theme` and whose role matches the slot.
+         * Falls through to null if no candidate exists — caller should retry with the
+         * standard picker. */
+        function _pickThemedTrainerForRole(roleKey, enabledGens, usedBaseNames, theme) {
+            const rk = roleKey.toLowerCase().trim();
+            const isBasicLike = (rk === 'basic trainer' || rk === 'gym trainer' || rk === 'gym trainer 1' || rk === 'gym trainer 2');
+            let pool = TRAINER_DATA.filter(t => {
+                // multitype: don't tag-match — pick by type string containing '/' or ','
+                if (theme === 'multitype') {
+                    if (typeof t.type !== 'string' || !/[\/,]/.test(t.type)) return false;
+                } else {
+                    if (t.tag !== theme) return false;
+                }
+                const tr = t.role.toLowerCase();
+                if (isBasicLike) return tr === 'basic trainer';
+                if (rk === 'elite trainer') return tr === 'elite trainer' && !t.isRival;
+                return tr === rk;
+            });
+            if (usedBaseNames) {
+                const fresh = pool.filter(t => !usedBaseNames.has(_baseTrainerName(t.name)));
+                if (fresh.length) pool = fresh;
+            }
+            if (!pool.length) return null;
+            const _rng = (sm && sm.active) ? storyRngNext : Math.random;
+            return pool[Math.floor(_rng() * pool.length)];
         }
 
         // ── START / CONTINUE ─────────────────────────────────────────────
@@ -24231,6 +24761,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 rivalLastWinner: 'none',
                 rivalStanding: 'undecided',
                 rivalChampionClaimed: false,
+                pcBox: [],
+                balls: { poke: 5, great: 0, ultra: 0, master: 0 },
+                pokedex: { seen: [], caught: [] },
+                partyEverReached4: false,
+                partyEverReached2: false,
+                catchUnlocked: false,
+                mysteryIdentity: _storyPickMysteryIdentity(),
             };
             sm._strngState = null;
             _storyBattleInventorySnapshot = null;
@@ -24496,6 +25033,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             renderCityActions(ev);
             syncStoryCityBackground(cidx);
             showScreen('screen-story-city');
+            // One-time welcome on the very first city the player ever sees across all runs.
+            if (cidx === 0) {
+                try { _storyShowOneTimeTip('welcome',
+                    'Welcome to Pallet Town, trainer.\n\nThis is Story Mode — eight gym badges, an Elite Four, a Champion, and what comes after. Every battle scales with your roster. Cities heal you between fights, the Pokémon Center stores spare Pokémon, and the Underground sells the ones you no longer want — but never your starter.\n\nClick the 🎯 "Next:" chip at any time to know where you\'re going. Good hunting.'); } catch (e) {}
+            }
         }
 
         function updateHUD() {
@@ -24512,7 +25054,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const leaderName = sm.trainerAssignments && sm.trainerAssignments[leaderEvIdx];
                 cityName = (leaderName && GYM_LEADER_CITY_NAMES[leaderName]) || ('City ' + cityIdx);
             } else if (cityIdx === 9) {
-                cityName = 'Pokemon League';
+                cityName = 'Pokémon League';
             } else {
                 cityName = rawName || 'Town';
             }
@@ -24620,6 +25162,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const tipsEl = document.getElementById('story-city-tips');
             if (tipsEl) {
                 const tips = [];
+                // Always-on "what's next" preview: gives a clear answer to the
+                // ten-second "what now?" question on entering any city.
+                if (_storyNextBat) {
+                    const nxId = _storyNextBat[0] | 0;
+                    const nxEvent = String(_storyNextBat[2] || '');
+                    const trAssign = sm.trainerAssignments && sm.trainerAssignments[nxId];
+                    let nextLabel = nxEvent;
+                    const gm = nxEvent.match(/^Gym Leader ([1-8])$/);
+                    if (gm) nextLabel = `Gym ${gm[1]}` + (trAssign ? ` — ${trAssign}` : '');
+                    else if (nxEvent === 'Rival') nextLabel = trAssign ? `Rival — ${trAssign}` : 'Rival';
+                    else if (/^E[1-4]$/.test(nxEvent)) nextLabel = (trAssign ? `Elite ${nxEvent.slice(1)} — ${trAssign}` : `Elite ${nxEvent.slice(1)}`);
+                    else if (nxEvent === 'Champion') nextLabel = trAssign ? `Champion — ${trAssign}` : 'Champion';
+                    else if (nxEvent === 'Mystery Figure') nextLabel = 'Mystery Figure (???)';
+                    else if (nxEvent === 'Victory Road') nextLabel = 'Victory Road';
+                    // Soft tease for themed battles — vibe only, no spoiler. Keeps
+                    // the canonical label intact so the player still knows the role.
+                    const theme = STORY_THEMED_BATTLES[nxId];
+                    const themeLabel = theme && STORY_THEMED_NEXT_LABELS[theme];
+                    if (themeLabel) nextLabel = `${nextLabel} — ${themeLabel}`;
+                    tips.push({ icon: '🎯', label: `Next: ${nextLabel}`, click: 'window.StoryMode.proceedToNextBattle()' });
+                }
                 const hasTeam = sm.team && sm.team.length > 0;
                 if (hasTeam) {
                     if (actions.includes('Battle Dojo')) {
@@ -24878,6 +25441,87 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return !!(sm.facilitiesSeen && sm.facilitiesSeen[cityIdx] && sm.facilitiesSeen[cityIdx][key]);
         }
 
+        // Per-facility flavor lines — gives every silent NPC a voice without committing
+        // them to a long dialogue tree. Lines are cosmetic; they use Math.random so
+        // they do not drain the seeded story RNG used for trainer rolls / catches.
+        const STORY_FACILITY_QUOTES = {
+            moveTutor: [
+                'Move Tutor: "An old move, a new fang. Pick wisely."',
+                'Move Tutor: "Every move you forget makes room for one you needed."',
+                'Move Tutor: "Mind the PP. Even tutors have limits."',
+                'Move Tutor: "I taught your grandfather\'s Geodude this trick. Take it."',
+                'Move Tutor: "TMs run dry. My memory doesn\'t. Speak up."',
+            ],
+            natureRater: [
+                'Nature Rater: "Hmm… your partner\'s spirit reads… adamant. A little fire there."',
+                'Nature Rater: "Some natures sing in the right body. Let\'s see if yours does."',
+                'Nature Rater: "Bold, modest, jolly — those aren\'t insults. They\'re tools."',
+                'Nature Rater: "Pick once. Pick well. A bad nature is a slow leak in the hull."',
+                'Nature Rater: "I felt it before you walked in. Your team is unbalanced."',
+            ],
+            battleDojo: [
+                'Dojo Master: "Hold steady. The right item makes a fighter."',
+                'Dojo Master: "An ability is who they ARE in battle. Pick what fits the soul."',
+                'Dojo Master: "Items, abilities — both can be sharpened. Sharpen; don\'t fidget."',
+                'Dojo Master: "Show me your strongest. Let\'s see what they\'ve been hiding."',
+                'Dojo Master: "The mat remembers every fall. Your Pokémon\'s should, too."',
+            ],
+            evTrainer: [
+                'Buck: "Sweat now, win later. Every effort point is a step."',
+                'Buck: "Pick a spread. Then drill it in. I run laps myself at sunrise."',
+                'Buck: "510 effort points. Spend them like rent — they don\'t come back."',
+                'Buck: "The strongest mon isn\'t the strongest mon. It\'s the BEST-TRAINED one."',
+                'Buck: "Stats are the bones. Effort is the muscle. Eat your protein."',
+            ],
+            colress: [
+                'Colress: "Splendid! Let\'s draw out your Pokémon\'s hidden potential."',
+                'Colress: "Mega? Z-power? Dynamax? Choose ONE. They quarrel when combined."',
+                'Colress: "I find the secret of strength delicious. May I observe?"',
+                'Colress: "Awakening a partner is a privilege. Don\'t waste it on a Magikarp."',
+                'Colress: "Behold — science wearing the mask of magic. Wonderful, isn\'t it?"',
+            ],
+            link: [
+                'Link Operator: "Static\'s loud today. A stranger on the line wants a trade."',
+                'Link Operator: "Sometimes the trade comes back the same species — different soul."',
+                'Link Operator: "No one signs their name on these wires. That\'s the appeal."',
+                'Link Operator: "Cable\'s connected. Hope you don\'t mind the noise on the other end."',
+                'Link Operator: "Anonymous in, anonymous out. The League frowns; we shrug."',
+            ],
+            casino: [
+                'Croupier: "Heads or tails, friend. The house plays fair — for now."',
+                'Croupier: "Coin flips don\'t care about your story. That\'s why we love them."',
+                'Croupier: "The League frowns. The patrons cheer. Place your bet."',
+                'Croupier: "I\'ve seen ten-thousand-G runs go bust on a single flip. Be warned."',
+                'Croupier: "Luck doesn\'t train. But it does pay rent. Sometimes."',
+            ],
+            relicKeeper: [
+                'Relic Keeper: "Each piece on the shelf changes both sides of every fight you take. Choose like it matters."',
+                'Relic Keeper: "I don\'t price them, I appraise them. The cost is the same; the worth is yours to weigh."',
+                'Relic Keeper: "One per shop. Try not to flinch. The wrong stone sits heavy."',
+                'Relic Keeper: "Your first relic in Pallet is on the house. Everyone\'s first one is. Nobody\'s second one is."',
+                'Relic Keeper: "The League calls these contraband. I call them history with sharp edges."',
+            ],
+        };
+
+        /** Show a one-liner under the screen header. Picks fresh on each entry. */
+        function _storyShowFacilityQuote(screenId, facilityKey) {
+            const screen = document.getElementById(screenId);
+            if (!screen) return;
+            const lines = STORY_FACILITY_QUOTES[facilityKey];
+            if (!lines || !lines.length) return;
+            let q = screen.querySelector('[data-story-facility-quote]');
+            if (!q) {
+                const anchor = screen.querySelector('.story-shop-header-row, .story-link-header-row');
+                if (!anchor) return;
+                q = document.createElement('div');
+                q.setAttribute('data-story-facility-quote', '1');
+                q.style.cssText = 'font-style:italic;color:#d9d6c8;font-size:11px;line-height:1.5;padding:8px 14px;background:rgba(30,22,16,0.45);border-bottom:1px solid rgba(180,140,80,0.25);flex-shrink:0;';
+                if (anchor.nextSibling) anchor.parentNode.insertBefore(q, anchor.nextSibling);
+                else anchor.parentNode.appendChild(q);
+            }
+            q.textContent = lines[Math.floor(Math.random() * lines.length)];
+        }
+
         function cityIndexFromEventIndex(ei) {
             for (let i = ei; i >= 0; i--) {
                 const row = STORY_EVENTS_RAW[i];
@@ -24905,7 +25549,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const leaderName = sm.trainerAssignments && sm.trainerAssignments[leaderEvIdx];
                 return (leaderName && GYM_LEADER_CITY_NAMES[leaderName]) || ('City ' + cityIdx);
             }
-            if (cityIdx === 9) return 'Pokemon League';
+            if (cityIdx === 9) return 'Pokémon League';
             return rawName || 'Town';
         }
 
@@ -25096,7 +25740,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         </div>
                         <div class="draft-card-body" style="min-width:0;flex:1;">
                             <div class="draft-card-header">
-                                <span>${rawBuild._isShiny ? '&#10024; ' : ''}${t.name} ${getTypeHTML(mon.type1, mon.type2)}</span>
+                                <span>${rawBuild._isShiny ? '&#10024; ' : ''}${t.nickname ? `"${t.nickname}" <span style="color:#888;font-size:10px;font-weight:normal;">(${t.name})</span>` : t.name}${t.starter ? ' <span title="Starter — bonded for life" style="display:inline-block;font-size:9px;color:#111;background:#ffd54f;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">★ STARTER</span>' : ''}${t.unsellable && !t.starter ? ' <span title="Bound to you" style="display:inline-block;font-size:9px;color:#111;background:#ce93d8;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">⛓ BOUND</span>' : ''} ${getTypeHTML(mon.type1, mon.type2)}</span>
                             </div>
                             <div class="draft-card-details">${details}</div>
                             <div class="draft-card-moves">${movesHtml}</div>
@@ -25268,7 +25912,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ? '"The League gate opens only for the prepared. Take one legendary ace and choose who leaves your party."'
                     : '"Your party is full, trainer. Choose one mystery partner and decide who to leave behind."')
                 : PROF_QUOTES[Math.floor(Math.random() * PROF_QUOTES.length)];
-            document.getElementById('story-prof-sprite').src = getTrainerSprite(isFull ? 'Cyrus' : { spriteFile: hub.spriteFile });
+            const _mysteryFace = isFull ? _storyEnsureMysteryIdentity() : null;
+            document.getElementById('story-prof-sprite').src = getTrainerSprite(isFull ? (_mysteryFace && _mysteryFace.sprite ? _mysteryFace.sprite : 'Cyrus') : { spriteFile: hub.spriteFile });
 
             const statusEl = document.getElementById('story-prof-status');
             const btnsEl   = document.getElementById('story-prof-buttons');
@@ -25466,7 +26111,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Normal professor: append to team
             _pendingProfChoices = null; _profSelectedIdx = null; _pendingProfRoll = null; _pendingProfCityIdx = null; _pendingProfWasMystery = false; _profLegendaryMysteryMode = false;
-            sm.team.push({ name: ch.name, build: ch.build });
+            // The very first Pokémon the player ever gets — the starter — is bonded
+            // for life per the design spec (§8): "cannot sell your last party mon,
+            // the starter, or the boss-arc capture." The flag piggybacks on the
+            // existing unsellable path in the Underground sell screen.
+            const isStarterPick = !Array.isArray(sm.team) || sm.team.length === 0;
+            const newSlot = { name: ch.name, build: ch.build };
+            if (isStarterPick) {
+                newSlot.unsellable = true;
+                newSlot.starter = true;
+            }
+            sm.team.push(newSlot);
             if (!sm.profUsed) sm.profUsed = {};
             sm.profUsed[cityIdx] = true;
             save();
@@ -25579,13 +26234,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const trainerName = sm.trainerAssignments[idx];
             const prefType = preferredTypeBeforeGymBattle(battleIdx);
             const isMysteryFinal = String(event || '') === 'Mystery Figure';
+            const _mysteryFinalFace = isMysteryFinal ? _storyEnsureMysteryIdentity() : null;
             let trainer = isMysteryFinal
                 ? {
                     role: 'Mystery Figure',
                     name: '??? Mystery Figure',
                     type: 'Mixed',
                     sigs: ['Mewtwo', 'Rayquaza', 'Dialga', 'Giratina', 'Kyogre', 'Groudon'],
-                    introQuotes: ['So we meet again, Champion.', 'Your Hall of Fame crown means nothing here.', 'Show me your strongest six.']
+                    spriteFile: (_mysteryFinalFace && _mysteryFinalFace.sprite) || 'Cyrus',
+                    introQuotes: (_mysteryFinalFace && _mysteryFinalFace.intros) || ['Your Hall of Fame crown means nothing here.', 'Show me your strongest six.']
                 }
                 : (findTrainerDataByName(trainerName, event) || selectTrainerForRole(event, sg, null, prefType));
             if (!isMysteryFinal && event === 'Rival' && sm.runRivalSpriteFile) {
@@ -25740,13 +26397,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
                     sm.balls.ultra = (sm.balls.ultra | 0) + 1;
                     sm.staticDrops.ultraGl4 = true;
-                    try { window.showGameAlert && window.showGameAlert('The Gym Leader nods. "You earned this." They press an Ultra Ball into your hand.'); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('The Gym Leader nods, then opens a desk drawer. "Take this. You\'ll catch something worth keeping with it." An Ultra Ball changes hands — pristine, official League stock.\n\n🟡 Ultra Ball added to your inventory.'); } catch (e) {}
                 }
                 if (en === 'E2' && !sm.staticDrops.ultraE2) {
                     if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
                     sm.balls.ultra = (sm.balls.ultra | 0) + 1;
                     sm.staticDrops.ultraE2 = true;
-                    try { window.showGameAlert && window.showGameAlert('A broker is waiting in the hall outside. "The Elite stash one or two of these. I lifted you one." Ultra Ball obtained.'); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('An attendant emerges from the chamber behind the Elite. "Only the top of the League sees these on duty. Today you saw the top." She offers an Ultra Ball with both hands — the way a treasure is given.\n\n🟡 Ultra Ball added to your inventory.'); } catch (e) {}
                 }
                 const isGymBadge = /^Gym Leader [1-8]$/.test(en);
                 if (isGymBadge) sm.badges++;
@@ -25927,14 +26584,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const autoClose = setTimeout(dismiss, 3500);
             contBtn.onclick = (e) => { e.stopPropagation(); dismiss(); };
             let badgeFlavor = '';
+            const _trainerName = (sm && sm.currentTrainerData && sm.currentTrainerData.name) ? String(sm.currentTrainerData.name) : '';
+            const _baseTrainerName = _trainerName ? _storyTrainerBaseName(_trainerName) : '';
+            const _leaderLookup = (LEADER_VICTORY_LINES[_trainerName] || LEADER_VICTORY_LINES[_baseTrainerName] || '');
+            const _badgeName = (LEADER_BADGE_NAMES[_trainerName] || LEADER_BADGE_NAMES[_baseTrainerName] || 'Gym Badge');
+            const _eliteLookup = (ELITE_VICTORY_LINES[_trainerName] || ELITE_VICTORY_LINES[_baseTrainerName] || '');
+            const _champLookup = (CHAMPION_VICTORY_LINES[_trainerName] || CHAMPION_VICTORY_LINES[_baseTrainerName] || '');
+            // Cross-run first-clear: stamp a meta flag only the very first time
+            // a player ever cleared THIS milestone (across all runs). Used below
+            // to pulse extra confetti and surface a "FIRST EVER" line.
+            const _milestoneKey = gotBadge ? _storyMilestoneKeyForEvent(battleEventName, storyRowIdx) : '';
+            const _isCareerFirstClear = _milestoneKey ? _storyMarkFirstClearMeta(_milestoneKey) : false;
             if (gotBadge && battleEventName) {
                 const evn = String(battleEventName);
-                if (/^Gym Leader [1-8]$/i.test(evn)) badgeFlavor = `<div style="font-size:14px;color:#81c784;">You received a Gym Badge!</div>`;
+                if (/^Gym Leader [1-8]$/i.test(evn)) {
+                    const speakerName = _trainerName || 'The Gym Leader';
+                    const line = _leaderLookup
+                        ? `${speakerName}: ${_leaderLookup}`
+                        : `You received the ${_badgeName}!`;
+                    badgeFlavor = `<div style="font-size:14px;color:#81c784;line-height:1.5;max-width:380px;">${line}</div>`;
+                }
                 else if (/^E[1-4]$/.test(evn)) {
                     const n = evn.slice(1);
-                    badgeFlavor = `<div style="font-size:14px;color:#81c784;">Elite ${n} passed—one step closer!</div>`;
+                    const line = _eliteLookup || `Elite ${n} passed—one step closer.`;
+                    badgeFlavor = `<div style="font-size:14px;color:#81c784;line-height:1.5;max-width:380px;">${line}</div>`;
                 }
-                else if (evn === 'Champion') badgeFlavor = `<div style="font-size:14px;color:#81c784;">You defeated the Champion!</div>`;
+                else if (evn === 'Champion') {
+                    const line = _champLookup || 'You defeated the Champion!';
+                    badgeFlavor = `<div style="font-size:14px;color:#81c784;line-height:1.5;max-width:380px;">${line}</div>`;
+                }
                 else if (evn === 'Rival') {
                     const rp = storyRowIdx != null ? getRivalEncounterPhase(storyRowIdx) : null;
                     if (rp === 4) {
@@ -25949,19 +26627,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         badgeFlavor = `<div style="font-size:14px;color:#81c784;">First major rival upset—onward to the next gym!</div>`;
                     }
                 }
+                else if (evn === 'Mystery Figure') {
+                    const face = (sm && sm.mysteryIdentity && MYSTERY_FIGURE_IDENTITIES[sm.mysteryIdentity]) || null;
+                    const reveal = face ? face.reveal : null;
+                    const outro = face ? face.outro : '';
+                    badgeFlavor = reveal
+                        ? `<div style="font-size:14px;color:#ce93d8;line-height:1.55;max-width:400px;">The mask falls. It was <strong>${reveal}</strong> all along.${outro ? `<div style="margin-top:10px;font-style:italic;color:#e1bee7;font-size:13px;">${outro}</div>` : ''}</div>`
+                        : `<div style="font-size:14px;color:#ce93d8;">The mask falls — but the figure dissolves before you can see who wore it.</div>`;
+                }
             }
             const isGymBadgeEvent = gotBadge && battleEventName && /^Gym Leader [1-8]$/i.test(String(battleEventName));
+            const _firstClearBanner = _isCareerFirstClear
+                ? '<div style="font-size:13px;color:#ffd54f;letter-spacing:0.08em;text-transform:uppercase;text-shadow:0 0 6px rgba(255,213,79,0.4);">★ Career first ★</div>'
+                : '';
             ov.innerHTML = `
                 <div class="story-fx-confetti" style="position:absolute;inset:0;pointer-events:none;z-index:0;"></div>
                 <div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;width:100%;max-width:420px;padding:12px;">
                 ${gotBadge ? '<div class="story-victory-badge-slot" title="Milestone">🏅</div>' : ''}
                 <div style="font-size:28px;color:#ffd700;font-weight:bold;">VICTORY!</div>
+                ${_firstClearBanner}
                 ${isGymBadgeEvent?`<div style="font-size:16px;color:#4caf50;">Milestone victory! (${sm.badges} / 8 gym badges)</div>` : (gotBadge?`<div style="font-size:16px;color:#4caf50;">Milestone victory!</div>`:'')}
                 ${badgeFlavor}
                 <div style="font-size:14px;color:#ffeb3b;">${storyGoldHtml((coins || 0).toLocaleString(), true, '+')}</div>
                 <div style="font-size:13px;color:#888;">Total Gold: ${storyGoldHtml(sm.gold.toLocaleString())}</div></div>`;
             const conf = ov.querySelector('.story-fx-confetti');
-            storySpawnConfetti(conf, gotBadge ? 32 : 16);
+            storySpawnConfetti(conf, _isCareerFirstClear ? 96 : (gotBadge ? 32 : 16));
             ov.appendChild(contBtn);
             ov.onclick = () => dismiss();
             document.body.appendChild(ov);
@@ -26010,6 +26700,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             _pcRefresh();
             showScreen('screen-story-pokemoncenter');
+            try { _storyShowOneTimeTip('center',
+                'Pokémon Center — party of 6, PC storage of 10. Battles auto-heal between fights, so the Center is for managing your roster. The Underground tab sells Pokémon for gold; starters and the boss-arc capture are bonded for life and cannot be sold.'); } catch (e) {}
         }
         function _pcRefresh() {
             const goldEl = document.getElementById('story-pc-gold');
@@ -26080,7 +26772,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const canDeposit = !partyLastOne && !boxFull && !!id;
                     const reason = partyLastOne ? 'Must keep ≥1 in party' : boxFull ? 'PC full' : !id ? 'Missing id (legacy save)' : '';
                     html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;">
-                        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;">${_esc(slot.name)} ${_pcGradeChipHtml(g)}</span>
+                        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;">${slot.nickname ? `"${_esc(slot.nickname)}" <span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>` : _esc(slot.name)} ${_pcGradeChipHtml(g)}</span>
                         <button type="button" onclick="window.StoryMode.pcDeposit('${_esc(id)}')" ${canDeposit ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canDeposit ? 'color:#4caf50;border-color:#4caf50;' : 'opacity:0.4;'}">Deposit</button>
                     </div>`;
                 });
@@ -26099,7 +26791,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const canWithdraw = !partyFull && !!id;
                     const reason = partyFull ? 'Party full (6/6)' : !id ? 'Missing id (legacy save)' : '';
                     html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;">
-                        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;">${_esc(slot.name)} ${_pcGradeChipHtml(g)}</span>
+                        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;">${slot.nickname ? `"${_esc(slot.nickname)}" <span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>` : _esc(slot.name)} ${_pcGradeChipHtml(g)}</span>
                         <button type="button" onclick="window.StoryMode.pcWithdraw('${_esc(id)}')" ${canWithdraw ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canWithdraw ? 'color:#ce93d8;border-color:#ce93d8;' : 'opacity:0.4;'}">Withdraw</button>
                         <button type="button" onclick="window.StoryMode.pcRelease('${_esc(id)}')" style="font-size:10px;padding:3px 8px;color:#888;border-color:#888;">Release</button>
                     </div>`;
@@ -26140,9 +26832,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const price = _pcSellPriceForSlot(slot);
                 const id = slot.id || '';
                 const unsellable = slot.unsellable === true;
+                const isStarter = slot.starter === true;
                 const isLastParty = where === 'team' && lastInParty;
                 const canSell = !!id && !unsellable && !isLastParty;
-                const reason = unsellable ? 'Bound to you' : isLastParty ? 'Must keep ≥1 in party' : !id ? 'Missing id (legacy save)' : '';
+                const reason = isStarter ? 'Starter — bonded for life' : unsellable ? 'Bound to you' : isLastParty ? 'Must keep ≥1 in party' : !id ? 'Missing id (legacy save)' : '';
                 const whereLabel = where === 'team' ? 'Party' : 'PC';
                 html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(28,12,12,0.55);border:1px solid #5a1818;">
                     <span style="font-size:9px;color:#888;width:30px;">${whereLabel}</span>
@@ -26230,6 +26923,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             _renderCrucible();
             showScreen('screen-story-crucible');
+            try { _storyShowOneTimeTip('crucible',
+                'The Crucible — the post-game spire.\n\nLeft column is six battle on-ramps: the endless Battle Frontier, the Mystery Figure encore, a Rival Rematch, a one-night League Run (E1 → Champion in sequence), a Random Gym Rematch, and a fresh Wild Encounter.\n\nRight column is every facility you used during the journey — Pokémon Center, Safari Zone, both shops, the Annex, all four tutors, Colress, Stone Sage, Link Station, and the Casino — under one roof. Leave the Crucible to drop back to the last city you visited.'); } catch (e) {}
         }
         function leaveCrucible() {
             sm.atCrucible = false;
@@ -26322,6 +27017,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             _renderFrontierHub();
             showScreen('screen-story-frontier');
+            try { _storyShowOneTimeTip('frontier',
+                'Battle Frontier — an endless 6-on-6 ladder. Foe stats and grade pool sharpen every round (HP ×1.35 → 2.50, bulk/speed ×1.20 → 1.80). One loss ends the streak; your final round is locked into the Top-10. Surrender any time to bank the current streak.'); } catch (e) {}
         }
         function _renderFrontierHub() {
             _ensureFrontierState();
@@ -26519,6 +27216,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sm.bossArc.boss = _bossArcRollLegendary();
                 }
                 try { save(); } catch (e) {}
+                // Big-moment alert — the audit noted players could miss the cage opening
+                // because the button just silently appeared.
+                try {
+                    const bossName = (sm.bossArc.boss && sm.bossArc.boss.name) ? sm.bossArc.boss.name : 'Specimen 0001';
+                    window.showGameAlert && window.showGameAlert(
+                        `The three pieces align. The Cage is unlocked.\n\nThe Underground broker's eyes glint in the dark. "Go. Claim your specimen."\n\nA Pokémon Center action button now points the way: "🔥 Enter the Cage — ${bossName}".`
+                    );
+                } catch (e) {}
             }
         }
         function _bossArcRollLegendary() {
@@ -26555,13 +27260,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div style="font-weight:bold;color:#ce93d8;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">🔮 The Caged God</div>
                 <div style="color:#bcaaa4;margin-bottom:10px;">The Underground keeps a specimen alive in their deepest vault. Sixty years. They want you to end it — or claim it.</div>`;
 
-            const leadStatus = (k) => L[k] ? '<span style="color:#aed581;">✓</span>' : '<span style="color:#888;">—</span>';
-            html += `<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">
-                <div style="font-size:10px;color:#888;">Leads:</div>
-                <div style="display:flex;gap:10px;font-size:11px;">
-                    <span>${leadStatus('ledger')} Ledger (City 2)</span>
-                    <span>${leadStatus('recording')} Recording (City 5)</span>
-                    <span>${leadStatus('key')} Key (City 8)</span>
+            const collectedCount = (L.ledger?1:0) + (L.recording?1:0) + (L.key?1:0);
+            const leadStatus = (k) => L[k] ? '<span style="color:#aed581;">✓</span>' : '<span style="color:#666;">○</span>';
+            html += `<div style="margin-bottom:10px;padding:8px 10px;background:rgba(0,0,0,0.35);border:1px solid #3a1b4a;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+                    <span style="font-size:10px;color:#bcaaa4;letter-spacing:0.06em;text-transform:uppercase;">Broker Leads</span>
+                    <span style="font-size:10px;color:${collectedCount === 3 ? '#aed581' : '#888'};font-weight:bold;">${collectedCount}/3</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:3px;font-size:11px;color:#d0bfe0;">
+                    <span>${leadStatus('ledger')} Ledger — Pokémon Center, City 2</span>
+                    <span>${leadStatus('recording')} Recording — Pokémon Center, City 5</span>
+                    <span>${leadStatus('key')} Key — Pokémon Center, City 8</span>
                 </div>
             </div>`;
 
@@ -26639,6 +27348,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const [moved] = sm.pcBox.splice(found.index, 1);
             sm.team.push(moved);
             if (sm.team.length >= 4) sm.partyEverReached4 = true;
+            if (sm.team.length >= 2) sm.partyEverReached2 = true;
             save();
             _pcRefresh();
         }
@@ -26741,6 +27451,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
         }
 
+        /** Stamp a species in the seen Pokédex. Safe to call on every encounter. */
+        function _storyMarkPokedexSeen(name) {
+            if (!name) return;
+            if (!sm.pokedex || typeof sm.pokedex !== 'object') sm.pokedex = { seen: [], caught: [] };
+            if (!Array.isArray(sm.pokedex.seen)) sm.pokedex.seen = [];
+            if (!sm.pokedex.seen.includes(name)) sm.pokedex.seen.push(name);
+        }
+
         function enterCatchEncounter(wildMon, onComplete, options) {
             _catchState = {
                 encounter: wildMon,
@@ -26759,8 +27477,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _catchState.bossHp = _catchState.bossMaxHp;
                 _catchState.message = `The cage opens. ${wildMon.name} looks up. Sixty years of feeding. Strike it down — then catch what's left.`;
             }
+            try { _storyMarkPokedexSeen(wildMon && wildMon.name); } catch (e) {}
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             _catchRender();
+            if (!_catchState.bossMode) {
+                try { _storyShowOneTimeTip('catch',
+                    'A wild Pokémon! Throw a Poké Ball (or stronger ball) to try to catch it. The percentage on each ball is your real chance — Pokémon graded G1 are hardest, G4 easiest. A failed throw may scare the Pokémon away. You can run, but the next wild encounter is the next route over.'); } catch (e) {}
+            }
             const runBtn = document.getElementById('story-catch-run-btn');
             if (runBtn) {
                 runBtn.style.display = _catchState.bossMode ? 'none' : '';
@@ -26783,9 +27506,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Boss-mode HP-attrition phase: show the boss + HP bar + Attack button until HP=0.
             if (_catchState.bossMode && _catchState.bossHp > 0) {
                 const pct = Math.max(0, Math.min(100, Math.round((_catchState.bossHp / _catchState.bossMaxHp) * 100)));
+                let bossSpriteHtml = '';
+                try {
+                    const spriteUrl = typeof getSprite === 'function' ? getSprite(enc.name, false) : '';
+                    if (spriteUrl) {
+                        bossSpriteHtml = `<img src="${spriteUrl}" alt="${_esc(enc.name)}" style="display:block;margin:0 auto 8px;width:96px;height:96px;image-rendering:pixelated;filter:drop-shadow(0 0 10px rgba(206,147,216,0.7));" onerror="this.style.display='none'">`;
+                    }
+                } catch (e) {}
                 body.innerHTML = `
                     <div style="text-align:center;padding:18px 12px;background:linear-gradient(180deg,rgba(40,16,52,0.7) 0%,rgba(14,8,20,0.7) 100%);border:1px solid #6a1b9a;">
                         <div style="font-size:11px;color:#ce93d8;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">🔮 The Caged God</div>
+                        ${bossSpriteHtml}
                         <h2 style="margin:0 0 6px;color:#fff;font-size:18px;">${_esc(enc.name)}</h2>
                         <div style="display:inline-block;font-size:9px;font-weight:bold;color:#111;background:#ce93d8;padding:1px 6px;letter-spacing:0.04em;">G${grade}</div>
                         <div style="margin-top:14px;height:14px;background:rgba(0,0,0,0.55);border:1px solid #444;position:relative;overflow:hidden;">
@@ -26811,14 +27542,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span style="color:#fff;">${pct}%</span>
                 </button>`;
             }).join('');
+            // Boss-mode escape hatch: the Run button is hidden so the player can't flee
+            // mid-fight, but if all four ball stacks are empty the catch screen has no
+            // exit. Surface a retreat option that returns to the last city with the
+            // boss still alive (sm.bossArc.boss persists), so the player can buy/farm
+            // balls and return.
+            const _totalBalls = ['poke','great','ultra','master'].reduce((s,k)=>s+((sm.balls && sm.balls[k]|0)||0),0);
+            const bossRetreat = (_catchState.bossMode && _totalBalls <= 0)
+                ? `<div style="margin-top:14px;padding:10px;border:1px dashed #6a1b9a;background:rgba(40,16,52,0.4);text-align:center;">
+                       <div style="font-size:11px;color:#ce93d8;margin-bottom:8px;line-height:1.5;">Out of balls. The cage will hold for now.</div>
+                       <button type="button" onclick="window.StoryMode.bossRetreatToCity()" style="padding:8px 16px;background:rgba(0,0,0,0.4);border:1px solid #a060c0;color:#e0c0ff;font-family:inherit;font-size:12px;cursor:pointer;">↩ Retreat — bring more balls</button>
+                   </div>`
+                : '';
             const headerLabel = _catchState.bossMode ? "It's still breathing." : 'A wild Pokémon appeared!';
             const headerColor = _catchState.bossMode ? '#ce93d8' : '#a5d6a7';
             const headerBg = _catchState.bossMode ? 'rgba(20,8,28,0.7);border:1px solid #6a1b9a' : 'rgba(10,18,12,0.55);border:1px solid #4a6c44';
             const gradeBg = _catchState.bossMode ? '#ce93d8' : '#a5d6a7';
             const subText = _catchState.bossMode ? `Master Ball recommended — this catch is hard.` : 'Catch chance scales with grade and ball type.';
+            // Show the wild Pokémon's sprite — the screen was text-only before, which
+            // made every encounter feel like the same prompt.
+            let spriteHtml = '';
+            try {
+                const spriteUrl = typeof getSprite === 'function' ? getSprite(enc.name, false) : '';
+                if (spriteUrl) {
+                    spriteHtml = `<img src="${spriteUrl}" alt="${_esc(enc.name)}" style="display:block;margin:0 auto 6px;width:84px;height:84px;image-rendering:pixelated;${_catchState.bossMode ? 'filter:drop-shadow(0 0 8px rgba(206,147,216,0.6));' : ''}" onerror="this.style.display='none'">`;
+                }
+            } catch (e) {}
             body.innerHTML = `
                 <div style="text-align:center;padding:18px 12px;background:${headerBg};">
                     <div style="font-size:11px;color:${headerColor};letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">${headerLabel}</div>
+                    ${spriteHtml}
                     <h2 style="margin:0 0 6px;color:#fff;font-size:18px;">${_esc(enc.name)}</h2>
                     <div style="display:inline-block;font-size:9px;font-weight:bold;color:#111;background:${gradeBg};padding:1px 6px;letter-spacing:0.04em;">G${grade}</div>
                     <div style="margin-top:8px;font-size:10px;color:#888;">${subText}</div>
@@ -26827,16 +27580,44 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div style="display:flex;flex-direction:column;gap:6px;">
                     ${ballRows}
                 </div>
+                ${bossRetreat}
             `;
+        }
+        function bossRetreatToCity() {
+            if (!_catchState || !_catchState.bossMode) return;
+            // Boss state persists — boss HP is reset on next re-entry by enterCatchEncounter
+            // (it always rolls bossHp = bossMaxHp on init), so the player can return when
+            // they've stocked balls. The cageUnlocked flag is unchanged.
+            _catchState = null;
+            try { save(); } catch (e) {}
+            try {
+                window.showGameAlert && window.showGameAlert('You leave the cage. The eye does not close. Restock balls and return when you can.');
+            } catch (e) {}
+            try { enterCity(); } catch (e) { try { showMenu(true); } catch (_) {} }
         }
         function bossAttack() {
             if (!_catchState || !_catchState.bossMode || _catchState.bossHp == null || _catchState.bossHp <= 0) return;
             const dmg = Math.floor(_catchState.bossMaxHp * (0.05 + Math.random() * 0.07));
             _catchState.bossHp = Math.max(0, _catchState.bossHp - dmg);
+            const pctAfter = _catchState.bossHp / _catchState.bossMaxHp;
             if (_catchState.bossHp === 0) {
                 _catchState.message = `${_catchState.encounter.name} has collapsed. The eye that watches you has not closed. Throw a ball.`;
             } else {
-                _catchState.message = `You struck the Caged God for ${dmg.toLocaleString()} damage.`;
+                // Per-HP-band flavor — the strike beat shouldn't read identical for 60s
+                // of clicking. Dramatic tension builds as HP falls.
+                let frame;
+                if (pctAfter > 0.75) {
+                    frame = `Your strike lands clean. ${dmg.toLocaleString()} dmg. It doesn't look at you.`;
+                } else if (pctAfter > 0.5) {
+                    frame = `Another strike — ${dmg.toLocaleString()} dmg. It blinks, slowly. You aren't sure it noticed.`;
+                } else if (pctAfter > 0.25) {
+                    frame = `${dmg.toLocaleString()} dmg. The cage hums. The air in the room is colder by a hand's breadth.`;
+                } else if (pctAfter > 0.10) {
+                    frame = `${dmg.toLocaleString()} dmg. Something in the chamber moves that isn't the specimen.`;
+                } else {
+                    frame = `${dmg.toLocaleString()} dmg. It is almost finished. So are you — one way or another.`;
+                }
+                _catchState.message = frame;
             }
             _catchRender();
         }
@@ -26863,16 +27644,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Boss mode: no flee — the mon can't move. Keep throwing.
             if (_catchState.bossMode) {
-                _catchState.message = `${enc.name} writhes but stays. Throw another ball.`;
+                const _bossMisses = ['The ball wobbles once. The eye opens. It pops out.', 'It writhes — the seal cracks — the ball pops open.', 'A long, slow blink. The ball clicks. It fails to close.', 'The cage hums. The ball wobbles. The bond does not hold.'];
+                _catchState.message = _bossMisses[Math.floor(Math.random() * _bossMisses.length)] + ` Throw another ball.`;
                 _catchRender();
                 return;
             }
             const fleeRoll = (sm && sm.active) ? storyRngNext() : Math.random();
             if (fleeRoll < _CATCH_DEFAULT_FLEE_RATE) {
-                _catchFinishWithMessage(`The wild ${enc.name} fled!`);
+                const fleeMsgs = [
+                    `${enc.name} darted into the brush!`,
+                    `${enc.name} fled — too quick to follow.`,
+                    `The wild ${enc.name} bolted and was gone.`,
+                    `${enc.name} slipped away into the underbrush.`,
+                ];
+                _catchFinishWithMessage(fleeMsgs[Math.floor(Math.random() * fleeMsgs.length)]);
                 return;
             }
-            _catchState.message = `${enc.name} broke free!`;
+            const wobbleMsgs = [
+                `The ball wobbled… and ${enc.name} broke free!`,
+                `Almost! ${enc.name} forced the ball open.`,
+                `So close! ${enc.name} popped free.`,
+                `One… two… ${enc.name} burst out!`,
+            ];
+            _catchState.message = wobbleMsgs[Math.floor(Math.random() * wobbleMsgs.length)];
             _catchRender();
         }
         function _catchHandleSuccess(enc, ballKey) {
@@ -26899,6 +27693,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!partyFull) {
                 sm.team.push(caught);
                 if (sm.team.length >= 4) sm.partyEverReached4 = true;
+                if (sm.team.length >= 2) sm.partyEverReached2 = true;
             } else {
                 sm.pcBox.push(caught);
             }
@@ -26912,7 +27707,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             try { save(); } catch (e) {}
             const successMsg = bossMode
-                ? `Subject Zero is yours. The cage closes behind you. The Underground will not speak of this again.`
+                ? `Subject Zero is yours.\n\nThe cage closes behind you. The lights flicker — once for the cage opening, once for it shutting. Sixty years, six brokers, three brokers left alive, one trainer at the end.\n\nThe specimen is in your party now, branded "Subject Zero." Unsellable. The Underground will not speak of this again. Neither will the trainer who came in before you. Neither, in time, will you.`
                 : (!partyFull ? `Gotcha! ${enc.name} was caught and joined your party.` : `Gotcha! ${enc.name} was caught and sent to the PC.`);
             _catchFinishWithMessage(successMsg);
         }
@@ -27110,7 +27905,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             showScreen('screen-story-shop');
         }
 
-        function buyItem(itemId, price) {
+        async function buyItem(itemId, price) {
             const st = document.getElementById('screen-story-shop')?.getAttribute('data-shop-type');
             if (sm.settings && sm.settings.noItemRun) {
                 if (st === 'dept') {
@@ -27142,6 +27937,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (sm.deptShopPurchasedByCity[_cKey][itemId]) return;
             }
             if (sm.gold < price) return;
+            // Confirm only the high-stakes shop clicks. Mart consumables (potions, status
+            // heals, regular balls) are repeatable and cheap — keep them direct-purchase.
+            // Department-store buys lock per-city once acquired, so even the cheap rows
+            // there get the prompt. Any non-ball purchase ≥ 1500G also gets it.
+            const needsConfirm = (st === 'dept' && !_isBall) || (!_isBall && price >= 1500);
+            if (needsConfirm) {
+                const itemLabel = (_itemRow && _itemRow.name) ? _itemRow.name : String(itemId);
+                const lockNote = (st === 'dept' && !_isBall) ? ' This is the only copy this city sells.' : '';
+                const ok = await _storyConfirmTutorChange(`Buy ${itemLabel}?${lockNote}`, price);
+                if (!ok) return;
+            }
             sm.gold -= price;
             if (_isBall) {
                 if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
@@ -27157,7 +27963,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterShop(st === 'dept' ? 'dept' : 'mart');
         }
 
-        function buyArtifact(artId, price) {
+        async function buyArtifact(artId, price) {
             const relicScr = document.getElementById('screen-story-artifact-shop');
             if (!relicScr || relicScr.classList.contains('hidden')) return;
             const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
@@ -27171,6 +27977,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const listPrice = (cityIdx === 0 && !sm.artifactFreeClaimUsed) ? 0 : 5000;
             if ((price | 0) !== listPrice) return;
             if (listPrice > 0 && sm.gold < listPrice) return;
+            const ok = await _storyConfirmTutorChange(`Claim "${artId}" relic? This locks the Annex for this city — no second pick.`, listPrice);
+            if (!ok) return;
             if (listPrice > 0) sm.gold -= listPrice;
             else sm.artifactFreeClaimUsed = true;
             sm.artifacts.push(artId);
@@ -27189,6 +27997,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             _markFacilitySeen('relic');
+            try { _storyShowOneTimeTip('relic',
+                'Relic Annex — choose ONE relic per shop. Relics affect both you and every foe for the rest of the run. Your first pick in Pallet Town is free; after that each is 5,000G. The Artifact Hall (back at any city) lets you toggle owned relics on/off mid-run.'); } catch (e) {}
+            try { _storyShowFacilityQuote('screen-story-artifact-shop', 'relicKeeper'); } catch (e) {}
             const offer = _ensureArtifactShopOffersForCity(cityIdx);
             const goldEl = document.getElementById('story-artifact-shop-gold');
             const gridEl = document.getElementById('story-artifact-shop-grid');
@@ -27275,6 +28086,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _storyInteractionBusy = false;
         }
 
+        /** Misclick-guard prompt for tutor / dojo / link / colress / EV trainer.
+         * actionText: short description ("Teach Thunderbolt to Pikachu — replaces 'Quick Attack'").
+         * costG: optional gold cost shown in parentheses; if positive, the player's
+         * remaining-gold after the transaction is also appended so they can spot a
+         * "this will empty my wallet" mistake before they commit.
+         * Returns Promise<boolean> — true to commit, false to cancel.
+         */
+        async function _storyConfirmTutorChange(actionText, costG) {
+            if (typeof window === 'undefined' || typeof window.showGameConfirm !== 'function') return true;
+            let suffix = '';
+            if (typeof costG === 'number' && costG > 0) {
+                const have = Math.max(0, sm && sm.gold | 0);
+                const after = Math.max(0, have - costG);
+                suffix = ` (${costG.toLocaleString()}G → ${after.toLocaleString()}G left)`;
+            }
+            return await window.showGameConfirm(`${actionText}${suffix}`);
+        }
+
 
         function enterLink() {
             if (!_storyTryBeginInteraction()) return;
@@ -27284,6 +28113,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 renderLinkTeam();
                 syncStoryLinkBackground();
                 showScreen('screen-story-link');
+                try { _storyShowFacilityQuote('screen-story-link', 'link'); } catch (e) {}
             } finally {
                 _storyEndInteraction();
             }
@@ -27326,6 +28156,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 syncStoryCasinoBackground();
                 showScreen('screen-story-casino');
+                try { _storyShowFacilityQuote('screen-story-casino', 'casino'); } catch (e) {}
             } finally {
                 _storyEndInteraction();
             }
@@ -27388,9 +28219,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     inp.value = String(next);
                 }
                 const flipLabel = outcome === 'heads' ? 'Heads' : 'Tails';
-                const msg = win
-                    ? `It's ${flipLabel}! You win ${bet.toLocaleString()}G (double your wager).`
-                    : `It's ${flipLabel}. You lose ${bet.toLocaleString()}G.`;
+                const winFlavors = [
+                    `It's ${flipLabel}. The croupier slides ${bet.toLocaleString()}G across the felt without a word.`,
+                    `${flipLabel}! +${bet.toLocaleString()}G. "The house respects a clean call," the croupier murmurs.`,
+                    `${flipLabel}. You win ${bet.toLocaleString()}G. The chip stack clinks twice.`,
+                    `${flipLabel} — paid out. +${bet.toLocaleString()}G. The next bet is already calling you.`,
+                ];
+                const lossFlavors = [
+                    `${flipLabel}. The croupier collects ${bet.toLocaleString()}G with practised ease. "Next round?"`,
+                    `${flipLabel}. -${bet.toLocaleString()}G. The wheel hum doesn't change.`,
+                    `It's ${flipLabel}. The coin sits on the felt like it always knew. -${bet.toLocaleString()}G.`,
+                    `${flipLabel}. You lose ${bet.toLocaleString()}G. The croupier waits without blinking.`,
+                ];
+                const pool = win ? winFlavors : lossFlavors;
+                const msg = pool[Math.floor(Math.random() * pool.length)];
                 if (resEl) resEl.textContent = msg;
             } finally {
                 _storyEndInteraction();
@@ -27469,68 +28311,72 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }).join('');
         }
 
-        function linkReroll(idx) {
+        async function linkReroll(idx) {
             if (!_storyTryBeginInteraction()) return;
             try {
-            const mon = sm.team[idx]; if (!mon) return;
-            const g   = getMonGrade(mon.name, getBST(mon.name));
-            const rk = `r_${idx}`;
-            const rn = (sm.cityRerollsUsed[rk] || 0) + 1;
-            let cost = Math.ceil((REROLL_COSTS[g]||100) * Math.pow(1.5, rn - 1));
-            if (((sm.storyDifficulty || 'normal') === 'easy' || (sm.storyDifficulty || 'normal') === 'veryeasy') && rn === 1) cost = Math.ceil(cost * 0.78);
-            if (sm.gold < cost) return;
-            const pool = buildGradePool(storySettingsGens(), g).filter(n=>n!==mon.name&&!sm.team.some((t,i)=>i!==idx&&t.name===n));
-            if (!pool.length) { window.showGameAlert('No other Pokémon of this grade available!'); return; }
-            sm.cityRerollsUsed[rk] = rn;
-            const newName  = pool[Math.floor(storyRngNext() * pool.length)];
-            let newBuild;
-            try {
-                window._pbsStoryUsePlayerGimmickGate = true;
-                window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
-                newBuild = makeBuild(newName);
-            } finally {
-                window._pbsStoryUsePlayerGimmickGate = false;
-                delete window._pbsStoryUnlockedGimmicks;
-            }
-            sm.gold -= cost;
-            sm.team[idx] = { name:newName, build:newBuild };
-            save();
-            renderLinkTeam();
-            renderTeamPanel();
+                const mon = sm.team[idx]; if (!mon) return;
+                const g   = getMonGrade(mon.name, getBST(mon.name));
+                const rk = `r_${idx}`;
+                const rn = (sm.cityRerollsUsed[rk] || 0) + 1;
+                let cost = Math.ceil((REROLL_COSTS[g]||100) * Math.pow(1.5, rn - 1));
+                if (((sm.storyDifficulty || 'normal') === 'easy' || (sm.storyDifficulty || 'normal') === 'veryeasy') && rn === 1) cost = Math.ceil(cost * 0.78);
+                if (sm.gold < cost) return;
+                const pool = buildGradePool(storySettingsGens(), g).filter(n=>n!==mon.name&&!sm.team.some((t,i)=>i!==idx&&t.name===n));
+                if (!pool.length) { window.showGameAlert('No other Pokémon of this grade available!'); return; }
+                const ok = await _storyConfirmTutorChange(`Trade ${mon.name} away for a random same-tier Pokémon? You will get a NEW species (with a new build).`, cost);
+                if (!ok) return;
+                sm.cityRerollsUsed[rk] = rn;
+                const newName  = pool[Math.floor(storyRngNext() * pool.length)];
+                let newBuild;
+                try {
+                    window._pbsStoryUsePlayerGimmickGate = true;
+                    window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
+                    newBuild = makeBuild(newName);
+                } finally {
+                    window._pbsStoryUsePlayerGimmickGate = false;
+                    delete window._pbsStoryUnlockedGimmicks;
+                }
+                sm.gold -= cost;
+                sm.team[idx] = { name:newName, build:newBuild };
+                save();
+                renderLinkTeam();
+                renderTeamPanel();
             } finally {
                 _storyEndInteraction();
             }
         }
 
-        function linkUpgrade(idx) {
+        async function linkUpgrade(idx) {
             if (!_storyTryBeginInteraction()) return;
             try {
-            const mon = sm.team[idx]; if (!mon) return;
-            const g   = getMonGrade(mon.name, getBST(mon.name));
-            if (g <= 1) return;
-            const newG = g - 1;
-            const uk = `u_${idx}`;
-            const un = (sm.cityRerollsUsed[uk] || 0) + 1;
-            const cost = Math.ceil((UPGRADE_COSTS[g] || 9999) * Math.pow(1.5, un - 1));
-            if (sm.gold < cost) return;
-            const pool = buildGradePool(storySettingsGens(), newG).filter(n=>!sm.team.some((t,i)=>i!==idx&&t.name===n));
-            if (!pool.length) { window.showGameAlert('No Pokémon of that grade available!'); return; }
-            sm.cityRerollsUsed[uk] = un;
-            const newName  = pool[Math.floor(storyRngNext() * pool.length)];
-            let newBuild;
-            try {
-                window._pbsStoryUsePlayerGimmickGate = true;
-                window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
-                newBuild = makeBuild(newName);
-            } finally {
-                window._pbsStoryUsePlayerGimmickGate = false;
-                delete window._pbsStoryUnlockedGimmicks;
-            }
-            sm.gold -= cost;
-            sm.team[idx] = { name:newName, build:newBuild };
-            save();
-            renderLinkTeam();
-            renderTeamPanel();
+                const mon = sm.team[idx]; if (!mon) return;
+                const g   = getMonGrade(mon.name, getBST(mon.name));
+                if (g <= 1) return;
+                const newG = g - 1;
+                const uk = `u_${idx}`;
+                const un = (sm.cityRerollsUsed[uk] || 0) + 1;
+                const cost = Math.ceil((UPGRADE_COSTS[g] || 9999) * Math.pow(1.5, un - 1));
+                if (sm.gold < cost) return;
+                const pool = buildGradePool(storySettingsGens(), newG).filter(n=>!sm.team.some((t,i)=>i!==idx&&t.name===n));
+                if (!pool.length) { window.showGameAlert('No Pokémon of that grade available!'); return; }
+                const ok = await _storyConfirmTutorChange(`Trade ${mon.name} (G${g}) UP to a random Grade ${newG} Pokémon? This permanently replaces ${mon.name}.`, cost);
+                if (!ok) return;
+                sm.cityRerollsUsed[uk] = un;
+                const newName  = pool[Math.floor(storyRngNext() * pool.length)];
+                let newBuild;
+                try {
+                    window._pbsStoryUsePlayerGimmickGate = true;
+                    window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
+                    newBuild = makeBuild(newName);
+                } finally {
+                    window._pbsStoryUsePlayerGimmickGate = false;
+                    delete window._pbsStoryUnlockedGimmicks;
+                }
+                sm.gold -= cost;
+                sm.team[idx] = { name:newName, build:newBuild };
+                save();
+                renderLinkTeam();
+                renderTeamPanel();
             } finally {
                 _storyEndInteraction();
             }
@@ -27600,7 +28446,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } catch (e) {}
                 return line;
             }
-            return '';
+            // Default — level-up evolution. The Sage acknowledges the path so the screen
+            // doesn't go silent on the most common evolution type.
+            const levelUpLines = [
+                `Stone Sage: "${evoName}? Most of them just need to grow into it. The trick is paying attention while they do."`,
+                `Stone Sage: "An honest evolution. No stones, no trades — just experience taking its shape. I respect that."`,
+                `Stone Sage: "For ${evoName}, the body listens to the journey. Yours has been busy. Hold them steady."`,
+                `Stone Sage: "Some evolutions are gifts. This one is earned. The fee covers the candles."`,
+            ];
+            return levelUpLines[Math.floor(Math.random() * levelUpLines.length)];
         }
 
         // Cost for an evolution by TARGET grade, with the usual ×1.5 ramp per use in
@@ -27752,8 +28606,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     delete window._pbsStoryUnlockedGimmicks;
                 }
                 const old = mon.build || {};
-                if (old.nature) evoBuild.nature = old.nature;
-                if (old.evs)    evoBuild.evs    = { ...old.evs };
+                // Carry over the player's tuned slots so evolving doesn't undo their
+                // training. Build fields are single-letter: n=nature, a=ability,
+                // i=item, evs=EVs. Earlier code referenced old.nature (never existed
+                // on the build) so nature carry-over was silently a no-op; ability
+                // was never carried at all despite the confirm dialog promising it.
+                if (old.n)        evoBuild.n        = old.n;
+                if (old.a)        evoBuild.a        = old.a;
+                if (old.evs)      evoBuild.evs      = { ...old.evs };
                 if (old.teraType) evoBuild.teraType = old.teraType;
                 // Item carries over only if it's not a pre-evo–specific item (Eviolite is removed on full evolution).
                 if (old.i && old.i !== 'Eviolite' && old.i !== '(none)') evoBuild.i = old.i;
@@ -27767,28 +28627,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        function linkRebuild(idx) {
+        async function linkRebuild(idx) {
             if (!_storyTryBeginInteraction()) return;
             try {
-            const mon = sm.team[idx]; if (!mon) return;
-            const bk = `b_${idx}`;
-            const bn = (sm.cityRerollsUsed[bk] || 0) + 1;
-            const cost = Math.ceil(REBUILD_COST * Math.pow(1.5, bn - 1));
-            if (sm.gold < cost) return;
-            sm.cityRerollsUsed[bk] = bn;
-            let newBuild;
-            try {
-                window._pbsStoryUsePlayerGimmickGate = true;
-                window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
-                newBuild = makeBuild(mon.name);
-            } finally {
-                window._pbsStoryUsePlayerGimmickGate = false;
-                delete window._pbsStoryUnlockedGimmicks;
-            }
-            sm.gold -= cost;
-            sm.team[idx] = { name:mon.name, build:newBuild };
-            save();
-            renderLinkTeam();
+                const mon = sm.team[idx]; if (!mon) return;
+                const bk = `b_${idx}`;
+                const bn = (sm.cityRerollsUsed[bk] || 0) + 1;
+                const cost = Math.ceil(REBUILD_COST * Math.pow(1.5, bn - 1));
+                if (sm.gold < cost) return;
+                const ok = await _storyConfirmTutorChange(`Reroll ${mon.name}'s entire build (moves, item, nature, EVs)? Species stays.`, cost);
+                if (!ok) return;
+                sm.cityRerollsUsed[bk] = bn;
+                let newBuild;
+                try {
+                    window._pbsStoryUsePlayerGimmickGate = true;
+                    window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
+                    newBuild = makeBuild(mon.name);
+                } finally {
+                    window._pbsStoryUsePlayerGimmickGate = false;
+                    delete window._pbsStoryUnlockedGimmicks;
+                }
+                sm.gold -= cost;
+                sm.team[idx] = { name:mon.name, build:newBuild };
+                save();
+                renderLinkTeam();
             } finally {
                 _storyEndInteraction();
             }
@@ -28066,6 +28928,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             window._storyHofToken = (window._storyHofToken || 0) + 1;
             const myTok = window._storyHofToken;
 
+            // Cross-run counter: bump once per HoF reach (the preview flow runs from save load,
+            // so we only count when the live save flagged the run as fresh-clear).
+            let metaForDisplay = readStoryMeta();
+            if (sm && sm.active && !sm._hofCountedThisRun) {
+                sm._hofCountedThisRun = true;
+                metaForDisplay = recordStoryClearInMeta();
+            }
+
             const displaySlots = getHallOfFameDisplaySlots();
 
             const ov = document.createElement('div');
@@ -28118,6 +28988,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             welcome.className = 'story-hof-gba-welcome';
             welcome.innerHTML = 'Welcome to the <span class="story-hof-gba-hof">HALL OF FAME</span>!';
             lower.appendChild(welcome);
+
+            const runMeta = document.createElement('p');
+            runMeta.className = 'story-hof-gba-welcome';
+            runMeta.style.fontSize = '11px';
+            runMeta.style.color = '#aed581';
+            runMeta.style.marginTop = '6px';
+            const runN = Math.max(1, metaForDisplay && metaForDisplay.completedRuns | 0);
+            const seedStr = (sm && sm.runSeed != null) ? (sm.runSeed >>> 0).toString() : '';
+            const diffLabel = ({veryeasy:'Very Easy', easy:'Easy', normal:'Normal', hard:'Hard', challenge:'Very Hard'})[sm.storyDifficulty || 'normal'] || (sm.storyDifficulty || 'normal');
+            runMeta.innerHTML = `Run #${runN} cleared on <strong>${diffLabel}</strong>` + (seedStr ? ` · Seed <code style="background:rgba(0,0,0,0.4);padding:1px 4px;border-radius:0;">${seedStr}</code>` : '');
+            lower.appendChild(runMeta);
+
             if (sm.rivalChampionClaimed) {
                 const rivalNote = document.createElement('p');
                 rivalNote.className = 'story-hof-gba-welcome';
@@ -28170,8 +29052,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.bossArc.available = true;
                 if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
                 sm.balls.master = (sm.balls.master | 0) + 1;
-                try { window.showGameAlert && window.showGameAlert('A haggard Underground broker presses a Master Ball into your hand. "Specimen 0001. Sixty years caged. Three brokers across the region will give you what you need. End it — or claim it."'); } catch (e) {}
+                try { window.showGameAlert && window.showGameAlert('A haggard Underground broker presses a Master Ball into your hand.\n\n"Specimen 0001. Sixty years caged. Three brokers across the region will give you what you need. End it — or claim it."\n\n🟣 Master Ball added to your inventory. Visit Pokémon Centers in Cities 2, 5, and 8 to find the three brokers.'); } catch (e) {}
             }
+            // Post-HoF orientation tip (once across all runs) — without it players often
+            // miss that the Crucible / Battle Frontier / boss arc even exist.
+            try { _storyShowOneTimeTip('postHof',
+                'Hall of Fame cleared! The post-game opens three doors:\n\n• 🧨 The Crucible — every facility you used in one place, plus the endless Battle Frontier.\n• 🔮 The Caged God — collect three leads at Pokémon Centers in Cities 2, 5, and 8, then enter the Cage.\n• 🚪 Mystery Figure — the Crucible\'s "Mystery" button summons a final masked challenger.\n\nAll three are reachable from any city you\'ve visited.'); } catch (e) {}
             // Return to the last visited city instead of advancing to the original post-HoF Mystery row.
             // The boss arc is now the canonical post-game beat, triggered from the Underground.
             const lastCityEv = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
@@ -28229,6 +29115,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const si = document.getElementById('story-setting-seed');
             if (si && hasSv && sm.runSeed != null) si.value = String(sm.runSeed >>> 0);
+            try {
+                const meta = readStoryMeta();
+                const cleared = meta.completedRuns | 0;
+                const tagline = document.querySelector('#screen-story-menu .story-tagline');
+                let banner = document.getElementById('story-career-banner');
+                if (cleared > 0) {
+                    if (!banner && tagline) {
+                        banner = document.createElement('p');
+                        banner.id = 'story-career-banner';
+                        banner.style.cssText = 'font-size:11px;color:#aed581;margin:-6px 0 8px;text-align:center;letter-spacing:0.4px;';
+                        tagline.parentNode.insertBefore(banner, tagline.nextSibling);
+                    }
+                    if (banner) {
+                        const lastSeed = meta.lastClearSeed ? ` · Last seed <code style="background:rgba(0,0,0,0.3);padding:1px 4px;">${meta.lastClearSeed}</code>` : '';
+                        banner.innerHTML = `🏆 Career runs cleared: <strong>${cleared}</strong>${lastSeed}`;
+                    }
+                } else if (banner) {
+                    banner.remove();
+                }
+            } catch (e) { /* meta is optional */ }
             showScreen('screen-story-menu');
         }
 
@@ -28702,16 +29608,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const mode = _storyTutorMode || 'moves';
             const titleEl = document.getElementById('story-tutor-head-title');
             const descEl = document.getElementById('story-tutor-head-desc');
+            let quoteKey = 'moveTutor';
             if (mode === 'nature') {
                 if (titleEl) titleEl.textContent = '📛 Nature Rater';
                 if (descEl) descEl.textContent = 'Adjust each Pokémon\'s nature. Stat boosts (+/−) are shown per option; any standard nature is available.';
+                quoteKey = 'natureRater';
             } else if (mode === 'loadout') {
                 if (titleEl) titleEl.textContent = '🥋 Battle Dojo';
                 if (descEl) descEl.textContent = 'Swap held items and abilities. Options come from known competitive sets and species data.';
+                quoteKey = 'battleDojo';
             } else {
                 if (titleEl) titleEl.textContent = '📖 Move Tutor';
                 if (descEl) descEl.textContent = 'Swap battle moves. Options come from known competitive sets and learnsets.';
             }
+            try { _storyShowFacilityQuote('screen-story-tutor', quoteKey); } catch (e) {}
         }
         const TUTOR_UNIVERSAL_ITEMS = [
             // Core meta items
@@ -29285,21 +30195,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        function tutorChangeMove(teamIdx, moveSlot, newMove) {
+        async function tutorChangeMove(teamIdx, moveSlot, newMove) {
             if (!_storyTryBeginInteraction()) return;
             try {
-            const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
-            if (sm.gold < TUTOR_COST_MOVE) return;
-            const currentMoves = (mon.build.m || []).map(m => m.split('/')[0]);
-            if (currentMoves.includes(newMove)) return;
-            sm.gold -= TUTOR_COST_MOVE;
-            mon.build.m[moveSlot] = newMove;
-            mon.currentHp = null;
-            mon.status = null;
-            mon.pp = null;
-            save();
-            void renderTutorTeam();
-            renderTeamPanel();
+                const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+                if (sm.gold < TUTOR_COST_MOVE) return;
+                const currentMoves = (mon.build.m || []).map(m => m.split('/')[0]);
+                if (currentMoves.includes(newMove)) return;
+                const oldMove = (mon.build.m && mon.build.m[moveSlot]) ? mon.build.m[moveSlot].split('/')[0] : '(empty slot)';
+                const ok = await _storyConfirmTutorChange(`Teach ${newMove} to ${mon.name}? Replaces "${oldMove}".`, TUTOR_COST_MOVE);
+                if (!ok) return;
+                sm.gold -= TUTOR_COST_MOVE;
+                mon.build.m[moveSlot] = newMove;
+                mon.currentHp = null;
+                mon.status = null;
+                mon.pp = null;
+                save();
+                void renderTutorTeam();
+                renderTeamPanel();
             } finally {
                 _storyEndInteraction();
             }
@@ -29308,58 +30221,71 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         async function tutorChangeItem(teamIdx, newItem) {
             if (!_storyTryBeginInteraction()) return;
             try {
-            const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
-            if (sm.gold < TUTOR_COST_ITEM) return;
-            if (isMegaStone(newItem) || Z_TYPE_MAP_VALUES.has(newItem) || BANNED_ITEMS.has(newItem)) return;
-            const curItem = mon.build.i;
-            const curGimmick = mon.build.gimmick;
-            const swappingAwayMegaStone = curGimmick === 'MEGA' && isMegaStone(curItem);
-            const swappingAwayZCrystal  = curGimmick === 'ZMOVE' && Z_TYPE_MAP_VALUES.has(curItem);
-            if (swappingAwayMegaStone || swappingAwayZCrystal) {
-                const which = swappingAwayMegaStone ? 'Mega Evolution' : 'Z-Move';
-                const ok = (typeof window !== 'undefined' && typeof window.showGameConfirm === 'function')
-                    ? await window.showGameConfirm(`Replacing the ${curItem} will disable ${which} on ${mon.name}. Visit Colress again (10,000G) to restore it. Continue?`)
-                    : true;
+                const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+                if (sm.gold < TUTOR_COST_ITEM) return;
+                if (isMegaStone(newItem) || Z_TYPE_MAP_VALUES.has(newItem) || BANNED_ITEMS.has(newItem)) return;
+                const curItem = mon.build.i;
+                if (curItem === newItem) return;
+                const curGimmick = mon.build.gimmick;
+                const swappingAwayMegaStone = curGimmick === 'MEGA' && isMegaStone(curItem);
+                const swappingAwayZCrystal  = curGimmick === 'ZMOVE' && Z_TYPE_MAP_VALUES.has(curItem);
+                if (swappingAwayMegaStone || swappingAwayZCrystal) {
+                    const which = swappingAwayMegaStone ? 'Mega Evolution' : 'Z-Move';
+                    const ok = (typeof window !== 'undefined' && typeof window.showGameConfirm === 'function')
+                        ? await window.showGameConfirm(`Replacing the ${curItem} will disable ${which} on ${mon.name}. Visit Colress again (10,000G) to restore it. Continue?`)
+                        : true;
+                    if (!ok) return;
+                    mon.build.gimmick = 'STANDARD';
+                } else {
+                    const oldItemLabel = curItem && curItem !== '(none)' ? `"${curItem}"` : 'no item';
+                    const ok = await _storyConfirmTutorChange(`Give ${newItem} to ${mon.name}? Replaces ${oldItemLabel}.`, TUTOR_COST_ITEM);
+                    if (!ok) return;
+                }
+                sm.gold -= TUTOR_COST_ITEM;
+                mon.build.i = newItem;
+                save();
+                void renderTutorTeam();
+                renderTeamPanel();
+            } finally {
+                _storyEndInteraction();
+            }
+        }
+
+        async function tutorChangeAbility(teamIdx, newAbility) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+                if (sm.gold < TUTOR_COST_ABILITY) return;
+                if (mon.build.a === newAbility) return;
+                const oldAbil = mon.build.a || '(none)';
+                const ok = await _storyConfirmTutorChange(`Change ${mon.name}'s ability to ${newAbility}? Replaces "${oldAbil}".`, TUTOR_COST_ABILITY);
                 if (!ok) return;
-                mon.build.gimmick = 'STANDARD';
-            }
-            sm.gold -= TUTOR_COST_ITEM;
-            mon.build.i = newItem;
-            save();
-            void renderTutorTeam();
-            renderTeamPanel();
+                sm.gold -= TUTOR_COST_ABILITY;
+                mon.build.a = newAbility;
+                save();
+                void renderTutorTeam();
+                renderTeamPanel();
             } finally {
                 _storyEndInteraction();
             }
         }
 
-        function tutorChangeAbility(teamIdx, newAbility) {
+        async function tutorChangeNature(teamIdx, newNature) {
             if (!_storyTryBeginInteraction()) return;
             try {
-            const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
-            if (sm.gold < TUTOR_COST_ABILITY) return;
-            sm.gold -= TUTOR_COST_ABILITY;
-            mon.build.a = newAbility;
-            save();
-            void renderTutorTeam();
-            renderTeamPanel();
-            } finally {
-                _storyEndInteraction();
-            }
-        }
-
-        function tutorChangeNature(teamIdx, newNature) {
-            if (!_storyTryBeginInteraction()) return;
-            try {
-            const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
-            if (sm.gold < TUTOR_COST_NATURE) return;
-            if (!Object.prototype.hasOwnProperty.call(natureModifiers, newNature)) return;
-            sm.gold -= TUTOR_COST_NATURE;
-            mon.build.n = newNature;
-            mon.currentHp = null;
-            save();
-            void renderTutorTeam();
-            renderTeamPanel();
+                const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+                if (sm.gold < TUTOR_COST_NATURE) return;
+                if (!Object.prototype.hasOwnProperty.call(natureModifiers, newNature)) return;
+                if (mon.build.n === newNature) return;
+                const oldNature = mon.build.n || '(none)';
+                const ok = await _storyConfirmTutorChange(`Set ${mon.name}'s nature to ${newNature}? Was "${oldNature}".`, TUTOR_COST_NATURE);
+                if (!ok) return;
+                sm.gold -= TUTOR_COST_NATURE;
+                mon.build.n = newNature;
+                mon.currentHp = null;
+                save();
+                void renderTutorTeam();
+                renderTeamPanel();
             } finally {
                 _storyEndInteraction();
             }
@@ -29434,6 +30360,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             syncStoryColressBackground();
             showScreen('screen-story-colress');
             renderColressTeam();
+            try { _storyShowFacilityQuote('screen-story-colress', 'colress'); } catch (e) {}
         }
 
         function renderColressTeam() {
@@ -29593,7 +30520,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (isMegaStone(build.i) || Z_TYPE_MAP_VALUES.has(build.i)) build.i = 'Leftovers';
         }
 
-        function colressApplyMega(teamIdx, stone) {
+        async function _colressConfirm(mon, headline) {
+            return await _storyConfirmTutorChange(`${headline} for ${mon.name}? Replaces current held item / gimmick.`, COLRESS_COST);
+        }
+
+        async function colressApplyMega(teamIdx, stone) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('mega')) return;
             if (!MEGA_SPECIES.has(mon.name) || mon.name === 'Rayquaza') return;
@@ -29602,6 +30533,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const allowedList = Array.isArray(allowed) ? allowed : (allowed ? [allowed] : []);
             if (!allowedList.includes(stone)) return;
             if (mon.build.gimmick === 'MEGA' && mon.build.i === stone) return;
+            if ((sm.gold | 0) < COLRESS_COST) return;
+            if (!(await _colressConfirm(mon, `Awaken Mega — equip ${stone}`))) return;
             if (!_colressCharge()) return;
             mon.build.gimmick = 'MEGA';
             mon.build.i = stone;
@@ -29609,12 +30542,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _colressFinish();
         }
 
-        function colressApplyDmax(teamIdx) {
+        async function colressApplyDmax(teamIdx) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('dmax')) return;
             if (DYNAMAX_BANNED.has(mon.name)) return;
             const tag = GMAX_SPECIES.has(mon.name) ? 'GMAXDYNAMAX' : 'DYNAMAX';
             if (mon.build.gimmick === tag) return;
+            if ((sm.gold | 0) < COLRESS_COST) return;
+            if (!(await _colressConfirm(mon, tag === 'GMAXDYNAMAX' ? 'Awaken Gigantamax' : 'Awaken Dynamax'))) return;
             if (!_colressCharge()) return;
             mon.build.gimmick = tag;
             _colressClearStaleGimmickItem(mon.build);
@@ -29622,7 +30557,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _colressFinish();
         }
 
-        function colressApplyZ(teamIdx, type) {
+        async function colressApplyZ(teamIdx, type) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('z')) return;
             if (!Z_TYPE_MAP[type]) return;
@@ -29630,6 +30565,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!eligibleTypes.includes(type)) return;
             const crystal = Z_TYPE_MAP[type];
             if (mon.build.gimmick === 'ZMOVE' && mon.build.i === crystal) return;
+            if ((sm.gold | 0) < COLRESS_COST) return;
+            if (!(await _colressConfirm(mon, `Awaken Z-Move — equip ${crystal}`))) return;
             if (!_colressCharge()) return;
             mon.build.gimmick = 'ZMOVE';
             mon.build.i = crystal;
@@ -29637,12 +30574,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _colressFinish();
         }
 
-        function colressApplyZSig(teamIdx) {
+        async function colressApplyZSig(teamIdx) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('z')) return;
             const sigZ = SIGNATURE_Z[mon.name];
             if (!sigZ) return;
             if (mon.build.gimmick === 'ZMOVE' && mon.build.i === sigZ) return;
+            if ((sm.gold | 0) < COLRESS_COST) return;
+            if (!(await _colressConfirm(mon, `Awaken Signature Z — equip ${sigZ}`))) return;
             if (!_colressCharge()) return;
             mon.build.gimmick = 'ZMOVE';
             mon.build.i = sigZ;
@@ -29661,11 +30600,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _colressFinish();
         }
 
-        function colressApplyTera(teamIdx, type) {
+        async function colressApplyTera(teamIdx, type) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('tera')) return;
             if (!COLRESS_ALL_TYPES.includes(type)) return;
             if (mon.build.gimmick === 'TERA' && mon.build.teraType === type) return;
+            if ((sm.gold | 0) < COLRESS_COST) return;
+            if (!(await _colressConfirm(mon, `Awaken Tera — lock type to ${type}`))) return;
             if (!_colressCharge()) return;
             mon.build.gimmick = 'TERA';
             mon.build.teraType = type;
@@ -29751,6 +30692,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { syncStoryEVTrainerBackground(); } catch (e) {}
             showScreen('screen-story-evtrainer');
             renderEVTrainerTeam();
+            try { _storyShowFacilityQuote('screen-story-evtrainer', 'evTrainer'); } catch (e) {}
         }
 
         function renderEVTrainerTeam() {
@@ -29828,7 +30770,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             </div>`;
         }
 
-        function evTrainerApplyPreset(idx, presetId) {
+        async function evTrainerApplyPreset(idx, presetId) {
             if (!_storyTryBeginInteraction()) return;
             try {
                 const mon = sm.team[idx];
@@ -29838,6 +30780,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const preset = all.find(p => p.id === presetId);
                 if (!preset) return;
                 if (_evsEqual(mon.build.evs || {}, preset.evs)) return;
+                if ((sm.gold | 0) < EVTRAINER_COST) return;
+                const spreadLabel = (typeof _evSpreadCompact === 'function') ? _evSpreadCompact(preset.evs) : 'new spread';
+                const ok = await _storyConfirmTutorChange(`Apply "${preset.label}" EVs to ${mon.name}? Overwrites current spread.\n→ ${spreadLabel}`, EVTRAINER_COST);
+                if (!ok) return;
                 if (!_evTrainerCharge()) return;
                 mon.build.evs = { ...preset.evs };
                 _evTrainerFinish();
@@ -29855,7 +30801,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterShop, buyItem, buyArtifact, enterArtifactShop, enterPokemonCenter,
             pcSwitchTab, pcDeposit, pcWithdraw, pcRelease, pcSell,
             catchThrow, catchRun, catchContinue,
-            bossCollectLead, bossEnterCage, bossAttack,
+            bossCollectLead, bossEnterCage, bossAttack, bossRetreatToCity,
             enterSafariZone,
             enterCrucible, leaveCrucible,
             enterFrontierHub, frontierStartRun, frontierStartNext, frontierSurrender,
