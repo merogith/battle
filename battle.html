@@ -27294,10 +27294,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_catchState || !_catchState.bossMode || _catchState.bossHp == null || _catchState.bossHp <= 0) return;
             const dmg = Math.floor(_catchState.bossMaxHp * (0.05 + Math.random() * 0.07));
             _catchState.bossHp = Math.max(0, _catchState.bossHp - dmg);
+            const pctAfter = _catchState.bossHp / _catchState.bossMaxHp;
             if (_catchState.bossHp === 0) {
                 _catchState.message = `${_catchState.encounter.name} has collapsed. The eye that watches you has not closed. Throw a ball.`;
             } else {
-                _catchState.message = `You struck the Caged God for ${dmg.toLocaleString()} damage.`;
+                // Per-HP-band flavor — the strike beat shouldn't read identical for 60s
+                // of clicking. Dramatic tension builds as HP falls.
+                let frame;
+                if (pctAfter > 0.75) {
+                    frame = `Your strike lands clean. ${dmg.toLocaleString()} dmg. It doesn't look at you.`;
+                } else if (pctAfter > 0.5) {
+                    frame = `Another strike — ${dmg.toLocaleString()} dmg. It blinks, slowly. You aren't sure it noticed.`;
+                } else if (pctAfter > 0.25) {
+                    frame = `${dmg.toLocaleString()} dmg. The cage hums. The air in the room is colder by a hand's breadth.`;
+                } else if (pctAfter > 0.10) {
+                    frame = `${dmg.toLocaleString()} dmg. Something in the chamber moves that isn't the specimen.`;
+                } else {
+                    frame = `${dmg.toLocaleString()} dmg. It is almost finished. So are you — one way or another.`;
+                }
+                _catchState.message = frame;
             }
             _catchRender();
         }
@@ -27324,16 +27339,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Boss mode: no flee — the mon can't move. Keep throwing.
             if (_catchState.bossMode) {
-                _catchState.message = `${enc.name} writhes but stays. Throw another ball.`;
+                const _bossMisses = ['The ball wobbles once. The eye opens. It pops out.', 'It writhes — the seal cracks — the ball pops open.', 'A long, slow blink. The ball clicks. It fails to close.', 'The cage hums. The ball wobbles. The bond does not hold.'];
+                _catchState.message = _bossMisses[Math.floor(Math.random() * _bossMisses.length)] + ` Throw another ball.`;
                 _catchRender();
                 return;
             }
             const fleeRoll = (sm && sm.active) ? storyRngNext() : Math.random();
             if (fleeRoll < _CATCH_DEFAULT_FLEE_RATE) {
-                _catchFinishWithMessage(`The wild ${enc.name} fled!`);
+                const fleeMsgs = [
+                    `${enc.name} darted into the brush!`,
+                    `${enc.name} fled — too quick to follow.`,
+                    `The wild ${enc.name} bolted and was gone.`,
+                    `${enc.name} slipped away into the underbrush.`,
+                ];
+                _catchFinishWithMessage(fleeMsgs[Math.floor(Math.random() * fleeMsgs.length)]);
                 return;
             }
-            _catchState.message = `${enc.name} broke free!`;
+            const wobbleMsgs = [
+                `The ball wobbled… and ${enc.name} broke free!`,
+                `Almost! ${enc.name} forced the ball open.`,
+                `So close! ${enc.name} popped free.`,
+                `One… two… ${enc.name} burst out!`,
+            ];
+            _catchState.message = wobbleMsgs[Math.floor(Math.random() * wobbleMsgs.length)];
             _catchRender();
         }
         function _catchHandleSuccess(enc, ballKey) {
