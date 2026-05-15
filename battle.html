@@ -12469,7 +12469,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let isRecharging = activeMon.volatile.recharge;
                 let isDisabledMove = activeMon.volatile.disabled && rawMove.name === activeMon.volatile.disabled;
                 let isTormented = activeMon.volatile.torment && activeMon.volatile.lastMoveUsed === rawMove.name;
-                const _soundMoves = new Set(["Hyper Voice","Bug Buzz","Boomburst","Clanging Scales","Disarming Voice","Echoed Voice","Overdrive","Relic Song","Round","Snarl","Sparkling Aria","Uproar","Chatter","Clangorous Soul","Confide","Growl","Heal Bell","Howl","Metal Sound","Noble Roar","Parting Shot","Perish Song","Screech","Sing","Snore","Supersonic","Tearful Look","Throat Chop"]);
+                // Throat Chop blocks all sound-flag moves (canonical list).
+                const _soundMoves = new Set(["Alluring Voice","Boomburst","Bug Buzz","Chatter","Clanging Scales","Clangorous Soul","Confide","Disarming Voice","Echoed Voice","Eerie Spell","Grass Whistle","Growl","Heal Bell","Howl","Hyper Voice","Metal Sound","Noble Roar","Overdrive","Parting Shot","Perish Song","Psychic Noise","Relic Song","Roar","Round","Screech","Sing","Snarl","Snore","Sparkling Aria","Supersonic","Torch Song","Uproar"]);
                 const _healingMoves = new Set(["Recover","Roost","Moonlight","Morning Sun","Synthesis","Slack Off","Soft-Boiled","Milk Drink","Heal Order","Shore Up","Strength Sap","Wish","Ingrain","Aqua Ring","Leech Seed","Drain Punch","Giga Drain","Mega Drain","Horn Leech","Parabolic Charge","Rest","Oblivion Wing","Draining Kiss","Absorb","Leech Life"]);
                 let isHealBlocked = activeMon.volatile.healBlock > 0 && _healingMoves.has(rawMove.name);
                 let isThroatChopped = activeMon.volatile.throatChop > 0 && _soundMoves.has(rawMove.name);
@@ -12738,11 +12739,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let abMod = abilityDamageMod(move, defender, attacker);
             // Base power boosts from abilities
             let _aiPow = move.pow || 0;
-            const _aiJaw = ["Bite","Crunch","Fire Fang","Ice Fang","Thunder Fang","Poison Fang","Psychic Fangs","Hyper Fang","Fishious Rend","Jaw Lock","Bug Bite"];
+            const _aiJaw = ["Bite","Crunch","Fire Fang","Fishious Rend","Hyper Fang","Ice Fang","Jaw Lock","Poison Fang","Psychic Fangs","Thunder Fang"];
             const _aiPulse = ["Aura Sphere","Dark Pulse","Dragon Pulse","Water Pulse","Origin Pulse","Heal Pulse","Terrain Pulse"];
-            const _aiSlice = ["Air Cutter","Air Slash","Aqua Cutter","Behemoth Blade","Bitter Blade","Ceaseless Edge","Cross Poison","Cut","Fury Cutter","Kowtow Cleave","Leaf Blade","Night Slash","Population Bomb","Psyblade","Psycho Cut","Razor Leaf","Razor Shell","Sacred Sword","Secret Sword","Slash","Solar Blade","Stone Axe","Storm Throw","Tachyon Cutter","X-Scissor"];
-            const _aiPunch = ["Drain Punch","Mach Punch","Ice Punch","Fire Punch","Thunder Punch","Focus Punch","Bullet Punch","Hammer Arm","Power-Up Punch","Shadow Punch","Meteor Mash","Mega Punch","Comet Punch","Dynamic Punch","Plasma Fists","Sucker Punch","Surging Strikes","Wicked Blow","Double Iron Bash","Sky Uppercut","Rage Fist","Ice Hammer","Headlong Rush","Dizzy Punch","Karate Chop","Cross Chop","Jet Punch"];
-            const _aiRecoil = ["Brave Bird","Flare Blitz","Wild Charge","Double-Edge","Head Smash","Wood Hammer","Take Down","Submission","Volt Tackle","Light of Ruin","Head Charge","Jump Kick","High Jump Kick","Hi Jump Kick","Axe Kick","Wave Crash"];
+            const _aiSlice = ["Aerial Ace","Air Cutter","Air Slash","Aqua Cutter","Behemoth Blade","Bitter Blade","Ceaseless Edge","Cross Poison","Cut","Fury Cutter","Kowtow Cleave","Leaf Blade","Mighty Cleave","Night Slash","Population Bomb","Psyblade","Psycho Cut","Razor Leaf","Razor Shell","Sacred Sword","Secret Sword","Slash","Solar Blade","Stone Axe","Tachyon Cutter","X-Scissor"];
+            const _aiPunch = ["Bullet Punch","Comet Punch","Dizzy Punch","Double Iron Bash","Drain Punch","Dynamic Punch","Fire Punch","Focus Punch","Hammer Arm","Headlong Rush","Ice Hammer","Ice Punch","Jet Punch","Mach Punch","Mega Punch","Meteor Mash","Plasma Fists","Power-Up Punch","Rage Fist","Shadow Punch","Sky Uppercut","Surging Strikes","Thunder Punch","Wicked Blow"];
+            const _aiRecoil = ["Brave Bird","Chloroblast","Double-Edge","Flare Blitz","Head Charge","Head Smash","Hi Jump Kick","High Jump Kick","Jump Kick","Light of Ruin","Steel Beam","Submission","Take Down","Volt Tackle","Wave Crash","Wild Charge","Wood Hammer","Axe Kick"];
             const _aiSound = ["Boomburst","Hyper Voice","Bug Buzz","Snarl","Overdrive","Round","Echoed Voice","Disarming Voice","Relic Song","Sparkling Aria","Clanging Scales","Clangorous Soul","Chatter","Uproar","Snore","Torch Song","Alluring Voice","Psychic Noise","Eerie Spell"];
             if (attacker.ability === "Strong Jaw" && _aiJaw.includes(move.name)) _aiPow = Math.floor(_aiPow * 1.5);
             if (attacker.ability === "Mega Launcher" && _aiPulse.includes(move.name)) _aiPow = Math.floor(_aiPow * 1.5);
@@ -15720,7 +15721,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     await sleep(1000); return;
                 }
                 // Soundproof: Immune to sound moves (canonical sound-flag list)
-                let soundMoves = ["Alluring Voice","Boomburst","Bug Buzz","Chatter","Chatter","Clanging Scales","Clangorous Soul","Clangorous Soulblaze","Confide","Disarming Voice","Echoed Voice","Eerie Spell","Grass Whistle","Growl","Heal Bell","Howl","Hyper Voice","Metal Sound","Noble Roar","Overdrive","Parting Shot","Perish Song","Psychic Noise","Relic Song","Roar","Round","Screech","Shadow Panic","Sing","Snarl","Snore","Sparkling Aria","Supersonic","Tearful Look","Throat Chop","Torch Song","Uproar"];
+                let soundMoves = ["Alluring Voice","Boomburst","Bug Buzz","Chatter","Clanging Scales","Clangorous Soul","Confide","Disarming Voice","Echoed Voice","Eerie Spell","Grass Whistle","Growl","Heal Bell","Howl","Hyper Voice","Metal Sound","Noble Roar","Overdrive","Parting Shot","Perish Song","Psychic Noise","Relic Song","Roar","Round","Screech","Sing","Snarl","Snore","Sparkling Aria","Supersonic","Torch Song","Uproar"];
                 if (_defAbilityActive && defender.ability === "Soundproof" && soundMoves.includes(move.name)) {
                     logMsg(`${defender.name}'s Soundproof blocks ${move.name}!`, 'info'); await sleep(1000); return;
                 }
@@ -16158,15 +16159,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Final Gambit: damage = user's current HP, then user faints (handled after damage)
                 if (move.name === "Final Gambit") basePower = 1; // placeholder; actual damage overridden below
                 // Weight-based moves (Low Kick / Grass Knot scale with defender weight; Heat Crash / Heavy Slam scale with attacker/defender ratio)
+                // Weight modifier helper: Heavy Metal doubles weight, Light Metal halves it (Mold Breaker ignores defender's)
+                const _monWeight = (m, isDef) => {
+                    let w = (baseStats[m.name] && baseStats[m.name].weight) || 50;
+                    const _abActive = isDef ? _defAbilityActive : true;
+                    if (_abActive && m.ability === "Heavy Metal") w *= 2;
+                    else if (_abActive && m.ability === "Light Metal") w *= 0.5;
+                    if (m.item === "Float Stone") w *= 0.5;
+                    return w;
+                };
                 if (move.name === "Low Kick" || move.name === "Grass Knot") {
                     if (defender.dynamaxed) { logMsg(`The move failed against the Dynamaxed ${defender.name}!`); await sleep(1000); return; }
-                    let w = (baseStats[defender.name] && baseStats[defender.name].weight) || 50;
+                    let w = _monWeight(defender, true);
                     basePower = w >= 200 ? 120 : w >= 100 ? 100 : w >= 50 ? 80 : w >= 25 ? 60 : w >= 10 ? 40 : 20;
                 }
                 if (move.name === "Heat Crash" || move.name === "Heavy Slam") {
                     if (defender.dynamaxed) { logMsg(`The move failed against the Dynamaxed ${defender.name}!`); await sleep(1000); return; }
-                    let uw = (baseStats[attacker.name] && baseStats[attacker.name].weight) || 50;
-                    let dw = (baseStats[defender.name] && baseStats[defender.name].weight) || 50;
+                    let uw = _monWeight(attacker, false);
+                    let dw = _monWeight(defender, true);
                     let ratio = dw > 0 ? uw / dw : 5;
                     basePower = ratio >= 5 ? 120 : ratio >= 4 ? 100 : ratio >= 3 ? 80 : ratio >= 2 ? 60 : 40;
                 }
@@ -16432,13 +16442,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Expert Belt: x1.2 on SE hits (applied after typeEff known, handled below)
 
                 if (attacker.ability === "Technician" && basePower <= 60) basePower = Math.floor(basePower * 1.5);
-                // Iron Fist: x1.2 punching moves
-                let punchMoves = ["Drain Punch","Mach Punch","Ice Punch","Fire Punch","Thunder Punch","Focus Punch","Bullet Punch","Hammer Arm","Power-Up Punch","Shadow Punch","Meteor Mash","Mega Punch","Comet Punch","Dynamic Punch","Plasma Fists","Sucker Punch","Surging Strikes","Wicked Blow","Double Iron Bash","Sky Uppercut","Rage Fist","Ice Hammer","Headlong Rush","Dizzy Punch","Karate Chop","Cross Chop","Jet Punch"];
+                // Iron Fist: x1.2 punching moves (Showdown canonical punch-flag list)
+                let punchMoves = ["Bullet Punch","Comet Punch","Dizzy Punch","Double Iron Bash","Drain Punch","Dynamic Punch","Fire Punch","Focus Punch","Hammer Arm","Headlong Rush","Ice Hammer","Ice Punch","Jet Punch","Mach Punch","Mega Punch","Meteor Mash","Plasma Fists","Power-Up Punch","Rage Fist","Shadow Punch","Sky Uppercut","Surging Strikes","Thunder Punch","Wicked Blow"];
                 if (attacker.ability === "Iron Fist" && punchMoves.includes(move.name)) basePower = Math.floor(basePower * 1.2);
                 // Punching Glove: x1.1 to punching moves (and makes them non-contact — see contact checks)
                 if (_atkItemActive && attacker.item === "Punching Glove" && punchMoves.includes(move.name)) basePower = Math.floor(basePower * 1.1);
-                // Reckless: x1.2 recoil moves (includes crash-recoil like Hi Jump Kick)
-                let recoilMoves = ["Brave Bird","Flare Blitz","Wild Charge","Double-Edge","Head Smash","Wood Hammer","Take Down","Submission","Volt Tackle","Light of Ruin","Head Charge","Jump Kick","High Jump Kick","Hi Jump Kick","Axe Kick","Wave Crash"];
+                // Reckless: x1.2 recoil moves (includes crash-recoil like Hi Jump Kick, and self-damage moves like Steel Beam/Chloroblast)
+                let recoilMoves = ["Brave Bird","Chloroblast","Double-Edge","Flare Blitz","Head Charge","Head Smash","Hi Jump Kick","High Jump Kick","Jump Kick","Light of Ruin","Steel Beam","Submission","Take Down","Volt Tackle","Wave Crash","Wild Charge","Wood Hammer","Axe Kick"];
                 if (attacker.ability === "Reckless" && recoilMoves.includes(move.name)) basePower = Math.floor(basePower * 1.2);
                 // Sheer Force: x1.3 if move has a chance-based secondary effect; the effect is then suppressed.
                 // Hardcoded list (matches Showdown sheer-force flag). Excludes self-stat-boost moves (Power-Up Punch etc.) which Sheer Force does NOT boost in Gen 9.
@@ -16453,8 +16463,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 // Analytic: x1.3 if attacker moves after the target this turn
                 if (attacker.ability === "Analytic" && defender.volatile && defender.volatile.movedThisTurn === true) basePower = Math.floor(basePower * 1.3);
-                // Strong Jaw: x1.5 biting moves (Showdown canonical list)
-                const _jawMoves = ["Bite","Crunch","Fire Fang","Ice Fang","Thunder Fang","Poison Fang","Psychic Fangs","Hyper Fang","Fishious Rend","Jaw Lock","Bug Bite"];
+                // Strong Jaw: x1.5 biting moves (Showdown canonical bite-flag list)
+                const _jawMoves = ["Bite","Crunch","Fire Fang","Fishious Rend","Hyper Fang","Ice Fang","Jaw Lock","Poison Fang","Psychic Fangs","Thunder Fang"];
                 if (attacker.ability === "Strong Jaw" && _jawMoves.includes(move.name)) basePower = Math.floor(basePower * 1.5);
                 // Mega Launcher: x1.5 pulse/aura moves (canonical pulse-flagged list only)
                 const _pulseMoves = ["Aura Sphere","Dark Pulse","Dragon Pulse","Water Pulse","Origin Pulse","Heal Pulse","Terrain Pulse"];
@@ -16462,7 +16472,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Rocky Payload: x1.5 Rock-type moves
                 if (attacker.ability === "Rocky Payload" && move.type === "Rock") basePower = Math.floor(basePower * 1.5);
                 // Sharpness: x1.5 slicing moves (canonical slice-flag list)
-                const _sliceMoves = ["Air Cutter","Air Slash","Aqua Cutter","Behemoth Blade","Bitter Blade","Ceaseless Edge","Cross Poison","Cut","Fury Cutter","Kowtow Cleave","Leaf Blade","Night Slash","Population Bomb","Psyblade","Psycho Cut","Razor Leaf","Razor Shell","Sacred Sword","Secret Sword","Slash","Solar Blade","Stone Axe","Storm Throw","Tachyon Cutter","X-Scissor"];
+                const _sliceMoves = ["Aerial Ace","Air Cutter","Air Slash","Aqua Cutter","Behemoth Blade","Bitter Blade","Ceaseless Edge","Cross Poison","Cut","Fury Cutter","Kowtow Cleave","Leaf Blade","Mighty Cleave","Night Slash","Population Bomb","Psyblade","Psycho Cut","Razor Leaf","Razor Shell","Sacred Sword","Secret Sword","Slash","Solar Blade","Stone Axe","Tachyon Cutter","X-Scissor"];
                 if (attacker.ability === "Sharpness" && _sliceMoves.includes(move.name)) basePower = Math.floor(basePower * 1.5);
                 // Steelworker / Steely Spirit: x1.5 Steel-type moves
                 if ((attacker.ability === "Steelworker" || attacker.ability === "Steely Spirit") && move.type === "Steel") basePower = Math.floor(basePower * 1.5);
@@ -17350,6 +17360,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (/choice/i.test(String(_stolen || ''))) attacker.volatile.choiceLock = null;
                         logMsg(`${defender.name}'s Pickpocket stole ${attacker.name}'s ${_stolen}!`, 'info');
                     }
+                }
+                // Magician: when the attacker lands a damaging hit, steal the defender's item (any move, contact not required).
+                // Fails if the attacker already holds an item, the defender is empty-handed, or the defender has Sticky Hold.
+                if (attacker.ability === "Magician" && !hitSub && defender.currentHp > 0 && attacker.currentHp > 0
+                    && !attacker.item && defender.item
+                    && defender.ability !== "Sticky Hold"
+                    && !isKnockOffImmuneHeldItem(defender, defender.item)
+                    && !attacker.knockedOff) {
+                    const _stolen = defender.item;
+                    attacker.item = _stolen;
+                    defender.item = null;
+                    if (/choice/i.test(String(_stolen || ''))) defender.volatile.choiceLock = null;
+                    logMsg(`${attacker.name}'s Magician stole ${defender.name}'s ${_stolen}!`, 'info');
                 }
 
                 // Pluck / Bug Bite: eat target's berry, apply effect to attacker (Gen 4+)
@@ -18345,6 +18368,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
             }
+            if (mon.ability === "Frisk" && foe && foe.currentHp > 0 && foe.item) {
+                logMsg(`${mon.name}'s Frisk found ${foe.name}'s ${foe.item}!`, 'info');
+            }
             if (mon.ability === "Download") {
                 let _dlDef = foe.stats.def * getStageMult(foe.stages.def);
                 let _dlSpd = foe.stats.spd * getStageMult(foe.stages.spd);
@@ -18736,6 +18762,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // === Substitute: blocks opponent-targeting status moves ===
             const _subBypassMoves = new Set(["Hyper Voice","Bug Buzz","Boomburst","Perish Song","Heal Bell","Aromatherapy","Snore","Round","Uproar","Clanging Scales","Echoed Voice","Disarming Voice","Relic Song","Snarl","Sparkling Aria","Overdrive","Strength Sap"]);
             const _selfTargetMoves = new Set(["Swords Dance","Nasty Plot","Calm Mind","Dragon Dance","Quiver Dance","Shell Smash","Belly Drum","Agility","Rock Polish","Bulk Up","Iron Defense","Amnesia","Wish","Roost","Recover","Soft-Boiled","Slack Off","Milk Drink","Heal Order","Shore Up","Rest","Ingrain","Aqua Ring","Baton Pass","Parting Shot","Heal Bell","Aromatherapy","Trick Room","Sunny Day","Rain Dance","Sandstorm","Hail","Snowscape","Stealth Rock","Spikes","Toxic Spikes","Sticky Web","Defog","Reflect","Light Screen","Aurora Veil","Substitute","Focus Energy","Stockpile","Spit Up","Swallow","Geomancy","Coil","Haze","Imprison","Healing Wish","Lunar Dance","Destiny Bond","Perish Song"]);
+            // === Good as Gold: immune to opponent's status moves (still allows the attacker's self-targeting status moves)
+            if (defender.ability === "Good as Gold" && move.cat === "Status" && !_selfTargetMoves.has(move.name)) {
+                logMsg(`${defender.name}'s Good as Gold makes it immune to ${move.name}!`, 'info');
+                return;
+            }
             if (move.cat === "Status" && defender.volatile.sub > 0 && !_subBypassMoves.has(move.name) && !_selfTargetMoves.has(move.name) && attacker.ability !== "Infiltrator") {
                 logMsg(`${attacker.name}'s ${move.name} was blocked by ${defender.name}'s substitute!`, 'info');
                 return;
@@ -20008,6 +20039,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Contrary: reverse stat changes
             if (mon.ability === "Contrary") amount = -amount;
+            // Simple: double stat changes
+            else if (mon.ability === "Simple") amount *= 2;
             // Stagnation Core (Story): no stat boosts; no opponent-sourced drops (abilities like Intimidate, Sticky Web)
             if (state && state.mode === 'story' && state._stagnationCoreActive && !(opts && opts.bypassStagnation)) {
                 if (amount > 0 || (amount < 0 && byOpponent)) {
@@ -20217,6 +20250,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Hydration: cure status in Rain
             if (mon.ability === "Hydration" && (ww === "Rain" || ww === "HeavyRain") && mon.status && mon.currentHp > 0) {
                 logMsg(`${mon.name}'s Hydration cured its ${mon.status} in the rain!`, 'heal');
+                mon.status = null; mon.statusTurns = 0;
+            }
+            // Shed Skin: 33% chance per turn to cure a non-volatile status
+            if (mon.ability === "Shed Skin" && mon.status && mon.currentHp > 0 && Math.random() < 1/3) {
+                logMsg(`${mon.name}'s Shed Skin cured its ${mon.status}!`, 'heal');
                 mon.status = null; mon.statusTurns = 0;
             }
 
