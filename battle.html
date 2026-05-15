@@ -25966,7 +25966,136 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>`;
             });
             html += `</div>`;
+            html += _bossArcRenderSection();
             return html;
+        }
+
+        // ── BOSS ARC — "The Caged God" ────────────────────────────────────
+        // Unlocked after Hall of Fame; surfaces in every Center's Underground tab.
+        // Three brokers (one per fixed city) gate the Cage entry; the boss is a random
+        // legendary with insane HP, ending in a forced 1%-catch step where the Master
+        // Ball is the intended answer. Caught: "Subject Zero" — unsellable, post-game over.
+        const _BOSS_LEAD_CITIES = { 2: 'ledger', 5: 'recording', 8: 'key' };
+        const _BOSS_LEAD_FLAVOR = {
+            ledger:    { title: 'The Ledger',    body: 'A bone-thin broker slides a leather-bound ledger across the counter. "Specimen 0001. Grade 1. Sixty years on intravenous nutrient. Read it. Don\'t flinch."' },
+            recording: { title: 'The Recording', body: 'A wax cylinder spins. The voices on it are forty years dead and panicked. The broker watches your face the whole time.' },
+            key:       { title: 'The Key',       body: 'A locked iron box on the counter. The broker won\'t take gold. "Your strongest. The one you actually rely on. That\'s the price." (You consent — the bond cracks. Lead acquired.)' }
+        };
+        function _bossArcEnsureState() {
+            if (!sm.bossArc || typeof sm.bossArc !== 'object') {
+                sm.bossArc = { available: false, leads: { ledger:false, recording:false, key:false }, cageUnlocked: false, boss: null, cleared: false };
+            }
+            if (!sm.bossArc.leads) sm.bossArc.leads = { ledger:false, recording:false, key:false };
+        }
+        function _bossArcCheckCageUnlock() {
+            _bossArcEnsureState();
+            const L = sm.bossArc.leads;
+            const all = !!(L.ledger && L.recording && L.key);
+            if (all && !sm.bossArc.cageUnlocked) {
+                sm.bossArc.cageUnlocked = true;
+                if (!sm.bossArc.boss) {
+                    sm.bossArc.boss = _bossArcRollLegendary();
+                }
+                try { save(); } catch (e) {}
+            }
+        }
+        function _bossArcRollLegendary() {
+            const gens = storySettingsGens();
+            const genSet = new Set(gens);
+            const D = (typeof getPssDex === 'function') ? getPssDex() : null;
+            const pool = [];
+            for (const name of Object.keys(baseStats)) {
+                const b = baseStats[name];
+                if (!b || !genSet.has(b.gen)) continue;
+                if (name.includes('-Mega') || name.includes('-Gmax')) continue;
+                if (MEGA_EXCLUDE && MEGA_EXCLUDE.has && MEGA_EXCLUDE.has(name)) continue;
+                if (!D) continue;
+                try {
+                    const sp = D.species.get(name);
+                    if (sp && speciesDexIsLegendaryTier(sp)) pool.push(name);
+                } catch (e) {}
+            }
+            if (!pool.length) return null;
+            const name = pool[Math.floor(Math.random() * pool.length)];
+            const build = makeBuild(name);
+            return { name, build, id: 'boss_' + Math.random().toString(36).slice(2, 10) };
+        }
+        function _bossArcRenderSection() {
+            _bossArcEnsureState();
+            if (!sm.bossArc.available || sm.bossArc.cleared) return '';
+            const L = sm.bossArc.leads;
+            const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
+            const localLeadKey = _BOSS_LEAD_CITIES[cityIdx] || null;
+            const allLeads = !!(L.ledger && L.recording && L.key);
+
+            let html = '';
+            html += `<div style="margin-top:18px;padding:12px;background:linear-gradient(180deg,rgba(20,8,20,0.85) 0%,rgba(8,4,12,0.85) 100%);border:1px solid #6a1b9a;color:#ce93d8;font-size:11px;line-height:1.55;">
+                <div style="font-weight:bold;color:#ce93d8;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">🔮 The Caged God</div>
+                <div style="color:#bcaaa4;margin-bottom:10px;">The Underground keeps a specimen alive in their deepest vault. Sixty years. They want you to end it — or claim it.</div>`;
+
+            const leadStatus = (k) => L[k] ? '<span style="color:#aed581;">✓</span>' : '<span style="color:#888;">—</span>';
+            html += `<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">
+                <div style="font-size:10px;color:#888;">Leads:</div>
+                <div style="display:flex;gap:10px;font-size:11px;">
+                    <span>${leadStatus('ledger')} Ledger (City 2)</span>
+                    <span>${leadStatus('recording')} Recording (City 5)</span>
+                    <span>${leadStatus('key')} Key (City 8)</span>
+                </div>
+            </div>`;
+
+            if (localLeadKey && !L[localLeadKey]) {
+                const flav = _BOSS_LEAD_FLAVOR[localLeadKey];
+                html += `<button type="button" onclick="window.StoryMode.bossCollectLead('${localLeadKey}')" style="display:block;width:100%;padding:8px;background:rgba(106,27,154,0.2);border:1px solid #6a1b9a;color:#e1bee7;font-family:inherit;font-size:11px;cursor:pointer;margin-bottom:8px;">👁 Talk to the broker — ${_esc(flav.title)}</button>`;
+            } else if (localLeadKey && L[localLeadKey]) {
+                html += `<div style="font-size:10px;color:#888;margin-bottom:8px;">Local lead collected.</div>`;
+            } else if (!allLeads) {
+                html += `<div style="font-size:10px;color:#888;margin-bottom:8px;">No broker here. Try City 2 / 5 / 8.</div>`;
+            }
+
+            if (allLeads && !sm.bossArc.cleared) {
+                _bossArcCheckCageUnlock();
+                const bossName = sm.bossArc.boss && sm.bossArc.boss.name ? sm.bossArc.boss.name : '???';
+                html += `<button type="button" onclick="window.StoryMode.bossEnterCage()" style="display:block;width:100%;padding:10px;background:linear-gradient(180deg,#6a1b9a 0%,#3a0d54 100%);border:1px solid #ce93d8;color:#fff;font-family:inherit;font-size:12px;font-weight:bold;cursor:pointer;">🔥 Enter the Cage — ${_esc(bossName)}</button>`;
+            }
+            html += `</div>`;
+            return html;
+        }
+        function bossCollectLead(key) {
+            _bossArcEnsureState();
+            if (!sm.bossArc.available) return;
+            if (sm.bossArc.leads[key]) return;
+            const flav = _BOSS_LEAD_FLAVOR[key];
+            try { window.alert(flav.title + '\n\n' + flav.body); } catch (e) {}
+            sm.bossArc.leads[key] = true;
+            _bossArcCheckCageUnlock();
+            try { save(); } catch (e) {}
+            _pcRefresh();
+        }
+        function bossEnterCage() {
+            _bossArcEnsureState();
+            if (!sm.bossArc.cageUnlocked || sm.bossArc.cleared) return;
+            if (!sm.bossArc.boss || !sm.bossArc.boss.name) {
+                sm.bossArc.boss = _bossArcRollLegendary();
+                if (!sm.bossArc.boss) {
+                    try { window.showGameAlert && window.showGameAlert('The legendary pool is empty — check your enabled generations.'); } catch (e) {}
+                    return;
+                }
+            }
+            const boss = sm.bossArc.boss;
+            const enc = {
+                name: boss.name,
+                build: boss.build,
+                id: boss.id,
+                wild: true,
+                bossArc: true
+            };
+            enterCatchEncounter(enc, () => {
+                // After the boss arc completes — return to last city.
+                const lastCityEv = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
+                sm.eventIndex = lastCityEv;
+                try { save(); } catch (e) {}
+                enterCity();
+            }, { boss: true, forcedCatchRate: 0.01 });
         }
 
         function pcDeposit(monId) {
@@ -26090,12 +26219,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
         }
 
-        function enterCatchEncounter(wildMon, onComplete) {
-            _catchState = { encounter: wildMon, onComplete: onComplete || null, message: null, ended: false };
+        function enterCatchEncounter(wildMon, onComplete, options) {
+            _catchState = {
+                encounter: wildMon,
+                onComplete: onComplete || null,
+                message: null,
+                ended: false,
+                bossMode: !!(options && options.boss),
+                forcedCatchRate: (options && typeof options.forcedCatchRate === 'number') ? options.forcedCatchRate : null,
+                bossHp: null,
+                bossMaxHp: null
+            };
+            if (_catchState.bossMode) {
+                const base = (baseStats[wildMon.name] || {});
+                const baseHp = (base && base.baseStats && base.baseStats.hp) || (base && base.hp) || 100;
+                _catchState.bossMaxHp = Math.max(500, baseHp * 10);
+                _catchState.bossHp = _catchState.bossMaxHp;
+                _catchState.message = `The cage opens. ${wildMon.name} looks up. Sixty years of feeding. Strike it down — then catch what's left.`;
+            }
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             _catchRender();
             const runBtn = document.getElementById('story-catch-run-btn');
-            if (runBtn) { runBtn.style.display = ''; runBtn.disabled = false; }
+            if (runBtn) {
+                runBtn.style.display = _catchState.bossMode ? 'none' : '';
+                runBtn.disabled = false;
+            }
             showScreen('screen-story-catch');
         }
         function _catchRender() {
@@ -26107,8 +26255,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { return getMonGrade(enc.name, getBST(enc.name)); }
                 catch (e) { return 4; }
             })();
-            const baseRate = _CATCH_RATE_BY_GRADE[grade] || _CATCH_RATE_BY_GRADE[4];
-            const message = _catchState.message ? `<div style="text-align:center;color:#aed581;font-size:12px;margin:6px 0;">${_esc(_catchState.message)}</div>` : '';
+            const baseRate = (_catchState.forcedCatchRate != null) ? _catchState.forcedCatchRate : (_CATCH_RATE_BY_GRADE[grade] || _CATCH_RATE_BY_GRADE[4]);
+            const message = _catchState.message ? `<div style="text-align:center;color:${_catchState.bossMode ? '#ce93d8' : '#aed581'};font-size:12px;margin:6px 0;line-height:1.5;">${_esc(_catchState.message)}</div>` : '';
+
+            // Boss-mode HP-attrition phase: show the boss + HP bar + Attack button until HP=0.
+            if (_catchState.bossMode && _catchState.bossHp > 0) {
+                const pct = Math.max(0, Math.min(100, Math.round((_catchState.bossHp / _catchState.bossMaxHp) * 100)));
+                body.innerHTML = `
+                    <div style="text-align:center;padding:18px 12px;background:linear-gradient(180deg,rgba(40,16,52,0.7) 0%,rgba(14,8,20,0.7) 100%);border:1px solid #6a1b9a;">
+                        <div style="font-size:11px;color:#ce93d8;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">🔮 The Caged God</div>
+                        <h2 style="margin:0 0 6px;color:#fff;font-size:18px;">${_esc(enc.name)}</h2>
+                        <div style="display:inline-block;font-size:9px;font-weight:bold;color:#111;background:#ce93d8;padding:1px 6px;letter-spacing:0.04em;">G${grade}</div>
+                        <div style="margin-top:14px;height:14px;background:rgba(0,0,0,0.55);border:1px solid #444;position:relative;overflow:hidden;">
+                            <div style="height:100%;width:${pct}%;background:linear-gradient(180deg,#e91e63 0%,#880e4f 100%);transition:width 220ms ease-out;"></div>
+                            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;text-shadow:0 0 3px #000;">${_catchState.bossHp.toLocaleString()} / ${_catchState.bossMaxHp.toLocaleString()}</div>
+                        </div>
+                    </div>
+                    ${message}
+                    <button type="button" onclick="window.StoryMode.bossAttack()" style="padding:12px;background:linear-gradient(180deg,#e53935 0%,#8e0000 100%);border:1px solid #ff8a80;color:#fff;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;">⚔ Strike</button>
+                `;
+                return;
+            }
+
             const ballRows = ['poke', 'great', 'ultra', 'master'].map(k => {
                 const have = (sm.balls && (sm.balls[k] | 0)) || 0;
                 const mult = _CATCH_BALL_MULT[k];
@@ -26121,12 +26289,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span style="color:#fff;">${pct}%</span>
                 </button>`;
             }).join('');
+            const headerLabel = _catchState.bossMode ? "It's still breathing." : 'A wild Pokémon appeared!';
+            const headerColor = _catchState.bossMode ? '#ce93d8' : '#a5d6a7';
+            const headerBg = _catchState.bossMode ? 'rgba(20,8,28,0.7);border:1px solid #6a1b9a' : 'rgba(10,18,12,0.55);border:1px solid #4a6c44';
+            const gradeBg = _catchState.bossMode ? '#ce93d8' : '#a5d6a7';
+            const subText = _catchState.bossMode ? `Master Ball recommended — this catch is hard.` : 'Catch chance scales with grade and ball type.';
             body.innerHTML = `
-                <div style="text-align:center;padding:18px 12px;background:rgba(10,18,12,0.55);border:1px solid #4a6c44;">
-                    <div style="font-size:11px;color:#a5d6a7;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">A wild Pokémon appeared!</div>
+                <div style="text-align:center;padding:18px 12px;background:${headerBg};">
+                    <div style="font-size:11px;color:${headerColor};letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">${headerLabel}</div>
                     <h2 style="margin:0 0 6px;color:#fff;font-size:18px;">${_esc(enc.name)}</h2>
-                    <div style="display:inline-block;font-size:9px;font-weight:bold;color:#111;background:#a5d6a7;padding:1px 6px;letter-spacing:0.04em;">G${grade}</div>
-                    <div style="margin-top:8px;font-size:10px;color:#888;">Catch chance scales with grade and ball type.</div>
+                    <div style="display:inline-block;font-size:9px;font-weight:bold;color:#111;background:${gradeBg};padding:1px 6px;letter-spacing:0.04em;">G${grade}</div>
+                    <div style="margin-top:8px;font-size:10px;color:#888;">${subText}</div>
                 </div>
                 ${message}
                 <div style="display:flex;flex-direction:column;gap:6px;">
@@ -26134,8 +26307,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>
             `;
         }
+        function bossAttack() {
+            if (!_catchState || !_catchState.bossMode || _catchState.bossHp == null || _catchState.bossHp <= 0) return;
+            const dmg = Math.floor(_catchState.bossMaxHp * (0.05 + Math.random() * 0.07));
+            _catchState.bossHp = Math.max(0, _catchState.bossHp - dmg);
+            if (_catchState.bossHp === 0) {
+                _catchState.message = `${_catchState.encounter.name} has collapsed. The eye that watches you has not closed. Throw a ball.`;
+            } else {
+                _catchState.message = `You struck the Caged God for ${dmg.toLocaleString()} damage.`;
+            }
+            _catchRender();
+        }
         function catchThrow(ballKey) {
             if (!_catchState || _catchState.ended) return;
+            // Boss mode: can't throw until HP has been drained to zero.
+            if (_catchState.bossMode && _catchState.bossHp > 0) return;
             const enc = _catchState.encounter;
             if (!enc) return;
             if (!sm.balls || (sm.balls[ballKey] | 0) <= 0) return;
@@ -26144,13 +26330,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { return getMonGrade(enc.name, getBST(enc.name)); }
                 catch (e) { return 4; }
             })();
-            const baseRate = _CATCH_RATE_BY_GRADE[grade] || _CATCH_RATE_BY_GRADE[4];
+            const baseRate = (_catchState.forcedCatchRate != null) ? _catchState.forcedCatchRate : (_CATCH_RATE_BY_GRADE[grade] || _CATCH_RATE_BY_GRADE[4]);
             const mult = _CATCH_BALL_MULT[ballKey];
             const chance = mult === Infinity ? 1 : Math.min(1, baseRate * mult);
             const roll = (sm && sm.active) ? storyRngNext() : Math.random();
             try { save(); } catch (e) {}
             if (roll < chance) {
                 _catchHandleSuccess(enc, ballKey);
+                return;
+            }
+            // Boss mode: no flee — the mon can't move. Keep throwing.
+            if (_catchState.bossMode) {
+                _catchState.message = `${enc.name} writhes but stays. Throw another ball.`;
+                _catchRender();
                 return;
             }
             const fleeRoll = (sm && sm.active) ? storyRngNext() : Math.random();
@@ -26165,6 +26357,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _pcEnsureBoxArray();
             const partyFull = (sm.team || []).length >= 6;
             const pcFull = (sm.pcBox || []).length >= PC_BOX_CAP;
+            const bossMode = !!(_catchState && _catchState.bossMode);
             if (partyFull && pcFull) {
                 _catchFinishWithMessage(`You caught ${enc.name}… but your party (6/6) and PC (${PC_BOX_CAP}/${PC_BOX_CAP}) are full. Sell or release a Pokémon at a Center first. ${enc.name} escaped from the ball.`);
                 return;
@@ -26176,16 +26369,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 wild: true,
                 caughtAt: cityIndexFromEventIndex(sm.eventIndex)
             };
+            if (bossMode) {
+                caught.unsellable = true;
+                caught.nickname = 'Subject Zero';
+                caught.bossArc = true;
+            }
             if (!partyFull) {
                 sm.team.push(caught);
                 if (sm.team.length >= 4) sm.partyEverReached4 = true;
-                try { save(); } catch (e) {}
-                _catchFinishWithMessage(`Gotcha! ${enc.name} was caught and joined your party.`);
             } else {
                 sm.pcBox.push(caught);
-                try { save(); } catch (e) {}
-                _catchFinishWithMessage(`Gotcha! ${enc.name} was caught and sent to the PC.`);
             }
+            if (bossMode) {
+                _bossArcEnsureState();
+                sm.bossArc.cleared = true;
+            }
+            try { save(); } catch (e) {}
+            const successMsg = bossMode
+                ? `Subject Zero is yours. The cage closes behind you. The Underground will not speak of this again.`
+                : (!partyFull ? `Gotcha! ${enc.name} was caught and joined your party.` : `Gotcha! ${enc.name} was caught and sent to the PC.`);
+            _catchFinishWithMessage(successMsg);
         }
         function _catchFinishWithMessage(message) {
             if (!_catchState) return;
@@ -27264,9 +27467,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function continuePostGame() {
             document.querySelectorAll('.story-hof-gb-overlay').forEach(el => { try { el.remove(); } catch (e) {} });
             window._storyHofToken = (window._storyHofToken || 0) + 1;
-            sm.eventIndex++;
+            _bossArcEnsureState();
+            // First-clear gift: hand the player the Master Ball and unlock the boss-arc leads.
+            if (!sm.bossArc.available) {
+                sm.bossArc.available = true;
+                if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
+                sm.balls.master = (sm.balls.master | 0) + 1;
+                try { window.showGameAlert && window.showGameAlert('A haggard Underground broker presses a Master Ball into your hand. "Specimen 0001. Sixty years caged. Three brokers across the region will give you what you need. End it — or claim it."'); } catch (e) {}
+            }
+            // Return to the last visited city instead of advancing to the original post-HoF Mystery row.
+            // The boss arc is now the canonical post-game beat, triggered from the Underground.
+            const lastCityEv = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
+            sm.eventIndex = lastCityEv;
             save();
-            processNextEvent();
+            enterCity();
         }
 
         // ── UI HELPERS ────────────────────────────────────────────────────
@@ -28944,6 +29158,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterShop, buyItem, buyArtifact, enterArtifactShop, enterPokemonCenter,
             pcSwitchTab, pcDeposit, pcWithdraw, pcRelease, pcSell,
             catchThrow, catchRun, catchContinue,
+            bossCollectLead, bossEnterCage, bossAttack,
             enterLink, linkReroll, linkUpgrade, linkEvolve, linkRebuild, linkMoveUp, linkMoveDown,
             enterCasino, casinoSetBetChip, casinoPlay,
             openBattleBag, useBagItemOn, openCityBag, sellItem,
