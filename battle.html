@@ -27095,6 +27095,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
         }
 
+        /** Stamp a species in the seen Pokédex. Safe to call on every encounter. */
+        function _storyMarkPokedexSeen(name) {
+            if (!name) return;
+            if (!sm.pokedex || typeof sm.pokedex !== 'object') sm.pokedex = { seen: [], caught: [] };
+            if (!Array.isArray(sm.pokedex.seen)) sm.pokedex.seen = [];
+            if (!sm.pokedex.seen.includes(name)) sm.pokedex.seen.push(name);
+        }
+
         function enterCatchEncounter(wildMon, onComplete, options) {
             _catchState = {
                 encounter: wildMon,
@@ -27113,6 +27121,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _catchState.bossHp = _catchState.bossMaxHp;
                 _catchState.message = `The cage opens. ${wildMon.name} looks up. Sixty years of feeding. Strike it down — then catch what's left.`;
             }
+            try { _storyMarkPokedexSeen(wildMon && wildMon.name); } catch (e) {}
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             _catchRender();
             const runBtn = document.getElementById('story-catch-run-btn');
@@ -27165,6 +27174,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span style="color:#fff;">${pct}%</span>
                 </button>`;
             }).join('');
+            // Boss-mode escape hatch: the Run button is hidden so the player can't flee
+            // mid-fight, but if all four ball stacks are empty the catch screen has no
+            // exit. Surface a retreat option that returns to the last city with the
+            // boss still alive (sm.bossArc.boss persists), so the player can buy/farm
+            // balls and return.
+            const _totalBalls = ['poke','great','ultra','master'].reduce((s,k)=>s+((sm.balls && sm.balls[k]|0)||0),0);
+            const bossRetreat = (_catchState.bossMode && _totalBalls <= 0)
+                ? `<div style="margin-top:14px;padding:10px;border:1px dashed #6a1b9a;background:rgba(40,16,52,0.4);text-align:center;">
+                       <div style="font-size:11px;color:#ce93d8;margin-bottom:8px;line-height:1.5;">Out of balls. The cage will hold for now.</div>
+                       <button type="button" onclick="window.StoryMode.bossRetreatToCity()" style="padding:8px 16px;background:rgba(0,0,0,0.4);border:1px solid #a060c0;color:#e0c0ff;font-family:inherit;font-size:12px;cursor:pointer;">↩ Retreat — bring more balls</button>
+                   </div>`
+                : '';
             const headerLabel = _catchState.bossMode ? "It's still breathing." : 'A wild Pokémon appeared!';
             const headerColor = _catchState.bossMode ? '#ce93d8' : '#a5d6a7';
             const headerBg = _catchState.bossMode ? 'rgba(20,8,28,0.7);border:1px solid #6a1b9a' : 'rgba(10,18,12,0.55);border:1px solid #4a6c44';
@@ -27181,7 +27202,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div style="display:flex;flex-direction:column;gap:6px;">
                     ${ballRows}
                 </div>
+                ${bossRetreat}
             `;
+        }
+        function bossRetreatToCity() {
+            if (!_catchState || !_catchState.bossMode) return;
+            // Boss state persists — boss HP is reset on next re-entry by enterCatchEncounter
+            // (it always rolls bossHp = bossMaxHp on init), so the player can return when
+            // they've stocked balls. The cageUnlocked flag is unchanged.
+            _catchState = null;
+            try { save(); } catch (e) {}
+            try {
+                window.showGameAlert && window.showGameAlert('You leave the cage. The eye does not close. Restock balls and return when you can.');
+            } catch (e) {}
+            try { enterCity(); } catch (e) { try { showMenu(true); } catch (_) {} }
         }
         function bossAttack() {
             if (!_catchState || !_catchState.bossMode || _catchState.bossHp == null || _catchState.bossHp <= 0) return;
@@ -30258,7 +30292,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterShop, buyItem, buyArtifact, enterArtifactShop, enterPokemonCenter,
             pcSwitchTab, pcDeposit, pcWithdraw, pcRelease, pcSell,
             catchThrow, catchRun, catchContinue,
-            bossCollectLead, bossEnterCage, bossAttack,
+            bossCollectLead, bossEnterCage, bossAttack, bossRetreatToCity,
             enterSafariZone,
             enterCrucible, leaveCrucible,
             enterFrontierHub, frontierStartRun, frontierStartNext, frontierSurrender,
