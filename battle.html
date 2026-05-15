@@ -4922,7 +4922,7 @@
     <div id="modal-story-artifact" class="modal hidden">
         <div class="modal-content white-outline" style="max-width:550px;">
             <h3 class="story-screen-head-title" style="color:#9c27b0;margin-top:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Run Artifacts</span></h3>
-            <p style="font-size:12px;color:#aaa;">These artifacts affect BOTH you and the enemy for your entire run.</p>
+            <p style="font-size:12px;color:#aaa;">Most artifacts affect BOTH you and the enemy for your entire run. The Cursed Amulet Coin is the one exception — its bonus and its curse only touch your team.</p>
             <div id="story-artifact-list" style="display:flex;flex-direction:column;gap:10px;max-height:350px;overflow-y:auto;margin-bottom:12px;"></div>
             <button onclick="window.closeModal('modal-story-artifact')" style="width:100%;">Close</button>
         </div>
@@ -16808,7 +16808,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (state && state.mode === 'story' && state._vampiricFangsActive && actualDamage > 0 && move.cat !== "Status") {
                         let vh = Math.max(1, Math.floor(actualDamage * 0.1));
                         vh = Math.min(attacker.maxHp - attacker.currentHp, vh);
-                        if (vh > 0) { attacker.currentHp += vh; logMsg(`Vampiric Fangs restored ${vh} HP to ${attacker.name}!`, 'heal'); }
+                        if (vh > 0) { attacker.currentHp += vh; logMsg(`Crobat Fang Charm restored ${vh} HP to ${attacker.name}!`, 'heal'); }
                     }
                     updateUI(); await sleep(1000);
                     // Recoil for multi-hit (Life Orb etc.)
@@ -16857,7 +16857,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (state && state.mode === 'story' && state._vampiricFangsActive && subDamage > 0 && move.cat !== "Status") {
                         let vhs = Math.max(1, Math.floor(subDamage * 0.1));
                         vhs = Math.min(attacker.maxHp - attacker.currentHp, vhs);
-                        if (vhs > 0) { attacker.currentHp += vhs; logMsg(`Vampiric Fangs restored ${vhs} HP to ${attacker.name}!`, 'heal'); }
+                        if (vhs > 0) { attacker.currentHp += vhs; logMsg(`Crobat Fang Charm restored ${vhs} HP to ${attacker.name}!`, 'heal'); }
                     }
                     if (defender.volatile.sub <= 0) { defender.volatile.sub = 0; logMsg(`${defender.name}'s substitute faded!`, 'info'); }
                     hitSub = true;
@@ -16939,7 +16939,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (state && state.mode === 'story' && state._vampiricFangsActive && actualDamage > 0 && move.cat !== "Status") {
                         let vhd = Math.max(1, Math.floor(actualDamage * 0.1));
                         vhd = Math.min(attacker.maxHp - attacker.currentHp, vhd);
-                        if (vhd > 0) { attacker.currentHp += vhd; logMsg(`Vampiric Fangs restored ${vhd} HP to ${attacker.name}!`, 'heal'); }
+                        if (vhd > 0) { attacker.currentHp += vhd; logMsg(`Crobat Fang Charm restored ${vhd} HP to ${attacker.name}!`, 'heal'); }
                     }
                     if(settings.animations){
                         anime({ targets: targetSprite, opacity:[1,0.2,1,0.2,1], duration:400, easing:'linear' });
@@ -18348,7 +18348,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 changeStage(mon, 'spa', 1, false, _bsOpts);
                 changeStage(mon, 'def', -1, false, _bsOpts);
                 changeStage(mon, 'spd', -1, false, _bsOpts);
-                if (typeof logMsg === 'function') logMsg(`Berserker's Serum: ${mon.name} is hyped (+Atk/+SpA, −Def/−SpD)!`, 'info');
+                if (typeof logMsg === 'function') logMsg(`Berserk Gene Vial: ${mon.name} is hyped (+Atk/+SpA, −Def/−SpD)!`, 'info');
             }
             // Forecast (Castform) + Ice Face restoration: apply on switch-in
             try { _applyWeatherFormChanges(); } catch(e) {}
@@ -20428,7 +20428,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let vf = Math.max(1, Math.floor(mon.maxHp / 16));
                 vf = Math.min(mon.currentHp, vf);
                 mon.currentHp -= vf;
-                logMsg(`${mon.name} lost ${vf} HP to Vampiric Fangs' hunger!`, 'dmg');
+                logMsg(`${mon.name} lost ${vf} HP to the Crobat Fang Charm's hunger!`, 'dmg');
             }
 
             // Perish Song countdown — decrement first, then check for faint at 0
@@ -21510,29 +21510,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (row && row.battleBag === false) return false;
             return STORY_BATTLE_BAG_SHOP_IDS.has(item.id);
         }
-        // Artifacts — affect BOTH sides all run
+        // Artifacts — affect BOTH sides all run (except Cursed Amulet Coin, whose curse only burdens the player who reaps the gold)
         const ALL_ARTIFACTS = [
-          { id:'tricksterWatch',  name:"Trickster's Pocket-Watch",  cost:5000, desc:'Auto-Trick Room for first 3 turns of every battle. Speed is inverted early.' },
-          { id:'vampiricFangs',   name:'Vampiric Fangs',            cost:5000, desc:'All direct attacks heal user for 10% damage dealt. All Pokémon lose 1/16 HP at end of each turn.' },
-          { id:'heavyGravity',    name:'Heavy Gravity Boots',       cost:5000, desc:'Gravity is active every battle. Flying/Levitate ground, entry hazards deal 50% more damage.' },
-          { id:'berserkerSerum',  name:"Berserker's Serum",         cost:5000, desc:'Every Pokémon enters with +1 Atk/SpA but -1 Def/SpD permanently on entry.' },
-          { id:'chaosAmulet',     name:'Amulet of Chaos',           cost:5000, desc:'All move accuracy -10%. Critical hit ratio +2 stages for all moves.' },
-          { id:'stagnationCore',  name:'Stagnation Core',           cost:5000, desc:'No stat changes from moves or abilities. Intimidate, Swords Dance, Sticky Web all fail.' },
-          { id:'evioliteBlessing',name:'Eviolite Blessing',         cost:5000, desc:'All non-fully-evolved Pokémon get +50% Defense and Sp. Defense.' },
-          { id:'typeAmplifier',   name:'[Type] Amplifier',          cost:5000, desc:'Type randomly chosen at run start. That type deals 30% more damage, but takes 15% more.' },
-          { id:'typeNullifier',   name:'[Type] Nullifier',          cost:5000, desc:'Type chosen at run start. Pokémon of that type are immune to indirect damage but can\'t get stat boosts.' },
-          { id:'typeMagnetizer',  name:'[Type] Magnetizer',         cost:5000, desc:'Type chosen at run start. Moves against or from that type never miss.' },
-          { id:'eternalSunLens',  name:'Eternal Sun Lens',           cost:5000, desc:'Harsh sunlight is permanent every battle unless replaced. Fire moves +50% power, Water moves -50%. Both sides.' },
-          { id:'eternalRainDrum', name:'Eternal Rain Drum',          cost:5000, desc:'Rain is permanent every battle unless replaced. Both sides.' },
-          { id:'eternalHailCrown',name:'Eternal Hail Crown',         cost:5000, desc:'Hail is permanent every battle unless replaced. Both sides.' },
-          { id:'eternalSandTotem',name:'Eternal Sand Totem',         cost:5000, desc:'Sandstorm is permanent every battle unless replaced. Both sides.' },
-          { id:'thunderstoneEarrings', name:'Thunderstone Earrings', cost:5000, desc:'Electric Terrain is permanent every battle unless replaced. Grounded mons +20% Spe, immune to sleep. Both sides.' },
-          { id:'verdantCore',     name:'Verdant Core',               cost:5000, desc:'Grassy Terrain is permanent every battle unless replaced. Both sides.' },
-          { id:'astralAntenna',   name:'Astral Antenna',             cost:5000, desc:'Psychic Terrain is permanent every battle unless replaced. Both sides.' },
-          { id:'moonveilIncense', name:'Moonveil Incense',           cost:5000, desc:'Misty Terrain is permanent every battle unless replaced. Both sides.' },
-          { id:'glassCannonPact', name:'Glass Cannon Pact',          cost:5000, desc:'All damage dealt and taken +25%. Pure variance amplifier. Both sides.' },
-          { id:'reapersToll',     name:"Reaper's Toll",              cost:5000, desc:'On any KO, all surviving allies of that side heal 10% max HP; one random survivor drops -1 SpD. Both sides.' },
-          { id:'cursedCoinPouch', name:'Cursed Coin Pouch',          cost:5000, desc:'Coin gain ×2 on victory. Every Pokémon enters battle with one random stat at -1. Both sides.' },
+          { id:'tricksterWatch',  name:"Hoopa's Trick Watch",       cost:5000, desc:'Trick Room activates automatically for the first 3 turns of every battle, so slower Pokémon strike first while it lasts.' },
+          { id:'vampiricFangs',   name:'Crobat Fang Charm',         cost:5000, desc:'Direct attacks heal the attacker for 10% of the damage dealt. At the end of every turn, all Pokémon also lose 1/16 of their max HP (Magic Guard is immune).' },
+          { id:'heavyGravity',    name:'Iron Ball Boots',           cost:5000, desc:'Gravity stays active in every battle. Flying-types and Levitate users are grounded, and entry hazards deal 50% more damage.' },
+          { id:'berserkerSerum',  name:'Berserk Gene Vial',         cost:5000, desc:'Every Pokémon enters battle with +1 Attack and +1 Sp. Attack, but also −1 Defense and −1 Sp. Defense.' },
+          { id:'chaosAmulet',     name:'Amulet of Chaos',           cost:5000, desc:'Every move loses 10% accuracy, but every move\'s critical-hit ratio is raised by 2 stages.' },
+          { id:'stagnationCore',  name:'Stagnation Core',           cost:5000, desc:'Stat changes from moves and abilities are sealed. Intimidate, Swords Dance, Sticky Web and similar effects all fail.' },
+          { id:'evioliteBlessing',name:'Eviolite Blessing',         cost:5000, desc:'Every non-fully-evolved Pokémon gains +50% Defense and Sp. Defense (does not stack with the Eviolite item).' },
+          { id:'typeAmplifier',   name:'[Type] Plate Shard',        cost:5000, desc:'[Type] is bonded at the start of your run. [Type]-type moves deal 30% more damage, but [Type]-type Pokémon take 15% more damage from hits.' },
+          { id:'typeNullifier',   name:'[Type] Memory Disc',        cost:5000, desc:'[Type] is bonded at the start of your run. [Type]-type Pokémon ignore all indirect damage, but can no longer receive stat boosts.' },
+          { id:'typeMagnetizer',  name:'[Type] Tracking Lens',      cost:5000, desc:'[Type] is bonded at the start of your run. Moves used by or against [Type]-type Pokémon never miss.' },
+          { id:'eternalSunLens',  name:'Eternal Heat Rock',         cost:5000, desc:'Harsh sunlight blazes for the entire battle unless replaced. Fire moves gain 50% power; Water moves lose 50%.' },
+          { id:'eternalRainDrum', name:'Eternal Damp Rock',         cost:5000, desc:'Rain pours for the entire battle unless replaced. Water moves gain 50% power; Fire moves lose 50%.' },
+          { id:'eternalHailCrown',name:'Eternal Icy Rock',          cost:5000, desc:'A blizzard rages for the entire battle unless replaced. Non-Ice-types lose 1/16 of their max HP at the end of each turn.' },
+          { id:'eternalSandTotem',name:'Eternal Smooth Rock',       cost:5000, desc:'A sandstorm whips for the entire battle unless replaced. Pokémon that aren\'t Rock, Ground or Steel lose 1/16 max HP per turn, and Rock-types gain +50% Sp. Defense.' },
+          { id:'thunderstoneEarrings', name:'Thunderstone Earrings',cost:5000, desc:'Electric Terrain hums for the entire battle unless replaced. Grounded Pokémon cannot fall asleep, and Electric moves deal 30% more damage.' },
+          { id:'verdantCore',     name:'Verdant Core',              cost:5000, desc:'Grassy Terrain spreads for the entire battle unless replaced. Grounded Pokémon heal 1/16 max HP per turn, and Grass moves deal 30% more damage.' },
+          { id:'astralAntenna',   name:'Astral Antenna',            cost:5000, desc:'Psychic Terrain hums for the entire battle unless replaced. Grounded Pokémon are immune to priority moves, and Psychic moves deal 30% more damage.' },
+          { id:'moonveilIncense', name:'Moonveil Incense',          cost:5000, desc:'Misty Terrain shrouds the field for the entire battle unless replaced. Grounded Pokémon can\'t be statused, and Dragon-type damage against them is halved.' },
+          { id:'glassCannonPact', name:'Cursed Life Orb',           cost:5000, desc:'A pure variance amplifier — all damage dealt and taken is increased by 25%.' },
+          { id:'reapersToll',     name:"Reaper's Toll",             cost:5000, desc:'Whenever a Pokémon faints, every surviving ally on that side heals 10% of their max HP, and one random survivor loses 1 stage of Sp. Defense.' },
+          { id:'cursedCoinPouch', name:'Cursed Amulet Coin',        cost:5000, desc:'Coin rewards from victories are doubled. In return, every Pokémon on YOUR team enters battle with one random stat lowered by 1 stage.' },
         ];
         const STORY_TYPES = ['Fire','Water','Grass','Electric','Ice','Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon','Dark','Steel','Fairy'];
         const STORY_TYPE_ARTIFACT_IDS = new Set(['typeAmplifier', 'typeNullifier', 'typeMagnetizer']);
@@ -24176,7 +24176,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _markFacilitySeen('artifacts');
             const el = document.getElementById('story-artifact-hall-list');
             if (el) {
-                const bothSidesBadge = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Relic effects apply to both you and your opponents while enabled">⚠ Affects both sides</span>';
+                const _bothSidesBadgeHtml = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Relic effects apply to both you and your opponents while enabled">⚠ Affects both sides</span>';
+                const _playerOnlyBadgeHtml = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Coin reward and curse both affect your side only">⚠ Affects your team only</span>';
                 el.innerHTML = (sm.artifacts || []).map(id => {
                     const art = ALL_ARTIFACTS.find(a => a.id === id);
                     const off = (sm.artifactsDisabled || []).includes(id);
@@ -24185,11 +24186,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const statusChip = off
                         ? '<span class="story-action-badge info" style="color:#888;border-color:#555;">Inactive</span>'
                         : '<span class="story-action-badge free">Active</span>';
+                    const sidesBadge = id === 'cursedCoinPouch' ? _playerOnlyBadgeHtml : _bothSidesBadgeHtml;
                     return `<div style="border:1px solid #444;border-radius:6px;padding:10px;margin-bottom:8px;background:#0d0013;">
                         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                             <div style="font-weight:bold;color:#ce93d8;flex:1;min-width:0;">${label}</div>
                             ${statusChip}
-                            ${bothSidesBadge}
+                            ${sidesBadge}
                         </div>
                         <div style="font-size:11px;color:#aaa;margin:6px 0;">${desc}</div>
                         <button onclick="window.StoryMode.toggleArtifactDisabled('${id}')" style="font-size:11px;padding:4px 10px;">
@@ -25043,7 +25045,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function _artifactDescForCity(art, cityIdx) {
             const typeName = STORY_TYPE_ARTIFACT_IDS.has(art.id) ? _artifactTypeForDisplay(art.id, cityIdx) : null;
-            return typeName ? art.desc.replace(/^Type/, typeName + ' type') : art.desc;
+            return typeName ? art.desc.split('[Type]').join(typeName) : art.desc;
         }
         function _getDeptFeaturedCatalogItems() {
             let list = getStoryFeaturedItems();
@@ -25248,7 +25250,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const artDesc = _artifactDescForCity(art, cityIdx);
                 const priceLabel = listPrice === 0 ? '<span style="color:#ce93d8;">Free (first in Pallet only)</span>' : storyGoldHtml(listPrice.toLocaleString());
                 const btnLabel = listPrice === 0 ? 'Claim free' : ('Buy ' + storyGoldHtml(listPrice.toLocaleString()));
-                const bothSidesBadge = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Relic effects apply to both you and your opponents for the rest of the run">⚠ Affects both sides</span>';
+                const bothSidesBadge = art.id === 'cursedCoinPouch'
+                    ? '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Coin reward and curse both affect your side only">⚠ Affects your team only</span>'
+                    : '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Relic effects apply to both you and your opponents for the rest of the run">⚠ Affects both sides</span>';
                 gridEl.innerHTML += `<div class="story-artifact-card" style="margin-bottom:8px;opacity:${owned ? '0.5' : '1'}">
                     <div class="story-shop-item-row" style="margin-bottom:6px;">
                         ${aicon}
@@ -26118,40 +26122,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state._typeAmplifierType = active('typeAmplifier') ? _storyArtifactType('typeAmplifier') : null;
             state._typeNullifierType = active('typeNullifier') ? _storyArtifactType('typeNullifier') : null;
             state._typeMagnetizerType = active('typeMagnetizer') ? _storyArtifactType('typeMagnetizer') : null;
-            if (state._typeAmplifierType && typeof logMsg === 'function') logMsg(`[Type] Amplifier run bond: ${state._typeAmplifierType}!`, 'info');
-            if (state._typeNullifierType && typeof logMsg === 'function') logMsg(`[Type] Nullifier run bond: ${state._typeNullifierType}!`, 'info');
-            if (state._typeMagnetizerType && typeof logMsg === 'function') logMsg(`[Type] Magnetizer run bond: ${state._typeMagnetizerType}!`, 'info');
-            if (state._vampiricFangsActive && typeof logMsg === 'function') logMsg('Vampiric Fangs: draining strikes and residual hunger…', 'info');
-            if (state._berserkerSerumActive && typeof logMsg === 'function') logMsg('Berserker\'s Serum: every switch-in trades bulk for fury!', 'info');
+            if (state._typeAmplifierType && typeof logMsg === 'function') logMsg(`${state._typeAmplifierType} Plate Shard: damage amplified for ${state._typeAmplifierType}-type moves!`, 'info');
+            if (state._typeNullifierType && typeof logMsg === 'function') logMsg(`${state._typeNullifierType} Memory Disc: ${state._typeNullifierType}-type Pokémon shrug off indirect damage!`, 'info');
+            if (state._typeMagnetizerType && typeof logMsg === 'function') logMsg(`${state._typeMagnetizerType} Tracking Lens: ${state._typeMagnetizerType}-type interactions never miss!`, 'info');
+            if (state._vampiricFangsActive && typeof logMsg === 'function') logMsg('Crobat Fang Charm: draining strikes and residual hunger fill the air…', 'info');
+            if (state._berserkerSerumActive && typeof logMsg === 'function') logMsg('Berserk Gene Vial: every switch-in trades bulk for fury!', 'info');
             if (state._chaosAmuletActive && typeof logMsg === 'function') logMsg('Amulet of Chaos: wild accuracy and critical hits!', 'info');
             if (state._stagnationCoreActive && typeof logMsg === 'function') logMsg('Stagnation Core: stat shifts from moves are sealed!', 'info');
             // Trick Room auto
             if (active('tricksterWatch')) {
                 state.trickRoom = 3;
-                if (typeof logMsg==='function') logMsg('Trickster\'s Pocket-Watch: Trick Room is in effect for 3 turns!','info');
+                if (typeof logMsg==='function') logMsg("Hoopa's Trick Watch: Trick Room is in effect for 3 turns!",'info');
             }
             // Heavy Gravity
             if (active('heavyGravity')) {
                 state.gravity = 999;
                 state._heavyGravityHazardMult = 1.5;
-                if (typeof logMsg==='function') logMsg('Heavy Gravity Boots: Gravity is in effect — entry hazards bite harder!','info');
+                if (typeof logMsg==='function') logMsg('Iron Ball Boots: Gravity is in effect — entry hazards bite harder!','info');
             }
-            // Eternal Sun Lens: permanent harsh sunlight
+            // Eternal Heat Rock: permanent harsh sunlight
             if (active('eternalSunLens')) {
                 state.weather = 'Sun'; state.weatherTurns = 999;
-                if (typeof logMsg==='function') logMsg('Eternal Sun Lens: Harsh sunlight blazes permanently!','info');
+                if (typeof logMsg==='function') logMsg('Eternal Heat Rock: Harsh sunlight blazes permanently!','info');
             }
             if (active('eternalRainDrum')) {
                 state.weather = 'Rain'; state.weatherTurns = 999;
-                if (typeof logMsg==='function') logMsg('Eternal Rain Drum: Rain pours endlessly!','info');
+                if (typeof logMsg==='function') logMsg('Eternal Damp Rock: Rain pours endlessly!','info');
             }
             if (active('eternalHailCrown')) {
                 state.weather = 'Hail'; state.weatherTurns = 999;
-                if (typeof logMsg==='function') logMsg('Eternal Hail Crown: Hail falls without end!','info');
+                if (typeof logMsg==='function') logMsg('Eternal Icy Rock: Hail falls without end!','info');
             }
             if (active('eternalSandTotem')) {
                 state.weather = 'Sand'; state.weatherTurns = 999;
-                if (typeof logMsg==='function') logMsg('Eternal Sand Totem: A never-ending sandstorm rages!','info');
+                if (typeof logMsg==='function') logMsg('Eternal Smooth Rock: A never-ending sandstorm rages!','info');
             }
             // Thunderstone Earrings: permanent Electric Terrain
             if (active('thunderstoneEarrings')) {
@@ -26172,21 +26176,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Glass Cannon Pact: flag for damage calc (+25% all damage, both sides)
             state._glassCannonPact = active('glassCannonPact');
-            if (state._glassCannonPact && typeof logMsg==='function') logMsg('Glass Cannon Pact: All damage amplified +25%!','info');
+            if (state._glassCannonPact && typeof logMsg==='function') logMsg('Cursed Life Orb: All damage amplified +25%!','info');
             // Reaper's Toll: flag for checkFaints (KO triggers ally heal + SpD drop)
             state._reapersTollActive = active('reapersToll');
             if (state._reapersTollActive && typeof logMsg==='function') logMsg("Reaper's Toll: Fallen allies leave a mark…",'info');
-            // Cursed Coin Pouch: apply -1 random stat to every mon on battle start (both sides)
+            // Cursed Amulet Coin: -1 random stat on the player's team only (foes don't share the gold reward, so they don't share the curse)
             if (active('cursedCoinPouch')) {
                 const statKeys = ['atk','def','spa','spd','spe'];
                 const rng = (sm && sm.active) ? storyRngNext : Math.random;
                 const curseEx = { bypassStagnation: true, bypassNullifier: true };
-                [...(state.playerParty||[]), ...(state.foeParty||[])].forEach(mon => {
+                (state.playerParty||[]).forEach(mon => {
                     if (!mon) return;
                     const st = statKeys[Math.floor(rng() * statKeys.length)];
                     changeStage(mon, st, -1, false, curseEx);
                 });
-                if (typeof logMsg==='function') logMsg('Cursed Coin Pouch: All Pokémon feel the weight of the curse! (−1 random stat each)','info');
+                if (typeof logMsg==='function') logMsg('Cursed Amulet Coin: Your team carries the weight of greed! (−1 random stat each)','info');
             }
             // Eviolite Blessing: +50% Def/SpDef for all NFE Pokémon (does not stack with Eviolite item)
             state._evioliteBlessing = active('evioliteBlessing');
