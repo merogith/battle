@@ -25794,7 +25794,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Normal professor: append to team
             _pendingProfChoices = null; _profSelectedIdx = null; _pendingProfRoll = null; _pendingProfCityIdx = null; _pendingProfWasMystery = false; _profLegendaryMysteryMode = false;
-            sm.team.push({ name: ch.name, build: ch.build });
+            // The very first Pokémon the player ever gets — the starter — is bonded
+            // for life per the design spec (§8): "cannot sell your last party mon,
+            // the starter, or the boss-arc capture." The flag piggybacks on the
+            // existing unsellable path in the Underground sell screen.
+            const isStarterPick = !Array.isArray(sm.team) || sm.team.length === 0;
+            const newSlot = { name: ch.name, build: ch.build };
+            if (isStarterPick) {
+                newSlot.unsellable = true;
+                newSlot.starter = true;
+            }
+            sm.team.push(newSlot);
             if (!sm.profUsed) sm.profUsed = {};
             sm.profUsed[cityIdx] = true;
             save();
@@ -26502,9 +26512,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const price = _pcSellPriceForSlot(slot);
                 const id = slot.id || '';
                 const unsellable = slot.unsellable === true;
+                const isStarter = slot.starter === true;
                 const isLastParty = where === 'team' && lastInParty;
                 const canSell = !!id && !unsellable && !isLastParty;
-                const reason = unsellable ? 'Bound to you' : isLastParty ? 'Must keep ≥1 in party' : !id ? 'Missing id (legacy save)' : '';
+                const reason = isStarter ? 'Starter — bonded for life' : unsellable ? 'Bound to you' : isLastParty ? 'Must keep ≥1 in party' : !id ? 'Missing id (legacy save)' : '';
                 const whereLabel = where === 'team' ? 'Party' : 'PC';
                 html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(28,12,12,0.55);border:1px solid #5a1818;">
                     <span style="font-size:9px;color:#888;width:30px;">${whereLabel}</span>
@@ -28180,8 +28191,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     delete window._pbsStoryUnlockedGimmicks;
                 }
                 const old = mon.build || {};
-                if (old.nature) evoBuild.nature = old.nature;
-                if (old.evs)    evoBuild.evs    = { ...old.evs };
+                // Carry over the player's tuned slots so evolving doesn't undo their
+                // training. Build fields are single-letter: n=nature, a=ability,
+                // i=item, evs=EVs. Earlier code referenced old.nature (never existed
+                // on the build) so nature carry-over was silently a no-op; ability
+                // was never carried at all despite the confirm dialog promising it.
+                if (old.n)        evoBuild.n        = old.n;
+                if (old.a)        evoBuild.a        = old.a;
+                if (old.evs)      evoBuild.evs      = { ...old.evs };
                 if (old.teraType) evoBuild.teraType = old.teraType;
                 // Item carries over only if it's not a pre-evo–specific item (Eviolite is removed on full evolution).
                 if (old.i && old.i !== 'Eviolite' && old.i !== '(none)') evoBuild.i = old.i;
