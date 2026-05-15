@@ -4819,6 +4819,10 @@
                 <h3 class="story-screen-head-title" style="color:var(--accent);font-size:14px;flex:1;min-width:0;"><span class="story-screen-head-text">🏥 Pokémon Center</span></h3>
                 <span id="story-pc-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
             </div>
+            <div id="story-pc-pokedex-strip" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:rgba(8,10,16,0.92);border-bottom:1px solid #2a2a2a;font-size:10px;color:#888;flex-shrink:0;">
+                <span>📖 Pokédex caught: <strong id="story-pc-pokedex-count" style="color:#aed581;">0</strong></span>
+                <span id="story-pc-balls-summary" style="color:#888;">🔴 0  🔵 0  🟡 0  🟣 0</span>
+            </div>
             <div style="display:flex;gap:0;background:rgba(10,10,14,0.85);border-bottom:1px solid #333;flex-shrink:0;">
                 <button type="button" id="story-pc-tab-storage-btn" onclick="window.StoryMode.pcSwitchTab('storage')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid #4caf50;color:#4caf50;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;">💾 PC Storage</button>
                 <button type="button" id="story-pc-tab-underground-btn" onclick="window.StoryMode.pcSwitchTab('underground')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid transparent;color:#888;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;">🩸 The Underground</button>
@@ -25578,6 +25582,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const coinsAwarded = Math.floor((coins || 0) * coinMult);
                 sm.gold += coinsAwarded;
                 const en = String(event || '');
+                // Static Ultra Ball drops — one after Gym Leader 4, one after Elite 2.
+                if (!sm.staticDrops || typeof sm.staticDrops !== 'object') sm.staticDrops = {};
+                if (en === 'Gym Leader 4' && !sm.staticDrops.ultraGl4) {
+                    if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
+                    sm.balls.ultra = (sm.balls.ultra | 0) + 1;
+                    sm.staticDrops.ultraGl4 = true;
+                    try { window.showGameAlert && window.showGameAlert('The Gym Leader nods. "You earned this." They press an Ultra Ball into your hand.'); } catch (e) {}
+                }
+                if (en === 'E2' && !sm.staticDrops.ultraE2) {
+                    if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
+                    sm.balls.ultra = (sm.balls.ultra | 0) + 1;
+                    sm.staticDrops.ultraE2 = true;
+                    try { window.showGameAlert && window.showGameAlert('A broker is waiting in the hall outside. "The Elite stash one or two of these. I lifted you one." Ultra Ball obtained.'); } catch (e) {}
+                }
                 const isGymBadge = /^Gym Leader [1-8]$/.test(en);
                 if (isGymBadge) sm.badges++;
                 if (isGymBadge) {
@@ -25837,6 +25855,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _pcRefresh() {
             const goldEl = document.getElementById('story-pc-gold');
             if (goldEl) goldEl.innerHTML = storyGoldHtml((sm.gold | 0).toLocaleString());
+            const dexEl = document.getElementById('story-pc-pokedex-count');
+            if (dexEl) {
+                const c = (sm.pokedex && Array.isArray(sm.pokedex.caught)) ? sm.pokedex.caught.length : 0;
+                dexEl.textContent = String(c);
+            }
+            const ballsEl = document.getElementById('story-pc-balls-summary');
+            if (ballsEl && sm.balls) {
+                ballsEl.textContent = `🔴 ${sm.balls.poke|0}  🔵 ${sm.balls.great|0}  🟡 ${sm.balls.ultra|0}  🟣 ${sm.balls.master|0}`;
+            }
             const storageBtn = document.getElementById('story-pc-tab-storage-btn');
             const undergroundBtn = document.getElementById('story-pc-tab-underground-btn');
             if (storageBtn && undergroundBtn) {
@@ -26380,6 +26407,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } else {
                 sm.pcBox.push(caught);
             }
+            // Pokédex — record the catch.
+            if (!sm.pokedex || typeof sm.pokedex !== 'object') sm.pokedex = { seen: [], caught: [] };
+            if (!Array.isArray(sm.pokedex.caught)) sm.pokedex.caught = [];
+            if (!sm.pokedex.caught.includes(enc.name)) sm.pokedex.caught.push(enc.name);
             if (bossMode) {
                 _bossArcEnsureState();
                 sm.bossArc.cleared = true;
