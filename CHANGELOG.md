@@ -3,7 +3,72 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
-## Unreleased — Polish session 2026-05-15 (`claude/polish-story-mode-battle-lT4sx`)
+## Unreleased — Progression pass 2026-05-15 (`claude/optimize-game-progression-91Yy0`)
+
+### Added — Catch rewards
+- **Partially-trained wild builds.** `makeWildBuild` no longer returns a
+  Hardy/0-EV husk. Caught wilds now arrive with a curated positive nature
+  (Adamant/Modest/Jolly/Timid/Bold/Calm picked from the species' base-stat
+  profile) and a ~170 EV head-start (85 on the best offensive stat + 85
+  speed, or 85 HP + 85 best-defensive for bulky shells). Held item stays
+  None so Battle Dojo is still a real upgrade. Catches feel like a reward
+  now — Tutor / EV Trainer / Stone Sage still matter for the last 30%.
+- **Roaming sub-legendaries.** After Gym 5 and Gym 7 victories the next
+  route surfaces a one-shot wild legendary (Articuno, Suicune, Latios,
+  Tapu Koko, Chien-Pao, etc., gen-filtered, 50-species pool). 30% catch
+  rate (no override — Master Ball still ∞ = 100%). Missed throw or Run
+  = the Pokémon flees permanently. Roaming mons use the full `makeBuild`
+  (not the wild build) — they're rare, they should feel ready.
+
+### Added — Themed gym & elite gifts
+- **`GYM_VICTORY_REWARDS` table.** Every gym leader / E1–E4 / Champion
+  defeat hands a themed bundle on first clear: Gym 1 = 3 Poké Balls + 500G,
+  Gym 2 = Rare Candy + 1000G, Gym 3 = 2 Great Balls + Vitamin, Gym 4 =
+  Ultra Ball + Rare Candy, Gym 5 = 2 Great Balls + Vitamin + 1000G, Gym 6
+  = 2 Ultra Balls + Rare Candy + 1500G, Gym 7 = Ultra Ball + Rare Candy
+  + Vitamin, Gym 8 = 3 Ultra Balls + 2 Vitamin Packs. E1 = 2 Great Balls
+  + Vitamin; E2 = Ultra Ball + Rare Candy; E3 = Ultra Ball + Vitamin;
+  E4 = 2 Ultra Balls + Rare Candy; Champion = 2 Ultra Balls + Rare Candy
+  + 2 Vitamin Packs. Old `staticDrops.ultraGl4` / `ultraE2` flags treated
+  as "reward already taken" so legacy saves don't double-dip.
+
+### Added — Pokédex milestone rewards
+- **`POKEDEX_CAUGHT_MILESTONES`.** Catching 25 / 50 / 75 / 100 unique
+  species fires bundle rewards: 25 = Ultra Ball + 2000G; 50 = 2 Ultra
+  Balls + Vitamin; 75 = 2 Rare Candies + 5000G; 100 = 3 Ultra Balls +
+  Rare Candy + Vitamin. (No 2nd Master Ball — that stays uniquely tied
+  to the Caged God arc.) Checks fire inside `_catchHandleSuccess` so
+  Safari, route wilds, Crucible wilds, and the boss arc all count.
+
+### Added — Permanent-stat vouchers
+- **🍬 Rare Candy = free Stone Sage evolution.** When the player has
+  rareCandy in `sm.inventory`, the Stone Sage screen renders a "🍬 Rare
+  Candy" button next to each gold-cost evolve button. One charge =
+  bypass the gold cost (saves up to 16,000G on G2→G1). Nature, ability
+  slot, EVs, item, Tera all still carry over. Repeat-use cost ramp still
+  consumes a slot so paid follow-ups scale fairly.
+- **💊 Vitamin Pack = free EV Trainer preset.** Same pattern on EV
+  Trainer — a "💊 Vitamin" button on every preset, one charge =
+  bypass 5,000G.
+- Bag screen surfaces both as "Voucher" entries at the top of the bag
+  (not sellable for gold; earned, not bought).
+- City Tips strip surfaces unused vouchers as quick-launch chips
+  ("🍬 N Rare Candies — free evolve" / "💊 N Vitamins — free EV preset").
+
+### Changed — Enemy challenge curve
+- **Aggressive late curve.** From 4 badges onward, every non-boss
+  trainer fields one more Pokémon than the player's party
+  (`min(player+1, 6)`). Intro Rival stays 1; Gym 6+/E1–E4/Champion/
+  Victory Road stay forced 6. Pre-Gym-4 still matches party size.
+
+### Fixed
+- **Smart-quote syntax crash in trainer quote table.** Lines 22951–23006
+  had U+2018/U+2019 smart quotes as string delimiters from a previous
+  merge (`'Red': [...]`, `'Maxie': [...]`, every Veteran Gym Leader,
+  every Team admin, etc.). The browser fails to parse them silently;
+  the page would crash on first reference to those quotes. Normalized
+  to ASCII apostrophes. Plumeria's "Salazzle—poison 'em!" line got an
+  explicit `\'em!` escape since plain `'em` would close the string.
 
 ### Added — Voice & flavor
 - **Per-leader / elite / champion victory voice.** `LEADER_VICTORY_LINES`,
