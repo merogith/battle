@@ -25213,6 +25213,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'Croupier: "I\'ve seen ten-thousand-G runs go bust on a single flip. Be warned."',
                 'Croupier: "Luck doesn\'t train. But it does pay rent. Sometimes."',
             ],
+            relicKeeper: [
+                'Relic Keeper: "Each piece on the shelf changes both sides of every fight you take. Choose like it matters."',
+                'Relic Keeper: "I don\'t price them, I appraise them. The cost is the same; the worth is yours to weigh."',
+                'Relic Keeper: "One per shop. Try not to flinch. The wrong stone sits heavy."',
+                'Relic Keeper: "Your first relic in Pallet is on the house. Everyone\'s first one is. Nobody\'s second one is."',
+                'Relic Keeper: "The League calls these contraband. I call them history with sharp edges."',
+            ],
         };
 
         /** Show a one-liner under the screen header. Picks fresh on each entry. */
@@ -27659,6 +27666,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _markFacilitySeen('relic');
             try { _storyShowOneTimeTip('relic',
                 'Relic Annex — choose ONE relic per shop. Relics affect both you and every foe for the rest of the run. Your first pick in Pallet Town is free; after that each is 5,000G. The Artifact Hall (back at any city) lets you toggle owned relics on/off mid-run.'); } catch (e) {}
+            try { _storyShowFacilityQuote('screen-story-artifact-shop', 'relicKeeper'); } catch (e) {}
             const offer = _ensureArtifactShopOffersForCity(cityIdx);
             const goldEl = document.getElementById('story-artifact-shop-gold');
             const gridEl = document.getElementById('story-artifact-shop-grid');
@@ -28692,8 +28700,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.bossArc.available = true;
                 if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
                 sm.balls.master = (sm.balls.master | 0) + 1;
-                try { window.showGameAlert && window.showGameAlert('A haggard Underground broker presses a Master Ball into your hand. "Specimen 0001. Sixty years caged. Three brokers across the region will give you what you need. End it — or claim it."'); } catch (e) {}
+                try { window.showGameAlert && window.showGameAlert('A haggard Underground broker presses a Master Ball into your hand.\n\n"Specimen 0001. Sixty years caged. Three brokers across the region will give you what you need. End it — or claim it."\n\n🟣 Master Ball added to your inventory. Visit Pokémon Centers in Cities 2, 5, and 8 to find the three brokers.'); } catch (e) {}
             }
+            // Post-HoF orientation tip (once across all runs) — without it players often
+            // miss that the Crucible / Battle Frontier / boss arc even exist.
+            try { _storyShowOneTimeTip('postHof',
+                'Hall of Fame cleared! The post-game opens three doors:\n\n• 🧨 The Crucible — every facility you used in one place, plus the endless Battle Frontier.\n• 🔮 The Caged God — collect three leads at Pokémon Centers in Cities 2, 5, and 8, then enter the Cage.\n• 🚪 Mystery Figure — the Crucible\'s "Mystery" button summons a final masked challenger.\n\nAll three are reachable from any city you\'ve visited.'); } catch (e) {}
             // Return to the last visited city instead of advancing to the original post-HoF Mystery row.
             // The boss arc is now the canonical post-game beat, triggered from the Underground.
             const lastCityEv = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
