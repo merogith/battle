@@ -11323,11 +11323,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (v.yawnTurns > 0) chip(`Yawn ${v.yawnTurns}`, 'Drowsy — falls asleep soon (' + v.yawnTurns + ' turn(s))', 'debuff');
             if (v.perishCount >= 0) chip(`Perish ${v.perishCount}`, 'Perish Song count — KO at 0', 'debuff');
-            const fe = v.focusEnergy;
-            if (fe) {
-                const st = typeof fe === 'number' ? fe : 2;
-                chip(`Crit +${st}`, 'Focus Energy (or stack) — higher critical-hit stage', 'buff');
-            }
+            // Critical-hit ratio (Focus Energy / Dire Hit / Lansat Berry) is rendered as a stat-stage
+            // badge alongside Atk/Def/SpA/SpD/Spe/Acc/Eva in the stat-info-row, not as a volatile chip.
             if (v.aquaRing) chip('Aqua', 'Aqua Ring — heals a little HP each turn', 'buff');
             if (v.ingrain) chip('Root', 'Ingrain — heals each turn but cannot switch out voluntarily', 'neutral');
             if (v.healBlock > 0) chip(`Hb ${v.healBlock}`, 'Heal Block — cannot heal (' + v.healBlock + ' turn(s))', 'debuff');
@@ -11443,13 +11440,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (stageEl) {
                     let badges = [];
                     let stageNames = {atk:'Atk',def:'Def',spa:'SpA',spd:'SpD',spe:'Spe',acc:'Acc',eva:'Eva'};
-                    for (let [key, val] of Object.entries(mon.stages)) {
-                        if (val !== 0) {
+                    // Iterate the known stat whitelist (defensive: ignores any stray keys on mon.stages)
+                    for (let key in stageNames) {
+                        let val = mon.stages[key];
+                        if (typeof val === 'number' && val !== 0) {
                             let color = val > 0 ? '#4caf50' : '#f44336';
                             let sign = val > 0 ? '+' : '';
                             let extraTip = (key === 'acc' || key === 'eva') ? ' — affects whether moves hit' : '';
                             badges.push(`<span style="font-size:10px;padding:1px 4px;background:rgba(0,0,0,0.5);border-radius:3px;color:${color};border:1px solid ${color};" title="${stageNames[key]} ${sign}${val}${extraTip}">${stageNames[key]}${sign}${val}</span>`);
                         }
+                    }
+                    // Critical hit ratio (Focus Energy / Dire Hit / Lansat Berry etc.) is tracked separately as volatile.focusEnergy
+                    const _fe = mon.volatile && mon.volatile.focusEnergy;
+                    if (_fe) {
+                        const _crit = typeof _fe === 'number' ? _fe : 2;
+                        badges.push(`<span style="font-size:10px;padding:1px 4px;background:rgba(0,0,0,0.5);border-radius:3px;color:#ffb74d;border:1px solid #ffb74d;" title="Crit +${_crit} — higher critical-hit stage (Focus Energy / Dire Hit / Lansat Berry)">Crit+${_crit}</span>`);
                     }
                     stageEl.innerHTML = badges.join(' ');
                 }
@@ -11678,6 +11683,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 for (let key in statNames) {
                     if (mon.stages[key] > 0) boosts.push(`${statNames[key]}+${mon.stages[key]}`);
                     if (mon.stages[key] < 0) drops.push(`${statNames[key]}${mon.stages[key]}`);
+                }
+                // Critical-hit ratio counts as a stage-style boost (Focus Energy / Dire Hit / Lansat Berry)
+                const _feSt = mon.volatile && mon.volatile.focusEnergy;
+                if (_feSt) {
+                    const _critSt = typeof _feSt === 'number' ? _feSt : 2;
+                    boosts.push(`Crit+${_critSt}`);
                 }
 
                 // Reuse existing badges or remove if no longer needed
@@ -19951,6 +19962,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function changeStage(mon, stat, amount, byOpponent, opts) {
             opts = opts || null;
+            // Normalize Showdown-style stat keys from move JSON ("accuracy"/"evasion")
+            // to internal short keys ("acc"/"eva") used by mon.stages.
+            if (stat === 'accuracy') stat = 'acc';
+            else if (stat === 'evasion') stat = 'eva';
             // Substitute only blocks opponent-sourced stat drops, not self-inflicted ones (Gen 5+)
             if (mon.volatile.sub > 0 && amount < 0 && byOpponent && !(opts && opts.bypassSub)) return;
             // Mist: block opponent-sourced stat drops
