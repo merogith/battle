@@ -64,6 +64,8 @@ console.log('Resolved sprite files missing on disk:', missing.length);
 if (missing.length) {
   console.log('First 25 missing:');
   missing.slice(0, 25).forEach((m) => console.log(' ', m.name, '→', m.file));
+  console.log('\nTip: run `npm run mirror-trainers` to fetch curated NPC sprites from Pokémon Showdown.');
+  console.log('Story battles handle remaining gaps via the onerror hidden-image fallback.');
   process.exitCode = 1;
 } else {
   console.log('All trainer rows resolve to existing PNGs.');
