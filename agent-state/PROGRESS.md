@@ -1,7 +1,7 @@
 # PROGRESS
 
 ## Current phase
-Phase 0 — auto-discovery (in progress; two Explore sub-agents dispatched)
+Phase 0 → Phase 1. Both discovery agents completed. CODEBASE_MAP.md and STORY_MAP.md written.
 
 ## Last completed action
 - Created `agent-state/`

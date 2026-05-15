@@ -25,19 +25,24 @@
 
 ## Outstanding sub-agents
 
-If still running when you resume:
-- `a9501e4d1bbebf11c` (Explore) — battle-engine map of battle.html
-- `a68e6a53a949d0a79` (Explore) — story-mode flow / grades / saves
+Both completed.
+- `a68e6a53a949d0a79` — fed `agent-state/STORY_MAP.md`; produced FINDING-003, FINDING-004.
+- `a9501e4d1bbebf11c` — fed `agent-state/CODEBASE_MAP.md`.
+
+## Reconciliation needed (recorded for next session)
+
+- Grade BST thresholds disagree between the two agents (G1 ≥570 vs ≥530). Resolve by reading `battle.html:8830` directly before any GRADE work.
+- `STORY_EVENTS_RAW` location: story-agent said 22032–22100; engine-agent said 22354+. Likely 22032 = the array literal, 22354 = a consumer/secondary. Verify.
 
 Send each a SendMessage with `"status?"` and incorporate their output into `agent-state/CODEBASE_MAP.md`. If they completed already, their final messages are in this session's transcript context (when summarized).
 
 ## Next 5 actions
 
-1. Assemble `agent-state/CODEBASE_MAP.md` from the two Explore agents' output (skeleton from PROGRESS.md notes).
-2. Confirm STORY_MODE_FLOW.md emptiness (it IS empty as of this session) and decide: regenerate from STORY_EVENTS_RAW (Phase 1 STORY_MAP), OR mark as deferred and continue.
-3. Write `agent-state/SETTINGS_MATRIX.md` — Grep battle.html for `Sleep Clause`, `Species Clause`, `Item Clause`, `catchMode`, `hardcore`, `Eviolite`, `Hidden Ability`, `gen` toggle, etc.
-4. Run a focused EVIOLITE LATE-EVO audit (Phase 5) — small, self-contained, high-value confidence check.
-5. Run a focused GEN TOGGLE audit (Phase 4) — same shape, second-highest value.
+1. Reconcile grade BST thresholds — Read `battle.html:8800–8920` directly. Update STORY_MAP / CODEBASE_MAP.
+2. Write `agent-state/SETTINGS_MATRIX.md` — Grep battle.html for `Sleep Clause`, `Species Clause`, `Item Clause`, `catchMode`, `hardcore`, `Eviolite`, `Hidden Ability`, `enabledGens`. Locate each toggle's enforcement point. Mark every row UNVERIFIED initially.
+3. Phase 5 EVIOLITE LATE-EVO audit. Read `battle.html:8650–8700` and `:16150–16180`. Build the test matrix from the lead-agent brief (Chansey/Scyther/Dusclops/Gligar/Porygon2/etc). Since no test runner exists, write the matrix as a JS snippet that can be dropped into the browser console + capture results manually as a stopgap; flag the proper-test-framework gap (FINDING-002) as a prerequisite.
+4. Phase 4 GEN TOGGLE regression — Grep all `enabledGens`/`minGen`/`maxGen` consumers; confirm none touch type chart / damage / status durations / move learnsets. Cross-check the data-resolution layer reads modern entries regardless of toggle.
+5. Phase 1 COVERAGE.md — count entries in moves.json, abilities.json, items.json, species.json (per gen and total), then Grep `battle.html` for the names to see which are reachable in Story Mode flow.
 
 ## Constraints to remember
 

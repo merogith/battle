@@ -16,6 +16,30 @@ Each finding follows the template in the lead-agent brief.
 
 ---
 
+## [ENG][REP][FAN] FINDING-003
+
+**Status**: OPEN
+**Severity**: MAJOR
+**Location**: `battle.html:22527–22595` (TRAINER_QUOTES); spec at `docs/STORY_FEATURES_INTEGRATION.md`
+**Issue**: Narrative layer is stubbed. Story Mode has zero true branches; all player choices are cosmetic. Dialogue is one-liner pre-battle barks indexed by trainer role — no scene text, no inter-battle beats, no villain-arc dialogue. Capacity gap vs. spec is ~2–3k lines per chapter arc.
+**Evidence**: Story-mode discovery agent walked STORY_EVENTS_RAW + TRAINER_QUOTES; spec'd flags `blackMarketUnlocked`, `itineraryProgress`, `wagerPending`, `safariZoneType` are absent from save template at `battle.html:22953–22968`.
+**Proposed fix**: Authoring task — write itinerary-beat scenes, villain arcs, NPC barks. Code task — add an `itinerary` data table + a scene runner. Defer authoring to a content pass after structural Phase-2 audits complete; track in BACKLOG as P1 once mechanics are green.
+**Cross-axes**: DLG, MYS, ENG, CONS
+
+---
+
+## [GDC][DSC] FINDING-004
+
+**Status**: OPEN
+**Severity**: MINOR
+**Location**: spec `docs/STORY_FEATURES_INTEGRATION.md` vs. `battle.html` save template `:22953–22968`
+**Issue**: Spec describes features (Black Market, PC Box, Safari Zone, Wager battles, Pokémon Trader) gated by save flags that the save template does not declare. If they ever flip to implemented, partial-rollouts risk inconsistent state across saves.
+**Evidence**: Missing keys: `blackMarketUnlocked`, `pcBox`, `traderOfferByCity`, `safariZoneType`, `wagerPending`, `itineraryProgress`.
+**Proposed fix**: Either (a) document these as "planned, not in save" in a NEW `docs/STORY_FEATURES_INTEGRATION.md` status table, or (b) add the keys defaulted (false/[]) now so migration is a no-op when the features ship. Recommend (b).
+**Cross-axes**: CONS, EOP
+
+---
+
 ## [CODE][TEST] FINDING-002
 
 **Status**: OPEN
