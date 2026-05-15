@@ -5416,6 +5416,11 @@
             return typeof structuredClone === 'function' ? structuredClone(o) : JSON.parse(JSON.stringify(o));
         }
         /** Pokémon build snapshots may pick up non-cloneable fields; used before summary UI. */
+        /** buildPokemon mutates `build.m`; this returns a shallow copy with a detached moves array so the caller's build stays pristine. Used for display-time renders that don't need a full deepClone. */
+        function shallowCloneBuildForDisplay(b) {
+            if (!b || typeof b !== 'object') return { m: [] };
+            return { ...b, m: Array.isArray(b.m) ? b.m.slice() : [] };
+        }
         function safeCloneBuild(b) {
             if (!b || typeof b !== 'object') return {};
             try {
@@ -25562,9 +25567,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return rawName || 'Town';
         }
 
+        function _storyDifficulty() {
+            return (sm && sm.storyDifficulty) || 'normal';
+        }
+        function _storyDifficultyIsCasual(diff) {
+            const d = diff || _storyDifficulty();
+            return d === 'veryeasy' || d === 'easy';
+        }
         function _storyGoldFeeAppliesForRetreat() {
-            const d = sm.storyDifficulty || 'normal';
-            return d === 'normal' || d === 'hard' || d === 'challenge';
+            return !_storyDifficultyIsCasual();
         }
 
         function _storyCalcRetreatGoldFee() {
@@ -25612,8 +25623,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (isRivalLoss) {
                     hint.textContent = 'Rival stakes: retry or retreat normally, or accept the loss, drop to 0G, and let the rivalry dialogue remember who won last.';
                 } else {
-                    const d = sm.storyDifficulty || 'normal';
-                    if (d === 'veryeasy' || d === 'easy') {
+                    if (_storyDifficultyIsCasual()) {
                         hint.textContent = 'No gold cost on this difficulty. Used bag items stay used.';
                     } else {
                         const fee = _storyCalcRetreatGoldFee();
@@ -25736,9 +25746,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const g = t.name ? getMonGrade(t.name, getBST(t.name)) : 4;
                 const n = sm.team.length;
                 const rawBuild = (t && (t.build || t.buildData)) ? (t.build || t.buildData) : {};
-                // buildPokemon mutates build.m; shallow-copy the moves to keep the saved build pristine.
-                const _displayBuild = { ...rawBuild, m: Array.isArray(rawBuild.m) ? rawBuild.m.slice() : [] };
-                const mon = buildPokemon(String(t.name || '').trim(), _displayBuild);
+                const mon = buildPokemon(String(t.name || '').trim(), shallowCloneBuildForDisplay(rawBuild));
                 const moveNames = (rawBuild.m || []).slice(0, 4).map(m => (String(m || '').split('/')[0] || '—'));
                 while (moveNames.length < 4) moveNames.push('—');
                 const details = `${displayItem(mon, false)} · ${mon.ability || 'None'} · ${mon.nature || 'Hardy'}`;
@@ -28524,7 +28532,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             el.innerHTML = sm.team.map((t,i) => {
                 const g      = getMonGrade(t.name, getBST(t.name));
                 let rCost  = Math.ceil((REROLL_COSTS[g] || 100) * Math.pow(1.5, (sm.cityRerollsUsed[`r_${i}`]||0)));
-                if (((sm.storyDifficulty || 'normal') === 'easy' || (sm.storyDifficulty || 'normal') === 'veryeasy') && (sm.cityRerollsUsed[`r_${i}`]||0) === 0) rCost = Math.ceil(rCost * 0.78);
+                if (_storyDifficultyIsCasual() && (sm.cityRerollsUsed[`r_${i}`]||0) === 0) rCost = Math.ceil(rCost * 0.78);
                 const uCostBase = g > 1 ? (UPGRADE_COSTS[g] || 9999) : null;
                 const uCost    = uCostBase !== null ? Math.ceil(uCostBase * Math.pow(1.5, (sm.cityRerollsUsed[`u_${i}`]||0))) : null;
                 const rebB   = Math.ceil(REBUILD_COST * Math.pow(1.5, (sm.cityRerollsUsed[`b_${i}`]||0)));
@@ -28537,10 +28545,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 let tempMon = null;
                 try {
-                    if (t.build) {
-                        const bc = { ...t.build, m: [...(t.build.m || [])] };
-                        tempMon = buildPokemon(t.name, bc);
-                    }
+                    if (t.build) tempMon = buildPokemon(t.name, shallowCloneBuildForDisplay(t.build));
                 } catch (e) { /* ignore render-time build errors */ }
 
                 const typeHtml = tempMon ? getTypeHTML(tempMon.type1, tempMon.type2) : '';
@@ -28595,7 +28600,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const rk = `r_${idx}`;
                 const rn = (sm.cityRerollsUsed[rk] || 0) + 1;
                 let cost = Math.ceil((REROLL_COSTS[g]||100) * Math.pow(1.5, rn - 1));
-                if (((sm.storyDifficulty || 'normal') === 'easy' || (sm.storyDifficulty || 'normal') === 'veryeasy') && rn === 1) cost = Math.ceil(cost * 0.78);
+                if (_storyDifficultyIsCasual() && rn === 1) cost = Math.ceil(cost * 0.78);
                 if (sm.gold < cost) return;
                 const pool = buildGradePool(storySettingsGens(), g).filter(n=>n!==mon.name&&!sm.team.some((t,i)=>i!==idx&&t.name===n));
                 if (!pool.length) { window.showGameAlert('No other Pokémon of this grade available!'); return; }
@@ -28797,10 +28802,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 let tempMon = null;
                 try {
-                    if (t.build) {
-                        const bc = { ...t.build, m: [...(t.build.m || [])] };
-                        tempMon = buildPokemon(t.name, bc);
-                    }
+                    if (t.build) tempMon = buildPokemon(t.name, shallowCloneBuildForDisplay(t.build));
                 } catch (e) { /* ignore render-time build errors */ }
 
                 const typeHtml = tempMon ? getTypeHTML(tempMon.type1, tempMon.type2) : '';
@@ -30353,7 +30355,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const mergedMoves = showMoves && (movePools[idx] && movePools[idx].length) ? movePools[idx] : pool.moves;
                 const b = t.build || {};
                 let mon = null;
-                try { if (b) mon = buildPokemon(t.name, { ...b, m: [...(b.m || [])] }); } catch (e) {}
+                try { if (b) mon = buildPokemon(t.name, shallowCloneBuildForDisplay(b)); } catch (e) {}
 
                 const typeHtml = mon ? getTypeHTML(mon.type1, mon.type2 || '') : '';
                 const spriteUrl = getSprite(t.name);
@@ -30729,7 +30731,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const spriteUrl = getSprite(t.name);
             let typeHtml = '';
             try {
-                const mon = buildPokemon(t.name, { ...b, m: [...(b.m || [])] });
+                const mon = buildPokemon(t.name, shallowCloneBuildForDisplay(b));
                 typeHtml = mon ? getTypeHTML(mon.type1, mon.type2 || '') : '';
             } catch (e) {}
             const badge = _colressGimmickBadge(b);
@@ -31084,7 +31086,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const spriteUrl = (typeof getSprite === 'function') ? getSprite(t.name) : '';
             let typeHtml = '';
             try {
-                const mon = (typeof buildPokemon === 'function') ? buildPokemon(t.name, { ...b, m: [...(b.m || [])] }) : null;
+                const mon = (typeof buildPokemon === 'function') ? buildPokemon(t.name, shallowCloneBuildForDisplay(b)) : null;
                 if (mon && typeof getTypeHTML === 'function') typeHtml = getTypeHTML(mon.type1, mon.type2 || '');
             } catch (e) {}
 
