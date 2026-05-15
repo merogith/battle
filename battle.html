@@ -5423,7 +5423,7 @@
 
         // Items tied to mechanics not present in the game (Mega Evolution, Z-moves).
         // When a build rolls one of these, it's swapped to a neutral item.
-        const BANNED_ITEMS = new Set(["Venusaurite","Charizardite X","Charizardite Y","Blastoisinite","Beedrillite","Pidgeotite","Alakazite","Slowbronite","Gengarite","Kangaskhanite","Pinsirite","Gyaradosite","Aerodactylite","Mewtwonite X","Mewtwonite Y","Ampharosite","Steelixite","Scizorite","Heracronite","Houndoominite","Tyranitarite","Blazikenite","Gardevoirite","Mawilite","Aggronite","Medichamite","Manectite","Sharpedonite","Cameruptite","Altarianite","Banettite","Absolite","Glalitite","Salamencite","Metagrossite","Latiasite","Latiosite","Lopunnite","Garchompite","Lucarionite","Abomasite","Galladite","Audinite","Diancite","Sablenite","Sceptilite","Swampertite","Normalium Z","Firium Z","Waterium Z","Grassium Z","Electrium Z","Icium Z","Fightinium Z","Poisonium Z","Groundium Z","Flyinium Z","Psychium Z","Buginium Z","Rockium Z","Ghostium Z","Dragonium Z","Darkinium Z","Steelium Z","Fairium Z","Pikanium Z","Pikashunium Z","Eevium Z","Decidium Z","Incinium Z","Primarium Z","Tapunium Z","Marshadium Z","Aloraichium Z","Snorlium Z","Mewnium Z","Rusted Sword","Rusted Shield","Adamant Crystal","Lustrous Globe","Griseous Core"]);
+        const BANNED_ITEMS = new Set(["Venusaurite","Charizardite X","Charizardite Y","Blastoisinite","Beedrillite","Pidgeotite","Alakazite","Slowbronite","Gengarite","Kangaskhanite","Pinsirite","Gyaradosite","Aerodactylite","Mewtwonite X","Mewtwonite Y","Ampharosite","Steelixite","Scizorite","Heracronite","Houndoominite","Tyranitarite","Blazikenite","Gardevoirite","Mawilite","Aggronite","Medichamite","Manectite","Sharpedonite","Cameruptite","Altarianite","Banettite","Absolite","Glalitite","Salamencite","Metagrossite","Latiasite","Latiosite","Lopunnite","Garchompite","Lucarionite","Abomasite","Galladite","Audinite","Diancite","Sablenite","Sceptilite","Swampertite","Crucibellite","Normalium Z","Firium Z","Waterium Z","Grassium Z","Electrium Z","Icium Z","Fightinium Z","Poisonium Z","Groundium Z","Flyinium Z","Psychium Z","Buginium Z","Rockium Z","Ghostium Z","Dragonium Z","Darkinium Z","Steelium Z","Fairium Z","Pikanium Z","Pikashunium Z","Eevium Z","Decidium Z","Incinium Z","Primarium Z","Tapunium Z","Marshadium Z","Aloraichium Z","Snorlium Z","Mewnium Z","Rusted Sword","Rusted Shield","Adamant Crystal","Lustrous Globe","Griseous Core"]);
 
         // Moves/items that are conditionally allowed when their mechanic is enabled
         function isMoveAllowed(moveName) {
@@ -5926,6 +5926,7 @@
             'Sharpedonite','Cameruptite','Altarianite','Banettite','Absolite','Glalitite','Salamencite',
             'Metagrossite','Latiasite','Latiosite','Lopunnite','Garchompite','Lucarionite','Abomasite',
             'Galladite','Audinite','Diancite','Sablenite','Sceptilite','Swampertite','Steelixite','Alakazite',
+            'Crucibellite',
         ]);
         const isMegaStone = item => item != null && ALL_MEGA_STONES.has(item);
 
@@ -6658,6 +6659,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             "Garchomp":"Garchompite","Lucario":"Lucarionite","Abomasnow":"Abomasite","Gallade":"Galladite",
             "Audino":"Audinite","Diancie":"Diancite","Sableye":"Sablenite","Sceptile":"Sceptilite",
             "Swampert":"Swampertite","Steelix":"Steelixite","Alakazam":"Alakazite",
+            "Crucibelle":"Crucibellite",
             "Groudon":"Red Orb","Kyogre":"Blue Orb","Rayquaza":"__RAYQUAZA_MEGA__"
         };
         // Rayquaza Mega does not require a held item — it's gated by knowing Dragon Ascent.
@@ -6683,6 +6685,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             "Sablenite":"Sableye-Mega","Sceptilite":"Sceptile-Mega","Swampertite":"Swampert-Mega",
             "Red Orb":"Groudon-Primal","Blue Orb":"Kyogre-Primal",
             "Mewtwonite X":"Mewtwo-Mega-X","Mewtwonite Y":"Mewtwo-Mega-Y",
+            "Crucibellite":"Crucibelle-Mega",
             "__RAYQUAZA_MEGA__":"Rayquaza-Mega"
         };
         const GMAX_SPECIES = new Set(["Venusaur","Blastoise","Charizard","Butterfree","Pikachu","Meowth","Machamp","Gengar","Kingler","Lapras","Eevee","Snorlax","Garbodor","Melmetal","Rillaboom","Cinderace","Inteleon","Corviknight","Orbeetle","Drednaw","Coalossal","Flapple","Appletun","Sandaconda","Toxtricity","Centiskorch","Hatterene","Grimmsnarl","Alcremie","Copperajah","Duraludon","Urshifu","Eternatus"]);
@@ -16148,7 +16151,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     else basePower = 200;
                 }
                 if (move.name === "Magnitude" && !basePower) basePower = 70;
-                if (move.name === "Natural Gift" && !basePower) basePower = 80;
+                if (move.name === "Natural Gift") {
+                    // Berry-specific BP + type (Gen 6+ values; +20 from Gen 4 baseline)
+                    const _ngMap = {
+                        // 80 BP berries (status-curing / general)
+                        "Cheri Berry": {bp:80,t:"Fire"}, "Chesto Berry": {bp:80,t:"Water"}, "Pecha Berry": {bp:80,t:"Electric"},
+                        "Rawst Berry": {bp:80,t:"Grass"}, "Aspear Berry": {bp:80,t:"Ice"}, "Leppa Berry": {bp:80,t:"Fighting"},
+                        "Oran Berry": {bp:80,t:"Poison"}, "Persim Berry": {bp:80,t:"Ground"}, "Lum Berry": {bp:80,t:"Flying"},
+                        "Sitrus Berry": {bp:80,t:"Psychic"}, "Pomeg Berry": {bp:80,t:"Bug"}, "Kelpsy Berry": {bp:80,t:"Rock"},
+                        "Qualot Berry": {bp:80,t:"Ghost"}, "Hondew Berry": {bp:80,t:"Dragon"}, "Grepa Berry": {bp:80,t:"Dark"},
+                        "Tamato Berry": {bp:80,t:"Steel"}, "Razz Berry": {bp:80,t:"Steel"}, "Bluk Berry": {bp:80,t:"Fire"},
+                        "Nanab Berry": {bp:80,t:"Water"}, "Wepear Berry": {bp:80,t:"Electric"}, "Pinap Berry": {bp:80,t:"Grass"},
+                        // 90 BP berries (gourmet)
+                        "Cornn Berry": {bp:90,t:"Bug"}, "Magost Berry": {bp:90,t:"Rock"}, "Rabuta Berry": {bp:90,t:"Ghost"},
+                        "Nomel Berry": {bp:90,t:"Dragon"}, "Spelon Berry": {bp:90,t:"Dark"}, "Pamtre Berry": {bp:90,t:"Steel"},
+                        "Watmel Berry": {bp:100,t:"Fire"}, "Durin Berry": {bp:100,t:"Water"}, "Belue Berry": {bp:100,t:"Electric"},
+                        // 80 BP type-resist berries
+                        "Occa Berry": {bp:80,t:"Fire"}, "Passho Berry": {bp:80,t:"Water"}, "Wacan Berry": {bp:80,t:"Electric"},
+                        "Rindo Berry": {bp:80,t:"Grass"}, "Yache Berry": {bp:80,t:"Ice"}, "Chople Berry": {bp:80,t:"Fighting"},
+                        "Kebia Berry": {bp:80,t:"Poison"}, "Shuca Berry": {bp:80,t:"Ground"}, "Coba Berry": {bp:80,t:"Flying"},
+                        "Payapa Berry": {bp:80,t:"Psychic"}, "Tanga Berry": {bp:80,t:"Bug"}, "Charti Berry": {bp:80,t:"Rock"},
+                        "Kasib Berry": {bp:80,t:"Ghost"}, "Haban Berry": {bp:80,t:"Dragon"}, "Colbur Berry": {bp:80,t:"Dark"},
+                        "Babiri Berry": {bp:80,t:"Steel"}, "Chilan Berry": {bp:80,t:"Normal"}, "Roseli Berry": {bp:80,t:"Fairy"},
+                        // 80 BP flavor berries
+                        "Figy Berry": {bp:80,t:"Bug"}, "Wiki Berry": {bp:80,t:"Rock"}, "Mago Berry": {bp:80,t:"Ghost"},
+                        "Aguav Berry": {bp:80,t:"Dragon"}, "Iapapa Berry": {bp:80,t:"Dark"},
+                        // 100 BP stat berries
+                        "Liechi Berry": {bp:100,t:"Grass"}, "Ganlon Berry": {bp:100,t:"Ice"}, "Salac Berry": {bp:100,t:"Fighting"},
+                        "Petaya Berry": {bp:100,t:"Poison"}, "Apicot Berry": {bp:100,t:"Ground"},
+                        "Lansat Berry": {bp:100,t:"Flying"}, "Starf Berry": {bp:100,t:"Psychic"},
+                        "Enigma Berry": {bp:100,t:"Bug"}, "Custap Berry": {bp:100,t:"Ghost"},
+                        "Micle Berry": {bp:100,t:"Rock"}, "Jaboca Berry": {bp:100,t:"Dragon"}, "Rowap Berry": {bp:100,t:"Dark"},
+                        "Kee Berry": {bp:100,t:"Fairy"}, "Maranga Berry": {bp:100,t:"Dark"}
+                    };
+                    const _ngBerry = attacker.item && _ngMap[attacker.item];
+                    if (_ngBerry) {
+                        basePower = _ngBerry.bp;
+                        move = {...move, type: _ngBerry.t};
+                    } else if (!basePower) basePower = 80;
+                }
                 if (move.name === "Fling" && attacker.item) {
                     let _fp = getFlingBasePower(attacker.item);
                     if (_fp) basePower = _fp;
@@ -16420,7 +16461,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_atkItemActive && attacker.item === "Muscle Band" && move.cat === "Physical") lifeOrb *= 1.1;
                 if (_atkItemActive && attacker.item === "Wise Glasses" && move.cat === "Special") lifeOrb *= 1.1;
                 // Type-boosting items: +20% to their type
-                const typeItemBoosts = {"Charcoal":"Fire","Mystic Water":"Water","Miracle Seed":"Grass","Magnet":"Electric","Never-Melt Ice":"Ice","Black Belt":"Fighting","Poison Barb":"Poison","Soft Sand":"Ground","Sharp Beak":"Flying","Twisted Spoon":"Psychic","Silver Powder":"Bug","Hard Stone":"Rock","Spell Tag":"Ghost","Dragon Fang":"Dragon","Black Glasses":"Dark","Metal Coat":"Steel","Silk Scarf":"Normal","Fairy Feather":"Fairy","Flame Plate":"Fire","Splash Plate":"Water","Meadow Plate":"Grass","Zap Plate":"Electric","Icicle Plate":"Ice","Fist Plate":"Fighting","Toxic Plate":"Poison","Earth Plate":"Ground","Sky Plate":"Flying","Mind Plate":"Psychic","Insect Plate":"Bug","Stone Plate":"Rock","Spooky Plate":"Ghost","Draco Plate":"Dragon","Dread Plate":"Dark","Iron Plate":"Steel","Pixie Plate":"Fairy"};
+                const typeItemBoosts = {"Charcoal":"Fire","Mystic Water":"Water","Miracle Seed":"Grass","Magnet":"Electric","Never-Melt Ice":"Ice","Black Belt":"Fighting","Poison Barb":"Poison","Soft Sand":"Ground","Sharp Beak":"Flying","Twisted Spoon":"Psychic","Silver Powder":"Bug","Hard Stone":"Rock","Spell Tag":"Ghost","Dragon Fang":"Dragon","Black Glasses":"Dark","Metal Coat":"Steel","Silk Scarf":"Normal","Fairy Feather":"Fairy","Flame Plate":"Fire","Splash Plate":"Water","Meadow Plate":"Grass","Zap Plate":"Electric","Icicle Plate":"Ice","Fist Plate":"Fighting","Toxic Plate":"Poison","Earth Plate":"Ground","Sky Plate":"Flying","Mind Plate":"Psychic","Insect Plate":"Bug","Stone Plate":"Rock","Spooky Plate":"Ghost","Draco Plate":"Dragon","Dread Plate":"Dark","Iron Plate":"Steel","Pixie Plate":"Fairy","Sea Incense":"Water","Wave Incense":"Water","Rose Incense":"Grass","Odd Incense":"Psychic","Rock Incense":"Rock"};
                 if (_atkItemActive && attacker.item && typeItemBoosts[attacker.item] && typeItemBoosts[attacker.item] === move.type) lifeOrb *= 1.2;
                 // Type Gems (one-time x1.3, consumed)
                 const gemTypes = {"Fire Gem":"Fire","Water Gem":"Water","Grass Gem":"Grass","Electric Gem":"Electric","Ice Gem":"Ice","Fighting Gem":"Fighting","Poison Gem":"Poison","Ground Gem":"Ground","Flying Gem":"Flying","Psychic Gem":"Psychic","Bug Gem":"Bug","Rock Gem":"Rock","Ghost Gem":"Ghost","Dragon Gem":"Dragon","Dark Gem":"Dark","Steel Gem":"Steel","Fairy Gem":"Fairy"};
@@ -16601,6 +16642,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_atkItemActive && attacker.item === "Lustrous Orb" && (attacker.name === "Palkia" || attacker.name.startsWith("Palkia-")) && (move.type === "Dragon" || move.type === "Water")) modifier *= 1.2;
                 // Griseous Orb (Giratina): Dragon & Ghost moves x1.2
                 if (_atkItemActive && attacker.item === "Griseous Orb" && (attacker.name === "Giratina" || attacker.name.startsWith("Giratina-")) && (move.type === "Dragon" || move.type === "Ghost")) modifier *= 1.2;
+                // Adamant Crystal (Dialga-Origin): Dragon & Steel moves x1.2 (also locks to Origin Forme on entry)
+                if (_atkItemActive && attacker.item === "Adamant Crystal" && (attacker.name === "Dialga" || attacker.name.startsWith("Dialga-")) && (move.type === "Dragon" || move.type === "Steel")) modifier *= 1.2;
+                // Lustrous Globe (Palkia-Origin): Dragon & Water moves x1.2
+                if (_atkItemActive && attacker.item === "Lustrous Globe" && (attacker.name === "Palkia" || attacker.name.startsWith("Palkia-")) && (move.type === "Dragon" || move.type === "Water")) modifier *= 1.2;
+                // Griseous Core (Giratina-Origin): Dragon & Ghost moves x1.2
+                if (_atkItemActive && attacker.item === "Griseous Core" && (attacker.name === "Giratina" || attacker.name.startsWith("Giratina-")) && (move.type === "Dragon" || move.type === "Ghost")) modifier *= 1.2;
+                // Vile Vial (Venomicon-Epilogue): Poison & Flying moves x1.2
+                if (_atkItemActive && attacker.item === "Vile Vial" && (attacker.name === "Venomicon" || attacker.name.startsWith("Venomicon-")) && (move.type === "Poison" || move.type === "Flying")) modifier *= 1.2;
                 // Air Balloon: immune to Ground moves (breaks when hit) — suppressed by Magic Room / Embargo / Gravity
                 if (_defItemActive && !_gravityActive && defender.item === "Air Balloon" && move.type === "Ground") {
                     logMsg(`${defender.name}'s Air Balloon makes it float above Ground moves!`, 'info');
@@ -17452,6 +17501,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (enAct > 0) { defender.currentHp += enAct; logMsg(`${defender.name}'s Enigma Berry restored ${enAct} HP!`, 'heal'); }
                     defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender);
                 }
+                // Jaboca Berry: deals 1/8 of attacker's max HP to attacker when holder is hit by a Physical move (consumed)
+                if (!hitSub && defender.item === "Jaboca Berry" && move.cat === "Physical" && defender.currentHp > 0 && attacker.currentHp > 0
+                    && state.magicRoom === 0 && !defender.volatile.embargo && attacker.ability !== "Unnerve" && attacker.ability !== "Magic Guard") {
+                    let jbDmg = Math.max(1, Math.floor(_ripen(defender, attacker.maxHp / 8)));
+                    let actJb = Math.min(attacker.currentHp, jbDmg);
+                    attacker.currentHp -= actJb;
+                    logMsg(`${attacker.name} was hurt by ${defender.name}'s Jaboca Berry! (${actJb} damage)`, 'dmg');
+                    defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender);
+                }
+                // Rowap Berry: deals 1/8 of attacker's max HP when holder is hit by a Special move (consumed)
+                if (!hitSub && defender.item === "Rowap Berry" && move.cat === "Special" && defender.currentHp > 0 && attacker.currentHp > 0
+                    && state.magicRoom === 0 && !defender.volatile.embargo && attacker.ability !== "Unnerve" && attacker.ability !== "Magic Guard") {
+                    let rwDmg = Math.max(1, Math.floor(_ripen(defender, attacker.maxHp / 8)));
+                    let actRw = Math.min(attacker.currentHp, rwDmg);
+                    attacker.currentHp -= actRw;
+                    logMsg(`${attacker.name} was hurt by ${defender.name}'s Rowap Berry! (${actRw} damage)`, 'dmg');
+                    defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender);
+                }
+                // Kee Berry: +1 Defense when holder is hit by a Physical move (consumed)
+                if (!hitSub && defender.item === "Kee Berry" && move.cat === "Physical" && defender.currentHp > 0
+                    && state.magicRoom === 0 && !defender.volatile.embargo && attacker.ability !== "Unnerve") {
+                    changeStage(defender, 'def', _ripen(defender, 1));
+                    logMsg(`${defender.name}'s Kee Berry raised its Defense!`, 'info');
+                    defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender);
+                }
+                // Maranga Berry: +1 Sp. Def when holder is hit by a Special move (consumed)
+                if (!hitSub && defender.item === "Maranga Berry" && move.cat === "Special" && defender.currentHp > 0
+                    && state.magicRoom === 0 && !defender.volatile.embargo && attacker.ability !== "Unnerve") {
+                    changeStage(defender, 'spd', _ripen(defender, 1));
+                    logMsg(`${defender.name}'s Maranga Berry raised its Sp. Def!`, 'info');
+                    defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender);
+                }
                 // Grudge: if defender faints, drain PP of attacker's last move
                 if (!hitSub && defender.volatile.grudge && defender.currentHp <= 0 && attacker.currentHp > 0) {
                     let grudgeSlot = attacker.moves.find(m => m.name === attacker.volatile.lastMoveUsed);
@@ -18183,6 +18264,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.item === "Rusted Shield" && mon.name === "Zamazenta") {
                 if (_setMonForm(mon, "Zamazenta-Crowned", { proportionalHp: true })) logMsg(`${mon.name}'s Rusted Shield transformed it into its Crowned forme!`, 'info');
             }
+            // Origin Forme items: Dialga/Palkia/Giratina forme change on entry
+            if (mon.item === "Adamant Crystal" && mon.name === "Dialga") {
+                if (_setMonForm(mon, "Dialga-Origin", { proportionalHp: true })) logMsg(`${mon.name}'s Adamant Crystal transformed it into its Origin Forme!`, 'info');
+            }
+            if (mon.item === "Lustrous Globe" && mon.name === "Palkia") {
+                if (_setMonForm(mon, "Palkia-Origin", { proportionalHp: true })) logMsg(`${mon.name}'s Lustrous Globe transformed it into its Origin Forme!`, 'info');
+            }
+            if (mon.item === "Griseous Core" && mon.name === "Giratina") {
+                if (_setMonForm(mon, "Giratina-Origin", { proportionalHp: true })) logMsg(`${mon.name}'s Griseous Core transformed it into its Origin Forme!`, 'info');
+            }
+            // Vile Vial: Venomicon forme change on entry (Epilogue form)
+            if (mon.item === "Vile Vial" && mon.name === "Venomicon") {
+                if (_setMonForm(mon, "Venomicon-Epilogue", { proportionalHp: true })) logMsg(`${mon.name}'s Vile Vial transformed it into its Epilogue forme!`, 'info');
+            }
             // Terrain Seeds: +1 stat on entry if matching terrain is active, consumed
             {
                 const _seedMap = {
@@ -18593,6 +18688,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof Z_TYPE_MAP_VALUES !== "undefined" && Z_TYPE_MAP_VALUES.has(it)) return true;
             if (it === "Red Orb" || it === "Blue Orb") return true;
             if (it === "Griseous Orb" || it === "Rusted Sword" || it === "Rusted Shield") return true;
+            if (it === "Adamant Crystal" || it === "Lustrous Globe" || it === "Griseous Core") return true;
+            if (it === "Vile Vial") return true;
             if (it === "Booster Energy") return true;
             if (/ Plate$/.test(it)) return true;
             if (/^(Douse|Shock|Burn|Chill) Drive$/.test(it)) return true;
@@ -18606,6 +18703,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!item) return true;
             if (typeof Z_TYPE_MAP_VALUES !== 'undefined' && Z_TYPE_MAP_VALUES.has(item)) return true;
             if (item === "Rusted Sword" || item === "Rusted Shield" || item === "Red Orb" || item === "Blue Orb" || item === "Griseous Orb") return true;
+            if (item === "Adamant Crystal" || item === "Lustrous Globe" || item === "Griseous Core") return true;
             if (isMegaStoneItemName(item)) return true;
             return false;
         }
@@ -18626,7 +18724,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 "Silver Powder": 10, "Spell Tag": 10, "Dragon Fang": 10, "Black Belt": 10, "Magnet": 10,
                 "Metal Coat": 30, "King's Rock": 30, "Scope Lens": 30,
                 "Leek": 30, "Utility Umbrella": 60, "Eviolite": 40, "Soul Dew": 30,
-                "Custap Berry": 80, "Jaboca Berry": 80, "Rowap Berry": 80
+                "Custap Berry": 80, "Jaboca Berry": 80, "Rowap Berry": 80,
+                "Adamant Orb": 60, "Lustrous Orb": 60, "Griseous Orb": 60,
+                "Vile Vial": 60, "Loaded Dice": 30, "Punching Glove": 30,
+                "Big Root": 10, "Bright Powder": 10, "Lagging Tail": 10, "Macho Brace": 60,
+                "Air Balloon": 10, "Booster Energy": 30, "Adrenaline Orb": 30,
+                "Throat Spray": 30, "Eject Pack": 50, "Covert Cloak": 30, "Safety Goggles": 80,
+                "Clear Amulet": 30, "Ability Shield": 30, "Mirror Herb": 30,
+                "Protective Pads": 30, "Shed Shell": 10, "Destiny Knot": 10, "Berry Juice": 30,
+                "Heat Rock": 60, "Damp Rock": 60, "Icy Rock": 50, "Smooth Rock": 50, "Light Clay": 30,
+                "Terrain Extender": 60, "Shell Bell": 30, "Mail": 10, "Metronome": 30
             };
             if (FLING_POWER_MAP[item] != null) return FLING_POWER_MAP[item];
             if (/ Berry$/i.test(item)) return 10;
@@ -19376,12 +19483,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let atkMega = attacker.megaEvolved || isMegaStoneItemName(attacker.item);
                 let defMega = defender.megaEvolved || isMegaStoneItemName(defender.item);
                 if (atkMega || defMega) { logMsg(`But it failed!`); return; }
-                const _trickUntradeable = (it) => {
+                const _trickUntradeable = (mon, it) => {
                     if (!it) return false;
-                    if (typeof isKnockOffImmuneHeldItem === 'function' && isKnockOffImmuneHeldItem(it, attacker, defender)) return true;
-                    return it === "Booster Energy" || /Z$/.test(it) || /ium Z$/.test(it);
+                    if (typeof isKnockOffImmuneHeldItem === 'function' && isKnockOffImmuneHeldItem(mon, it)) return true;
+                    if (it === "Booster Energy" || /Z$/.test(it) || /ium Z$/.test(it)) return true;
+                    return false;
                 };
-                if (_trickUntradeable(attacker.item) || _trickUntradeable(defender.item)) { logMsg(`But it failed!`); return; }
+                if (_trickUntradeable(attacker, attacker.item) || _trickUntradeable(defender, defender.item)) { logMsg(`But it failed!`); return; }
                 let atkItem = attacker.item || 'nothing';
                 let defItem = defender.item || 'nothing';
                 let temp = attacker.item; attacker.item = defender.item; defender.item = temp;
@@ -20406,6 +20514,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Persim Berry cures confusion
             if (!unnerved && mon.item === "Persim Berry" && mon.volatile.confusion > 0) { logMsg(`${mon.name}'s Persim Berry snapped it out of confusion!`, 'heal'); mon.volatile.confusion = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); }
+            // Leppa Berry: restores 10 PP to a depleted move (consumed). Restores the first move whose PP is 0.
+            if (!unnerved && mon.item === "Leppa Berry" && mon.currentHp > 0 && Array.isArray(mon.moves)) {
+                const _depleted = mon.moves.find(mv => mv && mv.pp === 0 && (mv.maxPp == null || mv.maxPp > 0));
+                if (_depleted) {
+                    const restore = Math.min(10, _depleted.maxPp != null ? _depleted.maxPp : 10);
+                    _depleted.pp = _ripen(mon, restore);
+                    if (_depleted.maxPp != null && _depleted.pp > _depleted.maxPp) _depleted.pp = _depleted.maxPp;
+                    logMsg(`${mon.name} restored PP to its ${_depleted.name} with its Leppa Berry!`, 'heal');
+                    mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
+                }
+            }
 
             if (!unnerved && mon.item === "Salac Berry" && mon.currentHp <= mon.maxHp * _pinchThreshold(mon) && mon.currentHp > 0) {
                 changeStage(mon, 'spe', _ripen(mon, 1), false, { bypassStagnation: true });
