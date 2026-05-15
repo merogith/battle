@@ -27664,6 +27664,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _storyInteractionBusy = false;
         }
 
+        /** Misclick-guard prompt for tutor / dojo / link / colress / EV trainer.
+         * actionText: short description ("Teach Thunderbolt to Pikachu — replaces 'Quick Attack'").
+         * costG: optional gold cost shown in parentheses.
+         * Returns Promise<boolean> — true to commit, false to cancel.
+         */
+        async function _storyConfirmTutorChange(actionText, costG) {
+            if (typeof window === 'undefined' || typeof window.showGameConfirm !== 'function') return true;
+            const costStr = (typeof costG === 'number' && costG > 0) ? ` (${costG.toLocaleString()}G)` : '';
+            return await window.showGameConfirm(`${actionText}${costStr}`);
+        }
+
 
         function enterLink() {
             if (!_storyTryBeginInteraction()) return;
@@ -27860,68 +27871,72 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }).join('');
         }
 
-        function linkReroll(idx) {
+        async function linkReroll(idx) {
             if (!_storyTryBeginInteraction()) return;
             try {
-            const mon = sm.team[idx]; if (!mon) return;
-            const g   = getMonGrade(mon.name, getBST(mon.name));
-            const rk = `r_${idx}`;
-            const rn = (sm.cityRerollsUsed[rk] || 0) + 1;
-            let cost = Math.ceil((REROLL_COSTS[g]||100) * Math.pow(1.5, rn - 1));
-            if (((sm.storyDifficulty || 'normal') === 'easy' || (sm.storyDifficulty || 'normal') === 'veryeasy') && rn === 1) cost = Math.ceil(cost * 0.78);
-            if (sm.gold < cost) return;
-            const pool = buildGradePool(storySettingsGens(), g).filter(n=>n!==mon.name&&!sm.team.some((t,i)=>i!==idx&&t.name===n));
-            if (!pool.length) { window.showGameAlert('No other Pokémon of this grade available!'); return; }
-            sm.cityRerollsUsed[rk] = rn;
-            const newName  = pool[Math.floor(storyRngNext() * pool.length)];
-            let newBuild;
-            try {
-                window._pbsStoryUsePlayerGimmickGate = true;
-                window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
-                newBuild = makeBuild(newName);
-            } finally {
-                window._pbsStoryUsePlayerGimmickGate = false;
-                delete window._pbsStoryUnlockedGimmicks;
-            }
-            sm.gold -= cost;
-            sm.team[idx] = { name:newName, build:newBuild };
-            save();
-            renderLinkTeam();
-            renderTeamPanel();
+                const mon = sm.team[idx]; if (!mon) return;
+                const g   = getMonGrade(mon.name, getBST(mon.name));
+                const rk = `r_${idx}`;
+                const rn = (sm.cityRerollsUsed[rk] || 0) + 1;
+                let cost = Math.ceil((REROLL_COSTS[g]||100) * Math.pow(1.5, rn - 1));
+                if (((sm.storyDifficulty || 'normal') === 'easy' || (sm.storyDifficulty || 'normal') === 'veryeasy') && rn === 1) cost = Math.ceil(cost * 0.78);
+                if (sm.gold < cost) return;
+                const pool = buildGradePool(storySettingsGens(), g).filter(n=>n!==mon.name&&!sm.team.some((t,i)=>i!==idx&&t.name===n));
+                if (!pool.length) { window.showGameAlert('No other Pokémon of this grade available!'); return; }
+                const ok = await _storyConfirmTutorChange(`Trade ${mon.name} away for a random same-tier Pokémon? You will get a NEW species (with a new build).`, cost);
+                if (!ok) return;
+                sm.cityRerollsUsed[rk] = rn;
+                const newName  = pool[Math.floor(storyRngNext() * pool.length)];
+                let newBuild;
+                try {
+                    window._pbsStoryUsePlayerGimmickGate = true;
+                    window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
+                    newBuild = makeBuild(newName);
+                } finally {
+                    window._pbsStoryUsePlayerGimmickGate = false;
+                    delete window._pbsStoryUnlockedGimmicks;
+                }
+                sm.gold -= cost;
+                sm.team[idx] = { name:newName, build:newBuild };
+                save();
+                renderLinkTeam();
+                renderTeamPanel();
             } finally {
                 _storyEndInteraction();
             }
         }
 
-        function linkUpgrade(idx) {
+        async function linkUpgrade(idx) {
             if (!_storyTryBeginInteraction()) return;
             try {
-            const mon = sm.team[idx]; if (!mon) return;
-            const g   = getMonGrade(mon.name, getBST(mon.name));
-            if (g <= 1) return;
-            const newG = g - 1;
-            const uk = `u_${idx}`;
-            const un = (sm.cityRerollsUsed[uk] || 0) + 1;
-            const cost = Math.ceil((UPGRADE_COSTS[g] || 9999) * Math.pow(1.5, un - 1));
-            if (sm.gold < cost) return;
-            const pool = buildGradePool(storySettingsGens(), newG).filter(n=>!sm.team.some((t,i)=>i!==idx&&t.name===n));
-            if (!pool.length) { window.showGameAlert('No Pokémon of that grade available!'); return; }
-            sm.cityRerollsUsed[uk] = un;
-            const newName  = pool[Math.floor(storyRngNext() * pool.length)];
-            let newBuild;
-            try {
-                window._pbsStoryUsePlayerGimmickGate = true;
-                window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
-                newBuild = makeBuild(newName);
-            } finally {
-                window._pbsStoryUsePlayerGimmickGate = false;
-                delete window._pbsStoryUnlockedGimmicks;
-            }
-            sm.gold -= cost;
-            sm.team[idx] = { name:newName, build:newBuild };
-            save();
-            renderLinkTeam();
-            renderTeamPanel();
+                const mon = sm.team[idx]; if (!mon) return;
+                const g   = getMonGrade(mon.name, getBST(mon.name));
+                if (g <= 1) return;
+                const newG = g - 1;
+                const uk = `u_${idx}`;
+                const un = (sm.cityRerollsUsed[uk] || 0) + 1;
+                const cost = Math.ceil((UPGRADE_COSTS[g] || 9999) * Math.pow(1.5, un - 1));
+                if (sm.gold < cost) return;
+                const pool = buildGradePool(storySettingsGens(), newG).filter(n=>!sm.team.some((t,i)=>i!==idx&&t.name===n));
+                if (!pool.length) { window.showGameAlert('No Pokémon of that grade available!'); return; }
+                const ok = await _storyConfirmTutorChange(`Trade ${mon.name} (G${g}) UP to a random Grade ${newG} Pokémon? This permanently replaces ${mon.name}.`, cost);
+                if (!ok) return;
+                sm.cityRerollsUsed[uk] = un;
+                const newName  = pool[Math.floor(storyRngNext() * pool.length)];
+                let newBuild;
+                try {
+                    window._pbsStoryUsePlayerGimmickGate = true;
+                    window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
+                    newBuild = makeBuild(newName);
+                } finally {
+                    window._pbsStoryUsePlayerGimmickGate = false;
+                    delete window._pbsStoryUnlockedGimmicks;
+                }
+                sm.gold -= cost;
+                sm.team[idx] = { name:newName, build:newBuild };
+                save();
+                renderLinkTeam();
+                renderTeamPanel();
             } finally {
                 _storyEndInteraction();
             }
@@ -28158,28 +28173,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        function linkRebuild(idx) {
+        async function linkRebuild(idx) {
             if (!_storyTryBeginInteraction()) return;
             try {
-            const mon = sm.team[idx]; if (!mon) return;
-            const bk = `b_${idx}`;
-            const bn = (sm.cityRerollsUsed[bk] || 0) + 1;
-            const cost = Math.ceil(REBUILD_COST * Math.pow(1.5, bn - 1));
-            if (sm.gold < cost) return;
-            sm.cityRerollsUsed[bk] = bn;
-            let newBuild;
-            try {
-                window._pbsStoryUsePlayerGimmickGate = true;
-                window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
-                newBuild = makeBuild(mon.name);
-            } finally {
-                window._pbsStoryUsePlayerGimmickGate = false;
-                delete window._pbsStoryUnlockedGimmicks;
-            }
-            sm.gold -= cost;
-            sm.team[idx] = { name:mon.name, build:newBuild };
-            save();
-            renderLinkTeam();
+                const mon = sm.team[idx]; if (!mon) return;
+                const bk = `b_${idx}`;
+                const bn = (sm.cityRerollsUsed[bk] || 0) + 1;
+                const cost = Math.ceil(REBUILD_COST * Math.pow(1.5, bn - 1));
+                if (sm.gold < cost) return;
+                const ok = await _storyConfirmTutorChange(`Reroll ${mon.name}'s entire build (moves, item, nature, EVs)? Species stays.`, cost);
+                if (!ok) return;
+                sm.cityRerollsUsed[bk] = bn;
+                let newBuild;
+                try {
+                    window._pbsStoryUsePlayerGimmickGate = true;
+                    window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
+                    newBuild = makeBuild(mon.name);
+                } finally {
+                    window._pbsStoryUsePlayerGimmickGate = false;
+                    delete window._pbsStoryUnlockedGimmicks;
+                }
+                sm.gold -= cost;
+                sm.team[idx] = { name:mon.name, build:newBuild };
+                save();
+                renderLinkTeam();
             } finally {
                 _storyEndInteraction();
             }
@@ -29720,21 +29737,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        function tutorChangeMove(teamIdx, moveSlot, newMove) {
+        async function tutorChangeMove(teamIdx, moveSlot, newMove) {
             if (!_storyTryBeginInteraction()) return;
             try {
-            const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
-            if (sm.gold < TUTOR_COST_MOVE) return;
-            const currentMoves = (mon.build.m || []).map(m => m.split('/')[0]);
-            if (currentMoves.includes(newMove)) return;
-            sm.gold -= TUTOR_COST_MOVE;
-            mon.build.m[moveSlot] = newMove;
-            mon.currentHp = null;
-            mon.status = null;
-            mon.pp = null;
-            save();
-            void renderTutorTeam();
-            renderTeamPanel();
+                const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+                if (sm.gold < TUTOR_COST_MOVE) return;
+                const currentMoves = (mon.build.m || []).map(m => m.split('/')[0]);
+                if (currentMoves.includes(newMove)) return;
+                const oldMove = (mon.build.m && mon.build.m[moveSlot]) ? mon.build.m[moveSlot].split('/')[0] : '(empty slot)';
+                const ok = await _storyConfirmTutorChange(`Teach ${newMove} to ${mon.name}? Replaces "${oldMove}".`, TUTOR_COST_MOVE);
+                if (!ok) return;
+                sm.gold -= TUTOR_COST_MOVE;
+                mon.build.m[moveSlot] = newMove;
+                mon.currentHp = null;
+                mon.status = null;
+                mon.pp = null;
+                save();
+                void renderTutorTeam();
+                renderTeamPanel();
             } finally {
                 _storyEndInteraction();
             }
@@ -29743,58 +29763,71 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         async function tutorChangeItem(teamIdx, newItem) {
             if (!_storyTryBeginInteraction()) return;
             try {
-            const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
-            if (sm.gold < TUTOR_COST_ITEM) return;
-            if (isMegaStone(newItem) || Z_TYPE_MAP_VALUES.has(newItem) || BANNED_ITEMS.has(newItem)) return;
-            const curItem = mon.build.i;
-            const curGimmick = mon.build.gimmick;
-            const swappingAwayMegaStone = curGimmick === 'MEGA' && isMegaStone(curItem);
-            const swappingAwayZCrystal  = curGimmick === 'ZMOVE' && Z_TYPE_MAP_VALUES.has(curItem);
-            if (swappingAwayMegaStone || swappingAwayZCrystal) {
-                const which = swappingAwayMegaStone ? 'Mega Evolution' : 'Z-Move';
-                const ok = (typeof window !== 'undefined' && typeof window.showGameConfirm === 'function')
-                    ? await window.showGameConfirm(`Replacing the ${curItem} will disable ${which} on ${mon.name}. Visit Colress again (10,000G) to restore it. Continue?`)
-                    : true;
+                const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+                if (sm.gold < TUTOR_COST_ITEM) return;
+                if (isMegaStone(newItem) || Z_TYPE_MAP_VALUES.has(newItem) || BANNED_ITEMS.has(newItem)) return;
+                const curItem = mon.build.i;
+                if (curItem === newItem) return;
+                const curGimmick = mon.build.gimmick;
+                const swappingAwayMegaStone = curGimmick === 'MEGA' && isMegaStone(curItem);
+                const swappingAwayZCrystal  = curGimmick === 'ZMOVE' && Z_TYPE_MAP_VALUES.has(curItem);
+                if (swappingAwayMegaStone || swappingAwayZCrystal) {
+                    const which = swappingAwayMegaStone ? 'Mega Evolution' : 'Z-Move';
+                    const ok = (typeof window !== 'undefined' && typeof window.showGameConfirm === 'function')
+                        ? await window.showGameConfirm(`Replacing the ${curItem} will disable ${which} on ${mon.name}. Visit Colress again (10,000G) to restore it. Continue?`)
+                        : true;
+                    if (!ok) return;
+                    mon.build.gimmick = 'STANDARD';
+                } else {
+                    const oldItemLabel = curItem && curItem !== '(none)' ? `"${curItem}"` : 'no item';
+                    const ok = await _storyConfirmTutorChange(`Give ${newItem} to ${mon.name}? Replaces ${oldItemLabel}.`, TUTOR_COST_ITEM);
+                    if (!ok) return;
+                }
+                sm.gold -= TUTOR_COST_ITEM;
+                mon.build.i = newItem;
+                save();
+                void renderTutorTeam();
+                renderTeamPanel();
+            } finally {
+                _storyEndInteraction();
+            }
+        }
+
+        async function tutorChangeAbility(teamIdx, newAbility) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+                if (sm.gold < TUTOR_COST_ABILITY) return;
+                if (mon.build.a === newAbility) return;
+                const oldAbil = mon.build.a || '(none)';
+                const ok = await _storyConfirmTutorChange(`Change ${mon.name}'s ability to ${newAbility}? Replaces "${oldAbil}".`, TUTOR_COST_ABILITY);
                 if (!ok) return;
-                mon.build.gimmick = 'STANDARD';
-            }
-            sm.gold -= TUTOR_COST_ITEM;
-            mon.build.i = newItem;
-            save();
-            void renderTutorTeam();
-            renderTeamPanel();
+                sm.gold -= TUTOR_COST_ABILITY;
+                mon.build.a = newAbility;
+                save();
+                void renderTutorTeam();
+                renderTeamPanel();
             } finally {
                 _storyEndInteraction();
             }
         }
 
-        function tutorChangeAbility(teamIdx, newAbility) {
+        async function tutorChangeNature(teamIdx, newNature) {
             if (!_storyTryBeginInteraction()) return;
             try {
-            const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
-            if (sm.gold < TUTOR_COST_ABILITY) return;
-            sm.gold -= TUTOR_COST_ABILITY;
-            mon.build.a = newAbility;
-            save();
-            void renderTutorTeam();
-            renderTeamPanel();
-            } finally {
-                _storyEndInteraction();
-            }
-        }
-
-        function tutorChangeNature(teamIdx, newNature) {
-            if (!_storyTryBeginInteraction()) return;
-            try {
-            const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
-            if (sm.gold < TUTOR_COST_NATURE) return;
-            if (!Object.prototype.hasOwnProperty.call(natureModifiers, newNature)) return;
-            sm.gold -= TUTOR_COST_NATURE;
-            mon.build.n = newNature;
-            mon.currentHp = null;
-            save();
-            void renderTutorTeam();
-            renderTeamPanel();
+                const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+                if (sm.gold < TUTOR_COST_NATURE) return;
+                if (!Object.prototype.hasOwnProperty.call(natureModifiers, newNature)) return;
+                if (mon.build.n === newNature) return;
+                const oldNature = mon.build.n || '(none)';
+                const ok = await _storyConfirmTutorChange(`Set ${mon.name}'s nature to ${newNature}? Was "${oldNature}".`, TUTOR_COST_NATURE);
+                if (!ok) return;
+                sm.gold -= TUTOR_COST_NATURE;
+                mon.build.n = newNature;
+                mon.currentHp = null;
+                save();
+                void renderTutorTeam();
+                renderTeamPanel();
             } finally {
                 _storyEndInteraction();
             }
@@ -30029,7 +30062,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (isMegaStone(build.i) || Z_TYPE_MAP_VALUES.has(build.i)) build.i = 'Leftovers';
         }
 
-        function colressApplyMega(teamIdx, stone) {
+        async function _colressConfirm(mon, headline) {
+            return await _storyConfirmTutorChange(`${headline} for ${mon.name}? Replaces current held item / gimmick.`, COLRESS_COST);
+        }
+
+        async function colressApplyMega(teamIdx, stone) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('mega')) return;
             if (!MEGA_SPECIES.has(mon.name) || mon.name === 'Rayquaza') return;
@@ -30038,6 +30075,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const allowedList = Array.isArray(allowed) ? allowed : (allowed ? [allowed] : []);
             if (!allowedList.includes(stone)) return;
             if (mon.build.gimmick === 'MEGA' && mon.build.i === stone) return;
+            if ((sm.gold | 0) < COLRESS_COST) return;
+            if (!(await _colressConfirm(mon, `Awaken Mega — equip ${stone}`))) return;
             if (!_colressCharge()) return;
             mon.build.gimmick = 'MEGA';
             mon.build.i = stone;
@@ -30045,12 +30084,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _colressFinish();
         }
 
-        function colressApplyDmax(teamIdx) {
+        async function colressApplyDmax(teamIdx) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('dmax')) return;
             if (DYNAMAX_BANNED.has(mon.name)) return;
             const tag = GMAX_SPECIES.has(mon.name) ? 'GMAXDYNAMAX' : 'DYNAMAX';
             if (mon.build.gimmick === tag) return;
+            if ((sm.gold | 0) < COLRESS_COST) return;
+            if (!(await _colressConfirm(mon, tag === 'GMAXDYNAMAX' ? 'Awaken Gigantamax' : 'Awaken Dynamax'))) return;
             if (!_colressCharge()) return;
             mon.build.gimmick = tag;
             _colressClearStaleGimmickItem(mon.build);
@@ -30058,7 +30099,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _colressFinish();
         }
 
-        function colressApplyZ(teamIdx, type) {
+        async function colressApplyZ(teamIdx, type) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('z')) return;
             if (!Z_TYPE_MAP[type]) return;
@@ -30066,6 +30107,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!eligibleTypes.includes(type)) return;
             const crystal = Z_TYPE_MAP[type];
             if (mon.build.gimmick === 'ZMOVE' && mon.build.i === crystal) return;
+            if ((sm.gold | 0) < COLRESS_COST) return;
+            if (!(await _colressConfirm(mon, `Awaken Z-Move — equip ${crystal}`))) return;
             if (!_colressCharge()) return;
             mon.build.gimmick = 'ZMOVE';
             mon.build.i = crystal;
@@ -30073,12 +30116,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _colressFinish();
         }
 
-        function colressApplyZSig(teamIdx) {
+        async function colressApplyZSig(teamIdx) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('z')) return;
             const sigZ = SIGNATURE_Z[mon.name];
             if (!sigZ) return;
             if (mon.build.gimmick === 'ZMOVE' && mon.build.i === sigZ) return;
+            if ((sm.gold | 0) < COLRESS_COST) return;
+            if (!(await _colressConfirm(mon, `Awaken Signature Z — equip ${sigZ}`))) return;
             if (!_colressCharge()) return;
             mon.build.gimmick = 'ZMOVE';
             mon.build.i = sigZ;
@@ -30097,11 +30142,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _colressFinish();
         }
 
-        function colressApplyTera(teamIdx, type) {
+        async function colressApplyTera(teamIdx, type) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('tera')) return;
             if (!COLRESS_ALL_TYPES.includes(type)) return;
             if (mon.build.gimmick === 'TERA' && mon.build.teraType === type) return;
+            if ((sm.gold | 0) < COLRESS_COST) return;
+            if (!(await _colressConfirm(mon, `Awaken Tera — lock type to ${type}`))) return;
             if (!_colressCharge()) return;
             mon.build.gimmick = 'TERA';
             mon.build.teraType = type;
@@ -30265,7 +30312,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             </div>`;
         }
 
-        function evTrainerApplyPreset(idx, presetId) {
+        async function evTrainerApplyPreset(idx, presetId) {
             if (!_storyTryBeginInteraction()) return;
             try {
                 const mon = sm.team[idx];
@@ -30275,6 +30322,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const preset = all.find(p => p.id === presetId);
                 if (!preset) return;
                 if (_evsEqual(mon.build.evs || {}, preset.evs)) return;
+                if ((sm.gold | 0) < EVTRAINER_COST) return;
+                const spreadLabel = (typeof _evSpreadCompact === 'function') ? _evSpreadCompact(preset.evs) : 'new spread';
+                const ok = await _storyConfirmTutorChange(`Apply "${preset.label}" EVs to ${mon.name}? Overwrites current spread.\n→ ${spreadLabel}`, EVTRAINER_COST);
+                if (!ok) return;
                 if (!_evTrainerCharge()) return;
                 mon.build.evs = { ...preset.evs };
                 _evTrainerFinish();
