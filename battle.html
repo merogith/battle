@@ -22699,6 +22699,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { id:'reapersToll',     name:"Reaper's Toll",             cost:5000, desc:'Whenever a Pokémon faints, every surviving ally on that side heals 10% of their max HP, and one random survivor loses 1 stage of Sp. Defense.' },
           { id:'cursedCoinPouch', name:'Cursed Amulet Coin',        cost:5000, desc:'Coin rewards from victories are doubled. In return, every Pokémon on YOUR team enters battle with one random stat lowered by 1 stage.' },
         ];
+        const ARTIFACT_BY_ID = Object.freeze(ALL_ARTIFACTS.reduce((acc, a) => { acc[a.id] = a; return acc; }, {}));
         const STORY_TYPES = ['Fire','Water','Grass','Electric','Ice','Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon','Dark','Steel','Fairy'];
         const STORY_TYPE_ARTIFACT_IDS = new Set(['typeAmplifier', 'typeNullifier', 'typeMagnetizer']);
         const FEATURED_MEGA_ITEM_IDS = new Set([
@@ -23607,9 +23608,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function save() {
             try {
-                const d = deepClone(sm);
-                // _strngState is preserved so Continue Journey resumes the exact RNG sequence
-                localStorage.setItem(SAVE_KEY, JSON.stringify(d));
+                localStorage.setItem(SAVE_KEY, JSON.stringify(sm));
             } catch(e) { console.warn('[Story] Save failed', e); }
         }
         function load() {
@@ -25737,7 +25736,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const g = t.name ? getMonGrade(t.name, getBST(t.name)) : 4;
                 const n = sm.team.length;
                 const rawBuild = (t && (t.build || t.buildData)) ? (t.build || t.buildData) : {};
-                const mon = buildPokemon(String(t.name || '').trim(), deepClone(rawBuild));
+                // buildPokemon mutates build.m; shallow-copy the moves to keep the saved build pristine.
+                const _displayBuild = { ...rawBuild, m: Array.isArray(rawBuild.m) ? rawBuild.m.slice() : [] };
+                const mon = buildPokemon(String(t.name || '').trim(), _displayBuild);
                 const moveNames = (rawBuild.m || []).slice(0, 4).map(m => (String(m || '').split('/')[0] || '—'));
                 while (moveNames.length < 4) moveNames.push('—');
                 const details = `${displayItem(mon, false)} · ${mon.ability || 'None'} · ${mon.nature || 'Hardy'}`;
@@ -25823,7 +25824,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _bothSidesBadgeHtml = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Relic effects apply to both you and your opponents while enabled">⚠ Affects both sides</span>';
                 const _playerOnlyBadgeHtml = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Coin reward and curse both affect your side only">⚠ Affects your team only</span>';
                 el.innerHTML = (sm.artifacts || []).map(id => {
-                    const art = ALL_ARTIFACTS.find(a => a.id === id);
+                    const art = ARTIFACT_BY_ID[id];
                     const off = (sm.artifactsDisabled || []).includes(id);
                     const label = art ? art.name : id;
                     const desc = art ? art.desc : '';
@@ -28106,7 +28107,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!gridEl) return;
             if (titleEl) titleEl.textContent = type==='dept' ? '🏬 Department Store' : '🛒 Pokémart';
             if (goldEl)  goldEl.innerHTML  = storyGoldHtml(sm.gold.toLocaleString());
-            gridEl.innerHTML = '';
 
             const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
             const rawItems = type === 'dept' ? [...POKEMART_ITEMS, ...DEPT_ITEMS] : POKEMART_ITEMS;
@@ -28115,20 +28115,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (type === 'dept' && (!sm.deptShopPurchasedByCity || typeof sm.deptShopPurchasedByCity !== 'object')) sm.deptShopPurchasedByCity = {};
             const _deptCKey = String(Math.max(0, cityIdx | 0));
             const _deptBoughtHere = type === 'dept' ? (sm.deptShopPurchasedByCity[_deptCKey] || {}) : {};
+            const _gridParts = [];
             if (type === 'dept') {
                 const featuredItems = _ensureDeptItemOfferForCity(cityIdx).filter(item => !isNoItemRunBattleBagExcluded(item));
                 if (featuredItems.length) {
-                    const featuredSection = document.createElement('div');
-                    featuredSection.className = 'story-featured-section';
-                    featuredSection.innerHTML='<h4>⭐ Featured Battle Tech (3 per city — one each)</h4>';
-                    featuredItems.forEach(item => {
+                    const _featParts = ['<h4>⭐ Featured Battle Tech (3 per city — one each)</h4>'];
+                    for (let _fi = 0; _fi < featuredItems.length; _fi++) {
+                        const item = featuredItems[_fi];
                         const canAfford = sm.gold >= item.price;
                         const alreadyBought = !!_deptBoughtHere[item.id];
                         const canBuy = canAfford && !alreadyBought;
                         const qty = sm.inventory[item.id]||0;
                         const icon = storyShopIconCellHtml(item.id);
                         const btnLabel = alreadyBought ? 'Sold out' : 'Buy';
-                        featuredSection.innerHTML += `<div class="story-shop-item" style="border-color:${item.tier==='mega' ? '#43a047' : '#7e57c2'};opacity:${alreadyBought ? '0.5' : '1'};">
+                        _featParts.push(`<div class="story-shop-item" style="border-color:${item.tier==='mega' ? '#43a047' : '#7e57c2'};opacity:${alreadyBought ? '0.5' : '1'};">
                             <div class="story-shop-item-row">
                                 ${icon}
                                 <div style="flex:1;min-width:0;">
@@ -28140,12 +28140,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                 <span class="price">${storyGoldHtml(item.price.toLocaleString())}</span>
                                 <button onclick="window.StoryMode.buyItem('${item.id}',${item.price})" ${canBuy?'':'disabled'} style="font-size:11px;padding:3px 8px;${canBuy?'color:#ffb74d;border-color:#ffb74d;':'opacity:0.4;'}">${btnLabel}</button>
                             </div>
-                        </div>`;
-                    });
-                    gridEl.appendChild(featuredSection);
+                        </div>`);
+                    }
+                    _gridParts.push(`<div class="story-featured-section">${_featParts.join('')}</div>`);
                 }
             }
-            items.forEach(item => {
+            for (let _ii = 0; _ii < items.length; _ii++) {
+                const item = items[_ii];
                 const _isBall = item.kind === 'ball' && item.ballKey;
                 const canAfford = sm.gold >= item.price;
                 // Ball items are unlimited — bypass the dept "one per city" sold-out lockout.
@@ -28155,7 +28156,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const icon = storyShopIconCellHtml(item.id);
                 const buyColor = item.tier === 'mega' || item.tier === 'ultra' ? '#ffb74d' : '#4caf50';
                 const btnLabel = alreadyBought ? 'Sold out' : 'Buy';
-                gridEl.innerHTML += `<div class="story-shop-item" style="opacity:${alreadyBought ? '0.5' : '1'};">
+                _gridParts.push(`<div class="story-shop-item" style="opacity:${alreadyBought ? '0.5' : '1'};">
                     <div class="story-shop-item-row">
                         ${icon}
                         <div style="flex:1;min-width:0;">
@@ -28167,11 +28168,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <span class="price">${storyGoldHtml(item.price.toLocaleString())}</span>
                         <button onclick="window.StoryMode.buyItem('${item.id}',${item.price})" ${canBuy?'':'disabled'} style="font-size:11px;padding:3px 8px;${canBuy?`color:${buyColor};border-color:${buyColor};`:'opacity:0.4;'}">${btnLabel}</button>
                     </div>
-                </div>`;
-            });
-            if (sm.settings && sm.settings.noItemRun && type === 'mart' && items.length === 0) {
-                gridEl.innerHTML += '<div style="grid-column:1/-1;color:#888;font-size:12px;padding:12px;line-height:1.4;">No battle items are stocked on a No Item Run. Run relics are at the <strong style="color:#ce93d8;">Relic Annex</strong> (hometown + major hubs).</div>';
+                </div>`);
             }
+            if (sm.settings && sm.settings.noItemRun && type === 'mart' && items.length === 0) {
+                _gridParts.push('<div style="grid-column:1/-1;color:#888;font-size:12px;padding:12px;line-height:1.4;">No battle items are stocked on a No Item Run. Run relics are at the <strong style="color:#ce93d8;">Relic Annex</strong> (hometown + major hubs).</div>');
+            }
+            gridEl.innerHTML = _gridParts.join('');
             if (type === 'dept') save();
             syncStoryShopBackground(type === 'dept' ? 'dept' : 'mart');
             showScreen('screen-story-shop');
@@ -28291,11 +28293,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     blurbEl.innerHTML += ' <span style="color:#ffb74d;">You\'ve already claimed your relic here — the lineup is locked for the rest of the run.</span>';
                 }
             }
-            gridEl.innerHTML = '';
             const listPrice = (cityIdx === 0 && !sm.artifactFreeClaimUsed) ? 0 : 5000;
-            offer.offers.forEach(artId => {
-                const art = ALL_ARTIFACTS.find(a => a.id === artId);
-                if (!art) return;
+            const _artParts = [];
+            for (let _oi = 0; _oi < offer.offers.length; _oi++) {
+                const artId = offer.offers[_oi];
+                const art = ARTIFACT_BY_ID[artId];
+                if (!art) continue;
                 const owned = sm.artifacts.includes(artId);
                 const canBuy = !owned && !shopLocked && (listPrice === 0 || sm.gold >= listPrice);
                 const aicon = storyShopIconCellHtml(art.id);
@@ -28306,7 +28309,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const bothSidesBadge = art.id === 'cursedCoinPouch'
                     ? '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Coin reward and curse both affect your side only">⚠ Affects your team only</span>'
                     : '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Relic effects apply to both you and your opponents for the rest of the run">⚠ Affects both sides</span>';
-                gridEl.innerHTML += `<div class="story-artifact-card" style="margin-bottom:8px;opacity:${owned ? '0.5' : '1'}">
+                _artParts.push(`<div class="story-artifact-card" style="margin-bottom:8px;opacity:${owned ? '0.5' : '1'}">
                     <div class="story-shop-item-row" style="margin-bottom:6px;">
                         ${aicon}
                         <h4 style="flex:1;margin:0;">${artName} ${owned ? '<span style="color:#4caf50;">[OWNED]</span>' : ''}</h4>
@@ -28315,8 +28318,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div class="desc">${artDesc}</div>
                     ${!owned ? `<div style="margin-top:6px;font-size:11px;color:#aaa;">Price: ${priceLabel}</div>
                     <button type="button" onclick="window.StoryMode.buyArtifact('${art.id}',${listPrice})" ${canBuy ? '' : 'disabled'} style="margin-top:6px;font-size:11px;padding:3px 8px;${canBuy ? 'color:#9c27b0;border-color:#9c27b0;' : 'opacity:0.4;'}">${btnLabel}</button>` : ''}
-                </div>`;
-            });
+                </div>`);
+            }
+            gridEl.innerHTML = _artParts.join('');
             syncStoryArtifactShopBackground();
             showScreen('screen-story-artifact-shop');
             save();
@@ -29706,7 +29710,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (owned.length) {
                 artBlock = '<ul style="margin:6px 0 0 18px;padding:0;">';
                 for (const id of owned) {
-                    const art = ALL_ARTIFACTS.find(a => a.id === id);
+                    const art = ARTIFACT_BY_ID[id];
                     if (!art) continue;
                     const name = _artifactNameForCity(art, cIdx);
                     const off = disabled.has(id) ? ' <span style="color:#888;">(off)</span>' : '';
