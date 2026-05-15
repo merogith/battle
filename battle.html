@@ -22535,8 +22535,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Hau':"Hau: \"Alola! You're a malasada-sweet Champion now!\"",
         };
 
-        // Maps city index (1–8) to the STORY_EVENTS_RAW event index of its Gym Leader battle
-        const GYM_CITY_LEADER_EVENT = { 1:5, 2:11, 3:18, 4:24, 5:31, 6:38, 7:46, 8:53 };
+        // Maps city index (1–8) to the STORY_EVENTS_RAW event index of its Gym Leader battle.
+        // Derived at boot so future timeline shuffles or migrations don't silently desync.
+        const GYM_CITY_LEADER_EVENT = (function buildGymCityLeaderMap() {
+            const out = {};
+            for (let i = 0; i < STORY_EVENTS_RAW.length; i++) {
+                const row = STORY_EVENTS_RAW[i];
+                if (!row || row[1] !== 'Battle') continue;
+                const m = String(row[2] || '').match(/^Gym Leader (\d+)$/);
+                if (m) out[parseInt(m[1], 10)] = i;
+            }
+            return out;
+        })();
 
         // The Mystery Figure used to always wear Cyrus's face. Now a rotating cast: a
         // single identity is rolled at run start and pinned for the whole save, both
@@ -23036,7 +23046,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pool = TRAINER_QUOTES[quoteRole] || TRAINER_QUOTES['Basic Trainer'];
             return pool[Math.floor(rng() * pool.length)];
         }
-        /** Second line for rival intro overlay (Math.random — does not advance story RNG). */
+        /** Deterministic per-(seed, phase, badges) sub-RNG: keeps the secondary intro reproducible across shared seeds without touching the story RNG state. */
+        function _storySideRng(...keys) {
+            let h = 2166136261 >>> 0;
+            const seed = (sm && (sm.runSeed | 0)) || 0;
+            const mix = (n) => {
+                h ^= (n >>> 0);
+                h = Math.imul(h, 16777619) >>> 0;
+            };
+            mix(seed);
+            for (const k of keys) mix(k | 0);
+            return (h >>> 0) / 0x100000000;
+        }
         function pickRivalSecondaryIntroLine(phase, badges) {
             const b = Math.max(0, badges | 0);
             const pools = {
@@ -23054,7 +23075,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 copy.push('You own the last win. I only need this one to flip the story.');
             }
             copy.push(`You've earned ${b} badge${b === 1 ? '' : 's'}—I'm still not backing down.`);
-            return copy[Math.floor(Math.random() * copy.length)];
+            const r = (sm && sm.active) ? _storySideRng((phase | 0) + 1, b + 1) : Math.random();
+            return copy[Math.floor(r * copy.length)];
         }
         function storyDisplayRoleLabel(eventType) {
             const e = String(eventType || '');
@@ -24781,6 +24803,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { AudioSystem.onStoryNewJourney(); } catch (e) {}
             }
             assignTrainers(enabledGens);
+            normalizeRivalStandingState();
             save();
             persistStoryMenuDefaultsFromRun();
             processNextEvent();
@@ -26652,8 +26675,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sm.unlockedGimmicks = order.slice(0, Math.min(gymBeatCount, order.length));
                 }
                 sm.currentEnemyLock = null;
-                // Advance event index
-                sm.eventIndex++;
+                // Advance event index (clamp before persisting so a corrupted index never reaches storage).
+                sm.eventIndex = Math.min(STORY_EVENTS_RAW.length - 1, (sm.eventIndex | 0) + 1);
                 save();
                 // Show result overlay then continue
                 showVictoryOverlay(title, coinsAwarded, isMilestoneVictory, () => {
@@ -26755,7 +26778,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.storyRetryInventorySnapshot = null;
             _storyBattleInventorySnapshot = null;
             _storyFullHealPartySlots();
-            sm.eventIndex++;
+            sm.eventIndex = Math.min(STORY_EVENTS_RAW.length - 1, (sm.eventIndex | 0) + 1);
             try { save(); } catch (e) { console.warn('[Story] rival concede save', e); }
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             const msg = rowIdx === STORY_RIVAL_ROW_LEAGUE
