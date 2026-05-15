@@ -22286,16 +22286,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (diff === 'normal') return 1.30;
             if (diff === 'easy') return 1.50;
             if (diff === 'veryeasy') return 1.60;
-            if (diff === 'hard') return 0.92;
-            if (diff === 'challenge') return 1.05;
+            // Hard/Challenge used to pay below parity while late-game prices spike; floored at parity so the coin curve stops fighting the difficulty curve.
+            if (diff === 'hard') return 1.00;
+            if (diff === 'challenge') return 1.10;
             return 1;
         }
 
         // Professor grade rolls per city (0-based city index)
         // With 3-choice system: weights determine what appears across 3 options
         const PROF_ROLLS = [
-          {g1:0, g2:0,  g3:70, g4:30},  // City0  — starter pool, G3 floor so the Gym 1 (100% G3) wall isn't an immediate brick
-          {g1:0, g2:0,  g3:70, g4:30},  // City1
+          {g1:0, g2:0,  g3:90, g4:10},  // City0  — starter pool weighted to G3 so locked-in starters can handle the Gym-1 (100% G3) wall
+          {g1:0, g2:0,  g3:80, g4:20},  // City1
           {g1:0, g2:20, g3:60, g4:20},  // City2
           {g1:0, g2:40, g3:60, g4:0},   // City3
           {g1:0, g2:50, g3:50, g4:0},   // City4
@@ -24043,10 +24044,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function _signatureProbabilityForEvent(eventType) {
             const e = String(eventType || '');
-            if (/^Gym Trainer 2$/i.test(e)) return 0.85;
-            if (/^Gym Trainer( 1)?$/i.test(e)) return 0.70;
-            if (/^Gym Leader/i.test(e) || e === 'Rival' || /^E[1-4]$/.test(e) || e === 'Champion' || e === 'Victory Road') return 0.85;
-            return 0.70;
+            // Bosses keep heavy signature weighting — flavor matters most here.
+            if (/^Gym Leader/i.test(e) || e === 'Rival' || /^E[1-4]$/.test(e) || e === 'Champion') return 0.85;
+            if (/^Gym Trainer 2$/i.test(e)) return 0.80;
+            if (/^Gym Trainer( 1)?$/i.test(e)) return 0.65;
+            if (e === 'Victory Road') return 0.70;
+            // Elite Trainer: themed but not monotonous.
+            if (/^Elite Trainer$/i.test(e)) return 0.55;
+            // Basic Trainer: capped so a Youngster with sigs:['Rattata'] can't roll 2–3 Rattatas in a row.
+            if (/^Basic Trainer$/i.test(e)) return 0.30;
+            return 0.50;
         }
 
         const STORY_PLACEHOLDER_SIGS = ['Sentret', 'Zigzagoon', 'Bidoof', 'Patrat', 'Rattata'];
