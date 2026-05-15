@@ -25046,6 +25046,80 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return !!(sm.facilitiesSeen && sm.facilitiesSeen[cityIdx] && sm.facilitiesSeen[cityIdx][key]);
         }
 
+        // Per-facility flavor lines — gives every silent NPC a voice without committing
+        // them to a long dialogue tree. Lines are cosmetic; they use Math.random so
+        // they do not drain the seeded story RNG used for trainer rolls / catches.
+        const STORY_FACILITY_QUOTES = {
+            moveTutor: [
+                'Move Tutor: "An old move, a new fang. Pick wisely."',
+                'Move Tutor: "Every move you forget makes room for one you needed."',
+                'Move Tutor: "Mind the PP. Even tutors have limits."',
+                'Move Tutor: "I taught your grandfather\'s Geodude this trick. Take it."',
+                'Move Tutor: "TMs run dry. My memory doesn\'t. Speak up."',
+            ],
+            natureRater: [
+                'Nature Rater: "Hmm… your partner\'s spirit reads… adamant. A little fire there."',
+                'Nature Rater: "Some natures sing in the right body. Let\'s see if yours does."',
+                'Nature Rater: "Bold, modest, jolly — those aren\'t insults. They\'re tools."',
+                'Nature Rater: "Pick once. Pick well. A bad nature is a slow leak in the hull."',
+                'Nature Rater: "I felt it before you walked in. Your team is unbalanced."',
+            ],
+            battleDojo: [
+                'Dojo Master: "Hold steady. The right item makes a fighter."',
+                'Dojo Master: "An ability is who they ARE in battle. Pick what fits the soul."',
+                'Dojo Master: "Items, abilities — both can be sharpened. Sharpen; don\'t fidget."',
+                'Dojo Master: "Show me your strongest. Let\'s see what they\'ve been hiding."',
+                'Dojo Master: "The mat remembers every fall. Your Pokémon\'s should, too."',
+            ],
+            evTrainer: [
+                'EV Trainer: "Sweat now, win later. Every effort point is a step."',
+                'EV Trainer: "Pick a spread. Then drill it in. I run laps myself at sunrise."',
+                'EV Trainer: "510 effort points. Spend them like rent — they don\'t come back."',
+                'EV Trainer: "The strongest mon isn\'t the strongest mon. It\'s the BEST-TRAINED one."',
+                'EV Trainer: "Stats are the bones. Effort is the muscle. Eat your protein."',
+            ],
+            colress: [
+                'Colress: "Splendid! Let\'s draw out your Pokémon\'s hidden potential."',
+                'Colress: "Mega? Z-power? Dynamax? Choose ONE. They quarrel when combined."',
+                'Colress: "I find the secret of strength delicious. May I observe?"',
+                'Colress: "Awakening a partner is a privilege. Don\'t waste it on a Magikarp."',
+                'Colress: "Behold — science wearing the mask of magic. Wonderful, isn\'t it?"',
+            ],
+            link: [
+                'Link Operator: "Static\'s loud today. A stranger on the line wants a trade."',
+                'Link Operator: "Sometimes the trade comes back the same species — different soul."',
+                'Link Operator: "No one signs their name on these wires. That\'s the appeal."',
+                'Link Operator: "Cable\'s connected. Hope you don\'t mind the noise on the other end."',
+                'Link Operator: "Anonymous in, anonymous out. The League frowns; we shrug."',
+            ],
+            casino: [
+                'Croupier: "Heads or tails, friend. The house plays fair — for now."',
+                'Croupier: "Coin flips don\'t care about your story. That\'s why we love them."',
+                'Croupier: "The League frowns. The patrons cheer. Place your bet."',
+                'Croupier: "I\'ve seen ten-thousand-G runs go bust on a single flip. Be warned."',
+                'Croupier: "Luck doesn\'t train. But it does pay rent. Sometimes."',
+            ],
+        };
+
+        /** Show a one-liner under the screen header. Picks fresh on each entry. */
+        function _storyShowFacilityQuote(screenId, facilityKey) {
+            const screen = document.getElementById(screenId);
+            if (!screen) return;
+            const lines = STORY_FACILITY_QUOTES[facilityKey];
+            if (!lines || !lines.length) return;
+            let q = screen.querySelector('[data-story-facility-quote]');
+            if (!q) {
+                const anchor = screen.querySelector('.story-shop-header-row, .story-link-header-row');
+                if (!anchor) return;
+                q = document.createElement('div');
+                q.setAttribute('data-story-facility-quote', '1');
+                q.style.cssText = 'font-style:italic;color:#d9d6c8;font-size:11px;line-height:1.5;padding:8px 14px;background:rgba(30,22,16,0.45);border-bottom:1px solid rgba(180,140,80,0.25);flex-shrink:0;';
+                if (anchor.nextSibling) anchor.parentNode.insertBefore(q, anchor.nextSibling);
+                else anchor.parentNode.appendChild(q);
+            }
+            q.textContent = lines[Math.floor(Math.random() * lines.length)];
+        }
+
         function cityIndexFromEventIndex(ei) {
             for (let i = ei; i >= 0; i--) {
                 const row = STORY_EVENTS_RAW[i];
@@ -27470,6 +27544,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 renderLinkTeam();
                 syncStoryLinkBackground();
                 showScreen('screen-story-link');
+                try { _storyShowFacilityQuote('screen-story-link', 'link'); } catch (e) {}
             } finally {
                 _storyEndInteraction();
             }
@@ -27512,6 +27587,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 syncStoryCasinoBackground();
                 showScreen('screen-story-casino');
+                try { _storyShowFacilityQuote('screen-story-casino', 'casino'); } catch (e) {}
             } finally {
                 _storyEndInteraction();
             }
@@ -28928,16 +29004,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const mode = _storyTutorMode || 'moves';
             const titleEl = document.getElementById('story-tutor-head-title');
             const descEl = document.getElementById('story-tutor-head-desc');
+            let quoteKey = 'moveTutor';
             if (mode === 'nature') {
                 if (titleEl) titleEl.textContent = '📛 Nature Rater';
                 if (descEl) descEl.textContent = 'Adjust each Pokémon\'s nature. Stat boosts (+/−) are shown per option; any standard nature is available.';
+                quoteKey = 'natureRater';
             } else if (mode === 'loadout') {
                 if (titleEl) titleEl.textContent = '🥋 Battle Dojo';
                 if (descEl) descEl.textContent = 'Swap held items and abilities. Options come from known competitive sets and species data.';
+                quoteKey = 'battleDojo';
             } else {
                 if (titleEl) titleEl.textContent = '📖 Move Tutor';
                 if (descEl) descEl.textContent = 'Swap battle moves. Options come from known competitive sets and learnsets.';
             }
+            try { _storyShowFacilityQuote('screen-story-tutor', quoteKey); } catch (e) {}
         }
         const TUTOR_UNIVERSAL_ITEMS = [
             // Core meta items
@@ -29660,6 +29740,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             syncStoryColressBackground();
             showScreen('screen-story-colress');
             renderColressTeam();
+            try { _storyShowFacilityQuote('screen-story-colress', 'colress'); } catch (e) {}
         }
 
         function renderColressTeam() {
@@ -29977,6 +30058,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { syncStoryEVTrainerBackground(); } catch (e) {}
             showScreen('screen-story-evtrainer');
             renderEVTrainerTeam();
+            try { _storyShowFacilityQuote('screen-story-evtrainer', 'evTrainer'); } catch (e) {}
         }
 
         function renderEVTrainerTeam() {
