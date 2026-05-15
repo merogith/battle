@@ -25423,7 +25423,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         </div>
                         <div class="draft-card-body" style="min-width:0;flex:1;">
                             <div class="draft-card-header">
-                                <span>${rawBuild._isShiny ? '&#10024; ' : ''}${t.name} ${getTypeHTML(mon.type1, mon.type2)}</span>
+                                <span>${rawBuild._isShiny ? '&#10024; ' : ''}${t.name}${t.starter ? ' <span title="Starter — bonded for life" style="display:inline-block;font-size:9px;color:#111;background:#ffd54f;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">★ STARTER</span>' : ''}${t.unsellable && !t.starter ? ' <span title="Bound to you" style="display:inline-block;font-size:9px;color:#111;background:#ce93d8;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">⛓ BOUND</span>' : ''} ${getTypeHTML(mon.type1, mon.type2)}</span>
                             </div>
                             <div class="draft-card-details">${details}</div>
                             <div class="draft-card-moves">${movesHtml}</div>
@@ -27699,13 +27699,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         /** Misclick-guard prompt for tutor / dojo / link / colress / EV trainer.
          * actionText: short description ("Teach Thunderbolt to Pikachu — replaces 'Quick Attack'").
-         * costG: optional gold cost shown in parentheses.
+         * costG: optional gold cost shown in parentheses; if positive, the player's
+         * remaining-gold after the transaction is also appended so they can spot a
+         * "this will empty my wallet" mistake before they commit.
          * Returns Promise<boolean> — true to commit, false to cancel.
          */
         async function _storyConfirmTutorChange(actionText, costG) {
             if (typeof window === 'undefined' || typeof window.showGameConfirm !== 'function') return true;
-            const costStr = (typeof costG === 'number' && costG > 0) ? ` (${costG.toLocaleString()}G)` : '';
-            return await window.showGameConfirm(`${actionText}${costStr}`);
+            let suffix = '';
+            if (typeof costG === 'number' && costG > 0) {
+                const have = Math.max(0, sm && sm.gold | 0);
+                const after = Math.max(0, have - costG);
+                suffix = ` (${costG.toLocaleString()}G → ${after.toLocaleString()}G left)`;
+            }
+            return await window.showGameConfirm(`${actionText}${suffix}`);
         }
 
 
