@@ -22790,7 +22790,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           'Cynthia': ['…Let\'s enjoy this battle.','Garchomp and I won\'t disappoint!','The Champion\'s mantle is heavy—feel it!'],
           'Steven Stone': ['Steel and resolve—both unbreakable.','I collect rare stones… and victories.','Meteor falls—so will you if you slack!'],
           'Leon': ['Let\'s have a champion time!','Charizard—time to shine!','This is what it means to be unbeatable!'],
-          'Red': ['…','………………','…Don\'t need words.'],
+          'Red': ['…','………………','…Don\'t need words.','…(Red\'s Pikachu sparks once.)','…(He raises his cap a little.)','…','…(The silence is louder than any boast.)'],
         };
         function getTrainerQuote(role) {
             const pool = TRAINER_QUOTES[role] || TRAINER_QUOTES['Basic Trainer'];
@@ -23428,6 +23428,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (sm.eventIndex < 0 || sm.eventIndex > _cap) {
                     console.warn('[Story] eventIndex out of range — clamping', sm.eventIndex, '→', _cap);
                     sm.eventIndex = _cap;
+                }
+                // Validate currentEnemyLock — a corrupted lock crashes launchBattle. Drop it
+                // when malformed so the engine rerolls a fresh team instead of dying.
+                if (sm.currentEnemyLock && (
+                    typeof sm.currentEnemyLock !== 'object' ||
+                    sm.currentEnemyLock.eventIdx == null ||
+                    !Array.isArray(sm.currentEnemyLock.team) ||
+                    sm.currentEnemyLock.team.length === 0 ||
+                    sm.currentEnemyLock.team.some(t => !t || typeof t !== 'object' || !t.name || !t.build)
+                )) {
+                    console.warn('[Story] dropping malformed currentEnemyLock', sm.currentEnemyLock);
+                    sm.currentEnemyLock = null;
                 }
                 normalizeRivalStandingState();
                 normalizeStoryRivalLock();
