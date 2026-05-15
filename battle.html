@@ -3193,6 +3193,15 @@
                 min-height: 48px;
             }
             .story-action-btn { font-size: 14px; padding: 10px 14px; }
+            /* Tutor / Dojo / Nature / Colress / EV / Link option buttons —
+               mistyped taps on the 11px desktop layout were causing the
+               "I just spent 2,000G by accident" reports.  Bump touch
+               targets to 40px+ on phone portrait. */
+            .story-tutor-btn {
+                min-height: 40px;
+                padding: 8px 12px;
+                font-size: 12px;
+            }
             /* Story city HUD: keep one toolbar row; chips read cleanly on narrow portrait */
             #story-hud.story-hud-bar {
                 gap: 8px 10px;
@@ -27499,7 +27508,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             showScreen('screen-story-shop');
         }
 
-        function buyItem(itemId, price) {
+        async function buyItem(itemId, price) {
             const st = document.getElementById('screen-story-shop')?.getAttribute('data-shop-type');
             if (sm.settings && sm.settings.noItemRun) {
                 if (st === 'dept') {
@@ -27531,6 +27540,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (sm.deptShopPurchasedByCity[_cKey][itemId]) return;
             }
             if (sm.gold < price) return;
+            // Confirm only the high-stakes shop clicks. Mart consumables (potions, status
+            // heals, regular balls) are repeatable and cheap — keep them direct-purchase.
+            // Department-store buys lock per-city once acquired, so even the cheap rows
+            // there get the prompt. Any non-ball purchase ≥ 1500G also gets it.
+            const needsConfirm = (st === 'dept' && !_isBall) || (!_isBall && price >= 1500);
+            if (needsConfirm) {
+                const itemLabel = (_itemRow && _itemRow.name) ? _itemRow.name : String(itemId);
+                const lockNote = (st === 'dept' && !_isBall) ? ' This is the only copy this city sells.' : '';
+                const ok = await _storyConfirmTutorChange(`Buy ${itemLabel}?${lockNote}`, price);
+                if (!ok) return;
+            }
             sm.gold -= price;
             if (_isBall) {
                 if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
@@ -27546,7 +27566,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterShop(st === 'dept' ? 'dept' : 'mart');
         }
 
-        function buyArtifact(artId, price) {
+        async function buyArtifact(artId, price) {
             const relicScr = document.getElementById('screen-story-artifact-shop');
             if (!relicScr || relicScr.classList.contains('hidden')) return;
             const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
@@ -27560,6 +27580,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const listPrice = (cityIdx === 0 && !sm.artifactFreeClaimUsed) ? 0 : 5000;
             if ((price | 0) !== listPrice) return;
             if (listPrice > 0 && sm.gold < listPrice) return;
+            const ok = await _storyConfirmTutorChange(`Claim "${artId}" relic? This locks the Annex for this city — no second pick.`, listPrice);
+            if (!ok) return;
             if (listPrice > 0) sm.gold -= listPrice;
             else sm.artifactFreeClaimUsed = true;
             sm.artifacts.push(artId);
