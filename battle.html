@@ -23035,7 +23035,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── STATE ─────────────────────────────────────────────────────────
         const SAVE_KEY = 'pbs_story_save';
         const STORY_MENU_DEFAULTS_KEY = 'pbs_story_run_menu_defaults';
+        // Cross-run meta. Holds permanent achievements that survive abandon/clear.
+        // Today: completedRuns + lastClearSeed. Future: Pokédex carryover, totals, marks.
+        const SAVE_KEY_META = 'pbs_story_meta';
         const SAVE_VER = 15;
+        function readStoryMeta() {
+            try {
+                const raw = localStorage.getItem(SAVE_KEY_META);
+                if (!raw) return { completedRuns: 0, lastClearSeed: '' };
+                const obj = JSON.parse(raw);
+                if (!obj || typeof obj !== 'object') return { completedRuns: 0, lastClearSeed: '' };
+                return {
+                    completedRuns: Math.max(0, obj.completedRuns | 0),
+                    lastClearSeed: typeof obj.lastClearSeed === 'string' ? obj.lastClearSeed : ''
+                };
+            } catch (e) { return { completedRuns: 0, lastClearSeed: '' }; }
+        }
+        function writeStoryMeta(meta) {
+            try { localStorage.setItem(SAVE_KEY_META, JSON.stringify(meta || {})); } catch (e) { console.warn('[Story] meta save', e); }
+        }
+        function recordStoryClearInMeta() {
+            const meta = readStoryMeta();
+            meta.completedRuns = (meta.completedRuns | 0) + 1;
+            if (sm && sm.runSeed != null) meta.lastClearSeed = String(sm.runSeed >>> 0);
+            writeStoryMeta(meta);
+            return meta;
+        }
         /** v8: eight filler Basic Trainer rows removed from `STORY_EVENTS_RAW` — remap saved indices from v7 and below. */
         const STORY_TIMELINE_REMOVED_ROW_IDS_PRE_V8 = new Set([3, 8, 16, 23, 30, 38, 47, 55]);
         function migrateStoryRowIdPreV8ToCurrent(oldId) {
@@ -28194,6 +28219,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             window._storyHofToken = (window._storyHofToken || 0) + 1;
             const myTok = window._storyHofToken;
 
+            // Cross-run counter: bump once per HoF reach (the preview flow runs from save load,
+            // so we only count when the live save flagged the run as fresh-clear).
+            let metaForDisplay = readStoryMeta();
+            if (sm && sm.active && !sm._hofCountedThisRun) {
+                sm._hofCountedThisRun = true;
+                metaForDisplay = recordStoryClearInMeta();
+            }
+
             const displaySlots = getHallOfFameDisplaySlots();
 
             const ov = document.createElement('div');
@@ -28246,6 +28279,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             welcome.className = 'story-hof-gba-welcome';
             welcome.innerHTML = 'Welcome to the <span class="story-hof-gba-hof">HALL OF FAME</span>!';
             lower.appendChild(welcome);
+
+            const runMeta = document.createElement('p');
+            runMeta.className = 'story-hof-gba-welcome';
+            runMeta.style.fontSize = '11px';
+            runMeta.style.color = '#aed581';
+            runMeta.style.marginTop = '6px';
+            const runN = Math.max(1, metaForDisplay && metaForDisplay.completedRuns | 0);
+            const seedStr = (sm && sm.runSeed != null) ? (sm.runSeed >>> 0).toString() : '';
+            const diffLabel = ({veryeasy:'Very Easy', easy:'Easy', normal:'Normal', hard:'Hard', challenge:'Very Hard'})[sm.storyDifficulty || 'normal'] || (sm.storyDifficulty || 'normal');
+            runMeta.innerHTML = `Run #${runN} cleared on <strong>${diffLabel}</strong>` + (seedStr ? ` · Seed <code style="background:rgba(0,0,0,0.4);padding:1px 4px;border-radius:0;">${seedStr}</code>` : '');
+            lower.appendChild(runMeta);
+
             if (sm.rivalChampionClaimed) {
                 const rivalNote = document.createElement('p');
                 rivalNote.className = 'story-hof-gba-welcome';
@@ -28357,6 +28402,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const si = document.getElementById('story-setting-seed');
             if (si && hasSv && sm.runSeed != null) si.value = String(sm.runSeed >>> 0);
+            try {
+                const meta = readStoryMeta();
+                const cleared = meta.completedRuns | 0;
+                const tagline = document.querySelector('#screen-story-menu .story-tagline');
+                let banner = document.getElementById('story-career-banner');
+                if (cleared > 0) {
+                    if (!banner && tagline) {
+                        banner = document.createElement('p');
+                        banner.id = 'story-career-banner';
+                        banner.style.cssText = 'font-size:11px;color:#aed581;margin:-6px 0 8px;text-align:center;letter-spacing:0.4px;';
+                        tagline.parentNode.insertBefore(banner, tagline.nextSibling);
+                    }
+                    if (banner) {
+                        const lastSeed = meta.lastClearSeed ? ` · Last seed <code style="background:rgba(0,0,0,0.3);padding:1px 4px;">${meta.lastClearSeed}</code>` : '';
+                        banner.innerHTML = `🏆 Career runs cleared: <strong>${cleared}</strong>${lastSeed}`;
+                    }
+                } else if (banner) {
+                    banner.remove();
+                }
+            } catch (e) { /* meta is optional */ }
             showScreen('screen-story-menu');
         }
 
