@@ -104,14 +104,14 @@ else → mon may flee (species.fleeRate, default 0.25)
        otherwise stays for another throw
 ```
 
-Species `catchRate` is derived from grade:
+Species `catchRate` is derived from grade. G1 is the strongest tier (pseudo + legendary in `getMonGrade`) and is therefore the **hardest** to catch; G4 is the weakest tier and is the easiest:
 
 | Grade | Base catch rate (PokéBall) |
 |---|---|
-| G1 | 0.60 |
-| G2 | 0.40 |
-| G3 | 0.20 |
-| G4 | 0.05 |
+| G1 (strongest) | 0.05 |
+| G2 | 0.20 |
+| G3 | 0.40 |
+| G4 (weakest) | 0.60 |
 
 Ball multipliers: PokéBall 1.0×, Great 1.5×, Ultra 2.0×, Master ∞ (`Infinity`).
 

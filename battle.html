@@ -669,7 +669,8 @@
         #screen-story-evtrainer,
         #screen-story-link,
         #screen-story-casino,
-        #screen-story-pokemoncenter {
+        #screen-story-pokemoncenter,
+        #screen-story-catch {
             font-family: var(--battle-font);
         }
         #screen-story-city h1, #screen-story-city h2, #screen-story-city h3, #screen-story-city h4, #screen-story-city p, #screen-story-city span, #screen-story-city button, #screen-story-city label,
@@ -681,7 +682,8 @@
         #screen-story-evtrainer h1, #screen-story-evtrainer h2, #screen-story-evtrainer h3, #screen-story-evtrainer h4, #screen-story-evtrainer p, #screen-story-evtrainer span, #screen-story-evtrainer button, #screen-story-evtrainer label,
         #screen-story-link h1, #screen-story-link h2, #screen-story-link h3, #screen-story-link h4, #screen-story-link p, #screen-story-link span, #screen-story-link button, #screen-story-link label,
         #screen-story-casino h1, #screen-story-casino h2, #screen-story-casino h3, #screen-story-casino h4, #screen-story-casino p, #screen-story-casino span, #screen-story-casino button, #screen-story-casino label, #screen-story-casino input,
-        #screen-story-pokemoncenter h1, #screen-story-pokemoncenter h2, #screen-story-pokemoncenter h3, #screen-story-pokemoncenter h4, #screen-story-pokemoncenter p, #screen-story-pokemoncenter span, #screen-story-pokemoncenter button, #screen-story-pokemoncenter label {
+        #screen-story-pokemoncenter h1, #screen-story-pokemoncenter h2, #screen-story-pokemoncenter h3, #screen-story-pokemoncenter h4, #screen-story-pokemoncenter p, #screen-story-pokemoncenter span, #screen-story-pokemoncenter button, #screen-story-pokemoncenter label,
+        #screen-story-catch h1, #screen-story-catch h2, #screen-story-catch h3, #screen-story-catch h4, #screen-story-catch p, #screen-story-catch span, #screen-story-catch button, #screen-story-catch label {
             font-family: var(--battle-font);
             letter-spacing: 0.03em;
         }
@@ -737,7 +739,8 @@
         #screen-story-evtrainer > .story-shop-stack > div:last-child,
         #screen-story-link > .story-link-stack > div:last-child,
         #screen-story-casino > .story-shop-stack > div:last-child,
-        #screen-story-pokemoncenter > .story-shop-stack > div:last-child {
+        #screen-story-pokemoncenter > .story-shop-stack > div:last-child,
+        #screen-story-catch > .story-shop-stack > div:last-child {
             border-top: 2px solid #555 !important;
             background: linear-gradient(180deg, rgba(22, 24, 34, 0.95) 0%, rgba(12, 14, 22, 0.96) 100%) !important;
             box-shadow: inset -2px -2px 0 0 #161922, inset 2px 2px 0 0 #2d3342;
@@ -3114,7 +3117,7 @@
                 padding-left: env(safe-area-inset-left);
                 padding-right: env(safe-area-inset-right);
             }
-            #screen-story-city, #screen-story-professor, #screen-story-shop, #screen-story-artifact-shop, #screen-story-tutor, #screen-story-link, #screen-story-casino, #screen-story-pokemoncenter {
+            #screen-story-city, #screen-story-professor, #screen-story-shop, #screen-story-artifact-shop, #screen-story-tutor, #screen-story-link, #screen-story-casino, #screen-story-pokemoncenter, #screen-story-catch {
                 padding-top: max(8px, env(safe-area-inset-top));
                 padding-bottom: max(8px, env(safe-area-inset-bottom));
             }
@@ -4823,6 +4826,20 @@
             <div id="story-pc-body" style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);"></div>
             <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
                 <button type="button" onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-story-catch" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div class="story-shop-stack">
+            <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+                <span style="width:32px;"></span>
+                <h3 class="story-screen-head-title" style="color:#aed581;font-size:14px;flex:1;min-width:0;text-align:center;"><span class="story-screen-head-text">🌿 Wild Encounter</span></h3>
+                <span style="width:32px;"></span>
+            </div>
+            <div id="story-catch-body" style="flex:1;overflow-y:auto;padding:14px;min-height:0;background:rgba(6,16,10,0.35);display:flex;flex-direction:column;gap:14px;"></div>
+            <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);display:flex;gap:8px;">
+                <button type="button" id="story-catch-run-btn" onclick="window.StoryMode.catchRun()" style="flex:1;color:#ef9a9a;border-color:#ef9a9a;">🏃 Run</button>
             </div>
         </div>
     </div>
@@ -22274,6 +22291,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Shop item definitions — Pokémart
         const POKEMART_ITEMS = [
+          { id:'pokeBall',      name:'Poké Ball',     price:200,  desc:'A standard ball for catching wild Pokémon.', kind:'ball', ballKey:'poke', battleBag:false },
           { id:'maxPotion',     name:'Max Potion',    price:1000, desc:'Fully restores HP of one Pokémon.',   effect:'healFull' },
           { id:'fullRestore',   name:'Full Restore',  price:1500, desc:'Fully restores HP & cures status.',   effect:'fullRestore' },
           { id:'fullHeal',      name:'Full Heal',     price:300,  desc:'Cures all status conditions.',        effect:'cureStatus' },
@@ -22288,6 +22306,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { id:'guardSpec',     name:'Guard Spec.',   price:350,  desc:'Prevents stat drops for 5 turns.',   effect:'guardSpec' },
         ];
         const DEPT_ITEMS = [
+          { id:'greatBall',     name:'Great Ball',    price:1000, desc:'A better ball. 1.5× catch rate vs Poké Ball.', kind:'ball', ballKey:'great', battleBag:false },
           { id:'revive',        name:'Revive',        price:3000, desc:'Revives a fainted Pokémon to 50% HP.', effect:'revive50' },
           { id:'maxRevive',     name:'Max Revive',    price:4500, desc:'Revives a fainted Pokémon to full HP.', effect:'reviveFull' },
           { id:'sunOrb',        name:'Sun Orb',       price:1000, desc:'Starts Harsh Sunlight for 5 turns on battle entry.', effect:'weatherSun' },
@@ -25381,7 +25400,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterBattleEvent(STORY_EVENTS_RAW[nextBattleIdx]);
         }
 
-        function enterBattleEvent(ev) {
+        function enterBattleEvent(ev, _wildAlreadyChecked) {
             if (!ev) return;
             if (ev[1] !== 'Battle') {
                 console.warn('[Story] enterBattleEvent expected Battle row, got', ev[1]);
@@ -25389,6 +25408,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (ev[1] === 'Hall of Fame') { showHallOfFame(); return; }
                 processNextEvent();
                 return;
+            }
+            // Wild route interrupt — fire once per eventIndex. Skipped on rematch (the
+            // per-eventIndex flag prevents re-fire) and on the post-HoF boss arc (M4).
+            if (!_wildAlreadyChecked) {
+                const _battleIdx = sm.eventIndex;
+                if (_shouldFireWildBeforeBattle(_battleIdx)) {
+                    _markWildSeen(_battleIdx);
+                    const _enc = rollWildEncounter(ev[3], storySettingsGens());
+                    if (_enc) {
+                        enterCatchEncounter(_enc, () => enterBattleEvent(ev, true));
+                        return;
+                    }
+                }
             }
             const [idx, type, event, gradeWeights, coins] = ev;
             const sg = storySettingsGens();
@@ -25988,6 +26020,206 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _pcRefresh();
         }
 
+        // ── WILD CATCH MINIGAME ───────────────────────────────────────────
+        // A unified, no-fight catch screen used by route nodes (and later, Safari).
+        // Catch math: chance = baseRate(grade) × ballMult. G1 is strongest tier and
+        // therefore hardest to catch; G4 is the weakest tier and easiest.
+        const _CATCH_BALL_MULT = { poke: 1.0, great: 1.5, ultra: 2.0, master: Infinity };
+        const _CATCH_RATE_BY_GRADE = { 1: 0.05, 2: 0.20, 3: 0.40, 4: 0.60 };
+        const _CATCH_DEFAULT_FLEE_RATE = 0.25;
+        const _BALL_DISPLAY = {
+            poke:   { name: 'Poké Ball',   color: '#e57373' },
+            great:  { name: 'Great Ball',  color: '#64b5f6' },
+            ultra:  { name: 'Ultra Ball',  color: '#ffd54f' },
+            master: { name: 'Master Ball', color: '#ce93d8' }
+        };
+        let _catchState = null;
+
+        function _shouldFireWildBeforeBattle(battleIdx) {
+            if (battleIdx == null) return false;
+            if (sm.wildSeenByEventIdx && sm.wildSeenByEventIdx[battleIdx]) return false;
+            const row = STORY_EVENTS_RAW[battleIdx];
+            if (!row || row[1] !== 'Battle') return false;
+            // M4 boss arc (post-HoF Mystery) handles its own catch step; no route wild here.
+            if (String(row[2] || '') === 'Mystery Figure') return false;
+            return true;
+        }
+        function _markWildSeen(battleIdx) {
+            if (!sm.wildSeenByEventIdx || typeof sm.wildSeenByEventIdx !== 'object') sm.wildSeenByEventIdx = {};
+            sm.wildSeenByEventIdx[battleIdx] = true;
+            try { save(); } catch (e) {}
+        }
+
+        /** Shift grade weights one tier toward weaker — wild encounters are intentionally
+         *  inferior to the adjacent trainer fight (and to Professor picks). */
+        function _storyShiftGradeOneTierWeaker(gw) {
+            if (!gw) return { g1: 0, g2: 0, g3: 0, g4: 100 };
+            return {
+                g1: 0,
+                g2: gw.g1 || 0,
+                g3: gw.g2 || 0,
+                g4: (gw.g3 || 0) + (gw.g4 || 0)
+            };
+        }
+
+        /** Build a rough wild build: keep moves rolled by makeBuild, but strip held
+         *  item / hidden ability / custom nature / EVs. Caught mons are "raw" — Tutor /
+         *  Link / EV Trainer are the path from raw catch → battle-ready. */
+        function makeWildBuild(name) {
+            const b = makeBuild(name);
+            if (!b) return null;
+            b.i = 'None';
+            const base = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
+            if (base && base.abilities && base.abilities['0']) b.a = base.abilities['0'];
+            b.n = 'Hardy';
+            b.evs = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+            return b;
+        }
+
+        function rollWildEncounter(gradeWeights, enabledGens) {
+            const shifted = _storyShiftGradeOneTierWeaker(gradeWeights);
+            const name = weightedPickFromGrades(shifted, enabledGens);
+            if (!name) return null;
+            const build = makeWildBuild(name);
+            if (!build) return null;
+            return {
+                name,
+                build,
+                id: 'm_' + Math.random().toString(36).slice(2, 10),
+                wild: true
+            };
+        }
+
+        function enterCatchEncounter(wildMon, onComplete) {
+            _catchState = { encounter: wildMon, onComplete: onComplete || null, message: null, ended: false };
+            document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
+            _catchRender();
+            const runBtn = document.getElementById('story-catch-run-btn');
+            if (runBtn) { runBtn.style.display = ''; runBtn.disabled = false; }
+            showScreen('screen-story-catch');
+        }
+        function _catchRender() {
+            if (!_catchState || !_catchState.encounter) return;
+            const enc = _catchState.encounter;
+            const body = document.getElementById('story-catch-body');
+            if (!body) return;
+            const grade = (function () {
+                try { return getMonGrade(enc.name, getBST(enc.name)); }
+                catch (e) { return 4; }
+            })();
+            const baseRate = _CATCH_RATE_BY_GRADE[grade] || _CATCH_RATE_BY_GRADE[4];
+            const message = _catchState.message ? `<div style="text-align:center;color:#aed581;font-size:12px;margin:6px 0;">${_esc(_catchState.message)}</div>` : '';
+            const ballRows = ['poke', 'great', 'ultra', 'master'].map(k => {
+                const have = (sm.balls && (sm.balls[k] | 0)) || 0;
+                const mult = _CATCH_BALL_MULT[k];
+                const display = _BALL_DISPLAY[k];
+                const chance = mult === Infinity ? 1 : Math.min(1, baseRate * mult);
+                const pct = Math.round(chance * 100);
+                const canThrow = have > 0;
+                return `<button type="button" onclick="window.StoryMode.catchThrow('${k}')" ${canThrow ? '' : 'disabled'} style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:rgba(20,28,40,0.6);border:1px solid ${display.color};color:${display.color};font-family:inherit;font-size:12px;${canThrow ? 'cursor:pointer;' : 'opacity:0.4;cursor:not-allowed;'}">
+                    <span><strong>${display.name}</strong> ×${have}</span>
+                    <span style="color:#fff;">${pct}%</span>
+                </button>`;
+            }).join('');
+            body.innerHTML = `
+                <div style="text-align:center;padding:18px 12px;background:rgba(10,18,12,0.55);border:1px solid #4a6c44;">
+                    <div style="font-size:11px;color:#a5d6a7;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">A wild Pokémon appeared!</div>
+                    <h2 style="margin:0 0 6px;color:#fff;font-size:18px;">${_esc(enc.name)}</h2>
+                    <div style="display:inline-block;font-size:9px;font-weight:bold;color:#111;background:#a5d6a7;padding:1px 6px;letter-spacing:0.04em;">G${grade}</div>
+                    <div style="margin-top:8px;font-size:10px;color:#888;">Catch chance scales with grade and ball type.</div>
+                </div>
+                ${message}
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                    ${ballRows}
+                </div>
+            `;
+        }
+        function catchThrow(ballKey) {
+            if (!_catchState || _catchState.ended) return;
+            const enc = _catchState.encounter;
+            if (!enc) return;
+            if (!sm.balls || (sm.balls[ballKey] | 0) <= 0) return;
+            sm.balls[ballKey] = (sm.balls[ballKey] | 0) - 1;
+            const grade = (function () {
+                try { return getMonGrade(enc.name, getBST(enc.name)); }
+                catch (e) { return 4; }
+            })();
+            const baseRate = _CATCH_RATE_BY_GRADE[grade] || _CATCH_RATE_BY_GRADE[4];
+            const mult = _CATCH_BALL_MULT[ballKey];
+            const chance = mult === Infinity ? 1 : Math.min(1, baseRate * mult);
+            const roll = (sm && sm.active) ? storyRngNext() : Math.random();
+            try { save(); } catch (e) {}
+            if (roll < chance) {
+                _catchHandleSuccess(enc, ballKey);
+                return;
+            }
+            const fleeRoll = (sm && sm.active) ? storyRngNext() : Math.random();
+            if (fleeRoll < _CATCH_DEFAULT_FLEE_RATE) {
+                _catchFinishWithMessage(`The wild ${enc.name} fled!`);
+                return;
+            }
+            _catchState.message = `${enc.name} broke free!`;
+            _catchRender();
+        }
+        function _catchHandleSuccess(enc, ballKey) {
+            _pcEnsureBoxArray();
+            const partyFull = (sm.team || []).length >= 6;
+            const pcFull = (sm.pcBox || []).length >= PC_BOX_CAP;
+            if (partyFull && pcFull) {
+                _catchFinishWithMessage(`You caught ${enc.name}… but your party (6/6) and PC (${PC_BOX_CAP}/${PC_BOX_CAP}) are full. Sell or release a Pokémon at a Center first. ${enc.name} escaped from the ball.`);
+                return;
+            }
+            const caught = {
+                name: enc.name,
+                build: enc.build,
+                id: enc.id,
+                wild: true,
+                caughtAt: cityIndexFromEventIndex(sm.eventIndex)
+            };
+            if (!partyFull) {
+                sm.team.push(caught);
+                if (sm.team.length >= 4) sm.partyEverReached4 = true;
+                try { save(); } catch (e) {}
+                _catchFinishWithMessage(`Gotcha! ${enc.name} was caught and joined your party.`);
+            } else {
+                sm.pcBox.push(caught);
+                try { save(); } catch (e) {}
+                _catchFinishWithMessage(`Gotcha! ${enc.name} was caught and sent to the PC.`);
+            }
+        }
+        function _catchFinishWithMessage(message) {
+            if (!_catchState) return;
+            _catchState.ended = true;
+            const body = document.getElementById('story-catch-body');
+            if (body) {
+                body.innerHTML = `<div style="margin:auto;text-align:center;padding:24px 12px;display:flex;flex-direction:column;gap:16px;align-items:center;">
+                    <div style="font-size:13px;color:#fff;line-height:1.5;max-width:380px;">${_esc(message)}</div>
+                    <button type="button" onclick="window.StoryMode.catchContinue()" style="padding:10px 24px;color:#aed581;border-color:#aed581;font-family:inherit;">Continue →</button>
+                </div>`;
+            }
+            const runBtn = document.getElementById('story-catch-run-btn');
+            if (runBtn) { runBtn.style.display = 'none'; }
+        }
+        function catchContinue() {
+            const cb = _catchState && _catchState.onComplete;
+            _catchState = null;
+            const runBtn = document.getElementById('story-catch-run-btn');
+            if (runBtn) { runBtn.style.display = ''; runBtn.disabled = false; }
+            if (typeof cb === 'function') {
+                try { cb(); } catch (e) { console.warn('[Story] catch onComplete', e); }
+            }
+        }
+        function catchRun() {
+            if (!_catchState || _catchState.ended) return;
+            const cb = _catchState.onComplete;
+            _catchState = null;
+            const runBtn = document.getElementById('story-catch-run-btn');
+            if (runBtn) { runBtn.style.display = ''; runBtn.disabled = false; }
+            if (typeof cb === 'function') {
+                try { cb(); } catch (e) { console.warn('[Story] catch run onComplete', e); }
+            }
+        }
+
         function _storyShuffle(arr) {
             for (let i = arr.length - 1; i > 0; i--) {
                 const j = Math.floor(storyRngNext() * (i + 1));
@@ -26118,10 +26350,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             items.forEach(item => {
+                const _isBall = item.kind === 'ball' && item.ballKey;
                 const canAfford = sm.gold >= item.price;
-                const alreadyBought = type === 'dept' && !!_deptBoughtHere[item.id];
+                // Ball items are unlimited — bypass the dept "one per city" sold-out lockout.
+                const alreadyBought = !_isBall && type === 'dept' && !!_deptBoughtHere[item.id];
                 const canBuy = canAfford && !alreadyBought;
-                const qty = sm.inventory[item.id]||0;
+                const qty = _isBall ? ((sm.balls && sm.balls[item.ballKey]) || 0) : (sm.inventory[item.id]||0);
                 const icon = storyShopIconCellHtml(item.id);
                 const buyColor = item.tier === 'mega' || item.tier === 'ultra' ? '#ffb74d' : '#4caf50';
                 const btnLabel = alreadyBought ? 'Sold out' : 'Buy';
@@ -26167,8 +26401,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const allowed = [...normalDept, ...featuredOffers];
                 if (!allowed.some(i => i.id === itemId && i.price === price)) return;
             }
+            // Catalog lookup once — used for ball routing and dept lockout skip.
+            const _itemRow = [...POKEMART_ITEMS, ...DEPT_ITEMS].find(r => r.id === itemId) || null;
+            const _isBall = !!(_itemRow && _itemRow.kind === 'ball' && _itemRow.ballKey);
             // Department store: one of each item per city, lock persists across gym leader fights via save state.
-            if (st === 'dept') {
+            // Ball items are exempt — they're unlimited consumables, not premium one-offs.
+            if (st === 'dept' && !_isBall) {
                 if (!sm.deptShopPurchasedByCity || typeof sm.deptShopPurchasedByCity !== 'object') sm.deptShopPurchasedByCity = {};
                 const _cKey = String(Math.max(0, cityIndexFromEventIndex(sm.eventIndex) | 0));
                 if (!sm.deptShopPurchasedByCity[_cKey]) sm.deptShopPurchasedByCity[_cKey] = {};
@@ -26176,8 +26414,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (sm.gold < price) return;
             sm.gold -= price;
-            sm.inventory[itemId] = (sm.inventory[itemId]||0) + 1;
-            if (st === 'dept') {
+            if (_isBall) {
+                if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
+                sm.balls[_itemRow.ballKey] = (sm.balls[_itemRow.ballKey] || 0) + 1;
+            } else {
+                sm.inventory[itemId] = (sm.inventory[itemId]||0) + 1;
+            }
+            if (st === 'dept' && !_isBall) {
                 const _cKey = String(Math.max(0, cityIndexFromEventIndex(sm.eventIndex) | 0));
                 sm.deptShopPurchasedByCity[_cKey][itemId] = true;
             }
@@ -28700,6 +28943,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             proceedToNextBattle, onBattleEnd, afterBattleReturn,
             enterShop, buyItem, buyArtifact, enterArtifactShop, enterPokemonCenter,
             pcSwitchTab, pcDeposit, pcWithdraw, pcRelease, pcSell,
+            catchThrow, catchRun, catchContinue,
             enterLink, linkReroll, linkUpgrade, linkEvolve, linkRebuild, linkMoveUp, linkMoveDown,
             enterCasino, casinoSetBetChip, casinoPlay,
             openBattleBag, useBagItemOn, openCityBag, sellItem,
