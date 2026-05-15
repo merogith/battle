@@ -24634,6 +24634,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Pokémon Center — full party heal, free, unlimited
             _push('recover', makeActionBtn('🏥 Pokémon Center — Restore Your Party','center','window.StoryMode.enterPokemonCenter()','center',{ meta: _withNew('center', [{label:'Free',tone:'free'}]) }));
+            // Safari Zone — paid catching excursion, available in every city. First visit free.
+            {
+                const safariFree = !sm.safari || !sm.safari.freeEntryUsed;
+                const safariLabel = safariFree
+                    ? '🦒 Safari Zone — Catch run (1st free)'
+                    : `🦒 Safari Zone — Catch run`;
+                const safariMeta = safariFree ? [{label:'Free',tone:'free'}] : [_costBadge(SAFARI_ENTRY_COST)];
+                _push('recover', makeActionBtn(safariLabel, 'safari', 'window.StoryMode.enterSafariZone()', 'center', { soft: safariFree, meta: _withNew('safari', safariMeta) }));
+            }
             const _partyN = sm.team.length;
             const _partyLabel = _partyN
                 ? `Party — Team & Order (${_partyN}/6)`
@@ -25995,6 +26004,62 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             html += `</div>`;
             html += _bossArcRenderSection();
             return html;
+        }
+
+        // ── SAFARI ZONE ───────────────────────────────────────────────────
+        // Paid catching excursion. First visit per save is free; subsequent visits cost
+        // SAFARI_ENTRY_COST. Up to SAFARI_MAX_ENCOUNTERS sequential catch-screen rolls
+        // drawn from a richer grade pool than wild routes. Uses your own balls.
+        const SAFARI_ENTRY_COST = 800;
+        const SAFARI_MAX_ENCOUNTERS = 6;
+        const SAFARI_GRADE_WEIGHTS = { g1: 5, g2: 40, g3: 40, g4: 15 };
+        function enterSafariZone() {
+            if (!sm.safari || typeof sm.safari !== 'object') sm.safari = { freeEntryUsed: false };
+            const isFree = !sm.safari.freeEntryUsed;
+            if (!isFree && (sm.gold | 0) < SAFARI_ENTRY_COST) {
+                try { window.showGameAlert && window.showGameAlert(`Safari entry costs ${SAFARI_ENTRY_COST}G. You have ${(sm.gold|0).toLocaleString()}G.`); } catch (e) {}
+                return;
+            }
+            if (isFree) {
+                sm.safari.freeEntryUsed = true;
+                try { window.showGameAlert && window.showGameAlert('Welcome to the Safari Zone. Your first visit is on the house. Up to 6 encounters — bring your own balls.'); } catch (e) {}
+            } else {
+                sm.gold = Math.max(0, (sm.gold | 0) - SAFARI_ENTRY_COST);
+            }
+            try { save(); } catch (e) {}
+            _safariRunIndex = 0;
+            _safariNextEncounter();
+        }
+        let _safariRunIndex = 0;
+        function _safariNextEncounter() {
+            if (_safariRunIndex >= SAFARI_MAX_ENCOUNTERS) {
+                _safariReturnToCity('Safari time is up. You leave with what you caught.');
+                return;
+            }
+            _safariRunIndex++;
+            const name = weightedPickFromGrades(SAFARI_GRADE_WEIGHTS, storySettingsGens());
+            if (!name) {
+                _safariReturnToCity('The Safari pool is empty for the enabled generations.');
+                return;
+            }
+            const build = makeWildBuild(name);
+            if (!build) {
+                _safariReturnToCity(`The brush stays silent.`);
+                return;
+            }
+            const enc = {
+                name, build,
+                id: 'm_' + Math.random().toString(36).slice(2, 10),
+                wild: true,
+                safari: true
+            };
+            enterCatchEncounter(enc, () => _safariNextEncounter());
+        }
+        function _safariReturnToCity(message) {
+            _safariRunIndex = 0;
+            try { window.showGameAlert && window.showGameAlert(message); } catch (e) {}
+            try { save(); } catch (e) {}
+            enterCity();
         }
 
         // ── BOSS ARC — "The Caged God" ────────────────────────────────────
@@ -29190,6 +29255,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             pcSwitchTab, pcDeposit, pcWithdraw, pcRelease, pcSell,
             catchThrow, catchRun, catchContinue,
             bossCollectLead, bossEnterCage, bossAttack,
+            enterSafariZone,
             enterLink, linkReroll, linkUpgrade, linkEvolve, linkRebuild, linkMoveUp, linkMoveDown,
             enterCasino, casinoSetBetChip, casinoPlay,
             openBattleBag, useBagItemOn, openCityBag, sellItem,
