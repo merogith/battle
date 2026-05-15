@@ -3,6 +3,65 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Catch & party balance 2026-05-15 (`claude/balance-pokemon-safari-zone-AMDkM`)
+
+### Changed — Catch math is meaningfully tighter
+- **Base catch rates lowered.** G1 5%→4%, G2 20%→12%, G3 40%→22%, G4 60%→35%.
+  A maxed Ultra Ball on a G3 used to land 80% of the time and made wild
+  captures feel like free gifts; it now lands ~44%, so the throw is a real
+  decision. Master Ball is unchanged (still 100%) — it stays the special
+  arc reward.
+- **Per-grade flee rates.** Rarer mons are skittier. G1 55%, G2 40%,
+  G3 28%, G4 20% (was a flat 25% across the board). A missed Ultra Ball
+  on a G1 usually means it's gone — you bring your best ball on the first
+  throw, not the fifth.
+
+### Added — Safari Zone is actually different from a wild route
+- **Safari Balls** are a session-only resource. Each Safari run grants
+  25 Safari Balls; leftovers are forfeited at the gate (they never enter
+  `sm.balls`, so they can't be hoarded for wild routes). Catch multiplier
+  is 1.5× — between Great and Ultra. Your own Poké/Great/Ultra/Master
+  Balls do NOT work inside the Safari Zone.
+- **Bait** calms the wild Pokémon. Each bait stacks: catch chance × 0.70,
+  flee chance × 0.55. Lower payoff, longer leash.
+- **Throw Rock** angers the wild Pokémon. Each rock stacks: catch chance
+  × 1.45, flee chance × 1.70. High risk, high reward — most G1 captures
+  in Safari now happen after 2–3 rocks land you a quick clean throw before
+  it bolts.
+- Modifiers stack up to 3 each and reset between encounters.
+- Safari encounter cap raised to 8 (from 6). Safari pool nudged slightly
+  richer at G1 (8% from 5%) since catches there are now genuinely hard.
+- Safari entry cost raised to 1,200G (from 800G) to reflect the 25-ball
+  allotment + Bait/Rock toolkit. First visit per save still free.
+- Per-encounter Skip + per-session Leave (forfeit balls) both surface
+  directly on the encounter card so the player never gets cornered.
+
+### Changed — Enemy party size, no more "weird"
+- **Predictable role + badge curve.** Pre-v16 enemy party size mirrored
+  the player's current team length (+1 after 4 badges), which meant the
+  game changed difficulty silently when you released a mon or held two
+  back at the PC. The new curve is fixed and readable:
+  - Intro Rival: 1
+  - Gym 1: 2 · Gym 2: 3 · Gym 3–4: 4 · Gym 5–6: 5 · Gym 7–8: 6
+  - E1–E4 / Champion / Victory Road: 6
+  - Rival (post-intro): 2 → 3 → 4 → 5 → 6 by badges (1/3/5/7)
+  - Basic / Gym Trainer / Elite Trainer: 1 → 2 → 3 → 4 by badges
+  - Soft floor: non-boss trainers cap at `playerTeam + 1` so a player
+    still rebuilding their roster never walks into a 1v4 stomp.
+
+### Added — Dynamic party swap on catch
+- When you catch a Pokémon and your party is already full (6/6) but the
+  PC has space, you now get a choice screen — **Send to PC** (the old
+  default) or **pick a teammate to swap to PC**, putting the newcomer in
+  that party slot. No more silent "it went to the PC" right when you
+  wanted it on the field. Boss-arc catches (Subject Zero) still go
+  straight to party — that story beat needs the mon in your hand.
+
+### Notes
+- PC code path audited end-to-end: deposit / withdraw / release / sell
+  all guard against the last-mon, full-box, and missing-id edge cases.
+  No changes were needed there.
+
 ## Unreleased — Progression pass 2026-05-15 (`claude/optimize-game-progression-91Yy0`)
 
 ### Added — Catch rewards
