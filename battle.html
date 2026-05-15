@@ -5478,6 +5478,7 @@
                         if (m.flags != null) rowDex.flags = m.flags;
                         if (m.target) rowDex.target = m.target;
                         if (m.boosts != null && typeof m.boosts === 'object') rowDex.boosts = m.boosts;
+                        if (m.self != null && typeof m.self === 'object') rowDex.self = m.self;
                         if (m.multihit != null) rowDex.multihit = m.multihit;
                         movesDB[m.name] = rowDex;
                         if (m.name !== moveName) movesDB[moveName] = movesDB[m.name];
@@ -5597,6 +5598,7 @@
                     if (m.flags != null) row.flags = m.flags;
                     if (m.target) row.target = m.target;
                     if (m.boosts != null && typeof m.boosts === 'object') row.boosts = m.boosts;
+                    if (m.self != null && typeof m.self === 'object') row.self = m.self;
                     if (m.multihit != null) row.multihit = m.multihit;
                     movesDB[m.name] = row;
                     if (m.name) implementedMoveNames.add(m.name);
@@ -16837,6 +16839,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     if ((move.name === "Fling" || move.name === "Natural Gift") && attacker.item) consumeFlingNaturalGiftIfHeld(attacker, move.name);
                     await parseMoveEffects(attacker, defender, move, isPlayer); updateUI();
+                    // Data-driven self stat-stage changes (same handler as single-hit path).
+                    if (move.self && move.self.boosts && !sheerForceActive) {
+                        const _selfChance = (move.self.chance != null) ? move.self.chance : 100;
+                        if (Math.random() * 100 < _selfChance) {
+                            Object.entries(move.self.boosts).forEach(([stat, delta]) => changeStage(attacker, stat, delta, false));
+                            updateUI();
+                        }
+                    }
                     return;
                 }
 
@@ -17553,6 +17563,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 await parseMoveEffects(attacker, defender, move, isPlayer);
                 updateUI();
                 await sleep(500);
+            }
+
+            // Self stat changes from move.self.boosts (Close Combat, Dragon Ascent, Superpower,
+            // Overheat, Leaf Storm, Draco Meteor, Make It Rain, Psycho Boost, Armor Cannon,
+            // Headlong Rush, V-create, Hammer Arm, Ice Hammer, Spin Out, Fleur Cannon, Diamond
+            // Storm, Hyperspace Fury, …). These are NOT secondary effects in canon — they apply
+            // on every successful damaging hit, ignoring Substitute / Shield Dust / Covert Cloak.
+            // Sheer Force does suppress them (it consumed the chance-based secondary). Marked
+            // self-induced (false) so Defiant / Competitive ignore the drops.
+            if (move.cat !== "Status" && move.self && move.self.boosts
+                && !(typeof sheerForceActive !== 'undefined' && sheerForceActive)) {
+                const _selfChance = (move.self.chance != null) ? move.self.chance : 100;
+                if (Math.random() * 100 < _selfChance) {
+                    Object.entries(move.self.boosts).forEach(([stat, delta]) => changeStage(attacker, stat, delta, false));
+                    updateUI();
+                }
             }
 
             // Max Move secondary effects (weather/terrain/stat changes)
@@ -19367,11 +19393,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${attacker.name} swapped its ${atkItem} for ${defender.name}'s ${defItem}!`, 'info');
                 updateUI(); return;
             }
-            // === Self-debuff moves (after damage) ===
-            if (move.name === "Leaf Storm" || move.name === "Overheat" || move.name === "Draco Meteor") { changeStage(attacker, 'spa', -2); }
-            if (move.name === "Make It Rain" || move.name === "Psycho Boost") { changeStage(attacker, 'spa', -1 - (move.name === "Psycho Boost" ? 1 : 0)); }
-            if (move.name === "Close Combat") { changeStage(attacker, 'def', -1); changeStage(attacker, 'spd', -1); }
-            if (move.name === "Superpower") { changeStage(attacker, 'atk', -1); changeStage(attacker, 'def', -1); }
+            // Self stat changes (Close Combat, Dragon Ascent, Superpower, Overheat, etc.) are now
+            // applied data-driven from move.self.boosts at the main attack flow's call site, so they
+            // fire on every successful hit — including through Substitute / Shield Dust / Covert Cloak
+            // (canon behavior). Do not re-apply here.
             // Rapid Spin: Speed +1 is handled inside the Rapid Spin named handler above (no duplicate here)
 
             // === Secondary effects — data-driven from moves.json secondary/secondaries ===
