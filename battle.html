@@ -13614,6 +13614,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                     state.isLocked = false;
                     try { state._lockedAt = 0; } catch (e) {}
+                    // A forced-switch path that reaches here completes the turn (the deferred
+                    // end-of-turn ran above OR had already run before the faint). The normal
+                    // resolver's per-turn item-flag reset at the end of __runLockedPvPTurnResolution
+                    // never executed because the resolver returned early with pendingEoT=true.
+                    // Without this reset, opening the bag next turn shows "You already used an
+                    // item this turn!" even though the user is now on a fresh turn.
+                    if (state.mode === 'story') { state.storyItemUsedThisTurn = false; state.foeStoryItemUsedThisTurn = false; }
                     if (state.mode === 'pvp') state.currentPlayer = 1;
                     document.getElementById('command-menu').classList.remove('hidden');
                 } catch (err) {
@@ -13622,6 +13629,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { state.isLocked = false; } catch (e) {}
                     try { state.pendingEoT = false; } catch (e) {}
                     try { state._lockedAt = 0; } catch (e) {}
+                    try { if (state.mode === 'story') { state.storyItemUsedThisTurn = false; state.foeStoryItemUsedThisTurn = false; } } catch (e) {}
                     try { document.getElementById('command-menu').classList.remove('hidden'); } catch (e) {}
                     try { document.getElementById('move-menu').classList.add('hidden'); } catch (e) {}
                     try { const party = document.getElementById('modal-party'); if (party) party.classList.add('hidden'); } catch (e) {}
@@ -20227,9 +20235,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.currentHp -= actDmg;
                 logMsg(`${mon.name} is hurt by its Sticky Barb!`, 'dmg');
             }
-            // Flame Orb / Toxic Orb (apply status as item effect)
-            if (_monItemActive && mon.item === "Flame Orb") applyStatus(mon, "BRN");
-            if (_monItemActive && mon.item === "Toxic Orb") applyStatus(mon, "TOX");
+            // NOTE: Flame Orb / Toxic Orb activation is intentionally deferred below to
+            // AFTER the status-damage block — they fire late in EoT (canonical residual
+            // order 28, well after burn/poison damage at order 9) so the freshly applied
+            // status does NOT deal an extra tick of damage on the activation turn. This
+            // matters most after mid-turn switch-ins, where the previous ordering caused
+            // the new mon to take orb damage immediately on its first EoT.
             if (_monItemActive && mon.item === "Mental Herb" && mon.currentHp > 0) {
                 const v = mon.volatile;
                 if (v.infatuated || v.taunt > 0 || v.encore > 0 || v.torment || v.disabled || v.healBlock > 0) {
@@ -20294,6 +20305,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
             }
+
+            // Flame Orb / Toxic Orb: apply status AFTER status damage so the holder does
+            // not take a tick of burn/poison damage on the activation turn (canonical Gen 5+).
+            // applyStatus is a no-op if the holder already has a non-volatile status, so this
+            // does not double-apply when the orb status persists across turns.
+            if (_monItemActive && mon.currentHp > 0 && mon.item === "Flame Orb") applyStatus(mon, "BRN");
+            if (_monItemActive && mon.currentHp > 0 && mon.item === "Toxic Orb") applyStatus(mon, "TOX");
 
             // 4. Binding/Trap Damage
             // Leech Seed
