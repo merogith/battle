@@ -4419,7 +4419,7 @@
     </div>
     <div id="modal-game-confirm" class="modal hidden" onclick="if (event.target === event.currentTarget) window._gameConfirmResult(false)">
         <div class="modal-content white-outline" style="max-width: 420px;" onclick="event.stopPropagation()">
-            <p id="modal-game-confirm-text" style="margin: 0 0 16px; font-size: 14px; line-height: 1.5; color: #ccc;"></p>
+            <p id="modal-game-confirm-text" style="margin: 0 0 16px; font-size: 14px; line-height: 1.5; color: #ccc; white-space: pre-line;"></p>
             <button type="button" onclick="window._gameConfirmResult(false)" style="width: 100%; margin-bottom: 8px;">Cancel</button>
             <button type="button" onclick="window._gameConfirmResult(true)" style="width: 100%; color: var(--hp-green); border-color: var(--hp-green);">OK</button>
         </div>
@@ -25594,6 +25594,72 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── EVOLUTION TUTOR (Stone Sage) ─────────────────────────────────
+        // Canonical evolution-method flavor. Cost stays gold-only across the board
+        // — these are mentioned in Sage dialogue so the requirement feels diegetic
+        // without changing balance. Sage "provides" the stone as part of the fee.
+        const EVO_STONE_REQ = {
+            Ninetales:'Fire Stone', Arcanine:'Fire Stone', Flareon:'Fire Stone', Simisear:'Fire Stone',
+            Starmie:'Water Stone', Vaporeon:'Water Stone', Poliwrath:'Water Stone', Ludicolo:'Water Stone', Simipour:'Water Stone',
+            Raichu:'Thunder Stone', Jolteon:'Thunder Stone', Eelektross:'Thunder Stone',
+            Vileplume:'Leaf Stone', Victreebel:'Leaf Stone', Exeggutor:'Leaf Stone', Leafeon:'Leaf Stone', Shiftry:'Leaf Stone', Simisage:'Leaf Stone',
+            Clefable:'Moon Stone', Wigglytuff:'Moon Stone', Nidoqueen:'Moon Stone', Nidoking:'Moon Stone', Delcatty:'Moon Stone', Musharna:'Moon Stone',
+            Bellossom:'Sun Stone', Sunflora:'Sun Stone', Whimsicott:'Sun Stone', Lilligant:'Sun Stone', Heliolisk:'Sun Stone',
+            Glaceon:'Ice Stone', 'Ninetales-Alola':'Ice Stone', 'Sandslash-Alola':'Ice Stone',
+            Togekiss:'Shiny Stone', Roserade:'Shiny Stone',
+            Honchkrow:'Dusk Stone', Mismagius:'Dusk Stone', Chandelure:'Dusk Stone', Aegislash:'Dusk Stone',
+            Gallade:'Dawn Stone', Froslass:'Dawn Stone',
+        };
+        // Trade evolutions. `true` = trade alone; string = trade while holding the item.
+        const EVO_TRADE_REQ = {
+            Alakazam:true, Machamp:true, Golem:true, Gengar:true,
+            Steelix:'Metal Coat', Scizor:'Metal Coat',
+            Kingdra:'Dragon Scale',
+            Politoed:"King's Rock", Slowking:"King's Rock", 'Slowking-Galar':"King's Rock",
+            Porygon2:'Up-Grade', 'Porygon-Z':'Dubious Disc',
+            Rhyperior:'Protector', Electivire:'Electirizer', Magmortar:'Magmarizer',
+            Dusknoir:'Reaper Cloth',
+            Huntail:'Deep Sea Tooth', Gorebyss:'Deep Sea Scale',
+            Milotic:'Prism Scale',
+            Aromatisse:'Sachet', Slurpuff:'Whipped Dream',
+            Escavalier:true, Accelgor:true,
+            Trevenant:true, Gourgeist:true,
+            Gigalith:true, Conkeldurr:true,
+        };
+
+        // Short, hover-friendly requirement note for an evolution button.
+        function _evoReqHint(evoName) {
+            const stone = EVO_STONE_REQ[evoName];
+            if (stone) return ` Lore: needs a ${stone} (Sage provides, baked into the fee).`;
+            const trade = EVO_TRADE_REQ[evoName];
+            if (trade === true) return ` Lore: trade evolution (Sage arranges via the Cable Link).`;
+            if (typeof trade === 'string') return ` Lore: traded while holding ${trade} (Sage arranges via the Cable Link).`;
+            return '';
+        }
+
+        // Multi-line dialogue for the confirmation modal: Stone Sage speaks about
+        // the requirement, then nudges the player toward the Cable Link if they
+        // haven't visited it in this city yet (relevant for trade evolutions).
+        function _evoFlavorLine(evoName) {
+            const stone = EVO_STONE_REQ[evoName];
+            if (stone) {
+                return `Stone Sage: "Ah, ${evoName}. The old method asks for a ${stone} — I keep a tray of them by the hearth. Consider one part of the fee."`;
+            }
+            const trade = EVO_TRADE_REQ[evoName];
+            if (trade) {
+                let line = (trade === true)
+                    ? `Stone Sage: "${evoName}? Old hands say a trade does the trick — I'll whisper through the Cable Link on your behalf."`
+                    : `Stone Sage: "For ${evoName}, the lore wants a ${trade} traded between trainers. I'll arrange it through the Cable Link."`;
+                try {
+                    const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
+                    if (!_isFacilitySeen(cityIdx, 'link')) {
+                        line += `\n(The Cable Link Station down the road is still unvisited — drop in before you leave town and the trade-memory will season nicely.)`;
+                    }
+                } catch (e) {}
+                return line;
+            }
+            return '';
+        }
+
         // Returns every species-listed evolution for `monName` (no gen filter), each annotated
         // with whether it's allowed under the current toggled gen settings.
         function _getAllEvosWithStatus(monName, enabledGens) {
@@ -25676,7 +25742,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             return `<button class="story-link-btn" disabled title="${e.name} is Gen ${e.gen} — not in your enabled generations (${enabledGensLabel})" style="opacity:0.5;">⛔ ${e.name} <span style="font-size:9px;">G${eg} · BST ${bst} · Gen ${e.gen} off</span></button>`;
                         }
                         const disabled = !canAfford;
-                        const tipText = `Evolve into ${e.name} (Grade ${eg}, BST ${bst}, Gen ${e.gen})`;
+                        const tipText = `Evolve into ${e.name} (Grade ${eg}, BST ${bst}, Gen ${e.gen}).${_evoReqHint(e.name)}`.replace(/"/g, '&quot;');
                         return `<button class="story-link-btn" onclick="window.StoryMode.evoLabEvolve(${i}, '${e.name.replace(/'/g, "\\'")}')" ${disabled?'disabled':''} title="${tipText}" style="${disabled?'':'color:#76ff03;border-color:#76ff03;'}">⬆️ ${e.name} ${evoTypes} <span style="font-size:9px;">G${eg} · BST ${bst} · Gen ${e.gen}</span></button>`;
                     }).join('');
                     const costHint = allowedAny
@@ -25716,7 +25782,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const cost = Math.ceil((EVOLVE_COSTS[g] || 2000) * Math.pow(1.5, en - 1));
                 if (sm.gold < cost) { window.showGameAlert(`Need ${cost.toLocaleString()}G to evolve! (You have ${sm.gold.toLocaleString()}G)`); return; }
                 const evoGrade = getMonGrade(evoName, getBST(evoName));
-                const ok = await window.showGameConfirm(`Evolve ${mon.name} → ${evoName} (Grade ${evoGrade}) for ${cost.toLocaleString()}G?\n\nNature, ability slot, item, and EVs are kept; moves are rerolled to fit ${evoName}.`);
+                const flavor = _evoFlavorLine(evoName);
+                const head = `Evolve ${mon.name} → ${evoName} (Grade ${evoGrade}) for ${cost.toLocaleString()}G?`;
+                const tail = `Nature, ability slot, item, and EVs are kept; moves are rerolled to fit ${evoName}.`;
+                const msg  = flavor ? `${head}\n\n${flavor}\n\n${tail}` : `${head}\n\n${tail}`;
+                const ok = await window.showGameConfirm(msg);
                 if (!ok) return;
                 sm.cityRerollsUsed[ek] = en;
                 // Generate a fresh build for the evolved species, then port over the carry-over slots.
