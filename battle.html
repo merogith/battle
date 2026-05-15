@@ -6277,15 +6277,15 @@
         // === 2. GLOBAL UTILS & SETTINGS ===
         const helpData = {
             menu: `<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Game Modes</h3>
-<b style="color:#4caf50;">Player Vs AI</b> — Draft 3 Pokemon from a random pool and battle against the computer AI.<br>
+<b style="color:#4caf50;">Player Vs AI</b> — Draft 3 Pokémon from a random pool and battle against the computer AI.<br>
 <b style="color:#6890F0;">Local PvP</b> — Play with a friend on the same screen. Each player drafts from their own pool, then battles head-to-head.<br>
-<b style="color:#ffd700;">Gauntlet Mode</b> — A solo survival challenge! Your team persists across rounds. After each win, you can "loot" one of the defeated foe's Pokemon to replace one of yours. Your team is fully healed between rounds. How far can you go?</div>
+<b style="color:#ffd700;">Gauntlet Mode</b> — A solo survival challenge! Your team persists across rounds. After each win, you can "loot" one of the defeated foe's Pokémon to replace one of yours. Your team is fully healed between rounds. How far can you go?</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Drafting</h3>
-You pick from a pool of 6 randomly chosen Pokemon (from 84 total). Each Pokemon comes with a <b>competitive build</b> — preset Nature, Ability, Item, EVs, and 4 moves. Builds are graded by tier (T1 strongest, T4 weakest).</div>
+You pick from a pool of 6 randomly chosen Pokémon (from 84 total). Each Pokémon comes with a <b>competitive build</b> — preset Nature, Ability, Item, EVs, and 4 moves. Builds are graded by tier (T1 strongest, T4 weakest).</div>
 <div><h3 style="color:var(--accent);margin:0 0 6px;">Mechanics</h3>
-All Pokemon are <b>Level 50</b> with <b>31 IVs</b> and preset EVs. Natures boost one stat by 10% and lower another by 10%. Abilities and Items follow standard competitive rules.</div>`,
+All Pokémon are <b>Level 50</b> with <b>31 IVs</b> and preset EVs. Natures boost one stat by 10% and lower another by 10%. Abilities and Items follow standard competitive rules.</div>`,
             draft: `<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Building Your Team</h3>
-Click a card to add that Pokemon to your team. You need to pick 3.<br>
+Click a card to add that Pokémon to your team. You need to pick 3.<br>
 <b>Tap</b> Natures, Abilities, Items, and Moves for full descriptions (or hover on desktop). <b>Tap</b> a move name for stats, priority, and effects.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Tier System</h3>
 <span style="color:#ff8c00;font-weight:bold;">T1 (Orange)</span> — Strongest builds, top-tier threats<br>
@@ -6293,12 +6293,12 @@ Click a card to add that Pokemon to your team. You need to pick 3.<br>
 <span style="color:#1565c0;font-weight:bold;">T3 (Blue)</span> — Average, decent options<br>
 <span style="color:#2e7d32;font-weight:bold;">T4 (Green)</span> — Weaker builds, niche roles</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Type Badges</h3>
-Hover over the type badges to see defensive matchups — what types the Pokemon is weak to, resists, or immune to.</div>
+Hover over the type badges to see defensive matchups — what types the Pokémon is weak to, resists, or immune to.</div>
 <div><h3 style="color:var(--accent);margin:0 0 6px;">Strategy Tips</h3>
 Build a balanced team! Consider type coverage, speed tiers, and offensive/defensive roles. "Inspect Foe's Pool" shows all six of their possible builds (including ones they already picked), so you can plan without learning their hidden bench.</div>`,
             battle: `<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Commands</h3>
 <b style="color:var(--hp-yellow);">FIGHT</b> — Choose one of your 4 moves to attack or use a status move.<br>
-<b style="color:var(--hp-green);">POKEMON</b> — Switch your active Pokemon. <span style="color:#f44336;">This costs your turn!</span><br>
+<b style="color:var(--hp-green);">POKÉMON</b> — Switch your active Pokémon. <span style="color:#f44336;">This costs your turn!</span><br>
 <b style="color:#add8e6;">BAG</b> — No items in competitive format.<br>
 <b style="color:var(--hp-red);">RUN</b> — Forfeit the match.<br>
 <span style="color:#81d4fa;">Desktop:</span> <b>F</b> / <b>P</b> / <b>B</b> / <b>R</b> trigger the same four commands. On the move grid, <b>1</b>–<b>4</b> picks the move in that slot; <b>Esc</b> goes back.</div>
@@ -8209,7 +8209,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const ps = settings.partySize || 3;
             const poolPerPlayer = ({ 1: 3, 2: 4, 3: 6, 4: 6, 5: 8, 6: 8 })[ps] || (ps + 2);
             let text = helpData.menu
-                .replace(/\bDraft 3 Pokemon\b/g, `Draft ${ps} Pokemon`)
+                .replace(/\bDraft 3 Pokémon\b/g, `Draft ${ps} Pokémon`)
                 .replace(/\bpool of 6 randomly\b/g, `pool of ${poolPerPlayer} randomly`);
             if (!document.getElementById('screen-draft').classList.contains('hidden')) {
                 text = helpData.draft.replace(/\bYou need to pick 3\./g, `You need to pick ${ps}.`);
@@ -8403,7 +8403,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let fmtTypes = arr => arr.length ? arr.map(t => `<span class="type-badge type-${t}" style="font-size:9px;">${t}</span>`).join(' ') : '<span style="color:#555;">—</span>';
             let html = `<div style="font-weight:bold;color:#4fc3f7;margin-bottom:5px;">◆ Tera ${teraType} Type</div>`
                 + `<div style="margin-bottom:3px;font-size:11px;">${stabNote}</div>`
-                + `<div style="font-size:10px;color:#888;margin-bottom:4px;">Pokemon becomes pure ${teraType}-type. All other types are shed.</div>`
+                + `<div style="font-size:10px;color:#888;margin-bottom:4px;">Pokémon becomes pure ${teraType}-type. All other types are shed.</div>`
                 + `<div style="font-size:10px;margin-bottom:2px;"><span style="color:#4caf50;">SE vs:</span> ${fmtTypes(se)}</div>`
                 + (nve.length ? `<div style="font-size:10px;margin-bottom:2px;"><span style="color:#ff9800;">NVE vs:</span> ${fmtTypes(nve)}</div>` : '')
                 + (immune.length ? `<div style="font-size:10px;"><span style="color:#607d8b;">No effect vs:</span> ${fmtTypes(immune)}</div>` : '');
@@ -19764,7 +19764,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Perish Song") {
                 if (attacker.ability !== "Soundproof" && attacker.volatile.perishCount < 0) attacker.volatile.perishCount = 4;
                 if (defender.ability !== "Soundproof" && defender.volatile.perishCount < 0) defender.volatile.perishCount = 4;
-                logMsg(`All Pokemon that heard the song will faint in 3 turns!`, 'status'); return;
+                logMsg(`All Pokémon that heard the song will faint in 3 turns!`, 'status'); return;
             }
             // Acupressure: random +2 to a random stat
             if (move.name === "Acupressure") {
@@ -22720,7 +22720,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         /** Progression-aware lines (mixed with character quotes). Sprite may differ from canon — wording stays in-universe. */
         const RIVAL_PROGRESS_PRIMARY_QUOTES = {
-            0: ['You got your first partner? Good. Battle me before you leave town.','No route yet. First, prove that starter can stand up to mine.','Professor gave you a Pokemon. I brought a challenge.'],
+            0: ['You got your first partner? Good. Battle me before you leave town.','No route yet. First, prove that starter can stand up to mine.','Professor gave you a Pokémon. I brought a challenge.'],
             1: ['Early routes were practice—this is the real check.','Two badges already? Cute. Let me stress-test your team.','First rival clash: I memorized your strengths since we started.'],
             2: ['Half the gyms down—thought you\'d slow down. You didn\'t. Good.','Mid-game reality check: my roster\'s different than last time.','Six badges… okay. You\'re serious. So am I.'],
             3: ['Eight badges. League breath on our necks—no holding back.','Full badge case—time to see if your team holds together.','Elite Four prep starts with surviving me.'],
@@ -24624,7 +24624,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const leaderName = sm.trainerAssignments && sm.trainerAssignments[leaderEvIdx];
                 cityName = (leaderName && GYM_LEADER_CITY_NAMES[leaderName]) || ('City ' + cityIdx);
             } else if (cityIdx === 9) {
-                cityName = 'Pokemon League';
+                cityName = 'Pokémon League';
             } else {
                 cityName = rawName || 'Town';
             }
@@ -25017,7 +25017,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const leaderName = sm.trainerAssignments && sm.trainerAssignments[leaderEvIdx];
                 return (leaderName && GYM_LEADER_CITY_NAMES[leaderName]) || ('City ' + cityIdx);
             }
-            if (cityIdx === 9) return 'Pokemon League';
+            if (cityIdx === 9) return 'Pokémon League';
             return rawName || 'Town';
         }
 
