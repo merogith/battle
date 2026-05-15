@@ -24882,6 +24882,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             renderCityActions(ev);
             syncStoryCityBackground(cidx);
             showScreen('screen-story-city');
+            // One-time welcome on the very first city the player ever sees across all runs.
+            if (cidx === 0) {
+                try { _storyShowOneTimeTip('welcome',
+                    'Welcome to Pallet Town, trainer.\n\nThis is Story Mode — eight gym badges, an Elite Four, a Champion, and what comes after. Every battle scales with your roster. Cities heal you between fights, the Pokémon Center stores spare Pokémon, and the Underground sells the ones you no longer want — but never your starter.\n\nClick the 🎯 "Next:" chip at any time to know where you\'re going. Good hunting.'); } catch (e) {}
+            }
         }
 
         function updateHUD() {
@@ -28040,9 +28045,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     inp.value = String(next);
                 }
                 const flipLabel = outcome === 'heads' ? 'Heads' : 'Tails';
-                const msg = win
-                    ? `It's ${flipLabel}! You win ${bet.toLocaleString()}G (double your wager).`
-                    : `It's ${flipLabel}. You lose ${bet.toLocaleString()}G.`;
+                const winFlavors = [
+                    `It's ${flipLabel}. The croupier slides ${bet.toLocaleString()}G across the felt without a word.`,
+                    `${flipLabel}! +${bet.toLocaleString()}G. "The house respects a clean call," the croupier murmurs.`,
+                    `${flipLabel}. You win ${bet.toLocaleString()}G. The chip stack clinks twice.`,
+                    `${flipLabel} — paid out. +${bet.toLocaleString()}G. The next bet is already calling you.`,
+                ];
+                const lossFlavors = [
+                    `${flipLabel}. The croupier collects ${bet.toLocaleString()}G with practised ease. "Next round?"`,
+                    `${flipLabel}. -${bet.toLocaleString()}G. The wheel hum doesn't change.`,
+                    `It's ${flipLabel}. The coin sits on the felt like it always knew. -${bet.toLocaleString()}G.`,
+                    `${flipLabel}. You lose ${bet.toLocaleString()}G. The croupier waits without blinking.`,
+                ];
+                const pool = win ? winFlavors : lossFlavors;
+                const msg = pool[Math.floor(Math.random() * pool.length)];
                 if (resEl) resEl.textContent = msg;
             } finally {
                 _storyEndInteraction();
@@ -28256,7 +28272,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } catch (e) {}
                 return line;
             }
-            return '';
+            // Default — level-up evolution. The Sage acknowledges the path so the screen
+            // doesn't go silent on the most common evolution type.
+            const levelUpLines = [
+                `Stone Sage: "${evoName}? Most of them just need to grow into it. The trick is paying attention while they do."`,
+                `Stone Sage: "An honest evolution. No stones, no trades — just experience taking its shape. I respect that."`,
+                `Stone Sage: "For ${evoName}, the body listens to the journey. Yours has been busy. Hold them steady."`,
+                `Stone Sage: "Some evolutions are gifts. This one is earned. The fee covers the candles."`,
+            ];
+            return levelUpLines[Math.floor(Math.random() * levelUpLines.length)];
         }
 
         // Cost for an evolution by TARGET grade, with the usual ×1.5 ramp per use in
