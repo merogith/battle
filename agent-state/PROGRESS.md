@@ -1,7 +1,7 @@
 # PROGRESS
 
 ## Current phase
-Phase 0 → Phase 1. Both discovery agents completed. CODEBASE_MAP.md and STORY_MAP.md written.
+Phase 1 in progress. SETTINGS_MATRIX.md written. Findings 005–011 logged from direct code reads. Grade table reconciled. EVL Late-Evo verified on static check (live @pkmn/dex lookup).
 
 ## Last completed action
 - Created `agent-state/`

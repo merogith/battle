@@ -36,13 +36,20 @@ Both completed.
 
 Send each a SendMessage with `"status?"` and incorporate their output into `agent-state/CODEBASE_MAP.md`. If they completed already, their final messages are in this session's transcript context (when summarized).
 
+## Phase 1 status (this session)
+
+- Grade thresholds reconciled (Finding-011, code at `battle.html:8830–8881`).
+- SETTINGS_MATRIX.md written.
+- EVL Late-Evo verified on static check (Finding-009 RESOLVED-PENDING-RUNTIME-TEST).
+- New findings: 005 (Sleep Clause missing — VGC blocker), 006 (Species Clause forme-dedup risk), 007 (Item Clause non-togglable), 008 (OHKO/Evasion/Endless/Moody clauses missing), 010 (Gen toggle consumer sweep TODO), 011 (Grade table documented).
+
 ## Next 5 actions
 
-1. Reconcile grade BST thresholds — Read `battle.html:8800–8920` directly. Update STORY_MAP / CODEBASE_MAP.
-2. Write `agent-state/SETTINGS_MATRIX.md` — Grep battle.html for `Sleep Clause`, `Species Clause`, `Item Clause`, `catchMode`, `hardcore`, `Eviolite`, `Hidden Ability`, `enabledGens`. Locate each toggle's enforcement point. Mark every row UNVERIFIED initially.
-3. Phase 5 EVIOLITE LATE-EVO audit. Read `battle.html:8650–8700` and `:16150–16180`. Build the test matrix from the lead-agent brief (Chansey/Scyther/Dusclops/Gligar/Porygon2/etc). Since no test runner exists, write the matrix as a JS snippet that can be dropped into the browser console + capture results manually as a stopgap; flag the proper-test-framework gap (FINDING-002) as a prerequisite.
-4. Phase 4 GEN TOGGLE regression — Grep all `enabledGens`/`minGen`/`maxGen` consumers; confirm none touch type chart / damage / status durations / move learnsets. Cross-check the data-resolution layer reads modern entries regardless of toggle.
-5. Phase 1 COVERAGE.md — count entries in moves.json, abilities.json, items.json, species.json (per gen and total), then Grep `battle.html` for the names to see which are reachable in Story Mode flow.
+1. **Decide on VGC compliance scope.** Findings 005, 008 are blockers *only if* the game targets strict VGC. If the game targets a casual / Smogon-flavored format, they downgrade to "documented deviation." Read `docs/STORY_FEATURES_INTEGRATION.md` more carefully and Grep for `VGC` to identify intent. Default assumption: dual-mode — VGC mode strict, free-play permissive.
+2. **COVERAGE.md** — count entries per data file. Cross-reference with Story Mode opponent pools.
+3. **Phase 4 GEN toggle sweep** — Read every `enabledGens`/`minGen`/`maxGen` consumer in battle.html. Confirm none alters type chart, damage formula, status durations, or learnsets.
+4. **Propose test framework (Finding-002)** — write a minimal `test/` skeleton using vitest + a happy-DOM harness that can load `battle.html`'s `<script>` content. Start with clause-enforcement tests so Findings 005–008 have an executable record.
+5. **BACKLOG.md** — group findings into upgrade packages with priority. Initial cut: P0 = 002 (test framework, blocks all verification), 005 (Sleep Clause if VGC-target). P1 = 001, 006, 008, 010. P2 = 003, 004, 007, 011, 009.
 
 ## Constraints to remember
 
