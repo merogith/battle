@@ -5,19 +5,30 @@ All notable user-visible changes land here. Sessions append entries under
 
 ## Unreleased — Story-mode investigation pass: cleanup, climax, casino 2026-05-16 (`claude/story-mode-investigation-lILFs`)
 
-### Changed — Active party cap is a flat 6 again
+### Changed — Active party cap = `2 + badges`, foes match player team size 1:1
 
-- `_storyMaxPartySize()` returns a flat `6` regardless of badges. The earlier
-  `2 + badges` clamp predated the foe-matching pass and was leaving the PC
-  cap-hint UI ("(next slot at badge N)") in the Pokémon Center and the city
-  hub party label even though catches above 2 were already going to PC
-  anyway. The flat cap matches what the CHANGELOG and the Professor-visible-
-  while-below-cap flow already promised.
-- Stripped the now-obsolete `capHintHtml` from the PC storage tab and the
-  `_partyHint` rider on the city hub party label.
-- The Gym 1 explainer no longer claims "party cap grows by one"; it now
-  describes the actual model — foes match your team size, build up to 6,
-  catches over 6 land in PC.
+- `_storyMaxPartySize()` is the **badge curve** (`max(2, min(6, 2 + badges))`):
+  starter slot is always available, the catch tutorial fills slot 2 right
+  after the intro rival, and each gym badge unlocks one more slot up to 6
+  at four badges. Catches and Professor gifts above the cap still succeed
+  — they land in the PC, so a player can always *catch*, they just can't
+  *field* more than the active cap until the next badge.
+- `_storyEnemyPartySize()` is now **player-matching with per-role floors**.
+  Foe size = player team length, but no smaller than:
+    Basic / Gym Trainer / Elite Trainer = 1,
+    Rival = 2,
+    GL1–2 = 2, GL3–4 = 3, GL5–6 = 4, GL7 = 5, GL8 = 6.
+  Story finales (Champion / E1–E4 / Victory Road / post-HoF Mystery Figure)
+  still field a full 6 regardless. Intro rival stays a pure player-match
+  (1v1 starter duel).
+- Result: a player who runs lean fights lean trainers run-to-run; a
+  player who builds full faces 6v6 trainer fights from Gym 5 onward.
+  The cap and the foe-size formula stay locked on the same progression
+  clock so every battle is a readable, fair fight regardless of how
+  many wilds the player caught.
+- Restored the city hub party label's "(next slot at N badges)" hint and
+  the PC storage tab's "(next slot at badge N+1)" cap-hint that the
+  earlier flat-6 pass had stripped.
 
 ### Changed — Post-HoF first reentry routes through Mystery Figure (row 67)
 
