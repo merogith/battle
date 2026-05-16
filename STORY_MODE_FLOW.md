@@ -110,18 +110,20 @@ else → mon may flee (species.fleeRate, default 0.25)
        otherwise stays for another throw
 ```
 
-Species `catchRate` is derived from grade. G1 is the strongest tier (pseudo + legendary in `getMonGrade`) and is therefore the **hardest** to catch; G4 is the weakest tier and is the easiest:
+Species `catchRate` is derived from grade. G1 is the strongest tier (pseudo + legendary in `getMonGrade`) and is therefore the **hardest** to catch; G4 is the weakest tier and is the easiest. Live values (`battle.html:28560–28561`, after the post-Safari rebalance pass):
 
-| Grade | Base catch rate (PokéBall) |
-|---|---|
-| G1 (strongest) | 0.05 |
-| G2 | 0.20 |
-| G3 | 0.40 |
-| G4 (weakest) | 0.60 |
+| Grade | Base catch rate (PokéBall) | Flee chance on a miss |
+|---|---|---|
+| G1 (strongest) | 0.04 | 0.55 |
+| G2 | 0.12 | 0.40 |
+| G3 | 0.22 | 0.28 |
+| G4 (weakest) | 0.35 | 0.20 |
 
 Ball multipliers: PokéBall 1.0×, Great 1.5×, Ultra 2.0×, Master ∞ (`Infinity`).
 
 Master Ball is `Infinity` — guaranteed catch. No special-case code.
+
+Safari Ball is its own session-scoped multiplier (`SAFARI_BALL_MULT = 1.25×`, between Poké and Great) and is not part of `sm.balls`. Bait and Rock modify the catch/flee math multiplicatively inside a Safari encounter and reset between encounters.
 
 ---
 
@@ -192,7 +194,7 @@ All five modes use **full-heal between battles**. The HC-only persistence code a
 
 ## 9. Boss arc — "The Caged God"
 
-Triggered post-Champion. Replaces the existing post-HoF Mystery Figure (row 67 in `STORY_EVENTS_RAW`) — that row is repurposed as this arc.
+Triggered post-Champion. Row 67 (`Mystery Figure`) in `STORY_EVENTS_RAW` is the post-HoF Mystery Figure climax — `continuePostGame()` (`battle.html:30702`) routes the player through row 67 once on first post-HoF reentry (mask-drop + identity reveal, single fight), then snaps `sm.eventIndex` back to the last visited city so the Crucible / Caged God doors are visible at every subsequent city visit. The Caged God arc itself is triggered separately, via the Underground broker handing the player a Master Ball after the Mystery Figure climax; Mystery Figure also remains reachable as the Crucible's "Mystery" encore on every later run. (See §14d.)
 
 ### Trigger and leads
 
@@ -515,6 +517,18 @@ City 8 gained Battle Dojo + EV Trainer in this pass — the player cannot
 backtrack, so without these the only late-game item/ability/EV polish was at
 City 6 or City 7 (or City 9 post-HoF). The League run between Gym 8 and the
 Elite Four was previously a dead-zone for team optimization.
+
+---
+
+## 14e. Internal action-key conventions (no diacritic)
+
+Hub action arrays in `STORY_EVENTS_RAW` use the ASCII keys `'Pokemart'`,
+`'Pokemon League'`, etc. (no diacritic). These are *internal* lookup keys
+matched by `renderCityActions` to the visible button labels, which DO carry
+the diacritic. Do not "fix" the ASCII forms; they keep code paths matching
+trainer-class sprite IDs (e.g. `Pokemon Breeder` sprites) and old-save
+backwards-compat alongside the user-facing "Pokémart" / "Pokémon League"
+copy emitted by the renderer.
 
 ---
 

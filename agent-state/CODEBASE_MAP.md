@@ -30,7 +30,7 @@
 | `enterCity`, `renderCityActions` | ~24446, ~24600 |
 | `showVictoryOverlay` (badge flavor) | 25880 |
 | PC Box (cap 10) | 25934 → 26110 |
-| Safari (entry 800G, 6 encounters, weights g1:5/g2:40/g3:40/g4:15) | 26119 – 26170 |
+| Safari (entry 2,500G, 6 encounters, 15 Safari Balls, 1.25× mult, weights g1:3/g2:22/g3:50/g4:25) | 26119 – 26170 |
 | Crucible (post-HoF hub) | 26180 – 26250 |
 | Battle Frontier (endless ladder) | 26280 – 26450 |
 | Boss arc — Caged God | 26455 – 26630 |

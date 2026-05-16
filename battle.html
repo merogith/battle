@@ -4975,7 +4975,7 @@
             <span id="story-casino-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div style="flex:1;overflow-y:auto;padding:16px;min-height:0;background:rgba(6,10,18,0.2);display:flex;flex-direction:column;gap:14px;align-items:center;">
-            <p style="font-size:12px;color:#aaa;margin:0;text-align:center;max-width:360px;line-height:1.5;">Pick Heads or Tails. Win to double your bet, lose it if you're wrong.</p>
+            <p style="font-size:12px;color:#aaa;margin:0;text-align:center;max-width:360px;line-height:1.5;">Three tables. One spin. Pick your odds.</p>
             <label for="story-casino-bet" style="font-size:12px;color:#ccc;display:flex;flex-direction:column;align-items:center;gap:6px;margin:0;">
                 <span>Bet (Gold)</span>
                 <input id="story-casino-bet" class="story-casino-bet-input" type="number" inputmode="numeric" min="1" step="1" value="1">
@@ -4986,9 +4986,32 @@
                 <button type="button" class="story-action-btn casino story-action-btn--soft" onclick="window.StoryMode.casinoSetBetChip(1000)" style="padding:6px 12px;font-size:12px;" title="Bet 1,000G">1,000G</button>
                 <button type="button" class="story-action-btn casino story-action-btn--soft" onclick="window.StoryMode.casinoSetBetChip('max')" style="padding:6px 12px;font-size:12px;" title="Bet all your gold">Max</button>
             </div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
-                <button type="button" class="story-action-btn casino" onclick="window.StoryMode.casinoPlay('heads')" style="min-width:120px;" title="Flip the coin and bet on Heads">Heads</button>
-                <button type="button" class="story-action-btn casino" onclick="window.StoryMode.casinoPlay('tails')" style="min-width:120px;" title="Flip the coin and bet on Tails">Tails</button>
+            <div style="display:flex;flex-direction:column;gap:10px;align-items:center;width:100%;max-width:360px;">
+                <div style="display:flex;flex-direction:column;gap:4px;align-items:center;width:100%;">
+                    <span style="font-size:10px;color:#aed581;letter-spacing:0.06em;text-transform:uppercase;">Coin Flip · pays 1:1 · 50%</span>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+                        <button type="button" class="story-action-btn casino" onclick="window.StoryMode.casinoPlay('coin','heads')" style="min-width:100px;" title="Win on Heads · 1:1">Heads</button>
+                        <button type="button" class="story-action-btn casino" onclick="window.StoryMode.casinoPlay('coin','tails')" style="min-width:100px;" title="Win on Tails · 1:1">Tails</button>
+                    </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:4px;align-items:center;width:100%;">
+                    <span style="font-size:10px;color:#ffb74d;letter-spacing:0.06em;text-transform:uppercase;">Color · pays 1:2 · 30%</span>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+                        <button type="button" class="story-action-btn casino" onclick="window.StoryMode.casinoPlay('color','red')" style="min-width:100px;background:linear-gradient(180deg,#7a2222,#3d0f0f);" title="Win on Red · 1:2">Red</button>
+                        <button type="button" class="story-action-btn casino" onclick="window.StoryMode.casinoPlay('color','black')" style="min-width:100px;background:linear-gradient(180deg,#1a1a1a,#000);" title="Win on Black · 1:2">Black</button>
+                    </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:4px;align-items:center;width:100%;">
+                    <span style="font-size:10px;color:#ce93d8;letter-spacing:0.06em;text-transform:uppercase;">Jackpot · pays 1:9 · 10%</span>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;">
+                        <label for="story-casino-jackpot-pick" style="font-size:11px;color:#bbb;margin:0;">Pick 1–10:</label>
+                        <select id="story-casino-jackpot-pick" class="story-casino-bet-input" style="width:64px;text-align:center;">
+                            <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                            <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
+                        </select>
+                        <button type="button" class="story-action-btn casino" onclick="window.StoryMode.casinoPlay('jackpot')" style="min-width:120px;background:linear-gradient(180deg,#6a1b9a,#2d0a4a);" title="Win on your pick · 1:9">Roll Jackpot</button>
+                    </div>
+                </div>
             </div>
             <p id="story-casino-result" aria-live="polite" style="margin:4px 0 0;font-size:13px;color:#ffd54f;min-height:18px;text-align:center;max-width:360px;line-height:1.4;"></p>
         </div>
@@ -23967,9 +23990,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.pokedex || typeof sm.pokedex !== 'object' || !Array.isArray(sm.pokedex.seen) || !Array.isArray(sm.pokedex.caught)) {
                 sm.pokedex = { seen: [], caught: [] };
             }
-            if (typeof sm.partyEverReached4 !== 'boolean') sm.partyEverReached4 = Array.isArray(sm.team) && sm.team.length >= 4;
-            if (typeof sm.partyEverReached2 !== 'boolean') sm.partyEverReached2 = Array.isArray(sm.team) && sm.team.length >= 2;
             if (typeof sm.catchUnlocked !== 'boolean') sm.catchUnlocked = false;
+            // Post-HoF Mystery Figure climax flag (introduced after Caged God arc shipped).
+            // Existing post-HoF saves (boss arc already available) should not be forced
+            // back through the climax — flip the flag if they're already past HoF.
+            if (typeof sm.postHofMysteryClimaxDone !== 'boolean') {
+                sm.postHofMysteryClimaxDone = !!(sm.bossArc && sm.bossArc.available);
+            }
             if (sm.storyDifficulty === 'hardcore') sm.storyDifficulty = 'normal';
             if (Array.isArray(sm.team)) {
                 for (const slot of sm.team) {
@@ -24019,9 +24046,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    pcBox: [],
                    balls: { poke: 5, great: 0, ultra: 0, master: 0 },
                    pokedex: { seen: [], caught: [] },
-                   partyEverReached4: false,
-                   partyEverReached2: false,
                    catchUnlocked: false,
+                   postHofMysteryClimaxDone: false,
                    version:SAVE_VER };
 
         function normalizeRivalStandingState() {
@@ -24336,18 +24362,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return o;
         }
 
-        /** Once the story party has ever reached 4+ Pokémon (monotonic), remove all grade-4 probability from weight rolls (mass moves to g3). Foes + Professor. Keys off the monotonic flag so depositing to PC does not re-introduce G4. */
+        /** From Gym 1 onward, strip all grade-4 probability from weight rolls (mass moves to g3) so route trainers between gyms can't fall below the gym's grade floor. */
         function storyStripGrade4IfPartyMature(gw) {
             if (!gw || !sm || !sm.active) return gw;
-            const len = Array.isArray(sm.team) ? sm.team.length : 0;
-            if (len >= 4) sm.partyEverReached4 = true;
-            if (len >= 2) sm.partyEverReached2 = true;
             // Pre-Gym-1 route is the player's "easy ramp" — the first basic trainer
             // after the intro rival is meant to roll a G4 team (the row's gradeWeights
-            // are already {g4:100}). Stripping G4 the instant the catch tutorial fills
-            // slot 2 promoted that fight to G3, which felt overtuned. Gate the strip
-            // on the first badge: from Gym 1 onward, route trainers between gyms still
-            // can't fall below the gym's grade floor.
+            // are already {g4:100}). From Gym 1 onward, the floor lifts.
             if ((sm.badges | 0) < 1) return gw;
             const g1 = gw.g1 || 0, g2 = gw.g2 || 0, g3 = gw.g3 || 0, g4 = gw.g4 || 0;
             if (g4 <= 0) return { g1, g2, g3, g4: 0 };
@@ -25316,9 +25336,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 pcBox: [],
                 balls: { poke: 5, great: 0, ultra: 0, master: 0 },
                 pokedex: { seen: [], caught: [] },
-                partyEverReached4: false,
-                partyEverReached2: false,
                 catchUnlocked: false,
+                postHofMysteryClimaxDone: false,
                 mysteryIdentity: _storyPickMysteryIdentity(),
             };
             sm._strngState = null;
@@ -25366,6 +25385,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             const [idx, type, event] = ev;
+            // Post-HoF Mystery Figure climax recovery: if we ever land on row 67
+            // outside of an active Crucible dispatch (e.g. tab closed mid-climax,
+            // then reloaded), re-establish the source so the post-battle
+            // interceptor still routes us into the post-game properly instead of
+            // looping back into Mystery Figure forever.
+            if (type === 'Battle' && String(event || '') === 'Mystery Figure'
+                && !sm.crucibleBattleSource && !sm.postHofMysteryClimaxDone) {
+                sm.crucibleBattleSource = 'postHofMystery';
+                try { save(); } catch (e) {}
+            }
             if (type === 'City') { enterCity(); return; }
             if (type === 'Hall of Fame') { showHallOfFame(); return; }
             if (type === 'Battle') {
@@ -25618,7 +25647,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // pre-Gym-1 is the canonical first encounter; cross-run-deduped.
             if (cidx === 1 && (sm.badges | 0) === 0 && Array.isArray(ev) && Array.isArray(ev[5]) && ev[5].indexOf('Gym Battle') !== -1) {
                 try { _storyShowOneTimeTip('what-is-a-gym',
-                    'Gym Leaders are this region\'s strongest trainers — each one guards a badge.\n\n• Beat a Gym Leader and you earn that badge. Your party cap grows by one (cap = 2 + badges, max 6 at four badges).\n• A new slot opens at the next Professor — they\'ll have a story-built partner waiting to join you.\n• Each leader specializes in a single type. Listen to the City Guide or read the gym\'s color cues — you\'ll get a hint.\n\nNext step: ⚔ Challenge the Gym Leader.'); } catch (e) {}
+                    'Gym Leaders are this region\'s strongest trainers — each one guards a badge.\n\n• Beat a Gym Leader to earn that badge. Foes match your team size — building a roster of up to 6 is honored as a strategic choice, not a balance penalty.\n• A new slot is offered at the next Professor — they\'ll have a story-built partner waiting to join you, up to 6 active.\n• Each leader specializes in a single type. Listen to the City Guide or read the gym\'s color cues — you\'ll get a hint.\n\nNext step: ⚔ Challenge the Gym Leader.'); } catch (e) {}
             }
         }
 
@@ -25952,12 +25981,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const _partyN = sm.team.length;
             const _partyCapNow = _partyCap;
-            const _badgesNow = (sm.badges | 0);
-            const _partyHint = _partyCapNow < 6
-                ? ` <span style="font-size:9px;color:#888;">(next slot at ${Math.min(8, _badgesNow + 1)} ${_badgesNow + 1 === 1 ? 'badge' : 'badges'})</span>`
-                : '';
             const _partyLabel = _partyN
-                ? `Party (${_partyN}/${_partyCapNow})${_partyHint}`
+                ? `Party (${_partyN}/${_partyCapNow})`
                 : 'Party — Empty (Visit Professor)';
             _push('recover', makeActionBtn(_partyLabel, 'party', 'window.StoryMode.openPartyModal()', 'party'));
             if (actions.includes('Link Station')) {
@@ -26946,19 +26971,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const badges = (sm && sm.badges) | 0;
             return Math.min(6, 2 + badges);
         }
-        // Active party cap = the same badge curve foes use. Starter slot is
-        // always available (slot 1); the catch tutorial fills slot 2 right
-        // after the intro rival, hitting the 0-badge cap of 2; each gym
-        // badge unlocks one more slot up to 6 at four badges.
-        //
-        // Wild catches and Professor gifts that would exceed the cap still
-        // succeed — they land in the PC. So a player can always *catch*,
-        // they just can't *field* more than the cap until they earn the
-        // next badge. This keeps player and foe team sizes locked together
-        // on the same progression clock.
+        // Active party cap is a flat 6 — foe sizing already matches the
+        // player's team length via _storyEnemyPartySize (with a per-role
+        // floor), so the cap no longer needs to gate progression. Catches
+        // above 6 still go to the PC; the cap message in _catchHandleSuccess
+        // explains the overflow.
         function _storyMaxPartySize() {
-            const badges = (sm && sm.badges) | 0;
-            return Math.max(2, Math.min(6, 2 + badges));
+            return 6;
         }
         function _storyEnsureBalls() {
             if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
@@ -27815,14 +27834,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function enterPokemonCenter() {
-            _markFacilitySeen('center');
-            _pcEnsureBoxArray();
-            _pcCurrentTab = 'storage';
-            document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
-            _pcRefresh();
-            showScreen('screen-story-pokemoncenter');
-            try { _storyShowOneTimeTip('center',
-                'Pokémon Center\n\n• Manage your team (party of 6) and PC (10 slots).\n• Your party fully heals between every battle.\n• PC Storage: deposit, withdraw, or release Pokémon.\n• The Underground: sell Pokémon for gold.\n• Starters and bonded Pokémon cannot be sold.'); } catch (e) {}
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                _markFacilitySeen('center');
+                _pcEnsureBoxArray();
+                _pcCurrentTab = 'storage';
+                document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
+                _pcRefresh();
+                showScreen('screen-story-pokemoncenter');
+                try { _storyShowOneTimeTip('center',
+                    'Pokémon Center\n\n• Manage your active team (up to 6) and PC (10 slots).\n• Your party fully heals between every battle.\n• PC Storage: deposit, withdraw, or release Pokémon.\n• The Underground: sell Pokémon for gold.\n• Starters and bonded Pokémon cannot be sold.'); } catch (e) {}
+            } finally {
+                _storyEndInteraction();
+            }
         }
         function _pcRefresh() {
             const goldEl = document.getElementById('story-pc-gold');
@@ -27872,10 +27896,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const lowSlotWarn = box.length >= (PC_BOX_CAP - 2) && box.length < PC_BOX_CAP;
 
             let html = '';
-            const badgesNow = (sm.badges | 0);
-            const capHintHtml = partyCap < 6
-                ? ` <span style="color:#888;font-size:10px;">(next slot at badge ${badgesNow + 1})</span>`
-                : '';
+            const capHintHtml = '';
             html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:11px;color:#aaa;">
                 <span>Party <strong style="color:#fff;">${team.length}/${partyCap}</strong>${capHintHtml}</span>
                 <span>PC <strong style="color:#fff;">${box.length}/${PC_BOX_CAP}</strong></span>
@@ -28331,6 +28352,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 enterFrontierHub();
                 return;
             }
+            if (source === 'postHofMystery') {
+                // First post-HoF climax: flip the climax flag so continuePostGame
+                // falls through past its climax branch into the Master-Ball /
+                // boss-arc / lastCity flow.
+                sm.postHofMysteryClimaxDone = true;
+                try { save(); } catch (e) {}
+                try {
+                    window.showGameAlert && window.showGameAlert(won
+                        ? 'The mask drops. The post-game opens.'
+                        : 'The masked figure walks away into the dark. The post-game opens.');
+                } catch (e) {}
+                continuePostGame();
+                return;
+            }
             if (source === 'league') {
                 if (won && sm.crucibleLeagueRun) {
                     const stage = sm.crucibleLeagueRun.currentStage | 0;
@@ -28406,7 +28441,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } catch (e) {}
             }
             if (!pool.length) return null;
-            const name = pool[Math.floor(Math.random() * pool.length)];
+            const _rng = (sm && sm.active) ? storyRngNext : Math.random;
+            const name = pool[Math.floor(_rng() * pool.length)];
             const build = makeBuild(name);
             return { name, build, id: 'boss_' + Math.random().toString(36).slice(2, 10) };
         }
@@ -28507,12 +28543,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _pcEnsureBoxArray();
             const found = _pcFindSlotById(monId);
             if (!found || found.where !== 'pc') return;
-            // Withdraw respects the Professor-unlocked party cap, not the hard 6.
             if ((sm.team || []).length >= _storyMaxPartySize()) return;
             const [moved] = sm.pcBox.splice(found.index, 1);
             sm.team.push(moved);
-            if (sm.team.length >= 4) sm.partyEverReached4 = true;
-            if (sm.team.length >= 2) sm.partyEverReached2 = true;
             save();
             _pcRefresh();
         }
@@ -28570,8 +28603,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Safari Ball is a session-scoped resource that lives ONLY inside the
         // Safari Zone. It is granted on entry, consumed on each throw, and
         // forfeited on exit — it never enters sm.balls (cannot be used on wild
-        // routes). Mid-multiplier (1.5×, between Great and Ultra) — combined
-        // with the Bait/Rock loop it rewards play over pure ball stockpiling.
+        // routes). 1.25× — sits between Poké and Great so the Bait/Rock loop
+        // is what rewards skilled play, not raw ball quality.
         const SAFARI_BALL_MULT = 1.25;
         const SAFARI_BALLS_PER_SESSION = 15;
         // Bait calms the Pokémon (lower flee chance, lower catch chance).
@@ -29107,8 +29140,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // the story beat needs the unique mon in your hand right now.
             if (!partyFull) {
                 sm.team.push(caught);
-                if (sm.team.length >= 4) sm.partyEverReached4 = true;
-                if (sm.team.length >= 2) sm.partyEverReached2 = true;
             } else if (bossMode) {
                 sm.pcBox.push(caught);
             } else {
@@ -29692,13 +29723,57 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             inp.value = String(Math.min(Math.max(1, n), g));
         }
 
-        function casinoPlay(side) {
+        // Casino tables share a single d10 roll (1..10). The mode + the pick decide payout:
+        //   • coin     — Heads = roll 1..5, Tails = roll 6..10. Win pays bet × 1 (1:1, 50%).
+        //   • color    — Red = roll 1..3, Black = roll 8..10. Roll 4..7 = neither (house). Win pays bet × 2 (1:2, 30%).
+        //   • jackpot  — Pick a number 1..10. Win pays bet × 9 (1:9, 10%).
+        // House edge: coin is even, color carries a small edge (40% house no-pay), jackpot is +EV in the long run for the player so balanced via the small win window.
+        function _casinoResolve(mode, pick, roll) {
+            // Returns { win, payoutMult, rollLabel }
+            const r = roll | 0;
+            if (mode === 'coin') {
+                const outcome = r <= 5 ? 'heads' : 'tails';
+                return { win: outcome === pick, payoutMult: 1, rollLabel: `${outcome === 'heads' ? 'Heads' : 'Tails'} (rolled ${r})` };
+            }
+            if (mode === 'color') {
+                let outcome = 'green';
+                if (r >= 1 && r <= 3) outcome = 'red';
+                else if (r >= 8 && r <= 10) outcome = 'black';
+                const win = outcome === pick;
+                const label = outcome === 'red' ? 'Red' : outcome === 'black' ? 'Black' : 'Green';
+                return { win, payoutMult: 2, rollLabel: `${label} (rolled ${r})` };
+            }
+            if (mode === 'jackpot') {
+                const win = r === (pick | 0);
+                return { win, payoutMult: 9, rollLabel: `Jackpot showed ${r}` };
+            }
+            return { win: false, payoutMult: 0, rollLabel: '' };
+        }
+
+        function casinoPlay(mode, pickArg) {
             if (!sm || !sm.active) return;
             const scr = document.getElementById('screen-story-casino');
             if (!scr || scr.classList.contains('hidden')) return;
             if (!_storyTryBeginInteraction()) return;
             try {
-                const pick = side === 'tails' ? 'tails' : 'heads';
+                let resolvedMode = 'coin';
+                let pick = 'heads';
+                if (mode === 'color') {
+                    resolvedMode = 'color';
+                    pick = pickArg === 'black' ? 'black' : 'red';
+                } else if (mode === 'jackpot') {
+                    resolvedMode = 'jackpot';
+                    const sel = document.getElementById('story-casino-jackpot-pick');
+                    const v = sel && sel.value != null ? parseInt(sel.value, 10) : 1;
+                    pick = Number.isFinite(v) ? Math.min(10, Math.max(1, v)) : 1;
+                } else if (mode === 'heads' || mode === 'tails') {
+                    // Back-compat with the old two-button signature.
+                    resolvedMode = 'coin';
+                    pick = mode === 'tails' ? 'tails' : 'heads';
+                } else {
+                    resolvedMode = 'coin';
+                    pick = pickArg === 'tails' ? 'tails' : 'heads';
+                }
                 const inp = document.getElementById('story-casino-bet');
                 const raw = inp && inp.value != null ? String(inp.value).trim() : '';
                 const bet = _parseStoryWagerGold(raw);
@@ -29712,9 +29787,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { window.showGameAlert(`You have ${g.toLocaleString()}G. Lower your bet.`); } catch (_) {}
                     return;
                 }
-                const outcome = Math.random() < 0.5 ? 'heads' : 'tails';
-                const win = outcome === pick;
-                if (win) sm.gold += bet;
+                const roll = Math.floor(Math.random() * 10) + 1; // 1..10
+                const result = _casinoResolve(resolvedMode, pick, roll);
+                const gain = bet * result.payoutMult;
+                if (result.win) sm.gold += gain;
                 else sm.gold -= bet;
                 sm.gold = Math.max(0, sm.gold | 0);
                 save();
@@ -29731,10 +29807,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     next = Math.min(next, g2);
                     inp.value = String(next);
                 }
-                const flipLabel = outcome === 'heads' ? 'Heads' : 'Tails';
-                const msg = win
-                    ? `${flipLabel}! You win. +${bet.toLocaleString()}G`
-                    : `${flipLabel}. You lose. -${bet.toLocaleString()}G`;
+                const msg = result.win
+                    ? `${result.rollLabel}. You win +${gain.toLocaleString()}G`
+                    : `${result.rollLabel}. You lose -${bet.toLocaleString()}G`;
                 if (resEl) resEl.textContent = msg;
             } finally {
                 _storyEndInteraction();
@@ -30686,6 +30761,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.querySelectorAll('.story-hof-gb-overlay').forEach(el => { try { el.remove(); } catch (e) {} });
             window._storyHofToken = (window._storyHofToken || 0) + 1;
             _bossArcEnsureState();
+            // First post-HoF re-entry routes the player through row 67 (Mystery Figure)
+            // as the one-time climax fight before the post-game hub opens. After that
+            // fight resolves we come back here with the climax flag set and fall
+            // through to the Master Ball / bossArc / lastCity flow below.
+            if (!sm.postHofMysteryClimaxDone) {
+                const mysteryIdx = STORY_EVENTS_RAW.findIndex(function (r) {
+                    return r && r[1] === 'Battle' && String(r[2] || '') === 'Mystery Figure';
+                });
+                if (mysteryIdx >= 0) {
+                    // Climax flag is flipped on battle end (in _handleCrucibleBattleEnd's
+                    // 'postHofMystery' branch) so a tab-close before victory still resumes
+                    // via processNextEvent's recovery branch and finishes cleanly.
+                    sm.eventIndex = mysteryIdx;
+                    sm.crucibleBattleSource = 'postHofMystery';
+                    save();
+                    processNextEvent();
+                    return;
+                }
+                // Row 67 is gone for some reason — flag done and fall through so the
+                // post-game still opens cleanly.
+                sm.postHofMysteryClimaxDone = true;
+            }
             // First-clear gift: hand the player the Master Ball and unlock the boss-arc leads.
             if (!sm.bossArc.available) {
                 sm.bossArc.available = true;
@@ -30697,8 +30794,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // miss that the Crucible / Battle Frontier / boss arc even exist.
             try { _storyShowOneTimeTip('postHof',
                 'Hall of Fame cleared! The post-game opens three doors:\n\n• 🧨 The Crucible — every facility you used in one place, plus the endless Battle Frontier.\n• 🔮 The Caged God — collect three leads at Pokémon Centers in Cities 2, 5, and 8, then enter the Cage.\n• 🚪 Mystery Figure — the Crucible\'s "Mystery" button summons a final masked challenger.\n\nAll three are reachable from any city you\'ve visited.'); } catch (e) {}
-            // Return to the last visited city instead of advancing to the original post-HoF Mystery row.
-            // The boss arc is now the canonical post-game beat, triggered from the Underground.
+            // Return to the last visited city. The boss arc is the canonical post-game beat,
+            // triggered from the Underground from here on.
             const lastCityEv = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
             sm.eventIndex = lastCityEv;
             save();

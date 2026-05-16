@@ -3,6 +3,87 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Story-mode investigation pass: cleanup, climax, casino 2026-05-16 (`claude/story-mode-investigation-lILFs`)
+
+### Changed — Active party cap is a flat 6 again
+
+- `_storyMaxPartySize()` returns a flat `6` regardless of badges. The earlier
+  `2 + badges` clamp predated the foe-matching pass and was leaving the PC
+  cap-hint UI ("(next slot at badge N)") in the Pokémon Center and the city
+  hub party label even though catches above 2 were already going to PC
+  anyway. The flat cap matches what the CHANGELOG and the Professor-visible-
+  while-below-cap flow already promised.
+- Stripped the now-obsolete `capHintHtml` from the PC storage tab and the
+  `_partyHint` rider on the city hub party label.
+- The Gym 1 explainer no longer claims "party cap grows by one"; it now
+  describes the actual model — foes match your team size, build up to 6,
+  catches over 6 land in PC.
+
+### Changed — Post-HoF first reentry routes through Mystery Figure (row 67)
+
+- Row 67 in `STORY_EVENTS_RAW` is no longer skipped on the way to the
+  post-game hub. `continuePostGame()` snaps `sm.eventIndex` to row 67 and
+  sets `sm.crucibleBattleSource = 'postHofMystery'` so the post-battle
+  interceptor (`_handleCrucibleBattleEnd`) flips a new save flag
+  `sm.postHofMysteryClimaxDone` and routes the player back into the
+  existing Master-Ball / boss-arc / lastCity flow. Result: the Mystery
+  Figure climax fires exactly once per save as a one-time mask-drop beat,
+  then the Crucible / Caged God doors stay open at every later city visit.
+- `processNextEvent` re-establishes the dispatch source if the player
+  reloads while still standing on row 67 with the climax flag unset
+  (e.g. tab closed mid-fight), so the climax can't loop into a save-
+  killing dead-end.
+- Migration: existing saves that already have `sm.bossArc.available`
+  set are marked climax-done in v16 so they skip the new beat entirely.
+
+### Changed — Poké Casino has three wager tables instead of one
+
+- Same one-line core RNG (a single d10) but three modes layered on top:
+  - **Coin Flip** — Heads/Tails, pays 1:1, 50% (parity of the roll).
+  - **Color** — Red/Black, pays 1:2, 30% (roll 1–3 = Red, 8–10 = Black,
+    4–7 = neither). Small house edge.
+  - **Jackpot** — pick a number 1–10, pays 1:9, 10%. High-variance kicker.
+- The bet chip row, the gold HUD, and the result line are unchanged;
+  the screen body adds three labelled clusters so the player can read
+  the odds at a glance before choosing.
+
+### Fixed — Boss-arc legendary roll honors the run seed
+
+- `_bossArcRollLegendary()` now picks the species through `storyRngNext`
+  (when `sm.active`) instead of bare `Math.random()`. The chosen legendary
+  is locked into the save once unlocked, so the same `runSeed` and
+  generation toggle now reproduce the same Caged God across machines.
+
+### Fixed — Pokémon Center entry uses the same interaction guard as siblings
+
+- `enterPokemonCenter` now wraps in `_storyTryBeginInteraction()` /
+  `_storyEndInteraction()` like every other facility entry. Closes a
+  tap-spam race where the screen could re-enter mid-`save()`.
+
+### Removed — Dead `partyEverReached2` / `partyEverReached4` flags
+
+- Both flags were written in six places and never read anywhere; the
+  CHANGELOG had described them as the G4-strip gate, but the actual
+  gate in `storyStripGrade4IfPartyMature` is `sm.badges < 1`. Removed
+  the writes and the schema-default entries; behavior is unchanged.
+
+### Doc — Spec drift caught up
+
+- `STORY_MODE_FLOW.md` catch-rate table updated to the live constants
+  (G1 4% / G2 12% / G3 22% / G4 35%, per-grade flee 55/40/28/20) and
+  notes Safari Ball at the live 1.25× multiplier.
+- §9 (boss arc) rewritten to describe the new row-67-once flow.
+- New §14e clarifies that internal action keys (`Pokemart`, `Pokemon
+  League`, `Pokemon Breeder` sprite IDs) keep their ASCII form; only
+  user-facing copy is renderered with the diacritic.
+- `agent-state/CODEBASE_MAP.md` Safari row updated to the live
+  2,500G entry / 15-ball / 1.25× / g1:3/g2:22/g3:50/g4:25 numbers.
+
+### Misc
+
+- Stale comment over `SAFARI_BALL_MULT` (called it "1.5×, between Great
+  and Ultra") corrected to match the live 1.25× value.
+
 ## Unreleased — Simplify game modes (default = Classic, all mechanics on) 2026-05-16 (`claude/simplify-game-modes-vHlMS`)
 
 ### Changed — Battle menu defaults & hidden advanced toggles
