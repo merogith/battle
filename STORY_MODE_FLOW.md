@@ -30,8 +30,10 @@ writing — they will drift as work proceeds.
 | PC | Pure storage. Flat array, **cap 10** (story is battle-focused, not a collection layer). Catch fails with an explicit message when party 6/6 and PC 10/10 — player must sell or release first. Stable `id` per mon. |
 | Underground | Built into every Pokémon Center hub button. Always visible. Sells your mons for gold (price scales with grade). Cannot sell your last party mon, the starter, or the boss-arc capture. |
 | Pokémon Center button | New city hub action. Contains PC + Underground. No heal function (battles auto-heal). |
-| Foe sizing | `clamp(player.length, eventMin, eventMin+2)` where event mins are: Basic 1, Gym Trainer 2, Gym Leader/Rival 3, E4 4, Champion 6 (caps at 6). |
+| Foe sizing | Fixed by role + badge count via `_storyEnemyPartySize`. Bosses (Champion / Victory Road / E1–4) always field 6; gym leaders ramp 2→6 by badge; rivals scale 2→6 by badge; basic trainers cap at 4. *Player team length no longer affects foe size* (was a regression source pre-v16). |
+| Player party cap | Active party slots = `1 + badges`, capped at 6. Wild catches and Professor gifts that would exceed the cap still succeed — they land in the PC. Frees foe scaling from "player caught wilds → 6v2 mismatch" and ties active-party growth to the same badge clock the foes use. |
 | Rival adaptation | Read live `sm.team` at battle entry. **Do not** filter `wild:true` mons — full-party-counts is the honest signal. Bringing a Magikarp pulls some counter-weight onto Water, but doesn't dominate against 5 other types. |
+| Intro rival | Used to be hard-fixed to 1-on-1; now follows the standard 0-badge rival formula (2 mons). With wild catching enabled, the player can show up with 2 mons via the pre-fight route node, so 2v2 is the fair baseline. A player who skipped the wild fights 1v2 with full-heal between mons. |
 | Pokédex | Seen + Caught. Persisted cross-run in a separate `pbs_story_meta` localStorage key. |
 | NG+ carryover | Pokédex + achievements + run-clear marks. PC empties between runs. |
 
@@ -82,14 +84,15 @@ Trade-off: keeps `eventIndex` semantics clean; needs the save/restore wrapper.
 
 | Aspect | Value |
 |---|---|
-| Unlock | Specific story event (TBD: post-Gym 4 placeholder). |
-| Location | Single dedicated hub, accessed via a city action button on cities adjacent to the unlock point. |
-| Cost | First entry free. Subsequent entries cost gold — initial peg ~800G; tune against existing earnings. |
-| Encounters | Continuous random encounters up to **6 per run**. Each encounter is a single mon. |
-| Pool grade | Richer than wild routes — biased toward G2/G3 with rare G4. |
-| Balls | Player's own inventory. No special "Safari Ball" class. |
-| Flee | Same flee mechanic as wild routes. |
-| Exit | After 6 encounters or "Leave Safari" button. Caught mons enter party/PC; uncaught are gone. |
+| Unlock | City 4 ("Wilderness town") action button — both pre- and post-Gym-4 hub rows carry it. |
+| Location | City 4 only in the main timeline. Post-HoF access is via the Crucible (which also exposes the same screen). |
+| Cost | First entry free. Subsequent entries cost `SAFARI_ENTRY_COST` (1,200G). |
+| Encounters | Continuous random encounters up to `SAFARI_MAX_ENCOUNTERS` (8 per session). Each encounter is a single mon. |
+| Pool grade | Richer than wild routes — `SAFARI_GRADE_WEIGHTS` g1:8 / g2:40 / g3:38 / g4:14. |
+| Balls | Safari-session pool only (`SAFARI_BALLS_PER_SESSION` = 25). The player's PokéBall stack does **not** apply inside; leftover Safari Balls are forfeited on exit. |
+| Mechanics | Bait (calm: lower catch, lower flee) and Rock (anger: higher catch, higher flee) stack within an encounter and reset between encounters. |
+| Flee | Per-grade flee rate (G1 55% → G4 20%), modulated by bait/rock stacks. |
+| Exit | After 8 encounters, when balls run out, or via "Leave Safari" button. Caught mons enter party/PC; uncaught are gone. |
 
 ---
 
@@ -448,12 +451,69 @@ and `processNextEvent` does not advance the main timeline.
 
 ---
 
+## 14d. Mystery Figure vs Professor (post-v16)
+
+After wild catching arrived, the old "team is full → Mystery Figure swap"
+branch turned the Professor's lab visits into Mystery encounters too
+often, blurring two distinct mechanics. The split is now:
+
+- **Professor** — every city's curated lab visit. Always the Professor
+  flow (button label "Professor — Lab Companion"). When the player's
+  active party is at the badge-based cap, the Professor still gives a
+  gift, but framed as a "swap with a party member" (the displaced mon
+  goes to PC). No Mystery Figure branding in this path.
+- **Mystery Figure** — reserved for actual story-mystery events:
+  - **City 8 post-Gym 8 legendary gate** (`isPreLeagueLegendaryMysteryGate`)
+    — required swap-in legendary before Victory Road.
+  - **Post-HoF Mystery Figure battle** (row 67 in `STORY_EVENTS_RAW`)
+    — final masked challenger, repurposed for the Caged God arc.
+  - **Crucible Mystery encore** — post-game replay button.
+
+The shared backend (`enterProfessor`, `_profMysteryMode`,
+`_profLegendaryMysteryMode`) still drives both flows so we don't
+fork the screen rendering, but the *labels and copy* now keep them
+mentally distinct.
+
+---
+
+## 14c. City specialties (M-balance)
+
+Each city in `STORY_EVENTS_RAW` now has a one-line specialty banner in the city
+hub (rendered above the NPC quote) so the player can tell at a glance *why this
+city is on the route*. The banners are content-only, sourced from
+`CITY_SPECIALTY_BLURBS` and surfaced via `_cityBlurbFor(cityIdx)` in
+`renderCityActions`. They mirror each city's facility loadout:
+
+| City | Identity |
+|---|---|
+| 0 — Pallet | Hometown — starter, Link, every basic tutor. |
+| 1 — Gym 1 | Training town — Battle Dojo + EV Trainer. |
+| 2 — Gym 2 | Move-craft town — Move Tutor + Battle Dojo. |
+| 3 — Gym 3 | Academy town — Move Tutor + Nature Rater. |
+| 4 — Gym 4 | **Wilderness town — Safari Zone gate.** |
+| 5 — Gym 5 | **Resort town — Poké Casino + tutors.** |
+| 6 — Gym 6 | Metropolis — first Department Store + first Colress. |
+| 7 — Gym 7 | Champion's road — every tutor, last Pokémart city. |
+| 8 — Gym 8 | Final-gym town — Department Store + Battle Dojo + EV Trainer for last polish. |
+| 9 — League | Pokémon League — every facility under one roof. |
+
+City 4 and City 5 are the "one-time mid-game events": Safari Zone and Poké Casino
+respectively. Both remain accessible post-HoF via the Crucible (§14b), but the
+main timeline restricts them to a single city each so they feel like a
+destination rather than a ubiquitous facility.
+
+City 8 gained Battle Dojo + EV Trainer in this pass — the player cannot
+backtrack, so without these the only late-game item/ability/EV polish was at
+City 6 or City 7 (or City 9 post-HoF). The League run between Gym 8 and the
+Elite Four was previously a dead-zone for team optimization.
+
+---
+
 ## 15. Open items (not blocking M0)
 
 Things that need decisions before later milestones but don't block schema work:
 
-- **Safari unlock event** — which exact story beat unlocks it. Placeholder: post-Gym 4 in §4.
-- **Safari city placement** — which cities offer the Safari button. Placeholder: City4 onward.
+- **Safari city placement** — currently City 4 only; revisit if playtesting shows the single-city window is too tight.
 - **Ultra Ball drop events** — which two static beats. Placeholder: post-Gym 4 trainer, post-E2 broker.
 - **Sub-Legendary vs. Restricted Legendary balance for the boss arc pool** — exact filter rule to keep the random selection feeling appropriate.
 - **First-clear vs. NG+ behavior of the boss arc** — does the legendary re-roll on NG+ or stay fixed?

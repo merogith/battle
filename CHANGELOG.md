@@ -3,6 +3,136 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Story mode balance & flow stabilization 2026-05-16 (`claude/balance-story-mode-Vf3Vj`)
+
+### Changed — Party size is now a real progression mechanic
+
+- **Active party cap = `1 + badges`** (cap 6 at five badges). With wild
+  catching enabled, runs were ending with wildly different party sizes
+  (1-mon purists vs 6-mon hoarders) which made foe scaling unreliable.
+  The cap ties active party growth to the same badge clock the foe-size
+  formula already uses — so 0-badge intro fights are reliably 2v2 (or
+  1v2 with full heal), and Gym 5 onward is full 6v6 territory. Catches
+  beyond the cap still succeed; they wait in the PC until you've earned
+  more slots. Surfaced in the city hub party label, the PC, and the
+  Professor's tip on first visit.
+- **Intro rival no longer hardcoded to 1 mon.** It now follows the
+  standard rival formula (2 at 0 badges). A player who caught their
+  pre-fight wild fights a fair 2v2; a player who skipped fights 1v2
+  with full heal between mons. Old hardcode pre-dated wild catching.
+
+### Changed — Mystery Figure is no longer the "team is full" handler
+
+- **Professor and Mystery Figure are distinct mechanics now.** The
+  Professor's gift always works (via the new badge-gated cap, never
+  overflowing). When you visit at the cap, the Professor offers a
+  "Lab Companion swap" — pick a teammate to send to PC. The
+  "Mystery Figure" branding is now reserved for actual story-mystery
+  events: the City-8 post-Gym-8 legendary gate, the post-HoF Mystery
+  Figure battle, and the Crucible's Mystery encore button.
+- Side-effect: the "lab companion swap" UI uses Professor sprites and
+  Professor quotes, not the Mystery Figure mask. The mechanic stays;
+  the framing aligns with what the player is actually doing.
+
+### Changed — Safari Zone tightened (was OP)
+
+- **Entry 1,200 → 2,500G.** Old price made a Safari run consistently
+  cheaper than a Link-Station upgrade for a G2, which collapsed the
+  cost curve.
+- **Pool weights G1:8/G2:40/G3:38/G4:14 → G1:3/G2:22/G3:50/G4:25.**
+  Safari is no longer a free G1/G2 pipeline; it's a G3-leaning catch
+  trip with a small G2/G1 chance.
+- **Encounters per session 8 → 6.** Matches the original design spec.
+- **Safari Balls per session 25 → 15.** You're not stockpiling.
+- **Safari Ball catch multiplier 1.5× → 1.25×** (sits between Poké
+  and Great instead of between Great and Ultra).
+
+### Changed — Underground sell prices reduced
+
+- **G1 2,500 → 1,800 / G2 700 → 400 / G3 150 → 100 / G4 30 → 20.**
+  Old prices made "catch wilds, sell wilds" net positive enough to
+  fund a full training pass on the same gold. The new curve makes
+  *keeping* and training the catch the rewarding play; the Underground
+  is for roster management (PC overflow, unwanted dupes), not gold
+  farming.
+
+### Added — Early-game thematic battles
+
+- Added `STORY_THEMED_BATTLES` entries at event IDs **7** (cursed —
+  "a vagrant on the back road"), **14** (multitype — first wanderer),
+  and **20** (villain — first Team operative scouting). The mid-game
+  thematic arc was previously empty for events 1–25; the early game
+  now plants seeds the mid-game payoff resolves.
+- Three new **cursed**-tagged Basic Trainers (Hollow Pilgrim, Mire
+  Witness, Whisper Tracker) so the expanded thematic slots have a
+  bigger pool to draw from. The cursed pool grew from 3 to 6 entries.
+
+### Changed — City identity (forwarded from the city-identity pass)
+
+- **Safari Zone is gated to City 4** ("Wilderness town"). Previously
+  it surfaced on every city hub — including Pallet Town — which
+  clashed with the design spec's "specific story event" intent.
+  Crucible access is unchanged.
+- **Poké Casino added to City 5** ("Resort town"). Stays in City 9
+  (League) too — mid-game gets a coin-flip stop between Gyms 4 and 5,
+  endgame keeps the existing hub.
+- **Battle Dojo + EV Trainer added to City 8.** The player can't
+  backtrack, and the prior loadout left a dead zone between Gym 8
+  and the Elite Four for held-item / ability / EV polish.
+- **One-line specialty banner per city** above the NPC quote, keyed
+  by `CITY_SPECIALTY_BLURBS`. Drives home why each city matters.
+
+### Reason
+
+The story mode had picked up wild catching, the PC, the Safari Zone,
+the Crucible, and a boss arc on top of mechanics that were balanced
+for a simpler era. Cities felt interchangeable; Safari farmed cheaper
+than upgrading; the Professor and the Mystery Figure read as the same
+thing; the intro rival hardcode predated wild catching. This pass
+threads the new mechanics through the existing balance curve, gives
+each city a distinct identity, and reserves the Mystery Figure
+branding for moments that actually carry the story's mystery.
+
+
+
+### Changed — Cities now feel distinct instead of interchangeable
+
+- **Safari Zone is gated to City 4** ("Wilderness town"). Previously it
+  surfaced as a recover action on every city hub — including Pallet Town —
+  which clashed with both the design spec ("specific story event")
+  and the user expectation of it being a destination. Crucible access is
+  unchanged, so post-HoF still lands you there with everything else.
+- **Poké Casino added to City 5** ("Resort town"). Casino used to be
+  League-only, which made mid-game gold management a single straight
+  line. City 5 now hosts a coin-flip wager hub between Gyms 4 and 5
+  — the mid-game gambler's stop — and the League's Casino stays in
+  place for endgame.
+- **Battle Dojo + EV Trainer added to City 8.** The player cannot
+  backtrack, and the previous loadout left a dead zone between Gym 8
+  and the Elite Four for held-item / ability / EV polish. With these
+  added, the "Final-gym town" actually supports the last-mile team
+  optimization its name implies.
+
+### Added — One-line specialty banner per city
+
+- Every city hub now prints a `📍`-prefixed identity line above the NPC
+  quote (e.g. *"Wilderness town — the only Safari Zone gate in the
+  region. Catch what you can while you're here."*). Drives home why
+  the city exists on the route — surfaces what to do here, in one
+  sentence, before any button is read.
+- New constant `CITY_SPECIALTY_BLURBS` (10 entries, indexed by city)
+  + `_cityBlurbFor(cityIdx)` helper; rendered by `renderCityActions`.
+
+### Reason
+
+The story mode had two latent identity problems: (1) Move Tutor and
+Nature Rater spammed across 7–9 cities each made every mid-game hub feel
+interchangeable, and (2) Safari Zone showed everywhere, which deflated
+the design's "destination" vibe. This pass makes each city signal
+its purpose at a glance and reserves Safari + Casino as the mid-game
+flavor stops they were meant to be. Crucible (post-HoF super-hub)
+still consolidates everything, so endgame access is preserved.
+
 ## Unreleased — Catch & party balance 2026-05-15 (`claude/balance-pokemon-safari-zone-AMDkM`)
 
 ### Changed — Catch math is meaningfully tighter
