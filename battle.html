@@ -27968,11 +27968,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const _CATCH_FLEE_BY_GRADE = { 1: 0.55, 2: 0.40, 3: 0.28, 4: 0.20 };
         const _CATCH_DEFAULT_FLEE_RATE = 0.30;
         const _BALL_DISPLAY = {
-            poke:   { name: 'Poké Ball',   color: '#e57373' },
-            great:  { name: 'Great Ball',  color: '#64b5f6' },
-            ultra:  { name: 'Ultra Ball',  color: '#ffd54f' },
-            master: { name: 'Master Ball', color: '#ce93d8' },
-            safari: { name: 'Safari Ball', color: '#a5d6a7' }
+            poke:   { name: 'Poké Ball',   color: '#e57373', icon: 'sprites/pokesprite/balls/poke.png' },
+            great:  { name: 'Great Ball',  color: '#64b5f6', icon: 'sprites/pokesprite/balls/great.png' },
+            ultra:  { name: 'Ultra Ball',  color: '#ffd54f', icon: 'sprites/pokesprite/balls/ultra.png' },
+            master: { name: 'Master Ball', color: '#ce93d8', icon: 'sprites/pokesprite/balls/master.png' },
+            safari: { name: 'Safari Ball', color: '#a5d6a7', icon: 'sprites/pokesprite/balls/safari.png' }
         };
         // Safari Ball is a session-scoped resource that lives ONLY inside the
         // Safari Zone. It is granted on entry, consumed on each throw, and
@@ -28264,7 +28264,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const have = sess.ballsLeft | 0;
                 const canThrow = have > 0;
                 ballRows = `<button type="button" onclick="window.StoryMode.catchThrow('safari')" ${canThrow ? '' : 'disabled'} style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:rgba(20,28,40,0.6);border:1px solid ${display.color};color:${display.color};font-family:inherit;font-size:12px;${canThrow ? 'cursor:pointer;' : 'opacity:0.4;cursor:not-allowed;'}">
-                    <span><strong>${display.name}</strong> <span style="color:#aaa;font-size:10px;">(${SAFARI_BALL_MULT}× base)</span> ×${have}</span>
+                    <span style="display:flex;align-items:center;gap:8px;"><img src="${display.icon}" alt="" width="22" height="22" decoding="async" style="image-rendering:pixelated;flex-shrink:0;"><span><strong>${display.name}</strong> <span style="color:#aaa;font-size:10px;">(${SAFARI_BALL_MULT}× base)</span> ×${have}</span></span>
                     <span style="color:#fff;">${safariPct}%</span>
                 </button>`;
                 const baitLabel = sess.baitCount ? `🍓 Bait <span style="color:#ffd54f;font-size:10px;font-weight:bold;">×${sess.baitCount}</span>` : '🍓 Bait';
@@ -28295,7 +28295,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const canThrow = have > 0;
                     const multLabel = mult === Infinity ? '∞ (guaranteed)' : `${mult}×`;
                     return `<button type="button" onclick="window.StoryMode.catchThrow('${k}')" ${canThrow ? '' : 'disabled'} style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:rgba(20,28,40,0.6);border:1px solid ${display.color};color:${display.color};font-family:inherit;font-size:12px;${canThrow ? 'cursor:pointer;' : 'opacity:0.4;cursor:not-allowed;'}">
-                        <span><strong>${display.name}</strong> <span style="color:#aaa;font-size:10px;">(${multLabel})</span> ×${have}</span>
+                        <span style="display:flex;align-items:center;gap:8px;"><img src="${display.icon}" alt="" width="22" height="22" decoding="async" style="image-rendering:pixelated;flex-shrink:0;"><span><strong>${display.name}</strong> <span style="color:#aaa;font-size:10px;">(${multLabel})</span> ×${have}</span></span>
                         <span style="color:#fff;">${pct}%</span>
                     </button>`;
                 }).join('');
