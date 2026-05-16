@@ -8996,6 +8996,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Story-mode foe stat multiplier (difficulty knob).
         // Multiplies HP and the five non-HP stats post-build. Damage formula stays Showdown-correct.
+        // Pre-Gym-1 forced battles (intro rival, first route trainer, Gym Trainer 1) get an additional
+        // softening factor so new players have room to learn before the first real test.
+        // Configurable via PRE_GYM1_FOE_STAT_MULT — set to 1.0 to disable the early-game nerf entirely.
+        window.PRE_GYM1_FOE_STAT_MULT = 0.85;
+        function _isPreGym1NerfedBattle() {
+            const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
+            if (!sm || (sm.badges | 0) > 0) return false;
+            const idx = sm.eventIndex | 0;
+            const row = (typeof STORY_EVENTS_RAW !== 'undefined') ? STORY_EVENTS_RAW[idx] : null;
+            if (!row || row[1] !== 'Battle') return false;
+            // Exclude Gym Leader 1 itself — the gating fight should remain a real test.
+            return row[2] !== 'Gym Leader 1';
+        }
+        window._isPreGym1NerfedBattle = _isPreGym1NerfedBattle;
         window.applyFoeDifficultyScaling = function(mon) {
             if (!mon) return;
             const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
@@ -9005,6 +9019,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (d === 'easy') mult = 0.85;
             else if (d === 'hard') mult = 1.15;
             else if (d === 'challenge') mult = 1.30; // labeled "Very Hard" in UI
+            if (_isPreGym1NerfedBattle()) mult *= (window.PRE_GYM1_FOE_STAT_MULT || 1.0);
             if (mult === 1.0) return;
             const newMaxHp = Math.max(1, Math.floor(mon.maxHp * mult));
             mon.maxHp = newMaxHp;
