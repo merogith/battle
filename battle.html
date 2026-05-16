@@ -6761,6 +6761,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let _soundVol = 0.55;
             let _lastBgPersistAt = 0;
             let _bgStarted = false;
+            let _bgConsecutiveErrors = 0;
+            const BG_MAX_CONSECUTIVE_ERRORS = 4;
 
             function _pickRandomBgIdx(excludeIdx) {
                 const n = BACKGROUND_TRACKS.length;
@@ -6815,6 +6817,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try {
                     const a = new Audio();
                     a.preload = 'auto';
+                    a.onerror = () => {
+                        if (_nextBgAudio === a) { _nextBgAudio = null; _nextBgIdx = -1; }
+                    };
                     a.src = BACKGROUND_TRACKS[idx];
                     a.volume = _musicVol;
                     a.load();
@@ -6840,36 +6845,53 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 audio.volume = _musicVol;
                 audio.loop = false;
-                audio.onended = _advanceBgTrack;
+                audio.onended = _onBgEnded;
+                audio.onerror = _onBgError;
                 audio.ontimeupdate = _onBgTimeUpdate;
+                audio.onplaying = _onBgPlaying;
 
                 if (bgAudio && bgAudio !== audio) {
-                    try { bgAudio.onended = null; bgAudio.ontimeupdate = null; bgAudio.pause(); } catch (e) {}
+                    try {
+                        bgAudio.onended = null;
+                        bgAudio.onerror = null;
+                        bgAudio.ontimeupdate = null;
+                        bgAudio.onplaying = null;
+                        bgAudio.pause();
+                    } catch (e) {}
                 }
                 bgAudio = audio;
                 _currentBgIdx = idx;
 
-                const beginPlayback = () => {
-                    audio.play().catch(() => {});
-                    _lastBgPersistAt = 0;
-                    _persistBgState(true);
-                    _preloadNextBgTrack();
-                };
+                // Kick off playback synchronously so the user-gesture activation is
+                // consumed immediately — important for the resume-from-persisted path
+                // where the loadedmetadata seek would otherwise happen too late.
+                audio.play().catch(() => {});
+                _persistBgState(true);
+                _preloadNextBgTrack();
 
                 if (!startFromBeginning) {
-                    const seekAndPlay = () => {
+                    const applySeek = () => {
                         const maxStart = Math.max(0, (audio.duration || 0) - 0.25);
                         try { audio.currentTime = Math.max(0, Math.min(startAtSec, maxStart)); } catch (e) {}
-                        beginPlayback();
                     };
-                    if (audio.readyState >= 1 && audio.duration) {
-                        seekAndPlay();
-                    } else {
-                        audio.addEventListener('loadedmetadata', seekAndPlay, { once: true });
-                    }
-                } else {
-                    beginPlayback();
+                    if (audio.readyState >= 1 && audio.duration) applySeek();
+                    else audio.addEventListener('loadedmetadata', applySeek, { once: true });
                 }
+            }
+
+            function _onBgEnded() {
+                _bgConsecutiveErrors = 0;
+                _advanceBgTrack();
+            }
+
+            function _onBgPlaying() {
+                _bgConsecutiveErrors = 0;
+            }
+
+            function _onBgError() {
+                _bgConsecutiveErrors++;
+                if (_bgConsecutiveErrors > BG_MAX_CONSECUTIVE_ERRORS) return;
+                _advanceBgTrack();
             }
 
             function _advanceBgTrack() {
@@ -6883,7 +6905,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             function _onBgVisibilityChange() {
-                if (typeof document !== 'undefined' && document.hidden) _persistBgState(true);
+                if (document.hidden) _persistBgState(true);
             }
 
             function _onBgPageHide() { _persistBgState(true); }
@@ -6913,12 +6935,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     document.addEventListener('click', tryStart, true);
                     document.addEventListener('keydown', tryStart, true);
                     document.addEventListener('touchstart', tryStart, true);
-                    if (typeof document !== 'undefined') {
-                        document.addEventListener('visibilitychange', _onBgVisibilityChange);
-                    }
-                    if (typeof window !== 'undefined') {
-                        window.addEventListener('pagehide', _onBgPageHide);
-                    }
+                    document.addEventListener('visibilitychange', _onBgVisibilityChange);
+                    window.addEventListener('pagehide', _onBgPageHide);
                 },
 
                 onStoryNewJourney() {
