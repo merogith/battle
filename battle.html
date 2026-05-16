@@ -28063,7 +28063,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterCity();
         }
         function safariLeaveEarly() {
-            if (!_safariSession) return;
+            // Always allow exit. _safariSession may be null in rare edge
+            // cases (mid-encounter reload, stale handler from a previous
+            // session) — falling through to enterCity() is the safe recovery
+            // path either way, so don't gate the button behind the session
+            // being live.
             _catchState = null;
             _safariReturnToCity('📣 "Thanks for visiting the Safari Zone! Come again soon."\n\nLeftover Safari Balls were forfeited at the gate.');
         }
@@ -28937,39 +28941,57 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span><strong>${display.name}</strong> ×${have}</span>
                     <span style="color:#fff;">${safariPct}%</span>
                 </button>`;
-                // Per-turn flee % surfaced on each button so the gamble is
-                // legible. Bait stays gentle and Rock scales hard with each
-                // stack — mirrors the canonical Safari Zone dilemma where
-                // every rock is "one more roll closer to a catch, but the
-                // wild might bolt this turn".
-                const _baitTurnFlee = (function () {
-                    const sim = { ...sess, baitCount: Math.min(3, (sess.baitCount | 0) + 1) };
-                    const m = Math.pow(SAFARI_BAIT_FLEE_MULT, sim.baitCount) * Math.pow(SAFARI_ROCK_FLEE_MULT, sim.rockCount | 0);
+                // Per-turn flee % AND projected catch % surfaced on each
+                // button so the full gamble is legible at the point of
+                // decision. Bait stays gentle (low flee, but it drags catch
+                // down); Rock scales hard on both axes — mirrors the
+                // canonical Safari dilemma where every rock is "one more
+                // roll closer to a catch, but the wild might bolt this turn".
+                const _projChance = (baitCount, rockCount) => {
+                    const bm = Math.pow(SAFARI_BAIT_CATCH_MULT, baitCount);
+                    const rm = Math.pow(SAFARI_ROCK_CATCH_MULT, rockCount);
+                    const mult = Math.max(0.1, Math.min(4.0, SAFARI_BALL_MULT * bm * rm));
+                    return Math.min(1, baseRate * mult);
+                };
+                const _projFlee = (baitCount, rockCount, actionMult) => {
+                    const m = Math.pow(SAFARI_BAIT_FLEE_MULT, baitCount) * Math.pow(SAFARI_ROCK_FLEE_MULT, rockCount);
                     const base = _CATCH_FLEE_BY_GRADE[grade] || _CATCH_DEFAULT_FLEE_RATE;
-                    return Math.max(0, Math.min(SAFARI_TURN_FLEE_CAP, base * m * SAFARI_BAIT_TURN_FLEE_MULT));
-                })();
-                const _rockTurnFlee = (function () {
-                    const sim = { ...sess, rockCount: Math.min(3, (sess.rockCount | 0) + 1) };
-                    const m = Math.pow(SAFARI_BAIT_FLEE_MULT, sim.baitCount | 0) * Math.pow(SAFARI_ROCK_FLEE_MULT, sim.rockCount);
-                    const base = _CATCH_FLEE_BY_GRADE[grade] || _CATCH_DEFAULT_FLEE_RATE;
-                    return Math.max(0, Math.min(SAFARI_TURN_FLEE_CAP, base * m * SAFARI_ROCK_TURN_FLEE_MULT));
-                })();
-                const _baitTurnPct = Math.round(_baitTurnFlee * 100);
-                const _rockTurnPct = Math.round(_rockTurnFlee * 100);
+                    return Math.max(0, Math.min(SAFARI_TURN_FLEE_CAP, base * m * actionMult));
+                };
+                const _simBaitB = Math.min(3, (sess.baitCount | 0) + 1);
+                const _simBaitR = sess.rockCount | 0;
+                const _simRockB = sess.baitCount | 0;
+                const _simRockR = Math.min(3, (sess.rockCount | 0) + 1);
+                const _baitProjPct = Math.round(_projChance(_simBaitB, _simBaitR) * 100);
+                const _rockProjPct = Math.round(_projChance(_simRockB, _simRockR) * 100);
+                const _baitTurnPct = Math.round(_projFlee(_simBaitB, _simBaitR, SAFARI_BAIT_TURN_FLEE_MULT) * 100);
+                const _rockTurnPct = Math.round(_projFlee(_simRockB, _simRockR, SAFARI_ROCK_TURN_FLEE_MULT) * 100);
                 const baitMaxed = (sess.baitCount | 0) >= 3;
                 const rockMaxed = (sess.rockCount | 0) >= 3;
-                const baitStack = sess.baitCount ? ` <span style="opacity:0.7;font-size:10px;">(${sess.baitCount}×)</span>` : '';
-                const rockStack = sess.rockCount ? ` <span style="opacity:0.7;font-size:10px;">(${sess.rockCount}×)</span>` : '';
-                const baitTitle = `Calms the Pokémon — lower catch chance, but it sticks around. Flee risk this turn: ${_baitTurnPct}%`;
-                const rockTitle = `Angers the Pokémon — higher catch chance, but it may bolt. Flee risk this turn: ${_rockTurnPct}%`;
+                const baitStack = baitMaxed
+                    ? ` <span style="opacity:0.7;font-size:10px;color:#888;">MAX</span>`
+                    : (sess.baitCount ? ` <span style="opacity:0.7;font-size:10px;">(${sess.baitCount}×)</span>` : '');
+                const rockStack = rockMaxed
+                    ? ` <span style="opacity:0.7;font-size:10px;color:#888;">MAX</span>`
+                    : (sess.rockCount ? ` <span style="opacity:0.7;font-size:10px;">(${sess.rockCount}×)</span>` : '');
+                const baitTitle = baitMaxed
+                    ? `Bait stack maxed at 3×. The wild is as calm as it gets.`
+                    : `Calms the Pokémon — catch ${safariPct}% → ${_baitProjPct}%, flee risk this turn ${_baitTurnPct}%.`;
+                const rockTitle = rockMaxed
+                    ? `Rock stack maxed at 3×. The wild is fully riled — throw now.`
+                    : `Angers the Pokémon — catch ${safariPct}% → ${_rockProjPct}%, flee risk this turn ${_rockTurnPct}%.`;
+                // Action stat preview "→ NN%catch · flee N%" — readable green/orange
+                // split so the upside and the risk are visually distinct.
+                const baitStats = baitMaxed ? '' : `<span style="font-size:10px;">→ <span style="color:#aed581;">${_baitProjPct}%</span> · <span style="color:#ff7043;">flee ${_baitTurnPct}%</span></span>`;
+                const rockStats = rockMaxed ? '' : `<span style="font-size:10px;">→ <span style="color:#aed581;">${_rockProjPct}%</span> · <span style="color:#ff7043;">flee ${_rockTurnPct}%</span></span>`;
                 safariActionRow = `<div style="display:flex;gap:6px;margin-top:4px;">
                     <button type="button" onclick="window.StoryMode.safariBait()" ${baitMaxed ? 'disabled' : ''} style="flex:1;display:flex;justify-content:space-between;align-items:center;gap:6px;padding:8px;background:rgba(20,28,40,0.6);border:1px solid #f48fb1;color:#f48fb1;font-family:inherit;font-size:11px;${baitMaxed ? 'opacity:0.45;cursor:not-allowed;' : 'cursor:pointer;'}" title="${_esc(baitTitle)}">
                         <span>🍓 Bait${baitStack}</span>
-                        <span style="font-size:10px;color:#ff7043;">flee ${_baitTurnPct}%</span>
+                        ${baitStats}
                     </button>
                     <button type="button" onclick="window.StoryMode.safariRock()" ${rockMaxed ? 'disabled' : ''} style="flex:1;display:flex;justify-content:space-between;align-items:center;gap:6px;padding:8px;background:rgba(20,28,40,0.6);border:1px solid #ffab91;color:#ffab91;font-family:inherit;font-size:11px;${rockMaxed ? 'opacity:0.45;cursor:not-allowed;' : 'cursor:pointer;'}" title="${_esc(rockTitle)}">
                         <span>🪨 Rock${rockStack}</span>
-                        <span style="font-size:10px;color:#ff7043;">flee ${_rockTurnPct}%</span>
+                        ${rockStats}
                     </button>
                 </div>
                 <div style="display:flex;gap:6px;margin-top:4px;">
