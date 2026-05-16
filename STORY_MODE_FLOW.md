@@ -239,11 +239,11 @@ Caught: enters the player's roster as **"Subject Zero"** with a unique flag. Sta
 
 ```js
 // Add to sm defaults at battle.html:22191
-pcBox:        [],                                        // flat, cap 60
+pcBox:        [],                                        // flat, cap 10
 balls:        { poke: 5, great: 0, ultra: 0, master: 0 }, // starting balls
 pokedex:      { seen: [], caught: [] },                   // per-run; cross-run lives in pbs_story_meta
-partyEverReached4: false,                                 // monotonic flag (interim until badges-based curve lands)
 catchUnlocked: false,                                     // toggles wild-route prompts; flipped on after first wild route entry or starter
+postHofMysteryClimaxDone: false,                          // post-HoF row-67 climax fire-once flag
 ```
 
 Plus a stable `id: string` on every mon (in `sm.team` and `sm.pcBox`), generated at creation time. Existing mons in `sm.team` get IDs assigned by the v14→v15 migration.
@@ -256,8 +256,12 @@ function migrateStoryPreV15() {
     if (!Array.isArray(sm.pcBox)) sm.pcBox = [];
     if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke: 5, great: 0, ultra: 0, master: 0 };
     if (!sm.pokedex || typeof sm.pokedex !== 'object') sm.pokedex = { seen: [], caught: [] };
-    if (typeof sm.partyEverReached4 !== 'boolean') sm.partyEverReached4 = (sm.team || []).length >= 4;
     if (typeof sm.catchUnlocked !== 'boolean') sm.catchUnlocked = false;
+    // Post-HoF Mystery Figure climax flag — pre-existing post-HoF saves skip the
+    // new beat (treat them as already-done).
+    if (typeof sm.postHofMysteryClimaxDone !== 'boolean') {
+        sm.postHofMysteryClimaxDone = !!(sm.bossArc && sm.bossArc.available);
+    }
     // 2. Hardcore → normal
     if (sm.storyDifficulty === 'hardcore') sm.storyDifficulty = 'normal';
     // 3. Stable IDs on existing team
@@ -301,23 +305,14 @@ Net effect: hardcore stops being selectable; existing hardcore saves migrate to 
 
 Per the prior audit's "single most important rule"
 (`docs/STORY_MODE_CATCH_INTEGRATION_RISK.md §8`), every place that keys
-difficulty off `sm.team.length` must move to `sm.badges` or a monotonic flag.
+difficulty off `sm.team.length` must move to `sm.badges` (the monotonic
+progression clock the player can't undo) so depositing a mon to PC can't
+re-introduce easier grade rolls mid-game.
 
-The primary offender is `storyStripGrade4IfPartyMature` at `battle.html:22480`,
-which reads `sm.team.length >= 4`. With catch enabled, depositing a mon to PC
-re-introduces G4 mid-game. Fix:
-
-```js
-// Before: keys off length
-if (sm.team.length >= 4) { ...strip G4... }
-
-// After: keys off monotonic flag, updated on every party growth
-if (sm.partyEverReached4) { ...strip G4... }
-```
-
-`sm.partyEverReached4` is set to `true` the moment `sm.team.length` ever reaches 4 (in `makeBuild` insertion, catch flow, mystery swap, etc.). Once set, it never resets — so the G4 difficulty floor only advances monotonically.
-
-This refactor is M0's largest single change but is mechanically simple — every `sm.team.length` read in difficulty-or-balance code is the audit's table at `docs/STORY_MODE_CATCH_INTEGRATION_RISK.md §2`.
+Live implementation in `battle.html`: `storyStripGrade4IfPartyMature`
+keys the strip on `sm.badges < 1` — pre-Gym-1 routes keep the G4 ramp,
+and from Gym 1 onward the G4 floor lifts unconditionally regardless of
+PC deposits or release decisions.
 
 ---
 
@@ -327,11 +322,11 @@ Each phase is shippable on its own and leaves the game playable.
 
 ### M0 — Schema + hardcore removal (~1 day)
 - Bump `SAVE_VER` to 15.
-- Add new save fields (`pcBox`, `balls`, `pokedex`, `partyEverReached4`, `catchUnlocked`).
+- Add new save fields (`pcBox`, `balls`, `pokedex`, `catchUnlocked`).
 - Migrate v14 saves: assign stable IDs, set defaults, hardcore → normal.
 - Remove `hardcore` from difficulty UI + all branches (see §11).
-- Refactor `storyStripGrade4IfPartyMature` to read `sm.partyEverReached4`.
-- Add `sm.partyEverReached4 = true` set on every party mutation that reaches length 4.
+- `storyStripGrade4IfPartyMature` gates the strip on `sm.badges < 1`
+  (pre-Gym-1 keeps the G4 ramp; Gym 1 onward lifts the floor).
 
 After M0: existing game still plays normally; new fields exist but are unused; hardcore players migrate cleanly.
 

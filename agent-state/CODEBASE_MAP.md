@@ -38,7 +38,7 @@
 | Dialogue pools (`TRAINER_QUOTES`, `TRAINER_QUOTES_BY_NAME`, rival pools, city quotes) | 22602 – 22730 |
 
 ## Implementation status vs `STORY_MODE_FLOW.md`
-- M0 schema (`pcBox`, `balls`, `pokedex`, `partyEverReached4`, `catchUnlocked`, hardcore removed) → **DONE**.
+- M0 schema (`pcBox`, `balls`, `pokedex`, `catchUnlocked`, hardcore removed) → **DONE**.
 - M1 Pokémon Center + PC + Underground → **DONE** (`#screen-story-pokemoncenter`, PC cap 10, Underground sell).
 - M2 Catch + balls + wild routes → **DONE** (`#screen-story-catch`, ball inventory, catch flow).
 - M3 Safari Zone → **DONE** (800G entry, 6 encounters per run).
