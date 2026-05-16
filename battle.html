@@ -23065,7 +23065,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             for (const n of Object.keys(baseStats)) {
                 try {
                     if (!n || usedNames.has(n)) continue;
-                    if (MEGA_EXCLUDE.has(n) || n.includes('-Mega') || n.includes('-Gmax')) continue;
+                    if (isStoryRollExcluded(n)) continue;
                     const b = baseStats[n];
                     const bgen = Number(b.gen);
                     if (!b || !Number.isFinite(bgen) || !genSet.has(bgen)) continue;
@@ -24313,6 +24313,58 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Existing getMonGrade: 1=best(BST≥530), 4=worst(<350). CSV G4=weakest ↔ grade 4.
         const MEGA_EXCLUDE = new Set(typeof MEGA_FORM_NAMES !== 'undefined' ? Object.values(MEGA_FORM_NAMES) : []);
 
+        // Cosmetic / state-only alt formes that should never be rolled as a starting
+        // species. None of these have evolutions in the dex, so picking them at the
+        // Professor (especially as the starter, which is bonded for life) leaves the
+        // player permanently locked out of the Stone Sage evolution path. The full
+        // list splits into four groups:
+        //   • Pikachu cosplay / cap / Let's-Go-starter formes + Eevee-Starter — alt
+        //     skins of base species that already roll on their own.
+        //   • In-battle state formes (Mimikyu-Busted, Aegislash-Blade, Darmanitan-Zen,
+        //     weather Castform, Wishiwashi-School, etc.) — these only exist mid-battle,
+        //     never as the canonical starting form.
+        //   • Totem variants (Sun/Moon stat-boosted event Pokémon) and pure cosmetic
+        //     pattern/colour variants (Vivillon-Fancy/Pokeball, Maushold-Four,
+        //     Squawkabilly-*, Tatsugiri-*, Dudunsparce-Three-Segment, Polteageist /
+        //     Sinistcha -Masterpiece/Antique, Pichu-Spiky-eared, Magearna-Original).
+        //   • Raid-only / unplayable shells (Eternatus-Eternamax, Pokestar UFO).
+        // Legitimate competitive alt formes (Therian, Hisuian, Galarian, Kyurem-Black /
+        // White, Hoopa-Unbound, Calyrex-Ice / Shadow, Necrozma-Dusk-Mane / Dawn-Wings,
+        // Greninja-Ash, Tornadus / Thundurus / Landorus / Enamorus-Therian) stay in
+        // — they're in randbats and players expect them.
+        const STORY_NONSTANDARD_FORMS = new Set([
+            'Pikachu-Cosplay','Pikachu-Rock-Star','Pikachu-Belle','Pikachu-Pop-Star','Pikachu-PhD','Pikachu-Libre',
+            'Pikachu-Original','Pikachu-Hoenn','Pikachu-Sinnoh','Pikachu-Unova','Pikachu-Kalos',
+            'Pikachu-Alola','Pikachu-Partner','Pikachu-World',
+            'Pikachu-Starter','Eevee-Starter',
+            'Pichu-Spiky-eared','Magearna-Original',
+            'Mimikyu-Busted','Mimikyu-Busted-Totem','Aegislash-Blade',
+            'Darmanitan-Zen','Darmanitan-Galar-Zen',
+            'Wishiwashi-School','Minior-Meteor','Cherrim-Sunshine','Morpeko-Hangry',
+            'Palafin-Hero','Eiscue-Noice','Cramorant-Gulping','Cramorant-Gorging',
+            'Castform-Sunny','Castform-Rainy','Castform-Snowy',
+            'Raticate-Alola-Totem','Marowak-Alola-Totem','Mimikyu-Totem',
+            'Gumshoos-Totem','Vikavolt-Totem','Ribombee-Totem','Araquanid-Totem',
+            'Lurantis-Totem','Salazzle-Totem','Togedemaru-Totem','Kommo-o-Totem',
+            'Vivillon-Fancy','Vivillon-Pokeball',
+            'Maushold-Four','Squawkabilly-Blue','Squawkabilly-Yellow','Squawkabilly-White',
+            'Tatsugiri-Droopy','Tatsugiri-Stretchy','Dudunsparce-Three-Segment',
+            'Polteageist-Antique','Sinistcha-Masterpiece',
+            'Eternatus-Eternamax',
+            'Pokestar UFO','Pokestar UFO-2','Pokestar UFO-PropU2',
+        ]);
+
+        // Single chokepoint for the "don't roll this species into the world" check.
+        // Mega + Gmax stay filtered (those are mid-battle gimmick formes); the new
+        // STORY_NONSTANDARD_FORMS set covers cosplay / state-only / cosmetic alts.
+        function isStoryRollExcluded(name) {
+            if (!name) return true;
+            if (MEGA_EXCLUDE.has(name)) return true;
+            if (name.includes('-Mega') || name.includes('-Gmax')) return true;
+            if (STORY_NONSTANDARD_FORMS.has(name)) return true;
+            return false;
+        }
+
         function getStoryEnabledGensFromUI() {
             return getEnabledGensFromUIPrefix('story');
         }
@@ -24335,7 +24387,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const genSet = new Set(normalizeEnabledGens(enabledGens));
             const result = [];
             for (const name of Object.keys(baseStats)) {
-                if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
+                if (isStoryRollExcluded(name)) continue;
                 const b = baseStats[name];
                 if (!b || !genSet.has(b.gen)) continue;
                 if (getMonGrade(name, getBST(name)) === grade) result.push(name);
@@ -24717,7 +24769,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             function pullByGrade(gradeLo, gradeHi) {
                 const arr = [];
                 for (const name of Object.keys(baseStats)) {
-                    if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
+                    if (isStoryRollExcluded(name)) continue;
                     const b = baseStats[name];
                     if (!b || !genSet.has(b.gen)) continue;
                     if (!isMixed) {
@@ -24789,7 +24841,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (!S.length) S = buildSyntheticSignaturePool(trainer, genSet, rng);
             const T = {1:[],2:[],3:[],4:[]};
             for (const name of Object.keys(baseStats)) {
-                if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
+                if (isStoryRollExcluded(name)) continue;
                 const b = baseStats[name];
                 if (!b || !genSet.has(b.gen)) continue;
                 if (!isMixed) {
@@ -24811,7 +24863,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 function pickRandomInGenPlain(usedNames) {
                     const pool = [];
                     for (const name of Object.keys(baseStats)) {
-                        if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
+                        if (isStoryRollExcluded(name)) continue;
                         const b = baseStats[name];
                         if (b && genSet.has(b.gen)) pool.push(name);
                     }
@@ -24912,7 +24964,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             function pickRandomInGenWindow() {
                 const pool = [];
                 for (const name of Object.keys(baseStats)) {
-                    if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
+                    if (isStoryRollExcluded(name)) continue;
                     const b = baseStats[name];
                     if (b && genSet.has(b.gen)) pool.push(name);
                 }
@@ -24973,7 +25025,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const genSet = new Set(allowedGens);
             const gradeOnePool = [];
             for (const name of Object.keys(baseStats)) {
-                if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
+                if (isStoryRollExcluded(name)) continue;
                 const b = baseStats[name];
                 if (!b || !genSet.has(b.gen)) continue;
                 if (getMonGrade(name, getBST(name)) !== 1) continue;
@@ -28447,8 +28499,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             for (const name of Object.keys(baseStats)) {
                 const b = baseStats[name];
                 if (!b || !genSet.has(b.gen)) continue;
-                if (name.includes('-Mega') || name.includes('-Gmax')) continue;
-                if (MEGA_EXCLUDE && MEGA_EXCLUDE.has && MEGA_EXCLUDE.has(name)) continue;
+                if (isStoryRollExcluded(name)) continue;
                 if (!D) continue;
                 try {
                     const sp = D.species.get(name);
@@ -30027,7 +30078,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const genSet = new Set(normalizeEnabledGens(enabledGens));
                 const D = typeof getPssDex === 'function' ? getPssDex() : null;
                 if (!D) return [];
-                const sp = D.species.get(monName);
+                let sp = D.species.get(monName);
+                // Cosmetic / cap / starter alt formes (Pikachu-Original, Eevee-Starter, …)
+                // carry no `evos` of their own. New rolls are filtered out via
+                // STORY_NONSTANDARD_FORMS, but legacy saves can still hold one — fall back
+                // to the base species so the Sage can still evolve them down the canonical
+                // chain (Pikachu-Original → Raichu, Eevee-Starter → any Eeveelution).
+                if (sp && (!sp.evos || !sp.evos.length) && sp.baseSpecies && sp.baseSpecies !== sp.name) {
+                    const base = D.species.get(sp.baseSpecies);
+                    if (base && base.evos && base.evos.length) sp = base;
+                }
                 if (!sp || !sp.evos || !sp.evos.length) return [];
                 return sp.evos.map(evo => {
                     const b = baseStats[evo];
@@ -30199,7 +30259,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
-            sm.team[idx] = { name: evoName, build: evoBuild };
+            // Evolution preserves identity — the starter that just evolved is still
+            // the starter, the nickname carries over, and the stable slot id stays so
+            // PC/Underground/Subject-Zero bookkeeping keeps pointing at the same mon.
+            // Spreading `mon` first then overriding name/build keeps every metadata
+            // flag (starter, unsellable, nickname, id, caughtAt, …) attached.
+            sm.team[idx] = { ...mon, name: evoName, build: evoBuild };
             return true;
         }
 
@@ -30298,7 +30363,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     delete window._pbsStoryUnlockedGimmicks;
                 }
                 sm.gold -= cost;
-                sm.team[idx] = { name:mon.name, build:newBuild };
+                // Rebuild just rerolls the moveset/nature/item — same species, same
+                // identity. Preserve starter/unsellable/nickname/id so a player who
+                // rebuilds their starter doesn't strip its star-starter badge.
+                sm.team[idx] = { ...mon, name: mon.name, build: newBuild };
                 save();
                 renderLinkTeam();
             } finally {

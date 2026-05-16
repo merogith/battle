@@ -3,6 +3,67 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Special-case Pokémon variations 2026-05-16 (`claude/special-case-pokemon-variations-pZmOU`)
+
+### Fixed — Cosmetic alt formes can no longer roll as a starter / wild
+
+- **Eevee-Starter** (the Let's-Go partner forme, BST 435) and the full set
+  of **Pikachu cosplay / cap / Let's-Go** formes (Cosplay, Rock-Star, Belle,
+  Pop-Star, PhD, Libre, Original, Hoenn, Sinnoh, Unova, Kalos, Alola,
+  Partner, World, Starter) are now excluded from every random-pool roll —
+  Professor picks (including the City 0 starter pool), wild encounters,
+  Cable Link re-roll/upgrade, Safari Zone, casino prizes, trainer
+  synthetic teams, and the legendary Mystery Figure gate. None of these
+  formes have evolutions in the dex, so picking one as the starter (which
+  is **bonded for life**) used to permanently lock the player out of the
+  Stone Sage evolution path. The base species (Eevee, Pikachu) is
+  unaffected and still rolls normally.
+- Same filter is also applied to **in-battle state formes** that should
+  never be the canonical roster pick — Mimikyu-Busted, Aegislash-Blade,
+  Darmanitan-Zen (and Galar-Zen), Wishiwashi-School, Minior-Meteor,
+  Cherrim-Sunshine, weather Castform, Morpeko-Hangry, Palafin-Hero,
+  Eiscue-Noice, Cramorant-Gulping/Gorging — and to **Totem variants**,
+  **purely cosmetic pattern formes** (Vivillon-Fancy/Pokeball,
+  Maushold-Four, Squawkabilly-Blue/Yellow/White, Tatsugiri-Droopy/
+  Stretchy, Dudunsparce-Three-Segment, Polteageist-/Sinistcha-Antique/
+  Masterpiece, Pichu-Spiky-eared, Magearna-Original), and unplayable
+  shells (Eternatus-Eternamax, Pokestar UFO).
+- Competitive alt formes that **are** in randbats and players expect to
+  see (Hisuian / Galarian / Alolan regional variants, Therian Tornadus /
+  Thundurus / Landorus / Enamorus, Kyurem-Black/White, Hoopa-Unbound,
+  Calyrex-Ice/Shadow, Necrozma-Dusk-Mane/Dawn-Wings, Greninja-Ash, etc.)
+  are intentionally **not** filtered.
+
+### Fixed — Stone Sage can evolve legacy cosmetic-forme saves
+
+- If an older save happens to carry one of the now-filtered formes
+  (a Pikachu-Original from a pre-fix run, say), the Stone Sage now falls
+  back to the base species' evolution list rather than declaring the mon
+  "fully evolved". Pikachu-Original → Raichu / Raichu-Alola, Eevee-Starter
+  → any of the eight Eeveelutions, etc.
+
+### Fixed — Starter status survives Stone Sage evolution
+
+- Evolving the starter (or any nicknamed / bonded Pokémon) at the Stone
+  Sage now **preserves the slot's identity** — `starter`, `unsellable`,
+  `nickname`, the stable slot `id`, and any catch metadata. Previously
+  the new slot was rebuilt as `{ name, build }` only, which silently
+  stripped the ★ STARTER badge and let the evolved mon be sold at the
+  Underground. The Cable Link rebuild path (same species, fresh build)
+  now also preserves the same metadata.
+
+### Reason
+
+A player who happened to roll **Eevee** at the City 0 Professor could
+actually land on **Eevee-Starter** — the dex includes both as separate
+species, and the alt forme passed every existing filter. Once
+"chosen for life" it had no `evos`, so the Stone Sage screen flat-out
+told the player their starter was fully evolved. The same trap was set
+by every cosplay / cap Pikachu and several in-battle state formes. The
+fix excludes the variants that don't fit the story's evolution-as-
+progression mechanic, while leaving Arceus / Silvally (already family-
+deduped) and the competitive alt formes alone.
+
 ## Unreleased — Simplify game modes (default = Classic, all mechanics on) 2026-05-16 (`claude/simplify-game-modes-vHlMS`)
 
 ### Changed — Battle menu defaults & hidden advanced toggles
