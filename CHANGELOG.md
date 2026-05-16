@@ -3,7 +3,49 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
-## Unreleased — Story mode balance & flow stabilization 2026-05-16 (`claude/balance-story-mode-Vf3Vj`)
+## Unreleased — Foe-matches-player & Professor-stops-at-6 2026-05-16 (`claude/balance-story-mode-Vf3Vj`)
+
+### Changed — Foes now match the player's team size
+
+- Replaced the badge-curve foe sizing with **player-matching**: foe
+  party size = player party size, with a small per-role floor so a
+  1-mon trainer still feels like a real fight pre-Gym 1. Floors:
+  trainers 1, rivals 2, GL1–2 = 2, GL3–4 = 3, GL5–6 = 4, GL7 = 5,
+  GL8 = 6. Story finales (Champion + Elite Four + Victory Road +
+  post-HoF Mystery Figure) still field a full 6 regardless.
+- Net effect: a player who runs lean (1–3 mons) faces lean trainer
+  parties; a player who builds full faces 6v6 trainer fights. Every
+  battle stays a fair duel run-to-run, regardless of how many wilds
+  the player caught.
+
+### Changed — Party cap is back to a flat 6 (no badge gating)
+
+- Removed the prior `1 + badges` cap. The new foe-matching makes the
+  cap unnecessary — a runaway player team just gets a matching foe.
+- Catches above 6 still go to the PC; the cap message still fires.
+
+### Changed — Professor only appears until party reaches 6
+
+- Each city's Professor (cities 0–5 directly, cities 6–8 via
+  `shouldForceCityProfessor`) is now hidden once the player's active
+  team is at 6/6. A player who never catches a single wild still
+  ends the front half of the run with a full 6-mon team because the
+  six pre-League Professors are exactly enough.
+- The City-8 post-Gym-8 legendary gate (Mystery Figure swap) is the
+  *one* exception — it stays visible at 6/6 because the swap is the
+  required pre-Victory-Road story beat.
+
+### Reason
+
+Previous balance pass keyed the active party cap on badges, which
+was too rigid: accepting the Professor's gift at City 1 (pre-Gym 1)
+overflowed straight to PC because the cap was still 1. The new
+model is cleaner: foes match player team size, so the player's
+choice of how many mons to bring is honored as a strategic decision
+rather than a balance liability. Professor still guarantees a path
+to a full team for non-catchers.
+
+
 
 ### Changed — Party size is now a real progression mechanic
 

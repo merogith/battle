@@ -25139,16 +25139,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (actions.includes('Department Store')) actions = actions.filter(a => a !== 'Pokemart');
             const cityIdx = getCityIndex(ev);
             const hasBaseProf = actions.includes('Professor');
-            const hasProf = hasBaseProf || shouldForceCityProfessor(cityIdx, actions);
-            // "Team room" now keys off the badge-based party cap, not the hard 6.
-            // A player at 0 badges has a cap of 2, so accepting a Professor gift
-            // when team is already at cap routes through the swap flow rather
-            // than silently overflowing past the cap.
             const _partyCap = _storyMaxPartySize();
             const hasTeamRoom = sm.team.length < _partyCap;
+            // Professor stops appearing once the player has 6 active Pokémon
+            // (cities 0–5 each give one, so a player who never catches wilds
+            // still finishes the front half with a full team). The lone
+            // exception is the City-8 post-Gym-8 legendary gate — that swap is
+            // required to enter Victory Road, so it stays visible even at 6/6.
+            const _legendaryGateHere = isPreLeagueLegendaryMysteryGate(cityIdx);
+            const hasProf = (hasBaseProf || shouldForceCityProfessor(cityIdx, actions)) && (hasTeamRoom || _legendaryGateHere);
             const profUsedHere = !!(sm.profUsed && sm.profUsed[cityIdx]);
             const swapMode = hasProf && !hasTeamRoom && !profUsedHere;
-            const legendMysteryGate = swapMode && isPreLeagueLegendaryMysteryGate(cityIdx);
+            const legendMysteryGate = swapMode && _legendaryGateHere;
             const mysteryMode = swapMode; // legacy alias used elsewhere in this function
             const _storyNextBatIdx = storyEffectiveNextBattleIndexFromHub();
             const _storyNextBat = _storyNextBatIdx >= 0 ? STORY_EVENTS_RAW[_storyNextBatIdx] : null;
@@ -25435,11 +25437,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _push('recover', makeActionBtn('🧨 The Crucible — All facilities + Battle Frontier','crucible','window.StoryMode.enterCrucible()','center',{ meta: _withNew('crucible', [{label:'Post-game',tone:'info'}]) }));
             }
             const _partyN = sm.team.length;
-            const _partyCapDisplay = _partyCap;
-            const _partyAtCap = _partyN >= _partyCapDisplay;
-            const _partyHint = _partyCapDisplay < 6 ? ` <span style="font-size:9px;color:#888;">(next slot at ${_partyCapDisplay} badge${_partyCapDisplay === 1 ? '' : 's'})</span>` : '';
             const _partyLabel = _partyN
-                ? `Party — Team & Order (${_partyN}/${_partyCapDisplay})${_partyAtCap ? _partyHint : ''}`
+                ? `Party — Team & Order (${_partyN}/6)`
                 : 'Party — Empty (Visit Professor)';
             _push('recover', makeActionBtn(_partyLabel, 'party', 'window.StoryMode.openPartyModal()', 'party'));
             if (actions.includes('Link Station')) {
@@ -26004,7 +26003,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // so the player doesn't read both as "free Pokémon" and ignore one.
             if (cityIdx > 0 && !isFull) {
                 try { _storyShowOneTimeTip('prof-vs-wild',
-                    'The Professor\'s lab companion is a story-built partner — one per city, fully tuned, grade-matched to the route. Wild Pokémon (caught on routes and the Safari Zone) are *your* projects — random species, partial build, and they reward training. Keep both paths in mind: lab pulls anchor your team; wild catches add variety and Pokédex progress.\n\nYour active party grows by one slot per gym badge (cap of 6 at five badges). Extra catches always succeed — they wait in the PC until you have room.'); } catch (e) {}
+                    'The Professor\'s lab companion is a story-built partner — one per city, fully tuned, grade-matched to the route. Wild Pokémon (caught on routes and the Safari Zone) are *your* projects — random species, partial build, and they reward training.\n\nThe Professor only stays open until your active party hits 6 Pokémon. Cities 0–5 each offer one lab companion, so even a player who never catches a wild ends the front half with a full team. Wild catches above 6 go to the PC.\n\nFoes match your party size: a lean 3-mon player faces 3-mon trainers; a full 6-mon player faces 6-mon trainers. Champion + Elite Four + Victory Road always field 6.'); } catch (e) {}
             }
             _profLegendaryMysteryMode = _profMysteryMode && isPreLeagueLegendaryMysteryGate(cityIdx);
             // Mystery Figure framing only applies to the City-8 post-Gym-8 legendary
@@ -26328,68 +26327,54 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 msg:'The Champion bows. "These are yours by right." +2 Ultra Balls, +1 Rare Candy, +2 Vitamin Packs.' }
         };
 
-        // Predictable enemy-party-size curve. Driven by trainer role and badge
-        // count — does NOT depend on the player's current roster size, so a player
-        // who released a few mons doesn't get easier fights. The floor is a soft
-        // courtesy: if the player still has only 1 mon (very early), non-boss
-        // fights cap at 2 to avoid lopsided wipes; bosses always field their full
-        // intended size regardless.
+        // Foe party size now *matches* the player's active team size, with two
+        // exceptions:
+        //   1. Story finales (Champion, Elite Four, Victory Road, post-HoF
+        //      Mystery Figure) always field a full 6 — the climactic battles
+        //      shouldn't shrink because the player runs lean.
+        //   2. Each role has a *role floor* so a 1-mon trainer who hasn't
+        //      caught a wild yet still gets a meaningful pre-Gym-1 fight.
+        //      Floors are tiny (1 for trainers, 2 for gym leaders / rivals)
+        //      so the player's choice of party size is honored, not overridden.
+        // This replaces the old "predictable curve by badges" because the
+        // player's party can grow off-schedule via wild catching — matching
+        // the foe to the actual player team is the only way to keep every
+        // fight feel like a fair duel run-to-run.
         function _storyEnemyPartySize(event, badges, playerTeamLen) {
             const e = String(event || '');
-            // League finale + Victory Road — always full 6.
-            if (/Champion/i.test(e) || /Victory Road/i.test(e) || /^E[1-4]$/i.test(e)) return 6;
-            // Gym Leaders — fixed ramp by gym number.
+            const player = Math.max(1, Math.min(6, playerTeamLen | 0));
+            // Story finales — always full 6.
+            if (/Champion/i.test(e) || /Victory Road/i.test(e) || /^E[1-4]$/i.test(e) || /Mystery Figure/i.test(e)) return 6;
+            // Gym Leaders — match player with a small per-gym floor so the
+            // fight scales up with badges even if the player stays lean.
             const gymMatch = e.match(/Gym Leader\s*(\d+)/i);
             if (gymMatch) {
                 const gn = parseInt(gymMatch[1], 10) | 0;
-                if (gn >= 8) return 6;
-                if (gn === 7) return 6;
-                if (gn === 6) return 5;
-                if (gn === 5) return 5;
-                if (gn === 4) return 4;
-                if (gn === 3) return 4;
-                if (gn === 2) return 3;
-                return 2; // GL1
+                // Floor: GL1–2 = 2, GL3–4 = 3, GL5–6 = 4, GL7 = 5, GL8 = 6.
+                const floor = gn >= 8 ? 6 : gn >= 7 ? 5 : gn >= 5 ? 4 : gn >= 3 ? 3 : 2;
+                return Math.min(6, Math.max(floor, player));
             }
-            // Rival — scales between gym posts by badges collected.
+            // Rival — match player, floor 2 (rivals always bring a teammate).
             if (/Rival/i.test(e)) {
-                if (badges >= 7) return 6;
-                if (badges >= 5) return 5;
-                if (badges >= 3) return 4;
-                if (badges >= 1) return 3;
-                return 2;
+                return Math.min(6, Math.max(2, player));
             }
-            // Regular trainers (Basic / Gym Trainer / Elite Trainer / themed variants).
-            // Soft cap to avoid stomping a player still building their roster.
-            let size;
-            if (badges >= 7)      size = 4;
-            else if (badges >= 5) size = 3;
-            else if (badges >= 3) size = 3;
-            else if (badges >= 1) size = 2;
-            else                  size = 1;
-            const playerFloorCap = Math.max(2, (playerTeamLen | 0) + 1);
-            return Math.min(size, playerFloorCap, 6);
+            // Basic / Gym Trainer / Elite Trainer (and themed variants): pure
+            // match. A 1-mon player faces a 1-mon trainer. A 6-mon player
+            // faces a 6-mon trainer.
+            return Math.min(6, Math.max(1, player));
         }
-        // Active party size grows with badges: starter = 1 slot, each gym badge
-        // earned unlocks one more, capped at 6 (reached at Gym 5 victory). Wild
-        // catches that would exceed this cap still succeed — the new mon lands
-        // in the PC, so the player can always *catch* but can't *field* more
-        // mons than they've earned. Keys on the same badge counter foe scaling
-        // uses (`_storyEnemyPartySize`), so run-to-run party sizes stay
-        // consistent — a player who caught 6 wilds before Gym 1 still has a
-        // 1-slot active party, matching the foe's 2-mon rival floor.
-        //
-        // Designed alongside the Professor's "Lab Companion" gift: each city's
-        // Professor (cities 0–5) reliably hands you a fully-built mon, and
-        // because slot unlocks track badges, those gifts always land in your
-        // active party rather than overflowing to PC.
+        // Hard cap at 6 — there's no badge-gated growth anymore. The Professor
+        // ensures every player reaches 6 mons even without wild catching
+        // (cities 0–5 each give one), and wild catches over 6 still land in
+        // the PC. Foe scaling now keys on the player's *actual* team length
+        // (see `_storyEnemyPartySize` above), so a runaway player team would
+        // just face a matching foe — there's no need to constrain growth.
         function _storyMaxPartySize() {
-            const badges = (sm && sm.badges) | 0;
-            return Math.max(1, Math.min(6, 1 + badges));
+            return 6;
         }
-        /** Returns true when the player's *active* party is at the unlocked cap. */
+        /** Returns true when the player's *active* party is at the cap. */
         function _storyPartyAtCap() {
-            return (sm.team || []).length >= _storyMaxPartySize();
+            return (sm.team || []).length >= 6;
         }
         function _storyEnsureBalls() {
             if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
@@ -27145,18 +27130,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _pcEnsureBoxArray();
             const team = sm.team || [];
             const box = sm.pcBox || [];
-            const partyCap = _storyMaxPartySize();
-            const partyFull = team.length >= partyCap;
+            const partyFull = team.length >= 6;
             const partyLastOne = team.length <= 1;
             const boxFull = box.length >= PC_BOX_CAP;
             const lowSlotWarn = box.length >= (PC_BOX_CAP - 2) && box.length < PC_BOX_CAP;
 
             let html = '';
-            const capHintHtml = partyCap < 6
-                ? ` <span style="color:#888;font-size:10px;">(next slot at badge ${partyCap})</span>`
-                : '';
             html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:11px;color:#aaa;">
-                <span>Party <strong style="color:#fff;">${team.length}/${partyCap}</strong>${capHintHtml}</span>
+                <span>Party <strong style="color:#fff;">${team.length}/6</strong></span>
                 <span>PC <strong style="color:#fff;">${box.length}/${PC_BOX_CAP}</strong></span>
             </div>`;
             if (boxFull) {
