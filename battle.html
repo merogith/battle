@@ -3608,8 +3608,8 @@
         }
         .story-menu-btn--continue:hover { box-shadow: inset -4px -4px 0px 0px #1a3a1c, inset 4px 4px 0px 0px #2a5a2c, 0 0 16px rgba(76,175,80,0.2); }
         .story-menu-btn--abandon { border-color: #666 !important; color: #888; font-size: 11px; padding: 10px 16px; }
-        .story-menu-btn--back { border-color: transparent !important; color: #888; font-size: 11px; padding: 10px 16px; background: transparent; box-shadow: none; }
-        .story-menu-btn--back:hover { color: #bbb; background: rgba(255,255,255,0.04); }
+        .story-menu-btn--back { border-color: #444 !important; color: #888; font-size: 11px; padding: 10px 16px; background: rgba(255,255,255,0.02); box-shadow: none; }
+        .story-menu-btn--back:hover { color: #bbb; border-color: #666 !important; background: rgba(255,255,255,0.06); }
         .story-settings-gen-row { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
         .story-settings-gen-label { display: flex; align-items: center; gap: 3px; font-size: 11px; cursor: pointer; color: #ccc; }
         .story-settings-gen-label input[type="checkbox"] { accent-color: var(--accent); }
@@ -4599,7 +4599,7 @@
             <div class="story-settings-panel">
                 <h3 class="story-settings-heading">Run Settings</h3>
                 <div style="margin-bottom:10px;">
-                    <div style="font-size:10px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Generations in pool (tap toggles):</div>
+                    <div style="font-size:10px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Pokémon Generations in pool:</div>
                     <div class="story-settings-gen-row">
                         <label class="story-settings-gen-label"><input type="checkbox" id="story-gen-cb-1" checked><span>G1</span></label>
                         <label class="story-settings-gen-label"><input type="checkbox" id="story-gen-cb-2" checked><span>G2</span></label>
@@ -4627,7 +4627,7 @@
                     </select>
                 </div>
                 <div style="font-size:10px;color:#888;line-height:1.5;margin:-4px 0 10px;max-width:560px;">
-                    Foe stats: Very Easy −30% · Easy −15% · Normal · Hard +15% · Very Hard +30%.
+                    Scales every foe's HP, Attack, Defense, Sp. Atk, Sp. Def, and Speed by: Very Easy −30% · Easy −15% · Normal · Hard +15% · Very Hard +30%.
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;margin-bottom:10px;">
                     <label style="color:#888;text-transform:uppercase;letter-spacing:0.5px;font-size:10px;">Seed:</label>
@@ -4648,17 +4648,17 @@
                                 <input type="checkbox" id="story-no-item-run">
                                 <span style="color:#ffb74d;font-weight:bold;">&#128683; No Item Run</span>
                             </label>
-                            <span style="color:#777;font-size:10px;">Shops stay open; battle-bag stock is not sold. Neither side uses battle items.</span>
+                            <span style="color:#777;font-size:10px;">No items in battle — yours or theirs. Shops stay open; the battle-bag is empty.</span>
                         </div>
-                        <div style="font-size:10px;color:#666;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Battle mechanic mode:</div>
+                        <div style="font-size:10px;color:#666;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Gimmick usage:</div>
                         <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:11px;">
                             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
                                 <input type="radio" name="story-battle-mech-mode" id="story-mode-classic-rb" checked>
-                                <span style="color:var(--hp-yellow);">Classic (1/team)</span>
+                                <span style="color:var(--hp-yellow);">Classic (one gimmick per team)</span>
                             </label>
                             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
                                 <input type="radio" name="story-battle-mech-mode" id="story-mode-unlimited-rb">
-                                <span style="color:var(--hp-green);">Unlimited</span>
+                                <span style="color:var(--hp-green);">Unlimited (every mon can use one)</span>
                             </label>
                         </div>
                     </div>
@@ -4669,7 +4669,7 @@
             <button class="story-menu-btn story-menu-btn--continue" id="story-continue-btn" onclick="window.StoryMode.continueRun()" style="display:none;">&#9654; Continue Journey</button>
             <button class="story-menu-btn story-menu-btn--abandon" id="story-abandon-btn" onclick="window.StoryMode.confirmAbandon()" style="display:none;">&#10006; Abandon Run</button>
             <button class="story-menu-btn story-menu-btn--back" onclick="window.StoryMode.showMenu(false)">&#8592; Back to Main Menu</button>
-            <p style="font-size:9px;color:#555;text-align:center;margin:2px 0 0;text-shadow:1px 1px 0 rgba(0,0,0,0.5);">Stuck in battle? <strong>Settings</strong> (gear) → <strong>Unstick</strong>. More tools: Developer.</p>
+            <p style="font-size:9px;color:#555;text-align:center;margin:2px 0 0;text-shadow:1px 1px 0 rgba(0,0,0,0.5);">Stuck in battle? <strong>Settings</strong> (gear) → <strong>Unstick</strong>. More tools in the Developer section.</p>
         </div>
     </div>
 
@@ -4685,7 +4685,7 @@
             </div>
             <div class="story-hud-actions">
                 <button type="button" class="story-hud-abandon" onclick="window.StoryMode.confirmAbandon()">Abandon</button>
-                <button type="button" class="story-hud-runinfo" onclick="window.StoryMode.openRunSummary()" title="Current run rules — difficulty, League foe boosts, grade curve, artifacts">Run</button>
+                <button type="button" class="story-hud-runinfo" onclick="window.StoryMode.openRunSummary()" title="Run settings: difficulty, foe scaling, current relics">Run Info</button>
                 <button type="button" class="story-hud-settings" onclick="window.openSettings()" aria-label="Settings">⚙</button>
             </div>
         </div>
