@@ -24749,6 +24749,195 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return uniq.slice(0, 12);
         }
 
+        // ── BUILD POWER TIER (story scaling) ──────────────────────────────────
+        // Independent of mon Grade (G1–G4 = species power). PowerTier captures
+        // *training* quality: how well EVs, nature, ability, and item synergize
+        // with the rolled moves. T1 untrained route trainer → T4 tournament
+        // (current Smogon-quality default). The downgrade hook runs after
+        // _applyEnemyGimmickDistribution so structural moves & gimmick stones
+        // are preserved while the polish softens for lower tiers.
+        //
+        // Rationale: pre-Gym-1 Basic Trainers shouldn't field Choice-Band
+        // 252/252/4 sets. The full-Smogon build is the *ceiling*, reached only
+        // at gym-6+ leaders, the Elite Four, the Champion, and the post-HoF
+        // Mystery Figure. Player-obtainables (Professor gifts, wild catches)
+        // scale on the same curve so the existing tutor economy (Move Tutor,
+        // EV Trainer, Nature Rater, Battle Dojo) has actual upgrade headroom
+        // through the run, not just cosmetic polish.
+        const STORY_BUILD_TIER = Object.freeze({ UNTRAINED: 1, NOVICE: 2, COMPETENT: 3, TOURNAMENT: 4 });
+        const _NEUTRAL_NATURES_LIST = ['Hardy', 'Docile', 'Serious', 'Bashful', 'Quirky'];
+        // T1 / T2 item replacement pools — flavor berries and type-boost stones
+        // (universally available in canon, no game-breaking effects). Empty
+        // strings in the T1 pool yield "no item" so untrained route mons feel
+        // like wild catches that wandered into a trainer's bag.
+        const _T1_FLAVOR_ITEMS = [
+            '', '', '', 'Oran Berry', 'Sitrus Berry', 'Pecha Berry', 'Cheri Berry',
+            'Chesto Berry', 'Lum Berry', 'Rawst Berry', 'Aspear Berry'
+        ];
+        const _T2_FLAVOR_ITEMS = [
+            'Leftovers', 'Sitrus Berry', 'Lum Berry', 'Eviolite',
+            'Black Belt', 'Charcoal', 'Mystic Water', 'Magnet', 'Soft Sand',
+            'Silk Scarf', 'Miracle Seed', 'Sharp Beak', 'Black Glasses',
+            'Spell Tag', 'Twisted Spoon', 'Hard Stone', 'Poison Barb',
+            'Dragon Fang', 'NeverMeltIce', 'Metal Coat', 'Silver Powder',
+            'Wise Glasses', 'Muscle Band'
+        ];
+        // Tournament-grade items: stripped at T1 entirely, swapped for flavor at T2,
+        // kept at T3/T4. Includes Choice / Orb / pinch-berry families that drive
+        // competitive damage math; flavor type-boost items at T2 fill the slot.
+        const _ELITE_ITEMS_SET = new Set([
+            'Choice Band', 'Choice Specs', 'Choice Scarf', 'Life Orb', 'Expert Belt',
+            'Heavy-Duty Boots', 'Focus Sash', 'Assault Vest', 'Air Balloon',
+            'Weakness Policy', 'Loaded Dice', 'Booster Energy', 'Throat Spray',
+            'Power Herb', 'Mental Herb', 'White Herb',
+            'Lustrous Orb', 'Adamant Orb', 'Griseous Orb', 'Light Clay',
+            'Toxic Orb', 'Flame Orb', 'Rocky Helmet', 'Black Sludge', 'Quick Claw',
+            "King's Rock", 'Bright Powder', 'Red Card', 'Eject Button', 'Eject Pack',
+            'Custap Berry', 'Salac Berry', 'Liechi Berry', 'Petaya Berry',
+            'Apicot Berry', 'Ganlon Berry', 'Starf Berry', 'Micle Berry',
+            'Chople Berry', 'Yache Berry', 'Occa Berry', 'Passho Berry',
+            'Wacan Berry', 'Rindo Berry', 'Shuca Berry', 'Coba Berry',
+            'Babiri Berry', 'Charti Berry', 'Tanga Berry', 'Kasib Berry',
+            'Haban Berry', 'Colbur Berry', 'Roseli Berry', 'Kebia Berry',
+            'Payapa Berry', 'Chilan Berry'
+        ]);
+        function _isStoryGimmickItem(item) {
+            if (!item) return false;
+            try {
+                if (typeof isMegaStone === 'function' && isMegaStone(item)) return true;
+                if (typeof Z_TYPE_MAP_VALUES !== 'undefined' && Z_TYPE_MAP_VALUES.has && Z_TYPE_MAP_VALUES.has(item)) return true;
+            } catch (e) {}
+            return false;
+        }
+
+        /** Map trainer event + progression → target training tier. Mystery Figure
+         *  / Champion / E1–E4 / Victory Road always T4. Frontier ladder stays T4
+         *  (rounds scale via stat-boost, not build polish). Post-HoF (badges 8)
+         *  flattens to T4 so Crucible gym rematches don't degrade. */
+        function _storyBuildTierForEvent(eventType, storyRowIdx, badges) {
+            const e = String(eventType || '');
+            const b = badges | 0;
+            if (sm && sm.frontier && sm.frontier.active) return STORY_BUILD_TIER.TOURNAMENT;
+            if (b >= 8) return STORY_BUILD_TIER.TOURNAMENT;
+            if (e === 'Mystery Figure' || e === 'Champion' || e === 'Victory Road' || /^E[1-4]$/.test(e)) return STORY_BUILD_TIER.TOURNAMENT;
+            if (e === 'Rival') {
+                if (b >= 6) return STORY_BUILD_TIER.TOURNAMENT;
+                if (b >= 3) return STORY_BUILD_TIER.COMPETENT;
+                if (b >= 1) return STORY_BUILD_TIER.NOVICE;
+                return STORY_BUILD_TIER.UNTRAINED;
+            }
+            const gl = e.match(/^Gym Leader\s*(\d)$/);
+            if (gl) {
+                const n = +gl[1];
+                if (n >= 6) return STORY_BUILD_TIER.TOURNAMENT;
+                if (n >= 3) return STORY_BUILD_TIER.COMPETENT;
+                return STORY_BUILD_TIER.NOVICE;
+            }
+            if (e === 'Gym Trainer 2' || e === 'Elite Trainer') {
+                if (b >= 6) return STORY_BUILD_TIER.TOURNAMENT;
+                if (b >= 3) return STORY_BUILD_TIER.COMPETENT;
+                return STORY_BUILD_TIER.NOVICE;
+            }
+            if (e === 'Gym Trainer 1' || e === 'Gym Trainer') {
+                if (b >= 5) return STORY_BUILD_TIER.COMPETENT;
+                if (b >= 1) return STORY_BUILD_TIER.NOVICE;
+                return STORY_BUILD_TIER.UNTRAINED;
+            }
+            if (e === 'Basic Trainer') {
+                if (b >= 6) return STORY_BUILD_TIER.COMPETENT;
+                if (b >= 3) return STORY_BUILD_TIER.NOVICE;
+                return STORY_BUILD_TIER.UNTRAINED;
+            }
+            return STORY_BUILD_TIER.NOVICE;
+        }
+
+        /** Professor gift: scaled with city + badges. Always one tier above the
+         *  contemporary trainer floor — these are curated picks the Professor
+         *  hand-trained, not random route fauna. */
+        function _storyBuildTierForProfessor(cityIdx, badges) {
+            const c = cityIdx | 0;
+            const b = badges | 0;
+            if (b >= 6 || c >= 7) return STORY_BUILD_TIER.TOURNAMENT;
+            if (b >= 4 || c >= 5) return STORY_BUILD_TIER.COMPETENT;
+            if (b >= 1 || c >= 2) return STORY_BUILD_TIER.NOVICE;
+            return STORY_BUILD_TIER.UNTRAINED;
+        }
+
+        /** Degrade a fully-rolled Smogon-quality build to a lower training tier.
+         *  T4 → no-op. Lower tiers progressively strip EV optimization, neutralize
+         *  nature, fall back to the species' default ability, and swap elite items
+         *  for flavor pieces. Move sets and gimmick stones (Mega/Z) stay intact —
+         *  the goal is training quality, not species rebuilds. */
+        function _storyDowngradeBuildForTier(name, build, tier) {
+            if (!build || !name || tier == null) return build;
+            const t = tier | 0;
+            if (t >= STORY_BUILD_TIER.TOURNAMENT) return build;
+            const base = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
+            const gimmickBound = (build.gimmick && build.gimmick !== 'STANDARD') || _isStoryGimmickItem(build.i);
+            const pickNeutralNature = () => _NEUTRAL_NATURES_LIST[Math.floor(Math.random() * _NEUTRAL_NATURES_LIST.length)];
+            const pickFlavorItem = pool => pool[Math.floor(Math.random() * pool.length)];
+
+            if (t === STORY_BUILD_TIER.UNTRAINED) {
+                build.evs = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+                build.n = pickNeutralNature();
+                if (base.abilities && base.abilities['0']) build.a = base.abilities['0'];
+                if (!gimmickBound) {
+                    const it = pickFlavorItem(_T1_FLAVOR_ITEMS);
+                    build.i = it == null ? '' : it;
+                }
+                return build;
+            }
+
+            if (t === STORY_BUILD_TIER.NOVICE) {
+                const evs = build.evs || { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+                let total = 0;
+                for (const k of ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) total += (evs[k] | 0);
+                if (total > 220) {
+                    const scale = 220 / total;
+                    for (const k of ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) {
+                        evs[k] = Math.max(0, Math.floor(((evs[k] | 0) * scale) / 4) * 4);
+                    }
+                    build.evs = evs;
+                }
+                if (Math.random() < 0.35) build.n = pickNeutralNature();
+                if (!gimmickBound && _ELITE_ITEMS_SET.has(build.i)) {
+                    build.i = pickFlavorItem(_T2_FLAVOR_ITEMS);
+                }
+                return build;
+            }
+
+            if (t === STORY_BUILD_TIER.COMPETENT) {
+                const evs = build.evs || { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+                let total = 0;
+                for (const k of ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) total += (evs[k] | 0);
+                if (total > 420) {
+                    const scale = 420 / total;
+                    for (const k of ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) {
+                        evs[k] = Math.max(0, Math.floor(((evs[k] | 0) * scale) / 4) * 4);
+                    }
+                    build.evs = evs;
+                }
+                return build;
+            }
+            return build;
+        }
+
+        /** Final-pass hook for trainer teams. Stamps `build.powerTier` on every
+         *  slot and applies degradation in-place. Tier 4 short-circuits. */
+        function _applyStoryBuildPowerTier(team, eventType, storyRowIdx) {
+            if (!Array.isArray(team) || !team.length) return team;
+            const badges = (sm && sm.badges) | 0;
+            const tier = _storyBuildTierForEvent(eventType, storyRowIdx, badges);
+            for (const slot of team) {
+                if (!slot || !slot.build) continue;
+                if (tier < STORY_BUILD_TIER.TOURNAMENT) {
+                    _storyDowngradeBuildForTier(slot.name, slot.build, tier);
+                }
+                slot.build.powerTier = tier;
+            }
+            return team;
+        }
+
         function rollTrainerTeam(trainer, partySize, gradeWeights, enabledGensIn, battleEventType, storyRowIdx) {
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
             let gwIn = applyDifficultyToGradeWeights(gradeWeights || { g1: 0, g2: 0, g3: 50, g4: 50 });
@@ -24878,7 +25067,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 enforceRoleCoverage(teamR, _lockedR);
                 enforceTypeBalance(teamR, _candR, _lockedR);
                 enforceItemClause(teamR);
-                return _applyEnemyGimmickDistribution(teamR, battleEventType);
+                return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(teamR, battleEventType), battleEventType, storyRowIdx);
             }
 
             function pickThematic() {
@@ -24965,7 +25154,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enforceRoleCoverage(team, _locked);
             enforceTypeBalance(team, _cand, _locked);
             enforceItemClause(team);
-            return _applyEnemyGimmickDistribution(team, battleEventType);
+            return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(team, battleEventType), battleEventType, storyRowIdx);
         }
         function rollMysteryFigureFinalBossTeam(partySize, enabledGensIn) {
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
@@ -25015,7 +25204,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.settings.teraOn = true;
                 sm.settings.zOn = true;
                 sm.badges = 8;
-                return _applyEnemyGimmickDistribution(picks, 'Mystery Figure');
+                return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(picks, 'Mystery Figure'), 'Mystery Figure', null);
             } finally {
                 sm.settings.megaOn = oldMech.megaOn;
                 sm.settings.dynaOn = oldMech.dynaOn;
@@ -26549,13 +26738,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!pool.length) return null;
             const _rng = (sm && sm.active) ? storyRngNext : Math.random;
             const pick = pool[Math.floor(_rng() * pool.length)];
-            const build = makeBuild(pick.name);
+            // Tutorial partner is conceptually a wild — uses makeWildBuild so its
+            // training tier matches what the player would catch on a normal route
+            // (no item, default ability, neutral nature, ~170 EV head-start). Keeps
+            // the partner from out-classing the freshly-picked starter and slots
+            // into the same tier curve as every other catch.
+            const build = makeWildBuild(pick.name);
             if (!build) return null;
             return {
                 name: pick.name,
                 build,
                 id: 'm_' + Math.random().toString(36).slice(2, 10),
-                partner: true
+                partner: true,
+                wild: true
             };
         }
 
@@ -26671,6 +26866,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     } finally {
                         window._pbsStoryUsePlayerGimmickGate = false;
                         delete window._pbsStoryUnlockedGimmicks;
+                    }
+                    // Professor gifts scale with city + badge progression so the player
+                    // has real headroom for the Move Tutor / EV Trainer / Nature Rater /
+                    // Battle Dojo upgrade economy. Legendary mystery-gate offers stay at
+                    // tournament tier — they're one-shot story rewards, not raw partners.
+                    if (build) {
+                        const _profTier = _profLegendaryMysteryMode
+                            ? STORY_BUILD_TIER.TOURNAMENT
+                            : _storyBuildTierForProfessor(cityIdx, sm.badges);
+                        if (_profTier < STORY_BUILD_TIER.TOURNAMENT) {
+                            _storyDowngradeBuildForTier(name, build, _profTier);
+                        }
+                        build.powerTier = _profTier;
                     }
                     const g = getMonGrade(name, getBST(name));
                     choices.push({ name, build, g });
@@ -28733,6 +28941,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (base && base.abilities && base.abilities['0']) b.a = base.abilities['0'];
             b.n = _wildPickNature(base);
             b.evs = _wildPickEVs(base);
+            // Wild catches sit at the bottom of the training-tier curve. The 170-EV /
+            // curated-positive-nature head-start (see _wildPickNature/_wildPickEVs)
+            // makes them comparable to a T1 trainer mon's structural moves but with
+            // a small head-start to make caught wilds feel like a real partner. The
+            // existing tutor economy still has full headroom to T4.
+            if (typeof STORY_BUILD_TIER !== 'undefined') b.powerTier = STORY_BUILD_TIER.UNTRAINED;
             return b;
         }
 

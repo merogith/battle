@@ -11,23 +11,37 @@
 - No test suite. No CI. `npm test` does not exist.
 
 ## Code anchors (battle.html line numbers)
+
+Note: line numbers are drift-prone. The 2026-05-16 tier session
+inserted ~150 LOC at ~24750 (rollTrainerTeam entry) plus a few hook
+sites; numbers below are approximate post-edit.
+
 | System | Lines |
 |---|---|
 | CSS | 16 – 4156 |
 | HTML body / screens | 4170 – 5660 |
 | Battle engine (damage, types, RNG, AI) | 5670 – 21100 |
+| `makeBuild` factory (csvBuilds + designed-build mix) | 6269 |
+| `makeDesignedBuild` + `_DESIGNED_ROLE_CONFIG` | 6139 – 6266 |
+| `classifyArchetype` | 5851 |
 | Damage formula | 16944 |
 | Type chart | 6273 |
 | AI decision | 13512, 12808 (`aiEstimateDmg`), 12869 (`aiThreatScore`) |
 | Confusion/trap/thaw/harvest RNG (Math.random, not seeded) | 18034, 18099, 19118, 21371 |
-| `STORY_EVENTS_RAW` (68 rows) | 22106 – 22183 |
+| `STORY_EVENTS_RAW` (68 rows) | ~22638 |
 | `GYM_LEADER_CITY_NAMES` | 22223 |
 | Difficulty / coin mult | 21900 – 22000 |
-| RNG (`storyRngNext`, seeded LCG) | ~22290 |
+| RNG (`storyRngNext`, seeded LCG) | ~24145 |
 | `migrateStoryPreV15` (catch/PC/balls schema) | 23017 |
 | `SAVE_VER = 15` | 22886 |
 | `getCurrentCityDisplayName` | 24862 |
 | `enterCity`, `renderCityActions` | ~24446, ~24600 |
+| **Build power tier system** (`STORY_BUILD_TIER`, `_storyBuildTierForEvent`, `_storyDowngradeBuildForTier`, `_applyStoryBuildPowerTier`, `_storyBuildTierForProfessor`) | ~24750 (block immediately before `rollTrainerTeam`) |
+| `rollTrainerTeam` + tier hook on both branches | 24938, 25067 |
+| `rollMysteryFigureFinalBossTeam` + tier hook | 25156 |
+| `enterProfessor` choice loop + tier hook | ~26865 |
+| `_pickStarterPartner` (catch tutorial; now uses `makeWildBuild`) | ~26731 |
+| `makeWildBuild` (T1 wild build, stamps `powerTier`) | ~28930 |
 | `showVictoryOverlay` (badge flavor) | 25880 |
 | PC Box (cap 10) | 25934 → 26110 |
 | Safari (entry 800G, 6 encounters, weights g1:5/g2:40/g3:40/g4:15) | 26119 – 26170 |
