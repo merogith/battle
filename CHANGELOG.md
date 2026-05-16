@@ -3,6 +3,34 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Simplify game modes (default = Classic, all mechanics on) 2026-05-16 (`claude/simplify-game-modes-vHlMS`)
+
+### Changed — Battle menu defaults & hidden advanced toggles
+
+- The main battle menu no longer exposes the four mechanic checkboxes
+  (Mega / Z-Move / Dynamax / Tera) or the Classic ↔ Unlimited radio.
+  All four mechanics are **always on**, and **Classic** (one use per
+  team) is the only mode. This removes a confusing pre-battle decision
+  most players ignored.
+- The same toggles still exist in **Story setup**, but are now folded
+  into a collapsible "Advanced (mechanics, mode, item rules)" section
+  that ships closed. The **No Item Run** checkbox lives in the same
+  section. Defaults: all mechanics on, Classic, item run normal.
+- Online PvP inherits the new defaults via the host's `settings`
+  (no contract change). Existing story saves keep whatever they were
+  started with.
+
+### Reason
+
+Two independent knobs (which mechanics are legal, and whether each
+one is once-per-team or once-per-mon) doubled the design surface for
+no real benefit — the build planner and AI were both implicitly
+balanced around "Classic + all on", and the toggles mostly created
+confusing edge cases (e.g. "why is Mega greyed out?"). Hiding them
+behind a story-only advanced section keeps the system available for
+the few players who want it without making it the first thing
+everyone sees.
+
 ## Unreleased — Post-rival catch tutorial (FireRed/Emerald-style) 2026-05-16 (`claude/balance-story-mode-Vf3Vj`)
 
 ### Added — Static "your first wild" catch tutorial
