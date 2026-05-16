@@ -3,7 +3,35 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
-## Unreleased — Foe-matches-player & Professor-stops-at-6 2026-05-16 (`claude/balance-story-mode-Vf3Vj`)
+## Unreleased — Post-rival catch tutorial (FireRed/Emerald-style) 2026-05-16 (`claude/balance-story-mode-Vf3Vj`)
+
+### Added — Static "your first wild" catch tutorial
+
+- Right after the intro rival victory, a one-time event interrupts the
+  next battle: a friendly **Grade-4 wild** (drawn from a curated
+  `STARTER_PARTNER_POOL` of generation-appropriate route fauna — Pidgey,
+  Rattata, Lechonk, Skwovet, etc.) appears with a guaranteed catch
+  (100% on first throw, no flee) and a richer "🎓 CATCH TUTORIAL" tip
+  walking the player through ball multipliers and the percentage math.
+- The Run button is hidden — this is a "must catch" event, modeled on
+  the FireRed Weedle / Emerald Zigzagoon catching demos.
+- Flagged via `sm.catchTutorialDone` so it fires exactly once per save.
+- Net effect: the player leaves the intro-rival zone with **2 mons**
+  guaranteed, so the first wild route, the next basic trainer, and
+  Gym 1 are at least 2v2. No more 1v1 number-cheese opening.
+
+### Reason
+
+After yesterday's pass made foe size match player team size, a player
+who skipped the pre-rival wild route ended up at Gym 1 with just
+their starter — fighting 1v2 against the gym leader's role-floor of
+2 mons. That felt off. The catch tutorial closes the loop: it
+teaches the mechanic, adds flavor pacing between the intro rival and
+Gym 1, and guarantees the player always has at least 2 mons by the
+first gym — without forcing a partner directly into the starter
+flow.
+
+
 
 ### Changed — Foes now match the player's team size
 
