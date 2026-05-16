@@ -9175,7 +9175,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.getElementById('draft-grid').innerHTML = ''; document.getElementById('battle-log').innerHTML = '';
             // Forfeit from Settings during an active story battle — same outcome as loss (not afterBattleReturn, which would re-enter the same event)
             if (wasStoryBattle && window.StoryMode.onBattleEnd) {
-                window.StoryMode.onBattleEnd(false, 'FORFEIT', 'You gave up the battle.');
+                window.StoryMode.onBattleEnd(false, 'FORFEIT', 'You forfeited the battle.');
                 finish();
                 return;
             }
@@ -11837,7 +11837,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 window.StoryMode.openBattleBag(); return;
             }
-            window.showGameAlert("No items in this format.");
+            window.showGameAlert("Battle items are not available in this mode.");
         }
         window.runAway = function() { if(!state.isLocked) { logMsg("You fled!", "dmg"); state.isOver = true; if (state.mode === 'gauntlet') { showEndScreen("GAUNTLET OVER!", `You fled after clearing ${state.score} round${state.score !== 1 ? 's' : ''}!`); } else { showEndScreen("FORFEIT", "You fled from the battle.", false); } } }
 
@@ -25890,7 +25890,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     );
                 } catch (e) {
                     console.warn('[Story] openSummary', e);
-                    try { if (typeof window.showGameAlert === 'function') window.showGameAlert('Could not open summary — see console (F12).'); } catch (_) {}
+                    try { if (typeof window.showGameAlert === 'function') window.showGameAlert('Could not open Pokémon summary.'); } catch (_) {}
                 }
             });
         }
@@ -25910,8 +25910,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _markFacilitySeen('artifacts');
             const el = document.getElementById('story-artifact-hall-list');
             if (el) {
-                const _bothSidesBadgeHtml = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Relic effects apply to both you and your opponents while enabled">⚠ Affects both sides</span>';
-                const _playerOnlyBadgeHtml = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="Coin reward and curse both affect your side only">⚠ Affects your team only</span>';
+                const _bothSidesBadgeHtml = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="This relic affects both you and your opponents while enabled">◆ Affects both sides</span>';
+                const _playerOnlyBadgeHtml = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="The coin reward and curse only affect your team">◆ Your team only</span>';
                 el.innerHTML = (sm.artifacts || []).map(id => {
                     const art = ARTIFACT_BY_ID[id];
                     const off = (sm.artifactsDisabled || []).includes(id);
@@ -25928,11 +25928,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             ${sidesBadge}
                         </div>
                         <div style="font-size:11px;color:#aaa;margin:6px 0;">${desc}</div>
-                        <button onclick="window.StoryMode.toggleArtifactDisabled('${id}')" style="font-size:11px;padding:4px 10px;">
-                            ${off ? 'Enable (inactive now)' : 'Disable for battles'}
+                        <button onclick="window.StoryMode.toggleArtifactDisabled('${id}')" style="font-size:11px;padding:4px 10px;" title="${off ? 'Turn this relic back on for battles' : 'Turn this relic off — it won\'t affect battles until re-enabled'}">
+                            ${off ? 'Enable Relic' : 'Disable Relic'}
                         </button>
                     </div>`;
-                }).join('') || '<div style="color:#555;font-size:12px;">No artifacts owned.</div>';
+                }).join('') || '<div style="color:#555;font-size:12px;padding:12px;">No relics owned. Visit the Relic Annex to buy some.</div>';
             }
             showScreen('screen-story-artifacts');
         }
@@ -26827,7 +26827,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 catch (e) {
                     console.error('[showBattleIntro] callback threw — recovering to city:', e);
                     try { if (window.StoryMode && typeof window.StoryMode.afterBattleReturn === 'function') window.StoryMode.afterBattleReturn(); } catch (e2) {}
-                    try { window.showGameAlert && window.showGameAlert('Could not start that battle (corrupt team data). Returned to city — try the fight again from the map.'); } catch (e2) {}
+                    try { window.showGameAlert && window.showGameAlert('Could not start the battle (corrupted team data). Returning to the city — try again from the map.'); } catch (e2) {}
                 }
             }, introMs);
         }
@@ -27219,7 +27219,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _pcRefresh();
             showScreen('screen-story-pokemoncenter');
             try { _storyShowOneTimeTip('center',
-                'Pokémon Center — party of 6, PC storage of 10. Battles auto-heal between fights, so the Center is for managing your roster. The Underground tab sells Pokémon for gold; starters and the boss-arc capture are bonded for life and cannot be sold.'); } catch (e) {}
+                'Pokémon Center\n\n• Manage your team (party of 6) and PC (10 slots).\n• Your party fully heals between every battle.\n• PC Storage: deposit, withdraw, or release Pokémon.\n• The Underground: sell Pokémon for gold.\n• Starters and bonded Pokémon cannot be sold.'); } catch (e) {}
         }
         function _pcRefresh() {
             const goldEl = document.getElementById('story-pc-gold');
@@ -27511,7 +27511,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ${btn('⛓', `Battle Frontier <span style="color:#888;font-size:9px;">(best: ${bestStreak})</span>`, 'window.StoryMode.enterFrontierHub()', '#ff5722')}
                     ${btn('🥷', 'Mystery Figure', 'window.StoryMode.crucibleMysteryFight()', '#ce93d8')}
                     ${btn('🌀', 'Rival Rematch', 'window.StoryMode.crucibleRivalFight()', '#90caf9')}
-                    ${btn('🏛️', 'League Run (E1→Champ)', 'window.StoryMode.crucibleLeagueRun()', '#ffd54f')}
+                    ${btn('🏛️', 'League Run (E1 → Champion)', 'window.StoryMode.crucibleLeagueRun()', '#ffd54f')}
                     ${btn('🥊', 'Random Gym Rematch', 'window.StoryMode.crucibleGymPick()', '#a5d6a7')}
                     ${btn('🌿', 'Wild Encounter', 'window.StoryMode.crucibleWildEncounter()', '#aed581')}
                 </div>
@@ -27562,7 +27562,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function crucibleWildEncounter() {
             const name = weightedPickFromGrades({ g1: 10, g2: 30, g3: 40, g4: 20 }, storySettingsGens());
             if (!name) {
-                try { window.showGameAlert && window.showGameAlert('Wild pool is empty for enabled gens.'); } catch (e) {}
+                try { window.showGameAlert && window.showGameAlert('No wild Pokémon available for your enabled generations.'); } catch (e) {}
                 return;
             }
             const build = makeWildBuild(name);
@@ -27592,8 +27592,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const topHs = (f.highscores || []).slice(0, 10);
             let html = '';
             html += `<div style="padding:12px;background:linear-gradient(180deg,rgba(40,16,4,0.85) 0%,rgba(16,8,4,0.85) 100%);border:1px solid #8d3a1a;color:#ffab40;font-size:11px;line-height:1.6;margin-bottom:14px;">
-                <div style="font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;color:#ff7043;">Endless ladder.</div>
-                <div style="color:#bcaaa4;">Six-on-six. Foe stats and grade pool scale every round. One loss ends the streak — beat your best.</div>
+                <div style="font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;color:#ff7043;">Endless Ladder</div>
+                <div style="color:#bcaaa4;">6v6 battles. Foe stats and grades scale up each round. A single loss ends the streak.</div>
             </div>`;
             html += `<div style="display:flex;justify-content:space-between;align-items:center;gap:14px;padding:10px;background:rgba(8,10,16,0.7);border:1px solid #333;margin-bottom:14px;">
                 <div><div style="font-size:9px;color:#888;letter-spacing:0.06em;text-transform:uppercase;">Current Streak</div><div style="font-size:22px;color:#fff;font-weight:bold;">${f.currentStreak | 0}</div></div>
@@ -27603,14 +27603,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (isActive) {
                 html += `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;">
                     <button type="button" onclick="window.StoryMode.frontierStartNext()" style="padding:12px;background:linear-gradient(180deg,#ff5722 0%,#bf360c 100%);border:1px solid #ff8a65;color:#fff;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;">⚔ Begin Round ${round}</button>
-                    <button type="button" onclick="window.StoryMode.frontierSurrender()" style="padding:8px;background:rgba(0,0,0,0.4);border:1px solid #555;color:#aaa;font-family:inherit;font-size:11px;cursor:pointer;">🏳️ Surrender (lock streak ${f.currentStreak | 0})</button>
+                    <button type="button" onclick="window.StoryMode.frontierSurrender()" style="padding:8px;background:rgba(0,0,0,0.4);border:1px solid #555;color:#aaa;font-family:inherit;font-size:11px;cursor:pointer;" title="End the run and save your current streak">🏳️ Surrender (lock streak ${f.currentStreak | 0})</button>
                 </div>`;
             } else {
-                html += `<button type="button" onclick="window.StoryMode.frontierStartRun()" style="display:block;width:100%;padding:12px;background:linear-gradient(180deg,#ff5722 0%,#bf360c 100%);border:1px solid #ff8a65;color:#fff;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;margin-bottom:18px;">⚔ Start Run</button>`;
+                html += `<button type="button" onclick="window.StoryMode.frontierStartRun()" style="display:block;width:100%;padding:12px;background:linear-gradient(180deg,#ff5722 0%,#bf360c 100%);border:1px solid #ff8a65;color:#fff;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;margin-bottom:18px;">⚔ Begin Battle Frontier</button>`;
             }
             html += `<h4 style="color:#ffab40;margin:0 0 6px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Top 10 Streaks</h4>`;
             if (!topHs.length) {
-                html += `<div style="color:#888;font-size:11px;padding:8px;">No scores yet. Be the first.</div>`;
+                html += `<div style="color:#888;font-size:11px;padding:8px;">No scores yet. Set the first one!</div>`;
             } else {
                 html += `<div style="display:flex;flex-direction:column;gap:4px;">`;
                 topHs.forEach((hs, i) => {
@@ -27635,13 +27635,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _ensureFrontierState();
             if (!sm.frontier.active) return;
             if (!sm.team || !sm.team.length) {
-                try { window.showGameAlert && window.showGameAlert('You need at least one Pokémon to enter the Frontier. Withdraw from the PC first.'); } catch (e) {}
+                try { window.showGameAlert && window.showGameAlert('You need at least one Pokémon in your party. Withdraw from the PC first.'); } catch (e) {}
                 return;
             }
             const round = sm.frontier.currentRound | 0;
             const enemyTeam = _rollFrontierTeam(round);
             if (!enemyTeam.length) {
-                try { window.showGameAlert && window.showGameAlert('Frontier pool is empty for enabled gens.'); } catch (e) {}
+                try { window.showGameAlert && window.showGameAlert('No Battle Frontier opponents available for your enabled generations.'); } catch (e) {}
                 return;
             }
             sm.crucibleBattleSource = 'frontier';
@@ -27738,13 +27738,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         return;
                     }
                     sm.crucibleLeagueRun = null;
-                    try { window.showGameAlert && window.showGameAlert('League run cleared!'); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('League Run cleared! Well done.'); } catch (e) {}
                 } else {
                     sm.crucibleLeagueRun = null;
-                    try { window.showGameAlert && window.showGameAlert('League run ended.'); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('League Run ended.'); } catch (e) {}
                 }
             } else {
-                try { window.showGameAlert && window.showGameAlert(won ? 'Victory.' : 'Defeated.'); } catch (e) {}
+                try { window.showGameAlert && window.showGameAlert(won ? 'Victory!' : 'Defeated.'); } catch (e) {}
             }
             enterCrucible();
         }
@@ -27868,7 +27868,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.bossArc.boss || !sm.bossArc.boss.name) {
                 sm.bossArc.boss = _bossArcRollLegendary();
                 if (!sm.bossArc.boss) {
-                    try { window.showGameAlert && window.showGameAlert('The legendary pool is empty — check your enabled generations.'); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('No legendary Pokémon available for your enabled generations.'); } catch (e) {}
                     return;
                 }
             }
@@ -28561,11 +28561,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             body.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;padding:14px 6px;">
                 <div style="text-align:center;font-size:13px;color:#fff;line-height:1.5;">
                     Gotcha! <strong>${_esc(caught.name)}</strong> was caught.<br/>
-                    <span style="color:#aed581;font-size:11px;">Your party is full (6/6). Send the newcomer to the PC, or swap with a team member.</span>
+                    <span style="color:#aed581;font-size:11px;">Your party is full. Send the new Pokémon to PC, or swap with a team member.</span>
                 </div>
                 <button type="button" onclick="window.StoryMode.catchResolveSendToPC()" style="padding:10px;background:rgba(20,28,40,0.6);border:1px solid #ce93d8;color:#ce93d8;font-family:inherit;font-size:12px;cursor:pointer;">📦 Send ${_esc(caught.name)} to PC</button>
-                <div style="font-size:10px;color:#888;letter-spacing:0.06em;text-transform:uppercase;text-align:center;margin-top:4px;">— or pick a teammate to swap to PC —</div>
-                <div style="display:flex;flex-direction:column;gap:5px;">${partyList}</div>
+                <div style="font-size:10px;color:#888;letter-spacing:0.06em;text-transform:uppercase;text-align:center;margin-top:4px;">or swap with a team member</div>
+                <div style="display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;">${partyList}</div>
             </div>`;
             const runBtn = document.getElementById('story-catch-run-btn');
             if (runBtn) runBtn.style.display = 'none';
@@ -28605,8 +28605,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const body = document.getElementById('story-catch-body');
             if (body) {
                 body.innerHTML = `<div style="margin:auto;text-align:center;padding:24px 12px;display:flex;flex-direction:column;gap:16px;align-items:center;">
-                    <div style="font-size:13px;color:#fff;line-height:1.5;max-width:380px;">${_esc(message)}</div>
-                    <button type="button" onclick="window.StoryMode.catchContinue()" style="padding:10px 24px;color:#aed581;border-color:#aed581;font-family:inherit;">Continue →</button>
+                    <div style="font-size:13px;color:#fff;line-height:1.55;max-width:min(90vw,380px);white-space:pre-line;">${_esc(message)}</div>
+                    <button type="button" onclick="window.StoryMode.catchContinue()" style="padding:10px 24px;background:rgba(20,28,40,0.6);color:#aed581;border:1px solid #aed581;font-family:inherit;cursor:pointer;">Continue →</button>
                 </div>`;
             }
             const runBtn = document.getElementById('story-catch-run-btn');
@@ -30067,7 +30067,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.bossArc.available = true;
                 if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
                 sm.balls.master = (sm.balls.master | 0) + 1;
-                try { window.showGameAlert && window.showGameAlert('A haggard Underground broker presses a Master Ball into your hand.\n\n"Specimen 0001. Sixty years caged. Three brokers across the region will give you what you need. End it — or claim it."\n\n🟣 Master Ball added to your inventory. Visit Pokémon Centers in Cities 2, 5, and 8 to find the three brokers.'); } catch (e) {}
+                try { window.showGameAlert && window.showGameAlert('The Underground broker hands you a Master Ball.\n\n"Specimen 0001 has been held for decades. Visit the brokers in Cities 2, 5, and 8 to find it."\n\n🟣 Master Ball added to your inventory.'); } catch (e) {}
             }
             // Post-HoF orientation tip (once across all runs) — without it players often
             // miss that the Crucible / Battle Frontier / boss arc even exist.
