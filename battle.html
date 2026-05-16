@@ -26821,13 +26821,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 cardEl.innerHTML = '';
                 sm.team.forEach((t, i) => {
                     const g = t.name ? getMonGrade(t.name, getBST(t.name)) : 4;
+                    const bonded = !!t.unsellable;
                     const slot = document.createElement('div');
                     slot.className = `story-team-slot tier-${g}`;
-                    slot.style.cssText = 'cursor:pointer;min-width:130px;padding:10px;transition:all 0.15s;';
+                    slot.style.cssText = bonded
+                        ? 'opacity:0.4;cursor:not-allowed;min-width:130px;padding:10px;'
+                        : 'cursor:pointer;min-width:130px;padding:10px;transition:all 0.15s;';
+                    if (bonded) slot.title = t.starter ? 'Starter — bonded for life' : 'Bonded — cannot be replaced';
                     slot.innerHTML = `
                         <img src="${getSprite(t.name,false)}" onerror="this.src=''" style="width:56px;height:56px;image-rendering:pixelated;">
                         <div style="font-size:12px;"><b>${t.name}</b><br><span class="tier-badge bg-tier-${g}" style="font-size:9px;" title="Power tier (1–4)">T${g}</span></div>`;
-                    slot.onclick = () => window.StoryMode._mysteryDoSwap(i);
+                    if (!bonded) slot.onclick = () => window.StoryMode._mysteryDoSwap(i);
                     cardEl.appendChild(slot);
                 });
                 btnsEl.innerHTML = '';
@@ -26871,9 +26875,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (_profSelectedIdx === null || !_pendingProfChoices) return;
             const ch = _pendingProfChoices[_profSelectedIdx];
             if (!ch || slotIdx < 0 || slotIdx >= sm.team.length) return;
+            const target = sm.team[slotIdx];
+            if (target && target.unsellable) return;
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             const cityIdx = getCityIndex(ev);
-            const replaced = sm.team[slotIdx].name;
+            const replaced = target.name;
             sm.team[slotIdx] = { name: ch.name, build: ch.build, id: 'm_'+Math.random().toString(36).slice(2,10) };
             if (!sm.profUsed) sm.profUsed = {};
             sm.profUsed[cityIdx] = true;
