@@ -23678,10 +23678,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const blurb = _cityBlurbFor(cityIdx);
             const lines = _cityArrivalLines(cityIdx);
             const bgUrls = (getStoryBgManifest().cityUrls || DEFAULT_STORY_BG_MANIFEST.cityUrls);
-            const bg = bgUrls.length ? bgUrls[(cityIdx | 0) % bgUrls.length] : '';
+            const bg = (bgUrls && bgUrls.length) ? bgUrls[(cityIdx | 0) % bgUrls.length] : '';
             const spriteFile = _cityArrivalSpeakerSpriteFile(cityIdx);
             const spriteSrc = (typeof getTrainerSprite === 'function') ? getTrainerSprite({ spriteFile }) : '';
             const ov = document.createElement('div');
+            ov.setAttribute('role', 'dialog');
+            ov.setAttribute('aria-modal', 'true');
+            ov.setAttribute('aria-label', 'Now Arriving — ' + cityName);
             ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;box-sizing:border-box;cursor:pointer;';
             if (bg) {
                 ov.style.backgroundImage = 'linear-gradient(180deg, rgba(4,6,12,0.72) 0%, rgba(4,6,12,0.94) 100%), url("' + bg + '")';
@@ -23704,13 +23707,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     '<div class="story-dialog-nameplate">City Guide</div>' +
                     '<div class="story-dialog-box">' + lineHtml + '</div>' +
                 '</div>' +
-                '<button type="button" style="margin-top:6px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">Enter the City →</button>';
+                '<button type="button" data-arrival-dismiss="1" style="margin-top:6px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">Enter the City →</button>';
+            let dismissed = false;
+            let escHandler = null;
             const dismiss = function () {
+                if (dismissed) return;
+                dismissed = true;
+                if (escHandler) { try { document.removeEventListener('keydown', escHandler); } catch (e) {} }
                 try { ov.remove(); } catch (e) {}
                 try { onDone && onDone(); } catch (e) { console.error('[Story] arrival callback', e); }
             };
-            ov.querySelector('button').onclick = function (e) { e.stopPropagation(); dismiss(); };
+            const btn = ov.querySelector('button[data-arrival-dismiss="1"]');
+            if (btn) btn.onclick = function (e) { e.stopPropagation(); dismiss(); };
             ov.onclick = function (e) { if (e.target === ov) dismiss(); };
+            escHandler = function (e) { if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); dismiss(); } };
+            document.addEventListener('keydown', escHandler);
             document.body.appendChild(ov);
         }
 
@@ -25876,23 +25887,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (rivalGateActive) {
                 quoteText += '\n\n⚔ Tip: Your rival is waiting at the route gate. Heal and prepare before challenging them.';
             }
-            // Must-do beacon — when the Professor is on the board and unvisited, surface
-            // it at the top of the dialog so the player knows the gate. Mystery-gate
-            // cities get their own copy; otherwise it's the standard Professor prompt.
-            if (hasProf && !profUsedHere) {
-                const _profMust = legendMysteryGate
-                    ? '⚠ Must-do: Talk to the Mystery Figure before leaving town.'
-                    : (hasTeamRoom
-                        ? '⚠ Must-do: Visit the Professor — your next partner is waiting.'
-                        : '⚠ Must-do: Visit the Professor — they have a partner to swap in.');
-                quoteText = _profMust + '\n\n' + quoteText;
-            }
             if (quoteEl) quoteEl.textContent = quoteText;
 
             // City Tips strip — short, actionable recommendations that jump to the right facility.
             const tipsEl = document.getElementById('story-city-tips');
             if (tipsEl) {
                 const tips = [];
+                // Must-do chip — the Professor is a hard gate on Continue Route / Gym
+                // (see routeBlockedByProfessor / gymBlocked below). Surface it as an
+                // urgent, clickable chip so the player can jump straight to the lab
+                // instead of hunting through the action buttons.
+                if (hasProf && !profUsedHere) {
+                    tips.push({
+                        iconPath: 'icons/story/' + (legendMysteryGate ? 'story_mystery.png' : 'story_professor.png') + '?v=20260516',
+                        label: legendMysteryGate
+                            ? 'Required: Talk to the Mystery Figure'
+                            : 'Required: Visit the Professor',
+                        click: 'window.StoryMode.enterProfessor()',
+                        urgent: true,
+                    });
+                }
                 // Always-on "what's next" preview: gives a clear answer to the
                 // ten-second "what now?" question on entering any city.
                 if (_storyNextBat) {
