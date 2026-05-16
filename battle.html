@@ -25808,6 +25808,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (_vtN > 0 && actions.includes('EV Trainer') && sm.team.length) {
                     tips.push({ icon: '💊', label: `${_vtN} Vitamin Pack${_vtN===1?'':'s'} — free EV preset`, click: 'window.StoryMode.enterEVTrainer()' });
+                } else if (_vtN > 0 && !actions.includes('EV Trainer') && sm.team.length) {
+                    // No EV Trainer in this city — quiet reminder so the player remembers
+                    // the unspent voucher when planning their route. Opens the bag so they
+                    // can re-read the tooltip and decide.
+                    tips.push({ icon: '💊', label: `${_vtN} Vitamin Pack${_vtN===1?'':'s'} saved — use at next EV Trainer`, click: 'window.StoryMode.openCityBag()' });
                 }
                 tipsEl.innerHTML = tips.slice(0, 4).map(t =>
                     `<button type="button" class="story-city-tip${t.urgent ? ' urgent' : ''}" onclick="${t.click}"><span class="story-city-tip-ico">${t.icon}</span><span>${t.label}</span></button>`
@@ -30469,7 +30474,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // from gym victories and Pokédex milestones.
             const _voucherItems = [
                 { id:'rareCandy', name:'🍬 Rare Candy', desc:'Use at the Stone Sage to evolve any party Pokémon for free. Earned from gym leaders + dex milestones.' },
-                { id:'vitamin',   name:'💊 Vitamin Pack', desc:'Use at the EV Trainer to apply any preset for free. Earned from gym leaders + dex milestones. EV training stays with the Pokémon forever — even in the PC. Lost only if you release or sell them.' }
+                { id:'vitamin',   name:'💊 Vitamin Pack', desc:'Permanently trains stat boosts (e.g. +252 Atk / +252 Speed) into one Pokémon for free at the EV Trainer — same effect as paying 5,000G. Earned from gym leaders + Pokédex milestones. Training stays with the mon through PC, evolution, the works. Only lost on release or sale.' }
             ];
             _voucherItems.forEach(item => {
                 const qty = (sm.inventory && sm.inventory[item.id]) | 0;
@@ -32348,18 +32353,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { _storyShowFacilityQuote('screen-story-evtrainer', 'evTrainer'); } catch (e) {}
         }
 
+        function _evTrainerHelpBannerHtml() {
+            const vN = (sm.inventory && sm.inventory.vitamin) | 0;
+            const vitaLine = vN > 0
+                ? `<span style="color:#f8bbd0;font-weight:bold;">💊 ${vN} Vitamin Pack${vN===1?'':'s'} ready</span> — tap the pink button on any preset to apply it free.`
+                : `<span style="color:#9aa3b0;">No Vitamin Packs yet.</span> Each preset costs ${EVTRAINER_COST.toLocaleString()}G; Vitamin Packs (from gym victories &amp; Pokédex milestones) apply one for free.`;
+            return `<div style="padding:10px 12px;margin-bottom:10px;background:linear-gradient(180deg,rgba(28,40,28,0.7) 0%,rgba(14,22,14,0.7) 100%);border:1px solid #3a5a3a;color:#cfd7c8;font-size:11px;line-height:1.55;">
+                <div style="font-weight:bold;color:#9ccc65;margin-bottom:4px;">🏋️ What this does</div>
+                <div>Effort Values (EVs) are <strong>permanent stat boosts</strong> trained into one Pokémon. Pick a preset (e.g. <em>Physical Sweeper</em> = +Atk/+Spe) to raise that mon's stats for the rest of the run. Cap: 252 per stat, 510 total. Training travels with the Pokémon through party, PC, and evolution — only lost on release or sale.</div>
+                <div style="margin-top:6px;">${vitaLine}</div>
+            </div>`;
+        }
+
         function renderEVTrainerTeam() {
             const el = document.getElementById('story-evtrainer-team');
             const goldEl = document.getElementById('story-evtrainer-gold');
             if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             if (!el) return;
             if (!sm.team || !sm.team.length) {
-                el.innerHTML = '<div style="color:#555;font-size:12px;">No Pokémon in your party.</div>';
+                el.innerHTML = _evTrainerHelpBannerHtml() + '<div style="color:#555;font-size:12px;">No Pokémon in your party.</div>';
                 return;
             }
             // Reset cache then render
             for (const k in _evTrainerMetaCache) delete _evTrainerMetaCache[k];
-            el.innerHTML = sm.team.map((t, idx) => _renderEVTrainerMonCard(t, idx)).join('');
+            el.innerHTML = _evTrainerHelpBannerHtml() + sm.team.map((t, idx) => _renderEVTrainerMonCard(t, idx)).join('');
         }
 
         function _evTrainerRenderPresetButton(idx, p, currentEvs, cantAfford) {
@@ -32374,7 +32391,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const safeId = String(p.id).replace(/'/g, "\\'");
             const vitaCount = (sm.inventory && sm.inventory.vitamin) | 0;
             const vitaBtn = hasVitamin
-                ? `<button type="button" class="story-tutor-btn" ${vitaDisabled ? 'disabled' : ''} onclick="window.StoryMode.evTrainerApplyPresetWithVitamin(${idx},'${safeId}')" title="Use 1 Vitamin Pack (you have ${vitaCount}) — free preset, saves ${EVTRAINER_COST.toLocaleString()}G" style="margin-left:6px;color:#f8bbd0;border-color:#f8bbd0;">💊 Vitamin <span style="font-size:9px;color:#aaa;">(${vitaCount})</span></button>`
+                ? `<button type="button" class="story-tutor-btn" ${vitaDisabled ? 'disabled' : ''} onclick="window.StoryMode.evTrainerApplyPresetWithVitamin(${idx},'${safeId}')" title="Use 1 Vitamin Pack (you have ${vitaCount}) — free preset, saves ${EVTRAINER_COST.toLocaleString()}G" style="margin-left:6px;color:#f8bbd0;border-color:#f8bbd0;">💊 Use Vitamin <span style="font-size:9px;color:#aaa;">(${vitaCount} left)</span></button>`
                 : '';
             return `<div class="story-tutor-choice"${activeFlag}><div class="story-tutor-choice-actions">`
                 + `<button type="button" class="story-tutor-btn" ${dis} onclick="window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')">`
