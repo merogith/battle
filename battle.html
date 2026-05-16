@@ -23885,11 +23885,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const len = Array.isArray(sm.team) ? sm.team.length : 0;
             if (len >= 4) sm.partyEverReached4 = true;
             if (len >= 2) sm.partyEverReached2 = true;
-            // Spec §12 fix: a Gym 1/2 fight rolls 100% G3 trainers, so route trainers
-            // between gyms can't keep rolling G4 — that made the gym feel easier than
-            // the road to it. The strip now triggers once the player ever had 2+
-            // Pokémon (monotonic), not 4+.
-            if (!sm.partyEverReached4 && !sm.partyEverReached2) return gw;
+            // Pre-Gym-1 route is the player's "easy ramp" — the first basic trainer
+            // after the intro rival is meant to roll a G4 team (the row's gradeWeights
+            // are already {g4:100}). Stripping G4 the instant the catch tutorial fills
+            // slot 2 promoted that fight to G3, which felt overtuned. Gate the strip
+            // on the first badge: from Gym 1 onward, route trainers between gyms still
+            // can't fall below the gym's grade floor.
+            if ((sm.badges | 0) < 1) return gw;
             const g1 = gw.g1 || 0, g2 = gw.g2 || 0, g3 = gw.g3 || 0, g4 = gw.g4 || 0;
             if (g4 <= 0) return { g1, g2, g3, g4: 0 };
             return { g1, g2, g3: g3 + g4, g4: 0 };
@@ -27030,7 +27032,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             applyMechanicsToSettings();
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             if (ev && ev[1] === 'Battle' && sm.currentEnemyLock && sm.currentEnemyLock.eventIdx === sm.eventIndex) {
-                enterBattleEvent(ev);
+                // Retry replays the SAME trainer fight. The route wild / catch
+                // tutorial / roaming legendary already happened on the first
+                // attempt (and their per-eventIdx flags are set), so skip the
+                // pre-battle interrupt block entirely — otherwise a desync in
+                // any of those flags could re-fire a wild the player has
+                // already resolved.
+                enterBattleEvent(ev, true);
                 return;
             }
             processNextEvent();
@@ -27994,6 +28002,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         let _catchState = null;
         let _safariSession = null;
 
+        /** A battle is on a "new route" when it sits between two different City
+         *  rows in STORY_EVENTS_RAW — i.e. leaving City N to reach City N+1.
+         *  Only the *first* battle of such a route node fires a wild; back-to-back
+         *  route battles ride on a single wild interrupt, and in-city sequences
+         *  (gym trainer → gym leader → back to the same city) get none. This
+         *  matches the design doc's "between consecutive Battles that cross a
+         *  city boundary" wording. */
+        function _isFirstBattleOfNewRoute(battleIdx) {
+            const prev = STORY_EVENTS_RAW[battleIdx - 1];
+            if (!prev || prev[1] !== 'City') return false;
+            const prevCityName = String(prev[2] || '');
+            for (let i = battleIdx + 1; i < STORY_EVENTS_RAW.length; i++) {
+                const r = STORY_EVENTS_RAW[i];
+                if (!r) continue;
+                if (r[1] === 'City') return String(r[2] || '') !== prevCityName;
+                if (r[1] === 'Hall of Fame') return true;
+            }
+            return false;
+        }
+
         function _shouldFireWildBeforeBattle(battleIdx) {
             if (battleIdx == null) return false;
             if (sm.wildSeenByEventIdx && sm.wildSeenByEventIdx[battleIdx]) return false;
@@ -28001,6 +28029,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!row || row[1] !== 'Battle') return false;
             // M4 boss arc (post-HoF Mystery) handles its own catch step; no route wild here.
             if (String(row[2] || '') === 'Mystery Figure') return false;
+            // Intro rival is a starter duel — no wild prefix. The catch tutorial
+            // (fired after the intro rival victory) is the player's first catch
+            // experience; the random route wild starts on the *next* route node.
+            if ((row[0] | 0) === STORY_RIVAL_ROW_INTRO) return false;
+            // Only fire on the first battle of a new route segment (city → different city).
+            // Eliminates the pre-every-battle wild repetition; in-city battles (gym trainer,
+            // gym leader) get no wild, and back-to-back route battles share one.
+            if (!_isFirstBattleOfNewRoute(battleIdx)) return false;
             return true;
         }
         function _markWildSeen(battleIdx) {
@@ -28068,9 +28104,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return b;
         }
 
+        /** Wild species roll — Math.random (NOT seeded story RNG), so retries
+         *  / save-reload / repeated routes each surface a different species.
+         *  `weightedPickFromGrades` uses storyRngNext when the run is active,
+         *  which made route wilds feel deterministic and repetitive. The grade
+         *  weights themselves still drive the tier mix; only the actual species
+         *  pick is freed from the seeded sequence. */
+        function _pickWildSpeciesRandom(gradeWeights, enabledGens) {
+            const total = (gradeWeights.g1||0)+(gradeWeights.g2||0)+(gradeWeights.g3||0)+(gradeWeights.g4||0);
+            if (total === 0) return null;
+            let r = Math.random() * total;
+            let chosenGrade = 4;
+            r -= (gradeWeights.g4||0); if (r <= 0) { chosenGrade = 4; }
+            else { r -= (gradeWeights.g3||0); if (r <= 0) { chosenGrade = 3; }
+            else { r -= (gradeWeights.g2||0); if (r <= 0) { chosenGrade = 2; }
+            else { chosenGrade = 1; } } }
+            const pool = buildGradePool(enabledGens, chosenGrade);
+            if (pool.length) return pool[Math.floor(Math.random() * pool.length)];
+            const all = [];
+            for (let g = 1; g <= 4; g++) all.push(...buildGradePool(enabledGens, g));
+            return all.length ? all[Math.floor(Math.random() * all.length)] : null;
+        }
+
         function rollWildEncounter(gradeWeights, enabledGens) {
             const shifted = _storyShiftGradeOneTierWeaker(gradeWeights);
-            const name = weightedPickFromGrades(shifted, enabledGens);
+            const name = _pickWildSpeciesRandom(shifted, enabledGens);
             if (!name) return null;
             const build = makeWildBuild(name);
             if (!build) return null;
