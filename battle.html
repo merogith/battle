@@ -22650,7 +22650,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Shop item definitions — Pokémart
         const POKEMART_ITEMS = [
-          { id:'pokeBall',      name:'Poké Ball',     price:200,  desc:'A standard ball for catching wild Pokémon.', kind:'ball', ballKey:'poke', battleBag:false },
+          { id:'pokeBall',      name:'Poké Ball',     price:300,  desc:'A standard ball for catching wild Pokémon.', kind:'ball', ballKey:'poke', battleBag:false },
           { id:'maxPotion',     name:'Max Potion',    price:1000, desc:'Fully restores HP of one Pokémon.',   effect:'healFull' },
           { id:'fullRestore',   name:'Full Restore',  price:1500, desc:'Fully restores HP & cures status.',   effect:'fullRestore' },
           { id:'fullHeal',      name:'Full Heal',     price:300,  desc:'Cures all status conditions.',        effect:'cureStatus' },
@@ -23311,7 +23311,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Cross-run meta. Holds permanent achievements that survive abandon/clear.
         // Today: completedRuns + lastClearSeed. Future: Pokédex carryover, totals, marks.
         const SAVE_KEY_META = 'pbs_story_meta';
-        const SAVE_VER = 15;
+        const SAVE_VER = 16;
         function readStoryMeta() {
             try {
                 const raw = localStorage.getItem(SAVE_KEY_META);
@@ -23520,6 +23520,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         slot.id = 'm_' + Math.random().toString(36).slice(2, 10);
                     }
                 }
+            }
+        }
+        /** v16: post-rival catch tutorial introduced. Existing saves past the
+         *  intro rival shouldn't have the tutorial event fired at them mid-run,
+         *  so mark it done if eventIndex has already advanced beyond row 1
+         *  (the intro rival slot). New saves leave the flag undefined → falsy
+         *  → tutorial fires after they win the intro rival. */
+        function migrateStoryPreV16() {
+            if (typeof sm.catchTutorialDone !== 'boolean') {
+                sm.catchTutorialDone = (sm.eventIndex | 0) > 1;
             }
         }
         /** v9: intro Rival inserted after City0, so timeline positions after City0 move forward one slot. */
@@ -23736,6 +23746,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (_loadedVer < 15) {
                     try { migrateStoryPreV15(); } catch (e) { console.warn('[Story] v15 catch/PC schema migrate', e); }
+                }
+                if (_loadedVer < 16) {
+                    try { migrateStoryPreV16(); } catch (e) { console.warn('[Story] v16 catch tutorial migrate', e); }
                 }
                 const _cap = Math.max(0, STORY_EVENTS_RAW.length - 1);
                 if (sm.eventIndex < 0 || sm.eventIndex > _cap) {
@@ -25151,7 +25164,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const profUsedHere = !!(sm.profUsed && sm.profUsed[cityIdx]);
             const swapMode = hasProf && !hasTeamRoom && !profUsedHere;
             const legendMysteryGate = swapMode && _legendaryGateHere;
-            const mysteryMode = swapMode; // legacy alias used elsewhere in this function
             const _storyNextBatIdx = storyEffectiveNextBattleIndexFromHub();
             const _storyNextBat = _storyNextBatIdx >= 0 ? STORY_EVENTS_RAW[_storyNextBatIdx] : null;
             const _storyNextBatId = _storyNextBat ? (_storyNextBat[0] | 0) : -1;
@@ -25437,8 +25449,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _push('recover', makeActionBtn('🧨 The Crucible — All facilities + Battle Frontier','crucible','window.StoryMode.enterCrucible()','center',{ meta: _withNew('crucible', [{label:'Post-game',tone:'info'}]) }));
             }
             const _partyN = sm.team.length;
+            const _partyCapNow = _partyCap;
+            const _badgesNow = (sm.badges | 0);
+            const _partyHint = _partyCapNow < 6
+                ? ` <span style="font-size:9px;color:#888;">(next slot at ${Math.min(8, _badgesNow + 1)} ${_badgesNow + 1 === 1 ? 'badge' : 'badges'})</span>`
+                : '';
             const _partyLabel = _partyN
-                ? `Party — Team & Order (${_partyN}/6)`
+                ? `Party — Team & Order (${_partyN}/${_partyCapNow})${_partyHint}`
                 : 'Party — Empty (Visit Professor)';
             _push('recover', makeActionBtn(_partyLabel, 'party', 'window.StoryMode.openPartyModal()', 'party'));
             if (actions.includes('Link Station')) {
@@ -26376,54 +26393,63 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 msg:'The Champion bows. "These are yours by right." +2 Ultra Balls, +1 Rare Candy, +2 Vitamin Packs.' }
         };
 
-        // Foe party size now *matches* the player's active team size, with two
-        // exceptions:
-        //   1. Story finales (Champion, Elite Four, Victory Road, post-HoF
-        //      Mystery Figure) always field a full 6 — the climactic battles
-        //      shouldn't shrink because the player runs lean.
-        //   2. Each role has a *role floor* so a 1-mon trainer who hasn't
-        //      caught a wild yet still gets a meaningful pre-Gym-1 fight.
-        //      Floors are tiny (1 for trainers, 2 for gym leaders / rivals)
-        //      so the player's choice of party size is honored, not overridden.
-        // This replaces the old "predictable curve by badges" because the
-        // player's party can grow off-schedule via wild catching — matching
-        // the foe to the actual player team is the only way to keep every
-        // fight feel like a fair duel run-to-run.
-        function _storyEnemyPartySize(event, badges, playerTeamLen) {
+        // Foe party size follows the **badge curve**: `min(6, 2 + badges)`.
+        // Both player cap and foe size are keyed off the same curve, so a
+        // player who keeps their team at cap fights perfectly even fights.
+        // A player who falls behind cap (skipped a Professor, lost mons)
+        // fights at a soft disadvantage — incentive to engage with the
+        // catching / lab-companion systems.
+        //
+        // Two exceptions to the curve:
+        //   1. Story finales (Champion / Elite Four / Victory Road / post-HoF
+        //      Mystery Figure) always field a full 6.
+        //   2. Intro rival is pure player-match (1v1 starter duel) — the
+        //      catch tutorial fires *after* the rival, so player has just
+        //      the starter at the time of fight.
+        //
+        // Expected sequencing for a non-catcher who accepts every Professor
+        // gift at the earliest opportunity:
+        //   Intro rival            (player 1, cap 2)  → 1v1
+        //   Catch tutorial         → +1 partner → player 2 (at cap)
+        //   Basic trainer          (player 2, cap 2, foe 2)   → 2v2
+        //   Gym Leader 1           (player 2, cap 2, foe 2)   → 2v2
+        //   (Gym 1 won → cap 3, foe curve → 3)
+        //   City 1 post-Gym Prof   → player 3 (or take it at City 2 pre-Gym)
+        //   Gym Leader 2           (player 3, cap 3, foe 3)   → 3v3
+        //   ...
+        //   Gym Leader 4           (player 5→6, cap 5→6, foe 5→6)
+        //   Gym Leader 5–8 + E4    → 6v6 (cap caps at 6)
+        //
+        // A wild-catcher fills the cap immediately; foes still scale with
+        // badges, so over-catching = a PC overflow, never a foe-overflow.
+        function _storyEnemyPartySize(event, playerTeamLen, eventId) {
             const e = String(event || '');
-            const player = Math.max(1, Math.min(6, playerTeamLen | 0));
             // Story finales — always full 6.
             if (/Champion/i.test(e) || /Victory Road/i.test(e) || /^E[1-4]$/i.test(e) || /Mystery Figure/i.test(e)) return 6;
-            // Gym Leaders — match player with a small per-gym floor so the
-            // fight scales up with badges even if the player stays lean.
-            const gymMatch = e.match(/Gym Leader\s*(\d+)/i);
-            if (gymMatch) {
-                const gn = parseInt(gymMatch[1], 10) | 0;
-                // Floor: GL1–2 = 2, GL3–4 = 3, GL5–6 = 4, GL7 = 5, GL8 = 6.
-                const floor = gn >= 8 ? 6 : gn >= 7 ? 5 : gn >= 5 ? 4 : gn >= 3 ? 3 : 2;
-                return Math.min(6, Math.max(floor, player));
+            // Intro rival — pure player-match for the starter-duel feel. The
+            // catch tutorial fires *after* this fight, so the player has
+            // exactly their starter; a 1v2 rival would feel lopsided.
+            if ((eventId | 0) === STORY_RIVAL_ROW_INTRO) {
+                return Math.max(1, Math.min(6, playerTeamLen | 0));
             }
-            // Rival — match player, floor 2 (rivals always bring a teammate).
-            if (/Rival/i.test(e)) {
-                return Math.min(6, Math.max(2, player));
-            }
-            // Basic / Gym Trainer / Elite Trainer (and themed variants): pure
-            // match. A 1-mon player faces a 1-mon trainer. A 6-mon player
-            // faces a 6-mon trainer.
-            return Math.min(6, Math.max(1, player));
+            // Everyone else — badge curve. min(6, 2 + badges).
+            //   0 badges → 2,  1 → 3,  2 → 4,  3 → 5,  4+ → 6
+            const badges = (sm && sm.badges) | 0;
+            return Math.min(6, 2 + badges);
         }
-        // Hard cap at 6 — there's no badge-gated growth anymore. The Professor
-        // ensures every player reaches 6 mons even without wild catching
-        // (cities 0–5 each give one), and wild catches over 6 still land in
-        // the PC. Foe scaling now keys on the player's *actual* team length
-        // (see `_storyEnemyPartySize` above), so a runaway player team would
-        // just face a matching foe — there's no need to constrain growth.
+        // Active party cap = the same badge curve foes use. Starter slot is
+        // always available (slot 1); the catch tutorial fills slot 2 right
+        // after the intro rival, hitting the 0-badge cap of 2; each gym
+        // badge unlocks one more slot up to 6 at four badges.
+        //
+        // Wild catches and Professor gifts that would exceed the cap still
+        // succeed — they land in the PC. So a player can always *catch*,
+        // they just can't *field* more than the cap until they earn the
+        // next badge. This keeps player and foe team sizes locked together
+        // on the same progression clock.
         function _storyMaxPartySize() {
-            return 6;
-        }
-        /** Returns true when the player's *active* party is at the cap. */
-        function _storyPartyAtCap() {
-            return (sm.team || []).length >= 6;
+            const badges = (sm && sm.badges) | 0;
+            return Math.max(2, Math.min(6, 2 + badges));
         }
         function _storyEnsureBalls() {
             if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
@@ -26647,15 +26673,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // wild interrupt for this one slot (so the player isn't doing
                 // two catch screens back-to-back).
                 if (_shouldFireCatchTutorialBeforeBattle(_battleIdx)) {
-                    _markCatchTutorialDone();
-                    _markWildSeen(_battleIdx);
                     // Tutorial mon is always Grade 4 (drawn from STARTER_PARTNER_POOL
                     // which is curated to G4-tier early-route species), and catch is
                     // 100% on first throw, no flee. The player's first catching
                     // experience should be a guaranteed success — they learn the
                     // mechanic without the frustration of a missed throw.
+                    //
+                    // The tutorial-done flag is set inside `_catchHandleSuccess`
+                    // (when the catch actually lands), NOT here, so a mid-tutorial
+                    // reload doesn't lock the player out without their partner mon.
+                    // We do mark the wild-seen flag for this slot so the regular
+                    // wild route doesn't pile on top of the tutorial; that's
+                    // re-fired idempotently if the tutorial reopens.
                     const _partner = _pickStarterPartner(storySettingsGens());
                     if (_partner) {
+                        _markWildSeen(_battleIdx);
                         enterCatchEncounter(_partner, () => enterBattleEvent(ev, true), {
                             forcedCatchRate: 1.0,
                             forcedFleeRate: 0,
@@ -26736,7 +26768,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // the standard 0-badge rival sizing (2) so a player who caught
             // their first wild fights a fair 2v2; a player who skipped the
             // wild still has full-heal between mons to handle 1v2.
-            const partySize = _storyEnemyPartySize(event, sm.badges | 0, sm.team.length | 0);
+            const partySize = _storyEnemyPartySize(event, sm.team.length | 0, idx);
 
             const startFight = (enemyTeam) => {
                 if (sm.team.length === 0) { window.showGameAlert('No Pokémon! Visit the Professor.'); enterCity(); return; }
@@ -27243,14 +27275,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _pcEnsureBoxArray();
             const team = sm.team || [];
             const box = sm.pcBox || [];
-            const partyFull = team.length >= 6;
+            const partyCap = _storyMaxPartySize();
+            const partyFull = team.length >= partyCap;
             const partyLastOne = team.length <= 1;
             const boxFull = box.length >= PC_BOX_CAP;
             const lowSlotWarn = box.length >= (PC_BOX_CAP - 2) && box.length < PC_BOX_CAP;
 
             let html = '';
+            const badgesNow = (sm.badges | 0);
+            const capHintHtml = partyCap < 6
+                ? ` <span style="color:#888;font-size:10px;">(next slot at badge ${badgesNow + 1})</span>`
+                : '';
             html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:11px;color:#aaa;">
-                <span>Party <strong style="color:#fff;">${team.length}/6</strong></span>
+                <span>Party <strong style="color:#fff;">${team.length}/${partyCap}</strong>${capHintHtml}</span>
                 <span>PC <strong style="color:#fff;">${box.length}/${PC_BOX_CAP}</strong></span>
             </div>`;
             if (boxFull) {
@@ -28436,6 +28473,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (bossMode) {
                 _bossArcEnsureState();
                 sm.bossArc.cleared = true;
+            }
+            // Catch tutorial: mark done only on actual catch success, so a
+            // mid-tutorial reload doesn't lock the once-per-save flag without
+            // the partner ever landing in the team.
+            if (_catchState && _catchState.tutorialMode) {
+                _markCatchTutorialDone();
             }
             try { save(); } catch (e) {}
             const successMsg = bossMode

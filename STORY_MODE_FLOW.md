@@ -30,12 +30,13 @@ writing — they will drift as work proceeds.
 | PC | Pure storage. Flat array, **cap 10** (story is battle-focused, not a collection layer). Catch fails with an explicit message when party 6/6 and PC 10/10 — player must sell or release first. Stable `id` per mon. |
 | Underground | Built into every Pokémon Center hub button. Always visible. Sells your mons for gold (price scales with grade). Cannot sell your last party mon, the starter, or the boss-arc capture. |
 | Pokémon Center button | New city hub action. Contains PC + Underground. No heal function (battles auto-heal). |
-| Foe sizing | **Matches the player's current team size** with a small per-role floor. Story finales (Champion / Victory Road / E1–4 / post-HoF Mystery Figure) always field 6. Gym Leader floors: GL1–2 = 2, GL3–4 = 3, GL5–6 = 4, GL7 = 5, GL8 = 6. Rivals: floor 2. Trainers: floor 1. So a lean 3-mon player faces 3-mon trainers; a full 6-mon player faces 6-mon trainers; either way, fights stay even. |
-| Player party cap | Hard 6 (no badge-gated growth). The Professor in each of cities 0–5 hands you one Pokémon — so a player who never catches a wild still finishes the front half with a full team. Wild catches over 6 land in the PC. |
-| Professor visibility | Each city's Professor (cities 0–5 by action list; cities 6–8 via `shouldForceCityProfessor`) appears **only while the player's active party is below 6**. Once the team is at 6, the Professor stops showing. The lone exception is the City-8 post-Gym-8 legendary gate (Mystery Figure), which stays visible at 6/6 because the swap is required to enter Victory Road. |
-| Rival adaptation | Read live `sm.team` at battle entry. **Do not** filter `wild:true` mons — full-party-counts is the honest signal. Bringing a Magikarp pulls some counter-weight onto Water, but doesn't dominate against 5 other types. |
-| Intro rival | Used to be hard-fixed to 1-on-1; now follows the player-matching formula with a rival floor of 2. The post-rival catch tutorial (below) guarantees the player has 2 mons before the next battle, so the *next* fight onward is always at least 2v2. |
-| Catch tutorial | After the intro rival victory, a one-time static event fires before the next battle: a guaranteed Grade-4 friendly wild (from `STARTER_PARTNER_POOL`) appears, 100% catch on first throw, no flee, with a tutorial overlay (FireRed/Emerald-style). Marked done via `sm.catchTutorialDone`. Serves three purposes — teaches catching mechanics, adds story pacing between rival duel and Gym 1, and guarantees a 2-mon party so the first wild route + first gym are 2v2 minimum. |
+| Foe sizing | **Badge curve**: `min(6, 2 + badges)` for everyone except story finales (always 6) and the intro rival (pure player-match for a 1v1 starter duel). So foes = 2 pre-Gym-1, 3 post-Gym-1, …, 6 from post-Gym-4 on. |
+| Player party cap | **Same badge curve**: `min(6, 2 + badges)`. Catch tutorial fills slot 2 right after intro rival (cap = 2). Each gym victory unlocks one more slot up to 6 at four badges. Catches and Professor gifts above the cap overflow to PC — the player can always *catch*, they just can't *field* past the cap until the next badge unlocks. |
+| Expected sequence (non-catcher) | Intro rival 1v1 → catch tutorial → cap 2 (2v2) → GL1 2v2 → **(badge 1, cap 3)** → next Pro available → GL2 3v3 → **(badge 2, cap 4)** → next Pro → GL3 4v4 → **(badge 3, cap 5)** → GL4 5v5 → **(badge 4, cap 6)** → GL5+ / E4 / Champion 6v6. A wild-catcher fills the cap immediately; foes still follow the badge curve, so over-catching means PC overflow, never a foe mismatch. |
+| Professor visibility | Each city's Professor (cities 0–5 by action list; cities 6–8 via `shouldForceCityProfessor`) appears **only while the player's active party is below the current cap**. So pre-Gym-1 with a full 2/2 party, no Pro buttons. After Gym 1 (cap → 3), the next available city's Pro reopens for the 3rd slot. Lone exception: City-8 post-Gym-8 legendary gate (Mystery Figure), which stays visible at 6/6. |
+| Rival adaptation | Read live `sm.team` at battle entry. **Do not** filter `wild:true` mons. |
+| Intro rival | Special-cased to pure player-match (1v1 starter duel). The catch tutorial fires *after* this fight. |
+| Catch tutorial | After the intro rival victory, a one-time static event fires before the next battle: a guaranteed Grade-4 friendly wild (from `STARTER_PARTNER_POOL`) appears, 100% catch on first throw, no flee, with a tutorial overlay (FireRed/Emerald-style). Marked done via `sm.catchTutorialDone`. Fills the 2nd slot exactly at the 0-badge cap of 2. |
 | Pokédex | Seen + Caught. Persisted cross-run in a separate `pbs_story_meta` localStorage key. |
 | NG+ carryover | Pokédex + achievements + run-clear marks. PC empties between runs. |
 
@@ -128,7 +129,7 @@ Master Ball is `Infinity` — guaranteed catch. No special-case code.
 
 | Ball | Multiplier | Source | Cap |
 |---|---|---|---|
-| PokéBall | 1.0× | PokéMart (200G ea, unlimited) + 5 at run start | — |
+| PokéBall | 1.0× | PokéMart (300G ea, unlimited) + 5 at run start | — |
 | Great Ball | 1.5× | Department Store (existing City6/City8) (1000G ea) | — |
 | Ultra Ball | 2.0× | Static story events (×2 total: mid-game + late-game) | 2 per run |
 | Master Ball | ∞ | Boss arc reward (Underground broker) | 1 per run |
@@ -338,7 +339,7 @@ After M1: catching has a destination; no catching yet.
 ### M2 — Catch minigame + balls + wild routes (~2–3 days)
 - New screen `#screen-story-catch` (used by both wild and Safari).
 - `PokéBall`, `Great Ball`, `Ultra Ball`, `Master Ball` added to `sm.balls`.
-- PokéMart sells PokéBalls (200G each); Department Store sells Great Balls (1000G each) — new rows in `POKEMART_ITEMS` / `DEPT_ITEMS`.
+- PokéMart sells PokéBalls (300G each); Department Store sells Great Balls (1000G each) — new rows in `POKEMART_ITEMS` / `DEPT_ITEMS`.
 - `proceedToNextBattle` (line 24593) inserts a route-node interrupt between consecutive Battles that cross a city boundary.
 - Wild route flow: roll species from current event's grade weights shifted one tier weaker; open catch screen; throw/run; on catch → `state.pendingCatch`; on exit → promote to `sm.team` or `sm.pcBox`.
 - Caught mon flagged `wild: true`; rough build via new `makeWildBuild` helper.
