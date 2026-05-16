@@ -422,7 +422,9 @@
         /* Party */
         .party-slot { display: flex; align-items: center; padding: 10px; border: 1px solid #333; background: var(--surface); cursor: pointer; border-radius: 4px; gap: 10px; transition: all 0.15s; box-sizing: border-box; max-width: 100%; }
         .party-slot > div:not(.party-actions) { flex: 1; min-width: 0; }
-        .party-slot:hover { border-color: #666; background: var(--surface2); } .party-slot.active-mon { border-color: var(--accent); background: #1a1800; } .party-slot.fainted { opacity: 0.4; cursor: not-allowed; } .party-actions { display: flex; gap: 8px; flex-shrink: 0; }
+        .party-slot:hover { border-color: #666; background: var(--surface2); } .party-slot.active-mon { border-color: var(--accent); background: #1a1800; } .party-slot.fainted { opacity: 0.45; cursor: not-allowed; pointer-events: none; position: relative; }
+        .party-slot.fainted::after { content: 'KO'; position: absolute; top: 50%; right: 12px; transform: translateY(-50%); color: #f44336; font-size: 11px; font-weight: bold; letter-spacing: 1px; border: 1px solid #f44336; padding: 1px 5px; background: rgba(0,0,0,0.4); pointer-events: none; }
+        .party-actions { display: flex; gap: 8px; flex-shrink: 0; }
         /* Battle party modal — narrow phones: stack actions so Summary/Switch stay fully tappable */
         @media (max-width: 520px) {
             #modal-party #party-list { min-width: 0; width: 100%; box-sizing: border-box; }
@@ -1389,8 +1391,8 @@
         .hp-fill.hp-high { --hp-bar-solid: var(--hp-green); box-shadow: inset 0 -1px 0 rgba(0,0,0,0.45), 0 0 8px rgba(76,175,80,0.35); }
         .hp-fill.hp-mid { --hp-bar-solid: var(--hp-yellow); box-shadow: inset 0 -1px 0 rgba(0,0,0,0.45), 0 0 8px rgba(255,193,7,0.35); }
         .hp-fill.hp-low { --hp-bar-solid: var(--hp-red); box-shadow: inset 0 -1px 0 rgba(0,0,0,0.45), 0 0 10px rgba(244,67,54,0.45); }
-        .hp-fill.hp-critical { --hp-bar-solid: #b71c1c; animation: hpPulseLow 1.2s ease-in-out infinite; }
-        @keyframes hpPulseLow { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.15); } }
+        .hp-fill.hp-critical { --hp-bar-solid: #ff5252; box-shadow: inset 0 -1px 0 rgba(0,0,0,0.45), 0 0 12px rgba(255,82,82,0.7); animation: hpPulseLow 1.0s ease-in-out infinite; }
+        @keyframes hpPulseLow { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.30); } }
         .stat-box .type-badge { font-size: 9px; }
         .status-indicator { font-weight: bold; font-size: 12px; margin-top: 4px; text-transform: uppercase; }
 
@@ -3632,8 +3634,8 @@
         }
         .story-menu-btn--continue:hover { box-shadow: inset -4px -4px 0px 0px #1a3a1c, inset 4px 4px 0px 0px #2a5a2c, 0 0 16px rgba(76,175,80,0.2); }
         .story-menu-btn--abandon { border-color: #666 !important; color: #888; font-size: 11px; padding: 10px 16px; }
-        .story-menu-btn--back { border-color: transparent !important; color: #888; font-size: 11px; padding: 10px 16px; background: transparent; box-shadow: none; }
-        .story-menu-btn--back:hover { color: #bbb; background: rgba(255,255,255,0.04); }
+        .story-menu-btn--back { border-color: #444 !important; color: #888; font-size: 11px; padding: 10px 16px; background: rgba(255,255,255,0.02); box-shadow: none; }
+        .story-menu-btn--back:hover { color: #bbb; border-color: #666 !important; background: rgba(255,255,255,0.06); }
         .story-settings-gen-row { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
         .story-settings-gen-label { display: flex; align-items: center; gap: 3px; font-size: 11px; cursor: pointer; color: #ccc; }
         .story-settings-gen-label input[type="checkbox"] { accent-color: var(--accent); }
@@ -4623,7 +4625,7 @@
             <div class="story-settings-panel">
                 <h3 class="story-settings-heading">Run Settings</h3>
                 <div style="margin-bottom:10px;">
-                    <div style="font-size:10px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Generations in pool (tap toggles):</div>
+                    <div style="font-size:10px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Pokémon Generations in pool:</div>
                     <div class="story-settings-gen-row">
                         <label class="story-settings-gen-label"><input type="checkbox" id="story-gen-cb-1" checked><span>G1</span></label>
                         <label class="story-settings-gen-label"><input type="checkbox" id="story-gen-cb-2" checked><span>G2</span></label>
@@ -4651,7 +4653,7 @@
                     </select>
                 </div>
                 <div style="font-size:10px;color:#888;line-height:1.5;margin:-4px 0 10px;max-width:560px;">
-                    Foe stats: Very Easy −30% · Easy −15% · Normal · Hard +15% · Very Hard +30%.
+                    Scales every foe's HP, Attack, Defense, Sp. Atk, Sp. Def, and Speed by: Very Easy −30% · Easy −15% · Normal · Hard +15% · Very Hard +30%.
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;margin-bottom:10px;">
                     <label style="color:#888;text-transform:uppercase;letter-spacing:0.5px;font-size:10px;">Seed:</label>
@@ -4672,17 +4674,17 @@
                                 <input type="checkbox" id="story-no-item-run">
                                 <span style="color:#ffb74d;font-weight:bold;">&#128683; No Item Run</span>
                             </label>
-                            <span style="color:#777;font-size:10px;">Neither side uses battle items. Shops still sell other goods.</span>
+                            <span style="color:#777;font-size:10px;">No items in battle — yours or theirs. Shops stay open; the battle-bag is empty.</span>
                         </div>
-                        <div style="font-size:10px;color:#666;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Battle form mode:</div>
+                        <div style="font-size:10px;color:#666;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Gimmick usage:</div>
                         <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:11px;">
                             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;" title="Each team can use only one battle form per battle">
                                 <input type="radio" name="story-battle-mech-mode" id="story-mode-classic-rb" checked>
-                                <span style="color:var(--hp-yellow);">Classic (1 per team)</span>
+                                <span style="color:var(--hp-yellow);">Classic (one gimmick per team)</span>
                             </label>
                             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;" title="Each Pokémon can use its own battle form">
                                 <input type="radio" name="story-battle-mech-mode" id="story-mode-unlimited-rb">
-                                <span style="color:var(--hp-green);">Unlimited</span>
+                                <span style="color:var(--hp-green);">Unlimited (every mon can use one)</span>
                             </label>
                         </div>
                     </div>
@@ -4693,7 +4695,7 @@
             <button class="story-menu-btn story-menu-btn--continue" id="story-continue-btn" onclick="window.StoryMode.continueRun()" style="display:none;">&#9654; Continue Run</button>
             <button class="story-menu-btn story-menu-btn--abandon" id="story-abandon-btn" onclick="window.StoryMode.confirmAbandon()" style="display:none;">&#10006; Abandon Run</button>
             <button class="story-menu-btn story-menu-btn--back" onclick="window.StoryMode.showMenu(false)">&#8592; Back to Main Menu</button>
-            <p style="font-size:9px;color:#555;text-align:center;margin:2px 0 0;text-shadow:1px 1px 0 rgba(0,0,0,0.5);">Stuck? Open Settings (⚙) → Unstick.</p>
+            <p style="font-size:9px;color:#555;text-align:center;margin:2px 0 0;text-shadow:1px 1px 0 rgba(0,0,0,0.5);">Stuck? Open Settings (⚙) → Unstick. More tools in the Developer section.</p>
         </div>
     </div>
 
@@ -4709,7 +4711,7 @@
             </div>
             <div class="story-hud-actions">
                 <button type="button" class="story-hud-abandon" onclick="window.StoryMode.confirmAbandon()" title="Abandon and delete this run">Abandon</button>
-                <button type="button" class="story-hud-runinfo" onclick="window.StoryMode.openRunSummary()" title="View run settings, foe boosts, and artifacts">Run</button>
+                <button type="button" class="story-hud-runinfo" onclick="window.StoryMode.openRunSummary()" title="Run settings: difficulty, foe scaling, current relics">Run Info</button>
                 <button type="button" class="story-hud-settings" onclick="window.openSettings()" aria-label="Settings">⚙</button>
             </div>
         </div>
@@ -4819,7 +4821,7 @@
             <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
                 <img id="story-colress-portrait" src="sprites/trainers/Colress.png" alt="Colress" style="width:36px;height:36px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.visibility='hidden'">
                 <div style="min-width:0;">
-                    <h3 class="story-screen-head-title" style="color:#ce93d8;font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_colress.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Colress — Battle Forms</span></h3>
+                    <h3 class="story-screen-head-title" style="color:#ce93d8;font-size:14px;"><img class="story-screen-head-ico" src="icons/story/story_colress.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Colress — Battle Forms <span style="font-size:10px;color:#888;font-weight:normal;">(Mega · Z · Dynamax · Tera)</span></span></h3>
                     <div style="font-size:10px;color:#888;margin-top:2px;">"Set your Pokémon's battle form: Mega, Z-Move, Dynamax, or Tera."</div>
                 </div>
             </div>
@@ -4849,6 +4851,7 @@
             <span id="story-evtrainer-gold" style="color:#ffd700;font-size:13px;font-weight:bold;flex-shrink:0;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
+            <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Apply EV spreads. Each preset is a 510-point stat distribution — Universal (one-size-fits-most), Role (defensive wall, sweeper, support…) or Meta (species-specific competitive sets).</p>
             <div id="story-evtrainer-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
@@ -4862,16 +4865,16 @@
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-                <h3 class="story-screen-head-title" style="color:var(--accent);font-size:14px;flex:1;min-width:0;"><span class="story-screen-head-text">🏥 Pokémon Center</span></h3>
+                <h3 class="story-screen-head-title" style="color:var(--accent);font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_center.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Pokémon Center</span></h3>
                 <span id="story-pc-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
             </div>
             <div id="story-pc-pokedex-strip" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:rgba(8,10,16,0.92);border-bottom:1px solid #2a2a2a;font-size:10px;color:#888;flex-shrink:0;">
-                <span>📖 Caught: <strong id="story-pc-pokedex-count" style="color:#aed581;">0</strong></span>
-                <span id="story-pc-balls-summary" style="color:#888;">Poké 0 · Great 0 · Ultra 0 · Master 0</span>
+                <span>📖 Pokédex — Seen <strong id="story-pc-pokedex-seen" style="color:#90caf9;">0</strong> · Caught <strong id="story-pc-pokedex-count" style="color:#aed581;">0</strong></span>
+                <span id="story-pc-balls-summary" style="color:#888;display:inline-flex;align-items:center;gap:0;"></span>
             </div>
             <div style="display:flex;gap:0;background:rgba(10,10,14,0.85);border-bottom:1px solid #333;flex-shrink:0;">
-                <button type="button" id="story-pc-tab-storage-btn" onclick="window.StoryMode.pcSwitchTab('storage')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid #4caf50;color:#4caf50;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;" title="Deposit, withdraw, and release Pokémon">💾 PC Storage</button>
-                <button type="button" id="story-pc-tab-underground-btn" onclick="window.StoryMode.pcSwitchTab('underground')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid transparent;color:#888;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;" title="Sell Pokémon for gold">🩸 The Underground</button>
+                <button type="button" id="story-pc-tab-storage-btn" onclick="window.StoryMode.pcSwitchTab('storage')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid #4caf50;color:#4caf50;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Deposit, withdraw, and release Pokémon"><img src="icons/story/story_party.png?v=20260516" alt="" width="18" height="18" decoding="async" style="image-rendering:pixelated;"> PC Storage</button>
+                <button type="button" id="story-pc-tab-underground-btn" onclick="window.StoryMode.pcSwitchTab('underground')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid transparent;color:#888;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Sell Pokémon for gold"><img src="icons/story/story_mystery.png?v=20260516" alt="" width="18" height="18" decoding="async" style="image-rendering:pixelated;filter:hue-rotate(-30deg) saturate(1.5) brightness(0.8);"> The Underground</button>
             </div>
             <div id="story-pc-body" style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);"></div>
             <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
@@ -4884,7 +4887,7 @@
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
                 <span style="width:32px;"></span>
-                <h3 class="story-screen-head-title" style="color:#ffab40;font-size:14px;flex:1;min-width:0;text-align:center;"><span class="story-screen-head-text">🧨 The Crucible</span></h3>
+                <h3 class="story-screen-head-title" style="color:#ffab40;font-size:14px;flex:1;min-width:0;text-align:center;"><img class="story-screen-head-ico" src="icons/story/story_vr.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">The Crucible</span></h3>
                 <span id="story-crucible-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
             </div>
             <div style="padding:10px 14px;border-bottom:1px solid #2a2a2a;background:rgba(8,10,16,0.92);font-size:11px;color:#888;line-height:1.5;">
@@ -4892,7 +4895,7 @@
             </div>
             <div id="story-crucible-body" style="flex:1;overflow-y:auto;padding:14px;min-height:0;background:rgba(6,10,18,0.2);"></div>
             <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
-                <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.leaveCrucible()">&#8592; Leave The Crucible</button>
+                <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.leaveCrucible()">&#8592; Back to City</button>
             </div>
         </div>
     </div>
@@ -4901,7 +4904,7 @@
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCrucible()" title="Back to The Crucible" aria-label="Back to The Crucible">&#8592;</button>
-                <h3 class="story-screen-head-title" style="color:#ff5722;font-size:14px;flex:1;min-width:0;text-align:center;"><span class="story-screen-head-text">⛓ Battle Frontier</span></h3>
+                <h3 class="story-screen-head-title" style="color:#ff5722;font-size:14px;flex:1;min-width:0;text-align:center;"><img class="story-screen-head-ico" src="icons/story/story_league.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Battle Frontier</span></h3>
                 <span style="width:32px;"></span>
             </div>
             <div id="story-frontier-body" style="flex:1;overflow-y:auto;padding:14px;min-height:0;background:rgba(20,8,4,0.35);"></div>
@@ -4915,12 +4918,12 @@
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
                 <span style="width:32px;"></span>
-                <h3 class="story-screen-head-title" style="color:#aed581;font-size:14px;flex:1;min-width:0;text-align:center;"><span class="story-screen-head-text">🌿 Wild Encounter</span></h3>
+                <h3 class="story-screen-head-title" style="color:#aed581;font-size:14px;flex:1;min-width:0;text-align:center;"><img class="story-screen-head-ico" src="icons/story/story_route.png?v=20260516" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Wild Encounter</span></h3>
                 <span style="width:32px;"></span>
             </div>
             <div id="story-catch-body" style="flex:1;overflow-y:auto;padding:14px;min-height:0;background:rgba(6,16,10,0.35);display:flex;flex-direction:column;gap:14px;"></div>
             <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);display:flex;gap:8px;">
-                <button type="button" id="story-catch-run-btn" onclick="window.StoryMode.catchRun()" style="flex:1;color:#ef9a9a;border-color:#ef9a9a;" title="Run from this Pokémon">🏃 Run</button>
+                <button type="button" id="story-catch-run-btn" onclick="window.StoryMode.catchRun()" style="flex:1;color:#ef9a9a;border-color:#ef9a9a;" title="Run from this Pokémon">&#8617; Run</button>
             </div>
         </div>
     </div>
@@ -4934,7 +4937,7 @@
             <span id="story-link-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
-            <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Random trades with anonymous partners. Three options per Pokémon: same-tier swap, upgrade, or rebuild the same species. <span style="color:#9ccc65;">To evolve, visit the Evolution Tutor.</span></p>
+            <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Random trades from anonymous partners. Three options per Pokémon:<br><strong style="color:#aed581;">Reroll</strong> same grade (400–4,000G) · <strong style="color:#ffd54f;">Upgrade</strong> to a stronger grade (3,500–22,000G) · <strong style="color:#90caf9;">Rebuild</strong> same species, new build (1,200G). <span style="color:#9ccc65;">To evolve, visit the Stone Sage at the Evolution Tutor.</span></p>
             <div id="story-link-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
@@ -4975,9 +4978,9 @@
             <span id="story-casino-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div style="flex:1;overflow-y:auto;padding:16px;min-height:0;background:rgba(6,10,18,0.2);display:flex;flex-direction:column;gap:14px;align-items:center;">
-            <p style="font-size:12px;color:#aaa;margin:0;text-align:center;max-width:360px;line-height:1.5;">Pick Heads or Tails. Win to double your bet, lose it if you're wrong.</p>
+            <p style="font-size:12px;color:#aaa;margin:0;text-align:center;max-width:360px;line-height:1.5;">Pick Heads or Tails. Win pays 2×, lose forfeits your bet.<br><span style="font-size:10px;color:#888;">Odds: 50% / 50% — no skill, no streaks.</span></p>
             <label for="story-casino-bet" style="font-size:12px;color:#ccc;display:flex;flex-direction:column;align-items:center;gap:6px;margin:0;">
-                <span>Bet (Gold)</span>
+                <span>Bet amount (Gold)</span>
                 <input id="story-casino-bet" class="story-casino-bet-input" type="number" inputmode="numeric" min="1" step="1" value="1">
             </label>
             <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;">
@@ -5002,12 +5005,13 @@
         <h1 style="color:#f44336;font-size:32px;margin:0;letter-spacing:3px;">DEFEATED</h1>
         <p style="color:#888;font-size:12px;text-align:center;margin:0;max-width:400px;">You blacked out.</p>
         <p id="story-gameover-desc" style="color:#aaa;font-size:14px;text-align:center;margin:0;max-width:400px;"></p>
+        <p id="story-gameover-team-recap" style="color:#ce93d8;font-size:11px;text-align:center;margin:0;max-width:400px;line-height:1.5;font-style:italic;"></p>
         <p id="story-gameover-center-hint" style="color:#888;font-size:11px;text-align:center;margin:0;max-width:400px;line-height:1.45;"></p>
         <div id="story-gameover-seed" style="font-size:11px;color:#666;text-align:center;max-width:420px;display:none;"></div>
         <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;">
-            <button type="button" onclick="window.StoryMode.retryFromGameOver()" style="padding:14px;color:#4caf50;border-color:#4caf50;font-weight:bold;">&#9654; Retry Battle</button>
+            <button type="button" onclick="window.StoryMode.retryFromGameOver()" style="padding:14px;color:#4caf50;border-color:#4caf50;font-weight:bold;">&#9654; Retry — load before this battle</button>
             <button type="button" id="story-gameover-btn-rival-concede" onclick="window.StoryMode.acceptRivalLossAndContinue()" style="display:none;padding:14px;color:#ffd54f;border-color:#ffd54f;font-weight:bold;">Concede to Rival</button>
-            <button type="button" id="story-gameover-btn-center" onclick="window.StoryMode.retreatToLastPokemonCenter()" style="padding:14px;color:#f48fb1;border-color:#f48fb1;font-weight:bold;">Return to Last City</button>
+            <button type="button" id="story-gameover-btn-center" onclick="window.StoryMode.retreatToLastPokemonCenter()" style="padding:14px;color:#f48fb1;border-color:#f48fb1;font-weight:bold;">&#8617; Return to last city — heal &amp; replan</button>
             <button type="button" onclick="window.StoryMode.confirmAbandon()" style="padding:12px;color:#f44336;border-color:#f44336;">&#128465; Abandon Run</button>
         </div>
     </div>
@@ -5599,7 +5603,7 @@
         function moveCategoryTooltipHtml(cat) {
             const c = normalizeMoveCategory(cat);
             return '<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle;">' +
-                '<img class="story-screen-head-ico" src="icons/categories/' + c + '.png" alt="" width="22" height="22" decoding="async">' +
+                '<img class="story-screen-head-ico" src="icons/categories/' + c + '.png" alt="' + c + ' move category" width="22" height="22" decoding="async">' +
                 '<strong class="cat-' + c + '">' + c + '</strong></span>';
         }
 
@@ -12385,7 +12389,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window.openParty = function(isForced) {
             if (state.isLocked && !isForced) return;
             let list = document.getElementById('party-list'); list.innerHTML = '';
-            document.getElementById('party-context-text').innerText = isForced ? "Your Pokémon fainted! Select a new one." : "Select a Pokémon to switch in.";
+            let _ctxText = isForced ? "Your Pokémon fainted! Pick a replacement (this costs your turn)." : "Select a Pokémon to switch in.";
+            // Warn the player which entry hazards still threaten the next switch-in.
+            try {
+                const _hazSide = ((state.mode === 'pvp') && state.currentPlayer === 2) ? state.fSide : state.pSide;
+                if (_hazSide) {
+                    const _haz = [];
+                    if (_hazSide.stealthRock) _haz.push('Stealth Rock');
+                    if (_hazSide.spikes) _haz.push(`Spikes ×${_hazSide.spikes|0}`);
+                    if (_hazSide.toxicSpikes) _haz.push(`Toxic Spikes ×${_hazSide.toxicSpikes|0}`);
+                    if (_hazSide.stickyWeb) _haz.push('Sticky Web');
+                    if (_haz.length) _ctxText += `\n⚠ Hazards on your side: ${_haz.join(', ')}.`;
+                }
+            } catch (e) {}
+            document.getElementById('party-context-text').innerText = _ctxText;
             
             let isP1 = (state.mode !== 'pvp') || (state.currentPlayer === 1);
             let party = isP1 ? state.playerParty : state.foeParty;
@@ -22962,7 +22979,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Iris':"Iris: \"You're the best! …Now I have to train harder!\"",
             'Diantha':"Diantha: \"Brava! The role of Champion suits you beautifully.\"",
             'Leon':"Leon: \"Champion time… for YOU! That was unbeatable, mate.\"",
-            'Geeta':"Geeta: \"Indeed. The mantle was always yours, perhaps.\"",
+            'Geeta':"Geeta: \"The mantle is yours now. Wear it well.\"",
             'Hau':"Hau: \"Alola! You're a malasada-sweet Champion now!\"",
             'Prof. Kukui':"Prof. Kukui: \"Wahoo! Now THAT was a Champion battle. Welcome to the wall, cousin!\"",
             'Red':"Red: \"…\"",
@@ -23444,15 +23461,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           'Geeta': ['The Top Champion accepts your challenge.','Glimmora, dazzle them!','Show me the cause of your rise.'],
           'Iris': ['Dragons fly higher than I ever could!','Haxorus—our bond shines!','The Champion of Unova never gives in!'],
 
-          // Themed Elite Trainer variants — older, harder versions of familiar faces.
-          'Shadow Blue':      ['Smell ya later — and I\'m stronger than before.','Gramps wouldn\'t recognize this team.','I\'m the real deal. No more games.'],
-          'Cursed Lance':     ['Dragons never give up. Neither do I.','You climbed the League. I went further.','My dragons are ready. Are you?'],
-          'Forsaken Cynthia': ['I trained harder this time around.','I won my crown once. Now I want it back.','Garchomp and I are stronger together.'],
-          'Eldritch N':       ['I hear the cries of every Pokémon.','I set them free. They came back to me.','Truth and ideal — let\'s see yours.'],
-          'Tarnished Steven': ['Stone is tough. So am I.','The League trains rare specimens. I train tougher ones.','Through Meteor Falls and back. Show me your strength.'],
-          'Pale Ghetsis':     ['You will yield to my Pokémon.','Plasma\'s ideals continue through me.','Results matter more than ideals. Begin.'],
-          'Hollow Cyrus':     ['Emotion is a weakness. I have cut it loose.','Even the stars forget. I do not.','One trainer. One small task. Show me.'],
-          'Silent Red':       ['…','…(Pikachu sparks once, eyes narrowed.)','…(He tips his cap.)'],
+          // Themed Elite Trainer variants — same face, wrong year.
+          'Shadow Blue':      ['Smell ya later — the road got dark since we met.','Gramps wouldn\'t recognize this team. Good.','Real deal. Just the shadow side.'],
+          'Cursed Lance':     ['Dragons don\'t die. They wait. Watch.','You climbed the league. I climbed something… else.','My Pokémon don\'t obey me. They agree with me.'],
+          'Forsaken Cynthia': ['…The myths warned about this. You didn\'t listen.','I won my crown. Then I lost it to something quieter.','Garchomp is gone. The grin stayed.'],
+          'Eldritch N':       ['…They speak louder here. Can you hear them?','I freed them. They came back changed.','Truth, ideal, and something else entirely. Begin.'],
+          'Tarnished Steven': ['Hard stone, harder rust. I\'m the rust.','The League keeps its rare specimens. So do I.','I came back through Meteor Falls. Something came back with me.'],
+          'Pale Ghetsis':     ['Useful tool. Bring me your six.','Plasma\'s flag is rotted. I carry it anyway.','Ideals decay. Results don\'t. Begin.'],
+          'Hollow Cyrus':     ['Emotion was always the wound. I edited it.','Galaxies forgot me. I forgive them.','One trainer. One small task. Show me.'],
+          'Silent Red':       ['…','…(Pikachu\'s cheek sparks — yellow turned black.)','…(He doesn\'t raise the cap this time.)'],
 
           // Cursed-tagged Basic Trainer variants.
           'Cursed Vagrant':   ['The road is rough at night. Watch out.','I\'ve trained nonstop. You\'ll see.','Let\'s make this quick.'],
@@ -23487,7 +23504,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           'Veteran Giovanni':  ['…Persistent. Always. Begin.','Rocket folded. I stayed.','Earth Badge to Earth-shaker. Show me.'],
           'Veteran Whitney':   ['…I trained! For real this time! Don\'t make me cry again!','Miltank says hi. With a Body Slam.','New team. Same headache.'],
           'Veteran Clair':     ['…Tch. Dragons learned ice. So did I.','The badge wasn\'t enough. The mountain isn\'t either.','Show me a worthy fight. Or get out of my air.'],
-          'Veteran Wallace':   ['A grace match — please, take your time. Then lose.','Water and dragon. The river meets the storm.','Magnifico! Begin.'],
+          'Veteran Wallace':   ['A grace match — take your time. Then lose, with style.','Water meets dragon. River meets storm.','Begin. I\'ll savor every move.'],
         };
         function getTrainerQuote(role) {
             const pool = TRAINER_QUOTES[role] || TRAINER_QUOTES['Basic Trainer'];
@@ -25774,17 +25791,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const theme = _resolveThemeForBattleRow(nxId);
                     const themeLabel = theme && STORY_THEMED_NEXT_LABELS[theme];
                     if (themeLabel) nextLabel = `${nextLabel} — ${themeLabel}`;
-                    tips.push({ icon: '🎯', label: `Next: ${nextLabel}`, click: 'window.StoryMode.proceedToNextBattle()' });
+                    tips.push({ iconPath: 'icons/story/story_route.png?v=20260516', label: `Next: ${nextLabel}`, click: 'window.StoryMode.proceedToNextBattle()' });
                 }
                 const hasTeam = sm.team && sm.team.length > 0;
                 if (hasTeam) {
                     if (actions.includes('Battle Dojo')) {
                         const n = sm.team.filter(s => s && s.build && (!s.build.i || s.build.i === 'None' || s.build.i === '(none)')).length;
-                        if (n) tips.push({ icon: '🎒', label: `${n} Pokémon need held items`, click: "window.StoryMode.enterTutor('loadout')" });
+                        if (n) tips.push({ iconPath: 'icons/story/story_bag.png?v=20260516', label: `${n} Pokémon need held items`, click: "window.StoryMode.enterTutor('loadout')" });
                     }
                     if (actions.includes('Move Tutor')) {
                         const n = sm.team.filter(s => s && s.build && Array.isArray(s.build.m) && s.build.m.length < 4).length;
-                        if (n) tips.push({ icon: '📚', label: `${n} Pokémon have empty move slots`, click: "window.StoryMode.enterTutor('moves')" });
+                        if (n) tips.push({ iconPath: 'icons/story/story_tutor.png?v=20260516', label: `${n} Pokémon have empty move slots`, click: "window.StoryMode.enterTutor('moves')" });
                     }
                     if (actions.includes('EV Trainer')) {
                         const n = sm.team.filter(s => {
@@ -25792,31 +25809,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             const e = s.build.evs || {};
                             return !((e.hp|0)||(e.atk|0)||(e.def|0)||(e.spa|0)||(e.spd|0)||(e.spe|0));
                         }).length;
-                        if (n) tips.push({ icon: '🏋️', label: `${n} Pokémon have no EVs`, click: 'window.StoryMode.enterEVTrainer()' });
+                        if (n) tips.push({ iconPath: 'icons/story/story_dojo.png?v=20260516', label: `${n} Pokémon have no EVs`, click: 'window.StoryMode.enterEVTrainer()' });
                     }
                 }
                 const relicAvailableHere = (cityIdx === 0 || actions.includes('Department Store'));
                 if (relicAvailableHere && cityIdx === 0 && !sm.artifactFreeClaimUsed) {
-                    tips.push({ icon: '✨', label: 'Claim your free relic!', click: 'window.StoryMode.enterArtifactShop()' });
+                    tips.push({ iconPath: 'icons/story/story_artifacts.png?v=20260516', label: 'Claim your free relic!', click: 'window.StoryMode.enterArtifactShop()' });
                 }
                 // Voucher reminders — surface unused Rare Candies / Vitamin Packs as
                 // city tips so players don't forget what they earned.
                 const _rcN = (sm.inventory && sm.inventory.rareCandy) | 0;
                 const _vtN = (sm.inventory && sm.inventory.vitamin)   | 0;
                 if (_rcN > 0 && actions.includes('Evolution Tutor') && sm.team.length) {
-                    tips.push({ icon: '🍬', label: `${_rcN} Rare Cand${_rcN===1?'y':'ies'} — free evolution`, click: 'window.StoryMode.enterEvolutionLab()' });
+                    tips.push({ iconPath: 'sprites/pokesprite/items/rare-candy.png', label: `${_rcN} Rare Cand${_rcN===1?'y':'ies'} — free evolution`, click: 'window.StoryMode.enterEvolutionLab()' });
                 }
                 if (_vtN > 0 && actions.includes('EV Trainer') && sm.team.length) {
-                    tips.push({ icon: '💊', label: `${_vtN} Vitamin Pack${_vtN===1?'':'s'} — free EV preset`, click: 'window.StoryMode.enterEVTrainer()' });
+                    tips.push({ iconPath: 'sprites/pokesprite/items/protein.png', label: `${_vtN} Vitamin Pack${_vtN===1?'':'s'} — free EV preset`, click: 'window.StoryMode.enterEVTrainer()' });
                 } else if (_vtN > 0 && !actions.includes('EV Trainer') && sm.team.length) {
                     // No EV Trainer in this city — quiet reminder so the player remembers
                     // the unspent voucher when planning their route. Opens the bag so they
                     // can re-read the tooltip and decide.
-                    tips.push({ icon: '💊', label: `${_vtN} Vitamin Pack${_vtN===1?'':'s'} saved — use at next EV Trainer`, click: 'window.StoryMode.openCityBag()' });
+                    tips.push({ iconPath: 'sprites/pokesprite/items/protein.png', label: `${_vtN} Vitamin Pack${_vtN===1?'':'s'} saved — use at next EV Trainer`, click: 'window.StoryMode.openCityBag()' });
                 }
-                tipsEl.innerHTML = tips.slice(0, 4).map(t =>
-                    `<button type="button" class="story-city-tip${t.urgent ? ' urgent' : ''}" onclick="${t.click}"><span class="story-city-tip-ico">${t.icon}</span><span>${t.label}</span></button>`
-                ).join('');
+                tipsEl.innerHTML = tips.slice(0, 4).map(t => {
+                    const _icoHtml = t.iconPath
+                        ? `<img class="story-city-tip-ico" src="${t.iconPath}" alt="" width="16" height="16" decoding="async" style="image-rendering:pixelated;">`
+                        : `<span class="story-city-tip-ico">${t.icon}</span>`;
+                    return `<button type="button" class="story-city-tip${t.urgent ? ' urgent' : ''}" onclick="${t.click}">${_icoHtml}<span>${t.label}</span></button>`;
+                }).join('');
             }
 
             const btn = document.getElementById('story-action-buttons');
@@ -25978,13 +25998,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 : '🎒 Bag — Empty';
             _push('recover', makeActionBtn(_bagLabel, 'bag', 'window.StoryMode.openCityBag()', 'shop',{ soft:true }));
 
-            const _emit = (key, icon, title) => _sections[key]
-                ? `<div class="story-action-section-header"><span class="story-action-section-icon">${icon}</span>${title}</div>${_sections[key]}`
+            const _emit = (key, iconPath, title) => _sections[key]
+                ? `<div class="story-action-section-header"><img class="story-action-section-icon" src="${iconPath}" alt="" width="16" height="16" decoding="async" style="image-rendering:pixelated;vertical-align:-3px;margin-right:6px;">${title}</div>${_sections[key]}`
                 : '';
-            btn.innerHTML = _emit('quest', '⚔', 'Next Step')
-                          + _emit('recover', '🏥', 'Heal & Team')
-                          + _emit('shop', '🛒', 'Shops')
-                          + _emit('train', '🎯', 'Train');
+            btn.innerHTML = _emit('quest',   'icons/story/story_gym.png?v=20260516',   'Next Step')
+                          + _emit('recover', 'icons/story/story_center.png?v=20260516', 'Heal & Team')
+                          + _emit('shop',    'icons/story/story_mart.png?v=20260516',   'Shops')
+                          + _emit('train',   'icons/story/story_tutor.png?v=20260516',  'Train');
         }
 
         /** FireRed/LeafGreen–style item & UI rips (pret/pokefirered, plus link strip from graphics/link). */
@@ -26010,7 +26030,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             party: 'icons/story/story_party.png?v=20260429b',
             bag: 'icons/story/story_bag.png?v=20260429b',
             casino: 'icons/story/story_dept.png?v=20260429b',
-            relic: 'icons/story/story_artifacts.png?v=20260429b'
+            relic: 'icons/story/story_artifacts.png?v=20260429b',
+            safari: 'icons/story/story_route.png?v=20260429b',
+            crucible: 'icons/story/story_vr.png?v=20260429b'
         };
         function storyActionStripLeadingDecor(label) {
             if (!label || typeof label !== 'string') return '';
@@ -26121,7 +26143,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'Relic Keeper: "Each relic changes a battle rule. Read carefully before buying."',
                 'Relic Keeper: "Your first relic in Pallet is free. After that, 5,000G each."',
                 'Relic Keeper: "Once chosen, a relic stays for the whole run."',
-                'Relic Keeper: "Strong tools cut both ways. Choose with care."',
+                'Relic Keeper: "The League calls these contraband. I call them history with sharp edges."',
             ],
         };
 
@@ -27560,6 +27582,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 document.getElementById('story-gameover-desc').textContent =
                     `You lost to ${sm.currentTrainerData?.name||'the opponent'}. ${lossHint}`;
+                try {
+                    const recapEl = document.getElementById('story-gameover-team-recap');
+                    if (recapEl) {
+                        const pParty = (typeof state !== 'undefined' && state.playerParty) ? state.playerParty : [];
+                        const fParty = (typeof state !== 'undefined' && state.foeParty) ? state.foeParty : [];
+                        const pAlive = pParty.filter(m => m && (m.currentHp | 0) > 0).length;
+                        const fAlive = fParty.filter(m => m && (m.currentHp | 0) > 0).length;
+                        if (pParty.length || fParty.length) {
+                            recapEl.textContent = `Your team: ${pAlive}/${pParty.length} standing · Foe team: ${fAlive}/${fParty.length} standing.`;
+                            recapEl.style.display = '';
+                        } else {
+                            recapEl.style.display = 'none';
+                        }
+                    }
+                } catch (e) {}
                 const seedEl = document.getElementById('story-gameover-seed');
                 if (seedEl && sm.runSeed != null && sm.runSeed !== undefined) {
                     seedEl.style.display = 'block';
@@ -27691,7 +27728,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { if (window.StoryMode && typeof window.StoryMode.afterBattleReturn === 'function') window.StoryMode.afterBattleReturn(); } catch (e2) {}
                 }
             };
-            const autoClose = setTimeout(dismiss, 3500);
+            const autoClose = setTimeout(dismiss, 6000);
             contBtn.onclick = (e) => { e.stopPropagation(); dismiss(); };
             let badgeFlavor = '';
             const _trainerName = (sm && sm.currentTrainerData && sm.currentTrainerData.name) ? String(sm.currentTrainerData.name) : '';
@@ -27852,9 +27889,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const c = (sm.pokedex && Array.isArray(sm.pokedex.caught)) ? sm.pokedex.caught.length : 0;
                 dexEl.textContent = String(c);
             }
+            const dexSeenEl = document.getElementById('story-pc-pokedex-seen');
+            if (dexSeenEl) {
+                const s = (sm.pokedex && Array.isArray(sm.pokedex.seen)) ? sm.pokedex.seen.length : 0;
+                dexSeenEl.textContent = String(s);
+            }
             const ballsEl = document.getElementById('story-pc-balls-summary');
             if (ballsEl && sm.balls) {
-                ballsEl.textContent = `Poké ${sm.balls.poke|0} · Great ${sm.balls.great|0} · Ultra ${sm.balls.ultra|0} · Master ${sm.balls.master|0}`;
+                const _ballChip = (path, count, name) => `<span title="${name}: ${count}" style="display:inline-flex;align-items:center;gap:3px;margin-right:8px;"><img src="${path}" alt="${name}" width="16" height="16" decoding="async" style="image-rendering:pixelated;">${count|0}</span>`;
+                ballsEl.innerHTML = _ballChip('sprites/pokesprite/balls/poke.png',   sm.balls.poke|0,   'Poké Ball')
+                                  + _ballChip('sprites/pokesprite/balls/great.png',  sm.balls.great|0,  'Great Ball')
+                                  + _ballChip('sprites/pokesprite/balls/ultra.png',  sm.balls.ultra|0,  'Ultra Ball')
+                                  + _ballChip('sprites/pokesprite/balls/master.png', sm.balls.master|0, 'Master Ball');
             }
             const storageBtn = document.getElementById('story-pc-tab-storage-btn');
             const undergroundBtn = document.getElementById('story-pc-tab-underground-btn');
@@ -27889,7 +27935,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const partyFull = team.length >= partyCap;
             const partyLastOne = team.length <= 1;
             const boxFull = box.length >= PC_BOX_CAP;
-            const lowSlotWarn = box.length >= (PC_BOX_CAP - 2) && box.length < PC_BOX_CAP;
+            const lowSlotWarn = box.length >= (PC_BOX_CAP - 3) && box.length < PC_BOX_CAP;
 
             let html = '';
             const badgesNow = (sm.badges | 0);
@@ -27916,7 +27962,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const g = _pcMonGrade(slot);
                     const id = slot.id || '';
                     const canDeposit = !partyLastOne && !boxFull && !!id;
-                    const reason = partyLastOne ? 'Must keep ≥1 in party' : boxFull ? 'PC full' : !id ? 'Missing id (legacy save)' : '';
+                    const reason = partyLastOne ? 'Party needs at least one Pokémon' : boxFull ? 'PC is full — release or sell to free a slot' : !id ? 'Missing id (legacy save)' : '';
                     html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;">
                         <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;">${slot.nickname ? `"${_esc(slot.nickname)}" <span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>` : _esc(slot.name)} ${_pcGradeChipHtml(g)}</span>
                         <button type="button" onclick="window.StoryMode.pcDeposit('${_esc(id)}')" ${canDeposit ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canDeposit ? 'color:#4caf50;border-color:#4caf50;' : 'opacity:0.4;'}">Deposit</button>
@@ -27956,7 +28002,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let html = '';
             html += `<div style="padding:10px;margin-bottom:12px;background:linear-gradient(180deg,rgba(40,12,12,0.7) 0%,rgba(20,4,4,0.7) 100%);border:1px solid #5a1818;color:#bcaaa4;font-size:11px;line-height:1.5;">
                 <strong style="color:#ff5252;">The Underground.</strong>
-                Sell Pokémon for gold. Higher-grade Pokémon sell for more. Sales are permanent — any EV training goes with them.
+                Sales are final — sold Pokémon are gone for good, with any EV training they carry. Higher-grade Pokémon fetch more gold. The broker doesn't ask why; you don't either.
             </div>`;
             html += `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;font-size:10px;">`;
             for (const g of [1, 2, 3, 4]) {
@@ -27981,7 +28027,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const isStarter = slot.starter === true;
                 const isLastParty = where === 'team' && lastInParty;
                 const canSell = !!id && !unsellable && !isLastParty;
-                const reason = isStarter ? 'Starter — bonded for life' : unsellable ? 'Bound to you' : isLastParty ? 'Must keep ≥1 in party' : !id ? 'Missing id (legacy save)' : '';
+                const isSubjectZero = unsellable && slot.nickname === 'Subject Zero';
+                const reason = isStarter ? 'Starter — bonded for life' : isSubjectZero ? 'Subject Zero — this bond cannot be broken' : unsellable ? 'Story-locked — cannot be sold' : isLastParty ? 'Party needs at least one Pokémon' : !id ? 'Missing id (legacy save)' : '';
                 const whereLabel = where === 'team' ? 'Party' : 'PC';
                 html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(28,12,12,0.55);border:1px solid #5a1818;">
                     <span style="font-size:9px;color:#888;width:30px;">${whereLabel}</span>
@@ -28107,7 +28154,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _renderCrucible();
             showScreen('screen-story-crucible');
             try { _storyShowOneTimeTip('crucible',
-                'The Crucible — Post-game Hub\n\n• Battles: Battle Frontier, Mystery Figure, Rival Rematch, League Run, Random Gym Rematch, Wild Encounter.\n• Facilities: All facilities from your journey under one roof — Pokémon Center, Safari Zone, shops, tutors, Colress, Stone Sage, Link Station, and Casino.\n\nLeave the Crucible to return to your last city.'); } catch (e) {}
+                'The Crucible — Post-game Hub\n\n• Battles: Battle Frontier, Mystery Figure, Rival Rematch, League Run, Random Gym Rematch, Wild Encounter.\n• Facilities: All facilities from your journey under one roof — Pokémon Center, Safari Zone, shops, tutors, Colress, Stone Sage, Link Station, and Casino.\n\nBack to City returns you to the last city you visited.'); } catch (e) {}
         }
         function leaveCrucible() {
             sm.atCrucible = false;
@@ -28125,34 +28172,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _ensureFrontierState();
             const f = sm.frontier;
             const bestStreak = (f.highscores[0] && f.highscores[0].streak) || 0;
-            const btn = (icon, label, onClick, accent) => `<button type="button" onclick="${onClick}" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(20,28,40,0.6);border:1px solid ${accent || '#3a4a64'};color:#fff;font-family:inherit;font-size:11px;cursor:pointer;text-align:left;line-height:1.3;">
-                <span style="font-size:14px;flex-shrink:0;">${icon}</span><span style="flex:1;min-width:0;">${label}</span>
+            // Icon helper: passes through emoji as a text glyph; png() wraps a path
+            // in an <img> sized to match the existing icons/story/*.png set (22×22).
+            const png = (path) => `<img src="${path}?v=20260516" alt="" width="22" height="22" decoding="async" style="image-rendering:pixelated;flex-shrink:0;display:block;">`;
+            const btn = (icon, label, onClick, accent, tip) => `<button type="button" onclick="${onClick}"${tip ? ` title="${_esc(tip)}"` : ''} style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(20,28,40,0.6);border:1px solid ${accent || '#3a4a64'};color:#fff;font-family:inherit;font-size:11px;cursor:pointer;text-align:left;line-height:1.3;">
+                <span style="font-size:14px;flex-shrink:0;display:flex;align-items:center;">${icon}</span><span style="flex:1;min-width:0;">${label}</span>
             </button>`;
             body.innerHTML = `
                 <h4 style="color:#ffab40;margin:0 0 8px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Battles</h4>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
-                    ${btn('⛓', `Battle Frontier <span style="color:#888;font-size:9px;">(best: ${bestStreak})</span>`, 'window.StoryMode.enterFrontierHub()', '#ff5722')}
-                    ${btn('🥷', 'Mystery Figure', 'window.StoryMode.crucibleMysteryFight()', '#ce93d8')}
-                    ${btn('🌀', 'Rival Rematch', 'window.StoryMode.crucibleRivalFight()', '#90caf9')}
-                    ${btn('🏛️', 'League Run (E1 → Champion)', 'window.StoryMode.crucibleLeagueRun()', '#ffd54f')}
-                    ${btn('🥊', 'Random Gym Rematch', 'window.StoryMode.crucibleGymPick()', '#a5d6a7')}
-                    ${btn('🌿', 'Wild Encounter', 'window.StoryMode.crucibleWildEncounter()', '#aed581')}
+                    ${btn(png('icons/story/story_vr.png'),         `Battle Frontier <span style="color:#888;font-size:9px;">(best streak: ${bestStreak})</span>`, 'window.StoryMode.enterFrontierHub()', '#ff5722', 'Endless 6v6 ladder. One loss ends the run; final streak goes to the Top-10.')}
+                    ${btn(png('icons/story/story_mystery.png'),    'Mystery Figure', 'window.StoryMode.crucibleMysteryFight()', '#ce93d8', 'Replay the post-HoF masked challenger.')}
+                    ${btn('🌀',                                     'Rival Rematch', 'window.StoryMode.crucibleRivalFight()', '#90caf9', 'Replay the League rival fight.')}
+                    ${btn(png('icons/story/story_league.png'),     'League Run (E1 → Champion)', 'window.StoryMode.crucibleLeagueRun()', '#ffd54f', 'Run Elite 1 → 4 → Champion in sequence. One loss = run over.')}
+                    ${btn(png('icons/story/story_gym.png'),        'Random Gym Rematch', 'window.StoryMode.crucibleGymPick()', '#a5d6a7', 'Single 6v6 against a randomly chosen Gym Leader.')}
+                    ${btn(png('icons/story/story_route.png'),      'Wild Encounter', 'window.StoryMode.crucibleWildEncounter()', '#aed581', 'Roll a wild Pokémon and try to catch it.')}
                 </div>
                 <h4 style="color:#90caf9;margin:0 0 8px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Facilities</h4>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                    ${btn('🏥', 'Pokémon Center', 'window.StoryMode.enterPokemonCenter()')}
-                    ${btn('🦒', 'Safari Zone', 'window.StoryMode.enterSafariZone()')}
-                    ${btn('🛒', 'PokéMart', "window.StoryMode.enterShop('mart')")}
-                    ${btn('🏬', 'Department Store', "window.StoryMode.enterShop('dept')")}
-                    ${btn('✨', 'Relic Annex', 'window.StoryMode.enterArtifactShop()')}
-                    ${btn('📖', 'Move Tutor', "window.StoryMode.enterTutor('moves')")}
-                    ${btn('📛', 'Nature Rater', "window.StoryMode.enterTutor('nature')")}
-                    ${btn('🥋', 'Battle Dojo', "window.StoryMode.enterTutor('loadout')")}
-                    ${btn('🏋️', 'EV Trainer', 'window.StoryMode.enterEVTrainer()')}
-                    ${btn('🧪', 'Colress', 'window.StoryMode.enterColress()')}
-                    ${btn('🧬', 'Stone Sage (Evolve)', 'window.StoryMode.enterEvolutionLab()')}
-                    ${btn('🔌', 'Link Station', 'window.StoryMode.enterLink()')}
-                    ${btn('🎰', 'Poké Casino', 'window.StoryMode.enterCasino()')}
+                    ${btn(png('icons/story/story_center.png'),     'Pokémon Center', 'window.StoryMode.enterPokemonCenter()', null, 'PC storage and the Underground (sell mons for gold).')}
+                    ${btn('🦒',                                     'Safari Zone', 'window.StoryMode.enterSafariZone()', null, 'Bait/rock catch loop. Safari Balls only; 15 balls per session.')}
+                    ${btn(png('icons/story/story_mart.png'),       'PokéMart', "window.StoryMode.enterShop('mart')", null, 'Poké Balls, potions, healing items.')}
+                    ${btn(png('icons/story/story_dept.png'),       'Department Store', "window.StoryMode.enterShop('dept')", null, 'Great Balls and Mega/Ultra-tier gear (one each per city).')}
+                    ${btn(png('icons/story/story_artifacts.png'),  'Relic Annex', 'window.StoryMode.enterArtifactShop()', null, 'Buy run-wide relics. One per shop, locked for the rest of the run.')}
+                    ${btn(png('icons/story/story_tutor.png'),      'Move Tutor', "window.StoryMode.enterTutor('moves')", null, 'Swap battle moves on any team member.')}
+                    ${btn(png('icons/story/story_nature.png'),     'Nature Rater', "window.StoryMode.enterTutor('nature')", null, 'Reset a Pokémon nature (stat +/- spread).')}
+                    ${btn(png('icons/story/story_dojo.png'),       'Battle Dojo', "window.StoryMode.enterTutor('loadout')", null, 'Swap held items and abilities.')}
+                    ${btn(png('icons/story/story_dojo.png'),       'EV Trainer', 'window.StoryMode.enterEVTrainer()', null, 'Apply EV spreads (Universal · Role · Meta).')}
+                    ${btn(png('icons/story/story_colress.png'),    'Colress', 'window.StoryMode.enterColress()', null, 'Equip a Battle Gimmick: Mega, Z-Move, Dynamax, or Tera.')}
+                    ${btn(png('icons/story/story_professor.png'),  'Stone Sage (Evolve)', 'window.StoryMode.enterEvolutionLab()', null, 'Evolve eligible Pokémon. Build is preserved where legal.')}
+                    ${btn(png('icons/story/story_link.png'),       'Link Station', 'window.StoryMode.enterLink()', null, 'Random trades: reroll, upgrade, or rebuild.')}
+                    ${btn('🎰',                                     'Poké Casino', 'window.StoryMode.enterCasino()', null, '50/50 coin flip. Win pays 2×.')}
                 </div>
             `;
         }
@@ -28219,17 +28269,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div style="color:#bcaaa4;">6v6 battles. Foe stats and grades scale up each round. A single loss ends the streak.</div>
             </div>`;
             html += `<div style="display:flex;justify-content:space-between;align-items:center;gap:14px;padding:10px;background:rgba(8,10,16,0.7);border:1px solid #333;margin-bottom:14px;">
-                <div><div style="font-size:9px;color:#888;letter-spacing:0.06em;text-transform:uppercase;">Current Streak</div><div style="font-size:22px;color:#fff;font-weight:bold;">${f.currentStreak | 0}</div></div>
-                <div style="text-align:right;"><div style="font-size:9px;color:#888;letter-spacing:0.06em;text-transform:uppercase;">Next Round</div><div style="font-size:18px;color:#ff7043;font-weight:bold;">${round}</div></div>
+                <div><div style="font-size:9px;color:#888;letter-spacing:0.06em;text-transform:uppercase;">Wins this run</div><div style="font-size:22px;color:#fff;font-weight:bold;">${f.currentStreak | 0}</div></div>
+                <div style="text-align:right;"><div style="font-size:9px;color:#888;letter-spacing:0.06em;text-transform:uppercase;">Next fight</div><div style="font-size:18px;color:#ff7043;font-weight:bold;">Round ${round}</div></div>
             </div>`;
-            html += `<div style="font-size:10px;color:#888;margin-bottom:14px;line-height:1.5;">Round ${round} foe stats: HP ×${hpMult.toFixed(2)}, bulk/speed ×${bulkMult.toFixed(2)}.</div>`;
+            html += `<div style="font-size:10px;color:#888;margin-bottom:14px;line-height:1.5;">Round ${round} foe stats: HP ×${hpMult.toFixed(2)}, bulk/speed ×${bulkMult.toFixed(2)}. Caps at HP ×2.50 / bulk ×1.80.</div>`;
             if (isActive) {
                 html += `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;">
-                    <button type="button" onclick="window.StoryMode.frontierStartNext()" style="padding:12px;background:linear-gradient(180deg,#ff5722 0%,#bf360c 100%);border:1px solid #ff8a65;color:#fff;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;">⚔ Begin Round ${round}</button>
-                    <button type="button" onclick="window.StoryMode.frontierSurrender()" style="padding:8px;background:rgba(0,0,0,0.4);border:1px solid #555;color:#aaa;font-family:inherit;font-size:11px;cursor:pointer;" title="End the run and save your current streak">🏳️ Surrender (lock streak ${f.currentStreak | 0})</button>
+                    <button type="button" onclick="window.StoryMode.frontierStartNext()" style="padding:12px;background:linear-gradient(180deg,#ff5722 0%,#bf360c 100%);border:1px solid #ff8a65;color:#fff;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><img src="icons/story/story_gym.png?v=20260516" alt="" width="18" height="18" decoding="async" style="image-rendering:pixelated;">Begin Round ${round}</button>
+                    <button type="button" onclick="window.StoryMode.frontierSurrender()" style="padding:8px;background:rgba(0,0,0,0.4);border:1px solid #555;color:#aaa;font-family:inherit;font-size:11px;cursor:pointer;" title="End the run and save your current streak">Surrender (lock streak ${f.currentStreak | 0})</button>
                 </div>`;
             } else {
-                html += `<button type="button" onclick="window.StoryMode.frontierStartRun()" style="display:block;width:100%;padding:12px;background:linear-gradient(180deg,#ff5722 0%,#bf360c 100%);border:1px solid #ff8a65;color:#fff;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;margin-bottom:18px;">⚔ Begin Battle Frontier</button>`;
+                html += `<button type="button" onclick="window.StoryMode.frontierStartRun()" style="display:flex;width:100%;padding:12px;background:linear-gradient(180deg,#ff5722 0%,#bf360c 100%);border:1px solid #ff8a65;color:#fff;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;margin-bottom:18px;align-items:center;justify-content:center;gap:8px;"><img src="icons/story/story_gym.png?v=20260516" alt="" width="18" height="18" decoding="async" style="image-rendering:pixelated;">Begin Battle Frontier</button>`;
             }
             html += `<h4 style="color:#ffab40;margin:0 0 6px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Top 10 Streaks</h4>`;
             if (!topHs.length) {
@@ -28583,11 +28633,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const _CATCH_FLEE_BY_GRADE = { 1: 0.55, 2: 0.40, 3: 0.28, 4: 0.20 };
         const _CATCH_DEFAULT_FLEE_RATE = 0.30;
         const _BALL_DISPLAY = {
-            poke:   { name: 'Poké Ball',   color: '#e57373' },
-            great:  { name: 'Great Ball',  color: '#64b5f6' },
-            ultra:  { name: 'Ultra Ball',  color: '#ffd54f' },
-            master: { name: 'Master Ball', color: '#ce93d8' },
-            safari: { name: 'Safari Ball', color: '#a5d6a7' }
+            poke:   { name: 'Poké Ball',   color: '#e57373', icon: 'sprites/pokesprite/balls/poke.png' },
+            great:  { name: 'Great Ball',  color: '#64b5f6', icon: 'sprites/pokesprite/balls/great.png' },
+            ultra:  { name: 'Ultra Ball',  color: '#ffd54f', icon: 'sprites/pokesprite/balls/ultra.png' },
+            master: { name: 'Master Ball', color: '#ce93d8', icon: 'sprites/pokesprite/balls/master.png' },
+            safari: { name: 'Safari Ball', color: '#a5d6a7', icon: 'sprites/pokesprite/balls/safari.png' }
         };
         // Safari Ball is a session-scoped resource that lives ONLY inside the
         // Safari Zone. It is granted on entry, consumed on each throw, and
@@ -28779,7 +28829,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Roaming-legendary one-shot framing — set the opening message before render
             // so the player can read the stakes before throwing.
             if (_catchState.roamingLabel && !_catchState.bossMode) {
-                _catchState.message = `A roaming ${wildMon.name} appeared. You only get one chance. (Running also forfeits it.)`;
+                _catchState.message = `A roaming ${wildMon.name}! One throw — catch or it's gone forever. (Running also forfeits it.)`;
             }
             // Tutorial framing — warm "your first catch" opener so the player
             // reads the new mechanic with curiosity, not panic. The tutorial
@@ -28787,7 +28837,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // guaranteed (100% on first throw, no flee) — no missed-throw
             // disappointment on the very first try.
             if (_catchState.tutorialMode) {
-                _catchState.message = `A friendly wild ${wildMon.name} appeared! Throw a Poké Ball to catch it — your first catch is guaranteed.`;
+                _catchState.message = `Professor's lesson — a wild ${wildMon.name}. This one is calm: the throw will land. Catch it, then on to the gym.`;
             }
             _catchRender();
             if (!_catchState.bossMode) {
@@ -28868,7 +28918,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         </div>
                     </div>
                     ${message}
-                    <button type="button" onclick="window.StoryMode.bossAttack()" style="padding:12px;background:linear-gradient(180deg,#e53935 0%,#8e0000 100%);border:1px solid #ff8a80;color:#fff;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;">⚔ Strike</button>
+                    <button type="button" onclick="window.StoryMode.bossAttack()" style="padding:12px;background:linear-gradient(180deg,#e53935 0%,#8e0000 100%);border:1px solid #ff8a80;color:#fff;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><img src="icons/story/story_gym.png?v=20260516" alt="" width="18" height="18" decoding="async" style="image-rendering:pixelated;">Strike</button>
                 `;
                 return;
             }
@@ -28890,18 +28940,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const have = sess.ballsLeft | 0;
                 const canThrow = have > 0;
                 ballRows = `<button type="button" onclick="window.StoryMode.catchThrow('safari')" ${canThrow ? '' : 'disabled'} style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:rgba(20,28,40,0.6);border:1px solid ${display.color};color:${display.color};font-family:inherit;font-size:12px;${canThrow ? 'cursor:pointer;' : 'opacity:0.4;cursor:not-allowed;'}">
-                    <span><strong>${display.name}</strong> ×${have}</span>
+                    <span style="display:flex;align-items:center;gap:8px;"><img src="${display.icon}" alt="" width="22" height="22" decoding="async" style="image-rendering:pixelated;flex-shrink:0;"><span><strong>${display.name}</strong> <span style="color:#aaa;font-size:10px;">(${SAFARI_BALL_MULT}× base)</span> ×${have}</span></span>
                     <span style="color:#fff;">${safariPct}%</span>
                 </button>`;
-                const baitLabel = sess.baitCount ? `🍓 Bait <span style="opacity:0.7;font-size:10px;">(${sess.baitCount}×)</span>` : '🍓 Bait';
-                const rockLabel = sess.rockCount ? `🪨 Throw Rock <span style="opacity:0.7;font-size:10px;">(${sess.rockCount}×)</span>` : '🪨 Throw Rock';
+                const _baitIco = `<img src="sprites/pokesprite/items/oran-berry.png" alt="" width="18" height="18" decoding="async" style="image-rendering:pixelated;vertical-align:-4px;margin-right:2px;">`;
+                const _rockIco = `<img src="sprites/pokesprite/items/hard-stone.png" alt="" width="18" height="18" decoding="async" style="image-rendering:pixelated;vertical-align:-4px;margin-right:2px;">`;
+                const baitLabel = sess.baitCount ? `${_baitIco}Bait <span style="color:#ffd54f;font-size:10px;font-weight:bold;">×${sess.baitCount}</span>` : `${_baitIco}Bait`;
+                const rockLabel = sess.rockCount ? `${_rockIco}Throw Rock <span style="color:#ffd54f;font-size:10px;font-weight:bold;">×${sess.rockCount}</span>` : `${_rockIco}Throw Rock`;
                 safariActionRow = `<div style="display:flex;gap:6px;margin-top:4px;">
                     <button type="button" onclick="window.StoryMode.safariBait()" style="flex:1;padding:8px;background:rgba(20,28,40,0.6);border:1px solid #f48fb1;color:#f48fb1;font-family:inherit;font-size:11px;cursor:pointer;" title="Calms the Pokémon — lower flee chance, lower catch chance">${baitLabel}</button>
                     <button type="button" onclick="window.StoryMode.safariRock()" style="flex:1;padding:8px;background:rgba(20,28,40,0.6);border:1px solid #ffab91;color:#ffab91;font-family:inherit;font-size:11px;cursor:pointer;" title="Angers the Pokémon — higher catch chance, higher flee chance">${rockLabel}</button>
                 </div>
                 <div style="display:flex;gap:6px;margin-top:4px;">
-                    <button type="button" onclick="window.StoryMode.catchRun()" style="flex:1;padding:8px;background:rgba(20,28,40,0.4);border:1px solid #5e7a90;color:#a8bccc;font-family:inherit;font-size:10px;cursor:pointer;">🏃 Skip to Next</button>
-                    <button type="button" onclick="window.StoryMode.safariLeaveEarly()" style="flex:1;padding:8px;background:rgba(20,28,40,0.4);border:1px solid #8b6b3a;color:#d7b489;font-family:inherit;font-size:10px;cursor:pointer;" title="Unused Safari Balls will be forfeited">⛺ Leave Safari</button>
+                    <button type="button" onclick="window.StoryMode.catchRun()" style="flex:1;padding:8px;background:rgba(20,28,40,0.4);border:1px solid #5e7a90;color:#a8bccc;font-family:inherit;font-size:10px;cursor:pointer;" title="Skip to next encounter">&#8594; Skip to Next</button>
+                    <button type="button" onclick="window.StoryMode.safariLeaveEarly()" style="flex:1;padding:8px;background:rgba(20,28,40,0.4);border:1px solid #8b6b3a;color:#d7b489;font-family:inherit;font-size:10px;cursor:pointer;" title="Unused Safari Balls will be forfeited">&#8617; Leave Safari</button>
                 </div>`;
                 const _fleeBase = _CATCH_FLEE_BY_GRADE[grade] || _CATCH_DEFAULT_FLEE_RATE;
                 const _fleeMult = Math.pow(SAFARI_BAIT_FLEE_MULT, sess.baitCount | 0) * Math.pow(SAFARI_ROCK_FLEE_MULT, sess.rockCount | 0);
@@ -28919,8 +28971,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const chance = mult === Infinity ? 1 : Math.min(1, baseRate * mult);
                     const pct = Math.round(chance * 100);
                     const canThrow = have > 0;
+                    const multLabel = mult === Infinity ? '∞ (guaranteed)' : `${mult}×`;
                     return `<button type="button" onclick="window.StoryMode.catchThrow('${k}')" ${canThrow ? '' : 'disabled'} style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:rgba(20,28,40,0.6);border:1px solid ${display.color};color:${display.color};font-family:inherit;font-size:12px;${canThrow ? 'cursor:pointer;' : 'opacity:0.4;cursor:not-allowed;'}">
-                        <span><strong>${display.name}</strong> ×${have}</span>
+                        <span style="display:flex;align-items:center;gap:8px;"><img src="${display.icon}" alt="" width="22" height="22" decoding="async" style="image-rendering:pixelated;flex-shrink:0;"><span><strong>${display.name}</strong> <span style="color:#aaa;font-size:10px;">(${multLabel})</span> ×${have}</span></span>
                         <span style="color:#fff;">${pct}%</span>
                     </button>`;
                 }).join('');
@@ -28944,8 +28997,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const headerBg = _catchState.bossMode ? 'rgba(20,8,28,0.7);border:1px solid #6a1b9a' : 'rgba(10,18,12,0.55);border:1px solid #4a6c44';
             const gradeBg = _catchState.bossMode ? '#ce93d8' : '#a5d6a7';
             const subText = _catchState.bossMode
-                ? `Master Ball recommended for a guaranteed catch.`
-                : _catchState.safariMode ? `Safari Balls only (${SAFARI_BALL_MULT}× catch). Bait calms, Rock angers. Effects stack within an encounter.` : 'Rarer Pokémon are harder to catch. Better balls = better odds.';
+                ? `Catch rate 1% per throw. Master Ball is guaranteed.`
+                : _catchState.safariMode ? `Safari Balls only (${SAFARI_BALL_MULT}× catch). Bait calms, Rock angers. Effects stack within an encounter.` : 'Catch chance = grade base × ball multiplier.';
             // Show the wild Pokémon's sprite — the screen was text-only before, which
             // made every encounter feel like the same prompt.
             let spriteHtml = '';
@@ -29076,16 +29129,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (fleeRoll < fleeThreshold) {
                 const fleeMsgs = _catchState.roamingLabel
                     ? [
-                        `${enc.name} broke from the ball and vanished into the wild — gone for good.`,
-                        `${enc.name} sprinted past the treeline and was gone in seconds.`,
-                        `The roaming ${enc.name} slipped the bond and disappeared.`,
-                        `${enc.name} bolted at the throw and is not seen again on this route.`
+                        `${enc.name} broke the ball and fled. Gone for good.`,
+                        `${enc.name} bolted past the treeline. Gone for good.`
                     ]
                     : [
-                        `${enc.name} darted into the brush!`,
-                        `${enc.name} fled — too quick to follow.`,
-                        `The wild ${enc.name} bolted and was gone.`,
-                        `${enc.name} slipped away into the underbrush.`,
+                        `${enc.name} bolted!`,
+                        `${enc.name} fled — too quick to follow.`
                     ];
                 _catchFinishWithMessage(fleeMsgs[Math.floor(Math.random() * fleeMsgs.length)]);
                 return;
@@ -29189,8 +29238,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     Gotcha! <strong>${_esc(caught.name)}</strong> was caught.<br/>
                     <span style="color:#aed581;font-size:11px;">Your party is full (${partyCap}/${partyCap}). Send the new Pokémon to PC, or swap with a team member.</span>
                 </div>
-                <button type="button" onclick="window.StoryMode.catchResolveSendToPC()" style="padding:10px;background:rgba(20,28,40,0.6);border:1px solid #ce93d8;color:#ce93d8;font-family:inherit;font-size:12px;cursor:pointer;">📦 Send ${_esc(caught.name)} to PC</button>
-                <div style="font-size:10px;color:#888;letter-spacing:0.06em;text-transform:uppercase;text-align:center;margin-top:4px;">or swap with a team member</div>
+                <button type="button" onclick="window.StoryMode.catchResolveSendToPC()" style="padding:10px;background:rgba(20,28,40,0.6);border:1px solid #ce93d8;color:#ce93d8;font-family:inherit;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"><img src="icons/story/story_party.png?v=20260516" alt="" width="16" height="16" decoding="async" style="image-rendering:pixelated;"> Send ${_esc(caught.name)} to PC</button>
+                <div style="font-size:10px;color:#888;letter-spacing:0.06em;text-transform:uppercase;text-align:center;margin-top:4px;">— or pick a teammate to swap to PC —</div>
                 <div style="display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;">${partyList}</div>
             </div>`;
             const runBtn = document.getElementById('story-catch-run-btn');
@@ -29364,7 +29413,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const goldEl  = document.getElementById('story-shop-gold');
             const gridEl  = document.getElementById('story-shop-grid');
             if (!gridEl) return;
-            if (titleEl) titleEl.textContent = type==='dept' ? '🏬 Department Store' : '🛒 Pokémart';
+            if (titleEl) {
+                const _shopIco = type === 'dept' ? 'icons/story/story_dept.png?v=20260516' : 'icons/story/story_mart.png?v=20260516';
+                const _shopLbl = type === 'dept' ? 'Department Store' : 'Pokémart';
+                titleEl.innerHTML = `<img class="story-screen-head-ico" src="${_shopIco}" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">${_shopLbl}</span>`;
+            }
             if (goldEl)  goldEl.innerHTML  = storyGoldHtml(sm.gold.toLocaleString());
 
             const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
@@ -29755,8 +29808,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 const flipLabel = outcome === 'heads' ? 'Heads' : 'Tails';
                 const msg = win
-                    ? `${flipLabel}! You win. +${bet.toLocaleString()}G`
-                    : `${flipLabel}. You lose. -${bet.toLocaleString()}G`;
+                    ? `${flipLabel}! You win. +${bet.toLocaleString()}G (now ${sm.gold.toLocaleString()}G)`
+                    : `${flipLabel}. You lose. -${bet.toLocaleString()}G (now ${sm.gold.toLocaleString()}G)`;
                 if (resEl) resEl.textContent = msg;
             } finally {
                 _storyEndInteraction();
@@ -29822,11 +29875,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </div>
                     ${buildBlock}
                     <div class="story-link-btns">
-                        <button class="story-link-btn" onclick="window.StoryMode.linkReroll(${i})" ${canR?'':'disabled'} title="Trade for a different Grade ${g} Pokémon">🔄 Same Tier Swap (${storyGoldHtml(rCost, false)})</button>
+                        <button class="story-link-btn" onclick="window.StoryMode.linkReroll(${i})" ${canR?'':'disabled'} title="Trade for a different Grade ${g} Pokémon">&#8634; Same Tier Swap (${storyGoldHtml(rCost, false)})</button>
                         ${uCost!==null
-                            ? `<button class="story-link-btn" onclick="window.StoryMode.linkUpgrade(${i})" ${canU?'':'disabled'} title="Trade up for a Grade ${g-1} Pokémon">🌟 Upgrade to G${g-1} (${storyGoldHtml(uCost, false)})</button>`
-                            : `<button class="story-link-btn" disabled title="Already top grade">⭐ Top Grade — No Upgrade</button>`}
-                        <button class="story-link-btn" onclick="window.StoryMode.linkRebuild(${i})" ${canBld?'':'disabled'} title="Trade for a fresh build of the same species (moves, item, nature, EVs reroll)">🔃 Rebuild Same Species (${storyGoldHtml(rebB, false)})</button>
+                            ? `<button class="story-link-btn" onclick="window.StoryMode.linkUpgrade(${i})" ${canU?'':'disabled'} title="Trade up for a Grade ${g-1} Pokémon">&#9650; Upgrade to G${g-1} (${storyGoldHtml(uCost, false)})</button>`
+                            : `<button class="story-link-btn" disabled title="Already top grade">&#9733; Top Grade — No Upgrade</button>`}
+                        <button class="story-link-btn" onclick="window.StoryMode.linkRebuild(${i})" ${canBld?'':'disabled'} title="Trade for a fresh build of the same species (moves, item, nature, EVs reroll)">&#8635; Rebuild Same Species (${storyGoldHtml(rebB, false)})</button>
                     </div>
                 </div>`;
             }).join('');
@@ -30075,7 +30128,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         let candyBtn = '';
                         if (_rareCandyCount > 0) {
                             const candyTip = `Use 1 Rare Candy (you have ${_rareCandyCount}) — free evolution into ${e.name}. Saves ${cost.toLocaleString()}G.`.replace(/"/g, '&quot;');
-                            candyBtn = `<button class="story-link-btn" onclick="window.StoryMode.evoLabEvolveWithCandy(${i}, '${e.name.replace(/'/g, "\\'")}')" title="${candyTip}" style="color:#f8bbd0;border-color:#f8bbd0;margin-left:6px;">🍬 Rare Candy <span style="font-size:9px;color:#aaa;">(${_rareCandyCount} left)</span></button>`;
+                            candyBtn = `<button class="story-link-btn" onclick="window.StoryMode.evoLabEvolveWithCandy(${i}, '${e.name.replace(/'/g, "\\'")}')" title="${candyTip}" style="color:#f8bbd0;border-color:#f8bbd0;margin-left:6px;"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="14" height="14" decoding="async" style="image-rendering:pixelated;vertical-align:-2px;margin-right:3px;">Rare Candy <span style="font-size:9px;color:#aaa;">(${_rareCandyCount} left)</span></button>`;
                         }
                         return goldBtn + candyBtn;
                     }).join('');
@@ -30464,7 +30517,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // single-column layout gives room for the sell button
             bagEl.style.gridTemplateColumns = '1fr';
             const h3 = modal.querySelector('h3');
-            if (h3) h3.textContent = '🎒 Your Bag';
+            if (h3) h3.innerHTML = '<img src="icons/story/story_bag.png?v=20260516" alt="" width="18" height="18" decoding="async" style="image-rendering:pixelated;vertical-align:-3px;margin-right:6px;">Your Bag';
             bagEl.innerHTML = '';
 
             const allItems = [...POKEMART_ITEMS, ...DEPT_ITEMS, ...getStoryFeaturedItems()];
@@ -30473,8 +30526,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // sellable. Surface them at the top so players see the bundle they earned
             // from gym victories and Pokédex milestones.
             const _voucherItems = [
-                { id:'rareCandy', name:'🍬 Rare Candy', desc:'Use at the Stone Sage to evolve any party Pokémon for free. Earned from gym leaders + dex milestones.' },
-                { id:'vitamin',   name:'💊 Vitamin Pack', desc:'Permanently trains stat boosts (e.g. +252 Atk / +252 Speed) into one Pokémon for free at the EV Trainer — same effect as paying 5,000G. Earned from gym leaders + Pokédex milestones. Training stays with the mon through PC, evolution, the works. Only lost on release or sale.' }
+                { id:'rareCandy', name:'<img src="sprites/pokesprite/items/rare-candy.png" alt="" width="14" height="14" decoding="async" style="image-rendering:pixelated;vertical-align:-2px;margin-right:4px;">Rare Candy', desc:'Use at the Stone Sage to evolve any party Pokémon for free. Earned from gym leaders + dex milestones.' },
+                { id:'vitamin',   name:'<img src="sprites/pokesprite/items/protein.png" alt="" width="14" height="14" decoding="async" style="image-rendering:pixelated;vertical-align:-2px;margin-right:4px;">Vitamin Pack', desc:'Permanently trains stat boosts (e.g. +252 Atk / +252 Speed) into one Pokémon for free at the EV Trainer — same effect as paying 5,000G. Earned from gym leaders + Pokédex milestones. Training stays with the mon through PC, evolution, the works. Only lost on release or sale.' }
             ];
             _voucherItems.forEach(item => {
                 const qty = (sm.inventory && sm.inventory[item.id]) | 0;
@@ -31268,18 +31321,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const titleEl = document.getElementById('story-tutor-head-title');
             const descEl = document.getElementById('story-tutor-head-desc');
             let quoteKey = 'moveTutor';
+            let iconSrc = 'icons/story/story_tutor.png?v=20260516';
+            let label = 'Move Tutor';
+            let desc = 'Teach or replace battle moves. Options come from the species\' learnset and competitive sets.';
             if (mode === 'nature') {
-                if (titleEl) titleEl.textContent = '📛 Nature Rater';
-                if (descEl) descEl.textContent = 'Change a Pokémon\'s nature. Stat boosts (+/−) shown on each option.';
+                iconSrc = 'icons/story/story_nature.png?v=20260516';
+                label = 'Nature Rater';
+                desc = 'Change a Pokémon\'s nature. Each nature applies a +10% / −10% stat pair (or neutral). All 25 natures are available.';
                 quoteKey = 'natureRater';
             } else if (mode === 'loadout') {
-                if (titleEl) titleEl.textContent = '🥋 Battle Dojo';
-                if (descEl) descEl.textContent = 'Change held items and abilities for each Pokémon.';
+                iconSrc = 'icons/story/story_dojo.png?v=20260516';
+                label = 'Battle Dojo';
+                desc = 'Equip held items and abilities. Options are species-legal and drawn from competitive sets.';
                 quoteKey = 'battleDojo';
             } else {
-                if (titleEl) titleEl.textContent = '📖 Move Tutor';
-                if (descEl) descEl.textContent = 'Tap a move slot to swap it. Available moves come from each Pokémon\'s learnset.';
+                desc = 'Tap a move slot to swap it. Available moves come from each Pokémon\'s learnset and competitive sets.';
             }
+            if (titleEl) titleEl.innerHTML = `<img class="story-screen-head-ico" src="${iconSrc}" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">${label}</span>`;
+            if (descEl) descEl.textContent = desc;
             try { _storyShowFacilityQuote('screen-story-tutor', quoteKey); } catch (e) {}
         }
         const TUTOR_UNIVERSAL_ITEMS = [
@@ -32138,7 +32197,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             const body = noneEligible
-                ? `<div class="story-tutor-option-row"><span class="current" style="color:#888;">No battle forms available for this Pokémon.</span></div>`
+                ? `<div class="story-tutor-option-row"><span class="current" style="color:#888;">No battle forms available — Mega / Z / Dynamax / Tera are disabled for this run, or none are legal on this species.</span></div>`
                 : sections.join('');
 
             const headerCostChip = noneEligible
@@ -32391,7 +32450,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const safeId = String(p.id).replace(/'/g, "\\'");
             const vitaCount = (sm.inventory && sm.inventory.vitamin) | 0;
             const vitaBtn = hasVitamin
-                ? `<button type="button" class="story-tutor-btn" ${vitaDisabled ? 'disabled' : ''} onclick="window.StoryMode.evTrainerApplyPresetWithVitamin(${idx},'${safeId}')" title="Use 1 Vitamin Pack (you have ${vitaCount}) — free preset, saves ${EVTRAINER_COST.toLocaleString()}G" style="margin-left:6px;color:#f8bbd0;border-color:#f8bbd0;">💊 Use Vitamin <span style="font-size:9px;color:#aaa;">(${vitaCount} left)</span></button>`
+                ? `<button type="button" class="story-tutor-btn" ${vitaDisabled ? 'disabled' : ''} onclick="window.StoryMode.evTrainerApplyPresetWithVitamin(${idx},'${safeId}')" title="Use 1 Vitamin Pack (you have ${vitaCount}) — free preset, saves ${EVTRAINER_COST.toLocaleString()}G" style="margin-left:6px;color:#f8bbd0;border-color:#f8bbd0;"><img src="sprites/pokesprite/items/protein.png" alt="" width="14" height="14" decoding="async" style="image-rendering:pixelated;vertical-align:-2px;margin-right:3px;">Use Vitamin <span style="font-size:9px;color:#aaa;">(${vitaCount} left)</span></button>`
                 : '';
             return `<div class="story-tutor-choice"${activeFlag}><div class="story-tutor-choice-actions">`
                 + `<button type="button" class="story-tutor-btn" ${dis} onclick="window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')">`
