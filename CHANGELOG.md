@@ -3,6 +3,58 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Story-mode flow, writing & immersion 2026-05-16 (`claude/story-mode-flow-LS32t`)
+
+### Added — Per-city arrival welcome screen
+
+- Entering a city for the first time in a run now opens a short welcome
+  overlay: the city name, its specialty banner, two lines of in-world
+  flavor, and a portrait of the resident Professor/City Guide. Uses the
+  existing city background SVGs and trainer sprites so the screen fits
+  the rest of the story-mode chrome.
+- One overlay per city per run (City 0 keeps its existing cold-open as
+  its arrival). Tracked via `sm.citiesArrived`; migrated saves back-fill
+  the flag for cities already passed through so returning to an
+  in-progress run doesn't pop the overlay mid-game.
+
+### Changed — Professor visits are now must-do to leave town
+
+- "Continue to Next Route" is locked the same way "Challenge the Gym
+  Leader" already was when the city's Professor is on the board and
+  hasn't been visited yet. The button shows a `Visit Professor first`
+  hint; the legendary Mystery-gate variant keeps its own message.
+- The city dialog gets a `⚠ Must-do: Visit the Professor` line at the
+  top whenever a Professor is unvisited, so the gate is announced
+  before the player taps a locked button.
+
+### Changed — City writing pass (guide quotes, Professor quotes, blurbs, openings)
+
+- `CITY_GUIDE_QUOTES` (12 entries) and `CITY_PROFESSOR_QUOTES` (12
+  entries) rewritten end-to-end. Tone: Pokémon-world voice with a
+  sharper edge — references to the gym scene, the Underground, the
+  Move Tutor / Dojo / Casino circuit, the Plateau. Less greeting-card,
+  more in-world.
+- `CITY_SPECIALTY_BLURBS` tightened to one-line city identities
+  (`Hometown. The lab, the starter, and the only road that goes north.`
+  etc.).
+- New `CITY_ARRIVAL_LINES` (10 entries) drives the welcome overlay's
+  scene-setter.
+- `PROF_QUOTES` rewritten with the same voice — the three-choice
+  Professor screen now reads like a working lab, not a tutorial bot.
+- Pallet Town cold-open, intro-rival cold-open, and the City 0
+  welcome / "what is a Gym" tips all updated to match.
+
+### Reason
+
+Story-mode flow audit ([STORY_MODE_FLOW.md](STORY_MODE_FLOW.md))
+flagged two recurring complaints: city guide text was bland, and
+players could blow past the Professor in post-gym hubs without
+realizing they were missing a team slot. The welcome overlay gives
+each city a sense of arrival; the gated route + must-do beacon makes
+Professor visits structurally mandatory; and the writing pass brings
+the city/Professor copy in line with the existing leader/elite/
+champion victory lines.
+
 ## Unreleased — Simplify game modes (default = Classic, all mechanics on) 2026-05-16 (`claude/simplify-game-modes-vHlMS`)
 
 ### Changed — Battle menu defaults & hidden advanced toggles
