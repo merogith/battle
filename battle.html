@@ -7977,6 +7977,246 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const a = (Math.PI * 2 * i) / 6;
                         anime({ targets: st, opacity: [0,1,0], translateX: [0,Math.cos(a)*60,Math.cos(a)*90], translateY: [0,Math.sin(a)*60,Math.sin(a)*90], duration: dur, delay: 100, easing: 'easeOutExpo' });
                     });
+                } else if (s === 'knock') {
+                    // Item flies off the target — a small square ejected sideways with a smack-line
+                    const item = _spawn(wrapper, `width:14px;height:14px;border-radius:3px;background:linear-gradient(135deg,${c2},${c1});box-shadow:0 0 4px ${c1};left:45%;top:45%;`);
+                    const dir = isPlayerTarget ? -1 : 1;
+                    anime({ targets: item, opacity: [0,1,1,0], translateX: [0, dir*60, dir*100], translateY: [0,-25,30], rotate: [0, dir*180, dir*360], duration: dur, easing: 'easeOutQuad' });
+                    const smack = _spawn(wrapper, `width:40%;height:3px;top:50%;left:30%;background:linear-gradient(90deg,transparent,${c1},transparent);border-radius:2px;`);
+                    anime({ targets: smack, opacity: [0,1,0], scaleX: [0,1.3,1.5], duration: 250, easing: 'easeOutExpo' });
+                } else if (s === 'hazard_rock') {
+                    // Stealth Rock — rocks rise from the ground, settle into a slow orbit around the foe's feet
+                    const orbitR = 28 + intensity * 4;
+                    for (let i = 0; i < Math.min(numP, 5); i++) {
+                        const sz = 7 + Math.random()*4;
+                        const r = _spawn(wrapper, `width:${sz}px;height:${sz}px;border-radius:25% 40% 30% 35%;background:linear-gradient(135deg,${c1},${c2});box-shadow:0 0 3px ${c1};left:50%;top:85%;`);
+                        const a0 = (Math.PI * 2 * i) / numP;
+                        const a1 = a0 + 0.6;
+                        anime({ targets: r, opacity: [0,1,1,0.8], translateX: [0, Math.cos(a0)*orbitR, Math.cos(a1)*orbitR], translateY: [0, -20 + Math.sin(a0)*orbitR*0.4, -25 + Math.sin(a1)*orbitR*0.4], rotate: [0, 180], duration: dur, delay: i*80, easing: 'easeOutQuad' });
+                    }
+                    // Faint dust at the ground when they rise
+                    const dust = _spawn(wrapper, `width:60%;height:8%;left:20%;bottom:0;background:linear-gradient(0deg,${c1}55,transparent);`);
+                    anime({ targets: dust, opacity: [0,0.7,0], scaleX: [0.5,1.2], duration: 400, easing: 'easeOutQuad' });
+                } else if (s === 'hazard_spike' || s === 'hazard_tspike') {
+                    // Spikes / Toxic Spikes — short triangle spikes pop up at the foe's feet
+                    const tip = s === 'hazard_tspike' ? c2 : '#fff';
+                    for (let i = 0; i < 3; i++) {
+                        const sp = _spawn(wrapper, `width:10px;height:18px;left:${36 + i*14}%;bottom:6%;background:linear-gradient(0deg,${c1},${c2});clip-path:polygon(50% 0,100% 100%,0 100%);box-shadow:0 0 3px ${c1};`);
+                        anime({ targets: sp, opacity: [0,1,1,0.9], translateY: [12,0,-2,0], scaleY: [0.3,1,1.05,1], duration: dur, delay: i*70, easing: 'easeOutBack' });
+                        if (s === 'hazard_tspike') {
+                            const drop = _spawn(wrapper, `width:4px;height:4px;border-radius:50%;background:${tip};box-shadow:0 0 3px ${c1};left:${39 + i*14}%;bottom:22%;`);
+                            anime({ targets: drop, opacity: [0,0.9,0], translateY: [0,6,12], duration: dur, delay: i*70 + 150, easing: 'easeInQuad' });
+                        }
+                    }
+                    const puff = _spawn(wrapper, `width:60%;height:8%;left:20%;bottom:0;background:linear-gradient(0deg,${c1}55,transparent);`);
+                    anime({ targets: puff, opacity: [0,0.6,0], scaleX: [0.5,1.2], duration: 400, easing: 'easeOutQuad' });
+                } else if (s === 'pivot') {
+                    // U-turn / Baton Pass — light hit on target + user fades briefly (cross-container)
+                    const ring = _spawn(wrapper, `width:40%;height:40%;left:30%;top:30%;border:3px solid ${c1};border-radius:50%;background:transparent;`);
+                    anime({ targets: ring, opacity: [0,0.8,0], scale: [0.3,1.6], borderWidth: ['3px','0px'], duration: 400, easing: 'easeOutExpo' });
+                    const userContId = isPlayerTarget ? 'foe-sprite-container' : 'player-sprite-container';
+                    const userCont = document.getElementById(userContId);
+                    if (userCont) {
+                        const trail = _spawn(userCont, `width:100%;height:100%;left:0;top:0;background:radial-gradient(circle,${c1}44,transparent 70%);z-index:39;`);
+                        anime({ targets: trail, opacity: [0,0.8,0], scale: [0.8,1.2], duration: dur, easing: 'easeOutQuad', complete: () => _cleanup([trail], 0) });
+                        const userSprite = userCont.querySelector('img');
+                        if (userSprite) anime({ targets: userSprite, opacity: [1,0.35,1], duration: dur, easing: 'easeInOutQuad' });
+                    }
+                } else if (s === 'sub_doll') {
+                    // Substitute — smoke puff then the existing substitute sprite briefly appears
+                    const smokes = _spawnMulti(wrapper, 5, `width:24%;height:24%;border-radius:50%;background:radial-gradient(circle,#cccccc,transparent 70%);left:38%;top:32%;filter:blur(1px);`);
+                    smokes.forEach((sm, i) => {
+                        anime({ targets: sm, opacity: [0,0.7,0], scale: [0.3,1.6], translateX: () => (Math.random()-0.5)*40, translateY: () => -10 - Math.random()*20, duration: dur, delay: i*40, easing: 'easeOutQuad' });
+                    });
+                    const dollImg = document.createElement('img');
+                    dollImg.src = 'sprites/substitute.png';
+                    dollImg.onerror = () => { dollImg.src = 'https://play.pokemonshowdown.com/sprites/gen5/substitute.png'; dollImg.onerror = null; };
+                    dollImg.style.cssText = 'position:absolute;width:60%;height:60%;left:20%;top:25%;opacity:0;image-rendering:pixelated;object-fit:contain;pointer-events:none;';
+                    wrapper.appendChild(dollImg);
+                    anime({ targets: dollImg, opacity: [0, 0.95, 0.8, 0], scale: [0.6, 1, 1, 0.95], duration: dur + 200, easing: 'easeOutQuad' });
+                } else if (s === 'swap_arc') {
+                    // Trick — two icons arc across, swapping between user and target sides
+                    const dir = isPlayerTarget ? -1 : 1;
+                    for (let i = 0; i < 2; i++) {
+                        const sign = i === 0 ? 1 : -1;
+                        const tag = _spawn(wrapper, `width:14px;height:14px;border-radius:50%;background:radial-gradient(circle,#fff,${i===0?c1:c2});box-shadow:0 0 4px ${i===0?c1:c2};left:50%;top:50%;font-size:10px;color:#222;font-weight:bold;display:flex;align-items:center;justify-content:center;`);
+                        tag.textContent = '?';
+                        anime({ targets: tag, opacity: [0,1,1,0], translateX: [sign*dir*40, -sign*dir*40], translateY: [{value: -20, duration: dur*0.5}, {value: 0, duration: dur*0.5}], duration: dur, delay: i*60, easing: 'easeInOutQuad' });
+                    }
+                } else if (s === 'swords_x') {
+                    // Swords Dance — two crossed swords flash in an X above the user
+                    for (let i = 0; i < 2; i++) {
+                        const ang = i === 0 ? -45 : 45;
+                        const sw = _spawn(wrapper, `width:60%;height:5px;top:40%;left:20%;background:linear-gradient(90deg,${c2},${c1},#fff,${c1},${c2});border-radius:2px;box-shadow:0 0 6px ${c1};transform-origin:center;`);
+                        anime({ targets: sw, opacity: [0,1,1,0], scaleX: [0.3,1,1.05,1], rotate: [ang*0.5, ang], translateX: '-50%', translateY: '-50%', duration: dur, delay: i*120, easing: 'easeOutExpo' });
+                    }
+                    const flash = _spawn(wrapper, `width:30%;height:30%;left:35%;top:35%;border-radius:50%;background:radial-gradient(circle,#fff,${c1},transparent 70%);`);
+                    anime({ targets: flash, opacity: [0,1,0], scale: [0.3,1.2], duration: 400, delay: 260, easing: 'easeOutExpo' });
+                } else if (s === 'stone_erupt') {
+                    // Stone Edge — sharp tan spikes erupt UP through the bottom of the foe
+                    for (let i = 0; i < 3; i++) {
+                        const left = 28 + i*22;
+                        const sp = _spawn(wrapper, `width:14px;height:38px;left:${left}%;bottom:4%;background:linear-gradient(0deg,${c1},${c2},${c1});clip-path:polygon(50% 0, 100% 70%, 80% 100%, 20% 100%, 0 70%);box-shadow:0 0 4px ${c1};transform-origin:bottom center;`);
+                        anime({ targets: sp, opacity: [0,1,1,0], translateY: [30,-8,2,0], scaleY: [0.2,1.1,1,1], duration: dur, delay: i*70, easing: 'easeOutBack' });
+                    }
+                    const dust = _spawn(wrapper, `width:80%;height:12%;left:10%;bottom:0;background:linear-gradient(0deg,${c1}77,transparent);`);
+                    anime({ targets: dust, opacity: [0,0.8,0], scaleX: [0.4,1.2], duration: 500, easing: 'easeOutQuad' });
+                    anime({ targets: container, translateY: [0,-2,1,0], duration: 300, easing: 'easeOutQuad' });
+                } else if (s === 'calm_mind') {
+                    // Calm Mind — two soft rings converge inward to a glow at the head
+                    for (let i = 0; i < 2; i++) {
+                        const ring = _spawn(wrapper, `width:60%;height:60%;left:20%;top:10%;border:2px solid ${c1};border-radius:50%;background:transparent;box-shadow:0 0 8px ${c1};`);
+                        anime({ targets: ring, opacity: [0,0.8,0], scale: [1.6, 0.3], borderWidth: ['2px','0px'], duration: dur, delay: i*150, easing: 'easeInOutQuad' });
+                    }
+                    const core = _spawn(wrapper, `width:18%;height:18%;left:41%;top:24%;border-radius:50%;background:radial-gradient(circle,#fff,${c1},transparent);box-shadow:0 0 10px ${c1};`);
+                    anime({ targets: core, opacity: [0,0,1,0], scale: [0.3,0.5,1.1,0.9], duration: dur+200, easing: 'easeOutQuad' });
+                } else if (s === 'dragon_dance') {
+                    // Dragon Dance — serpentine purple trail spirals around the user
+                    const segments = 14;
+                    const trail = [];
+                    for (let i = 0; i < segments; i++) {
+                        const seg = _spawn(wrapper, `width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#fff,${c1});box-shadow:0 0 5px ${c2};left:50%;top:50%;`);
+                        trail.push(seg);
+                        const t = i / segments;
+                        const ang = t * Math.PI * 4; // 2 loops
+                        const r = 30 + 8 * Math.sin(t * Math.PI);
+                        anime({ targets: seg, opacity: [0, 1, 0.6, 0], translateX: [0, Math.cos(ang) * r], translateY: [0, Math.sin(ang) * r - t * 20], scale: [0.5, 1, 0.4], duration: dur+100, delay: i*50, easing: 'easeOutQuad' });
+                    }
+                    const glow = _spawn(wrapper, `width:80%;height:80%;left:10%;top:10%;border-radius:50%;background:radial-gradient(circle,${c1}33,transparent 70%);`);
+                    anime({ targets: glow, opacity: [0,0.6,0], scale: [0.7,1.1], duration: dur, easing: 'easeInOutQuad' });
+                } else if (s === 'rapid_spin') {
+                    // Rapid Spin — circular blur ring + outward white shards (no sprite rotate)
+                    const ring = _spawn(wrapper, `width:70%;height:70%;left:15%;top:15%;border:3px dashed ${c1};border-radius:50%;background:transparent;box-shadow:0 0 8px ${c2};`);
+                    anime({ targets: ring, opacity: [0,0.9,0], scale: [0.4,1.2], rotate: [0, 540], duration: dur, easing: 'easeOutQuad' });
+                    const shards = _spawnMulti(wrapper, 6, `width:6px;height:14px;background:linear-gradient(0deg,${c2},#fff);border-radius:3px;left:50%;top:50%;box-shadow:0 0 3px ${c1};`);
+                    shards.forEach((sh, i) => {
+                        const a = (Math.PI * 2 * i) / shards.length;
+                        anime({ targets: sh, opacity: [0,1,0], translateX: [0, Math.cos(a)*60], translateY: [0, Math.sin(a)*60], rotate: a*180/Math.PI + 90, duration: dur, delay: 100, easing: 'easeOutExpo' });
+                    });
+                } else if (s === 'trick_room') {
+                    // Trick Room — checkerboard grid overlay flashes (no flip)
+                    const grid = _spawn(wrapper, `width:100%;height:100%;left:0;top:0;background-image:linear-gradient(45deg,${c1}55 25%,transparent 25%,transparent 75%,${c1}55 75%),linear-gradient(45deg,${c1}55 25%,transparent 25%,transparent 75%,${c1}55 75%);background-size:16px 16px;background-position:0 0, 8px 8px;`);
+                    anime({ targets: grid, opacity: [0, 0.7, 0.5, 0], scale: [0.85, 1.05, 1, 1], duration: dur+200, easing: 'easeInOutQuad' });
+                    const flash = _spawn(wrapper, `width:100%;height:100%;left:0;top:0;background:radial-gradient(circle,${c2}44,transparent 70%);`);
+                    anime({ targets: flash, opacity: [0,0.6,0], duration: 400, easing: 'easeOutQuad' });
+                } else if (s === 'defog') {
+                    // Defog — horizontal wind streaks sweep across, brightening the field
+                    for (let i = 0; i < 5; i++) {
+                        const arc = _spawn(wrapper, `width:50%;height:4px;background:linear-gradient(90deg,transparent,${c2},${c1},${c2},transparent);left:-10%;top:${20 + i*15}%;border-radius:2px;filter:blur(0.5px);`);
+                        anime({ targets: arc, opacity: [0,0.9,0], translateX: ['0%', '180%'], scaleX: [0.6,1.4], duration: dur, delay: i*60, easing: 'easeOutQuad' });
+                    }
+                    const bright = _spawn(wrapper, `width:100%;height:100%;left:0;top:0;background:linear-gradient(90deg,transparent,${c1}33,transparent);`);
+                    anime({ targets: bright, opacity: [0,0.6,0], translateX: ['-50%','50%'], duration: dur, easing: 'easeOutQuad' });
+                } else if (s === 'leech_seed') {
+                    // Leech Seed — small green seed lands on foe, vine sprouts from the ground
+                    const seed = _spawn(wrapper, `width:10px;height:14px;border-radius:50% 50% 40% 40%;background:linear-gradient(180deg,${c1},${c2});box-shadow:0 0 3px ${c1};left:46%;top:-10%;`);
+                    anime({ targets: seed, opacity: [0,1,1,0], translateY: [0, 110, 130], rotate: [0, 180], duration: dur*0.55, easing: 'easeInQuad' });
+                    const vine = _spawn(wrapper, `width:4px;height:0;background:linear-gradient(0deg,${c2},${c1});border-radius:2px;left:48%;bottom:8%;transform-origin:bottom center;`);
+                    anime({ targets: vine, opacity: [0,1,1,0.5], height: [0, 45, 50, 45], rotate: [0, -8, 8, -4], duration: dur, delay: dur*0.4, easing: 'easeOutQuad' });
+                    for (let i = 0; i < 3; i++) {
+                        const leaf = _spawn(wrapper, `width:7px;height:7px;border-radius:0 50% 50% 50%;background:${c1};left:${42 + i*6}%;bottom:${15 + i*8}%;`);
+                        anime({ targets: leaf, opacity: [0,0.9,0], scale: [0,1,0.8], rotate: () => Math.random()*360, duration: 500, delay: dur*0.5 + i*80, easing: 'easeOutQuad' });
+                    }
+                } else if (s === 'wisp') {
+                    // Will-O-Wisp — 2-3 small blueish flames drift slowly around the target
+                    for (let i = 0; i < Math.max(numP, 3); i++) {
+                        const w = _spawn(wrapper, `width:${10+Math.random()*4}px;height:${14+Math.random()*5}px;border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;background:radial-gradient(ellipse,#fff,${c2},${c1});box-shadow:0 0 6px ${c1};left:${25 + Math.random()*50}%;top:${35 + Math.random()*30}%;filter:blur(0.5px);`);
+                        anime({ targets: w, opacity: [0,0.9,0.7,0], translateX: () => (Math.random()-0.5)*30, translateY: [0, -15, -30 - Math.random()*15], scale: [0.4,1.1,0.7,0.4], duration: dur+300, delay: i*150, easing: 'easeInOutQuad' });
+                    }
+                } else if (s === 't_wave') {
+                    // Thunder Wave — yellow zigzag pulse expands from center + brief paralyzed-shake
+                    const z = _spawn(wrapper, `width:60%;height:60%;left:20%;top:20%;background:linear-gradient(180deg,${c1},#fff,${c1});filter:blur(1px);clip-path:polygon(40% 0,60% 0,55% 30%,70% 30%,45% 60%,60% 60%,35% 100%,40% 55%,25% 55%,50% 25%,35% 25%);opacity:0;`);
+                    anime({ targets: z, opacity: [0,1,0.8,0], scale: [0.4,1.3,1.5], duration: dur*0.6, easing: 'easeOutExpo' });
+                    for (let i = 0; i < 3; i++) {
+                        const ring = _spawn(wrapper, `width:20px;height:20px;border-radius:50%;border:2px solid ${c1};left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 5px ${c2};`);
+                        anime({ targets: ring, width: [20, 120], height: [20, 120], opacity: [0.9, 0], duration: dur, delay: i*120, easing: 'easeOutQuad' });
+                    }
+                    anime({ targets: container, translateX: [0,-3,3,-2,2,0], duration: 350, delay: 100, easing: 'easeInOutQuad' });
+                } else if (s === 'hex_mark') {
+                    // Hex — purple X-shaped curse mark flickers over the target + ghostly wisps
+                    for (let i = 0; i < 2; i++) {
+                        const ang = i === 0 ? -45 : 45;
+                        const bar = _spawn(wrapper, `width:55%;height:4px;left:22%;top:50%;background:linear-gradient(90deg,transparent,${c1},${c2},${c1},transparent);border-radius:2px;box-shadow:0 0 6px ${c1};transform-origin:center;`);
+                        anime({ targets: bar, opacity: [0,1,0.6,1,0], scaleX: [0.3,1,1,1.1,1], rotate: ang, duration: dur, delay: i*100, easing: 'easeInOutQuad' });
+                    }
+                    const wisps = _spawnMulti(wrapper, 4, `width:10%;height:10%;border-radius:50%;background:radial-gradient(circle,${c1},transparent 70%);filter:blur(2px);`);
+                    wisps.forEach((w, i) => {
+                        w.style.left = (30 + Math.random()*40) + '%';
+                        w.style.top = (30 + Math.random()*40) + '%';
+                        anime({ targets: w, opacity: [0,0.7,0], scale: [0.5,1.4], translateY: () => -(15 + Math.random()*20), duration: dur, delay: i*80, easing: 'easeOutSine' });
+                    });
+                } else if (s === 'pursuit_shadow') {
+                    // Pursuit — a dark shadow streak chases in from behind, then a tackle impact
+                    const dir = isPlayerTarget ? 1 : -1;
+                    const streak = _spawn(wrapper, `width:120%;height:30%;top:35%;left:${dir < 0 ? 100 : -120}%;background:linear-gradient(${dir<0?'90deg':'-90deg'},transparent,${c1}cc,${c2}cc,transparent);filter:blur(2px);border-radius:50%;`);
+                    anime({ targets: streak, opacity: [0,0.9,0], translateX: dir > 0 ? ['0%','100%'] : ['0%','-100%'], duration: dur*0.55, easing: 'easeInQuad' });
+                    const imp = _spawn(wrapper, `width:45%;height:45%;left:27%;top:27%;border-radius:50%;background:radial-gradient(circle,#fff 0%,${c1} 40%,${c2} 70%,transparent 100%);`);
+                    anime({ targets: imp, opacity: [0,1,0], scale: [0.2,1.4], duration: 400, delay: dur*0.45, easing: 'easeOutExpo' });
+                } else if (s === 'solar_beam') {
+                    // Solar Beam — compressed charge → fire in one sequence
+                    const dir = isPlayerTarget ? 1 : -1;
+                    const userSide = isPlayerTarget ? '100%' : '-10%';
+                    const charge = _spawn(wrapper, `width:18px;height:18px;border-radius:50%;background:radial-gradient(circle,#fff,${c2},${c1});box-shadow:0 0 12px ${c1};top:48%;left:${userSide};`);
+                    anime({ targets: charge, opacity: [0,1,1,0], scale: [0.3,1.6,2.2,1.8], duration: dur*0.45, easing: 'easeOutQuad' });
+                    const beam = _spawn(wrapper, `width:120%;height:18px;top:48%;left:-10%;background:linear-gradient(90deg,transparent,${c2},${c1},#fff,${c1},${c2},transparent);filter:blur(1px);box-shadow:0 0 10px ${c1};opacity:0;`);
+                    anime({ targets: beam, opacity: [0,1,1,0], scaleX: [0.1,1,1,1], translateX: dir < 0 ? ['20%','0%','0%','0%'] : ['-20%','0%','0%','0%'], duration: dur*0.6, delay: dur*0.4, easing: 'easeOutQuad' });
+                } else if (s === 'aura_homing') {
+                    // Aura Sphere — single charged ball with a curved homing path
+                    const dir = isPlayerTarget ? -1 : 1;
+                    const startX = isPlayerTarget ? 95 : 5;
+                    const orb = _spawn(wrapper, `width:22px;height:22px;border-radius:50%;background:radial-gradient(circle,#fff,${c2},${c1});box-shadow:0 0 14px ${c1};left:${startX}%;top:50%;`);
+                    anime({ targets: orb, opacity: [0,1,1,0], scale: [0.3,1.2,1,1.3], translateX: [{value: 0, duration: 200}, {value: dir*60, duration: dur-300}, {value: dir*70, duration: 100}], translateY: [{value: 0, duration: 200}, {value: -20, duration: (dur-300)*0.5, easing:'easeOutQuad'}, {value: 0, duration: (dur-300)*0.5, easing:'easeInQuad'}], duration: dur, easing: 'linear' });
+                    const halo = _spawn(wrapper, `width:30%;height:30%;left:35%;top:35%;border-radius:50%;border:2px solid ${c1};background:transparent;box-shadow:0 0 8px ${c2};`);
+                    anime({ targets: halo, opacity: [0,0,0.9,0], scale: [0.3,0.3,1.6], duration: 300, delay: dur-150, easing: 'easeOutExpo' });
+                } else if (s === 'heal_roost') {
+                    // Roost — feathers drift down onto the user
+                    for (let i = 0; i < Math.max(numP, 5); i++) {
+                        const f = _spawn(wrapper, `width:6px;height:14px;border-radius:50% 50% 30% 30% / 60% 60% 40% 40%;background:linear-gradient(180deg,${c2},${c1});left:${20 + Math.random()*60}%;top:-8%;box-shadow:0 0 2px ${c1};`);
+                        anime({ targets: f, opacity: [0,0.95,0.8,0], translateY: [0, 90, 110], translateX: () => (Math.random()-0.5)*30, rotate: [0, 80 + Math.random()*80], duration: dur+200, delay: i*80, easing: 'easeInOutSine' });
+                    }
+                    const glow = _spawn(wrapper, `width:100%;height:40%;left:0;bottom:0;background:radial-gradient(ellipse at center bottom,${c1}33,transparent 80%);`);
+                    anime({ targets: glow, opacity: [0,0.7,0], duration: dur, easing: 'easeInOutQuad' });
+                } else if (s === 'heal_synth') {
+                    // Synthesis — yellow sun rays from top corner
+                    const sun = _spawn(wrapper, `width:30%;height:30%;left:10%;top:-10%;border-radius:50%;background:radial-gradient(circle,#fff,${c1},${c2});box-shadow:0 0 18px ${c1};`);
+                    anime({ targets: sun, opacity: [0,1,0.8,0], scale: [0.3,1.2,1], duration: dur, easing: 'easeInOutQuad' });
+                    for (let i = 0; i < 5; i++) {
+                        const ray = _spawn(wrapper, `width:90%;height:4px;left:10%;top:5%;background:linear-gradient(90deg,${c2},${c1},transparent);transform-origin:left center;filter:blur(0.5px);`);
+                        anime({ targets: ray, opacity: [0,0.8,0], scaleX: [0.3,1.2], rotate: 20 + i*8, duration: dur, delay: i*50, easing: 'easeOutQuad' });
+                    }
+                    const sparkles = _spawnMulti(wrapper, numP, `width:5px;height:5px;border-radius:50%;background:${c2};box-shadow:0 0 4px ${c1};bottom:15%;`);
+                    sparkles.forEach((sp, i) => {
+                        sp.style.left = (25 + Math.random() * 50) + '%';
+                        anime({ targets: sp, opacity: [0,1,0], translateY: [0,-30,-60], scale: [0.4,1,0.8], duration: dur, delay: 200 + i*70, easing: 'easeOutQuad' });
+                    });
+                } else if (s === 'heal_bell') {
+                    // Heal Bell — bell shape with concentric ring pulses
+                    const bell = _spawn(wrapper, `width:24%;height:24%;left:38%;top:35%;background:linear-gradient(180deg,${c2},${c1});border-radius:45% 45% 25% 25% / 60% 60% 30% 30%;box-shadow:0 0 8px ${c1};`);
+                    anime({ targets: bell, opacity: [0,1,1,0], scale: [0.3,1.1,1], rotate: [-8,8,-6,6,0], duration: dur, easing: 'easeOutQuad' });
+                    for (let i = 0; i < 3; i++) {
+                        const ring = _spawn(wrapper, `width:30px;height:30px;border-radius:50%;border:2px solid ${c1};left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 8px ${c2};`);
+                        anime({ targets: ring, width: [30, 160], height: [30, 160], opacity: [0.9, 0], borderWidth: ['2px','0px'], duration: dur, delay: 150 + i*180, easing: 'easeOutQuad' });
+                    }
+                } else if (s === 'sucker_punch') {
+                    // Sucker Punch — brief "!" surprise spark, then a single sharp dark punch lands suddenly
+                    const exclaim = document.createElement('div');
+                    exclaim.style.cssText = `position:absolute;left:42%;top:18%;font-size:22px;font-weight:bold;color:${c2};text-shadow:0 0 6px ${c1};font-family:Arial,sans-serif;pointer-events:none;opacity:0;`;
+                    exclaim.textContent = '!';
+                    wrapper.appendChild(exclaim);
+                    anime({ targets: exclaim, opacity: [0,1,0], scale: [0.4,1.4,1], translateY: [0,-10], duration: 280, easing: 'easeOutBack' });
+                    const imp = _spawn(wrapper, `width:50%;height:50%;left:25%;top:25%;border-radius:50%;background:radial-gradient(circle,#fff 0%,${c1} 30%,${c2} 65%,transparent 100%);`);
+                    anime({ targets: imp, opacity: [0,1,0], scale: [0.2,1.6], duration: 400, delay: 220, easing: 'easeOutExpo' });
+                    const shock = _spawn(wrapper, `width:60%;height:60%;left:20%;top:20%;border:3px solid ${c1};border-radius:50%;background:transparent;`);
+                    anime({ targets: shock, opacity: [0,0.8,0], scale: [0.3,1.8], borderWidth: ['3px','0px'], duration: 400, delay: 250, easing: 'easeOutExpo' });
+                } else if (s === 'heal_rest') {
+                    // Rest — a soft blue "Z" floats up + sleep glow
+                    const z = document.createElement('div');
+                    z.style.cssText = `position:absolute;left:48%;top:40%;font-size:24px;font-weight:bold;color:${c2};text-shadow:0 0 8px ${c1};font-family:Arial,sans-serif;pointer-events:none;opacity:0;`;
+                    z.textContent = 'Z';
+                    wrapper.appendChild(z);
+                    anime({ targets: z, opacity: [0,1,1,0], translateY: [0,-30,-60], translateX: [0, 10, -5], scale: [0.5,1.2,1], duration: dur+200, easing: 'easeOutQuad' });
+                    const glow = _spawn(wrapper, `width:100%;height:100%;left:0;top:0;background:radial-gradient(circle,${c1}55,transparent 70%);`);
+                    anime({ targets: glow, opacity: [0,0.7,0], scale: [0.8,1.1], duration: dur, easing: 'easeInOutQuad' });
                 }
 
                 _cleanup([wrapper], dur + numP * 120 + 200);
@@ -15998,7 +16238,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             if (move.cat === "Status" && settings.animations) {
                 const _animData = (typeof MOVE_ANIM_MAP !== 'undefined') ? MOVE_ANIM_MAP[move.name] : null;
-                const _selfTarget = _animData && (_animData.s === 'buff' || _animData.s === 'heal' || _animData.s === 'shield');
+                const _selfAnims = { buff:1, heal:1, shield:1, sub_doll:1, swords_x:1, calm_mind:1, dragon_dance:1, heal_roost:1, heal_synth:1, heal_bell:1, heal_rest:1, trick_room:1, defog:1 };
+                const _selfTarget = _animData && _selfAnims[_animData.s];
                 showMoveEffect(move.type, _selfTarget ? isPlayer : !isPlayer, move.name, move.cat);
                 await sleep(200);
             }
