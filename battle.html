@@ -788,6 +788,9 @@
         }
         .story-shop-back-btn:hover { color: #fff; border-color: #8a92a6; background: linear-gradient(180deg, #2a2e40 0%, #1d2030 100%); }
         .story-shop-back-btn:active { transform: translateY(1px); }
+        /* Footer back button used across facility screens (sticky bottom of .story-shop-stack).
+           Replaces the inline `style="width:100%;color:#aaa;"` previously duplicated across screens. */
+        .story-footer-back-btn { width: 100%; color: #aaa; }
         #screen-story-city { background: var(--bg-color); }
         /* Story city top bar: location + gold | abandon + settings (settings lives here so it aligns with Abandon) */
         #story-hud.story-hud-bar {
@@ -1299,7 +1302,7 @@
             --sprite-player-w: min(42vw, 176px);
         }
         #screen-battle[data-battle-layout="landscape-touch"] {
-            --battle-ui-h: clamp(138px, 38dvh, 190px);
+            --battle-ui-h: clamp(180px, 42dvh, 230px);
             --battle-player-hud-est: 0px;
         }
 
@@ -2034,8 +2037,8 @@
         body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) .battle-btn-move .move-tile-name { font-size: 10px; line-height: 1.2; }
         body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) .battle-btn-move .move-tile-meta { margin-top: 1px; font-size: 9px; gap: 1px 4px; }
         body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) .move-info-hit { width: 28px; height: 28px; min-width: 28px; min-height: 28px; font-size: 12px; opacity: 0.55; }
-        body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) #move-menu .move-menu-back { min-height: 38px; padding: 5px 8px; }
-        body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) #move-menu .move-menu-scroll button.battle-btn-move { min-height: 40px; }
+        body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) #move-menu .move-menu-back { min-height: 44px; padding: 5px 8px; }
+        body.is-mobile #screen-battle.battle-phase-moves:not([data-battle-layout="portrait"]) #move-menu .move-menu-scroll button.battle-btn-move { min-height: 44px; }
 
         /* Portrait: DS-style 2×2 move grid — big tappable tiles */
         #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-scroll,
@@ -2077,6 +2080,26 @@
         #screen-battle[data-battle-layout="portrait"] #move-menu .move-menu-back {
             min-height: 36px; padding: 4px 8px; font-size: 13px;
         }
+        /* ── Tablet preset (700–1100px viewport) ──────────────────────────────
+           Bridges between phone-mobile and desktop. Applied additively on top
+           of whichever data-battle-layout JS picked (typically "portrait" for
+           iPad portrait, "desktop" for iPad landscape). Tighter UI footprint
+           than the phone-portrait clamp (which assumed a small arena), looser
+           touch targets than the cramped landscape-touch rules. */
+        body.layout-tablet-preset #screen-battle {
+            --battle-ui-h: clamp(220px, 32dvh, 280px);
+            --sprite-foe-w: min(38vw, 200px);
+            --sprite-player-w: min(40vw, 215px);
+        }
+        body.layout-tablet-preset #screen-battle[data-battle-layout="portrait"] {
+            --battle-ui-h: clamp(280px, 38dvh, 360px);
+        }
+        body.layout-tablet-preset #screen-battle[data-battle-layout="landscape-touch"] {
+            --battle-ui-h: clamp(200px, 36dvh, 250px);
+        }
+        body.layout-tablet-preset #screen-battle #command-menu.command-grid .battle-cmd-btn { min-height: 52px; font-size: 12px; }
+        body.layout-tablet-preset #screen-battle #move-menu .move-menu-back { min-height: 44px; padding: 5px 10px; font-size: 12px; }
+        body.layout-tablet-preset #screen-battle #battle-log { font-size: 12px; line-height: 1.5; }
         body.layout-tablet-preset #move-menu .move-menu-scroll button.battle-btn-move { min-height: 48px; font-size: 11px; }
 
         /* ── Icon buttons ─────────────────────────────────────────────────── */
@@ -2196,7 +2219,7 @@
         body:has(#screen-story-artifact-shop:not(.hidden)) #screen-story-artifact-shop .story-shop-header-row { padding-right: 52px !important; box-sizing: border-box !important; }
         body:has(#screen-story-artifacts:not(.hidden)) #screen-story-artifacts > div:first-child { padding-right: 52px !important; box-sizing: border-box !important; }
         body:has(#screen-story-menu:not(.hidden)) #screen-story-menu { padding-top: 52px; box-sizing: border-box; }
-        body:has(#screen-story-professor:not(.hidden)) #screen-story-professor { padding-top: 52px; box-sizing: border-box; }
+        /* Professor now uses .story-shop-header-row chrome which reserves 52px for the floating gear via .story-shop-header-row padding-right above. */
         body:has(#screen-story-gameover:not(.hidden)) #screen-story-gameover { padding-top: 52px; box-sizing: border-box; }
         /* City screen: gear is inside #story-hud — no extra empty margin for a floating icon */
         body:has(#screen-story-city:not(.hidden)) #story-hud {
@@ -2206,9 +2229,10 @@
 
         /* ── Phone landscape ──────────────────────────────────────────────── */
         @media screen and (max-height: 500px) and (max-width: 900px) and (orientation: landscape) and ((hover: none) or (pointer: coarse)) {
-            /* Short landscape: keep more room for the arena; 52dvh was eating ~half the viewport */
-            #screen-battle { --battle-ui-h: clamp(138px, 38dvh, 190px); --sprite-foe-w: min(32vw, 152px); --sprite-player-w: min(32vw, 148px); }
-            body.is-mobile #screen-battle.battle-phase-moves { --battle-ui-h: clamp(138px, 38dvh, 190px); }
+            /* Short landscape: keep more room for the arena; 52dvh was eating ~half the viewport.
+               Lifted from 138/190 to 180/230 so cmd-grid (2×46) + 2-row move grid (2×44+gap) + 44px back fit without overflow. */
+            #screen-battle { --battle-ui-h: clamp(180px, 42dvh, 230px); --sprite-foe-w: min(32vw, 152px); --sprite-player-w: min(32vw, 148px); }
+            body.is-mobile #screen-battle.battle-phase-moves { --battle-ui-h: clamp(180px, 42dvh, 230px); }
             body { align-items: stretch; justify-content: stretch; }
             .screen, #app-root { max-width: 100vw; width: 100vw; height: 100dvh; max-height: 100dvh; font-size: 11px; }
             #foe-stat-box {
@@ -2439,7 +2463,7 @@
             #command-menu { flex: 1 1 auto; min-width: 0; }
             #move-menu.move-menu-layout { flex: 1 1 0%; min-width: 0; min-height: 0; gap: 3px; }
             #move-menu .move-menu-scroll { flex: 1 1 0%; min-height: 0; grid-template-columns: 1fr 1fr; gap: 5px; }
-            #move-menu .move-menu-back { min-height: 38px; padding: 5px 10px; }
+            #move-menu .move-menu-back { min-height: 44px; padding: 5px 10px; }
             #move-tooltip { bottom: calc(var(--battle-ui-h) + 8px); left: 8px; right: auto; width: min(280px, 42vw); }
             #command-menu button { min-height: 46px; }
             #screen-battle.battle-phase-moves .ui-bottom #battle-log {
@@ -4715,22 +4739,29 @@
         </div>
     </div>
 
-    <div id="screen-story-professor" class="screen hidden" style="display:flex;flex-direction:column;align-items:center;padding:16px;gap:12px;overflow-y:auto;">
-        <h2 id="story-prof-screen-title" style="color:var(--accent);margin:0;font-size:18px;">Professor's Lab</h2>
-        <!-- Prof header row: sprite + name + quote -->
-        <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:center;">
-            <img id="story-prof-sprite" src="" onerror="this.style.display='none'" style="width:120px;height:120px;object-fit:contain;image-rendering:pixelated;border:none;background:transparent;">
-            <div style="text-align:center;">
-                <div id="story-prof-name" style="color:var(--accent);font-size:14px;font-weight:bold;"></div>
-                <div id="story-prof-quote" style="font-size:12px;color:#aaa;font-style:italic;max-width:260px;margin-top:4px;"></div>
-            </div>
+    <div id="screen-story-professor" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div class="story-shop-stack">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+            <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
+            <h3 id="story-prof-screen-title" class="story-screen-head-title" style="color:var(--accent);font-size:14px;margin:0;flex:1;min-width:0;">Professor's Lab</h3>
         </div>
-        <!-- Status text -->
-        <div id="story-prof-status" style="font-size:13px;color:#ccc;text-align:center;min-height:24px;font-weight:bold;"></div>
-        <!-- 3-choice cards — rendered dynamically by JS into this div -->
-        <div id="story-prof-rolled-card" class="story-prof-card-wrap" style="display:none;"></div>
-        <!-- Accept / Back buttons -->
-        <div id="story-prof-buttons" class="story-prof-actions" style="display:flex;flex-direction:row;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px;width:100%;max-width:920px;"></div>
+        <div id="story-prof-body" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:16px;gap:12px;min-height:0;">
+            <!-- Prof header row: sprite + name + quote -->
+            <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:center;">
+                <img id="story-prof-sprite" src="" onerror="this.style.display='none'" style="width:120px;height:120px;object-fit:contain;image-rendering:pixelated;border:none;background:transparent;">
+                <div style="text-align:center;">
+                    <div id="story-prof-name" style="color:var(--accent);font-size:14px;font-weight:bold;"></div>
+                    <div id="story-prof-quote" style="font-size:12px;color:#aaa;font-style:italic;max-width:260px;margin-top:4px;"></div>
+                </div>
+            </div>
+            <!-- Status text -->
+            <div id="story-prof-status" style="font-size:13px;color:#ccc;text-align:center;min-height:24px;font-weight:bold;"></div>
+            <!-- 3-choice cards — rendered dynamically by JS into this div -->
+            <div id="story-prof-rolled-card" class="story-prof-card-wrap" style="display:none;"></div>
+            <!-- Accept / Back buttons (rendered by JS; provides context-aware back) -->
+            <div id="story-prof-buttons" class="story-prof-actions" style="display:flex;flex-direction:row;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px;width:100%;max-width:920px;"></div>
+        </div>
+        </div>
     </div>
 
     <div id="screen-story-shop" class="screen hidden story-screen-root" data-shop-type="mart" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
@@ -4743,7 +4774,7 @@
         </div>
         <div id="story-shop-grid" style="flex:1;overflow-y:auto;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:0;"></div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
-            <button onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
+            <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
     </div>
@@ -4759,7 +4790,7 @@
         <p id="story-artifact-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#888;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;"></p>
         <div id="story-artifact-shop-grid" style="flex:1;overflow-y:auto;padding:12px;display:grid;grid-template-columns:1fr;gap:12px;min-height:0;"></div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
-            <button type="button" onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
+            <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
     </div>
@@ -4777,7 +4808,7 @@
             <div id="story-tutor-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
-            <button onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
+            <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
     </div>
@@ -4801,7 +4832,7 @@
             <div id="story-colress-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
-            <button onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
+            <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
     </div>
@@ -4824,7 +4855,7 @@
             <div id="story-evtrainer-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
-            <button onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
+            <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
     </div>
@@ -4847,7 +4878,7 @@
             </div>
             <div id="story-pc-body" style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);"></div>
             <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
-                <button type="button" onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
+                <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
             </div>
         </div>
     </div>
@@ -4864,7 +4895,7 @@
             </div>
             <div id="story-crucible-body" style="flex:1;overflow-y:auto;padding:14px;min-height:0;background:rgba(6,10,18,0.2);"></div>
             <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
-                <button type="button" onclick="window.StoryMode.leaveCrucible()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
+                <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.leaveCrucible()">&#8592; Back to City</button>
             </div>
         </div>
     </div>
@@ -4878,7 +4909,7 @@
             </div>
             <div id="story-frontier-body" style="flex:1;overflow-y:auto;padding:14px;min-height:0;background:rgba(20,8,4,0.35);"></div>
             <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
-                <button type="button" onclick="window.StoryMode.enterCrucible()" style="width:100%;color:#aaa;">&#8592; Back to The Crucible</button>
+                <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.enterCrucible()">&#8592; Back to The Crucible</button>
             </div>
         </div>
     </div>
@@ -4910,7 +4941,7 @@
             <div id="story-link-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
-            <button onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
+            <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
     </div>
@@ -4933,7 +4964,7 @@
             <div id="story-evolab-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
-            <button onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
+            <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
     </div>
@@ -4965,7 +4996,7 @@
             <p id="story-casino-result" aria-live="polite" style="margin:4px 0 0;font-size:13px;color:#ffd54f;min-height:18px;text-align:center;max-width:360px;line-height:1.4;"></p>
         </div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
-            <button onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">&#8592; Back to City</button>
+            <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
         </div>
     </div>
@@ -4999,13 +5030,13 @@
         <div style="padding:10px 14px;background:#0d0d0d;border-bottom:1px solid #333;flex-shrink:0;">
             <div style="display:flex;align-items:center;gap:10px;">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-                <h3 class="story-screen-head-title" style="color:#ce93d8;font-size:15px;margin:0;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Artifact Hall</span></h3>
+                <h3 class="story-screen-head-title" style="color:#ce93d8;font-size:14px;margin:0;flex:1;min-width:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Artifact Hall</span></h3>
             </div>
             <p style="font-size:11px;color:#888;margin:6px 0 0;">Toggle artifacts off to disable their battle effects.</p>
         </div>
         <div id="story-artifact-hall-list" style="flex:1;overflow-y:auto;padding:12px;"></div>
         <div style="padding:10px;border-top:1px solid #333;">
-            <button onclick="window.StoryMode.enterCity()" style="width:100%;color:#aaa;">← Back to City</button>
+            <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
     </div>
 
@@ -6089,8 +6120,164 @@
             return csvBuilds[name] || {};
         }
 
+        // ── Designed build generator ──────────────────────────────────────
+        // Produces a coherent, role-driven build for a species using legal
+        // moves drawn from the CSV pool (every move that appears in any
+        // Smogon set for the species is treated as a legal pick) plus a
+        // curated item / nature / EV table per inferred role. The result
+        // is always STANDARD gimmick — mega/Z/Tera builds still flow
+        // through the original CSV path.
+        //
+        // Tunable via settings.csvBuildMix (default 0.7):
+        //   1.0 = pure Smogon CSV (most variety, most chaos)
+        //   0.7 = mostly CSV with a 30% sprinkle of designed builds (default)
+        //   0.0 = pure designed (every build is role-coherent and legal)
+        // A run setup UI exposes this; set it directly in the console
+        // via `settings.csvBuildMix = 0.5` for one-off testing.
+        const _DESIGNED_ROLE_CONFIG = {
+            PHYS_ATTACKER:  { item: 'Choice Band',  nature: 'Adamant', evs: { hp:4,   atk:252, def:0,   spa:0,   spd:0,   spe:252 } },
+            SPEC_ATTACKER:  { item: 'Choice Specs', nature: 'Modest',  evs: { hp:4,   atk:0,   def:0,   spa:252, spd:0,   spe:252 } },
+            PHYS_SWEEPER:   { item: 'Life Orb',     nature: 'Jolly',   evs: { hp:4,   atk:252, def:0,   spa:0,   spd:0,   spe:252 } },
+            SPEC_SWEEPER:   { item: 'Life Orb',     nature: 'Timid',   evs: { hp:4,   atk:0,   def:0,   spa:252, spd:0,   spe:252 } },
+            PHYS_BULKY_ATK: { item: 'Assault Vest', nature: 'Adamant', evs: { hp:252, atk:252, def:4,   spa:0,   spd:0,   spe:0   } },
+            SPEC_BULKY_ATK: { item: 'Assault Vest', nature: 'Modest',  evs: { hp:252, atk:0,   def:4,   spa:252, spd:0,   spe:0   } },
+            PHYS_WALL:      { item: 'Leftovers',    nature: 'Impish',  evs: { hp:252, atk:0,   def:252, spa:0,   spd:4,   spe:0   } },
+            SPEC_WALL:      { item: 'Leftovers',    nature: 'Calm',    evs: { hp:252, atk:0,   def:4,   spa:0,   spd:252, spe:0   } },
+        };
+        const _DESIGNED_HEAL_MOVES = new Set([
+            'Recover', 'Roost', 'Slack Off', 'Wish', 'Soft-Boiled', 'Synthesis',
+            'Morning Sun', 'Milk Drink', 'Heal Order', 'Shore Up', 'Rest', 'Strength Sap'
+        ]);
+        const _DESIGNED_STATUS_MOVES = new Set([
+            'Toxic', 'Will-O-Wisp', 'Thunder Wave', 'Spore', 'Sleep Powder', 'Stun Spore',
+            'Glare', 'Yawn', 'Hypnosis', 'Poison Powder', 'Confuse Ray', 'Leech Seed'
+        ]);
+        function _designedInferRole(name) {
+            const b = baseStats[name] || {};
+            const atk = b.atk || 50, spa = b.spa || 50, def = b.def || 50, spd = b.spd || 50, spe = b.spe || 50;
+            const physical = atk >= spa;
+            const off = physical ? atk : spa;
+            const bulk = def + spd;
+            if (bulk >= off + 80 && off < 95) return physical ? 'PHYS_WALL' : 'SPEC_WALL';
+            if (spe >= 100 && off >= 100)     return physical ? 'PHYS_SWEEPER' : 'SPEC_SWEEPER';
+            if (bulk >= 160 && off >= 90)     return physical ? 'PHYS_BULKY_ATK' : 'SPEC_BULKY_ATK';
+            return physical ? 'PHYS_ATTACKER' : 'SPEC_ATTACKER';
+        }
+        function _designedCsvMovePool(name) {
+            const entry = resolveCsvBuildEntry(name);
+            const moves = new Set();
+            for (const tag of ['regular', 'weather', 'mega', 'z-attack', 'tera']) {
+                const arr = entry[tag];
+                if (!Array.isArray(arr)) continue;
+                for (const b of arr) {
+                    if (!b || !Array.isArray(b.m)) continue;
+                    for (const m of b.m) {
+                        if (!m) continue;
+                        if (m.includes('/')) {
+                            for (const part of m.split('/').map(s => s.trim()).filter(Boolean)) moves.add(part);
+                        } else {
+                            moves.add(m);
+                        }
+                    }
+                }
+            }
+            return [...moves];
+        }
+        function _designedPickMoves(name, role, base, legalPool) {
+            const wantPhysical = role.startsWith('PHYS_');
+            const t1 = base.t1 || 'Normal', t2 = base.t2 || '';
+            const isWall = role === 'PHYS_WALL' || role === 'SPEC_WALL';
+            const damaging = [];
+            const heal = [];
+            const status = [];
+            for (const m of legalPool) {
+                const md = ensureMoveData(m);
+                if (!md) continue;
+                if (md.cat === 'Status') {
+                    if (_DESIGNED_HEAL_MOVES.has(m)) heal.push(m);
+                    else if (_DESIGNED_STATUS_MOVES.has(m)) status.push(m);
+                    continue;
+                }
+                const wantCat = wantPhysical ? 'Physical' : 'Special';
+                // Allow off-category moves only if they're high-BP coverage; otherwise we
+                // end up with Adamant-natured mons throwing Special moves at no benefit.
+                if (md.cat !== wantCat && (md.pow || 0) < 70) continue;
+                damaging.push({ name: m, pow: md.pow || 0, stab: md.type === t1 || md.type === t2, cat: md.cat });
+            }
+            damaging.sort((a, b) => (b.stab ? 30 : 0) + b.pow - ((a.stab ? 30 : 0) + a.pow));
+            const seen = new Set();
+            const uniqueDmg = damaging.filter(m => seen.has(m.name) ? false : (seen.add(m.name), true));
+            const moves = [];
+            if (isWall) {
+                if (heal.length)   moves.push(heal[Math.floor(Math.random() * heal.length)]);
+                if (status.length) moves.push(status[Math.floor(Math.random() * status.length)]);
+                for (const m of uniqueDmg) {
+                    if (moves.length >= 4) break;
+                    if (!moves.includes(m.name)) moves.push(m.name);
+                }
+            } else {
+                for (const m of uniqueDmg) {
+                    if (moves.length >= 4) break;
+                    if (!moves.includes(m.name)) moves.push(m.name);
+                }
+            }
+            if (moves.length < 4) {
+                for (const m of heal.concat(status)) {
+                    if (moves.length >= 4) break;
+                    if (!moves.includes(m)) moves.push(m);
+                }
+            }
+            if (moves.length < 4) {
+                for (const m of legalPool) {
+                    if (moves.length >= 4) break;
+                    if (!moves.includes(m)) moves.push(m);
+                }
+            }
+            while (moves.length < 4) moves.push('Tackle');
+            return moves.slice(0, 4);
+        }
+        function makeDesignedBuild(name) {
+            const base = baseStats[name];
+            if (!base) return null;
+            const legalPool = _designedCsvMovePool(name);
+            if (legalPool.length < 3) return null;
+            const role = _designedInferRole(name);
+            const cfg = _DESIGNED_ROLE_CONFIG[role] || _DESIGNED_ROLE_CONFIG.PHYS_ATTACKER;
+            const moves = _designedPickMoves(name, role, base, legalPool);
+            let ability = 'None';
+            if (base.abilities) {
+                const aPool = [base.abilities['0'], base.abilities['1'], base.abilities['H']].filter(Boolean);
+                if (aPool.length) ability = aPool[0];
+            }
+            return {
+                i: cfg.item,
+                a: ability,
+                n: cfg.nature,
+                m: moves,
+                evs: { ...cfg.evs },
+                gimmick: 'STANDARD',
+                teraType: null,
+                archetype: role.toLowerCase().replace(/_/g, '-'),
+                _designed: true,
+            };
+        }
+        window.makeDesignedBuild = makeDesignedBuild;
+
         // Central build factory — used by draft, gauntlet rounds, and draw recovery
         function makeBuild(name, gimmickOpts) {
+            // Designed-build path: rolled BEFORE gimmick resolution so the mix knob
+            // can't be skipped by a forced-STANDARD call. Skip when a non-standard
+            // gimmick is being forced (mega/Z/Tera flows need the CSV item).
+            const forced = gimmickOpts && gimmickOpts.forceGimmick;
+            if (!forced || forced === 'STANDARD') {
+                const mix = (typeof settings.csvBuildMix === 'number')
+                    ? Math.max(0, Math.min(1, settings.csvBuildMix))
+                    : 0.7;
+                if (mix < 1.0 && Math.random() >= mix) {
+                    const designed = makeDesignedBuild(name);
+                    if (designed) return designed;
+                }
+            }
             const gimmick = gimmickOpts && gimmickOpts.forceGimmick ? rollGimmick(name, gimmickOpts.forceGimmick) : rollGimmick(name);
             const base    = baseStats[name] || {};
             const entry   = resolveCsvBuildEntry(name);
@@ -6461,7 +6648,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { window.showToast('Could not load all game data'); } catch (e) {}
         });
 
-        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, draftGrades: [1,2,3,4], mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, partySize: 3,
+        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, draftGrades: [1,2,3,4], mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, csvBuildMix: 0.7, partySize: 3,
             aiProfile: 'balanced', /* aggro | balanced | stall — vs AI only */
             storyBattleItems: true, /* story in-battle bag */
             pvpBattleItems: false,  /* reserved: symmetric items in PvP */
@@ -6476,6 +6663,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.battleLogDock === 'boolean') settings.battleLogDock = _pbs.battleLogDock;
             if (typeof _pbs.smartDraftPool === 'boolean') settings.smartDraftPool = _pbs.smartDraftPool;
             if (typeof _pbs.gauntletProgressiveDifficulty === 'boolean') settings.gauntletProgressiveDifficulty = _pbs.gauntletProgressiveDifficulty;
+            if (typeof _pbs.csvBuildMix === 'number' && _pbs.csvBuildMix >= 0 && _pbs.csvBuildMix <= 1) settings.csvBuildMix = _pbs.csvBuildMix;
             if (_pbs.displayMode === 'phone' || _pbs.displayMode === 'desktop' || _pbs.displayMode === 'auto') settings.displayMode = _pbs.displayMode;
         } catch (e) {}
         function persistMiscSettings() {
@@ -6487,6 +6675,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     battleLogDock: settings.battleLogDock,
                     smartDraftPool: settings.smartDraftPool,
                     gauntletProgressiveDifficulty: settings.gauntletProgressiveDifficulty,
+                    csvBuildMix: settings.csvBuildMix,
                     displayMode: settings.displayMode
                 }));
             } catch (e) {}
@@ -8999,6 +9188,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Story-mode foe stat multiplier (difficulty knob).
         // Multiplies HP and the five non-HP stats post-build. Damage formula stays Showdown-correct.
+        // Pre-Gym-1 forced battles (intro rival, first route trainer, Gym Trainer 1) get an additional
+        // softening factor so new players have room to learn before the first real test.
+        // Configurable via PRE_GYM1_FOE_STAT_MULT — set to 1.0 to disable the early-game nerf entirely.
+        window.PRE_GYM1_FOE_STAT_MULT = 0.85;
+        function _isPreGym1NerfedBattle() {
+            const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
+            if (!sm || (sm.badges | 0) > 0) return false;
+            const idx = sm.eventIndex | 0;
+            const row = (typeof STORY_EVENTS_RAW !== 'undefined') ? STORY_EVENTS_RAW[idx] : null;
+            if (!row || row[1] !== 'Battle') return false;
+            // Exclude Gym Leader 1 itself — the gating fight should remain a real test.
+            return row[2] !== 'Gym Leader 1';
+        }
+        window._isPreGym1NerfedBattle = _isPreGym1NerfedBattle;
         window.applyFoeDifficultyScaling = function(mon) {
             if (!mon) return;
             const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
@@ -9008,6 +9211,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (d === 'easy') mult = 0.85;
             else if (d === 'hard') mult = 1.15;
             else if (d === 'challenge') mult = 1.30; // labeled "Very Hard" in UI
+            if (_isPreGym1NerfedBattle()) mult *= (window.PRE_GYM1_FOE_STAT_MULT || 1.0);
             if (mult === 1.0) return;
             const newMaxHp = Math.max(1, Math.floor(mon.maxHp * mult));
             mon.maxHp = newMaxHp;
@@ -22845,6 +23049,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             56: 'villain',
             58: 'eldritch',
         };
+        /** Per-seed rotation pool for themed slots. Each row picks one theme from its
+         * pool when `assignTrainers` runs, so mid-game flavor varies between seeds while
+         * the role + slot identity stays fixed. The first entry of each pool matches the
+         * legacy fixed value in `STORY_THEMED_BATTLES`, so default-feel runs stay close
+         * to the established progression curve.
+         *
+         * Resolution: `_resolveThemeForBattleRow(idx)` reads `sm.themedAssignments[idx]`
+         * if present, otherwise falls back to `STORY_THEMED_BATTLES[idx]`. Callers should
+         * always go through the resolver, not the static map. */
+        const STORY_THEMED_BATTLE_POOLS = {
+            7:  ['cursed',    'multitype'],            // early back-road flavor
+            14: ['multitype', 'cursed'],               // first wanderer / sickness
+            20: ['villain',   'cursed'],               // post-Gym 3 scouting
+            26: ['multitype', 'eldritch'],             // mid-game roamer / silhouette
+            33: ['villain',   'eldritch'],             // Team in force / old champion
+            34: ['cursed',    'multitype'],            // road sickness / wanderer
+            41: ['multitype', 'villain'],              // roamer / Team operative
+            42: ['eldritch',  'veteran'],              // silhouette / returning leader
+            48: ['cursed',    'eldritch'],             // road sickness deepens
+            49: ['veteran',   'multitype'],            // returning leader / roamer
+            56: ['villain',   'eldritch'],             // pre-League boss / silhouette
+            58: ['eldritch',  'villain'],              // curtain / final scout
+        };
+        function _resolveThemeForBattleRow(idx) {
+            const i = idx | 0;
+            if (sm && sm.themedAssignments && sm.themedAssignments[i]) return sm.themedAssignments[i];
+            return STORY_THEMED_BATTLES[i] || null;
+        }
         /** Soft-tease labels for the city Tips "🎯 Next:" chip when a themed battle
          * is the next stop. The label hints at vibe without revealing identity. */
         const STORY_THEMED_NEXT_LABELS = {
@@ -24678,6 +24910,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function assignTrainers(enabledGens) {
             const eg = normalizeEnabledGens(enabledGens);
             sm.trainerAssignments = {};
+            sm.themedAssignments = {};
+            const _themeRng = (sm && sm.active) ? storyRngNext : Math.random;
+            for (const k in STORY_THEMED_BATTLE_POOLS) {
+                const pool = STORY_THEMED_BATTLE_POOLS[k];
+                if (Array.isArray(pool) && pool.length) {
+                    sm.themedAssignments[k | 0] = pool[Math.floor(_themeRng() * pool.length)];
+                }
+            }
             const usedBase = new Set();
             let lockedRivalName = null;
             const tRival = selectTrainerForRole('Rival', eg, null);
@@ -24720,7 +24960,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (event === 'Mystery Figure') return;
                 // Themed slot? Try a tagged trainer first (Shadow Blue, Cursed Vagrant…).
-                const theme = STORY_THEMED_BATTLES[idx];
+                const theme = _resolveThemeForBattleRow(idx);
                 if (theme) {
                     const tagged = _pickThemedTrainerForRole(event, eg, usedBase, theme);
                     if (tagged) {
@@ -24789,8 +25029,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const maxGen = Math.max(...enabledGens);
             const _diffEl = document.getElementById('story-difficulty');
             const _storyDiff = (_diffEl && _diffEl.value) ? _diffEl.value : 'normal';
-            // 2000 base + bonus; easy/normal starting totals rounded to 5000G / 3500G.
-            const _startingGoldBonus = _storyDiff === 'veryeasy' ? 19000 : _storyDiff === 'easy' ? 4000 : _storyDiff === 'normal' ? 2500 : 0;
+            // 2000 base + bonus; tier totals: VeryEasy 21K / Easy 6K / Normal 4.5K / Hard 3K / Challenge 3.5K.
+            // Hard and Challenge previously got no starting bonus despite the tougher stat curve,
+            // which paired badly with the pre-Gym-1 ball cost — first heal or two PokéBalls ate
+            // the entire wallet. Small bumps keep the relative difficulty ordering intact.
+            const _startingGoldBonus = _storyDiff === 'veryeasy' ? 19000
+                : _storyDiff === 'easy' ? 4000
+                : _storyDiff === 'normal' ? 2500
+                : _storyDiff === 'hard' ? 1000
+                : _storyDiff === 'challenge' ? 1500
+                : 0;
             sm = {
                 active:true, eventIndex:0, badges:0, gold:2000 + _startingGoldBonus, team:[],
                 inventory: {
@@ -25252,7 +25500,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     else if (nxEvent === 'Victory Road') nextLabel = 'Victory Road';
                     // Soft tease for themed battles — vibe only, no spoiler. Keeps
                     // the canonical label intact so the player still knows the role.
-                    const theme = STORY_THEMED_BATTLES[nxId];
+                    const theme = _resolveThemeForBattleRow(nxId);
                     const themeLabel = theme && STORY_THEMED_NEXT_LABELS[theme];
                     if (themeLabel) nextLabel = `${nextLabel} — ${themeLabel}`;
                     tips.push({ icon: '🎯', label: `Next: ${nextLabel}`, click: 'window.StoryMode.proceedToNextBattle()' });
@@ -27321,7 +27569,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const g = _pcMonGrade(slot);
                     const id = slot.id || '';
                     const canWithdraw = !partyFull && !!id;
-                    const reason = partyFull ? `Party full (${team.length}/${partyCap})` : !id ? 'Missing id (legacy save)' : '';
+                    const reason = partyFull ? `Party full (${partyCap}/${partyCap})` : !id ? 'Missing id (legacy save)' : '';
                     html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;">
                         <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;">${slot.nickname ? `"${_esc(slot.nickname)}" <span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>` : _esc(slot.name)} ${_pcGradeChipHtml(g)}</span>
                         <button type="button" onclick="window.StoryMode.pcWithdraw('${_esc(id)}')" ${canWithdraw ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canWithdraw ? 'color:#ce93d8;border-color:#ce93d8;' : 'opacity:0.4;'}">Withdraw</button>
@@ -28320,7 +28568,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const gradeBg = _catchState.bossMode ? '#ce93d8' : '#a5d6a7';
             const subText = _catchState.bossMode
                 ? `Catch rate 1% per throw. Master Ball is guaranteed.`
-                : _catchState.safariMode ? 'Safari Balls only. Bait calms, Rock angers — both stack until you catch or it flees.' : 'Catch chance = grade base × ball multiplier.';
+                : _catchState.safariMode ? `Safari Balls only (${SAFARI_BALL_MULT}× catch). Bait calms, Rock angers — both stack until you catch or it flees.` : 'Catch chance = grade base × ball multiplier.';
             // Show the wild Pokémon's sprite — the screen was text-only before, which
             // made every encounter feel like the same prompt.
             let spriteHtml = '';
@@ -28537,6 +28785,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_catchState) return;
             const body = document.getElementById('story-catch-body');
             if (!body) return;
+            const partyCap = _storyMaxPartySize();
             const partyList = (sm.team || []).map((slot, i) => {
                 if (!slot) return '';
                 const g = _pcMonGrade(slot);
@@ -28553,7 +28802,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             body.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;padding:14px 6px;">
                 <div style="text-align:center;font-size:13px;color:#fff;line-height:1.5;">
                     Gotcha! <strong>${_esc(caught.name)}</strong> was caught.<br/>
-                    <span style="color:#aed581;font-size:11px;">Your party is full (6/6). Send the newcomer to the PC, or swap with a team member.</span>
+                    <span style="color:#aed581;font-size:11px;">Your party is full (${partyCap}/${partyCap}). Send the newcomer to the PC, or swap with a team member.</span>
                 </div>
                 <button type="button" onclick="window.StoryMode.catchResolveSendToPC()" style="padding:10px;background:rgba(20,28,40,0.6);border:1px solid #ce93d8;color:#ce93d8;font-family:inherit;font-size:12px;cursor:pointer;">📦 Send ${_esc(caught.name)} to PC</button>
                 <div style="font-size:10px;color:#888;letter-spacing:0.06em;text-transform:uppercase;text-align:center;margin-top:4px;">— or pick a teammate to swap to PC —</div>
