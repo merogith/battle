@@ -22501,6 +22501,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Hassel':"Hassel: \"A dragon learned from you. Press on.\"",
             'Poppy':"Poppy: \"Hee! That was so cool! Go, go, go!\"",
             'Rika':"Rika: \"That was a SOLID match. Move on, champ.\"",
+            'Larry':"Larry: \"…Normal day. Above-normal opponent. The next gate's yours.\"",
         };
 
         // Per-champion victory line. If the matched champion has no entry we still emit
@@ -22517,6 +22518,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Leon':"Leon: \"Champion time… for YOU! That was unbeatable, mate.\"",
             'Geeta':"Geeta: \"Indeed. The mantle was always yours, perhaps.\"",
             'Hau':"Hau: \"Alola! You're a malasada-sweet Champion now!\"",
+            'Prof. Kukui':"Prof. Kukui: \"Wahoo! Now THAT was a Champion battle. Welcome to the wall, cousin!\"",
+            'Red':"Red: \"…\"",
         };
 
         // Maps city index (1–8) to the STORY_EVENTS_RAW event index of its Gym Leader battle.
@@ -25098,6 +25101,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { _storyShowOneTimeTip('welcome',
                     'Welcome to Pallet Town, trainer.\n\nThis is Story Mode — eight gym badges, an Elite Four, a Champion, and what comes after. Every battle scales with your roster. Cities heal you between fights, the Pokémon Center stores spare Pokémon, and the Underground sells the ones you no longer want — but never your starter.\n\nClick the 🎯 "Next:" chip at any time to know where you\'re going. Good hunting.'); } catch (e) {}
             }
+            // One-time teach: explain Gym Leaders + the badge → party-cap link the
+            // first time the player enters a city that hosts a Gym Battle. City1
+            // pre-Gym-1 is the canonical first encounter; cross-run-deduped.
+            if (cidx === 1 && (sm.badges | 0) === 0 && Array.isArray(ev) && Array.isArray(ev[5]) && ev[5].indexOf('Gym Battle') !== -1) {
+                try { _storyShowOneTimeTip('what-is-a-gym',
+                    'Gym Leaders are this region\'s strongest trainers — each one guards a badge.\n\n• Beat a Gym Leader and you earn that badge. Your party cap grows by one (cap = 2 + badges, max 6 at four badges).\n• A new slot opens at the next Professor — they\'ll have a story-built partner waiting to join you.\n• Each leader specializes in a single type. Listen to the City Guide or read the gym\'s color cues — you\'ll get a hint.\n\nNext step: ⚔ Challenge the Gym Leader.'); } catch (e) {}
+            }
         }
 
         function updateHUD() {
@@ -26054,6 +26064,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     'The Professor\'s lab companion is a story-built partner — one per city, fully tuned, grade-matched to the route. Wild Pokémon (caught on routes and the Safari Zone) are *your* projects — random species, partial build, and they reward training.\n\nThe Professor only stays open until your active party hits 6 Pokémon. Cities 0–5 each offer one lab companion, so even a player who never catches a wild ends the front half with a full team. Wild catches above 6 go to the PC.\n\nFoes match your party size: a lean 3-mon player faces 3-mon trainers; a full 6-mon player faces 6-mon trainers. Champion + Elite Four + Victory Road always field 6.'); } catch (e) {}
             }
             _profLegendaryMysteryMode = _profMysteryMode && isPreLeagueLegendaryMysteryGate(cityIdx);
+            // One-time framing for the City-8 legendary gate. The mechanic is a forced
+            // party swap with no graceful refusal — the player should know what they're
+            // walking into before committing. Cross-run-deduped via story meta.
+            if (_profLegendaryMysteryMode) {
+                try { _storyShowOneTimeTip('legendary-gate',
+                    'Victory Road tradition.\n\nEvery league hopeful walks the final gate with a legendary at their side — a rite as old as the badges themselves. A masked figure waits to offer you one, in exchange for a roster slot.\n\nAccept and your weakest party member goes to the PC. Refuse and the gate stays shut. Take the offer when you\'re ready — this is one of the run\'s biggest commitments.'); } catch (e) {}
+            }
             // Mystery Figure framing only applies to the City-8 post-Gym-8 legendary
             // gate. Other "full party" Professor visits are framed as a normal lab-
             // companion swap so the player keeps treating the Professor and the
@@ -26785,6 +26802,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function showBattleIntro(trainer, eventType, callback, storyBattleRowIdx) {
             // Overlay: trainer sprite + quote(s); longer pause for Rival (extra line). Uses Math.random for rival secondary line only — does not advance story battle RNG.
+            // First-battle tutorial: pops a one-time alert (cross-run-deduped) the very
+            // first time any battle intro fires. The alert lives at modal z-index 1200;
+            // the intro overlay sits on top at z 9999, so the player sees: intro → tip → battle.
+            try { _storyShowOneTimeTip('first-battle',
+                'BATTLE — Your first fight.\n\n• Tap ⚔ FIGHT to pick a move. Each Pokémon has 4 moves; each move has limited PP (uses).\n• Moves have a type and a category — Physical (fist) uses Atk/Def, Special (sparkle) uses SpA/SpD, Status (bars) inflicts effects.\n• Type effectiveness matters a lot: Fire beats Grass, Water beats Fire, Electric beats Water. Right type = double damage.\n• 🔴 POKÉMON swaps your active mon. 🎒 BAG uses healing items. 🏃 RUN forfeits with a gold penalty.\n\nKeep your HP bar green. Good luck.'); } catch (e) {}
             const overlay = document.createElement('div');
             overlay.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;';
             const roleLookup = {
@@ -27115,6 +27137,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         ? `${speakerName}: ${_leaderLookup}`
                         : `You received the ${_badgeName}!`;
                     badgeFlavor = `<div style="font-size:14px;color:#81c784;line-height:1.5;max-width:380px;">${line}</div>`;
+                    // First-time cap teach. badges 1-4 expand the player's party (cap = 2 + badges,
+                    // capped at 6). The cap change happens silently in code; surface it here exactly
+                    // once per badge-tier across all saves. badges 5-8 don't grow the cap.
+                    const _badgesNow = (sm && sm.badges) | 0;
+                    if (_badgesNow >= 1 && _badgesNow <= 4) {
+                        const _capTeachKey = 'cap-unlock-' + _badgesNow;
+                        const _capMeta = readStoryMeta();
+                        const _capSeen = _capMeta && _capMeta.tipsShown && _capMeta.tipsShown[_capTeachKey];
+                        if (!_capSeen) {
+                            const _newCap = Math.min(6, 2 + _badgesNow);
+                            const _capTeach = _badgesNow === 4
+                                ? `Your party is now at full strength — up to ${_newCap} Pokémon. Any further Professor gifts will swap a member to the PC.`
+                                : `Your party can now hold up to ${_newCap} Pokémon. Visit a Professor at the next city to add one.`;
+                            badgeFlavor += `<div style="font-size:12px;color:#ffd54f;line-height:1.45;max-width:380px;margin-top:6px;">🎓 ${_capTeach}</div>`;
+                            if (!_capMeta.tipsShown) _capMeta.tipsShown = {};
+                            _capMeta.tipsShown[_capTeachKey] = true;
+                            writeStoryMeta(_capMeta);
+                        }
+                    }
                 }
                 else if (/^E[1-4]$/.test(evn)) {
                     const n = evn.slice(1);
