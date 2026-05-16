@@ -6086,8 +6086,164 @@
             return csvBuilds[name] || {};
         }
 
+        // ── Designed build generator ──────────────────────────────────────
+        // Produces a coherent, role-driven build for a species using legal
+        // moves drawn from the CSV pool (every move that appears in any
+        // Smogon set for the species is treated as a legal pick) plus a
+        // curated item / nature / EV table per inferred role. The result
+        // is always STANDARD gimmick — mega/Z/Tera builds still flow
+        // through the original CSV path.
+        //
+        // Tunable via settings.csvBuildMix (default 0.7):
+        //   1.0 = pure Smogon CSV (most variety, most chaos)
+        //   0.7 = mostly CSV with a 30% sprinkle of designed builds (default)
+        //   0.0 = pure designed (every build is role-coherent and legal)
+        // A run setup UI exposes this; set it directly in the console
+        // via `settings.csvBuildMix = 0.5` for one-off testing.
+        const _DESIGNED_ROLE_CONFIG = {
+            PHYS_ATTACKER:  { item: 'Choice Band',  nature: 'Adamant', evs: { hp:4,   atk:252, def:0,   spa:0,   spd:0,   spe:252 } },
+            SPEC_ATTACKER:  { item: 'Choice Specs', nature: 'Modest',  evs: { hp:4,   atk:0,   def:0,   spa:252, spd:0,   spe:252 } },
+            PHYS_SWEEPER:   { item: 'Life Orb',     nature: 'Jolly',   evs: { hp:4,   atk:252, def:0,   spa:0,   spd:0,   spe:252 } },
+            SPEC_SWEEPER:   { item: 'Life Orb',     nature: 'Timid',   evs: { hp:4,   atk:0,   def:0,   spa:252, spd:0,   spe:252 } },
+            PHYS_BULKY_ATK: { item: 'Assault Vest', nature: 'Adamant', evs: { hp:252, atk:252, def:4,   spa:0,   spd:0,   spe:0   } },
+            SPEC_BULKY_ATK: { item: 'Assault Vest', nature: 'Modest',  evs: { hp:252, atk:0,   def:4,   spa:252, spd:0,   spe:0   } },
+            PHYS_WALL:      { item: 'Leftovers',    nature: 'Impish',  evs: { hp:252, atk:0,   def:252, spa:0,   spd:4,   spe:0   } },
+            SPEC_WALL:      { item: 'Leftovers',    nature: 'Calm',    evs: { hp:252, atk:0,   def:4,   spa:0,   spd:252, spe:0   } },
+        };
+        const _DESIGNED_HEAL_MOVES = new Set([
+            'Recover', 'Roost', 'Slack Off', 'Wish', 'Soft-Boiled', 'Synthesis',
+            'Morning Sun', 'Milk Drink', 'Heal Order', 'Shore Up', 'Rest', 'Strength Sap'
+        ]);
+        const _DESIGNED_STATUS_MOVES = new Set([
+            'Toxic', 'Will-O-Wisp', 'Thunder Wave', 'Spore', 'Sleep Powder', 'Stun Spore',
+            'Glare', 'Yawn', 'Hypnosis', 'Poison Powder', 'Confuse Ray', 'Leech Seed'
+        ]);
+        function _designedInferRole(name) {
+            const b = baseStats[name] || {};
+            const atk = b.atk || 50, spa = b.spa || 50, def = b.def || 50, spd = b.spd || 50, spe = b.spe || 50;
+            const physical = atk >= spa;
+            const off = physical ? atk : spa;
+            const bulk = def + spd;
+            if (bulk >= off + 80 && off < 95) return physical ? 'PHYS_WALL' : 'SPEC_WALL';
+            if (spe >= 100 && off >= 100)     return physical ? 'PHYS_SWEEPER' : 'SPEC_SWEEPER';
+            if (bulk >= 160 && off >= 90)     return physical ? 'PHYS_BULKY_ATK' : 'SPEC_BULKY_ATK';
+            return physical ? 'PHYS_ATTACKER' : 'SPEC_ATTACKER';
+        }
+        function _designedCsvMovePool(name) {
+            const entry = resolveCsvBuildEntry(name);
+            const moves = new Set();
+            for (const tag of ['regular', 'weather', 'mega', 'z-attack', 'tera']) {
+                const arr = entry[tag];
+                if (!Array.isArray(arr)) continue;
+                for (const b of arr) {
+                    if (!b || !Array.isArray(b.m)) continue;
+                    for (const m of b.m) {
+                        if (!m) continue;
+                        if (m.includes('/')) {
+                            for (const part of m.split('/').map(s => s.trim()).filter(Boolean)) moves.add(part);
+                        } else {
+                            moves.add(m);
+                        }
+                    }
+                }
+            }
+            return [...moves];
+        }
+        function _designedPickMoves(name, role, base, legalPool) {
+            const wantPhysical = role.startsWith('PHYS_');
+            const t1 = base.t1 || 'Normal', t2 = base.t2 || '';
+            const isWall = role === 'PHYS_WALL' || role === 'SPEC_WALL';
+            const damaging = [];
+            const heal = [];
+            const status = [];
+            for (const m of legalPool) {
+                const md = ensureMoveData(m);
+                if (!md) continue;
+                if (md.cat === 'Status') {
+                    if (_DESIGNED_HEAL_MOVES.has(m)) heal.push(m);
+                    else if (_DESIGNED_STATUS_MOVES.has(m)) status.push(m);
+                    continue;
+                }
+                const wantCat = wantPhysical ? 'Physical' : 'Special';
+                // Allow off-category moves only if they're high-BP coverage; otherwise we
+                // end up with Adamant-natured mons throwing Special moves at no benefit.
+                if (md.cat !== wantCat && (md.pow || 0) < 70) continue;
+                damaging.push({ name: m, pow: md.pow || 0, stab: md.type === t1 || md.type === t2, cat: md.cat });
+            }
+            damaging.sort((a, b) => (b.stab ? 30 : 0) + b.pow - ((a.stab ? 30 : 0) + a.pow));
+            const seen = new Set();
+            const uniqueDmg = damaging.filter(m => seen.has(m.name) ? false : (seen.add(m.name), true));
+            const moves = [];
+            if (isWall) {
+                if (heal.length)   moves.push(heal[Math.floor(Math.random() * heal.length)]);
+                if (status.length) moves.push(status[Math.floor(Math.random() * status.length)]);
+                for (const m of uniqueDmg) {
+                    if (moves.length >= 4) break;
+                    if (!moves.includes(m.name)) moves.push(m.name);
+                }
+            } else {
+                for (const m of uniqueDmg) {
+                    if (moves.length >= 4) break;
+                    if (!moves.includes(m.name)) moves.push(m.name);
+                }
+            }
+            if (moves.length < 4) {
+                for (const m of heal.concat(status)) {
+                    if (moves.length >= 4) break;
+                    if (!moves.includes(m)) moves.push(m);
+                }
+            }
+            if (moves.length < 4) {
+                for (const m of legalPool) {
+                    if (moves.length >= 4) break;
+                    if (!moves.includes(m)) moves.push(m);
+                }
+            }
+            while (moves.length < 4) moves.push('Tackle');
+            return moves.slice(0, 4);
+        }
+        function makeDesignedBuild(name) {
+            const base = baseStats[name];
+            if (!base) return null;
+            const legalPool = _designedCsvMovePool(name);
+            if (legalPool.length < 3) return null;
+            const role = _designedInferRole(name);
+            const cfg = _DESIGNED_ROLE_CONFIG[role] || _DESIGNED_ROLE_CONFIG.PHYS_ATTACKER;
+            const moves = _designedPickMoves(name, role, base, legalPool);
+            let ability = 'None';
+            if (base.abilities) {
+                const aPool = [base.abilities['0'], base.abilities['1'], base.abilities['H']].filter(Boolean);
+                if (aPool.length) ability = aPool[0];
+            }
+            return {
+                i: cfg.item,
+                a: ability,
+                n: cfg.nature,
+                m: moves,
+                evs: { ...cfg.evs },
+                gimmick: 'STANDARD',
+                teraType: null,
+                archetype: role.toLowerCase().replace(/_/g, '-'),
+                _designed: true,
+            };
+        }
+        window.makeDesignedBuild = makeDesignedBuild;
+
         // Central build factory — used by draft, gauntlet rounds, and draw recovery
         function makeBuild(name, gimmickOpts) {
+            // Designed-build path: rolled BEFORE gimmick resolution so the mix knob
+            // can't be skipped by a forced-STANDARD call. Skip when a non-standard
+            // gimmick is being forced (mega/Z/Tera flows need the CSV item).
+            const forced = gimmickOpts && gimmickOpts.forceGimmick;
+            if (!forced || forced === 'STANDARD') {
+                const mix = (typeof settings.csvBuildMix === 'number')
+                    ? Math.max(0, Math.min(1, settings.csvBuildMix))
+                    : 0.7;
+                if (mix < 1.0 && Math.random() >= mix) {
+                    const designed = makeDesignedBuild(name);
+                    if (designed) return designed;
+                }
+            }
             const gimmick = gimmickOpts && gimmickOpts.forceGimmick ? rollGimmick(name, gimmickOpts.forceGimmick) : rollGimmick(name);
             const base    = baseStats[name] || {};
             const entry   = resolveCsvBuildEntry(name);
@@ -6458,7 +6614,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { window.showToast('Could not load all game data'); } catch (e) {}
         });
 
-        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, draftGrades: [1,2,3,4], mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, partySize: 3,
+        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, draftGrades: [1,2,3,4], mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, csvBuildMix: 0.7, partySize: 3,
             aiProfile: 'balanced', /* aggro | balanced | stall — vs AI only */
             storyBattleItems: true, /* story in-battle bag */
             pvpBattleItems: false,  /* reserved: symmetric items in PvP */
@@ -6473,6 +6629,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.battleLogDock === 'boolean') settings.battleLogDock = _pbs.battleLogDock;
             if (typeof _pbs.smartDraftPool === 'boolean') settings.smartDraftPool = _pbs.smartDraftPool;
             if (typeof _pbs.gauntletProgressiveDifficulty === 'boolean') settings.gauntletProgressiveDifficulty = _pbs.gauntletProgressiveDifficulty;
+            if (typeof _pbs.csvBuildMix === 'number' && _pbs.csvBuildMix >= 0 && _pbs.csvBuildMix <= 1) settings.csvBuildMix = _pbs.csvBuildMix;
             if (_pbs.displayMode === 'phone' || _pbs.displayMode === 'desktop' || _pbs.displayMode === 'auto') settings.displayMode = _pbs.displayMode;
         } catch (e) {}
         function persistMiscSettings() {
@@ -6484,6 +6641,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     battleLogDock: settings.battleLogDock,
                     smartDraftPool: settings.smartDraftPool,
                     gauntletProgressiveDifficulty: settings.gauntletProgressiveDifficulty,
+                    csvBuildMix: settings.csvBuildMix,
                     displayMode: settings.displayMode
                 }));
             } catch (e) {}
