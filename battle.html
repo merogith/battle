@@ -22650,7 +22650,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Shop item definitions — Pokémart
         const POKEMART_ITEMS = [
-          { id:'pokeBall',      name:'Poké Ball',     price:200,  desc:'A standard ball for catching wild Pokémon.', kind:'ball', ballKey:'poke', battleBag:false },
+          { id:'pokeBall',      name:'Poké Ball',     price:300,  desc:'A standard ball for catching wild Pokémon.', kind:'ball', ballKey:'poke', battleBag:false },
           { id:'maxPotion',     name:'Max Potion',    price:1000, desc:'Fully restores HP of one Pokémon.',   effect:'healFull' },
           { id:'fullRestore',   name:'Full Restore',  price:1500, desc:'Fully restores HP & cures status.',   effect:'fullRestore' },
           { id:'fullHeal',      name:'Full Heal',     price:300,  desc:'Cures all status conditions.',        effect:'cureStatus' },
@@ -26388,40 +26388,52 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 msg:'The Champion bows. "These are yours by right." +2 Ultra Balls, +1 Rare Candy, +2 Vitamin Packs.' }
         };
 
-        // Foe party size now *matches* the player's active team size, with two
-        // exceptions:
+        // Foe party size matches the player's active team size, with two
+        // sources of bias on top:
         //   1. Story finales (Champion, Elite Four, Victory Road, post-HoF
-        //      Mystery Figure) always field a full 6 — the climactic battles
-        //      shouldn't shrink because the player runs lean.
-        //   2. Each role has a *role floor* so a 1-mon trainer who hasn't
-        //      caught a wild yet still gets a meaningful pre-Gym-1 fight.
-        //      Floors are tiny (1 for trainers, 2 for gym leaders / rivals)
-        //      so the player's choice of party size is honored, not overridden.
-        // This replaces the old "predictable curve by badges" because the
-        // player's party can grow off-schedule via wild catching — matching
-        // the foe to the actual player team is the only way to keep every
-        // fight feel like a fair duel run-to-run.
-        function _storyEnemyPartySize(event, badges, playerTeamLen) {
+        //      Mystery Figure) always field a full 6 — climactic fights
+        //      don't shrink because the player runs lean.
+        //   2. Gym Leaders carry a per-gym floor so the difficulty curve
+        //      still ramps up alongside badges: GL1–2 = 2, GL3–4 = 3,
+        //      GL5–6 = 4, GL7 = 5, GL8 = 6. Trainers and Rivals have no
+        //      role floor — pure player-matching, so the intro rival reads
+        //      as a clean 1v1 starter duel and not a lopsided 1v2.
+        //
+        // Expected sequencing for a non-catcher who accepts every Professor:
+        //   Intro rival          (player 1) → 1v1
+        //   Catch tutorial       → +1 partner → player 2
+        //   Basic trainer        (player 2) → 2v2
+        //   City 1 Professor     → +1 → player 3
+        //   Gym Leader 1         (floor 2, player 3) → 3v3
+        //   City 2 Professor     → player 4 → GL2 4v4
+        //   City 3 Professor     → player 5 → GL3 5v5
+        //   City 4 Professor     → player 6 → GL4 6v6 from here on
+        //   Cities 5–8           → no more Prof (party full)
+        //   Champion / E4 / VR   → always 6v6
+        //
+        // A wild-catcher fills slots faster; foes match the larger team,
+        // so every fight stays even on either schedule.
+        function _storyEnemyPartySize(event, playerTeamLen) {
             const e = String(event || '');
             const player = Math.max(1, Math.min(6, playerTeamLen | 0));
             // Story finales — always full 6.
             if (/Champion/i.test(e) || /Victory Road/i.test(e) || /^E[1-4]$/i.test(e) || /Mystery Figure/i.test(e)) return 6;
-            // Gym Leaders — match player with a small per-gym floor so the
-            // fight scales up with badges even if the player stays lean.
+            // Gym Leaders — match player with a per-gym floor so the
+            // difficulty ramp follows the badge curve even if the player
+            // stays lean. GL1–2 floor 2, GL3–4 floor 3, GL5–6 floor 4,
+            // GL7 floor 5, GL8 floor 6.
             const gymMatch = e.match(/Gym Leader\s*(\d+)/i);
             if (gymMatch) {
                 const gn = parseInt(gymMatch[1], 10) | 0;
-                // Floor: GL1–2 = 2, GL3–4 = 3, GL5–6 = 4, GL7 = 5, GL8 = 6.
                 const floor = gn >= 8 ? 6 : gn >= 7 ? 5 : gn >= 5 ? 4 : gn >= 3 ? 3 : 2;
                 return Math.min(6, Math.max(floor, player));
             }
-            // Rival — match player, floor 2 (rivals always bring a teammate).
-            if (/Rival/i.test(e)) {
-                return Math.min(6, Math.max(2, player));
-            }
-            // Basic / Gym Trainer / Elite Trainer (and themed variants): pure
-            // match. A 1-mon player faces a 1-mon trainer. A 6-mon player
-            // faces a 6-mon trainer.
+            // Rival — pure player-match. No floor: the intro rival reads
+            // as a 1v1 starter duel when the player only has their starter.
+            // Later rivals naturally scale up because the player's team has
+            // grown by then (catch tutorial + Professor visits).
+            // Basic / Gym Trainer / Elite Trainer (and themed variants):
+            // also pure match. A 1-mon player faces 1 foe; 6-mon faces 6.
             return Math.min(6, Math.max(1, player));
         }
         // Hard cap at 6 — there's no badge-gated growth anymore. The Professor
@@ -26750,7 +26762,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // the standard 0-badge rival sizing (2) so a player who caught
             // their first wild fights a fair 2v2; a player who skipped the
             // wild still has full-heal between mons to handle 1v2.
-            const partySize = _storyEnemyPartySize(event, sm.badges | 0, sm.team.length | 0);
+            const partySize = _storyEnemyPartySize(event, sm.team.length | 0);
 
             const startFight = (enemyTeam) => {
                 if (sm.team.length === 0) { window.showGameAlert('No Pokémon! Visit the Professor.'); enterCity(); return; }

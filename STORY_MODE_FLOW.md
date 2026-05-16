@@ -30,7 +30,8 @@ writing — they will drift as work proceeds.
 | PC | Pure storage. Flat array, **cap 10** (story is battle-focused, not a collection layer). Catch fails with an explicit message when party 6/6 and PC 10/10 — player must sell or release first. Stable `id` per mon. |
 | Underground | Built into every Pokémon Center hub button. Always visible. Sells your mons for gold (price scales with grade). Cannot sell your last party mon, the starter, or the boss-arc capture. |
 | Pokémon Center button | New city hub action. Contains PC + Underground. No heal function (battles auto-heal). |
-| Foe sizing | **Matches the player's current team size** with a small per-role floor. Story finales (Champion / Victory Road / E1–4 / post-HoF Mystery Figure) always field 6. Gym Leader floors: GL1–2 = 2, GL3–4 = 3, GL5–6 = 4, GL7 = 5, GL8 = 6. Rivals: floor 2. Trainers: floor 1. So a lean 3-mon player faces 3-mon trainers; a full 6-mon player faces 6-mon trainers; either way, fights stay even. |
+| Foe sizing | **Matches the player's current team size.** Story finales (Champion / Victory Road / E1–4 / post-HoF Mystery Figure) always field 6. Gym Leaders carry a per-gym floor so the curve still climbs with badges: GL1–2 = 2, GL3–4 = 3, GL5–6 = 4, GL7 = 5, GL8 = 6. Rivals and regular trainers have no floor — pure player-matching. So a lean 3-mon player faces 3-mon trainers; a full 6-mon player faces 6-mon trainers; either way, fights stay even. |
+| Expected sequence (non-catcher who accepts every Professor) | Intro rival 1v1 → catch tutorial → Basic trainer 2v2 → City 1 Prof → GL1 3v3 → City 2 Prof → GL2 4v4 → City 3 Prof → GL3 5v5 → City 4 Prof → GL4 6v6 → all subsequent battles 6v6. A wild-catcher fills slots faster, and foes match the larger team on the same fight. |
 | Player party cap | Hard 6 (no badge-gated growth). The Professor in each of cities 0–5 hands you one Pokémon — so a player who never catches a wild still finishes the front half with a full team. Wild catches over 6 land in the PC. |
 | Professor visibility | Each city's Professor (cities 0–5 by action list; cities 6–8 via `shouldForceCityProfessor`) appears **only while the player's active party is below 6**. Once the team is at 6, the Professor stops showing. The lone exception is the City-8 post-Gym-8 legendary gate (Mystery Figure), which stays visible at 6/6 because the swap is required to enter Victory Road. |
 | Rival adaptation | Read live `sm.team` at battle entry. **Do not** filter `wild:true` mons — full-party-counts is the honest signal. Bringing a Magikarp pulls some counter-weight onto Water, but doesn't dominate against 5 other types. |
@@ -128,7 +129,7 @@ Master Ball is `Infinity` — guaranteed catch. No special-case code.
 
 | Ball | Multiplier | Source | Cap |
 |---|---|---|---|
-| PokéBall | 1.0× | PokéMart (200G ea, unlimited) + 5 at run start | — |
+| PokéBall | 1.0× | PokéMart (300G ea, unlimited) + 5 at run start | — |
 | Great Ball | 1.5× | Department Store (existing City6/City8) (1000G ea) | — |
 | Ultra Ball | 2.0× | Static story events (×2 total: mid-game + late-game) | 2 per run |
 | Master Ball | ∞ | Boss arc reward (Underground broker) | 1 per run |
@@ -338,7 +339,7 @@ After M1: catching has a destination; no catching yet.
 ### M2 — Catch minigame + balls + wild routes (~2–3 days)
 - New screen `#screen-story-catch` (used by both wild and Safari).
 - `PokéBall`, `Great Ball`, `Ultra Ball`, `Master Ball` added to `sm.balls`.
-- PokéMart sells PokéBalls (200G each); Department Store sells Great Balls (1000G each) — new rows in `POKEMART_ITEMS` / `DEPT_ITEMS`.
+- PokéMart sells PokéBalls (300G each); Department Store sells Great Balls (1000G each) — new rows in `POKEMART_ITEMS` / `DEPT_ITEMS`.
 - `proceedToNextBattle` (line 24593) inserts a route-node interrupt between consecutive Battles that cross a city boundary.
 - Wild route flow: roll species from current event's grade weights shifted one tier weaker; open catch screen; throw/run; on catch → `state.pendingCatch`; on exit → promote to `sm.team` or `sm.pcBox`.
 - Caught mon flagged `wild: true`; rough build via new `makeWildBuild` helper.
