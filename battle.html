@@ -27408,7 +27408,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (isFree) {
                 sm.safari.freeEntryUsed = true;
-                try { window.showGameAlert && window.showGameAlert(`Welcome to the Safari Zone. Your first visit is on the house. ${SAFARI_BALLS_PER_SESSION} Safari Balls, up to ${SAFARI_MAX_ENCOUNTERS} encounters. Try Bait to calm wary mons, Rocks to weaken stubborn ones — leftover balls don't leave the gate.`); } catch (e) {}
+                try { window.showGameAlert && window.showGameAlert(`Welcome to the Safari Zone. First visit is free.\n\n${SAFARI_BALLS_PER_SESSION} Safari Balls · up to ${SAFARI_MAX_ENCOUNTERS} encounters.\n\nBait: calms the mon (↓catch chance, ↓flee). Rocks: angers it (↑catch, ↑flee). Both stack per encounter. Unused balls don't leave the gate.`); } catch (e) {}
             } else {
                 sm.gold = Math.max(0, (sm.gold | 0) - SAFARI_ENTRY_COST);
             }
@@ -28161,7 +28161,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Roaming-legendary one-shot framing — set the opening message before render
             // so the player can read the stakes before throwing.
             if (_catchState.roamingLabel && !_catchState.bossMode) {
-                _catchState.message = `A roaming ${wildMon.name} — sighted, not seeking trainers. One throw decides it: catch or it's gone forever. (Run also forfeits it.)`;
+                _catchState.message = `A roaming ${wildMon.name}! One throw — catch or it's gone forever. (Running also forfeits it.)`;
             }
             // Tutorial framing — warm "your first catch" opener so the player
             // reads the new mechanic with curiosity, not panic. The tutorial
@@ -28264,8 +28264,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span><strong>${display.name}</strong> <span style="color:#aaa;font-size:10px;">(${SAFARI_BALL_MULT}× base)</span> ×${have}</span>
                     <span style="color:#fff;">${safariPct}%</span>
                 </button>`;
-                const baitLabel = sess.baitCount ? `🍓 Bait <span style="opacity:0.7;font-size:10px;">(fed ${sess.baitCount}×)</span>` : '🍓 Bait';
-                const rockLabel = sess.rockCount ? `🪨 Throw Rock <span style="opacity:0.7;font-size:10px;">(thrown ${sess.rockCount}×)</span>` : '🪨 Throw Rock';
+                const baitLabel = sess.baitCount ? `🍓 Bait <span style="color:#ffd54f;font-size:10px;font-weight:bold;">×${sess.baitCount}</span>` : '🍓 Bait';
+                const rockLabel = sess.rockCount ? `🪨 Throw Rock <span style="color:#ffd54f;font-size:10px;font-weight:bold;">×${sess.rockCount}</span>` : '🪨 Throw Rock';
                 safariActionRow = `<div style="display:flex;gap:6px;margin-top:4px;">
                     <button type="button" onclick="window.StoryMode.safariBait()" style="flex:1;padding:8px;background:rgba(20,28,40,0.6);border:1px solid #f48fb1;color:#f48fb1;font-family:inherit;font-size:11px;cursor:pointer;">${baitLabel}</button>
                     <button type="button" onclick="window.StoryMode.safariRock()" style="flex:1;padding:8px;background:rgba(20,28,40,0.6);border:1px solid #ffab91;color:#ffab91;font-family:inherit;font-size:11px;cursor:pointer;">${rockLabel}</button>
@@ -28444,16 +28444,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (fleeRoll < fleeThreshold) {
                 const fleeMsgs = _catchState.roamingLabel
                     ? [
-                        `${enc.name} broke from the ball and vanished into the wild — gone for good.`,
-                        `${enc.name} sprinted past the treeline and was gone in seconds.`,
-                        `The roaming ${enc.name} slipped the bond and disappeared.`,
-                        `${enc.name} bolted at the throw and is not seen again on this route.`
+                        `${enc.name} broke the ball and fled. Gone for good.`,
+                        `${enc.name} bolted past the treeline. Gone for good.`
                     ]
                     : [
-                        `${enc.name} darted into the brush!`,
-                        `${enc.name} fled — too quick to follow.`,
-                        `The wild ${enc.name} bolted and was gone.`,
-                        `${enc.name} slipped away into the underbrush.`,
+                        `${enc.name} bolted!`,
+                        `${enc.name} fled — too quick to follow.`
                     ];
                 _catchFinishWithMessage(fleeMsgs[Math.floor(Math.random() * fleeMsgs.length)]);
                 return;
