@@ -29401,10 +29401,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // The per-turn flee check rolls after applying the bait stack so the
         // new state drives the flee threshold. If the wild flees, the flee
         // message replaces this turn's text entirely (no flash of the
-        // "calmer now" copy).
+        // "calmer now" copy). Hard guard at 3× prevents a stale click on a
+        // disabled button (or a fast double-click) from triggering an extra
+        // RNG-consuming flee roll.
         function safariBait() {
             if (!_catchState || !_catchState.safariMode || _catchState.ended) return;
             if (!_safariSession) return;
+            if ((_safariSession.baitCount | 0) >= 3) return;
             _safariSession.baitCount = Math.min(3, (_safariSession.baitCount | 0) + 1);
             if (_safariRollActionFlee('bait')) return;
             _catchState.message = `${_catchState.encounter.name} is munching on the bait — calmer now.`;
@@ -29418,6 +29421,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function safariRock() {
             if (!_catchState || !_catchState.safariMode || _catchState.ended) return;
             if (!_safariSession) return;
+            if ((_safariSession.rockCount | 0) >= 3) return;
             _safariSession.rockCount = Math.min(3, (_safariSession.rockCount | 0) + 1);
             if (_safariRollActionFlee('rock')) return;
             _catchState.message = `${_catchState.encounter.name} dodges the rock — furious now, and watching you closely.`;
