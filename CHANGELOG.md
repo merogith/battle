@@ -26,11 +26,33 @@ without realizing the investment went with it.
 
 - **Vitamin Pack tooltip** in the bag now explicitly states the
   investment stays with the mon forever, only lost on release or sale.
+  Rewritten in plain language with a concrete example
+  (+252 Atk / +252 Speed) and the 5,000G equivalence.
 - **Buck quote pool** at the EV Trainer gains a permanence line.
 - **PC Release confirm** appends "Its EV training will be lost too."
   when the slot has any non-zero EVs.
 - **PC Underground Sell confirm** appends the same EV note when
   applicable, and the tab intro banner mentions the same.
+
+### Added — EV Trainer onboarding & vitamin discoverability
+
+The EV Trainer screen previously surfaced only a random Buck quote and
+the per-mon preset cards — new players had no persistent answer to
+"what is an EV?" and players carrying unused Vitamin Packs through
+no-EV-Trainer cities (City 2, 3, 5) had no reminder beyond the bag tab.
+
+- **Persistent info banner** at the top of the EV Trainer screen.
+  Plain-language explainer (what EVs are, 252/510 cap, permanence rule)
+  plus a live state line — pink "💊 N Vitamin Packs ready" call-out
+  when the player has any, gold-cost reminder when they don't.
+- **Clearer Vitamin button label** on each preset: "💊 Use Vitamin
+  (N left)" replaces the more ambiguous "💊 Vitamin (N)" so mobile /
+  touch users who can't see the hover tooltip still understand it's
+  a consume action.
+- **City tip in no-EV-Trainer cities** — quiet "💊 N Vitamin Packs
+  saved — use at next EV Trainer" reminder. Clicks open the bag so the
+  full tooltip is one tap away. Existing tip in EV-Trainer cities
+  unchanged.
 
 ### Reason
 
