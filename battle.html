@@ -22857,6 +22857,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             56: 'villain',
             58: 'eldritch',
         };
+        /** Per-seed rotation pool for themed slots. Each row picks one theme from its
+         * pool when `assignTrainers` runs, so mid-game flavor varies between seeds while
+         * the role + slot identity stays fixed. The first entry of each pool matches the
+         * legacy fixed value in `STORY_THEMED_BATTLES`, so default-feel runs stay close
+         * to the established progression curve.
+         *
+         * Resolution: `_resolveThemeForBattleRow(idx)` reads `sm.themedAssignments[idx]`
+         * if present, otherwise falls back to `STORY_THEMED_BATTLES[idx]`. Callers should
+         * always go through the resolver, not the static map. */
+        const STORY_THEMED_BATTLE_POOLS = {
+            7:  ['cursed',    'multitype'],            // early back-road flavor
+            14: ['multitype', 'cursed'],               // first wanderer / sickness
+            20: ['villain',   'cursed'],               // post-Gym 3 scouting
+            26: ['multitype', 'eldritch'],             // mid-game roamer / silhouette
+            33: ['villain',   'eldritch'],             // Team in force / old champion
+            34: ['cursed',    'multitype'],            // road sickness / wanderer
+            41: ['multitype', 'villain'],              // roamer / Team operative
+            42: ['eldritch',  'veteran'],              // silhouette / returning leader
+            48: ['cursed',    'eldritch'],             // road sickness deepens
+            49: ['veteran',   'multitype'],            // returning leader / roamer
+            56: ['villain',   'eldritch'],             // pre-League boss / silhouette
+            58: ['eldritch',  'villain'],              // curtain / final scout
+        };
+        function _resolveThemeForBattleRow(idx) {
+            const i = idx | 0;
+            if (sm && sm.themedAssignments && sm.themedAssignments[i]) return sm.themedAssignments[i];
+            return STORY_THEMED_BATTLES[i] || null;
+        }
         /** Soft-tease labels for the city Tips "🎯 Next:" chip when a themed battle
          * is the next stop. The label hints at vibe without revealing identity. */
         const STORY_THEMED_NEXT_LABELS = {
@@ -24690,6 +24718,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function assignTrainers(enabledGens) {
             const eg = normalizeEnabledGens(enabledGens);
             sm.trainerAssignments = {};
+            sm.themedAssignments = {};
+            const _themeRng = (sm && sm.active) ? storyRngNext : Math.random;
+            for (const k in STORY_THEMED_BATTLE_POOLS) {
+                const pool = STORY_THEMED_BATTLE_POOLS[k];
+                if (Array.isArray(pool) && pool.length) {
+                    sm.themedAssignments[k | 0] = pool[Math.floor(_themeRng() * pool.length)];
+                }
+            }
             const usedBase = new Set();
             let lockedRivalName = null;
             const tRival = selectTrainerForRole('Rival', eg, null);
@@ -24732,7 +24768,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (event === 'Mystery Figure') return;
                 // Themed slot? Try a tagged trainer first (Shadow Blue, Cursed Vagrant…).
-                const theme = STORY_THEMED_BATTLES[idx];
+                const theme = _resolveThemeForBattleRow(idx);
                 if (theme) {
                     const tagged = _pickThemedTrainerForRole(event, eg, usedBase, theme);
                     if (tagged) {
@@ -25264,7 +25300,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     else if (nxEvent === 'Victory Road') nextLabel = 'Victory Road';
                     // Soft tease for themed battles — vibe only, no spoiler. Keeps
                     // the canonical label intact so the player still knows the role.
-                    const theme = STORY_THEMED_BATTLES[nxId];
+                    const theme = _resolveThemeForBattleRow(nxId);
                     const themeLabel = theme && STORY_THEMED_NEXT_LABELS[theme];
                     if (themeLabel) nextLabel = `${nextLabel} — ${themeLabel}`;
                     tips.push({ icon: '🎯', label: `Next: ${nextLabel}`, click: 'window.StoryMode.proceedToNextBattle()' });
