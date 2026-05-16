@@ -89,13 +89,13 @@ Trade-off: keeps `eventIndex` semantics clean; needs the save/restore wrapper.
 |---|---|
 | Unlock | City 4 ("Wilderness town") action button — both pre- and post-Gym-4 hub rows carry it. |
 | Location | City 4 only in the main timeline. Post-HoF access is via the Crucible (which also exposes the same screen). |
-| Cost | First entry free. Subsequent entries cost `SAFARI_ENTRY_COST` (1,200G). |
-| Encounters | Continuous random encounters up to `SAFARI_MAX_ENCOUNTERS` (8 per session). Each encounter is a single mon. |
-| Pool grade | Richer than wild routes — `SAFARI_GRADE_WEIGHTS` g1:8 / g2:40 / g3:38 / g4:14. |
-| Balls | Safari-session pool only (`SAFARI_BALLS_PER_SESSION` = 25). The player's PokéBall stack does **not** apply inside; leftover Safari Balls are forfeited on exit. |
+| Cost | First entry free. Subsequent entries cost `SAFARI_ENTRY_COST` (2,500G). |
+| Encounters | Continuous random encounters up to `SAFARI_MAX_ENCOUNTERS` (6 per session). Each encounter is a single mon. |
+| Pool grade | `SAFARI_GRADE_WEIGHTS` g1:3 / g2:22 / g3:50 / g4:25 — tightened to make Safari a "spend money for a real chance" trip rather than a guaranteed haul. |
+| Balls | Safari-session pool only (`SAFARI_BALLS_PER_SESSION` = 15). The player's PokéBall stack does **not** apply inside; leftover Safari Balls are forfeited on exit. Safari Ball multiplier `SAFARI_BALL_MULT` = 1.25×. |
 | Mechanics | Bait (calm: lower catch, lower flee) and Rock (anger: higher catch, higher flee) stack within an encounter and reset between encounters. |
 | Flee | Per-grade flee rate (G1 55% → G4 20%), modulated by bait/rock stacks. |
-| Exit | After 8 encounters, when balls run out, or via "Leave Safari" button. Caught mons enter party/PC; uncaught are gone. |
+| Exit | After 6 encounters, when balls run out, or via "Leave Safari" button. Caught mons enter party/PC; uncaught are gone. |
 
 ---
 
@@ -146,10 +146,12 @@ Initial peg (G1 is the strongest tier per the existing `getMonGrade` convention 
 
 | Sale | Grade | Gold |
 |---|---|---|
-| Sell G1 mon | 2500 |
-| Sell G2 mon | 700 |
+| Sell G1 mon | 1800 |
+| Sell G2 mon | 400 |
 | Sell G3 mon | 150 |
-| Sell G4 mon | 30 |
+| Sell G4 mon | 20 |
+
+(Tightened from earlier 2500/700/150/30 to keep Underground useful while reinforcing that *keeping* mons is the rewarding play. See `_PC_UNDERGROUND_PRICE_BY_GRADE` at `battle.html:27184`.)
 
 ---
 
@@ -168,15 +170,19 @@ No heal function on the Center — full-heal between battles is universal.
 
 ## 8. Difficulty modes (after hardcore removal)
 
-The five surviving modes keep their existing values (`battle.html:21365–21372`, `26270`):
+The five surviving modes use these values (`battle.html:8999–9019` for stat mult, `~22267` for coin mult). These have drifted from earlier drafts of this spec; the table below reflects what actually runs:
 
 | Mode | Foe stat mult | Coin mult |
 |---|---|---|
-| Very Easy | 0.75 | 1.60 |
-| Easy | 0.75 | 1.50 |
+| Very Easy | 0.70 | 1.60 |
+| Easy | 0.85 | 1.50 |
 | Normal | 1.00 | 1.30 |
-| Hard | 1.15 | 0.92 |
-| Challenge (Very Hard) | 1.20 | 1.05 |
+| Hard | 1.15 | 1.00 (floored from 0.92) |
+| Challenge (Very Hard) | 1.30 | 1.10 |
+
+Note: `applyStoryLeagueFoeStatBoost` (E1–E4 / Champion / league Rival / post-HoF Mystery) is applied **before** `applyFoeDifficultyScaling`, so the two stack multiplicatively. Champion HP on Hard ≈ ×1.30 × ×1.15 = ×1.495.
+
+**Pre-Gym 1 softening:** `_isPreGym1NerfedBattle()` applies an extra `PRE_GYM1_FOE_STAT_MULT` (default 0.85) to the intro rival, the first route trainer, and Gym Trainer 1. Gym Leader 1 itself stays at full strength.
 
 The `hardcore` value is removed entirely. Existing saves on `hardcore` migrate to `normal`.
 
