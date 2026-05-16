@@ -11448,7 +11448,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (settings.randomTerrain) rollRandomTerrain();
             {
                 const _foeAlive = state.foeParty.filter(m => m.currentHp > 0);
-                const _foeLead = _foeAlive.length ? aiBestSwitch(_foeAlive, state.pActive) : null;
+                const _foeLead = _foeAlive.length ? aiBestSwitch(_foeAlive, state.pActive, { isLead: true }) : null;
                 state.fActive = _foeLead || state.foeParty[0];
             }
             state.turnNumber = 0;
@@ -13194,18 +13194,44 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        // AI: check if defender's ability grants immunity to this move's type
-        function abilityImmunity(move, defender) {
+        // AI: check if defender's ability grants immunity to this move's type.
+        // attacker is optional; when provided, Mold Breaker / Gastro Acid / Ability Shield gating is applied
+        // exactly the way the engine does at line ~16270-16279.
+        function aiDefAbilityActive(attacker, defender) {
+            if (!defender) return false;
+            if (defender.volatile && defender.volatile.abilityGastroAcid) return false;
+            if (!attacker) return true;
+            const _mb = attacker.ability === "Mold Breaker" || attacker.ability === "Teravolt" || attacker.ability === "Turboblaze";
+            if (!_mb) return true;
+            // Ability Shield protects from Mold Breaker (no Magic Room / Embargo / Klutz checks here —
+            // those are rare corner cases; the engine handles them in the live path).
+            if (defender.item === "Ability Shield") return true;
+            return false;
+        }
+
+        function abilityImmunity(move, defender, attacker) {
             if (!move || move.cat === "Status") return false;
             const ab = defender.ability;
             if (!ab) return false;
+            // Wonder Guard, Disguise, Shadow Shield, Prism Armor are canonically NOT bypassed by Mold Breaker
+            // (and the engine matches). Most other immunities ARE bypassed. We only gate the bypass-eligible
+            // checks via aiDefAbilityActive when attacker is supplied; legacy callers (no attacker) get the
+            // pre-Mold-Breaker behavior, which is safe-but-pessimistic.
+            const defActive = attacker ? aiDefAbilityActive(attacker, defender) : true;
             const t = move.type;
-            if (ab === "Lightning Rod" || ab === "Lightningrod" || ab === "Volt Absorb" || ab === "Motor Drive") return t === "Electric";
-            if (ab === "Water Absorb" || ab === "Storm Drain" || ab === "Dry Skin") return t === "Water";
-            if (ab === "Flash Fire") return t === "Fire";
-            if (ab === "Sap Sipper") return t === "Grass";
-            if (ab === "Levitate") return t === "Ground";
-            if (ab === "Wonder Guard") { // only super-effective hits land
+            if (defActive) {
+                if (ab === "Lightning Rod" || ab === "Lightningrod" || ab === "Volt Absorb" || ab === "Motor Drive") return t === "Electric";
+                if (ab === "Water Absorb" || ab === "Storm Drain" || ab === "Dry Skin") return t === "Water";
+                if (ab === "Flash Fire") return t === "Fire";
+                if (ab === "Sap Sipper") return t === "Grass";
+                if (ab === "Levitate") return t === "Ground";
+                // Bulletproof: ball/bomb/cannon moves. Engine ~16322 gates on _defAbilityActive.
+                if (ab === "Bulletproof" && window._aiBulletMoves && window._aiBulletMoves.has(move.name)) return true;
+                // Soundproof: sound moves. Engine ~16317 gates on _defAbilityActive.
+                if (ab === "Soundproof" && window._aiSoundMoves && window._aiSoundMoves.has(move.name)) return true;
+            }
+            // Wonder Guard: engine ~17065 only gates on Gastro Acid (no Mold Breaker check), so we mirror.
+            if (!(defender.volatile && defender.volatile.abilityGastroAcid) && ab === "Wonder Guard") {
                 const eff = getMoveEffectiveness(t, defender.type1, defender.type2);
                 return eff <= 1;
             }
@@ -13243,31 +13269,89 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return false;
         }
         // AI: defender ability damage modifier (halves/doubles). 1 = no change.
+        // Mold Breaker / Gastro Acid / Ability Shield gating mirrors the engine. Engine annotates which
+        // abilities are Mold-Breaker-bypassed (Thick Fat, Heatproof, etc.) vs not (Shadow Shield, Prism Armor).
         function abilityDamageMod(move, defender, attacker) {
             if (!move || move.cat === "Status") return 1;
             const ab = defender.ability;
             let m = 1;
-            if (ab === "Thick Fat" && (move.type === "Fire" || move.type === "Ice")) m *= 0.5;
-            if (ab === "Heatproof" && move.type === "Fire") m *= 0.5;
-            if (ab === "Water Bubble" && move.type === "Fire") m *= 0.5;
-            if (ab === "Purifying Salt" && move.type === "Ghost") m *= 0.5;
-            if (ab === "Ice Scales" && move.cat === "Special") m *= 0.5;
-            if (ab === "Fluffy") {
-                if (move.type === "Fire") m *= 2;
-                if (isContactMove(move, attacker)) m *= 0.5;
+            const defActive = aiDefAbilityActive(attacker, defender);
+            if (defActive) {
+                if (ab === "Thick Fat" && (move.type === "Fire" || move.type === "Ice")) m *= 0.5;
+                if (ab === "Heatproof" && move.type === "Fire") m *= 0.5;
+                if (ab === "Water Bubble" && move.type === "Fire") m *= 0.5;
+                if (ab === "Purifying Salt" && move.type === "Ghost") m *= 0.5;
+                if (ab === "Ice Scales" && move.cat === "Special") m *= 0.5;
+                if (ab === "Fluffy" && isContactMove(move, attacker)) m *= 0.5; // contact halving is MB-gated
+                if (ab === "Multiscale" && defender.currentHp === defender.maxHp) m *= 0.5;
+                // Filter / Solid Rock: super-effective damage x0.75 (engine ~17265-17266: MB-bypassed)
+                if (ab === "Filter" || ab === "Solid Rock") {
+                    const eff = getMoveEffectiveness(move.type, defender.type1, defender.type2);
+                    if (eff > 1) m *= 0.75;
+                }
             }
-            if ((ab === "Multiscale" || ab === "Shadow Shield") && defender.currentHp === defender.maxHp) m *= 0.5;
+            // Fluffy Fire doubling, Shadow Shield, and Prism Armor are NOT bypassed by Mold Breaker
+            if (ab === "Fluffy" && move.type === "Fire") m *= 2;
+            if (ab === "Shadow Shield" && defender.currentHp === defender.maxHp) m *= 0.5;
+            if (ab === "Prism Armor") {
+                const eff = getMoveEffectiveness(move.type, defender.type1, defender.type2);
+                if (eff > 1) m *= 0.75;
+            }
             return m;
+        }
+
+        // === AI shared move-name sets (mirror the engine's authoritative lists) ===
+        // Kept on window so subagents/tests can introspect them. Update both these and the engine
+        // lists in lockstep when adding new moves to a flag (sound, bullet, etc.).
+        window._aiSoundMoves = new Set(["Alluring Voice","Boomburst","Bug Buzz","Chatter","Clanging Scales","Clangorous Soul","Confide","Disarming Voice","Echoed Voice","Eerie Spell","Grass Whistle","Growl","Heal Bell","Howl","Hyper Voice","Metal Sound","Noble Roar","Overdrive","Parting Shot","Perish Song","Psychic Noise","Relic Song","Roar","Round","Screech","Sing","Snarl","Snore","Sparkling Aria","Supersonic","Torch Song","Uproar"]);
+        window._aiBulletMoves = new Set(["Acid Spray","Aura Sphere","Barrage","Beak Blast","Bullet Seed","Egg Bomb","Electro Ball","Energy Ball","Focus Blast","Gyro Ball","Ice Ball","Magnet Bomb","Mist Ball","Mud Bomb","Octazooka","Pollen Puff","Pyro Ball","Rock Blast","Rock Wrecker","Searing Shot","Seed Bomb","Shadow Ball","Sludge Bomb","Weather Ball","Zap Cannon","Syrup Bomb","Ice Spinner","Aura Wheel","Steam Eruption"]);
+        window._aiMagicBounceMoves = new Set(["Will-O-Wisp","Thunder Wave","Stun Spore","Sleep Powder","Spore","Toxic","Leech Seed","Strength Sap","Taunt","Encore","Disable","Heal Block","Torment","Mean Look","Spider Web","Block","Tickle","Growl","Leer","Tail Whip","Screech","Metal Sound","String Shot","Smokescreen","Sand Attack","Flash","Kinesis","Charm","Baby-Doll Eyes","Captivate","Sweet Scent","Swagger","Flatter","Noble Roar","Tearful Look","Spikes","Stealth Rock","Toxic Spikes","Sticky Web"]);
+        window._aiPowderMoves = new Set(["Sleep Powder","Stun Spore","Poison Powder","Spore","Cotton Spore","Rage Powder","Magic Powder","Powder"]);
+        window._aiSheerForceMoves = new Set(["Acid","Acid Spray","Air Slash","Astonish","Aurora Beam","Blaze Kick","Blizzard","Body Slam","Bone Club","Bounce","Bubble","Bubble Beam","Bug Buzz","Buzzy Buzz","Charge Beam","Chatter","Confusion","Constrict","Crunch","Crush Claw","Dark Pulse","Diamond Storm","Discharge","Dizzy Punch","Dragon Breath","Dragon Rush","DynamicPunch","Dynamic Punch","Earth Power","Ember","Energy Ball","Extrasensory","Fake Out","Fiery Wrath","Fire Blast","Fire Fang","Fire Punch","Flame Wheel","Flamethrower","Flash Cannon","Fling","Floaty Fall","Focus Blast","Force Palm","Freeze-Dry","Freeze Shock","Freezing Glare","Gunk Shot","Headbutt","Heart Stamp","Heat Wave","Hurricane","Hyper Fang","Ice Beam","Ice Burn","Ice Fang","Ice Punch","Icicle Crash","Icy Wind","Iron Head","Iron Tail","Lava Plume","Leaf Tornado","Lick","Liquidation","Luster Purge","Magical Leaf","Metal Claw","Meteor Mash","Mist Ball","Moonblast","Mud Bomb","Mud Shot","Mud-Slap","Muddy Water","Needle Arm","Night Daze","Octazooka","Ominous Wind","Plasma Fists","Poison Fang","Poison Jab","Poison Sting","Poison Tail","Powder Snow","Power-Up Punch","Psybeam","Psychic","Pyro Ball","Rock Climb","Rock Slide","Rock Smash","Rock Tomb","Rolling Kick","Sacred Fire","Salt Cure","Scald","Searing Shot","Secret Power","Seed Flare","Shadow Ball","Shadow Bone","Signal Beam","Silver Wind","Sky Attack","Sludge","Sludge Bomb","Sludge Wave","Smog","Snarl","Snore","Spark","Spirit Shackle","Steamroller","Steel Wing","Stomp","Strange Steam","Struggle Bug","Stuff Cheeks","Submission","Surf","Thunder","Thunder Fang","Thunder Punch","Thunder Shock","Thunderbolt","Tri Attack","Triple Arrows","Twineedle","Twister","Volt Tackle","Water Pulse","Waterfall","Wing Attack","Zap Cannon","Zen Headbutt","Zing Zap"]);
+
+        // AI: estimate hazard chip damage on switch-in. Mirrors `applyEntryHazards` (line ~19385) but
+        // returns the predicted HP loss instead of mutating state. Used by aiBestSwitch to penalize
+        // sending a Stealth Rock-weak mon onto a rocked field.
+        function aiHazardDamageOnSwitchIn(mon, side) {
+            if (!mon || !side) return 0;
+            if (mon.ability === "Magic Guard") return 0;
+            if (mon.item === "Heavy-Duty Boots") return 0;
+            const isGrounded = mon.type1 !== "Flying" && mon.type2 !== "Flying" && mon.ability !== "Levitate" && mon.item !== "Air Balloon";
+            let dmg = 0;
+            if (side.stealthRock) {
+                const eff = getMoveEffectiveness("Rock", mon.type1, mon.type2);
+                if (eff > 0) dmg += Math.max(1, Math.floor(mon.maxHp * 0.125 * eff));
+            }
+            if (side.spikes > 0 && isGrounded) {
+                const spikesFrac = [0, 1/8, 1/6, 1/4][side.spikes] || 0;
+                dmg += Math.max(1, Math.floor(mon.maxHp * spikesFrac));
+            }
+            // Toxic Spikes: applies poison/toxic, not direct chip. Penalize as ~12% HP-equivalent over time
+            // unless the mon is Poison (absorbs) or Steel/Flying/Levitate (immune) or already statused.
+            if (side.toxicSpikes > 0 && isGrounded && !mon.status) {
+                const isPoison = mon.type1 === "Poison" || mon.type2 === "Poison";
+                const isSteel = mon.type1 === "Steel" || mon.type2 === "Steel";
+                if (!isPoison && !isSteel) dmg += Math.floor(mon.maxHp * (side.toxicSpikes === 2 ? 0.18 : 0.12));
+            }
+            return dmg;
         }
 
         // AI: estimate damage a move deals (simplified)
         function aiEstimateDmg(attacker, defender, move) {
             if (move.cat === "Status" || move.pow <= 0) return 0;
-            if (abilityImmunity(move, defender)) return 0;
+            if (abilityImmunity(move, defender, attacker)) return 0;
             let eff = getMoveEffectiveness(move.type, defender.type1, defender.type2);
             let stab = calcSTAB(attacker, move);
-            let A = move.cat === "Physical" ? attacker.stats.atk * getStageMult(attacker.stages.atk) : attacker.stats.spa * getStageMult(attacker.stages.spa);
-            let D = move.cat === "Physical" ? defender.stats.def * getStageMult(defender.stages.def) : defender.stats.spd * getStageMult(defender.stages.spd);
+            // Unaware stage-ignore (engine ~17453-17475). Defender's Unaware drops attacker's positive
+            // offensive stages; attacker's Unaware drops defender's positive defensive stages.
+            const defUnaware = aiDefAbilityActive(attacker, defender) && defender.ability === "Unaware";
+            const atkUnaware = attacker.ability === "Unaware"; // attacker ability isn't gated by MB
+            let atkStage = move.cat === "Physical" ? attacker.stages.atk : attacker.stages.spa;
+            let defStage = move.cat === "Physical" ? defender.stages.def : defender.stages.spd;
+            if (defUnaware) atkStage = Math.min(0, atkStage); // ignore attacker boosts
+            if (atkUnaware) defStage = Math.min(0, defStage); // ignore defender boosts
+            let A = move.cat === "Physical" ? attacker.stats.atk * getStageMult(atkStage) : attacker.stats.spa * getStageMult(atkStage);
+            let D = move.cat === "Physical" ? defender.stats.def * getStageMult(defStage) : defender.stats.spd * getStageMult(defStage);
             if (attacker.item === "Choice Band" && move.cat === "Physical") A *= 1.5;
             if (attacker.item === "Choice Specs" && move.cat === "Special") A *= 1.5;
             if ((attacker.ability === "Huge Power" || attacker.ability === "Pure Power") && move.cat === "Physical") A *= 2;
@@ -13315,20 +13399,62 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (attacker.ability === "Reckless" && _aiRecoil.includes(move.name)) _aiPow = Math.floor(_aiPow * 1.2);
             if (attacker.ability === "Punk Rock" && _aiSound.includes(move.name)) _aiPow = Math.floor(_aiPow * 1.3);
             if (attacker.ability === "Sand Force" && getCurrentWeather() === "Sandstorm" && (move.type === "Rock" || move.type === "Ground" || move.type === "Steel")) _aiPow = Math.floor(_aiPow * 1.3);
-            // Marvel Scale: reduce physical damage vs statused defender
-            if (defender.ability === "Marvel Scale" && defender.status && move.cat === "Physical") abMod *= (2/3);
-            let dmg = ((22 * _aiPow * A / D) / 50 + 2) * stab * eff * lifeOrb * accFactor * abMod;
+            // Sheer Force: x1.3 base power on moves with chance-based secondaries (engine list at line 17129).
+            if (attacker.ability === "Sheer Force" && move.cat !== "Status" && window._aiSheerForceMoves && window._aiSheerForceMoves.has(move.name)) {
+                _aiPow = Math.floor(_aiPow * 1.3);
+            }
+            // Marvel Scale: reduce physical damage vs statused defender (MB-bypassed via aiDefAbilityActive)
+            if (aiDefAbilityActive(attacker, defender) && defender.ability === "Marvel Scale" && defender.status && move.cat === "Physical") abMod *= (2/3);
+            // Screens: Reflect halves physical, Light Screen halves special, Aurora Veil halves both.
+            // Mirrors engine ~17492-17497. Infiltrator bypasses all screens. Brick Break / Psychic Fangs
+            // shatter them before damage applies, so we don't apply the multiplier for those moves.
+            let screenMod = 1;
+            if (attacker.ability !== "Infiltrator") {
+                const _shatter = move.name === "Brick Break" || move.name === "Psychic Fangs" || move.name === "G-Max Wind Rage" || move.name === "Raging Bull";
+                if (!_shatter) {
+                    // Pick the defender's side: defender's party-of-record determines which side.
+                    let defSide = null;
+                    if (state && state.playerParty && state.playerParty.indexOf(defender) >= 0) defSide = state.pSide;
+                    else if (state && state.foeParty && state.foeParty.indexOf(defender) >= 0) defSide = state.fSide;
+                    if (defSide) {
+                        if (defSide.reflect > 0 && move.cat === "Physical") screenMod *= 0.5;
+                        if (defSide.lightScreen > 0 && move.cat === "Special") screenMod *= 0.5;
+                        if (defSide.auroraVeil > 0 && move.cat !== "Status") screenMod *= 0.5;
+                    }
+                }
+            }
+            let dmg = ((22 * _aiPow * A / D) / 50 + 2) * stab * eff * lifeOrb * accFactor * abMod * screenMod;
+            // Sturdy + Focus Sash: at full HP, the engine survives an OHKO with 1 HP (engine ~16727,
+            // ~17699). Mirror both ceilings so the AI doesn't score a one-shot as a guaranteed KO and
+            // miss the real follow-up turn. Sturdy is MB/Gastro-Acid-bypassed; Focus Sash is an item
+            // (rare suppression via Magic Room/Embargo/Klutz is left to the engine's live path).
+            const _sashActive = defender.item === "Focus Sash" && defender.currentHp === defender.maxHp;
+            const _sturdyActive = aiDefAbilityActive(attacker, defender) && defender.ability === "Sturdy" && defender.currentHp === defender.maxHp;
+            if ((_sturdyActive || _sashActive) && dmg >= defender.currentHp) {
+                dmg = Math.max(0, defender.currentHp - 1);
+            }
+            // Disguise (Mimikyu): the first hit only deals 1/8 maxHp chip; full damage is blocked.
+            // Disguise is NOT bypassed by Mold Breaker but Gastro Acid still suppresses it.
+            const _gAcid = defender.volatile && defender.volatile.abilityGastroAcid;
+            if (defender.ability === "Disguise" && !(defender.volatile && defender.volatile.disguiseBroken) && !_gAcid && move.cat !== "Status") {
+                dmg = Math.floor(defender.maxHp / 8);
+            }
             return dmg;
         }
 
-        // AI: evaluate how threatening defender is to attacker
+        // AI: evaluate how threatening defender is to attacker.
+        // When the defender is choice-locked (Band/Specs/Scarf + volatile.choiceLock), they can only
+        // use the locked move until they switch — restrict the threat search to that one move so the
+        // AI doesn't worry about coverage they can't access right now.
         function aiThreatScore(defender, attacker) {
             let maxDmg = 0;
+            const _isChoice = defender.item === "Choice Band" || defender.item === "Choice Specs" || defender.item === "Choice Scarf";
+            const _locked = (_isChoice && defender.volatile && defender.volatile.choiceLock) ? defender.volatile.choiceLock : null;
             defender.moves.forEach(m => {
-                if (m.cat !== "Status" && m.pp > 0) {
-                    let d = aiEstimateDmg(defender, attacker, m);
-                    if (d > maxDmg) maxDmg = d;
-                }
+                if (m.cat === "Status" || m.pp <= 0) return;
+                if (_locked && m.name !== _locked) return;
+                let d = aiEstimateDmg(defender, attacker, m);
+                if (d > maxDmg) maxDmg = d;
             });
             return maxDmg;
         }
@@ -13368,32 +13494,126 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (t === "Water" && (ab === "Water Absorb" || ab === "Storm Drain" || ab === "Dry Skin")) return true;
             if (t === "Fire" && ab === "Flash Fire") return true;
             if (t === "Grass" && ab === "Sap Sipper") return true;
+            // Magic Bounce: non-damaging moves in the bounce list reflect back. Engine list at ~19612.
+            if (ab === "Magic Bounce" && window._aiMagicBounceMoves && window._aiMagicBounceMoves.has(move.name)) return true;
+            // Overcoat / Safety Goggles: powder moves don't land. Engine references at ~17889 / ~19607.
+            // Grass-type powder immunity is intentionally left to existing per-move scoring so as not
+            // to override Sleep-move's calibrated ×0.3 penalty.
+            if (window._aiPowderMoves && window._aiPowderMoves.has(move.name)) {
+                if (ab === "Overcoat") return true;
+                if (defender.item === "Safety Goggles") return true;
+            }
             return false;
         }
 
-        // AI: pick best switch-in from bench
-        function aiBestSwitch(bench, playerMon) {
+        // AI: lead-pick bonus. Layered on top of aiBestSwitch's matchup score when opts.isLead is set.
+        // Favors archetypes that benefit from leading: hazard setters, big setup sweepers, fast pivots,
+        // fast Taunt users. Kept additive and bounded so a great matchup still wins out.
+        function aiLeadBonus(mon) {
+            if (!mon || !mon.moves) return 0;
+            const names = new Set(mon.moves.map(m => m && m.name).filter(Boolean));
+            let bonus = 0;
+            // Hazard setters — bigger payoff with more switch-ins to chip
+            const _hazardMoves = ["Stealth Rock","Spikes","Toxic Spikes","Sticky Web","Ceaseless Edge","Stone Axe"];
+            if (_hazardMoves.some(n => names.has(n))) {
+                const benchAlive = (state.foeParty || []).filter(m => m && m !== mon && m.currentHp > 0).length;
+                bonus += 18 + Math.min(benchAlive, 3) * 3;
+            }
+            // Big setup sweepers — leading lets them dance before chip damage piles up
+            const _bigSetup = ["Belly Drum","Shell Smash","Quiver Dance","Dragon Dance","Swords Dance","Nasty Plot","Calm Mind","Bulk Up","Coil","Geomancy","Tidy Up","Shift Gear","Clangorous Soul","Tail Glow","Cosmic Power","Victory Dance","No Retreat"];
+            if (_bigSetup.some(n => names.has(n))) bonus += 14;
+            // Fast pivots — keep momentum if the lead matchup goes sour
+            const _pivotMoves = ["U-turn","Volt Switch","Flip Turn","Parting Shot","Teleport","Baton Pass","Chilly Reception"];
+            if (_pivotMoves.some(n => names.has(n))) bonus += 8;
+            // Fast Taunt — shut down opposing hazard/status leads. Only worth the bonus when fast.
+            if (names.has("Taunt")) {
+                const speStat = (mon.stats && mon.stats.spe) || 0;
+                if (speStat >= 100) bonus += 8;
+            }
+            return bonus;
+        }
+
+        // AI: pick best switch-in from bench. opts.isLead enables lead-archetype bonuses on top
+        // of the standard matchup score.
+        function aiBestSwitch(bench, playerMon, opts) {
+            opts = opts || {};
             let best = null, bestScore = -Infinity;
             if (!bench || !bench.length || !playerMon) return null;
+            // foe AI switches onto its own side; hazards there chip the incoming mon.
+            const foeSide = (state && state.fSide) ? state.fSide : null;
+            const w = getCurrentWeather();
+            const isTR = state.trickRoom > 0;
+            const defSpe = getEffectiveSpeed(playerMon, w);
+            const applyLeadBonus = opts.isLead && state && state.mode !== 'pvp';
             bench.forEach(mon => {
                 if (mon.currentHp <= 0) return;
                 let threat = aiThreatScore(playerMon, mon);
                 let myDmg = 0;
                 mon.moves.forEach(m => { let d = aiEstimateDmg(mon, playerMon, m); if (d > myDmg) myDmg = d; });
-                let priThreatDmg = 0, priThreatType = null;
-                playerMon.moves.forEach(m => {
-                    if (m.cat === "Status" || m.pp <= 0) return;
-                    let d = aiEstimateDmg(playerMon, mon, m);
-                    if (d > priThreatDmg) { priThreatDmg = d; priThreatType = m.type; }
-                });
+
+                // Full-coverage typing adjustment: previously only the foe's single top-damage type was
+                // checked, missing 4-move coverage. Sum per-move contributions with smaller weights so
+                // the magnitude stays in the same range as the single-move version (cap at ±48 / ±-40).
                 let typingAdj = 0;
-                if (priThreatType) {
-                    let e = getMoveEffectiveness(priThreatType, mon.type1, mon.type2);
-                    if (e === 0) typingAdj += 48;
-                    else if (e < 1) typingAdj += 24;
-                    else if (e >= 2) typingAdj -= 38;
+                let damagingMoves = 0;
+                playerMon.moves.forEach(m => {
+                    if (!m || m.cat === "Status" || m.pp <= 0) return;
+                    damagingMoves++;
+                    const e = getMoveEffectiveness(m.type, mon.type1, mon.type2);
+                    if (e === 0 || abilityImmunity(m, mon, playerMon)) typingAdj += 16;
+                    else if (e < 1) typingAdj += 8;
+                    else if (e >= 4) typingAdj -= 18;
+                    else if (e >= 2) typingAdj -= 12;
+                });
+                if (damagingMoves > 0) typingAdj = Math.max(-40, Math.min(48, typingAdj));
+
+                // Speed tier: outspeeding the active opponent is a real advantage (we move first next turn)
+                const monSpe = getEffectiveSpeed(mon, w);
+                const outspeedsActive = isTR ? (monSpe < defSpe) : (monSpe > defSpe);
+                const speedAdj = outspeedsActive ? 10 : -4;
+
+                // Hazard intake on switch-in. Convert chip HP to score points using the same scale as
+                // the existing HP bonus (×28/maxHp), so a 25%-HP rock hit costs ~7 score.
+                const hazardDmg = foeSide ? aiHazardDamageOnSwitchIn(mon, foeSide) : 0;
+                const hazardPenalty = mon.maxHp > 0 ? (hazardDmg / mon.maxHp) * 28 : 0;
+
+                // Snowball-ability awareness: Moxie / Beast Boost / Chilling Neigh inflate threat after a
+                // KO. Penalize switch targets that are likely to feed the snowball.
+                let snowballPenalty = 0;
+                const _snowballAbilities = (playerMon.ability === "Moxie" || playerMon.ability === "Chilling Neigh" || playerMon.ability === "As One (Glastrier)" || playerMon.ability === "Beast Boost");
+                if (_snowballAbilities) {
+                    snowballPenalty = threat >= mon.currentHp ? 18 : 6;
                 }
-                let score = myDmg - threat * 0.65 + (mon.currentHp / mon.maxHp) * 28 + typingAdj * 0.9;
+                // Speed Boost compounds — if we can't outspeed the boosted form, treat as slightly worse.
+                if (playerMon.ability === "Speed Boost" && !outspeedsActive) snowballPenalty += 6;
+
+                // Switch-in ability synergies (conservative — additive, capped):
+                //  - Intimidate brings -1 atk on the foe; valuable vs physical attackers
+                //  - Magic Bounce reflects status; valuable vs status-heavy leads (≥2 status moves)
+                let switchInBonus = 0;
+                if (mon.ability === "Intimidate") {
+                    const _isPhysAtk = (playerMon.stats.atk || 0) > (playerMon.stats.spa || 0);
+                    // Foe is also immune/resistant to the drop if Clear Body / White Smoke / Hyper Cutter etc.
+                    const _stopsDrops = (playerMon.ability === "Clear Body" || playerMon.ability === "White Smoke" || playerMon.ability === "Hyper Cutter" || playerMon.ability === "Full Metal Body" || playerMon.ability === "Defiant" || playerMon.ability === "Competitive");
+                    if (_isPhysAtk && !_stopsDrops) switchInBonus += 12;
+                    else if (!_stopsDrops) switchInBonus += 4;
+                }
+                if (mon.ability === "Magic Bounce") {
+                    const _statusMoveCount = (playerMon.moves || []).filter(m => m && m.cat === "Status").length;
+                    if (_statusMoveCount >= 2) switchInBonus += 10;
+                }
+
+                let score = myDmg
+                          - threat * 0.65
+                          + (mon.currentHp / mon.maxHp) * 28
+                          + typingAdj * 0.9
+                          + speedAdj
+                          - hazardPenalty
+                          - snowballPenalty
+                          + switchInBonus;
+
+                if (applyLeadBonus) score += aiLeadBonus(mon);
+
                 if (score > bestScore) { bestScore = score; best = mon; }
             });
             return best;
@@ -13583,6 +13803,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let eff = getMoveEffectiveness(move.type, defender.type1, defender.type2);
             score = dmg;
 
+            // Effective priority: include Gale Wings (+1 to Flying moves at full HP). Engine 14807/16209.
+            const _galeBonus = (attacker.ability === "Gale Wings" && move.type === "Flying" && attacker.currentHp === attacker.maxHp) ? 1 : 0;
+            const effPri = (move.pri || 0) + _galeBonus;
+
             // Super-effective bonus
             if (eff >= 4) score *= 1.6;
             else if (eff >= 2) score *= 1.4;
@@ -13593,24 +13817,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _minRoll = dmg * 0.85;
             if (_minRoll >= defender.currentHp) {
                 score *= aboutToBeKOd ? 4.5 : 2.9; // Guaranteed KO
-                if (outsped && move.pri > 0) score *= 3.0;
+                if (outsped && effPri > 0) score *= 3.0;
             } else if (dmg >= defender.currentHp) {
                 score *= aboutToBeKOd ? 3.6 : 2.2; // Likely (avg) KO
-                if (outsped && move.pri > 0) score *= 2.6;
+                if (outsped && effPri > 0) score *= 2.6;
             }
 
             // Priority logic
-            if (move.pri > 0) {
+            if (effPri > 0) {
                 if (aboutToBeKOd && dmg >= defender.currentHp) score *= 3.0;
                 else if (outsped && hpPct < 0.4) score *= 1.8;
                 else if (outsped) score *= 1.3;
             }
 
             // When outsped and about to die, non-priority is near-worthless unless it KOs
-            if (aboutToBeKOd && move.pri <= 0 && dmg < defender.currentHp) score *= 0.15;
+            if (aboutToBeKOd && effPri <= 0 && dmg < defender.currentHp) score *= 0.15;
+
+            // Contact-recoil penalty: Rough Skin / Iron Barbs deal 1/8 HP back; Aftermath deals 1/4 on contact KO.
+            // Magic Guard / Protective Pads / Long Reach negate these. Only meaningfully bad when we're low.
+            const _wouldRecoil = isContactMove(move, attacker)
+                && attacker.ability !== "Magic Guard"
+                && attacker.item !== "Protective Pads"
+                && attacker.ability !== "Long Reach";
+            if (_wouldRecoil) {
+                if ((defender.ability === "Rough Skin" || defender.ability === "Iron Barbs") && hpPct < 0.35) score *= 0.88;
+                if (defender.ability === "Aftermath" && dmg >= defender.currentHp && attacker.currentHp <= Math.floor(attacker.maxHp / 4)) score *= 0.6;
+            }
 
             // Immune = worthless (type immunity OR ability immunity)
-            if (eff === 0 || abilityImmunity(move, defender)) score = 0;
+            if (eff === 0 || abilityImmunity(move, defender, attacker)) score = 0;
             // Resisted penalty
             if (eff > 0 && eff < 1) score *= 0.5;
 
@@ -13941,7 +14176,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let walledCount = 0;
                 survivors.forEach(s => {
                     const sEff = getMoveEffectiveness(move.type, s.type1, s.type2);
-                    if (sEff === 0 || abilityImmunity(move, s)) walledCount++;
+                    if (sEff === 0 || abilityImmunity(move, s, attacker)) walledCount++;
                     else if (sEff > 0 && sEff < 1) walledCount += 0.5;
                 });
                 if (walledCount > 0) score *= Math.max(0.6, 1 - 0.18 * (walledCount / survivors.length) * 2);
@@ -14000,26 +14235,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     let willDieFirst = outsped && threat >= attacker.currentHp;
     // Are we walled? (low-damage AND opponent isn't already low enough that we can chip-finish)
     let walled = myBestDmg < defender.maxHp * 0.08 && myBestDmg < defender.currentHp * 0.12;
-    // Predicted-switch check: if the player is likely to swap to a hard counter (e.g. we're a
-    // Choice-locked specialist), our follow-up turn becomes a free KO for them. If our best
-    // move is also walled by their bench's best resist, give a nudge toward switching first.
-    let bestResist = null, bestResistEff = 1;
-    state.playerParty.forEach(m => {
-        if (m === defender || m.currentHp <= 0) return;
-        // Pick the move our attacker is "best at" — proxy by max damage's type
-        let bestType = null, bestTypeDmg = 0;
-        attacker.moves.forEach(mv => {
-            if (mv.cat !== "Status" && mv.pp > 0) {
-                const d = aiEstimateDmg(attacker, m, mv);
-                if (d > bestTypeDmg) { bestTypeDmg = d; bestType = mv.type; }
-            }
-        });
-        if (bestType) {
-            const eff = getMoveEffectiveness(bestType, m.type1, m.type2);
-            if (eff < bestResistEff) { bestResistEff = eff; bestResist = m; }
-        }
-    });
-    let benchHasHardResist = bestResist && bestResistEff <= 0.5;
     // Can we KO?
     let canKO = myBestDmg >= defender.currentHp;
     // Do we have priority that KOs?
@@ -14031,9 +14246,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     // Don't switch if boosted significantly
     if ((attacker.stages.atk >= 2 || attacker.stages.spa >= 2) && !willDieFirst) return null;
 
-    // Check if any bench mon is better. Also switch if a hard resist on the player's bench
-    // means continuing to attack just feeds them a free turn (especially when we're at decent HP).
-    let shouldSwitch = willDieFirst || (walled && hpPct > 0.35) || (benchHasHardResist && hpPct > 0.5 && !canKO);
+    // Switch when we're losing the current matchup: either outsped+KO'd, or walled while still healthy enough
+    // to come back later. The earlier "predicted-switch-into-bench-counter" clause caused over-switching when
+    // the AI was actually winning — a bench resist isn't a reason to abandon a position you're ahead in.
+    let shouldSwitch = willDieFirst || (walled && hpPct > 0.35);
 
     if (shouldSwitch) {
         let switchTo = aiBestSwitch(bench, defender);
@@ -22094,7 +22310,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.pSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 }; state.fSide = { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0, auroraVeil: 0, wishHp: 0, wishTurns: 0, safeguard: 0, mist: 0, tailwind: 0, luckychant: 0 };
             {
                 const _fa = state.foeParty.filter(m => m.currentHp > 0);
-                const _fl = _fa.length ? aiBestSwitch(_fa, state.pActive) : null;
+                const _fl = _fa.length ? aiBestSwitch(_fa, state.pActive, { isLead: true }) : null;
                 state.fActive = _fl || state.foeParty[0];
             }
             state.isLocked = false; state.isOver = false; state.pendingEoT = false; state.residualPhaseComplete = false; state.turnNumber = 0;
@@ -23785,7 +24001,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Cross-run meta. Holds permanent achievements that survive abandon/clear.
         // Today: completedRuns + lastClearSeed. Future: Pokédex carryover, totals, marks.
         const SAVE_KEY_META = 'pbs_story_meta';
-        const SAVE_VER = 16;
+        const SAVE_VER = 17;
         function readStoryMeta() {
             try {
                 const raw = localStorage.getItem(SAVE_KEY_META);
@@ -24006,6 +24222,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.catchTutorialDone = (sm.eventIndex | 0) > 1;
             }
         }
+        /** v17: Fix stuck Pokémon — evolution/rebuild/swap could strip the slot id,
+         *  making the mon impossible to sell, deposit, or release.
+         *  Backfill any missing ids in both party and PC box. */
+        function migrateStoryPreV17() {
+            for (const arr of [sm.team, sm.pcBox]) {
+                if (!Array.isArray(arr)) continue;
+                for (const slot of arr) {
+                    if (slot && typeof slot === 'object' && !slot.id) {
+                        slot.id = 'm_' + Math.random().toString(36).slice(2, 10);
+                    }
+                }
+            }
+        }
         /** v9: intro Rival inserted after City0, so timeline positions after City0 move forward one slot. */
         function migrateStoryTimelineIndicesFromPreV9() {
             const maxI = Math.max(0, STORY_EVENTS_RAW.length - 1);
@@ -24223,6 +24452,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (_loadedVer < 16) {
                     try { migrateStoryPreV16(); } catch (e) { console.warn('[Story] v16 catch tutorial migrate', e); }
+                }
+                if (_loadedVer < 17) {
+                    try { migrateStoryPreV17(); } catch (e) { console.warn('[Story] v17 stuck-mon id backfill migrate', e); }
                 }
                 const _cap = Math.max(0, STORY_EVENTS_RAW.length - 1);
                 if (sm.eventIndex < 0 || sm.eventIndex > _cap) {
@@ -26811,13 +27043,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 cardEl.innerHTML = '';
                 sm.team.forEach((t, i) => {
                     const g = t.name ? getMonGrade(t.name, getBST(t.name)) : 4;
+                    const bonded = !!t.unsellable;
                     const slot = document.createElement('div');
                     slot.className = `story-team-slot tier-${g}`;
-                    slot.style.cssText = 'cursor:pointer;min-width:130px;padding:10px;transition:all 0.15s;';
+                    slot.style.cssText = bonded
+                        ? 'opacity:0.4;cursor:not-allowed;min-width:130px;padding:10px;'
+                        : 'cursor:pointer;min-width:130px;padding:10px;transition:all 0.15s;';
+                    if (bonded) slot.title = t.starter ? 'Starter — bonded for life' : 'Bonded — cannot be replaced';
                     slot.innerHTML = `
                         <img src="${getSprite(t.name,false)}" onerror="this.src=''" style="width:56px;height:56px;image-rendering:pixelated;">
                         <div style="font-size:12px;"><b>${t.name}</b><br><span class="tier-badge bg-tier-${g}" style="font-size:9px;" title="Power tier (1–4)">T${g}</span></div>`;
-                    slot.onclick = () => window.StoryMode._mysteryDoSwap(i);
+                    if (!bonded) slot.onclick = () => window.StoryMode._mysteryDoSwap(i);
                     cardEl.appendChild(slot);
                 });
                 btnsEl.innerHTML = '';
@@ -26861,10 +27097,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (_profSelectedIdx === null || !_pendingProfChoices) return;
             const ch = _pendingProfChoices[_profSelectedIdx];
             if (!ch || slotIdx < 0 || slotIdx >= sm.team.length) return;
+            const target = sm.team[slotIdx];
+            if (target && target.unsellable) return;
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             const cityIdx = getCityIndex(ev);
-            const replaced = sm.team[slotIdx].name;
-            sm.team[slotIdx] = { name: ch.name, build: ch.build };
+            const replaced = target.name;
+            sm.team[slotIdx] = { name: ch.name, build: ch.build, id: 'm_'+Math.random().toString(36).slice(2,10) };
             if (!sm.profUsed) sm.profUsed = {};
             sm.profUsed[cityIdx] = true;
             _pendingProfChoices = null; _profSelectedIdx = null; _profMysteryMode = false; _pendingProfCityIdx = null; _pendingProfWasMystery = false; _profLegendaryMysteryMode = false;
@@ -27312,7 +27550,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (_shouldFireWildBeforeBattle(_battleIdx)) {
                     _markWildSeen(_battleIdx);
-                    const _enc = rollWildEncounter(ev[3], storySettingsGens());
+                    const _enc = rollWildEncounter(storySettingsGens());
                     if (_enc) {
                         enterCatchEncounter(_enc, () => enterBattleEvent(ev, true));
                         return;
@@ -28233,14 +28471,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _crucibleBattleSetup(row, 'gym');
         }
         function crucibleWildEncounter() {
-            const name = weightedPickFromGrades({ g1: 10, g2: 30, g3: 40, g4: 20 }, storySettingsGens());
-            if (!name) {
+            // Post-HoF, so the badge curve resolves to the 8-badge entry —
+            // same curve a player would see on a late-route wild. Keeps the
+            // wild experience consistent between story routes and the
+            // Crucible encore.
+            const enc = rollWildEncounter(storySettingsGens());
+            if (!enc) {
                 try { window.showGameAlert && window.showGameAlert('No wild Pokémon available for your enabled generations.'); } catch (e) {}
                 return;
             }
-            const build = makeWildBuild(name);
-            if (!build) return;
-            const enc = { name, build, id: 'm_' + Math.random().toString(36).slice(2, 10), wild: true };
             enterCatchEncounter(enc, () => enterCrucible());
         }
 
@@ -28699,16 +28938,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { save(); } catch (e) {}
         }
 
-        /** Shift grade weights one tier toward weaker — wild encounters are intentionally
-         *  inferior to the adjacent trainer fight (and to Professor picks). */
-        function _storyShiftGradeOneTierWeaker(gw) {
-            if (!gw) return { g1: 0, g2: 0, g3: 0, g4: 100 };
-            return {
-                g1: 0,
-                g2: gw.g1 || 0,
-                g3: gw.g2 || 0,
-                g4: (gw.g3 || 0) + (gw.g4 || 0)
-            };
+        /** Wild encounter grade curve — keyed by badges (0–8). Independent of
+         *  the upcoming trainer's `gradeWeights`: wilds reflect the route's
+         *  biology, not the next fight's lineup. Tuned so each tier sits one
+         *  step behind the contemporaneous trainer roll — a wild caught right
+         *  after Gym N will usually be outpaced by the foe at Gym N+1 unless
+         *  trained. Post-Gym-8 falls back to the 8-badge entry (Crucible /
+         *  League trips reuse it). */
+        const _WILD_GRADE_CURVE_BY_BADGES = {
+            0: { g1: 0,  g2: 0,  g3: 0,  g4: 100 },
+            1: { g1: 0,  g2: 0,  g3: 20, g4: 80  },
+            2: { g1: 0,  g2: 0,  g3: 40, g4: 60  },
+            3: { g1: 0,  g2: 10, g3: 60, g4: 30  },
+            4: { g1: 0,  g2: 25, g3: 60, g4: 15  },
+            5: { g1: 0,  g2: 40, g3: 55, g4: 5   },
+            6: { g1: 3,  g2: 60, g3: 35, g4: 2   },
+            7: { g1: 10, g2: 70, g3: 20, g4: 0   },
+            8: { g1: 20, g2: 70, g3: 10, g4: 0   }
+        };
+        function _wildGradeWeightsForBadges(badges) {
+            const b = Math.max(0, Math.min(8, badges | 0));
+            return _WILD_GRADE_CURVE_BY_BADGES[b];
         }
 
         /** Partially-trained wild build: moves rolled by makeBuild, default ability,
@@ -28780,9 +29030,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return all.length ? all[Math.floor(Math.random() * all.length)] : null;
         }
 
-        function rollWildEncounter(gradeWeights, enabledGens) {
-            const shifted = _storyShiftGradeOneTierWeaker(gradeWeights);
-            const name = _pickWildSpeciesRandom(shifted, enabledGens);
+        /** Roll a route wild. Grade mix comes from the badge curve (NOT the
+         *  upcoming trainer's `gradeWeights`); species pool comes from the
+         *  player's enabled-gen toggles. Pure RNG end-to-end — no seed reuse
+         *  so reloads and rematches each surface a different species. */
+        function rollWildEncounter(enabledGens) {
+            const gw = _wildGradeWeightsForBadges(sm && sm.badges);
+            const name = _pickWildSpeciesRandom(gw, enabledGens);
             if (!name) return null;
             const build = makeWildBuild(name);
             if (!build) return null;
@@ -29911,7 +30165,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     delete window._pbsStoryUnlockedGimmicks;
                 }
                 sm.gold -= cost;
-                sm.team[idx] = { name:newName, build:newBuild };
+                sm.team[idx] = { name:newName, build:newBuild, id:'m_'+Math.random().toString(36).slice(2,10) };
                 save();
                 renderLinkTeam();
                 renderTeamPanel();
@@ -29947,7 +30201,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     delete window._pbsStoryUnlockedGimmicks;
                 }
                 sm.gold -= cost;
-                sm.team[idx] = { name:newName, build:newBuild };
+                sm.team[idx] = { name:newName, build:newBuild, id:'m_'+Math.random().toString(36).slice(2,10) };
                 save();
                 renderLinkTeam();
                 renderTeamPanel();
@@ -30221,7 +30475,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
-            sm.team[idx] = { name: evoName, build: evoBuild };
+            sm.team[idx] = { ...mon, name: evoName, build: evoBuild };
             return true;
         }
 
@@ -30320,7 +30574,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     delete window._pbsStoryUnlockedGimmicks;
                 }
                 sm.gold -= cost;
-                sm.team[idx] = { name:mon.name, build:newBuild };
+                sm.team[idx] = { ...mon, build:newBuild };
                 save();
                 renderLinkTeam();
             } finally {
