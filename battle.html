@@ -22922,7 +22922,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           'Gym Trainer':    ['You won\'t reach the Leader!','Hmph! Prove yourself first!','This gym\'s counting on me!','I train every day for this!','…Not bad. But not enough!'],
           'Gym Leader':     ['Enough talk. Let\'s go!','This badge isn\'t for tourists!','Show me what you\'ve got!','…Don\'t disappoint me.','You\'ve come far. Now show it!','My Pokémon and I won\'t hold back!'],
           'Elite Trainer':  ['I\'ve waited for a challenge like this!','Technique beats raw power—usually.','…Impressive. But I\'m stronger.','Think you can keep up?','This won\'t be a cakewalk!'],
-          'Rival':          ['You again?!','I\'ve been training for this!','I won\'t lose to you!','…This time it\'s different!','Let\'s settle this!','Don\'t go easy on me!','I built this lineup to answer yours—no excuses!','…You always rely on the same typings. I came prepared.','Scouted your team. Still confident?','Adapt or lose—that\'s what rivals do!','Same rival, new angle—I rotated partners for this route.'],
+          'Rival':          ['You again!','I\'ve been training for this!','I won\'t lose to you!','This time it\'s different!','Let\'s settle this!','Don\'t go easy on me!','I built this team to counter yours.','I scouted your strategy. Still confident?','Adapt or lose — that\'s the rival\'s way!','Different partners this round. Ready?'],
           'E1':             ['Elite Four, first gate.','…So you made it.','Welcome to the big leagues.','First test—don\'t blink!'],
           'E2':             ['Round two. Ready?','…Still standing? Good.','I won\'t repeat my predecessor\'s mistake.','The path gets steeper here!'],
           'E3':             ['Almost at the top…','…Feel the pressure yet?','Two down. I\'m next.','Give me everything!'],
@@ -23053,20 +23053,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function pickRivalSecondaryIntroLine(phase, badges) {
             const b = Math.max(0, badges | 0);
             const pools = {
-                0: ['No route badges, no excuses. Starter versus starter energy.', 'First step out of town goes through me.', 'Professor gave us partners. Now we decide who leads.'],
-                1: [`${b} badge${b === 1 ? '' : 's'} on your case—I built typings around what you run.`, 'Route two of our rivalry: counters incoming.', 'Fresh badges won\'t save lazy switches.'],
-                2: [`${b} badges deep—I studied your last fights anyway.`, 'Mid-game checkpoint: same rival, sharper toolkit.', 'You escalated—so did my bench.'],
-                3: [`Full badge slate—${b}/8 means League eyes on both of us.`, 'Last dance before Victory Road… make it sting.', 'Elite tier starts when this bell rings.'],
-                4: ['Title match energy—even if it\'s just us.', 'Hall of Fame\'s watching two trainers who never quit.', 'Champion or challenger—I\'m still here to push you.'],
+                0: ['Starter versus starter. No excuses.', 'I\'ve been waiting at the route gate.', 'Same Professor, same start. Different outcome today.'],
+                1: [`${b} badge${b === 1 ? '' : 's'} — I planned counters for your team.`, 'Round two of our rivalry. Bring it.', 'Fresh badges won\'t save you.'],
+                2: [`${b} badges in — and I\'ve been studying your fights.`, 'Same rival, sharper team.', 'You leveled up. So did I.'],
+                3: [`${b}/8 badges. League scouts are watching.`, 'Last fight before Victory Road. Make it count.', 'Elite tier starts here.'],
+                4: ['Title match. Even if it\'s just us.', 'The Hall of Fame is watching.', 'Champion or challenger — I won\'t hold back.'],
             };
             const arr = pools[phase] || pools[1];
             const copy = arr.slice();
             if (sm && sm.rivalLastWinner === 'rival') {
-                copy.push(sm.rivalChampionClaimed ? 'I am carrying the Champion bragging rights until you take them back.' : 'Last result says I am better. Want to rewrite it?');
+                copy.push(sm.rivalChampionClaimed ? 'I\'m still wearing the Champion title. Want it back?' : 'I won last time. Try to flip the score.');
             } else if (sm && sm.rivalLastWinner === 'player') {
-                copy.push('You own the last win. I only need this one to flip the story.');
+                copy.push('You beat me last time. I won\'t let that happen again.');
             }
-            copy.push(`You've earned ${b} badge${b === 1 ? '' : 's'}—I'm still not backing down.`);
+            copy.push(`${b} badge${b === 1 ? '' : 's'} earned. I\'m still going to win.`);
             const r = (sm && sm.active) ? _storySideRng((phase | 0) + 1, b + 1) : Math.random();
             return copy[Math.floor(r * copy.length)];
         }
@@ -26050,7 +26050,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // so the player doesn't read both as "free Pokémon" and ignore one.
             if (cityIdx > 0 && !isFull) {
                 try { _storyShowOneTimeTip('prof-vs-wild',
-                    'The Professor\'s lab companion is a story-built partner — one per city, fully tuned, grade-matched to the route. Wild Pokémon (caught on routes and the Safari Zone) are *your* projects — random species, partial build, and they reward training.\n\nThe Professor only stays open until your active party hits 6 Pokémon. Cities 0–5 each offer one lab companion, so even a player who never catches a wild ends the front half with a full team. Wild catches above 6 go to the PC.\n\nFoes match your party size: a lean 3-mon player faces 3-mon trainers; a full 6-mon player faces 6-mon trainers. Champion + Elite Four + Victory Road always field 6.'); } catch (e) {}
+                    'Professor vs. Wild Pokémon\n\n• Professors give curated, fully built Pokémon. One per city in Cities 0–5.\n• Wild Pokémon (catch on routes & in the Safari Zone) have random builds — you can train them up at the tutors.\n• Professors stop offering Pokémon once your party reaches 6.\n• Foes match your party size: a 3-Pokémon team faces 3 foes. Champion, Elite Four, and Victory Road always field 6.'); } catch (e) {}
             }
             _profLegendaryMysteryMode = _profMysteryMode && isPreLeagueLegendaryMysteryGate(cityIdx);
             // Mystery Figure framing only applies to the City-8 post-Gym-8 legendary
@@ -26072,9 +26072,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (titleEl) titleEl.textContent = _profLegendaryMysteryMode ? 'Mystery Figure' : (isSwapWithoutMystery ? "Professor's Lab — Swap" : "Professor's Lab");
             document.getElementById('story-prof-name').textContent = profName;
             document.getElementById('story-prof-quote').textContent = _profLegendaryMysteryMode
-                ? '"The League gate opens only for the prepared. Take one legendary ace and choose who leaves your party."'
+                ? '"Take this legendary Pokémon for the road ahead. Choose which teammate moves to your PC."'
                 : (isSwapWithoutMystery
-                    ? '"Your party is at the limit for now, trainer. I can still hand you a partner — pick which teammate goes to the PC and they\'ll trade places."'
+                    ? '"Your party is full. I can still offer a partner — pick a teammate to swap to your PC."'
                     : PROF_QUOTES[Math.floor(Math.random() * PROF_QUOTES.length)]);
             const _mysteryFace = _profLegendaryMysteryMode ? _storyEnsureMysteryIdentity() : null;
             document.getElementById('story-prof-sprite').src = getTrainerSprite(_profLegendaryMysteryMode ? (_mysteryFace && _mysteryFace.sprite ? _mysteryFace.sprite : 'Cyrus') : { spriteFile: hub.spriteFile });
@@ -26126,7 +26126,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     choices.push({ name, build, g });
                 }
                 if (!choices.length) {
-                    statusEl.textContent = 'No Pokémon available for the selected generations!';
+                    statusEl.textContent = 'No Pokémon available for your enabled generations.';
                     showScreen('screen-story-professor');
                     return;
                 }
@@ -26176,10 +26176,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             if (_profMysteryMode) {
                 statusEl.textContent = _profLegendaryMysteryMode
-                    ? 'A Grade-1 legendary Pokémon is offered. Accept to swap one party member.'
-                    : 'A mystery Pokémon is offered. Accept to swap one party member, or decline.';
+                    ? 'A legendary Pokémon is offered. Accept it and pick a teammate to swap to PC.'
+                    : 'A Pokémon is offered. Accept it and pick a teammate to swap to PC, or decline.';
             } else {
-                statusEl.textContent = 'Pick one Pokémon to add to your team:';
+                statusEl.textContent = 'Choose one Pokémon to join your team:';
             }
 
             cardEl.className = 'story-prof-card-wrap';
@@ -26605,7 +26605,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── PROCEED TO BATTLE ─────────────────────────────────────────────
         function proceedToNextBattle() {
-            if (sm.team.length === 0) { window.showGameAlert('You have no Pokémon! Visit the Professor first.'); return; }
+            if (sm.team.length === 0) { window.showGameAlert('You have no Pokémon. Visit the Professor first.'); return; }
             let nextBattleIdx = -1;
             for (let i = sm.eventIndex; i < STORY_EVENTS_RAW.length; i++) {
                 if (STORY_EVENTS_RAW[i][1] === 'Battle') { nextBattleIdx = i; break; }
@@ -26752,7 +26752,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const partySize = _storyEnemyPartySize(event, sm.team.length | 0, idx);
 
             const startFight = (enemyTeam) => {
-                if (sm.team.length === 0) { window.showGameAlert('No Pokémon! Visit the Professor.'); enterCity(); return; }
+                if (sm.team.length === 0) { window.showGameAlert('You have no Pokémon. Visit the Professor.'); enterCity(); return; }
                 launchBattle(enemyTeam);
             };
 
@@ -27484,7 +27484,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _renderCrucible();
             showScreen('screen-story-crucible');
             try { _storyShowOneTimeTip('crucible',
-                'The Crucible — the post-game spire.\n\nLeft column is six battle on-ramps: the endless Battle Frontier, the Mystery Figure encore, a Rival Rematch, a one-night League Run (E1 → Champion in sequence), a Random Gym Rematch, and a fresh Wild Encounter.\n\nRight column is every facility you used during the journey — Pokémon Center, Safari Zone, both shops, the Annex, all four tutors, Colress, Stone Sage, Link Station, and the Casino — under one roof. Leave the Crucible to drop back to the last city you visited.'); } catch (e) {}
+                'The Crucible — Post-game Hub\n\n• Battles: Battle Frontier, Mystery Figure, Rival Rematch, League Run, Random Gym Rematch, Wild Encounter.\n• Facilities: All facilities from your journey under one roof — Pokémon Center, Safari Zone, shops, tutors, Colress, Stone Sage, Link Station, and Casino.\n\nLeave the Crucible to return to your last city.'); } catch (e) {}
         }
         function leaveCrucible() {
             sm.atCrucible = false;
@@ -29217,7 +29217,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_storyDifficultyIsCasual() && rn === 1) cost = Math.ceil(cost * 0.78);
                 if (sm.gold < cost) return;
                 const pool = buildGradePool(storySettingsGens(), g).filter(n=>n!==mon.name&&!sm.team.some((t,i)=>i!==idx&&t.name===n));
-                if (!pool.length) { window.showGameAlert('No other Pokémon of this grade available!'); return; }
+                if (!pool.length) { window.showGameAlert('No other Pokémon available at this grade.'); return; }
                 const ok = await _storyConfirmTutorChange(`Trade ${mon.name} for a random Grade ${g} Pokémon? You will receive a new species with a new build.`, cost);
                 if (!ok) return;
                 sm.cityRerollsUsed[rk] = rn;
@@ -29253,7 +29253,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const cost = Math.ceil((UPGRADE_COSTS[g] || 9999) * Math.pow(1.5, un - 1));
                 if (sm.gold < cost) return;
                 const pool = buildGradePool(storySettingsGens(), newG).filter(n=>!sm.team.some((t,i)=>i!==idx&&t.name===n));
-                if (!pool.length) { window.showGameAlert('No Pokémon of that grade available!'); return; }
+                if (!pool.length) { window.showGameAlert('No Pokémon available at that grade.'); return; }
                 const ok = await _storyConfirmTutorChange(`Trade ${mon.name} (Grade ${g}) for a random Grade ${newG} Pokémon?`, cost);
                 if (!ok) return;
                 sm.cityRerollsUsed[uk] = un;
