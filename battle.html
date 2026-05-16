@@ -4929,7 +4929,7 @@
             <span id="story-evolab-gold" style="color:#ffd700;font-size:13px;font-weight:bold;flex-shrink:0;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
-            <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Pick which evolution path you want. The Stone Sage shows every branch — options outside your enabled generations are greyed out. <span style="color:#9ccc65;">Evolutions keep your nature, ability slot, item, and EVs; the moveset rerolls to match the new species.</span></p>
+            <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Pick which evolution path you want. The Stone Sage shows every branch — options outside your enabled generations are greyed out. <span style="color:#9ccc65;">Evolutions keep your nature, ability, item, EVs, and any moves the new species can still learn — only illegal moves are replaced.</span></p>
             <div id="story-evolab-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
@@ -29432,7 +29432,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }).join('');
         }
 
-        function _evoLabApplyEvolution(idx, evoName) {
+        async function _evoLabApplyEvolution(idx, evoName) {
             const mon = sm.team[idx];
             if (!mon) return false;
             let evoBuild;
@@ -29446,10 +29446,61 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const old = mon.build || {};
             if (old.n)        evoBuild.n        = old.n;
-            if (old.a)        evoBuild.a        = old.a;
             if (old.evs)      evoBuild.evs      = { ...old.evs };
             if (old.teraType) evoBuild.teraType = old.teraType;
             if (old.i && old.i !== 'Eviolite' && old.i !== '(none)') evoBuild.i = old.i;
+
+            // Keep the old ability if the evolved species can have it (baseStats + @pkmn/dex union).
+            // Otherwise fall back to the freshly-rolled ability on evoBuild.
+            if (old.a) {
+                const legalAbilities = new Set();
+                const evoBase = baseStats[evoName];
+                if (evoBase && evoBase.abilities) {
+                    for (const k of Object.keys(evoBase.abilities)) {
+                        const a = evoBase.abilities[k];
+                        if (a) legalAbilities.add(a);
+                    }
+                }
+                try {
+                    const D = (typeof getPssDex === 'function') ? getPssDex() : null;
+                    if (D && D.species && typeof D.species.get === 'function') {
+                        const dsp = D.species.get(evoName);
+                        if (dsp && dsp.abilities) {
+                            for (const slot of Object.keys(dsp.abilities)) {
+                                const a = dsp.abilities[slot];
+                                if (a) legalAbilities.add(a);
+                            }
+                        }
+                    }
+                } catch (e) {}
+                if (legalAbilities.has(old.a)) evoBuild.a = old.a;
+            }
+
+            // Keep every old move the evolved species can legally learn; backfill remaining slots
+            // from the rolled evoBuild so the moveset is always full.
+            if (Array.isArray(old.m) && old.m.length) {
+                let legalPool;
+                try {
+                    legalPool = new Set(await _tutorGetMergedMovePoolAsync(evoName));
+                } catch (e) {
+                    legalPool = new Set(_tutorGetPoolForMon(evoName).moves);
+                }
+                const kept = [];
+                const seen = new Set();
+                for (const m of old.m) {
+                    if (!m || seen.has(m)) continue;
+                    if (legalPool.has(m)) { kept.push(m); seen.add(m); }
+                }
+                if (kept.length) {
+                    const fillFrom = Array.isArray(evoBuild.m) ? evoBuild.m : [];
+                    for (const m of fillFrom) {
+                        if (kept.length >= 4) break;
+                        if (m && !seen.has(m)) { kept.push(m); seen.add(m); }
+                    }
+                    evoBuild.m = kept.slice(0, 4);
+                }
+            }
+
             sm.team[idx] = { name: evoName, build: evoBuild };
             return true;
         }
@@ -29472,12 +29523,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (sm.gold < cost) { window.showGameAlert(`Need ${cost.toLocaleString()}G to evolve! (You have ${sm.gold.toLocaleString()}G)`); return; }
                 const flavor = _evoFlavorLine(evoName);
                 const head = `Evolve ${mon.name} → ${evoName} (Grade ${evoGrade}) for ${cost.toLocaleString()}G?`;
-                const tail = `Nature, ability slot, item, and EVs are kept; moves are rerolled to fit ${evoName}.`;
+                const tail = `Nature, EVs, item, ability (if ${evoName} can have it), and any moves ${evoName} can still legally learn are kept; only illegal moves are replaced.`;
                 const msg  = flavor ? `${head}\n\n${flavor}\n\n${tail}` : `${head}\n\n${tail}`;
                 const ok = await window.showGameConfirm(msg);
                 if (!ok) return;
                 sm.cityRerollsUsed[ek] = en;
-                if (!_evoLabApplyEvolution(idx, evoName)) return;
+                if (!await _evoLabApplyEvolution(idx, evoName)) return;
                 sm.gold -= cost;
                 save();
                 renderEvoLabTeam();
@@ -29512,12 +29563,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const cost = _evoCostFor(evoGrade, en);
                 const flavor = _evoFlavorLine(evoName);
                 const head = `🍬 Use 1 Rare Candy to evolve ${mon.name} → ${evoName} (Grade ${evoGrade})? Saves ${cost.toLocaleString()}G.`;
-                const tail = `Nature, ability slot, item, and EVs are kept; moves are rerolled to fit ${evoName}. Bag remaining after use: ${(sm.inventory.rareCandy|0) - 1}.`;
+                const tail = `Nature, EVs, item, ability (if ${evoName} can have it), and any moves ${evoName} can still legally learn are kept; only illegal moves are replaced. Bag remaining after use: ${(sm.inventory.rareCandy|0) - 1}.`;
                 const msg  = flavor ? `${head}\n\n${flavor}\n\n${tail}` : `${head}\n\n${tail}`;
                 const ok = await window.showGameConfirm(msg);
                 if (!ok) return;
                 sm.cityRerollsUsed[ek] = en;
-                if (!_evoLabApplyEvolution(idx, evoName)) return;
+                if (!await _evoLabApplyEvolution(idx, evoName)) return;
                 sm.inventory.rareCandy = Math.max(0, (sm.inventory.rareCandy | 0) - 1);
                 if (sm.inventory.rareCandy <= 0) delete sm.inventory.rareCandy;
                 save();
