@@ -5004,6 +5004,7 @@
     <div id="screen-story-gameover" class="screen hidden" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:20px;font-family:var(--battle-font);">
         <h1 style="color:#f44336;font-size:32px;margin:0;letter-spacing:3px;">DEFEATED</h1>
         <p id="story-gameover-desc" style="color:#aaa;font-size:14px;text-align:center;margin:0;max-width:400px;"></p>
+        <p id="story-gameover-team-recap" style="color:#ce93d8;font-size:11px;text-align:center;margin:0;max-width:400px;line-height:1.5;font-style:italic;"></p>
         <p id="story-gameover-center-hint" style="color:#888;font-size:11px;text-align:center;margin:0;max-width:400px;line-height:1.45;"></p>
         <div id="story-gameover-seed" style="font-size:11px;color:#666;text-align:center;max-width:420px;display:none;"></div>
         <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;">
@@ -12147,7 +12148,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window.openParty = function(isForced) {
             if (state.isLocked && !isForced) return;
             let list = document.getElementById('party-list'); list.innerHTML = '';
-            document.getElementById('party-context-text').innerText = isForced ? "Your Pokémon fainted! Select a new one." : "Select a Pokémon to switch in.";
+            let _ctxText = isForced ? "Your Pokémon fainted! Pick a replacement (this costs your turn)." : "Select a Pokémon to switch in.";
+            // Warn the player which entry hazards still threaten the next switch-in.
+            try {
+                const _hazSide = ((state.mode === 'pvp') && state.currentPlayer === 2) ? state.fSide : state.pSide;
+                if (_hazSide) {
+                    const _haz = [];
+                    if (_hazSide.stealthRock) _haz.push('Stealth Rock');
+                    if (_hazSide.spikes) _haz.push(`Spikes ×${_hazSide.spikes|0}`);
+                    if (_hazSide.toxicSpikes) _haz.push(`Toxic Spikes ×${_hazSide.toxicSpikes|0}`);
+                    if (_hazSide.stickyWeb) _haz.push('Sticky Web');
+                    if (_haz.length) _ctxText += `\n⚠ Hazards on your side: ${_haz.join(', ')}.`;
+                }
+            } catch (e) {}
+            document.getElementById('party-context-text').innerText = _ctxText;
             
             let isP1 = (state.mode !== 'pvp') || (state.currentPlayer === 1);
             let party = isP1 ? state.playerParty : state.foeParty;
@@ -27213,6 +27227,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 document.getElementById('story-gameover-desc').textContent =
                     `You were defeated by ${sm.currentTrainerData?.name||'the opponent'}. ${lossHint}. Don't give up!`;
+                try {
+                    const recapEl = document.getElementById('story-gameover-team-recap');
+                    if (recapEl) {
+                        const pParty = (typeof state !== 'undefined' && state.playerParty) ? state.playerParty : [];
+                        const fParty = (typeof state !== 'undefined' && state.foeParty) ? state.foeParty : [];
+                        const pAlive = pParty.filter(m => m && (m.currentHp | 0) > 0).length;
+                        const fAlive = fParty.filter(m => m && (m.currentHp | 0) > 0).length;
+                        if (pParty.length || fParty.length) {
+                            recapEl.textContent = `Your team: ${pAlive}/${pParty.length} standing · Foe team: ${fAlive}/${fParty.length} standing.`;
+                            recapEl.style.display = '';
+                        } else {
+                            recapEl.style.display = 'none';
+                        }
+                    }
+                } catch (e) {}
                 const seedEl = document.getElementById('story-gameover-seed');
                 if (seedEl && sm.runSeed != null && sm.runSeed !== undefined) {
                     seedEl.style.display = 'block';
