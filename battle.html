@@ -13407,10 +13407,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             let dmg = ((22 * _aiPow * A / D) / 50 + 2) * stab * eff * lifeOrb * accFactor * abMod * screenMod;
-            // Sturdy: at full HP, the engine survives an OHKO with 1 HP. Mirror that ceiling so the AI
-            // doesn't mistakenly score a high-power one-shot as a guaranteed KO and miss a real follow-up.
-            // Bypassed by Mold Breaker class and by Gastro Acid suppression (via aiDefAbilityActive).
-            if (aiDefAbilityActive(attacker, defender) && defender.ability === "Sturdy" && defender.currentHp === defender.maxHp && dmg >= defender.currentHp) {
+            // Sturdy + Focus Sash: at full HP, the engine survives an OHKO with 1 HP (engine ~16727,
+            // ~17699). Mirror both ceilings so the AI doesn't score a one-shot as a guaranteed KO and
+            // miss the real follow-up turn. Sturdy is MB/Gastro-Acid-bypassed; Focus Sash is an item
+            // (rare suppression via Magic Room/Embargo/Klutz is left to the engine's live path).
+            const _sashActive = defender.item === "Focus Sash" && defender.currentHp === defender.maxHp;
+            const _sturdyActive = aiDefAbilityActive(attacker, defender) && defender.ability === "Sturdy" && defender.currentHp === defender.maxHp;
+            if ((_sturdyActive || _sashActive) && dmg >= defender.currentHp) {
                 dmg = Math.max(0, defender.currentHp - 1);
             }
             // Disguise (Mimikyu): the first hit only deals 1/8 maxHp chip; full damage is blocked.
