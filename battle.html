@@ -27328,7 +27328,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const g = _pcMonGrade(slot);
                     const id = slot.id || '';
                     const canWithdraw = !partyFull && !!id;
-                    const reason = partyFull ? 'Party full (6/6)' : !id ? 'Missing id (legacy save)' : '';
+                    const reason = partyFull ? `Party full (${partyCap}/${partyCap})` : !id ? 'Missing id (legacy save)' : '';
                     html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;">
                         <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;">${slot.nickname ? `"${_esc(slot.nickname)}" <span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>` : _esc(slot.name)} ${_pcGradeChipHtml(g)}</span>
                         <button type="button" onclick="window.StoryMode.pcWithdraw('${_esc(id)}')" ${canWithdraw ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canWithdraw ? 'color:#ce93d8;border-color:#ce93d8;' : 'opacity:0.4;'}">Withdraw</button>
@@ -28325,7 +28325,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const gradeBg = _catchState.bossMode ? '#ce93d8' : '#a5d6a7';
             const subText = _catchState.bossMode
                 ? `Master Ball recommended — this catch is hard.`
-                : _catchState.safariMode ? 'Safari Balls only. Bait calms, Rock angers — both stack until you catch or it flees.' : 'Catch chance scales with grade and ball type.';
+                : _catchState.safariMode ? `Safari Balls only (${SAFARI_BALL_MULT}× catch). Bait calms, Rock angers — both stack until you catch or it flees.` : 'Catch chance scales with grade and ball type.';
             // Show the wild Pokémon's sprite — the screen was text-only before, which
             // made every encounter feel like the same prompt.
             let spriteHtml = '';
@@ -28546,6 +28546,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_catchState) return;
             const body = document.getElementById('story-catch-body');
             if (!body) return;
+            const partyCap = _storyMaxPartySize();
             const partyList = (sm.team || []).map((slot, i) => {
                 if (!slot) return '';
                 const g = _pcMonGrade(slot);
@@ -28562,7 +28563,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             body.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;padding:14px 6px;">
                 <div style="text-align:center;font-size:13px;color:#fff;line-height:1.5;">
                     Gotcha! <strong>${_esc(caught.name)}</strong> was caught.<br/>
-                    <span style="color:#aed581;font-size:11px;">Your party is full (6/6). Send the newcomer to the PC, or swap with a team member.</span>
+                    <span style="color:#aed581;font-size:11px;">Your party is full (${partyCap}/${partyCap}). Send the newcomer to the PC, or swap with a team member.</span>
                 </div>
                 <button type="button" onclick="window.StoryMode.catchResolveSendToPC()" style="padding:10px;background:rgba(20,28,40,0.6);border:1px solid #ce93d8;color:#ce93d8;font-family:inherit;font-size:12px;cursor:pointer;">📦 Send ${_esc(caught.name)} to PC</button>
                 <div style="font-size:10px;color:#888;letter-spacing:0.06em;text-transform:uppercase;text-align:center;margin-top:4px;">— or pick a teammate to swap to PC —</div>
