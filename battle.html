@@ -4835,7 +4835,7 @@
                 <span id="story-pc-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
             </div>
             <div id="story-pc-pokedex-strip" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:rgba(8,10,16,0.92);border-bottom:1px solid #2a2a2a;font-size:10px;color:#888;flex-shrink:0;">
-                <span>📖 Pokédex caught: <strong id="story-pc-pokedex-count" style="color:#aed581;">0</strong></span>
+                <span>📖 Pokédex — Seen <strong id="story-pc-pokedex-seen" style="color:#90caf9;">0</strong> · Caught <strong id="story-pc-pokedex-count" style="color:#aed581;">0</strong></span>
                 <span id="story-pc-balls-summary" style="color:#888;">🔴 0  🔵 0  🟡 0  🟣 0</span>
             </div>
             <div style="display:flex;gap:0;background:rgba(10,10,14,0.85);border-bottom:1px solid #333;flex-shrink:0;">
@@ -27230,6 +27230,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const c = (sm.pokedex && Array.isArray(sm.pokedex.caught)) ? sm.pokedex.caught.length : 0;
                 dexEl.textContent = String(c);
             }
+            const dexSeenEl = document.getElementById('story-pc-pokedex-seen');
+            if (dexSeenEl) {
+                const s = (sm.pokedex && Array.isArray(sm.pokedex.seen)) ? sm.pokedex.seen.length : 0;
+                dexSeenEl.textContent = String(s);
+            }
             const ballsEl = document.getElementById('story-pc-balls-summary');
             if (ballsEl && sm.balls) {
                 ballsEl.textContent = `🔴 ${sm.balls.poke|0}  🔵 ${sm.balls.great|0}  🟡 ${sm.balls.ultra|0}  🟣 ${sm.balls.master|0}`;
@@ -27267,7 +27272,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const partyFull = team.length >= partyCap;
             const partyLastOne = team.length <= 1;
             const boxFull = box.length >= PC_BOX_CAP;
-            const lowSlotWarn = box.length >= (PC_BOX_CAP - 2) && box.length < PC_BOX_CAP;
+            const lowSlotWarn = box.length >= (PC_BOX_CAP - 3) && box.length < PC_BOX_CAP;
 
             let html = '';
             const badgesNow = (sm.badges | 0);
@@ -27294,7 +27299,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const g = _pcMonGrade(slot);
                     const id = slot.id || '';
                     const canDeposit = !partyLastOne && !boxFull && !!id;
-                    const reason = partyLastOne ? 'Must keep ≥1 in party' : boxFull ? 'PC full' : !id ? 'Missing id (legacy save)' : '';
+                    const reason = partyLastOne ? 'Party needs at least one Pokémon' : boxFull ? 'PC is full — release or sell to free a slot' : !id ? 'Missing id (legacy save)' : '';
                     html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;">
                         <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;">${slot.nickname ? `"${_esc(slot.nickname)}" <span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>` : _esc(slot.name)} ${_pcGradeChipHtml(g)}</span>
                         <button type="button" onclick="window.StoryMode.pcDeposit('${_esc(id)}')" ${canDeposit ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canDeposit ? 'color:#4caf50;border-color:#4caf50;' : 'opacity:0.4;'}">Deposit</button>
@@ -27313,7 +27318,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const g = _pcMonGrade(slot);
                     const id = slot.id || '';
                     const canWithdraw = !partyFull && !!id;
-                    const reason = partyFull ? 'Party full (6/6)' : !id ? 'Missing id (legacy save)' : '';
+                    const reason = partyFull ? `Party full (${team.length}/${partyCap})` : !id ? 'Missing id (legacy save)' : '';
                     html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;">
                         <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;">${slot.nickname ? `"${_esc(slot.nickname)}" <span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>` : _esc(slot.name)} ${_pcGradeChipHtml(g)}</span>
                         <button type="button" onclick="window.StoryMode.pcWithdraw('${_esc(id)}')" ${canWithdraw ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canWithdraw ? 'color:#ce93d8;border-color:#ce93d8;' : 'opacity:0.4;'}">Withdraw</button>
@@ -27334,7 +27339,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let html = '';
             html += `<div style="padding:10px;margin-bottom:12px;background:linear-gradient(180deg,rgba(40,12,12,0.7) 0%,rgba(20,4,4,0.7) 100%);border:1px solid #5a1818;color:#bcaaa4;font-size:11px;line-height:1.5;">
                 <strong style="color:#ff5252;">The Underground.</strong>
-                The corrupted half of every Center. They pay for Pokémon — they don't ask why and you don't either. Stronger mons fetch more. Once sold, they're gone.
+                Sales are final — sold Pokémon are gone for good. Stronger mons fetch more gold. The broker doesn't ask why; you don't either.
             </div>`;
             html += `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;font-size:10px;">`;
             for (const g of [1, 2, 3, 4]) {
@@ -27359,7 +27364,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const isStarter = slot.starter === true;
                 const isLastParty = where === 'team' && lastInParty;
                 const canSell = !!id && !unsellable && !isLastParty;
-                const reason = isStarter ? 'Starter — bonded for life' : unsellable ? 'Bound to you' : isLastParty ? 'Must keep ≥1 in party' : !id ? 'Missing id (legacy save)' : '';
+                const isSubjectZero = unsellable && slot.nickname === 'Subject Zero';
+                const reason = isStarter ? 'Starter — bonded for life' : isSubjectZero ? 'Subject Zero — this bond cannot be broken' : unsellable ? 'Story-locked — cannot be sold' : isLastParty ? 'Party needs at least one Pokémon' : !id ? 'Missing id (legacy save)' : '';
                 const whereLabel = where === 'team' ? 'Party' : 'PC';
                 html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(28,12,12,0.55);border:1px solid #5a1818;">
                     <span style="font-size:9px;color:#888;width:30px;">${whereLabel}</span>
