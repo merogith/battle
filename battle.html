@@ -27760,34 +27760,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _ensureFrontierState();
             const f = sm.frontier;
             const bestStreak = (f.highscores[0] && f.highscores[0].streak) || 0;
+            // Icon helper: passes through emoji as a text glyph; png() wraps a path
+            // in an <img> sized to match the existing icons/story/*.png set (22×22).
+            const png = (path) => `<img src="${path}?v=20260516" alt="" width="22" height="22" decoding="async" style="image-rendering:pixelated;flex-shrink:0;display:block;">`;
             const btn = (icon, label, onClick, accent, tip) => `<button type="button" onclick="${onClick}"${tip ? ` title="${_esc(tip)}"` : ''} style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(20,28,40,0.6);border:1px solid ${accent || '#3a4a64'};color:#fff;font-family:inherit;font-size:11px;cursor:pointer;text-align:left;line-height:1.3;">
-                <span style="font-size:14px;flex-shrink:0;">${icon}</span><span style="flex:1;min-width:0;">${label}</span>
+                <span style="font-size:14px;flex-shrink:0;display:flex;align-items:center;">${icon}</span><span style="flex:1;min-width:0;">${label}</span>
             </button>`;
             body.innerHTML = `
                 <h4 style="color:#ffab40;margin:0 0 8px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Battles</h4>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
-                    ${btn('⛓', `Battle Frontier <span style="color:#888;font-size:9px;">(best streak: ${bestStreak})</span>`, 'window.StoryMode.enterFrontierHub()', '#ff5722', 'Endless 6v6 ladder. One loss ends the run; final streak goes to the Top-10.')}
-                    ${btn('🥷', 'Mystery Figure', 'window.StoryMode.crucibleMysteryFight()', '#ce93d8', 'Replay the post-HoF masked challenger.')}
-                    ${btn('🌀', 'Rival Rematch', 'window.StoryMode.crucibleRivalFight()', '#90caf9', 'Replay the League rival fight.')}
-                    ${btn('🏛️', 'League Run (E1→Champ)', 'window.StoryMode.crucibleLeagueRun()', '#ffd54f', 'Run Elite 1 → 4 → Champion in sequence. One loss = run over.')}
-                    ${btn('🥊', 'Random Gym Rematch', 'window.StoryMode.crucibleGymPick()', '#a5d6a7', 'Single 6v6 against a randomly chosen Gym Leader.')}
-                    ${btn('🌿', 'Wild Encounter', 'window.StoryMode.crucibleWildEncounter()', '#aed581', 'Roll a wild Pokémon and try to catch it.')}
+                    ${btn(png('icons/story/story_vr.png'),         `Battle Frontier <span style="color:#888;font-size:9px;">(best streak: ${bestStreak})</span>`, 'window.StoryMode.enterFrontierHub()', '#ff5722', 'Endless 6v6 ladder. One loss ends the run; final streak goes to the Top-10.')}
+                    ${btn(png('icons/story/story_mystery.png'),    'Mystery Figure', 'window.StoryMode.crucibleMysteryFight()', '#ce93d8', 'Replay the post-HoF masked challenger.')}
+                    ${btn('🌀',                                     'Rival Rematch', 'window.StoryMode.crucibleRivalFight()', '#90caf9', 'Replay the League rival fight.')}
+                    ${btn(png('icons/story/story_league.png'),     'League Run (E1→Champ)', 'window.StoryMode.crucibleLeagueRun()', '#ffd54f', 'Run Elite 1 → 4 → Champion in sequence. One loss = run over.')}
+                    ${btn(png('icons/story/story_gym.png'),        'Random Gym Rematch', 'window.StoryMode.crucibleGymPick()', '#a5d6a7', 'Single 6v6 against a randomly chosen Gym Leader.')}
+                    ${btn(png('icons/story/story_route.png'),      'Wild Encounter', 'window.StoryMode.crucibleWildEncounter()', '#aed581', 'Roll a wild Pokémon and try to catch it.')}
                 </div>
                 <h4 style="color:#90caf9;margin:0 0 8px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Facilities</h4>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                    ${btn('🏥', 'Pokémon Center', 'window.StoryMode.enterPokemonCenter()', null, 'PC storage and the Underground (sell mons for gold).')}
-                    ${btn('🦒', 'Safari Zone', 'window.StoryMode.enterSafariZone()', null, 'Bait/rock catch loop. Safari Balls only; 15 balls per session.')}
-                    ${btn('🛒', 'PokéMart', "window.StoryMode.enterShop('mart')", null, 'Poké Balls, potions, healing items.')}
-                    ${btn('🏬', 'Department Store', "window.StoryMode.enterShop('dept')", null, 'Great Balls and Mega/Ultra-tier gear (one each per city).')}
-                    ${btn('✨', 'Relic Annex', 'window.StoryMode.enterArtifactShop()', null, 'Buy run-wide relics. One per shop, locked for the rest of the run.')}
-                    ${btn('📖', 'Move Tutor', "window.StoryMode.enterTutor('moves')", null, 'Swap battle moves on any team member.')}
-                    ${btn('📛', 'Nature Rater', "window.StoryMode.enterTutor('nature')", null, 'Reset a Pokémon nature (stat +/- spread).')}
-                    ${btn('🥋', 'Battle Dojo', "window.StoryMode.enterTutor('loadout')", null, 'Swap held items and abilities.')}
-                    ${btn('🏋️', 'EV Trainer', 'window.StoryMode.enterEVTrainer()', null, 'Apply EV spreads (Universal · Role · Meta).')}
-                    ${btn('🧪', 'Colress', 'window.StoryMode.enterColress()', null, 'Equip a Battle Gimmick: Mega, Z-Move, Dynamax, or Tera.')}
-                    ${btn('🧬', 'Stone Sage (Evolve)', 'window.StoryMode.enterEvolutionLab()', null, 'Evolve eligible Pokémon. Build is preserved where legal.')}
-                    ${btn('🔌', 'Link Station', 'window.StoryMode.enterLink()', null, 'Random trades: reroll, upgrade, or rebuild.')}
-                    ${btn('🎰', 'Poké Casino', 'window.StoryMode.enterCasino()', null, '50/50 coin flip. Win pays 2×.')}
+                    ${btn(png('icons/story/story_center.png'),     'Pokémon Center', 'window.StoryMode.enterPokemonCenter()', null, 'PC storage and the Underground (sell mons for gold).')}
+                    ${btn('🦒',                                     'Safari Zone', 'window.StoryMode.enterSafariZone()', null, 'Bait/rock catch loop. Safari Balls only; 15 balls per session.')}
+                    ${btn(png('icons/story/story_mart.png'),       'PokéMart', "window.StoryMode.enterShop('mart')", null, 'Poké Balls, potions, healing items.')}
+                    ${btn(png('icons/story/story_dept.png'),       'Department Store', "window.StoryMode.enterShop('dept')", null, 'Great Balls and Mega/Ultra-tier gear (one each per city).')}
+                    ${btn(png('icons/story/story_artifacts.png'),  'Relic Annex', 'window.StoryMode.enterArtifactShop()', null, 'Buy run-wide relics. One per shop, locked for the rest of the run.')}
+                    ${btn(png('icons/story/story_tutor.png'),      'Move Tutor', "window.StoryMode.enterTutor('moves')", null, 'Swap battle moves on any team member.')}
+                    ${btn(png('icons/story/story_nature.png'),     'Nature Rater', "window.StoryMode.enterTutor('nature')", null, 'Reset a Pokémon nature (stat +/- spread).')}
+                    ${btn(png('icons/story/story_dojo.png'),       'Battle Dojo', "window.StoryMode.enterTutor('loadout')", null, 'Swap held items and abilities.')}
+                    ${btn(png('icons/story/story_dojo.png'),       'EV Trainer', 'window.StoryMode.enterEVTrainer()', null, 'Apply EV spreads (Universal · Role · Meta).')}
+                    ${btn(png('icons/story/story_colress.png'),    'Colress', 'window.StoryMode.enterColress()', null, 'Equip a Battle Gimmick: Mega, Z-Move, Dynamax, or Tera.')}
+                    ${btn(png('icons/story/story_professor.png'),  'Stone Sage (Evolve)', 'window.StoryMode.enterEvolutionLab()', null, 'Evolve eligible Pokémon. Build is preserved where legal.')}
+                    ${btn(png('icons/story/story_link.png'),       'Link Station', 'window.StoryMode.enterLink()', null, 'Random trades: reroll, upgrade, or rebuild.')}
+                    ${btn('🎰',                                     'Poké Casino', 'window.StoryMode.enterCasino()', null, '50/50 coin flip. Win pays 2×.')}
                 </div>
             `;
         }
