@@ -28004,7 +28004,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (isFree) {
                 sm.safari.freeEntryUsed = true;
-                try { window.showGameAlert && window.showGameAlert(`Welcome to the Safari Zone!\n\nFirst visit is free.\n• ${SAFARI_BALLS_PER_SESSION} Safari Balls\n• Up to ${SAFARI_MAX_ENCOUNTERS} encounters\n• Bait calms wild Pokémon (lower flee, lower catch)\n• Rocks anger them (higher catch, higher flee)\n\nUnused balls do not carry over.`); } catch (e) {}
+                try { window.showGameAlert && window.showGameAlert(`📣 "Welcome to the Safari Zone!"\n\nFirst visit is on the house.\n• ${SAFARI_BALLS_PER_SESSION} Safari Balls (only ball type that works here)\n• Up to ${SAFARI_MAX_ENCOUNTERS} wild encounters\n• 🍓 Bait calms the Pokémon — lower catch, but it sticks around\n• 🪨 Rocks anger it — higher catch, but it may bolt at any moment\n• Every turn the wild may flee. Pick your moments.\n\nUnused Safari Balls are forfeited at the gate.`); } catch (e) {}
             } else {
                 sm.gold = Math.max(0, (sm.gold | 0) - SAFARI_ENTRY_COST);
             }
@@ -28029,11 +28029,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _safariNextEncounter() {
             if (!_safariSession || !_safariSession.active) return;
             if (_safariSession.encountersUsed >= SAFARI_MAX_ENCOUNTERS) {
-                _safariReturnToCity('Your Safari Zone session is over.');
+                _safariReturnToCity('📣 "Ding-dong! Your Safari Zone game is over!"\n\nThe warden flags you down at the gate. Time to head back.');
                 return;
             }
             if (_safariSession.ballsLeft <= 0) {
-                _safariReturnToCity('Out of Safari Balls. Heading back to the gate.');
+                _safariReturnToCity('📣 "Ding-dong! You\'re out of Safari Balls — game over!"\n\nBetter luck next time, trainer.');
                 return;
             }
             _safariSession.encountersUsed++;
@@ -28065,7 +28065,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function safariLeaveEarly() {
             if (!_safariSession) return;
             _catchState = null;
-            _safariReturnToCity('You left the Safari Zone. Leftover Safari Balls were forfeited.');
+            _safariReturnToCity('📣 "Thanks for visiting the Safari Zone! Come again soon."\n\nLeftover Safari Balls were forfeited at the gate.');
         }
 
         // ── THE CRUCIBLE — endgame super-hub + Battle Frontier ────────────
@@ -28570,17 +28570,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Safari Ball is a session-scoped resource that lives ONLY inside the
         // Safari Zone. It is granted on entry, consumed on each throw, and
         // forfeited on exit — it never enters sm.balls (cannot be used on wild
-        // routes). Mid-multiplier (1.5×, between Great and Ultra) — combined
-        // with the Bait/Rock loop it rewards play over pure ball stockpiling.
-        const SAFARI_BALL_MULT = 1.25;
+        // routes). Multiplier sits between Poké (1.0×) and Great (1.5×), with
+        // Bait/Rock as the active levers — replicates the canonical Safari
+        // loop (no battles, asymmetric bait/rock dilemma, every turn the wild
+        // may flee). Bumped 1.25→1.35 to make the no-modifier baseline feel
+        // playable; the real swing comes from rocks now that they also carry
+        // a per-turn flee risk.
+        const SAFARI_BALL_MULT = 1.35;
         const SAFARI_BALLS_PER_SESSION = 15;
         // Bait calms the Pokémon (lower flee chance, lower catch chance).
         // Rock angers it (higher catch chance, higher flee chance).
         // Modifiers stack within an encounter and reset between encounters.
+        // Rock catch mult bumped 1.45→1.65 so stacking rocks is genuinely
+        // rewarding — pairs with the new per-turn flee on rock turns.
         const SAFARI_BAIT_CATCH_MULT = 0.70;
         const SAFARI_BAIT_FLEE_MULT  = 0.55;
-        const SAFARI_ROCK_CATCH_MULT = 1.45;
+        const SAFARI_ROCK_CATCH_MULT = 1.65;
         const SAFARI_ROCK_FLEE_MULT  = 1.70;
+        // ── Per-turn flee (canonical Safari Zone tension) ─────────────────
+        // In the real Safari Zone, the wild may flee at the end of ANY turn —
+        // Bait/Rock turns included, not just after a missed throw. Without
+        // this, Bait/Rock are "safe" actions that just stack modifiers and
+        // the bait/rock dilemma loses its bite. We re-use the existing flee
+        // formula (baseFlee × baitFleeMult × rockFleeMult) with an
+        // action-specific softener so Bait stays gentle ("calming") and Rock
+        // becomes the real gamble ("aggression"). Hard-capped so no single
+        // action ever auto-flees — the player always has a >55% chance to
+        // keep the wild around for one more move.
+        const SAFARI_BAIT_TURN_FLEE_MULT = 0.20;
+        const SAFARI_ROCK_TURN_FLEE_MULT = 0.55;
+        const SAFARI_TURN_FLEE_CAP       = 0.45;
         let _catchState = null;
         let _safariSession = null;
 
@@ -28754,6 +28773,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             try { _storyMarkPokedexSeen(wildMon && wildMon.name); } catch (e) {}
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
+            // Header reflects the mode so the catch screen reads as
+            // "🦒 Safari Zone" inside a Safari run instead of a generic
+            // "🌿 Wild Encounter" — matches the canonical game's
+            // dedicated Safari Zone screen feel.
+            try {
+                const headerEl = document.querySelector('#screen-story-catch .story-screen-head-text');
+                if (headerEl) {
+                    if (_catchState.bossMode) headerEl.textContent = '🔮 The Caged God';
+                    else if (_catchState.safariMode) headerEl.textContent = '🦒 Safari Zone';
+                    else if (_catchState.tutorialMode) headerEl.textContent = '🎓 Catch Tutorial';
+                    else headerEl.textContent = '🌿 Wild Encounter';
+                }
+            } catch (e) {}
             // Roaming-legendary one-shot framing — set the opening message before render
             // so the player can read the stakes before throwing.
             if (_catchState.roamingLabel && !_catchState.bossMode) {
@@ -28766,6 +28798,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // disappointment on the very first try.
             if (_catchState.tutorialMode) {
                 _catchState.message = `A friendly wild ${wildMon.name} appeared! Throw a Poké Ball to catch it — your first catch is guaranteed.`;
+            }
+            // Safari opening flavor — keyed by grade so the player gets an
+            // observation cue before they pick Bait or Rock. Replaces the
+            // generic "appeared" framing with something that hints at the
+            // wild's mood and rarity.
+            if (_catchState.safariMode && !_catchState.tutorialMode) {
+                let _safariGrade = 4;
+                try { _safariGrade = getMonGrade(wildMon.name, getBST(wildMon.name)); } catch (e) {}
+                const _safariOpeners = {
+                    1: [
+                        `A rare ${wildMon.name} appeared in the brush — you can feel it watching you back.`,
+                        `Up ahead: ${wildMon.name}. It looks ready to bolt at the first wrong move.`,
+                        `${wildMon.name}! This one almost never shows up. Make it count.`
+                    ],
+                    2: [
+                        `${wildMon.name} stepped into the clearing. Sharp eyes. Sharp instincts.`,
+                        `A wild ${wildMon.name} appeared — alert and on edge.`,
+                        `${wildMon.name} spots you and freezes. One chance to read the room.`
+                    ],
+                    3: [
+                        `A wild ${wildMon.name} appeared in the safari grass.`,
+                        `${wildMon.name} rustles out of the underbrush and stares at you.`,
+                        `A wild ${wildMon.name} pokes its head out of the tall grass.`
+                    ],
+                    4: [
+                        `A wild ${wildMon.name} ambled into view — friendly looking enough.`,
+                        `${wildMon.name} appeared! It doesn't seem too worried about you.`,
+                        `${wildMon.name} wanders by, curious.`
+                    ]
+                };
+                const _safariPool = _safariOpeners[_safariGrade] || _safariOpeners[3];
+                _catchState.message = _safariPool[Math.floor(Math.random() * _safariPool.length)];
             }
             _catchRender();
             if (!_catchState.bossMode) {
@@ -28781,9 +28845,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { _storyShowOneTimeTip('safari-catch',
                         'Safari Zone — only Safari Balls work here.\n\n' +
                         '• Throw a Safari Ball to try to catch the Pokémon.\n' +
-                        '• Bait calms it: lower flee chance, lower catch chance.\n' +
-                        '• Rocks anger it: higher catch chance, higher flee chance.\n' +
-                        '• Modifiers reset between encounters.'); } catch (e) {}
+                        '• 🍓 Bait calms it: lower catch, but it sticks around.\n' +
+                        '• 🪨 Rock angers it: higher catch, but it may bolt.\n' +
+                        '• Every turn — Bait, Rock, or missed throw — the wild may flee.\n' +
+                        '• Modifiers stack up to 3× and reset between encounters.\n' +
+                        '• Pick your moment: a stacked rock is your best catch chance, but also your highest flee risk.'); } catch (e) {}
                 } else {
                     try { _storyShowOneTimeTip('catch',
                         'A wild Pokémon!\n\n' +
@@ -28871,11 +28937,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span><strong>${display.name}</strong> ×${have}</span>
                     <span style="color:#fff;">${safariPct}%</span>
                 </button>`;
-                const baitLabel = sess.baitCount ? `🍓 Bait <span style="opacity:0.7;font-size:10px;">(${sess.baitCount}×)</span>` : '🍓 Bait';
-                const rockLabel = sess.rockCount ? `🪨 Throw Rock <span style="opacity:0.7;font-size:10px;">(${sess.rockCount}×)</span>` : '🪨 Throw Rock';
+                // Per-turn flee % surfaced on each button so the gamble is
+                // legible. Bait stays gentle and Rock scales hard with each
+                // stack — mirrors the canonical Safari Zone dilemma where
+                // every rock is "one more roll closer to a catch, but the
+                // wild might bolt this turn".
+                const _baitTurnFlee = (function () {
+                    const sim = { ...sess, baitCount: Math.min(3, (sess.baitCount | 0) + 1) };
+                    const m = Math.pow(SAFARI_BAIT_FLEE_MULT, sim.baitCount) * Math.pow(SAFARI_ROCK_FLEE_MULT, sim.rockCount | 0);
+                    const base = _CATCH_FLEE_BY_GRADE[grade] || _CATCH_DEFAULT_FLEE_RATE;
+                    return Math.max(0, Math.min(SAFARI_TURN_FLEE_CAP, base * m * SAFARI_BAIT_TURN_FLEE_MULT));
+                })();
+                const _rockTurnFlee = (function () {
+                    const sim = { ...sess, rockCount: Math.min(3, (sess.rockCount | 0) + 1) };
+                    const m = Math.pow(SAFARI_BAIT_FLEE_MULT, sim.baitCount | 0) * Math.pow(SAFARI_ROCK_FLEE_MULT, sim.rockCount);
+                    const base = _CATCH_FLEE_BY_GRADE[grade] || _CATCH_DEFAULT_FLEE_RATE;
+                    return Math.max(0, Math.min(SAFARI_TURN_FLEE_CAP, base * m * SAFARI_ROCK_TURN_FLEE_MULT));
+                })();
+                const _baitTurnPct = Math.round(_baitTurnFlee * 100);
+                const _rockTurnPct = Math.round(_rockTurnFlee * 100);
+                const baitMaxed = (sess.baitCount | 0) >= 3;
+                const rockMaxed = (sess.rockCount | 0) >= 3;
+                const baitStack = sess.baitCount ? ` <span style="opacity:0.7;font-size:10px;">(${sess.baitCount}×)</span>` : '';
+                const rockStack = sess.rockCount ? ` <span style="opacity:0.7;font-size:10px;">(${sess.rockCount}×)</span>` : '';
+                const baitTitle = `Calms the Pokémon — lower catch chance, but it sticks around. Flee risk this turn: ${_baitTurnPct}%`;
+                const rockTitle = `Angers the Pokémon — higher catch chance, but it may bolt. Flee risk this turn: ${_rockTurnPct}%`;
                 safariActionRow = `<div style="display:flex;gap:6px;margin-top:4px;">
-                    <button type="button" onclick="window.StoryMode.safariBait()" style="flex:1;padding:8px;background:rgba(20,28,40,0.6);border:1px solid #f48fb1;color:#f48fb1;font-family:inherit;font-size:11px;cursor:pointer;" title="Calms the Pokémon — lower flee chance, lower catch chance">${baitLabel}</button>
-                    <button type="button" onclick="window.StoryMode.safariRock()" style="flex:1;padding:8px;background:rgba(20,28,40,0.6);border:1px solid #ffab91;color:#ffab91;font-family:inherit;font-size:11px;cursor:pointer;" title="Angers the Pokémon — higher catch chance, higher flee chance">${rockLabel}</button>
+                    <button type="button" onclick="window.StoryMode.safariBait()" ${baitMaxed ? 'disabled' : ''} style="flex:1;display:flex;justify-content:space-between;align-items:center;gap:6px;padding:8px;background:rgba(20,28,40,0.6);border:1px solid #f48fb1;color:#f48fb1;font-family:inherit;font-size:11px;${baitMaxed ? 'opacity:0.45;cursor:not-allowed;' : 'cursor:pointer;'}" title="${_esc(baitTitle)}">
+                        <span>🍓 Bait${baitStack}</span>
+                        <span style="font-size:10px;color:#ff7043;">flee ${_baitTurnPct}%</span>
+                    </button>
+                    <button type="button" onclick="window.StoryMode.safariRock()" ${rockMaxed ? 'disabled' : ''} style="flex:1;display:flex;justify-content:space-between;align-items:center;gap:6px;padding:8px;background:rgba(20,28,40,0.6);border:1px solid #ffab91;color:#ffab91;font-family:inherit;font-size:11px;${rockMaxed ? 'opacity:0.45;cursor:not-allowed;' : 'cursor:pointer;'}" title="${_esc(rockTitle)}">
+                        <span>🪨 Rock${rockStack}</span>
+                        <span style="font-size:10px;color:#ff7043;">flee ${_rockTurnPct}%</span>
+                    </button>
                 </div>
                 <div style="display:flex;gap:6px;margin-top:4px;">
                     <button type="button" onclick="window.StoryMode.catchRun()" style="flex:1;padding:8px;background:rgba(20,28,40,0.4);border:1px solid #5e7a90;color:#a8bccc;font-family:inherit;font-size:10px;cursor:pointer;">🏃 Skip to Next</button>
@@ -28885,9 +28980,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _fleeMult = Math.pow(SAFARI_BAIT_FLEE_MULT, sess.baitCount | 0) * Math.pow(SAFARI_ROCK_FLEE_MULT, sess.rockCount | 0);
                 const _fleeThresh = Math.max(0, Math.min(0.85, _fleeBase * _fleeMult));
                 const _fleePct = Math.round(_fleeThresh * 100);
-                safariStatusRow = `<div style="display:flex;justify-content:space-between;font-size:11px;color:#aed581;padding:6px 8px;background:rgba(10,18,12,0.45);border:1px solid #4a6c44;margin-top:6px;">
+                safariStatusRow = `<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#aed581;padding:6px 8px;background:rgba(10,18,12,0.45);border:1px solid #4a6c44;margin-top:6px;">
                     <span>Encounter ${sess.encountersUsed} of ${SAFARI_MAX_ENCOUNTERS}</span>
-                    <span>Flee chance on miss: <strong style="color:#ff7043;">${_fleePct}%</strong></span>
+                    <span>Flee on miss: <strong style="color:#ff7043;">${_fleePct}%</strong></span>
                 </div>`;
             } else {
                 ballRows = ['poke', 'great', 'ultra', 'master'].map(k => {
@@ -28923,7 +29018,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const gradeBg = _catchState.bossMode ? '#ce93d8' : '#a5d6a7';
             const subText = _catchState.bossMode
                 ? `Master Ball recommended for a guaranteed catch.`
-                : _catchState.safariMode ? `Safari Balls only (${SAFARI_BALL_MULT}× catch). Bait calms, Rock angers. Effects stack within an encounter.` : 'Rarer Pokémon are harder to catch. Better balls = better odds.';
+                : _catchState.safariMode ? `Safari Balls only (${SAFARI_BALL_MULT}× catch). Bait calms, Rock angers — every turn the wild may flee.` : 'Rarer Pokémon are harder to catch. Better balls = better odds.';
             // Show the wild Pokémon's sprite — the screen was text-only before, which
             // made every encounter feel like the same prompt.
             let spriteHtml = '';
@@ -29235,22 +29330,75 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { cb(); } catch (e) { console.warn('[Story] catch run onComplete', e); }
             }
         }
+        // Per-turn flee chance after a Bait/Rock action. Returns the
+        // threshold the next roll is compared against. Bait stays gentle
+        // (rarely loses the wild); Rock is a real gamble that grows with each
+        // stack. Hard-capped at SAFARI_TURN_FLEE_CAP so no single action ever
+        // auto-flees — there's always >55% room to keep going.
+        function _safariActionFleeThreshold(action) {
+            if (!_safariSession || !_catchState || !_catchState.safariMode) return 0;
+            const enc = _catchState.encounter;
+            if (!enc) return 0;
+            let grade = 4;
+            try { grade = getMonGrade(enc.name, getBST(enc.name)); } catch (e) {}
+            const baseFlee = _CATCH_FLEE_BY_GRADE[grade] || _CATCH_DEFAULT_FLEE_RATE;
+            const sess = _safariSession;
+            const baitMult = Math.pow(SAFARI_BAIT_FLEE_MULT, sess.baitCount | 0);
+            const rockMult = Math.pow(SAFARI_ROCK_FLEE_MULT, sess.rockCount | 0);
+            const actionMult = action === 'bait' ? SAFARI_BAIT_TURN_FLEE_MULT : SAFARI_ROCK_TURN_FLEE_MULT;
+            return Math.max(0, Math.min(SAFARI_TURN_FLEE_CAP, baseFlee * baitMult * rockMult * actionMult));
+        }
+        // Roll the per-turn flee. If the wild flees, ends the encounter with
+        // an action-flavored message and returns true. Caller should bail out
+        // immediately if true is returned.
+        function _safariRollActionFlee(action) {
+            const threshold = _safariActionFleeThreshold(action);
+            if (threshold <= 0) return false;
+            const roll = (sm && sm.active) ? storyRngNext() : Math.random();
+            try { save(); } catch (e) {}
+            if (roll >= threshold) return false;
+            const name = (_catchState && _catchState.encounter && _catchState.encounter.name) || 'The wild Pokémon';
+            const fleeMsgs = action === 'bait'
+                ? [
+                    `${name} finished the bait and wandered off into the brush!`,
+                    `Distracted by the food, ${name} slipped out of sight before you could throw!`,
+                    `${name} ate up — and walked away without looking back.`,
+                    `${name} took the snack and disappeared into the underbrush!`
+                ]
+                : [
+                    `The rock spooked ${name}! It bolted before you could throw!`,
+                    `${name} dodged the rock and tore off through the tall grass!`,
+                    `Angered, ${name} sprinted away — gone for good.`,
+                    `${name} hissed at the rock and vanished into the wild!`
+                ];
+            _catchFinishWithMessage(fleeMsgs[Math.floor(Math.random() * fleeMsgs.length)]);
+            return true;
+        }
         // Safari Bait — calms the wild Pokémon. Decreases catch chance, also
         // decreases flee chance. Doesn't consume a ball. Can stack up to 3.
+        // The per-turn flee check rolls after applying the bait stack so the
+        // new state drives the flee threshold. If the wild flees, the flee
+        // message replaces this turn's text entirely (no flash of the
+        // "calmer now" copy).
         function safariBait() {
             if (!_catchState || !_catchState.safariMode || _catchState.ended) return;
             if (!_safariSession) return;
             _safariSession.baitCount = Math.min(3, (_safariSession.baitCount | 0) + 1);
-            _catchState.message = `${_catchState.encounter.name} ate the bait. It's calmer now — lower flee chance, but harder to catch.`;
+            if (_safariRollActionFlee('bait')) return;
+            _catchState.message = `${_catchState.encounter.name} is munching on the bait — calmer now.`;
             _catchRender();
         }
         // Safari Rock — angers the wild Pokémon. Increases catch chance, but also
         // increases flee chance dramatically. Doesn't consume a ball. Can stack up to 3.
+        // The per-turn flee check after a rock is the canonical Safari gamble:
+        // each rock improves the eventual catch odds, but the wild may bolt on
+        // the same turn you threw it.
         function safariRock() {
             if (!_catchState || !_catchState.safariMode || _catchState.ended) return;
             if (!_safariSession) return;
             _safariSession.rockCount = Math.min(3, (_safariSession.rockCount | 0) + 1);
-            _catchState.message = `${_catchState.encounter.name} is angry! Easier to catch, but more likely to flee.`;
+            if (_safariRollActionFlee('rock')) return;
+            _catchState.message = `${_catchState.encounter.name} dodges the rock — furious now, and watching you closely.`;
             _catchRender();
         }
 
