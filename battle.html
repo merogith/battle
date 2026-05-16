@@ -866,8 +866,8 @@
             margin: 0;
         }
         .story-screen-head-ico {
-            width: 22px;
-            height: 22px;
+            width: 24px;
+            height: 24px;
             flex-shrink: 0;
             object-fit: contain;
             image-rendering: pixelated;
@@ -1150,7 +1150,11 @@
             background: linear-gradient(90deg, rgba(138,160,188,0.35) 0%, rgba(138,160,188,0) 100%);
         }
         .story-action-section-header .story-action-section-icon {
-            font-size: 11px; opacity: 0.85;
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            opacity: 0.85;
+            image-rendering: auto;
         }
         .story-city-tips {
             display: flex; flex-wrap: wrap; gap: 6px;
@@ -1172,7 +1176,7 @@
         }
         .story-city-tip:hover { color: #fff; border-color: #6da2dc; background: linear-gradient(180deg, #233458 0%, #16213d 100%); transform: translateY(-1px); }
         .story-city-tip:active { transform: translateY(0); }
-        .story-city-tip .story-city-tip-ico { font-size: 13px; line-height: 1; }
+        .story-city-tip .story-city-tip-ico { width: 16px; height: 16px; flex-shrink: 0; image-rendering: auto; }
         .story-city-tip.urgent { color: #fff; background: linear-gradient(180deg, #5a2025 0%, #3a1416 100%); border-color: #c2484f; box-shadow: inset -2px -2px 0 0 #2a0e10, inset 2px 2px 0 0 #7a2a30; }
         .story-city-tip.urgent:hover { background: linear-gradient(180deg, #6e272d 0%, #481a1c 100%); border-color: #ff8a90; }
         .story-action-badge {
@@ -3266,6 +3270,9 @@
                 z-index: 9999; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.6);
             }
             #pwa-install-hint button { margin-left: 8px; font-size: 12px; padding: 4px 8px; }
+            /* Scale small inline icons up for phone legibility */
+            .story-action-section-header .story-action-section-icon { width: 18px; height: 18px; }
+            .story-city-tip .story-city-tip-ico { width: 18px; height: 18px; }
         }
         @media screen and (min-width: 769px) { #pwa-install-hint { display: none !important; } }
 
@@ -4873,8 +4880,8 @@
                 <span id="story-pc-balls-summary" style="color:#888;display:inline-flex;align-items:center;gap:0;"></span>
             </div>
             <div style="display:flex;gap:0;background:rgba(10,10,14,0.85);border-bottom:1px solid #333;flex-shrink:0;">
-                <button type="button" id="story-pc-tab-storage-btn" onclick="window.StoryMode.pcSwitchTab('storage')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid #4caf50;color:#4caf50;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Deposit, withdraw, and release Pokémon"><img src="icons/story/story_party.png?v=20260516" alt="" width="18" height="18" decoding="async" style="image-rendering:pixelated;"> PC Storage</button>
-                <button type="button" id="story-pc-tab-underground-btn" onclick="window.StoryMode.pcSwitchTab('underground')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid transparent;color:#888;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Sell Pokémon for gold"><img src="icons/story/story_mystery.png?v=20260516" alt="" width="18" height="18" decoding="async" style="image-rendering:pixelated;filter:hue-rotate(-30deg) saturate(1.5) brightness(0.8);"> The Underground</button>
+                <button type="button" id="story-pc-tab-storage-btn" onclick="window.StoryMode.pcSwitchTab('storage')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid #4caf50;color:#4caf50;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Deposit, withdraw, and release Pokémon"><img src="icons/story/story_party.png?v=20260516" alt="" width="18" height="18" decoding="async" style="image-rendering:auto;"> PC Storage</button>
+                <button type="button" id="story-pc-tab-underground-btn" onclick="window.StoryMode.pcSwitchTab('underground')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid transparent;color:#888;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Sell Pokémon for gold"><img src="icons/story/story_mystery.png?v=20260516" alt="" width="18" height="18" decoding="async" style="image-rendering:auto;filter:hue-rotate(-30deg) saturate(1.5) brightness(0.8);"> The Underground</button>
             </div>
             <div id="story-pc-body" style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);"></div>
             <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
@@ -25828,7 +25835,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 tipsEl.innerHTML = tips.slice(0, 4).map(t => {
                     const _icoHtml = t.iconPath
-                        ? `<img class="story-city-tip-ico" src="${t.iconPath}" alt="" width="16" height="16" decoding="async" style="image-rendering:pixelated;">`
+                        ? `<img class="story-city-tip-ico" src="${t.iconPath}" alt="" width="16" height="16" decoding="async">`
                         : `<span class="story-city-tip-ico">${t.icon}</span>`;
                     return `<button type="button" class="story-city-tip${t.urgent ? ' urgent' : ''}" onclick="${t.click}">${_icoHtml}<span>${t.label}</span></button>`;
                 }).join('');
@@ -25994,7 +26001,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _push('recover', makeActionBtn(_bagLabel, 'bag', 'window.StoryMode.openCityBag()', 'shop',{ soft:true }));
 
             const _emit = (key, iconPath, title) => _sections[key]
-                ? `<div class="story-action-section-header"><img class="story-action-section-icon" src="${iconPath}" alt="" width="16" height="16" decoding="async" style="image-rendering:pixelated;vertical-align:-3px;margin-right:6px;">${title}</div>${_sections[key]}`
+                ? `<div class="story-action-section-header"><img class="story-action-section-icon" src="${iconPath}" alt="" width="16" height="16" decoding="async">${title}</div>${_sections[key]}`
                 : '';
             btn.innerHTML = _emit('quest',   'icons/story/story_gym.png?v=20260516',   'Next Step')
                           + _emit('recover', 'icons/story/story_center.png?v=20260516', 'Heal & Team')
