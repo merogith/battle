@@ -3,6 +3,124 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Vitamin / EV-training balance pass 2026-05-16 (`claude/balance-vitamins-stats-PAaPn`)
+
+### Added — Vitamin distribution fills the gym dead zones
+
+- Gym Leaders 1, 2, 4, and 6 now each drop **+1 Vitamin Pack** as part
+  of their reward bundle. Previously vitamins only began at Gym 3 and
+  the curve had four gym victories with zero EV-investment access.
+- **Mid-game route find** — first Basic/Elite Trainer cleared while
+  holding exactly 4 badges drops 1 Vitamin Pack with a "found in the
+  tall grass" flavor message. Gated by `sm.staticDrops.vitaminRouteMidgame`
+  so it can only fire once per save.
+- Per-run vitamin total rises from 9 guaranteed (gym/league only) to 14;
+  up to 16 with a full Pokédex.
+
+### Changed — UI surfaces the EV-training permanence rule
+
+EVs were already permanent and traveled with the Pokémon through PC
+deposit/withdraw, evolution, and tutor work — but nothing in the UI
+told the player that. Players could release a fully trained Pokémon
+without realizing the investment went with it.
+
+- **Vitamin Pack tooltip** in the bag now explicitly states the
+  investment stays with the mon forever, only lost on release or sale.
+  Rewritten in plain language with a concrete example
+  (+252 Atk / +252 Speed) and the 5,000G equivalence.
+- **Buck quote pool** at the EV Trainer gains a permanence line.
+- **PC Release confirm** appends "Its EV training will be lost too."
+  when the slot has any non-zero EVs.
+- **PC Underground Sell confirm** appends the same EV note when
+  applicable, and the tab intro banner mentions the same.
+
+### Added — EV Trainer onboarding & vitamin discoverability
+
+The EV Trainer screen previously surfaced only a random Buck quote and
+the per-mon preset cards — new players had no persistent answer to
+"what is an EV?" and players carrying unused Vitamin Packs through
+no-EV-Trainer cities (City 2, 3, 5) had no reminder beyond the bag tab.
+
+- **Persistent info banner** at the top of the EV Trainer screen.
+  Plain-language explainer (what EVs are, 252/510 cap, permanence rule)
+  plus a live state line — pink "💊 N Vitamin Packs ready" call-out
+  when the player has any, gold-cost reminder when they don't.
+- **Clearer Vitamin button label** on each preset: "💊 Use Vitamin
+  (N left)" replaces the more ambiguous "💊 Vitamin (N)" so mobile /
+  touch users who can't see the hover tooltip still understand it's
+  a consume action.
+- **City tip in no-EV-Trainer cities** — quiet "💊 N Vitamin Packs
+  saved — use at next EV Trainer" reminder. Clicks open the bag so the
+  full tooltip is one tap away. Existing tip in EV-Trainer cities
+  unchanged.
+
+### Reason
+
+The previous vitamin curve front-loaded the "leveling up" feel into the
+middle and end of a run — early-game Pokémon could not be EV-trained
+without a 5,000G/preset gold sink, so most starters fought their first
+three gyms untrained. Filling Gyms 1/2/4/6 with one Vitamin Pack each
+plus a single mid-game route find restores a steady "every gym = a real
+power bump" cadence without changing caps, foe scaling, or the swap
+mechanic. 252/510 caps remain the guardrail against runaway investment.
+
+### Not changed (deliberate)
+
+- Per-stat cap: 252. Total cap: 510. Untouched.
+- EVs persist across party/PC swaps. The "swap loses investment" rule
+  asked about during planning was **never implemented in code** — only
+  release/sell loses the investment, and the UI now makes that explicit
+  rather than introducing a new commitment penalty mid-game.
+- Foe stat scaling (`applyStoryLeagueFoeStatBoost`, difficulty mult)
+  unchanged. The +14 vitamin curve was tuned to fit inside the existing
+  Champion +30% HP / +15% bulk league boost.
+
+## Unreleased — Random wild encounters keyed on grade + gen toggles 2026-05-16 (`claude/random-wild-encounters-wNB0M`)
+
+### Changed — Wild grade pool is now a standalone progression curve
+
+- Route wilds previously inherited the next trainer's `gradeWeights`
+  shifted one tier weaker, which meant the wild you fought right
+  before a gym felt suspiciously like a preview of the gym leader's
+  tier mix (and the curve had odd shoulders at rows where the
+  trainer's grade jumped). Wild rolls now read a dedicated
+  badge-keyed table (`_WILD_GRADE_CURVE_BY_BADGES`) that doesn't
+  touch the trainer fight at all — the two inputs to a wild roll
+  are **the player's badge count** and **the enabled-gen toggles**,
+  full stop. Wilds reflect the route's biology, not the upcoming
+  trainer's lineup.
+- The new curve scales smoothly from 0 badges (all G4) to 8 badges
+  (G1:20 / G2:70 / G3:10), and is tuned to sit roughly one tier
+  behind the contemporaneous trainer roll at every step. Concrete
+  early-/mid-/late-game shape:
+  - 0 badges → G4 only.
+  - 2 badges → G3:40 / G4:60.
+  - 4 badges → G2:25 / G3:60 / G4:15.
+  - 6 badges → G1:3 / G2:60 / G3:35 / G4:2.
+  - 8 badges → G1:20 / G2:70 / G3:10.
+- Species pick inside the chosen grade was already pure `Math.random`
+  (not seeded story RNG), so reloads and rematches each surface a
+  different species. That stays.
+- The Crucible's wild encounter button now flows through the same
+  `rollWildEncounter` path — at 8 badges (post-HoF) it resolves to
+  the late-game curve above, replacing the hardcoded G1:10 / G2:30
+  / G3:40 / G4:20 mix.
+
+### Reason
+
+The user spec for wild encounters is "random, based **only** on the
+grade system and the toggled generation settings, balanced with a
+fun challenging curve through story mode." The old derive-from-
+trainer-then-shift formula technically used grades + gens, but the
+trainer's row was a third hidden input that made the curve
+non-monotonic across the timeline and coupled the wild experience
+to the next fight's identity (gym-trainer vs. basic-trainer rows
+could roll different wild pools at the same badge level). Pulling
+the curve onto its own table — explicitly indexed by badges —
+gives a single readable progression you can tune, keeps the wild
+intentionally one tier behind the foe ahead, and frees the wild
+roll from any awareness of the trainer fight it precedes.
+
 ## Unreleased — Simplify game modes (default = Classic, all mechanics on) 2026-05-16 (`claude/simplify-game-modes-vHlMS`)
 
 ### Changed — Battle menu defaults & hidden advanced toggles
