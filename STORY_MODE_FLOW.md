@@ -182,7 +182,21 @@ The five surviving modes use these values (`battle.html:8999–9019` for stat mu
 
 Note: `applyStoryLeagueFoeStatBoost` (E1–E4 / Champion / league Rival / post-HoF Mystery) is applied **before** `applyFoeDifficultyScaling`, so the two stack multiplicatively. Champion HP on Hard ≈ ×1.30 × ×1.15 = ×1.495.
 
-**Pre-Gym 1 softening:** `_isPreGym1NerfedBattle()` applies an extra `PRE_GYM1_FOE_STAT_MULT` (default 0.85) to the intro rival, the first route trainer, and Gym Trainer 1. Gym Leader 1 itself stays at full strength.
+**Early-game softening:** `_earlyGameFoeStatMult()` applies a tiered post-build stat multiplier through the first two gyms so RNG can't brick a fresh save:
+
+| Phase | Event | Multiplier (constant) |
+|---|---|---|
+| 0 badges | non-GL fights (intro rival, route trainer, Gym Trainer 1) | `PRE_GYM1_FOE_STAT_MULT` = 0.82 |
+| 0 badges | **Gym Leader 1** | `EARLY_GL_FOE_STAT_MULT` = 0.95 (only the non-signature filler — the signature ace stays at full strength) |
+| 1 badge | route fights between GL1 and GL2 | `EARLY_GAME_FOE_STAT_MULT` = 0.92 |
+| 1 badge | **Gym Leader 2** | `EARLY_GL_FOE_STAT_MULT` = 0.95 (signature ace exempt) |
+| ≥ 2 badges | every fight | 1.00 — softening ends |
+
+Signature aces are exempted by setting `build._skipEarlyGameNerf = true` in `rollTrainerTeam` when a slot is filled from the trainer's `sigs` pool. Set any constant to `1.0` to disable that tier's softening.
+
+In addition, `applyDifficultyToGradeWeights` shifts a small slice of g1 (×0.92) and g2 (×0.96) mass down to g3 universally, so opponents are slightly less likely to high-roll a top-tier mon. Gym Leader teams shift another ~20% of g1 → g2 and ~15% of g2 → g3 for the non-signature pickThematic call only — the leader's signature picks stay at the original tier, the rest of the team eases up.
+
+The pre-Gym-1 Basic Trainer slot (event idx 2, the lone route fight between intro rival and City 1) is locked to an *untagged* Basic Trainer class — Youngster, Bug Catcher, Lass, Hiker, Fisherman, Hex Maniac, Black Belt, Bird Keeper, Dragon Tamer, or one of the 2-type thematic fillers — so the first non-rival fight is never a villain / cursed / multitype variant.
 
 The `hardcore` value is removed entirely. Existing saves on `hardcore` migrate to `normal`.
 
