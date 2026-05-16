@@ -26875,18 +26875,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // EV Trainer preset application. Both surface in the existing tutor screens as
         // alt buttons when sm.inventory.rareCandy / sm.inventory.vitamin > 0.
         const GYM_VICTORY_REWARDS = {
-            'Gym Leader 1': { pokeBall:3, gold:500,
-                msg:'"You earned this." +3 Poké Balls and a 500G purse from the gym council.' },
-            'Gym Leader 2': { rareCandy:1, gold:1000,
-                msg:'A glittering Rare Candy. "Save it for when one of yours is ready to evolve." +1 Rare Candy, +1,000G.' },
+            'Gym Leader 1': { pokeBall:3, vitamin:1, gold:500,
+                msg:'"You earned this." +3 Poké Balls, +1 Vitamin Pack, and a 500G purse from the gym council.' },
+            'Gym Leader 2': { rareCandy:1, vitamin:1, gold:1000,
+                msg:'A glittering Rare Candy and a Vitamin Pack. "Save them for when one of yours is ready." +1 Rare Candy, +1 Vitamin Pack, +1,000G.' },
             'Gym Leader 3': { greatBall:2, vitamin:1,
                 msg:'+2 Great Balls and a Vitamin Pack — gym sponsors look after trainers on the road.' },
-            'Gym Leader 4': { ultraBall:1, rareCandy:1,
-                msg:'The Gym Leader nods. "Take this Ultra Ball and a Rare Candy. They go far together." +1 Ultra Ball, +1 Rare Candy.' },
+            'Gym Leader 4': { ultraBall:1, rareCandy:1, vitamin:1,
+                msg:'The Gym Leader nods. "Take these — they go far together." +1 Ultra Ball, +1 Rare Candy, +1 Vitamin Pack.' },
             'Gym Leader 5': { greatBall:2, vitamin:1, gold:1000,
                 msg:'+2 Great Balls, +1 Vitamin Pack, and a 1,000G honorarium from the gym apothecary.' },
-            'Gym Leader 6': { ultraBall:2, rareCandy:1, gold:1500,
-                msg:'+2 Ultra Balls, +1 Rare Candy, and a 1,500G stipend.' },
+            'Gym Leader 6': { ultraBall:2, rareCandy:1, vitamin:1, gold:1500,
+                msg:'+2 Ultra Balls, +1 Rare Candy, +1 Vitamin Pack, and a 1,500G stipend.' },
             'Gym Leader 7': { ultraBall:1, rareCandy:1, vitamin:1,
                 msg:'A Rare Candy and a Vitamin Pack. The Leader winks: "You\'ll need both." +1 Ultra Ball, +1 Rare Candy, +1 Vitamin.' },
             'Gym Leader 8': { ultraBall:3, vitamin:2,
@@ -27497,6 +27497,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (isGymBadge) {
                     if (!sm.gymCleared) sm.gymCleared = {};
                     sm.gymCleared[cityIndexFromEventIndex(sm.eventIndex)] = true;
+                }
+                // Mid-game route find — one Vitamin Pack on the first Basic/Elite
+                // Trainer cleared after the 4th badge, before Gym 5. Surfaces as a
+                // "found on the route" pickup so the curve has a beat between gym
+                // gifts, not just at gym victories.
+                if ((sm.badges | 0) === 4 && !sm.staticDrops.vitaminRouteMidgame && /^(Basic Trainer|Elite Trainer)$/.test(en)) {
+                    _storyGrantBundle({ vitamin: 1 });
+                    sm.staticDrops.vitaminRouteMidgame = true;
+                    try { window.showGameAlert && window.showGameAlert('💊 A traveler dropped a Vitamin Pack in the tall grass. +1 Vitamin Pack.'); } catch (e) {}
                 }
                 // Roaming sub-legendary trigger — queues a one-shot encounter on the
                 // next route after Gym 5 / Gym 7 victories (first clear only).
