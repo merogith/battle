@@ -26088,6 +26088,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'Buck: "Pick a preset or build your own. Either works."',
                 'Buck: "A trained Pokémon outlasts a strong one. Every time."',
                 'Buck: "Take it slow. The right spread wins more battles than raw power."',
+                'Buck: "Training sticks for life. PC, party, evolutions — it follows the mon. Release or sell, and it\'s gone."',
             ],
             colress: [
                 'Colress: "Welcome. I can awaken a Pokémon\'s battle form."',
@@ -27813,6 +27814,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _pcEnsureBoxArray() {
             if (!Array.isArray(sm.pcBox)) sm.pcBox = [];
         }
+        function _slotHasTrainedEVs(slot) {
+            const evs = slot && slot.build && slot.build.evs;
+            if (!evs) return false;
+            return ((evs.hp|0)+(evs.atk|0)+(evs.def|0)+(evs.spa|0)+(evs.spd|0)+(evs.spe|0)) > 0;
+        }
 
         function enterPokemonCenter() {
             _markFacilitySeen('center');
@@ -27936,7 +27942,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let html = '';
             html += `<div style="padding:10px;margin-bottom:12px;background:linear-gradient(180deg,rgba(40,12,12,0.7) 0%,rgba(20,4,4,0.7) 100%);border:1px solid #5a1818;color:#bcaaa4;font-size:11px;line-height:1.5;">
                 <strong style="color:#ff5252;">The Underground.</strong>
-                Sell Pokémon for gold. Higher-grade Pokémon sell for more. Sales are permanent.
+                Sell Pokémon for gold. Higher-grade Pokémon sell for more. Sales are permanent — any EV training goes with them.
             </div>`;
             html += `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;font-size:10px;">`;
             for (const g of [1, 2, 3, 4]) {
@@ -28521,7 +28527,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const found = _pcFindSlotById(monId);
             if (!found || found.where !== 'pc') return;
             const name = (found.slot && found.slot.name) || 'this Pokémon';
-            const ok = window.confirm('Release ' + name + '? This cannot be undone.');
+            const evNote = _slotHasTrainedEVs(found.slot) ? ' Its EV training will be lost too.' : '';
+            const ok = window.confirm('Release ' + name + '? This cannot be undone.' + evNote);
             if (!ok) return;
             sm.pcBox.splice(found.index, 1);
             save();
@@ -28536,7 +28543,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (found.where === 'team' && _pcTeamHasOnlyOneMon()) return;
             const price = _pcSellPriceForSlot(slot);
             const name = slot.name || 'this Pokémon';
-            const ok = window.confirm('Sell ' + name + ' for ' + price.toLocaleString() + 'G? This cannot be undone.');
+            const evNote = _slotHasTrainedEVs(slot) ? ' Its EV training will be lost too.' : '';
+            const ok = window.confirm('Sell ' + name + ' for ' + price.toLocaleString() + 'G? This cannot be undone.' + evNote);
             if (!ok) return;
             if (found.where === 'team') sm.team.splice(found.index, 1);
             else sm.pcBox.splice(found.index, 1);
@@ -30452,7 +30460,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // from gym victories and Pokédex milestones.
             const _voucherItems = [
                 { id:'rareCandy', name:'🍬 Rare Candy', desc:'Use at the Stone Sage to evolve any party Pokémon for free. Earned from gym leaders + dex milestones.' },
-                { id:'vitamin',   name:'💊 Vitamin Pack', desc:'Use at the EV Trainer to apply any preset for free. Earned from gym leaders + dex milestones.' }
+                { id:'vitamin',   name:'💊 Vitamin Pack', desc:'Use at the EV Trainer to apply any preset for free. Earned from gym leaders + dex milestones. EV training stays with the Pokémon forever — even in the PC. Lost only if you release or sell them.' }
             ];
             _voucherItems.forEach(item => {
                 const qty = (sm.inventory && sm.inventory[item.id]) | 0;
