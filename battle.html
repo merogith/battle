@@ -1109,34 +1109,44 @@
         .story-action-btn.primary { border-color:#e57373; color:#ffb4b4; background:linear-gradient(180deg,#2a1218 0%,#1a0808 100%); }
         .story-action-btn.primary:hover { border-color:#ff8a8a; background:linear-gradient(180deg,#321620 0%,#220a0a 100%); box-shadow:inset -2px -2px 0 #2a0e14,inset 2px 2px 0 #4a1a22, 0 0 10px rgba(229,115,115,0.18); }
         /* Non-primary variants: identity via a left accent stripe + tinted label,
-           but they share a calm neutral surface so the eye is not pulled in 7 directions. */
-        .story-action-btn.shop   { color:#a3d3a5; }
-        .story-action-btn.shop::before   { background:#4caf50; }
-        .story-action-btn.shop:hover     { border-color:#7fbb7f; }
-        .story-action-btn.link   { color:#9ed7e5; }
-        .story-action-btn.link::before   { background:#00bcd4; }
-        .story-action-btn.link:hover     { border-color:#7fb6c2; }
-        .story-action-btn.dept   { color:#cbb0d6; }
-        .story-action-btn.dept::before   { background:#9c27b0; }
-        .story-action-btn.dept:hover     { border-color:#a585b0; }
-        .story-action-btn.training { color:#e2c79a; }
-        .story-action-btn.training::before { background:#ffb74d; }
-        .story-action-btn.training:hover   { border-color:#c79e6a; }
-        .story-action-btn.center { color:#a8cfe3; }
-        .story-action-btn.center::before { background:#81d4fa; }
-        .story-action-btn.center:hover   { border-color:#7fa7be; }
-        .story-action-btn.party  { color:#9bcfd6; }
-        .story-action-btn.party::before  { background:#4dd0e1; }
-        .story-action-btn.party:hover    { border-color:#7eaeb6; }
-        .story-action-btn.casino { color:#dba1c4; }
-        .story-action-btn.casino::before { background:#ec407a; }
-        .story-action-btn.casino:hover   { border-color:#b078a0; }
+           but they share a calm neutral surface so the eye is not pulled in 7 directions.
+           Scope the colour rules + stripe to #story-action-buttons so the casino reuses
+           .story-action-btn for its bet chips / Heads-Tails buttons without picking up
+           the city-list stripe and full-width tint. */
+        #story-action-buttons .story-action-btn.shop   { color:#a3d3a5; }
+        #story-action-buttons .story-action-btn.shop::before   { background:#4caf50; }
+        #story-action-buttons .story-action-btn.shop:hover     { border-color:#7fbb7f; }
+        #story-action-buttons .story-action-btn.link   { color:#9ed7e5; }
+        #story-action-buttons .story-action-btn.link::before   { background:#00bcd4; }
+        #story-action-buttons .story-action-btn.link:hover     { border-color:#7fb6c2; }
+        #story-action-buttons .story-action-btn.dept   { color:#cbb0d6; }
+        #story-action-buttons .story-action-btn.dept::before   { background:#9c27b0; }
+        #story-action-buttons .story-action-btn.dept:hover     { border-color:#a585b0; }
+        #story-action-buttons .story-action-btn.training { color:#e2c79a; }
+        #story-action-buttons .story-action-btn.training::before { background:#ffb74d; }
+        #story-action-buttons .story-action-btn.training:hover   { border-color:#c79e6a; }
+        #story-action-buttons .story-action-btn.center { color:#a8cfe3; }
+        #story-action-buttons .story-action-btn.center::before { background:#81d4fa; }
+        #story-action-buttons .story-action-btn.center:hover   { border-color:#7fa7be; }
+        #story-action-buttons .story-action-btn.party  { color:#9bcfd6; }
+        #story-action-buttons .story-action-btn.party::before  { background:#4dd0e1; }
+        #story-action-buttons .story-action-btn.party:hover    { border-color:#7eaeb6; }
+        #story-action-buttons .story-action-btn.casino { color:#dba1c4; }
+        #story-action-buttons .story-action-btn.casino::before { background:#ec407a; }
+        #story-action-buttons .story-action-btn.casino:hover   { border-color:#b078a0; }
         /* The left accent stripe — section identity at a glance, without flooding the button with color. */
-        .story-action-btn:not(.primary)::before {
+        #story-action-buttons .story-action-btn:not(.primary)::before {
             content: '';
             position: absolute; left: -2px; top: -2px; bottom: -2px; width: 4px;
             pointer-events: none;
         }
+        /* Casino bet chips + Heads/Tails reuse .story-action-btn.casino outside the city
+           action list. Restore a soft pink identity here (no stripe, no full-width). */
+        #screen-story-casino .story-action-btn.casino {
+            color: #dba1c4; border-color: #6b3a5a;
+            width: auto;
+        }
+        #screen-story-casino .story-action-btn.casino:hover { border-color: #b078a0; color: #f3c0dd; }
         .story-action-ico {
             width: 24px;
             height: 24px;
@@ -1215,8 +1225,9 @@
         /* "New" — calm gold pill, no flashing. Tells the player "you haven't tried this" without screaming. */
         .story-action-badge.new { color: #1a1408; border-color: #c4942a; background: linear-gradient(180deg,#ffd76a 0%,#e0a932 100%); font-weight: bold; }
         /* "Visited" — small checkmark badge, gently de-emphasized.
-           Player can scan "what's left to try" at a glance, without losing the option. */
-        .story-action-badge.visited { color: #6e8a6e; border-color: #3a4e3a; background: rgba(110,138,110,0.08); }
+           Player can scan "what's left to try" at a glance, without losing the option.
+           Muted slate so it doesn't read as "Free" (mint green). */
+        .story-action-badge.visited { color: #8a92a6; border-color: #4a5060; background: rgba(138,146,166,0.08); }
         .story-action-btn--visited { opacity: 0.78; }
         .story-action-btn--visited:hover { opacity: 1; }
         .story-action-btn--visited .story-action-ico { filter: saturate(0.65) brightness(0.92); }
