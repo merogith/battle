@@ -26057,6 +26057,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (_vtN > 0 && actions.includes('EV Trainer') && sm.team.length) {
                     tips.push({ iconPath: 'sprites/pokesprite/items/protein.png', label: `${_vtN} Vitamin Pack${_vtN===1?'':'s'} — free EV preset`, click: 'window.StoryMode.enterEVTrainer()' });
+                } else if (_vtN > 0 && !actions.includes('EV Trainer') && sm.team.length) {
+                    // No EV Trainer in this city — quiet reminder so the player remembers
+                    // the unspent voucher when planning their route. Opens the bag so they
+                    // can re-read the tooltip and decide.
+                    tips.push({ iconPath: 'sprites/pokesprite/items/protein.png', label: `${_vtN} Vitamin Pack${_vtN===1?'':'s'} saved — use at next EV Trainer`, click: 'window.StoryMode.openCityBag()' });
                 }
                 tipsEl.innerHTML = tips.slice(0, 4).map(t => {
                     const _icoHtml = t.iconPath
@@ -26342,6 +26347,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'Buck: "Pick a preset or build your own. Either works."',
                 'Buck: "A trained Pokémon outlasts a strong one. Every time."',
                 'Buck: "Take it slow. The right spread wins more battles than raw power."',
+                'Buck: "Training sticks for life. PC, party, evolutions — it follows the mon. Release or sell, and it\'s gone."',
             ],
             colress: [
                 'Colress: "Welcome. I can awaken a Pokémon\'s battle form."',
@@ -27134,18 +27140,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // EV Trainer preset application. Both surface in the existing tutor screens as
         // alt buttons when sm.inventory.rareCandy / sm.inventory.vitamin > 0.
         const GYM_VICTORY_REWARDS = {
-            'Gym Leader 1': { pokeBall:3, gold:500,
-                msg:'"You earned this." +3 Poké Balls and a 500G purse from the gym council.' },
-            'Gym Leader 2': { rareCandy:1, gold:1000,
-                msg:'A glittering Rare Candy. "Save it for when one of yours is ready to evolve." +1 Rare Candy, +1,000G.' },
+            'Gym Leader 1': { pokeBall:3, vitamin:1, gold:500,
+                msg:'"You earned this." +3 Poké Balls, +1 Vitamin Pack, and a 500G purse from the gym council.' },
+            'Gym Leader 2': { rareCandy:1, vitamin:1, gold:1000,
+                msg:'A glittering Rare Candy and a Vitamin Pack. "Save them for when one of yours is ready." +1 Rare Candy, +1 Vitamin Pack, +1,000G.' },
             'Gym Leader 3': { greatBall:2, vitamin:1,
                 msg:'+2 Great Balls and a Vitamin Pack — gym sponsors look after trainers on the road.' },
-            'Gym Leader 4': { ultraBall:1, rareCandy:1,
-                msg:'The Gym Leader nods. "Take this Ultra Ball and a Rare Candy. They go far together." +1 Ultra Ball, +1 Rare Candy.' },
+            'Gym Leader 4': { ultraBall:1, rareCandy:1, vitamin:1,
+                msg:'The Gym Leader nods. "Take these — they go far together." +1 Ultra Ball, +1 Rare Candy, +1 Vitamin Pack.' },
             'Gym Leader 5': { greatBall:2, vitamin:1, gold:1000,
                 msg:'+2 Great Balls, +1 Vitamin Pack, and a 1,000G honorarium from the gym apothecary.' },
-            'Gym Leader 6': { ultraBall:2, rareCandy:1, gold:1500,
-                msg:'+2 Ultra Balls, +1 Rare Candy, and a 1,500G stipend.' },
+            'Gym Leader 6': { ultraBall:2, rareCandy:1, vitamin:1, gold:1500,
+                msg:'+2 Ultra Balls, +1 Rare Candy, +1 Vitamin Pack, and a 1,500G stipend.' },
             'Gym Leader 7': { ultraBall:1, rareCandy:1, vitamin:1,
                 msg:'A Rare Candy and a Vitamin Pack. The Leader winks: "You\'ll need both." +1 Ultra Ball, +1 Rare Candy, +1 Vitamin.' },
             'Gym Leader 8': { ultraBall:3, vitamin:2,
@@ -27757,6 +27763,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!sm.gymCleared) sm.gymCleared = {};
                     sm.gymCleared[cityIndexFromEventIndex(sm.eventIndex)] = true;
                 }
+                // Mid-game route find — one Vitamin Pack on the first Basic/Elite
+                // Trainer cleared after the 4th badge, before Gym 5. Surfaces as a
+                // "found on the route" pickup so the curve has a beat between gym
+                // gifts, not just at gym victories.
+                if ((sm.badges | 0) === 4 && !sm.staticDrops.vitaminRouteMidgame && /^(Basic Trainer|Elite Trainer)$/.test(en)) {
+                    _storyGrantBundle({ vitamin: 1 });
+                    sm.staticDrops.vitaminRouteMidgame = true;
+                    try { window.showGameAlert && window.showGameAlert('💊 A traveler dropped a Vitamin Pack in the tall grass. +1 Vitamin Pack.'); } catch (e) {}
+                }
                 // Roaming sub-legendary trigger — queues a one-shot encounter on the
                 // next route after Gym 5 / Gym 7 victories (first clear only).
                 try { _storyQueueRoamingFromVictory(en); } catch (e) {}
@@ -28088,6 +28103,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _pcEnsureBoxArray() {
             if (!Array.isArray(sm.pcBox)) sm.pcBox = [];
         }
+        function _slotHasTrainedEVs(slot) {
+            const evs = slot && slot.build && slot.build.evs;
+            if (!evs) return false;
+            return ((evs.hp|0)+(evs.atk|0)+(evs.def|0)+(evs.spa|0)+(evs.spd|0)+(evs.spe|0)) > 0;
+        }
 
         function enterPokemonCenter() {
             _markFacilitySeen('center');
@@ -28220,7 +28240,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let html = '';
             html += `<div style="padding:10px;margin-bottom:12px;background:linear-gradient(180deg,rgba(40,12,12,0.7) 0%,rgba(20,4,4,0.7) 100%);border:1px solid #5a1818;color:#bcaaa4;font-size:11px;line-height:1.5;">
                 <strong style="color:#ff5252;">The Underground.</strong>
-                Sales are final — sold Pokémon are gone for good. Higher-grade Pokémon fetch more gold. The broker doesn't ask why; you don't either.
+                Sales are final — sold Pokémon are gone for good, with any EV training they carry. Higher-grade Pokémon fetch more gold. The broker doesn't ask why; you don't either.
             </div>`;
             html += `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;font-size:10px;">`;
             for (const g of [1, 2, 3, 4]) {
@@ -28810,7 +28830,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const found = _pcFindSlotById(monId);
             if (!found || found.where !== 'pc') return;
             const name = (found.slot && found.slot.name) || 'this Pokémon';
-            const ok = window.confirm('Release ' + name + '? This cannot be undone.');
+            const evNote = _slotHasTrainedEVs(found.slot) ? ' Its EV training will be lost too.' : '';
+            const ok = window.confirm('Release ' + name + '? This cannot be undone.' + evNote);
             if (!ok) return;
             sm.pcBox.splice(found.index, 1);
             save();
@@ -28825,7 +28846,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (found.where === 'team' && _pcTeamHasOnlyOneMon()) return;
             const price = _pcSellPriceForSlot(slot);
             const name = slot.name || 'this Pokémon';
-            const ok = window.confirm('Sell ' + name + ' for ' + price.toLocaleString() + 'G? This cannot be undone.');
+            const evNote = _slotHasTrainedEVs(slot) ? ' Its EV training will be lost too.' : '';
+            const ok = window.confirm('Sell ' + name + ' for ' + price.toLocaleString() + 'G? This cannot be undone.' + evNote);
             if (!ok) return;
             if (found.where === 'team') sm.team.splice(found.index, 1);
             else sm.pcBox.splice(found.index, 1);
@@ -30759,7 +30781,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // from gym victories and Pokédex milestones.
             const _voucherItems = [
                 { id:'rareCandy', name:'<img src="sprites/pokesprite/items/rare-candy.png" alt="" width="14" height="14" decoding="async" style="image-rendering:pixelated;vertical-align:-2px;margin-right:4px;">Rare Candy', desc:'Use at the Stone Sage to evolve any party Pokémon for free. Earned from gym leaders + dex milestones.' },
-                { id:'vitamin',   name:'<img src="sprites/pokesprite/items/protein.png" alt="" width="14" height="14" decoding="async" style="image-rendering:pixelated;vertical-align:-2px;margin-right:4px;">Vitamin Pack', desc:'Use at the EV Trainer to apply any preset for free. Earned from gym leaders + dex milestones.' }
+                { id:'vitamin',   name:'<img src="sprites/pokesprite/items/protein.png" alt="" width="14" height="14" decoding="async" style="image-rendering:pixelated;vertical-align:-2px;margin-right:4px;">Vitamin Pack', desc:'Permanently trains stat boosts (e.g. +252 Atk / +252 Speed) into one Pokémon for free at the EV Trainer — same effect as paying 5,000G. Earned from gym leaders + Pokédex milestones. Training stays with the mon through PC, evolution, the works. Only lost on release or sale.' }
             ];
             _voucherItems.forEach(item => {
                 const qty = (sm.inventory && sm.inventory[item.id]) | 0;
@@ -32644,18 +32666,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { _storyShowFacilityQuote('screen-story-evtrainer', 'evTrainer'); } catch (e) {}
         }
 
+        function _evTrainerHelpBannerHtml() {
+            const vN = (sm.inventory && sm.inventory.vitamin) | 0;
+            const vitaLine = vN > 0
+                ? `<span style="color:#f8bbd0;font-weight:bold;">💊 ${vN} Vitamin Pack${vN===1?'':'s'} ready</span> — tap the pink button on any preset to apply it free.`
+                : `<span style="color:#9aa3b0;">No Vitamin Packs yet.</span> Each preset costs ${EVTRAINER_COST.toLocaleString()}G; Vitamin Packs (from gym victories &amp; Pokédex milestones) apply one for free.`;
+            return `<div style="padding:10px 12px;background:linear-gradient(180deg,rgba(28,40,28,0.7) 0%,rgba(14,22,14,0.7) 100%);border:1px solid #3a5a3a;color:#cfd7c8;font-size:11px;line-height:1.55;">
+                <div style="font-weight:bold;color:#9ccc65;margin-bottom:4px;">🏋️ What this does</div>
+                <div>Effort Values (EVs) are <strong>permanent stat boosts</strong> trained into one Pokémon. Pick a preset (e.g. <em>Physical Sweeper</em> = +Atk/+Spe) to raise that mon's stats for the rest of the run. Cap: 252 per stat, 510 total. Training travels with the Pokémon through party, PC, and evolution — only lost on release or sale.</div>
+                <div style="margin-top:6px;">${vitaLine}</div>
+            </div>`;
+        }
+
         function renderEVTrainerTeam() {
             const el = document.getElementById('story-evtrainer-team');
             const goldEl = document.getElementById('story-evtrainer-gold');
             if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             if (!el) return;
             if (!sm.team || !sm.team.length) {
-                el.innerHTML = '<div style="color:#555;font-size:12px;">No Pokémon in your party.</div>';
+                el.innerHTML = _evTrainerHelpBannerHtml() + '<div style="color:#555;font-size:12px;">No Pokémon in your party.</div>';
                 return;
             }
             // Reset cache then render
             for (const k in _evTrainerMetaCache) delete _evTrainerMetaCache[k];
-            el.innerHTML = sm.team.map((t, idx) => _renderEVTrainerMonCard(t, idx)).join('');
+            el.innerHTML = _evTrainerHelpBannerHtml() + sm.team.map((t, idx) => _renderEVTrainerMonCard(t, idx)).join('');
         }
 
         function _evTrainerRenderPresetButton(idx, p, currentEvs, cantAfford) {
@@ -32670,7 +32704,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const safeId = String(p.id).replace(/'/g, "\\'");
             const vitaCount = (sm.inventory && sm.inventory.vitamin) | 0;
             const vitaBtn = hasVitamin
-                ? `<button type="button" class="story-tutor-btn" ${vitaDisabled ? 'disabled' : ''} onclick="window.StoryMode.evTrainerApplyPresetWithVitamin(${idx},'${safeId}')" title="Use 1 Vitamin Pack (you have ${vitaCount}) — free preset, saves ${EVTRAINER_COST.toLocaleString()}G" style="margin-left:6px;color:#f8bbd0;border-color:#f8bbd0;"><img src="sprites/pokesprite/items/protein.png" alt="" width="14" height="14" decoding="async" style="image-rendering:pixelated;vertical-align:-2px;margin-right:3px;">Vitamin <span style="font-size:9px;color:#aaa;">(${vitaCount})</span></button>`
+                ? `<button type="button" class="story-tutor-btn" ${vitaDisabled ? 'disabled' : ''} onclick="window.StoryMode.evTrainerApplyPresetWithVitamin(${idx},'${safeId}')" title="Use 1 Vitamin Pack (you have ${vitaCount}) — free preset, saves ${EVTRAINER_COST.toLocaleString()}G" style="margin-left:6px;color:#f8bbd0;border-color:#f8bbd0;"><img src="sprites/pokesprite/items/protein.png" alt="" width="14" height="14" decoding="async" style="image-rendering:pixelated;vertical-align:-2px;margin-right:3px;">Use Vitamin <span style="font-size:9px;color:#aaa;">(${vitaCount} left)</span></button>`
                 : '';
             return `<div class="story-tutor-choice"${activeFlag}><div class="story-tutor-choice-actions">`
                 + `<button type="button" class="story-tutor-btn" ${dis} onclick="window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')">`
