@@ -23785,7 +23785,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Cross-run meta. Holds permanent achievements that survive abandon/clear.
         // Today: completedRuns + lastClearSeed. Future: Pokédex carryover, totals, marks.
         const SAVE_KEY_META = 'pbs_story_meta';
-        const SAVE_VER = 16;
+        const SAVE_VER = 17;
         function readStoryMeta() {
             try {
                 const raw = localStorage.getItem(SAVE_KEY_META);
@@ -24006,6 +24006,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.catchTutorialDone = (sm.eventIndex | 0) > 1;
             }
         }
+        /** v17: Fix stuck Pokémon — evolution/rebuild/swap could strip the slot id,
+         *  making the mon impossible to sell, deposit, or release.
+         *  Backfill any missing ids in both party and PC box. */
+        function migrateStoryPreV17() {
+            for (const arr of [sm.team, sm.pcBox]) {
+                if (!Array.isArray(arr)) continue;
+                for (const slot of arr) {
+                    if (slot && typeof slot === 'object' && !slot.id) {
+                        slot.id = 'm_' + Math.random().toString(36).slice(2, 10);
+                    }
+                }
+            }
+        }
         /** v9: intro Rival inserted after City0, so timeline positions after City0 move forward one slot. */
         function migrateStoryTimelineIndicesFromPreV9() {
             const maxI = Math.max(0, STORY_EVENTS_RAW.length - 1);
@@ -24223,6 +24236,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (_loadedVer < 16) {
                     try { migrateStoryPreV16(); } catch (e) { console.warn('[Story] v16 catch tutorial migrate', e); }
+                }
+                if (_loadedVer < 17) {
+                    try { migrateStoryPreV17(); } catch (e) { console.warn('[Story] v17 stuck-mon id backfill migrate', e); }
                 }
                 const _cap = Math.max(0, STORY_EVENTS_RAW.length - 1);
                 if (sm.eventIndex < 0 || sm.eventIndex > _cap) {
@@ -26858,7 +26874,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             const cityIdx = getCityIndex(ev);
             const replaced = sm.team[slotIdx].name;
-            sm.team[slotIdx] = { name: ch.name, build: ch.build };
+            sm.team[slotIdx] = { name: ch.name, build: ch.build, id: 'm_'+Math.random().toString(36).slice(2,10) };
             if (!sm.profUsed) sm.profUsed = {};
             sm.profUsed[cityIdx] = true;
             _pendingProfChoices = null; _profSelectedIdx = null; _profMysteryMode = false; _pendingProfCityIdx = null; _pendingProfWasMystery = false; _profLegendaryMysteryMode = false;
@@ -29889,7 +29905,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     delete window._pbsStoryUnlockedGimmicks;
                 }
                 sm.gold -= cost;
-                sm.team[idx] = { name:newName, build:newBuild };
+                sm.team[idx] = { name:newName, build:newBuild, id:'m_'+Math.random().toString(36).slice(2,10) };
                 save();
                 renderLinkTeam();
                 renderTeamPanel();
@@ -29925,7 +29941,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     delete window._pbsStoryUnlockedGimmicks;
                 }
                 sm.gold -= cost;
-                sm.team[idx] = { name:newName, build:newBuild };
+                sm.team[idx] = { name:newName, build:newBuild, id:'m_'+Math.random().toString(36).slice(2,10) };
                 save();
                 renderLinkTeam();
                 renderTeamPanel();
@@ -30199,7 +30215,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
-            sm.team[idx] = { name: evoName, build: evoBuild };
+            sm.team[idx] = { ...mon, name: evoName, build: evoBuild };
             return true;
         }
 
@@ -30298,7 +30314,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     delete window._pbsStoryUnlockedGimmicks;
                 }
                 sm.gold -= cost;
-                sm.team[idx] = { name:mon.name, build:newBuild };
+                sm.team[idx] = { ...mon, build:newBuild };
                 save();
                 renderLinkTeam();
             } finally {
