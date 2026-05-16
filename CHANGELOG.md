@@ -3,6 +3,56 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Vitamin / EV-training balance pass 2026-05-16 (`claude/balance-vitamins-stats-PAaPn`)
+
+### Added — Vitamin distribution fills the gym dead zones
+
+- Gym Leaders 1, 2, 4, and 6 now each drop **+1 Vitamin Pack** as part
+  of their reward bundle. Previously vitamins only began at Gym 3 and
+  the curve had four gym victories with zero EV-investment access.
+- **Mid-game route find** — first Basic/Elite Trainer cleared while
+  holding exactly 4 badges drops 1 Vitamin Pack with a "found in the
+  tall grass" flavor message. Gated by `sm.staticDrops.vitaminRouteMidgame`
+  so it can only fire once per save.
+- Per-run vitamin total rises from 9 guaranteed (gym/league only) to 14;
+  up to 16 with a full Pokédex.
+
+### Changed — UI surfaces the EV-training permanence rule
+
+EVs were already permanent and traveled with the Pokémon through PC
+deposit/withdraw, evolution, and tutor work — but nothing in the UI
+told the player that. Players could release a fully trained Pokémon
+without realizing the investment went with it.
+
+- **Vitamin Pack tooltip** in the bag now explicitly states the
+  investment stays with the mon forever, only lost on release or sale.
+- **Buck quote pool** at the EV Trainer gains a permanence line.
+- **PC Release confirm** appends "Its EV training will be lost too."
+  when the slot has any non-zero EVs.
+- **PC Underground Sell confirm** appends the same EV note when
+  applicable, and the tab intro banner mentions the same.
+
+### Reason
+
+The previous vitamin curve front-loaded the "leveling up" feel into the
+middle and end of a run — early-game Pokémon could not be EV-trained
+without a 5,000G/preset gold sink, so most starters fought their first
+three gyms untrained. Filling Gyms 1/2/4/6 with one Vitamin Pack each
+plus a single mid-game route find restores a steady "every gym = a real
+power bump" cadence without changing caps, foe scaling, or the swap
+mechanic. 252/510 caps remain the guardrail against runaway investment.
+
+### Not changed (deliberate)
+
+- Per-stat cap: 252. Total cap: 510. Untouched.
+- EVs persist across party/PC swaps. The "swap loses investment" rule
+  asked about during planning was **never implemented in code** — only
+  release/sell loses the investment, and the UI now makes that explicit
+  rather than introducing a new commitment penalty mid-game.
+- Foe stat scaling (`applyStoryLeagueFoeStatBoost`, difficulty mult)
+  unchanged. The +14 vitamin curve was tuned to fit inside the existing
+  Champion +30% HP / +15% bulk league boost.
+
 ## Unreleased — Simplify game modes (default = Classic, all mechanics on) 2026-05-16 (`claude/simplify-game-modes-vHlMS`)
 
 ### Changed — Battle menu defaults & hidden advanced toggles
