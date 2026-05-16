@@ -24837,8 +24837,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const maxGen = Math.max(...enabledGens);
             const _diffEl = document.getElementById('story-difficulty');
             const _storyDiff = (_diffEl && _diffEl.value) ? _diffEl.value : 'normal';
-            // 2000 base + bonus; easy/normal starting totals rounded to 5000G / 3500G.
-            const _startingGoldBonus = _storyDiff === 'veryeasy' ? 19000 : _storyDiff === 'easy' ? 4000 : _storyDiff === 'normal' ? 2500 : 0;
+            // 2000 base + bonus; tier totals: VeryEasy 21K / Easy 6K / Normal 4.5K / Hard 3K / Challenge 3.5K.
+            // Hard and Challenge previously got no starting bonus despite the tougher stat curve,
+            // which paired badly with the pre-Gym-1 ball cost — first heal or two PokéBalls ate
+            // the entire wallet. Small bumps keep the relative difficulty ordering intact.
+            const _startingGoldBonus = _storyDiff === 'veryeasy' ? 19000
+                : _storyDiff === 'easy' ? 4000
+                : _storyDiff === 'normal' ? 2500
+                : _storyDiff === 'hard' ? 1000
+                : _storyDiff === 'challenge' ? 1500
+                : 0;
             sm = {
                 active:true, eventIndex:0, badges:0, gold:2000 + _startingGoldBonus, team:[],
                 inventory: {
