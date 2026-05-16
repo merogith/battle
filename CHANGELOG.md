@@ -35,10 +35,10 @@ brutal:
   just above Poké. A G3 with a fresh Safari Ball is ~30% instead of
   ~28%.
 - **Rock catch multiplier `1.45× → 1.65×`.** Stacking rocks is now
-  genuinely powerful: a G3 after 2 rocks goes from ~58% to ~81%, and a
-  G3 after 3 rocks reaches the 100% cap. The trade-off is steep — 3
-  rocks means three per-turn flee rolls — but if you get there, the
-  throw is decided.
+  genuinely powerful: a G3 after 2 rocks goes from ~58% to ~81% (and
+  hits the catch-mult ×4 cap at ~88% with a third rock — G4 caps at
+  100%). The trade-off is steep — 3 rocks means three per-turn flee
+  rolls — but if you get there, the throw is essentially decided.
 - Bait catch multiplier (`0.70×`) and flee multipliers
   (`0.55×` bait / `1.70×` rock) are unchanged — the strategic axes
   stay the same; only the levers got sharper.
