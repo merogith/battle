@@ -23311,7 +23311,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Cross-run meta. Holds permanent achievements that survive abandon/clear.
         // Today: completedRuns + lastClearSeed. Future: Pokédex carryover, totals, marks.
         const SAVE_KEY_META = 'pbs_story_meta';
-        const SAVE_VER = 15;
+        const SAVE_VER = 16;
         function readStoryMeta() {
             try {
                 const raw = localStorage.getItem(SAVE_KEY_META);
@@ -23520,6 +23520,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         slot.id = 'm_' + Math.random().toString(36).slice(2, 10);
                     }
                 }
+            }
+        }
+        /** v16: post-rival catch tutorial introduced. Existing saves past the
+         *  intro rival shouldn't have the tutorial event fired at them mid-run,
+         *  so mark it done if eventIndex has already advanced beyond row 1
+         *  (the intro rival slot). New saves leave the flag undefined → falsy
+         *  → tutorial fires after they win the intro rival. */
+        function migrateStoryPreV16() {
+            if (typeof sm.catchTutorialDone !== 'boolean') {
+                sm.catchTutorialDone = (sm.eventIndex | 0) > 1;
             }
         }
         /** v9: intro Rival inserted after City0, so timeline positions after City0 move forward one slot. */
@@ -23736,6 +23746,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (_loadedVer < 15) {
                     try { migrateStoryPreV15(); } catch (e) { console.warn('[Story] v15 catch/PC schema migrate', e); }
+                }
+                if (_loadedVer < 16) {
+                    try { migrateStoryPreV16(); } catch (e) { console.warn('[Story] v16 catch tutorial migrate', e); }
                 }
                 const _cap = Math.max(0, STORY_EVENTS_RAW.length - 1);
                 if (sm.eventIndex < 0 || sm.eventIndex > _cap) {
@@ -25151,7 +25164,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const profUsedHere = !!(sm.profUsed && sm.profUsed[cityIdx]);
             const swapMode = hasProf && !hasTeamRoom && !profUsedHere;
             const legendMysteryGate = swapMode && _legendaryGateHere;
-            const mysteryMode = swapMode; // legacy alias used elsewhere in this function
             const _storyNextBatIdx = storyEffectiveNextBattleIndexFromHub();
             const _storyNextBat = _storyNextBatIdx >= 0 ? STORY_EVENTS_RAW[_storyNextBatIdx] : null;
             const _storyNextBatId = _storyNextBat ? (_storyNextBat[0] | 0) : -1;
@@ -26421,10 +26433,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _storyMaxPartySize() {
             return 6;
         }
-        /** Returns true when the player's *active* party is at the cap. */
-        function _storyPartyAtCap() {
-            return (sm.team || []).length >= 6;
-        }
         function _storyEnsureBalls() {
             if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
         }
@@ -26647,15 +26655,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // wild interrupt for this one slot (so the player isn't doing
                 // two catch screens back-to-back).
                 if (_shouldFireCatchTutorialBeforeBattle(_battleIdx)) {
-                    _markCatchTutorialDone();
-                    _markWildSeen(_battleIdx);
                     // Tutorial mon is always Grade 4 (drawn from STARTER_PARTNER_POOL
                     // which is curated to G4-tier early-route species), and catch is
                     // 100% on first throw, no flee. The player's first catching
                     // experience should be a guaranteed success — they learn the
                     // mechanic without the frustration of a missed throw.
+                    //
+                    // The tutorial-done flag is set inside `_catchHandleSuccess`
+                    // (when the catch actually lands), NOT here, so a mid-tutorial
+                    // reload doesn't lock the player out without their partner mon.
+                    // We do mark the wild-seen flag for this slot so the regular
+                    // wild route doesn't pile on top of the tutorial; that's
+                    // re-fired idempotently if the tutorial reopens.
                     const _partner = _pickStarterPartner(storySettingsGens());
                     if (_partner) {
+                        _markWildSeen(_battleIdx);
                         enterCatchEncounter(_partner, () => enterBattleEvent(ev, true), {
                             forcedCatchRate: 1.0,
                             forcedFleeRate: 0,
@@ -28436,6 +28450,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (bossMode) {
                 _bossArcEnsureState();
                 sm.bossArc.cleared = true;
+            }
+            // Catch tutorial: mark done only on actual catch success, so a
+            // mid-tutorial reload doesn't lock the once-per-save flag without
+            // the partner ever landing in the team.
+            if (_catchState && _catchState.tutorialMode) {
+                _markCatchTutorialDone();
             }
             try { save(); } catch (e) {}
             const successMsg = bossMode
