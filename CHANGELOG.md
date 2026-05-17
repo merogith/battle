@@ -81,15 +81,37 @@ keep their tournament-grade weight at the top.
   receive (Hardy nature, no item, partial EVs) and can weigh it
   against the curated species.
 
+### Merge-ready polish
+
+- **Acrobatics safety**: the downgrade now detects `Acrobatics` in the
+  moveset and forces `build.i = ''` at both T1 and T2 instead of
+  swapping in a flavor berry. Without this guard, an Acrobatics-Hawlucha
+  rolled at T1 / T2 would silently lose half its damage (110 → 55 BP).
+- **Training-tier badge on Professor pick cards**: a small chip next to
+  the species name reads `Untrained · Novice · Competent · Tournament`
+  in tier-specific colors (gray / green / blue / gold). Hover / tap
+  reveals a tooltip explaining the tier and what tutors can lift it to.
+  Skipped (gracefully renders empty) when `build.powerTier` is undefined
+  on legacy locked-foe-team saves.
+- **One-time onboarding tip** consolidated into `prof-overview-v2` —
+  one popup per save that covers Professor vs wild AND the new tier
+  system. Replaces the older `prof-vs-wild` tip; chained
+  `showGameAlert` calls would clobber each other (non-blocking) so a
+  single message is the only clean path.
+- **`window.StoryMode.debugBuildTiers()`** — console helper that
+  prints two `console.table` matrices (foe tier by event × badges, and
+  Professor tier by city × badges) so the curve can be audited live
+  without walking the whole story.
+
 ### What's not in this pass (Phase B)
 
 - Move-quality scaling (replace top-BP moves with level-up filler at
   T1) — held back to avoid learnability bugs.
-- Settings toggle to disable the tier curve — current default is
-  always-on; a toggle was deemed UI noise for the initial release.
-- Inspector badge on foe / Professor cards — `build.powerTier` is set
-  internally but no UI surfaces it yet. Visible signal is via the
-  nature / ability / item / EVs already shown on each card.
+- Settings toggle to disable the tier curve — default is always-on; a
+  toggle was deemed UI noise.
+- Tier badge on player team panel / in-battle foe inspect — would need
+  dynamic tier recomputation (tutors change EVs / nature / item, so a
+  stamped tier goes stale). Current badge is decision-point only.
 
 ## Unreleased — Simplify game modes (default = Classic, all mechanics on) 2026-05-16 (`claude/simplify-game-modes-vHlMS`)
 

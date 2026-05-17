@@ -24809,6 +24809,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
             return false;
         }
+        // Moves whose damage / effect requires the holder to be itemless. When a
+        // build at any tier has one of these, the downgrade strips the item to ''
+        // instead of swapping in a flavor berry — otherwise Acrobatics drops from
+        // 110 BP to 55 BP after the swap, silently nerfing the kept move.
+        const _ITEM_DEPENDENT_NO_ITEM_MOVES = new Set(['Acrobatics']);
+        function _storyBuildPrefersNoItem(build) {
+            if (!build || !Array.isArray(build.m)) return false;
+            for (const m of build.m) {
+                if (m && _ITEM_DEPENDENT_NO_ITEM_MOVES.has(m)) return true;
+            }
+            return false;
+        }
+        // Public-facing tier names used in tooltips / debug output. The badge UI
+        // and the one-time educational tip read from this table so labels stay
+        // consistent across the screens.
+        const STORY_BUILD_TIER_LABEL = ['', 'Untrained', 'Novice', 'Competent', 'Tournament'];
+        const STORY_BUILD_TIER_COLOR = ['', '#9e9e9e', '#66bb6a', '#29b6f6', '#ff8c00'];
+        function _storyBuildTierLabel(tier) {
+            const t = tier | 0;
+            return STORY_BUILD_TIER_LABEL[t] || '';
+        }
 
         /** Map trainer event + progression → target training tier. Mystery Figure
          *  / Champion / E1–E4 / Victory Road always T4. Frontier ladder stays T4
@@ -24882,8 +24903,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 build.n = pickNeutralNature();
                 if (base.abilities && base.abilities['0']) build.a = base.abilities['0'];
                 if (!gimmickBound) {
-                    const it = pickFlavorItem(_T1_FLAVOR_ITEMS);
-                    build.i = it == null ? '' : it;
+                    if (_storyBuildPrefersNoItem(build)) {
+                        build.i = '';
+                    } else {
+                        const it = pickFlavorItem(_T1_FLAVOR_ITEMS);
+                        build.i = it == null ? '' : it;
+                    }
                 }
                 return build;
             }
@@ -24901,7 +24926,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (Math.random() < 0.35) build.n = pickNeutralNature();
                 if (!gimmickBound && _ELITE_ITEMS_SET.has(build.i)) {
-                    build.i = pickFlavorItem(_T2_FLAVOR_ITEMS);
+                    build.i = _storyBuildPrefersNoItem(build) ? '' : pickFlavorItem(_T2_FLAVOR_ITEMS);
                 }
                 return build;
             }
@@ -26787,8 +26812,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Once per save — explain how the Professor and wild catching differ,
             // so the player doesn't read both as "free Pokémon" and ignore one.
             if (cityIdx > 0 && !isFull) {
-                try { _storyShowOneTimeTip('prof-vs-wild',
-                    'Professor vs. Wild Pokémon\n\n• Professors give curated, fully built Pokémon. One per city in Cities 0–5.\n• Wild Pokémon (catch on routes & in the Safari Zone) have random builds — you can train them up at the tutors.\n• Professors stop offering Pokémon once your party reaches 6.\n• Foes match your party size: a 3-Pokémon team faces 3 foes. Champion, Elite Four, and Victory Road always field 6.'); } catch (e) {}
+                // Single consolidated overview — covers Professor vs wild AND the new
+                // training-tier system in one tip. `showGameAlert` is non-blocking,
+                // so two sequential `_storyShowOneTimeTip` calls would clobber each
+                // other; one tip per Professor visit keeps the message intact.
+                try { _storyShowOneTimeTip('prof-overview-v2',
+                    'Professor vs. Wild — and Training Tiers\n\n' +
+                    '• Professors offer curated picks. One per city in Cities 0–5.\n' +
+                    '• Wild Pokémon (routes & Safari) appear at random.\n' +
+                    '• Foes match your party size; Champion / E4 / Victory Road always field 6.\n\n' +
+                    'Every Pokémon now has a TRAINING TIER (chip next to its name):\n' +
+                    '• Untrained · Novice · Competent · Tournament.\n' +
+                    'Early route trainers are Untrained (0 EVs, neutral nature, no item). The Champion and Elite Four are Tournament. Your starter begins Untrained — visit the Move Tutor, EV Trainer, Nature Rater, and Battle Dojo to climb the tiers.'); } catch (e) {}
             }
             _profLegendaryMysteryMode = _profMysteryMode && isPreLeagueLegendaryMysteryGate(cityIdx);
             // One-time framing for the City-8 legendary gate. The mechanic is a forced
@@ -26905,13 +26940,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const gimmickBadge = { MEGA: '<span style="font-size:10px;background:#7b1fa2;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">MEGA</span>', ZMOVE: '<span style="font-size:10px;background:#f9a825;color:#000;border-radius:3px;padding:1px 4px;margin-left:3px;">Z</span>', DYNAMAX: '<span style="font-size:10px;background:#b71c1c;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">DYNA</span>', GMAXDYNAMAX: '<span style="font-size:10px;background:#880e4f;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">G-MAX</span>', STANDARD: '' };
             const gb = (ch.build.gimmick && gimmickBadge[ch.build.gimmick]) || '';
             const tera = ch.build.teraType ? `<span class="tera-tip-hover" style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:pointer;touch-action:manipulation;" data-tera="${encodeURIComponent(ch.build.teraType)}" data-o1="${encodeURIComponent(tempMon.type1)}" data-o2="${encodeURIComponent(tempMon.type2||'')}" onclick="event.stopPropagation();window.showTeraFromEl(event)" onmousemove="event.stopPropagation();window.showTeraTooltip('${ch.build.teraType}','${tempMon.type1}','${tempMon.type2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${ch.build.teraType}</span>` : '';
+            // Training tier chip — labels the build's current polish so the player
+            // knows whether to expect raw potential ("Untrained") or a tournament-
+            // grade gift. The chip carries a tooltip explaining the system on first
+            // hover so the meaning isn't a mystery.
+            const _ptN = ch.build.powerTier | 0;
+            const _ptLabel = (typeof _storyBuildTierLabel === 'function') ? _storyBuildTierLabel(_ptN) : '';
+            const _ptColor = (_ptN >= 1 && _ptN <= 4 && typeof STORY_BUILD_TIER_COLOR !== 'undefined') ? STORY_BUILD_TIER_COLOR[_ptN] : '#9e9e9e';
+            const _ptTip = _ptN === 4
+                ? 'Tournament: fully optimized. No training needed.'
+                : _ptN === 3
+                    ? 'Competent: solid build. Some polish at tutors helps.'
+                    : _ptN === 2
+                        ? 'Novice: partial training. Tutors will sharpen EVs, nature, and gear.'
+                        : 'Untrained: raw potential. Move Tutor, EV Trainer, Nature Rater, and Battle Dojo bring it up to fighting shape.';
+            const ptBadge = _ptLabel
+                ? `<span class="hover-text" data-tip-key="${encodeURIComponent(_ptTip)}" style="font-size:10px;background:${_ptColor};color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:help;" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_ptLabel}</span>`
+                : '';
             const card = document.createElement('div');
             card.className = `draft-card prof-pick-card tier-${tier}`;
             card.innerHTML = `
                 <div class="draft-card-sprite"><img src="${getSprite(tempMon.name, tempMon.isShiny)}" alt="${ch.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                 <div class="draft-card-body">
                     <div class="draft-card-header">
-                        <span>${tempMon.isShiny ? '&#10024; ' : ''}${ch.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}</span>
+                        <span>${tempMon.isShiny ? '&#10024; ' : ''}${ch.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}${ptBadge}</span>
                         <button type="button" class="draft-card-info-btn" title="Full summary" aria-label="Full summary" onclick="event.stopPropagation();window.StoryMode.profOpenSummary(${idx})">&#8505;</button>
                     </div>
                     <div class="draft-card-details">
@@ -32766,6 +32818,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openTeamTester, openTeamTesterSyncFromStory, runTeamTester, copyTeamTesterText, closeTeamTester,
             previewHallOfFame, seedDebugMysteryLegendGate, seedTestMegaFromUrl, seedStoryChampionWeakTestFromUrl, clearCurrentEnemyLock,
             openRunSummary,
+            // Debug: dump the full event × badges training-tier matrix to the
+            // console. Lets the player (or maintainer) verify the curve without
+            // walking the whole story. Returns the matrices so they can be
+            // re-piped through console.table or copied for a balance audit.
+            debugBuildTiers() {
+                const events = [
+                    'Basic Trainer', 'Gym Trainer 1', 'Gym Trainer 2',
+                    'Gym Leader 1', 'Gym Leader 2', 'Gym Leader 3', 'Gym Leader 4',
+                    'Gym Leader 5', 'Gym Leader 6', 'Gym Leader 7', 'Gym Leader 8',
+                    'Elite Trainer', 'Rival', 'Victory Road',
+                    'E1', 'E2', 'E3', 'E4', 'Champion', 'Mystery Figure',
+                ];
+                const foeRows = [];
+                for (let b = 0; b <= 8; b++) {
+                    const row = { badges: b };
+                    for (const e of events) row[e] = _storyBuildTierForEvent(e, null, b);
+                    foeRows.push(row);
+                }
+                const profRows = [];
+                for (let b = 0; b <= 8; b++) {
+                    const row = { badges: b };
+                    for (let c = 0; c <= 9; c++) row['city' + c] = _storyBuildTierForProfessor(c, b);
+                    profRows.push(row);
+                }
+                console.log('Foe tier by event × badges (1=Untrained, 2=Novice, 3=Competent, 4=Tournament):');
+                console.table(foeRows);
+                console.log('Professor gift tier by city × badges:');
+                console.table(profRows);
+                return { foes: foeRows, professor: profRows };
+            },
         };
         })(); // end StoryMode IIFE
 
