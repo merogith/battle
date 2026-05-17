@@ -1,60 +1,87 @@
-# Handoff — 2026-05-15
+# Handoff — 2026-05-16 (build power tier session)
 
 ## Current branch
-`claude/polish-story-mode-battle-lT4sx` (pushed: no — needs `git push -u`).
+`claude/improve-build-generation-7AOc7` — pushed.
 
-## Commits this session (newest first)
-1. `0250ded` story: extra Red lines and defensive currentEnemyLock validation
-2. `553b2dc` story: cross-run "Career runs cleared" counter and richer Hall of Fame
-3. `c27ddf7` story: replace user-facing 'Pokemon' with 'Pokémon'
-4. `7c6fe63` story: per-leader badge name and victory voice across roles
+## Session goal
+"Story mode build generation feels chaotic / too random. Scale build
+power level (EVs, natures, items, abilities, moves) across the story
+arc so pre-Gym-1 trainers feel like route trainers and the Elite Four /
+Champion still feel like a wall." Phase A only — see CHANGELOG entry
+for the full scoping note.
 
-## Phase plan vs. progress
+## What landed (`claude/improve-build-generation-7AOc7`)
 
-| Phase | Status |
+### New: `_storyBuildTierForEvent` + `_storyDowngradeBuildForTier`
+
+Inserted right before `rollTrainerTeam` (`battle.html` ~line 24752 in
+the pre-edit file, the helpers are ~150 LOC). Public surface:
+
+| Helper | Purpose |
 |---|---|
-| Auto-discovery + codebase map | DONE (`agent-state/CODEBASE_MAP.md`) |
-| Hardcore residue audit | CLEAN (only migration line remains) |
-| Generation toggle leakage audit | CLEAN (species-only filter confirmed) |
-| Eviolite Late-Evo rule | CLEAN (`sp.evos.length > 0`, gen-independent) |
-| Settings toggle positive/negative | CLEAN |
-| Build generator competence | MOSTLY CLEAN (move learnability unvalidated — Smogon CSVs assumed curated) |
-| Per-leader/elite/champion victory voice | DONE |
-| NG+ run counter | DONE (`pbs_story_meta`, simple) |
-| Typography "Pokémon" diacritic | DONE for user-facing strings |
-| Red voice | LIGHT POLISH (stage directions added; still mostly silent by design) |
-| Defensive enemy-lock validation | DONE |
-| CHANGELOG.md | DONE (Unreleased section, this session) |
+| `STORY_BUILD_TIER` (frozen const) | `{ UNTRAINED:1, NOVICE:2, COMPETENT:3, TOURNAMENT:4 }` |
+| `_storyBuildTierForEvent(eventType, storyRowIdx, badges)` | maps trainer event → tier |
+| `_storyBuildTierForProfessor(cityIdx, badges)` | maps Professor city → tier |
+| `_storyDowngradeBuildForTier(name, build, tier)` | mutates build in place; T4 is no-op |
+| `_applyStoryBuildPowerTier(team, eventType, storyRowIdx)` | final-pass hook for trainer teams |
 
-## What's still open vs. DoD
+### Hook sites
 
-The mission's full Definition of Done is broader than one session. Outstanding:
+1. `rollTrainerTeam` rival branch — wraps the `_applyEnemyGimmickDistribution` return with `_applyStoryBuildPowerTier`.
+2. `rollTrainerTeam` standard branch — same wrap.
+3. `rollMysteryFigureFinalBossTeam` — same wrap (always T4 because badges=8 in the try block).
+4. `enterProfessor` choice loop — after `makeBuild(name)`, downgrade to `_storyBuildTierForProfessor(cityIdx, sm.badges)`. Legendary mystery-gate offer skipped (always T4).
+5. `makeWildBuild` — stamps `build.powerTier = UNTRAINED` for inspector parity.
+6. `_pickStarterPartner` — switched from `makeBuild` to `makeWildBuild` so the catch-tutorial Pidgey/Rattata sits in the same tier band as every other wild.
 
-- **Per-encounter "first-clear" celebrations.** `sm.firstClears = {gym1: true, …}` only-on-first-time confetti was suggested in audit §3.9. Not done.
-- **Casino slot machine.** Casino is still a literal coin flip (audit §1.10, §3.7). Big-ish, not done.
-- **City6 Professor button** is intentionally hidden when team is full (Mystery Figure only fires at City8 gate). Behavior matches code, but `CITY_PROFESSOR_SLOTS` data suggests Clemont was meant to be available — data-vs-code inconsistency. Not blocking.
-- **Daily seed handler** (audit §5.2). Not done.
-- **Speedrun timer** (audit §5.3). Not done.
-- **Achievement bar** (audit §5.5). Not done.
-- **Real city names with taglines.** `GYM_LEADER_CITY_NAMES` exists and the hub label already swaps in real names per assigned leader, but the rest of the hub UI doesn't reuse it for scene-setting copy. Could extend.
-- **Confusion / partial trap / ice thaw / harvest** use bare `Math.random` — story seed doesn't reproduce these. Intentional? Probably yes for cosmetic feel; deterministic combat would need a routing pass.
-- **Battle frontier mechanics scaling** is deferred per spec §14b.
-- **RELEASE_NOTES.md** — write when every DoD box passes.
+### Curve (the one-pager)
+
+- Pre-Gym-1 Basic / Intro Rival / GT1: **T1**
+- Gym Leader 1–2, mid Basic Trainer: **T2**
+- Gym Leader 3–5, post-Gym-3 Rival, GT2 / Elite Trainer at 3+ badges: **T3**
+- Gym Leader 6–8, all Elite Trainers at 6+ badges, E1–E4, Champion, Victory Road, post-HoF Mystery Figure, league Rival, Battle Frontier, all post-HoF rematches: **T4**
+
+### Verification
+
+- `node --check` on extracted inline JS (`/tmp/battle-inline.js` ≈ 27,600 lines): clean.
+- `scripts/dev-server.cjs` serves `battle.html`: HTTP 200.
+- Manual tier-curve walkthrough (`/tmp/test-tier.js`): every transition produces the expected T1→T4 ramp.
+- Manual downgrade output (`/tmp/test-downgrade.js`): T4 Choice Band Garchomp at T1 → Hardy/Sand Veil/Sitrus Berry/0 EVs; at T2 → ~108 EV partial spread / Black Belt; at T3 → 80% EV spread retained.
+
+## What's still open (phase B candidates, not done)
+
+- **Move-quality scaling** — currently moves stay Smogon-quality at every
+  tier. A T1 mon's pile of 4 top-BP moves is the only piece that still
+  feels min-maxed. Replacing the strongest 1–2 with level-up filler
+  needs per-species learnset data; held back to avoid breaking learnability.
+- **Settings toggle** to disable the tier curve entirely. Current
+  default is always-on. Add to story-setup advanced section if players
+  prefer the old behavior.
+- **Inspector tier badge** on foe summary / Professor pick cards.
+  `build.powerTier` is set internally but not surfaced — visible signal
+  is via the displayed nature / ability / item / EVs.
+- **Per-trainer-class personality** — e.g. Hiker always fields Rock
+  types, Bug Catcher always at T1 even mid-game, Veteran always T3+.
+  Could layer on top of the tier-by-event mapping.
+- **Move learnability audit** — prior session note says the Smogon
+  CSVs are assumed curated but unvalidated; if a CSV row has an illegal
+  move on a species, this session didn't catch it. Still open.
 
 ## Resume protocol next session
 
 1. Read `agent-state/CODEBASE_MAP.md` first.
-2. Re-run a quick auto-discovery (file sizes, `git log --oneline -20`, `npm start` smoke).
-3. `node --check` over the inline JS as a fast syntax gate (see procedure in CODEBASE_MAP).
-4. Pick from the "still open" list. Smaller-first; confirm in browser before next item.
+2. Re-run `git log --oneline -10`, `node scripts/dev-server.cjs` smoke.
+3. If picking up Phase B move scaling: the legal-move pool is computed
+   via `_tutorGetMergedMovePoolAsync` (~line 30390), reusable for
+   per-tier move filtering. T1 should pick from level-up only, T2 from
+   level-up + TMs, T3+ from the full Smogon pool.
+4. If picking up the settings toggle: `sm.settings.buildPowerScaling`
+   default true, gate `_applyStoryBuildPowerTier` and the Professor /
+   wild hook on it.
 
-## Verification status
-- `node --check` on extracted inline JS: clean.
-- `node scripts/dev-server.cjs` serves `battle.html`: HTTP 200, ~2.06 MB.
-- No automated test suite exists. Manual browser play required for UI flows.
+## Files touched this session
 
-## Files touched
-- `battle.html` (data tables, save layer, Hall of Fame, victory overlay, story menu, typography)
-- `agent-state/CODEBASE_MAP.md` (new)
-- `agent-state/HANDOFF.md` (this file, new)
-- `CHANGELOG.md` (new — Unreleased section)
+- `battle.html` — new tier system + 6 hook sites
+- `CHANGELOG.md` — Unreleased entry for the tier curve
+- `agent-state/HANDOFF.md` — this file
+- `agent-state/CODEBASE_MAP.md` — updated anchor lines below

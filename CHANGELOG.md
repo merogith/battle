@@ -55,6 +55,116 @@ Professor visits structurally mandatory; and the writing pass brings
 the city/Professor copy in line with the existing leader/elite/
 champion victory lines.
 
+## Unreleased — Build power tier curve (story scaling) 2026-05-16 (`claude/improve-build-generation-7AOc7`)
+
+### Added — 4-tier training-quality curve across the story
+
+Foe builds and player-obtainable mons now scale on a **build power tier**
+that's independent of the species' Grade (G1–G4). The same Pokémon can
+appear at any tier — the tier captures *training quality*, not species
+strength. Tier rules:
+
+| Tier | Name | EVs | Nature | Ability | Item |
+|---|---|---|---|---|---|
+| T1 | Untrained | 0 total | Neutral (Hardy/Docile/Serious/Bashful/Quirky) | Default (`abilities[0]`) | None or flavor berry |
+| T2 | Novice | ≤220 total (capped/scaled from Smogon spread) | 35% chance neutral, else kept | Kept | Elite items downgraded to flavor type-boost / Eviolite / Leftovers |
+| T3 | Competent | ≤420 total | Kept | Kept | Kept (no elite swap) |
+| T4 | Tournament | Full Smogon (510/252-252-4) | Kept | Kept | Kept (current behavior) |
+
+Move sets and gimmick-bound items (Mega Stones, Z-Crystals, Tera Blast)
+are preserved at every tier — the goal is training quality, not species
+rebuilds. T4 is a no-op; the source `makeBuild` output is already
+tournament-quality.
+
+### Story curve — who sits at which tier
+
+**Foes** (`_storyBuildTierForEvent`):
+
+- Pre-Gym-1 Basic Trainer / Intro Rival / Gym Trainer 1: **T1**
+- Pre-Gym-1 Gym Leader 1: **T2** (slightly above the route average)
+- Post-Gym-1–2 Gym Leader, Basic Trainer at 3 badges, Rival at 1 badge: **T2**
+- Gym Leader 3–5, Gym Trainer 2 / Elite Trainer at 3+ badges, Basic Trainer at 6+ badges, Rival at 3+ badges: **T3**
+- Gym Leader 6–8, all Elite Trainers at 6+ badges, E1–E4, Champion, Victory Road, post-HoF Mystery Figure, league Rival: **T4**
+- Battle Frontier and any post-HoF rematch (badges = 8): **T4** (frontier already scales via stat-boost, not build polish)
+
+**Player obtainables** (`_storyBuildTierForProfessor` + `makeWildBuild`):
+
+- Starter from City-0 Professor: **T1** — symmetric with the T1 intro
+  rival; the player develops their starter via tutors as the story unfolds.
+- Professor gifts at later cities scale with city + badges: **T1 → T2 → T3 → T4** by city 7+ / 6+ badges.
+- Catch-tutorial partner: **T1** (now routed through `makeWildBuild` so it
+  sits in the same tier band as every other wild catch — keeps the partner
+  from out-classing the freshly-picked starter).
+- Wild route catches & Safari catches: **T1** (`makeWildBuild`'s existing
+  170-EV head-start; tier metadata only newly added).
+- Legendary mystery-gate offer (City 8 pre-Victory-Road), Caged God
+  capture, roaming sub-legendaries: **T4** (one-shot story rewards stay
+  battle-ready out of the box).
+- Link Station rebuild / reroll / upgrade (paid gold): **T4** — the
+  Link Station is the "pay to upgrade everything now" button by design.
+
+### Why this matters
+
+The existing tutor economy (Move Tutor, EV Trainer, Nature Rater,
+Battle Dojo for item swaps) had no real headroom because every
+Pokémon — Professor gift or wild catch — already arrived as a fully
+EV-maxed, perfect-nature, top-pool-ability, optimal-item competitive
+build. Tutors were cosmetic. With the new tier curve, a freshly caught
+wild starts at T1 and the player has a concrete upgrade path through
+the run: tutors and EV training meaningfully shift the mon from T1 →
+T2 → T3 → T4. Foe scaling mirrors this curve, so the early route
+trainers actually *feel* like route trainers (no item, neutral nature,
+0 EVs) instead of Smogon imports, while the Elite Four and Champion
+keep their tournament-grade weight at the top.
+
+### Hooks
+
+- `_storyDowngradeBuildForTier(name, build, tier)` runs after
+  `_applyEnemyGimmickDistribution` in both `rollTrainerTeam` branches
+  (standard and rival) so structural moves and gimmick stones are
+  preserved while training quality softens.
+- `_applyStoryBuildPowerTier(team, eventType, storyRowIdx)` stamps
+  `build.powerTier` on every slot for future inspector UI; tier 4
+  short-circuits.
+- Mystery Figure final boss roll (`rollMysteryFigureFinalBossTeam`)
+  also passes through the hook for tier-metadata consistency.
+- Professor flow downgrades each generated choice in-place before the
+  card renders, so the player sees the actual training level they'll
+  receive (Hardy nature, no item, partial EVs) and can weigh it
+  against the curated species.
+
+### Merge-ready polish
+
+- **Acrobatics safety**: the downgrade now detects `Acrobatics` in the
+  moveset and forces `build.i = ''` at both T1 and T2 instead of
+  swapping in a flavor berry. Without this guard, an Acrobatics-Hawlucha
+  rolled at T1 / T2 would silently lose half its damage (110 → 55 BP).
+- **Training-tier badge on Professor pick cards**: a small chip next to
+  the species name reads `Untrained · Novice · Competent · Tournament`
+  in tier-specific colors (gray / green / blue / gold). Hover / tap
+  reveals a tooltip explaining the tier and what tutors can lift it to.
+  Skipped (gracefully renders empty) when `build.powerTier` is undefined
+  on legacy locked-foe-team saves.
+- **One-time onboarding tip** consolidated into `prof-overview-v2` —
+  one popup per save that covers Professor vs wild AND the new tier
+  system. Replaces the older `prof-vs-wild` tip; chained
+  `showGameAlert` calls would clobber each other (non-blocking) so a
+  single message is the only clean path.
+- **`window.StoryMode.debugBuildTiers()`** — console helper that
+  prints two `console.table` matrices (foe tier by event × badges, and
+  Professor tier by city × badges) so the curve can be audited live
+  without walking the whole story.
+
+### What's not in this pass (Phase B)
+
+- Move-quality scaling (replace top-BP moves with level-up filler at
+  T1) — held back to avoid learnability bugs.
+- Settings toggle to disable the tier curve — default is always-on; a
+  toggle was deemed UI noise.
+- Tier badge on player team panel / in-battle foe inspect — would need
+  dynamic tier recomputation (tutors change EVs / nature / item, so a
+  stamped tier goes stale). Current badge is decision-point only.
+
 ## Unreleased — Safari Zone authentic gameplay loop 2026-05-16 (`claude/safari-zone-gameplay-vxFOb`)
 
 ### Added — Per-turn flee on Bait/Rock (canonical Safari Zone tension)
