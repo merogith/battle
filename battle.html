@@ -24533,10 +24533,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.catchTutorialDone = (sm.eventIndex | 0) > 1;
             }
         }
-        /** v17: Fix stuck Pokémon — evolution/rebuild/swap could strip the slot id,
-         *  making the mon impossible to sell, deposit, or release.
-         *  Backfill any missing ids in both party and PC box. */
+        /** v17 — combined migration:
+         *   1. Storyline variant picker: default `sm.storyLine` to 'classic'
+         *      so the event-registry bus can read it safely.
+         *   2. Stuck-mon id backfill: evolution / rebuild / swap could strip a
+         *      slot's stable id, making the mon impossible to sell, deposit,
+         *      or release. Backfill any missing ids in both party and PC box. */
         function migrateStoryPreV17() {
+            if (typeof sm.storyLine !== 'string' || !sm.storyLine) {
+                sm.storyLine = 'classic';
+            }
             for (const arr of [sm.team, sm.pcBox]) {
                 if (!Array.isArray(arr)) continue;
                 for (const slot of arr) {
@@ -24577,6 +24583,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    balls: { poke: 5, great: 0, ultra: 0, master: 0 },
                    pokedex: { seen: [], caught: [] },
                    catchUnlocked: false,
+                   storyLine: 'classic',
                    postHofMysteryClimaxDone: false,
                    version:SAVE_VER };
 
@@ -24764,7 +24771,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { migrateStoryPreV16(); } catch (e) { console.warn('[Story] v16 catch tutorial migrate', e); }
                 }
                 if (_loadedVer < 17) {
-                    try { migrateStoryPreV17(); } catch (e) { console.warn('[Story] v17 stuck-mon id backfill migrate', e); }
+                    try { migrateStoryPreV17(); } catch (e) { console.warn('[Story] v17 storyline + stuck-mon id migrate', e); }
                 }
                 const _cap = Math.max(0, STORY_EVENTS_RAW.length - 1);
                 if (sm.eventIndex < 0 || sm.eventIndex > _cap) {
@@ -25397,6 +25404,220 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return uniq.slice(0, 12);
         }
 
+        // ── BUILD POWER TIER (story scaling) ──────────────────────────────────
+        // Independent of mon Grade (G1–G4 = species power). PowerTier captures
+        // *training* quality: how well EVs, nature, ability, and item synergize
+        // with the rolled moves. T1 untrained route trainer → T4 tournament
+        // (current Smogon-quality default). The downgrade hook runs after
+        // _applyEnemyGimmickDistribution so structural moves & gimmick stones
+        // are preserved while the polish softens for lower tiers.
+        //
+        // Rationale: pre-Gym-1 Basic Trainers shouldn't field Choice-Band
+        // 252/252/4 sets. The full-Smogon build is the *ceiling*, reached only
+        // at gym-6+ leaders, the Elite Four, the Champion, and the post-HoF
+        // Mystery Figure. Player-obtainables (Professor gifts, wild catches)
+        // scale on the same curve so the existing tutor economy (Move Tutor,
+        // EV Trainer, Nature Rater, Battle Dojo) has actual upgrade headroom
+        // through the run, not just cosmetic polish.
+        const STORY_BUILD_TIER = Object.freeze({ UNTRAINED: 1, NOVICE: 2, COMPETENT: 3, TOURNAMENT: 4 });
+        const _NEUTRAL_NATURES_LIST = ['Hardy', 'Docile', 'Serious', 'Bashful', 'Quirky'];
+        // T1 / T2 item replacement pools — flavor berries and type-boost stones
+        // (universally available in canon, no game-breaking effects). Empty
+        // strings in the T1 pool yield "no item" so untrained route mons feel
+        // like wild catches that wandered into a trainer's bag.
+        const _T1_FLAVOR_ITEMS = [
+            '', '', '', 'Oran Berry', 'Sitrus Berry', 'Pecha Berry', 'Cheri Berry',
+            'Chesto Berry', 'Lum Berry', 'Rawst Berry', 'Aspear Berry'
+        ];
+        const _T2_FLAVOR_ITEMS = [
+            'Leftovers', 'Sitrus Berry', 'Lum Berry', 'Eviolite',
+            'Black Belt', 'Charcoal', 'Mystic Water', 'Magnet', 'Soft Sand',
+            'Silk Scarf', 'Miracle Seed', 'Sharp Beak', 'Black Glasses',
+            'Spell Tag', 'Twisted Spoon', 'Hard Stone', 'Poison Barb',
+            'Dragon Fang', 'NeverMeltIce', 'Metal Coat', 'Silver Powder',
+            'Wise Glasses', 'Muscle Band'
+        ];
+        // Tournament-grade items: stripped at T1 entirely, swapped for flavor at T2,
+        // kept at T3/T4. Includes Choice / Orb / pinch-berry families that drive
+        // competitive damage math; flavor type-boost items at T2 fill the slot.
+        const _ELITE_ITEMS_SET = new Set([
+            'Choice Band', 'Choice Specs', 'Choice Scarf', 'Life Orb', 'Expert Belt',
+            'Heavy-Duty Boots', 'Focus Sash', 'Assault Vest', 'Air Balloon',
+            'Weakness Policy', 'Loaded Dice', 'Booster Energy', 'Throat Spray',
+            'Power Herb', 'Mental Herb', 'White Herb',
+            'Lustrous Orb', 'Adamant Orb', 'Griseous Orb', 'Light Clay',
+            'Toxic Orb', 'Flame Orb', 'Rocky Helmet', 'Black Sludge', 'Quick Claw',
+            "King's Rock", 'Bright Powder', 'Red Card', 'Eject Button', 'Eject Pack',
+            'Custap Berry', 'Salac Berry', 'Liechi Berry', 'Petaya Berry',
+            'Apicot Berry', 'Ganlon Berry', 'Starf Berry', 'Micle Berry',
+            'Chople Berry', 'Yache Berry', 'Occa Berry', 'Passho Berry',
+            'Wacan Berry', 'Rindo Berry', 'Shuca Berry', 'Coba Berry',
+            'Babiri Berry', 'Charti Berry', 'Tanga Berry', 'Kasib Berry',
+            'Haban Berry', 'Colbur Berry', 'Roseli Berry', 'Kebia Berry',
+            'Payapa Berry', 'Chilan Berry'
+        ]);
+        function _isStoryGimmickItem(item) {
+            if (!item) return false;
+            try {
+                if (typeof isMegaStone === 'function' && isMegaStone(item)) return true;
+                if (typeof Z_TYPE_MAP_VALUES !== 'undefined' && Z_TYPE_MAP_VALUES.has && Z_TYPE_MAP_VALUES.has(item)) return true;
+            } catch (e) {}
+            return false;
+        }
+        // Moves whose damage / effect requires the holder to be itemless. When a
+        // build at any tier has one of these, the downgrade strips the item to ''
+        // instead of swapping in a flavor berry — otherwise Acrobatics drops from
+        // 110 BP to 55 BP after the swap, silently nerfing the kept move.
+        const _ITEM_DEPENDENT_NO_ITEM_MOVES = new Set(['Acrobatics']);
+        function _storyBuildPrefersNoItem(build) {
+            if (!build || !Array.isArray(build.m)) return false;
+            for (const m of build.m) {
+                if (m && _ITEM_DEPENDENT_NO_ITEM_MOVES.has(m)) return true;
+            }
+            return false;
+        }
+        // Public-facing tier names used in tooltips / debug output. The badge UI
+        // and the one-time educational tip read from this table so labels stay
+        // consistent across the screens.
+        const STORY_BUILD_TIER_LABEL = ['', 'Untrained', 'Novice', 'Competent', 'Tournament'];
+        const STORY_BUILD_TIER_COLOR = ['', '#9e9e9e', '#66bb6a', '#29b6f6', '#ff8c00'];
+        function _storyBuildTierLabel(tier) {
+            const t = tier | 0;
+            return STORY_BUILD_TIER_LABEL[t] || '';
+        }
+
+        /** Map trainer event + progression → target training tier. Mystery Figure
+         *  / Champion / E1–E4 / Victory Road always T4. Frontier ladder stays T4
+         *  (rounds scale via stat-boost, not build polish). Post-HoF (badges 8)
+         *  flattens to T4 so Crucible gym rematches don't degrade. */
+        function _storyBuildTierForEvent(eventType, storyRowIdx, badges) {
+            const e = String(eventType || '');
+            const b = badges | 0;
+            if (sm && sm.frontier && sm.frontier.active) return STORY_BUILD_TIER.TOURNAMENT;
+            if (b >= 8) return STORY_BUILD_TIER.TOURNAMENT;
+            if (e === 'Mystery Figure' || e === 'Champion' || e === 'Victory Road' || /^E[1-4]$/.test(e)) return STORY_BUILD_TIER.TOURNAMENT;
+            if (e === 'Rival') {
+                if (b >= 6) return STORY_BUILD_TIER.TOURNAMENT;
+                if (b >= 3) return STORY_BUILD_TIER.COMPETENT;
+                if (b >= 1) return STORY_BUILD_TIER.NOVICE;
+                return STORY_BUILD_TIER.UNTRAINED;
+            }
+            const gl = e.match(/^Gym Leader\s*(\d)$/);
+            if (gl) {
+                const n = +gl[1];
+                if (n >= 6) return STORY_BUILD_TIER.TOURNAMENT;
+                if (n >= 3) return STORY_BUILD_TIER.COMPETENT;
+                return STORY_BUILD_TIER.NOVICE;
+            }
+            if (e === 'Gym Trainer 2' || e === 'Elite Trainer') {
+                if (b >= 6) return STORY_BUILD_TIER.TOURNAMENT;
+                if (b >= 3) return STORY_BUILD_TIER.COMPETENT;
+                return STORY_BUILD_TIER.NOVICE;
+            }
+            if (e === 'Gym Trainer 1' || e === 'Gym Trainer') {
+                if (b >= 5) return STORY_BUILD_TIER.COMPETENT;
+                if (b >= 1) return STORY_BUILD_TIER.NOVICE;
+                return STORY_BUILD_TIER.UNTRAINED;
+            }
+            if (e === 'Basic Trainer') {
+                if (b >= 6) return STORY_BUILD_TIER.COMPETENT;
+                if (b >= 3) return STORY_BUILD_TIER.NOVICE;
+                return STORY_BUILD_TIER.UNTRAINED;
+            }
+            return STORY_BUILD_TIER.NOVICE;
+        }
+
+        /** Professor gift: scaled with city + badges. Always one tier above the
+         *  contemporary trainer floor — these are curated picks the Professor
+         *  hand-trained, not random route fauna. */
+        function _storyBuildTierForProfessor(cityIdx, badges) {
+            const c = cityIdx | 0;
+            const b = badges | 0;
+            if (b >= 6 || c >= 7) return STORY_BUILD_TIER.TOURNAMENT;
+            if (b >= 4 || c >= 5) return STORY_BUILD_TIER.COMPETENT;
+            if (b >= 1 || c >= 2) return STORY_BUILD_TIER.NOVICE;
+            return STORY_BUILD_TIER.UNTRAINED;
+        }
+
+        /** Degrade a fully-rolled Smogon-quality build to a lower training tier.
+         *  T4 → no-op. Lower tiers progressively strip EV optimization, neutralize
+         *  nature, fall back to the species' default ability, and swap elite items
+         *  for flavor pieces. Move sets and gimmick stones (Mega/Z) stay intact —
+         *  the goal is training quality, not species rebuilds. */
+        function _storyDowngradeBuildForTier(name, build, tier) {
+            if (!build || !name || tier == null) return build;
+            const t = tier | 0;
+            if (t >= STORY_BUILD_TIER.TOURNAMENT) return build;
+            const base = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
+            const gimmickBound = (build.gimmick && build.gimmick !== 'STANDARD') || _isStoryGimmickItem(build.i);
+            const pickNeutralNature = () => _NEUTRAL_NATURES_LIST[Math.floor(Math.random() * _NEUTRAL_NATURES_LIST.length)];
+            const pickFlavorItem = pool => pool[Math.floor(Math.random() * pool.length)];
+
+            if (t === STORY_BUILD_TIER.UNTRAINED) {
+                build.evs = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+                build.n = pickNeutralNature();
+                if (base.abilities && base.abilities['0']) build.a = base.abilities['0'];
+                if (!gimmickBound) {
+                    if (_storyBuildPrefersNoItem(build)) {
+                        build.i = '';
+                    } else {
+                        const it = pickFlavorItem(_T1_FLAVOR_ITEMS);
+                        build.i = it == null ? '' : it;
+                    }
+                }
+                return build;
+            }
+
+            if (t === STORY_BUILD_TIER.NOVICE) {
+                const evs = build.evs || { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+                let total = 0;
+                for (const k of ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) total += (evs[k] | 0);
+                if (total > 220) {
+                    const scale = 220 / total;
+                    for (const k of ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) {
+                        evs[k] = Math.max(0, Math.floor(((evs[k] | 0) * scale) / 4) * 4);
+                    }
+                    build.evs = evs;
+                }
+                if (Math.random() < 0.35) build.n = pickNeutralNature();
+                if (!gimmickBound && _ELITE_ITEMS_SET.has(build.i)) {
+                    build.i = _storyBuildPrefersNoItem(build) ? '' : pickFlavorItem(_T2_FLAVOR_ITEMS);
+                }
+                return build;
+            }
+
+            if (t === STORY_BUILD_TIER.COMPETENT) {
+                const evs = build.evs || { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+                let total = 0;
+                for (const k of ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) total += (evs[k] | 0);
+                if (total > 420) {
+                    const scale = 420 / total;
+                    for (const k of ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) {
+                        evs[k] = Math.max(0, Math.floor(((evs[k] | 0) * scale) / 4) * 4);
+                    }
+                    build.evs = evs;
+                }
+                return build;
+            }
+            return build;
+        }
+
+        /** Final-pass hook for trainer teams. Stamps `build.powerTier` on every
+         *  slot and applies degradation in-place. Tier 4 short-circuits. */
+        function _applyStoryBuildPowerTier(team, eventType, storyRowIdx) {
+            if (!Array.isArray(team) || !team.length) return team;
+            const badges = (sm && sm.badges) | 0;
+            const tier = _storyBuildTierForEvent(eventType, storyRowIdx, badges);
+            for (const slot of team) {
+                if (!slot || !slot.build) continue;
+                if (tier < STORY_BUILD_TIER.TOURNAMENT) {
+                    _storyDowngradeBuildForTier(slot.name, slot.build, tier);
+                }
+                slot.build.powerTier = tier;
+            }
+            return team;
+        }
+
         function rollTrainerTeam(trainer, partySize, gradeWeights, enabledGensIn, battleEventType, storyRowIdx) {
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
             let gwIn = applyDifficultyToGradeWeights(gradeWeights || { g1: 0, g2: 0, g3: 50, g4: 50 });
@@ -25526,7 +25747,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 enforceRoleCoverage(teamR, _lockedR);
                 enforceTypeBalance(teamR, _candR, _lockedR);
                 enforceItemClause(teamR);
-                return _applyEnemyGimmickDistribution(teamR, battleEventType);
+                return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(teamR, battleEventType), battleEventType, storyRowIdx);
             }
 
             function pickThematic() {
@@ -25613,7 +25834,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enforceRoleCoverage(team, _locked);
             enforceTypeBalance(team, _cand, _locked);
             enforceItemClause(team);
-            return _applyEnemyGimmickDistribution(team, battleEventType);
+            return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(team, battleEventType), battleEventType, storyRowIdx);
         }
         function rollMysteryFigureFinalBossTeam(partySize, enabledGensIn) {
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
@@ -25663,7 +25884,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.settings.teraOn = true;
                 sm.settings.zOn = true;
                 sm.badges = 8;
-                return _applyEnemyGimmickDistribution(picks, 'Mystery Figure');
+                return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(picks, 'Mystery Figure'), 'Mystery Figure', null);
             } finally {
                 sm.settings.megaOn = oldMech.megaOn;
                 sm.settings.dynaOn = oldMech.dynaOn;
@@ -25982,6 +26203,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 balls: { poke: 5, great: 0, ultra: 0, master: 0 },
                 pokedex: { seen: [], caught: [] },
                 catchUnlocked: false,
+                storyLine: _readStorylineFromUI(),
                 postHofMysteryClimaxDone: false,
                 mysteryIdentity: _storyPickMysteryIdentity(),
             };
@@ -26012,6 +26234,283 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             settings.mechanics.dynamax = sm.settings.dynaOn;
             settings.mechanics.tera    = sm.settings.teraOn;
             settings.classicMode       = sm.settings.classicMode !== false;
+        }
+
+        // ── STORY MODE — EVENT REGISTRY ───────────────────────────────────
+        // Each unique event in STORY_EVENTS_RAW is modeled as a "beat". A beat
+        // carries the metadata that other subsystems (dialogue, cold-opens,
+        // pre-battle interrupts, victory flavor, storyline variants) consult
+        // when deciding how to render a specific row.
+        //
+        // The registries here intentionally do NOT own the prose itself —
+        // gym-leader / elite / champion / rival dialogue still lives in the
+        // existing tables (TRAINER_QUOTES, LEADER_VICTORY_LINES, …). The
+        // registries own *which* beat is firing, *which* tone applies, and
+        // *which* one-shot scene plays before it. That keeps content edits
+        // light (touch one table) and structural edits surgical (touch one
+        // registry).
+        //
+        // To add a new pre-battle scene → append to STORY_BATTLE_INTERRUPTS.
+        // To add a new cold-open      → add a row to STORY_COLD_OPENS and
+        //                                point the beat's `coldOpen` at it.
+        // To add a new storyline      → add an entry to STORYLINE_VARIANTS
+        //                                with beatOverrides for the rows
+        //                                you want to retune.
+        //
+        // Pokémon selection for any beat still flows through the existing
+        // rollers (`rollTrainerTeam`, `rollWildEncounter`, `rollMystery…`),
+        // which read `sm.settings.enabledGens` and the row's gradeWeights.
+        // Storylines therefore CANNOT break the difficulty curve — they
+        // only adjust narrative framing.
+
+        /** Per-row beat metadata. Keys are storyRowId (column 0 of
+         *  STORY_EVENTS_RAW), NOT array indices. Rows not listed fall back
+         *  to `_deriveDefaultBeat` so the registry stays compact.
+         *  Fields (all optional except `kind`):
+         *    kind        — 'rival' | 'gymLeader' | 'gymTrainer' | 'basic' |
+         *                  'elite' | 'champion' | 'mystery' | 'victoryRoad' |
+         *                  'aceTrainer'
+         *    gymNumber   — 1..8 (gymLeader / gymTrainer)
+         *    eliteNumber — 1..4 (elite)
+         *    coldOpen    — STORY_COLD_OPENS key (one-shot pre-battle scene)
+         *    tags        — free-form list ('introRival', 'leagueRival', …)
+         *    tone        — narrative tone hint for downstream dialogue picks */
+        const STORY_BEATS = {
+            68: { kind: 'rival',    tags: ['introRival', 'phase0'], coldOpen: 'introRival' },
+            5:  { kind: 'gymLeader', gymNumber: 1 },
+            11: { kind: 'gymLeader', gymNumber: 2 },
+            18: { kind: 'gymLeader', gymNumber: 3 },
+            24: { kind: 'gymLeader', gymNumber: 4 },
+            31: { kind: 'gymLeader', gymNumber: 5 },
+            38: { kind: 'gymLeader', gymNumber: 6 },
+            46: { kind: 'gymLeader', gymNumber: 7 },
+            53: { kind: 'gymLeader', gymNumber: 8 },
+            12: { kind: 'rival',    tags: ['midRival', 'phase2'] },
+            39: { kind: 'rival',    tags: ['phase3'] },
+            65: { kind: 'rival',    tags: ['leagueRival', 'phase4'] },
+            60: { kind: 'elite',    eliteNumber: 1 },
+            61: { kind: 'elite',    eliteNumber: 2 },
+            62: { kind: 'elite',    eliteNumber: 3 },
+            63: { kind: 'elite',    eliteNumber: 4 },
+            64: { kind: 'champion' },
+            67: { kind: 'mystery',  tags: ['postHoFMystery', 'cagedGod'] }
+        };
+
+        /** Cold-open scenes — one-shot narrative overlays that fire before a
+         *  specific beat. Tracked via story meta (`tipsShown[metaKey]`) so
+         *  they never re-fire on reload or NG+. Each scene's `run(ev, onDone)`
+         *  is responsible for showing the overlay and calling `onDone` on
+         *  dismiss; the bus handles the meta stamp. */
+        const STORY_COLD_OPENS = {
+            introRival: {
+                metaKey: 'intro-rival-coldopen',
+                run(ev, onDone) {
+                    const rivalName = (sm && sm.trainerAssignments) ? sm.trainerAssignments[ev[0] | 0] : null;
+                    _showIntroRivalColdOpen(rivalName, onDone);
+                }
+            }
+        };
+
+        /** Storyline variants — let the same STORY_EVENTS_RAW timeline play
+         *  differently from run to run. A variant can shadow any beat
+         *  (`beatOverrides[rowId] = { …partial beat… }`) and set a default
+         *  tone for the dialogue layer. Pokémon picks remain driven by the
+         *  per-row gradeWeights and `sm.settings.enabledGens`, so variants
+         *  cannot break the difficulty curve. */
+        const STORYLINE_VARIANTS = {
+            classic: {
+                id: 'classic',
+                label: 'Classic Journey',
+                description: 'Eight gyms, an Elite Four, and a Champion to dethrone.',
+                defaultTone: 'standard',
+                beatOverrides: {}
+            }
+            // Future variants slot in here. See STORY_MODE_FLOW.md §17 for
+            // the contract and a worked example.
+        };
+
+        function _storyActiveVariantId() {
+            const id = (sm && sm.storyLine) || 'classic';
+            return STORYLINE_VARIANTS[id] ? id : 'classic';
+        }
+        function _storyActiveVariant() {
+            return STORYLINE_VARIANTS[_storyActiveVariantId()] || STORYLINE_VARIANTS.classic;
+        }
+        /** Read the storyline picker on the new-run setup screen, if it
+         *  exists. Falls back to whatever's saved as the menu default, or
+         *  'classic'. Defined here (not below) because startNewRun calls
+         *  it at run-construction time. */
+        function _readStorylineFromUI() {
+            try {
+                const el = document.getElementById('story-setting-storyline');
+                if (el && el.value && STORYLINE_VARIANTS[el.value]) return el.value;
+            } catch (e) {}
+            return 'classic';
+        }
+
+        /** Derive a minimal beat from STORY_EVENTS_RAW for rows that don't
+         *  carry an explicit STORY_BEATS entry. Returns just enough metadata
+         *  for the dialogue / interrupt layer to make a decision. */
+        function _deriveDefaultBeat(ev) {
+            if (!ev) return { kind: 'other' };
+            if (ev[1] === 'City') return { kind: 'city' };
+            if (ev[1] === 'Hall of Fame') return { kind: 'hallOfFame' };
+            if (ev[1] !== 'Battle') return { kind: 'other' };
+            const name = String(ev[2] || '');
+            const gl = name.match(/^Gym Leader (\d)$/);
+            if (gl) return { kind: 'gymLeader', gymNumber: +gl[1] };
+            if (/^Gym Trainer/.test(name)) return { kind: 'gymTrainer' };
+            const ee = name.match(/^E([1-4])$/);
+            if (ee) return { kind: 'elite', eliteNumber: +ee[1] };
+            if (name === 'Champion') return { kind: 'champion' };
+            if (name === 'Mystery Figure') return { kind: 'mystery' };
+            if (name === 'Victory Road') return { kind: 'victoryRoad' };
+            if (name === 'Elite Trainer') return { kind: 'aceTrainer' };
+            if (name === 'Rival') return { kind: 'rival' };
+            return { kind: 'basic' };
+        }
+
+        /** Return the full beat for an event row: derived default ←
+         *  STORY_BEATS entry ← active-variant override. Pass `ev` (the
+         *  STORY_EVENTS_RAW row) when you already have it; the function
+         *  looks it up by rowId otherwise. */
+        function getStoryBeatForRow(rowId, ev) {
+            const rid = rowId | 0;
+            const row = ev || (typeof STORY_EVENTS_RAW !== 'undefined'
+                ? STORY_EVENTS_RAW.find(r => r && (r[0] | 0) === rid)
+                : null);
+            const derived = _deriveDefaultBeat(row);
+            const base = STORY_BEATS[rid] || {};
+            const variant = _storyActiveVariant();
+            const ov = (variant.beatOverrides && variant.beatOverrides[rid]) || {};
+            return { ...derived, ...base, ...ov, _variantId: variant.id };
+        }
+
+        // ── PRE-BATTLE INTERRUPT REGISTRY ─────────────────────────────────
+        // The interrupt chain that runs before `enterBattleEvent` actually
+        // launches the fight. Each entry's `prepare(battleIdx, ev)` returns
+        // either `null` (predicate failed / preparation failed) or
+        //   { encounter, options, markWildSeenOnPrepare }
+        // — the bus then fires `enterCatchEncounter(encounter, …, options)`
+        // and short-circuits the rest of the chain.
+        //
+        // Order matters: the first non-null `prepare` wins. `markWildSeenOnPrepare`
+        // controls whether the wild-route slot is consumed at predicate time
+        // (roaming) or only on successful encounter-screen launch (catch
+        // tutorial, wild route). Adding a new pre-battle scene = one
+        // append here — `enterBattleEvent` doesn't change.
+        const STORY_BATTLE_INTERRUPTS = [
+            {
+                id: 'catchTutorial',
+                prepare(battleIdx, ev) {
+                    if (!_shouldFireCatchTutorialBeforeBattle(battleIdx)) return null;
+                    const partner = _pickStarterPartner(storySettingsGens());
+                    if (!partner) return null;
+                    return {
+                        encounter: partner,
+                        options: { forcedCatchRate: 1.0, forcedFleeRate: 0, tutorialMode: true },
+                        markWildSeenOnPrepare: false
+                    };
+                }
+            },
+            {
+                id: 'roamingLegendary',
+                prepare(battleIdx, ev) {
+                    if (!_shouldFireRoamingBeforeBattle(battleIdx)) return null;
+                    // Legacy parity: consume the pending roaming AND the
+                    // wild slot the moment the predicate fires, even if
+                    // makeBuild then fails. The legendary is silently
+                    // lost in that case so the slot can't re-fire.
+                    const pending = _consumeRoamingPending();
+                    _markWildSeen(battleIdx);
+                    if (!pending || !pending.name) return null;
+                    let build = null;
+                    try { build = makeBuild(pending.name); } catch (e) { build = null; }
+                    if (!build) return null;
+                    return {
+                        encounter: {
+                            name: pending.name,
+                            build,
+                            id: 'm_' + Math.random().toString(36).slice(2, 10),
+                            wild: true,
+                            roaming: true
+                        },
+                        options: { forcedCatchRate: 0.30, forcedFleeRate: 1.0, roamingLabel: 'Roaming Pokémon' },
+                        markWildSeenOnPrepare: true
+                    };
+                }
+            },
+            {
+                id: 'wildRoute',
+                prepare(battleIdx, ev) {
+                    if (!_shouldFireWildBeforeBattle(battleIdx)) return null;
+                    // Wild grade is keyed on `sm.badges` (see _WILD_GRADE_CURVE_BY_BADGES),
+                    // independent of the upcoming trainer's gradeWeights — wilds reflect
+                    // the route's biology, not the next fight's lineup.
+                    const enc = rollWildEncounter(storySettingsGens());
+                    if (!enc) return null;
+                    return {
+                        encounter: enc,
+                        options: {},
+                        markWildSeenOnPrepare: false
+                    };
+                }
+            }
+        ];
+
+        /** Walk STORY_BATTLE_INTERRUPTS in order; on the first match, fire
+         *  the catch screen and return `true` so the caller short-circuits.
+         *  Returns `false` if no interrupt fired. */
+        function _runFirstStoryInterrupt(battleIdx, ev, onComplete) {
+            for (const intr of STORY_BATTLE_INTERRUPTS) {
+                let prepared = null;
+                try { prepared = intr.prepare(battleIdx, ev); }
+                catch (e) {
+                    console.warn('[Story] interrupt prepare failed:', intr.id, e);
+                    prepared = null;
+                }
+                if (prepared && prepared.encounter) {
+                    if (!prepared.markWildSeenOnPrepare) _markWildSeen(battleIdx);
+                    try {
+                        enterCatchEncounter(prepared.encounter, onComplete, prepared.options || {});
+                    } catch (e) {
+                        console.error('[Story] interrupt enterCatchEncounter failed:', intr.id, e);
+                        return false;
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /** Dispatch a cold-open scene by beat tag. Cross-run-deduped via
+         *  story meta (each scene declares a `metaKey`). Returns `true` and
+         *  calls `onPlayed` when the scene actually plays; returns `false`
+         *  (without calling `onPlayed`) when the beat has no cold-open or
+         *  the scene already played this save. */
+        function _runStoryColdOpen(beat, ev, onPlayed) {
+            if (!beat || !beat.coldOpen) return false;
+            const scene = STORY_COLD_OPENS[beat.coldOpen];
+            if (!scene || typeof scene.run !== 'function') return false;
+            try {
+                const meta = readStoryMeta();
+                const tip = scene.metaKey;
+                if (tip && meta && meta.tipsShown && meta.tipsShown[tip]) return false;
+                scene.run(ev, () => {
+                    try {
+                        const m2 = readStoryMeta();
+                        if (!m2.tipsShown) m2.tipsShown = {};
+                        if (tip) m2.tipsShown[tip] = true;
+                        writeStoryMeta(m2);
+                    } catch (e) {}
+                    try { onPlayed && onPlayed(); }
+                    catch (e) { console.error('[Story] cold-open onPlayed threw:', e); }
+                });
+                return true;
+            } catch (e) {
+                console.warn('[Story] cold-open dispatch failed:', beat.coldOpen, e);
+                return false;
+            }
         }
 
         // ── MAIN EVENT LOOP ───────────────────────────────────────────────
@@ -27275,13 +27774,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!pool.length) return null;
             const _rng = (sm && sm.active) ? storyRngNext : Math.random;
             const pick = pool[Math.floor(_rng() * pool.length)];
-            const build = makeBuild(pick.name);
+            // Tutorial partner is conceptually a wild — uses makeWildBuild so its
+            // training tier matches what the player would catch on a normal route
+            // (no item, default ability, neutral nature, ~170 EV head-start). Keeps
+            // the partner from out-classing the freshly-picked starter and slots
+            // into the same tier curve as every other catch.
+            const build = makeWildBuild(pick.name);
             if (!build) return null;
             return {
                 name: pick.name,
                 build,
                 id: 'm_' + Math.random().toString(36).slice(2, 10),
-                partner: true
+                partner: true,
+                wild: true
             };
         }
 
@@ -27318,8 +27823,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Once per save — explain how the Professor and wild catching differ,
             // so the player doesn't read both as "free Pokémon" and ignore one.
             if (cityIdx > 0 && !isFull) {
-                try { _storyShowOneTimeTip('prof-vs-wild',
-                    'Professor vs. Wild Pokémon\n\n• Professors give curated, fully built Pokémon. One per city in Cities 0–5.\n• Wild Pokémon (catch on routes & in the Safari Zone) have random builds — you can train them up at the tutors.\n• Professors stop offering Pokémon once your party reaches 6.\n• Foes match your party size: a 3-Pokémon team faces 3 foes. Champion, Elite Four, and Victory Road always field 6.'); } catch (e) {}
+                // Single consolidated overview — covers Professor vs wild AND the new
+                // training-tier system in one tip. `showGameAlert` is non-blocking,
+                // so two sequential `_storyShowOneTimeTip` calls would clobber each
+                // other; one tip per Professor visit keeps the message intact.
+                try { _storyShowOneTimeTip('prof-overview-v2',
+                    'Professor vs. Wild — and Training Tiers\n\n' +
+                    '• Professors offer curated picks. One per city in Cities 0–5.\n' +
+                    '• Wild Pokémon (routes & Safari) appear at random.\n' +
+                    '• Foes match your party size; Champion / E4 / Victory Road always field 6.\n\n' +
+                    'Every Pokémon now has a TRAINING TIER (chip next to its name):\n' +
+                    '• Untrained · Novice · Competent · Tournament.\n' +
+                    'Early route trainers are Untrained (0 EVs, neutral nature, no item). The Champion and Elite Four are Tournament. Your starter begins Untrained — visit the Move Tutor, EV Trainer, Nature Rater, and Battle Dojo to climb the tiers.'); } catch (e) {}
             }
             _profLegendaryMysteryMode = _profMysteryMode && isPreLeagueLegendaryMysteryGate(cityIdx);
             // One-time framing for the City-8 legendary gate. The mechanic is a forced
@@ -27398,6 +27913,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         window._pbsStoryUsePlayerGimmickGate = false;
                         delete window._pbsStoryUnlockedGimmicks;
                     }
+                    // Professor gifts scale with city + badge progression so the player
+                    // has real headroom for the Move Tutor / EV Trainer / Nature Rater /
+                    // Battle Dojo upgrade economy. Legendary mystery-gate offers stay at
+                    // tournament tier — they're one-shot story rewards, not raw partners.
+                    if (build) {
+                        const _profTier = _profLegendaryMysteryMode
+                            ? STORY_BUILD_TIER.TOURNAMENT
+                            : _storyBuildTierForProfessor(cityIdx, sm.badges);
+                        if (_profTier < STORY_BUILD_TIER.TOURNAMENT) {
+                            _storyDowngradeBuildForTier(name, build, _profTier);
+                        }
+                        build.powerTier = _profTier;
+                    }
                     const g = getMonGrade(name, getBST(name));
                     choices.push({ name, build, g });
                 }
@@ -27423,13 +27951,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const gimmickBadge = { MEGA: '<span style="font-size:10px;background:#7b1fa2;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">MEGA</span>', ZMOVE: '<span style="font-size:10px;background:#f9a825;color:#000;border-radius:3px;padding:1px 4px;margin-left:3px;">Z</span>', DYNAMAX: '<span style="font-size:10px;background:#b71c1c;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">DYNA</span>', GMAXDYNAMAX: '<span style="font-size:10px;background:#880e4f;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">G-MAX</span>', STANDARD: '' };
             const gb = (ch.build.gimmick && gimmickBadge[ch.build.gimmick]) || '';
             const tera = ch.build.teraType ? `<span class="tera-tip-hover" style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:pointer;touch-action:manipulation;" data-tera="${encodeURIComponent(ch.build.teraType)}" data-o1="${encodeURIComponent(tempMon.type1)}" data-o2="${encodeURIComponent(tempMon.type2||'')}" onclick="event.stopPropagation();window.showTeraFromEl(event)" onmousemove="event.stopPropagation();window.showTeraTooltip('${ch.build.teraType}','${tempMon.type1}','${tempMon.type2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${ch.build.teraType}</span>` : '';
+            // Training tier chip — labels the build's current polish so the player
+            // knows whether to expect raw potential ("Untrained") or a tournament-
+            // grade gift. The chip carries a tooltip explaining the system on first
+            // hover so the meaning isn't a mystery.
+            const _ptN = ch.build.powerTier | 0;
+            const _ptLabel = (typeof _storyBuildTierLabel === 'function') ? _storyBuildTierLabel(_ptN) : '';
+            const _ptColor = (_ptN >= 1 && _ptN <= 4 && typeof STORY_BUILD_TIER_COLOR !== 'undefined') ? STORY_BUILD_TIER_COLOR[_ptN] : '#9e9e9e';
+            const _ptTip = _ptN === 4
+                ? 'Tournament: fully optimized. No training needed.'
+                : _ptN === 3
+                    ? 'Competent: solid build. Some polish at tutors helps.'
+                    : _ptN === 2
+                        ? 'Novice: partial training. Tutors will sharpen EVs, nature, and gear.'
+                        : 'Untrained: raw potential. Move Tutor, EV Trainer, Nature Rater, and Battle Dojo bring it up to fighting shape.';
+            const ptBadge = _ptLabel
+                ? `<span class="hover-text" data-tip-key="${encodeURIComponent(_ptTip)}" style="font-size:10px;background:${_ptColor};color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:help;" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_ptLabel}</span>`
+                : '';
             const card = document.createElement('div');
             card.className = `draft-card prof-pick-card tier-${tier}`;
             card.innerHTML = `
                 <div class="draft-card-sprite"><img src="${getSprite(spriteDisplayName(tempMon), tempMon.isShiny)}" alt="${ch.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                 <div class="draft-card-body">
                     <div class="draft-card-header">
-                        <span>${tempMon.isShiny ? '&#10024; ' : ''}${ch.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}</span>
+                        <span>${tempMon.isShiny ? '&#10024; ' : ''}${ch.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}${ptBadge}</span>
                         <button type="button" class="draft-card-info-btn" title="Full summary" aria-label="Full summary" onclick="event.stopPropagation();window.StoryMode.profOpenSummary(${idx})">&#8505;</button>
                     </div>
                     <div class="draft-card-details">
@@ -27961,90 +28506,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 processNextEvent();
                 return;
             }
-            // Intro Rival cold-open: one-shot scene before the first battle of any save.
-            // Cross-run-deduped via story meta; on dismiss re-enters this function with
-            // _coldOpenChecked so the scene doesn't loop.
-            if (!_coldOpenChecked && (ev[0] | 0) === STORY_RIVAL_ROW_INTRO) {
-                try {
-                    const _coMeta = readStoryMeta();
-                    const _coSeen = _coMeta && _coMeta.tipsShown && _coMeta.tipsShown['intro-rival-coldopen'];
-                    if (!_coSeen) {
-                        const _rivalName = (sm && sm.trainerAssignments) ? sm.trainerAssignments[ev[0] | 0] : null;
-                        _showIntroRivalColdOpen(_rivalName, () => enterBattleEvent(ev, _wildAlreadyChecked, true));
-                        return;
-                    }
-                } catch (e) { console.warn('[Story] intro rival cold-open failed, continuing', e); }
+            // Resolve the beat (kind, gymNumber, coldOpen, variant overrides…)
+            // once so the pre-battle scenes and the trainer-setup block below
+            // can read consistent metadata. See STORY_BEATS / STORYLINE_VARIANTS.
+            const _beat = getStoryBeatForRow(ev[0] | 0, ev);
+
+            // Cold-open: one-shot pre-battle narrative scene declared by the
+            // beat. Dispatched through STORY_COLD_OPENS; cross-run-deduped via
+            // story meta so the scene plays exactly once per save. On dismiss
+            // the scene re-enters this function with _coldOpenChecked=true.
+            if (!_coldOpenChecked) {
+                const _firedColdOpen = _runStoryColdOpen(_beat, ev,
+                    () => enterBattleEvent(ev, _wildAlreadyChecked, true));
+                if (_firedColdOpen) return;
             }
-            // Wild route interrupt — fire once per eventIndex. Skipped on rematch (the
-            // per-eventIndex flag prevents re-fire) and on the post-HoF boss arc (M4).
-            // Roaming sub-legendary (post-Gym 5 / Gym 7) takes precedence: when a
-            // roaming encounter is queued, it replaces the regular wild on the next
-            // route node, so the player gets one focused 30%-catch one-shot instead
-            // of a normal wild + a separate legendary.
+
+            // Pre-battle interrupts: catch tutorial, roaming legendary, route
+            // wild — declarative chain in STORY_BATTLE_INTERRUPTS. First match
+            // wins. Each interrupt fires `enterCatchEncounter` and, on dismiss,
+            // re-enters this function with `_wildAlreadyChecked=true` so the
+            // chain doesn't loop. Skipped entirely on rematch / retry. Post-HoF
+            // Mystery (the Caged God arc) opts out via its own predicates.
             if (!_wildAlreadyChecked) {
-                const _battleIdx = sm.eventIndex;
-                // Catch tutorial — fires once, right after the intro rival is
-                // beaten, on the way to the next battle. Replaces the normal
-                // wild interrupt for this one slot (so the player isn't doing
-                // two catch screens back-to-back).
-                if (_shouldFireCatchTutorialBeforeBattle(_battleIdx)) {
-                    // Tutorial mon is always Grade 4 (drawn from STARTER_PARTNER_POOL
-                    // which is curated to G4-tier early-route species), and catch is
-                    // 100% on first throw, no flee. The player's first catching
-                    // experience should be a guaranteed success — they learn the
-                    // mechanic without the frustration of a missed throw.
-                    //
-                    // The tutorial-done flag is set inside `_catchHandleSuccess`
-                    // (when the catch actually lands), NOT here, so a mid-tutorial
-                    // reload doesn't lock the player out without their partner mon.
-                    // We do mark the wild-seen flag for this slot so the regular
-                    // wild route doesn't pile on top of the tutorial; that's
-                    // re-fired idempotently if the tutorial reopens.
-                    const _partner = _pickStarterPartner(storySettingsGens());
-                    if (_partner) {
-                        _markWildSeen(_battleIdx);
-                        enterCatchEncounter(_partner, () => enterBattleEvent(ev, true), {
-                            forcedCatchRate: 1.0,
-                            forcedFleeRate: 0,
-                            tutorialMode: true
-                        });
-                        return;
-                    }
-                }
-                if (_shouldFireRoamingBeforeBattle(_battleIdx)) {
-                    const pending = _consumeRoamingPending();
-                    _markWildSeen(_battleIdx);
-                    if (pending && pending.name) {
-                        // Roaming legendaries use a full makeBuild (like the Caged God),
-                        // not the partially-trained wild build — they're rare, they
-                        // should feel battle-ready out of the box if caught.
-                        let _build = null;
-                        try { _build = makeBuild(pending.name); } catch (e) { _build = null; }
-                        if (_build) {
-                            const _enc = {
-                                name: pending.name,
-                                build: _build,
-                                id: 'm_' + Math.random().toString(36).slice(2, 10),
-                                wild: true,
-                                roaming: true
-                            };
-                            enterCatchEncounter(_enc, () => enterBattleEvent(ev, true), {
-                                forcedCatchRate: 0.30,
-                                forcedFleeRate: 1.0,
-                                roamingLabel: 'Roaming Pokémon'
-                            });
-                            return;
-                        }
-                    }
-                }
-                if (_shouldFireWildBeforeBattle(_battleIdx)) {
-                    _markWildSeen(_battleIdx);
-                    const _enc = rollWildEncounter(storySettingsGens());
-                    if (_enc) {
-                        enterCatchEncounter(_enc, () => enterBattleEvent(ev, true));
-                        return;
-                    }
-                }
+                const _firedInterrupt = _runFirstStoryInterrupt(sm.eventIndex, ev,
+                    () => enterBattleEvent(ev, true));
+                if (_firedInterrupt) return;
             }
             const [idx, type, event, gradeWeights, coins] = ev;
             const sg = storySettingsGens();
@@ -28794,7 +29280,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (isFree) {
                 sm.safari.freeEntryUsed = true;
-                try { window.showGameAlert && window.showGameAlert(`Welcome to the Safari Zone!\n\nFirst visit is free.\n• ${SAFARI_BALLS_PER_SESSION} Safari Balls\n• Up to ${SAFARI_MAX_ENCOUNTERS} encounters\n• Bait calms wild Pokémon (lower flee, lower catch)\n• Rocks anger them (higher catch, higher flee)\n\nUnused balls do not carry over.`); } catch (e) {}
+                try { window.showGameAlert && window.showGameAlert(`📣 "Welcome to the Safari Zone!"\n\nFirst visit is on the house.\n• ${SAFARI_BALLS_PER_SESSION} Safari Balls (only ball type that works here)\n• Up to ${SAFARI_MAX_ENCOUNTERS} wild encounters\n• 🍓 Bait calms the Pokémon — lower catch, but it sticks around\n• 🪨 Rocks anger it — higher catch, but it may bolt at any moment\n• Every turn the wild may flee. Pick your moments.\n\nUnused Safari Balls are forfeited at the gate.`); } catch (e) {}
             } else {
                 sm.gold = Math.max(0, (sm.gold | 0) - SAFARI_ENTRY_COST);
             }
@@ -28819,11 +29305,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _safariNextEncounter() {
             if (!_safariSession || !_safariSession.active) return;
             if (_safariSession.encountersUsed >= SAFARI_MAX_ENCOUNTERS) {
-                _safariReturnToCity('Your Safari Zone session is over.');
+                _safariReturnToCity('📣 "Ding-dong! Your Safari Zone game is over!"\n\nThe warden flags you down at the gate. Time to head back.');
                 return;
             }
             if (_safariSession.ballsLeft <= 0) {
-                _safariReturnToCity('Out of Safari Balls. Heading back to the gate.');
+                _safariReturnToCity('📣 "Ding-dong! You\'re out of Safari Balls — game over!"\n\nBetter luck next time, trainer.');
                 return;
             }
             _safariSession.encountersUsed++;
@@ -28853,9 +29339,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterCity();
         }
         function safariLeaveEarly() {
-            if (!_safariSession) return;
+            // Always allow exit. _safariSession may be null in rare edge
+            // cases (mid-encounter reload, stale handler from a previous
+            // session) — falling through to enterCity() is the safe recovery
+            // path either way, so don't gate the button behind the session
+            // being live.
             _catchState = null;
-            _safariReturnToCity('You left the Safari Zone. Leftover Safari Balls were forfeited.');
+            _safariReturnToCity('📣 "Thanks for visiting the Safari Zone! Come again soon."\n\nLeftover Safari Balls were forfeited at the gate.');
         }
 
         // ── THE CRUCIBLE — endgame super-hub + Battle Frontier ────────────
@@ -29377,17 +29867,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Safari Ball is a session-scoped resource that lives ONLY inside the
         // Safari Zone. It is granted on entry, consumed on each throw, and
         // forfeited on exit — it never enters sm.balls (cannot be used on wild
-        // routes). 1.25× — sits between Poké and Great so the Bait/Rock loop
-        // is what rewards skilled play, not raw ball quality.
-        const SAFARI_BALL_MULT = 1.25;
+        // routes). 1.35× — sits between Poké (1.0×) and Great (1.5×). Bumped
+        // from 1.25 when per-turn flee on Bait/Rock landed: the new tension
+        // adds real session risk, so the baseline (no bait/rock) throw needs
+        // to feel playable. Bait/Rock are still what rewards skilled play —
+        // raw ball quality just isn't quite the floor it used to be.
+        const SAFARI_BALL_MULT = 1.35;
         const SAFARI_BALLS_PER_SESSION = 15;
         // Bait calms the Pokémon (lower flee chance, lower catch chance).
         // Rock angers it (higher catch chance, higher flee chance).
         // Modifiers stack within an encounter and reset between encounters.
+        // Rock catch mult bumped 1.45→1.65 so stacking rocks is genuinely
+        // rewarding — pairs with the new per-turn flee on rock turns.
         const SAFARI_BAIT_CATCH_MULT = 0.70;
         const SAFARI_BAIT_FLEE_MULT  = 0.55;
-        const SAFARI_ROCK_CATCH_MULT = 1.45;
+        const SAFARI_ROCK_CATCH_MULT = 1.65;
         const SAFARI_ROCK_FLEE_MULT  = 1.70;
+        // ── Per-turn flee (canonical Safari Zone tension) ─────────────────
+        // In the real Safari Zone, the wild may flee at the end of ANY turn —
+        // Bait/Rock turns included, not just after a missed throw. Without
+        // this, Bait/Rock are "safe" actions that just stack modifiers and
+        // the bait/rock dilemma loses its bite. We re-use the existing flee
+        // formula (baseFlee × baitFleeMult × rockFleeMult) with an
+        // action-specific softener so Bait stays gentle ("calming") and Rock
+        // becomes the real gamble ("aggression"). Hard-capped so no single
+        // action ever auto-flees — the player always has a >55% chance to
+        // keep the wild around for one more move.
+        const SAFARI_BAIT_TURN_FLEE_MULT = 0.20;
+        const SAFARI_ROCK_TURN_FLEE_MULT = 0.55;
+        const SAFARI_TURN_FLEE_CAP       = 0.45;
         let _catchState = null;
         let _safariSession = null;
 
@@ -29501,6 +30009,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (base && base.abilities && base.abilities['0']) b.a = base.abilities['0'];
             b.n = _wildPickNature(base);
             b.evs = _wildPickEVs(base);
+            // Wild catches sit at the bottom of the training-tier curve. The 170-EV /
+            // curated-positive-nature head-start (see _wildPickNature/_wildPickEVs)
+            // makes them comparable to a T1 trainer mon's structural moves but with
+            // a small head-start to make caught wilds feel like a real partner. The
+            // existing tutor economy still has full headroom to T4.
+            if (typeof STORY_BUILD_TIER !== 'undefined') b.powerTier = STORY_BUILD_TIER.UNTRAINED;
             return b;
         }
 
@@ -29576,6 +30090,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             try { _storyMarkPokedexSeen(wildMon && wildMon.name); } catch (e) {}
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
+            // Header reflects the mode so the catch screen reads as
+            // "🦒 Safari Zone" inside a Safari run instead of a generic
+            // "🌿 Wild Encounter" — matches the canonical game's
+            // dedicated Safari Zone screen feel.
+            try {
+                const headerEl = document.querySelector('#screen-story-catch .story-screen-head-text');
+                if (headerEl) {
+                    if (_catchState.bossMode) headerEl.textContent = '🔮 The Caged God';
+                    else if (_catchState.safariMode) headerEl.textContent = '🦒 Safari Zone';
+                    else if (_catchState.tutorialMode) headerEl.textContent = '🎓 Catch Tutorial';
+                    else headerEl.textContent = '🌿 Wild Encounter';
+                }
+            } catch (e) {}
             // Roaming-legendary one-shot framing — set the opening message before render
             // so the player can read the stakes before throwing.
             if (_catchState.roamingLabel && !_catchState.bossMode) {
@@ -29588,6 +30115,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // disappointment on the very first try.
             if (_catchState.tutorialMode) {
                 _catchState.message = `Professor's lesson — a wild ${wildMon.name}. This one is calm: the throw will land. Catch it, then on to the gym.`;
+            }
+            // Safari opening flavor — keyed by grade so the player gets an
+            // observation cue before they pick Bait or Rock. Replaces the
+            // generic "appeared" framing with something that hints at the
+            // wild's mood and rarity.
+            if (_catchState.safariMode && !_catchState.tutorialMode) {
+                let _safariGrade = 4;
+                try { _safariGrade = getMonGrade(wildMon.name, getBST(wildMon.name)); } catch (e) {}
+                const _safariOpeners = {
+                    1: [
+                        `A rare ${wildMon.name} appeared in the brush — you can feel it watching you back.`,
+                        `Up ahead: ${wildMon.name}. It looks ready to bolt at the first wrong move.`,
+                        `${wildMon.name}! This one almost never shows up. Make it count.`
+                    ],
+                    2: [
+                        `${wildMon.name} stepped into the clearing. Sharp eyes. Sharp instincts.`,
+                        `A wild ${wildMon.name} appeared — alert and on edge.`,
+                        `${wildMon.name} spots you and freezes. One chance to read the room.`
+                    ],
+                    3: [
+                        `A wild ${wildMon.name} appeared in the safari grass.`,
+                        `${wildMon.name} rustles out of the underbrush and stares at you.`,
+                        `A wild ${wildMon.name} pokes its head out of the tall grass.`
+                    ],
+                    4: [
+                        `A wild ${wildMon.name} ambled into view — friendly looking enough.`,
+                        `${wildMon.name} appeared! It doesn't seem too worried about you.`,
+                        `${wildMon.name} wanders by, curious.`
+                    ]
+                };
+                const _safariPool = _safariOpeners[_safariGrade] || _safariOpeners[3];
+                _catchState.message = _safariPool[Math.floor(Math.random() * _safariPool.length)];
             }
             _catchRender();
             if (!_catchState.bossMode) {
@@ -29603,9 +30162,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { _storyShowOneTimeTip('safari-catch',
                         'Safari Zone — only Safari Balls work here.\n\n' +
                         '• Throw a Safari Ball to try to catch the Pokémon.\n' +
-                        '• Bait calms it: lower flee chance, lower catch chance.\n' +
-                        '• Rocks anger it: higher catch chance, higher flee chance.\n' +
-                        '• Modifiers reset between encounters.'); } catch (e) {}
+                        '• 🍓 Bait calms it: lower catch, but it sticks around.\n' +
+                        '• 🪨 Rock angers it: higher catch, but it may bolt.\n' +
+                        '• Every turn — Bait, Rock, or missed throw — the wild may flee.\n' +
+                        '• Modifiers stack up to 3× and reset between encounters.\n' +
+                        '• Pick your moment: a stacked rock is your best catch chance, but also your highest flee risk.'); } catch (e) {}
                 } else {
                     try { _storyShowOneTimeTip('catch',
                         'A wild Pokémon!\n\n' +
@@ -29693,13 +30254,64 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span style="display:flex;align-items:center;gap:8px;"><img src="${display.icon}" alt="" width="22" height="22" decoding="async" style="image-rendering:pixelated;flex-shrink:0;"><span><strong>${display.name}</strong> <span style="color:#aaa;font-size:10px;">(${SAFARI_BALL_MULT}× base)</span> ×${have}</span></span>
                     <span style="color:#fff;">${safariPct}%</span>
                 </button>`;
+                // Per-turn flee % AND projected catch % surfaced on each
+                // button so the full gamble is legible at the point of
+                // decision. Bait stays gentle (low flee, but it drags catch
+                // down); Rock scales hard on both axes — mirrors the
+                // canonical Safari dilemma where every rock is "one more
+                // roll closer to a catch, but the wild might bolt this turn".
+                const _projChance = (baitCount, rockCount) => {
+                    const bm = Math.pow(SAFARI_BAIT_CATCH_MULT, baitCount);
+                    const rm = Math.pow(SAFARI_ROCK_CATCH_MULT, rockCount);
+                    const mult = Math.max(0.1, Math.min(4.0, SAFARI_BALL_MULT * bm * rm));
+                    return Math.min(1, baseRate * mult);
+                };
+                const _projFlee = (baitCount, rockCount, actionMult) => {
+                    const m = Math.pow(SAFARI_BAIT_FLEE_MULT, baitCount) * Math.pow(SAFARI_ROCK_FLEE_MULT, rockCount);
+                    const base = _CATCH_FLEE_BY_GRADE[grade] || _CATCH_DEFAULT_FLEE_RATE;
+                    return Math.max(0, Math.min(SAFARI_TURN_FLEE_CAP, base * m * actionMult));
+                };
+                const _simBaitB = Math.min(3, (sess.baitCount | 0) + 1);
+                const _simBaitR = sess.rockCount | 0;
+                const _simRockB = sess.baitCount | 0;
+                const _simRockR = Math.min(3, (sess.rockCount | 0) + 1);
+                const _baitProjPct = Math.round(_projChance(_simBaitB, _simBaitR) * 100);
+                const _rockProjPct = Math.round(_projChance(_simRockB, _simRockR) * 100);
+                const _baitTurnPct = Math.round(_projFlee(_simBaitB, _simBaitR, SAFARI_BAIT_TURN_FLEE_MULT) * 100);
+                const _rockTurnPct = Math.round(_projFlee(_simRockB, _simRockR, SAFARI_ROCK_TURN_FLEE_MULT) * 100);
+                const baitMaxed = (sess.baitCount | 0) >= 3;
+                const rockMaxed = (sess.rockCount | 0) >= 3;
+                // PokéSprite icons from main — better than a plain emoji and
+                // match the Safari Ball icon treatment above. image-rendering:auto
+                // per main's icon-scaling-mobile fix (PR #67) for non-integer
+                // device pixel ratios.
                 const _baitIco = `<img src="sprites/pokesprite/items/oran-berry.png" alt="" width="18" height="18" decoding="async" style="image-rendering:auto;vertical-align:-4px;margin-right:2px;">`;
                 const _rockIco = `<img src="sprites/pokesprite/items/hard-stone.png" alt="" width="18" height="18" decoding="async" style="image-rendering:auto;vertical-align:-4px;margin-right:2px;">`;
-                const baitLabel = sess.baitCount ? `${_baitIco}Bait <span style="color:#ffd54f;font-size:10px;font-weight:bold;">×${sess.baitCount}</span>` : `${_baitIco}Bait`;
-                const rockLabel = sess.rockCount ? `${_rockIco}Throw Rock <span style="color:#ffd54f;font-size:10px;font-weight:bold;">×${sess.rockCount}</span>` : `${_rockIco}Throw Rock`;
+                const baitStack = baitMaxed
+                    ? ` <span style="opacity:0.7;font-size:10px;color:#888;">MAX</span>`
+                    : (sess.baitCount ? ` <span style="color:#ffd54f;font-size:10px;font-weight:bold;">×${sess.baitCount}</span>` : '');
+                const rockStack = rockMaxed
+                    ? ` <span style="opacity:0.7;font-size:10px;color:#888;">MAX</span>`
+                    : (sess.rockCount ? ` <span style="color:#ffd54f;font-size:10px;font-weight:bold;">×${sess.rockCount}</span>` : '');
+                const baitTitle = baitMaxed
+                    ? `Bait stack maxed at 3×. The wild is as calm as it gets.`
+                    : `Calms the Pokémon — catch ${safariPct}% → ${_baitProjPct}%, flee risk this turn ${_baitTurnPct}%.`;
+                const rockTitle = rockMaxed
+                    ? `Rock stack maxed at 3×. The wild is fully riled — throw now.`
+                    : `Angers the Pokémon — catch ${safariPct}% → ${_rockProjPct}%, flee risk this turn ${_rockTurnPct}%.`;
+                // Action stat preview "→ NN%catch · flee N%" — readable green/orange
+                // split so the upside and the risk are visually distinct.
+                const baitStats = baitMaxed ? '' : `<span style="font-size:10px;">→ <span style="color:#aed581;">${_baitProjPct}%</span> · <span style="color:#ff7043;">flee ${_baitTurnPct}%</span></span>`;
+                const rockStats = rockMaxed ? '' : `<span style="font-size:10px;">→ <span style="color:#aed581;">${_rockProjPct}%</span> · <span style="color:#ff7043;">flee ${_rockTurnPct}%</span></span>`;
                 safariActionRow = `<div style="display:flex;gap:6px;margin-top:4px;">
-                    <button type="button" onclick="window.StoryMode.safariBait()" style="flex:1;padding:8px;background:rgba(20,28,40,0.6);border:1px solid #f48fb1;color:#f48fb1;font-family:inherit;font-size:11px;cursor:pointer;" title="Calms the Pokémon — lower flee chance, lower catch chance">${baitLabel}</button>
-                    <button type="button" onclick="window.StoryMode.safariRock()" style="flex:1;padding:8px;background:rgba(20,28,40,0.6);border:1px solid #ffab91;color:#ffab91;font-family:inherit;font-size:11px;cursor:pointer;" title="Angers the Pokémon — higher catch chance, higher flee chance">${rockLabel}</button>
+                    <button type="button" onclick="window.StoryMode.safariBait()" ${baitMaxed ? 'disabled' : ''} style="flex:1;display:flex;justify-content:space-between;align-items:center;gap:6px;padding:8px;background:rgba(20,28,40,0.6);border:1px solid #f48fb1;color:#f48fb1;font-family:inherit;font-size:11px;${baitMaxed ? 'opacity:0.45;cursor:not-allowed;' : 'cursor:pointer;'}" title="${_esc(baitTitle)}">
+                        <span>${_baitIco}Bait${baitStack}</span>
+                        ${baitStats}
+                    </button>
+                    <button type="button" onclick="window.StoryMode.safariRock()" ${rockMaxed ? 'disabled' : ''} style="flex:1;display:flex;justify-content:space-between;align-items:center;gap:6px;padding:8px;background:rgba(20,28,40,0.6);border:1px solid #ffab91;color:#ffab91;font-family:inherit;font-size:11px;${rockMaxed ? 'opacity:0.45;cursor:not-allowed;' : 'cursor:pointer;'}" title="${_esc(rockTitle)}">
+                        <span>${_rockIco}Rock${rockStack}</span>
+                        ${rockStats}
+                    </button>
                 </div>
                 <div style="display:flex;gap:6px;margin-top:4px;">
                     <button type="button" onclick="window.StoryMode.catchRun()" style="flex:1;padding:8px;background:rgba(20,28,40,0.4);border:1px solid #5e7a90;color:#a8bccc;font-family:inherit;font-size:10px;cursor:pointer;" title="Skip to next encounter">&#8594; Skip to Next</button>
@@ -29709,9 +30321,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _fleeMult = Math.pow(SAFARI_BAIT_FLEE_MULT, sess.baitCount | 0) * Math.pow(SAFARI_ROCK_FLEE_MULT, sess.rockCount | 0);
                 const _fleeThresh = Math.max(0, Math.min(0.85, _fleeBase * _fleeMult));
                 const _fleePct = Math.round(_fleeThresh * 100);
-                safariStatusRow = `<div style="display:flex;justify-content:space-between;font-size:11px;color:#aed581;padding:6px 8px;background:rgba(10,18,12,0.45);border:1px solid #4a6c44;margin-top:6px;">
+                safariStatusRow = `<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#aed581;padding:6px 8px;background:rgba(10,18,12,0.45);border:1px solid #4a6c44;margin-top:6px;">
                     <span>Encounter ${sess.encountersUsed} of ${SAFARI_MAX_ENCOUNTERS}</span>
-                    <span>Flee chance on miss: <strong style="color:#ff7043;">${_fleePct}%</strong></span>
+                    <span>Flee on miss: <strong style="color:#ff7043;">${_fleePct}%</strong></span>
                 </div>`;
             } else {
                 ballRows = ['poke', 'great', 'ultra', 'master'].map(k => {
@@ -29748,7 +30360,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const gradeBg = _catchState.bossMode ? '#ce93d8' : '#a5d6a7';
             const subText = _catchState.bossMode
                 ? `Catch rate 1% per throw. Master Ball is guaranteed.`
-                : _catchState.safariMode ? `Safari Balls only (${SAFARI_BALL_MULT}× catch). Bait calms, Rock angers. Effects stack within an encounter.` : 'Catch chance = grade base × ball multiplier.';
+                : _catchState.safariMode ? `Safari Balls only (${SAFARI_BALL_MULT}× catch). Bait calms, Rock angers — every turn the wild may flee.` : 'Catch chance = grade base × ball multiplier.';
             // Show the wild Pokémon's sprite — the screen was text-only before, which
             // made every encounter feel like the same prompt.
             let spriteHtml = '';
@@ -30054,22 +30666,79 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { cb(); } catch (e) { console.warn('[Story] catch run onComplete', e); }
             }
         }
+        // Per-turn flee chance after a Bait/Rock action. Returns the
+        // threshold the next roll is compared against. Bait stays gentle
+        // (rarely loses the wild); Rock is a real gamble that grows with each
+        // stack. Hard-capped at SAFARI_TURN_FLEE_CAP so no single action ever
+        // auto-flees — there's always >55% room to keep going.
+        function _safariActionFleeThreshold(action) {
+            if (!_safariSession || !_catchState || !_catchState.safariMode) return 0;
+            const enc = _catchState.encounter;
+            if (!enc) return 0;
+            let grade = 4;
+            try { grade = getMonGrade(enc.name, getBST(enc.name)); } catch (e) {}
+            const baseFlee = _CATCH_FLEE_BY_GRADE[grade] || _CATCH_DEFAULT_FLEE_RATE;
+            const sess = _safariSession;
+            const baitMult = Math.pow(SAFARI_BAIT_FLEE_MULT, sess.baitCount | 0);
+            const rockMult = Math.pow(SAFARI_ROCK_FLEE_MULT, sess.rockCount | 0);
+            const actionMult = action === 'bait' ? SAFARI_BAIT_TURN_FLEE_MULT : SAFARI_ROCK_TURN_FLEE_MULT;
+            return Math.max(0, Math.min(SAFARI_TURN_FLEE_CAP, baseFlee * baitMult * rockMult * actionMult));
+        }
+        // Roll the per-turn flee. If the wild flees, ends the encounter with
+        // an action-flavored message and returns true. Caller should bail out
+        // immediately if true is returned.
+        function _safariRollActionFlee(action) {
+            const threshold = _safariActionFleeThreshold(action);
+            if (threshold <= 0) return false;
+            const roll = (sm && sm.active) ? storyRngNext() : Math.random();
+            try { save(); } catch (e) {}
+            if (roll >= threshold) return false;
+            const name = (_catchState && _catchState.encounter && _catchState.encounter.name) || 'The wild Pokémon';
+            const fleeMsgs = action === 'bait'
+                ? [
+                    `${name} finished the bait and wandered off into the brush!`,
+                    `Distracted by the food, ${name} slipped out of sight before you could throw!`,
+                    `${name} ate up — and walked away without looking back.`,
+                    `${name} took the snack and disappeared into the underbrush!`
+                ]
+                : [
+                    `The rock spooked ${name}! It bolted before you could throw!`,
+                    `${name} dodged the rock and tore off through the tall grass!`,
+                    `Angered, ${name} sprinted away — gone for good.`,
+                    `${name} hissed at the rock and vanished into the wild!`
+                ];
+            _catchFinishWithMessage(fleeMsgs[Math.floor(Math.random() * fleeMsgs.length)]);
+            return true;
+        }
         // Safari Bait — calms the wild Pokémon. Decreases catch chance, also
         // decreases flee chance. Doesn't consume a ball. Can stack up to 3.
+        // The per-turn flee check rolls after applying the bait stack so the
+        // new state drives the flee threshold. If the wild flees, the flee
+        // message replaces this turn's text entirely (no flash of the
+        // "calmer now" copy). Hard guard at 3× prevents a stale click on a
+        // disabled button (or a fast double-click) from triggering an extra
+        // RNG-consuming flee roll.
         function safariBait() {
             if (!_catchState || !_catchState.safariMode || _catchState.ended) return;
             if (!_safariSession) return;
+            if ((_safariSession.baitCount | 0) >= 3) return;
             _safariSession.baitCount = Math.min(3, (_safariSession.baitCount | 0) + 1);
-            _catchState.message = `${_catchState.encounter.name} ate the bait. It's calmer now — lower flee chance, but harder to catch.`;
+            if (_safariRollActionFlee('bait')) return;
+            _catchState.message = `${_catchState.encounter.name} is munching on the bait — calmer now.`;
             _catchRender();
         }
         // Safari Rock — angers the wild Pokémon. Increases catch chance, but also
         // increases flee chance dramatically. Doesn't consume a ball. Can stack up to 3.
+        // The per-turn flee check after a rock is the canonical Safari gamble:
+        // each rock improves the eventual catch odds, but the wild may bolt on
+        // the same turn you threw it.
         function safariRock() {
             if (!_catchState || !_catchState.safariMode || _catchState.ended) return;
             if (!_safariSession) return;
+            if ((_safariSession.rockCount | 0) >= 3) return;
             _safariSession.rockCount = Math.min(3, (_safariSession.rockCount | 0) + 1);
-            _catchState.message = `${_catchState.encounter.name} is angry! Easier to catch, but more likely to flee.`;
+            if (_safariRollActionFlee('rock')) return;
+            _catchState.message = `${_catchState.encounter.name} dodges the rock — furious now, and watching you closely.`;
             _catchRender();
         }
 
@@ -33431,6 +34100,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openTeamTester, openTeamTesterSyncFromStory, runTeamTester, copyTeamTesterText, closeTeamTester,
             previewHallOfFame, seedDebugMysteryLegendGate, seedDebugPostHofClimax, seedTestMegaFromUrl, seedStoryChampionWeakTestFromUrl, clearCurrentEnemyLock,
             openRunSummary,
+            // Story-mode event registry (read-only inspection surface)
+            getStoryBeat: function(rowId) { return getStoryBeatForRow(rowId | 0); },
+            getActiveStoryline: function() { return _storyActiveVariant(); },
+            listStorylines: function() { return Object.keys(STORYLINE_VARIANTS); },
+            // Debug: dump the full event × badges training-tier matrix to the
+            // console. Lets the player (or maintainer) verify the curve without
+            // walking the whole story. Returns the matrices so they can be
+            // re-piped through console.table or copied for a balance audit.
+            debugBuildTiers() {
+                const events = [
+                    'Basic Trainer', 'Gym Trainer 1', 'Gym Trainer 2',
+                    'Gym Leader 1', 'Gym Leader 2', 'Gym Leader 3', 'Gym Leader 4',
+                    'Gym Leader 5', 'Gym Leader 6', 'Gym Leader 7', 'Gym Leader 8',
+                    'Elite Trainer', 'Rival', 'Victory Road',
+                    'E1', 'E2', 'E3', 'E4', 'Champion', 'Mystery Figure',
+                ];
+                const foeRows = [];
+                for (let b = 0; b <= 8; b++) {
+                    const row = { badges: b };
+                    for (const e of events) row[e] = _storyBuildTierForEvent(e, null, b);
+                    foeRows.push(row);
+                }
+                const profRows = [];
+                for (let b = 0; b <= 8; b++) {
+                    const row = { badges: b };
+                    for (let c = 0; c <= 9; c++) row['city' + c] = _storyBuildTierForProfessor(c, b);
+                    profRows.push(row);
+                }
+                console.log('Foe tier by event × badges (1=Untrained, 2=Novice, 3=Competent, 4=Tournament):');
+                console.table(foeRows);
+                console.log('Professor gift tier by city × badges:');
+                console.table(profRows);
+                return { foes: foeRows, professor: profRows };
+            },
         };
         })(); // end StoryMode IIFE
 

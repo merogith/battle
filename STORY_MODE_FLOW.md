@@ -85,6 +85,8 @@ Trade-off: keeps `eventIndex` semantics clean; needs the save/restore wrapper.
 
 ## 4. Safari Zone
 
+The Safari Zone replicates the canonical gameplay loop (no battles, only Safari Balls work, Bait/Rock as asymmetric levers, every turn the wild may flee) and adapts the numbers to story mode's 6-encounter / 15-ball session shape.
+
 | Aspect | Value |
 |---|---|
 | Unlock | City 4 ("Wilderness town") action button — both pre- and post-Gym-4 hub rows carry it. |
@@ -92,10 +94,11 @@ Trade-off: keeps `eventIndex` semantics clean; needs the save/restore wrapper.
 | Cost | First entry free. Subsequent entries cost `SAFARI_ENTRY_COST` (2,500G). |
 | Encounters | Continuous random encounters up to `SAFARI_MAX_ENCOUNTERS` (6 per session). Each encounter is a single mon. |
 | Pool grade | `SAFARI_GRADE_WEIGHTS` g1:3 / g2:22 / g3:50 / g4:25 — tightened to make Safari a "spend money for a real chance" trip rather than a guaranteed haul. |
-| Balls | Safari-session pool only (`SAFARI_BALLS_PER_SESSION` = 15). The player's PokéBall stack does **not** apply inside; leftover Safari Balls are forfeited on exit. Safari Ball multiplier `SAFARI_BALL_MULT` = 1.25×. |
-| Mechanics | Bait (calm: lower catch, lower flee) and Rock (anger: higher catch, higher flee) stack within an encounter and reset between encounters. |
-| Flee | Per-grade flee rate (G1 55% → G4 20%), modulated by bait/rock stacks. |
-| Exit | After 6 encounters, when balls run out, or via "Leave Safari" button. Caught mons enter party/PC; uncaught are gone. |
+| Balls | Safari-session pool only (`SAFARI_BALLS_PER_SESSION` = 15). The player's PokéBall stack does **not** apply inside; leftover Safari Balls are forfeited on exit. Safari Ball multiplier `SAFARI_BALL_MULT` = 1.35× (between Poké and Great). |
+| Bait/Rock | Bait `SAFARI_BAIT_CATCH_MULT` 0.70× catch / `SAFARI_BAIT_FLEE_MULT` 0.55× post-miss flee. Rock `SAFARI_ROCK_CATCH_MULT` 1.65× catch / `SAFARI_ROCK_FLEE_MULT` 1.70× post-miss flee. Stack up to 3× each; reset between encounters. |
+| Flee — on missed throw | Per-grade flee rate (G1 55% → G4 20%), modulated by bait/rock stacks. |
+| Flee — per turn (Bait/Rock) | Each Bait/Rock action also rolls a flee check at the end of the turn — canonical Safari tension. Bait turn flee = `0.20×` of the post-miss formula (gentle, typically 1–6% per turn). Rock turn flee = `0.55×` of the post-miss formula (20–40% per turn, scales fast with stacks). Hard-capped at `SAFARI_TURN_FLEE_CAP` = 45%. |
+| Exit | After 6 encounters, when balls run out, or via "Leave Safari" button. Caught mons enter party/PC; uncaught are gone. End-of-session messages are PA-style ("Ding-dong! Your Safari Zone game is over!"). |
 
 ---
 
@@ -546,3 +549,124 @@ Things that need decisions before later milestones but don't block schema work:
 - `docs/STORY_MODE_CATCH_INTEGRATION_RISK.md` — risk analysis of catch/PC integration; strategy A is the chosen wild-encounter approach
 - `docs/STORY_FEATURES_INTEGRATION.md` — earlier high-level mechanic outlines; this spec is the canonical replacement
 - `README.md` — top-level project README; references this file
+
+---
+
+## 17. Event registry & storyline architecture (v17)
+
+Story mode is built around `STORY_EVENTS_RAW` — a flat array of timeline rows
+(Cities, Battles, Hall of Fame). The dispatcher `processNextEvent` reads
+`sm.eventIndex`, branches on the row's type, and hands off to `enterCity`,
+`enterBattleEvent`, or `showHallOfFame`.
+
+To keep each beat editable in isolation — and to let later passes deepen
+specific battles without touching the dispatcher — v17 introduces a
+**declarative event registry** layered on top of `STORY_EVENTS_RAW`.
+
+### Registries (battle.html, all just above `// ── MAIN EVENT LOOP ───`)
+
+| Registry | Type | Purpose |
+|---|---|---|
+| `STORY_BEATS` | `{ rowId → beat }` | Per-row metadata: `kind`, `gymNumber`, `eliteNumber`, `tags`, optional `coldOpen`. Rows not listed fall back to `_deriveDefaultBeat(ev)`. |
+| `STORY_COLD_OPENS` | `{ tag → scene }` | One-shot pre-battle scenes. Each scene declares a `metaKey` and a `run(ev, onDone)` overlay. Cross-run-deduped via `pbs_story_meta.tipsShown[metaKey]`. |
+| `STORY_BATTLE_INTERRUPTS` | `Array<interrupt>` | Pre-battle catch screens (catch tutorial, roaming legendary, wild route). Each entry has `prepare(battleIdx, ev) → { encounter, options, markWildSeenOnPrepare } \| null`. First non-null wins. |
+| `STORYLINE_VARIANTS` | `{ id → variant }` | Storyline picks. Each variant can override any beat (`beatOverrides[rowId] = { …partial… }`) and set a `defaultTone`. The active variant is `sm.storyLine` (default `'classic'`). |
+
+### Bus helpers
+
+- `getStoryBeatForRow(rowId, ev?)` — returns the merged beat:
+  `_deriveDefaultBeat(ev) ← STORY_BEATS[rowId] ← variant.beatOverrides[rowId]`.
+  Stamps `_variantId` on the result so downstream code can branch on variant.
+- `_runStoryColdOpen(beat, ev, onPlayed)` — fires the beat's cold-open if it
+  hasn't played this save; stamps the meta key on dismiss; returns `true` when
+  the scene actually played. Otherwise returns `false` and does **not** invoke
+  `onPlayed`.
+- `_runFirstStoryInterrupt(battleIdx, ev, onComplete)` — walks
+  `STORY_BATTLE_INTERRUPTS`; the first interrupt whose `prepare` returns a
+  non-null encounter opens the catch screen and short-circuits. Returns
+  `true` when an interrupt fired.
+
+### Dispatcher (refactored `enterBattleEvent`)
+
+```js
+function enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked) {
+    const _beat = getStoryBeatForRow(ev[0] | 0, ev);
+
+    if (!_coldOpenChecked) {
+        const fired = _runStoryColdOpen(_beat, ev,
+            () => enterBattleEvent(ev, _wildAlreadyChecked, true));
+        if (fired) return;
+    }
+    if (!_wildAlreadyChecked) {
+        const fired = _runFirstStoryInterrupt(sm.eventIndex, ev,
+            () => enterBattleEvent(ev, true));
+        if (fired) return;
+    }
+    // …trainer/team setup unchanged…
+}
+```
+
+### Adding new content (the common cases)
+
+| You want to… | Where to edit |
+|---|---|
+| Give a specific row a one-shot cold-open scene | `STORY_COLD_OPENS` (new entry) + `STORY_BEATS[rowId].coldOpen = '<key>'` |
+| Insert a new pre-battle catch screen (e.g. seasonal event) | Append one entry to `STORY_BATTLE_INTERRUPTS` |
+| Add a storyline variant | Add an entry to `STORYLINE_VARIANTS` with `beatOverrides` for the rows it retunes; surface it in the run-setup UI later (the registry already supports it) |
+| Tag a row for downstream lookup (e.g. dialogue branching) | `STORY_BEATS[rowId].tags = [...]` |
+| Deepen a single gym leader's victory speech | Edit `LEADER_VICTORY_LINES` (existing table). The bus does not own prose. |
+
+### What stays in the existing content tables
+
+The registry intentionally does **not** absorb dialogue prose. Trainer
+quotes (`TRAINER_QUOTES`, `TRAINER_QUOTES_BY_NAME`, `RIVAL_PROGRESS_PRIMARY_QUOTES`),
+victory lines (`LEADER_VICTORY_LINES`, `ELITE_VICTORY_LINES`,
+`CHAMPION_VICTORY_LINES`), city flavor (`CITY_SPECIALTY_BLURBS`,
+`CITY_GUIDE_QUOTES`, `CITY_PROFESSOR_QUOTES`), and victory bundles
+(`GYM_VICTORY_REWARDS`) remain the source of truth for content. The
+registry only controls **which** beat is firing and **which** orchestration
+hooks (cold-open, interrupts, variant overrides) apply.
+
+### Storyline variants — Pokémon adapt to the ruleset
+
+A variant changes narrative framing — beat tags, cold-opens, optional
+prose hooks (later milestone) — but never bypasses the existing rollers.
+Trainer team rolls go through `rollTrainerTeam(trainer, partySize,
+gradeWeights, sm.settings.enabledGens, event, idx)`; wild encounters go
+through `rollWildEncounter(ev[3], storySettingsGens())`. Both consume
+`sm.settings.enabledGens` and the row's `gradeWeights` directly, so a
+variant can re-skin the rival without breaking the curve: Pokémon adapt
+to whatever generations and grade thresholds the run was started with.
+
+This is the **adapt-to-ruleset** contract: static narrative beats + flexible
+species rolls. The variant decides the words on screen; the rollers decide
+the Pokémon, always within the player's enabled gens and the row's grade
+weights.
+
+### Save schema
+
+- `sm.storyLine: string` (default `'classic'`) — added in v17. Locked for the
+  duration of the run; chosen at run start by `_readStorylineFromUI()`.
+- `migrateStoryPreV17` — sets `sm.storyLine = 'classic'` on v16 saves so the
+  bus always has a valid variant to read.
+- `SAVE_VER` bumped 16 → 17.
+
+### Public inspection surface
+
+```js
+window.StoryMode.getStoryBeat(rowId);        // merged beat for that row
+window.StoryMode.getActiveStoryline();       // current variant object
+window.StoryMode.listStorylines();           // available variant ids
+```
+
+Read-only — handy in DevTools when adding new beats / variants.
+
+### Anchors in `battle.html`
+
+- `STORY_BEATS` / `STORY_COLD_OPENS` / `STORYLINE_VARIANTS` — top of the
+  "STORY MODE — EVENT REGISTRY" section, just above `// ── MAIN EVENT LOOP ───`.
+- `STORY_BATTLE_INTERRUPTS` / `_runFirstStoryInterrupt` / `_runStoryColdOpen`
+  — same section, immediately after the variant helpers.
+- `enterBattleEvent` (~line 27509) — three-line dispatch now: resolve beat
+  → dispatch cold-open → dispatch interrupts → run the trainer fight setup
+  (unchanged).
