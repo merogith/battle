@@ -5396,11 +5396,18 @@
 
     <script>
         // === 0. DEVICE DETECTION ===
-        const _autoIsMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-            || (navigator.maxTouchPoints > 1 && /MacIntel/.test(navigator.platform))
-            || window.matchMedia('(hover: none) and (pointer: coarse)').matches
-            /* WebViews / “Desktop site” / devtools can miss UA; coarse pointer + narrow viewport ≈ phone/tablet */
-            || (navigator.maxTouchPoints > 0 && window.matchMedia('(pointer: coarse)').matches && window.matchMedia('(max-width: 1024px)').matches);
+        // Re-evaluated on every call so resize / orientationchange / "device toolbar" toggle
+        // can flip the body between desktop and phone layouts without a page refresh.
+        // Viewport width <=900 also counts as mobile, so headless / DevTools-emulated phones
+        // (which keep the desktop UA) still get the phone layout immediately.
+        function _computeAutoIsMobile() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+                || (navigator.maxTouchPoints > 1 && /MacIntel/.test(navigator.platform))
+                || window.matchMedia('(hover: none) and (pointer: coarse)').matches
+                /* WebViews / “Desktop site” / devtools can miss UA; coarse pointer + narrow viewport ≈ phone/tablet */
+                || (navigator.maxTouchPoints > 0 && window.matchMedia('(pointer: coarse)').matches && window.matchMedia('(max-width: 1024px)').matches)
+                || (typeof window.innerWidth === 'number' && window.innerWidth <= 900);
+        }
         let _displayModeOverride = 'auto';
         try {
             const _pbsEarly = JSON.parse(localStorage.getItem('pbs_settings') || '{}');
@@ -5410,7 +5417,7 @@
         } catch (e) {}
         const isMobile = _displayModeOverride === 'phone' ? true
             : _displayModeOverride === 'desktop' ? false
-            : _autoIsMobile;
+            : _computeAutoIsMobile();
 
         if (isMobile) document.body.classList.add('is-mobile');
         function applyLayoutPresetClasses() {
@@ -5543,6 +5550,11 @@
         window.addEventListener('resize', applyLayoutPresetClasses);
         window.addEventListener('resize', applyBattleLayoutMode);
         window.addEventListener('resize', function() { try { applyDesktopGameScale(); } catch (e) {} });
+        // Re-toggle .is-mobile on viewport change so DevTools device toolbar and window
+        // resizes flip the body class without a page reload. applyDisplayMode is defined
+        // later in the script, so guard the call.
+        window.addEventListener('resize', function() { try { window.applyDisplayMode && window.applyDisplayMode(); } catch (e) {} });
+        window.addEventListener('orientationchange', () => setTimeout(() => { try { window.applyDisplayMode && window.applyDisplayMode(); } catch (e) {} }, 150));
         window.isMobile = isMobile;
 
         // Show/hide rotate overlay: portrait + narrow screen (any device)
@@ -6864,8 +6876,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         window.applyDisplayMode = function() {
             const m = settings.displayMode || 'auto';
-            const wantMobile = m === 'phone' ? true : m === 'desktop' ? false : _autoIsMobile;
+            const wantMobile = m === 'phone' ? true : m === 'desktop' ? false : _computeAutoIsMobile();
             document.body.classList.toggle('is-mobile', wantMobile);
+            window.isMobile = wantMobile;
             try { window.applyBattleLayoutMode && window.applyBattleLayoutMode(); } catch (e) {}
             try { applyDesktopGameScale && applyDesktopGameScale(); } catch (e) {}
             try { window.applyBattleLogDockClass && window.applyBattleLogDockClass(); } catch (e) {}
