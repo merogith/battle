@@ -1209,7 +1209,7 @@
         }
         .story-city-tip:hover { color: #fff; border-color: #7da0c8; background: linear-gradient(180deg, #213152 0%, #141d36 100%); }
         .story-city-tip:active { transform: translateY(1px); }
-        .story-city-tip .story-city-tip-ico { font-size: 13px; line-height: 1; }
+        .story-city-tip .story-city-tip-ico { width: 16px; height: 16px; flex-shrink: 0; object-fit: contain; font-size: 13px; line-height: 1; image-rendering: auto; }
         /* Lead tip ("Next: …") gets a soft gold accent — that's the only "what to do now" hint we surface. */
         .story-city-tip.next { color: #ffe5a3; border-color: #8a7330; background: linear-gradient(180deg, #2a230f 0%, #1a1408 100%); box-shadow: inset -2px -2px 0 0 #1a1408, inset 2px 2px 0 0 #4a3e1a; }
         .story-city-tip.next:hover { color: #fff7cc; border-color: #ffd54f; background: linear-gradient(180deg, #322a14 0%, #20180c 100%); }
@@ -5030,8 +5030,8 @@
                 <span id="story-pc-balls-summary" style="color:#888;display:inline-flex;align-items:center;gap:0;"></span>
             </div>
             <div style="display:flex;gap:0;background:rgba(10,10,14,0.85);border-bottom:1px solid #333;flex-shrink:0;">
-                <button type="button" id="story-pc-tab-storage-btn" onclick="window.StoryMode.pcSwitchTab('storage')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid #4caf50;color:#4caf50;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Deposit, withdraw, and release Pokémon"><img src="icons/story/story_party.png?v=20260516" alt="" width="18" height="18" decoding="async" style="image-rendering:auto;flex-shrink:0;"> PC Storage</button>
-                <button type="button" id="story-pc-tab-underground-btn" onclick="window.StoryMode.pcSwitchTab('underground')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid transparent;color:#888;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Sell Pokémon for gold"><img src="icons/story/story_mystery.png?v=20260516" alt="" width="18" height="18" decoding="async" style="image-rendering:auto;flex-shrink:0;filter:hue-rotate(-30deg) saturate(1.5) brightness(0.8);"> The Underground</button>
+                <button type="button" id="story-pc-tab-storage-btn" onclick="window.StoryMode.pcSwitchTab('storage')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid #4caf50;color:#4caf50;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Deposit, withdraw, and release Pokémon"><img src="icons/story/story_party.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:auto;flex-shrink:0;"> PC Storage</button>
+                <button type="button" id="story-pc-tab-underground-btn" onclick="window.StoryMode.pcSwitchTab('underground')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid transparent;color:#888;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Sell Pokémon for gold"><img src="icons/story/story_mystery.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:auto;flex-shrink:0;filter:hue-rotate(-30deg) saturate(1.5) brightness(0.8);"> The Underground</button>
             </div>
             <div id="story-pc-body" style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);"></div>
             <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
@@ -5396,11 +5396,18 @@
 
     <script>
         // === 0. DEVICE DETECTION ===
-        const _autoIsMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-            || (navigator.maxTouchPoints > 1 && /MacIntel/.test(navigator.platform))
-            || window.matchMedia('(hover: none) and (pointer: coarse)').matches
-            /* WebViews / “Desktop site” / devtools can miss UA; coarse pointer + narrow viewport ≈ phone/tablet */
-            || (navigator.maxTouchPoints > 0 && window.matchMedia('(pointer: coarse)').matches && window.matchMedia('(max-width: 1024px)').matches);
+        // Re-evaluated on every call so resize / orientationchange / "device toolbar" toggle
+        // can flip the body between desktop and phone layouts without a page refresh.
+        // Viewport width <=900 also counts as mobile, so headless / DevTools-emulated phones
+        // (which keep the desktop UA) still get the phone layout immediately.
+        function _computeAutoIsMobile() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+                || (navigator.maxTouchPoints > 1 && /MacIntel/.test(navigator.platform))
+                || window.matchMedia('(hover: none) and (pointer: coarse)').matches
+                /* WebViews / “Desktop site” / devtools can miss UA; coarse pointer + narrow viewport ≈ phone/tablet */
+                || (navigator.maxTouchPoints > 0 && window.matchMedia('(pointer: coarse)').matches && window.matchMedia('(max-width: 1024px)').matches)
+                || (typeof window.innerWidth === 'number' && window.innerWidth <= 900);
+        }
         let _displayModeOverride = 'auto';
         try {
             const _pbsEarly = JSON.parse(localStorage.getItem('pbs_settings') || '{}');
@@ -5410,7 +5417,7 @@
         } catch (e) {}
         const isMobile = _displayModeOverride === 'phone' ? true
             : _displayModeOverride === 'desktop' ? false
-            : _autoIsMobile;
+            : _computeAutoIsMobile();
 
         if (isMobile) document.body.classList.add('is-mobile');
         function applyLayoutPresetClasses() {
@@ -5543,6 +5550,11 @@
         window.addEventListener('resize', applyLayoutPresetClasses);
         window.addEventListener('resize', applyBattleLayoutMode);
         window.addEventListener('resize', function() { try { applyDesktopGameScale(); } catch (e) {} });
+        // Re-toggle .is-mobile on viewport change so DevTools device toolbar and window
+        // resizes flip the body class without a page reload. applyDisplayMode is defined
+        // later in the script, so guard the call.
+        window.addEventListener('resize', function() { try { window.applyDisplayMode && window.applyDisplayMode(); } catch (e) {} });
+        window.addEventListener('orientationchange', () => setTimeout(() => { try { window.applyDisplayMode && window.applyDisplayMode(); } catch (e) {} }, 150));
         window.isMobile = isMobile;
 
         // Show/hide rotate overlay: portrait + narrow screen (any device)
@@ -5783,7 +5795,7 @@
         function moveCategoryTooltipHtml(cat) {
             const c = normalizeMoveCategory(cat);
             return '<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle;">' +
-                '<img src="icons/categories/' + c + '.png" alt="' + c + ' move category" width="32" height="14" decoding="async" style="image-rendering:auto;flex-shrink:0;">' +
+                '<img src="icons/categories/' + c + '.png" alt="' + c + ' move category" width="32" height="14" decoding="async" style="width:32px;height:14px;image-rendering:auto;flex-shrink:0;">' +
                 '<strong class="cat-' + c + '">' + c + '</strong></span>';
         }
 
@@ -6877,8 +6889,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         window.applyDisplayMode = function() {
             const m = settings.displayMode || 'auto';
-            const wantMobile = m === 'phone' ? true : m === 'desktop' ? false : _autoIsMobile;
+            const wantMobile = m === 'phone' ? true : m === 'desktop' ? false : _computeAutoIsMobile();
             document.body.classList.toggle('is-mobile', wantMobile);
+            window.isMobile = wantMobile;
             try { window.applyBattleLayoutMode && window.applyBattleLayoutMode(); } catch (e) {}
             try { applyDesktopGameScale && applyDesktopGameScale(); } catch (e) {}
             try { window.applyBattleLogDockClass && window.applyBattleLogDockClass(); } catch (e) {}
@@ -29439,7 +29452,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const ballsEl = document.getElementById('story-pc-balls-summary');
             if (ballsEl && sm.balls) {
-                const _ballChip = (path, count, name) => `<span title="${name}: ${count}" style="display:inline-flex;align-items:center;gap:3px;margin-right:8px;"><img src="${path}" alt="${name}" width="16" height="16" decoding="async" style="image-rendering:pixelated;">${count|0}</span>`;
+                const _ballChip = (path, count, name) => `<span title="${name}: ${count}" style="display:inline-flex;align-items:center;gap:3px;margin-right:8px;"><img src="${path}" alt="${name}" width="16" height="16" decoding="async" style="width:16px;height:16px;image-rendering:pixelated;">${count|0}</span>`;
                 ballsEl.innerHTML = _ballChip('sprites/pokesprite/balls/poke.png',   sm.balls.poke|0,   'Poké Ball')
                                   + _ballChip('sprites/pokesprite/balls/great.png',  sm.balls.great|0,  'Great Ball')
                                   + _ballChip('sprites/pokesprite/balls/ultra.png',  sm.balls.ultra|0,  'Ultra Ball')
@@ -29721,7 +29734,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const bestStreak = (f.highscores[0] && f.highscores[0].streak) || 0;
             // Icon helper: passes through emoji as a text glyph; png() wraps a path
             // in an <img> sized to match the existing icons/story/*.png set (22×22).
-            const png = (path) => `<img src="${path}?v=20260516" alt="" width="24" height="24" decoding="async" style="image-rendering:auto;flex-shrink:0;display:block;">`;
+            const png = (path) => `<img src="${path}?v=20260516" alt="" width="24" height="24" decoding="async" style="width:24px;height:24px;image-rendering:auto;flex-shrink:0;display:block;">`;
             const btn = (icon, label, onClick, accent, tip) => `<button type="button" onclick="${onClick}"${tip ? ` title="${_esc(tip)}"` : ''} style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(20,28,40,0.6);border:1px solid ${accent || '#3a4a64'};color:#fff;font-family:inherit;font-size:11px;cursor:pointer;text-align:left;line-height:1.3;">
                 <span style="font-size:14px;flex-shrink:0;display:flex;align-items:center;">${icon}</span><span style="flex:1;min-width:0;">${label}</span>
             </button>`;
@@ -29823,11 +29836,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             html += `<div style="font-size:10px;color:#888;margin-bottom:14px;line-height:1.5;">Round ${round} foe stats: HP ×${hpMult.toFixed(2)}, bulk/speed ×${bulkMult.toFixed(2)}. Caps at HP ×2.50 / bulk ×1.80.</div>`;
             if (isActive) {
                 html += `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;">
-                    <button type="button" onclick="window.StoryMode.frontierStartNext()" style="padding:12px;background:linear-gradient(180deg,#ff5722 0%,#bf360c 100%);border:1px solid #ff8a65;color:#fff;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><img src="icons/story/story_gym.png?v=20260516" alt="" width="18" height="18" decoding="async" style="image-rendering:pixelated;">Begin Round ${round}</button>
+                    <button type="button" onclick="window.StoryMode.frontierStartNext()" style="padding:12px;background:linear-gradient(180deg,#ff5722 0%,#bf360c 100%);border:1px solid #ff8a65;color:#fff;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><img src="icons/story/story_gym.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:pixelated;">Begin Round ${round}</button>
                     <button type="button" onclick="window.StoryMode.frontierSurrender()" style="padding:8px;background:rgba(0,0,0,0.4);border:1px solid #555;color:#aaa;font-family:inherit;font-size:11px;cursor:pointer;" title="End the run and save your current streak">Surrender (lock streak ${f.currentStreak | 0})</button>
                 </div>`;
             } else {
-                html += `<button type="button" onclick="window.StoryMode.frontierStartRun()" style="display:flex;width:100%;padding:12px;background:linear-gradient(180deg,#ff5722 0%,#bf360c 100%);border:1px solid #ff8a65;color:#fff;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;margin-bottom:18px;align-items:center;justify-content:center;gap:8px;"><img src="icons/story/story_gym.png?v=20260516" alt="" width="18" height="18" decoding="async" style="image-rendering:pixelated;">Begin Battle Frontier</button>`;
+                html += `<button type="button" onclick="window.StoryMode.frontierStartRun()" style="display:flex;width:100%;padding:12px;background:linear-gradient(180deg,#ff5722 0%,#bf360c 100%);border:1px solid #ff8a65;color:#fff;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;margin-bottom:18px;align-items:center;justify-content:center;gap:8px;"><img src="icons/story/story_gym.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:pixelated;">Begin Battle Frontier</button>`;
             }
             html += `<h4 style="color:#ffab40;margin:0 0 6px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Top 10 Streaks</h4>`;
             if (!topHs.length) {
@@ -30563,7 +30576,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         </div>
                     </div>
                     ${message}
-                    <button type="button" onclick="window.StoryMode.bossAttack()" style="padding:12px;background:linear-gradient(180deg,#e53935 0%,#8e0000 100%);border:1px solid #ff8a80;color:#fff;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><img src="icons/story/story_gym.png?v=20260516" alt="" width="18" height="18" decoding="async" style="image-rendering:pixelated;">Strike</button>
+                    <button type="button" onclick="window.StoryMode.bossAttack()" style="padding:12px;background:linear-gradient(180deg,#e53935 0%,#8e0000 100%);border:1px solid #ff8a80;color:#fff;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><img src="icons/story/story_gym.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:pixelated;">Strike</button>
                 `;
                 return;
             }
@@ -30585,7 +30598,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const have = sess.ballsLeft | 0;
                 const canThrow = have > 0;
                 ballRows = `<button type="button" onclick="window.StoryMode.catchThrow('safari')" ${canThrow ? '' : 'disabled'} style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:rgba(20,28,40,0.6);border:1px solid ${display.color};color:${display.color};font-family:inherit;font-size:12px;${canThrow ? 'cursor:pointer;' : 'opacity:0.4;cursor:not-allowed;'}">
-                    <span style="display:flex;align-items:center;gap:8px;"><img src="${display.icon}" alt="" width="22" height="22" decoding="async" style="image-rendering:pixelated;flex-shrink:0;"><span><strong>${display.name}</strong> <span style="color:#aaa;font-size:10px;">(${SAFARI_BALL_MULT}× base)</span> ×${have}</span></span>
+                    <span style="display:flex;align-items:center;gap:8px;"><img src="${display.icon}" alt="" width="22" height="22" decoding="async" style="width:22px;height:22px;image-rendering:pixelated;flex-shrink:0;"><span><strong>${display.name}</strong> <span style="color:#aaa;font-size:10px;">(${SAFARI_BALL_MULT}× base)</span> ×${have}</span></span>
                     <span style="color:#fff;">${safariPct}%</span>
                 </button>`;
                 // Per-turn flee % AND projected catch % surfaced on each
@@ -30619,8 +30632,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // match the Safari Ball icon treatment above. image-rendering:auto
                 // per main's icon-scaling-mobile fix (PR #67) for non-integer
                 // device pixel ratios.
-                const _baitIco = `<img src="sprites/pokesprite/items/oran-berry.png" alt="" width="18" height="18" decoding="async" style="image-rendering:auto;vertical-align:-4px;margin-right:2px;">`;
-                const _rockIco = `<img src="sprites/pokesprite/items/hard-stone.png" alt="" width="18" height="18" decoding="async" style="image-rendering:auto;vertical-align:-4px;margin-right:2px;">`;
+                const _baitIco = `<img src="sprites/pokesprite/items/oran-berry.png" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:auto;vertical-align:-4px;margin-right:2px;">`;
+                const _rockIco = `<img src="sprites/pokesprite/items/hard-stone.png" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:auto;vertical-align:-4px;margin-right:2px;">`;
                 const baitStack = baitMaxed
                     ? ` <span style="opacity:0.7;font-size:10px;color:#888;">MAX</span>`
                     : (sess.baitCount ? ` <span style="color:#ffd54f;font-size:10px;font-weight:bold;">×${sess.baitCount}</span>` : '');
@@ -30669,7 +30682,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const canThrow = have > 0;
                     const multLabel = mult === Infinity ? '∞ (guaranteed)' : `${mult}×`;
                     return `<button type="button" onclick="window.StoryMode.catchThrow('${k}')" ${canThrow ? '' : 'disabled'} style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:rgba(20,28,40,0.6);border:1px solid ${display.color};color:${display.color};font-family:inherit;font-size:12px;${canThrow ? 'cursor:pointer;' : 'opacity:0.4;cursor:not-allowed;'}">
-                        <span style="display:flex;align-items:center;gap:8px;"><img src="${display.icon}" alt="" width="22" height="22" decoding="async" style="image-rendering:pixelated;flex-shrink:0;"><span><strong>${display.name}</strong> <span style="color:#aaa;font-size:10px;">(${multLabel})</span> ×${have}</span></span>
+                        <span style="display:flex;align-items:center;gap:8px;"><img src="${display.icon}" alt="" width="22" height="22" decoding="async" style="width:22px;height:22px;image-rendering:pixelated;flex-shrink:0;"><span><strong>${display.name}</strong> <span style="color:#aaa;font-size:10px;">(${multLabel})</span> ×${have}</span></span>
                         <span style="color:#fff;">${pct}%</span>
                     </button>`;
                 }).join('');
@@ -30932,7 +30945,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     Gotcha! <strong>${_esc(caught.name)}</strong> was caught.<br/>
                     <span style="color:#aed581;font-size:11px;">Your party is full (${partyCap}/${partyCap}). Send the new Pokémon to PC, or swap with a team member.</span>
                 </div>
-                <button type="button" onclick="window.StoryMode.catchResolveSendToPC()" style="padding:10px;background:rgba(20,28,40,0.6);border:1px solid #ce93d8;color:#ce93d8;font-family:inherit;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"><img src="icons/story/story_party.png?v=20260516" alt="" width="16" height="16" decoding="async" style="image-rendering:pixelated;"> Send ${_esc(caught.name)} to PC</button>
+                <button type="button" onclick="window.StoryMode.catchResolveSendToPC()" style="padding:10px;background:rgba(20,28,40,0.6);border:1px solid #ce93d8;color:#ce93d8;font-family:inherit;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"><img src="icons/story/story_party.png?v=20260516" alt="" width="16" height="16" decoding="async" style="width:16px;height:16px;image-rendering:pixelated;"> Send ${_esc(caught.name)} to PC</button>
                 <div style="font-size:10px;color:#888;letter-spacing:0.06em;text-transform:uppercase;text-align:center;margin-top:4px;">— or pick a teammate to swap to PC —</div>
                 <div style="display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;">${partyList}</div>
             </div>`;
@@ -31946,7 +31959,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         let candyBtn = '';
                         if (_rareCandyCount > 0) {
                             const candyTip = `Use 1 Rare Candy (you have ${_rareCandyCount}) — free evolution into ${e.name}. Saves ${cost.toLocaleString()}G.`.replace(/"/g, '&quot;');
-                            candyBtn = `<button class="story-link-btn" onclick="window.StoryMode.evoLabEvolveWithCandy(${i}, '${e.name.replace(/'/g, "\\'")}')" title="${candyTip}" style="color:#f8bbd0;border-color:#f8bbd0;margin-left:6px;"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="14" height="14" decoding="async" style="image-rendering:auto;vertical-align:-2px;margin-right:3px;">Rare Candy <span style="font-size:9px;color:#aaa;">(${_rareCandyCount} left)</span></button>`;
+                            candyBtn = `<button class="story-link-btn" onclick="window.StoryMode.evoLabEvolveWithCandy(${i}, '${e.name.replace(/'/g, "\\'")}')" title="${candyTip}" style="color:#f8bbd0;border-color:#f8bbd0;margin-left:6px;"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:3px;">Rare Candy <span style="font-size:9px;color:#aaa;">(${_rareCandyCount} left)</span></button>`;
                         }
                         return goldBtn + candyBtn;
                     }).join('');
@@ -32343,7 +32356,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // single-column layout gives room for the sell button
             bagEl.style.gridTemplateColumns = '1fr';
             const h3 = modal.querySelector('h3');
-            if (h3) h3.innerHTML = '<img src="icons/story/story_bag.png?v=20260516" alt="" width="18" height="18" decoding="async" style="image-rendering:pixelated;vertical-align:-3px;margin-right:6px;">Your Bag';
+            if (h3) h3.innerHTML = '<img src="icons/story/story_bag.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:pixelated;vertical-align:-3px;margin-right:6px;">Your Bag';
             bagEl.innerHTML = '';
 
             const allItems = [...POKEMART_ITEMS, ...DEPT_ITEMS, ...getStoryFeaturedItems()];
@@ -32352,8 +32365,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // sellable. Surface them at the top so players see the bundle they earned
             // from gym victories and Pokédex milestones.
             const _voucherItems = [
-                { id:'rareCandy', name:'<img src="sprites/pokesprite/items/rare-candy.png" alt="" width="14" height="14" decoding="async" style="image-rendering:auto;vertical-align:-2px;margin-right:4px;">Rare Candy', desc:'Use at the Stone Sage to evolve any party Pokémon for free. Earned from gym leaders + dex milestones.' },
-                { id:'vitamin',   name:'<img src="sprites/pokesprite/items/protein.png" alt="" width="14" height="14" decoding="async" style="image-rendering:auto;vertical-align:-2px;margin-right:4px;">Vitamin Pack', desc:'Permanently trains stat boosts (e.g. +252 Atk / +252 Speed) into one Pokémon for free at the EV Trainer — same effect as paying 5,000G. Earned from gym leaders + Pokédex milestones. Training stays with the mon through PC, evolution, the works. Only lost on release or sale.' }
+                { id:'rareCandy', name:'<img src="sprites/pokesprite/items/rare-candy.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Rare Candy', desc:'Use at the Stone Sage to evolve any party Pokémon for free. Earned from gym leaders + dex milestones.' },
+                { id:'vitamin',   name:'<img src="sprites/pokesprite/items/protein.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Vitamin Pack', desc:'Permanently trains stat boosts (e.g. +252 Atk / +252 Speed) into one Pokémon for free at the EV Trainer — same effect as paying 5,000G. Earned from gym leaders + Pokédex milestones. Training stays with the mon through PC, evolution, the works. Only lost on release or sale.' }
             ];
             _voucherItems.forEach(item => {
                 const qty = (sm.inventory && sm.inventory[item.id]) | 0;
@@ -34298,7 +34311,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const safeId = String(p.id).replace(/'/g, "\\'");
             const vitaCount = (sm.inventory && sm.inventory.vitamin) | 0;
             const vitaBtn = hasVitamin
-                ? `<button type="button" class="story-tutor-btn" ${vitaDisabled ? 'disabled' : ''} onclick="window.StoryMode.evTrainerApplyPresetWithVitamin(${idx},'${safeId}')" title="Use 1 Vitamin Pack (you have ${vitaCount}) — free preset, saves ${EVTRAINER_COST.toLocaleString()}G" style="margin-left:6px;color:#f8bbd0;border-color:#f8bbd0;"><img src="sprites/pokesprite/items/protein.png" alt="" width="14" height="14" decoding="async" style="image-rendering:auto;vertical-align:-2px;margin-right:3px;">Use Vitamin <span style="font-size:9px;color:#aaa;">(${vitaCount} left)</span></button>`
+                ? `<button type="button" class="story-tutor-btn" ${vitaDisabled ? 'disabled' : ''} onclick="window.StoryMode.evTrainerApplyPresetWithVitamin(${idx},'${safeId}')" title="Use 1 Vitamin Pack (you have ${vitaCount}) — free preset, saves ${EVTRAINER_COST.toLocaleString()}G" style="margin-left:6px;color:#f8bbd0;border-color:#f8bbd0;"><img src="sprites/pokesprite/items/protein.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:3px;">Use Vitamin <span style="font-size:9px;color:#aaa;">(${vitaCount} left)</span></button>`
                 : '';
             return `<div class="story-tutor-choice"${activeFlag}><div class="story-tutor-choice-actions">`
                 + `<button type="button" class="story-tutor-btn" ${dis} onclick="window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')">`
