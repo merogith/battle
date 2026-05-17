@@ -3052,6 +3052,334 @@
             100% { width: 280px; height: 280px; opacity: 0; background: transparent; box-shadow: none; }
         }
 
+        /* ───── STORY FX — catch / Safari / evolution / casino / shop ───────── */
+        /* The catch screen reuses these for the throw arc, wobble, capture seal,
+           break-out, flee, and evolution silhouette/reveal. All durations stay
+           short (<= 1.6s) so the player keeps tempo. */
+        .storyfx-stage {
+            position: relative; width: 100%; max-width: 360px;
+            margin: 0 auto; aspect-ratio: 4 / 3;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden; pointer-events: none;
+        }
+        .storyfx-stage-bg {
+            position: absolute; inset: 0; z-index: 0;
+            background: radial-gradient(ellipse at 50% 70%, rgba(120,180,90,0.35) 0%, rgba(8,20,12,0.0) 60%),
+                        linear-gradient(180deg, rgba(8,14,22,0.0) 0%, rgba(8,14,22,0.45) 100%);
+        }
+        .storyfx-stage-bg.safari {
+            background: radial-gradient(ellipse at 50% 65%, rgba(255,213,79,0.32) 0%, rgba(8,20,12,0.0) 60%),
+                        linear-gradient(180deg, rgba(34,52,18,0.18) 0%, rgba(12,20,8,0.55) 100%);
+        }
+        .storyfx-stage-bg.boss {
+            background: radial-gradient(ellipse at 50% 60%, rgba(206,147,216,0.38) 0%, rgba(20,8,28,0.0) 60%),
+                        linear-gradient(180deg, rgba(20,8,28,0.22) 0%, rgba(8,4,16,0.62) 100%);
+        }
+        .storyfx-mon {
+            position: relative; z-index: 2;
+            width: 112px; height: 112px;
+            image-rendering: pixelated;
+            object-fit: contain;
+            filter: drop-shadow(0 6px 8px rgba(0,0,0,0.55));
+            transition: opacity 0.2s ease-out;
+        }
+        .storyfx-mon.idle  { animation: storyfxMonIdle 2.1s ease-in-out infinite; }
+        .storyfx-mon.enter { animation: storyfxMonEnter 0.55s cubic-bezier(0.18,0.9,0.32,1.18) both; }
+        .storyfx-mon.shake { animation: storyfxMonShake 0.35s ease-in-out 2; }
+        .storyfx-mon.flee  { animation: storyfxMonFlee 0.6s ease-in forwards; }
+        .storyfx-mon.absorb{ animation: storyfxMonAbsorb 0.35s ease-in forwards; }
+        .storyfx-mon.silhouette { filter: brightness(0) drop-shadow(0 6px 8px rgba(0,0,0,0.7)); }
+        @keyframes storyfxMonIdle {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-4px); }
+        }
+        @keyframes storyfxMonEnter {
+            0%   { opacity: 0; transform: translate(60px, -28px) scale(0.55); }
+            60%  { opacity: 1; transform: translate(0, 4px) scale(1.08); }
+            100% { opacity: 1; transform: translate(0, 0) scale(1); }
+        }
+        @keyframes storyfxMonShake {
+            0%, 100% { transform: translateX(0); }
+            25%      { transform: translateX(-7px); }
+            75%      { transform: translateX(7px); }
+        }
+        @keyframes storyfxMonFlee {
+            0%   { opacity: 1; transform: translate(0,0) scale(1); }
+            40%  { opacity: 1; transform: translate(120px,-14px) scale(0.85); }
+            100% { opacity: 0; transform: translate(260px,-30px) scale(0.6); }
+        }
+        @keyframes storyfxMonAbsorb {
+            0%   { opacity: 1; transform: scale(1); filter: brightness(1.4) hue-rotate(0deg); }
+            70%  { opacity: 0.4; transform: scale(0.4); filter: brightness(3) saturate(0); }
+            100% { opacity: 0; transform: scale(0.15); filter: brightness(3.5) saturate(0); }
+        }
+
+        /* The thrown ball — a small flying sprite that arcs from the lower-left
+           of the stage up to the wild Pokémon position, opens, then disappears
+           while the ball settles to the floor for a wobble. */
+        .storyfx-ball {
+            position: absolute; z-index: 4;
+            width: 28px; height: 28px;
+            left: 14%; bottom: 16%;
+            image-rendering: pixelated;
+            transform-origin: 50% 50%;
+            pointer-events: none;
+        }
+        .storyfx-ball.throw { animation: storyfxBallThrow 0.6s cubic-bezier(0.45,0.05,0.55,0.95) forwards; }
+        @keyframes storyfxBallThrow {
+            0%   { transform: translate(0,0) rotate(0deg) scale(0.85); opacity: 1; }
+            35%  { transform: translate(50%,-130%) rotate(540deg) scale(1); opacity: 1; }
+            65%  { transform: translate(120%,-180%) rotate(900deg) scale(1.05); opacity: 1; }
+            85%  { transform: translate(150%,-160%) rotate(1080deg) scale(1.15); opacity: 1; }
+            100% { transform: translate(150%,-160%) rotate(1080deg) scale(0); opacity: 0; }
+        }
+
+        /* The resting ball that wobbles after a throw — pinned at the mon's old
+           position. Three wobble states ramp up to a final capture seal or a
+           break-out (handled by JS swapping classes). */
+        .storyfx-ball-rest {
+            position: absolute; z-index: 3;
+            width: 36px; height: 36px;
+            left: 50%; top: 56%;
+            transform: translate(-50%,-50%);
+            image-rendering: pixelated;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .storyfx-ball-rest.show { opacity: 1; }
+        .storyfx-ball-rest.wobble { animation: storyfxBallWobble 0.7s ease-in-out; }
+        .storyfx-ball-rest.seal   { animation: storyfxBallSeal 0.45s ease-out forwards; }
+        .storyfx-ball-rest.burst  { animation: storyfxBallBurst 0.35s ease-out forwards; }
+        @keyframes storyfxBallWobble {
+            0%, 100% { transform: translate(-50%,-50%) rotate(0deg); }
+            20%      { transform: translate(-58%,-50%) rotate(-22deg); }
+            45%      { transform: translate(-46%,-50%) rotate(22deg); }
+            70%      { transform: translate(-54%,-50%) rotate(-12deg); }
+        }
+        @keyframes storyfxBallSeal {
+            0%   { transform: translate(-50%,-50%) scale(1); filter: drop-shadow(0 0 0 rgba(255,255,255,0)); }
+            50%  { transform: translate(-50%,-50%) scale(1.18); filter: drop-shadow(0 0 12px rgba(255,255,255,0.9)); }
+            100% { transform: translate(-50%,-50%) scale(1.0); filter: drop-shadow(0 0 24px rgba(255,213,79,0.85)); }
+        }
+        @keyframes storyfxBallBurst {
+            0%   { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+            40%  { transform: translate(-50%,-50%) scale(1.4); opacity: 1; filter: brightness(2); }
+            100% { transform: translate(-50%,-50%) scale(1.8); opacity: 0; }
+        }
+        /* Subtle starburst behind the ball at capture moment. */
+        .storyfx-starburst {
+            position: absolute; z-index: 2; left: 50%; top: 56%;
+            width: 14px; height: 14px; transform: translate(-50%,-50%);
+            border-radius: 50%; background: #fff;
+            box-shadow: 0 0 30px 12px rgba(255,255,255,0.8);
+            opacity: 0; pointer-events: none;
+        }
+        .storyfx-starburst.fire { animation: storyfxStarBurst 0.55s ease-out forwards; }
+        @keyframes storyfxStarBurst {
+            0%   { opacity: 0; transform: translate(-50%,-50%) scale(0.4); }
+            45%  { opacity: 1; transform: translate(-50%,-50%) scale(2.2); }
+            100% { opacity: 0; transform: translate(-50%,-50%) scale(3.6); }
+        }
+        /* Floating message bubble. */
+        .storyfx-stage-banner {
+            position: absolute; left: 50%; top: 6%;
+            transform: translateX(-50%);
+            font-size: 11px; letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #fff;
+            background: rgba(8,14,22,0.7);
+            padding: 4px 10px;
+            border: 1px solid #ffd54f;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+            z-index: 5; pointer-events: none;
+            animation: storyfxBannerIn 0.35s ease-out;
+        }
+        @keyframes storyfxBannerIn {
+            0%   { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+            100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        /* Bait / rock action puffs */
+        .storyfx-puff {
+            position: absolute; z-index: 5;
+            left: 50%; top: 55%;
+            transform: translate(-50%,-50%);
+            font-size: 20px;
+            pointer-events: none;
+            opacity: 0;
+        }
+        .storyfx-puff.fire { animation: storyfxPuff 0.85s ease-out forwards; }
+        @keyframes storyfxPuff {
+            0%   { opacity: 0; transform: translate(-50%, -10%) scale(0.6); }
+            30%  { opacity: 1; transform: translate(-50%, -65%) scale(1.1); }
+            70%  { opacity: 1; transform: translate(-50%, -85%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -120%) scale(0.9); }
+        }
+
+        /* ───── Evolution scene — Gen3-style silhouette → flash → reveal ───── */
+        .storyfx-evo-overlay {
+            position: fixed; inset: 0;
+            background: radial-gradient(ellipse at center, rgba(40,28,12,0.86) 0%, rgba(0,0,0,0.96) 80%);
+            z-index: 9998; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 18px;
+            padding: 20px; box-sizing: border-box;
+        }
+        .storyfx-evo-stage {
+            position: relative;
+            width: min(80vmin, 320px); height: min(80vmin, 320px);
+            display: flex; align-items: center; justify-content: center;
+            overflow: visible;
+        }
+        .storyfx-evo-ray {
+            position: absolute; inset: 0;
+            background: conic-gradient(from 0deg,
+                rgba(255,255,255,0.0) 0deg, rgba(255,255,255,0.35) 12deg,
+                rgba(255,255,255,0.0) 24deg, rgba(255,255,255,0.35) 36deg,
+                rgba(255,255,255,0.0) 48deg, rgba(255,255,255,0.35) 60deg,
+                rgba(255,255,255,0.0) 72deg, rgba(255,255,255,0.35) 84deg,
+                rgba(255,255,255,0.0) 96deg, rgba(255,255,255,0.35) 108deg,
+                rgba(255,255,255,0.0) 120deg, rgba(255,255,255,0.35) 132deg,
+                rgba(255,255,255,0.0) 144deg, rgba(255,255,255,0.35) 156deg,
+                rgba(255,255,255,0.0) 168deg, rgba(255,255,255,0.35) 180deg,
+                rgba(255,255,255,0.0) 192deg, rgba(255,255,255,0.35) 204deg,
+                rgba(255,255,255,0.0) 216deg, rgba(255,255,255,0.35) 228deg,
+                rgba(255,255,255,0.0) 240deg, rgba(255,255,255,0.35) 252deg,
+                rgba(255,255,255,0.0) 264deg, rgba(255,255,255,0.35) 276deg,
+                rgba(255,255,255,0.0) 288deg, rgba(255,255,255,0.35) 300deg,
+                rgba(255,255,255,0.0) 312deg, rgba(255,255,255,0.35) 324deg,
+                rgba(255,255,255,0.0) 336deg, rgba(255,255,255,0.35) 348deg);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .storyfx-evo-ray.spin { animation: storyfxEvoRaySpin 2.4s linear infinite, storyfxEvoRayFade 0.4s ease-in forwards; }
+        @keyframes storyfxEvoRaySpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes storyfxEvoRayFade { 0% { opacity: 0; } 100% { opacity: 0.85; } }
+        .storyfx-evo-flash {
+            position: absolute; inset: 0;
+            background: radial-gradient(circle, #fff 0%, rgba(255,255,255,0.0) 70%);
+            opacity: 0; pointer-events: none;
+        }
+        .storyfx-evo-flash.flash { animation: storyfxEvoFlash 0.45s ease-out forwards; }
+        @keyframes storyfxEvoFlash {
+            0%   { opacity: 0; }
+            50%  { opacity: 1; }
+            100% { opacity: 1; }
+        }
+        .storyfx-evo-flash.fadeout { animation: storyfxEvoFlashFade 0.55s ease-in forwards; }
+        @keyframes storyfxEvoFlashFade { 0% { opacity: 1; } 100% { opacity: 0; } }
+        .storyfx-evo-mon {
+            position: relative; z-index: 2;
+            max-width: 75%; max-height: 75%;
+            image-rendering: pixelated;
+            object-fit: contain;
+            filter: drop-shadow(0 6px 12px rgba(0,0,0,0.7));
+            transition: opacity 0.18s ease-out, transform 0.4s ease-out;
+        }
+        .storyfx-evo-mon.silhouette { filter: brightness(0) drop-shadow(0 0 18px rgba(255,255,255,0.85)); }
+        .storyfx-evo-mon.morph { animation: storyfxEvoMorph 1.6s ease-in-out; }
+        @keyframes storyfxEvoMorph {
+            0%   { transform: scale(1); filter: brightness(0) drop-shadow(0 0 12px rgba(255,255,255,0.85)); }
+            25%  { transform: scale(1.08); filter: brightness(0) drop-shadow(0 0 22px rgba(255,255,255,0.95)); }
+            50%  { transform: scale(0.92); filter: brightness(0) drop-shadow(0 0 12px rgba(255,255,255,0.85)); }
+            75%  { transform: scale(1.12); filter: brightness(0) drop-shadow(0 0 26px rgba(255,255,255,1)); }
+            100% { transform: scale(1); filter: brightness(0) drop-shadow(0 0 16px rgba(255,255,255,0.9)); }
+        }
+        .storyfx-evo-mon.reveal { animation: storyfxEvoReveal 0.7s cubic-bezier(0.18,0.9,0.32,1.18) both; }
+        @keyframes storyfxEvoReveal {
+            0%   { opacity: 0; transform: scale(0.55); filter: brightness(2) drop-shadow(0 0 24px #fff); }
+            55%  { opacity: 1; transform: scale(1.12); filter: brightness(1.3) drop-shadow(0 0 22px rgba(255,213,79,0.9)); }
+            100% { opacity: 1; transform: scale(1);    filter: brightness(1.05) drop-shadow(0 6px 12px rgba(0,0,0,0.7)); }
+        }
+        .storyfx-evo-caption {
+            color: #fff; text-align: center; font-size: 15px;
+            letter-spacing: 0.03em; margin: 0; max-width: 480px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.85);
+            line-height: 1.45;
+        }
+        .storyfx-evo-caption b { color: #ffd54f; }
+        .storyfx-evo-stop {
+            margin-top: 6px; padding: 8px 18px;
+            background: rgba(40,28,12,0.92);
+            color: #ffd54f; font-family: inherit; font-size: 12px;
+            border: 1px solid #ffd54f; cursor: pointer; letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .storyfx-evo-stop:hover { background: rgba(64,44,18,0.92); }
+        .storyfx-evo-stop[disabled] { opacity: 0.4; cursor: not-allowed; }
+
+        /* ───── Generic facility polish ───── */
+        .storyfx-pulse { animation: storyfxPulse 0.45s ease-out; }
+        @keyframes storyfxPulse {
+            0%   { box-shadow: 0 0 0 0 rgba(165,214,167,0.85); transform: scale(1); }
+            60%  { box-shadow: 0 0 0 14px rgba(165,214,167,0); transform: scale(1.03); }
+            100% { box-shadow: 0 0 0 0 rgba(165,214,167,0); transform: scale(1); }
+        }
+        .storyfx-pulse.buy   { animation: storyfxPulseBuy 0.45s ease-out; }
+        .storyfx-pulse.heal  { animation: storyfxPulseHeal 0.6s ease-out; }
+        .storyfx-pulse.upgrd { animation: storyfxPulseUpgrade 0.6s ease-out; }
+        .storyfx-pulse.warn  { animation: storyfxPulseWarn 0.45s ease-out; }
+        @keyframes storyfxPulseBuy {
+            0%   { box-shadow: 0 0 0 0 rgba(255,213,79,0.85); transform: scale(1); }
+            60%  { box-shadow: 0 0 0 14px rgba(255,213,79,0); transform: scale(1.04); }
+            100% { box-shadow: 0 0 0 0 rgba(255,213,79,0); transform: scale(1); }
+        }
+        @keyframes storyfxPulseHeal {
+            0%   { box-shadow: 0 0 0 0 rgba(129,212,250,0.85); transform: scale(1); }
+            60%  { box-shadow: 0 0 0 16px rgba(129,212,250,0); transform: scale(1.04); }
+            100% { box-shadow: 0 0 0 0 rgba(129,212,250,0); transform: scale(1); }
+        }
+        @keyframes storyfxPulseUpgrade {
+            0%   { box-shadow: 0 0 0 0 rgba(206,147,216,0.9); transform: scale(1); }
+            60%  { box-shadow: 0 0 0 18px rgba(206,147,216,0); transform: scale(1.06); }
+            100% { box-shadow: 0 0 0 0 rgba(206,147,216,0); transform: scale(1); }
+        }
+        @keyframes storyfxPulseWarn {
+            0%   { box-shadow: 0 0 0 0 rgba(255,138,128,0.85); transform: scale(1); }
+            60%  { box-shadow: 0 0 0 14px rgba(255,138,128,0); transform: scale(1.04); }
+            100% { box-shadow: 0 0 0 0 rgba(255,138,128,0); transform: scale(1); }
+        }
+        /* Gold-burst on purchase */
+        .storyfx-coin {
+            position: absolute; pointer-events: none; z-index: 50;
+            font-size: 13px; color: #ffd54f;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+            animation: storyfxCoinFloat 0.8s ease-out forwards;
+        }
+        @keyframes storyfxCoinFloat {
+            0%   { opacity: 0; transform: translate(-50%, 0) scale(0.6); }
+            20%  { opacity: 1; transform: translate(-50%, -16px) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -46px) scale(1); }
+        }
+
+        /* Casino spin — three reels rapidly cycle digits then snap. */
+        .storyfx-casino-reels {
+            display: inline-flex; gap: 8px; margin: 6px 0;
+            padding: 8px 12px;
+            background: rgba(20,8,30,0.85);
+            border: 1px solid #ce93d8;
+            color: #ffd54f; font-weight: bold; font-size: 22px;
+            letter-spacing: 0.18em;
+            text-shadow: 0 0 8px rgba(255,213,79,0.6);
+            min-width: 120px; justify-content: center;
+        }
+        .storyfx-casino-reels .reel { display: inline-block; min-width: 18px; text-align: center; }
+        .storyfx-casino-reels .reel.spinning { animation: storyfxReelBlur 0.06s linear infinite; }
+        @keyframes storyfxReelBlur {
+            0%   { filter: blur(0); transform: translateY(0); }
+            50%  { filter: blur(2px); transform: translateY(-2px); }
+            100% { filter: blur(0); transform: translateY(0); }
+        }
+        .storyfx-casino-reels.win  { animation: storyfxReelWin  0.6s ease-out 2; }
+        .storyfx-casino-reels.lose { animation: storyfxReelLose 0.4s ease-out; }
+        @keyframes storyfxReelWin {
+            0%, 100% { box-shadow: 0 0 6px rgba(255,213,79,0.45); }
+            50%      { box-shadow: 0 0 20px rgba(255,213,79,1), 0 0 36px rgba(255,213,79,0.5); }
+        }
+        @keyframes storyfxReelLose {
+            0%, 100% { box-shadow: 0 0 6px rgba(0,0,0,0.45); }
+            50%      { box-shadow: 0 0 18px rgba(244,67,54,0.8); }
+        }
+
         /* Improved attack sequencing animation */
         .anim-lunge-player { animation: lungePlayer 0.25s ease-in-out; }
         .anim-lunge-foe { animation: lungeFoe 0.25s ease-in-out; }
@@ -7033,6 +7361,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 pbThrow:    'music/ui_sfx/pb_throw.wav',
                 pbCatch:    'music/ui_sfx/pb_catch.wav',
                 pbRel:      'music/ui_sfx/pb_rel.wav',
+                // Story-fx additions — wire to existing wav files in music/ui_sfx
+                // so the catch / Safari / evolution / casino flows can layer real
+                // sounds on top of the existing animations. All keys are camelCase.
+                pbBounce1:  'music/ui_sfx/pb_bounce_1.wav',
+                pbBounce2:  'music/ui_sfx/pb_bounce_2.wav',
+                pbLock:     'music/ui_sfx/pb_lock.wav',
+                pbMove:     'music/ui_sfx/pb_move.wav',
+                pbTrayBall: 'music/ui_sfx/pb_tray_ball.wav',
+                pbTrayEmpty:'music/ui_sfx/pb_tray_empty.wav',
+                pbTrayEnter:'music/ui_sfx/pb_tray_enter.wav',
+                critThrow:  'music/ui_sfx/crit_throw.wav',
+                eggCrack:   'music/ui_sfx/egg_crack.wav',
+                eggHatch:   'music/ui_sfx/egg_hatch.wav',
+                gachaDial:  'music/ui_sfx/gacha_dial.wav',
+                gachaRun:   'music/ui_sfx/gacha_running.wav',
+                gachaDrop:  'music/ui_sfx/gacha_dispense.wav',
+                achv:       'music/ui_sfx/achv.wav',
+                shing:      'music/ui_sfx/shing.wav',
+                upgrade:    'music/ui_sfx/upgrade.wav',
+                save:       'music/ui_sfx/save.wav',
+                buy:        'music/ui_sfx/buy.wav',
+                danger:     'music/ui_sfx/danger.wav'
             };
             const _cryCache = {};
 
@@ -22850,6 +23200,396 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ===================================================================
+        // ===== STORY FX — animation + sound helpers for story facilities =====
+        // ===================================================================
+        // A small module that owns the canonical-feel polish for the story
+        // mode: catch throws, Safari Bait/Rock, evolution sequences, casino
+        // spins, plus a couple of generic "confirm" flourishes for shops and
+        // facilities. Every animation degrades gracefully — if a DOM target
+        // is missing, the helper no-ops so the underlying game flow always
+        // completes.
+        window.StoryFx = (function() {
+            const isReduced = (function() {
+                try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+                catch (e) { return false; }
+            })();
+            function _wait(ms) {
+                if (isReduced) ms = Math.min(ms, 80);
+                return new Promise(r => setTimeout(r, ms));
+            }
+            // AudioSystem is a `const` in the parent script scope (not on window),
+            // so we close over it directly via the lexical chain. Falls back
+            // safely if anything in the chain throws.
+            function _sfx(key, vol) {
+                try { if (typeof AudioSystem !== 'undefined' && AudioSystem && AudioSystem.playUiSfx) AudioSystem.playUiSfx(key, vol); } catch (e) {}
+            }
+            function _cry(name, vol) {
+                try { if (typeof AudioSystem !== 'undefined' && AudioSystem && AudioSystem.playCry) AudioSystem.playCry(name, vol); } catch (e) {}
+            }
+            function _resolveSprite(name, shiny) {
+                if (!name) return '';
+                try {
+                    // `getSprite` and `spriteDisplayName` are top-level functions in
+                    // the script scope, accessible via lexical chain.
+                    const sd = (typeof spriteDisplayName === 'function') ? spriteDisplayName({ name }) : name;
+                    if (typeof getSprite === 'function') return getSprite(sd, !!shiny) || '';
+                } catch (e) {}
+                return '';
+            }
+            const BALL_SPRITE = {
+                poke:   'sprites/pokesprite/balls/poke.png',
+                great:  'sprites/pokesprite/balls/great.png',
+                ultra:  'sprites/pokesprite/balls/ultra.png',
+                master: 'sprites/pokesprite/balls/master.png',
+                safari: 'sprites/pokesprite/balls/safari.png'
+            };
+            function _ballSprite(key) { return BALL_SPRITE[key] || BALL_SPRITE.poke; }
+
+            // Build the encounter stage HTML inside the catch screen body.
+            // Returns the stage element so callers can attach further effects.
+            function buildEncounterStage(parent, opts) {
+                if (!parent) return null;
+                const tone = (opts && opts.tone) || 'wild'; // 'wild' | 'safari' | 'boss'
+                const bgClass = tone === 'safari' ? 'safari' : tone === 'boss' ? 'boss' : '';
+                const stage = document.createElement('div');
+                stage.className = 'storyfx-stage';
+                stage.dataset.tone = tone;
+                stage.innerHTML =
+                    '<div class="storyfx-stage-bg ' + bgClass + '"></div>' +
+                    '<img class="storyfx-mon" alt="">' +
+                    '<div class="storyfx-starburst"></div>' +
+                    '<img class="storyfx-ball-rest" alt="" src="' + _ballSprite('poke') + '">';
+                parent.appendChild(stage);
+                return stage;
+            }
+
+            // Slide the wild Pokémon in, play its cry, drop a tray "appeared!"
+            // banner. Awaitable; the catch UI re-renders right after.
+            async function encounterReveal(stage, monName, opts) {
+                if (!stage) return;
+                const mon = stage.querySelector('.storyfx-mon');
+                const ball = stage.querySelector('.storyfx-ball-rest');
+                const tone = stage.dataset.tone || 'wild';
+                if (!mon) return;
+                const src = _resolveSprite(monName, !!(opts && opts.shiny));
+                if (src) mon.src = src;
+                else mon.style.visibility = 'hidden';
+                mon.alt = monName || 'Pokémon';
+                if (ball) { ball.classList.remove('show','wobble','seal','burst'); }
+                mon.classList.remove('idle','enter','shake','flee','absorb','silhouette');
+                void mon.offsetWidth;
+                mon.classList.add('enter');
+                _sfx('pbTrayEnter', 0.55);
+                await _wait(120);
+                _cry(monName, 0.45);
+                await _wait(420);
+                mon.classList.remove('enter');
+                mon.classList.add('idle');
+            }
+
+            // Throw a ball at the mon — animated arc, then wobble, then either
+            // capture seal (success) or break-out. Returns when the visual
+            // settles. Caller passes outcome before calling.
+            async function throwBall(stage, ballKey, outcome) {
+                if (!stage) return;
+                const mon = stage.querySelector('.storyfx-mon');
+                const restBall = stage.querySelector('.storyfx-ball-rest');
+                const burst = stage.querySelector('.storyfx-starburst');
+                if (!mon || !restBall) return;
+                // Flying ball — created fresh each throw so multiple keyframe
+                // runs don't pile up state.
+                const flying = document.createElement('img');
+                flying.className = 'storyfx-ball';
+                flying.src = _ballSprite(ballKey);
+                flying.alt = '';
+                stage.appendChild(flying);
+                _sfx('pbThrow', 0.8);
+                // Trigger the arc on the next frame so the initial position
+                // commits before the animation kicks in.
+                await _wait(20);
+                flying.classList.add('throw');
+                await _wait(420);
+                // Sprite gets sucked into the ball
+                mon.classList.remove('idle','enter','shake');
+                mon.classList.add('absorb');
+                _sfx('pbCatch', 0.7);
+                await _wait(380);
+                try { flying.remove(); } catch (e) {}
+                mon.style.visibility = 'hidden';
+                restBall.src = _ballSprite(ballKey);
+                restBall.classList.add('show');
+                await _wait(160);
+                // Wobble — three rounds if a catch is incoming, one if it
+                // breaks out immediately so the player gets a quick "no".
+                const wobbles = outcome === 'catch' ? 3 : outcome === 'flee' ? 1 : 2;
+                for (let i = 0; i < wobbles; i++) {
+                    restBall.classList.remove('wobble');
+                    void restBall.offsetWidth;
+                    restBall.classList.add('wobble');
+                    _sfx(i % 2 === 0 ? 'pbBounce1' : 'pbBounce2', 0.6);
+                    await _wait(640);
+                }
+                if (outcome === 'catch') {
+                    restBall.classList.remove('wobble');
+                    restBall.classList.add('seal');
+                    _sfx('pbLock', 0.85);
+                    if (burst) { burst.classList.remove('fire'); void burst.offsetWidth; burst.classList.add('fire'); }
+                    await _wait(450);
+                    _sfx('shing', 0.7);
+                    _sfx('sparkle', 0.6);
+                    await _wait(220);
+                } else {
+                    restBall.classList.remove('wobble');
+                    restBall.classList.add('burst');
+                    _sfx('pbRel', 0.8);
+                    await _wait(280);
+                    restBall.classList.remove('burst','show');
+                    if (outcome === 'flee') {
+                        mon.style.visibility = 'visible';
+                        mon.classList.remove('absorb','idle');
+                        mon.classList.add('flee');
+                        _sfx('flee', 0.8);
+                        await _wait(550);
+                    } else {
+                        mon.style.visibility = 'visible';
+                        mon.classList.remove('absorb');
+                        mon.classList.add('shake');
+                        await _wait(680);
+                        mon.classList.remove('shake');
+                        mon.classList.add('idle');
+                    }
+                }
+            }
+
+            // Tiny Safari Bait / Rock visual + sound. Plays inside the stage
+            // if one exists; otherwise just fires the sound.
+            async function safariActionFx(stage, action) {
+                const sym = action === 'bait' ? '🍓' : '🪨';
+                const sfxKey = action === 'bait' ? 'pbTrayBall' : 'pbMove';
+                _sfx(sfxKey, 0.75);
+                if (!stage) { await _wait(80); return; }
+                const mon = stage.querySelector('.storyfx-mon');
+                const puff = document.createElement('div');
+                puff.className = 'storyfx-puff fire';
+                puff.textContent = sym;
+                stage.appendChild(puff);
+                if (mon) {
+                    mon.classList.remove('idle','shake');
+                    void mon.offsetWidth;
+                    if (action === 'rock') mon.classList.add('shake');
+                }
+                await _wait(700);
+                try { puff.remove(); } catch (e) {}
+                if (mon) {
+                    mon.classList.remove('shake');
+                    mon.classList.add('idle');
+                }
+            }
+
+            // Full-screen evolution sequence — silhouette → morph → reveal,
+            // with a "B button" cancel for canon-flavored opt-out. Returns
+            // a Promise that resolves to true on completion, false on cancel.
+            // onCommit is fired right after the flash (when the actual data
+            // change is meant to apply); if it throws, we still resolve so
+            // the overlay never strands the player.
+            function evolutionScene(opts) {
+                const fromName = (opts && opts.fromName) || '';
+                const toName   = (opts && opts.toName)   || '';
+                const shiny    = !!(opts && opts.shiny);
+                const onCommit = (opts && opts.onCommit) || null;
+                const allowCancel = (opts && opts.allowCancel) !== false;
+                const fromSrc = _resolveSprite(fromName, shiny);
+                const toSrc   = _resolveSprite(toName, shiny);
+                return new Promise(function(resolve) {
+                    let cancelled = false;
+                    let finished = false;
+                    const ov = document.createElement('div');
+                    ov.className = 'storyfx-evo-overlay';
+                    ov.setAttribute('role', 'dialog');
+                    ov.setAttribute('aria-modal', 'true');
+                    ov.setAttribute('aria-label', 'Evolution — ' + (fromName || 'Pokémon'));
+                    ov.innerHTML =
+                        '<div class="storyfx-evo-caption" data-role="caption">' +
+                            'What? <b>' + (fromName || 'Your Pokémon') + '</b> is evolving!' +
+                        '</div>' +
+                        '<div class="storyfx-evo-stage">' +
+                            '<div class="storyfx-evo-ray"></div>' +
+                            '<img class="storyfx-evo-mon" alt="" src="' + (fromSrc || '') + '" data-role="sprite">' +
+                            '<div class="storyfx-evo-flash"></div>' +
+                        '</div>' +
+                        (allowCancel
+                            ? '<button type="button" class="storyfx-evo-stop" data-role="cancel">Press B to cancel</button>'
+                            : '<div class="storyfx-evo-caption" data-role="hint" style="font-size:11px;color:#bbb;">Evolution in progress…</div>');
+                    document.body.appendChild(ov);
+                    const sprite  = ov.querySelector('[data-role="sprite"]');
+                    const caption = ov.querySelector('[data-role="caption"]');
+                    const cancel  = ov.querySelector('[data-role="cancel"]');
+                    const hint    = ov.querySelector('[data-role="hint"]');
+                    const ray     = ov.querySelector('.storyfx-evo-ray');
+                    const flash   = ov.querySelector('.storyfx-evo-flash');
+                    const keyHandler = function(e) {
+                        if (!allowCancel || cancelled || finished) return;
+                        if (e.key === 'b' || e.key === 'B' || e.key === 'Escape') {
+                            e.preventDefault();
+                            cancelled = true;
+                            done(false);
+                        }
+                    };
+                    document.addEventListener('keydown', keyHandler);
+                    if (cancel) cancel.addEventListener('click', function() {
+                        if (cancelled || finished) return;
+                        cancelled = true;
+                        done(false);
+                    });
+                    function done(ok) {
+                        finished = true;
+                        try { document.removeEventListener('keydown', keyHandler); } catch (e) {}
+                        try { ov.remove(); } catch (e) {}
+                        resolve(!!ok);
+                    }
+                    (async function run() {
+                        _sfx('eggCrack', 0.55);
+                        if (ray) ray.classList.add('spin');
+                        await _wait(380);
+                        if (cancelled) return;
+                        sprite.classList.add('silhouette');
+                        _sfx('charge', 0.55);
+                        await _wait(280);
+                        if (cancelled) return;
+                        sprite.classList.add('morph');
+                        await _wait(900);
+                        if (cancelled) return;
+                        // Commit the actual data change while the screen is
+                        // washed white — the swap is invisible to the user.
+                        flash.classList.add('flash');
+                        _sfx('beam', 0.6);
+                        await _wait(220);
+                        try { if (typeof onCommit === 'function') onCommit(); } catch (e) { console.warn('[StoryFx] evo commit', e); }
+                        if (toSrc) sprite.src = toSrc;
+                        sprite.alt = toName || '';
+                        sprite.classList.remove('silhouette','morph');
+                        await _wait(120);
+                        flash.classList.remove('flash');
+                        flash.classList.add('fadeout');
+                        sprite.classList.add('reveal');
+                        _sfx('shing', 0.7);
+                        _cry(toName, 0.6);
+                        if (cancel) { cancel.disabled = true; cancel.textContent = ''; }
+                        if (hint) hint.textContent = '';
+                        if (caption) caption.innerHTML =
+                            'Congratulations! <b>' + (fromName || 'Your Pokémon') +
+                            '</b> evolved into <b>' + (toName || '???') + '</b>!';
+                        _sfx('eggHatch', 0.6);
+                        _sfx('achv', 0.6);
+                        await _wait(1200);
+                        done(true);
+                    })();
+                });
+            }
+
+            // Spin a 3-reel display before revealing a roll outcome. Returns
+            // a promise that resolves once the reels lock. The caller picks
+            // the actual outcome; we just animate to it.
+            function casinoSpin(opts) {
+                const host = opts && opts.host;
+                const finalText = (opts && opts.finalText) || '?';
+                const win = !!(opts && opts.win);
+                if (!host) return Promise.resolve();
+                host.innerHTML = '';
+                const reels = document.createElement('div');
+                reels.className = 'storyfx-casino-reels';
+                const sym = ['7','★','◆','♣','♥','♠','9','3','1','5'];
+                for (let i = 0; i < 3; i++) {
+                    const r = document.createElement('span');
+                    r.className = 'reel spinning';
+                    r.textContent = sym[Math.floor(Math.random() * sym.length)];
+                    reels.appendChild(r);
+                }
+                host.appendChild(reels);
+                _sfx('gachaDial', 0.7);
+                _sfx('gachaRun', 0.55);
+                return new Promise(function(resolve) {
+                    const reelEls = reels.querySelectorAll('.reel');
+                    const tickHandle = setInterval(function() {
+                        reelEls.forEach(function(el) {
+                            if (el.classList.contains('locked')) return;
+                            el.textContent = sym[Math.floor(Math.random() * sym.length)];
+                        });
+                    }, 70);
+                    const finalChars = String(finalText).slice(0, 3).padStart(3, ' ').split('');
+                    const lockOne = function(i) {
+                        const el = reelEls[i];
+                        if (!el) return;
+                        el.classList.remove('spinning');
+                        el.classList.add('locked');
+                        const ch = finalChars[i] || '?';
+                        el.textContent = ch.trim() || (win ? '★' : '✕');
+                        _sfx('pbBounce1', 0.5);
+                    };
+                    setTimeout(function() { lockOne(0); }, 480);
+                    setTimeout(function() { lockOne(1); }, 760);
+                    setTimeout(function() {
+                        lockOne(2);
+                        clearInterval(tickHandle);
+                        reels.classList.add(win ? 'win' : 'lose');
+                        _sfx('gachaDrop', 0.7);
+                        if (win) { _sfx('achv', 0.6); _sfx('sparkle', 0.55); }
+                        else     { _sfx('danger', 0.5); }
+                        setTimeout(resolve, 320);
+                    }, 1080);
+                });
+            }
+
+            // Generic confirm flourish — flashes a coloured ring on the given
+            // element and plays a soft SFX. Used by shops, tutors, EV trainer,
+            // and Pokémon Center to give every committed action a beat.
+            function flashPulse(el, variant) {
+                if (!el || !el.classList) return;
+                const cls = ['storyfx-pulse'];
+                if (variant && variant !== 'default') cls.push(variant);
+                el.classList.remove('storyfx-pulse','buy','heal','upgrd','warn');
+                void el.offsetWidth;
+                el.classList.add.apply(el.classList, cls);
+                setTimeout(function() {
+                    try { el.classList.remove.apply(el.classList, cls); } catch (e) {}
+                }, 700);
+            }
+            function buyFx(el)     { flashPulse(el, 'buy');   _sfx('buy', 0.65); }
+            function healFx(el)    { flashPulse(el, 'heal');  _sfx('restore', 0.7); }
+            function saveFx(el)    { flashPulse(el, 'heal');  _sfx('save', 0.6); }
+            function upgradeFx(el) { flashPulse(el, 'upgrd'); _sfx('upgrade', 0.7); _sfx('shing', 0.4); }
+            function warnFx(el)    { flashPulse(el, 'warn');  _sfx('danger', 0.5); }
+
+            // Floating "+G" or "+EV" indicator near an element.
+            function floatCoin(el, label) {
+                if (!el) return;
+                try {
+                    const rect = el.getBoundingClientRect();
+                    const coin = document.createElement('div');
+                    coin.className = 'storyfx-coin';
+                    coin.textContent = label || '+';
+                    coin.style.left = (rect.left + rect.width / 2) + 'px';
+                    coin.style.top  = (rect.top + 4) + 'px';
+                    document.body.appendChild(coin);
+                    setTimeout(function() { try { coin.remove(); } catch (e) {} }, 900);
+                } catch (e) {}
+            }
+
+            return {
+                isReducedMotion: function() { return isReduced; },
+                buildEncounterStage,
+                encounterReveal,
+                throwBall,
+                safariActionFx,
+                evolutionScene,
+                casinoSpin,
+                buyFx, healFx, saveFx, upgradeFx, warnFx,
+                flashPulse, floatCoin,
+                playSfx: _sfx
+            };
+        })();
+
+        // ===================================================================
         // ===== STORY MODE — window.StoryMode =====
         // ===================================================================
         window.StoryMode = (function() {
@@ -29559,6 +30299,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
                 _pcRefresh();
                 showScreen('screen-story-pokemoncenter');
+                // Canonical "Welcome to the Pokémon Center" three-note chime —
+                // play save.wav (Joy's friendly cue) on entry. The party already
+                // heals between battles, so this is the audible "you're safe here".
+                try { window.StoryFx && window.StoryFx.playSfx('save', 0.55); } catch (e) {}
                 try { _storyShowOneTimeTip('center',
                     'Pokémon Center\n\n• Manage your active team (up to 6) and PC (10 slots).\n• Your party fully heals between every battle.\n• PC Storage: deposit, withdraw, or release Pokémon.\n• The Underground: sell Pokémon for gold.\n• Starters and bonded Pokémon cannot be sold.'); } catch (e) {}
             } finally {
@@ -29759,6 +30503,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } else {
                 sm.gold = Math.max(0, (sm.gold | 0) - SAFARI_ENTRY_COST);
             }
+            // Gate-open chime — soft achievement ping so the safari trip starts with
+            // a beat. Sits under the welcome-alert dismiss so it doesn't clash.
+            try { window.StoryFx && window.StoryFx.playSfx('pbTrayEnter', 0.8); } catch (e) {}
             _safariBeginSession();
             try { save(); } catch (e) {}
             _safariNextEncounter();
@@ -29841,6 +30588,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             _renderCrucible();
             showScreen('screen-story-crucible');
+            // Big achievement chord — entering the post-game super-hub.
+            try { window.StoryFx && window.StoryFx.playSfx('achv', 0.55); } catch (e) {}
             try { _storyShowOneTimeTip('crucible',
                 'The Crucible — Post-game Hub\n\n• Battles: Battle Frontier, Mystery Figure, Rival Rematch, League Run, Random Gym Rematch, Wild Encounter.\n• Facilities: All facilities from your journey under one roof — Pokémon Center, Safari Zone, shops, tutors, Colress, Stone Sage, Link Station, and Casino.\n\nBack to City returns you to the last city you visited.'); } catch (e) {}
         }
@@ -29939,6 +30688,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             _renderFrontierHub();
             showScreen('screen-story-frontier');
+            // Battle-prep horn — Frontier is a 6v6 stamina test.
+            try { window.StoryFx && window.StoryFx.playSfx('danger', 0.4); } catch (e) {}
             try { _storyShowOneTimeTip('frontier',
                 'Battle Frontier — an endless 6-on-6 ladder. Foe stats and grade pool sharpen every round (HP ×1.35 → 2.50, bulk/speed ×1.20 → 1.80). One loss ends the streak; your final round is locked into the Top-10. Surrender any time to bank the current streak.'); } catch (e) {}
         }
@@ -30274,6 +31025,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const [moved] = sm.team.splice(found.index, 1);
             sm.pcBox.push(moved);
             save();
+            try { window.StoryFx && window.StoryFx.playSfx('pbTrayBall', 0.7); } catch (e) {}
             _pcRefresh();
         }
         function pcWithdraw(monId) {
@@ -30284,6 +31036,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const [moved] = sm.pcBox.splice(found.index, 1);
             sm.team.push(moved);
             save();
+            try { window.StoryFx && window.StoryFx.playSfx('pbRel', 0.7); } catch (e) {}
             _pcRefresh();
         }
         function pcRelease(monId) {
@@ -30296,6 +31049,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!ok) return;
             sm.pcBox.splice(found.index, 1);
             save();
+            try { window.StoryFx && window.StoryFx.playSfx('pbTrayEmpty', 0.6); } catch (e) {}
             _pcRefresh();
         }
         function pcSell(monId) {
@@ -30314,6 +31068,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else sm.pcBox.splice(found.index, 1);
             sm.gold = (sm.gold | 0) + price;
             save();
+            try { window.StoryFx && window.StoryFx.playSfx('buy', 0.55); } catch (e) {}
             _pcRefresh();
         }
 
@@ -30373,6 +31128,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const SAFARI_TURN_FLEE_CAP       = 0.45;
         let _catchState = null;
         let _safariSession = null;
+        // Persistent stage element for the catch screen — built once per
+        // encounter and re-parented across `_catchRender` rebuilds so the
+        // reveal / wobble animation state survives ball-throw re-renders.
+        let _catchStageEl = null;
+        let _catchStageEncToken = null;
+        let _catchThrowInFlight = false;
 
         /** A battle is on a "new route" when it sits between two different City
          *  rows in STORY_EVENTS_RAW — i.e. leaving City N to reach City N+1.
@@ -30623,7 +31384,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _safariPool = _safariOpeners[_safariGrade] || _safariOpeners[3];
                 _catchState.message = _safariPool[Math.floor(Math.random() * _safariPool.length)];
             }
+            // Fresh stage for each new encounter — the persistent element is
+            // tied to the catch-state token, so clearing it forces a rebuild
+            // (and a fresh slide-in animation) on the next _catchRender.
+            if (_catchStageEl) { try { _catchStageEl.remove(); } catch (e) {} }
+            _catchStageEl = null;
+            _catchStageEncToken = null;
+            _catchThrowInFlight = false;
             _catchRender();
+            // Fire the slide-in + cry only when the wild actually appears.
+            // Boss mode has its own HP-bar phase (no stage), so skip.
+            try {
+                if (!_catchState.bossMode && _catchStageEl && window.StoryFx) {
+                    window.StoryFx.encounterReveal(_catchStageEl, wildMon && wildMon.name, {});
+                }
+            } catch (e) {}
             if (!_catchState.bossMode) {
                 if (_catchState.tutorialMode) {
                     try { _storyShowOneTimeTip('catch-tutorial',
@@ -30836,20 +31611,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const subText = _catchState.bossMode
                 ? `Catch rate 1% per throw. Master Ball is guaranteed.`
                 : _catchState.safariMode ? `Safari Balls only (${SAFARI_BALL_MULT}× catch). Bait calms, Rock angers — every turn the wild may flee.` : 'Catch chance = grade base × ball multiplier.';
-            // Show the wild Pokémon's sprite — the screen was text-only before, which
-            // made every encounter feel like the same prompt.
-            let spriteHtml = '';
-            try {
-                const spriteUrl = typeof getSprite === 'function' ? getSprite(spriteDisplayName(enc), false) : '';
-                if (spriteUrl) {
-                    spriteHtml = `<img src="${spriteUrl}" alt="${_esc(enc.name)}" style="display:block;margin:0 auto 6px;width:96px;height:96px;image-rendering:pixelated;filter:drop-shadow(0 0 ${_catchState.bossMode ? '8px rgba(206,147,216,0.6)' : '4px rgba(165,214,167,0.35)'});" onerror="this.style.display='none'">`;
-                }
-            } catch (e) {}
+            // Stage placeholder — actual animated stage is mounted after innerHTML.
+            // We keep `_catchStageEl` alive across re-renders so the encounter
+            // reveal / wobble state survives the ball-throw re-render cycle.
             body.innerHTML = `
-                <div style="text-align:center;padding:18px 12px;background:${headerBg};">
+                <div style="text-align:center;padding:14px 12px 10px;background:${headerBg};">
                     <div style="font-size:11px;color:${headerColor};letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">${headerLabel}</div>
-                    ${spriteHtml}
-                    <h2 style="margin:0 0 6px;color:#fff;font-size:18px;">${_esc(enc.name)}</h2>
+                    <div id="story-catch-stage-host" style="margin:0 auto 4px;"></div>
+                    <h2 style="margin:6px 0 4px;color:#fff;font-size:18px;">${_esc(enc.name)}</h2>
                     <div style="display:inline-block;font-size:10px;font-weight:bold;color:#111;background:${gradeBg};padding:2px 8px;letter-spacing:0.04em;">Grade ${grade}</div>
                     <div style="margin-top:8px;font-size:10px;color:#888;">${subText}</div>
                 </div>
@@ -30861,6 +31630,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ${safariActionRow}
                 ${bossRetreat}
             `;
+            // Mount the persistent stage element under the placeholder. Build
+            // it on first render of a new encounter so encounterReveal can
+            // animate the slide-in; keep it on subsequent renders so wobble
+            // state isn't lost.
+            try {
+                const host = document.getElementById('story-catch-stage-host');
+                if (host) {
+                    if (!_catchStageEl || _catchStageEncToken !== _catchState) {
+                        if (_catchStageEl) { try { _catchStageEl.remove(); } catch (e) {} }
+                        const tone = _catchState.bossMode ? 'boss' : (_catchState.safariMode ? 'safari' : 'wild');
+                        _catchStageEl = window.StoryFx && window.StoryFx.buildEncounterStage(host, { tone })
+                            || null;
+                        _catchStageEncToken = _catchState;
+                    } else if (_catchStageEl.parentNode !== host) {
+                        host.appendChild(_catchStageEl);
+                    }
+                }
+            } catch (e) {}
         }
         function bossRetreatToCity() {
             if (!_catchState || !_catchState.bossMode) return;
@@ -30899,8 +31686,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             _catchRender();
         }
-        function catchThrow(ballKey) {
+        async function catchThrow(ballKey) {
             if (!_catchState || _catchState.ended) return;
+            // Reject overlapping throws while a ball animation is already running
+            // — fast double-clicks would otherwise burn a second ball.
+            if (_catchThrowInFlight) return;
             // Boss mode: can't throw until HP has been drained to zero.
             if (_catchState.bossMode && _catchState.bossHp > 0) return;
             const enc = _catchState.encounter;
@@ -30916,6 +31706,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.balls || (sm.balls[ballKey] | 0) <= 0) return;
                 sm.balls[ballKey] = (sm.balls[ballKey] | 0) - 1;
             }
+            _catchThrowInFlight = true;
             const grade = (function () {
                 try { return getMonGrade(enc.name, getBST(enc.name)); }
                 catch (e) { return 4; }
@@ -30933,11 +31724,59 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const chance = mult === Infinity ? 1 : Math.min(1, baseRate * mult);
             const roll = (sm && sm.active) ? storyRngNext() : Math.random();
             try { save(); } catch (e) {}
+            // Resolve the outcome first (catch / flee / wobble) — we want the
+            // ball animation to mirror the truth, not gamble independently.
+            let outcome; // 'catch' | 'flee' | 'wobble'
+            let fleeMessage = null;
             if (roll < chance) {
+                outcome = 'catch';
+            } else if (_catchState.bossMode) {
+                outcome = 'wobble';
+            } else {
+                const fleeRoll = (sm && sm.active) ? storyRngNext() : Math.random();
+                let fleeThreshold;
+                if (_catchState.forcedFleeRate != null) {
+                    fleeThreshold = _catchState.forcedFleeRate;
+                } else if (_catchState.safariMode) {
+                    const sess = _safariSession || { baitCount: 0, rockCount: 0 };
+                    const fleeBase = _CATCH_FLEE_BY_GRADE[grade] || _CATCH_DEFAULT_FLEE_RATE;
+                    const fleeMult = Math.pow(SAFARI_BAIT_FLEE_MULT, sess.baitCount | 0) * Math.pow(SAFARI_ROCK_FLEE_MULT, sess.rockCount | 0);
+                    fleeThreshold = Math.max(0, Math.min(0.85, fleeBase * fleeMult));
+                } else {
+                    // Per-grade flee — rarer mons are more skittish. G1 bolts more than half
+                    // the time on a miss, so a missed Ultra Ball on a G1 usually means it's gone.
+                    fleeThreshold = _CATCH_FLEE_BY_GRADE[grade] || _CATCH_DEFAULT_FLEE_RATE;
+                }
+                if (fleeRoll < fleeThreshold) {
+                    outcome = 'flee';
+                    const fleeMsgs = _catchState.roamingLabel
+                        ? [
+                            `${enc.name} broke the ball and fled. Gone for good.`,
+                            `${enc.name} bolted past the treeline. Gone for good.`
+                        ]
+                        : [
+                            `${enc.name} bolted!`,
+                            `${enc.name} fled — too quick to follow.`
+                        ];
+                    fleeMessage = fleeMsgs[Math.floor(Math.random() * fleeMsgs.length)];
+                } else {
+                    outcome = 'wobble';
+                }
+            }
+            // Animate the throw with the predetermined outcome. Cosmetic-only;
+            // if anything fails we still apply the actual state changes below.
+            try {
+                if (window.StoryFx && _catchStageEl) {
+                    await window.StoryFx.throwBall(_catchStageEl, ballKey, outcome);
+                }
+            } catch (e) { /* fall through to state apply */ }
+            _catchThrowInFlight = false;
+            // Apply the resolved outcome now that the animation has played.
+            if (!_catchState || _catchState.ended) return; // user navigated away mid-throw
+            if (outcome === 'catch') {
                 _catchHandleSuccess(enc, ballKey);
                 return;
             }
-            // Boss mode: no flee — the mon can't move. Keep throwing.
             if (_catchState.bossMode) {
                 const _bossMisses = [
                     'The ball wobbles… and breaks open!',
@@ -30949,31 +31788,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _catchRender();
                 return;
             }
-            const fleeRoll = (sm && sm.active) ? storyRngNext() : Math.random();
-            let fleeThreshold;
-            if (_catchState.forcedFleeRate != null) {
-                fleeThreshold = _catchState.forcedFleeRate;
-            } else if (_catchState.safariMode) {
-                const sess = _safariSession || { baitCount: 0, rockCount: 0 };
-                const fleeBase = _CATCH_FLEE_BY_GRADE[grade] || _CATCH_DEFAULT_FLEE_RATE;
-                const fleeMult = Math.pow(SAFARI_BAIT_FLEE_MULT, sess.baitCount | 0) * Math.pow(SAFARI_ROCK_FLEE_MULT, sess.rockCount | 0);
-                fleeThreshold = Math.max(0, Math.min(0.85, fleeBase * fleeMult));
-            } else {
-                // Per-grade flee — rarer mons are more skittish. G1 bolts more than half
-                // the time on a miss, so a missed Ultra Ball on a G1 usually means it's gone.
-                fleeThreshold = _CATCH_FLEE_BY_GRADE[grade] || _CATCH_DEFAULT_FLEE_RATE;
-            }
-            if (fleeRoll < fleeThreshold) {
-                const fleeMsgs = _catchState.roamingLabel
-                    ? [
-                        `${enc.name} broke the ball and fled. Gone for good.`,
-                        `${enc.name} bolted past the treeline. Gone for good.`
-                    ]
-                    : [
-                        `${enc.name} bolted!`,
-                        `${enc.name} fled — too quick to follow.`
-                    ];
-                _catchFinishWithMessage(fleeMsgs[Math.floor(Math.random() * fleeMsgs.length)]);
+            if (outcome === 'flee') {
+                _catchFinishWithMessage(fleeMessage);
                 return;
             }
             const wobbleMsgs = [
@@ -31119,12 +31935,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <button type="button" onclick="window.StoryMode.catchContinue()" style="padding:10px 24px;background:rgba(20,28,40,0.6);color:#aed581;border:1px solid #aed581;font-family:inherit;cursor:pointer;">Continue →</button>
                 </div>`;
             }
+            // The encounter is over — drop the stage so the next encounter
+            // rebuilds with a fresh slide-in.
+            if (_catchStageEl) { try { _catchStageEl.remove(); } catch (e) {} }
+            _catchStageEl = null;
+            _catchStageEncToken = null;
+            _catchThrowInFlight = false;
             const runBtn = document.getElementById('story-catch-run-btn');
             if (runBtn) { runBtn.style.display = 'none'; }
         }
         function catchContinue() {
             const cb = _catchState && _catchState.onComplete;
             _catchState = null;
+            if (_catchStageEl) { try { _catchStageEl.remove(); } catch (e) {} }
+            _catchStageEl = null;
+            _catchStageEncToken = null;
+            _catchThrowInFlight = false;
             const runBtn = document.getElementById('story-catch-run-btn');
             if (runBtn) { runBtn.style.display = ''; runBtn.disabled = false; }
             if (typeof cb === 'function') {
@@ -31135,6 +31961,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_catchState || _catchState.ended) return;
             const cb = _catchState.onComplete;
             _catchState = null;
+            if (_catchStageEl) { try { _catchStageEl.remove(); } catch (e) {} }
+            _catchStageEl = null;
+            _catchStageEncToken = null;
+            _catchThrowInFlight = false;
+            try { window.StoryFx && window.StoryFx.playSfx('flee', 0.6); } catch (e) {}
             const runBtn = document.getElementById('story-catch-run-btn');
             if (runBtn) { runBtn.style.display = ''; runBtn.disabled = false; }
             if (typeof cb === 'function') {
@@ -31198,6 +32029,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_safariSession) return;
             if ((_safariSession.baitCount | 0) >= 3) return;
             _safariSession.baitCount = Math.min(3, (_safariSession.baitCount | 0) + 1);
+            try { window.StoryFx && window.StoryFx.safariActionFx(_catchStageEl, 'bait'); } catch (e) {}
             if (_safariRollActionFlee('bait')) return;
             _catchState.message = `${_catchState.encounter.name} is munching on the bait — calmer now.`;
             _catchRender();
@@ -31212,6 +32044,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_safariSession) return;
             if ((_safariSession.rockCount | 0) >= 3) return;
             _safariSession.rockCount = Math.min(3, (_safariSession.rockCount | 0) + 1);
+            try { window.StoryFx && window.StoryFx.safariActionFx(_catchStageEl, 'rock'); } catch (e) {}
             if (_safariRollActionFlee('rock')) return;
             _catchState.message = `${_catchState.encounter.name} dodges the rock — furious now, and watching you closely.`;
             _catchRender();
@@ -31343,7 +32176,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const claimedTag = alreadyBought ? '<span class="story-shop-item-claimed-tag">[Claimed]</span>' : '';
                 const featuredBorder = opts.featured ? `style="border-color:${item.tier==='mega' ? '#43a047' : '#7e57c2'};"` : '';
                 const priceCls = canAfford ? 'price' : 'price cant-afford';
-                return `<div class="story-shop-item${alreadyBought ? ' is-claimed' : ''}" ${featuredBorder}>
+                return `<div class="story-shop-item${alreadyBought ? ' is-claimed' : ''}" ${featuredBorder} data-item-id="${item.id}">
                     <div class="story-shop-item-row">
                         ${icon}
                         <div style="flex:1;min-width:0;">
@@ -31401,7 +32234,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             gridEl.innerHTML = _gridParts.join('');
             if (type === 'dept') save();
             syncStoryShopBackground(type === 'dept' ? 'dept' : 'mart');
-            showScreen('screen-story-shop');
+            // Shop-door bell — fires only when transitioning from a different
+            // screen (not on the buy→re-render loop, which would stutter).
+            try {
+                const _shopScrEl = document.getElementById('screen-story-shop');
+                const wasHidden = !_shopScrEl || _shopScrEl.classList.contains('hidden');
+                showScreen('screen-story-shop');
+                if (wasHidden && window.StoryFx) window.StoryFx.playSfx('pbTrayBall', 0.35);
+            } catch (e) {
+                showScreen('screen-story-shop');
+            }
         }
 
         async function buyItem(itemId, price) {
@@ -31459,7 +32301,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.deptShopPurchasedByCity[_cKey][itemId] = true;
             }
             save();
+            // Cash-register chime + golden ring on the freshly re-rendered row.
+            try { window.StoryFx && window.StoryFx.playSfx('buy', 0.7); } catch (e) {}
             enterShop(st === 'dept' ? 'dept' : 'mart');
+            // After re-render, surface a brief gold-coin float on the matching row.
+            try {
+                setTimeout(function() {
+                    const row = document.querySelector(`#screen-story-shop [data-item-id="${itemId}"]`);
+                    if (row && window.StoryFx) {
+                        window.StoryFx.flashPulse(row, 'buy');
+                        window.StoryFx.floatCoin(row, '-' + price.toLocaleString() + 'G');
+                    }
+                }, 30);
+            } catch (e) {}
         }
 
         async function buyArtifact(artId, price) {
@@ -31487,6 +32341,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.artifactTypeById[artId] = _artifactTypeForDisplay(artId, cityIdx);
             }
             save();
+            // Big-ticket purchase — relic claimed, full chord.
+            try {
+                if (window.StoryFx) {
+                    window.StoryFx.playSfx('upgrade', 0.7);
+                    setTimeout(function() { window.StoryFx.playSfx('shing', 0.6); }, 200);
+                }
+            } catch (e) {}
             enterArtifactShop();
         }
         function enterArtifactShop() {
@@ -31550,6 +32411,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             gridEl.innerHTML = _artParts.join('');
             syncStoryArtifactShopBackground();
             showScreen('screen-story-artifact-shop');
+            // Soft mystical chime — relic shop has a treasure-room mood.
+            try { window.StoryFx && window.StoryFx.playSfx('shine', 0.45); } catch (e) {}
             save();
         }
 
@@ -31616,6 +32479,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 renderLinkTeam();
                 syncStoryLinkBackground();
                 showScreen('screen-story-link');
+                try { window.StoryFx && window.StoryFx.playSfx('beam', 0.45); } catch (e) {}
                 try { _storyShowFacilityQuote('screen-story-link', 'link'); } catch (e) {}
                 try { _storyShowOneTimeTip('first-link',
                     'Cable Link Station\n\nThe shortcut to a tournament-grade build:\n\n• Reroll — re-pick a slot\'s moves/nature/ability/item at random.\n• Upgrade — bump a Pokémon directly to T4 (full EVs, kept nature, top-pool ability/item).\n• Rebuild — wipe and re-roll the whole build from scratch.\n\nCosts ramp per-city to discourage spam, but a single Link Upgrade can save you a long string of Tutor / Dojo / EV-Trainer visits. Use it on a keeper.'); } catch (e) {}
@@ -31661,6 +32525,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 syncStoryCasinoBackground();
                 showScreen('screen-story-casino');
+                // Slot-machine dial when the casino door swings open.
+                try { window.StoryFx && window.StoryFx.playSfx('gachaDial', 0.4); } catch (e) {}
                 try { _storyShowFacilityQuote('screen-story-casino', 'casino'); } catch (e) {}
                 try { _storyShowOneTimeTip('first-casino',
                     'Poké Casino\n\nThree games, one bet field. Pick your odds:\n\n• Coin Flip — 1:1 payout, ~50% odds.\n• Color (Red/Black) — 1:2 payout, ~30% odds (small house edge).\n• Jackpot (pick 1-10) — 1:9 payout, 10% odds.\n\nThe house has the math; play for the swing, not the income. The casino can dry up a run faster than any trainer.'); } catch (e) {}
@@ -31713,10 +32579,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return { win: false, payoutMult: 0, rollLabel: '' };
         }
 
-        function casinoPlay(mode, pickArg) {
+        // Guards against fast double-presses while a spin animation is mid-roll.
+        let _casinoSpinInFlight = false;
+        async function casinoPlay(mode, pickArg) {
             if (!sm || !sm.active) return;
             const scr = document.getElementById('screen-story-casino');
             if (!scr || scr.classList.contains('hidden')) return;
+            if (_casinoSpinInFlight) return;
             if (!_storyTryBeginInteraction()) return;
             try {
                 let resolvedMode = 'coin';
@@ -31753,6 +32622,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const roll = Math.floor(Math.random() * 10) + 1; // 1..10
                 const result = _casinoResolve(resolvedMode, pick, roll);
                 const gain = bet * result.payoutMult;
+                // Spin animation — picks a stable "final text" from the roll so the
+                // reels lock onto a value matching the result. We await the spin so
+                // the gold change + final message land together with the reel snap.
+                _casinoSpinInFlight = true;
+                try {
+                    if (window.StoryFx && resEl) {
+                        const reelText = resolvedMode === 'jackpot'
+                            ? String(roll).padStart(3, '0')
+                            : (result.win ? '7 7 7' : '? ? ?');
+                        await window.StoryFx.casinoSpin({ host: resEl, finalText: reelText, win: result.win });
+                    }
+                } catch (e) { /* fall through to text result */ }
                 if (result.win) sm.gold += gain;
                 else sm.gold -= bet;
                 sm.gold = Math.max(0, sm.gold | 0);
@@ -31773,8 +32654,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const msg = result.win
                     ? `${result.rollLabel}. You win +${gain.toLocaleString()}G (now ${sm.gold.toLocaleString()}G)`
                     : `${result.rollLabel}. You lose -${bet.toLocaleString()}G (now ${sm.gold.toLocaleString()}G)`;
-                if (resEl) resEl.textContent = msg;
+                if (resEl) {
+                    const msgEl = document.createElement('div');
+                    msgEl.style.cssText = 'margin-top:6px;color:' + (result.win ? '#ffd54f' : '#ef9a9a') + ';font-size:13px;';
+                    msgEl.textContent = msg;
+                    resEl.appendChild(msgEl);
+                }
             } finally {
+                _casinoSpinInFlight = false;
                 _storyEndInteraction();
             }
         }
@@ -31876,6 +32763,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.gold -= cost;
                 sm.team[idx] = { name:newName, build:newBuild, id:'m_'+Math.random().toString(36).slice(2,10) };
                 save();
+                try { window.StoryFx && window.StoryFx.playSfx('shing', 0.6); } catch (e) {}
                 renderLinkTeam();
                 renderTeamPanel();
             } finally {
@@ -31912,6 +32800,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.gold -= cost;
                 sm.team[idx] = { name:newName, build:newBuild, id:'m_'+Math.random().toString(36).slice(2,10) };
                 save();
+                try {
+                    if (window.StoryFx) {
+                        window.StoryFx.playSfx('upgrade', 0.6);
+                        setTimeout(function() { window.StoryFx.playSfx('shing', 0.55); }, 180);
+                    }
+                } catch (e) {}
                 renderLinkTeam();
                 renderTeamPanel();
             } finally {
@@ -32041,6 +32935,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 renderEvoLabTeam();
                 syncStoryEvoLabBackground();
                 showScreen('screen-story-evolab');
+                // Mystical stone-cracking chime — sets the Sage's ritual tone.
+                try { window.StoryFx && window.StoryFx.playSfx('sparkle', 0.5); } catch (e) {}
                 try { _storyShowOneTimeTip('first-evolab',
                     'Stone Sage — Evolution Tutor\n\nEvolve any eligible Pokémon, in one step. The Sage figures out stones, trades, friendship, time-of-day — all of it.\n\n• Nature, ability slot, EVs, held item, and Tera type all carry over.\n• Cost scales with the target tier: G3 = 1,500G, G2 = 6,000G, G1 = 16,000G.\n• A 🍬 Rare Candy skips the gold cost entirely. The same candy gates "free" on the first evolution per Pokémon — repeat evolutions on the same mon still pay full price.'); } catch (e) {}
             } finally {
@@ -32204,6 +33100,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return true;
         }
 
+        // Run the full Gen3-style evolution scene around the actual data swap.
+        // The data change applies first (so the scene's reveal frame always
+        // matches the team state) and the animation plays purely as polish.
+        // Resolves to `true` if the swap succeeded, `false` otherwise. The
+        // scene itself never blocks the swap.
+        async function _evoLabApplyEvolutionWithAnim(idx, evoName) {
+            const mon = sm.team[idx];
+            if (!mon) return false;
+            const fromName = mon.name;
+            const shiny = !!(mon.build && mon.build.shiny);
+            const ok = await _evoLabApplyEvolution(idx, evoName);
+            if (!ok) return false;
+            // Polish: play the full scene if StoryFx is loaded. If anything in
+            // the scene throws or it's reduced-motion off, the swap still
+            // committed — the player just won't get the cinematic frame.
+            try {
+                if (window.StoryFx && typeof window.StoryFx.evolutionScene === 'function') {
+                    await window.StoryFx.evolutionScene({
+                        fromName,
+                        toName: evoName,
+                        shiny,
+                        allowCancel: false
+                    });
+                }
+            } catch (e) { /* polish failure is silent */ }
+            return true;
+        }
+
         async function evoLabEvolve(idx, evoName) {
             if (!_storyTryBeginInteraction()) return;
             try {
@@ -32227,7 +33151,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const ok = await window.showGameConfirm(msg);
                 if (!ok) return;
                 sm.cityRerollsUsed[ek] = en;
-                if (!await _evoLabApplyEvolution(idx, evoName)) return;
+                if (!await _evoLabApplyEvolutionWithAnim(idx, evoName)) return;
                 sm.gold -= cost;
                 save();
                 renderEvoLabTeam();
@@ -32267,7 +33191,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const ok = await window.showGameConfirm(msg);
                 if (!ok) return;
                 sm.cityRerollsUsed[ek] = en;
-                if (!await _evoLabApplyEvolution(idx, evoName)) return;
+                if (!await _evoLabApplyEvolutionWithAnim(idx, evoName)) return;
                 sm.inventory.rareCandy = Math.max(0, (sm.inventory.rareCandy | 0) - 1);
                 if (sm.inventory.rareCandy <= 0) delete sm.inventory.rareCandy;
                 save();
@@ -32304,6 +33228,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // rebuilds their starter doesn't strip its star-starter badge.
                 sm.team[idx] = { ...mon, build: newBuild };
                 save();
+                try { window.StoryFx && window.StoryFx.playSfx('shing', 0.6); } catch (e) {}
                 renderLinkTeam();
             } finally {
                 _storyEndInteraction();
@@ -33690,6 +34615,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 : '<div style="color:#888;font-size:12px;padding:12px;">Loading…</div>';
             syncStoryTutorBackground();
             showScreen('screen-story-tutor');
+            // Soft book-flip chime — Move Tutor / Battle Dojo / Nature Rater
+            // all share the same screen, so a single neutral cue works for all.
+            try { window.StoryFx && window.StoryFx.playSfx('pbTrayEnter', 0.45); } catch (e) {}
             void renderTutorTeam();
             try {
                 if (m === 'moves') {
@@ -33944,6 +34872,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.status = null;
                 mon.pp = null;
                 save();
+                try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
                 void renderTutorTeam();
                 renderTeamPanel();
             } finally {
@@ -33977,6 +34906,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.gold -= TUTOR_COST_ITEM;
                 mon.build.i = newItem;
                 save();
+                try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
                 void renderTutorTeam();
                 renderTeamPanel();
             } finally {
@@ -33996,6 +34926,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.gold -= TUTOR_COST_ABILITY;
                 mon.build.a = newAbility;
                 save();
+                try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
                 void renderTutorTeam();
                 renderTeamPanel();
             } finally {
@@ -34017,6 +34948,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.build.n = newNature;
                 mon.currentHp = null;
                 save();
+                try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
                 void renderTutorTeam();
                 renderTeamPanel();
             } finally {
@@ -34092,6 +35024,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             syncStoryColressBackground();
             showScreen('screen-story-colress');
+            // Power-grid hum on entry — matches the lab's "battle forms" theme.
+            try { window.StoryFx && window.StoryFx.playSfx('beam', 0.4); } catch (e) {}
             renderColressTeam();
             try { _storyShowFacilityQuote('screen-story-colress', 'colress'); } catch (e) {}
             try { _storyShowOneTimeTip('first-colress',
@@ -34246,6 +35180,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function _colressFinish() {
             save();
+            // Charge + shing — gimmick activation rings a power-up chord.
+            try {
+                if (window.StoryFx) {
+                    window.StoryFx.playSfx('charge', 0.5);
+                    setTimeout(function() { window.StoryFx.playSfx('shing', 0.6); }, 180);
+                }
+            } catch (e) {}
             renderColressTeam();
             try { renderTeamPanel(); } catch (e) {}
             try { updateHUD(); } catch (e) {}
@@ -34407,6 +35348,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function _evTrainerFinish() {
             try { save(); } catch (e) {}
+            // Stat-up arrow chime — the rolled spread just landed on the mon.
+            try {
+                if (window.StoryFx) {
+                    window.StoryFx.playSfx('statUp', 0.7);
+                    setTimeout(function() { window.StoryFx.playSfx('exp', 0.55); }, 220);
+                }
+            } catch (e) {}
             try { renderEVTrainerTeam(); } catch (e) {}
             try { renderTeamPanel(); } catch (e) {}
             try { if (typeof updateHUD === 'function') updateHUD(); } catch (e) {}
@@ -34426,6 +35374,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             try { syncStoryEVTrainerBackground(); } catch (e) {}
             showScreen('screen-story-evtrainer');
+            // Whistle blast — Buck's "drop and give me twenty" vibe.
+            try { window.StoryFx && window.StoryFx.playSfx('statUp', 0.4); } catch (e) {}
             renderEVTrainerTeam();
             try { _storyShowFacilityQuote('screen-story-evtrainer', 'evTrainer'); } catch (e) {}
             try { _storyShowOneTimeTip('first-ev',
