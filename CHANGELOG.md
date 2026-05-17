@@ -41,6 +41,131 @@ swallowed weather/terrain/stat-boost abilities, lost permanent weather
 cleanup, and didn't chain hazard KOs. Surfaced while auditing battle
 ordering and KO edge cases.
 
+## Unreleased — Special-case Pokémon variations 2026-05-16 (`claude/special-case-pokemon-variations-pZmOU`)
+
+### Added — Second-pass variant audit: more cosmetic skins, more dedup families
+
+- More **cosmetic skin pairs** added after a full audit of every alt-forme
+  in the dex (~1.5% rare reskin, mechanics stay on the base):
+  - **Sinistea** ↔ Sinistea-Antique (mirrors the Polteageist-Antique pair).
+  - **Poltchageist** ↔ Poltchageist-Artisan (mirrors Sinistcha-Masterpiece).
+  - **Basculin** ↔ Basculin-Blue-Striped (regional-color variant; note
+    White-Striped is *not* cosmetic since it has a unique evolution to
+    Basculegion and stays in the regular pool).
+  - **Genesect** ↔ Genesect-Douse / -Shock / -Burn / -Chill (Drive forms,
+    same BST / types / abilities — only Techno Blast's elemental type
+    changes, which the rest of the game doesn't treat as a distinct identity).
+  - **Keldeo** ↔ Keldeo-Resolute (Secret-Sword form, identical stats).
+  - **Xerneas** ↔ Xerneas-Neutral (out-of-battle dormant pose, same stats).
+
+- More **state-only formes** added to the never-roll list:
+  - **Ogerpon-Teal-Tera / -Wellspring-Tera / -Hearthflame-Tera / -Cornerstone-Tera**
+    — Terastallized states, same category as Mega / Gmax.
+  - **Terapagos-Terastal / -Stellar** — Tera Shell auto-flip states.
+
+- More **family-dedup species** so a player can't end up with the same
+  legendary twice via different formes:
+  - **Deoxys** — Normal / Attack / Defense / Speed share one identity (same
+    DNA splice). Each forme still rolls distinctly so the player can land
+    a glass-cannon Attack vs a wall Defense, but the team-uniqueness rule
+    prevents holding both.
+  - **Dialga / Palkia / Giratina** — Origin formes (Adamant Crystal /
+    Lustrous Globe / Griseous Orb) are the same legendary trio. The
+    Mystery Figure gate would otherwise let one player walk away with
+    both Dialga and Dialga-Origin.
+
+  (Therian formes, Lycanroc time-of-day variants, gender variants, and
+  Gourgeist / Pumpkaboo size variants intentionally stay distinct — they
+  have meaningful ability and stat-distribution differences and players
+  expect each as a separate competitive identity.)
+
+### Added — Pikachu (and friends) can show up in a rare cosmetic skin
+
+- Every base species with a pure-cosmetic alt forme now has a **~1.5% "shiny-like"
+  chance** to roll with that skin pinned on. The forme is purely visual — the
+  Pokémon is still a Pikachu in every game-mechanic sense (same stats, same
+  ability pool, same Raichu evolution, same builds, same move legality). Only
+  the rendered sprite swaps.
+- Coverage: **Pikachu** (14 skins — Cosplay, Rock-Star, Belle, Pop-Star, PhD,
+  Libre, Original, Hoenn, Sinnoh, Unova, Kalos, Alola, Partner, World),
+  **Pichu** (Spiky-eared), **Magearna** (Original), **Vivillon** (Fancy,
+  Pokeball), **Maushold** (Four), **Squawkabilly** (Blue, Yellow, White),
+  **Tatsugiri** (Droopy, Stretchy), **Dudunsparce** (Three-Segment),
+  **Polteageist** (Antique), **Sinistcha** (Masterpiece). 27 skins across
+  10 base species.
+- The skin pins on `build._cosmeticForme` (same persistence convention as
+  `_isShiny` / `_gender`), so it survives save/load and propagates from
+  the slot into the in-battle mon as `mon.cosmeticForme`. A new
+  `spriteDisplayName(monOrSlot)` helper reads the skin first, falling back
+  to the canonical species name when no skin is pinned — wired into every
+  sprite render site (battle, team panel, Cable Link, PC, Professor pick
+  card, Evo Lab, Move/Dojo/Nature/EV tutors, trainer roster cards).
+- Team-panel name line now shows a small cyan **✦ Belle / ✦ Fancy / …** badge
+  on cosmetic-skinned mons, with a tooltip explaining the skin is purely
+  visual so the player knows the underlying Pikachu mechanics are unchanged.
+- Cross-species evolution drops a stale skin: evolving a Pikachu-Belle into
+  Raichu re-rolls a fresh build (which gets its own ~1.5% skin chance for
+  the new species), so the Belle decal doesn't bleed onto the Raichu sprite.
+
+### Fixed — Cosmetic alt formes can no longer roll as a starter / wild
+
+- **Eevee-Starter** (the Let's-Go partner forme, BST 435) and the full set
+  of **Pikachu cosplay / cap / Let's-Go** formes (Cosplay, Rock-Star, Belle,
+  Pop-Star, PhD, Libre, Original, Hoenn, Sinnoh, Unova, Kalos, Alola,
+  Partner, World, Starter) are now excluded from every random-pool roll —
+  Professor picks (including the City 0 starter pool), wild encounters,
+  Cable Link re-roll/upgrade, Safari Zone, casino prizes, trainer
+  synthetic teams, and the legendary Mystery Figure gate. None of these
+  formes have evolutions in the dex, so picking one as the starter (which
+  is **bonded for life**) used to permanently lock the player out of the
+  Stone Sage evolution path. The base species (Eevee, Pikachu) is
+  unaffected and still rolls normally.
+- Same filter is also applied to **in-battle state formes** that should
+  never be the canonical roster pick — Mimikyu-Busted, Aegislash-Blade,
+  Darmanitan-Zen (and Galar-Zen), Wishiwashi-School, Minior-Meteor,
+  Cherrim-Sunshine, weather Castform, Morpeko-Hangry, Palafin-Hero,
+  Eiscue-Noice, Cramorant-Gulping/Gorging — and to **Totem variants**,
+  **purely cosmetic pattern formes** (Vivillon-Fancy/Pokeball,
+  Maushold-Four, Squawkabilly-Blue/Yellow/White, Tatsugiri-Droopy/
+  Stretchy, Dudunsparce-Three-Segment, Polteageist-/Sinistcha-Antique/
+  Masterpiece, Pichu-Spiky-eared, Magearna-Original), and the
+  raid-only Eternatus-Eternamax shell.
+- Competitive alt formes that **are** in randbats and players expect to
+  see (Hisuian / Galarian / Alolan regional variants, Therian Tornadus /
+  Thundurus / Landorus / Enamorus, Kyurem-Black/White, Hoopa-Unbound,
+  Calyrex-Ice/Shadow, Necrozma-Dusk-Mane/Dawn-Wings, Greninja-Ash, etc.)
+  are intentionally **not** filtered.
+
+### Fixed — Stone Sage can evolve legacy cosmetic-forme saves
+
+- If an older save happens to carry one of the now-filtered formes
+  (a Pikachu-Original from a pre-fix run, say), the Stone Sage now falls
+  back to the base species' evolution list rather than declaring the mon
+  "fully evolved". Pikachu-Original → Raichu / Raichu-Alola, Eevee-Starter
+  → any of the eight Eeveelutions, etc.
+
+### Fixed — Starter status survives Stone Sage evolution
+
+- Evolving the starter (or any nicknamed / bonded Pokémon) at the Stone
+  Sage now **preserves the slot's identity** — `starter`, `unsellable`,
+  `nickname`, the stable slot `id`, and any catch metadata. Previously
+  the new slot was rebuilt as `{ name, build }` only, which silently
+  stripped the ★ STARTER badge and let the evolved mon be sold at the
+  Underground. The Cable Link rebuild path (same species, fresh build)
+  now also preserves the same metadata.
+
+### Reason
+
+A player who happened to roll **Eevee** at the City 0 Professor could
+actually land on **Eevee-Starter** — the dex includes both as separate
+species, and the alt forme passed every existing filter. Once
+"chosen for life" it had no `evos`, so the Stone Sage screen flat-out
+told the player their starter was fully evolved. The same trap was set
+by every cosplay / cap Pikachu and several in-battle state formes. The
+fix excludes the variants that don't fit the story's evolution-as-
+progression mechanic, while leaving Arceus / Silvally (already family-
+deduped) and the competitive alt formes alone.
+
 ## Unreleased — Story-mode flow, writing & immersion 2026-05-16 (`claude/story-mode-flow-LS32t`)
 
 ### Added — Per-city arrival welcome screen
