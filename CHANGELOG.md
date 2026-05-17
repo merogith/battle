@@ -26,8 +26,8 @@ All notable user-visible changes land here. Sessions append entries under
   **purely cosmetic pattern formes** (Vivillon-Fancy/Pokeball,
   Maushold-Four, Squawkabilly-Blue/Yellow/White, Tatsugiri-Droopy/
   Stretchy, Dudunsparce-Three-Segment, Polteageist-/Sinistcha-Antique/
-  Masterpiece, Pichu-Spiky-eared, Magearna-Original), and unplayable
-  shells (Eternatus-Eternamax, Pokestar UFO).
+  Masterpiece, Pichu-Spiky-eared, Magearna-Original), and the
+  raid-only Eternatus-Eternamax shell.
 - Competitive alt formes that **are** in randbats and players expect to
   see (Hisuian / Galarian / Alolan regional variants, Therian Tornadus /
   Thundurus / Landorus / Enamorus, Kyurem-Black/White, Hoopa-Unbound,

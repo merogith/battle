@@ -24327,7 +24327,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         //     pattern/colour variants (Vivillon-Fancy/Pokeball, Maushold-Four,
         //     Squawkabilly-*, Tatsugiri-*, Dudunsparce-Three-Segment, Polteageist /
         //     Sinistcha -Masterpiece/Antique, Pichu-Spiky-eared, Magearna-Original).
-        //   • Raid-only / unplayable shells (Eternatus-Eternamax, Pokestar UFO).
+        //   • Raid-only shells (Eternatus-Eternamax).
         // Legitimate competitive alt formes (Therian, Hisuian, Galarian, Kyurem-Black /
         // White, Hoopa-Unbound, Calyrex-Ice / Shadow, Necrozma-Dusk-Mane / Dawn-Wings,
         // Greninja-Ash, Tornadus / Thundurus / Landorus / Enamorus-Therian) stay in
@@ -24351,7 +24351,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Tatsugiri-Droopy','Tatsugiri-Stretchy','Dudunsparce-Three-Segment',
             'Polteageist-Antique','Sinistcha-Masterpiece',
             'Eternatus-Eternamax',
-            'Pokestar UFO','Pokestar UFO-2','Pokestar UFO-PropU2',
         ]);
 
         // Single chokepoint for the "don't roll this species into the world" check.
@@ -30632,7 +30631,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function pickHofRandomSpecies6() {
             const pool = (typeof baseStats === 'object' && baseStats && Object.keys(baseStats).length >= 6)
-                ? Object.keys(baseStats)
+                ? Object.keys(baseStats).filter(n => typeof isStoryRollExcluded !== 'function' || !isStoryRollExcluded(n))
                 : HOF_DEMO_SPECIES.slice();
             const copy = pool.slice();
             const out = [];
