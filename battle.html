@@ -6639,8 +6639,11 @@
             // continue to use the base species `name`. ~1.5% rate matches shiny's
             // surprise cadence. Guarded so foreign builds (e.g. forced gimmick pools)
             // don't bypass: only assigns when the base name is a known skin parent.
-            if (!b._cosmeticForme && typeof STORY_COSMETIC_SKINS === 'object' && STORY_COSMETIC_SKINS) {
-                const skins = STORY_COSMETIC_SKINS[name];
+            // Map lives inside StoryMode IIFE — read via window so this fires for every
+            // makeBuild call, not just inside-IIFE rolls.
+            const _cosmSkins = window.STORY_COSMETIC_SKINS;
+            if (!b._cosmeticForme && _cosmSkins && typeof _cosmSkins === 'object') {
+                const skins = _cosmSkins[name];
                 if (skins && skins.length) {
                     const rng = (typeof sm === 'object' && sm && sm.active && typeof storyRngNext === 'function') ? storyRngNext : Math.random;
                     if (rng() < 0.015) b._cosmeticForme = skins[Math.floor(rng() * skins.length)];
@@ -9416,6 +9419,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // roster sprite for any mon that picked up a shiny-like skin roll.
             return mon.transformedInto || mon.cosmeticForme || mon.name;
         }
+        // Sprite name for a team slot OR a built mon. Used by every sprite renderer outside
+        // the IIFE (party modal, summary modal, draft cards, mega/dyna activation, in-battle
+        // transform). Lives at top-level scope so callers before the StoryMode IIFE can reach
+        // it — the previous IIFE-local declaration threw ReferenceError from openParty /
+        // switchSummaryTab, leaving the post-KO switch modal and Pokémon summary blank.
+        function spriteDisplayName(monOrSlot) {
+            if (!monOrSlot) return '';
+            if (monOrSlot.cosmeticForme) return monOrSlot.cosmeticForme;
+            if (monOrSlot.build && monOrSlot.build._cosmeticForme) return monOrSlot.build._cosmeticForme;
+            return monOrSlot.name || '';
+        }
         function getBattleSpriteShiny(mon) {
             if (!mon) return false;
             if (mon.transformedInto) return mon.transformTargetShiny !== undefined ? mon.transformTargetShiny : mon.isShiny;
@@ -9911,8 +9925,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // base than this mon's species (e.g. an evolved-from-Pikachu Raichu still
             // carrying a Pikachu skin), drop it.
             if (build._cosmeticForme) {
-                const skinBase = (typeof STORY_SKIN_TO_BASE === 'object' && STORY_SKIN_TO_BASE)
-                    ? STORY_SKIN_TO_BASE[build._cosmeticForme] : null;
+                const _skinMap = window.STORY_SKIN_TO_BASE;
+                const skinBase = (_skinMap && typeof _skinMap === 'object') ? _skinMap[build._cosmeticForme] : null;
                 if (skinBase && skinBase === monName) mon.cosmeticForme = build._cosmeticForme;
                 else if (skinBase && skinBase !== monName) delete build._cosmeticForme;
                 else mon.cosmeticForme = build._cosmeticForme;
@@ -12808,7 +12822,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 console.warn('[Summary] #modal-summary not in DOM');
                 return;
             }
-            summaryTarget = buildPokemon(draftItem.name, build);
+            try {
+                summaryTarget = buildPokemon(draftItem.name, build);
+            } catch (e) {
+                console.warn('[Summary] buildPokemon threw for', draftItem.name, e);
+                return;
+            }
+            if (!summaryTarget) return;
             window._summaryDraftPoolMode = !opts.partyList;
             window._summaryDraftPartyList = opts.partyList || null;
             window._summaryDraftPartyIdx = typeof opts.index === 'number' ? opts.index : 0;
@@ -12862,10 +12882,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let n = list.length;
                 let idx = window._summaryDraftPartyIdx + delta;
                 if (idx < 0 || idx >= n) return;
+                let entry = list[idx];
+                if (!entry || !entry.name) return;
+                let next;
+                try {
+                    next = buildPokemon(entry.name, entry.build || entry.buildData || {});
+                } catch (e) {
+                    console.warn('[Summary] navigate buildPokemon threw for', entry.name, e);
+                    return;
+                }
+                if (!next) return;
                 window._summaryDraftPartyIdx = idx;
                 window._storySumIdx = idx;
-                let entry = list[idx];
-                summaryTarget = buildPokemon(entry.name, entry.build || entry.buildData);
+                summaryTarget = next;
                 window.switchSummaryTab(window._summaryActivePage || 1);
                 window.updateSummaryNavUI();
                 return;
@@ -25141,6 +25170,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return m;
         })();
+        // makeBuild (defined outside this IIFE at ~line 6449) and buildPokemon (~line 9810)
+        // look up these maps via lexical scope, but their `function` declarations live in the
+        // global scope — they can't see IIFE-local consts. The previous typeof guards
+        // silently no-op'd the cosmetic-skin roll for every non-IIFE caller (which is most
+        // of them). Expose both maps on window so the roll actually fires.
+        window.STORY_COSMETIC_SKINS = STORY_COSMETIC_SKINS;
+        window.STORY_SKIN_TO_BASE = STORY_SKIN_TO_BASE;
 
         const STORY_NONSTANDARD_FORMS = new Set([
             // Let's-Go starters — stat-boosted (BST 430 / 435), not pure cosmetic.
@@ -25183,13 +25219,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // any of the underlying stats / evolution lookups. Accepts either an in-battle
         // mon (with `cosmeticForme` top-level) or an out-of-battle slot (with the
         // skin pinned under `slot.build._cosmeticForme`).
-        function spriteDisplayName(monOrSlot) {
-            if (!monOrSlot) return '';
-            if (monOrSlot.cosmeticForme) return monOrSlot.cosmeticForme;
-            if (monOrSlot.build && monOrSlot.build._cosmeticForme) return monOrSlot.build._cosmeticForme;
-            return monOrSlot.name || '';
-        }
-
         function getStoryEnabledGensFromUI() {
             return getEnabledGensFromUIPrefix('story');
         }
@@ -27972,10 +28001,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             window.closeModal('modal-story-party');
             _storySumIdx = i;
+            // Normalize: name string + non-null build. summaryNavigateParty calls
+            // buildPokemon(entry.name, entry.build) which throws on undefined name.
             const partyList = sm.team.map(function (x) {
-                const b = x.build || x.buildData;
-                return { name: x.name, build: (b && typeof b === 'object') ? safeCloneBuild(b) : {} };
-            });
+                const b = x && (x.build || x.buildData);
+                return { name: String((x && x.name) || '').trim(), build: (b && typeof b === 'object') ? safeCloneBuild(b) : {} };
+            }).filter(e => e.name);
             requestAnimationFrame(function () {
                 try {
                     window.showDraftPokemonSummary(
@@ -28243,23 +28274,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         window._pbsStoryUsePlayerGimmickGate = true;
                         window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
                         build = makeBuild(name);
+                    } catch (e) {
+                        console.warn('[Story prof] makeBuild threw for', name, e);
+                        build = null;
                     } finally {
                         window._pbsStoryUsePlayerGimmickGate = false;
                         delete window._pbsStoryUnlockedGimmicks;
                     }
+                    // Skip species that failed to build — pushing a choice with a null/undefined
+                    // build crashes the pick-card renderer (`buildPokemon(ch.name, ch.build)`).
+                    if (!build) continue;
                     // Professor gifts scale with city + badge progression so the player
                     // has real headroom for the Move Tutor / EV Trainer / Nature Rater /
                     // Battle Dojo upgrade economy. Legendary mystery-gate offers stay at
                     // tournament tier — they're one-shot story rewards, not raw partners.
-                    if (build) {
-                        const _profTier = _profLegendaryMysteryMode
-                            ? STORY_BUILD_TIER.TOURNAMENT
-                            : _storyBuildTierForProfessor(cityIdx, sm.badges);
-                        if (_profTier < STORY_BUILD_TIER.TOURNAMENT) {
-                            _storyDowngradeBuildForTier(name, build, _profTier);
-                        }
-                        build.powerTier = _profTier;
+                    const _profTier = _profLegendaryMysteryMode
+                        ? STORY_BUILD_TIER.TOURNAMENT
+                        : _storyBuildTierForProfessor(cityIdx, sm.badges);
+                    if (_profTier < STORY_BUILD_TIER.TOURNAMENT) {
+                        _storyDowngradeBuildForTier(name, build, _profTier);
                     }
+                    build.powerTier = _profTier;
                     const g = getMonGrade(name, getBST(name));
                     choices.push({ name, build, g });
                 }

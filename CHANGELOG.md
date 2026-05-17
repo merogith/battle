@@ -3,6 +3,55 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Story-mode regression sweep 2026-05-17 (`claude/fix-story-mode-bugs-1L4dU`)
+
+### Fixed — Post-KO party modal + Pokémon summary blanking
+
+- `spriteDisplayName` (added with the rare cosmetic-skin roll) was
+  declared **inside** the `window.StoryMode` IIFE but called from
+  ~16 places outside it: `openParty`, `switchSummaryTab`, Mega/Dynamax
+  activation, in-battle Transform/Imposter, the draft pool / draft
+  card renderers, and the local-PvP draft picker. JS function
+  declarations don't leak out of an IIFE, so every one of those calls
+  threw `ReferenceError: spriteDisplayName is not defined`. The
+  visible damage was bad: after a faint, the engine called
+  `window.openParty(true)`, the slot template literal exploded on the
+  first `${getSprite(spriteDisplayName(mon), …)}`, the modal never
+  unhid, and the player was stuck staring at the battle screen with
+  no input. Same crash blanked the in-battle Pokémon summary and the
+  story team-panel summary the moment the Overview / Moves / Matchups
+  page tried to render its sprite. Moved the helper to the top-level
+  script scope right after `getBattleSpriteSpeciesName`, removed the
+  duplicate IIFE-local copy. Sprite renders, post-KO switch, and the
+  summary modal all resume working.
+- `STORY_COSMETIC_SKINS` and `STORY_SKIN_TO_BASE` had the same scope
+  problem in `makeBuild` and `buildPokemon` (both live outside the
+  IIFE). Their `typeof` guards swallowed the failure instead of
+  crashing, so the cosmetic-skin roll **silently never fired** for
+  any roll outside the IIFE — i.e. the feature was effectively dead
+  for every wild encounter, draft pool, and Quick Play roster.
+  Exposed both maps via `window.STORY_COSMETIC_SKINS` /
+  `window.STORY_SKIN_TO_BASE` and switched the two consumers to read
+  through `window` so the 1.5% skin roll actually triggers.
+
+### Hardened — Defensive guards around story summary + Professor picks
+
+- `showDraftPokemonSummary` now wraps `buildPokemon(draftItem.name,
+  build)` in try/catch. A throw used to leave `summaryTarget`
+  pointing at a stale or undefined mon while the modal was still
+  un-hidden, showing a half-blank page.
+- `summaryNavigateParty` builds the next-page mon into a local
+  variable first and only commits `summaryTarget` / nav index if the
+  build succeeds. Lets the user keep navigating after a single bad
+  team entry instead of trapping the page.
+- `openSummary` (story team panel) normalizes the partyList to
+  trimmed string names and drops entries with no name. Prev/Next on
+  the summary nav no longer crashes on a corrupt slot.
+- Story Professor pick rolling now catches `makeBuild` throws and
+  skips that species instead of pushing a `{ name, build: null }`
+  choice that would crash the pick-card renderer with "Cannot read
+  property 'gimmick' of null" the moment the screen tried to draw.
+
 ## Unreleased — Battle KO ordering & switch-in edge cases 2026-05-17 (`claude/fix-battle-ko-ordering-7UoSZ`)
 
 ### Fixed — Simultaneous-KO switch-in (Explosion / mutual faint)
