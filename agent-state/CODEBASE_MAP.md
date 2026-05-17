@@ -44,7 +44,7 @@ sites; numbers below are approximate post-edit.
 | `makeWildBuild` (T1 wild build, stamps `powerTier`) | ~28930 |
 | `showVictoryOverlay` (badge flavor) | 25880 |
 | PC Box (cap 10) | 25934 → 26110 |
-| Safari (entry 800G, 6 encounters, weights g1:5/g2:40/g3:40/g4:15) | 26119 – 26170 |
+| Safari (entry 2,500G, 6 encounters, 15 Safari Balls, 1.25× mult, weights g1:3/g2:22/g3:50/g4:25) | 26119 – 26170 |
 | Crucible (post-HoF hub) | 26180 – 26250 |
 | Battle Frontier (endless ladder) | 26280 – 26450 |
 | Boss arc — Caged God | 26455 – 26630 |
@@ -52,7 +52,7 @@ sites; numbers below are approximate post-edit.
 | Dialogue pools (`TRAINER_QUOTES`, `TRAINER_QUOTES_BY_NAME`, rival pools, city quotes) | 22602 – 22730 |
 
 ## Implementation status vs `STORY_MODE_FLOW.md`
-- M0 schema (`pcBox`, `balls`, `pokedex`, `partyEverReached4`, `catchUnlocked`, hardcore removed) → **DONE**.
+- M0 schema (`pcBox`, `balls`, `pokedex`, `catchUnlocked`, hardcore removed) → **DONE**.
 - M1 Pokémon Center + PC + Underground → **DONE** (`#screen-story-pokemoncenter`, PC cap 10, Underground sell).
 - M2 Catch + balls + wild routes → **DONE** (`#screen-story-catch`, ball inventory, catch flow).
 - M3 Safari Zone → **DONE** (800G entry, 6 encounters per run).

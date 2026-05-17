@@ -113,6 +113,317 @@ keep their tournament-grade weight at the top.
   dynamic tier recomputation (tutors change EVs / nature / item, so a
   stamped tier goes stale). Current badge is decision-point only.
 
+## Unreleased — Calmer city hub + responsive tutor/market screens 2026-05-16 (`claude/improve-city-design-0pNO3`)
+
+### Changed — City hub visual design
+
+- Toned down the seven competing border colors on action buttons
+  (red / green / orange / cyan / teal / purple / pink) to a single calm
+  neutral surface. Section identity now lives on a small left-edge accent
+  stripe + a section-coloured icon + the section header. Only the
+  primary call-to-action (the next gym / route / league button) keeps
+  its bold red border — the eye now lands on it immediately instead of
+  fighting seven equally loud chips.
+- The pulsing red **"New!"** badge that flashed on every unvisited
+  facility is gone. Unvisited facilities now show a calm gold **"New"**
+  pill, and visited facilities show a soft **"✓"** tag — the same
+  information without the carnival lights. Visited rows also dim ~22 %
+  so the player can scan "what's left to try" at a glance.
+- Hover no longer slides the whole button 4px to the right; it now
+  brightens the border in place, which feels less twitchy on touch
+  devices that fire hover on first tap.
+- Section headers gained a subtle `(n)` count, so "Train (5)" tells
+  the player how dense each group is before they scroll.
+- The NPC dialogue box no longer gets stuffed with milestone shoutouts
+  ("📻 4 Badges earned…"), facility barkers, or rival warnings. Milestones
+  fire once as a calm toast on entry; everything else lives in the tip rail.
+
+### Changed — Should-be-visited / smart suggestion rail
+
+- The tip rail is capped at 3 items (was 4 + a quote-stuffed barker).
+  The first slot is always **"Next: …"** with a soft gold treatment, so
+  the answer to "what now?" is the first thing the eye lands on.
+- Tips are now **directly wired to the relevant facility button**:
+  when "3 Pokémon have empty move slots" appears in the rail, the
+  Move Tutor button below picks up a soft gold outline so the player
+  can find it without scanning. Suggestions feed: empty move slots →
+  Move Tutor, missing held items → Battle Dojo, no EVs → EV Trainer,
+  free relic available → Relic Annex, unspent Rare Candies →
+  Evolution Tutor, unspent Vitamins → EV Trainer.
+- Per-city / per-facility "seen" state (`sm.facilitiesSeen[cityIdx][key]`)
+  is unchanged on the data side — only the visual presentation changed.
+
+### Changed — Mobile city portrait sidebar
+
+- On phone portrait, the NPC portrait + name now sit side-by-side in
+  a 72px-tall strip (was a 120px stacked block). That recovers ~50 px
+  of vertical space above the action list, so on a typical 720×640
+  phone window the first action button is visible without scrolling.
+
+### Changed — Pokémart & Department Store
+
+- Items are grouped into **Balls / Healing & Revives / Stat Boosters /
+  Field Effects / Battle Utility** sections, each with a small
+  uppercase strap and a count chip. The Pokémart used to be a 12-item
+  unsorted grid that all looked alike; now a player looking for "the
+  ball" or "an X Speed" lands on the right group instantly.
+- The **Buy** button bumped from a cramped 24 px-tall, 11 px-font
+  tap target to a 34 px desktop / 42 px mobile button, so accidental
+  taps on the wrong row are no longer reported.
+- Prices that the player can't afford render in red instead of gold,
+  matching the existing "cant-afford" tone used on city action badges.
+- The Relic Annex got the same button treatment plus a cleaner card
+  background; the artifact cards now feel like first-class siblings
+  of the Pokémart cards instead of a one-off styling.
+
+### Changed — Move Tutor / Dojo / Nature / EV Trainer / Stone Sage on phone
+
+- When a Pokémon is expanded in the tutor accordion, the mon's header
+  row now sticks to the top of the scroll area. Players editing 4
+  move slots in a row no longer lose track of *which* mon they were
+  editing while scrolling.
+- Move-tutor filter input, move list, and "Teach selected" button all
+  scale up on phone (38–42 px tap targets, 13 px font) — same
+  treatment for the dojo's item/ability option buttons and the
+  Stone Sage's evolution chips.
+- The tutor card accordion header itself grew to a 56 px tap target
+  (was ~36 px), removing the "I keep tapping the wrong mon" reports.
+
+### Reason
+
+The city hub is the screen players see the most — between every
+battle, often dozens of times per run — and it had gradually
+accumulated seven button colors, a pulsing red badge per facility,
+and a quote box that was stuffed with system messages on top of NPC
+dialogue. The combined effect was chaotic on desktop and overwhelming
+on phone portrait, where the action grid was pushed below the fold by
+the noisy NPC sidebar + bloated quote + 4-pill tip rail. The redesign
+keeps every facility, every facility's identity (via icon + stripe +
+section header), and every cost / new / free indicator — but presents
+them with the restraint the rest of the retro-GBA UI uses elsewhere.
+
+The "should-be-visited" suggestion rail closes a separate gap: the
+old system surfaced the *need* ("3 mons have no EVs") but didn't link
+it visually to the *solution* button below. New players had to read
+each tip, then re-scan the action list to find the right facility.
+Now the suggested button glows softly, so the tip and the answer line
+up at a glance.
+
+The tutor/market screens shared the same family of problems — tiny
+tap targets, long lists with no grouping, no sticky context — and
+got the matching mobile-first treatment in the same pass since they
+sit one tap away from the hub.
+
+## Unreleased — Story-mode investigation pass: cleanup, climax, casino 2026-05-16 (`claude/story-mode-investigation-lILFs`)
+
+### Changed — Active party cap = `2 + badges`, foes match player team size 1:1
+
+- `_storyMaxPartySize()` is the **badge curve** (`max(2, min(6, 2 + badges))`):
+  starter slot is always available, the catch tutorial fills slot 2 right
+  after the intro rival, and each gym badge unlocks one more slot up to 6
+  at four badges. Catches and Professor gifts above the cap still succeed
+  — they land in the PC, so a player can always *catch*, they just can't
+  *field* more than the active cap until the next badge.
+- `_storyEnemyPartySize()` is now **player-matching with per-role floors**.
+  Foe size = player team length, but no smaller than:
+    Basic / Gym Trainer / Elite Trainer = 1,
+    Rival = 2,
+    GL1–2 = 2, GL3–4 = 3, GL5–6 = 4, GL7 = 5, GL8 = 6.
+  Story finales (Champion / E1–E4 / Victory Road / post-HoF Mystery Figure)
+  still field a full 6 regardless. Intro rival stays a pure player-match
+  (1v1 starter duel).
+- Result: a player who runs lean fights lean trainers run-to-run; a
+  player who builds full faces 6v6 trainer fights from Gym 5 onward.
+  The cap and the foe-size formula stay locked on the same progression
+  clock so every battle is a readable, fair fight regardless of how
+  many wilds the player caught.
+- Restored the city hub party label's "(next slot at N badges)" hint and
+  the PC storage tab's "(next slot at badge N+1)" cap-hint that the
+  earlier flat-6 pass had stripped.
+
+### Changed — Post-HoF first reentry routes through Mystery Figure (row 67)
+
+- Row 67 in `STORY_EVENTS_RAW` is no longer skipped on the way to the
+  post-game hub. `continuePostGame()` snaps `sm.eventIndex` to row 67 and
+  sets `sm.crucibleBattleSource = 'postHofMystery'` so the post-battle
+  interceptor (`_handleCrucibleBattleEnd`) flips a new save flag
+  `sm.postHofMysteryClimaxDone` and routes the player back into the
+  existing Master-Ball / boss-arc / lastCity flow. Result: the Mystery
+  Figure climax fires exactly once per save as a one-time mask-drop beat,
+  then the Crucible / Caged God doors stay open at every later city visit.
+- `processNextEvent` re-establishes the dispatch source if the player
+  reloads while still standing on row 67 with the climax flag unset
+  (e.g. tab closed mid-fight), so the climax can't loop into a save-
+  killing dead-end.
+- Migration: existing saves that already have `sm.bossArc.available`
+  set are marked climax-done in v16 so they skip the new beat entirely.
+
+### Changed — Poké Casino has three wager tables instead of one
+
+- Same one-line core RNG (a single d10) but three modes layered on top:
+  - **Coin Flip** — Heads/Tails, pays 1:1, 50% (parity of the roll).
+  - **Color** — Red/Black, pays 1:2, 30% (roll 1–3 = Red, 8–10 = Black,
+    4–7 = neither). Small house edge.
+  - **Jackpot** — pick a number 1–10, pays 1:9, 10%. High-variance kicker.
+- The bet chip row, the gold HUD, and the result line are unchanged;
+  the screen body adds three labelled clusters so the player can read
+  the odds at a glance before choosing.
+
+### Fixed — Boss-arc legendary roll honors the run seed
+
+- `_bossArcRollLegendary()` now picks the species through `storyRngNext`
+  (when `sm.active`) instead of bare `Math.random()`. The chosen legendary
+  is locked into the save once unlocked, so the same `runSeed` and
+  generation toggle now reproduce the same Caged God across machines.
+
+### Fixed — Pokémon Center entry uses the same interaction guard as siblings
+
+- `enterPokemonCenter` now wraps in `_storyTryBeginInteraction()` /
+  `_storyEndInteraction()` like every other facility entry. Closes a
+  tap-spam race where the screen could re-enter mid-`save()`.
+
+### Removed — Dead `partyEverReached2` / `partyEverReached4` flags
+
+- Both flags were written in six places and never read anywhere; the
+  CHANGELOG had described them as the G4-strip gate, but the actual
+  gate in `storyStripGrade4IfPartyMature` is `sm.badges < 1`. Removed
+  the writes and the schema-default entries; behavior is unchanged.
+
+### Doc — Spec drift caught up
+
+- `STORY_MODE_FLOW.md` catch-rate table updated to the live constants
+  (G1 4% / G2 12% / G3 22% / G4 35%, per-grade flee 55/40/28/20) and
+  notes Safari Ball at the live 1.25× multiplier.
+- §9 (boss arc) rewritten to describe the new row-67-once flow.
+- New §14e clarifies that internal action keys (`Pokemart`, `Pokemon
+  League`, `Pokemon Breeder` sprite IDs) keep their ASCII form; only
+  user-facing copy is renderered with the diacritic.
+- `agent-state/CODEBASE_MAP.md` Safari row updated to the live
+  2,500G entry / 15-ball / 1.25× / g1:3/g2:22/g3:50/g4:25 numbers.
+
+### Misc
+
+- Stale comment over `SAFARI_BALL_MULT` (called it "1.5×, between Great
+  and Ultra") corrected to match the live 1.25× value.
+
+## Unreleased — Vitamin / EV-training balance pass 2026-05-16 (`claude/balance-vitamins-stats-PAaPn`)
+
+### Added — Vitamin distribution fills the gym dead zones
+
+- Gym Leaders 1, 2, 4, and 6 now each drop **+1 Vitamin Pack** as part
+  of their reward bundle. Previously vitamins only began at Gym 3 and
+  the curve had four gym victories with zero EV-investment access.
+- **Mid-game route find** — first Basic/Elite Trainer cleared while
+  holding exactly 4 badges drops 1 Vitamin Pack with a "found in the
+  tall grass" flavor message. Gated by `sm.staticDrops.vitaminRouteMidgame`
+  so it can only fire once per save.
+- Per-run vitamin total rises from 9 guaranteed (gym/league only) to 14;
+  up to 16 with a full Pokédex.
+
+### Changed — UI surfaces the EV-training permanence rule
+
+EVs were already permanent and traveled with the Pokémon through PC
+deposit/withdraw, evolution, and tutor work — but nothing in the UI
+told the player that. Players could release a fully trained Pokémon
+without realizing the investment went with it.
+
+- **Vitamin Pack tooltip** in the bag now explicitly states the
+  investment stays with the mon forever, only lost on release or sale.
+  Rewritten in plain language with a concrete example
+  (+252 Atk / +252 Speed) and the 5,000G equivalence.
+- **Buck quote pool** at the EV Trainer gains a permanence line.
+- **PC Release confirm** appends "Its EV training will be lost too."
+  when the slot has any non-zero EVs.
+- **PC Underground Sell confirm** appends the same EV note when
+  applicable, and the tab intro banner mentions the same.
+
+### Added — EV Trainer onboarding & vitamin discoverability
+
+The EV Trainer screen previously surfaced only a random Buck quote and
+the per-mon preset cards — new players had no persistent answer to
+"what is an EV?" and players carrying unused Vitamin Packs through
+no-EV-Trainer cities (City 2, 3, 5) had no reminder beyond the bag tab.
+
+- **Persistent info banner** at the top of the EV Trainer screen.
+  Plain-language explainer (what EVs are, 252/510 cap, permanence rule)
+  plus a live state line — pink "💊 N Vitamin Packs ready" call-out
+  when the player has any, gold-cost reminder when they don't.
+- **Clearer Vitamin button label** on each preset: "💊 Use Vitamin
+  (N left)" replaces the more ambiguous "💊 Vitamin (N)" so mobile /
+  touch users who can't see the hover tooltip still understand it's
+  a consume action.
+- **City tip in no-EV-Trainer cities** — quiet "💊 N Vitamin Packs
+  saved — use at next EV Trainer" reminder. Clicks open the bag so the
+  full tooltip is one tap away. Existing tip in EV-Trainer cities
+  unchanged.
+
+### Reason
+
+The previous vitamin curve front-loaded the "leveling up" feel into the
+middle and end of a run — early-game Pokémon could not be EV-trained
+without a 5,000G/preset gold sink, so most starters fought their first
+three gyms untrained. Filling Gyms 1/2/4/6 with one Vitamin Pack each
+plus a single mid-game route find restores a steady "every gym = a real
+power bump" cadence without changing caps, foe scaling, or the swap
+mechanic. 252/510 caps remain the guardrail against runaway investment.
+
+### Not changed (deliberate)
+
+- Per-stat cap: 252. Total cap: 510. Untouched.
+- EVs persist across party/PC swaps. The "swap loses investment" rule
+  asked about during planning was **never implemented in code** — only
+  release/sell loses the investment, and the UI now makes that explicit
+  rather than introducing a new commitment penalty mid-game.
+- Foe stat scaling (`applyStoryLeagueFoeStatBoost`, difficulty mult)
+  unchanged. The +14 vitamin curve was tuned to fit inside the existing
+  Champion +30% HP / +15% bulk league boost.
+
+## Unreleased — Random wild encounters keyed on grade + gen toggles 2026-05-16 (`claude/random-wild-encounters-wNB0M`)
+
+### Changed — Wild grade pool is now a standalone progression curve
+
+- Route wilds previously inherited the next trainer's `gradeWeights`
+  shifted one tier weaker, which meant the wild you fought right
+  before a gym felt suspiciously like a preview of the gym leader's
+  tier mix (and the curve had odd shoulders at rows where the
+  trainer's grade jumped). Wild rolls now read a dedicated
+  badge-keyed table (`_WILD_GRADE_CURVE_BY_BADGES`) that doesn't
+  touch the trainer fight at all — the two inputs to a wild roll
+  are **the player's badge count** and **the enabled-gen toggles**,
+  full stop. Wilds reflect the route's biology, not the upcoming
+  trainer's lineup.
+- The new curve scales smoothly from 0 badges (all G4) to 8 badges
+  (G1:20 / G2:70 / G3:10), and is tuned to sit roughly one tier
+  behind the contemporaneous trainer roll at every step. Concrete
+  early-/mid-/late-game shape:
+  - 0 badges → G4 only.
+  - 2 badges → G3:40 / G4:60.
+  - 4 badges → G2:25 / G3:60 / G4:15.
+  - 6 badges → G1:3 / G2:60 / G3:35 / G4:2.
+  - 8 badges → G1:20 / G2:70 / G3:10.
+- Species pick inside the chosen grade was already pure `Math.random`
+  (not seeded story RNG), so reloads and rematches each surface a
+  different species. That stays.
+- The Crucible's wild encounter button now flows through the same
+  `rollWildEncounter` path — at 8 badges (post-HoF) it resolves to
+  the late-game curve above, replacing the hardcoded G1:10 / G2:30
+  / G3:40 / G4:20 mix.
+
+### Reason
+
+The user spec for wild encounters is "random, based **only** on the
+grade system and the toggled generation settings, balanced with a
+fun challenging curve through story mode." The old derive-from-
+trainer-then-shift formula technically used grades + gens, but the
+trainer's row was a third hidden input that made the curve
+non-monotonic across the timeline and coupled the wild experience
+to the next fight's identity (gym-trainer vs. basic-trainer rows
+could roll different wild pools at the same badge level). Pulling
+the curve onto its own table — explicitly indexed by badges —
+gives a single readable progression you can tune, keeps the wild
+intentionally one tier behind the foe ahead, and frees the wild
+roll from any awareness of the trainer fight it precedes.
+
 ## Unreleased — Simplify game modes (default = Classic, all mechanics on) 2026-05-16 (`claude/simplify-game-modes-vHlMS`)
 
 ### Changed — Battle menu defaults & hidden advanced toggles
