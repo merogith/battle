@@ -36525,12 +36525,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
         const _TX_ITEM_CAT_ORDER = ['all','offensive','defensive','utility','berry','specialty'];
 
+        // Pull the species' (post-nature) Atk / SpA / Spe / HP / Def / SpD from
+        // a `mon` object produced by buildPokemon — falls back to baseStats by
+        // name when `mon` isn't available. Returns numbers (never undefined).
+        function _txMonStats(mon, monName) {
+            const out = { atk:0, def:0, spa:0, spd:0, spe:0, hp:0 };
+            if (mon && mon.stats) {
+                out.atk = mon.stats.atk || 0;
+                out.def = mon.stats.def || 0;
+                out.spa = mon.stats.spa || 0;
+                out.spd = mon.stats.spd || 0;
+                out.spe = mon.stats.spe || 0;
+                out.hp  = mon.maxHp || 0;
+            } else if (monName && baseStats[monName]) {
+                const b = baseStats[monName];
+                out.atk = b.atk || 0; out.def = b.def || 0;
+                out.spa = b.spa || 0; out.spd = b.spd || 0;
+                out.spe = b.spe || 0; out.hp  = b.hp  || 0;
+            }
+            return out;
+        }
+
         // Move scoring — produces a recommendation score used both for the
         // recommended-strip and the default "Recommended" sort. Considers:
         //  - STAB (1.5×)
         //  - Effective power including accuracy
+        //  - Match physical/special category with the user's strongest offense
         //  - Bonus for status moves with useful effects on slow / bulky mons
-        function _txScoreMove(moveName, mon, build) {
+        function _txScoreMove(moveName, mon, build, monName) {
             const md = (typeof movesDB !== 'undefined' && movesDB[moveName]) ? movesDB[moveName] : null;
             if (!md) return 0;
             const types = [];
@@ -36540,17 +36562,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pow = Math.max(md.pow | 0, 0);
             const acc = (md.acc > 0 ? md.acc : 100) / 100;
             const isDamage = md.cat === 'Physical' || md.cat === 'Special';
+            const s = _txMonStats(mon, monName);
             let score = 0;
             if (isDamage) {
                 // Effective power × STAB × accuracy
                 score = pow * stab * acc;
-                // Match physical/special with the user's strongest offense
-                try {
-                    const atk = mon ? (mon.atk || 0) : 0;
-                    const spa = mon ? (mon.spa || 0) : 0;
-                    if (md.cat === 'Physical' && atk >= spa) score *= 1.15;
-                    if (md.cat === 'Special'  && spa >= atk) score *= 1.15;
-                } catch (e) {}
+                // Reward category that matches the user's stronger offense (more if the gap is wide)
+                if (md.cat === 'Physical' && s.atk >= s.spa) score *= 1 + (s.atk - s.spa) / Math.max(s.atk, 1) * 0.5;
+                if (md.cat === 'Special'  && s.spa >= s.atk) score *= 1 + (s.spa - s.atk) / Math.max(s.spa, 1) * 0.5;
                 // Priority moves are tactical — small bonus
                 if (md.pri && md.pri > 0) score += 15;
             } else {
@@ -36569,7 +36588,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // Sort comparator factory
-        function _txMoveCmp(sortKey, mon, build) {
+        function _txMoveCmp(sortKey, mon, build, monName) {
             return (a, b) => {
                 const ma = movesDB[a], mb = movesDB[b];
                 if (!ma && !mb) return a.localeCompare(b);
@@ -36579,22 +36598,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (sortKey === 'power') return (mb.pow|0) - (ma.pow|0) || a.localeCompare(b);
                 if (sortKey === 'acc')   return (mb.acc|0) - (ma.acc|0) || a.localeCompare(b);
                 // recommended (default)
-                return _txScoreMove(b, mon, build) - _txScoreMove(a, mon, build) || a.localeCompare(b);
+                return _txScoreMove(b, mon, build, monName) - _txScoreMove(a, mon, build, monName) || a.localeCompare(b);
             };
         }
 
         // Item scoring for recommendations
-        function _txScoreItem(itemName, mon, build) {
+        function _txScoreItem(itemName, mon, build, monName) {
             if (!itemName) return 0;
             const cat = _txItemCategory(itemName);
+            const s = _txMonStats(mon, monName);
+            const off = Math.max(s.atk, s.spa);
+            const isPhys = s.atk >= s.spa;
             let score = 0;
-            const moves = (build && build.m) ? build.m.map(m => m.split('/')[0]) : [];
-            const hasChoiceMove = moves.length > 0;
-            const atk = mon ? (mon.atk||0) : 0;
-            const spa = mon ? (mon.spa||0) : 0;
-            const spe = mon ? (mon.spe||0) : 0;
-            const off = Math.max(atk, spa);
-            const isPhys = atk >= spa;
             // Universal staples
             if (itemName === 'Leftovers') score = 75;
             else if (itemName === 'Life Orb') score = 70 + (off > 100 ? 10 : 0);
@@ -36604,65 +36619,73 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (itemName === 'Rocky Helmet') score = 55;
             else if (itemName === 'Choice Band')  score = isPhys ? 85 : 30;
             else if (itemName === 'Choice Specs') score = !isPhys ? 85 : 30;
-            else if (itemName === 'Choice Scarf') score = spe > 80 ? 75 : 50;
+            else if (itemName === 'Choice Scarf') score = s.spe > 80 ? 75 : 50;
             else if (itemName === 'Eviolite') {
-                // Eligible only on unevolved species — added by classifier
-                score = 90;
+                // Only added by classifier when the species has evolutions
+                score = 95;
             } else if (cat === 'offensive') score = 50;
             else if (cat === 'defensive') score = 55;
             else if (cat === 'utility')   score = 45;
             else if (cat === 'berry')     score = 40;
             else score = 35;
             // Penalize bad fits
-            if (itemName === 'Choice Band'  && atk < spa)   score -= 30;
-            if (itemName === 'Choice Specs' && spa < atk)   score -= 30;
-            if (itemName === 'Choice Scarf' && spe > 120)   score -= 10;
+            if (itemName === 'Choice Band'  && s.atk < s.spa)   score -= 30;
+            if (itemName === 'Choice Specs' && s.spa < s.atk)   score -= 30;
+            if (itemName === 'Choice Scarf' && s.spe > 120)   score -= 10;
             return score;
         }
-        function _txItemCmp(sortKey, mon, build) {
+        function _txItemCmp(sortKey, mon, build, monName) {
             return (a, b) => {
                 if (sortKey === 'name') return a.localeCompare(b);
                 if (sortKey === 'category') {
                     const ca = _txItemCategory(a), cb = _txItemCategory(b);
                     return ca.localeCompare(cb) || a.localeCompare(b);
                 }
-                return _txScoreItem(b, mon, build) - _txScoreItem(a, mon, build) || a.localeCompare(b);
+                return _txScoreItem(b, mon, build, monName) - _txScoreItem(a, mon, build, monName) || a.localeCompare(b);
             };
         }
 
-        // Nature recommendation: which natures match the Pokémon's strongest stat & role
-        function _txScoreNature(natureName, mon, build) {
+        // Nature recommendation: which natures match the Pokémon's strongest stat & role.
+        // Uses BASE stats (pre-nature) so the recommendation matches the species' intrinsic
+        // profile rather than the already-boosted current nature.
+        function _txScoreNature(natureName, mon, build, monName) {
             const mod = natureModifiers[natureName];
-            if (!mod) return 5; // neutral natures aren't useful
-            const stats = mon ? { atk: mon.atk||0, def: mon.def||0, spa: mon.spa||0, spd: mon.spd||0, spe: mon.spe||0 } : null;
-            if (!stats) return 50;
-            const atkVsSpa = (stats.atk||0) - (stats.spa||0);
-            const physicalLeaner = atkVsSpa > 5;
-            const specialLeaner  = atkVsSpa < -5;
-            const slow = (stats.spe||0) < 70;
-            const fast = (stats.spe||0) >= 90;
+            if (!mod) return 5; // neutral natures don't help most builds
+            // Prefer the species' base stat distribution as the source of truth
+            let base = null;
+            if (monName && baseStats[monName]) base = baseStats[monName];
+            else if (mon && mon.stats) {
+                // Fall back to current stats (less ideal — already nature-adjusted)
+                base = { atk: mon.stats.atk||0, def: mon.stats.def||0, spa: mon.stats.spa||0, spd: mon.stats.spd||0, spe: mon.stats.spe||0 };
+            }
+            if (!base) return 50;
+            const atkVsSpa = (base.atk||0) - (base.spa||0);
+            const physicalLeaner = atkVsSpa > 8;
+            const specialLeaner  = atkVsSpa < -8;
+            const slow = (base.spe||0) < 70;
+            const fast = (base.spe||0) >= 90;
             let score = 50;
             // +stat preference
-            if (mod.up === 'atk' && physicalLeaner) score += 30;
-            if (mod.up === 'spa' && specialLeaner) score += 30;
+            if (mod.up === 'atk' && physicalLeaner) score += 35;
+            if (mod.up === 'spa' && specialLeaner) score += 35;
             if (mod.up === 'spe' && fast) score += 25;
             if ((mod.up === 'def' || mod.up === 'spd' || mod.up === 'hp') && slow) score += 15;
             // -stat preference (drop what you don't use)
-            if (mod.down === 'spa' && physicalLeaner) score += 20;
-            if (mod.down === 'atk' && specialLeaner) score += 20;
+            if (mod.down === 'spa' && physicalLeaner) score += 25;
+            if (mod.down === 'atk' && specialLeaner) score += 25;
             if (mod.down === 'spe' && slow) score += 10;
             // Misalignments
-            if (mod.up === 'atk' && specialLeaner) score -= 20;
-            if (mod.up === 'spa' && physicalLeaner) score -= 20;
-            if (mod.down === 'atk' && physicalLeaner) score -= 20;
-            if (mod.down === 'spa' && specialLeaner) score -= 20;
-            if (mod.down === 'spe' && fast) score -= 20;
+            if (mod.up === 'atk' && specialLeaner) score -= 25;
+            if (mod.up === 'spa' && physicalLeaner) score -= 25;
+            if (mod.down === 'atk' && physicalLeaner) score -= 25;
+            if (mod.down === 'spa' && specialLeaner) score -= 25;
+            if (mod.down === 'spe' && fast) score -= 25;
             return score;
         }
-        function _txNatureCmp(sortKey, mon, build) {
+        function _txNatureCmp(sortKey, mon, build, monName) {
             return (a, b) => {
                 if (sortKey === 'name') return a.localeCompare(b);
-                return _txScoreNature(b, mon, build) - _txScoreNature(a, mon, build) || a.localeCompare(b);
+                return _txScoreNature(b, mon, build, monName) - _txScoreNature(a, mon, build, monName) || a.localeCompare(b);
             };
         }
 
@@ -37050,7 +37073,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // Apply text + chip + sort filters to a flat list, returning the filtered+sorted list.
-        function _txApplyMoveFilters(allMoves, mon, build) {
+        function _txApplyMoveFilters(allMoves, mon, build, monName) {
             const q = (_txState.search.moves || '').toLowerCase();
             const types = _txState.filter.moveTypes;
             const cats  = _txState.filter.moveCats;
@@ -37063,10 +37086,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (cats.size  && !cats.has(md.cat))  return false;
                 return true;
             });
-            filt.sort(_txMoveCmp(sortKey, mon, build));
+            filt.sort(_txMoveCmp(sortKey, mon, build, monName));
             return filt;
         }
-        function _txApplyItemFilters(allItems, mon, build) {
+        function _txApplyItemFilters(allItems, mon, build, monName) {
             const q = (_txState.search.items || '').toLowerCase();
             const catFilter = _txState.filter.itemCat || 'all';
             const sortKey = _txState.sort.items || 'recommended';
@@ -37075,17 +37098,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (catFilter !== 'all' && _txItemCategory(it) !== catFilter) return false;
                 return true;
             });
-            filt.sort(_txItemCmp(sortKey, mon, build));
+            filt.sort(_txItemCmp(sortKey, mon, build, monName));
             return filt;
         }
-        function _txApplyAbilityFilters(allAbils, mon, build) {
+        function _txApplyAbilityFilters(allAbils, mon, build, monName) {
             const q = (_txState.search.abilities || '').toLowerCase();
             const sortKey = _txState.sort.abilities || 'recommended';
             const filt = allAbils.filter(a => !q || a.toLowerCase().includes(q));
-            filt.sort(_txAbilityCmp(sortKey, mon, build));
+            filt.sort(_txAbilityCmp(sortKey, mon, build, monName));
             return filt;
         }
-        function _txApplyNatureFilters(allNat, mon, build) {
+        function _txApplyNatureFilters(allNat, mon, build, monName) {
             const q = (_txState.search.natures || '').toLowerCase();
             const up = _txState.filter.natureUp || 'any';
             const down = _txState.filter.natureDown || 'any';
@@ -37097,7 +37120,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (down !== 'any' && (!mod || mod.down !== down)) return false;
                 return true;
             });
-            filt.sort(_txNatureCmp(sortKey, mon, build));
+            filt.sort(_txNatureCmp(sortKey, mon, build, monName));
             return filt;
         }
 
@@ -37194,9 +37217,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 : [];
 
             // Filtered + sorted
-            const filtered = _txApplyMoveFilters(availForActive, mon, b);
+            const filtered = _txApplyMoveFilters(availForActive, mon, b, t.name);
             // Recommendation set
-            const recList = _txTopRecommended(availForActive, (it) => _txScoreMove(it, mon, b), 5);
+            const recList = _txTopRecommended(availForActive, (it) => _txScoreMove(it, mon, b, t.name), 5);
             const recSet = new Set(recList);
             const stabTypes = new Set([mon && mon.type1, mon && mon.type2].filter(Boolean));
             const pendingMove = (_txPending && _txPending.kind === 'move') ? _txPending.value : null;
@@ -37274,8 +37297,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Items
             const curItem = b.i || '(none)';
             const items = pool.items.slice();
-            const filtItems = _txApplyItemFilters(items, mon, b);
-            const recItems = _txTopRecommended(items.filter(it => it !== curItem), (it) => _txScoreItem(it, mon, b), 5);
+            const filtItems = _txApplyItemFilters(items, mon, b, t.name);
+            const recItems = _txTopRecommended(items.filter(it => it !== curItem), (it) => _txScoreItem(it, mon, b, t.name), 5);
             const recItemSet = new Set(recItems);
             const pendingItem = (_txPending && _txPending.kind === 'item') ? _txPending.value : null;
             const itemCtx = { pending: pendingItem, current: curItem, recommended: recItemSet };
@@ -37283,8 +37306,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Abilities — note that hidden abilities are tagged from baseStats.abilities slot 'H'
             const curAbility = b.a || (mon && mon.ability) || '(none)';
             const abils = pool.abilities.slice();
-            const filtAbils = _txApplyAbilityFilters(abils, mon, b);
-            const recAbils = _txTopRecommended(abils.filter(a => a !== curAbility), (it) => _txScoreAbility(it, mon, b), 3);
+            const filtAbils = _txApplyAbilityFilters(abils, mon, b, t.name);
+            const recAbils = _txTopRecommended(abils.filter(a => a !== curAbility), (it) => _txScoreAbility(it, mon, b, t.name), 3);
             const recAbilSet = new Set(recAbils);
             const haSet = new Set();
             try {
@@ -37379,7 +37402,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const curNature = b.n || 'Hardy';
 
             // Recommendation list (top 3) — only non-neutral with decent score
-            const recList = _txTopRecommended(natAvailable.filter(n => n !== curNature && natureModifiers[n]), (n) => _txScoreNature(n, mon, b), 3);
+            const recList = _txTopRecommended(natAvailable.filter(n => n !== curNature && natureModifiers[n]), (n) => _txScoreNature(n, mon, b, t.name), 3);
             const recSet = new Set(recList);
 
             // Build a 5×5 grid mapping (up, down) → nature
