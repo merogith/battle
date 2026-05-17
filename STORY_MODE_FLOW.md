@@ -73,8 +73,8 @@ Trade-off: keeps `eventIndex` semantics clean; needs the save/restore wrapper.
 |---|---|
 | When | Once per route node, between consecutive Battles that cross a city boundary. Forced — no skip. |
 | Where | Virtual screen, not a timeline row. |
-| Pool grade | Current event's `gradeWeights` shifted one tier **weaker** (e.g., a slot weighted 0/0/30/70 G1/G2/G3/G4 produces a wild pool ~0/0/10/90). Wild encounters are intentionally inferior to Professor picks. |
-| Pool species | Filtered by `sm.settings.enabledGens`, same as trainer rolls. |
+| Pool grade | Driven by a dedicated **wild grade curve keyed on `sm.badges`** (0–8, see `_WILD_GRADE_CURVE_BY_BADGES`). Independent of the upcoming trainer's `gradeWeights` — wilds reflect the route's biology, not the next fight's lineup. Each tier sits one step behind the contemporaneous trainer roll, so wilds are intentionally inferior to Professor picks and to the foe ahead. |
+| Pool species | Filtered by `sm.settings.enabledGens`, same as trainer rolls. The two toggles (grade curve + enabled gens) are the **only** inputs to the wild roll. |
 | Build | Rough build per the prior audit's A4 — 4 random level-up moves, no held item, default ability, neutral nature, no EVs. Tagged `wild: true`. |
 | Player options | Throw (any ball type from inventory) or Run. |
 | Flee | Foe may flee on a missed throw (per-species flee chance; baseline 25%). |
@@ -110,18 +110,20 @@ else → mon may flee (species.fleeRate, default 0.25)
        otherwise stays for another throw
 ```
 
-Species `catchRate` is derived from grade. G1 is the strongest tier (pseudo + legendary in `getMonGrade`) and is therefore the **hardest** to catch; G4 is the weakest tier and is the easiest:
+Species `catchRate` is derived from grade. G1 is the strongest tier (pseudo + legendary in `getMonGrade`) and is therefore the **hardest** to catch; G4 is the weakest tier and is the easiest. Live values (`battle.html:28560–28561`, after the post-Safari rebalance pass):
 
-| Grade | Base catch rate (PokéBall) |
-|---|---|
-| G1 (strongest) | 0.05 |
-| G2 | 0.20 |
-| G3 | 0.40 |
-| G4 (weakest) | 0.60 |
+| Grade | Base catch rate (PokéBall) | Flee chance on a miss |
+|---|---|---|
+| G1 (strongest) | 0.04 | 0.55 |
+| G2 | 0.12 | 0.40 |
+| G3 | 0.22 | 0.28 |
+| G4 (weakest) | 0.35 | 0.20 |
 
 Ball multipliers: PokéBall 1.0×, Great 1.5×, Ultra 2.0×, Master ∞ (`Infinity`).
 
 Master Ball is `Infinity` — guaranteed catch. No special-case code.
+
+Safari Ball is its own session-scoped multiplier (`SAFARI_BALL_MULT = 1.25×`, between Poké and Great) and is not part of `sm.balls`. Bait and Rock modify the catch/flee math multiplicatively inside a Safari encounter and reset between encounters.
 
 ---
 
@@ -192,7 +194,7 @@ All five modes use **full-heal between battles**. The HC-only persistence code a
 
 ## 9. Boss arc — "The Caged God"
 
-Triggered post-Champion. Replaces the existing post-HoF Mystery Figure (row 67 in `STORY_EVENTS_RAW`) — that row is repurposed as this arc.
+Triggered post-Champion. Row 67 (`Mystery Figure`) in `STORY_EVENTS_RAW` is the post-HoF Mystery Figure climax — `continuePostGame()` (`battle.html:30702`) routes the player through row 67 once on first post-HoF reentry (mask-drop + identity reveal, single fight), then snaps `sm.eventIndex` back to the last visited city so the Crucible / Caged God doors are visible at every subsequent city visit. The Caged God arc itself is triggered separately, via the Underground broker handing the player a Master Ball after the Mystery Figure climax; Mystery Figure also remains reachable as the Crucible's "Mystery" encore on every later run. (See §14d.)
 
 ### Trigger and leads
 
@@ -237,11 +239,11 @@ Caught: enters the player's roster as **"Subject Zero"** with a unique flag. Sta
 
 ```js
 // Add to sm defaults at battle.html:22191
-pcBox:        [],                                        // flat, cap 60
+pcBox:        [],                                        // flat, cap 10
 balls:        { poke: 5, great: 0, ultra: 0, master: 0 }, // starting balls
 pokedex:      { seen: [], caught: [] },                   // per-run; cross-run lives in pbs_story_meta
-partyEverReached4: false,                                 // monotonic flag (interim until badges-based curve lands)
 catchUnlocked: false,                                     // toggles wild-route prompts; flipped on after first wild route entry or starter
+postHofMysteryClimaxDone: false,                          // post-HoF row-67 climax fire-once flag
 ```
 
 Plus a stable `id: string` on every mon (in `sm.team` and `sm.pcBox`), generated at creation time. Existing mons in `sm.team` get IDs assigned by the v14→v15 migration.
@@ -254,8 +256,12 @@ function migrateStoryPreV15() {
     if (!Array.isArray(sm.pcBox)) sm.pcBox = [];
     if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke: 5, great: 0, ultra: 0, master: 0 };
     if (!sm.pokedex || typeof sm.pokedex !== 'object') sm.pokedex = { seen: [], caught: [] };
-    if (typeof sm.partyEverReached4 !== 'boolean') sm.partyEverReached4 = (sm.team || []).length >= 4;
     if (typeof sm.catchUnlocked !== 'boolean') sm.catchUnlocked = false;
+    // Post-HoF Mystery Figure climax flag — pre-existing post-HoF saves skip the
+    // new beat (treat them as already-done).
+    if (typeof sm.postHofMysteryClimaxDone !== 'boolean') {
+        sm.postHofMysteryClimaxDone = !!(sm.bossArc && sm.bossArc.available);
+    }
     // 2. Hardcore → normal
     if (sm.storyDifficulty === 'hardcore') sm.storyDifficulty = 'normal';
     // 3. Stable IDs on existing team
@@ -299,23 +305,14 @@ Net effect: hardcore stops being selectable; existing hardcore saves migrate to 
 
 Per the prior audit's "single most important rule"
 (`docs/STORY_MODE_CATCH_INTEGRATION_RISK.md §8`), every place that keys
-difficulty off `sm.team.length` must move to `sm.badges` or a monotonic flag.
+difficulty off `sm.team.length` must move to `sm.badges` (the monotonic
+progression clock the player can't undo) so depositing a mon to PC can't
+re-introduce easier grade rolls mid-game.
 
-The primary offender is `storyStripGrade4IfPartyMature` at `battle.html:22480`,
-which reads `sm.team.length >= 4`. With catch enabled, depositing a mon to PC
-re-introduces G4 mid-game. Fix:
-
-```js
-// Before: keys off length
-if (sm.team.length >= 4) { ...strip G4... }
-
-// After: keys off monotonic flag, updated on every party growth
-if (sm.partyEverReached4) { ...strip G4... }
-```
-
-`sm.partyEverReached4` is set to `true` the moment `sm.team.length` ever reaches 4 (in `makeBuild` insertion, catch flow, mystery swap, etc.). Once set, it never resets — so the G4 difficulty floor only advances monotonically.
-
-This refactor is M0's largest single change but is mechanically simple — every `sm.team.length` read in difficulty-or-balance code is the audit's table at `docs/STORY_MODE_CATCH_INTEGRATION_RISK.md §2`.
+Live implementation in `battle.html`: `storyStripGrade4IfPartyMature`
+keys the strip on `sm.badges < 1` — pre-Gym-1 routes keep the G4 ramp,
+and from Gym 1 onward the G4 floor lifts unconditionally regardless of
+PC deposits or release decisions.
 
 ---
 
@@ -325,11 +322,11 @@ Each phase is shippable on its own and leaves the game playable.
 
 ### M0 — Schema + hardcore removal (~1 day)
 - Bump `SAVE_VER` to 15.
-- Add new save fields (`pcBox`, `balls`, `pokedex`, `partyEverReached4`, `catchUnlocked`).
+- Add new save fields (`pcBox`, `balls`, `pokedex`, `catchUnlocked`).
 - Migrate v14 saves: assign stable IDs, set defaults, hardcore → normal.
 - Remove `hardcore` from difficulty UI + all branches (see §11).
-- Refactor `storyStripGrade4IfPartyMature` to read `sm.partyEverReached4`.
-- Add `sm.partyEverReached4 = true` set on every party mutation that reaches length 4.
+- `storyStripGrade4IfPartyMature` gates the strip on `sm.badges < 1`
+  (pre-Gym-1 keeps the G4 ramp; Gym 1 onward lifts the floor).
 
 After M0: existing game still plays normally; new fields exist but are unused; hardcore players migrate cleanly.
 
@@ -347,7 +344,7 @@ After M1: catching has a destination; no catching yet.
 - `PokéBall`, `Great Ball`, `Ultra Ball`, `Master Ball` added to `sm.balls`.
 - PokéMart sells PokéBalls (300G each); Department Store sells Great Balls (1000G each) — new rows in `POKEMART_ITEMS` / `DEPT_ITEMS`.
 - `proceedToNextBattle` (line 24593) inserts a route-node interrupt between consecutive Battles that cross a city boundary.
-- Wild route flow: roll species from current event's grade weights shifted one tier weaker; open catch screen; throw/run; on catch → `state.pendingCatch`; on exit → promote to `sm.team` or `sm.pcBox`.
+- Wild route flow: roll species via the badge-keyed wild grade curve (`_WILD_GRADE_CURVE_BY_BADGES`) filtered by `enabledGens` — no dependency on the upcoming trainer; open catch screen; throw/run; on catch → `state.pendingCatch`; on exit → promote to `sm.team` or `sm.pcBox`.
 - Caught mon flagged `wild: true`; rough build via new `makeWildBuild` helper.
 
 After M2: full catch loop is live.
@@ -515,6 +512,18 @@ City 8 gained Battle Dojo + EV Trainer in this pass — the player cannot
 backtrack, so without these the only late-game item/ability/EV polish was at
 City 6 or City 7 (or City 9 post-HoF). The League run between Gym 8 and the
 Elite Four was previously a dead-zone for team optimization.
+
+---
+
+## 14e. Internal action-key conventions (no diacritic)
+
+Hub action arrays in `STORY_EVENTS_RAW` use the ASCII keys `'Pokemart'`,
+`'Pokemon League'`, etc. (no diacritic). These are *internal* lookup keys
+matched by `renderCityActions` to the visible button labels, which DO carry
+the diacritic. Do not "fix" the ASCII forms; they keep code paths matching
+trainer-class sprite IDs (e.g. `Pokemon Breeder` sprites) and old-save
+backwards-compat alongside the user-facing "Pokémart" / "Pokémon League"
+copy emitted by the renderer.
 
 ---
 
