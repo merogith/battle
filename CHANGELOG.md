@@ -3,6 +3,117 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Game-wide text standardization pass 2026-05-17 (`claude/standardize-game-text-xGSU9`)
+
+### Changed — Tone & writing sweep across every visible screen
+
+A run-wide writing pass to lift the "AI slop" tone identified across
+the game: help screens, NPC dialogue, tutorials, milestone toasts,
+end-of-fight chrome, and post-game beats. **No mechanical changes** —
+only the strings the player reads.
+
+The unifying voice rule: less bulleted manual, more in-world prose,
+with the same mechanical information density. Every Pokémon-game tone
+beat (canonical battle messages like "It's super effective!", the
+Hall-of-Fame "Welcome to the HALL OF FAME!", warden "Ding-dong!" PA
+calls) was preserved on purpose — only the original-prose text was
+rewritten.
+
+**One-time tutorial tips (22 of them):** `welcome`, `what-is-a-gym`,
+`prof-overview-v2`, `legendary-gate`, `first-battle`, `center`,
+`crucible`, `frontier`, `catch-tutorial`, `safari-catch`, `catch`,
+`roaming`, `first-mart`, `first-dept`, `relic`, `first-link`,
+`first-casino`, `first-evolab`, `first-tutor`, `first-nature`,
+`first-dojo`, `first-colress`, `first-ev`, `postHof` — rewritten
+end-to-end. Bullets dropped in favor of paragraphs that read like a
+trainer explaining the road, not a manual reciting features.
+
+**`STORY_FACILITY_QUOTES`** (8 facilities × 5–6 lines each):
+expanded and sharpened with distinct character voice. Buck talks like
+a coach, Colress like a scientist whose ten-thousand-gold price tag
+"sounds fair to me," the Relic Keeper like a fence with a license,
+the Move Tutor like a teacher who's seen every variant. Each pool
+gained a line of variety and lost the dry "Welcome. I can do X." cadence.
+
+**`PROF_QUOTES`** (5 → 9 lines): "Pick the one your gut argues for —
+gut is usually right about partners." The two contextual variants
+(full party / Mystery-Figure legendary gate) given proper diction so
+the swap framing actually lands as a tradeoff.
+
+**`TRAINER_QUOTES`** (generic role pools: Basic / Gym / Gym Leader /
+Elite / Rival / E1–E4 / Champion / Victory Road) rewritten so the
+standard trainer lines stop sounding like NPC placeholders. Each role
+is now grounded — Basic Trainers talk about routes, Gym Trainers talk
+about the leader, Champion and Victory Road carry the gravity of
+where the player is standing.
+
+**`RIVAL_PROGRESS_PRIMARY_QUOTES`**, `rivalStandingPrimaryQuotePool`,
+`pickRivalSecondaryIntroLine`: phase-aware rivalry lines so a 6-badge
+rival reads like a 6-badge rival, not a "rival" archetype.
+
+**Per-rival victory flavor** in `showVictoryOverlay` (rival win
+banners by phase): generic "First steps, first rival win" replaced
+with phase-aware lines that read like narrative beats.
+
+**`POKEDEX_CAUGHT_MILESTONES`** (25 / 50 / 75 / 100): "100 species. The
+dex is no longer a notebook — it's a record." No more "Pokédex
+centurion" Reddit-username vibes.
+
+**Help guide** (`helpData.story` / `.menu` / `.draft`): tightened from
+bullet-heavy reference card to prose that still carries every number.
+
+**Catch flow text:** "Gotcha!", PC-send, party-swap, wobble misses,
+flee, and the boss-mode miss pool all rewritten with rhythm. Roamer
+flees now warn that roamers don't come back. The catch screen header
+and sub-line ("A wild Pokémon appeared!" → "A wild Pokémon stepped
+out of the grass!") were tightened too.
+
+**Underground:** header + empty-state copy now sound like a broker.
+
+**Safari Zone:** first-visit warden welcome rewritten in the PA-system
+voice the changelog already established; out-of-balls /
+out-of-encounters / early-exit / empty-pool fallbacks aligned.
+
+**Hall of Fame epilogue dialogue:** per-state rival line (player vs
+rival claimed the league) reshaped. Professor's line carries the
+in-character "the lab remembers you" weight.
+
+**End-of-battle screens** (non-story modes: Quick Play, Local PvP,
+Gauntlet): "You defeated the opponent." → "The last opposing Pokémon
+falls. The round is yours." Parallel sharpening on GAME OVER ("Your
+last Pokémon is down. The fight is over."), DRAW, FORFEIT, GAUNTLET
+OVER variants.
+
+**Story Mode menu tagline** ("A single-player journey…") replaced.
+**Abandon-run confirm dialog**: sharper warning, clarifies why the
+Pokédex carries over even after wipe. **Cap-teach toast** on gym
+victories now reads as prose. **League milestone toasts** ("4 badges",
+"8 badges") tightened. **Cage-unlock alert**, **post-HoF mystery
+climax** (won/lost) and **Battle Frontier streak-end** alerts
+rewritten for impact.
+
+### Changed — Pokémon diacritic restored on trainer names
+
+`Pokemon Breeder` / `Pokemon Breeder F` / `Pokemon Ranger` /
+`Pokemon Ranger F` in `TRAINER_DATA` → `Pokémon Breeder` /
+`Pokémon Breeder F` / `Pokémon Ranger` / `Pokémon Ranger F`. Visible
+on trainer intros, victory overlays, and run logs.
+
+### Migration — `SAVE_VER` 17 → 18
+
+New `migrateStoryTrainerDiacriticsPreV18` remaps existing saves where
+a Breeder / Ranger had already been assigned under the old name. Five-
+line lookup table; no other schema change.
+
+### Reason
+
+Past polish passes touched cities, Professors, victory lines, and
+Safari flavor (see prior CHANGELOG entries). Everything else — the
+welcome screen, the tutorial popups, the facility NPC pools, generic
+trainer lines, the catch flow, the end screens, the milestone toasts —
+still read as templated tutorial copy. This pass standardizes the
+voice across every screen the player actually sees.
+
 ## Unreleased — Story-mode regression sweep 2026-05-17 (`claude/fix-story-mode-bugs-1L4dU`)
 
 ### Fixed — Post-KO party modal + Pokémon summary blanking
