@@ -76,6 +76,185 @@ modest catch-rate boost (Safari Ball 1.35×, Rock catch 1.65×) keeps a
 6-encounter session from collapsing into "everything fled, I caught
 nothing".
 
+## Unreleased — Story-mode event registry refactor (architecture) 2026-05-17 (`claude/refactor-story-mode-PDZsW`)
+
+### Changed — Internal architecture, no behavior change
+
+- Story mode's per-event flow (cold-open scenes, catch tutorial, roaming
+  legendary, wild route) is now driven by three small declarative registries
+  living just above the `enterBattleEvent` dispatcher in `battle.html`:
+  - **`STORY_BEATS`** — per-row metadata (kind, gym/elite number, tags,
+    optional cold-open tag). Rows not listed fall back to a derived default.
+  - **`STORY_COLD_OPENS`** — one-shot pre-battle scenes, cross-run-deduped
+    via story meta `tipsShown`.
+  - **`STORY_BATTLE_INTERRUPTS`** — ordered list of pre-battle catch screens.
+    Each interrupt's `prepare(battleIdx, ev)` returns the encounter spec
+    or `null`; the first non-null wins. Roaming preserves legacy
+    "consume-on-predicate-match" semantics via `markWildSeenOnPrepare`.
+- A fourth registry, **`STORYLINE_VARIANTS`**, lets the same timeline play
+  with different narrative framing — a variant can shadow any beat
+  (`beatOverrides[rowId]`) without affecting the difficulty curve. Pokémon
+  picks still flow through the existing rollers (`rollTrainerTeam` reads
+  the row's `gradeWeights`; `rollWildEncounter` reads the badge-keyed wild
+  curve), both gated by `sm.settings.enabledGens`. A variant changes the
+  *story around* the fight, never the foe roster math.
+- `enterBattleEvent` is now a three-step dispatch: resolve the beat, run
+  the cold-open via the bus, run the interrupt chain, then fall through to
+  the unchanged trainer-setup block. The previous stacked-`if` block (one
+  per scene type) is gone.
+
+### Player-facing surface
+
+- **Zero visible change** at v17 for existing runs — the refactor preserves
+  the exact pre-battle sequencing (cold-open → catch tutorial → roaming
+  legendary → wild route → trainer fight). Verified against the legacy
+  semantics with targeted smoke tests: beat resolution for known/unknown
+  rows, cold-open meta gating, interrupt ordering, and roaming consuming
+  its slot even when `makeBuild` returns null (legacy parity).
+- Save schema: `SAVE_VER` 16 → 17. `sm.storyLine` (default `'classic'`) is
+  the new field; `migrateStoryPreV17` sets it on any v16 save that's
+  loaded. Invalid values (number, empty string, null) all fall back to
+  `'classic'` at read time, so a corrupt save never strands the bus.
+
+### Testing & extensibility surface
+
+- New `window.StoryMode` inspection helpers — handy from DevTools when
+  adding new content:
+  ```js
+  window.StoryMode.getStoryBeat(rowId);     // merged beat for a row
+  window.StoryMode.getActiveStoryline();    // current variant object
+  window.StoryMode.listStorylines();        // available variant ids
+  ```
+- Adding a new pre-battle scene is now one append to
+  `STORY_BATTLE_INTERRUPTS` — no edits to `enterBattleEvent`.
+- Adding a new cold-open is one entry in `STORY_COLD_OPENS` and a
+  `coldOpen` tag on the relevant `STORY_BEATS` row.
+- Adding a new storyline variant is one entry in `STORYLINE_VARIANTS`
+  with `beatOverrides` for the rows being retuned. The registry already
+  understands variants; surfacing a picker UI is the only missing piece
+  and lands when variant #2 ships.
+
+### Reason
+
+Before this pass, deepening any single story beat (richer rival dialogue,
+a unique pre-fight scene for a specific gym leader, a one-shot encounter
+between two cities) meant editing the same ~80-line block inside
+`enterBattleEvent` and threading state through ad-hoc flags. That made
+content edits feel structural and structural edits feel scary. Splitting
+the metadata out into a registry and the orchestration into a bus means
+the dispatcher stays small, content lives in one obvious place per beat,
+and the door is open to actual storyline variants — same map, different
+journey, same Pokémon rules — without rewriting the engine each time.
+
+### Docs
+
+- `STORY_MODE_FLOW.md` §17 documents the architecture, the common-case
+  edit recipes ("how do I add a cold-open / interrupt / variant"), and the
+  adapt-to-ruleset contract (static narrative beats + flexible species
+  rolls bound by enabled gens, the row's grade weights, and the badge
+  curve).
+
+## Unreleased — Calmer city hub + responsive tutor/market screens 2026-05-16 (`claude/improve-city-design-0pNO3`)
+
+### Changed — City hub visual design
+
+- Toned down the seven competing border colors on action buttons
+  (red / green / orange / cyan / teal / purple / pink) to a single calm
+  neutral surface. Section identity now lives on a small left-edge accent
+  stripe + a section-coloured icon + the section header. Only the
+  primary call-to-action (the next gym / route / league button) keeps
+  its bold red border — the eye now lands on it immediately instead of
+  fighting seven equally loud chips.
+- The pulsing red **"New!"** badge that flashed on every unvisited
+  facility is gone. Unvisited facilities now show a calm gold **"New"**
+  pill, and visited facilities show a soft **"✓"** tag — the same
+  information without the carnival lights. Visited rows also dim ~22 %
+  so the player can scan "what's left to try" at a glance.
+- Hover no longer slides the whole button 4px to the right; it now
+  brightens the border in place, which feels less twitchy on touch
+  devices that fire hover on first tap.
+- Section headers gained a subtle `(n)` count, so "Train (5)" tells
+  the player how dense each group is before they scroll.
+- The NPC dialogue box no longer gets stuffed with milestone shoutouts
+  ("📻 4 Badges earned…"), facility barkers, or rival warnings. Milestones
+  fire once as a calm toast on entry; everything else lives in the tip rail.
+
+### Changed — Should-be-visited / smart suggestion rail
+
+- The tip rail is capped at 3 items (was 4 + a quote-stuffed barker).
+  The first slot is always **"Next: …"** with a soft gold treatment, so
+  the answer to "what now?" is the first thing the eye lands on.
+- Tips are now **directly wired to the relevant facility button**:
+  when "3 Pokémon have empty move slots" appears in the rail, the
+  Move Tutor button below picks up a soft gold outline so the player
+  can find it without scanning. Suggestions feed: empty move slots →
+  Move Tutor, missing held items → Battle Dojo, no EVs → EV Trainer,
+  free relic available → Relic Annex, unspent Rare Candies →
+  Evolution Tutor, unspent Vitamins → EV Trainer.
+- Per-city / per-facility "seen" state (`sm.facilitiesSeen[cityIdx][key]`)
+  is unchanged on the data side — only the visual presentation changed.
+
+### Changed — Mobile city portrait sidebar
+
+- On phone portrait, the NPC portrait + name now sit side-by-side in
+  a 72px-tall strip (was a 120px stacked block). That recovers ~50 px
+  of vertical space above the action list, so on a typical 720×640
+  phone window the first action button is visible without scrolling.
+
+### Changed — Pokémart & Department Store
+
+- Items are grouped into **Balls / Healing & Revives / Stat Boosters /
+  Field Effects / Battle Utility** sections, each with a small
+  uppercase strap and a count chip. The Pokémart used to be a 12-item
+  unsorted grid that all looked alike; now a player looking for "the
+  ball" or "an X Speed" lands on the right group instantly.
+- The **Buy** button bumped from a cramped 24 px-tall, 11 px-font
+  tap target to a 34 px desktop / 42 px mobile button, so accidental
+  taps on the wrong row are no longer reported.
+- Prices that the player can't afford render in red instead of gold,
+  matching the existing "cant-afford" tone used on city action badges.
+- The Relic Annex got the same button treatment plus a cleaner card
+  background; the artifact cards now feel like first-class siblings
+  of the Pokémart cards instead of a one-off styling.
+
+### Changed — Move Tutor / Dojo / Nature / EV Trainer / Stone Sage on phone
+
+- When a Pokémon is expanded in the tutor accordion, the mon's header
+  row now sticks to the top of the scroll area. Players editing 4
+  move slots in a row no longer lose track of *which* mon they were
+  editing while scrolling.
+- Move-tutor filter input, move list, and "Teach selected" button all
+  scale up on phone (38–42 px tap targets, 13 px font) — same
+  treatment for the dojo's item/ability option buttons and the
+  Stone Sage's evolution chips.
+- The tutor card accordion header itself grew to a 56 px tap target
+  (was ~36 px), removing the "I keep tapping the wrong mon" reports.
+
+### Reason
+
+The city hub is the screen players see the most — between every
+battle, often dozens of times per run — and it had gradually
+accumulated seven button colors, a pulsing red badge per facility,
+and a quote box that was stuffed with system messages on top of NPC
+dialogue. The combined effect was chaotic on desktop and overwhelming
+on phone portrait, where the action grid was pushed below the fold by
+the noisy NPC sidebar + bloated quote + 4-pill tip rail. The redesign
+keeps every facility, every facility's identity (via icon + stripe +
+section header), and every cost / new / free indicator — but presents
+them with the restraint the rest of the retro-GBA UI uses elsewhere.
+
+The "should-be-visited" suggestion rail closes a separate gap: the
+old system surfaced the *need* ("3 mons have no EVs") but didn't link
+it visually to the *solution* button below. New players had to read
+each tip, then re-scan the action list to find the right facility.
+Now the suggested button glows softly, so the tip and the answer line
+up at a glance.
+
+The tutor/market screens shared the same family of problems — tiny
+tap targets, long lists with no grouping, no sticky context — and
+got the matching mobile-first treatment in the same pass since they
+sit one tap away from the hub.
+
 ## Unreleased — Story-mode investigation pass: cleanup, climax, casino 2026-05-16 (`claude/story-mode-investigation-lILFs`)
 
 ### Changed — Active party cap = `2 + badges`, foes match player team size 1:1
