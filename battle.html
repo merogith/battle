@@ -9433,13 +9433,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Early-game battles get a tiered softening factor so new players have room to develop
         // a team before the curve ramps. Magnitude scales with badges and event tier:
         //   - badges 0, non-GL fight   → PRE_GYM1_FOE_STAT_MULT   (deepest — pre-first-gym fodder)
-        //   - badges 0, Gym Leader 1   → EARLY_GL_FOE_STAT_MULT   (signature kept full; filler weakens)
+        //   - badges 0, Gym Leader 1   → EARLY_GL_FOE_STAT_MULT   (gentle softening so GL1 still gates)
         //   - badges 1, non-GL fight   → EARLY_GAME_FOE_STAT_MULT (route fights between GL1 and GL2)
-        //   - badges 1, Gym Leader 2   → EARLY_GL_FOE_STAT_MULT   (signature kept full; filler weakens)
+        //   - badges 1, Gym Leader 2   → EARLY_GL_FOE_STAT_MULT   (gentle softening — same)
         //   - badges >= 2              → no early-game nerf
-        // Mons built with `_skipEarlyGameNerf: true` on their build object (gym leader
-        // signature aces) skip the softening, so the ace remains a real threat while the
-        // procgen filler eases up. Set any constant to 1.0 to disable that tier's softening.
+        // The "gym leaders keep their signature ace identity" guarantee is enforced through
+        // *composition* (rollTrainerTeam's gwForFiller shifts non-sig fillers one tier weaker
+        // while signature aces stay in the canonical grade), not via per-mon stat exemptions —
+        // a 5% across-the-board softening keeps the fight winnable without changing who the
+        // leader fields. Set any constant to 1.0 to disable that tier's softening.
         window.PRE_GYM1_FOE_STAT_MULT = 0.82;
         window.EARLY_GAME_FOE_STAT_MULT = 0.92;
         window.EARLY_GL_FOE_STAT_MULT = 0.95;
@@ -9449,7 +9451,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const badges = sm.badges | 0;
             if (badges >= 2) return 1.0;
             const idx = sm.eventIndex | 0;
-            const row = (typeof STORY_EVENTS_RAW !== 'undefined') ? STORY_EVENTS_RAW[idx] : null;
+            // STORY_EVENTS_RAW lives inside the StoryMode IIFE — reach it via window.
+            const SER = window.STORY_EVENTS_RAW;
+            const row = (SER && idx >= 0 && idx < SER.length) ? SER[idx] : null;
             if (!row || row[1] !== 'Battle') return 1.0;
             const evt = String(row[2] || '');
             if (badges === 0) {
@@ -9467,7 +9471,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
             if (!sm || (sm.badges | 0) > 0) return false;
             const idx = sm.eventIndex | 0;
-            const row = (typeof STORY_EVENTS_RAW !== 'undefined') ? STORY_EVENTS_RAW[idx] : null;
+            const SER = window.STORY_EVENTS_RAW;
+            const row = (SER && idx >= 0 && idx < SER.length) ? SER[idx] : null;
             if (!row || row[1] !== 'Battle') return false;
             return row[2] !== 'Gym Leader 1';
         }
@@ -9481,11 +9486,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (d === 'easy') mult = 0.85;
             else if (d === 'hard') mult = 1.15;
             else if (d === 'challenge') mult = 1.30; // labeled "Very Hard" in UI
-            const earlyMult = _earlyGameFoeStatMult();
-            if (earlyMult !== 1.0) {
-                const skip = mon.buildData && mon.buildData._skipEarlyGameNerf === true;
-                if (!skip) mult *= earlyMult;
-            }
+            mult *= _earlyGameFoeStatMult();
             if (mult === 1.0) return;
             const newMaxHp = Math.max(1, Math.floor(mon.maxHp * mult));
             mon.maxHp = newMaxHp;
@@ -22736,6 +22737,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [66,'Hall of Fame','Hall of Fame',null,0,null],
           [67,'Battle','Mystery Figure',{g1:100,g2:0,g3:0,g4:0},12000,null],
         ];
+        // Expose to script-top scope (this module is wrapped in `window.StoryMode = (function(){…})()`).
+        // `applyFoeDifficultyScaling` and `_earlyGameFoeStatMult` live outside the IIFE and need
+        // to look up the current row's event type — without this, `typeof STORY_EVENTS_RAW`
+        // resolves to 'undefined' from there and the early-game softening silently no-ops.
+        window.STORY_EVENTS_RAW = STORY_EVENTS_RAW;
 
         const STORY_MAIN_PATH_BATTLE_COUNT = STORY_EVENTS_RAW.reduce(function (acc, row) {
             return acc + (row && row[1] === 'Battle' ? 1 : 0);
@@ -24978,35 +24984,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             const team = [];
             const usedNames = new Set();
-            // Early-game GL signature aces (GL1 pre-badge, GL2 at 1 badge) keep their full
-            // stat block while the rest of the team eases up — see _earlyGameFoeStatMult.
-            const _isEarlyGLSlot = _isGymLeader && sm && (sm.badges | 0) < 2 && (
-                (String(battleEventType) === 'Gym Leader 1' && (sm.badges | 0) === 0) ||
-                (String(battleEventType) === 'Gym Leader 2' && (sm.badges | 0) === 1)
-            );
             for (let i = 0; i < partySize; i++) {
                 let chosen = null;
-                let wasSigPick = false;
                 const R = rng();
                 if (R <= sigP && S.length > 0) {
                     const idx = Math.floor(rng() * S.length);
                     chosen = S[idx];
                     const si = S.indexOf(chosen);
                     if (si >= 0) S.splice(si, 1);
-                    wasSigPick = true;
                 } else {
                     chosen = pickThematic();
                 }
                 if (!chosen || usedNames.has(chosen)) {
-                    wasSigPick = false;
                     for (let t = 0; t < 8; t++) {
                         const c = pickThematic();
                         if (c && !usedNames.has(c)) { chosen = c; break; }
                     }
                 }
-                if (!chosen || usedNames.has(chosen)) { wasSigPick = false; chosen = pickFromUnionExcluding(usedNames); }
-                if (!chosen || usedNames.has(chosen)) { wasSigPick = false; chosen = pickRandomInGenWindow(); }
-                if (!chosen) { wasSigPick = false; chosen = 'Rattata'; }
+                if (!chosen || usedNames.has(chosen)) chosen = pickFromUnionExcluding(usedNames);
+                if (!chosen || usedNames.has(chosen)) chosen = pickRandomInGenWindow();
+                if (!chosen) chosen = 'Rattata';
                 if (isMixed && partySize >= 4 && chosen) {
                     const t1c = (baseStats[chosen] || {}).t1 || '';
                     const othersSame = team.filter(t => t && baseStats[t.name] && (baseStats[t.name].t1 || '') === t1c).length;
@@ -25016,13 +25013,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             if (!alt || usedNames.has(alt)) continue;
                             const t1a = (baseStats[alt] || {}).t1 || '';
                             const oc = team.filter(t => t && baseStats[t.name] && (baseStats[t.name].t1 || '') === t1a).length;
-                            if (oc < 2) { chosen = alt; wasSigPick = false; break; }
+                            if (oc < 2) { chosen = alt; break; }
                         }
                     }
                 }
                 usedNames.add(chosen);
                 const build = makeBuild(chosen, { forceGimmick: 'STANDARD' });
-                if (_isEarlyGLSlot && wasSigPick) build._skipEarlyGameNerf = true;
                 team.push({ name: chosen, build });
             }
             const _origSigs = new Set((trainer.sigs || []));

@@ -187,16 +187,18 @@ Note: `applyStoryLeagueFoeStatBoost` (E1–E4 / Champion / league Rival / post-H
 | Phase | Event | Multiplier (constant) |
 |---|---|---|
 | 0 badges | non-GL fights (intro rival, route trainer, Gym Trainer 1) | `PRE_GYM1_FOE_STAT_MULT` = 0.82 |
-| 0 badges | **Gym Leader 1** | `EARLY_GL_FOE_STAT_MULT` = 0.95 (only the non-signature filler — the signature ace stays at full strength) |
+| 0 badges | **Gym Leader 1** | `EARLY_GL_FOE_STAT_MULT` = 0.95 (every slot, gentle so the gym still gates) |
 | 1 badge | route fights between GL1 and GL2 | `EARLY_GAME_FOE_STAT_MULT` = 0.92 |
-| 1 badge | **Gym Leader 2** | `EARLY_GL_FOE_STAT_MULT` = 0.95 (signature ace exempt) |
+| 1 badge | **Gym Leader 2** | `EARLY_GL_FOE_STAT_MULT` = 0.95 |
 | ≥ 2 badges | every fight | 1.00 — softening ends |
 
-Signature aces are exempted by setting `build._skipEarlyGameNerf = true` in `rollTrainerTeam` when a slot is filled from the trainer's `sigs` pool. Set any constant to `1.0` to disable that tier's softening.
+The "gym leader's signature ace stays the identity" guarantee is enforced through **composition**, not stat exemption: `rollTrainerTeam`'s `gwForFiller` shifts non-signature fillers one tier weaker on the grade roll while signature aces stay in the row's canonical grade. A flat 5% stat softening on top keeps GL1/GL2 winnable without changing who the leader fields. Set any constant to `1.0` to disable that tier's softening.
 
 In addition, `applyDifficultyToGradeWeights` shifts a small slice of g1 (×0.92) and g2 (×0.96) mass down to g3 universally, so opponents are slightly less likely to high-roll a top-tier mon. Gym Leader teams shift another ~20% of g1 → g2 and ~15% of g2 → g3 for the non-signature pickThematic call only — the leader's signature picks stay at the original tier, the rest of the team eases up.
 
 The pre-Gym-1 Basic Trainer slot (event idx 2, the lone route fight between intro rival and City 1) is locked to an *untagged* Basic Trainer class — Youngster, Bug Catcher, Lass, Hiker, Fisherman, Hex Maniac, Black Belt, Bird Keeper, Dragon Tamer, or one of the 2-type thematic fillers — so the first non-rival fight is never a villain / cursed / multitype variant.
+
+**Implementation note:** `_earlyGameFoeStatMult` and `_isPreGym1NerfedBattle` live at script top-level, *outside* the `window.StoryMode = (function() {…})()` IIFE that wraps every story-mode helper. To look up the current row, they reach in via `window.STORY_EVENTS_RAW` (re-exported next to the array's definition). Without that re-export, `typeof STORY_EVENTS_RAW` resolves to `'undefined'` from the top-level scope and the softening silently no-ops — which is the state the prior `PRE_GYM1_FOE_STAT_MULT = 0.85` ship was in before the early-game-curve pass.
 
 The `hardcore` value is removed entirely. Existing saves on `hardcore` migrate to `normal`.
 
