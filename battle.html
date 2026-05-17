@@ -9724,17 +9724,50 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Story-mode foe stat multiplier (difficulty knob).
         // Multiplies HP and the five non-HP stats post-build. Damage formula stays Showdown-correct.
-        // Pre-Gym-1 forced battles (intro rival, first route trainer, Gym Trainer 1) get an additional
-        // softening factor so new players have room to learn before the first real test.
-        // Configurable via PRE_GYM1_FOE_STAT_MULT — set to 1.0 to disable the early-game nerf entirely.
-        window.PRE_GYM1_FOE_STAT_MULT = 0.85;
+        // Early-game battles get a tiered softening factor so new players have room to develop
+        // a team before the curve ramps. Magnitude scales with badges and event tier:
+        //   - badges 0, non-GL fight   → PRE_GYM1_FOE_STAT_MULT   (deepest — pre-first-gym fodder)
+        //   - badges 0, Gym Leader 1   → EARLY_GL_FOE_STAT_MULT   (gentle softening so GL1 still gates)
+        //   - badges 1, non-GL fight   → EARLY_GAME_FOE_STAT_MULT (route fights between GL1 and GL2)
+        //   - badges 1, Gym Leader 2   → EARLY_GL_FOE_STAT_MULT   (gentle softening — same)
+        //   - badges >= 2              → no early-game nerf
+        // The "gym leaders keep their signature ace identity" guarantee is enforced through
+        // *composition* (rollTrainerTeam's gwForFiller shifts non-sig fillers one tier weaker
+        // while signature aces stay in the canonical grade), not via per-mon stat exemptions —
+        // a 5% across-the-board softening keeps the fight winnable without changing who the
+        // leader fields. Set any constant to 1.0 to disable that tier's softening.
+        window.PRE_GYM1_FOE_STAT_MULT = 0.82;
+        window.EARLY_GAME_FOE_STAT_MULT = 0.92;
+        window.EARLY_GL_FOE_STAT_MULT = 0.95;
+        function _earlyGameFoeStatMult() {
+            const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
+            if (!sm) return 1.0;
+            const badges = sm.badges | 0;
+            if (badges >= 2) return 1.0;
+            const idx = sm.eventIndex | 0;
+            // STORY_EVENTS_RAW lives inside the StoryMode IIFE — reach it via window.
+            const SER = window.STORY_EVENTS_RAW;
+            const row = (SER && idx >= 0 && idx < SER.length) ? SER[idx] : null;
+            if (!row || row[1] !== 'Battle') return 1.0;
+            const evt = String(row[2] || '');
+            if (badges === 0) {
+                if (evt === 'Gym Leader 1') return window.EARLY_GL_FOE_STAT_MULT || 1.0;
+                return window.PRE_GYM1_FOE_STAT_MULT || 1.0;
+            }
+            // badges === 1
+            if (evt === 'Gym Leader 2') return window.EARLY_GL_FOE_STAT_MULT || 1.0;
+            return window.EARLY_GAME_FOE_STAT_MULT || 1.0;
+        }
+        window._earlyGameFoeStatMult = _earlyGameFoeStatMult;
+        // Back-compat shim — any external caller still asking "is this the pre-Gym-1 nerf?"
+        // gets a true answer for the original pre-GL1 non-GL fights only.
         function _isPreGym1NerfedBattle() {
             const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
             if (!sm || (sm.badges | 0) > 0) return false;
             const idx = sm.eventIndex | 0;
-            const row = (typeof STORY_EVENTS_RAW !== 'undefined') ? STORY_EVENTS_RAW[idx] : null;
+            const SER = window.STORY_EVENTS_RAW;
+            const row = (SER && idx >= 0 && idx < SER.length) ? SER[idx] : null;
             if (!row || row[1] !== 'Battle') return false;
-            // Exclude Gym Leader 1 itself — the gating fight should remain a real test.
             return row[2] !== 'Gym Leader 1';
         }
         window._isPreGym1NerfedBattle = _isPreGym1NerfedBattle;
@@ -9747,7 +9780,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (d === 'easy') mult = 0.85;
             else if (d === 'hard') mult = 1.15;
             else if (d === 'challenge') mult = 1.30; // labeled "Very Hard" in UI
-            if (_isPreGym1NerfedBattle()) mult *= (window.PRE_GYM1_FOE_STAT_MULT || 1.0);
+            mult *= _earlyGameFoeStatMult();
             if (mult === 1.0) return;
             const newMaxHp = Math.max(1, Math.floor(mon.maxHp * mult));
             mon.maxHp = newMaxHp;
@@ -23227,6 +23260,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [66,'Hall of Fame','Hall of Fame',null,0,null],
           [67,'Battle','Mystery Figure',{g1:100,g2:0,g3:0,g4:0},12000,null],
         ];
+        // Expose to script-top scope (this module is wrapped in `window.StoryMode = (function(){…})()`).
+        // `applyFoeDifficultyScaling` and `_earlyGameFoeStatMult` live outside the IIFE and need
+        // to look up the current row's event type — without this, `typeof STORY_EVENTS_RAW`
+        // resolves to 'undefined' from there and the early-game softening silently no-ops.
+        window.STORY_EVENTS_RAW = STORY_EVENTS_RAW;
 
         const STORY_MAIN_PATH_BATTLE_COUNT = STORY_EVENTS_RAW.reduce(function (acc, row) {
             return acc + (row && row[1] === 'Battle' ? 1 : 0);
@@ -24101,32 +24139,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         // City NPC flavor (index = City N from event name). Uses Math.random only — must not advance story battle RNG.
         const CITY_PROFESSOR_QUOTES = [
-          ['Welcome, trainer! Pick a partner you trust.','A strong bond beats a strong Pokédex.','Heal up before every route!'],
-          ['New town, new battles!','The lab is open. Drop by anytime.','Stay sharp on the route ahead.'],
-          ['Good to see you again.','Train hard. Play fair.','You\'ve grown since we last spoke.'],
-          ['Welcome to the city!','Battles and study go hand in hand.','Stock up before the next route!'],
-          ['The Department Store has fine gear.','Choose your relics carefully.','You\'re no rookie anymore.'],
-          ['Rivals push you to grow.','Badges are proof of hard work.','The League is watching.'],
-          ['Victory Road takes a calm mind.','Strong trainers gather here.','Polish your team before moving on.'],
-          ['The summit is close.','Cold winds — warm hearts.','One step at a time.'],
-          ['Almost there. Take a breath.','The Champion\'s room is past the door.','Each battle counts.'],
-          ['The League awaits.','Final preparations. No regrets.','You\'ve earned this.'],
-          ['The road ends here — and begins anew.','Same city, stronger you.','Welcome back, Champion.'],
-          ['Still training? Good.','New horizons, same passion.','Drop in whenever you like.'],
+          ['"You came at the right hour. Pick the partner your gut argues for."','"A starter isn\'t a coin flip — it\'s a contract. Choose like it matters."','"Take the relic before you leave. The road is meaner than it looks."'],
+          ['"Your starter\'s grown. Now it needs a sibling — pick from the bench."','"I raised these three off the dawn route. They\'re yours if you can use them."','"Heal before every gate. Recovery paperwork is a nightmare for both of us."'],
+          ['"You\'re moving faster than I\'d planned. Don\'t slow down on my account."','"Pick one. The Pokédex doesn\'t forgive forgotten names."','"This city\'s tutors will sharpen anything you bring them."'],
+          ['"The academy\'s losing a good student to the road today. They say it sadly."','"Three candidates — all lab-raised, all hungry. Try not to neglect them."','"Field notes are on the bench. Read them before you leave."'],
+          ['"Past the gate is wilderness. Past the wilderness is the gym. Don\'t blink."','"Choose. These eat as much as I do — frankly I\'d like one off my hands."','"The Safari takes patience. The Dojo takes nerve. Pack both."'],
+          ['"Resort towns are where trainers get sloppy. You won\'t."','"One with range. One with bite. One with both — and a habit you\'ll pay for later."','"Try the casino. Lose carefully. Train deliberately."'],
+          ['"My city eats trainers and prints champions. Try to be the second kind."','"Three rolls. No re-pick. Welcome to my building."','"Colress is on the roof. Tell him I sent you — he still owes me lunch."'],
+          ['"Last lab before the Plateau. I retire after this cohort, so don\'t squander me."','"Choose like it counts — at this elevation it does."','"Candy, relic, partner. Take what you can carry. Go."'],
+          ['"This high up I just hand out partners and pray."','"Three of mine, raised in the high passes. They\'ll keep up with you."','"After Victory Road, nobody asks who picked your team. They ask who\'s still standing."'],
+          ['"The League trains its own. I still keep three on the bench — old habits."','"Take what you need. The lab is yours, in all but name."','"Welcome back, Champion. Try not to break anything important."'],
+          ['"Same lab. Same bench. Different trainer."','"They say new horizons. I say same passion, sharper teeth."','"Drop in whenever the road bends back this way."'],
+          ['"You\'re still training? Good. Most don\'t."','"There\'s always one more partner waiting for the right hand."','"The lab keeps the lights on for you."'],
         ];
         const CITY_GUIDE_QUOTES = [
-          ['Fresh air, fresh battles!','The Pokémon Center heals your team for free.','Small steps lead to big wins!'],
-          ['The Gym is busy today.','Trainers are working hard here.','Don\'t skip the Mart — potions save runs.'],
-          ['This town stays busy.','The Link Station handles random trades.','A strong trainer passed through earlier.'],
-          ['Department Stores carry premium gear.','City life moves fast.','Check every corner for hidden items.'],
-          ['The route ahead is tough.','Badge collectors come through here daily.','The wind\'s picking up.'],
-          ['Strong trainers everywhere.','You look tougher than before!','The Relic Annex is open.'],
-          ['Beautiful view from this city.','Trainers here don\'t back down easily.','Victory Road isn\'t far.'],
-          ['Quiet before the climb.','Every stair is progress.','The League glows at night.'],
-          ['Almost there — feel the energy?','The Champion\'s stadium is right ahead.','Cheer on the underdogs!'],
-          ['Champions train here.','The Hall of Fame remembers every name.','Catch a sunrise on your way out.'],
-          ['This is it. No more towns ahead.','Nerves are normal. Means you care.','The gate opens for the worthy.'],
-          ['Trainers gather here even after the League.','The Hall of Fame is just over there.','Try a lap around the region?'],
+          ['"Sea-salt morning. Lucky kid — you got the last starter."','"Professor said you might come by. Don\'t keep her waiting."','"Grab a relic before you head out. The first route is rougher than it reads."'],
+          ['"Quarry shift just ended — the gym\'s where they drink off the dust."','"Gym Leader likes to test endurance. Heal first, swagger later."','"Mart\'s open all night. Potions don\'t carry to the next run, so use them."'],
+          ['"Every barista in this town can recite a movepool. It\'s embarrassing."','"The Move Tutor knows tricks the schools won\'t teach. Bring gold."','"Dojo Master once boxed a Machamp. Allegedly. Still — don\'t test him."'],
+          ['"The students hold mock leagues in the quad. Don\'t lose to a freshman — they\'ll publish."','"Nature Rater keeps office hours. Make an appointment, like everyone else."','"Half the textbooks here will be wrong by next year. The Gym Leader won\'t."'],
+          ['"Ranger boots, hunter boots, poacher boots — every kind of mud meets at this gate."','"Safari Zone takes your money and your patience. Sometimes it gives back."','"Don\'t catch what you can\'t train. The Underground will buy what you can\'t keep."'],
+          ['"Half the badges in this town were earned at the slots. Don\'t ask which half."','"Casino payouts are real. Casino odds are realer."','"You can hear the Gym Leader from the rooftop bar. She likes a crowd."'],
+          ['"This city eats trainers and prints champions. Take notes."','"Department Store sells what you need. The alley sells what you don\'t."','"Colress is on the top floor. He hates waiting. Move fast."'],
+          ['"Thin air at the pass keeps the tourists down in the lowlands. Mostly."','"Veterans drink here between rematches. Buy a round, hear a story."','"League gates open at dawn. They close on the unworthy."'],
+          ['"Last gym before the Plateau. Pilgrims travel weeks to lose here."','"The bells ring for every challenger. They don\'t ring twice."','"A masked figure was asking after you. Wouldn\'t give a name."'],
+          ['"This is the room. No badges past that door — only legacies."','"Cameras are rolling. Smile or don\'t. It\'s your face."','"Welcome to the Plateau, trainer. Try not to flinch."'],
+          ['"This is it. The road goes one way from here, and not back."','"Nerves are the body\'s way of admitting you care."','"The gate opens for the worthy. The rest learn to read."'],
+          ['"Trainers still gather here, even after the credits roll."','"Hall of Fame is just over there. Your name should still be on it."','"The Underground broker has been asking about you. Quietly."'],
         ];
         function _pickCityQuoteLine(poolArr, cityIdx) {
             const idx = Math.min(Math.max(0, cityIdx|0), poolArr.length - 1);
@@ -24139,20 +24177,129 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // The map below is keyed by city index. Indexes that fall outside (e.g. the
         // post-HoF return to City 9) fall back to the last entry.
         const CITY_SPECIALTY_BLURBS = [
-            'Hometown — starter, Link Station, and basic tutors.',
-            'Training town — Battle Dojo and EV Trainer.',
-            'Move town — Move Tutor and Battle Dojo.',
-            'Academy town — Move Tutor and Nature Rater.',
-            'Wilderness town — Safari Zone entry.',
-            'Resort town — Poké Casino and tutors.',
-            'Metropolis — Department Store, Colress, and every tutor.',
-            'Champion\'s road — every tutor open. Last Pokémart before the League.',
-            'Final-gym town — Department Store, Battle Dojo, and EV Trainer.',
-            'Pokémon League — every facility in one place.',
+            'Hometown. The lab, the starter, and the only road that goes north.',
+            'Training town. Dojo and EV Trainer keep the gym hopefuls honest.',
+            'Move-craft town. Move Tutor and Battle Dojo, side by side.',
+            'Academy town. Scholars test their theories on the gym floor.',
+            'Wilderness town. The Safari gate marks the city limit.',
+            'Resort town. Casino lights, gym floor, last easy night before the climb.',
+            'Metropolis. Department Store, Colress\'s roof lab, every tutor on payroll.',
+            'Champion\'s road. Every tutor open. Last Pokémart before the League.',
+            'Final-gym town. Department Store, Battle Dojo, and EV Trainer for the last polish.',
+            'Pokémon League. Every facility under one roof — the Plateau is upstairs.',
         ];
         function _cityBlurbFor(cityIdx) {
             const n = Math.max(0, cityIdx | 0);
             return CITY_SPECIALTY_BLURBS[Math.min(n, CITY_SPECIALTY_BLURBS.length - 1)] || '';
+        }
+
+        // Per-city arrival flavor — narrator beats shown on the welcome overlay the
+        // first time the player sets foot in each city. Two-line scene-setter +
+        // one-line "what's here" hook. Pokémon-world voice with a sharper edge —
+        // see STORY_MODE_FLOW.md §writing for tone guidance.
+        const CITY_ARRIVAL_LINES = [
+            // City 0 — Pallet Town (handled by cold-open; entry kept for symmetry)
+            ['Sea salt, sawgrass, three houses and a lab.','The starter on the bench has your name on it.'],
+            // City 1 — first gym town
+            ['Mining sirens stop at the gate. Shift change.','The gym lights stay on until somebody knocks them out.'],
+            // City 2 — move-craft town
+            ['Coffee, kettles, and a Move Tutor who claims to remember every move ever invented.','Trainers do not pass through this town by accident.'],
+            // City 3 — academy town
+            ['Lecture halls bleed students into the streets between bells.','The campus gym sits at the top of the hill. The leader grades you like a thesis.'],
+            // City 4 — wilderness town
+            ['Ranger boots, hunter boots, poacher boots — every kind of mud meets at this trailhead.','Past the Safari gate, the Pokédex word "rare" stops being decorative.'],
+            // City 5 — resort town
+            ['Neon over a still lake. Slot machines and the gym share a roof here.','Half the badges in this town were earned at the tables. Half is a generous estimate.'],
+            // City 6 — metropolis
+            ['The skyline ate the route signs. Every kind of trainer is somebody in this city.','The Department Store, the underground, the rooftop labs — twenty-four hours, all of it.'],
+            // City 7 — Champion's road
+            ['Stone gates, switchback ramps, wind that tastes like the high country.','Three trainers in this town have beaten the League. They will tell you it is the climb that breaks people.'],
+            // City 8 — final gym town
+            ['The last gym sits inside an old cathedral. Bells, candles, stained-glass Lugia.','After this badge there is no ninth city. There is the road, and there is the Plateau.'],
+            // City 9 — Pokémon League
+            ['The Plateau hums under your boots — kilometers of stadium, lit for the cameras.','The Elite Four are in their chambers. So is the Champion. They are waiting on you.'],
+        ];
+        function _cityArrivalLines(cityIdx) {
+            const n = Math.max(0, cityIdx | 0);
+            return CITY_ARRIVAL_LINES[Math.min(n, CITY_ARRIVAL_LINES.length - 1)] || ['',''];
+        }
+        // Mark every city up to and including the player's current event index as
+        // "already arrived." Used by the v15+ migration (so resuming a save doesn't
+        // pop a stray welcome overlay) and by the dev seeder URLs (so jumping into
+        // City 8 mid-game doesn't add a welcome step to the repro flow).
+        function _storyBackfillCitiesArrived() {
+            if (!sm) return;
+            if (!sm.citiesArrived || typeof sm.citiesArrived !== 'object') sm.citiesArrived = {};
+            const cap = (sm.eventIndex | 0);
+            for (let i = 0; i <= cap && i < STORY_EVENTS_RAW.length; i++) {
+                const r = STORY_EVENTS_RAW[i];
+                if (!r || r[1] !== 'City') continue;
+                const m = String(r[2] || '').match(/\d+/);
+                const ci = m ? +m[0] : -1;
+                if (ci >= 0) sm.citiesArrived[ci] = true;
+            }
+        }
+        function _cityArrivalSpeakerSpriteFile(cityIdx) {
+            // Use the canonical city Professor sprite when available; falls back to
+            // a thematic City Guide so the arrival screen always has a face.
+            try {
+                const hub = (typeof cityProfessorHubSlot === 'function') ? cityProfessorHubSlot(cityIdx) : null;
+                if (hub && hub.spriteFile) return hub.spriteFile;
+            } catch (e) {}
+            return CITY_GUIDE_SPRITES[(cityIdx | 0) % CITY_GUIDE_SPRITES.length];
+        }
+        function _showCityArrivalScreen(cityIdx, onDone) {
+            const cityName = (typeof getStoryDisplayTownNameForCityRow === 'function')
+                ? getStoryDisplayTownNameForCityRow(STORY_EVENTS_RAW[sm.eventIndex])
+                : ('City ' + (cityIdx | 0));
+            const blurb = _cityBlurbFor(cityIdx);
+            const lines = _cityArrivalLines(cityIdx);
+            const bgUrls = (getStoryBgManifest().cityUrls || DEFAULT_STORY_BG_MANIFEST.cityUrls);
+            const bg = (bgUrls && bgUrls.length) ? bgUrls[(cityIdx | 0) % bgUrls.length] : '';
+            const spriteFile = _cityArrivalSpeakerSpriteFile(cityIdx);
+            const spriteSrc = (typeof getTrainerSprite === 'function') ? getTrainerSprite({ spriteFile }) : '';
+            const ov = document.createElement('div');
+            ov.setAttribute('role', 'dialog');
+            ov.setAttribute('aria-modal', 'true');
+            ov.setAttribute('aria-label', 'Now Arriving — ' + cityName);
+            ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;box-sizing:border-box;cursor:pointer;';
+            if (bg) {
+                ov.style.backgroundImage = 'linear-gradient(180deg, rgba(4,6,12,0.72) 0%, rgba(4,6,12,0.94) 100%), url("' + bg + '")';
+                ov.style.backgroundSize = 'cover, cover';
+                ov.style.backgroundPosition = 'center, center';
+                ov.style.backgroundRepeat = 'no-repeat, no-repeat';
+            }
+            const lineHtml = lines.filter(Boolean).map(l =>
+                '<p class="story-dialog-text" style="margin:0 0 8px 0;">' + l + '</p>'
+            ).join('');
+            const blurbHtml = blurb
+                ? '<div style="color:#ffd54f;font-size:12px;letter-spacing:0.04em;margin-top:6px;text-align:center;max-width:560px;">📍 ' + blurb + '</div>'
+                : '';
+            ov.innerHTML =
+                '<div style="color:#bbb;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;">— Now Arriving —</div>' +
+                '<div style="color:#fff;font-size:24px;font-weight:bold;letter-spacing:0.04em;text-shadow:0 2px 6px rgba(0,0,0,0.8);">' + cityName + '</div>' +
+                blurbHtml +
+                '<img src="' + spriteSrc + '" onerror="this.style.display=\'none\'" style="width:140px;height:140px;object-fit:contain;image-rendering:pixelated;margin-top:6px;">' +
+                '<div class="story-dialog-host" style="max-width:560px;width:100%;">' +
+                    '<div class="story-dialog-nameplate">City Guide</div>' +
+                    '<div class="story-dialog-box">' + lineHtml + '</div>' +
+                '</div>' +
+                '<button type="button" data-arrival-dismiss="1" style="margin-top:6px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">Enter the City →</button>';
+            let dismissed = false;
+            let escHandler = null;
+            const dismiss = function () {
+                if (dismissed) return;
+                dismissed = true;
+                if (escHandler) { try { document.removeEventListener('keydown', escHandler); } catch (e) {} }
+                try { ov.remove(); } catch (e) {}
+                try { onDone && onDone(); } catch (e) { console.error('[Story] arrival callback', e); }
+            };
+            const btn = ov.querySelector('button[data-arrival-dismiss="1"]');
+            if (btn) btn.onclick = function (e) { e.stopPropagation(); dismiss(); };
+            ov.onclick = function (e) { if (e.target === ov) dismiss(); };
+            escHandler = function (e) { if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); dismiss(); } };
+            document.addEventListener('keydown', escHandler);
+            document.body.appendChild(ov);
         }
 
         // Story city hub + professor screen: HUD label must match `sprites/trainers/<spriteFile>.png` on disk.
@@ -24569,7 +24716,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    trainerAssignments:{}, currentTrainerData:null,
                    settings:{ minGen:1, maxGen:9, enabledGens:[1,2,3,4,5,6,7,8,9], megaOn:true, zOn:true, dynaOn:true, teraOn:true, classicMode:true },
                    gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{}, currentEnemyLock:null,
-                   artifactsDisabled:[], storyCityVisit:null,
+                   artifactsDisabled:[], storyCityVisit:null, citiesArrived:{},
                    artifactShopOffersByCity:{}, artifactShopPurchasedByCity:{}, artifactFreeClaimUsed:false,
                    deptShopPurchasedByCity:{},
                    storyDifficulty:'normal', runSeed:null,
@@ -24714,6 +24861,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.artifactsDisabled) sm.artifactsDisabled = [];
                 if (!('currentEnemyLock' in sm)) sm.currentEnemyLock = null;
                 if (!('storyCityVisit' in sm)) sm.storyCityVisit = null;
+                if (!sm.citiesArrived || typeof sm.citiesArrived !== 'object') sm.citiesArrived = {};
+                // Back-fill arrival flags for cities the player has already passed through.
+                // Without this, every previously visited city would pop a fresh welcome
+                // overlay the next time the player returns to it on a migrated save.
+                try { _storyBackfillCitiesArrived(); } catch (e) { console.warn('[Story] arrival backfill', e); }
                 if (!sm.deptArtifactOffersByCity || typeof sm.deptArtifactOffersByCity !== 'object') sm.deptArtifactOffersByCity = {};
                 if (!sm.artifactShopOffersByCity || typeof sm.artifactShopOffersByCity !== 'object') sm.artifactShopOffersByCity = {};
                 if (!sm.artifactShopPurchasedByCity || typeof sm.artifactShopPurchasedByCity !== 'object') sm.artifactShopPurchasedByCity = {};
@@ -25030,6 +25182,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (d === 'easy' || d === 'veryeasy') { o.g1 *= 0.88; o.g4 *= 1.12; }
             else if (d === 'hard') { o.g1 *= 1.1; o.g4 *= 0.9; }
             else if (d === 'challenge') { o.g1 *= 1.18; o.g4 *= 0.82; }
+            // Universal slight nerf on opponent team-generation grade rolls — moves a
+            // small fraction of g1/g2 mass down to g3 so RNG can't hand the foe a
+            // clutch top-tier mon on a battle whose tier weights barely allow it.
+            const _lostG1 = o.g1 * 0.08;
+            const _lostG2 = o.g2 * 0.04;
+            o.g1 -= _lostG1;
+            o.g2 -= _lostG2;
+            o.g3 += _lostG1 + _lostG2;
             return o;
         }
 
@@ -25769,17 +25929,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(teamR, battleEventType), battleEventType, storyRowIdx);
             }
 
+            // Gym leaders already have signature Pokémon as their identity — the rest
+            // of their team can roll slightly weaker. Shift a small fraction of g1/g2
+            // mass to one tier weaker for the non-signature pickThematic call only.
+            const _isGymLeader = /^Gym Leader\s*\d$/.test(String(battleEventType || ''));
+            const gwForFiller = (() => {
+                if (!_isGymLeader) return gwIn;
+                let { g1 = 0, g2 = 0, g3 = 0, g4 = 0 } = gwIn;
+                const _g1to2 = g1 * 0.20;
+                const _g2to3 = g2 * 0.15;
+                return {
+                    g1: g1 - _g1to2,
+                    g2: g2 - _g2to3 + _g1to2,
+                    g3: g3 + _g2to3,
+                    g4,
+                };
+            })();
             function pickThematic() {
-                const total = (gwIn.g1||0)+(gwIn.g2||0)+(gwIn.g3||0)+(gwIn.g4||0);
+                const _gw = gwForFiller;
+                const total = (_gw.g1||0)+(_gw.g2||0)+(_gw.g3||0)+(_gw.g4||0);
                 if (total === 0) {
                     const all = [...T[1],...T[2],...T[3],...T[4]];
                     return all.length ? all[Math.floor(rng() * all.length)] : null;
                 }
                 let r = rng() * total;
                 let g = 4;
-                r -= (gwIn.g4||0); if (r<=0) g=4;
-                else { r-=(gwIn.g3||0); if(r<=0) g=3;
-                else { r-=(gwIn.g2||0); if(r<=0) g=2;
+                r -= (_gw.g4||0); if (r<=0) g=4;
+                else { r-=(_gw.g3||0); if(r<=0) g=3;
+                else { r-=(_gw.g2||0); if(r<=0) g=2;
                 else g=1; } }
                 let pool = T[g];
                 if (!pool.length) {
@@ -26133,6 +26310,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         }
                     }
                 }
+                // Pre-Gym-1 route fodder: the lone Basic Trainer between intro rival and
+                // City 1 should *always* be a classic route trainer (Youngster, Bug
+                // Catcher, Lass, …), not a Rocket Executive or Cursed Vagrant. Locks the
+                // very first fight after the starter city to a thematic early-route
+                // class so the curve eases the player in.
+                if (event === 'Basic Trainer' && countGymBadgesBeforeStoryRow(posInRaw) === 0) {
+                    const early = _pickEarlyRouteBasicTrainer(eg, usedBase);
+                    if (early) {
+                        sm.trainerAssignments[idx] = early.name;
+                        usedBase.add(_baseTrainerName(early.name));
+                        return;
+                    }
+                    // fall through to standard picker if the filter somehow empties
+                }
                 const t = selectTrainerForRole(event, eg, usedBase);
                 if (t) {
                     sm.trainerAssignments[idx] = t.name;
@@ -26140,6 +26331,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             });
             sm.usedTrainerNames = [...usedBase];
+        }
+
+        /** Untagged ("classic route class") Basic Trainers only — Youngster, Bug
+         * Catcher, Lass, Hiker, Fisherman, Hex Maniac, Black Belt, Bird Keeper,
+         * Dragon Tamer and the 2-type thematic fillers. Excludes villain / cursed /
+         * multitype / eldritch flavor trainers so the pre-Gym-1 route fight always
+         * reads as an easy starter-route fodder match. */
+        function _pickEarlyRouteBasicTrainer(enabledGens, usedBaseNames) {
+            const genSet = new Set(normalizeEnabledGens(enabledGens));
+            let pool = TRAINER_DATA.filter(t => {
+                if (!t || String(t.role || '').toLowerCase() !== 'basic trainer') return false;
+                if (t.tag) return false; // exclude cursed / multitype / villain / eldritch
+                // Route trainers are gen-agnostic class fillers; charGen gating already
+                // exempts them, but keep the same fallback shape as selectTrainerForRole.
+                return !_isRegionalBasicTrainer(t) || genSet.has(t.charGen);
+            });
+            if (usedBaseNames) {
+                const fresh = pool.filter(t => !usedBaseNames.has(_baseTrainerName(t.name)));
+                if (fresh.length) pool = fresh;
+            }
+            if (!pool.length) return null;
+            const _rng = (sm && sm.active) ? storyRngNext : Math.random;
+            // Type-first pick (same flatten as selectTrainerForRole) so Normal-typed
+            // trainers don't dominate.
+            const byType = {};
+            for (const t of pool) {
+                const key = isPlaceholderSignatureList(t.sigs || []) ? 'Mixed' : (t.type || 'Mixed');
+                if (!byType[key]) byType[key] = [];
+                byType[key].push(t);
+            }
+            const typeKeys = Object.keys(byType);
+            const chosenType = typeKeys[Math.floor(_rng() * typeKeys.length)];
+            const typePool = byType[chosenType];
+            return typePool[Math.floor(_rng() * typePool.length)];
         }
 
         /** Find a trainer whose `tag` matches `theme` and whose role matches the slot.
@@ -26212,6 +26437,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 runSeed: (() => { const v = document.getElementById('story-setting-seed')?.value?.trim(); return (v && /^\d+$/.test(v)) ? (parseInt(v, 10) >>> 0) : ((Math.random() * 0xFFFFFFFF) | 0); })(),
                 version: SAVE_VER,
                 storyCityVisit: null,
+                citiesArrived: {},
                 storyMilestoneTips: { m4: false, m8: false },
                 storyRetryInventorySnapshot: null,
                 runRivalSpriteFile: null,
@@ -26618,6 +26844,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.team = team.slice(0, 6);
             if (!sm.gymCleared) sm.gymCleared = {};
             sm.gymCleared[8] = true;
+            try { _storyBackfillCitiesArrived(); } catch (e) {}
             save();
             enterCity();
             console.log('[Story debug] City8 seeded (6 Pokémon, 8 badges). Open Mystery Figure — Legendary Grade 1 Swap.');
@@ -26678,6 +26905,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.team = team.slice(0, 6);
             if (!sm.gymCleared) sm.gymCleared = {};
             sm.gymCleared[6] = true;
+            try { _storyBackfillCitiesArrived(); } catch (e) {}
             save();
             enterCity();
             console.log('[testmega] Seeded City6. Use "Colress — Awaken battle mechanics" — 10,000G per swap. Global mechanics synced from run flags.');
@@ -26791,6 +27019,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.currentEnemyLock = { eventIdx: CHAMPION_STORY_IDX, team: storyFreezeFoeTeamForPersistence(weakDraft) };
             if (!sm.gymCleared) sm.gymCleared = {};
             for (let gi = 1; gi <= 8; gi++) sm.gymCleared[gi] = true;
+            try { _storyBackfillCitiesArrived(); } catch (e) {}
             {
                 const order = [];
                 if (sm.settings.megaOn) order.push('mega');
@@ -26838,7 +27067,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         writeStoryMeta(_coldMeta);
                         const _coldOv = document.createElement('div');
                         _coldOv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px;box-sizing:border-box;cursor:pointer;';
-                        _coldOv.innerHTML = '<div style="color:#aaa;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;">— Story Mode —</div><div style="color:#fff;font-size:17px;font-style:italic;line-height:1.7;max-width:520px;text-align:center;">You arrived in Pallet Town this morning.<br><br>The Professor\'s lab is waiting at the end of the road.<br><br>So is your future.</div><button type="button" style="margin-top:14px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">Begin →</button>';
+                        _coldOv.innerHTML = '<div style="color:#aaa;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;">— Story Mode —</div><div style="color:#fff;font-size:17px;font-style:italic;line-height:1.7;max-width:520px;text-align:center;">Salt-air morning. The boats are out, the lab is open, and the only road out of Pallet Town runs north.<br><br>The Professor\'s expecting you. The starter on her bench has your name on it.<br><br>Eight badges, an Elite Four, and a Champion stand between you and the Plateau.<br><br>Walk in.</div><button type="button" style="margin-top:14px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">Begin →</button>';
                         const _coldDismiss = function () { try { _coldOv.remove(); } catch (e) {} enterCity(); };
                         _coldOv.querySelector('button').onclick = function (e) { e.stopPropagation(); _coldDismiss(); };
                         _coldOv.onclick = function (e) { if (e.target === _coldOv) _coldDismiss(); };
@@ -26852,6 +27081,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.storyCityVisit = cidx;
                 try { save(); } catch (e) { console.warn('[Story] enterCity save', e); }
             }
+            // First arrival in a city (per run) — show a welcome overlay with the
+            // city's identity + flavor before dropping the player into the hub. The
+            // City0 cold-open above is treated as Pallet Town's arrival, so we
+            // skip the overlay for cityIdx 0 and just set the flag.
+            if (!sm.citiesArrived || typeof sm.citiesArrived !== 'object') sm.citiesArrived = {};
+            if (!sm.citiesArrived[cidx]) {
+                sm.citiesArrived[cidx] = true;
+                try { save(); } catch (e) { console.warn('[Story] enterCity arrival save', e); }
+                if (cidx > 0 && cidx <= 9) {
+                    try {
+                        _showCityArrivalScreen(cidx, function () { enterCity(); });
+                        return;
+                    } catch (e) { console.warn('[Story] arrival screen failed, continuing', e); }
+                }
+            }
             updateHUD();
             renderTeamPanel();
             renderCityActions(ev);
@@ -26860,14 +27104,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // One-time welcome on the very first city the player ever sees across all runs.
             if (cidx === 0) {
                 try { _storyShowOneTimeTip('welcome',
-                    'Welcome to Pallet Town, trainer.\n\nThis is Story Mode — eight gym badges, an Elite Four, a Champion, and what comes after. Every battle scales with your roster. Cities heal you between fights, the Pokémon Center stores spare Pokémon, and the Underground sells the ones you no longer want — but never your starter.\n\nClick the 🎯 "Next:" chip at any time to know where you\'re going. Good hunting.'); } catch (e) {}
+                    'Welcome to Story Mode.\n\nEight badges, an Elite Four, a Champion — and what waits after the credits. Every battle scales with your roster, so the choice you make at the Professor shapes the rest of the run.\n\n• Cities auto-heal you between fights.\n• The Pokémon Center stores spare Pokémon you catch on routes.\n• The Underground will buy the ones you can\'t use — but never your starter.\n• Click the 🎯 "Next:" chip at any time to see where the road bends.\n\nGood hunting, trainer.'); } catch (e) {}
             }
             // One-time teach: explain Gym Leaders + the badge → party-cap link the
             // first time the player enters a city that hosts a Gym Battle. City1
             // pre-Gym-1 is the canonical first encounter; cross-run-deduped.
             if (cidx === 1 && (sm.badges | 0) === 0 && Array.isArray(ev) && Array.isArray(ev[5]) && ev[5].indexOf('Gym Battle') !== -1) {
                 try { _storyShowOneTimeTip('what-is-a-gym',
-                    'Gym Leaders are this region\'s strongest trainers — each one guards a badge.\n\n• Beat a Gym Leader and you earn that badge. Your active party cap grows by one (cap = 2 + badges, max 6 at four badges) and the next Professor opens for a new partner.\n• Foes match your party size 1-for-1 (with finale exceptions), so a lean team fights a lean trainer.\n• Each leader specializes in a single type. Listen to the City Guide or read the gym\'s color cues — you\'ll get a hint.\n\nNext step: ⚔ Challenge the Gym Leader.'); } catch (e) {}
+                    'Gym Leaders run this region. Each one guards a badge — and a piece of the league\'s reputation.\n\n• Beat one and the badge is yours. Your active party cap grows by one (cap = 2 + badges, max 6 at four badges), and the next Professor opens for a new partner.\n• Foes match your party size 1-for-1 (with finale exceptions) — a lean team fights a lean trainer.\n• Every leader specializes in a single type. Read the gym\'s color cues — or listen to the City Guide on the way in.\n\nNext step: ⚔ Challenge the Gym Leader.'); } catch (e) {}
             }
         }
 
@@ -26961,7 +27205,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let quoteText = hasProf
                 ? _pickCityQuoteLine(CITY_PROFESSOR_QUOTES, cityIdx)
                 : _pickCityQuoteLine(CITY_GUIDE_QUOTES, cityIdx);
-            quoteText = `"${quoteText}"`;
+            // City specialty banner — the one-line identity for this city, shown above
+            // the NPC quote so the player learns the hub's purpose at a glance.
             const _cityBlurb = _cityBlurbFor(cityIdx);
             if (_cityBlurb) quoteText = '📍 ' + _cityBlurb + '\n\n' + quoteText;
             if (quoteEl) quoteEl.textContent = quoteText;
@@ -26987,6 +27232,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const suggestedFacilities = new Set();
             const tipsEl = document.getElementById('story-city-tips');
             const tips = [];
+            // Must-do chip always leads — Professor is a hard gate on Continue Route / Gym.
+            if (hasProf && !profUsedHere) {
+                tips.push({
+                    iconPath: 'icons/story/' + (legendMysteryGate ? 'story_mystery.png' : 'story_professor.png') + '?v=20260516',
+                    label: legendMysteryGate ? 'Required: Talk to the Mystery Figure' : 'Required: Visit the Professor',
+                    click: 'window.StoryMode.enterProfessor()',
+                    urgent: true,
+                });
+            }
             // "Next:" is always first when a battle is queued — clearest answer to the
             // ten-second "what now?" question on entering any city.
             if (_storyNextBat) {
@@ -27048,12 +27302,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Cap the rail at 3 — "Next:" plus the two most relevant follow-ups. More than
             // that pushes the action grid below the fold on phone portrait.
             if (tipsEl) {
-                tipsEl.innerHTML = tips.slice(0, 3).map(t => {
+                tipsEl.innerHTML = tips.slice(0, 4).map(t => {
                     const _kindCls = t.kind ? ` ${t.kind}` : '';
                     const _icoHtml = t.iconPath
                         ? `<img class="story-city-tip-ico" src="${t.iconPath}" alt="" width="16" height="16" decoding="async">`
                         : `<span class="story-city-tip-ico">${t.icon}</span>`;
-                    return `<button type="button" class="story-city-tip${_kindCls}" onclick="${t.click}">${_icoHtml}<span>${t.label}</span></button>`;
+                    return `<button type="button" class="story-city-tip${_kindCls}${t.urgent ? ' urgent' : ''}" onclick="${t.click}">${_icoHtml}<span>${t.label}</span></button>`;
                 }).join('');
             }
 
@@ -27107,11 +27361,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _push('quest', makeActionBtn('🏆 Enter the Pokémon League','league','window.StoryMode.proceedToNextBattle()','primary'));
             }
             const routeBlockedByMysteryGate = legendMysteryGate && !profUsedHere;
+            // Story spec — Professor visits are must-do to leave town. When the Professor
+            // is on the board and hasn't been visited yet in this city, the Continue Route
+            // button is locked the same way Gym Battle is. Mystery-gate cities use the
+            // legendary-gate message above; everywhere else falls back to the generic
+            // "Visit Professor first" hint.
+            const routeBlockedByProfessor = gymBlocked && !routeBlockedByMysteryGate;
             if (actions.includes('Leave City')) {
                 if (gymRoutePending) {
                     _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Clear this area's challenge first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Complete challenge first)</span></span></button>`);
                 } else if (routeBlockedByMysteryGate) {
                     _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Talk to the Mystery Figure first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Talk to Mystery Figure first)</span></span></button>`);
+                } else if (routeBlockedByProfessor) {
+                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Visit the Professor before leaving" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`);
                 } else if (rivalGateActive) {
                     _push('quest', makeActionBtn('⚔ Battle Your Rival','route','window.StoryMode.proceedToNextBattle()','primary'));
                 } else if (!hasLeague) {
@@ -27810,11 +28072,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         const PROF_QUOTES = [
-            '"Choose wisely — your Pokémon will grow with you!"',
-            '"Each of these has unique strengths. Pick the one that calls to you!"',
-            '"I\'ve prepared three excellent candidates. The choice is yours!"',
-            '"Every great journey starts with the right partner!"',
-            '"These Pokémon are ready for battle — which suits your style?"',
+            '"Three Pokémon. One slot. Pick the one your gut argues for."',
+            '"I raised these myself. Don\'t embarrass the lab."',
+            '"Each has a build I\'d ship without notes. The rest is on you."',
+            '"You\'ll know in the first battle. Choose anyway."',
+            '"A starter isn\'t a coin flip. It\'s a contract."',
         ];
 
         // Species whose forms share the same "slot" — owning any form blocks all
@@ -28503,9 +28765,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div class="story-dialog-host" style="margin-top:4px;max-width:560px;">
                     <div class="story-dialog-nameplate">${profName}</div>
                     <div class="story-dialog-box">
-                        <p class="story-dialog-text">"Wait — someone's at the route gate. ${displayRival}."</p>
-                        <p class="story-dialog-text" style="margin-top:8px;">"They picked up their starter the same morning you did. They won't let you leave town without a fight."</p>
-                        <p class="story-dialog-text" style="margin-top:8px;">"Show them what your partner can do. The road begins here."</p>
+                        <p class="story-dialog-text">"Hold up — someone's blocking the route gate. ${displayRival}."</p>
+                        <p class="story-dialog-text" style="margin-top:8px;">"They picked up their starter the same morning you did. Same hunger, same chance. They won't let you out of Pallet Town without a fight."</p>
+                        <p class="story-dialog-text" style="margin-top:8px;">"Show them what your partner can do. From here, every road is a rival."</p>
                     </div>
                 </div>
                 <button type="button" style="margin-top:8px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">Continue →</button>`;
