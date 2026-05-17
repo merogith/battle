@@ -3,6 +3,84 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Story-mode event registry refactor (architecture) 2026-05-17 (`claude/refactor-story-mode-PDZsW`)
+
+### Changed — Internal architecture, no behavior change
+
+- Story mode's per-event flow (cold-open scenes, catch tutorial, roaming
+  legendary, wild route) is now driven by three small declarative registries
+  living just above the `enterBattleEvent` dispatcher in `battle.html`:
+  - **`STORY_BEATS`** — per-row metadata (kind, gym/elite number, tags,
+    optional cold-open tag). Rows not listed fall back to a derived default.
+  - **`STORY_COLD_OPENS`** — one-shot pre-battle scenes, cross-run-deduped
+    via story meta `tipsShown`.
+  - **`STORY_BATTLE_INTERRUPTS`** — ordered list of pre-battle catch screens.
+    Each interrupt's `prepare(battleIdx, ev)` returns the encounter spec
+    or `null`; the first non-null wins. Roaming preserves legacy
+    "consume-on-predicate-match" semantics via `markWildSeenOnPrepare`.
+- A fourth registry, **`STORYLINE_VARIANTS`**, lets the same timeline play
+  with different narrative framing — a variant can shadow any beat
+  (`beatOverrides[rowId]`) without affecting the difficulty curve. Pokémon
+  picks still flow through the existing rollers (`rollTrainerTeam` reads
+  the row's `gradeWeights`; `rollWildEncounter` reads the badge-keyed wild
+  curve), both gated by `sm.settings.enabledGens`. A variant changes the
+  *story around* the fight, never the foe roster math.
+- `enterBattleEvent` is now a three-step dispatch: resolve the beat, run
+  the cold-open via the bus, run the interrupt chain, then fall through to
+  the unchanged trainer-setup block. The previous stacked-`if` block (one
+  per scene type) is gone.
+
+### Player-facing surface
+
+- **Zero visible change** at v17 for existing runs — the refactor preserves
+  the exact pre-battle sequencing (cold-open → catch tutorial → roaming
+  legendary → wild route → trainer fight). Verified against the legacy
+  semantics with targeted smoke tests: beat resolution for known/unknown
+  rows, cold-open meta gating, interrupt ordering, and roaming consuming
+  its slot even when `makeBuild` returns null (legacy parity).
+- Save schema: `SAVE_VER` 16 → 17. `sm.storyLine` (default `'classic'`) is
+  the new field; `migrateStoryPreV17` sets it on any v16 save that's
+  loaded. Invalid values (number, empty string, null) all fall back to
+  `'classic'` at read time, so a corrupt save never strands the bus.
+
+### Testing & extensibility surface
+
+- New `window.StoryMode` inspection helpers — handy from DevTools when
+  adding new content:
+  ```js
+  window.StoryMode.getStoryBeat(rowId);     // merged beat for a row
+  window.StoryMode.getActiveStoryline();    // current variant object
+  window.StoryMode.listStorylines();        // available variant ids
+  ```
+- Adding a new pre-battle scene is now one append to
+  `STORY_BATTLE_INTERRUPTS` — no edits to `enterBattleEvent`.
+- Adding a new cold-open is one entry in `STORY_COLD_OPENS` and a
+  `coldOpen` tag on the relevant `STORY_BEATS` row.
+- Adding a new storyline variant is one entry in `STORYLINE_VARIANTS`
+  with `beatOverrides` for the rows being retuned. The registry already
+  understands variants; surfacing a picker UI is the only missing piece
+  and lands when variant #2 ships.
+
+### Reason
+
+Before this pass, deepening any single story beat (richer rival dialogue,
+a unique pre-fight scene for a specific gym leader, a one-shot encounter
+between two cities) meant editing the same ~80-line block inside
+`enterBattleEvent` and threading state through ad-hoc flags. That made
+content edits feel structural and structural edits feel scary. Splitting
+the metadata out into a registry and the orchestration into a bus means
+the dispatcher stays small, content lives in one obvious place per beat,
+and the door is open to actual storyline variants — same map, different
+journey, same Pokémon rules — without rewriting the engine each time.
+
+### Docs
+
+- `STORY_MODE_FLOW.md` §17 documents the architecture, the common-case
+  edit recipes ("how do I add a cold-open / interrupt / variant"), and the
+  adapt-to-ruleset contract (static narrative beats + flexible species
+  rolls bound by enabled gens, the row's grade weights, and the badge
+  curve).
+
 ## Unreleased — Calmer city hub + responsive tutor/market screens 2026-05-16 (`claude/improve-city-design-0pNO3`)
 
 ### Changed — City hub visual design

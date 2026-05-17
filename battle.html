@@ -24503,10 +24503,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.catchTutorialDone = (sm.eventIndex | 0) > 1;
             }
         }
-        /** v17: Fix stuck Pokémon — evolution/rebuild/swap could strip the slot id,
-         *  making the mon impossible to sell, deposit, or release.
-         *  Backfill any missing ids in both party and PC box. */
+        /** v17 — combined migration:
+         *   1. Storyline variant picker: default `sm.storyLine` to 'classic'
+         *      so the event-registry bus can read it safely.
+         *   2. Stuck-mon id backfill: evolution / rebuild / swap could strip a
+         *      slot's stable id, making the mon impossible to sell, deposit,
+         *      or release. Backfill any missing ids in both party and PC box. */
         function migrateStoryPreV17() {
+            if (typeof sm.storyLine !== 'string' || !sm.storyLine) {
+                sm.storyLine = 'classic';
+            }
             for (const arr of [sm.team, sm.pcBox]) {
                 if (!Array.isArray(arr)) continue;
                 for (const slot of arr) {
@@ -24547,6 +24553,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    balls: { poke: 5, great: 0, ultra: 0, master: 0 },
                    pokedex: { seen: [], caught: [] },
                    catchUnlocked: false,
+                   storyLine: 'classic',
                    postHofMysteryClimaxDone: false,
                    version:SAVE_VER };
 
@@ -24734,7 +24741,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { migrateStoryPreV16(); } catch (e) { console.warn('[Story] v16 catch tutorial migrate', e); }
                 }
                 if (_loadedVer < 17) {
-                    try { migrateStoryPreV17(); } catch (e) { console.warn('[Story] v17 stuck-mon id backfill migrate', e); }
+                    try { migrateStoryPreV17(); } catch (e) { console.warn('[Story] v17 storyline + stuck-mon id migrate', e); }
                 }
                 const _cap = Math.max(0, STORY_EVENTS_RAW.length - 1);
                 if (sm.eventIndex < 0 || sm.eventIndex > _cap) {
@@ -25840,6 +25847,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 balls: { poke: 5, great: 0, ultra: 0, master: 0 },
                 pokedex: { seen: [], caught: [] },
                 catchUnlocked: false,
+                storyLine: _readStorylineFromUI(),
                 postHofMysteryClimaxDone: false,
                 mysteryIdentity: _storyPickMysteryIdentity(),
             };
@@ -25870,6 +25878,283 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             settings.mechanics.dynamax = sm.settings.dynaOn;
             settings.mechanics.tera    = sm.settings.teraOn;
             settings.classicMode       = sm.settings.classicMode !== false;
+        }
+
+        // ── STORY MODE — EVENT REGISTRY ───────────────────────────────────
+        // Each unique event in STORY_EVENTS_RAW is modeled as a "beat". A beat
+        // carries the metadata that other subsystems (dialogue, cold-opens,
+        // pre-battle interrupts, victory flavor, storyline variants) consult
+        // when deciding how to render a specific row.
+        //
+        // The registries here intentionally do NOT own the prose itself —
+        // gym-leader / elite / champion / rival dialogue still lives in the
+        // existing tables (TRAINER_QUOTES, LEADER_VICTORY_LINES, …). The
+        // registries own *which* beat is firing, *which* tone applies, and
+        // *which* one-shot scene plays before it. That keeps content edits
+        // light (touch one table) and structural edits surgical (touch one
+        // registry).
+        //
+        // To add a new pre-battle scene → append to STORY_BATTLE_INTERRUPTS.
+        // To add a new cold-open      → add a row to STORY_COLD_OPENS and
+        //                                point the beat's `coldOpen` at it.
+        // To add a new storyline      → add an entry to STORYLINE_VARIANTS
+        //                                with beatOverrides for the rows
+        //                                you want to retune.
+        //
+        // Pokémon selection for any beat still flows through the existing
+        // rollers (`rollTrainerTeam`, `rollWildEncounter`, `rollMystery…`),
+        // which read `sm.settings.enabledGens` and the row's gradeWeights.
+        // Storylines therefore CANNOT break the difficulty curve — they
+        // only adjust narrative framing.
+
+        /** Per-row beat metadata. Keys are storyRowId (column 0 of
+         *  STORY_EVENTS_RAW), NOT array indices. Rows not listed fall back
+         *  to `_deriveDefaultBeat` so the registry stays compact.
+         *  Fields (all optional except `kind`):
+         *    kind        — 'rival' | 'gymLeader' | 'gymTrainer' | 'basic' |
+         *                  'elite' | 'champion' | 'mystery' | 'victoryRoad' |
+         *                  'aceTrainer'
+         *    gymNumber   — 1..8 (gymLeader / gymTrainer)
+         *    eliteNumber — 1..4 (elite)
+         *    coldOpen    — STORY_COLD_OPENS key (one-shot pre-battle scene)
+         *    tags        — free-form list ('introRival', 'leagueRival', …)
+         *    tone        — narrative tone hint for downstream dialogue picks */
+        const STORY_BEATS = {
+            68: { kind: 'rival',    tags: ['introRival', 'phase0'], coldOpen: 'introRival' },
+            5:  { kind: 'gymLeader', gymNumber: 1 },
+            11: { kind: 'gymLeader', gymNumber: 2 },
+            18: { kind: 'gymLeader', gymNumber: 3 },
+            24: { kind: 'gymLeader', gymNumber: 4 },
+            31: { kind: 'gymLeader', gymNumber: 5 },
+            38: { kind: 'gymLeader', gymNumber: 6 },
+            46: { kind: 'gymLeader', gymNumber: 7 },
+            53: { kind: 'gymLeader', gymNumber: 8 },
+            12: { kind: 'rival',    tags: ['midRival', 'phase2'] },
+            39: { kind: 'rival',    tags: ['phase3'] },
+            65: { kind: 'rival',    tags: ['leagueRival', 'phase4'] },
+            60: { kind: 'elite',    eliteNumber: 1 },
+            61: { kind: 'elite',    eliteNumber: 2 },
+            62: { kind: 'elite',    eliteNumber: 3 },
+            63: { kind: 'elite',    eliteNumber: 4 },
+            64: { kind: 'champion' },
+            67: { kind: 'mystery',  tags: ['postHoFMystery', 'cagedGod'] }
+        };
+
+        /** Cold-open scenes — one-shot narrative overlays that fire before a
+         *  specific beat. Tracked via story meta (`tipsShown[metaKey]`) so
+         *  they never re-fire on reload or NG+. Each scene's `run(ev, onDone)`
+         *  is responsible for showing the overlay and calling `onDone` on
+         *  dismiss; the bus handles the meta stamp. */
+        const STORY_COLD_OPENS = {
+            introRival: {
+                metaKey: 'intro-rival-coldopen',
+                run(ev, onDone) {
+                    const rivalName = (sm && sm.trainerAssignments) ? sm.trainerAssignments[ev[0] | 0] : null;
+                    _showIntroRivalColdOpen(rivalName, onDone);
+                }
+            }
+        };
+
+        /** Storyline variants — let the same STORY_EVENTS_RAW timeline play
+         *  differently from run to run. A variant can shadow any beat
+         *  (`beatOverrides[rowId] = { …partial beat… }`) and set a default
+         *  tone for the dialogue layer. Pokémon picks remain driven by the
+         *  per-row gradeWeights and `sm.settings.enabledGens`, so variants
+         *  cannot break the difficulty curve. */
+        const STORYLINE_VARIANTS = {
+            classic: {
+                id: 'classic',
+                label: 'Classic Journey',
+                description: 'Eight gyms, an Elite Four, and a Champion to dethrone.',
+                defaultTone: 'standard',
+                beatOverrides: {}
+            }
+            // Future variants slot in here. See STORY_MODE_FLOW.md §17 for
+            // the contract and a worked example.
+        };
+
+        function _storyActiveVariantId() {
+            const id = (sm && sm.storyLine) || 'classic';
+            return STORYLINE_VARIANTS[id] ? id : 'classic';
+        }
+        function _storyActiveVariant() {
+            return STORYLINE_VARIANTS[_storyActiveVariantId()] || STORYLINE_VARIANTS.classic;
+        }
+        /** Read the storyline picker on the new-run setup screen, if it
+         *  exists. Falls back to whatever's saved as the menu default, or
+         *  'classic'. Defined here (not below) because startNewRun calls
+         *  it at run-construction time. */
+        function _readStorylineFromUI() {
+            try {
+                const el = document.getElementById('story-setting-storyline');
+                if (el && el.value && STORYLINE_VARIANTS[el.value]) return el.value;
+            } catch (e) {}
+            return 'classic';
+        }
+
+        /** Derive a minimal beat from STORY_EVENTS_RAW for rows that don't
+         *  carry an explicit STORY_BEATS entry. Returns just enough metadata
+         *  for the dialogue / interrupt layer to make a decision. */
+        function _deriveDefaultBeat(ev) {
+            if (!ev) return { kind: 'other' };
+            if (ev[1] === 'City') return { kind: 'city' };
+            if (ev[1] === 'Hall of Fame') return { kind: 'hallOfFame' };
+            if (ev[1] !== 'Battle') return { kind: 'other' };
+            const name = String(ev[2] || '');
+            const gl = name.match(/^Gym Leader (\d)$/);
+            if (gl) return { kind: 'gymLeader', gymNumber: +gl[1] };
+            if (/^Gym Trainer/.test(name)) return { kind: 'gymTrainer' };
+            const ee = name.match(/^E([1-4])$/);
+            if (ee) return { kind: 'elite', eliteNumber: +ee[1] };
+            if (name === 'Champion') return { kind: 'champion' };
+            if (name === 'Mystery Figure') return { kind: 'mystery' };
+            if (name === 'Victory Road') return { kind: 'victoryRoad' };
+            if (name === 'Elite Trainer') return { kind: 'aceTrainer' };
+            if (name === 'Rival') return { kind: 'rival' };
+            return { kind: 'basic' };
+        }
+
+        /** Return the full beat for an event row: derived default ←
+         *  STORY_BEATS entry ← active-variant override. Pass `ev` (the
+         *  STORY_EVENTS_RAW row) when you already have it; the function
+         *  looks it up by rowId otherwise. */
+        function getStoryBeatForRow(rowId, ev) {
+            const rid = rowId | 0;
+            const row = ev || (typeof STORY_EVENTS_RAW !== 'undefined'
+                ? STORY_EVENTS_RAW.find(r => r && (r[0] | 0) === rid)
+                : null);
+            const derived = _deriveDefaultBeat(row);
+            const base = STORY_BEATS[rid] || {};
+            const variant = _storyActiveVariant();
+            const ov = (variant.beatOverrides && variant.beatOverrides[rid]) || {};
+            return { ...derived, ...base, ...ov, _variantId: variant.id };
+        }
+
+        // ── PRE-BATTLE INTERRUPT REGISTRY ─────────────────────────────────
+        // The interrupt chain that runs before `enterBattleEvent` actually
+        // launches the fight. Each entry's `prepare(battleIdx, ev)` returns
+        // either `null` (predicate failed / preparation failed) or
+        //   { encounter, options, markWildSeenOnPrepare }
+        // — the bus then fires `enterCatchEncounter(encounter, …, options)`
+        // and short-circuits the rest of the chain.
+        //
+        // Order matters: the first non-null `prepare` wins. `markWildSeenOnPrepare`
+        // controls whether the wild-route slot is consumed at predicate time
+        // (roaming) or only on successful encounter-screen launch (catch
+        // tutorial, wild route). Adding a new pre-battle scene = one
+        // append here — `enterBattleEvent` doesn't change.
+        const STORY_BATTLE_INTERRUPTS = [
+            {
+                id: 'catchTutorial',
+                prepare(battleIdx, ev) {
+                    if (!_shouldFireCatchTutorialBeforeBattle(battleIdx)) return null;
+                    const partner = _pickStarterPartner(storySettingsGens());
+                    if (!partner) return null;
+                    return {
+                        encounter: partner,
+                        options: { forcedCatchRate: 1.0, forcedFleeRate: 0, tutorialMode: true },
+                        markWildSeenOnPrepare: false
+                    };
+                }
+            },
+            {
+                id: 'roamingLegendary',
+                prepare(battleIdx, ev) {
+                    if (!_shouldFireRoamingBeforeBattle(battleIdx)) return null;
+                    // Legacy parity: consume the pending roaming AND the
+                    // wild slot the moment the predicate fires, even if
+                    // makeBuild then fails. The legendary is silently
+                    // lost in that case so the slot can't re-fire.
+                    const pending = _consumeRoamingPending();
+                    _markWildSeen(battleIdx);
+                    if (!pending || !pending.name) return null;
+                    let build = null;
+                    try { build = makeBuild(pending.name); } catch (e) { build = null; }
+                    if (!build) return null;
+                    return {
+                        encounter: {
+                            name: pending.name,
+                            build,
+                            id: 'm_' + Math.random().toString(36).slice(2, 10),
+                            wild: true,
+                            roaming: true
+                        },
+                        options: { forcedCatchRate: 0.30, forcedFleeRate: 1.0, roamingLabel: 'Roaming Pokémon' },
+                        markWildSeenOnPrepare: true
+                    };
+                }
+            },
+            {
+                id: 'wildRoute',
+                prepare(battleIdx, ev) {
+                    if (!_shouldFireWildBeforeBattle(battleIdx)) return null;
+                    // Wild grade is keyed on `sm.badges` (see _WILD_GRADE_CURVE_BY_BADGES),
+                    // independent of the upcoming trainer's gradeWeights — wilds reflect
+                    // the route's biology, not the next fight's lineup.
+                    const enc = rollWildEncounter(storySettingsGens());
+                    if (!enc) return null;
+                    return {
+                        encounter: enc,
+                        options: {},
+                        markWildSeenOnPrepare: false
+                    };
+                }
+            }
+        ];
+
+        /** Walk STORY_BATTLE_INTERRUPTS in order; on the first match, fire
+         *  the catch screen and return `true` so the caller short-circuits.
+         *  Returns `false` if no interrupt fired. */
+        function _runFirstStoryInterrupt(battleIdx, ev, onComplete) {
+            for (const intr of STORY_BATTLE_INTERRUPTS) {
+                let prepared = null;
+                try { prepared = intr.prepare(battleIdx, ev); }
+                catch (e) {
+                    console.warn('[Story] interrupt prepare failed:', intr.id, e);
+                    prepared = null;
+                }
+                if (prepared && prepared.encounter) {
+                    if (!prepared.markWildSeenOnPrepare) _markWildSeen(battleIdx);
+                    try {
+                        enterCatchEncounter(prepared.encounter, onComplete, prepared.options || {});
+                    } catch (e) {
+                        console.error('[Story] interrupt enterCatchEncounter failed:', intr.id, e);
+                        return false;
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /** Dispatch a cold-open scene by beat tag. Cross-run-deduped via
+         *  story meta (each scene declares a `metaKey`). Returns `true` and
+         *  calls `onPlayed` when the scene actually plays; returns `false`
+         *  (without calling `onPlayed`) when the beat has no cold-open or
+         *  the scene already played this save. */
+        function _runStoryColdOpen(beat, ev, onPlayed) {
+            if (!beat || !beat.coldOpen) return false;
+            const scene = STORY_COLD_OPENS[beat.coldOpen];
+            if (!scene || typeof scene.run !== 'function') return false;
+            try {
+                const meta = readStoryMeta();
+                const tip = scene.metaKey;
+                if (tip && meta && meta.tipsShown && meta.tipsShown[tip]) return false;
+                scene.run(ev, () => {
+                    try {
+                        const m2 = readStoryMeta();
+                        if (!m2.tipsShown) m2.tipsShown = {};
+                        if (tip) m2.tipsShown[tip] = true;
+                        writeStoryMeta(m2);
+                    } catch (e) {}
+                    try { onPlayed && onPlayed(); }
+                    catch (e) { console.error('[Story] cold-open onPlayed threw:', e); }
+                });
+                return true;
+            } catch (e) {
+                console.warn('[Story] cold-open dispatch failed:', beat.coldOpen, e);
+                return false;
+            }
         }
 
         // ── MAIN EVENT LOOP ───────────────────────────────────────────────
@@ -27819,90 +28104,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 processNextEvent();
                 return;
             }
-            // Intro Rival cold-open: one-shot scene before the first battle of any save.
-            // Cross-run-deduped via story meta; on dismiss re-enters this function with
-            // _coldOpenChecked so the scene doesn't loop.
-            if (!_coldOpenChecked && (ev[0] | 0) === STORY_RIVAL_ROW_INTRO) {
-                try {
-                    const _coMeta = readStoryMeta();
-                    const _coSeen = _coMeta && _coMeta.tipsShown && _coMeta.tipsShown['intro-rival-coldopen'];
-                    if (!_coSeen) {
-                        const _rivalName = (sm && sm.trainerAssignments) ? sm.trainerAssignments[ev[0] | 0] : null;
-                        _showIntroRivalColdOpen(_rivalName, () => enterBattleEvent(ev, _wildAlreadyChecked, true));
-                        return;
-                    }
-                } catch (e) { console.warn('[Story] intro rival cold-open failed, continuing', e); }
+            // Resolve the beat (kind, gymNumber, coldOpen, variant overrides…)
+            // once so the pre-battle scenes and the trainer-setup block below
+            // can read consistent metadata. See STORY_BEATS / STORYLINE_VARIANTS.
+            const _beat = getStoryBeatForRow(ev[0] | 0, ev);
+
+            // Cold-open: one-shot pre-battle narrative scene declared by the
+            // beat. Dispatched through STORY_COLD_OPENS; cross-run-deduped via
+            // story meta so the scene plays exactly once per save. On dismiss
+            // the scene re-enters this function with _coldOpenChecked=true.
+            if (!_coldOpenChecked) {
+                const _firedColdOpen = _runStoryColdOpen(_beat, ev,
+                    () => enterBattleEvent(ev, _wildAlreadyChecked, true));
+                if (_firedColdOpen) return;
             }
-            // Wild route interrupt — fire once per eventIndex. Skipped on rematch (the
-            // per-eventIndex flag prevents re-fire) and on the post-HoF boss arc (M4).
-            // Roaming sub-legendary (post-Gym 5 / Gym 7) takes precedence: when a
-            // roaming encounter is queued, it replaces the regular wild on the next
-            // route node, so the player gets one focused 30%-catch one-shot instead
-            // of a normal wild + a separate legendary.
+
+            // Pre-battle interrupts: catch tutorial, roaming legendary, route
+            // wild — declarative chain in STORY_BATTLE_INTERRUPTS. First match
+            // wins. Each interrupt fires `enterCatchEncounter` and, on dismiss,
+            // re-enters this function with `_wildAlreadyChecked=true` so the
+            // chain doesn't loop. Skipped entirely on rematch / retry. Post-HoF
+            // Mystery (the Caged God arc) opts out via its own predicates.
             if (!_wildAlreadyChecked) {
-                const _battleIdx = sm.eventIndex;
-                // Catch tutorial — fires once, right after the intro rival is
-                // beaten, on the way to the next battle. Replaces the normal
-                // wild interrupt for this one slot (so the player isn't doing
-                // two catch screens back-to-back).
-                if (_shouldFireCatchTutorialBeforeBattle(_battleIdx)) {
-                    // Tutorial mon is always Grade 4 (drawn from STARTER_PARTNER_POOL
-                    // which is curated to G4-tier early-route species), and catch is
-                    // 100% on first throw, no flee. The player's first catching
-                    // experience should be a guaranteed success — they learn the
-                    // mechanic without the frustration of a missed throw.
-                    //
-                    // The tutorial-done flag is set inside `_catchHandleSuccess`
-                    // (when the catch actually lands), NOT here, so a mid-tutorial
-                    // reload doesn't lock the player out without their partner mon.
-                    // We do mark the wild-seen flag for this slot so the regular
-                    // wild route doesn't pile on top of the tutorial; that's
-                    // re-fired idempotently if the tutorial reopens.
-                    const _partner = _pickStarterPartner(storySettingsGens());
-                    if (_partner) {
-                        _markWildSeen(_battleIdx);
-                        enterCatchEncounter(_partner, () => enterBattleEvent(ev, true), {
-                            forcedCatchRate: 1.0,
-                            forcedFleeRate: 0,
-                            tutorialMode: true
-                        });
-                        return;
-                    }
-                }
-                if (_shouldFireRoamingBeforeBattle(_battleIdx)) {
-                    const pending = _consumeRoamingPending();
-                    _markWildSeen(_battleIdx);
-                    if (pending && pending.name) {
-                        // Roaming legendaries use a full makeBuild (like the Caged God),
-                        // not the partially-trained wild build — they're rare, they
-                        // should feel battle-ready out of the box if caught.
-                        let _build = null;
-                        try { _build = makeBuild(pending.name); } catch (e) { _build = null; }
-                        if (_build) {
-                            const _enc = {
-                                name: pending.name,
-                                build: _build,
-                                id: 'm_' + Math.random().toString(36).slice(2, 10),
-                                wild: true,
-                                roaming: true
-                            };
-                            enterCatchEncounter(_enc, () => enterBattleEvent(ev, true), {
-                                forcedCatchRate: 0.30,
-                                forcedFleeRate: 1.0,
-                                roamingLabel: 'Roaming Pokémon'
-                            });
-                            return;
-                        }
-                    }
-                }
-                if (_shouldFireWildBeforeBattle(_battleIdx)) {
-                    _markWildSeen(_battleIdx);
-                    const _enc = rollWildEncounter(storySettingsGens());
-                    if (_enc) {
-                        enterCatchEncounter(_enc, () => enterBattleEvent(ev, true));
-                        return;
-                    }
-                }
+                const _firedInterrupt = _runFirstStoryInterrupt(sm.eventIndex, ev,
+                    () => enterBattleEvent(ev, true));
+                if (_firedInterrupt) return;
             }
             const [idx, type, event, gradeWeights, coins] = ev;
             const sg = storySettingsGens();
@@ -33273,6 +33499,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openTeamTester, openTeamTesterSyncFromStory, runTeamTester, copyTeamTesterText, closeTeamTester,
             previewHallOfFame, seedDebugMysteryLegendGate, seedDebugPostHofClimax, seedTestMegaFromUrl, seedStoryChampionWeakTestFromUrl, clearCurrentEnemyLock,
             openRunSummary,
+            // Story-mode event registry (read-only inspection surface)
+            getStoryBeat: function(rowId) { return getStoryBeatForRow(rowId | 0); },
+            getActiveStoryline: function() { return _storyActiveVariant(); },
+            listStorylines: function() { return Object.keys(STORYLINE_VARIANTS); },
         };
         })(); // end StoryMode IIFE
 
