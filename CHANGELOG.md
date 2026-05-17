@@ -3,6 +3,79 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Safari Zone authentic gameplay loop 2026-05-16 (`claude/safari-zone-gameplay-vxFOb`)
+
+### Added — Per-turn flee on Bait/Rock (canonical Safari Zone tension)
+
+- The wild Pokémon may now flee at the end of **any** turn — Bait or Rock
+  turns included, not just after a missed throw. This is the core
+  dilemma the real Safari Zone is built around: every rock improves your
+  eventual catch chance, but the wild may bolt on the same turn you
+  threw it. Without this, Bait/Rock were "free" actions that just
+  stacked modifiers; with it, the bait/rock loop is a real bet.
+- **Bait stays gentle.** Bait turn flee multiplier is `0.20×` the
+  post-miss formula — typically 1–6% per turn. The Pokémon is occupied
+  eating, so wandering off is unlikely but not impossible.
+- **Rock is the real gamble.** Rock turn flee multiplier is `0.55×` —
+  ~20–40% per turn, scaling fast with each rock stack. Capped at 45%
+  (`SAFARI_TURN_FLEE_CAP`) so no single action ever auto-flees.
+- The Bait and Rock buttons now surface their **per-turn flee chance**
+  inline (e.g. `🪨 Rock — flee 28%`), so the gamble is legible at the
+  point of decision — same affordance as the catch-% badge on the ball.
+- Buttons disable at 3 stacks to make the cap obvious.
+
+### Changed — Safari catch math slightly more forgiving overall
+
+The new per-turn flee adds real session risk, so the catch side gets a
+modest boost so a 6-encounter run still feels rewarding instead of
+brutal:
+
+- **Safari Ball multiplier `1.25× → 1.35×`.** The baseline (no
+  bait/rock) Safari throw is now between Poké and Great rather than
+  just above Poké. A G3 with a fresh Safari Ball is ~30% instead of
+  ~28%.
+- **Rock catch multiplier `1.45× → 1.65×`.** Stacking rocks is now
+  genuinely powerful: a G3 after 2 rocks goes from ~58% to ~81% (and
+  hits the catch-mult ×4 cap at ~88% with a third rock — G4 caps at
+  100%). The trade-off is steep — 3 rocks means three per-turn flee
+  rolls — but if you get there, the throw is essentially decided.
+- Bait catch multiplier (`0.70×`) and flee multipliers
+  (`0.55×` bait / `1.70×` rock) are unchanged — the strategic axes
+  stay the same; only the levers got sharper.
+
+### Added — Safari Zone flavor polish
+
+- Dedicated **🦒 Safari Zone** header on the catch screen when inside a
+  Safari run (was the generic "🌿 Wild Encounter"). Boss and tutorial
+  flows get their own headers too. Restored on exit.
+- **PA-style end-of-session announcements** replace the dry "session is
+  over": `📣 "Ding-dong! Your Safari Zone game is over!"`, `📣 "Ding-dong!
+  You're out of Safari Balls — game over!"`, and a warm
+  `📣 "Thanks for visiting the Safari Zone! Come again soon."` on early
+  exit. Same vibe as the canon games' warden voice.
+- **Grade-keyed opening flavor** for each Safari encounter. G1 reads as
+  "rare, alert, ready to bolt"; G4 reads as "ambling, friendly, curious".
+  Replaces the same "Safari Pokémon appeared!" copy for every wild —
+  the player now has an observation cue before picking Bait vs. Rock.
+- Welcome modal expanded to spell out the per-turn flee rule so
+  first-time visitors know "every turn the wild may flee" before they
+  start clicking Rock.
+- Tutorial tip rewritten to call out the per-turn flee and the
+  bait-vs-rock gamble explicitly.
+
+### Reason
+
+The previous Safari Zone replicated most of the canon loop (session
+balls, bait/rock asymmetry, encounter cap, exclusive Safari Ball) but
+missed the single mechanic that makes the real Safari Zone *feel* like
+a casino: the wild can flee on any turn, not just after a missed throw.
+Without per-turn flee, the optimal play was always "stack 3 rocks
+risk-free, throw once" — Bait/Rock were modifier sliders, not
+decisions. Adding per-turn flee restores the real dilemma, and the
+modest catch-rate boost (Safari Ball 1.35×, Rock catch 1.65×) keeps a
+6-encounter session from collapsing into "everything fled, I caught
+nothing".
+
 ## Unreleased — Story-mode event registry refactor (architecture) 2026-05-17 (`claude/refactor-story-mode-PDZsW`)
 
 ### Changed — Internal architecture, no behavior change
@@ -272,7 +345,10 @@ sit one tap away from the hub.
 ### Misc
 
 - Stale comment over `SAFARI_BALL_MULT` (called it "1.5×, between Great
-  and Ultra") corrected to match the live 1.25× value.
+  and Ultra") corrected to match the live value. (Note: the Safari Zone
+  gameplay-loop branch superseding this PR bumps the same constant to
+  1.35× and rewrites the comment again — see the entry at the top of
+  this file.)
 
 ## Unreleased — Vitamin / EV-training balance pass 2026-05-16 (`claude/balance-vitamins-stats-PAaPn`)
 
