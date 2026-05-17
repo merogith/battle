@@ -612,6 +612,337 @@
             font-size: 10px; color: #999; line-height: 1.4; margin-top: 6px; padding-top: 6px;
             border-top: 1px dashed #3a3a3a;
         }
+
+        /* ──────────────────────────────────────────────────────────────
+           REDESIGNED TUTOR UX — Move Tutor / Battle Dojo / Nature Rater
+           Card-based pickers, filter chips, recommendations, comparison.
+           Prefix `.tx-` for the new layer to avoid clashing with old classes.
+           ────────────────────────────────────────────────────────────── */
+        .tx-toolbar {
+            display: flex; flex-direction: column; gap: 8px;
+            padding: 10px 12px; margin-bottom: 10px;
+            background: linear-gradient(180deg, rgba(28,32,48,0.85), rgba(14,17,26,0.85));
+            border: 1px solid #3a4156; border-radius: 8px;
+            position: sticky; top: 0; z-index: 3;
+            backdrop-filter: blur(6px);
+        }
+        .tx-search-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .tx-search-input {
+            flex: 1 1 200px; min-width: 0;
+            padding: 8px 10px; font-size: 13px; color: #e8eaf0;
+            background: rgba(0,0,0,0.35); border: 1px solid #4a5168;
+            border-radius: 6px; font-family: inherit;
+        }
+        .tx-search-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(206,147,216,0.2); }
+        .tx-search-input::placeholder { color: #6b7184; }
+        .tx-sort-select {
+            padding: 8px 10px; font-size: 12px;
+            background: rgba(0,0,0,0.35); color: #d2d7df;
+            border: 1px solid #4a5168; border-radius: 6px; font-family: inherit;
+            cursor: pointer;
+        }
+        .tx-chip-row { display: flex; flex-wrap: wrap; gap: 4px; }
+        .tx-chip {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 4px 10px; font-size: 11px; font-weight: 600;
+            background: rgba(40,46,60,0.65); border: 1px solid #4a5168;
+            color: #b4bbcc; border-radius: 999px;
+            cursor: pointer; transition: all 0.12s; white-space: nowrap;
+            font-family: inherit;
+        }
+        .tx-chip:hover { border-color: var(--accent); color: #e0e4ee; }
+        .tx-chip[data-active="1"] {
+            background: var(--accent); color: #1a0d22; border-color: var(--accent);
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.15) inset;
+        }
+        /* Type chips: show the type color as a small left border in the inactive state,
+           so the chip stays neutral until it's actively selected. */
+        .tx-chip.tx-chip--type { padding: 3px 10px; text-shadow: none; }
+        .tx-chip.tx-chip--type.type-badge {
+            background: rgba(40,46,60,0.65) !important; color: #b4bbcc !important;
+            text-shadow: none !important;
+        }
+        .tx-chip.tx-chip--type.type-Normal[data-active="1"]   { background: #A8A878 !important; color: #fff !important; }
+        .tx-chip.tx-chip--type.type-Fire[data-active="1"]     { background: #F08030 !important; color: #fff !important; }
+        .tx-chip.tx-chip--type.type-Water[data-active="1"]    { background: #6890F0 !important; color: #fff !important; }
+        .tx-chip.tx-chip--type.type-Grass[data-active="1"]    { background: #78C850 !important; color: #fff !important; }
+        .tx-chip.tx-chip--type.type-Electric[data-active="1"] { background: #F8D030 !important; color: #000 !important; }
+        .tx-chip.tx-chip--type.type-Ice[data-active="1"]      { background: #98D8D8 !important; color: #000 !important; }
+        .tx-chip.tx-chip--type.type-Fighting[data-active="1"] { background: #C03028 !important; color: #fff !important; }
+        .tx-chip.tx-chip--type.type-Poison[data-active="1"]   { background: #A040A0 !important; color: #fff !important; }
+        .tx-chip.tx-chip--type.type-Ground[data-active="1"]   { background: #E0C068 !important; color: #000 !important; }
+        .tx-chip.tx-chip--type.type-Flying[data-active="1"]   { background: #A890F0 !important; color: #fff !important; }
+        .tx-chip.tx-chip--type.type-Psychic[data-active="1"]  { background: #F85888 !important; color: #fff !important; }
+        .tx-chip.tx-chip--type.type-Bug[data-active="1"]      { background: #A8B820 !important; color: #fff !important; }
+        .tx-chip.tx-chip--type.type-Rock[data-active="1"]     { background: #B8A038 !important; color: #fff !important; }
+        .tx-chip.tx-chip--type.type-Ghost[data-active="1"]    { background: #705898 !important; color: #fff !important; }
+        .tx-chip.tx-chip--type.type-Dragon[data-active="1"]   { background: #7038F8 !important; color: #fff !important; }
+        .tx-chip.tx-chip--type.type-Dark[data-active="1"]     { background: #705848 !important; color: #fff !important; }
+        .tx-chip.tx-chip--type.type-Steel[data-active="1"]    { background: #B8B8D0 !important; color: #000 !important; }
+        .tx-chip.tx-chip--type.type-Fairy[data-active="1"]    { background: #EE99AC !important; color: #000 !important; }
+        .tx-chip.tx-chip--cat-Physical[data-active="1"] { background: #ff6b6b; border-color: #ff6b6b; color: #1a0a0a; }
+        .tx-chip.tx-chip--cat-Special[data-active="1"]  { background: #6b9fff; border-color: #6b9fff; color: #08111e; }
+        .tx-chip.tx-chip--cat-Status[data-active="1"]   { background: #b4bbcc; border-color: #b4bbcc; color: #1a1a20; }
+        .tx-count-pill {
+            display: inline-flex; align-items: center;
+            padding: 2px 8px; font-size: 10px; color: #b4bbcc;
+            background: rgba(0,0,0,0.4); border: 1px solid #3a4156;
+            border-radius: 999px; margin-left: auto;
+        }
+
+        /* Slot picker (4 move slots, item slot, ability slot, nature) */
+        .tx-slot-row {
+            display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px; margin: 6px 0 14px;
+        }
+        @media (min-width: 720px) { .tx-slot-row { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+        .tx-slot-row.tx-slot-row--single { grid-template-columns: 1fr; }
+        .tx-slot-card {
+            display: flex; flex-direction: column; gap: 4px;
+            padding: 8px 10px; border: 1px solid #3a4156; border-radius: 8px;
+            background: linear-gradient(180deg, rgba(22,26,38,0.85), rgba(12,15,23,0.85));
+            cursor: pointer; transition: all 0.12s; text-align: left;
+            font-family: inherit; color: inherit;
+            min-height: 56px;
+        }
+        .tx-slot-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+        .tx-slot-card[data-active="1"] {
+            border-color: var(--accent);
+            background: linear-gradient(180deg, rgba(80,46,100,0.5), rgba(40,20,60,0.5));
+            box-shadow: 0 0 0 1px var(--accent) inset, 0 0 12px rgba(206,147,216,0.3);
+        }
+        .tx-slot-card[data-locked="1"] { opacity: 0.55; cursor: default; }
+        .tx-slot-card[data-locked="1"]:hover { transform: none; border-color: #3a4156; }
+        .tx-slot-label {
+            font-size: 9px; color: #8b92a4; letter-spacing: 0.06em;
+            text-transform: uppercase; line-height: 1;
+        }
+        .tx-slot-name {
+            font-size: 13px; font-weight: 700; color: #e8eaf0;
+            display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+            line-height: 1.2;
+        }
+        .tx-slot-meta { font-size: 10px; color: #9aa3b8; display: flex; flex-wrap: wrap; gap: 4px 8px; }
+        .tx-slot-meta strong { color: #d4d9e4; }
+        .tx-slot-empty { color: #707990; font-style: italic; }
+
+        /* Cards grid (replaces native <select>) */
+        .tx-grid {
+            display: grid; gap: 8px;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            max-height: 60vh; overflow-y: auto;
+            padding: 2px; margin-top: 8px;
+        }
+        @media (max-width: 480px) {
+            .tx-grid { grid-template-columns: 1fr; max-height: none; }
+        }
+        .tx-grid-empty {
+            padding: 20px; text-align: center; color: #777; font-size: 12px;
+            border: 1px dashed #3a4156; border-radius: 8px;
+        }
+
+        /* Move/Item/Ability/Nature option card */
+        .tx-card {
+            display: flex; flex-direction: column; gap: 6px;
+            padding: 10px 12px; border: 1px solid #3a4156; border-radius: 8px;
+            background: linear-gradient(180deg, rgba(20,24,36,0.95), rgba(10,13,20,0.95));
+            cursor: pointer; transition: all 0.14s; position: relative;
+            font-family: inherit; color: inherit; text-align: left;
+        }
+        .tx-card:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.35); }
+        .tx-card[data-current="1"] {
+            border-color: #ffd54f; background: linear-gradient(180deg, rgba(60,45,15,0.55), rgba(30,22,8,0.85));
+        }
+        .tx-card[data-recommended="1"] {
+            border-color: #66bb6a;
+            box-shadow: 0 0 0 1px rgba(102,187,106,0.35) inset, 0 2px 8px rgba(102,187,106,0.12);
+        }
+        .tx-card[data-disabled="1"] { opacity: 0.55; cursor: not-allowed; }
+        .tx-card[data-disabled="1"]:hover { transform: none; }
+        .tx-card-head {
+            display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+            font-size: 13px; font-weight: 700;
+        }
+        .tx-card-title { color: #e8eaf0; flex: 1; min-width: 0; }
+        .tx-card-stats {
+            display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 2px 8px; font-size: 10px; color: #9aa3b8;
+        }
+        .tx-card-stats strong { color: #d4d9e4; font-weight: 700; }
+        .tx-card-stats .tx-stat-spe { color: #ffd54f; }
+        .tx-card-stats .tx-stat-bp { color: var(--hp-yellow, #ffeb3b); }
+        .tx-card-desc {
+            font-size: 10px; color: #b0b7c4; line-height: 1.45;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .tx-card-foot {
+            display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+            margin-top: auto; padding-top: 4px;
+        }
+        .tx-card-price { font-size: 10px; color: #ffd700; font-weight: 600; }
+        .tx-pill {
+            display: inline-flex; align-items: center; gap: 3px;
+            padding: 1px 6px; font-size: 9px; font-weight: 700;
+            background: rgba(0,0,0,0.5); border: 1px solid #3a4156;
+            color: #b4bbcc; border-radius: 999px; letter-spacing: 0.04em;
+        }
+        .tx-pill--rec { background: rgba(102,187,106,0.25); border-color: #66bb6a; color: #c8e6c9; }
+        .tx-pill--cur { background: rgba(255,213,79,0.18); border-color: #ffd54f; color: #fff3cd; }
+        .tx-pill--ha  { background: rgba(206,147,216,0.18); border-color: #ce93d8; color: #f3e5f5; }
+        .tx-pill--cat-Physical { background: rgba(255,107,107,0.18); border-color: #ff6b6b; color: #ffcaca; }
+        .tx-pill--cat-Special  { background: rgba(107,159,255,0.18); border-color: #6b9fff; color: #cbdbff; }
+        .tx-pill--cat-Status   { background: rgba(180,187,204,0.15); border-color: #b4bbcc; color: #e0e5ee; }
+        .tx-pill--nature-up    { background: rgba(102,187,106,0.18); border-color: #66bb6a; color: #c8e6c9; }
+        .tx-pill--nature-down  { background: rgba(244,67,54,0.18); border-color: #ef5350; color: #ffcdd2; }
+        .tx-pill--neutral      { background: rgba(180,187,204,0.12); border-color: #6b7184; color: #b4bbcc; }
+        .tx-icon-img {
+            width: 22px; height: 22px; image-rendering: auto;
+            flex-shrink: 0; vertical-align: middle;
+        }
+
+        /* Mode tabs (Battle Dojo: Items / Abilities) */
+        .tx-tabs {
+            display: flex; gap: 0; border-bottom: 1px solid #3a4156;
+            margin-bottom: 10px;
+        }
+        .tx-tab {
+            flex: 1; padding: 10px 14px; font-family: inherit;
+            font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
+            color: #8b92a4; background: transparent; border: 0;
+            border-bottom: 2px solid transparent; cursor: pointer;
+            transition: all 0.12s;
+        }
+        .tx-tab:hover { color: #d4d9e4; }
+        .tx-tab[data-active="1"] {
+            color: var(--accent); border-bottom-color: var(--accent);
+            background: linear-gradient(180deg, transparent, rgba(206,147,216,0.06));
+        }
+
+        /* Recommendation hero strip */
+        .tx-recs-strip {
+            display: flex; flex-direction: column; gap: 4px;
+            padding: 8px 10px; margin-bottom: 10px;
+            background: linear-gradient(90deg, rgba(20,40,20,0.6), rgba(20,30,15,0.4));
+            border: 1px solid #3a5b3a; border-left: 3px solid #66bb6a;
+            border-radius: 6px;
+        }
+        .tx-recs-strip-title {
+            font-size: 10px; color: #aed581; letter-spacing: 0.06em;
+            text-transform: uppercase; font-weight: 700;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .tx-recs-strip-detail { font-size: 11px; color: #c8e6c9; line-height: 1.45; }
+
+        /* Stat bars (EV preview, nature preview) */
+        .tx-stat-row {
+            display: grid; grid-template-columns: 28px 1fr 36px;
+            gap: 6px; align-items: center; font-size: 10px;
+        }
+        .tx-stat-row-label { color: #9aa3b8; font-weight: 700; letter-spacing: 0.04em; }
+        .tx-stat-row-bar {
+            height: 6px; background: rgba(0,0,0,0.4);
+            border: 1px solid #2a3142; border-radius: 999px; overflow: hidden;
+            position: relative;
+        }
+        .tx-stat-row-fill {
+            height: 100%; background: linear-gradient(90deg, #66bb6a, #aed581);
+            transition: width 0.25s ease;
+        }
+        .tx-stat-row-fill.tx-stat-fill--up   { background: linear-gradient(90deg, #43a047, #aed581); }
+        .tx-stat-row-fill.tx-stat-fill--down { background: linear-gradient(90deg, #c62828, #ef5350); }
+        .tx-stat-row-fill.tx-stat-fill--cur  { background: linear-gradient(90deg, #455a64, #607d8b); }
+        .tx-stat-row-fill.tx-stat-fill--new  { background: linear-gradient(90deg, #6a1b9a, #ce93d8); }
+        .tx-stat-row-val { font-variant-numeric: tabular-nums; color: #d4d9e4; text-align: right; }
+        .tx-stat-row-val[data-delta="up"]   { color: #aed581; }
+        .tx-stat-row-val[data-delta="down"] { color: #ef9a9a; }
+        .tx-stat-row-val[data-delta="zero"] { color: #9aa3b8; }
+
+        /* Confirm bar (per slot) */
+        .tx-confirm-bar {
+            position: sticky; bottom: 0;
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+            padding: 10px 12px; margin-top: 10px;
+            background: linear-gradient(180deg, rgba(22,24,34,0.95), rgba(12,14,22,0.96));
+            border: 1px solid #3a4156; border-radius: 8px;
+            box-shadow: 0 -4px 16px rgba(0,0,0,0.35);
+        }
+        .tx-confirm-bar-text { font-size: 12px; color: #d4d9e4; flex: 1; min-width: 0; }
+        .tx-confirm-bar-text strong { color: var(--accent); }
+        .tx-confirm-bar-btn {
+            padding: 10px 16px; font-size: 13px; font-weight: 700;
+            background: linear-gradient(180deg, #66bb6a, #43a047);
+            color: #fff; border: 1px solid #2e7d32; border-radius: 6px;
+            cursor: pointer; transition: all 0.12s;
+            font-family: inherit; letter-spacing: 0.03em; text-transform: uppercase;
+            min-height: 40px;
+        }
+        .tx-confirm-bar-btn:hover:not(:disabled) {
+            background: linear-gradient(180deg, #81c784, #4caf50);
+            transform: translateY(-1px); box-shadow: 0 2px 8px rgba(102,187,106,0.4);
+        }
+        .tx-confirm-bar-btn:disabled {
+            background: rgba(60,60,60,0.5); color: #9aa3b8;
+            border-color: #444; cursor: not-allowed;
+        }
+        .tx-confirm-bar-btn--secondary {
+            background: linear-gradient(180deg, #455a64, #37474f);
+            border-color: #263238; color: #cfd8dc;
+        }
+        .tx-confirm-bar-btn--secondary:hover:not(:disabled) {
+            background: linear-gradient(180deg, #546e7a, #455a64);
+        }
+
+        /* Nature grid (5×5) */
+        .tx-nature-grid {
+            display: grid; grid-template-columns: 60px repeat(5, minmax(0, 1fr));
+            gap: 4px; margin-top: 8px; font-size: 10px;
+        }
+        @media (max-width: 480px) {
+            .tx-nature-grid { grid-template-columns: 40px repeat(5, minmax(0, 1fr)); }
+        }
+        .tx-nature-cell {
+            padding: 6px 4px; text-align: center; border-radius: 5px;
+            border: 1px solid #2a3142; background: rgba(20,24,36,0.7);
+            cursor: pointer; transition: all 0.12s;
+            font-family: inherit; color: #d4d9e4;
+            min-height: 38px; display: flex; align-items: center; justify-content: center;
+            line-height: 1.2;
+        }
+        .tx-nature-cell:hover:not(:disabled) { border-color: var(--accent); background: rgba(206,147,216,0.1); }
+        .tx-nature-cell[data-active="1"] {
+            border-color: var(--accent); background: rgba(206,147,216,0.2);
+            font-weight: 700; box-shadow: 0 0 0 1px var(--accent);
+        }
+        .tx-nature-cell[data-recommended="1"] { border-color: #66bb6a; box-shadow: 0 0 6px rgba(102,187,106,0.3); }
+        .tx-nature-cell[data-neutral="1"] {
+            background: rgba(180,187,204,0.08);
+            grid-column: 1 / -1;
+        }
+        .tx-nature-cell-name { font-size: 11px; font-weight: 600; }
+        .tx-nature-axis-label {
+            display: flex; align-items: center; justify-content: center;
+            font-size: 9px; color: #8b92a4; letter-spacing: 0.05em;
+            text-transform: uppercase; font-weight: 600;
+            padding: 4px 2px;
+        }
+        .tx-nature-axis-label.tx-nature-axis--col {
+            flex-direction: column; gap: 2px;
+        }
+        .tx-nature-preview {
+            display: flex; flex-direction: column; gap: 4px;
+            padding: 10px 12px; margin-top: 12px;
+            background: rgba(20,24,36,0.7); border: 1px solid #3a4156;
+            border-radius: 8px;
+        }
+
+        /* Compact view tweaks for tutor (used on small screens) */
+        @media (max-width: 540px) {
+            .tx-card-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .tx-slot-card { min-height: 64px; padding: 10px; }
+            .tx-grid { gap: 6px; }
+        }
+
         @media (min-width: 720px) {
             .story-tutor-move-picker {
                 display: grid; grid-template-columns: 1fr minmax(200px, 1fr); grid-template-rows: auto 1fr auto;
@@ -34507,7 +34838,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const en = (sm.cityRerollsUsed[ek] || 0) + 1;
 
                 const gimmickTag = t.build?.gimmick && t.build.gimmick !== 'STANDARD'
-                    ? `<span style="font-size:9px;background:#333;padding:1px 4px;border-radius:3px;color:#ff9800;margin-left:4px;">${t.build.gimmick}</span>` : '';
+                    ? `<span class="tx-pill" style="background:rgba(255,152,0,0.18);border-color:#ff9800;color:#ffe0b2;">${t.build.gimmick}</span>` : '';
 
                 let tempMon = null;
                 try {
@@ -34520,50 +34851,79 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _rareCandyCount = (sm.inventory && sm.inventory.rareCandy) | 0;
                 let evoBlockHtml;
                 if (!evosAll.length) {
-                    evoBlockHtml = `<div class="story-link-build" style="font-size:11px;color:#888;">${t.name} is fully evolved.</div>`;
+                    evoBlockHtml = `<div class="tx-grid-empty" style="margin-top:8px;"><strong>${_esc(t.name)}</strong> is fully evolved. No more evolution paths.</div>`;
                 } else {
                     const allowedAny = evosAll.some(e => e.allowed);
-                    const evoBtns = evosAll.map(e => {
+                    // Stone Sage card per evolution — show sprite, types, BST, grade, and both gold + candy actions
+                    const evoCards = evosAll.map(e => {
                         if (!e.exists) {
-                            return `<button class="story-link-btn" disabled title="No data for ${e.name} in this build">⛔ ${e.name} <span style="opacity:0.6;">(unavailable)</span></button>`;
+                            return `<div class="tx-card" data-disabled="1" style="cursor:not-allowed;">
+                                <div class="tx-card-head">
+                                    <span class="tx-card-title">⛔ ${_esc(e.name)}</span>
+                                </div>
+                                <div class="tx-card-desc">No data for this evolution in this build.</div>
+                            </div>`;
                         }
                         const eg = getMonGrade(e.name, getBST(e.name));
                         const evoBase = baseStats[e.name] || {};
                         const evoTypes = evoBase.t1 ? getTypeHTML(evoBase.t1, evoBase.t2 || '') : '';
                         const bst = getBST(e.name);
+                        const sprite = (typeof getSprite === 'function') ? getSprite(e.name) : '';
                         if (!e.allowed) {
-                            return `<button class="story-link-btn" disabled title="${e.name} (Gen ${e.gen}) is not in your enabled generations" style="opacity:0.5;">⛔ ${e.name} <span style="font-size:9px;">G${eg} · BST ${bst} · Gen ${e.gen} disabled</span></button>`;
+                            return `<div class="tx-card" data-disabled="1" style="cursor:not-allowed;">
+                                <div class="tx-card-head">
+                                    <img src="${sprite}" alt="" style="width:32px;height:32px;image-rendering:pixelated;opacity:0.5;" onerror="this.style.visibility='hidden'">
+                                    <span class="tx-card-title" style="opacity:0.6;">${_esc(e.name)} ${evoTypes}</span>
+                                </div>
+                                <div class="tx-card-stats">
+                                    <span>Grade <strong>${eg}</strong></span>
+                                    <span>BST <strong>${bst}</strong></span>
+                                    <span>Gen <strong>${e.gen}</strong></span>
+                                    <span style="color:#ef9a9a;">Disabled</span>
+                                </div>
+                                <div class="tx-card-desc" style="color:#ef9a9a;">Gen ${e.gen} disabled in run settings.</div>
+                            </div>`;
                         }
                         const cost = _evoCostFor(eg, en);
                         const canAfford = sm.gold >= cost;
-                        const disabled = !canAfford;
-                        const tipText = `Evolve to ${e.name} for ${cost.toLocaleString()}G.${_evoReqHint(e.name)}`.replace(/"/g, '&quot;');
-                        const goldBtn = `<button class="story-link-btn" onclick="window.StoryMode.evoLabEvolve(${i}, '${e.name.replace(/'/g, "\\'")}')" ${disabled?'disabled':''} title="${tipText}" style="${disabled?'':'color:#76ff03;border-color:#76ff03;'}">⬆️ ${e.name} ${evoTypes} <span style="font-size:9px;">G${eg} · BST ${bst} · Gen ${e.gen}</span> <span style="font-size:10px;color:${disabled?'#aaa':'#ffd700'};">${storyGoldHtml(cost, false)}</span></button>`;
-                        // Rare Candy alternative — free instant evolution, no gold cost.
-                        // Surfaced only when the player has at least one in inventory.
-                        let candyBtn = '';
-                        if (_rareCandyCount > 0) {
-                            const candyTip = `Use 1 Rare Candy (you have ${_rareCandyCount}) — free evolution into ${e.name}. Saves ${cost.toLocaleString()}G.`.replace(/"/g, '&quot;');
-                            candyBtn = `<button class="story-link-btn" onclick="window.StoryMode.evoLabEvolveWithCandy(${i}, '${e.name.replace(/'/g, "\\'")}')" title="${candyTip}" style="color:#f8bbd0;border-color:#f8bbd0;margin-left:6px;"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:3px;">Rare Candy <span style="font-size:9px;color:#aaa;">(${_rareCandyCount} left)</span></button>`;
-                        }
-                        return goldBtn + candyBtn;
+                        const reqHint = (_evoReqHint(e.name) || '').replace(/^\.\s*/, '');
+                        const goldBtn = canAfford
+                            ? `<button class="story-tutor-btn" onclick="event.stopPropagation();window.StoryMode.evoLabEvolve(${i}, '${e.name.replace(/'/g, "\\'")}')" style="color:#76ff03;border-color:#76ff03;font-size:11px;padding:5px 8px;">⬆ Evolve · ${storyGoldHtml(cost, false)}</button>`
+                            : `<button class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;">Locked · need ${(cost - sm.gold).toLocaleString()}G</button>`;
+                        const candyBtn = (_rareCandyCount > 0)
+                            ? `<button class="story-tutor-btn" onclick="event.stopPropagation();window.StoryMode.evoLabEvolveWithCandy(${i}, '${e.name.replace(/'/g, "\\'")}')" style="color:#f8bbd0;border-color:#f8bbd0;font-size:11px;padding:5px 8px;"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="12" height="12" style="width:12px;height:12px;image-rendering:auto;vertical-align:-2px;margin-right:2px;">Candy (${_rareCandyCount})</button>`
+                            : '';
+                        return `<div class="tx-card" data-recommended="${canAfford?1:0}" style="cursor:default;">
+                            <div class="tx-card-head">
+                                <img src="${sprite}" alt="" style="width:40px;height:40px;image-rendering:pixelated;" onerror="this.style.visibility='hidden'">
+                                <span class="tx-card-title">${_esc(e.name)} ${evoTypes}</span>
+                            </div>
+                            <div class="tx-card-stats">
+                                <span>Grade <strong>${eg}</strong></span>
+                                <span>BST <strong>${bst}</strong></span>
+                                <span>Gen <strong>${e.gen}</strong></span>
+                                <span class="tx-stat-bp">${cost.toLocaleString()}G</span>
+                            </div>
+                            ${reqHint ? `<div class="tx-card-desc">${_esc(reqHint)}</div>` : ''}
+                            <div class="tx-card-foot">${goldBtn} ${candyBtn}</div>
+                        </div>`;
                     }).join('');
                     const costHint = allowedAny
-                        ? `<div style="font-size:10px;color:#aaa;margin-top:6px;">Prices by target tier — G3 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[3], false)} · G2 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[2], false)} · G1 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[1], false)}${en > 1 ? ` <span style="color:#888;">(× 1.5^${en-1} repeat use here)</span>` : ''}.${_rareCandyCount > 0 ? ` <span style="color:#f48fb1;">🍬 ${_rareCandyCount} Rare Cand${_rareCandyCount===1?'y':'ies'} in bag — free evolution alternative.</span>` : ''}</div>`
-                        : `<div style="font-size:10px;color:#ef9a9a;margin-top:6px;">No evolutions available with current generation toggles (enabled: ${enabledGensLabel}).</div>`;
-                    evoBlockHtml = `<div class="story-link-btns" style="margin-top:8px;">${evoBtns}</div>${costHint}`;
+                        ? `<div style="font-size:10px;color:#9aa3b8;margin-top:8px;">Prices by target grade — G3 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[3], false)} · G2 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[2], false)} · G1 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[1], false)}${en > 1 ? ` <span style="color:#888;">(× 1.5^${en-1} repeat use here)</span>` : ''}.${_rareCandyCount > 0 ? ` <span style="color:#f48fb1;">🍬 ${_rareCandyCount} Rare Cand${_rareCandyCount===1?'y':'ies'} in bag — free alternative.</span>` : ''}</div>`
+                        : `<div class="tx-grid-empty" style="margin-top:6px;">No evolutions available with current generation toggles (enabled: ${enabledGensLabel}).</div>`;
+                    evoBlockHtml = `<div class="tx-grid" style="margin-top:10px;max-height:none;">${evoCards}</div>${costHint}`;
                 }
 
-                return `<div class="story-link-mon tier-${g}">
-                    <div class="story-link-mon-header">
-                        <img src="${getSprite(spriteDisplayName(t),false)}" onerror="this.src=''" alt="${t.name}">
-                        <div>
-                            <div class="story-link-title-row">${shinyPre}${t.name}${gimmickTag} ${typeHtml}</div>
-                            <span class="tier-badge bg-tier-${g}">Grade ${g} · BST ${getBST(t.name)}</span>
+                return `<div class="story-tutor-mon">
+                    <div class="story-tutor-mon-main" style="display:flex;align-items:center;gap:10px;padding:10px 12px;flex-wrap:wrap;">
+                        <img src="${getSprite(spriteDisplayName(t),false)}" onerror="this.src=''" alt="${t.name}" style="width:42px;height:42px;image-rendering:pixelated;flex-shrink:0;">
+                        <div style="min-width:0;flex:1;">
+                            <div class="story-tutor-mon-name">${shinyPre}${_esc(t.name)} ${typeHtml} ${gimmickTag}</div>
+                            <div class="story-tutor-mon-meta">Grade ${g} · BST ${getBST(t.name)}</div>
                         </div>
-                        <button type="button" class="draft-card-info-btn" style="width:26px;height:26px;min-width:26px;font-size:12px;" onclick="window.StoryMode.openSummary(${i})" aria-label="Full summary" title="Full summary">&#8505;</button>
+                        <button type="button" class="draft-card-info-btn" style="width:28px;height:28px;min-width:28px;font-size:12px;" onclick="window.StoryMode.openSummary(${i})" aria-label="Full summary" title="Full summary">&#8505;</button>
                     </div>
-                    ${evoBlockHtml}
+                    <div class="story-tutor-mon-body">${evoBlockHtml}</div>
                 </div>`;
             }).join('');
         }
@@ -36091,6 +36451,275 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return [...new Set([...syncMoves, ...learnMoves])].sort();
         }
 
+        // ── REDESIGN HELPERS — categorization & recommendations ──────────
+        // UI state for the redesigned pickers: which slot is being edited,
+        // and the search / filter / sort selections (per Pokémon).
+        const _txState = {
+            // moves: slot index 0-3 of the move being swapped
+            moveSlot: 0,
+            // dojo tab: 'item' | 'ability'
+            dojoTab: 'item',
+            // shared text search (kept per facility kind)
+            search: { moves: '', items: '', abilities: '', natures: '' },
+            // filter sets: types (Set of type names), cats (Set of categories), itemCat (string or 'all'), natureUp (stat or 'any')
+            filter: {
+                moveTypes: new Set(),
+                moveCats: new Set(),
+                itemCat: 'all',
+                natureUp: 'any',
+                natureDown: 'any',
+            },
+            sort: {
+                moves: 'recommended',
+                items: 'recommended',
+                abilities: 'recommended',
+                natures: 'recommended',
+            }
+        };
+        function _txResetFilters(kind) {
+            _txState.search[kind] = '';
+            if (kind === 'moves') { _txState.filter.moveTypes.clear(); _txState.filter.moveCats.clear(); }
+            if (kind === 'items') _txState.filter.itemCat = 'all';
+            if (kind === 'natures') { _txState.filter.natureUp = 'any'; _txState.filter.natureDown = 'any'; }
+            _txState.sort[kind] = 'recommended';
+        }
+        const _TX_ALL_TYPES = ["Normal","Fire","Water","Electric","Grass","Ice","Fighting","Poison","Ground","Flying","Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel","Fairy"];
+        const _TX_ALL_CATS  = ["Physical","Special","Status"];
+        const _TX_STAT_LABEL = { atk:'Atk', def:'Def', spa:'SpA', spd:'SpD', spe:'Spe', hp:'HP' };
+
+        // Item classification — used to drive category chips in Battle Dojo.
+        const _TX_ITEM_CATS = {
+            offensive: new Set([
+                'Choice Band','Choice Specs','Choice Scarf','Life Orb','Expert Belt',
+                'Muscle Band','Wise Glasses','Silk Scarf','Charcoal','Mystic Water',
+                'Magnet','Miracle Seed','Never-Melt Ice','Black Belt','Poison Barb',
+                'Soft Sand','Sharp Beak','Twisted Spoon','Silver Powder','Hard Stone',
+                'Spell Tag','Dragon Fang','Black Glasses','Metal Coat','Fairy Feather',
+                'Scope Lens','Loaded Dice','Razor Claw','Razor Fang',"King's Rock",
+                'Wide Lens','Zoom Lens','Throat Spray','Adrenaline Orb','Power Herb',
+                'Flame Orb','Toxic Orb','Light Ball','Thick Club',
+            ]),
+            defensive: new Set([
+                'Leftovers','Black Sludge','Sitrus Berry','Oran Berry','Assault Vest',
+                'Rocky Helmet','Eviolite','Air Balloon','Heavy-Duty Boots','Focus Sash',
+                'Weakness Policy','Mirror Herb','White Herb','Clear Amulet','Covert Cloak',
+                'Safety Goggles','Big Root','Shed Shell',
+            ]),
+            utility: new Set([
+                'Eject Button','Eject Pack','Red Card','Destiny Knot','Heat Rock',
+                'Damp Rock','Smooth Rock','Icy Rock','Light Clay','Utility Umbrella',
+                'Terrain Extender','Grip Claw','Mental Herb','Soothe Bell',
+            ]),
+        };
+        function _txItemCategory(itemName) {
+            if (!itemName || itemName === '(none)') return 'utility';
+            if (_TX_ITEM_CATS.offensive.has(itemName)) return 'offensive';
+            if (_TX_ITEM_CATS.defensive.has(itemName)) return 'defensive';
+            if (_TX_ITEM_CATS.utility.has(itemName))   return 'utility';
+            if (/Berry$/.test(itemName)) return 'berry';
+            return 'specialty';
+        }
+        const _TX_ITEM_CAT_LABEL = {
+            all: 'All Items', offensive: 'Offensive', defensive: 'Defensive',
+            utility: 'Utility', berry: 'Berries', specialty: 'Specialty'
+        };
+        const _TX_ITEM_CAT_ORDER = ['all','offensive','defensive','utility','berry','specialty'];
+
+        // Move scoring — produces a recommendation score used both for the
+        // recommended-strip and the default "Recommended" sort. Considers:
+        //  - STAB (1.5×)
+        //  - Effective power including accuracy
+        //  - Bonus for status moves with useful effects on slow / bulky mons
+        function _txScoreMove(moveName, mon, build) {
+            const md = (typeof movesDB !== 'undefined' && movesDB[moveName]) ? movesDB[moveName] : null;
+            if (!md) return 0;
+            const types = [];
+            if (mon && mon.type1) types.push(mon.type1);
+            if (mon && mon.type2) types.push(mon.type2);
+            const stab = types.includes(md.type) ? 1.5 : 1.0;
+            const pow = Math.max(md.pow | 0, 0);
+            const acc = (md.acc > 0 ? md.acc : 100) / 100;
+            const isDamage = md.cat === 'Physical' || md.cat === 'Special';
+            let score = 0;
+            if (isDamage) {
+                // Effective power × STAB × accuracy
+                score = pow * stab * acc;
+                // Match physical/special with the user's strongest offense
+                try {
+                    const atk = mon ? (mon.atk || 0) : 0;
+                    const spa = mon ? (mon.spa || 0) : 0;
+                    if (md.cat === 'Physical' && atk >= spa) score *= 1.15;
+                    if (md.cat === 'Special'  && spa >= atk) score *= 1.15;
+                } catch (e) {}
+                // Priority moves are tactical — small bonus
+                if (md.pri && md.pri > 0) score += 15;
+            } else {
+                // Status — score on archetype: hazards / heal / boosts / phaze
+                const hazards = ['Stealth Rock','Spikes','Toxic Spikes','Sticky Web','Defog','Rapid Spin'];
+                const recover = ['Recover','Roost','Slack Off','Soft-Boiled','Synthesis','Morning Sun','Moonlight','Rest','Wish','Strength Sap','Shore Up','Milk Drink'];
+                const boost   = ['Swords Dance','Nasty Plot','Dragon Dance','Quiver Dance','Calm Mind','Bulk Up','Iron Defense','Cosmic Power','Coil','Shell Smash','Geomancy','Tail Glow','Belly Drum','Curse'];
+                const support = ['Toxic','Will-O-Wisp','Thunder Wave','Sleep Powder','Spore','Hypnosis','Sing','Yawn','Taunt','Trick','Encore','Disable','Substitute','Protect','Detect','Reflect','Light Screen','Aurora Veil','Stealth Rock','Spikes','Trick Room','Tailwind','Helping Hand'];
+                if (hazards.includes(moveName)) score = 80;
+                else if (recover.includes(moveName)) score = 90;
+                else if (boost.includes(moveName))   score = 85;
+                else if (support.includes(moveName)) score = 70;
+                else score = 30;
+            }
+            return Math.round(score * 100) / 100;
+        }
+
+        // Sort comparator factory
+        function _txMoveCmp(sortKey, mon, build) {
+            return (a, b) => {
+                const ma = movesDB[a], mb = movesDB[b];
+                if (!ma && !mb) return a.localeCompare(b);
+                if (!ma) return 1; if (!mb) return -1;
+                if (sortKey === 'name')  return a.localeCompare(b);
+                if (sortKey === 'type')  return (ma.type || '').localeCompare(mb.type || '') || a.localeCompare(b);
+                if (sortKey === 'power') return (mb.pow|0) - (ma.pow|0) || a.localeCompare(b);
+                if (sortKey === 'acc')   return (mb.acc|0) - (ma.acc|0) || a.localeCompare(b);
+                // recommended (default)
+                return _txScoreMove(b, mon, build) - _txScoreMove(a, mon, build) || a.localeCompare(b);
+            };
+        }
+
+        // Item scoring for recommendations
+        function _txScoreItem(itemName, mon, build) {
+            if (!itemName) return 0;
+            const cat = _txItemCategory(itemName);
+            let score = 0;
+            const moves = (build && build.m) ? build.m.map(m => m.split('/')[0]) : [];
+            const hasChoiceMove = moves.length > 0;
+            const atk = mon ? (mon.atk||0) : 0;
+            const spa = mon ? (mon.spa||0) : 0;
+            const spe = mon ? (mon.spe||0) : 0;
+            const off = Math.max(atk, spa);
+            const isPhys = atk >= spa;
+            // Universal staples
+            if (itemName === 'Leftovers') score = 75;
+            else if (itemName === 'Life Orb') score = 70 + (off > 100 ? 10 : 0);
+            else if (itemName === 'Heavy-Duty Boots') score = 65;
+            else if (itemName === 'Focus Sash') score = 60;
+            else if (itemName === 'Assault Vest') score = 55;
+            else if (itemName === 'Rocky Helmet') score = 55;
+            else if (itemName === 'Choice Band')  score = isPhys ? 85 : 30;
+            else if (itemName === 'Choice Specs') score = !isPhys ? 85 : 30;
+            else if (itemName === 'Choice Scarf') score = spe > 80 ? 75 : 50;
+            else if (itemName === 'Eviolite') {
+                // Eligible only on unevolved species — added by classifier
+                score = 90;
+            } else if (cat === 'offensive') score = 50;
+            else if (cat === 'defensive') score = 55;
+            else if (cat === 'utility')   score = 45;
+            else if (cat === 'berry')     score = 40;
+            else score = 35;
+            // Penalize bad fits
+            if (itemName === 'Choice Band'  && atk < spa)   score -= 30;
+            if (itemName === 'Choice Specs' && spa < atk)   score -= 30;
+            if (itemName === 'Choice Scarf' && spe > 120)   score -= 10;
+            return score;
+        }
+        function _txItemCmp(sortKey, mon, build) {
+            return (a, b) => {
+                if (sortKey === 'name') return a.localeCompare(b);
+                if (sortKey === 'category') {
+                    const ca = _txItemCategory(a), cb = _txItemCategory(b);
+                    return ca.localeCompare(cb) || a.localeCompare(b);
+                }
+                return _txScoreItem(b, mon, build) - _txScoreItem(a, mon, build) || a.localeCompare(b);
+            };
+        }
+
+        // Nature recommendation: which natures match the Pokémon's strongest stat & role
+        function _txScoreNature(natureName, mon, build) {
+            const mod = natureModifiers[natureName];
+            if (!mod) return 5; // neutral natures aren't useful
+            const stats = mon ? { atk: mon.atk||0, def: mon.def||0, spa: mon.spa||0, spd: mon.spd||0, spe: mon.spe||0 } : null;
+            if (!stats) return 50;
+            const atkVsSpa = (stats.atk||0) - (stats.spa||0);
+            const physicalLeaner = atkVsSpa > 5;
+            const specialLeaner  = atkVsSpa < -5;
+            const slow = (stats.spe||0) < 70;
+            const fast = (stats.spe||0) >= 90;
+            let score = 50;
+            // +stat preference
+            if (mod.up === 'atk' && physicalLeaner) score += 30;
+            if (mod.up === 'spa' && specialLeaner) score += 30;
+            if (mod.up === 'spe' && fast) score += 25;
+            if ((mod.up === 'def' || mod.up === 'spd' || mod.up === 'hp') && slow) score += 15;
+            // -stat preference (drop what you don't use)
+            if (mod.down === 'spa' && physicalLeaner) score += 20;
+            if (mod.down === 'atk' && specialLeaner) score += 20;
+            if (mod.down === 'spe' && slow) score += 10;
+            // Misalignments
+            if (mod.up === 'atk' && specialLeaner) score -= 20;
+            if (mod.up === 'spa' && physicalLeaner) score -= 20;
+            if (mod.down === 'atk' && physicalLeaner) score -= 20;
+            if (mod.down === 'spa' && specialLeaner) score -= 20;
+            if (mod.down === 'spe' && fast) score -= 20;
+            return score;
+        }
+        function _txNatureCmp(sortKey, mon, build) {
+            return (a, b) => {
+                if (sortKey === 'name') return a.localeCompare(b);
+                return _txScoreNature(b, mon, build) - _txScoreNature(a, mon, build) || a.localeCompare(b);
+            };
+        }
+
+        // Ability recommendation — score the obvious good abilities
+        const _TX_GOOD_ABILITIES = new Set([
+            'Magic Guard','Levitate','Multiscale','Regenerator','Volt Absorb','Water Absorb',
+            'Sap Sipper','Flash Fire','Storm Drain','Lightning Rod','Speed Boost',
+            'Drought','Drizzle','Sand Stream','Snow Warning','Electric Surge','Psychic Surge','Misty Surge','Grassy Surge',
+            'Intimidate','Mold Breaker','Adaptability','Tough Claws','Strong Jaw','Sheer Force',
+            'Technician','Skill Link','Iron Fist','Mega Launcher','Aerilate','Pixilate','Galvanize','Refrigerate',
+            'Huge Power','Pure Power','Guts','Quick Feet','Marvel Scale','Toxic Boost','Flare Boost',
+            'Beast Boost','Soul-Heart','Moxie','Magic Bounce','Prankster','Triage','Gale Wings',
+            'Unaware','Filter','Solid Rock','Fluffy','Ice Scales','Thick Fat','Disguise','Wonder Guard',
+            'Mummy','Lingering Aroma','Wandering Spirit','Defiant','Competitive','Justified'
+        ]);
+        function _txScoreAbility(abilityName, mon, build) {
+            if (!abilityName || abilityName === '(none)') return 5;
+            if (_TX_GOOD_ABILITIES.has(abilityName)) return 90;
+            return 50;
+        }
+        function _txAbilityCmp(sortKey, mon, build) {
+            return (a, b) => {
+                if (sortKey === 'name') return a.localeCompare(b);
+                return _txScoreAbility(b, mon, build) - _txScoreAbility(a, mon, build) || a.localeCompare(b);
+            };
+        }
+
+        // Pick the top-N recommendations after filtering
+        function _txTopRecommended(items, scoreFn, n) {
+            if (!items || !items.length) return [];
+            const scored = items.map(it => ({ it, s: scoreFn(it) }));
+            scored.sort((a, b) => b.s - a.s);
+            return scored.slice(0, n).map(x => x.it);
+        }
+
+        // Format short effect/description for a move
+        function _txMoveEffectShort(moveName) {
+            const md = (typeof movesDB !== 'undefined' && movesDB[moveName]) ? movesDB[moveName] : null;
+            if (!md) return '';
+            return md.eff || '';
+        }
+        // Resolve description for an item / ability / nature using existing helpers
+        function _txDescriptionFor(name, kind) {
+            if (kind === 'nature') {
+                const mod = natureModifiers[name];
+                if (!mod) return 'Neutral — no stat change.';
+                return `+10% ${_TX_STAT_LABEL[mod.up]}, −10% ${_TX_STAT_LABEL[mod.down]}.`;
+            }
+            try {
+                if (typeof window._resolveTooltipText === 'function') {
+                    const s = window._resolveTooltipText(name);
+                    if (s) return String(s);
+                }
+            } catch (e) {}
+            return tooltipDict[name] || '';
+        }
+
         function _tutorFillMoveSelect(sel, moves) {
             if (!sel) return;
             const cur = sel.value;
@@ -36108,61 +36737,757 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (moves.length) sel.selectedIndex = 0;
         }
 
+        // Cache of move pool per Pokémon (filled by renderTutorTeam, used by partial re-renders)
+        const _txMovePoolCache = new Map();
+        // Pending selection (the card the user has "chosen" but not yet confirmed)
+        // Shape: { kind: 'move'|'item'|'ability'|'nature', value: string, slot?: number }
+        let _txPending = null;
+
         function _initTutorMovePickerDelegationOnce() {
             const el = document.getElementById('story-tutor-team');
             if (!el || el._tutorPickerBound) return;
             el._tutorPickerBound = true;
+
+            // Debounced search re-render
+            let _searchTimer = null;
+            const _scheduleSearchRender = () => {
+                if (_searchTimer) clearTimeout(_searchTimer);
+                _searchTimer = setTimeout(() => { _searchTimer = null; void renderTutorTeam(true); }, 140);
+            };
+
             el.addEventListener('input', function(ev) {
-                if (ev.target.classList && ev.target.classList.contains('story-tutor-move-select')) {
-                    const row = ev.target.closest('.story-tutor-move-slot');
-                    if (!row) return;
-                    _tutorRefreshMoveDetailRow(row);
+                const t = ev.target;
+                if (!t || !t.classList) return;
+                if (t.classList.contains('tx-search-input')) {
+                    const kind = t.dataset.kind || 'moves';
+                    _txState.search[kind] = (t.value || '').trim();
+                    // Preserve focus and cursor — partial re-render via _scheduleSearchRender
+                    _scheduleSearchRender();
                     return;
                 }
-                if (!ev.target.classList || !ev.target.classList.contains('story-tutor-move-filter')) return;
-                const row = ev.target.closest('.story-tutor-move-slot');
-                if (!row) return;
-                const key = row.dataset.slotKey;
-                const all = _tutorSlotMoveOptions.get(key) || [];
-                const q = (ev.target.value || '').trim().toLowerCase();
-                const filt = q ? all.filter(m => String(m).toLowerCase().includes(q)) : all;
-                const sel = row.querySelector('.story-tutor-move-select');
-                const use = filt.length ? filt : all;
-                _tutorFillMoveSelect(sel, use);
-                _tutorRefreshMoveDetailRow(row);
-                const ap = row.querySelector('.story-tutor-apply-move');
-                if (ap) ap.disabled = !(sel && sel.value) || sm.gold < TUTOR_COST_MOVE;
             });
+
             el.addEventListener('change', function(ev) {
-                if (!ev.target.classList || !ev.target.classList.contains('story-tutor-move-select')) return;
-                const row = ev.target.closest('.story-tutor-move-slot');
-                if (!row) return;
-                _tutorRefreshMoveDetailRow(row);
-                const ap = row.querySelector('.story-tutor-apply-move');
-                if (ap) ap.disabled = !ev.target.value || sm.gold < TUTOR_COST_MOVE;
+                const t = ev.target;
+                if (!t || !t.classList) return;
+                if (t.classList.contains('tx-sort-select')) {
+                    const kind = t.dataset.kind || 'moves';
+                    _txState.sort[kind] = t.value || 'recommended';
+                    void renderTutorTeam(true);
+                    return;
+                }
             });
+
             el.addEventListener('click', function(ev) {
-                const toggleBtn = ev.target && ev.target.closest ? ev.target.closest('.story-tutor-mon-toggle') : null;
+                const t = ev.target && ev.target.closest ? ev.target : null;
+                if (!t) return;
+
+                // Team accordion toggle
+                const toggleBtn = t.closest('.story-tutor-mon-toggle');
                 if (toggleBtn) {
                     const nextIdx = parseInt(toggleBtn.dataset.team, 10);
                     if (Number.isFinite(nextIdx) && _storyTutorOpenIdx !== nextIdx) {
                         _storyTutorOpenIdx = nextIdx;
+                        _txPending = null;
                         void renderTutorTeam();
                     }
                     return;
                 }
-                const applyBtn = ev.target && ev.target.closest ? ev.target.closest('.story-tutor-apply-move') : null;
-                if (!applyBtn) return;
-                const row = applyBtn.closest('.story-tutor-move-slot');
-                if (!row) return;
-                const sel = row.querySelector('.story-tutor-move-select');
-                const v = sel && sel.value;
-                if (!v || applyBtn.disabled || sm.gold < TUTOR_COST_MOVE) return;
-                const teamIdx = parseInt(row.dataset.team, 10);
-                const moveSlot = parseInt(row.dataset.slot, 10);
-                if (window.StoryMode && typeof window.StoryMode.tutorChangeMove === 'function')
-                    window.StoryMode.tutorChangeMove(teamIdx, moveSlot, v);
+
+                // Slot card (move tutor) — pick which slot to edit
+                const slotCard = t.closest('.tx-slot-card[data-slot-idx]');
+                if (slotCard && slotCard.dataset.locked !== '1') {
+                    const slotIdx = parseInt(slotCard.dataset.slotIdx, 10);
+                    if (Number.isFinite(slotIdx) && _txState.moveSlot !== slotIdx) {
+                        _txState.moveSlot = slotIdx;
+                        _txPending = null;
+                        void renderTutorTeam(true);
+                    }
+                    return;
+                }
+
+                // Battle Dojo tab switch
+                const tabBtn = t.closest('.tx-tab[data-tab]');
+                if (tabBtn) {
+                    const tab = tabBtn.dataset.tab;
+                    if (tab && _txState.dojoTab !== tab) {
+                        _txState.dojoTab = tab;
+                        _txPending = null;
+                        void renderTutorTeam(true);
+                    }
+                    return;
+                }
+
+                // Filter chip toggle
+                const chip = t.closest('.tx-chip[data-filter-kind]');
+                if (chip) {
+                    const kind = chip.dataset.filterKind;
+                    const value = chip.dataset.filterValue;
+                    if (kind === 'moveType') {
+                        if (value === 'all') _txState.filter.moveTypes.clear();
+                        else {
+                            if (_txState.filter.moveTypes.has(value)) _txState.filter.moveTypes.delete(value);
+                            else _txState.filter.moveTypes.add(value);
+                        }
+                    } else if (kind === 'moveCat') {
+                        if (value === 'all') _txState.filter.moveCats.clear();
+                        else {
+                            if (_txState.filter.moveCats.has(value)) _txState.filter.moveCats.delete(value);
+                            else _txState.filter.moveCats.add(value);
+                        }
+                    } else if (kind === 'itemCat') {
+                        _txState.filter.itemCat = value || 'all';
+                    } else if (kind === 'natureUp') {
+                        _txState.filter.natureUp = (value === _txState.filter.natureUp) ? 'any' : (value || 'any');
+                    } else if (kind === 'natureDown') {
+                        _txState.filter.natureDown = (value === _txState.filter.natureDown) ? 'any' : (value || 'any');
+                    }
+                    void renderTutorTeam(true);
+                    return;
+                }
+
+                // Option card pick — set pending
+                const card = t.closest('.tx-card[data-card-kind]');
+                if (card && card.dataset.disabled !== '1') {
+                    const kind = card.dataset.cardKind;
+                    const value = card.dataset.cardValue;
+                    if (kind && value) {
+                        _txPending = { kind, value, slot: kind === 'move' ? _txState.moveSlot : undefined };
+                        void renderTutorTeam(true);
+                    }
+                    return;
+                }
+
+                // Confirm button
+                const confirmBtn = t.closest('.tx-confirm-bar-btn');
+                if (confirmBtn && !confirmBtn.disabled) {
+                    if (confirmBtn.classList.contains('tx-confirm-bar-btn--secondary')) {
+                        _txPending = null;
+                        void renderTutorTeam(true);
+                        return;
+                    }
+                    const action = confirmBtn.dataset.action;
+                    const teamIdx = parseInt(confirmBtn.dataset.team, 10);
+                    if (!_txPending || !Number.isFinite(teamIdx)) return;
+                    if (action === 'move')      void window.StoryMode.tutorChangeMove(teamIdx, _txPending.slot, _txPending.value);
+                    else if (action === 'item') void window.StoryMode.tutorChangeItem(teamIdx, _txPending.value);
+                    else if (action === 'ability') void window.StoryMode.tutorChangeAbility(teamIdx, _txPending.value);
+                    else if (action === 'nature') void window.StoryMode.tutorChangeNature(teamIdx, _txPending.value);
+                    return;
+                }
+
+                // Nature grid cell click — set pending nature
+                const natCell = t.closest('.tx-nature-cell[data-nature]');
+                if (natCell && natCell.dataset.locked !== '1') {
+                    const value = natCell.dataset.nature;
+                    if (value) {
+                        _txPending = { kind: 'nature', value };
+                        void renderTutorTeam(true);
+                    }
+                    return;
+                }
             });
+        }
+
+        // Render the toolbar (search + filter chips + sort) for a given kind
+        function _txToolbarHtml(kind, opts) {
+            opts = opts || {};
+            const search = _txState.search[kind] || '';
+            const sortVal = _txState.sort[kind] || 'recommended';
+            const sortOpts = opts.sortOptions || [
+                { value:'recommended', label:'Recommended' },
+                { value:'name', label:'Name (A→Z)' }
+            ];
+            const sortHtml = `<select class="tx-sort-select" data-kind="${kind}">${sortOpts.map(o => `<option value="${o.value}"${o.value===sortVal?' selected':''}>${_esc(o.label)}</option>`).join('')}</select>`;
+            const countHtml = (opts.count != null) ? `<span class="tx-count-pill">${opts.count} ${opts.countLabel || 'options'}</span>` : '';
+            const placeholder = opts.placeholder || 'Search…';
+            return `<div class="tx-toolbar">
+                <div class="tx-search-row">
+                    <input type="search" class="tx-search-input" data-kind="${kind}" placeholder="${_esc(placeholder)}" value="${_esc(search)}" autocomplete="off" />
+                    ${sortHtml}
+                    ${countHtml}
+                </div>
+                ${opts.chipsHtml || ''}
+            </div>`;
+        }
+
+        function _txMoveTypeChipsHtml() {
+            const sel = _txState.filter.moveTypes;
+            const allActive = sel.size === 0;
+            const chips = _TX_ALL_TYPES.map(t =>
+                `<button type="button" class="tx-chip tx-chip--type type-badge type-${t}" data-filter-kind="moveType" data-filter-value="${t}" data-active="${sel.has(t)?1:0}" style="font-family:inherit;">${t}</button>`
+            ).join('');
+            return `<div class="tx-chip-row" role="tablist" aria-label="Filter by move type">
+                <button type="button" class="tx-chip" data-filter-kind="moveType" data-filter-value="all" data-active="${allActive?1:0}">All</button>
+                ${chips}
+            </div>`;
+        }
+        function _txMoveCatChipsHtml() {
+            const sel = _txState.filter.moveCats;
+            const allActive = sel.size === 0;
+            const chips = _TX_ALL_CATS.map(c =>
+                `<button type="button" class="tx-chip tx-chip--cat-${c}" data-filter-kind="moveCat" data-filter-value="${c}" data-active="${sel.has(c)?1:0}">${c}</button>`
+            ).join('');
+            return `<div class="tx-chip-row" role="tablist" aria-label="Filter by move category">
+                <button type="button" class="tx-chip" data-filter-kind="moveCat" data-filter-value="all" data-active="${allActive?1:0}">All Categories</button>
+                ${chips}
+            </div>`;
+        }
+        function _txItemCatChipsHtml() {
+            const cur = _txState.filter.itemCat || 'all';
+            return `<div class="tx-chip-row" role="tablist" aria-label="Filter items by category">${
+                _TX_ITEM_CAT_ORDER.map(k =>
+                    `<button type="button" class="tx-chip" data-filter-kind="itemCat" data-filter-value="${k}" data-active="${cur===k?1:0}">${_TX_ITEM_CAT_LABEL[k]}</button>`
+                ).join('')
+            }</div>`;
+        }
+
+        // Build a Move card. Highlight if it's the pending selection.
+        function _txMoveCardHtml(moveName, ctx) {
+            const md = movesDB[moveName] || ensureMoveData(moveName);
+            const typ = md.type || 'Normal';
+            const cat = md.cat || 'Status';
+            const pow = md.pow > 0 ? md.pow : '—';
+            const acc = md.acc > 0 ? (md.acc + '%') : '—';
+            const pp  = md.pp || '—';
+            const pri = formatMovePriority(md.pri);
+            const eff = md.eff ? md.eff : '';
+            const isPending = ctx && ctx.pending === moveName;
+            const isRec     = ctx && ctx.recommended && ctx.recommended.has(moveName);
+            const stab      = ctx && ctx.stabTypes && ctx.stabTypes.has(typ);
+            const pills = [
+                `<span class="tx-pill tx-pill--cat-${cat}">${cat}</span>`,
+                stab ? `<span class="tx-pill" style="background:rgba(255,213,79,0.18);border-color:#ffd54f;color:#fff3cd;">STAB</span>` : '',
+                isRec ? `<span class="tx-pill tx-pill--rec">★ Pick</span>` : '',
+            ].filter(Boolean).join('');
+            return `<button type="button" class="tx-card" data-card-kind="move" data-card-value="${_esc(moveName)}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}">
+                <div class="tx-card-head">
+                    <span class="tx-card-title">${_esc(moveName)}</span>
+                    <span class="type-badge type-${typ}">${typ}</span>
+                </div>
+                <div class="tx-card-stats">
+                    <span class="tx-stat-bp">BP <strong>${pow}</strong></span>
+                    <span>Acc <strong>${acc}</strong></span>
+                    <span>PP <strong>${pp}</strong></span>
+                    <span>Pri <strong>${pri}</strong></span>
+                </div>
+                ${eff ? `<div class="tx-card-desc">${_esc(eff)}</div>` : ''}
+                <div class="tx-card-foot">${pills}</div>
+            </button>`;
+        }
+
+        // Build an Item card.
+        function _txItemCardHtml(itemName, ctx) {
+            const desc = _txDescriptionFor(itemName, 'item');
+            const cat = _txItemCategory(itemName);
+            const isPending = ctx && ctx.pending === itemName;
+            const isCurrent = ctx && ctx.current === itemName;
+            const isRec     = ctx && ctx.recommended && ctx.recommended.has(itemName);
+            const pills = [
+                `<span class="tx-pill">${_esc(_TX_ITEM_CAT_LABEL[cat] || cat)}</span>`,
+                isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
+                isRec && !isCurrent ? `<span class="tx-pill tx-pill--rec">★ Pick</span>` : '',
+            ].filter(Boolean).join('');
+            return `<button type="button" class="tx-card" data-card-kind="item" data-card-value="${_esc(itemName)}"
+                data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-disabled="${isCurrent?1:0}" ${isCurrent?'disabled':''}>
+                <div class="tx-card-head">
+                    <span class="tx-card-title">${_esc(itemName)}</span>
+                </div>
+                ${desc ? `<div class="tx-card-desc">${_esc(desc)}</div>` : `<div class="tx-card-desc" style="opacity:0.55;font-style:italic;">No description available.</div>`}
+                <div class="tx-card-foot">${pills}</div>
+            </button>`;
+        }
+
+        // Build an Ability card.
+        function _txAbilityCardHtml(abilityName, ctx) {
+            const desc = _txDescriptionFor(abilityName, 'ability');
+            const isPending = ctx && ctx.pending === abilityName;
+            const isCurrent = ctx && ctx.current === abilityName;
+            const isHA      = ctx && ctx.hiddenAbilities && ctx.hiddenAbilities.has(abilityName);
+            const isRec     = ctx && ctx.recommended && ctx.recommended.has(abilityName);
+            const pills = [
+                isHA ? `<span class="tx-pill tx-pill--ha">Hidden</span>` : '',
+                isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
+                isRec && !isCurrent ? `<span class="tx-pill tx-pill--rec">★ Pick</span>` : '',
+            ].filter(Boolean).join('');
+            return `<button type="button" class="tx-card" data-card-kind="ability" data-card-value="${_esc(abilityName)}"
+                data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-disabled="${isCurrent?1:0}" ${isCurrent?'disabled':''}>
+                <div class="tx-card-head">
+                    <span class="tx-card-title">${_esc(abilityName)}</span>
+                </div>
+                ${desc ? `<div class="tx-card-desc">${_esc(desc)}</div>` : `<div class="tx-card-desc" style="opacity:0.55;font-style:italic;">No description available.</div>`}
+                <div class="tx-card-foot">${pills}</div>
+            </button>`;
+        }
+
+        // Build the confirm bar that sticks to the bottom of the picker.
+        function _txConfirmBarHtml(teamIdx, kind, mon, build) {
+            const pending = _txPending;
+            const action = kind === 'move' ? 'move' : kind === 'item' ? 'item' : kind === 'ability' ? 'ability' : 'nature';
+            const cost = kind === 'move' ? TUTOR_COST_MOVE : kind === 'item' ? TUTOR_COST_ITEM : kind === 'ability' ? TUTOR_COST_ABILITY : TUTOR_COST_NATURE;
+            const canAfford = sm.gold >= cost;
+            if (!pending || pending.kind !== action) {
+                // Empty state placeholder — keeps the bottom of the picker stable
+                const verb = kind === 'move' ? 'a move' : kind === 'item' ? 'an item' : kind === 'ability' ? 'an ability' : 'a nature';
+                return `<div class="tx-confirm-bar">
+                    <span class="tx-confirm-bar-text" style="opacity:0.7;">Pick ${verb} to preview. Confirm appears here.</span>
+                    <button type="button" class="tx-confirm-bar-btn" disabled>Confirm</button>
+                </div>`;
+            }
+            let current = '(none)';
+            if (kind === 'move')    current = ((build.m || [])[_txState.moveSlot] || '').split('/')[0] || '(empty)';
+            if (kind === 'item')    current = build.i || '(none)';
+            if (kind === 'ability') current = build.a || (mon && mon.ability) || '(none)';
+            if (kind === 'nature')  current = build.n || 'Hardy';
+            const costStr = canAfford
+                ? `<span style="color:#ffd700;">${cost.toLocaleString()}G</span>`
+                : `<span style="color:#ef9a9a;">Need ${(cost - sm.gold).toLocaleString()}G more</span>`;
+            return `<div class="tx-confirm-bar">
+                <span class="tx-confirm-bar-text">Replace <strong style="color:#ef9a9a;">${_esc(current)}</strong> → <strong>${_esc(pending.value)}</strong> · ${costStr}</span>
+                <button type="button" class="tx-confirm-bar-btn tx-confirm-bar-btn--secondary">Cancel</button>
+                <button type="button" class="tx-confirm-bar-btn" data-action="${action}" data-team="${teamIdx}" ${canAfford?'':'disabled'}>${canAfford ? 'Confirm' : 'Locked'}</button>
+            </div>`;
+        }
+
+        // Apply text + chip + sort filters to a flat list, returning the filtered+sorted list.
+        function _txApplyMoveFilters(allMoves, mon, build) {
+            const q = (_txState.search.moves || '').toLowerCase();
+            const types = _txState.filter.moveTypes;
+            const cats  = _txState.filter.moveCats;
+            const sortKey = _txState.sort.moves || 'recommended';
+            const filt = allMoves.filter(m => {
+                if (q && !m.toLowerCase().includes(q)) return false;
+                const md = movesDB[m];
+                if (!md) return true;
+                if (types.size && !types.has(md.type)) return false;
+                if (cats.size  && !cats.has(md.cat))  return false;
+                return true;
+            });
+            filt.sort(_txMoveCmp(sortKey, mon, build));
+            return filt;
+        }
+        function _txApplyItemFilters(allItems, mon, build) {
+            const q = (_txState.search.items || '').toLowerCase();
+            const catFilter = _txState.filter.itemCat || 'all';
+            const sortKey = _txState.sort.items || 'recommended';
+            const filt = allItems.filter(it => {
+                if (q && !it.toLowerCase().includes(q)) return false;
+                if (catFilter !== 'all' && _txItemCategory(it) !== catFilter) return false;
+                return true;
+            });
+            filt.sort(_txItemCmp(sortKey, mon, build));
+            return filt;
+        }
+        function _txApplyAbilityFilters(allAbils, mon, build) {
+            const q = (_txState.search.abilities || '').toLowerCase();
+            const sortKey = _txState.sort.abilities || 'recommended';
+            const filt = allAbils.filter(a => !q || a.toLowerCase().includes(q));
+            filt.sort(_txAbilityCmp(sortKey, mon, build));
+            return filt;
+        }
+        function _txApplyNatureFilters(allNat, mon, build) {
+            const q = (_txState.search.natures || '').toLowerCase();
+            const up = _txState.filter.natureUp || 'any';
+            const down = _txState.filter.natureDown || 'any';
+            const sortKey = _txState.sort.natures || 'recommended';
+            const filt = allNat.filter(n => {
+                if (q && !n.toLowerCase().includes(q)) return false;
+                const mod = natureModifiers[n];
+                if (up !== 'any' && (!mod || mod.up !== up)) return false;
+                if (down !== 'any' && (!mod || mod.down !== down)) return false;
+                return true;
+            });
+            filt.sort(_txNatureCmp(sortKey, mon, build));
+            return filt;
+        }
+
+        // Render: collapsed mon header (same look as before, lightly polished)
+        function _txRenderCollapsedMonHtml(t, idx, mode) {
+            const b = t.build || {};
+            let mon = null;
+            try { if (b) mon = buildPokemon(t.name, shallowCloneBuildForDisplay(b)); } catch (e) {}
+            const typeHtml = mon ? getTypeHTML(mon.type1, mon.type2 || '') : '';
+            const spriteUrl = getSprite(spriteDisplayName(t));
+            let summary;
+            if (mode === 'moves') {
+                const ms = (b.m || []).map(m => m.split('/')[0]).filter(Boolean);
+                summary = ms.length ? ms.join(' · ') : 'No moves equipped';
+            } else if (mode === 'nature') {
+                const nm = natureModifiers[b.n];
+                const dt = nm ? `(+${_TX_STAT_LABEL[nm.up]} / −${_TX_STAT_LABEL[nm.down]})` : '(Neutral)';
+                summary = `${_esc(b.n || 'Hardy')} ${dt}`;
+            } else {
+                summary = `${_esc(b.i || '(no item)')} · ${_esc(b.a || (mon && mon.ability) || '(default ability)')}`;
+            }
+            return `<div class="story-tutor-mon">
+                <button type="button" class="story-tutor-mon-toggle" data-team="${idx}" aria-expanded="false">
+                    <div class="story-tutor-mon-main">
+                        <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
+                        <div style="min-width:0;">
+                            <div class="story-tutor-mon-name">${_esc(t.name)} ${typeHtml}</div>
+                            <div class="story-tutor-mon-meta">${summary}</div>
+                        </div>
+                    </div>
+                    <span class="story-tutor-mon-chev" aria-hidden="true">▾</span>
+                </button>
+            </div>`;
+        }
+
+        // Render: Move editor (4 slot cards + picker for selected slot)
+        function _txRenderMoveEditor(t, idx, mergedMoves) {
+            const b = t.build || {};
+            let mon = null;
+            try { if (b) mon = buildPokemon(t.name, shallowCloneBuildForDisplay(b)); } catch (e) {}
+            const typeHtml = mon ? getTypeHTML(mon.type1, mon.type2 || '') : '';
+            const spriteUrl = getSprite(spriteDisplayName(t));
+            const currentMoves = (b.m || []).map(m => m.split('/')[0]);
+
+            // Slot cards — render exactly the move slots the Pokémon has
+            const slotCards = currentMoves.map((cm, i) => {
+                const md = cm ? (movesDB[cm] || ensureMoveData(cm)) : null;
+                const otherMoves = currentMoves.filter((_, oi) => oi !== i && currentMoves[oi]);
+                const available = mergedMoves.filter(m => m !== cm && !otherMoves.includes(m));
+                const isActive = i === _txState.moveSlot;
+                const locked = !available.length;
+                if (locked) {
+                    return `<div class="tx-slot-card" data-slot-idx="${i}" data-locked="1" data-active="0" aria-disabled="true">
+                        <div class="tx-slot-label">Slot ${i+1}</div>
+                        <div class="tx-slot-name">${_esc(cm)} ${md ? `<span class="type-badge type-${md.type}" style="font-size:9px;">${md.type}</span>` : ''}</div>
+                        <div class="tx-slot-meta">${md ? `<span class="tx-pill tx-pill--cat-${md.cat}">${md.cat}</span>` : ''}<span>No swap options</span></div>
+                    </div>`;
+                }
+                return `<button type="button" class="tx-slot-card" data-slot-idx="${i}" data-active="${isActive?1:0}">
+                    <div class="tx-slot-label">Slot ${i+1}${isActive?' · editing':''}</div>
+                    <div class="tx-slot-name">${_esc(cm)} ${md ? `<span class="type-badge type-${md.type}" style="font-size:9px;">${md.type}</span>` : ''}</div>
+                    <div class="tx-slot-meta">${md ? `<span class="tx-pill tx-pill--cat-${md.cat}">${md.cat}</span><strong>BP ${md.pow>0?md.pow:'—'}</strong><span>Acc ${md.acc>0?md.acc+'%':'—'}</span>` : '<span>Unknown move</span>'}</div>
+                </button>`;
+            }).join('');
+
+            // Determine active slot for editing — fall back to first slot that has swap options
+            let activeSlot = _txState.moveSlot;
+            const findUsable = () => {
+                for (let k = 0; k < currentMoves.length; k++) {
+                    const cm = currentMoves[k];
+                    if (!cm) continue;
+                    const others = currentMoves.filter((_, oi) => oi !== k && currentMoves[oi]);
+                    if (mergedMoves.some(m => m !== cm && !others.includes(m))) return k;
+                }
+                return -1;
+            };
+            if (activeSlot >= currentMoves.length || !currentMoves[activeSlot]) {
+                activeSlot = findUsable();
+                if (activeSlot < 0) activeSlot = 0;
+                _txState.moveSlot = activeSlot;
+            } else {
+                // Active slot has a move, but check it has swap options; if not fall back
+                const cm = currentMoves[activeSlot];
+                const others = currentMoves.filter((_, oi) => oi !== activeSlot && currentMoves[oi]);
+                if (!mergedMoves.some(m => m !== cm && !others.includes(m))) {
+                    const fallback = findUsable();
+                    if (fallback >= 0) { activeSlot = fallback; _txState.moveSlot = fallback; }
+                }
+            }
+            const curMove = currentMoves[activeSlot];
+            const otherMoves = currentMoves.filter((_, oi) => oi !== activeSlot && currentMoves[oi]);
+            const availForActive = curMove
+                ? mergedMoves.filter(m => m !== curMove && !otherMoves.includes(m))
+                : [];
+
+            // Filtered + sorted
+            const filtered = _txApplyMoveFilters(availForActive, mon, b);
+            // Recommendation set
+            const recList = _txTopRecommended(availForActive, (it) => _txScoreMove(it, mon, b), 5);
+            const recSet = new Set(recList);
+            const stabTypes = new Set([mon && mon.type1, mon && mon.type2].filter(Boolean));
+            const pendingMove = (_txPending && _txPending.kind === 'move') ? _txPending.value : null;
+            const ctx = { pending: pendingMove, recommended: recSet, stabTypes };
+
+            const cardsHtml = filtered.length
+                ? filtered.map(m => _txMoveCardHtml(m, ctx)).join('')
+                : `<div class="tx-grid-empty">No moves match these filters. Loosen them or clear the search.</div>`;
+
+            // Recommended strip — show top-1 with reason
+            let recsStrip = '';
+            if (recList.length) {
+                const top = recList[0];
+                const md = movesDB[top];
+                if (md) {
+                    const stab = stabTypes.has(md.type) ? ' STAB' : '';
+                    const reason = md.cat === 'Status'
+                        ? 'top utility option for this build'
+                        : `${md.pow||'—'} BP${stab} ${md.type} ${md.cat.toLowerCase()}`;
+                    recsStrip = `<div class="tx-recs-strip">
+                        <div class="tx-recs-strip-title">★ Recommended</div>
+                        <div class="tx-recs-strip-detail"><strong>${_esc(top)}</strong> — ${reason}.</div>
+                    </div>`;
+                }
+            }
+
+            const toolbar = _txToolbarHtml('moves', {
+                placeholder: 'Search moves (e.g. earthquake, hidden, ice)',
+                count: filtered.length,
+                countLabel: 'moves',
+                chipsHtml: _txMoveTypeChipsHtml() + _txMoveCatChipsHtml(),
+                sortOptions: [
+                    { value:'recommended', label:'Recommended' },
+                    { value:'power', label:'Power' },
+                    { value:'acc',   label:'Accuracy' },
+                    { value:'type',  label:'Type' },
+                    { value:'name',  label:'Name (A→Z)' },
+                ],
+            });
+
+            const headerSummary = `<div class="story-tutor-mon-meta" style="margin-top:0;">${
+                curMove
+                    ? `Editing <strong style="color:var(--accent);">Slot ${activeSlot+1} — ${_esc(curMove)}</strong>`
+                    : `<em>No move equipped in any slot</em>`
+            }</div>`;
+
+            return `<div class="story-tutor-mon">
+                <button type="button" class="story-tutor-mon-toggle" data-team="${idx}" aria-expanded="true">
+                    <div class="story-tutor-mon-main">
+                        <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
+                        <div style="min-width:0;">
+                            <div class="story-tutor-mon-name">${_esc(t.name)} ${typeHtml}</div>
+                            ${headerSummary}
+                        </div>
+                    </div>
+                    <span class="story-tutor-mon-chev" aria-hidden="true">▴</span>
+                </button>
+                <div class="story-tutor-mon-body">
+                    <div class="tx-slot-row">${slotCards}</div>
+                    ${curMove ? toolbar + recsStrip + `<div class="tx-grid">${cardsHtml}</div>` + _txConfirmBarHtml(idx, 'move', mon, b) : '<div class="tx-grid-empty">Add a move first to swap moves.</div>'}
+                </div>
+            </div>`;
+        }
+
+        // Render: Loadout editor (Battle Dojo) — tabs for items/abilities
+        function _txRenderLoadoutEditor(t, idx) {
+            const b = t.build || {};
+            let mon = null;
+            try { if (b) mon = buildPokemon(t.name, shallowCloneBuildForDisplay(b)); } catch (e) {}
+            const typeHtml = mon ? getTypeHTML(mon.type1, mon.type2 || '') : '';
+            const spriteUrl = getSprite(spriteDisplayName(t));
+            const pool = _tutorGetPoolForMon(t.name);
+            const tab = _txState.dojoTab || 'item';
+
+            // Items
+            const curItem = b.i || '(none)';
+            const items = pool.items.slice();
+            const filtItems = _txApplyItemFilters(items, mon, b);
+            const recItems = _txTopRecommended(items.filter(it => it !== curItem), (it) => _txScoreItem(it, mon, b), 5);
+            const recItemSet = new Set(recItems);
+            const pendingItem = (_txPending && _txPending.kind === 'item') ? _txPending.value : null;
+            const itemCtx = { pending: pendingItem, current: curItem, recommended: recItemSet };
+
+            // Abilities — note that hidden abilities are tagged from baseStats.abilities slot 'H'
+            const curAbility = b.a || (mon && mon.ability) || '(none)';
+            const abils = pool.abilities.slice();
+            const filtAbils = _txApplyAbilityFilters(abils, mon, b);
+            const recAbils = _txTopRecommended(abils.filter(a => a !== curAbility), (it) => _txScoreAbility(it, mon, b), 3);
+            const recAbilSet = new Set(recAbils);
+            const haSet = new Set();
+            try {
+                const bs = baseStats[t.name];
+                if (bs && bs.abilities && bs.abilities.H) haSet.add(bs.abilities.H);
+            } catch (e) {}
+            const pendingAbility = (_txPending && _txPending.kind === 'ability') ? _txPending.value : null;
+            const abilCtx = { pending: pendingAbility, current: curAbility, recommended: recAbilSet, hiddenAbilities: haSet };
+
+            // Item tab content
+            const itemTabHtml = (() => {
+                if (!items.length) return '<div class="tx-grid-empty">No items available for this Pokémon.</div>';
+                const recDesc = recItems.length
+                    ? `<div class="tx-recs-strip">
+                        <div class="tx-recs-strip-title">★ Recommended for ${_esc(t.name)}</div>
+                        <div class="tx-recs-strip-detail">${recItems.slice(0,3).map(it => `<strong>${_esc(it)}</strong>`).join(' · ')}</div>
+                    </div>`
+                    : '';
+                const cards = filtItems.length
+                    ? filtItems.map(it => _txItemCardHtml(it, itemCtx)).join('')
+                    : `<div class="tx-grid-empty">No items match — try a different category or clear the search.</div>`;
+                const toolbar = _txToolbarHtml('items', {
+                    placeholder: 'Search items (e.g. leftovers, choice, sash)',
+                    count: filtItems.length, countLabel: 'items',
+                    chipsHtml: _txItemCatChipsHtml(),
+                    sortOptions: [
+                        { value:'recommended', label:'Recommended' },
+                        { value:'category', label:'Category' },
+                        { value:'name', label:'Name (A→Z)' },
+                    ],
+                });
+                return toolbar + recDesc + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'item', mon, b);
+            })();
+
+            // Ability tab content
+            const abilTabHtml = (() => {
+                if (!abils.length) return '<div class="tx-grid-empty">No abilities available for this Pokémon.</div>';
+                const recDesc = recAbils.length
+                    ? `<div class="tx-recs-strip">
+                        <div class="tx-recs-strip-title">★ Strong choices</div>
+                        <div class="tx-recs-strip-detail">${recAbils.slice(0,3).map(a => `<strong>${_esc(a)}</strong>`).join(' · ')}</div>
+                    </div>`
+                    : '';
+                const cards = filtAbils.length
+                    ? filtAbils.map(a => _txAbilityCardHtml(a, abilCtx)).join('')
+                    : `<div class="tx-grid-empty">No abilities match the search.</div>`;
+                const toolbar = _txToolbarHtml('abilities', {
+                    placeholder: 'Search abilities',
+                    count: filtAbils.length, countLabel: 'abilities',
+                    sortOptions: [
+                        { value:'recommended', label:'Recommended' },
+                        { value:'name', label:'Name (A→Z)' },
+                    ],
+                });
+                return toolbar + recDesc + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'ability', mon, b);
+            })();
+
+            const headerSummary = `<div class="story-tutor-mon-meta" style="margin-top:0;">
+                ${tab === 'item' ? `Item: <strong>${_esc(curItem)}</strong>` : `Ability: <strong>${_esc(curAbility)}</strong>`}
+            </div>`;
+
+            return `<div class="story-tutor-mon">
+                <button type="button" class="story-tutor-mon-toggle" data-team="${idx}" aria-expanded="true">
+                    <div class="story-tutor-mon-main">
+                        <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
+                        <div style="min-width:0;">
+                            <div class="story-tutor-mon-name">${_esc(t.name)} ${typeHtml}</div>
+                            ${headerSummary}
+                        </div>
+                    </div>
+                    <span class="story-tutor-mon-chev" aria-hidden="true">▴</span>
+                </button>
+                <div class="story-tutor-mon-body">
+                    <div class="tx-tabs" role="tablist" aria-label="Battle Dojo">
+                        <button type="button" class="tx-tab" data-tab="item" data-active="${tab==='item'?1:0}" role="tab" aria-selected="${tab==='item'?'true':'false'}">Held Item</button>
+                        <button type="button" class="tx-tab" data-tab="ability" data-active="${tab==='ability'?1:0}" role="tab" aria-selected="${tab==='ability'?'true':'false'}">Ability</button>
+                    </div>
+                    ${tab === 'item' ? itemTabHtml : abilTabHtml}
+                </div>
+            </div>`;
+        }
+
+        // Render: Nature editor (grid + recommendation)
+        function _txRenderNatureEditor(t, idx) {
+            const b = t.build || {};
+            let mon = null;
+            try { if (b) mon = buildPokemon(t.name, shallowCloneBuildForDisplay(b)); } catch (e) {}
+            const typeHtml = mon ? getTypeHTML(mon.type1, mon.type2 || '') : '';
+            const spriteUrl = getSprite(spriteDisplayName(t));
+            const pool = _tutorGetPoolForMon(t.name);
+            const natAvailable = pool.natures.slice();
+            const curNature = b.n || 'Hardy';
+
+            // Recommendation list (top 3) — only non-neutral with decent score
+            const recList = _txTopRecommended(natAvailable.filter(n => n !== curNature && natureModifiers[n]), (n) => _txScoreNature(n, mon, b), 3);
+            const recSet = new Set(recList);
+
+            // Build a 5×5 grid mapping (up, down) → nature
+            const stats = ['atk','def','spa','spd','spe'];
+            const cells = [];
+            // Header row (top): empty cell + 5 column headers (down stat)
+            cells.push(`<div class="tx-nature-axis-label"></div>`);
+            for (const d of stats) cells.push(`<div class="tx-nature-axis-label">−${_TX_STAT_LABEL[d]}</div>`);
+            // Body rows
+            for (const u of stats) {
+                cells.push(`<div class="tx-nature-axis-label tx-nature-axis--col">+${_TX_STAT_LABEL[u]}</div>`);
+                for (const d of stats) {
+                    if (u === d) {
+                        cells.push(`<div class="tx-nature-cell" data-locked="1" aria-disabled="true" style="opacity:0.4;">—</div>`);
+                        continue;
+                    }
+                    const nat = Object.keys(natureModifiers).find(n => {
+                        const m = natureModifiers[n];
+                        return m && m.up === u && m.down === d;
+                    });
+                    if (!nat) {
+                        cells.push(`<div class="tx-nature-cell" data-locked="1" aria-disabled="true">—</div>`);
+                        continue;
+                    }
+                    const isCur = nat === curNature;
+                    const isPend = _txPending && _txPending.kind === 'nature' && _txPending.value === nat;
+                    const isRec = recSet.has(nat);
+                    cells.push(`<button type="button" class="tx-nature-cell" data-nature="${nat}" data-active="${(isCur||isPend)?1:0}" data-recommended="${isRec?1:0}" ${isCur?'disabled':''}>
+                        <span class="tx-nature-cell-name">${nat}${isCur?' ✓':''}</span>
+                    </button>`);
+                }
+            }
+            // Neutral natures (last row, full width)
+            const neutralNatures = ['Hardy','Docile','Serious','Bashful','Quirky'];
+            const neutralCells = neutralNatures.map(n => {
+                const isCur = n === curNature;
+                const isPend = _txPending && _txPending.kind === 'nature' && _txPending.value === n;
+                return `<button type="button" class="tx-nature-cell" data-nature="${n}" data-active="${(isCur||isPend)?1:0}" ${isCur?'disabled':''} style="background:rgba(180,187,204,0.05);">
+                    <span class="tx-nature-cell-name">${n}${isCur?' ✓':''}</span>
+                </button>`;
+            }).join('');
+
+            // Stat preview (current vs pending)
+            const buildStatPreview = () => {
+                if (!mon) return '';
+                const stats6 = ['atk','def','spa','spd','spe'];
+                const curMod = natureModifiers[curNature];
+                const pendingNat = (_txPending && _txPending.kind === 'nature') ? _txPending.value : null;
+                const newMod = pendingNat ? natureModifiers[pendingNat] : curMod;
+                const rows = stats6.map(s => {
+                    const base = mon[s] || 0;
+                    const cur  = base * (curMod && curMod.up === s ? 1.1 : (curMod && curMod.down === s ? 0.9 : 1));
+                    const nu   = base * (newMod && newMod.up === s ? 1.1 : (newMod && newMod.down === s ? 0.9 : 1));
+                    const delta = Math.round(nu - cur);
+                    const deltaCls = delta > 0 ? 'up' : (delta < 0 ? 'down' : 'zero');
+                    const max = Math.max(base * 1.1, 1);
+                    const curPct = Math.round((cur / max) * 100);
+                    const newPct = Math.round((nu / max) * 100);
+                    return `<div class="tx-stat-row">
+                        <span class="tx-stat-row-label">${_TX_STAT_LABEL[s]}</span>
+                        <div class="tx-stat-row-bar">
+                            <div class="tx-stat-row-fill tx-stat-fill--cur" style="width:${curPct}%;"></div>
+                            ${pendingNat ? `<div class="tx-stat-row-fill tx-stat-fill--new" style="width:${newPct}%;position:absolute;top:0;left:0;opacity:0.7;"></div>` : ''}
+                        </div>
+                        <span class="tx-stat-row-val" data-delta="${deltaCls}">${Math.round(nu)}${pendingNat && delta !== 0 ? ` (${delta>0?'+':''}${delta})` : ''}</span>
+                    </div>`;
+                }).join('');
+                return `<div class="tx-nature-preview">
+                    <div style="font-size:10px;color:#8b92a4;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:2px;font-weight:600;">Stat Preview ${pendingNat ? `· <span style="color:var(--accent);">${_esc(pendingNat)}</span>` : `(current: ${_esc(curNature)})`}</div>
+                    ${rows}
+                </div>`;
+            };
+
+            // Top "Recommended" strip
+            const recsStrip = recList.length
+                ? `<div class="tx-recs-strip">
+                    <div class="tx-recs-strip-title">★ Recommended for ${_esc(t.name)}</div>
+                    <div class="tx-recs-strip-detail">${recList.map(n => {
+                        const m = natureModifiers[n];
+                        return `<strong>${_esc(n)}</strong> <span style="font-size:10px;opacity:0.8;">(+${_TX_STAT_LABEL[m.up]}/−${_TX_STAT_LABEL[m.down]})</span>`;
+                    }).join(' · ')}</div>
+                </div>`
+                : '';
+
+            const headerSummary = `<div class="story-tutor-mon-meta" style="margin-top:0;">Nature: <strong>${_esc(curNature)}</strong>${
+                natureModifiers[curNature] ? ` <span style="opacity:0.7;">(+${_TX_STAT_LABEL[natureModifiers[curNature].up]}/−${_TX_STAT_LABEL[natureModifiers[curNature].down]})</span>` : ' (neutral)'
+            }</div>`;
+
+            return `<div class="story-tutor-mon">
+                <button type="button" class="story-tutor-mon-toggle" data-team="${idx}" aria-expanded="true">
+                    <div class="story-tutor-mon-main">
+                        <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
+                        <div style="min-width:0;">
+                            <div class="story-tutor-mon-name">${_esc(t.name)} ${typeHtml}</div>
+                            ${headerSummary}
+                        </div>
+                    </div>
+                    <span class="story-tutor-mon-chev" aria-hidden="true">▴</span>
+                </button>
+                <div class="story-tutor-mon-body">
+                    ${recsStrip}
+                    <div style="font-size:11px;color:#9aa3b8;margin-bottom:4px;">Tap a cell to preview. Rows raise a stat; columns lower one. Bottom row = neutral.</div>
+                    <div class="tx-nature-grid" role="grid" aria-label="Nature picker">${cells.join('')}</div>
+                    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:6px;font-size:10px;">${neutralCells}</div>
+                    ${buildStatPreview()}
+                    ${_txConfirmBarHtml(idx, 'nature', mon, b)}
+                </div>
+            </div>`;
         }
 
         function enterTutor(mode) {
@@ -36172,6 +37497,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _markFacilitySeen(m === 'nature' ? 'nature' : m === 'loadout' ? 'dojo' : 'tutor');
             _storyTutorMode = m;
             _storyTutorOpenIdx = 0;
+            // Reset transient picker state on entry — fresh filters & no pending swap
+            _txState.moveSlot = 0;
+            _txState.dojoTab = 'item';
+            _txState.search.moves = ''; _txState.search.items = ''; _txState.search.abilities = ''; _txState.search.natures = '';
+            _txState.filter.moveTypes.clear(); _txState.filter.moveCats.clear();
+            _txState.filter.itemCat = 'all';
+            _txState.filter.natureUp = 'any'; _txState.filter.natureDown = 'any';
+            _txState.sort.moves = 'recommended'; _txState.sort.items = 'recommended'; _txState.sort.abilities = 'recommended'; _txState.sort.natures = 'recommended';
+            _txPending = null;
+            _txMovePoolCache.clear();
             _applyStoryTutorHeader();
             const el = document.getElementById('story-tutor-team');
             const goldEl = document.getElementById('story-tutor-gold');
@@ -36209,7 +37544,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        async function renderTutorTeam() {
+        async function renderTutorTeam(skipFetch) {
             const el = document.getElementById('story-tutor-team');
             const goldEl = document.getElementById('story-tutor-gold');
             if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
@@ -36222,211 +37557,44 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const showLoadout = mode === 'loadout';
             if (_storyTutorOpenIdx < 0 || _storyTutorOpenIdx >= sm.team.length) _storyTutorOpenIdx = 0;
 
-            const movePools = [];
-            if (showMoves) {
+            // Move pools — fetched once per facility entry, then cached.
+            // Partial re-renders (filter / sort changes) pass skipFetch=true and reuse the cache.
+            if (showMoves && !skipFetch) {
+                _txMovePoolCache.clear();
                 for (let ti = 0; ti < sm.team.length; ti++) {
                     try {
-                        movePools.push(await _tutorGetMergedMovePoolAsync(sm.team[ti].name));
+                        _txMovePoolCache.set(ti, await _tutorGetMergedMovePoolAsync(sm.team[ti].name));
                     } catch (e) {
-                        movePools.push(_tutorGetPoolForMon(sm.team[ti].name).moves);
+                        _txMovePoolCache.set(ti, _tutorGetPoolForMon(sm.team[ti].name).moves);
                     }
                 }
             }
 
-            _tutorSlotMoveOptions.clear();
-
             el.innerHTML = sm.team.map((t, idx) => {
-                const pool = _tutorGetPoolForMon(t.name);
-                const mergedMoves = showMoves && (movePools[idx] && movePools[idx].length) ? movePools[idx] : pool.moves;
-                const b = t.build || {};
-                let mon = null;
-                try { if (b) mon = buildPokemon(t.name, shallowCloneBuildForDisplay(b)); } catch (e) {}
-
-                const typeHtml = mon ? getTypeHTML(mon.type1, mon.type2 || '') : '';
-                const spriteUrl = getSprite(spriteDisplayName(t));
                 const expanded = idx === _storyTutorOpenIdx;
-                const currentMovesCount = Array.isArray(b.m) ? b.m.length : 0;
-                const summary = showMoves
-                    ? `${currentMovesCount} move slot${currentMovesCount === 1 ? '' : 's'}`
-                    : showNature
-                        ? `Nature: ${_esc(b.n || 'Hardy')}`
-                        : `Item: ${_esc(b.i || '(none)')} | Ability: ${_esc(b.a || '(none)')}`;
-
-                if (!expanded) {
-                    return `<div class="story-tutor-mon">
-                        <button type="button" class="story-tutor-mon-toggle" data-team="${idx}" aria-expanded="false">
-                            <div class="story-tutor-mon-main">
-                                <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
-                                <div style="min-width:0;">
-                                    <div class="story-tutor-mon-name">${t.name} ${typeHtml}</div>
-                                    <div class="story-tutor-mon-meta">${summary}</div>
-                                </div>
-                            </div>
-                            <span class="story-tutor-mon-chev" aria-hidden="true">▾</span>
-                        </button>
-                    </div>`;
-                }
-
-                let moveRows = '';
+                if (!expanded) return _txRenderCollapsedMonHtml(t, idx, mode);
                 if (showMoves) {
-                    const currentMoves = (b.m || []).map(m => m.split('/')[0]);
-                    const goldLow = sm.gold < TUTOR_COST_MOVE;
-                    moveRows = currentMoves.map((cm, mi) => {
-                        const otherMoves = currentMoves.filter((_, oi) => oi !== mi);
-                        const available = mergedMoves.filter(m => m !== cm && !otherMoves.includes(m));
-                        if (!available.length) {
-                            return `<div class="story-tutor-move-slot story-tutor-move-slot--locked" data-no-alternatives="1">`
-                                + `<div class="story-tutor-option-row"><span class="current" style="min-width:auto;">Slot ${mi + 1}: <strong>${_esc(cm)}</strong></span><span style="font-size:10px;color:#555;">No other options</span></div>`
-                                + `<div class="story-tutor-move-detail story-tutor-move-detail--static" aria-live="polite">${_formatMoveTutorDetailHtml(cm)}</div>`
-                                + `</div>`;
-                        }
-                        const slotKey = `${idx}-${mi}`;
-                        _tutorSlotMoveOptions.set(slotKey, available);
-                        const affordMoveWarn = goldLow
-                            ? `<p class="story-tutor-afford-warn" role="status">Cost: ${TUTOR_COST_MOVE.toLocaleString()}G. You need ${Math.max(0, TUTOR_COST_MOVE - sm.gold).toLocaleString()}G more. Preview is free.</p>`
-                            : '';
-                        return `<div class="story-tutor-move-slot" data-has-moves="1" data-team="${idx}" data-slot="${mi}" data-slot-key="${slotKey}">`
-                            + `<div class="story-tutor-option-row"><span class="current">Slot ${mi + 1}: <strong>${_esc(cm)}</strong> →</span><span class="story-tutor-price">${storyGoldHtml(TUTOR_COST_MOVE, false)}</span></div>`
-                            + `<div class="story-tutor-move-detail story-tutor-move-detail--static story-tutor-current-equip" aria-label="Current move">${_formatMoveTutorDetailHtml(cm)}</div>`
-                            + `<div class="story-tutor-move-picker">`
-                            + `<input type="search" class="story-tutor-move-filter" placeholder="Search moves" autocomplete="off" />`
-                            + `<select class="story-tutor-move-select" size="8"></select>`
-                            + `<div class="story-tutor-move-detail" aria-live="polite"></div>`
-                            + `<div class="story-tutor-move-picker-footer">`
-                            + affordMoveWarn
-                            + `<button type="button" class="story-tutor-btn story-tutor-apply-move" disabled>Teach selected</button>`
-                            + `</div></div></div>`;
-                    }).join('');
+                    const pool = _txMovePoolCache.get(idx) || _tutorGetPoolForMon(t.name).moves;
+                    return _txRenderMoveEditor(t, idx, pool);
                 }
-
-                let itemRow = '';
-                let abilRow = '';
-                if (showLoadout) {
-                    const currentItem = b.i || '(none)';
-                    const itemAvailable = pool.items.filter(it => it !== b.i);
-                    const itemGoldWarn = itemAvailable.length && sm.gold < TUTOR_COST_ITEM
-                        ? `<p class="story-tutor-afford-warn" role="status">Cost per swap: ${TUTOR_COST_ITEM.toLocaleString()}G. You have ${sm.gold.toLocaleString()}G.</p>`
-                        : '';
-                    itemRow = itemAvailable.length
-                        ? `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentItem)}</strong> →</span></div>`
-                          + _tutorEquippedDescHtml(currentItem, 'No held item.')
-                          + itemGoldWarn
-                          + `<div class="story-tutor-choice-list">`
-                          + itemAvailable.map(it =>
-                              `<div class="story-tutor-choice"><div class="story-tutor-choice-actions">`
-                              + `<button type="button" class="story-tutor-btn" onclick="window.StoryMode.tutorChangeItem(${idx},'${it.replace(/'/g,"\\'")}')"`
-                              + ` ${sm.gold < TUTOR_COST_ITEM ? 'disabled' : ''}`
-                              + ` data-tip="${encodeURIComponent(tooltipDict[it] || '')}"`
-                              + ` onmouseenter="window.showTutorTextTooltip(this,event)"`
-                              + ` onmousemove="window.showTutorTextTooltip(this,event)"`
-                              + ` onmouseleave="window.hideTextTooltip()">${_esc(it)}</button>`
-                              + `<span class="story-tutor-price">${storyGoldHtml(TUTOR_COST_ITEM, false)}</span></div>`
-                              + _tutorChoiceDescBlockFromKey(it)
-                              + `</div>`
-                          ).join('')
-                          + `</div>`
-                        : `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentItem)}</strong></span><span style="font-size:10px;color:#555;">No other options</span></div>`
-                          + _tutorEquippedDescHtml(currentItem, 'No held item.');
-
-                    const currentAbility = b.a || (mon && mon.ability) || '(none)';
-                    const abilAvailable = pool.abilities.filter(a => a !== currentAbility);
-                    const abilGoldWarn = abilAvailable.length && sm.gold < TUTOR_COST_ABILITY
-                        ? `<p class="story-tutor-afford-warn" role="status">Cost per swap: ${TUTOR_COST_ABILITY.toLocaleString()}G. You have ${sm.gold.toLocaleString()}G.</p>`
-                        : '';
-                    abilRow = abilAvailable.length
-                        ? `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentAbility)}</strong> →</span></div>`
-                          + _tutorEquippedDescHtml(currentAbility, '')
-                          + abilGoldWarn
-                          + `<div class="story-tutor-choice-list">`
-                          + abilAvailable.map(a =>
-                              `<div class="story-tutor-choice"><div class="story-tutor-choice-actions">`
-                              + `<button type="button" class="story-tutor-btn" onclick="window.StoryMode.tutorChangeAbility(${idx},'${a.replace(/'/g,"\\'")}')"`
-                              + ` ${sm.gold < TUTOR_COST_ABILITY ? 'disabled' : ''}`
-                              + ` data-tip="${encodeURIComponent(tooltipDict[a] || '')}"`
-                              + ` onmouseenter="window.showTutorTextTooltip(this,event)"`
-                              + ` onmousemove="window.showTutorTextTooltip(this,event)"`
-                              + ` onmouseleave="window.hideTextTooltip()">${_esc(a)}</button>`
-                              + `<span class="story-tutor-price">${storyGoldHtml(TUTOR_COST_ABILITY, false)}</span></div>`
-                              + _tutorChoiceDescBlockFromKey(a)
-                              + `</div>`
-                          ).join('')
-                          + `</div>`
-                        : `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentAbility)}</strong></span><span style="font-size:10px;color:#555;">No other options</span></div>`
-                          + _tutorEquippedDescHtml(currentAbility, '');
-                }
-
-                let natureRow = '';
-                if (showNature) {
-                    const currentNature = b.n || 'Hardy';
-                    const natAvailable = pool.natures.filter(n => n !== currentNature);
-                    const natGoldWarn = natAvailable.length && sm.gold < TUTOR_COST_NATURE
-                        ? `<p class="story-tutor-afford-warn" role="status">Cost per swap: ${TUTOR_COST_NATURE.toLocaleString()}G. You have ${sm.gold.toLocaleString()}G.</p>`
-                        : '';
-                    natureRow = natAvailable.length
-                        ? `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentNature)}</strong> →</span></div>`
-                          + _tutorEquippedDescHtml(currentNature, '')
-                          + natGoldWarn
-                          + `<div class="story-tutor-choice-list">`
-                          + natAvailable.map(n => {
-                              const nm = natureModifiers[n];
-                              const statNames = {atk:'Atk',def:'Def',spa:'SpA',spd:'SpD',spe:'Spe'};
-                              const tip = nm ? '+' + statNames[nm.up] + ', -' + statNames[nm.down] : 'Neutral';
-                              return `<div class="story-tutor-choice"><div class="story-tutor-choice-actions">`
-                              + `<button type="button" class="story-tutor-btn" onclick="window.StoryMode.tutorChangeNature(${idx},'${n.replace(/'/g,"\\'")}')"`
-                              + ` ${sm.gold < TUTOR_COST_NATURE ? 'disabled' : ''}`
-                              + ` data-tip="${encodeURIComponent(tip)}"`
-                              + ` onmouseenter="window.showTutorTextTooltip(this,event)"`
-                              + ` onmousemove="window.showTutorTextTooltip(this,event)"`
-                              + ` onmouseleave="window.hideTextTooltip()">${_esc(n)}</button>`
-                              + `<span class="story-tutor-price">${storyGoldHtml(TUTOR_COST_NATURE, false)}</span></div>`
-                              + _tutorChoiceDescBlockFromKey(n)
-                              + `</div>`;
-                          }).join('')
-                          + `</div>`
-                        : `<div class="story-tutor-option-row"><span class="current">Now: <strong>${_esc(currentNature)}</strong></span><span style="font-size:10px;color:#555;">No other options</span></div>`
-                          + _tutorEquippedDescHtml(currentNature, '');
-                }
-
-                const moveSection = showMoves
-                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Moves</div><p class="story-tutor-moves-hint">Pick one slot, preview a replacement, then confirm.</p>${moveRows}</div>`
-                    : '';
-                const itemSection = showLoadout
-                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Held Item</div><p class="story-tutor-moves-hint">Current item first, then swap options.</p>${itemRow}</div>`
-                    : '';
-                const abilSection = showLoadout
-                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Ability</div><p class="story-tutor-moves-hint">Current ability first, then swap options.</p>${abilRow}</div>`
-                    : '';
-                const natureSection = showNature
-                    ? `<div class="story-tutor-section"><div class="story-tutor-section-title">Nature</div><p class="story-tutor-moves-hint">Choose a nature; stat effects are shown with each option.</p>${natureRow}</div>`
-                    : '';
-
-                return `<div class="story-tutor-mon">
-                    <button type="button" class="story-tutor-mon-toggle" data-team="${idx}" aria-expanded="true">
-                        <div class="story-tutor-mon-main">
-                            <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
-                            <div style="min-width:0;">
-                                <div class="story-tutor-mon-name">${t.name} ${typeHtml}</div>
-                                <div class="story-tutor-mon-meta">${summary}</div>
-                            </div>
-                        </div>
-                        <span class="story-tutor-mon-chev" aria-hidden="true">▴</span>
-                    </button>
-                    <div class="story-tutor-mon-body">${moveSection}${itemSection}${abilSection}${natureSection}</div>
-                </div>`;
+                if (showLoadout) return _txRenderLoadoutEditor(t, idx);
+                if (showNature)  return _txRenderNatureEditor(t, idx);
+                return _txRenderCollapsedMonHtml(t, idx, mode);
             }).join('');
 
-            if (showMoves) {
-                el.querySelectorAll('.story-tutor-move-slot[data-has-moves="1"]').forEach(function(row) {
-                    const key = row.dataset.slotKey;
-                    const moves = _tutorSlotMoveOptions.get(key);
-                    const sel = row.querySelector('.story-tutor-move-select');
-                    const ap = row.querySelector('.story-tutor-apply-move');
-                    const low = sm.gold < TUTOR_COST_MOVE;
-                    if (moves && sel) _tutorFillMoveSelect(sel, moves);
-                    if (ap) ap.disabled = low || !(sel && sel.value);
-                    _tutorRefreshMoveDetailRow(row);
-                });
-            }
+            // Refocus search inputs (so typing isn't interrupted by re-render)
+            try {
+                const focusKind = (showMoves && document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('tx-search-input'))
+                    ? document.activeElement.dataset.kind : null;
+                if (focusKind) {
+                    const newInput = el.querySelector(`.tx-search-input[data-kind="${focusKind}"]`);
+                    if (newInput) {
+                        newInput.focus();
+                        const v = newInput.value;
+                        newInput.setSelectionRange(v.length, v.length);
+                    }
+                }
+            } catch (e) {}
         }
 
         async function tutorChangeMove(teamIdx, moveSlot, newMove) {
@@ -36446,7 +37614,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.pp = null;
                 save();
                 try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
-                void renderTutorTeam();
+                _txPending = null;
+                void renderTutorTeam(true);
                 renderTeamPanel();
             } finally {
                 _storyEndInteraction();
@@ -36480,7 +37649,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.build.i = newItem;
                 save();
                 try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
-                void renderTutorTeam();
+                _txPending = null;
+                void renderTutorTeam(true);
                 renderTeamPanel();
             } finally {
                 _storyEndInteraction();
@@ -36500,7 +37670,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.build.a = newAbility;
                 save();
                 try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
-                void renderTutorTeam();
+                _txPending = null;
+                void renderTutorTeam(true);
                 renderTeamPanel();
             } finally {
                 _storyEndInteraction();
@@ -36522,7 +37693,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.currentHp = null;
                 save();
                 try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
-                void renderTutorTeam();
+                _txPending = null;
+                void renderTutorTeam(true);
                 renderTeamPanel();
             } finally {
                 _storyEndInteraction();
@@ -36981,24 +38153,82 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             el.innerHTML = _evTrainerHelpBannerHtml() + sm.team.map((t, idx) => _renderEVTrainerMonCard(t, idx)).join('');
         }
 
-        function _evTrainerRenderPresetButton(idx, p, currentEvs, cantAfford) {
+        // Score an EV preset against the Pokémon's base stats — surfaces which
+        // preset is the strongest "fit" for the highlighted-mon recommendation.
+        function _evTrainerScorePreset(p, mon) {
+            if (!p || !p.evs) return 0;
+            if (!mon) return 50;
+            const atk = mon.atk || 0, spa = mon.spa || 0, spe = mon.spe || 0, hp = mon.hp || 0, def = mon.def || 0, spd = mon.spd || 0;
+            const physical = atk >= spa;
+            const fast = spe >= 90;
+            const bulky = (hp + def + spd) >= 240;
+            let s = 0;
+            // Reward matching the build's strongest stat with EVs
+            const evs = p.evs;
+            const weight = (key, ifTrue, ifFalse) => (ifTrue ? (evs[key] || 0) : -(evs[key] || 0) * 0.4) || 0;
+            s += weight('atk', physical) * 0.35;
+            s += weight('spa', !physical) * 0.35;
+            s += weight('spe', fast) * 0.25;
+            s += (evs.hp || 0) * (bulky ? 0.20 : 0.10);
+            s += (evs.def || 0) * 0.10;
+            s += (evs.spd || 0) * 0.10;
+            // Bonus for meta archetypes
+            if (p.id && /^meta_/.test(p.id)) s += 30;
+            return Math.round(s);
+        }
+
+        // EV stat-bar HTML (6 stats with relative widths to 252 cap)
+        function _evTrainerStatBarsHtml(evs, label) {
+            const e = evs || {};
+            const keys = ['hp','atk','def','spa','spd','spe'];
+            const rows = keys.map(k => {
+                const v = e[k] || 0;
+                const pct = Math.min(100, Math.round((v / 252) * 100));
+                const cls = v >= 252 ? 'tx-stat-fill--up' : (v >= 200 ? '' : 'tx-stat-fill--cur');
+                return `<div class="tx-stat-row">
+                    <span class="tx-stat-row-label">${_TX_STAT_LABEL[k]}</span>
+                    <div class="tx-stat-row-bar"><div class="tx-stat-row-fill ${cls}" style="width:${pct}%;"></div></div>
+                    <span class="tx-stat-row-val">${v}</span>
+                </div>`;
+            }).join('');
+            return `<div style="display:flex;flex-direction:column;gap:3px;${label?'margin-top:6px;':''}">${label ? `<div style="font-size:9px;color:#8b92a4;letter-spacing:0.05em;text-transform:uppercase;font-weight:600;">${_esc(label)}</div>` : ''}${rows}</div>`;
+        }
+
+        // Mini stat-summary line (compact, single row) — used in card headers
+        function _evTrainerStatsCompactHtml(evs) {
+            const e = evs || {};
+            const total = (e.hp||0)+(e.atk||0)+(e.def||0)+(e.spa||0)+(e.spd||0)+(e.spe||0);
+            return `<span style="font-variant-numeric:tabular-nums;color:#9ccc65;font-weight:600;">${total}/510</span>`;
+        }
+
+        function _evTrainerRenderPresetCard(idx, p, currentEvs, cantAfford, isRecommended) {
             const isCurrent = _evsEqual(currentEvs, p.evs);
             const hasVitamin = ((sm.inventory && sm.inventory.vitamin) | 0) > 0;
-            const goldDisabled = (cantAfford || isCurrent);
-            const vitaDisabled = (!hasVitamin || isCurrent);
-            const dis = goldDisabled ? 'disabled' : '';
-            const activeFlag = isCurrent ? ' data-current="1"' : '';
-            const compact = `<span style="opacity:0.7;font-size:10px;">(${_evSpreadCompact(p.evs)})</span>`;
-            const priceTag = `<span class="story-tutor-price">${storyGoldHtml(EVTRAINER_COST.toLocaleString(), false)}</span>`;
             const safeId = String(p.id).replace(/'/g, "\\'");
             const vitaCount = (sm.inventory && sm.inventory.vitamin) | 0;
-            const vitaBtn = hasVitamin
-                ? `<button type="button" class="story-tutor-btn" ${vitaDisabled ? 'disabled' : ''} onclick="window.StoryMode.evTrainerApplyPresetWithVitamin(${idx},'${safeId}')" title="Use 1 Vitamin Pack (you have ${vitaCount}) — free preset, saves ${EVTRAINER_COST.toLocaleString()}G" style="margin-left:6px;color:#f8bbd0;border-color:#f8bbd0;"><img src="sprites/pokesprite/items/protein.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:3px;">Use Vitamin <span style="font-size:9px;color:#aaa;">(${vitaCount} left)</span></button>`
+            const goldDisabled = cantAfford || isCurrent;
+            const vitaDisabled = !hasVitamin || isCurrent;
+            const total = (p.evs.hp||0)+(p.evs.atk||0)+(p.evs.def||0)+(p.evs.spa||0)+(p.evs.spd||0)+(p.evs.spe||0);
+            const pills = [
+                isCurrent ? `<span class="tx-pill tx-pill--cur">Applied</span>` : '',
+                isRecommended && !isCurrent ? `<span class="tx-pill tx-pill--rec">★ Pick</span>` : '',
+                `<span class="tx-pill">${total} EVs</span>`,
+            ].filter(Boolean).join('');
+            const vitaBtn = (hasVitamin && !vitaDisabled)
+                ? `<button type="button" class="story-tutor-btn" onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPresetWithVitamin(${idx},'${safeId}')" title="Use 1 Vitamin Pack (you have ${vitaCount}) — free preset" style="color:#f8bbd0;border-color:#f8bbd0;font-size:10px;padding:3px 6px;">
+                    <img src="sprites/pokesprite/items/protein.png" alt="" width="12" height="12" decoding="async" style="width:12px;height:12px;image-rendering:auto;vertical-align:-2px;margin-right:2px;">Vitamin (${vitaCount})
+                </button>`
                 : '';
-            return `<div class="story-tutor-choice"${activeFlag}><div class="story-tutor-choice-actions">`
-                + `<button type="button" class="story-tutor-btn" ${dis} onclick="window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')">`
-                + `${_esc(p.label)} ${compact}</button>`
-                + priceTag + vitaBtn + `</div></div>`;
+            const gButton = isCurrent
+                ? `<button type="button" class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;">Applied</button>`
+                : `<button type="button" class="story-tutor-btn" ${goldDisabled?'disabled':''} onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')" style="font-size:11px;padding:5px 8px;">${storyGoldHtml(EVTRAINER_COST, false)}</button>`;
+            return `<div class="tx-card" data-recommended="${isRecommended?1:0}" data-current="${isCurrent?1:0}" style="cursor:default;">
+                <div class="tx-card-head">
+                    <span class="tx-card-title">${_esc(p.label)}</span>
+                </div>
+                ${_evTrainerStatBarsHtml(p.evs, null)}
+                <div class="tx-card-foot">${pills}<span style="flex:1;"></span>${gButton} ${vitaBtn}</div>
+            </div>`;
         }
 
         function _renderEVTrainerMonCard(t, idx) {
@@ -37006,46 +38236,69 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const cur = b.evs || {};
             const cantAfford = sm.gold < EVTRAINER_COST;
             const spriteUrl = (typeof getSprite === 'function') ? getSprite(spriteDisplayName(t)) : '';
+            let mon = null;
             let typeHtml = '';
             try {
-                const mon = (typeof buildPokemon === 'function') ? buildPokemon(t.name, shallowCloneBuildForDisplay(b)) : null;
+                mon = (typeof buildPokemon === 'function') ? buildPokemon(t.name, shallowCloneBuildForDisplay(b)) : null;
                 if (mon && typeof getTypeHTML === 'function') typeHtml = getTypeHTML(mon.type1, mon.type2 || '');
             } catch (e) {}
 
             const meta = _evTrainerMetaSpreadsFor(t.name);
             _evTrainerMetaCache[idx] = meta;
 
-            const universalBtns = EV_PRESETS_UNIVERSAL.map(p => _evTrainerRenderPresetButton(idx, p, cur, cantAfford)).join('');
-            const roleBtns = EV_PRESETS_ROLE.map(p => _evTrainerRenderPresetButton(idx, p, cur, cantAfford)).join('');
-            const metaBtns = meta.map(p => _evTrainerRenderPresetButton(idx, p, cur, cantAfford)).join('');
+            // Find top-recommended preset across all categories (1 winner)
+            const allPresets = [].concat(EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta);
+            let topRec = null, topScore = -Infinity;
+            for (const p of allPresets) {
+                if (_evsEqual(cur, p.evs)) continue;
+                const s = _evTrainerScorePreset(p, mon);
+                if (s > topScore) { topScore = s; topRec = p; }
+            }
+            const topRecId = topRec ? topRec.id : null;
 
-            const universalSection = `<div class="story-tutor-section">`
-                + `<div class="story-tutor-section-title" style="color:#9ccc65;">Universal</div>`
-                + `<div class="story-tutor-choice-list">${universalBtns}</div></div>`;
+            const renderRow = (presets) => presets.map(p =>
+                _evTrainerRenderPresetCard(idx, p, cur, cantAfford, p.id === topRecId)
+            ).join('');
 
-            const roleSection = `<div class="story-tutor-section">`
-                + `<div class="story-tutor-section-title" style="color:#9ccc65;">Roles</div>`
-                + `<div class="story-tutor-choice-list">${roleBtns}</div></div>`;
-
+            const universalSection = `<div style="margin-top:10px;">
+                <div style="font-size:10px;color:#9ccc65;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;margin-bottom:6px;">Universal</div>
+                <div class="tx-grid" style="max-height:none;">${renderRow(EV_PRESETS_UNIVERSAL)}</div>
+            </div>`;
+            const roleSection = `<div style="margin-top:10px;">
+                <div style="font-size:10px;color:#9ccc65;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;margin-bottom:6px;">Roles</div>
+                <div class="tx-grid" style="max-height:none;">${renderRow(EV_PRESETS_ROLE)}</div>
+            </div>`;
             const metaSection = meta.length
-                ? `<div class="story-tutor-section">`
-                    + `<div class="story-tutor-section-title" style="color:#9ccc65;">Meta</div>`
-                    + `<div class="story-tutor-choice-list">${metaBtns}</div></div>`
+                ? `<div style="margin-top:10px;">
+                    <div style="font-size:10px;color:#9ccc65;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;margin-bottom:6px;">Meta Spreads</div>
+                    <div class="tx-grid" style="max-height:none;">${renderRow(meta)}</div>
+                </div>`
                 : '';
 
-            const summaryLine = `${_evSpreadCompact(cur)}`;
+            // Recommended hero strip
+            const recsStrip = topRec
+                ? `<div class="tx-recs-strip">
+                    <div class="tx-recs-strip-title">★ Recommended for ${_esc(t.name)}</div>
+                    <div class="tx-recs-strip-detail"><strong>${_esc(topRec.label)}</strong> — ${_evSpreadCompact(topRec.evs)}</div>
+                </div>`
+                : '';
+
             const headerCostChip = `<span class="story-action-badge ${cantAfford ? 'cost cant-afford' : 'cost'}"${cantAfford ? ` title="You need ${(EVTRAINER_COST - sm.gold).toLocaleString()}G more"` : ''}>${EVTRAINER_COST.toLocaleString()}G / preset</span>`;
 
             return `<div class="story-tutor-mon">
-                <div class="story-tutor-mon-main" style="display:flex;align-items:center;gap:10px;padding:8px 10px;">
+                <div class="story-tutor-mon-main" style="display:flex;align-items:center;gap:10px;padding:10px 12px;flex-wrap:wrap;">
                     <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.visibility='hidden'">
                     <div style="min-width:0;flex:1;">
                         <div class="story-tutor-mon-name">${_esc(t.name)} ${typeHtml}</div>
-                        <div class="story-tutor-mon-meta" style="font-size:10px;color:#9ccc65;">${summaryLine}</div>
+                        <div class="story-tutor-mon-meta">Current EVs: ${_esc(_evSpreadCompact(cur))} · ${_evTrainerStatsCompactHtml(cur)}</div>
                     </div>
                     ${headerCostChip}
                 </div>
-                <div class="story-tutor-mon-body">${universalSection}${roleSection}${metaSection}</div>
+                <div class="story-tutor-mon-body" style="padding-top:6px;">
+                    ${recsStrip}
+                    ${_evTrainerStatBarsHtml(cur, 'Currently equipped')}
+                    ${universalSection}${roleSection}${metaSection}
+                </div>
             </div>`;
         }
 
