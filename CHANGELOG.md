@@ -5,6 +5,34 @@ All notable user-visible changes land here. Sessions append entries under
 
 ## Unreleased — Special-case Pokémon variations 2026-05-16 (`claude/special-case-pokemon-variations-pZmOU`)
 
+### Added — Pikachu (and friends) can show up in a rare cosmetic skin
+
+- Every base species with a pure-cosmetic alt forme now has a **~1.5% "shiny-like"
+  chance** to roll with that skin pinned on. The forme is purely visual — the
+  Pokémon is still a Pikachu in every game-mechanic sense (same stats, same
+  ability pool, same Raichu evolution, same builds, same move legality). Only
+  the rendered sprite swaps.
+- Coverage: **Pikachu** (14 skins — Cosplay, Rock-Star, Belle, Pop-Star, PhD,
+  Libre, Original, Hoenn, Sinnoh, Unova, Kalos, Alola, Partner, World),
+  **Pichu** (Spiky-eared), **Magearna** (Original), **Vivillon** (Fancy,
+  Pokeball), **Maushold** (Four), **Squawkabilly** (Blue, Yellow, White),
+  **Tatsugiri** (Droopy, Stretchy), **Dudunsparce** (Three-Segment),
+  **Polteageist** (Antique), **Sinistcha** (Masterpiece). 27 skins across
+  10 base species.
+- The skin pins on `build._cosmeticForme` (same persistence convention as
+  `_isShiny` / `_gender`), so it survives save/load and propagates from
+  the slot into the in-battle mon as `mon.cosmeticForme`. A new
+  `spriteDisplayName(monOrSlot)` helper reads the skin first, falling back
+  to the canonical species name when no skin is pinned — wired into every
+  sprite render site (battle, team panel, Cable Link, PC, Professor pick
+  card, Evo Lab, Move/Dojo/Nature/EV tutors, trainer roster cards).
+- Team-panel name line now shows a small cyan **✦ Belle / ✦ Fancy / …** badge
+  on cosmetic-skinned mons, with a tooltip explaining the skin is purely
+  visual so the player knows the underlying Pikachu mechanics are unchanged.
+- Cross-species evolution drops a stale skin: evolving a Pikachu-Belle into
+  Raichu re-rolls a fresh build (which gets its own ~1.5% skin chance for
+  the new species), so the Belle decal doesn't bleed onto the Raichu sprite.
+
 ### Fixed — Cosmetic alt formes can no longer roll as a starter / wild
 
 - **Eevee-Starter** (the Let's-Go partner forme, BST 435) and the full set
