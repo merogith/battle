@@ -76,6 +76,101 @@ modest catch-rate boost (Safari Ball 1.35×, Rock catch 1.65×) keeps a
 6-encounter session from collapsing into "everything fled, I caught
 nothing".
 
+## Unreleased — Story-mode investigation pass: cleanup, climax, casino 2026-05-16 (`claude/story-mode-investigation-lILFs`)
+
+### Changed — Active party cap = `2 + badges`, foes match player team size 1:1
+
+- `_storyMaxPartySize()` is the **badge curve** (`max(2, min(6, 2 + badges))`):
+  starter slot is always available, the catch tutorial fills slot 2 right
+  after the intro rival, and each gym badge unlocks one more slot up to 6
+  at four badges. Catches and Professor gifts above the cap still succeed
+  — they land in the PC, so a player can always *catch*, they just can't
+  *field* more than the active cap until the next badge.
+- `_storyEnemyPartySize()` is now **player-matching with per-role floors**.
+  Foe size = player team length, but no smaller than:
+    Basic / Gym Trainer / Elite Trainer = 1,
+    Rival = 2,
+    GL1–2 = 2, GL3–4 = 3, GL5–6 = 4, GL7 = 5, GL8 = 6.
+  Story finales (Champion / E1–E4 / Victory Road / post-HoF Mystery Figure)
+  still field a full 6 regardless. Intro rival stays a pure player-match
+  (1v1 starter duel).
+- Result: a player who runs lean fights lean trainers run-to-run; a
+  player who builds full faces 6v6 trainer fights from Gym 5 onward.
+  The cap and the foe-size formula stay locked on the same progression
+  clock so every battle is a readable, fair fight regardless of how
+  many wilds the player caught.
+- Restored the city hub party label's "(next slot at N badges)" hint and
+  the PC storage tab's "(next slot at badge N+1)" cap-hint that the
+  earlier flat-6 pass had stripped.
+
+### Changed — Post-HoF first reentry routes through Mystery Figure (row 67)
+
+- Row 67 in `STORY_EVENTS_RAW` is no longer skipped on the way to the
+  post-game hub. `continuePostGame()` snaps `sm.eventIndex` to row 67 and
+  sets `sm.crucibleBattleSource = 'postHofMystery'` so the post-battle
+  interceptor (`_handleCrucibleBattleEnd`) flips a new save flag
+  `sm.postHofMysteryClimaxDone` and routes the player back into the
+  existing Master-Ball / boss-arc / lastCity flow. Result: the Mystery
+  Figure climax fires exactly once per save as a one-time mask-drop beat,
+  then the Crucible / Caged God doors stay open at every later city visit.
+- `processNextEvent` re-establishes the dispatch source if the player
+  reloads while still standing on row 67 with the climax flag unset
+  (e.g. tab closed mid-fight), so the climax can't loop into a save-
+  killing dead-end.
+- Migration: existing saves that already have `sm.bossArc.available`
+  set are marked climax-done in v16 so they skip the new beat entirely.
+
+### Changed — Poké Casino has three wager tables instead of one
+
+- Same one-line core RNG (a single d10) but three modes layered on top:
+  - **Coin Flip** — Heads/Tails, pays 1:1, 50% (parity of the roll).
+  - **Color** — Red/Black, pays 1:2, 30% (roll 1–3 = Red, 8–10 = Black,
+    4–7 = neither). Small house edge.
+  - **Jackpot** — pick a number 1–10, pays 1:9, 10%. High-variance kicker.
+- The bet chip row, the gold HUD, and the result line are unchanged;
+  the screen body adds three labelled clusters so the player can read
+  the odds at a glance before choosing.
+
+### Fixed — Boss-arc legendary roll honors the run seed
+
+- `_bossArcRollLegendary()` now picks the species through `storyRngNext`
+  (when `sm.active`) instead of bare `Math.random()`. The chosen legendary
+  is locked into the save once unlocked, so the same `runSeed` and
+  generation toggle now reproduce the same Caged God across machines.
+
+### Fixed — Pokémon Center entry uses the same interaction guard as siblings
+
+- `enterPokemonCenter` now wraps in `_storyTryBeginInteraction()` /
+  `_storyEndInteraction()` like every other facility entry. Closes a
+  tap-spam race where the screen could re-enter mid-`save()`.
+
+### Removed — Dead `partyEverReached2` / `partyEverReached4` flags
+
+- Both flags were written in six places and never read anywhere; the
+  CHANGELOG had described them as the G4-strip gate, but the actual
+  gate in `storyStripGrade4IfPartyMature` is `sm.badges < 1`. Removed
+  the writes and the schema-default entries; behavior is unchanged.
+
+### Doc — Spec drift caught up
+
+- `STORY_MODE_FLOW.md` catch-rate table updated to the live constants
+  (G1 4% / G2 12% / G3 22% / G4 35%, per-grade flee 55/40/28/20) and
+  notes Safari Ball at the live 1.25× multiplier.
+- §9 (boss arc) rewritten to describe the new row-67-once flow.
+- New §14e clarifies that internal action keys (`Pokemart`, `Pokemon
+  League`, `Pokemon Breeder` sprite IDs) keep their ASCII form; only
+  user-facing copy is renderered with the diacritic.
+- `agent-state/CODEBASE_MAP.md` Safari row updated to the live
+  2,500G entry / 15-ball / 1.25× / g1:3/g2:22/g3:50/g4:25 numbers.
+
+### Misc
+
+- Stale comment over `SAFARI_BALL_MULT` (called it "1.5×, between Great
+  and Ultra") corrected to match the live value. (Note: the Safari Zone
+  gameplay-loop branch superseding this PR bumps the same constant to
+  1.35× and rewrites the comment again — see the entry at the top of
+  this file.)
+
 ## Unreleased — Vitamin / EV-training balance pass 2026-05-16 (`claude/balance-vitamins-stats-PAaPn`)
 
 ### Added — Vitamin distribution fills the gym dead zones
