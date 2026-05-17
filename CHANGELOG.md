@@ -28,6 +28,142 @@ and a walled trigger only commits if the picked switch-in actually
 breaks the wall. `willDieFirst` still overrides — when the current mon
 won't get a move off, switching is correct even into a bad target.
 
+## Unreleased — Safari / Wild / Evolution animations + story-mode visual pass 2026-05-17 (`claude/safari-zone-animations-Jb1zx`)
+
+### Added — `StoryFx` animation + sound module
+
+A new top-of-script module (`window.StoryFx`) owns every animation and
+sound effect for the story-mode flows that previously rendered as
+pure-text screens. It exposes:
+
+- **`buildEncounterStage(parent, { tone })`** — drops a tone-themed
+  (`wild` / `safari` / `boss`) stage div into the catch screen body
+  with a soft type-tinted radial backdrop. The stage element is
+  persistent across `_catchRender` re-mounts so wobble / idle state
+  survives the rebuild after each throw.
+- **`encounterReveal(stage, name, opts)`** — slides the wild Pokémon
+  in from the upper-right with a "tray-enter" SFX and plays the
+  species cry. Mirrors the FireRed / Emerald opener cadence.
+- **`throwBall(stage, ballKey, outcome)`** — animated ball arc → flash
+  → wobble (1 / 2 / 3 wobbles for flee / wobble / catch) → capture
+  seal (`pb_lock` + sparkle starburst) or break-out (`pb_rel` puff).
+  The catch path also plays `shing` + `sparkle`. Pre-computes the
+  outcome so the animation mirrors truth.
+- **`safariActionFx(stage, action)`** — Bait/Rock puff bubble + per-
+  action SFX (`pb_tray_ball` for bait, `pb_move` for rock); rock also
+  shakes the wild sprite.
+- **`evolutionScene({ fromName, toName, shiny, allowCancel })`** —
+  full-screen Gen 3-style sequence: silhouette → conic-ray spin →
+  white flash → reveal with cry. Optional B-button cancel; the
+  Evolution Lab calls it with `allowCancel: false` after a
+  `showGameConfirm` gate so once committed it always completes.
+- **`casinoSpin({ host, finalText, win })`** — three-reel spinning
+  display with `gacha_dial` start, ticking reel SFX, per-reel lock,
+  win/lose glow. The reel text snaps to a roll-derived value.
+- **`flashPulse(el, variant)`** + **`buyFx` / `healFx` / `saveFx` /
+  `upgradeFx` / `warnFx`** — coloured pulse rings on a target element
+  with an attached SFX (used for shop buys, Pokémon Center actions,
+  Tutor commits, EV Trainer presets, Colress gimmick activations,
+  Link Station rerolls / upgrades, and Relic Annex claims).
+- **`floatCoin(el, label)`** — short floating "-NNNG" indicator on
+  shop rows after a purchase.
+- All helpers respect `prefers-reduced-motion`: when that media query
+  matches, every `_wait` is clamped to 80ms so the player still
+  reaches the resolution screen without holding for the cinematic.
+
+### Added — Catch screen visual overhaul (Safari + wild routes + boss + tutorial)
+
+- `enterCatchEncounter` now builds the persistent stage on entry,
+  fires `StoryFx.encounterReveal` with the species cry, and clears
+  the stage between encounters (so each Safari pull gets a fresh
+  slide-in).
+- `catchThrow` is now async: pre-rolls the outcome (catch / flee /
+  wobble), runs `StoryFx.throwBall` with that outcome, then applies
+  the actual state change. A guard (`_catchThrowInFlight`) blocks
+  double-clicks while a throw is mid-air.
+- `safariBait` / `safariRock` fire the puff animation + SFX before
+  the per-turn flee roll. The wild's shake on a thrown rock reads
+  the canonical "this is your last warning" beat from Emerald.
+- `catchRun` plays the `flee` SFX so running registers as an event,
+  not a silent state change.
+- `_catchFinishWithMessage` and `catchContinue` always tear down the
+  stage so a re-entry can't see stale animation state.
+
+### Added — Stone Sage evolution scene
+
+`evoLabEvolve` and `evoLabEvolveWithCandy` now route through a new
+`_evoLabApplyEvolutionWithAnim` helper that performs the data swap
+first, then plays `StoryFx.evolutionScene` with the old → new
+species. The cinematic is allowCancel:false (the showGameConfirm
+prompt is the cancel gate) so the screen always resolves cleanly.
+
+### Added — Casino spin animation
+
+`casinoPlay` is now async and runs the 3-reel spin before applying
+the gold delta. A reentrancy guard (`_casinoSpinInFlight`) blocks
+fast-clicks during the spin. The result message lands as a
+post-reel `div` so the spin and the outcome are visually distinct.
+
+### Added — Wired the unused `music/ui_sfx/*.wav` files
+
+Eighteen sample audio files that were sitting unused in the repo
+are now wired into `AudioSystem.UI_SFX` and consumed by the new
+flows: `pb_bounce_1`, `pb_bounce_2`, `pb_lock`, `pb_move`,
+`pb_tray_ball`, `pb_tray_empty`, `pb_tray_enter`, `crit_throw`,
+`egg_crack`, `egg_hatch`, `gacha_dial`, `gacha_dispense`,
+`gacha_running`, `achv`, `shing`, `upgrade`, `save`, `buy`, and
+`danger`. Each maps to a camelCase key on `UI_SFX` (`pbBounce1`,
+`pbLock`, `gachaRun`, etc.).
+
+### Added — Facility entry chimes + commit pulses
+
+A whole-story polish sweep. Every facility now plays a short
+themed cue on entry and a "commit" cue on each action:
+
+- **Pokémon Center** — `save` (Joy's welcome chime) on entry;
+  PC deposit `pb_tray_ball`, withdraw `pb_rel`, release
+  `pb_tray_empty`, Underground sell `buy`.
+- **Pokémart / Department Store** — `pb_tray_ball` door bell on
+  entry (gated so it only fires when transitioning *into* the
+  shop, not on the post-buy re-render). Each successful purchase
+  plays `buy`, drops a `-NNNG` coin float over the row, and rings
+  the row's gold pulse.
+- **Move Tutor / Battle Dojo / Nature Rater** — soft
+  `pb_tray_enter` on entry, `upgrade` on every move / item /
+  ability / nature commit.
+- **EV Trainer** — `stat_up` whistle on entry; the preset-apply
+  commit plays `stat_up` + delayed `exp` (mirrors the canonical
+  in-battle EV-train ping).
+- **Colress** — `beam` hum on entry; gimmick activation plays
+  `charge` + delayed `shing` (mega / Z / dyna / tera all share the
+  cue via `_colressFinish`).
+- **Stone Sage / Evolution Lab** — `sparkle` on entry, full
+  evolution scene on commit.
+- **Cable Link Station** — `beam` on entry, `shing` on Reroll /
+  Rebuild, `upgrade` + delayed `shing` on Upgrade.
+- **Poké Casino** — `gacha_dial` on entry; full reel-spin per play.
+- **Relic Annex** — `shine` on entry, `upgrade` + delayed `shing`
+  on claim.
+- **Safari Zone** — `pb_tray_enter` gate chime as the session
+  starts; each encounter inherits the new encounter reveal.
+- **The Crucible** — `achv` chord on entry.
+- **Battle Frontier** — `danger` horn on entry.
+
+### Added — CSS keyframe library for the new flows
+
+A `STORY FX` block of new keyframes (`storyfxMonIdle`,
+`storyfxMonEnter`, `storyfxMonShake`, `storyfxMonFlee`,
+`storyfxMonAbsorb`, `storyfxBallThrow`, `storyfxBallWobble`,
+`storyfxBallSeal`, `storyfxBallBurst`, `storyfxStarBurst`,
+`storyfxBannerIn`, `storyfxPuff`, `storyfxEvoRaySpin`,
+`storyfxEvoRayFade`, `storyfxEvoFlash`, `storyfxEvoFlashFade`,
+`storyfxEvoMorph`, `storyfxEvoReveal`, `storyfxPulse` family,
+`storyfxCoinFloat`, `storyfxReelBlur`, `storyfxReelWin`,
+`storyfxReelLose`) sits alongside the existing battle anims so
+all motion lives in one place. Stage / ball sprite art reuses the
+canonical Showdown sprite CDN (via `getSprite`) and the pokesprite
+ball icons already on disk.
+
 ## Unreleased — Story-mode regression sweep 2026-05-17 (`claude/fix-story-mode-bugs-1L4dU`)
 
 ### Fixed — Post-KO party modal + Pokémon summary blanking
