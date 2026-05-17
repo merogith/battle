@@ -3,6 +3,44 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Battle KO ordering & switch-in edge cases 2026-05-17 (`claude/fix-battle-ko-ordering-7UoSZ`)
+
+### Fixed — Simultaneous-KO switch-in (Explosion / mutual faint)
+
+- The auto-replacement that runs when both active Pokémon faint on the
+  same turn (Explosion, Final Gambit, Destiny Bond, Counter to last HP,
+  Liquid Ooze+Substitute, etc.) used to call
+  `applySwitchInAbilities(newFoe, deadPlayer)`, but the function bailed
+  on its first line whenever the opposing slot was at 0 HP. That meant
+  the foe's switch-in abilities silently no-op'd in this path: Drought,
+  Drizzle, Sand Stream, Snow Warning, Electric/Grassy/Psychic/Misty
+  Surge, Intrepid Sword, Dauntless Shield, Slow Start, Tera Shift,
+  Primal Reversion, Protosynthesis/Quark Drive, Forecast, the Rusted
+  Sword/Shield + Origin / Vile Vial forme changes — all skipped. The
+  guard now only short-circuits when the entering mon itself is dead;
+  foe-targeted effects (Intimidate, Download, Frisk, Trace, the
+  Neutralizing Gas suppression flag) guard themselves on a live foe.
+- The simultaneous-faint path now clears permanent weather for both
+  sides (Desolate Land / Primordial Sea / Delta Stream). Mutual
+  Groudon/Kyogre Explosion no longer leaves harsh sun or heavy rain
+  stuck on the field for the rest of the battle.
+- If the foe's auto-replacement faints to entry hazards on the way in
+  (4× Stealth Rock weakness, no Heavy-Duty Boots), we now chain to the
+  next surviving foe instead of opening the player's switch modal
+  against a fainted opponent sprite. If hazards wipe the entire
+  remaining bench, the win condition fires correctly.
+
+### Reason
+
+The scenario "Pokémon A uses Stealth Rock, Pokémon B explodes before it
+resolves" exercises three separate quirks of the simultaneous-faint
+path. The Stealth Rock side already worked (the user's `currentHp <= 0`
+guard at the top of `performAction` drops A's queued move when B's
+Explosion KOs it first), but the auto-switch into the replacement foe
+swallowed weather/terrain/stat-boost abilities, lost permanent weather
+cleanup, and didn't chain hazard KOs. Surfaced while auditing battle
+ordering and KO edge cases.
+
 ## Unreleased — Story-mode flow, writing & immersion 2026-05-16 (`claude/story-mode-flow-LS32t`)
 
 ### Added — Per-city arrival welcome screen
