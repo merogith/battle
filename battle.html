@@ -23662,6 +23662,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const n = Math.max(0, cityIdx | 0);
             return CITY_ARRIVAL_LINES[Math.min(n, CITY_ARRIVAL_LINES.length - 1)] || ['',''];
         }
+        // Mark every city up to and including the player's current event index as
+        // "already arrived." Used by the v15+ migration (so resuming a save doesn't
+        // pop a stray welcome overlay) and by the dev seeder URLs (so jumping into
+        // City 8 mid-game doesn't add a welcome step to the repro flow).
+        function _storyBackfillCitiesArrived() {
+            if (!sm) return;
+            if (!sm.citiesArrived || typeof sm.citiesArrived !== 'object') sm.citiesArrived = {};
+            const cap = (sm.eventIndex | 0);
+            for (let i = 0; i <= cap && i < STORY_EVENTS_RAW.length; i++) {
+                const r = STORY_EVENTS_RAW[i];
+                if (!r || r[1] !== 'City') continue;
+                const m = String(r[2] || '').match(/\d+/);
+                const ci = m ? +m[0] : -1;
+                if (ci >= 0) sm.citiesArrived[ci] = true;
+            }
+        }
         function _cityArrivalSpeakerSpriteFile(cityIdx) {
             // Use the canonical city Professor sprite when available; falls back to
             // a thematic City Guide so the arrival screen always has a face.
@@ -24265,15 +24281,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Back-fill arrival flags for cities the player has already passed through.
                 // Without this, every previously visited city would pop a fresh welcome
                 // overlay the next time the player returns to it on a migrated save.
-                try {
-                    const _arrEvIdx = sm.eventIndex | 0;
-                    for (let _ai = 0; _ai <= _arrEvIdx && _ai < STORY_EVENTS_RAW.length; _ai++) {
-                        const _r = STORY_EVENTS_RAW[_ai];
-                        if (!_r || _r[1] !== 'City') continue;
-                        const _ci = (function (n) { const m = String(n || '').match(/\d+/); return m ? +m[0] : -1; })(_r[2]);
-                        if (_ci >= 0) sm.citiesArrived[_ci] = true;
-                    }
-                } catch (e) { console.warn('[Story] arrival backfill', e); }
+                try { _storyBackfillCitiesArrived(); } catch (e) { console.warn('[Story] arrival backfill', e); }
                 if (!sm.deptArtifactOffersByCity || typeof sm.deptArtifactOffersByCity !== 'object') sm.deptArtifactOffersByCity = {};
                 if (!sm.artifactShopOffersByCity || typeof sm.artifactShopOffersByCity !== 'object') sm.artifactShopOffersByCity = {};
                 if (!sm.artifactShopPurchasedByCity || typeof sm.artifactShopPurchasedByCity !== 'object') sm.artifactShopPurchasedByCity = {};
@@ -25540,6 +25548,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.team = team.slice(0, 6);
             if (!sm.gymCleared) sm.gymCleared = {};
             sm.gymCleared[8] = true;
+            try { _storyBackfillCitiesArrived(); } catch (e) {}
             save();
             enterCity();
             console.log('[Story debug] City8 seeded (6 Pokémon, 8 badges). Open Mystery Figure — Legendary Grade 1 Swap.');
@@ -25600,6 +25609,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.team = team.slice(0, 6);
             if (!sm.gymCleared) sm.gymCleared = {};
             sm.gymCleared[6] = true;
+            try { _storyBackfillCitiesArrived(); } catch (e) {}
             save();
             enterCity();
             console.log('[testmega] Seeded City6. Use "Colress — Awaken battle mechanics" — 10,000G per swap. Global mechanics synced from run flags.');
@@ -25666,6 +25676,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.currentEnemyLock = { eventIdx: CHAMPION_STORY_IDX, team: storyFreezeFoeTeamForPersistence(weakDraft) };
             if (!sm.gymCleared) sm.gymCleared = {};
             for (let gi = 1; gi <= 8; gi++) sm.gymCleared[gi] = true;
+            try { _storyBackfillCitiesArrived(); } catch (e) {}
             {
                 const order = [];
                 if (sm.settings.megaOn) order.push('mega');
