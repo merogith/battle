@@ -73,8 +73,8 @@ Trade-off: keeps `eventIndex` semantics clean; needs the save/restore wrapper.
 |---|---|
 | When | Once per route node, between consecutive Battles that cross a city boundary. Forced — no skip. |
 | Where | Virtual screen, not a timeline row. |
-| Pool grade | Current event's `gradeWeights` shifted one tier **weaker** (e.g., a slot weighted 0/0/30/70 G1/G2/G3/G4 produces a wild pool ~0/0/10/90). Wild encounters are intentionally inferior to Professor picks. |
-| Pool species | Filtered by `sm.settings.enabledGens`, same as trainer rolls. |
+| Pool grade | Driven by a dedicated **wild grade curve keyed on `sm.badges`** (0–8, see `_WILD_GRADE_CURVE_BY_BADGES`). Independent of the upcoming trainer's `gradeWeights` — wilds reflect the route's biology, not the next fight's lineup. Each tier sits one step behind the contemporaneous trainer roll, so wilds are intentionally inferior to Professor picks and to the foe ahead. |
+| Pool species | Filtered by `sm.settings.enabledGens`, same as trainer rolls. The two toggles (grade curve + enabled gens) are the **only** inputs to the wild roll. |
 | Build | Rough build per the prior audit's A4 — 4 random level-up moves, no held item, default ability, neutral nature, no EVs. Tagged `wild: true`. |
 | Player options | Throw (any ball type from inventory) or Run. |
 | Flee | Foe may flee on a missed throw (per-species flee chance; baseline 25%). |
@@ -350,7 +350,7 @@ After M1: catching has a destination; no catching yet.
 - `PokéBall`, `Great Ball`, `Ultra Ball`, `Master Ball` added to `sm.balls`.
 - PokéMart sells PokéBalls (300G each); Department Store sells Great Balls (1000G each) — new rows in `POKEMART_ITEMS` / `DEPT_ITEMS`.
 - `proceedToNextBattle` (line 24593) inserts a route-node interrupt between consecutive Battles that cross a city boundary.
-- Wild route flow: roll species from current event's grade weights shifted one tier weaker; open catch screen; throw/run; on catch → `state.pendingCatch`; on exit → promote to `sm.team` or `sm.pcBox`.
+- Wild route flow: roll species via the badge-keyed wild grade curve (`_WILD_GRADE_CURVE_BY_BADGES`) filtered by `enabledGens` — no dependency on the upcoming trainer; open catch screen; throw/run; on catch → `state.pendingCatch`; on exit → promote to `sm.team` or `sm.pcBox`.
 - Caught mon flagged `wild: true`; rough build via new `makeWildBuild` helper.
 
 After M2: full catch loop is live.
