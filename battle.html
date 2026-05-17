@@ -19155,6 +19155,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (state.pActive.megaEvolved && state.pActive._baseName) logMsg(`${state.pActive.name} reverted.`, 'info');
                 state.fActive.dynamaxed = false; state.fActive.dynamaxTurns = 0;
                 state.pActive.dynamaxed = false; state.pActive.dynamaxTurns = 0;
+                // Single-faint paths call this; the simultaneous path used to skip it, so a
+                // Groudon/Kyogre double-KO (e.g. mutual Explosion) left permanent harsh sun or
+                // heavy rain on the field forever. Clear before the volatile reset zeroes ability.
+                clearPermanentWeatherIfHolder(state.fActive);
+                clearPermanentWeatherIfHolder(state.pActive);
                 if(settings.animations){ let fs = document.getElementById('foe-sprite'); let ps = document.getElementById('player-sprite'); const faintP = anime({targets:[fs,ps], translateY:[0,40], opacity:[1,0], filter:['brightness(1)','brightness(0)'], duration:700, easing:'easeInQuad'}).finished; await faintP; fs.style.opacity='0'; fs.style.visibility='hidden'; ps.style.opacity='0'; ps.style.visibility='hidden'; anime.remove(fs); anime.remove(ps); fs.style.filter=''; fs.style.transform=''; ps.style.filter=''; ps.style.transform=''; } ['foe-sprite','player-sprite'].forEach((id,ix)=>{let el=document.getElementById(id);if(el){el.style.filter=''; const mon=ix===0?state.fActive:state.pActive; el.style.transform=getSpriteTransformStyle(mon);}});
                 state.fActive.stages = {atk:0,def:0,spa:0,spd:0,spe:0,acc:0,eva:0};
                 state.fActive.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', octolock: false, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', recharge: false, charging: null, lockMove: null, lockTurns: 0, boostedThisTurn: false };
@@ -19222,6 +19227,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     applySwitchInAbilities(state.fActive, state.pActive); applyEntryHazards(state.fActive, false); updateUI();
                     await playPokeballAnimation('foe-sprite', false);
                     await sleep(300);
+                    // Chain-KO on entry: the new foe could die to Stealth Rock / Spikes / Toxic Spikes
+                    // immediately (4× Rock weak, no Heavy-Duty Boots). The single-foe-faint path
+                    // handles this with `return await checkFaints();`, but we can't recurse here —
+                    // pActive is still HP=0 from the original simultaneous KO and recursion would
+                    // replay the player faint animation. Loop the foe-side replacement instead.
+                    while (state.fActive.currentHp <= 0 && state.foeParty.some(m => m.currentHp > 0 && m !== state.fActive)) {
+                        AudioSystem.playFaintCry(state.fActive.name);
+                        logMsg(`${state.fActive.name} fainted!`, 'heal');
+                        clearPermanentWeatherIfHolder(state.fActive);
+                        if (state.fActive.dynamaxed) deactivateDynamax(state.fActive, false);
+                        state.fActive.dynamaxed = false; state.fActive.dynamaxTurns = 0;
+                        state.fActive.stages = {atk:0,def:0,spa:0,spd:0,spe:0,acc:0,eva:0};
+                        if (settings.animations) {
+                            let fs = document.getElementById('foe-sprite');
+                            await anime({targets:fs, translateY:[0,40], opacity:[1,0], filter:['brightness(1)','brightness(0)'], duration:500, easing:'easeInQuad'}).finished;
+                            fs.style.opacity='0'; fs.style.visibility='hidden'; anime.remove(fs); fs.style.filter=''; fs.style.transform='';
+                        }
+                        const _chainSurv = state.foeParty.filter(m => m.currentHp > 0);
+                        if (!_chainSurv.length) break;
+                        state.fActive = aiBestSwitch(_chainSurv, state.pActive) || _chainSurv[0];
+                        state.fActive.turnCount = 0; state.fActive.fakeOutOk = true;
+                        if (state.revealedFoe) state.revealedFoe.add(state.fActive.name);
+                        logMsg(`Foe sent out ${state.fActive.name}!`);
+                        applySwitchInAbilities(state.fActive, state.pActive); applyEntryHazards(state.fActive, false); updateUI();
+                        await playPokeballAnimation('foe-sprite', false);
+                        await sleep(300);
+                    }
+                    // If hazards wiped the foe's remaining bench, the player wins outright.
+                    if (state.fActive.currentHp <= 0 && !state.foeParty.some(m => m.currentHp > 0)) {
+                        if (state.mode === 'gauntlet') { window.showGauntletSwap(); state.isOver = true; }
+                        else {
+                            state.isOver = true;
+                            showEndScreen("VICTORY!", "You defeated the opponent.", true);
+                        }
+                        return true;
+                    }
                     state.currentPlayer = 1; window.openParty(true); return true;
                 }
             }
@@ -19559,7 +19600,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function applySwitchInAbilities(mon, foe, _storySwitchDepth = 0) {
-            if(mon.currentHp <= 0 || foe.currentHp <= 0) return;
+            // Switch-in proceeds even when the opposing slot is empty/fainted (e.g. simultaneous KO
+            // from Explosion): weather setters, terrain setters, and self-boost abilities still need
+            // to fire. Foe-targeted abilities (Intimidate, Download, Frisk, …) guard themselves below.
+            if (mon.currentHp <= 0) return;
+            const _foeAlive = !!(foe && foe.currentHp > 0);
             // Cure incompatible status upon ability acquisition / switch-in
             _abilityStatusCure(mon);
             // Primal Reversion: Groudon + Red Orb / Kyogre + Blue Orb auto-revert on entry.
@@ -19631,7 +19676,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${mon.name}'s ${mon.ability} was suppressed by Neutralizing Gas!`, 'info');
                 return;
             }
-            if (mon.ability === "Intimidate") {
+            if (mon.ability === "Intimidate" && _foeAlive) {
                 // Gen 8+: Inner Focus, Oblivious, Own Tempo, Scrappy are immune to Intimidate
                 // (Ghost-types are NOT immune — that's a different mechanic)
                 const intimidateImmune = foe.ability === "Inner Focus" || foe.ability === "Oblivious" ||
@@ -19662,7 +19707,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Neutralizing Gas: Simplified — suppress opponent ability while this mon is active
             if (mon.ability === "Neutralizing Gas") {
                 logMsg(`${mon.name}'s Neutralizing Gas suppresses abilities!`, 'info');
-                foe.abilityActivated = true; // flag to indicate suppression
+                if (_foeAlive) foe.abilityActivated = true; // flag to indicate suppression
             }
             // Mold Breaker / Teravolt / Turboblaze: announce on switch-in
             if (mon.ability === "Mold Breaker") logMsg(`${mon.name}'s Mold Breaker breaks through abilities!`, 'info');
@@ -19773,7 +19818,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.ability === "Frisk" && foe && foe.currentHp > 0 && foe.item) {
                 logMsg(`${mon.name}'s Frisk found ${foe.name}'s ${foe.item}!`, 'info');
             }
-            if (mon.ability === "Download") {
+            if (mon.ability === "Download" && _foeAlive && foe.stats && foe.stages) {
                 let _dlDef = foe.stats.def * getStageMult(foe.stages.def);
                 let _dlSpd = foe.stats.spd * getStageMult(foe.stages.spd);
                 if (_dlDef < _dlSpd) {
@@ -19784,7 +19829,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     changeStage(mon, 'spa', 1);
                 }
             }
-            if (mon.ability === "Trace" && foe && foe.ability && foe.ability !== "Trace" && !hasAbilityShield(mon) && !hasAbilityShield(foe)) {
+            if (mon.ability === "Trace" && _foeAlive && foe.ability && foe.ability !== "Trace" && !hasAbilityShield(mon) && !hasAbilityShield(foe)) {
                 logMsg(`${mon.name} traced ${foe.name}'s ${foe.ability}!`, 'info');
                 mon.ability = foe.ability;
                 try { applySwitchInAbilities(mon, foe, _storySwitchDepth + 1); }
