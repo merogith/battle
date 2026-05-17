@@ -5,6 +5,42 @@ All notable user-visible changes land here. Sessions append entries under
 
 ## Unreleased — Special-case Pokémon variations 2026-05-16 (`claude/special-case-pokemon-variations-pZmOU`)
 
+### Added — Second-pass variant audit: more cosmetic skins, more dedup families
+
+- More **cosmetic skin pairs** added after a full audit of every alt-forme
+  in the dex (~1.5% rare reskin, mechanics stay on the base):
+  - **Sinistea** ↔ Sinistea-Antique (mirrors the Polteageist-Antique pair).
+  - **Poltchageist** ↔ Poltchageist-Artisan (mirrors Sinistcha-Masterpiece).
+  - **Basculin** ↔ Basculin-Blue-Striped (regional-color variant; note
+    White-Striped is *not* cosmetic since it has a unique evolution to
+    Basculegion and stays in the regular pool).
+  - **Genesect** ↔ Genesect-Douse / -Shock / -Burn / -Chill (Drive forms,
+    same BST / types / abilities — only Techno Blast's elemental type
+    changes, which the rest of the game doesn't treat as a distinct identity).
+  - **Keldeo** ↔ Keldeo-Resolute (Secret-Sword form, identical stats).
+  - **Xerneas** ↔ Xerneas-Neutral (out-of-battle dormant pose, same stats).
+
+- More **state-only formes** added to the never-roll list:
+  - **Ogerpon-Teal-Tera / -Wellspring-Tera / -Hearthflame-Tera / -Cornerstone-Tera**
+    — Terastallized states, same category as Mega / Gmax.
+  - **Terapagos-Terastal / -Stellar** — Tera Shell auto-flip states.
+
+- More **family-dedup species** so a player can't end up with the same
+  legendary twice via different formes:
+  - **Deoxys** — Normal / Attack / Defense / Speed share one identity (same
+    DNA splice). Each forme still rolls distinctly so the player can land
+    a glass-cannon Attack vs a wall Defense, but the team-uniqueness rule
+    prevents holding both.
+  - **Dialga / Palkia / Giratina** — Origin formes (Adamant Crystal /
+    Lustrous Globe / Griseous Orb) are the same legendary trio. The
+    Mystery Figure gate would otherwise let one player walk away with
+    both Dialga and Dialga-Origin.
+
+  (Therian formes, Lycanroc time-of-day variants, gender variants, and
+  Gourgeist / Pumpkaboo size variants intentionally stay distinct — they
+  have meaningful ability and stat-distribution differences and players
+  expect each as a separate competitive identity.)
+
 ### Added — Pikachu (and friends) can show up in a rare cosmetic skin
 
 - Every base species with a pure-cosmetic alt forme now has a **~1.5% "shiny-like"

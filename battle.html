@@ -24907,9 +24907,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Tatsugiri': ['Tatsugiri-Droopy','Tatsugiri-Stretchy'],
             // Rare 3-segment variant — same BST 520.
             'Dudunsparce': ['Dudunsparce-Three-Segment'],
-            // Antique alt skin — same BST 508.
+            // Antique alt skin — same BST 508 (Polteageist/Sinistcha line).
             'Polteageist': ['Polteageist-Antique'],
             'Sinistcha':   ['Sinistcha-Masterpiece'],
+            // Pre-evos of the Antique/Masterpiece pair — same BST 308.
+            'Sinistea':    ['Sinistea-Antique'],
+            'Poltchageist':['Poltchageist-Artisan'],
+            // Blue-Striped is a regional-color variant of Basculin — identical
+            // stats. (White-Striped is *not* a cosmetic — it evolves to
+            // Basculegion via a unique path, so it stays in the regular pool.)
+            'Basculin':    ['Basculin-Blue-Striped'],
+            // Genesect Drives — same BST 600, same types, same abilities. Only
+            // Techno Blast's type changes (a niche side effect, not a gameplay
+            // distinction the rest of the game cares about).
+            'Genesect':    ['Genesect-Douse','Genesect-Shock','Genesect-Burn','Genesect-Chill'],
+            // Keldeo-Resolute is the Secret-Sword form — same stats as Ordinary.
+            'Keldeo':      ['Keldeo-Resolute'],
+            // Xerneas-Neutral is the out-of-battle dormant pose — same stats.
+            'Xerneas':     ['Xerneas-Neutral'],
         };
 
         // Flattened set of every cosmetic skin name — used by `isStoryRollExcluded`
@@ -24943,6 +24958,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Raticate-Alola-Totem','Marowak-Alola-Totem','Mimikyu-Totem',
             'Gumshoos-Totem','Vikavolt-Totem','Ribombee-Totem','Araquanid-Totem',
             'Lurantis-Totem','Salazzle-Totem','Togedemaru-Totem','Kommo-o-Totem',
+            // Terastallized state formes (mid-battle Tera Blast / Tera Shell flips,
+            // same category as Mega / Gmax — never the canonical roster pick).
+            'Ogerpon-Teal-Tera','Ogerpon-Wellspring-Tera','Ogerpon-Hearthflame-Tera','Ogerpon-Cornerstone-Tera',
+            'Terapagos-Terastal','Terapagos-Stellar',
             // Raid-only shell.
             'Eternatus-Eternamax',
         ]);
@@ -27798,9 +27817,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             '"These Pokémon are ready for battle — which suits your style?"',
         ];
 
-        // Species whose forms share the same "slot" — owning any form blocks all others.
-        // e.g. Arceus-Fire and Arceus are the same identity; same for Silvally-*.
-        const _STORY_UNIQUE_FAMILIES = ['Arceus', 'Silvally'];
+        // Species whose forms share the same "slot" — owning any form blocks all
+        // others. Each family rolls all its formes distinctly (so a player can still
+        // get e.g. Deoxys-Attack vs Deoxys-Defense as competitively different picks),
+        // but the team-uniqueness rule says you can't hold two Deoxys at once.
+        //   • Arceus, Silvally — every type plate / RKS Memory shares one identity.
+        //   • Deoxys — Normal / Attack / Defense / Speed are the same DNA splice.
+        //   • Dialga, Palkia, Giratina — Origin form is the same legendary trio,
+        //     just key-item triggered (Adamant Crystal / Lustrous Globe / Griseous
+        //     Orb). The Mystery Figure gate would otherwise let one player walk
+        //     away with both Dialga and Dialga-Origin.
+        const _STORY_UNIQUE_FAMILIES = ['Arceus', 'Silvally', 'Deoxys', 'Dialga', 'Palkia', 'Giratina'];
         function _storyBaseFamily(name) {
             if (!name) return name;
             for (const fam of _STORY_UNIQUE_FAMILIES) {
