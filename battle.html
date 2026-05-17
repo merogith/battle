@@ -6634,6 +6634,19 @@
                 b.m = b.m.filter(m => m && (_seen.has(m) ? false : (_seen.add(m), true)));
             }
 
+            // Shiny-like cosmetic skin roll. Pins a rare cosplay/cap/pattern forme onto
+            // the build for sprite render only — stats / abilities / evolutions all
+            // continue to use the base species `name`. ~1.5% rate matches shiny's
+            // surprise cadence. Guarded so foreign builds (e.g. forced gimmick pools)
+            // don't bypass: only assigns when the base name is a known skin parent.
+            if (!b._cosmeticForme && typeof STORY_COSMETIC_SKINS === 'object' && STORY_COSMETIC_SKINS) {
+                const skins = STORY_COSMETIC_SKINS[name];
+                if (skins && skins.length) {
+                    const rng = (typeof sm === 'object' && sm && sm.active && typeof storyRngNext === 'function') ? storyRngNext : Math.random;
+                    if (rng() < 0.015) b._cosmeticForme = skins[Math.floor(rng() * skins.length)];
+                }
+            }
+
             return b;
         }
 
@@ -9397,7 +9410,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         /** Field sprite species during Transform / Imposter (appearance matches target; mon.name stays the original). */
         function getBattleSpriteSpeciesName(mon) {
             if (!mon) return '';
-            return mon.transformedInto || mon.name;
+            // Transform takes priority — Ditto's sprite needs the impersonated species.
+            // Otherwise the cosmetic-skin reskin (Pikachu-Belle, Vivillon-Fancy, …)
+            // wins over the canonical species name so the battle sprite matches the
+            // roster sprite for any mon that picked up a shiny-like skin roll.
+            return mon.transformedInto || mon.cosmeticForme || mon.name;
         }
         function getBattleSpriteShiny(mon) {
             if (!mon) return false;
@@ -9887,6 +9904,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.zMoveUsed = false;
             mon.originalType1 = base.t1 || 'Normal';
             mon.originalType2 = base.t2 || '';
+            // Carry a cosmetic-only skin name from the build (set by `assignStoryCosmeticSkin`
+            // at slot creation) onto the battle-side mon, so sprite renderers can show the
+            // Pikachu-Belle / Vivillon-Fancy / etc. art without leaking into stat lookups.
+            // Guard the cross-species evolution case: if the skin belongs to a different
+            // base than this mon's species (e.g. an evolved-from-Pikachu Raichu still
+            // carrying a Pikachu skin), drop it.
+            if (build._cosmeticForme) {
+                const skinBase = (typeof STORY_SKIN_TO_BASE === 'object' && STORY_SKIN_TO_BASE)
+                    ? STORY_SKIN_TO_BASE[build._cosmeticForme] : null;
+                if (skinBase && skinBase === monName) mon.cosmeticForme = build._cosmeticForme;
+                else if (skinBase && skinBase !== monName) delete build._cosmeticForme;
+                else mon.cosmeticForme = build._cosmeticForme;
+            }
             return mon;
         }
 
@@ -10099,7 +10129,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Update sprite + banner overlay
             let spriteEl = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
             if (spriteEl) {
-                spriteEl.src = getSprite(mon.name, mon.isShiny, isPlayer); spriteEl.alt = mon.name; spriteEl.dataset.shiny = mon.isShiny ? 'true' : 'false';
+                spriteEl.src = getSprite(spriteDisplayName(mon), mon.isShiny, isPlayer); spriteEl.alt = mon.name; spriteEl.dataset.shiny = mon.isShiny ? 'true' : 'false';
                 if (settings.animations) {
                     spriteEl.classList.add('anim-mega-activate'); setTimeout(() => spriteEl.classList.remove('anim-mega-activate'), 850);
                     try { showGimmickBanner('MEGA EVOLUTION', '#7b1fa2'); } catch(e) {}
@@ -10129,7 +10159,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     mon.name = mon.name + '-Gmax';
                     spriteEl.alt = mon.name;
                     spriteEl.dataset.shiny = mon.isShiny ? 'true' : 'false';
-                    spriteEl.src = getSprite(mon.name, mon.isShiny, isPlayer);
+                    spriteEl.src = getSprite(spriteDisplayName(mon), mon.isShiny, isPlayer);
                 }
                 if (settings.animations) {
                     spriteEl.classList.add('anim-dmax-activate');
@@ -10895,7 +10925,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             im.width = 28; im.height = 28;
                             im.style.imageRendering = 'pixelated';
                             im.alt = p.name;
-                            im.src = typeof getSprite === 'function' ? getSprite(p.name, !!(p.build && p.build._isShiny)) : '';
+                            im.src = typeof getSprite === 'function' ? getSprite(spriteDisplayName(p), !!(p.build && p.build._isShiny)) : '';
                             im.onerror = function() { handleSpriteError(this); };
                             icons.appendChild(im);
                         });
@@ -11426,7 +11456,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let d = currentDraft[i];
                     let tempM = buildPokemon(d.name, d.build);
                     slot.style.cursor = 'pointer';
-                    slot.innerHTML = `<img src="${getSprite(d.name, tempM.isShiny)}" alt="${d.name}" onerror="handleSpriteError(this)" style="width:40px;height:40px;image-rendering:pixelated;border:none;background:transparent;"><span style="font-size:9px;color:#ccc;text-align:center;max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}</span><span style="font-size:8px;color:#f44336;">✖</span>`;
+                    slot.innerHTML = `<img src="${getSprite(spriteDisplayName(tempM), tempM.isShiny)}" alt="${d.name}" onerror="handleSpriteError(this)" style="width:40px;height:40px;image-rendering:pixelated;border:none;background:transparent;"><span style="font-size:9px;color:#ccc;text-align:center;max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}</span><span style="font-size:8px;color:#f44336;">✖</span>`;
                     slot.onmouseenter = () => slot.style.opacity = '0.7';
                     slot.onmouseleave = () => slot.style.opacity = '1';
                     slot.onclick = () => undraftPokemon(i);
@@ -11512,7 +11542,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const gb = (draftItem.build.gimmick && gimmickBadge[draftItem.build.gimmick]) || '';
                 const tera = draftItem.build.teraType ? `<span class="tera-tip-hover" style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:pointer;touch-action:manipulation;" data-tera="${encodeURIComponent(draftItem.build.teraType)}" data-o1="${encodeURIComponent(tempMon.type1)}" data-o2="${encodeURIComponent(tempMon.type2||'')}" onclick="event.stopPropagation();window.showTeraFromEl(event)" onmousemove="event.stopPropagation();window.showTeraTooltip('${draftItem.build.teraType}','${tempMon.type1}','${tempMon.type2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${draftItem.build.teraType}</span>` : '';
                 btn.innerHTML = `
-                    <div class="draft-card-sprite"><img src="${getSprite(tempMon.name, tempMon.isShiny)}" alt="${tempMon.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
+                    <div class="draft-card-sprite"><img src="${getSprite(spriteDisplayName(tempMon), tempMon.isShiny)}" alt="${tempMon.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                     <div class="draft-card-body">
                         <div class="draft-card-header"><span>${tempMon.isShiny ? '&#10024; ' : ''}${draftItem.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}</span><button type="button" class="draft-card-info-btn" aria-label="Full summary" title="Full summary">&#8505;</button></div>
                         <div class="draft-card-bst-mob">BST ${draftBst}</div>
@@ -11549,7 +11579,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let row = document.createElement('div');
                     row.className = `draft-card tier-${tier}`;
                     row.innerHTML = `
-                        <div class="draft-card-sprite"><img src="${getSprite(tempMon.name, tempMon.isShiny)}" alt="${tempMon.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
+                        <div class="draft-card-sprite"><img src="${getSprite(spriteDisplayName(tempMon), tempMon.isShiny)}" alt="${tempMon.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                         <div class="draft-card-body">
                             <div class="draft-card-header"><span>${tempMon.isShiny ? '&#10024; ' : ''}${draftItem.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}</span><button type="button" class="draft-card-info-btn" aria-label="Full summary" title="Full summary">&#8505;</button></div>
                             <div class="draft-card-details">
@@ -12742,7 +12772,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let pct = Math.max(0, (mon.currentHp / mon.maxHp) * 100); let color = pct > 50 ? 'var(--hp-green)' : (pct > 20 ? 'var(--hp-yellow)' : 'var(--hp-red)');
                 let slot = document.createElement('div'); slot.className = `party-slot ${!isAlive ? 'fainted' : ''} ${isActive ? 'active-mon' : ''}`;
                 slot.innerHTML = `
-                    <img src="${getSprite(mon.name, mon.isShiny)}" alt="${mon.name}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite">
+                    <img src="${getSprite(spriteDisplayName(mon), mon.isShiny)}" alt="${mon.name}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite">
                     <div style="flex: 1;">
                         <div style="font-weight: bold; margin-bottom: 5px;">${mon.isShiny ? '&#10024; ' : ''}${mon.name} ${isActive ? '<span style="color:var(--hp-yellow); font-size:10px;">(ACTIVE)</span>' : ''}</div>
                         <div class="hp-bar-container border-white" style="width: 80%;"><div class="hp-fill" style="width: ${pct}%; background: ${color};"></div></div>
@@ -13006,7 +13036,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div class="sum-overview">
                     <div class="sum-overview-top">
                         <div class="sum-overview-left">
-                            <img class="sum-overview-img" src="${getSprite(s.name, s.isShiny)}" alt="${s.name}" onerror="handleSpriteError(this)" style="${s.isShiny?'filter:drop-shadow(0 0 6px gold);':''}">
+                            <img class="sum-overview-img" src="${getSprite(spriteDisplayName(s), s.isShiny)}" alt="${s.name}" onerror="handleSpriteError(this)" style="${s.isShiny?'filter:drop-shadow(0 0 6px gold);':''}">
                             <div class="sum-overview-name">${s.name}</div>
                             <div class="sum-overview-types">${getTypeHTML(effType1, effType2)}</div>
                             ${typingNote}
@@ -13034,7 +13064,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let canUpgradeDyna = bd.gimmick === 'DYNAMAX' || bd.gimmick === 'GMAXDYNAMAX';
                 let upgradeMode = window._sumUpgradeMode || 'base';
                 let summarySpriteHeader = `<div class="sum-overview-left" style="margin-bottom:8px;">
-                    <img class="sum-overview-img" src="${getSprite(s.name, s.isShiny)}" alt="${s.name}" onerror="handleSpriteError(this)" style="${s.isShiny?'filter:drop-shadow(0 0 6px gold);':''}">
+                    <img class="sum-overview-img" src="${getSprite(spriteDisplayName(s), s.isShiny)}" alt="${s.name}" onerror="handleSpriteError(this)" style="${s.isShiny?'filter:drop-shadow(0 0 6px gold);':''}">
                     <div class="sum-overview-name" style="margin-top:6px;">${s.name}</div>
                     <div class="sum-overview-types">${getTypeHTML(s.type1, s.type2)}</div>
                 </div>`;
@@ -13105,7 +13135,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let baseType1 = s.type1, baseType2 = s.type2;
                 let teraType = bd.teraType || null;
                 let summarySpriteHeader = `<div class="sum-overview-left" style="margin-bottom:8px;">
-                    <img class="sum-overview-img" src="${getSprite(s.name, s.isShiny)}" alt="${s.name}" onerror="handleSpriteError(this)" style="${s.isShiny?'filter:drop-shadow(0 0 6px gold);':''}">
+                    <img class="sum-overview-img" src="${getSprite(spriteDisplayName(s), s.isShiny)}" alt="${s.name}" onerror="handleSpriteError(this)" style="${s.isShiny?'filter:drop-shadow(0 0 6px gold);':''}">
                     <div class="sum-overview-name" style="margin-top:6px;">${s.name}</div>
                     <div class="sum-overview-types">${getTypeHTML(s.type1, s.type2)}</div>
                 </div>`;
@@ -19736,7 +19766,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (spriteEl) {
                         spriteEl.alt = foe.name;
                         spriteEl.dataset.shiny = mon.transformTargetShiny ? 'true' : 'false';
-                        spriteEl.src = getSprite(foe.name, mon.transformTargetShiny);
+                        spriteEl.src = getSprite(spriteDisplayName(foe), mon.transformTargetShiny);
                     }
                 }
             }
@@ -20357,7 +20387,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (spriteEl) {
                     spriteEl.alt = target.name;
                     spriteEl.dataset.shiny = attacker.transformTargetShiny ? 'true' : 'false';
-                    spriteEl.src = getSprite(target.name, attacker.transformTargetShiny);
+                    spriteEl.src = getSprite(spriteDisplayName(target), attacker.transformTargetShiny);
                     spriteEl.style.opacity = '1'; spriteEl.style.visibility = 'visible';
                 }
                 logMsg(`${attacker.name} transformed into ${target.name}!`, 'info');
@@ -22439,7 +22469,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let row = document.createElement('div');
                 row.style.cssText = 'display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid #333; border-radius:4px; padding:6px 8px;';
                 row.innerHTML = `<span style="color:#888; font-size:12px; width:18px; text-align:center;">${i+1}</span>
-                    <img src="${getSprite(mon.name, mon.isShiny)}" alt="${mon.name}" onerror="handleSpriteError(this)" style="width:36px;height:36px;image-rendering:pixelated;">
+                    <img src="${getSprite(spriteDisplayName(mon), mon.isShiny)}" alt="${mon.name}" onerror="handleSpriteError(this)" style="width:36px;height:36px;image-rendering:pixelated;">
                     <span style="flex:1; font-size:13px; font-weight:bold;">${mon.isShiny ? '&#10024; ' : ''}${mon.name}</span>
                     <span class="tier-badge bg-tier-${tier}" style="margin-right:4px;">G${tier}</span>
                     <button onclick="window.reorderPartyUp(${i})" ${i===0?'disabled':''} style="min-width:32px;min-height:32px;padding:2px 6px;font-size:14px;" title="Move up">▲</button>
@@ -22481,7 +22511,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let _gb = _gimBadgeHTML(mon.buildData && mon.buildData.gimmick);
                 let _tb = _teraBadgeHTML(mon.buildData && mon.buildData.teraType);
                 btn.innerHTML = `
-                    <div class="draft-card-sprite"><img src="${getSprite(mon.name, mon.isShiny)}" alt="${mon.name}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${mon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
+                    <div class="draft-card-sprite"><img src="${getSprite(spriteDisplayName(mon), mon.isShiny)}" alt="${mon.name}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${mon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                     <div class="draft-card-body">
                         <div class="draft-card-header"><span>${mon.isShiny ? '&#10024; ' : ''}${mon.name} ${getTypeHTML(mon.type1, mon.type2)}${_gb}${_tb}</span><button type="button" class="draft-card-info-btn" aria-label="Full summary" title="Full summary">&#8505;</button></div>
                         <div class="draft-card-details"><span class="hover-text" data-tip-key="${encodeURIComponent(mon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${mon.nature}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(mon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${mon.ability}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(displayItem(mon,false))}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${displayItem(mon,false)}</span></div>
@@ -22498,7 +22528,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let _gb2 = _gimBadgeHTML(mon.buildData && mon.buildData.gimmick);
                 let _tb2 = _teraBadgeHTML(mon.buildData && mon.buildData.teraType);
                 btn.innerHTML = `
-                    <div class="draft-card-sprite"><img src="${getSprite(mon.name, mon.isShiny)}" alt="${mon.name}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${mon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
+                    <div class="draft-card-sprite"><img src="${getSprite(spriteDisplayName(mon), mon.isShiny)}" alt="${mon.name}" data-shiny="${mon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${mon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                     <div class="draft-card-body">
                         <div class="draft-card-header"><span>${mon.isShiny ? '&#10024; ' : ''}${mon.name} ${getTypeHTML(mon.type1, mon.type2)}${_gb2}${_tb2}</span><button type="button" class="draft-card-info-btn" aria-label="Full summary" title="Full summary">&#8505;</button></div>
                         <div class="draft-card-details"><span class="hover-text" data-tip-key="${encodeURIComponent(mon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${mon.nature}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(mon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${mon.ability}</span> <span class="hover-text" data-tip-key="${encodeURIComponent(displayItem(mon,false))}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${displayItem(mon,false)}</span></div>
@@ -23596,7 +23626,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             for (const n of Object.keys(baseStats)) {
                 try {
                     if (!n || usedNames.has(n)) continue;
-                    if (MEGA_EXCLUDE.has(n) || n.includes('-Mega') || n.includes('-Gmax')) continue;
+                    if (isStoryRollExcluded(n)) continue;
                     const b = baseStats[n];
                     const bgen = Number(b.gen);
                     if (!b || !Number.isFinite(bgen) || !genSet.has(bgen)) continue;
@@ -24984,6 +25014,137 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Existing getMonGrade: 1=best(BST≥530), 4=worst(<350). CSV G4=weakest ↔ grade 4.
         const MEGA_EXCLUDE = new Set(typeof MEGA_FORM_NAMES !== 'undefined' ? Object.values(MEGA_FORM_NAMES) : []);
 
+        // Alt formes split into two buckets:
+        //
+        //   1. STORY_COSMETIC_SKINS — pure cosmetic variants where every game-mechanic
+        //      stat matches the base (same BST, same types). Treated as a "shiny-like"
+        //      rare reskin: the rolled species stays the base (e.g. Pikachu), but with
+        //      a small chance the slot picks up a `cosmeticForme` (e.g. "Pikachu-Belle")
+        //      that flips the *sprite* only. Stats, abilities, evolutions, builds, and
+        //      the displayed species name still use the base — the cosplay/cap/pattern
+        //      forme is purely decorative.
+        //
+        //   2. STORY_NONSTANDARD_FORMS — stat-altered or state-only formes that should
+        //      never be the canonical starting species:
+        //        • Pikachu-Starter / Eevee-Starter — Let's-Go partners with a stat boost
+        //          (BST 430 / 435 vs base 320 / 325), would unbalance the starter pool.
+        //        • In-battle state formes (Mimikyu-Busted, Aegislash-Blade,
+        //          Darmanitan-Zen, weather Castform, Wishiwashi-School, …) — these only
+        //          exist after an in-battle trigger.
+        //        • Totem variants — Sun/Moon event Pokémon with boosted stats.
+        //        • Eternatus-Eternamax — BST 1125 raid shell.
+        //
+        // Competitive alt formes (Hisuian / Galarian / Alolan regional variants,
+        // Therian legendaries, Kyurem-Black/White, Hoopa-Unbound, Calyrex-Ice/Shadow,
+        // Necrozma-Dusk-Mane/Dawn-Wings, Greninja-Ash) are in randbats and roll
+        // normally — neither cosmetic-skin'd nor excluded.
+        const STORY_COSMETIC_SKINS = {
+            // Cosplay (ORAS) + Cap (SM/SwSh) + Let's-Go partner — all BST 320, Electric.
+            'Pikachu': [
+                'Pikachu-Cosplay','Pikachu-Rock-Star','Pikachu-Belle','Pikachu-Pop-Star','Pikachu-PhD','Pikachu-Libre',
+                'Pikachu-Original','Pikachu-Hoenn','Pikachu-Sinnoh','Pikachu-Unova','Pikachu-Kalos',
+                'Pikachu-Alola','Pikachu-Partner','Pikachu-World',
+            ],
+            // HG/SS event Pichu — same BST 205 line.
+            'Pichu': ['Pichu-Spiky-eared'],
+            // Distribution-event alt color, same BST 600.
+            'Magearna': ['Magearna-Original'],
+            // Cosmetic pattern formes — all BST 411.
+            'Vivillon': ['Vivillon-Fancy','Vivillon-Pokeball'],
+            // 4-mouse family variant — same BST 470.
+            'Maushold': ['Maushold-Four'],
+            // Color variants — all BST 417.
+            'Squawkabilly': ['Squawkabilly-Blue','Squawkabilly-Yellow','Squawkabilly-White'],
+            // Posture variants — same BST 475.
+            'Tatsugiri': ['Tatsugiri-Droopy','Tatsugiri-Stretchy'],
+            // Rare 3-segment variant — same BST 520.
+            'Dudunsparce': ['Dudunsparce-Three-Segment'],
+            // Antique alt skin — same BST 508 (Polteageist/Sinistcha line).
+            'Polteageist': ['Polteageist-Antique'],
+            'Sinistcha':   ['Sinistcha-Masterpiece'],
+            // Pre-evos of the Antique/Masterpiece pair — same BST 308.
+            'Sinistea':    ['Sinistea-Antique'],
+            'Poltchageist':['Poltchageist-Artisan'],
+            // Blue-Striped is a regional-color variant of Basculin — identical
+            // stats. (White-Striped is *not* a cosmetic — it evolves to
+            // Basculegion via a unique path, so it stays in the regular pool.)
+            'Basculin':    ['Basculin-Blue-Striped'],
+            // Genesect Drives — same BST 600, same types, same abilities. Only
+            // Techno Blast's type changes (a niche side effect, not a gameplay
+            // distinction the rest of the game cares about).
+            'Genesect':    ['Genesect-Douse','Genesect-Shock','Genesect-Burn','Genesect-Chill'],
+            // Keldeo-Resolute is the Secret-Sword form — same stats as Ordinary.
+            'Keldeo':      ['Keldeo-Resolute'],
+            // Xerneas-Neutral is the out-of-battle dormant pose — same stats.
+            'Xerneas':     ['Xerneas-Neutral'],
+        };
+
+        // Flattened set of every cosmetic skin name — used by `isStoryRollExcluded`
+        // so the *skin form itself* never appears as a top-level pick (the base
+        // species is what rolls; the skin is applied afterwards).
+        const STORY_COSMETIC_SKIN_NAMES = new Set(
+            Object.values(STORY_COSMETIC_SKINS).reduce((acc, arr) => acc.concat(arr), [])
+        );
+
+        // Reverse lookup: skin forme → base species. Lets renderers fall back from
+        // a legacy slot.name like "Eevee-Starter" or "Pikachu-Original" to canonical
+        // stats / evolutions when needed.
+        const STORY_SKIN_TO_BASE = (() => {
+            const m = {};
+            for (const base of Object.keys(STORY_COSMETIC_SKINS)) {
+                for (const skin of STORY_COSMETIC_SKINS[base]) m[skin] = base;
+            }
+            return m;
+        })();
+
+        const STORY_NONSTANDARD_FORMS = new Set([
+            // Let's-Go starters — stat-boosted (BST 430 / 435), not pure cosmetic.
+            'Pikachu-Starter','Eevee-Starter',
+            // In-battle state formes (trigger-only, never the canonical roster pick).
+            'Mimikyu-Busted','Mimikyu-Busted-Totem','Aegislash-Blade',
+            'Darmanitan-Zen','Darmanitan-Galar-Zen',
+            'Wishiwashi-School','Minior-Meteor','Cherrim-Sunshine','Morpeko-Hangry',
+            'Palafin-Hero','Eiscue-Noice','Cramorant-Gulping','Cramorant-Gorging',
+            'Castform-Sunny','Castform-Rainy','Castform-Snowy',
+            // Totem variants (stat-boosted event Pokémon from Sun/Moon).
+            'Raticate-Alola-Totem','Marowak-Alola-Totem','Mimikyu-Totem',
+            'Gumshoos-Totem','Vikavolt-Totem','Ribombee-Totem','Araquanid-Totem',
+            'Lurantis-Totem','Salazzle-Totem','Togedemaru-Totem','Kommo-o-Totem',
+            // Terastallized state formes (mid-battle Tera Blast / Tera Shell flips,
+            // same category as Mega / Gmax — never the canonical roster pick).
+            'Ogerpon-Teal-Tera','Ogerpon-Wellspring-Tera','Ogerpon-Hearthflame-Tera','Ogerpon-Cornerstone-Tera',
+            'Terapagos-Terastal','Terapagos-Stellar',
+            // Raid-only shell.
+            'Eternatus-Eternamax',
+        ]);
+
+        // Single chokepoint for the "don't roll this species into the world" check.
+        // Mega + Gmax stay filtered (mid-battle gimmick formes); STORY_NONSTANDARD_FORMS
+        // covers state-only / stat-altered alts; STORY_COSMETIC_SKIN_NAMES blocks the
+        // skin formes from rolling on their own (they're applied as decorations on the
+        // base species via `assignStoryCosmeticSkin`).
+        function isStoryRollExcluded(name) {
+            if (!name) return true;
+            if (MEGA_EXCLUDE.has(name)) return true;
+            if (name.includes('-Mega') || name.includes('-Gmax')) return true;
+            if (STORY_NONSTANDARD_FORMS.has(name)) return true;
+            if (STORY_COSMETIC_SKIN_NAMES.has(name)) return true;
+            return false;
+        }
+
+        // Sprite-display name: the cosmetic skin if one is pinned to this slot/build/mon,
+        // else the canonical species name. Used by every sprite render site so the
+        // ~1.5% reskin reads as "your Pikachu showed up in cosplay" without changing
+        // any of the underlying stats / evolution lookups. Accepts either an in-battle
+        // mon (with `cosmeticForme` top-level) or an out-of-battle slot (with the
+        // skin pinned under `slot.build._cosmeticForme`).
+        function spriteDisplayName(monOrSlot) {
+            if (!monOrSlot) return '';
+            if (monOrSlot.cosmeticForme) return monOrSlot.cosmeticForme;
+            if (monOrSlot.build && monOrSlot.build._cosmeticForme) return monOrSlot.build._cosmeticForme;
+            return monOrSlot.name || '';
+        }
+
         function getStoryEnabledGensFromUI() {
             return getEnabledGensFromUIPrefix('story');
         }
@@ -25006,7 +25167,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const genSet = new Set(normalizeEnabledGens(enabledGens));
             const result = [];
             for (const name of Object.keys(baseStats)) {
-                if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
+                if (isStoryRollExcluded(name)) continue;
                 const b = baseStats[name];
                 if (!b || !genSet.has(b.gen)) continue;
                 if (getMonGrade(name, getBST(name)) === grade) result.push(name);
@@ -25390,7 +25551,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             function pullByGrade(gradeLo, gradeHi) {
                 const arr = [];
                 for (const name of Object.keys(baseStats)) {
-                    if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
+                    if (isStoryRollExcluded(name)) continue;
                     const b = baseStats[name];
                     if (!b || !genSet.has(b.gen)) continue;
                     if (!isMixed) {
@@ -25676,7 +25837,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (!S.length) S = buildSyntheticSignaturePool(trainer, genSet, rng);
             const T = {1:[],2:[],3:[],4:[]};
             for (const name of Object.keys(baseStats)) {
-                if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
+                if (isStoryRollExcluded(name)) continue;
                 const b = baseStats[name];
                 if (!b || !genSet.has(b.gen)) continue;
                 if (!isMixed) {
@@ -25698,7 +25859,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 function pickRandomInGenPlain(usedNames) {
                     const pool = [];
                     for (const name of Object.keys(baseStats)) {
-                        if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
+                        if (isStoryRollExcluded(name)) continue;
                         const b = baseStats[name];
                         if (b && genSet.has(b.gen)) pool.push(name);
                     }
@@ -25816,7 +25977,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             function pickRandomInGenWindow() {
                 const pool = [];
                 for (const name of Object.keys(baseStats)) {
-                    if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
+                    if (isStoryRollExcluded(name)) continue;
                     const b = baseStats[name];
                     if (b && genSet.has(b.gen)) pool.push(name);
                 }
@@ -25877,7 +26038,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const genSet = new Set(allowedGens);
             const gradeOnePool = [];
             for (const name of Object.keys(baseStats)) {
-                if (MEGA_EXCLUDE.has(name) || name.includes('-Gmax') || name.includes('-Mega')) continue;
+                if (isStoryRollExcluded(name)) continue;
                 const b = baseStats[name];
                 if (!b || !genSet.has(b.gen)) continue;
                 if (getMonGrade(name, getBST(name)) !== 1) continue;
@@ -27723,12 +27884,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return `<div class="story-team-slot draft-card tier-${g}" style="align-items:stretch;justify-content:space-between;gap:8px;width:100%;box-sizing:border-box;">
                     <div class="story-party-card-hit" style="display:flex;align-items:stretch;gap:8px;min-width:0;flex:1;" role="button" tabindex="0" data-party-idx="${i}" title="View summary">
                         <div class="draft-card-sprite">
-                            <img src="${getSprite(t.name, !!rawBuild._isShiny)}" onerror="handleSpriteError(this)" alt="${t.name}" data-shiny="${rawBuild._isShiny ? 'true' : 'false'}" class="mini-sprite" style="${rawBuild._isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}">
+                            <img src="${getSprite(spriteDisplayName(t), !!rawBuild._isShiny)}" onerror="handleSpriteError(this)" alt="${t.name}" data-shiny="${rawBuild._isShiny ? 'true' : 'false'}" class="mini-sprite" style="${rawBuild._isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}">
                             <span class="tier-badge bg-tier-${g}" title="Power tier (1 = strongest pool tier, 4 = cutest/weakest)">T${g}</span>
                         </div>
                         <div class="draft-card-body" style="min-width:0;flex:1;">
                             <div class="draft-card-header">
-                                <span>${rawBuild._isShiny ? '&#10024; ' : ''}${t.nickname ? `"${t.nickname}" <span style="color:#888;font-size:10px;font-weight:normal;">(${t.name})</span>` : t.name}${t.starter ? ' <span title="Starter — bonded for life" style="display:inline-block;font-size:9px;color:#111;background:#ffd54f;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">★ STARTER</span>' : ''}${t.unsellable && !t.starter ? ' <span title="Bound to you" style="display:inline-block;font-size:9px;color:#111;background:#ce93d8;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">⛓ BOUND</span>' : ''} ${getTypeHTML(mon.type1, mon.type2)}</span>
+                                <span>${rawBuild._isShiny ? '&#10024; ' : ''}${t.nickname ? `"${t.nickname}" <span style="color:#888;font-size:10px;font-weight:normal;">(${t.name})</span>` : t.name}${t.starter ? ' <span title="Starter — bonded for life" style="display:inline-block;font-size:9px;color:#111;background:#ffd54f;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">★ STARTER</span>' : ''}${t.unsellable && !t.starter ? ' <span title="Bound to you" style="display:inline-block;font-size:9px;color:#111;background:#ce93d8;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">⛓ BOUND</span>' : ''}${rawBuild._cosmeticForme ? ` <span title="Cosmetic skin: ${rawBuild._cosmeticForme} (purely visual — stats / evolutions use ${t.name})" style="display:inline-block;font-size:9px;color:#111;background:#80deea;padding:1px 4px;letter-spacing:0.04em;border-radius:2px;margin-left:3px;vertical-align:1px;">✦ ${rawBuild._cosmeticForme.replace(t.name + '-', '')}</span>` : ''} ${getTypeHTML(mon.type1, mon.type2)}</span>
                             </div>
                             <div class="draft-card-details">${details}</div>
                             <div class="draft-card-moves">${movesHtml}</div>
@@ -27918,9 +28079,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             '"A starter isn\'t a coin flip. It\'s a contract."',
         ];
 
-        // Species whose forms share the same "slot" — owning any form blocks all others.
-        // e.g. Arceus-Fire and Arceus are the same identity; same for Silvally-*.
-        const _STORY_UNIQUE_FAMILIES = ['Arceus', 'Silvally'];
+        // Species whose forms share the same "slot" — owning any form blocks all
+        // others. Each family rolls all its formes distinctly (so a player can still
+        // get e.g. Deoxys-Attack vs Deoxys-Defense as competitively different picks),
+        // but the team-uniqueness rule says you can't hold two Deoxys at once.
+        //   • Arceus, Silvally — every type plate / RKS Memory shares one identity.
+        //   • Deoxys — Normal / Attack / Defense / Speed are the same DNA splice.
+        //   • Dialga, Palkia, Giratina — Origin form is the same legendary trio,
+        //     just key-item triggered (Adamant Crystal / Lustrous Globe / Griseous
+        //     Orb). The Mystery Figure gate would otherwise let one player walk
+        //     away with both Dialga and Dialga-Origin.
+        const _STORY_UNIQUE_FAMILIES = ['Arceus', 'Silvally', 'Deoxys', 'Dialga', 'Palkia', 'Giratina'];
         function _storyBaseFamily(name) {
             if (!name) return name;
             for (const fam of _STORY_UNIQUE_FAMILIES) {
@@ -28091,7 +28260,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const card = document.createElement('div');
             card.className = `draft-card prof-pick-card tier-${tier}`;
             card.innerHTML = `
-                <div class="draft-card-sprite"><img src="${getSprite(tempMon.name, tempMon.isShiny)}" alt="${ch.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
+                <div class="draft-card-sprite"><img src="${getSprite(spriteDisplayName(tempMon), tempMon.isShiny)}" alt="${ch.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                 <div class="draft-card-body">
                     <div class="draft-card-header">
                         <span>${tempMon.isShiny ? '&#10024; ' : ''}${ch.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}${ptBadge}</span>
@@ -28204,7 +28373,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         : 'cursor:pointer;min-width:130px;padding:10px;transition:all 0.15s;';
                     if (bonded) slot.title = t.starter ? 'Starter — bonded for life' : 'Bonded — cannot be replaced';
                     slot.innerHTML = `
-                        <img src="${getSprite(t.name,false)}" onerror="this.src=''" style="width:56px;height:56px;image-rendering:pixelated;">
+                        <img src="${getSprite(spriteDisplayName(t),false)}" onerror="this.src=''" style="width:56px;height:56px;image-rendering:pixelated;">
                         <div style="font-size:12px;"><b>${t.name}</b><br><span class="tier-badge bg-tier-${g}" style="font-size:9px;" title="Power tier (1–4)">T${g}</span></div>`;
                     if (!bonded) slot.onclick = () => window.StoryMode._mysteryDoSwap(i);
                     cardEl.appendChild(slot);
@@ -29815,8 +29984,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             for (const name of Object.keys(baseStats)) {
                 const b = baseStats[name];
                 if (!b || !genSet.has(b.gen)) continue;
-                if (name.includes('-Mega') || name.includes('-Gmax')) continue;
-                if (MEGA_EXCLUDE && MEGA_EXCLUDE.has && MEGA_EXCLUDE.has(name)) continue;
+                if (isStoryRollExcluded(name)) continue;
                 if (!D) continue;
                 try {
                     const sp = D.species.get(name);
@@ -30333,7 +30501,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const pct = Math.max(0, Math.min(100, Math.round((_catchState.bossHp / _catchState.bossMaxHp) * 100)));
                 let bossSpriteHtml = '';
                 try {
-                    const spriteUrl = typeof getSprite === 'function' ? getSprite(enc.name, false) : '';
+                    const spriteUrl = typeof getSprite === 'function' ? getSprite(spriteDisplayName(enc), false) : '';
                     if (spriteUrl) {
                         bossSpriteHtml = `<img src="${spriteUrl}" alt="${_esc(enc.name)}" style="display:block;margin:0 auto 8px;width:96px;height:96px;image-rendering:pixelated;filter:drop-shadow(0 0 10px rgba(206,147,216,0.7));" onerror="this.style.display='none'">`;
                     }
@@ -30486,7 +30654,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // made every encounter feel like the same prompt.
             let spriteHtml = '';
             try {
-                const spriteUrl = typeof getSprite === 'function' ? getSprite(enc.name, false) : '';
+                const spriteUrl = typeof getSprite === 'function' ? getSprite(spriteDisplayName(enc), false) : '';
                 if (spriteUrl) {
                     spriteHtml = `<img src="${spriteUrl}" alt="${_esc(enc.name)}" style="display:block;margin:0 auto 6px;width:96px;height:96px;image-rendering:pixelated;filter:drop-shadow(0 0 ${_catchState.bossMode ? '8px rgba(206,147,216,0.6)' : '4px rgba(165,214,167,0.35)'});" onerror="this.style.display='none'">`;
                 }
@@ -31462,7 +31630,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 return `<div class="story-link-mon tier-${g}">
                     <div class="story-link-mon-header">
-                        <img src="${getSprite(t.name,false)}" onerror="this.src=''" alt="${t.name}">
+                        <img src="${getSprite(spriteDisplayName(t),false)}" onerror="this.src=''" alt="${t.name}">
                         <div>
                             <div class="story-link-title-row">${shinyPre}${t.name}${gimmickTag} ${typeHtml}${teraHtml}</div>
                             <span class="tier-badge bg-tier-${g}">Grade ${g}</span>
@@ -31645,7 +31813,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const genSet = new Set(normalizeEnabledGens(enabledGens));
                 const D = typeof getPssDex === 'function' ? getPssDex() : null;
                 if (!D) return [];
-                const sp = D.species.get(monName);
+                let sp = D.species.get(monName);
+                // Cosmetic / cap / starter alt formes (Pikachu-Original, Eevee-Starter, …)
+                // carry no `evos` of their own. New rolls are filtered out via
+                // STORY_NONSTANDARD_FORMS, but legacy saves can still hold one — fall back
+                // to the base species so the Sage can still evolve them down the canonical
+                // chain (Pikachu-Original → Raichu, Eevee-Starter → any Eeveelution).
+                if (sp && (!sp.evos || !sp.evos.length) && sp.baseSpecies && sp.baseSpecies !== sp.name) {
+                    const base = D.species.get(sp.baseSpecies);
+                    if (base && base.evos && base.evos.length) sp = base;
+                }
                 if (!sp || !sp.evos || !sp.evos.length) return [];
                 return sp.evos.map(evo => {
                     const b = baseStats[evo];
@@ -31736,7 +31913,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 return `<div class="story-link-mon tier-${g}">
                     <div class="story-link-mon-header">
-                        <img src="${getSprite(t.name,false)}" onerror="this.src=''" alt="${t.name}">
+                        <img src="${getSprite(spriteDisplayName(t),false)}" onerror="this.src=''" alt="${t.name}">
                         <div>
                             <div class="story-link-title-row">${shinyPre}${t.name}${gimmickTag} ${typeHtml}</div>
                             <span class="tier-badge bg-tier-${g}">Grade ${g} · BST ${getBST(t.name)}</span>
@@ -31817,6 +31994,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
+            // Evolution preserves identity — the starter that just evolved is still
+            // the starter, the nickname carries over, and the stable slot id stays so
+            // PC/Underground/Subject-Zero bookkeeping keeps pointing at the same mon.
+            // Spreading `mon` first then overriding name/build keeps every metadata
+            // flag (starter, unsellable, nickname, id, caughtAt, …) attached.
             sm.team[idx] = { ...mon, name: evoName, build: evoBuild };
             return true;
         }
@@ -31916,7 +32098,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     delete window._pbsStoryUnlockedGimmicks;
                 }
                 sm.gold -= cost;
-                sm.team[idx] = { ...mon, build:newBuild };
+                // Rebuild just rerolls the moveset/nature/item — same species, same
+                // identity. Preserve starter/unsellable/nickname/id so a player who
+                // rebuilds their starter doesn't strip its star-starter badge.
+                sm.team[idx] = { ...mon, build: newBuild };
                 save();
                 renderLinkTeam();
             } finally {
@@ -32022,7 +32207,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             tarsEl.innerHTML = state.playerParty.map((mon,i) => {
                 const ok = useOnFainted ? mon.currentHp<=0 : mon.currentHp>0;
                 return `<div class="party-slot ${ok?'':'fainted'}" style="cursor:${ok?'pointer':'not-allowed'}" onclick="${ok?`window.StoryMode.useBagItemOn(${i})`:''}">
-                    <img src="${getSprite(mon.name,mon.isShiny)}" class="mini-sprite">
+                    <img src="${getSprite(spriteDisplayName(mon),mon.isShiny)}" class="mini-sprite">
                     <div><div style="font-weight:bold;">${mon.name}</div>
                     <div style="font-size:10px;">HP: ${mon.currentHp}/${mon.maxHp} | ${mon.status||'OK'}</div></div>
                 </div>`;
@@ -32182,7 +32367,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function pickHofRandomSpecies6() {
             const pool = (typeof baseStats === 'object' && baseStats && Object.keys(baseStats).length >= 6)
-                ? Object.keys(baseStats)
+                ? Object.keys(baseStats).filter(n => typeof isStoryRollExcluded !== 'function' || !isStoryRollExcluded(n))
                 : HOF_DEMO_SPECIES.slice();
             const copy = pool.slice();
             const out = [];
@@ -33344,7 +33529,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { if (b) mon = buildPokemon(t.name, shallowCloneBuildForDisplay(b)); } catch (e) {}
 
                 const typeHtml = mon ? getTypeHTML(mon.type1, mon.type2 || '') : '';
-                const spriteUrl = getSprite(t.name);
+                const spriteUrl = getSprite(spriteDisplayName(t));
                 const expanded = idx === _storyTutorOpenIdx;
                 const currentMovesCount = Array.isArray(b.m) ? b.m.length : 0;
                 const summary = showMoves
@@ -33713,7 +33898,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _renderColressMonCard(t, idx) {
             const b = t.build || {};
             const elig = _colressEligibleMechanics(t.name, b);
-            const spriteUrl = getSprite(t.name);
+            const spriteUrl = getSprite(spriteDisplayName(t));
             let typeHtml = '';
             try {
                 const mon = buildPokemon(t.name, shallowCloneBuildForDisplay(b));
@@ -34080,7 +34265,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const b = (t && t.build) || {};
             const cur = b.evs || {};
             const cantAfford = sm.gold < EVTRAINER_COST;
-            const spriteUrl = (typeof getSprite === 'function') ? getSprite(t.name) : '';
+            const spriteUrl = (typeof getSprite === 'function') ? getSprite(spriteDisplayName(t)) : '';
             let typeHtml = '';
             try {
                 const mon = (typeof buildPokemon === 'function') ? buildPokemon(t.name, shallowCloneBuildForDisplay(b)) : null;
