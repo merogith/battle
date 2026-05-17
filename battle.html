@@ -5594,9 +5594,9 @@
 
     <div id="modal-story-abandon-confirm" class="modal hidden">
         <div class="modal-content white-outline" style="max-width: 380px;">
-            <h2 style="color: var(--hp-red); margin-top: 0; text-align: center;">Abandon Run?</h2>
-            <p style="font-size: 13px; color: #aaa; line-height: 1.5;">Your run progress will be permanently deleted.</p>
-            <button type="button" onclick="window.closeModal('modal-story-abandon-confirm')" style="width: 100%; margin-bottom: 8px;">Keep Playing</button>
+            <h2 style="color: var(--hp-red); margin-top: 0; text-align: center;">Abandon this run?</h2>
+            <p style="font-size: 13px; color: #aaa; line-height: 1.5;">Walking away wipes the save — the road won\'t remember you walked it. Your Pokédex carries over, but everything else starts fresh.</p>
+            <button type="button" onclick="window.closeModal('modal-story-abandon-confirm')" style="width: 100%; margin-bottom: 8px;">Stay on the road</button>
             <button type="button" onclick="window.StoryMode.abandonAndReturn()" style="width: 100%; color: var(--hp-red); border-color: var(--hp-red);">Abandon Run</button>
         </div>
     </div>
@@ -5772,7 +5772,7 @@
     <!-- ===== STORY MODE SCREENS ===== -->
     <div id="screen-story-menu" class="screen hidden story-screen-outer">
         <h1 class="story-title-main">&#9670; STORY MODE</h1>
-        <p class="story-tagline">A single-player journey through the Pokémon world.</p>
+        <p class="story-tagline">A single-player road from Pallet Town to the Champion\'s seat — and whatever waits after the credits.</p>
         <div class="story-intro-stack">
             <div id="story-menu-resume-card" class="story-resume-card" style="display:none;" aria-live="polite">
                 <div class="story-resume-card-trainer">
@@ -7779,67 +7779,67 @@
         // === 2. GLOBAL UTILS & SETTINGS ===
         const helpData = {
             story: `<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Story Mode Overview</h3>
-Eight badges, an Elite Four, a Champion — and what waits after the credits. Every fight scales with your roster, so the build you bring matters more than the level you grind.<br><br>
-<b style="color:#ffd700;">Auto-heal between battles.</b> Your party is fully restored — HP, PP, status, consumed held items. Mart consumables only matter within a single battle.<br>
-<b style="color:#ffd700;">Foes match your party size.</b> Run lean (1-2 mons) and trainers run lean too; build a full six and they bring six. Gym Leaders and the League finals have per-role floors.<br>
-<b style="color:#ffd700;">Active party cap = 2 + badges</b> (max 6 at four badges). Catches and Professor gifts above the cap drop into the PC, never lost.</div>
-<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Battle Mechanics (Gimmicks)</h3>
-All four are <b>always on</b> and used <b>once per team</b> per battle (Classic mode):<br>
-<b style="color:#7b1fa2;">▼ MEGA</b> — A Pokémon holding a Mega Stone transforms mid-battle. Big stat jump + sometimes a new typing. Lasts the rest of the battle.<br>
-<b style="color:#b71c1c;">▼ DYNAMAX / G-MAX</b> — Three turns of giant size: every move becomes a stronger Max Move with a side effect, and HP doubles. Bypasses Protect.<br>
-<b style="color:#0277bd;">◆ TERA</b> — Lock the Pokémon to a single type for the rest of the battle. STAB stacks if you Tera into your original type. Once per Pokémon — even on Unlimited.<br>
-<b style="color:#f9a825;">⚡ Z-MOVE</b> — A Pokémon holding a Z-Crystal that matches one of its moves can unleash a single colossal hit (or a stat boost). The Z slot is consumed; the held item turns back into the crystal afterward.<br>
-The tiny <b style="color:var(--hp-green);">▲</b> / <b style="color:var(--hp-red);">▼</b> / <b style="color:#555;">⊘</b> mark on each move shows super-effective / not-very-effective / no-effect vs the active foe.</div>
+The road from Pallet runs north — eight gym towns, four Elite chambers, the Champion\'s seat, and what waits on the other side of the credits. Every fight scales to the team you bring, so the build in your party matters more than the level you grind.<br><br>
+<b style="color:#ffd700;">Cities heal you between fights.</b> Full HP, full PP, status cleared, consumed held items restored. Mart consumables only matter inside a single battle.<br>
+<b style="color:#ffd700;">Foes match your party size.</b> Run lean and the trainers run lean too. Bring a full six and they bring six. Gym Leaders and the League finals have per-role floors.<br>
+<b style="color:#ffd700;">Party cap = 2 + badges</b> (capped at six after four badges). Catches and Professor gifts above the cap drop into the PC — never lost, just waiting.</div>
+<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Battle Mechanics — the four great gimmicks</h3>
+All four are always on. In Classic mode each team gets one per battle; in Unlimited each Pokémon gets one of its own.<br>
+<b style="color:#7b1fa2;">▼ MEGA</b> — A Pokémon holding a Mega Stone transforms mid-battle. Big stat jump, sometimes a new typing. Lasts the rest of the fight.<br>
+<b style="color:#b71c1c;">▼ DYNAMAX / G-MAX</b> — Three turns of giant size. Every move becomes a stronger Max Move with a side effect, and HP doubles for the duration. Bypasses Protect.<br>
+<b style="color:#0277bd;">◆ TERA</b> — Locks the Pokémon to a single type for the rest of the battle. STAB stacks when you Tera into your original type. Once per Pokémon — even in Unlimited.<br>
+<b style="color:#f9a825;">⚡ Z-MOVE</b> — A Pokémon holding a matching Z-Crystal unleashes one colossal hit (or a stat boost). The Z slot is consumed; the held item turns back into the crystal afterward.<br>
+The tiny <b style="color:var(--hp-green);">▲</b> / <b style="color:var(--hp-red);">▼</b> / <b style="color:#555;">⊘</b> next to each move marks super-effective, not-very-effective, or no-effect against the active foe.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Catching</h3>
-Wild routes between cities surface one wild Pokémon. Safari Zone (City 4) is a session with its own balls, Bait, and Rocks. The Caged God (post-HoF) needs the Master Ball.<br>
-<b>Catch chance</b> = <i>species catch rate × ball multiplier</i>. PokéBall <b>1.0×</b>, Great <b>1.5×</b>, Ultra <b>2.0×</b>, Master <b>∞</b>. Base rates: G1 4%, G2 12%, G3 22%, G4 35% — stronger Pokémon are harder. On a missed throw the wild may flee (G1 most, G4 least). Master Ball = guaranteed catch, but you only get one per run, saved for the boss.</div>
+Wild routes between cities surface one wild Pokémon each. The Safari Zone in City 4 runs as a self-contained session with its own balls, Bait, and Rocks. The Caged God in the post-game needs the Master Ball — saved for that one fight.<br>
+<b>Catch chance</b> = species rate × ball multiplier. Poké Ball <b>1.0×</b>, Great <b>1.5×</b>, Ultra <b>2.0×</b>, Master <b>∞</b>. Base rates climb with rarity: G1 4%, G2 12%, G3 22%, G4 35%. On a missed throw the wild may flee, with G1 the most likely to bolt and G4 the least.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Build Power Tiers (T1 → T4)</h3>
-Every Pokémon has a training-quality tier separate from its species grade:<br>
-<b style="color:#9e9e9e;">T1 Untrained</b> — 0 EVs, neutral nature, no item, default ability. Where wilds start.<br>
-<b style="color:#66bb6a;">T2 Novice</b> — Partial EVs, kept nature, flavor item. Where a few tutor visits land you.<br>
-<b style="color:#42a5f5;">T3 Competent</b> — Most EVs, kept nature/ability/item. Mid-game polish.<br>
-<b style="color:#ffd700;">T4 Tournament</b> — Full Smogon-grade build. The Elite Four and Champion. The <b>Link Station</b> pays gold to upgrade your mon directly to T4.</div>
+Every Pokémon carries a training tier, separate from its species grade:<br>
+<b style="color:#9e9e9e;">T1 Untrained</b> — 0 EVs, neutral nature, no held item, default ability. Where wilds start.<br>
+<b style="color:#66bb6a;">T2 Novice</b> — Partial EVs, the species\' kept nature, a flavor item. A few tutor visits land you here.<br>
+<b style="color:#42a5f5;">T3 Competent</b> — Most EVs trained, kept nature, ability, and item. Mid-game polish.<br>
+<b style="color:#ffd700;">T4 Tournament</b> — Full Smogon-grade build. The Elite Four and Champion run T4 by default. The <b>Link Station</b> pays gold to bump one of your mons straight there.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Cities &amp; Facilities</h3>
-<b>Pokémart</b> — PokéBalls (300G), potions, X-items.<br>
-<b>Department Store</b> — Great Balls (1,000G), revives, weather/terrain orbs.<br>
-<b>Pokémon Center</b> — <b>PC Storage</b> (cap 10) for extra catches + <b>Underground</b> (sells unwanted mons for gold). Last party member, starter, and Subject Zero cannot be sold.<br>
-<b>Move Tutor</b> — Swap any move slot for one this Pokémon can learn.<br>
-<b>Nature Rater</b> — Re-pick the nature (+10%/-10% stat).<br>
-<b>Battle Dojo</b> — Swap ability and/or held item.<br>
-<b>EV Trainer (Buck)</b> — Apply EV spreads (510 cap, 252 per stat). Vitamin Packs skip the gold cost.<br>
-<b>Stone Sage (Evolution Tutor)</b> — Evolve eligible mons; Rare Candy skips the gold cost.<br>
-<b>Colress</b> — Set a battle form (Mega / Z / Dynamax / Tera) on a mon for 10,000G.<br>
-<b>Link Station</b> — Reroll, upgrade, or fully rebuild a Pokémon. Direct path to T4.<br>
-<b>Relic Annex</b> — Buy a permanent battle-wide artifact (affects both teams).<br>
-<b>Poké Casino</b> — Three games. Have fun.<br>
-<b>Safari Zone</b> (City 4) — Catch-only session. Bait reduces flee + catch chance; Rocks raise both, with a per-turn flee gamble.</div>
+<b>Pokémart</b> — Poké Balls (300G), potions, X items.<br>
+<b>Department Store</b> — Great Balls (1,000G), revives, weather and terrain orbs.<br>
+<b>Pokémon Center</b> — <b>PC Storage</b> (cap 10) for the partners you can\'t carry, plus the <b>Underground</b> that buys unwanted mons for gold. Your last party member, your starter, and Subject Zero are not for sale.<br>
+<b>Move Tutor</b> — Swap any move slot for any move the species can legally learn.<br>
+<b>Nature Rater</b> — Re-pick a nature for the +10%/-10% spread you actually want.<br>
+<b>Battle Dojo</b> — Swap held item and/or ability.<br>
+<b>EV Trainer (Buck)</b> — Apply EV spreads (510 cap, 252 per stat). A Vitamin Pack waives the gold cost.<br>
+<b>Stone Sage</b> — Every region\'s evolution methods, one shop. Rare Candy waives the gold cost on a Pokémon\'s first evolution.<br>
+<b>Colress</b> — Sets a battle form (Mega / Z / Dynamax / Tera) on one Pokémon for 10,000G. Permanent for that mon.<br>
+<b>Link Station</b> — Reroll a slot, upgrade to T4, or rebuild from scratch.<br>
+<b>Relic Annex</b> — Pick one permanent rule that lives in every battle for the rest of the run, both sides.<br>
+<b>Poké Casino</b> — Coin Flip, Color, Jackpot. The house has the math.<br>
+<b>Safari Zone</b> (City 4) — Catch-only session. Bait calms, Rock angers, every turn the wild may flee.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Endgame</h3>
-After the Hall of Fame, the <b>Crucible</b> opens at every city: Battle Frontier ladder, League rematches, Mystery Figure, all facilities. The <b>Caged God</b> boss arc needs three corrupted-Center leads, then the Master Ball.</div>
+After the Hall of Fame, the <b>Crucible</b> opens from every city: every facility you ever used, the Battle Frontier ladder, League rematches, the Mystery Figure. The <b>Caged God</b> boss arc needs three corrupted-Center leads scattered through the post-game, then the Master Ball.</div>
 <div><h3 style="color:var(--accent);margin:0 0 6px;">Useful Habits</h3>
-• Tap any Pokémon name in battle (yours or foe) to open the summary with full build info.<br>
-• The HUD <b>🎯 Next:</b> chip in the city tip rail jumps you to your next required battle.<br>
-• Vouchers (Rare Candy, Vitamin Pack) show in the bag and on tutor / evolve buttons — they skip the gold cost.<br>
-• Difficulty also changes coin reward: Very Easy 1.6× → Hard 1.0× (Hard floors the penalty). Pick the mode that fits the run you want.</div>`,
+• Tap any Pokémon name in battle, yours or the foe\'s, for the full build summary.<br>
+• The <b>🎯 Next:</b> chip in the city tip rail jumps you to your next required fight.<br>
+• Vouchers — Rare Candy, Vitamin Pack — show in the bag and on tutor / evolve buttons. They waive the gold cost on one use.<br>
+• Difficulty also adjusts the coin reward: Very Easy 1.6× → Hard 1.0× (Hard floors the penalty). Pick the mode that fits the run you want, not the one that looks hardest on the menu.</div>`,
             menu: `<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Game Modes</h3>
-<b style="color:#4caf50;">Player Vs AI</b> — Draft 3 Pokémon from a random pool and battle against the computer AI.<br>
-<b style="color:#6890F0;">Local PvP</b> — Play with a friend on the same screen. Each player drafts from their own pool, then battles head-to-head.<br>
-<b style="color:#ffd700;">Gauntlet Mode</b> — A solo survival challenge! Your team persists across rounds. After each win, you can "loot" one of the defeated foe's Pokémon to replace one of yours. Your team is fully healed between rounds. How far can you go?</div>
+<b style="color:#4caf50;">Player vs AI</b> — Draft 3 Pokémon from a random pool, then take them into a single battle against the computer.<br>
+<b style="color:#6890F0;">Local PvP</b> — Pass-and-play on the same screen. Each player drafts from their own pool, then it\'s six versus six on one device.<br>
+<b style="color:#ffd700;">Gauntlet</b> — A solo survival ladder. Your team carries over between rounds, and after every win you can loot one of the defeated foe\'s Pokémon to replace one of yours. Full heal between rounds. See how far you can climb.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Drafting</h3>
-You pick from a pool of 6 randomly chosen Pokémon (from 84 total). Each Pokémon comes with a <b>competitive build</b> — preset Nature, Ability, Item, EVs, and 4 moves. Builds are graded by tier (T1 strongest, T4 weakest).</div>
+You pick from a pool of 6 randomly chosen Pokémon (out of 84). Every one of them comes with a competitive build baked in — nature, ability, held item, EVs, four moves. Builds are tiered T1 through T4 (strongest to weakest).</div>
 <div><h3 style="color:var(--accent);margin:0 0 6px;">Mechanics</h3>
-All Pokémon are <b>Level 50</b> with <b>31 IVs</b> and preset EVs. Natures boost one stat by 10% and lower another by 10%. Abilities and Items follow standard competitive rules.</div>`,
+Every Pokémon runs at Level 50 with 31 IVs and a preset EV spread. Natures push one stat up 10% and pull another down 10%. Abilities and items follow standard competitive rules — what works on Showdown works here.</div>`,
             draft: `<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Building Your Team</h3>
 Click a card to add that Pokémon to your team. You need to pick 3.<br>
-<b>Tap</b> Natures, Abilities, Items, and Moves for full descriptions (or hover on desktop). <b>Tap</b> a move name for stats, priority, and effects.</div>
+Tap any nature, ability, item, or move for its full description (or hover on desktop). Tapping a move name opens its stats, priority, and effects.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Tier System</h3>
-<span style="color:#ff8c00;font-weight:bold;">T1 (Orange)</span> — Strongest builds, top-tier threats<br>
-<span style="color:#9c27b0;font-weight:bold;">T2 (Purple)</span> — Very strong, solid picks<br>
-<span style="color:#1565c0;font-weight:bold;">T3 (Blue)</span> — Average, decent options<br>
-<span style="color:#2e7d32;font-weight:bold;">T4 (Green)</span> — Weaker builds, niche roles</div>
+<span style="color:#ff8c00;font-weight:bold;">T1 (Orange)</span> — Strongest builds, the top-tier threats.<br>
+<span style="color:#9c27b0;font-weight:bold;">T2 (Purple)</span> — Solid picks; the wide middle of the meta.<br>
+<span style="color:#1565c0;font-weight:bold;">T3 (Blue)</span> — Decent options with a role to play.<br>
+<span style="color:#2e7d32;font-weight:bold;">T4 (Green)</span> — Niche builds; require setup or matchup luck.</div>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Type Badges</h3>
-Hover over the type badges to see defensive matchups — what types the Pokémon is weak to, resists, or immune to.</div>
+Hover the type badges to see the defensive matchups — what the Pokémon is weak to, resists, or stops cold.</div>
 <div><h3 style="color:var(--accent);margin:0 0 6px;">Strategy Tips</h3>
-Build a balanced team! Consider type coverage, speed tiers, and offensive/defensive roles. "Inspect Foe's Pool" shows all six of their possible builds (including ones they already picked), so you can plan without learning their hidden bench.</div>`,
+Build a balanced team. Watch type coverage, speed tiers, and offensive vs. defensive balance. "Inspect Foe\'s Pool" shows all six of their possible builds — the ones they took and the ones they didn\'t — so you can plan without ever seeing their hidden bench.</div>`,
             battle: `<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Commands</h3>
 <b style="color:var(--hp-yellow);">FIGHT</b> — Choose one of your 4 moves to attack or use a status move.<br>
 <b style="color:var(--hp-green);">POKÉMON</b> — Switch your active Pokémon. <span style="color:#f44336;">This costs your turn!</span><br>
@@ -13828,7 +13828,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             window.showGameAlert("Battle items are not available in this mode.");
         }
-        window.runAway = function() { if(!state.isLocked) { logMsg("You fled!", "dmg"); state.isOver = true; if (state.mode === 'gauntlet') { showEndScreen("GAUNTLET OVER!", `You fled after clearing ${state.score} round${state.score !== 1 ? 's' : ''}!`); } else { showEndScreen("FORFEIT", "You fled from the battle.", false); } } }
+        window.runAway = function() { if(!state.isLocked) { logMsg("You fled!", "dmg"); state.isOver = true; if (state.mode === 'gauntlet') { showEndScreen("GAUNTLET OVER!", `You walked away after clearing ${state.score} round${state.score !== 1 ? 's' : ''}.`); } else { showEndScreen("FORFEIT", "You walked off the field.", false); } } }
 
         function showEndScreen(title, desc, storyPlayerWon) {
             document.getElementById('command-menu').classList.add('hidden'); document.getElementById('move-menu').classList.add('hidden');
@@ -13917,7 +13917,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (state.mode === 'gauntlet') {
                     window.showGauntletSwap();
                 } else {
-                    showEndScreen('VICTORY!', 'You defeated the opponent.', true);
+                    showEndScreen('VICTORY!', 'The last opposing Pokémon falls. The round is yours.', true);
                 }
                 return true;
             } catch (e) {
@@ -16402,9 +16402,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     state.isOver = true;
                     state.isLocked = false;
                     if (state.mode === 'gauntlet') {
-                        showEndScreen("GAUNTLET OVER!", `Draw by turn limit. You cleared ${state.score} round${state.score !== 1 ? 's' : ''}!`);
+                        showEndScreen("GAUNTLET OVER!", `Turn limit. You cleared ${state.score} round${state.score !== 1 ? 's' : ''} before the timer ran out.`);
                     } else {
-                        showEndScreen("DRAW", "The battle reached the turn limit.", false);
+                        showEndScreen("DRAW", "Neither side closed it out before the turn limit.", false);
                     }
                     return;
                 }
@@ -20410,7 +20410,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         // Draw in gauntlet: advance but no swap reward and no score increment
                         logMsg(`Both sides are out of Pokémon! It's a DRAW!`, 'info');
                         state.isOver = true;
-                        showEndScreen("DRAW", "Both teams were eliminated simultaneously. In gauntlet, you advance but receive no reward.", false);
+                        showEndScreen("DRAW", "Both teams fall on the same tick. In Gauntlet you advance, but there\'s no loot to take.", false);
                         // Advance without score increment or swap
                         // Auto-advance after showing draw
                         setTimeout(() => {
@@ -20431,21 +20431,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         }, 2000);
                     } else {
                         state.isOver = true;
-                        showEndScreen("DRAW", "Both teams were eliminated simultaneously!", false);
+                        showEndScreen("DRAW", "Both teams fall on the same tick. No one walks off with the round.", false);
                     }
                     return true;
                 }
                 // If only one side has mons left, handle normally (fall through below)
                 if (foeHasNext && !playerHasNext) {
                     state.isOver = true;
-                    showEndScreen("GAME OVER", "You have no Pokémon left.", false);
+                    showEndScreen("GAME OVER", "Your last Pokémon is down. The fight is over.", false);
                     return true;
                 }
                 if (!foeHasNext && playerHasNext) {
                     if (state.mode === 'gauntlet') window.showGauntletSwap();
                     else {
                         state.isOver = true;
-                        showEndScreen("VICTORY!", "You defeated the opponent.", true);
+                        showEndScreen("VICTORY!", "The last opposing Pokémon falls. The round is yours.", true);
                     }
                     if (state.mode === 'gauntlet') state.isOver = true;
                     return true;
@@ -20494,7 +20494,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (state.mode === 'gauntlet') { window.showGauntletSwap(); state.isOver = true; }
                         else {
                             state.isOver = true;
-                            showEndScreen("VICTORY!", "You defeated the opponent.", true);
+                            showEndScreen("VICTORY!", "The last opposing Pokémon falls. The round is yours.", true);
                         }
                         return true;
                     }
@@ -20554,7 +20554,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (state.mode === 'gauntlet') window.showGauntletSwap();
                     else {
                         state.isOver = true;
-                        showEndScreen("VICTORY!", "You defeated the opponent.", true);
+                        showEndScreen("VICTORY!", "The last opposing Pokémon falls. The round is yours.", true);
                     }
                     if (state.mode === 'gauntlet') state.isOver = true;
                     return true;
@@ -20595,9 +20595,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else {
                     state.isOver = true;
                     if (state.mode === 'gauntlet') {
-                        showEndScreen("GAUNTLET OVER!", `You cleared ${state.score} round${state.score !== 1 ? 's' : ''}! Your team was defeated.`);
+                        showEndScreen("GAUNTLET OVER!", `${state.score} round${state.score !== 1 ? 's' : ''} cleared before your last Pokémon went down.`);
                     } else {
-                        showEndScreen("GAME OVER", "You have no Pokémon left.", false);
+                        showEndScreen("GAME OVER", "Your last Pokémon is down. The fight is over.", false);
                     }
                     return true;
                 }
@@ -24756,10 +24756,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Basic Trainer', name:'Poke Maniac', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:9, pkmGens:[7,8,9], spriteFile:'Poke__0301_Maniac' },
           { role:'Basic Trainer', name:'Pokefan', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Poke__0301fan' },
           { role:'Basic Trainer', name:'Pokefan F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:7, pkmGens:[5,6,7,8,9], spriteFile:'Poke__0301fan~F' },
-          { role:'Basic Trainer', name:'Pokemon Breeder', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Poke__0301mon_Breeder' },
-          { role:'Basic Trainer', name:'Pokemon Breeder F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Poke__0301mon_Breeder~F' },
-          { role:'Basic Trainer', name:'Pokemon Ranger', type:'Grass', sigs:['Oddish','Seedot','Shroomish','Petilil','Grookey'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Poke__0301mon_Ranger' },
-          { role:'Basic Trainer', name:'Pokemon Ranger F', type:'Grass', sigs:['Oddish','Seedot','Shroomish','Petilil','Grookey'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Poke__0301mon_Ranger~F' },
+          { role:'Basic Trainer', name:'Pokémon Breeder', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:4, pkmGens:[2,3,4,5,6,7,8], spriteFile:'Poke__0301mon_Breeder' },
+          { role:'Basic Trainer', name:'Pokémon Breeder F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:6, pkmGens:[4,5,6,7,8,9], spriteFile:'Poke__0301mon_Breeder~F' },
+          { role:'Basic Trainer', name:'Pokémon Ranger', type:'Grass', sigs:['Oddish','Seedot','Shroomish','Petilil','Grookey'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Poke__0301mon_Ranger' },
+          { role:'Basic Trainer', name:'Pokémon Ranger F', type:'Grass', sigs:['Oddish','Seedot','Shroomish','Petilil','Grookey'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Poke__0301mon_Ranger~F' },
           { role:'Basic Trainer', name:'Policeman', type:'Normal', sigs:['Growlithe','Arcanine','Snubbull','Granbull','Herdier'], charGen:1, pkmGens:[1,2,3,4,5], spriteFile:'Policeman' },
           { role:'Basic Trainer', name:'Preschooler', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:3, pkmGens:[1,2,3,4,5,6,7], spriteFile:'Preschooler' },
           { role:'Basic Trainer', name:'Preschooler F', type:'Normal', sigs:['Sentret','Zigzagoon','Bidoof','Patrat','Rattata'], charGen:5, pkmGens:[3,4,5,6,7,8,9], spriteFile:'Preschooler~F' },
@@ -25610,22 +25610,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         /** Progression-aware lines (mixed with character quotes). Sprite may differ from canon — wording stays in-universe. */
         const RIVAL_PROGRESS_PRIMARY_QUOTES = {
-            0: ['You got your first partner? Good. Battle me before you leave town.','No route yet. First, prove that starter can stand up to mine.','Professor gave you a Pokémon. I brought a challenge.'],
-            1: ['Early routes were practice—this is the real check.','Two badges already? Cute. Let me stress-test your team.','First rival clash: I memorized your strengths since we started.'],
-            2: ['Three gyms cleared and you\'re already faster than I expected. Slow down.','Mid-game reality check: my roster\'s different than last time.','You moved fast through the front half. Now lose.'],
-            3: ['Six badges. The League\'s down the road and you know it.','Two gyms left. This is the dress rehearsal—fight like it matters.','I rebuilt for the late game. Hope you did too.'],
-            4: ['You wear the crown now—I\'m still your rival.','Champion means nothing if you slack against me.','Hall of Fame… then right back to proving it against me.'],
+            0: ['Got your first partner? Good. Battle me before you leave town — that\'s the tradition.','No route yet. First we find out whose starter walks out of this fight.','Professor gave you a Pokémon. I brought the second half of the lesson.'],
+            1: ['The early routes were the warm-up. This is the real check.','Two badges already? Let\'s find out if the team behind them holds up.','Round one of the rivalry. I\'ve been memorizing your reads since we started.'],
+            2: ['Three gyms cleared and you\'re already ahead of my pace. Slow down.','Mid-journey check-in: different roster, sharper picks. Match it.','You moved through the front half fast. The middle hits different.'],
+            3: ['Six badges. Two gyms left, and you can hear the Plateau from here.','This is the dress rehearsal. Fight it like the curtain\'s up.','I rebuilt the whole bench for the late game. I assume you did too.'],
+            4: ['Crown or no crown, you\'re still my rival.','Being Champion means nothing the moment you slack against me.','Hall of Fame ink dries fast. Mine\'s still wet — and I\'m still here.'],
         };
         function rivalStandingPrimaryQuotePool(phase) {
             const last = sm && sm.rivalLastWinner;
             const rivalChamp = !!(sm && sm.rivalChampionClaimed);
             if (last === 'rival') {
-                if (rivalChamp && phase === 4) return ['I took the Champion claim last time. Try taking it back.','Hall of Fame can write both names, but everyone knows who won our crown match.'];
-                return ['Last time, you admitted I was better. Ready to argue with a battle?','You moved on because I let you. This time, earn it.','That title of better trainer still sits with me.'];
+                if (rivalChamp && phase === 4) return ['I took the crown last time. Come take it back if you can.','The Hall can write both names, but everyone in this stadium knows who won the actual match.'];
+                return ['Last fight, you walked off second. Let\'s argue about it again.','You moved on because I let you. This round you earn it.','Better trainer in the rivalry is still me. Until you fix that.'];
             }
             if (last === 'player') {
-                if (phase === 4) return ['You beat me for the crown. I am here to drag that title back.','Champion or not, I only need one win to change the story.'];
-                return ['You took the last one. I trained for the rematch.','Enjoy being the better trainer while it lasts.','Last battle was yours. This one is mine to steal.'];
+                if (phase === 4) return ['You took the crown off my head. I came to take it back.','Champion or challenger, one win flips the story. That\'s all I need.'];
+                return ['You took the last one. I trained for the rematch.','Enjoy being the better trainer. It\'s temporary.','The last fight was yours. This one I\'m stealing back.'];
             }
             return [];
         }
@@ -25642,17 +25642,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         const TRAINER_QUOTES = {
-          'Basic Trainer':  ["Hey! You\'re in my way!",'Let\'s battle!','No turning back!','I\'m not losing this one!','…You want a fight?','Smell ya later—after I win!'],
-          'Gym Trainer':    ['You won\'t reach the Leader!','Hmph! Prove yourself first!','This gym\'s counting on me!','I train every day for this!','…Not bad. But not enough!'],
-          'Gym Leader':     ['Enough talk. Let\'s go!','This badge isn\'t for tourists!','Show me what you\'ve got!','…Don\'t disappoint me.','You\'ve come far. Now show it!','My Pokémon and I won\'t hold back!'],
-          'Elite Trainer':  ['I\'ve waited for a challenge like this!','Technique beats raw power—usually.','…Impressive. But I\'m stronger.','Think you can keep up?','This won\'t be a cakewalk!'],
-          'Rival':          ['You again!','I\'ve been training for this!','I won\'t lose to you!','This time it\'s different!','Let\'s settle this!','Don\'t go easy on me!','I built this team to counter yours.','I scouted your strategy. Still confident?','Adapt or lose — that\'s the rival\'s way!','Different partners this round. Ready?'],
-          'E1':             ['Elite Four, first gate.','…So you made it.','Welcome to the big leagues.','First test—don\'t blink!'],
-          'E2':             ['Round two. Ready?','…Still standing? Good.','I won\'t repeat my predecessor\'s mistake.','The path gets steeper here!'],
-          'E3':             ['Almost at the top…','…Feel the pressure yet?','Two down. I\'m next.','Give me everything!'],
-          'E4':             ['Last of the Elite Four!','…This is it.','Beyond me lies the Champion!','No regrets—come on!'],
-          'Champion':       ['…So you\'ve come.','I\'m the Champion. Let\'s dance.','This is where legends are made!','I won\'t hold back!','Show me your full power!'],
-          'Victory Road':   ['Fog… boulders… and trainers who won\'t budge!','Only the strong pass this road!','The air up here is heavy…','One misstep and it\'s over!','Turn back—or prove yourself on the rocks!'],
+          'Basic Trainer':  ['Hey! You\'re on my route — you battle me to pass.','My team and I have been waiting all morning. Let\'s go!','Don\'t skip me. I\'ve got a strategy this time.','Trainer eyes meet trainer eyes — that\'s the rule.','…You want a fight? You\'ve got one.','First trainer of the day. Lucky me.'],
+          'Gym Trainer':    ['You don\'t reach the Leader by walking past me.','Hmph! Prove yourself in the front rooms first.','This gym\'s counting on me to thin out the crowd.','I train here every day. I\'ve seen every gimmick.','…Not bad. But not Leader-grade.','Pass me first. Then we\'ll see if the Leader bothers.'],
+          'Gym Leader':     ['Enough talk. Show me the badge fight.','This badge isn\'t for tourists. It\'s for trainers.','Show me what you\'ve trained for.','…Don\'t disappoint me. Or them.','You\'ve come far. Don\'t stop here.','My Pokémon and I won\'t hold back. Match it.'],
+          'Elite Trainer':  ['I\'ve been waiting for a real fight all week.','Technique beats raw power — usually. Let\'s test the rule.','…Impressive. But I\'m the gatekeeper for a reason.','Think you can keep up with the late-route circuit?','This won\'t be a warm-up. Bring your six.'],
+          'Rival':          ['You again. Same road, same fight.','I\'ve been training since the last time.','You don\'t get to pass this one.','Different team than last time. Adapt.','Settle this — like we always do.','Don\'t go easy. I never do.','I built this roster to counter yours.','I scouted your last three fights. Still feeling confident?','Adapt or lose — rival\'s rule.','Different partners this round. Hope you\'re ready.'],
+          'E1':             ['First gate of four. Welcome to the league.','…So you made it past Victory Road. Most don\'t.','Big leagues now. No more rookie excuses.','First test of the chamber. Don\'t blink.'],
+          'E2':             ['Round two of four. Still standing? Good.','…You passed the first chamber. I\'m a harder room.','I won\'t make my predecessor\'s mistake. Sit down.','The path narrows from here. Walk carefully.'],
+          'E3':             ['Three chambers in. The walls get closer.','…You feel the pressure yet? You should.','Two down. I\'m the one that breaks the rhythm.','Show me everything you\'ve been saving.'],
+          'E4':             ['Last gate. The Champion\'s door is at my back.','…This is the chamber most people lose in.','Past me there\'s only one fight left. Don\'t blow it.','No regrets. No excuses. Begin.'],
+          'Champion':       ['…So you\'ve come. The chamber\'s been quiet.','I\'m the Champion. Show me why I shouldn\'t stay one.','This is where the road ends — for one of us.','I won\'t hold back. I\'ve earned the right not to.','Show me the trainer the road made.'],
+          'Victory Road':   ['Fog, boulders, and people who won\'t move. Pick a fight or back down.','Only the strong make the climb. Prove it.','The air up here\'s thin. So\'s patience.','One misstep on this rock and the climb is over.','Turn back, or earn the next handhold.'],
         };
         // Optional per-name lines (Game Boy–style). Key = trainer.name (see TRAINER_DATA).
         const TRAINER_QUOTES_BY_NAME = {
@@ -25777,20 +25777,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function pickRivalSecondaryIntroLine(phase, badges) {
             const b = Math.max(0, badges | 0);
             const pools = {
-                0: ['Starter versus starter. No excuses.', 'I\'ve been waiting at the route gate.', 'Same Professor, same start. Different outcome today.'],
-                1: [`${b} badge${b === 1 ? '' : 's'} — I planned counters for your team.`, 'Round two of our rivalry. Bring it.', 'Fresh badges won\'t save you.'],
-                2: [`${b} badges in — and I\'ve been studying your fights.`, 'Same rival, sharper team.', 'You leveled up. So did I.'],
-                3: [`${b}/8 badges. Two gyms left before the League.`, 'Mid-late rivalry — my bench leveled up alongside yours.', 'Hall of Fame\'s two gyms away. Make this count.'],
-                4: ['Title match. Even if it\'s just us.', 'The Hall of Fame is watching.', 'Champion or challenger — I won\'t hold back.'],
+                0: ['Starter versus starter. No badges, no excuses, no audience.', 'I\'ve been waiting at the route gate since dawn.', 'Same Professor. Same starting line. Different finishing place this time.'],
+                1: [`${b} badge${b === 1 ? '' : 's'} on you. I built around it.`, 'Round two of our rivalry. Show me what the badge taught you.', 'A fresh badge won\'t carry you through this one.'],
+                2: [`${b} badges in. I\'ve been watching every one of your fights since the last time we met.`, 'Same rival, sharper team. Adapt fast.', 'You leveled up. So did I.'],
+                3: [`${b}/8 badges. Two gyms left, and you can hear the Plateau from the route signs.`, 'Mid-late rivalry. My bench grew up with yours.', 'The Hall of Fame is two gyms down the road. Fight this one like it matters.'],
+                4: ['Title match. Doesn\'t matter that the crowd\'s small — the stakes aren\'t.', 'The Hall of Fame is watching. So am I.', 'Champion or challenger, neither of us holds back. That was always the deal.'],
             };
             const arr = pools[phase] || pools[1];
             const copy = arr.slice();
             if (sm && sm.rivalLastWinner === 'rival') {
-                copy.push(sm.rivalChampionClaimed ? 'I\'m still wearing the Champion title. Want it back?' : 'I won last time. Try to flip the score.');
+                copy.push(sm.rivalChampionClaimed ? 'The Champion title is still mine. Come take it.' : 'I won last time. Flip the score if you can.');
             } else if (sm && sm.rivalLastWinner === 'player') {
-                copy.push('You beat me last time. I won\'t let that happen again.');
+                copy.push('You beat me last time. Tonight goes differently.');
             }
-            copy.push(`${b} badge${b === 1 ? '' : 's'} earned. I\'m still going to win.`);
+            copy.push(`${b} badge${b === 1 ? '' : 's'} on you. I\'m still going to win.`);
             const r = (sm && sm.active) ? _storySideRng((phase | 0) + 1, b + 1) : Math.random();
             return copy[Math.floor(r * copy.length)];
         }
@@ -26125,7 +26125,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Cross-run meta. Holds permanent achievements that survive abandon/clear.
         // Today: completedRuns + lastClearSeed. Future: Pokédex carryover, totals, marks.
         const SAVE_KEY_META = 'pbs_story_meta';
-        const SAVE_VER = 17;
+        const SAVE_VER = 18;
         function _emptyStoryMeta() {
             return {
                 completedRuns: 0,
@@ -26478,6 +26478,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const v = sm.trainerAssignments[k];
                 if (typeof v !== 'string') continue;
                 const nv = STORY_TRAINER_NAME_MIGRATE_PRE_V10[v];
+                if (nv) sm.trainerAssignments[k] = nv;
+            }
+        }
+        /** v18: restore the Pokémon diacritic on Breeder / Ranger trainer names. */
+        const STORY_TRAINER_DIACRITIC_PRE_V18 = {
+            'Pokemon Breeder': 'Pokémon Breeder',
+            'Pokemon Breeder F': 'Pokémon Breeder F',
+            'Pokemon Ranger': 'Pokémon Ranger',
+            'Pokemon Ranger F': 'Pokémon Ranger F',
+        };
+        function migrateStoryTrainerDiacriticsPreV18() {
+            if (!sm.trainerAssignments || typeof sm.trainerAssignments !== 'object') return;
+            for (const k of Object.keys(sm.trainerAssignments)) {
+                const v = sm.trainerAssignments[k];
+                if (typeof v !== 'string') continue;
+                const nv = STORY_TRAINER_DIACRITIC_PRE_V18[v];
                 if (nv) sm.trainerAssignments[k] = nv;
             }
         }
@@ -26846,6 +26862,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (_loadedVer < 17) {
                     try { migrateStoryPreV17(); } catch (e) { console.warn('[Story] v17 storyline + stuck-mon id migrate', e); }
+                }
+                if (_loadedVer < 18) {
+                    try { migrateStoryTrainerDiacriticsPreV18(); } catch (e) { console.warn('[Story] v18 trainer-name diacritic migrate', e); }
                 }
                 const _cap = Math.max(0, STORY_EVENTS_RAW.length - 1);
                 if (sm.eventIndex < 0 || sm.eventIndex > _cap) {
@@ -29541,14 +29560,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // One-time welcome on the very first city the player ever sees across all runs.
             if (cidx === 0) {
                 try { _storyShowOneTimeTip('welcome',
-                    'Welcome to Story Mode.\n\nEight badges, an Elite Four, a Champion — and what waits after the credits. Every battle scales with your roster, so the choice you make at the Professor shapes the rest of the run.\n\n• Cities auto-heal you between fights.\n• The Pokémon Center stores spare Pokémon you catch on routes.\n• The Underground will buy the ones you can\'t use — but never your starter.\n• Click the 🎯 "Next:" chip at any time to see where the road bends.\n\nGood hunting, trainer.'); } catch (e) {}
+                    'The road from Pallet Town runs north — through eight gym towns, past four Elite chambers, and up to the Champion\'s seat. Whatever waits on the other side of the credits, you walk to it the same way.\n\nEvery fight scales to the team you bring. A lean roster faces lean trainers. A full six earns a full six in return — and the Professor you meet first sets the tone for everything that follows.\n\nA few standing rules of the road: cities heal you between fights, so spend your Potions in-battle and don\'t hoard them. The Pokémon Center keeps a PC for the partners you catch but can\'t carry, and an Underground that buys the ones you outgrow — never your starter.\n\nWhen you forget where the road bends, the 🎯 Next chip at the top of the city screen will point you at the next required fight.\n\nGood hunting.'); } catch (e) {}
             }
             // One-time teach: explain Gym Leaders + the badge → party-cap link the
             // first time the player enters a city that hosts a Gym Battle. City1
             // pre-Gym-1 is the canonical first encounter; cross-run-deduped.
             if (cidx === 1 && (sm.badges | 0) === 0 && Array.isArray(ev) && Array.isArray(ev[5]) && ev[5].indexOf('Gym Battle') !== -1) {
                 try { _storyShowOneTimeTip('what-is-a-gym',
-                    'Gym Leaders run this region. Each one guards a badge — and a piece of the league\'s reputation.\n\n• Beat one and the badge is yours. Your active party cap grows by one (cap = 2 + badges, max 6 at four badges), and the next Professor opens for a new partner.\n• Foes match your party size 1-for-1 (with finale exceptions) — a lean team fights a lean trainer.\n• Every leader specializes in a single type. Read the gym\'s color cues — or listen to the City Guide on the way in.\n\nNext step: ⚔ Challenge the Gym Leader.'); } catch (e) {}
+                    'A Gym Leader runs each of the eight towns on this road — type specialists who keep the league honest by handing out their badge only to trainers who can earn it.\n\nWin and the badge is yours. Your active party cap grows by one (2 + badges, capped at six after four badges), and the next Professor opens her bench for a new partner. Foes scale 1-for-1 with your party size — except the finals, who always field six.\n\nEvery leader builds around one type, and the city wears the color. Read the gym\'s palette on the way in, or let the City Guide tell you what they\'ve been training for.\n\nWhen you\'re ready: ⚔ Challenge the Gym Leader.'); } catch (e) {}
             }
         }
 
@@ -29668,11 +29687,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // quote-box clutter. Rival gate / route-blocker hints become tip-rail items below.
             if (!sm.storyMilestoneTips) sm.storyMilestoneTips = { m4: false, m8: false };
             if (sm.badges >= 8 && !sm.storyMilestoneTips.m8) {
-                try { window.showToast('All 8 Badges earned. The Pokémon League is open.', 3600); } catch (e) {}
+                try { window.showToast('Eight badges. The Plateau gate opens.', 3600); } catch (e) {}
                 sm.storyMilestoneTips.m8 = true;
                 save();
             } else if (sm.badges >= 4 && !sm.storyMilestoneTips.m4) {
-                try { window.showToast('4 Badges earned — halfway to the League.', 3200); } catch (e) {}
+                try { window.showToast('Four badges. Halfway up the mountain.', 3200); } catch (e) {}
                 sm.storyMilestoneTips.m4 = true;
                 save();
             }
@@ -30042,60 +30061,64 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // they do not drain the seeded story RNG used for trainer rolls / catches.
         const STORY_FACILITY_QUOTES = {
             moveTutor: [
-                'Move Tutor: "Welcome. I can teach moves your Pokémon won\'t learn on their own."',
-                'Move Tutor: "Pick a move slot to swap. Don\'t worry — you can change it again later."',
-                'Move Tutor: "A new move can change a whole battle. Choose carefully."',
-                'Move Tutor: "Every Pokémon has its specialty. Find it."',
-                'Move Tutor: "Take your time. Strong moves are worth thinking over."',
+                'Move Tutor: "Half my students show up trying to win with raw power. The other half listen, and pick a move that closes a hole."',
+                'Move Tutor: "Pick any slot. Anything you swap out, you can swap back — the partner won\'t hold a grudge."',
+                'Move Tutor: "A good coverage move is worth two TMs. A clever status move is worth four."',
+                'Move Tutor: "Every species has a quirk in its learnset. Find that, and the rest of the build writes itself."',
+                'Move Tutor: "Take your time on this one. A wrong move slot is a hole the foe finds in the first round."',
+                'Move Tutor: "You\'d be surprised what these things will learn when you ask politely. And pay."',
             ],
             natureRater: [
-                'Nature Rater: "Every nature shifts two stats. Pick what fits your build."',
-                'Nature Rater: "A good nature won\'t win a battle. A bad one can lose it."',
-                'Nature Rater: "All 25 natures are on the table. Take your pick."',
-                'Nature Rater: "Choose carefully — natures shape stats for the whole run."',
-                'Nature Rater: "Bold, Modest, Jolly… each one tells a story."',
+                'Nature Rater: "Show me your partner. I\'ll tell you what it\'s built for, and what we can make it built for."',
+                'Nature Rater: "A nature is plus ten and minus ten — small numbers that win or lose battles you don\'t see coming."',
+                'Nature Rater: "All twenty-five are on the table. I\'ve raised mons under each of them at least once."',
+                'Nature Rater: "Adamant for muscle. Timid for tempo. Calm for the long game. The rest are debates."',
+                'Nature Rater: "If your starter\'s nature reads Hardy or Serious, that means nobody\'s touched it yet. Let\'s fix that."',
+                'Nature Rater: "Re-pick as often as the run needs. Natures are a conversation, not a contract."',
             ],
             battleDojo: [
-                'Dojo Master: "Right item, right ability — that\'s how a fighter wins."',
-                'Dojo Master: "Choose an ability that suits your battle plan."',
-                'Dojo Master: "Held items can swing a close match. Pick wisely."',
-                'Dojo Master: "Show me your team. I\'ll fit them with the right gear."',
-                'Dojo Master: "A clean swap costs gold. A bad swap costs the match."',
+                'Dojo Master: "Two slots on every fighter — held item, ability. Get both right and the Pokémon does the rest."',
+                'Dojo Master: "An ability is the rule a mon brings into the room. Pick the rule that wins your fights."',
+                'Dojo Master: "Leftovers for the patient. Choice Band for the impatient. Eviolite for the still-growing."',
+                'Dojo Master: "Hidden Abilities are on the shelf here. Most gyms still pretend otherwise."',
+                'Dojo Master: "Swap a held item for a different one any day. Swap an ability when the role changes."',
+                'Dojo Master: "A clean swap costs gold. A bad swap costs the match. I sell both."',
             ],
             evTrainer: [
-                'Buck: "Effort Values are how a Pokémon trains stats. Spend them well."',
-                'Buck: "510 points per Pokémon, 252 per stat. That\'s the limit."',
-                'Buck: "Pick a preset or build your own. Either works."',
-                'Buck: "A trained Pokémon outlasts a strong one. Every time."',
-                'Buck: "Take it slow. The right spread wins more battles than raw power."',
-                'Buck: "Training sticks for life. PC, party, evolutions — it follows the mon. Release or sell, and it\'s gone."',
+                'Buck: "Welcome to the bench. Pull up a partner — let\'s put some real training under it."',
+                'Buck: "Effort Values are the work nobody sees. Two hundred fifty-two per stat, five-ten total. After that the body says no."',
+                'Buck: "Pick a preset and I\'ll spread it. Most players underspend here, then wonder why their sweeper wakes up dead."',
+                'Buck: "A trained Pokémon outlasts a strong one. I\'ve been saying it for twenty years and the math hasn\'t shifted."',
+                'Buck: "Five thousand gold a spread, free with a Vitamin Pack. Gyms and Pokédex milestones drop those — keep an eye out."',
+                'Buck: "Training sticks for life. PC, party, evolutions — the work travels. Sell or release the mon and it walks out the door with them."',
             ],
             colress: [
-                'Colress: "Welcome. I can awaken a Pokémon\'s battle form."',
-                'Colress: "Mega, Z-Move, Dynamax, Tera — pick one per Pokémon."',
-                'Colress: "Each form replaces the held item. Choose carefully."',
-                'Colress: "The science is settled. Now we test the bond."',
-                'Colress: "Activation costs 10,000G — but it lasts the whole run."',
+                'Colress: "Welcome. The lab is open. Which of your partners would you like to wake the rest of the way up?"',
+                'Colress: "Mega, Z, Dynamax, Tera — four different sleeping powers. Each Pokémon takes only one."',
+                'Colress: "A Mega or a Z-Crystal lives in the held-item slot. That\'s the cost — your Leftovers, for a transformation."',
+                'Colress: "I\'ve heard players call this expensive. Ten thousand gold to redraw a mon\'s ceiling sounds fair to me."',
+                'Colress: "The science is settled. What\'s left to test is the bond. Show me yours."',
+                'Colress: "If you\'re running Standard mode and never set a form, that\'s a perfectly valid trainer. Some of the best are."',
             ],
             link: [
-                'Link Operator: "Connected. A trade partner is online."',
-                'Link Operator: "Three options per Pokémon: same tier, upgrade, or rebuild."',
-                'Link Operator: "Trades are anonymous and final. Take your time."',
-                'Link Operator: "Signal\'s strong today. Plenty of partners online."',
-                'Link Operator: "Tap a Pokémon to see your trade options."',
+                'Link Operator: "Connected. There\'s a partner on the other end of the cable, ready to trade."',
+                'Link Operator: "Three offers on every Pokémon — a reroll, a clean upgrade, a full rebuild. Pick the one that makes sense for the slot."',
+                'Link Operator: "Anonymous on both ends. The trade is final the moment the cable clicks."',
+                'Link Operator: "Signal\'s strong today. Plenty of trainers on the network — pick a mon and the system finds three matches."',
+                'Link Operator: "Upgrades drop a mon straight to tournament grade. Cheaper than running it through every facility in town."',
             ],
             casino: [
-                'Croupier: "Place your bet, then pick heads or tails."',
-                'Croupier: "Win to double your wager. Lose it if you guess wrong."',
-                'Croupier: "Welcome. The bet is yours to set."',
-                'Croupier: "Choose your bet carefully — the coin doesn\'t care."',
-                'Croupier: "Good luck. Tap Heads or Tails when ready."',
+                'Croupier: "Place a bet. The minimum is the price of a Potion, the maximum is whatever you\'ve got on you."',
+                'Croupier: "Coin Flip pays even. Color pays two-to-one. Jackpot pays nine. The house keeps the difference."',
+                'Croupier: "Heads or tails. Red or black. Pick a number. The math is the same either way — it does not love you."',
+                'Croupier: "Most players walk in with a budget. The smart ones walk out before they spend it."',
+                'Croupier: "Win streaks happen. So do loss streaks. Neither one means the floor likes you."',
             ],
             relicKeeper: [
-                'Relic Keeper: "Three relics per shop. Pick one — it affects both sides for the run."',
-                'Relic Keeper: "Each relic changes a battle rule. Read carefully before buying."',
-                'Relic Keeper: "Your first relic in Pallet is free. After that, 5,000G each."',
-                'Relic Keeper: "Once chosen, a relic stays for the whole run."',
+                'Relic Keeper: "Three on the velvet. Pick one — and remember, the rule it carries shows up in every battle of the run, theirs as well as yours."',
+                'Relic Keeper: "Read the card before you pay. Some of these change the air of the fight. Some of them just rearrange the furniture."',
+                'Relic Keeper: "Your first piece in Pallet is on me. After that the going rate is five thousand. Worth it for the right one."',
+                'Relic Keeper: "Once a relic\'s in the world, it\'s in the world. If you want it off, the Artifact Hall has a switch."',
                 'Relic Keeper: "The League calls these contraband. I call them history with sharp edges."',
             ],
         };
@@ -30527,11 +30550,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         const PROF_QUOTES = [
-            '"Three Pokémon. One slot. Pick the one your gut argues for."',
-            '"I raised these myself. Don\'t embarrass the lab."',
-            '"Each has a build I\'d ship without notes. The rest is on you."',
+            '"Three on the bench. One ticket out. Pick the one your gut argues for — gut is usually right about partners."',
+            '"I raised these three off the morning route. Don\'t embarrass the lab."',
+            '"Each one has a build I\'d ship without notes. Whether the build holds the rest of the way is on you."',
             '"You\'ll know in the first battle. Choose anyway."',
-            '"A starter isn\'t a coin flip. It\'s a contract."',
+            '"A starter isn\'t a coin flip. It\'s a contract. Sign carefully."',
+            '"Read the natures, the abilities, the held items. They\'re paragraphs about a Pokémon that hasn\'t fought you yet."',
+            '"I\'ve had trainers come back through this lab a decade later. They still remember which one they picked."',
+            '"None of them are the wrong answer. Two of them are the wrong fit for the team you don\'t have yet."',
+            '"Take a minute. The road isn\'t going anywhere — and I\'d rather you arrive sure than fast."',
         ];
 
         // Species whose forms share the same "slot" — owning any form blocks all
@@ -30572,13 +30599,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // so two sequential `_storyShowOneTimeTip` calls would clobber each
                 // other; one tip per Professor visit keeps the message intact.
                 try { _storyShowOneTimeTip('prof-overview-v2',
-                    'Professor vs. Wild — and Training Tiers\n\n' +
-                    '• Professors offer curated picks. One per city in Cities 0–5.\n' +
-                    '• Wild Pokémon (routes & Safari) appear at random.\n' +
-                    '• Foes match your party size; Champion / E4 / Victory Road always field 6.\n\n' +
-                    'Every Pokémon now has a TRAINING TIER (chip next to its name):\n' +
-                    '• Untrained · Novice · Competent · Tournament.\n' +
-                    'Early route trainers are Untrained (0 EVs, neutral nature, no item). The Champion and Elite Four are Tournament. Your starter begins Untrained — visit the Move Tutor, EV Trainer, Nature Rater, and Battle Dojo to climb the tiers.'); } catch (e) {}
+                    'Two ways to find a partner: Professors and the wild.\n\nProfessors keep curated benches — lab-raised, hand-picked, one slot per visit. You\'ll meet one in each of the first six cities. Wild routes and the Safari are the other path: a roll of the dice, but the species pool widens fast once you leave the starter town.\n\nFoes match your party size 1-for-1. The Champion, the Elite Four, and Victory Road are the exceptions — they always field six, no matter how lean you ran.\n\nThere\'s also a training tier on every Pokémon (the chip beside its name): Untrained, Novice, Competent, Tournament. Early route trainers run Untrained — no EVs, neutral nature, no held item. The Champion and the Elite Four run Tournament. Your starter begins Untrained too. The Move Tutor, EV Trainer, Nature Rater, and Battle Dojo are the four facilities that walk it up the ladder.'); } catch (e) {}
             }
             _profLegendaryMysteryMode = _profMysteryMode && isPreLeagueLegendaryMysteryGate(cityIdx);
             // One-time framing for the City-8 legendary gate. The mechanic is a forced
@@ -30586,7 +30607,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // walking into before committing. Cross-run-deduped via story meta.
             if (_profLegendaryMysteryMode) {
                 try { _storyShowOneTimeTip('legendary-gate',
-                    'Victory Road tradition.\n\nEvery league hopeful walks the final gate with a legendary at their side — a rite as old as the badges themselves. A masked figure waits to offer you one, in exchange for a roster slot.\n\nAccept and your weakest party member goes to the PC. Refuse and the gate stays shut. Take the offer when you\'re ready — this is one of the run\'s biggest commitments.'); } catch (e) {}
+                    'A Victory Road tradition older than the badges themselves: no challenger walks the final gate without a legendary at their side.\n\nThe figure beyond the door wears a mask, and won\'t answer the obvious question. What they will do is hand you one of the great ones — in exchange for a slot on your team. Accept, and your weakest member walks back to the PC. Refuse, and the gate stays shut.\n\nTake your time. This is one of the run\'s biggest commitments.'); } catch (e) {}
             }
             // Mystery Figure framing only applies to the City-8 post-Gym-8 legendary
             // gate. Other "full party" Professor visits are framed as a normal lab-
@@ -30607,9 +30628,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (titleEl) titleEl.textContent = _profLegendaryMysteryMode ? 'Mystery Figure' : (isSwapWithoutMystery ? "Professor's Lab — Swap" : "Professor's Lab");
             document.getElementById('story-prof-name').textContent = profName;
             document.getElementById('story-prof-quote').textContent = _profLegendaryMysteryMode
-                ? '"Take this legendary Pokémon for the road ahead. Choose which teammate moves to your PC."'
+                ? '"This legendary is yours for the road ahead. Pick which partner returns to your PC — the cage will not open with the slot you have now."'
                 : (isSwapWithoutMystery
-                    ? '"Your party is full. I can still offer a partner — pick a teammate to swap to your PC."'
+                    ? '"Your party is full, but the bench still has one for you. Pick a teammate to send to the PC and the partner is yours."'
                     : PROF_QUOTES[Math.floor(Math.random() * PROF_QUOTES.length)]);
             const _mysteryFace = _profLegendaryMysteryMode ? _storyEnsureMysteryIdentity() : null;
             document.getElementById('story-prof-sprite').src = getTrainerSprite(_profLegendaryMysteryMode ? (_mysteryFace && _mysteryFace.sprite ? _mysteryFace.sprite : 'Cyrus') : { spriteFile: hub.spriteFile });
@@ -31036,13 +31057,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // tied to the Caged God arc.
         const POKEDEX_CAUGHT_MILESTONES = [
             { n: 25,  reward: { ultraBall:1, gold:2000 },
-              msg:'25 species caught — Pokédex milestone! +1 Ultra Ball, +2,000G.' },
+              msg:'25 species in the Pokédex. The lab calls it a quarter-region survey. +1 Ultra Ball, +2,000G.' },
             { n: 50,  reward: { ultraBall:2, vitamin:1 },
-              msg:'50 species caught — region researcher! +2 Ultra Balls, +1 Vitamin Pack.' },
+              msg:'50 species. Half a region\'s biology in your notebook — the Professor leaves you a Vitamin Pack and two Ultra Balls on the bench.' },
             { n: 75,  reward: { rareCandy:2, gold:5000 },
-              msg:'75 species caught — your dex impresses the Professor. +2 Rare Candies, +5,000G.' },
+              msg:'75 species. Your Pokédex outranks most field researchers in the region. +2 Rare Candies, +5,000G.' },
             { n: 100, reward: { ultraBall:3, rareCandy:1, vitamin:1 },
-              msg:'100 species caught — Pokédex centurion! +3 Ultra Balls, +1 Rare Candy, +1 Vitamin Pack.' }
+              msg:'100 species. The dex is no longer a notebook — it\'s a record. +3 Ultra Balls, +1 Rare Candy, +1 Vitamin Pack.' }
         ];
         function _storyCheckPokedexMilestones() {
             if (!sm.pokedex || !Array.isArray(sm.pokedex.caught)) return;
@@ -31347,7 +31368,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // first time any battle intro fires. The alert lives at modal z-index 1200;
             // the intro overlay sits on top at z 9999, so the player sees: intro → tip → battle.
             try { _storyShowOneTimeTip('first-battle',
-                'BATTLE — Your first fight.\n\n• Tap ⚔ FIGHT to pick a move. Each Pokémon has 4 moves; each move has limited PP (uses).\n• Moves have a type and a category — Physical (fist) uses Atk/Def, Special (sparkle) uses SpA/SpD, Status (bars) inflicts effects.\n• Type effectiveness matters a lot: Fire beats Grass, Water beats Fire, Electric beats Water. Right type = double damage.\n• 🔴 POKÉMON swaps your active mon. 🎒 BAG uses healing items. 🏃 RUN forfeits with a gold penalty.\n\nKeep your HP bar green. Good luck.'); } catch (e) {}
+                'Your first fight.\n\nTap ⚔ FIGHT to pick one of your Pokémon\'s four moves. Each move has its own PP — a finite number of uses — so a long battle won\'t let you spam the strongest one. Moves come in three flavors: Physical (the fist icon) lean on Attack and Defense, Special (the sparkle) on Sp. Atk and Sp. Def, Status (the bars) trade damage for effects like sleep or stat shifts.\n\nType matters more than level. A super-effective hit lands at double damage, and the wrong type can land at half or even nothing. The classic triangle still holds: Fire burns Grass, Water douses Fire, Electric jolts Water.\n\n🔴 POKÉMON swaps your active partner — costs your turn, so use it on a read, not a panic. 🎒 BAG uses healing items. 🏃 RUN forfeits the fight and a chunk of gold.\n\nKeep that HP bar green.'); } catch (e) {}
             const overlay = document.createElement('div');
             overlay.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;';
             const roleLookup = {
@@ -31722,8 +31743,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (!_capSeen) {
                             const _newCap = Math.min(6, 2 + _badgesNow);
                             const _capTeach = _badgesNow === 4
-                                ? `Your party is now at full strength — up to ${_newCap} Pokémon. Any further Professor gifts will swap a member to the PC.`
-                                : `Your party can now hold up to ${_newCap} Pokémon. Visit a Professor at the next city to add one.`;
+                                ? `Your party rounds out — a full ${_newCap} on the bench. Any future Professor gift will swap a partner to the PC instead of overflowing.`
+                                : `Room for one more on the bench: party cap is now ${_newCap}. The next Professor on the road will open up.`;
                             badgeFlavor += `<div style="font-size:12px;color:#ffd54f;line-height:1.45;max-width:380px;margin-top:6px;">🎓 ${_capTeach}</div>`;
                             if (!_capMeta.tipsShown) _capMeta.tipsShown = {};
                             _capMeta.tipsShown[_capTeachKey] = true;
@@ -31743,15 +31764,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (evn === 'Rival') {
                     const rp = storyRowIdx != null ? getRivalEncounterPhase(storyRowIdx) : null;
                     if (rp === 4) {
-                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">The League duel with your rival is settled—for now.</div>`;
+                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">A duel settled on the Plateau floor — for tonight, the rivalry is yours.</div>`;
                     } else if (rp === 3) {
-                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">Rival round three—two gyms left, momentum on your side.</div>`;
+                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">Third round, third win. Two gyms left, and the wind is at your back.</div>`;
                     } else if (rp === 2) {
-                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">Mid-journey rival win—your lead grows.</div>`;
+                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">A mid-journey win. The lead in your rivalry widens.</div>`;
                     } else if (rp === 0) {
-                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">First steps, first rival win. The journey opens.</div>`;
+                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">First fight, first win — and the only road out of Pallet runs north.</div>`;
                     } else {
-                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">First major rival upset—onward to the next gym!</div>`;
+                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">A clean upset. The next gym is already waiting.</div>`;
                     }
                 }
                 else if (evn === 'Mystery Figure') {
@@ -31765,7 +31786,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const isGymBadgeEvent = gotBadge && battleEventName && /^Gym Leader [1-8]$/i.test(String(battleEventName));
             const _firstClearBanner = _isCareerFirstClear
-                ? '<div style="font-size:13px;color:#ffd54f;letter-spacing:0.08em;text-transform:uppercase;text-shadow:0 0 6px rgba(255,213,79,0.4);">★ Career first ★</div>'
+                ? '<div style="font-size:13px;color:#ffd54f;letter-spacing:0.08em;text-transform:uppercase;text-shadow:0 0 6px rgba(255,213,79,0.4);">★ First time, any run ★</div>'
                 : '';
             ov.innerHTML = `
                 <div class="story-fx-confetti" style="position:absolute;inset:0;pointer-events:none;z-index:0;"></div>
@@ -31773,7 +31794,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ${gotBadge ? '<div class="story-victory-badge-slot" title="Milestone">🏅</div>' : ''}
                 <div style="font-size:28px;color:#ffd700;font-weight:bold;">VICTORY!</div>
                 ${_firstClearBanner}
-                ${isGymBadgeEvent?`<div style="font-size:16px;color:#4caf50;">Milestone victory! (${sm.badges} / 8 gym badges)</div>` : (gotBadge?`<div style="font-size:16px;color:#4caf50;">Milestone victory!</div>`:'')}
+                ${isGymBadgeEvent?`<div style="font-size:16px;color:#4caf50;">Badge ${sm.badges} of 8 — earned and pinned.</div>` : (gotBadge?`<div style="font-size:16px;color:#4caf50;">A milestone falls.</div>`:'')}
                 ${badgeFlavor}
                 <div style="font-size:14px;color:#ffeb3b;">${storyGoldHtml((coins || 0).toLocaleString(), true, '+')}</div>
                 <div style="font-size:13px;color:#888;">Total Gold: ${storyGoldHtml(sm.gold.toLocaleString())}</div></div>`;
@@ -31846,7 +31867,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // heals between battles, so this is the audible "you're safe here".
                 try { window.StoryFx && window.StoryFx.playSfx('save', 0.55); } catch (e) {}
                 try { _storyShowOneTimeTip('center',
-                    'Pokémon Center\n\n• Manage your active team (up to 6) and PC (10 slots).\n• Your party fully heals between every battle.\n• PC Storage: deposit, withdraw, or release Pokémon.\n• The Underground: sell Pokémon for gold.\n• Starters and bonded Pokémon cannot be sold.'); } catch (e) {}
+                    'The Pokémon Center.\n\nUpstairs is the PC: ten slots of cold storage for every partner you\'ve caught but can\'t field today. Deposit, withdraw, release — the usual courtesies.\n\nDownstairs is the Underground. Quieter, dimmer, and very interested in buying any Pokémon you\'ll never use. They pay best for the rare ones, and they don\'t ask questions. The only mons off the table are your starter and your last party member — every center on the road draws those lines.\n\nNo healing nurse: your party is restored between every fight as a matter of course.'); } catch (e) {}
             } finally {
                 _storyEndInteraction();
             }
@@ -31917,7 +31938,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <span>PC <strong style="color:#fff;">${box.length}/${PC_BOX_CAP}</strong></span>
             </div>`;
             if (boxFull) {
-                html += `<div style="padding:8px 10px;margin-bottom:10px;background:rgba(244,67,54,0.15);border:1px solid #f44336;color:#ef9a9a;font-size:11px;line-height:1.4;">⚠ PC is full. Release a Pokémon below or sell one at the Underground to free a slot.</div>`;
+                html += `<div style="padding:8px 10px;margin-bottom:10px;background:rgba(244,67,54,0.15);border:1px solid #f44336;color:#ef9a9a;font-size:11px;line-height:1.4;">⚠ The PC is at capacity. Release a Pokémon below, or take one to the Underground for gold, to free up a slot.</div>`;
             } else if (lowSlotWarn) {
                 html += `<div style="padding:8px 10px;margin-bottom:10px;background:rgba(255,193,7,0.12);border:1px solid #ffb300;color:#ffd54f;font-size:11px;line-height:1.4;">⚠ PC almost full (${box.length}/${PC_BOX_CAP}). Free up space soon.</div>`;
             }
@@ -31972,7 +31993,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let html = '';
             html += `<div style="padding:10px;margin-bottom:12px;background:linear-gradient(180deg,rgba(40,12,12,0.7) 0%,rgba(20,4,4,0.7) 100%);border:1px solid #5a1818;color:#bcaaa4;font-size:11px;line-height:1.5;">
                 <strong style="color:#ff5252;">The Underground.</strong>
-                Sales are final — sold Pokémon are gone for good, with any EV training they carry. Higher-grade Pokémon fetch more gold. The broker doesn't ask why; you don't either.
+                Every sale is final — the Pokémon walks out with whatever training you put into it, and isn\'t coming back. Rarer mons fetch more gold. The broker won\'t ask where they came from; the right move is not to ask where they\'re going.
             </div>`;
             html += `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;font-size:10px;">`;
             for (const g of [1, 2, 3, 4]) {
@@ -31985,7 +32006,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             box.forEach((s, i) => { if (s) rows.push({ slot: s, where: 'pc', index: i }); });
 
             if (!rows.length) {
-                html += `<div style="color:#888;font-size:11px;padding:8px;">No Pokémon to sell. Starters and bonded Pokémon cannot be sold.</div>`;
+                html += `<div style="color:#888;font-size:11px;padding:8px;">Nothing on the table tonight. Starters and bonded partners aren\'t for sale here.</div>`;
                 return html;
             }
             html += `<div style="display:flex;flex-direction:column;gap:6px;">`;
@@ -32041,7 +32062,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (isFree) {
                 sm.safari.freeEntryUsed = true;
-                try { window.showGameAlert && window.showGameAlert(`📣 "Welcome to the Safari Zone!"\n\nFirst visit is on the house.\n• ${SAFARI_BALLS_PER_SESSION} Safari Balls (only ball type that works here)\n• Up to ${SAFARI_MAX_ENCOUNTERS} wild encounters\n• 🍓 Bait calms the Pokémon — lower catch, but it sticks around\n• 🪨 Rocks anger it — higher catch, but it may bolt at any moment\n• Every turn the wild may flee. Pick your moments.\n\nUnused Safari Balls are forfeited at the gate.`); } catch (e) {}
+                try { window.showGameAlert && window.showGameAlert(`📣 "Welcome to the Safari Zone! First trip is on the house."\n\nThe warden hands you a satchel — ${SAFARI_BALLS_PER_SESSION} Safari Balls, the only ball that works past this gate. You\'ve got room for up to ${SAFARI_MAX_ENCOUNTERS} encounters before the bell rings.\n\nYou\'ll find two levers in the satchel. 🍓 Bait calms the wild down — catch rate drops, but it sticks around longer. 🪨 Rock pushes the opposite way: a sharper catch chance, a much higher chance it bolts.\n\nThe wild may flee at the end of any turn — every bait, every rock, every missed throw. Pick your moments.\n\nUnused Safari Balls stay at the gate when you leave. Good hunting.`); } catch (e) {}
             } else {
                 sm.gold = Math.max(0, (sm.gold | 0) - SAFARI_ENTRY_COST);
             }
@@ -32069,23 +32090,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _safariNextEncounter() {
             if (!_safariSession || !_safariSession.active) return;
             if (_safariSession.encountersUsed >= SAFARI_MAX_ENCOUNTERS) {
-                _safariReturnToCity('📣 "Ding-dong! Your Safari Zone game is over!"\n\nThe warden flags you down at the gate. Time to head back.');
+                _safariReturnToCity('📣 "Ding-dong! Your Safari Zone game is over!"\n\nThe warden waves you down at the gate. Time to head back to town.');
                 return;
             }
             if (_safariSession.ballsLeft <= 0) {
-                _safariReturnToCity('📣 "Ding-dong! You\'re out of Safari Balls — game over!"\n\nBetter luck next time, trainer.');
+                _safariReturnToCity('📣 "Ding-dong! Out of Safari Balls — that\'s the game!"\n\nThe warden meets you at the gate with a sympathetic shrug. Come back when you\'re ready.');
                 return;
             }
             _safariSession.encountersUsed++;
             _safariResetEncounterMods();
             const name = weightedPickFromGrades(SAFARI_GRADE_WEIGHTS, storySettingsGens());
             if (!name) {
-                _safariReturnToCity('No Safari Pokémon available for your enabled generations.');
+                _safariReturnToCity('The reserve has no Pokémon native to your enabled generations. Try opening up your settings before returning.');
                 return;
             }
             const build = makeWildBuild(name);
             if (!build) {
-                _safariReturnToCity('No wild Pokémon appeared.');
+                _safariReturnToCity('The grass is quiet. Nothing wanders out before the warden calls time.');
                 return;
             }
             const enc = {
@@ -32109,7 +32130,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // path either way, so don't gate the button behind the session
             // being live.
             _catchState = null;
-            _safariReturnToCity('📣 "Thanks for visiting the Safari Zone! Come again soon."\n\nLeftover Safari Balls were forfeited at the gate.');
+            _safariReturnToCity('📣 "Thanks for visiting the Safari Zone! Come again soon."\n\nThe warden takes back any unused Safari Balls at the gate. House rules.');
         }
 
         // ── THE CRUCIBLE — endgame super-hub + Battle Frontier ────────────
@@ -32133,7 +32154,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Big achievement chord — entering the post-game super-hub.
             try { window.StoryFx && window.StoryFx.playSfx('achv', 0.55); } catch (e) {}
             try { _storyShowOneTimeTip('crucible',
-                'The Crucible — Post-game Hub\n\n• Battles: Battle Frontier, Mystery Figure, Rival Rematch, League Run, Random Gym Rematch, Wild Encounter.\n• Facilities: All facilities from your journey under one roof — Pokémon Center, Safari Zone, shops, tutors, Colress, Stone Sage, Link Station, and Casino.\n\nBack to City returns you to the last city you visited.'); } catch (e) {}
+                'The Crucible.\n\nEvery facility you used on the road, every fight you took along the way — collected under one roof, open whenever you are. The Battle Frontier ladder, the Mystery Figure, rival rematches, gym rematches, wild encounters, and the full circuit of tutors, shops, and trainers.\n\nThis is where champions stay champions. Back to City returns you to the last town you visited.'); } catch (e) {}
         }
         function leaveCrucible() {
             sm.atCrucible = false;
@@ -32233,7 +32254,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Battle-prep horn — Frontier is a 6v6 stamina test.
             try { window.StoryFx && window.StoryFx.playSfx('danger', 0.4); } catch (e) {}
             try { _storyShowOneTimeTip('frontier',
-                'Battle Frontier — an endless 6-on-6 ladder. Foe stats and grade pool sharpen every round (HP ×1.35 → 2.50, bulk/speed ×1.20 → 1.80). One loss ends the streak; your final round is locked into the Top-10. Surrender any time to bank the current streak.'); } catch (e) {}
+                'The Battle Frontier is an endless six-on-six ladder. Every round the foes get sharper — stats climb from a +35% HP edge at the start to +150% deep in the run, with bulk and speed scaling in step.\n\nOne loss ends the streak, and your final round is the one that goes on the Top 10. Surrender any time to lock in what you\'ve banked.'); } catch (e) {}
         }
         function _renderFrontierHub() {
             _ensureFrontierState();
@@ -32378,7 +32399,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try {
                     window.showGameAlert && window.showGameAlert(won
                         ? 'Round cleared. Streak: ' + (sm.frontier.currentStreak | 0) + '.'
-                        : 'Defeated at round ' + (beforeStreak + 1) + '. Streak: ' + beforeStreak + ' locked in.');
+                        : 'Streak ends at round ' + (beforeStreak + 1) + '. ' + beforeStreak + ' goes on the board.');
                 } catch (e) {}
                 enterFrontierHub();
                 return;
@@ -32391,8 +32412,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { save(); } catch (e) {}
                 try {
                     window.showGameAlert && window.showGameAlert(won
-                        ? 'The mask drops. The post-game opens.'
-                        : 'The masked figure walks away into the dark. The post-game opens.');
+                        ? 'The mask falls. Whatever was underneath turns and walks into the dark — and the post-game opens behind you.'
+                        : 'The masked figure tips a glove and steps back into the dark, mask still in place. The post-game opens anyway.');
                 } catch (e) {}
                 continuePostGame();
                 return;
@@ -32450,7 +32471,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try {
                     const bossName = (sm.bossArc.boss && sm.bossArc.boss.name) ? sm.bossArc.boss.name : 'Specimen 0001';
                     window.showGameAlert && window.showGameAlert(
-                        `All three leads collected. The Cage is unlocked.\n\nA new button has appeared at the Pokémon Center: "🔥 Enter the Cage — ${bossName}".`
+                        `Three leads in your hand. The broker stops smiling.\n\n${bossName} is in the Cage — and the door is open. A new button now sits in every Pokémon Center: "🔥 Enter the Cage — ${bossName}". Walk in when you\'re ready.`
                     );
                 } catch (e) {}
             }
@@ -32487,7 +32508,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let html = '';
             html += `<div style="margin-top:18px;padding:12px;background:linear-gradient(180deg,rgba(20,8,20,0.85) 0%,rgba(8,4,12,0.85) 100%);border:1px solid #6a1b9a;color:#ce93d8;font-size:11px;line-height:1.55;">
                 <div style="font-weight:bold;color:#ce93d8;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">🔮 The Caged God</div>
-                <div style="color:#bcaaa4;margin-bottom:10px;">A rare specimen is being held by the Underground. Find three leads in different cities to unlock the Cage.</div>`;
+                <div style="color:#bcaaa4;margin-bottom:10px;">The Underground is holding a specimen they don\'t want talked about. Three pieces of evidence — scattered through Pokémon Centers in three cities — open the Cage.</div>`;
 
             const collectedCount = (L.ledger?1:0) + (L.recording?1:0) + (L.key?1:0);
             const leadStatus = (k) => L[k] ? '<span style="color:#aed581;">✓</span>' : '<span style="color:#666;">○</span>';
@@ -32945,35 +32966,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_catchState.bossMode) {
                 if (_catchState.tutorialMode) {
                     try { _storyShowOneTimeTip('catch-tutorial',
-                        '🎓 CATCH TUTORIAL — Your first wild Pokémon\n\n' +
-                        '• Tap a Ball below to throw it.\n' +
-                        '• The % shown is your real catch chance.\n' +
-                        '• Ball multipliers: Poké 1.0× · Great 1.5× · Ultra 2.0× · Master always works.\n' +
-                        '• This first catch is guaranteed — no flee.\n' +
-                        '• Caught Pokémon join your party fully healed.'); } catch (e) {}
+                        '🎓 Your first wild Pokémon.\n\nTap a ball to throw it. The percentage on the button is your real catch chance — species, ball, the works. Poké Ball is your baseline; Great Balls land 1.5× the rate, Ultra 2.0×, and a Master Ball never misses.\n\nThis first throw is on the house — guaranteed catch, no flee. Caught Pokémon arrive at full HP, fresh PP, and ready to walk.'); } catch (e) {}
                 } else if (_catchState.safariMode) {
                     try { _storyShowOneTimeTip('safari-catch',
-                        'Safari Zone — only Safari Balls work here.\n\n' +
-                        '• Throw a Safari Ball to try to catch the Pokémon.\n' +
-                        '• 🍓 Bait calms it: lower catch, but it sticks around.\n' +
-                        '• 🪨 Rock angers it: higher catch, but it may bolt.\n' +
-                        '• Every turn — Bait, Rock, or missed throw — the wild may flee.\n' +
-                        '• Modifiers stack up to 3× and reset between encounters.\n' +
-                        '• Pick your moment: a stacked rock is your best catch chance, but also your highest flee risk.'); } catch (e) {}
+                        'Safari Zone rules: only Safari Balls work past the gate.\n\nThrow one to try your luck — or use the levers. 🍓 Bait calms the wild down. Catch chance drops, but it sticks around longer. 🪨 Rock pushes it the other way: a sharper catch chance and a much higher flee risk.\n\nBait and Rock stack up to 3× each, and reset between encounters. Every turn — Bait, Rock, or a missed throw — the wild may bolt. A stacked rock is the best swing in the game, and the most dangerous. Pick your moment.'); } catch (e) {}
                 } else {
                     try { _storyShowOneTimeTip('catch',
-                        'A wild Pokémon!\n\n' +
-                        '• Tap a Ball to throw it. The % shown is your catch chance.\n' +
-                        '• Rarer Pokémon (G1) are harder to catch and more likely to flee.\n' +
-                        '• Common Pokémon (G4) stick around longer on a miss.\n' +
-                        '• A miss may scare the Pokémon away.'); } catch (e) {}
+                        'A wild Pokémon.\n\nTap a ball to throw it. The percentage on the button is your honest catch chance — species times ball multiplier. Rarer mons (G1) take more throws and are more likely to flee on a miss; common ones (G4) hang around. Either way, a missed throw might be the last you see of it.'); } catch (e) {}
                 }
                 if (_catchState.roamingLabel) {
                     try { _storyShowOneTimeTip('roaming',
-                        'Roaming Pokémon are rare.\n\n' +
-                        '• They appear once on one route after a gym victory.\n' +
-                        '• Catch rate: 30% × ball multiplier (Master Ball = 100%).\n' +
-                        '• Miss once and it\'s gone forever.'); } catch (e) {}
+                        'A roaming Pokémon.\n\nThese turn up exactly once, on a single route after a gym victory, and they won\'t wait for the next attempt. Catch rate is a flat 30% × ball multiplier; a Master Ball is the only guaranteed throw. Miss, and it\'s gone for this run.'); } catch (e) {}
                 }
             }
             const runBtn = document.getElementById('story-catch-run-btn');
@@ -33146,14 +33149,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    </div>`
                 : '';
             const headerLabel = _catchState.bossMode
-                ? 'The Caged Pokémon'
-                : _catchState.safariMode ? 'A Safari Pokémon appeared!' : 'A wild Pokémon appeared!';
+                ? 'The Caged Pokémon stirs.'
+                : _catchState.safariMode ? 'A Safari Pokémon comes into view.' : 'A wild Pokémon stepped out of the grass!';
             const headerColor = _catchState.bossMode ? '#ce93d8' : '#a5d6a7';
             const headerBg = _catchState.bossMode ? 'rgba(20,8,28,0.7);border:1px solid #6a1b9a' : 'rgba(10,18,12,0.55);border:1px solid #4a6c44';
             const gradeBg = _catchState.bossMode ? '#ce93d8' : '#a5d6a7';
             const subText = _catchState.bossMode
-                ? `Catch rate 1% per throw. Master Ball is guaranteed.`
-                : _catchState.safariMode ? `Safari Balls only (${SAFARI_BALL_MULT}× catch). Bait calms, Rock angers — every turn the wild may flee.` : 'Catch chance = grade base × ball multiplier.';
+                ? 'One percent per throw with a standard ball. A Master Ball never misses.'
+                : _catchState.safariMode ? `Safari Balls only (${SAFARI_BALL_MULT}× catch). Bait calms, Rock angers — every turn the wild may flee.` : 'Catch chance is the species rate times the ball you throw.';
             // Stage placeholder — actual animated stage is mounted after innerHTML.
             // We keep `_catchStageEl` alive across re-renders so the encounter
             // reveal / wobble state survives the ball-throw re-render cycle.
@@ -33322,10 +33325,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (_catchState.bossMode) {
                 const _bossMisses = [
-                    'The ball wobbles… and breaks open!',
-                    'So close! It broke free.',
-                    'The ball failed to close.',
-                    'Almost! Try another ball.'
+                    'The ball wobbles once — then snaps open. It\'s still in there, and it\'s not happy.',
+                    'So close. The ball flies wide and the seal cracks.',
+                    'The latch holds for a heartbeat. Then nothing.',
+                    'Almost. The next throw matters more than this one did.'
                 ];
                 _catchState.message = _bossMisses[Math.floor(Math.random() * _bossMisses.length)];
                 _catchRender();
@@ -33336,10 +33339,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             const wobbleMsgs = [
-                `The ball wobbled… and ${enc.name} broke free!`,
-                `Almost! ${enc.name} broke out.`,
-                `So close! ${enc.name} popped free.`,
-                `${enc.name} burst out of the ball!`,
+                `The ball wobbles once — twice — and ${enc.name} pops out.`,
+                `So close. ${enc.name} forces the latch and shakes free.`,
+                `${enc.name} bursts the ball open mid-roll.`,
+                `Almost had them. ${enc.name} flares the seal and breaks loose.`,
             ];
             _catchState.message = wobbleMsgs[Math.floor(Math.random() * wobbleMsgs.length)];
             _catchRender();
@@ -33404,8 +33407,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             try { save(); } catch (e) {}
             const successMsg = bossMode
-                ? `Subject Zero joined your party.\n\nThe cage closes. The Underground vanishes behind you. Your post-game journey begins.`
-                : `Gotcha! ${enc.name} was caught and joined your party.`;
+                ? `Subject Zero is yours.\n\nThe cage closes behind you. The Underground is quiet again. Whatever comes next, you walk into it together.`
+                : `Gotcha! ${enc.name} joined your party — fully healed and ready to walk.`;
             _catchFinishWithMessage(successMsg);
         }
         // Holds the just-caught mon while the player picks "send to PC" or
@@ -33431,8 +33434,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }).join('');
             body.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;padding:14px 6px;">
                 <div style="text-align:center;font-size:13px;color:#fff;line-height:1.5;">
-                    Gotcha! <strong>${_esc(caught.name)}</strong> was caught.<br/>
-                    <span style="color:#aed581;font-size:11px;">Your party is full (${partyCap}/${partyCap}). Send the new Pokémon to PC, or swap with a team member.</span>
+                    Gotcha! <strong>${_esc(caught.name)}</strong> is on your roster.<br/>
+                    <span style="color:#aed581;font-size:11px;">The bench is at capacity (${partyCap}/${partyCap}). Send the newcomer to the PC, or swap them with a current teammate.</span>
                 </div>
                 <button type="button" onclick="window.StoryMode.catchResolveSendToPC()" style="padding:10px;background:rgba(20,28,40,0.6);border:1px solid #ce93d8;color:#ce93d8;font-family:inherit;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"><img src="icons/story/story_party.png?v=20260516" alt="" width="16" height="16" decoding="async" style="width:16px;height:16px;image-rendering:pixelated;"> Send ${_esc(caught.name)} to PC</button>
                 <div style="font-size:10px;color:#888;letter-spacing:0.06em;text-transform:uppercase;text-align:center;margin-top:4px;">— or pick a teammate to swap to PC —</div>
@@ -33457,7 +33460,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function catchResolveSendToPC() {
             if (!_pendingCaught) return;
             sm.pcBox.push(_pendingCaught);
-            _finalizeCatchPending(`${_pendingCaught.name} was sent to the PC.`);
+            _finalizeCatchPending(`${_pendingCaught.name} is waiting at the PC for you.`);
         }
         function catchResolveSwap(slotIndex) {
             if (!_pendingCaught) return;
@@ -33469,7 +33472,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Place displaced party member in PC, drop newcomer into that party slot.
             sm.pcBox.push(slot);
             sm.team[idx] = caught;
-            _finalizeCatchPending(`${slot.name} was sent to the PC. ${caught.name} joined your party in their slot.`);
+            _finalizeCatchPending(`${slot.name} heads back to the PC, and ${caught.name} takes their slot on the bench.`);
         }
         function _catchFinishWithMessage(message) {
             if (!_catchState) return;
@@ -33681,10 +33684,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 if (type === 'dept') {
                     _storyShowOneTimeTip('first-dept',
-                        'Department Store\n\nThe big-city upgrade over the Pokémart.\n\n• Great Balls (1,000G) — 1.5× catch rate over PokéBalls.\n• Revives + Max Revives — bring fainted teammates back mid-battle.\n• Weather and Terrain Orbs — start every battle in your weather of choice.\n• Emergency Teleporter — escape trapping moves once per battle.\n\nDept stock does NOT refresh — each item is one-per-city. Stock up while you can.');
+                        'The Department Store. The big-city upgrade.\n\nGreat Balls (1,000G) — 1.5× the catch rate of a standard Poké Ball. Revives and Max Revives, for the partners who go down mid-battle. Weather and Terrain Orbs, if you want the field tilted your way the moment a fight begins. The Emergency Teleporter pulls you out of any trapping move once per battle.\n\nStock does not refresh between visits — every item is a single sale, per city. Buy what you need while it\'s on the shelf.');
                 } else {
                     _storyShowOneTimeTip('first-mart',
-                        'Pokémart\n\nThe basics, always in stock:\n\n• Poké Balls (300G) — your catching staple.\n• Potions, Full Restore, Max Elixir — emergency healing inside a battle.\n• X-items — +2 stat stages for one battle (X Attack, X Speed, etc.).\n• Dire Hit — crit boost. Guard Spec. — blocks stat drops for 5 turns.\n\nThe city auto-heals between battles, so Potions matter only when you spend a turn using one mid-fight.');
+                        'The Pokémart. The basics, always in stock.\n\nPoké Balls (300G) for the road, and the standard kit of trainer supplies: Potions, Full Restore, Max Elixir for the long fights; X items to push a stat two stages for one battle; Dire Hit for a crit edge; Guard Spec. to lock your stats safe for five turns.\n\nCities heal you between fights as a matter of course — Potions only matter when you spend a turn on one mid-battle.');
                 }
             } catch (e) {}
             const shopScreen = document.getElementById('screen-story-shop');
@@ -33904,7 +33907,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             _markFacilitySeen('relic');
             try { _storyShowOneTimeTip('relic',
-                'Relic Annex\n\n• Choose one relic per shop visit.\n• Relics affect both you and your foes for the rest of the run.\n• First pick in Pallet Town is free.\n• Other relics cost 5,000G each.\n• Toggle owned relics on/off at the Artifact Hall in any city.'); } catch (e) {}
+                'The Relic Annex.\n\nThree relics on the shelf, one purchase per visit. A relic isn\'t a held item — it\'s a rule. Whatever effect it carries lives in the air of every battle for the rest of the run, on your side and the foe\'s alike.\n\nYour first pick in Pallet Town is on the house. Every relic after costs 5,000G. If you ever want one off the field, the Artifact Hall in any city will let you toggle them.'); } catch (e) {}
             try { _storyShowFacilityQuote('screen-story-artifact-shop', 'relicKeeper'); } catch (e) {}
             const offer = _ensureArtifactShopOffersForCity(cityIdx);
             const goldEl = document.getElementById('story-artifact-shop-gold');
@@ -34028,7 +34031,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { window.StoryFx && window.StoryFx.playSfx('beam', 0.45); } catch (e) {}
                 try { _storyShowFacilityQuote('screen-story-link', 'link'); } catch (e) {}
                 try { _storyShowOneTimeTip('first-link',
-                    'Cable Link Station\n\nThe shortcut to a tournament-grade build:\n\n• Reroll — re-pick a slot\'s moves/nature/ability/item at random.\n• Upgrade — bump a Pokémon directly to T4 (full EVs, kept nature, top-pool ability/item).\n• Rebuild — wipe and re-roll the whole build from scratch.\n\nCosts ramp per-city to discourage spam, but a single Link Upgrade can save you a long string of Tutor / Dojo / EV-Trainer visits. Use it on a keeper.'); } catch (e) {}
+                    'The Cable Link Station — the shortcut to a tournament-grade build.\n\nThree options sit on the console. Reroll re-picks a single slot\'s moves, nature, ability, or item at random. Upgrade kicks a Pokémon straight to T4 — full EVs, kept nature, top-pool ability and item. Rebuild wipes the slate and rolls the whole build from scratch.\n\nPrices climb city to city so you can\'t spam it, but one Link Upgrade replaces a long string of Tutor, Dojo, and EV-Trainer visits. Spend it on a keeper.'); } catch (e) {}
             } finally {
                 _storyEndInteraction();
             }
@@ -34075,7 +34078,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { window.StoryFx && window.StoryFx.playSfx('gachaDial', 0.4); } catch (e) {}
                 try { _storyShowFacilityQuote('screen-story-casino', 'casino'); } catch (e) {}
                 try { _storyShowOneTimeTip('first-casino',
-                    'Poké Casino\n\nThree games, one bet field. Pick your odds:\n\n• Coin Flip — 1:1 payout, ~50% odds.\n• Color (Red/Black) — 1:2 payout, ~30% odds (small house edge).\n• Jackpot (pick 1-10) — 1:9 payout, 10% odds.\n\nThe house has the math; play for the swing, not the income. The casino can dry up a run faster than any trainer.'); } catch (e) {}
+                    'The Poké Casino. Three games, one bet field.\n\nCoin Flip pays even money on roughly even odds. Color — red or black — pays two-to-one at about 30%. Jackpot pays nine-to-one on a one-in-ten guess.\n\nThe math belongs to the house. Play it for the swing, not the income — the casino can dry a run faster than any trainer.'); } catch (e) {}
             } finally {
                 _storyEndInteraction();
             }
@@ -35178,15 +35181,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 : '';
             const _epiRivalSpeaker = _epiRivalName ? String(_epiRivalName) : 'Rival';
             const _epiRivalLine = sm.rivalChampionClaimed
-                ? '"The crown\'s mine for now. Your name in the Hall is a footnote. Come find me."'
-                : '"You took the league. You took our last duel. I\'ll be back — train hard."';
+                ? '"Your name made the wall. The crown stayed with me. Come find me when you want it back."'
+                : '"You took the league. You took our last duel. I\'ll be back — train accordingly."';
             const dialogueWrap = document.createElement('div');
             dialogueWrap.className = 'story-hof-gba-epilogue';
             dialogueWrap.style.cssText = 'margin-top:14px;display:flex;flex-direction:column;gap:8px;max-width:540px;text-align:left;';
             dialogueWrap.innerHTML = `
                 <p style="margin:0;font-size:12px;color:#aed581;line-height:1.5;">
                     <strong style="color:#81c784;">${_epiProfName}:</strong>
-                    "Your name joins the league wall. The Pokédex remembers — and so will I."
+                    "Your name goes on the league wall tonight. The Pokédex remembers what you carried up here — and so will I, the next time you wander into the lab."
                 </p>
                 <p style="margin:0;font-size:12px;color:${sm.rivalChampionClaimed ? '#ffb74d' : '#aed581'};line-height:1.5;">
                     <strong style="color:${sm.rivalChampionClaimed ? '#ffa726' : '#81c784'};">${_epiRivalSpeaker}:</strong>
@@ -35267,7 +35270,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Post-HoF orientation tip (once across all runs) — without it players often
             // miss that the Crucible / Battle Frontier / boss arc even exist.
             try { _storyShowOneTimeTip('postHof',
-                'Hall of Fame cleared! The post-game opens three doors:\n\n• 🧨 The Crucible — every facility you used in one place, plus the endless Battle Frontier.\n• 🔮 The Caged God — collect three leads at Pokémon Centers in Cities 2, 5, and 8, then enter the Cage.\n• 🚪 Mystery Figure — the Crucible\'s "Mystery" button summons a final masked challenger.\n\nAll three are reachable from any city you\'ve visited.'); } catch (e) {}
+                'The wall is yours. The road keeps going.\n\nThree doors open after the Hall of Fame, and all three reach from any city you\'ve visited.\n\n🧨 The Crucible — every facility you used on the road, gathered under one roof, with the endless Battle Frontier ladder waiting in the back.\n\n🔮 The Caged God — three leads, hidden in the Pokémon Centers of Cities 2, 5, and 8. Find all three, then walk into the Cage.\n\n🚪 The Mystery Figure — the Crucible\'s Mystery button summons one final masked challenger. The mask doesn\'t come off until you win.'); } catch (e) {}
             // Return to the last visited city. The boss arc is the canonical post-game beat,
             // triggered from the Underground from here on.
             const lastCityEv = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
@@ -36195,13 +36198,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 if (m === 'moves') {
                     _storyShowOneTimeTip('first-tutor',
-                        'Move Tutor\n\nSwap any of a Pokémon\'s 4 move slots for any move that species can legally learn — level-up, TM, egg, the lot.\n\n• Costs scale with the move\'s power and the Pokémon\'s tier (cheaper on weaker mons).\n• Tap a slot to see candidates; tap "Teach" to confirm.\n• Coverage matters more than raw BP — fix a 4× Ice weakness, add status removal, or a Fairy hit for that one Dragon.\n• A move learned here is permanent — no learn-cap to worry about.');
+                        'The Move Tutor.\n\nAny of your Pokémon\'s four move slots can be swapped for any move the species can legally learn — level-up, TM, egg moves, the lot. Costs scale with the move\'s power and the Pokémon\'s training tier, so polishing a weaker mon stays cheap.\n\nTap a slot to see what\'s available; tap Teach to confirm. Coverage matters more than raw base power — a single Fairy hit for the one Dragon you keep losing to, a status-clearing move, a way to plug a 4× Ice weakness. The new move is permanent, no second-thought penalty.');
                 } else if (m === 'nature') {
                     _storyShowOneTimeTip('first-nature',
-                        'Nature Rater\n\nA Pokémon\'s nature gives +10% to one stat and -10% to another. The right nature is often a bigger jump than any single item.\n\n• Adamant / Modest = power. Jolly / Timid = speed.\n• Bold / Calm / Impish / Careful = bulk.\n• Neutral natures (Hardy, Docile, Serious, Bashful, Quirky) give no change — usually a sign the mon hasn\'t been trained yet.\n\nCost is flat per change. Re-pick freely as you learn the team.');
+                        'The Nature Rater.\n\nA Pokémon\'s nature is +10% to one stat and -10% to another. The right nature often beats any single held item, and the wrong one quietly hobbles a roster.\n\nAdamant and Modest sharpen power. Jolly and Timid sharpen speed. Bold, Calm, Impish, and Careful build bulk. The neutral natures — Hardy, Docile, Serious, Bashful, Quirky — leave the spread untouched, and usually mean the mon hasn\'t been trained yet.\n\nThe Rater charges a flat fee per change. Re-pick freely as you learn what the team actually needs.');
                 } else if (m === 'loadout') {
                     _storyShowOneTimeTip('first-dojo',
-                        'Battle Dojo\n\nSwap a Pokémon\'s held item and/or ability.\n\n• Each species has 2-3 abilities; the Dojo lets you pick which one (Hidden Abilities included where the species learns them).\n• Items range from defensive (Leftovers, Eviolite) through offensive (Choice Band/Specs, Life Orb) to gimmick-bound (Mega Stones, Z-Crystals).\n• Mega Stones and Z-Crystals are tied to Colress\'s Battle Forms — set the form there, not here.\n• Items can be re-swapped freely; choose to match the role each mon will play.');
+                        'The Battle Dojo.\n\nSwap a Pokémon\'s held item, its ability, or both. Most species carry two or three abilities — the Dojo lets you pick which one is active, Hidden Abilities included where the species learns them.\n\nItems range from defensive — Leftovers, Eviolite — through offensive — Choice Band, Specs, Life Orb — to gimmick-bound. Mega Stones and Z-Crystals are tied to Colress\'s battle forms; set the form there, not here. Otherwise, swap freely and shape every mon for the role it\'ll actually play.');
                 }
             } catch (e) {}
             } finally {
@@ -36602,7 +36605,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             renderColressTeam();
             try { _storyShowFacilityQuote('screen-story-colress', 'colress'); } catch (e) {}
             try { _storyShowOneTimeTip('first-colress',
-                'Colress — Battle Forms\n\nSet a battle form on one of your Pokémon. Each activation costs 10,000G and is permanent for that mon.\n\n• MEGA — installs a Mega Stone (replaces the held item). One-per-team activation in battle.\n• Z-MOVE — installs a Z-Crystal that matches the mon\'s typing. One per team per battle.\n• DYNAMAX / G-MAX — three turns of giant size with Max Moves and doubled HP. One per team.\n• TERA — sets a Tera type. Once per Pokémon, even in Unlimited mode.\n\nGimmicks are POWERFUL but Classic mode lets you fire one per team per battle. Choose the Pokémon that benefits most: a Mega on your fragile sweeper, Tera on the mon you want immune to its 4× weakness, Z-Move on something with a big STAB it can\'t spam.\n\nStandard mode (no battle form) is fine too — gimmicks are a tactical advantage, not a requirement.'); } catch (e) {}
+                'Colress and his battle forms.\n\nEach activation installs one of the great gimmicks on one of your Pokémon: a permanent assignment, 10,000G per mon.\n\nMEGA fits a Mega Stone — replaces the held item, fires once per team per battle. Z-MOVE installs a Z-Crystal matched to the species\' typing, also once per team. DYNAMAX / G-MAX hands a mon three turns of giant size with Max Moves and doubled HP. TERA locks in a Tera type — once per Pokémon, even in Unlimited mode.\n\nGimmicks are powerful, and Classic mode lets you fire exactly one per team per battle, so spend the slot deliberately. A Mega on the fragile sweeper. Tera on the mon that keeps losing to its 4× weakness. Z-Move on something with a big STAB it can\'t afford to spam.\n\nStandard mode — no battle form at all — is a perfectly valid run. Gimmicks are an edge, not a requirement.'); } catch (e) {}
         }
 
         function renderColressTeam() {
@@ -36952,7 +36955,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             renderEVTrainerTeam();
             try { _storyShowFacilityQuote('screen-story-evtrainer', 'evTrainer'); } catch (e) {}
             try { _storyShowOneTimeTip('first-ev',
-                'EV Trainer (Buck)\n\nEffort Values are permanent stat boosts trained into one Pokémon. Two stats can be maxed at +252; the cap is 510 total.\n\n• Pick a preset (Physical Sweeper, Special Wall, etc.) — Buck applies the spread at once.\n• Cost: 5,000G per preset. A 💊 Vitamin Pack (gym rewards + Pokédex milestones) skips the gold cost.\n• EVs travel with the Pokémon through party, PC deposit/withdraw, and evolution.\n• Lost only on release or Underground sale.\n\nEVs are the single biggest stat upgrade — a fully-trained mon hits 30-50% harder than an untrained one of the same species.'); } catch (e) {}
+                'Buck and the EV bench.\n\nEffort Values are the permanent training under a Pokémon\'s stats. Two of them can be maxed at +252 each, with a total cap of 510 — enough to make a trained mon hit 30 to 50 percent harder than an untrained one of the same species.\n\nPick a preset — Physical Sweeper, Special Wall, the rest of the rack — and Buck applies the whole spread at once. The going rate is 5,000G a preset. A 💊 Vitamin Pack, from gym rewards or Pokédex milestones, waives the cost.\n\nTraining stays with the mon through party, PC, and evolution. The only ways to lose it are release and the Underground.'); } catch (e) {}
         }
 
         function _evTrainerHelpBannerHtml() {
@@ -36962,7 +36965,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 : `<span style="color:#9aa3b0;">No Vitamin Packs yet.</span> Each preset costs ${EVTRAINER_COST.toLocaleString()}G; Vitamin Packs (from gym victories &amp; Pokédex milestones) apply one for free.`;
             return `<div style="padding:10px 12px;background:linear-gradient(180deg,rgba(28,40,28,0.7) 0%,rgba(14,22,14,0.7) 100%);border:1px solid #3a5a3a;color:#cfd7c8;font-size:11px;line-height:1.55;">
                 <div style="font-weight:bold;color:#9ccc65;margin-bottom:4px;">🏋️ What this does</div>
-                <div>Effort Values (EVs) are <strong>permanent stat boosts</strong> trained into one Pokémon. Pick a preset (e.g. <em>Physical Sweeper</em> = +Atk/+Spe) to raise that mon's stats for the rest of the run. Cap: 252 per stat, 510 total. Training travels with the Pokémon through party, PC, and evolution — only lost on release or sale.</div>
+                <div>Effort Values are the <strong>permanent training</strong> under a Pokémon's stats. Pick a preset — say, <em>Physical Sweeper</em> for +Atk and +Spe — and Buck spreads it in one go. 252 per stat, 510 total, and the training rides along through party, PC, and evolution. The only way to lose it is to let the mon go.</div>
                 <div style="margin-top:6px;">${vitaLine}</div>
             </div>`;
         }
