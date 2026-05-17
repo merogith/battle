@@ -126,7 +126,7 @@ Ball multipliers: PokéBall 1.0×, Great 1.5×, Ultra 2.0×, Master ∞ (`Infini
 
 Master Ball is `Infinity` — guaranteed catch. No special-case code.
 
-Safari Ball is its own session-scoped multiplier (`SAFARI_BALL_MULT = 1.25×`, between Poké and Great) and is not part of `sm.balls`. Bait and Rock modify the catch/flee math multiplicatively inside a Safari encounter and reset between encounters.
+Safari Ball is its own session-scoped multiplier (`SAFARI_BALL_MULT = 1.35×`, sitting between Poké and Great with a slight lean toward Great) and is not part of `sm.balls`. Bait and Rock modify the catch/flee math multiplicatively inside a Safari encounter and reset between encounters.
 
 ---
 
@@ -152,11 +152,11 @@ Initial peg (G1 is the strongest tier per the existing `getMonGrade` convention 
 | Sale | Grade | Gold |
 |---|---|---|
 | Sell G1 mon | 1800 |
-| Sell G2 mon | 400 |
-| Sell G3 mon | 150 |
-| Sell G4 mon | 20 |
+| Sell G2 mon | 450 |
+| Sell G3 mon | 250 |
+| Sell G4 mon | 60 |
 
-(Tightened from earlier 2500/700/150/30 to keep Underground useful while reinforcing that *keeping* mons is the rewarding play. See `_PC_UNDERGROUND_PRICE_BY_GRADE` at `battle.html:27184`.)
+(Originally tightened from 2500/700/150/30 to 1800/400/100/20 to keep *keeping* mons the rewarding play; then rebalanced from 1800/400/100/20 to 1800/450/250/60 so route catches are worth selling for catch-light players. Safari spam still loses money — typical 6-encounter session pulls ~1,758G expected, less than the 2,500G entry, even before catch-rate failures. See `_PC_UNDERGROUND_PRICE_BY_GRADE`.)
 
 ---
 
@@ -518,9 +518,9 @@ city is on the route*. The banners are content-only, sourced from
 | 4 — Gym 4 | **Wilderness town — Safari Zone gate.** |
 | 5 — Gym 5 | **Resort town — Poké Casino + tutors.** |
 | 6 — Gym 6 | Metropolis — first Department Store + first Colress. |
-| 7 — Gym 7 | Champion's road — every tutor, last Pokémart city. |
-| 8 — Gym 8 | Final-gym town — Department Store + Battle Dojo + EV Trainer for last polish. |
-| 9 — League | Pokémon League — every facility under one roof. |
+| 7 — Gym 7 | Champion's road — every tutor and Pokémart still in stock. |
+| 8 — Gym 8 | Final-gym town — Pokémart + Department Store + Battle Dojo + EV Trainer for last polish. |
+| 9 — League | Pokémon League — every facility under one roof (Pokémart + Department Store), so a player who entered the league low on PokéBalls is never stranded. |
 
 City 4 and City 5 are the "one-time mid-game events": Safari Zone and Poké Casino
 respectively. Both remain accessible post-HoF via the Crucible (§14b), but the

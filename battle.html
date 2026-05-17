@@ -920,6 +920,33 @@
             background: linear-gradient(180deg, #263248 0%, #1a2232 100%);
             color: #80deea;
         }
+        .story-hud-help {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
+            min-height: 40px;
+            padding: 0;
+            box-sizing: border-box;
+            font-size: 17px;
+            font-weight: bold;
+            line-height: 1;
+            color: #ffd54f;
+            background: linear-gradient(180deg, #1e2030 0%, #12141e 100%);
+            border: 2px solid #555;
+            border-radius: 0;
+            box-shadow: inset -3px -3px 0 0 #212529, inset 3px 3px 0 0 #495057;
+            cursor: pointer;
+            touch-action: manipulation;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+        }
+        .story-hud-help:hover {
+            border-color: #ffd54f;
+            background: linear-gradient(180deg, #2a2418 0%, #1c1810 100%);
+            color: #fff176;
+        }
         .story-city-main-row {
             display: flex;
             flex: 1;
@@ -3398,7 +3425,8 @@
                 min-height: 44px;
                 padding: 8px 12px;
             }
-            .story-hud-settings {
+            .story-hud-settings,
+            .story-hud-help {
                 width: 44px;
                 height: 44px;
                 min-width: 44px;
@@ -4669,8 +4697,8 @@
         </div>
     </div>
 
-    <div id="modal-help" class="modal hidden">
-        <div class="modal-content white-outline" style="max-width: 700px;">
+    <div id="modal-help" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="help-title">
+        <div class="modal-content white-outline" style="max-width: 700px; max-height: 88vh; overflow-y: auto;">
             <h2 id="help-title" style="color: var(--hp-yellow); margin-top: 0; text-align: center;">Help Guide</h2>
             <div id="help-text" style="font-size: 13px; line-height: 1.7;"></div>
             <button onclick="window.closeModal('modal-help')" style="width: 100%; margin-top: 15px;">Got it!</button>
@@ -4782,18 +4810,19 @@
             <div class="story-settings-panel">
                 <h3 class="story-settings-heading">Run Settings</h3>
                 <div style="margin-bottom:10px;">
-                    <div style="font-size:10px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Pokémon Generations in pool:</div>
+                    <div style="font-size:10px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;" title="Filters every species roll: starters, Professor gifts, wild encounters, Safari pool, trainer teams, the Caged God pool — all gated to your selection.">Pokémon Generations in pool:</div>
                     <div class="story-settings-gen-row">
-                        <label class="story-settings-gen-label"><input type="checkbox" id="story-gen-cb-1" checked><span>G1</span></label>
-                        <label class="story-settings-gen-label"><input type="checkbox" id="story-gen-cb-2" checked><span>G2</span></label>
-                        <label class="story-settings-gen-label"><input type="checkbox" id="story-gen-cb-3" checked><span>G3</span></label>
-                        <label class="story-settings-gen-label"><input type="checkbox" id="story-gen-cb-4" checked><span>G4</span></label>
-                        <label class="story-settings-gen-label"><input type="checkbox" id="story-gen-cb-5" checked><span>G5</span></label>
-                        <label class="story-settings-gen-label"><input type="checkbox" id="story-gen-cb-6" checked><span>G6</span></label>
-                        <label class="story-settings-gen-label"><input type="checkbox" id="story-gen-cb-7" checked><span>G7</span></label>
-                        <label class="story-settings-gen-label"><input type="checkbox" id="story-gen-cb-8" checked><span>G8</span></label>
-                        <label class="story-settings-gen-label"><input type="checkbox" id="story-gen-cb-9" checked><span>G9</span></label>
+                        <label class="story-settings-gen-label" title="Generation 1 — Kanto (Bulbasaur → Mew)"><input type="checkbox" id="story-gen-cb-1" checked><span>G1</span></label>
+                        <label class="story-settings-gen-label" title="Generation 2 — Johto (Chikorita → Celebi)"><input type="checkbox" id="story-gen-cb-2" checked><span>G2</span></label>
+                        <label class="story-settings-gen-label" title="Generation 3 — Hoenn (Treecko → Deoxys)"><input type="checkbox" id="story-gen-cb-3" checked><span>G3</span></label>
+                        <label class="story-settings-gen-label" title="Generation 4 — Sinnoh (Turtwig → Arceus)"><input type="checkbox" id="story-gen-cb-4" checked><span>G4</span></label>
+                        <label class="story-settings-gen-label" title="Generation 5 — Unova (Snivy → Genesect)"><input type="checkbox" id="story-gen-cb-5" checked><span>G5</span></label>
+                        <label class="story-settings-gen-label" title="Generation 6 — Kalos (Chespin → Volcanion)"><input type="checkbox" id="story-gen-cb-6" checked><span>G6</span></label>
+                        <label class="story-settings-gen-label" title="Generation 7 — Alola (Rowlet → Marshadow)"><input type="checkbox" id="story-gen-cb-7" checked><span>G7</span></label>
+                        <label class="story-settings-gen-label" title="Generation 8 — Galar / Hisui (Grookey → Enamorus)"><input type="checkbox" id="story-gen-cb-8" checked><span>G8</span></label>
+                        <label class="story-settings-gen-label" title="Generation 9 — Paldea (Sprigatito → Pecharunt)"><input type="checkbox" id="story-gen-cb-9" checked><span>G9</span></label>
                     </div>
+                    <div style="font-size:10px;color:#777;margin-top:6px;line-height:1.4;max-width:560px;">Filters the species pool for starters, Professor gifts, wild routes, Safari, and every trainer's team. Move learnsets, abilities, items, and type chart are unaffected — only species are gated. A single-gen run plays the full game with that gen\'s roster.</div>
                     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
                         <button type="button" class="story-settings-gen-btn" onclick="window.toggleStoryGenAll(true)">All gens</button>
                         <button type="button" class="story-settings-gen-btn" onclick="window.toggleStoryGenClear()">Gen 1 only</button>
@@ -4810,7 +4839,9 @@
                     </select>
                 </div>
                 <div style="font-size:10px;color:#888;line-height:1.5;margin:-4px 0 10px;max-width:560px;">
-                    Scales every foe's HP, Attack, Defense, Sp. Atk, Sp. Def, and Speed by: Very Easy −30% · Easy −15% · Normal · Hard +15% · Very Hard +30%.
+                    <div><strong style="color:#bbb;">Foe stats:</strong> Very Easy −30% · Easy −15% · Normal · Hard +15% · Very Hard +30%. Scales HP, Attack, Defense, Sp. Atk, Sp. Def, and Speed.</div>
+                    <div style="margin-top:2px;"><strong style="color:#bbb;">Coin rewards:</strong> Very Easy ×1.60 · Easy ×1.50 · Normal ×1.30 · Hard ×1.00 (floor) · Very Hard ×1.10. Easier modes earn more gold for facilities.</div>
+                    <div style="margin-top:2px;color:#777;">Game-over retreat fee applies on Normal and above. Gym Leader 1-2 are gently softened (×0.95 foe stats) so a fresh save can\'t brick at the first wall.</div>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;margin-bottom:10px;">
                     <label style="color:#888;text-transform:uppercase;letter-spacing:0.5px;font-size:10px;">Seed:</label>
@@ -4867,8 +4898,9 @@
                 <span id="story-hud-badges">0/8 Badges</span>
             </div>
             <div class="story-hud-actions">
-                <button type="button" class="story-hud-abandon" onclick="window.StoryMode.confirmAbandon()" title="Abandon and delete this run">Abandon</button>
-                <button type="button" class="story-hud-runinfo" onclick="window.StoryMode.openRunSummary()" title="Run settings: difficulty, foe scaling, current relics">Run Info</button>
+                <button type="button" class="story-hud-abandon" onclick="window.StoryMode.confirmAbandon()" title="Abandon and delete this run" aria-label="Abandon this run">Abandon</button>
+                <button type="button" class="story-hud-runinfo" onclick="window.StoryMode.openRunSummary()" title="Run settings: difficulty, foe scaling, current relics" aria-label="Run settings and info">Run Info</button>
+                <button type="button" class="story-hud-help" onclick="window.showHelp()" title="How to play Story Mode" aria-label="Help — story mode reference">?</button>
                 <button type="button" class="story-hud-settings" onclick="window.openSettings()" aria-label="Settings">⚙</button>
             </div>
         </div>
@@ -6684,6 +6716,48 @@
 
         // === 2. GLOBAL UTILS & SETTINGS ===
         const helpData = {
+            story: `<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Story Mode Overview</h3>
+Eight badges, an Elite Four, a Champion — and what waits after the credits. Every fight scales with your roster, so the build you bring matters more than the level you grind.<br><br>
+<b style="color:#ffd700;">Auto-heal between battles.</b> Your party is fully restored — HP, PP, status, consumed held items. Mart consumables only matter within a single battle.<br>
+<b style="color:#ffd700;">Foes match your party size.</b> Run lean (1-2 mons) and trainers run lean too; build a full six and they bring six. Gym Leaders and the League finals have per-role floors.<br>
+<b style="color:#ffd700;">Active party cap = 2 + badges</b> (max 6 at four badges). Catches and Professor gifts above the cap drop into the PC, never lost.</div>
+<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Battle Mechanics (Gimmicks)</h3>
+All four are <b>always on</b> and used <b>once per team</b> per battle (Classic mode):<br>
+<b style="color:#7b1fa2;">▼ MEGA</b> — A Pokémon holding a Mega Stone transforms mid-battle. Big stat jump + sometimes a new typing. Lasts the rest of the battle.<br>
+<b style="color:#b71c1c;">▼ DYNAMAX / G-MAX</b> — Three turns of giant size: every move becomes a stronger Max Move with a side effect, and HP doubles. Bypasses Protect.<br>
+<b style="color:#0277bd;">◆ TERA</b> — Lock the Pokémon to a single type for the rest of the battle. STAB stacks if you Tera into your original type. Once per Pokémon — even on Unlimited.<br>
+<b style="color:#f9a825;">⚡ Z-MOVE</b> — A Pokémon holding a Z-Crystal that matches one of its moves can unleash a single colossal hit (or a stat boost). The Z slot is consumed; the held item turns back into the crystal afterward.<br>
+The tiny <b style="color:var(--hp-green);">▲</b> / <b style="color:var(--hp-red);">▼</b> / <b style="color:#555;">⊘</b> mark on each move shows super-effective / not-very-effective / no-effect vs the active foe.</div>
+<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Catching</h3>
+Wild routes between cities surface one wild Pokémon. Safari Zone (City 4) is a session with its own balls, Bait, and Rocks. The Caged God (post-HoF) needs the Master Ball.<br>
+<b>Catch chance</b> = <i>species catch rate × ball multiplier</i>. PokéBall <b>1.0×</b>, Great <b>1.5×</b>, Ultra <b>2.0×</b>, Master <b>∞</b>. Base rates: G1 4%, G2 12%, G3 22%, G4 35% — stronger Pokémon are harder. On a missed throw the wild may flee (G1 most, G4 least). Master Ball = guaranteed catch, but you only get one per run, saved for the boss.</div>
+<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Build Power Tiers (T1 → T4)</h3>
+Every Pokémon has a training-quality tier separate from its species grade:<br>
+<b style="color:#9e9e9e;">T1 Untrained</b> — 0 EVs, neutral nature, no item, default ability. Where wilds start.<br>
+<b style="color:#66bb6a;">T2 Novice</b> — Partial EVs, kept nature, flavor item. Where a few tutor visits land you.<br>
+<b style="color:#42a5f5;">T3 Competent</b> — Most EVs, kept nature/ability/item. Mid-game polish.<br>
+<b style="color:#ffd700;">T4 Tournament</b> — Full Smogon-grade build. The Elite Four and Champion. The <b>Link Station</b> pays gold to upgrade your mon directly to T4.</div>
+<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Cities &amp; Facilities</h3>
+<b>Pokémart</b> — PokéBalls (300G), potions, X-items.<br>
+<b>Department Store</b> — Great Balls (1,000G), revives, weather/terrain orbs.<br>
+<b>Pokémon Center</b> — <b>PC Storage</b> (cap 10) for extra catches + <b>Underground</b> (sells unwanted mons for gold). Last party member, starter, and Subject Zero cannot be sold.<br>
+<b>Move Tutor</b> — Swap any move slot for one this Pokémon can learn.<br>
+<b>Nature Rater</b> — Re-pick the nature (+10%/-10% stat).<br>
+<b>Battle Dojo</b> — Swap ability and/or held item.<br>
+<b>EV Trainer (Buck)</b> — Apply EV spreads (510 cap, 252 per stat). Vitamin Packs skip the gold cost.<br>
+<b>Stone Sage (Evolution Tutor)</b> — Evolve eligible mons; Rare Candy skips the gold cost.<br>
+<b>Colress</b> — Set a battle form (Mega / Z / Dynamax / Tera) on a mon for 10,000G.<br>
+<b>Link Station</b> — Reroll, upgrade, or fully rebuild a Pokémon. Direct path to T4.<br>
+<b>Relic Annex</b> — Buy a permanent battle-wide artifact (affects both teams).<br>
+<b>Poké Casino</b> — Three games. Have fun.<br>
+<b>Safari Zone</b> (City 4) — Catch-only session. Bait reduces flee + catch chance; Rocks raise both, with a per-turn flee gamble.</div>
+<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Endgame</h3>
+After the Hall of Fame, the <b>Crucible</b> opens at every city: Battle Frontier ladder, League rematches, Mystery Figure, all facilities. The <b>Caged God</b> boss arc needs three corrupted-Center leads, then the Master Ball.</div>
+<div><h3 style="color:var(--accent);margin:0 0 6px;">Useful Habits</h3>
+• Tap any Pokémon name in battle (yours or foe) to open the summary with full build info.<br>
+• The HUD <b>🎯 Next:</b> chip in the city tip rail jumps you to your next required battle.<br>
+• Vouchers (Rare Candy, Vitamin Pack) show in the bag and on tutor / evolve buttons — they skip the gold cost.<br>
+• Difficulty also changes coin reward: Very Easy 1.6× → Hard 1.0× (Hard floors the penalty). Pick the mode that fits the run you want.</div>`,
             menu: `<div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Game Modes</h3>
 <b style="color:#4caf50;">Player Vs AI</b> — Draft 3 Pokémon from a random pool and battle against the computer AI.<br>
 <b style="color:#6890F0;">Local PvP</b> — Play with a friend on the same screen. Each player drafts from their own pool, then battles head-to-head.<br>
@@ -8963,6 +9037,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 text = helpData.draft.replace(/\bYou need to pick 3\./g, `You need to pick ${ps}.`);
             }
             if (!document.getElementById('screen-battle').classList.contains('hidden')) text = helpData.battle;
+            const _smActive = (window.sm && window.sm.active) || (window.StoryMode && window.StoryMode.isActive && window.StoryMode.isActive());
+            const _onStoryScreen = !!document.querySelector('[id^="screen-story-"]:not(.hidden)');
+            if (_onStoryScreen || _smActive) {
+                if (!document.getElementById('screen-battle').classList.contains('hidden')) {
+                    text = helpData.battle + '<div style="margin-top:14px;padding-top:12px;border-top:1px dashed #555;">' + helpData.story + '</div>';
+                } else {
+                    text = helpData.story;
+                }
+            }
             document.getElementById('help-text').innerHTML = text; document.getElementById('modal-help').classList.remove('hidden');
         }
         function formatMovePriority(pri) {
@@ -13469,6 +13552,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             menu.classList.toggle('move-menu-no-gimmicks', !hasGimmickButtons);
 
             if (hasGimmickButtons) {
+                // First-time gimmick discovery — story mode only, player side only.
+                // Deferred via setTimeout so the modal pops AFTER the move menu renders.
+                if (isP1 && window.sm && window.sm.active && window.StoryMode && typeof window.StoryMode.showOneTimeTip === 'function') {
+                    setTimeout(function() {
+                        try {
+                            window.StoryMode.showOneTimeTip('gimmick-first-seen',
+                                'Battle Forms unlocked!\n\nYou\'ve brought a Pokémon that can use a special battle mechanic. Look above the move grid:\n\n▼ MEGA — Mid-battle transformation. Big stats and sometimes a new type.\n▼ DYNAMAX / G-MAX — Three turns of giant size. Every move becomes a Max Move; HP doubles.\n◆ TERA — Lock the Pokémon to one type for the rest of the battle. Once per mon.\n⚡ Z-MOVE — One huge attack (or stat boost), then the crystal is spent.\n\nClassic mode: each TEAM gets one mega + one dyna + one Z + one Tera (per Pokémon) per battle. Pick the mon that benefits most.\n\nTap a Battle Form button to "queue" it. Then pick the move you want to fire with it. Tap the button again to cancel.');
+                        } catch (e) {}
+                    }, 0);
+                }
                 let gDiv = document.createElement('div');
                 gDiv.className = 'move-menu-gimmicks';
                 const mkGBtn = (label, key, bg, fg) => {
@@ -23308,7 +23401,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [56,'Battle','Elite Trainer',{g1:30,g2:70,g3:0,g4:0},4200,null],
           [57,'Battle','Elite Trainer',{g1:35,g2:65,g3:0,g4:0},4800,null],
           [58,'Battle','Elite Trainer',{g1:40,g2:60,g3:0,g4:0},5200,null],
-          [59,'City','City9',null,0,['Link Station','Evolution Tutor','Department Store','Poké Casino','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Enter Pokemon League']],
+          [59,'City','City9',null,0,['Link Station','Evolution Tutor','Pokemart','Department Store','Poké Casino','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Enter Pokemon League']],
           [60,'Battle','E1',{g1:35,g2:65,g3:0,g4:0},5000,null],
           [61,'Battle','E2',{g1:45,g2:55,g3:0,g4:0},5000,null],
           [62,'Battle','E3',{g1:55,g2:45,g3:0,g4:0},5000,null],
@@ -29386,7 +29479,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // made a G1 + a few G2 sells pay for an entire training run; new ones
         // keep the Underground useful while reinforcing that *keeping* mons is
         // the rewarding play.
-        const _PC_UNDERGROUND_PRICE_BY_GRADE = { 1: 1800, 2: 400, 3: 100, 4: 20 };
+        const _PC_UNDERGROUND_PRICE_BY_GRADE = { 1: 1800, 2: 450, 3: 250, 4: 60 };
         let _pcCurrentTab = 'storage';
 
         function _pcMonGrade(slot) {
@@ -31171,6 +31264,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function enterShop(type) {
             _markFacilitySeen(type === 'dept' ? 'dept' : 'mart');
+            try {
+                if (type === 'dept') {
+                    _storyShowOneTimeTip('first-dept',
+                        'Department Store\n\nThe big-city upgrade over the Pokémart.\n\n• Great Balls (1,000G) — 1.5× catch rate over PokéBalls.\n• Revives + Max Revives — bring fainted teammates back mid-battle.\n• Weather and Terrain Orbs — start every battle in your weather of choice.\n• Emergency Teleporter — escape trapping moves once per battle.\n\nDept stock does NOT refresh — each item is one-per-city. Stock up while you can.');
+                } else {
+                    _storyShowOneTimeTip('first-mart',
+                        'Pokémart\n\nThe basics, always in stock:\n\n• Poké Balls (300G) — your catching staple.\n• Potions, Full Restore, Max Elixir — emergency healing inside a battle.\n• X-items — +2 stat stages for one battle (X Attack, X Speed, etc.).\n• Dire Hit — crit boost. Guard Spec. — blocks stat drops for 5 turns.\n\nThe city auto-heals between battles, so Potions matter only when you spend a turn using one mid-fight.');
+                }
+            } catch (e) {}
             const shopScreen = document.getElementById('screen-story-shop');
             if (shopScreen) shopScreen.setAttribute('data-shop-type', type === 'dept' ? 'dept' : 'mart');
             const titleEl = document.getElementById('story-shop-title');
@@ -31480,6 +31582,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 syncStoryLinkBackground();
                 showScreen('screen-story-link');
                 try { _storyShowFacilityQuote('screen-story-link', 'link'); } catch (e) {}
+                try { _storyShowOneTimeTip('first-link',
+                    'Cable Link Station\n\nThe shortcut to a tournament-grade build:\n\n• Reroll — re-pick a slot\'s moves/nature/ability/item at random.\n• Upgrade — bump a Pokémon directly to T4 (full EVs, kept nature, top-pool ability/item).\n• Rebuild — wipe and re-roll the whole build from scratch.\n\nCosts ramp per-city to discourage spam, but a single Link Upgrade can save you a long string of Tutor / Dojo / EV-Trainer visits. Use it on a keeper.'); } catch (e) {}
             } finally {
                 _storyEndInteraction();
             }
@@ -31523,6 +31627,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 syncStoryCasinoBackground();
                 showScreen('screen-story-casino');
                 try { _storyShowFacilityQuote('screen-story-casino', 'casino'); } catch (e) {}
+                try { _storyShowOneTimeTip('first-casino',
+                    'Poké Casino\n\nThree games, one bet field. Pick your odds:\n\n• Coin Flip — 1:1 payout, ~50% odds.\n• Color (Red/Black) — 1:2 payout, ~30% odds (small house edge).\n• Jackpot (pick 1-10) — 1:9 payout, 10% odds.\n\nThe house has the math; play for the swing, not the income. The casino can dry up a run faster than any trainer.'); } catch (e) {}
             } finally {
                 _storyEndInteraction();
             }
@@ -31900,6 +32006,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 renderEvoLabTeam();
                 syncStoryEvoLabBackground();
                 showScreen('screen-story-evolab');
+                try { _storyShowOneTimeTip('first-evolab',
+                    'Stone Sage — Evolution Tutor\n\nEvolve any eligible Pokémon, in one step. The Sage figures out stones, trades, friendship, time-of-day — all of it.\n\n• Nature, ability slot, EVs, held item, and Tera type all carry over.\n• Cost scales with the target tier: G3 = 1,500G, G2 = 6,000G, G1 = 16,000G.\n• A 🍬 Rare Candy skips the gold cost entirely. The same candy gates "free" on the first evolution per Pokémon — repeat evolutions on the same mon still pay full price.'); } catch (e) {}
             } finally {
                 _storyEndInteraction();
             }
@@ -33548,6 +33656,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             syncStoryTutorBackground();
             showScreen('screen-story-tutor');
             void renderTutorTeam();
+            try {
+                if (m === 'moves') {
+                    _storyShowOneTimeTip('first-tutor',
+                        'Move Tutor\n\nSwap any of a Pokémon\'s 4 move slots for any move that species can legally learn — level-up, TM, egg, the lot.\n\n• Costs scale with the move\'s power and the Pokémon\'s tier (cheaper on weaker mons).\n• Tap a slot to see candidates; tap "Teach" to confirm.\n• Coverage matters more than raw BP — fix a 4× Ice weakness, add status removal, or a Fairy hit for that one Dragon.\n• A move learned here is permanent — no learn-cap to worry about.');
+                } else if (m === 'nature') {
+                    _storyShowOneTimeTip('first-nature',
+                        'Nature Rater\n\nA Pokémon\'s nature gives +10% to one stat and -10% to another. The right nature is often a bigger jump than any single item.\n\n• Adamant / Modest = power. Jolly / Timid = speed.\n• Bold / Calm / Impish / Careful = bulk.\n• Neutral natures (Hardy, Docile, Serious, Bashful, Quirky) give no change — usually a sign the mon hasn\'t been trained yet.\n\nCost is flat per change. Re-pick freely as you learn the team.');
+                } else if (m === 'loadout') {
+                    _storyShowOneTimeTip('first-dojo',
+                        'Battle Dojo\n\nSwap a Pokémon\'s held item and/or ability.\n\n• Each species has 2-3 abilities; the Dojo lets you pick which one (Hidden Abilities included where the species learns them).\n• Items range from defensive (Leftovers, Eviolite) through offensive (Choice Band/Specs, Life Orb) to gimmick-bound (Mega Stones, Z-Crystals).\n• Mega Stones and Z-Crystals are tied to Colress\'s Battle Forms — set the form there, not here.\n• Items can be re-swapped freely; choose to match the role each mon will play.');
+                }
+            } catch (e) {}
             } finally {
                 _storyEndInteraction();
             }
@@ -33939,6 +34059,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             showScreen('screen-story-colress');
             renderColressTeam();
             try { _storyShowFacilityQuote('screen-story-colress', 'colress'); } catch (e) {}
+            try { _storyShowOneTimeTip('first-colress',
+                'Colress — Battle Forms\n\nSet a battle form on one of your Pokémon. Each activation costs 10,000G and is permanent for that mon.\n\n• MEGA — installs a Mega Stone (replaces the held item). One-per-team activation in battle.\n• Z-MOVE — installs a Z-Crystal that matches the mon\'s typing. One per team per battle.\n• DYNAMAX / G-MAX — three turns of giant size with Max Moves and doubled HP. One per team.\n• TERA — sets a Tera type. Once per Pokémon, even in Unlimited mode.\n\nGimmicks are POWERFUL but Classic mode lets you fire one per team per battle. Choose the Pokémon that benefits most: a Mega on your fragile sweeper, Tera on the mon you want immune to its 4× weakness, Z-Move on something with a big STAB it can\'t spam.\n\nStandard mode (no battle form) is fine too — gimmicks are a tactical advantage, not a requirement.'); } catch (e) {}
         }
 
         function renderColressTeam() {
@@ -34271,6 +34393,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             showScreen('screen-story-evtrainer');
             renderEVTrainerTeam();
             try { _storyShowFacilityQuote('screen-story-evtrainer', 'evTrainer'); } catch (e) {}
+            try { _storyShowOneTimeTip('first-ev',
+                'EV Trainer (Buck)\n\nEffort Values are permanent stat boosts trained into one Pokémon. Two stats can be maxed at +252; the cap is 510 total.\n\n• Pick a preset (Physical Sweeper, Special Wall, etc.) — Buck applies the spread at once.\n• Cost: 5,000G per preset. A 💊 Vitamin Pack (gym rewards + Pokédex milestones) skips the gold cost.\n• EVs travel with the Pokémon through party, PC deposit/withdraw, and evolution.\n• Lost only on release or Underground sale.\n\nEVs are the single biggest stat upgrade — a fully-trained mon hits 30-50% harder than an untrained one of the same species.'); } catch (e) {}
         }
 
         function _evTrainerHelpBannerHtml() {
@@ -34447,6 +34571,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openTeamTester, openTeamTesterSyncFromStory, runTeamTester, copyTeamTesterText, closeTeamTester,
             previewHallOfFame, seedDebugMysteryLegendGate, seedDebugPostHofClimax, seedTestMegaFromUrl, seedStoryChampionWeakTestFromUrl, clearCurrentEnemyLock,
             openRunSummary,
+            showOneTimeTip: _storyShowOneTimeTip,
             // Story-mode event registry (read-only inspection surface)
             getStoryBeat: function(rowId) { return getStoryBeatForRow(rowId | 0); },
             getActiveStoryline: function() { return _storyActiveVariant(); },

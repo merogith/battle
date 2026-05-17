@@ -3,6 +3,148 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Story-mode audit pass: tutorials, help screen, Underground prices 2026-05-17 (`claude/audit-story-mode-design-GH8Fn`)
+
+### Added — First-visit one-time tip for every facility
+
+A full-stack tutorial coverage pass. Previously the one-time tip system
+covered city arrival, the Pokémon Center, Safari, Crucible, Battle Frontier,
+the catch flow, and the Relic Annex — but nine other facilities had no
+onboarding at all. New players were dropped into Move Tutor, Battle Dojo,
+EV Trainer, Colress, Link Station, the casino, the evolution lab, and both
+shops with no explanation of what each one does or why they'd visit it.
+
+Each tip fires cross-run-deduped via `pbs_story_meta.tipsShown`, so a
+veteran on NG+ doesn't re-read them. Keys added: `first-mart`, `first-dept`,
+`first-tutor`, `first-nature`, `first-dojo`, `first-ev`, `first-colress`,
+`first-link`, `first-casino`, `first-evolab`.
+
+### Added — In-battle gimmick discovery tip
+
+The four battle forms (Mega, Z-Move, Dynamax / G-Max, Tera) are now
+always-on in story mode (`Simplify game modes` pass, 2026-05-16). A
+brand-new player walking into their first battle with a Mega-capable
+Pokémon could see the MEGA / DYNAMAX / TERA / Z-MOVE buttons appear
+above the move grid with zero in-game explanation of what they do or
+the once-per-team rule.
+
+A new `gimmick-first-seen` one-time tip fires the **first time any
+battle form button is rendered** for the player in a story battle.
+The tip describes each of the four mechanics, the Classic per-team
+cap, and how to queue a form before picking a move. Cross-run-deduped
+like the other tips. Player-side / story-mode only — no fire on AI
+turn renders or in PvE / PvP / Gauntlet.
+
+### Added — Always-accessible Help screen in story mode
+
+The existing `modal-help` (settings → "VIEW") now also renders a
+comprehensive story-mode reference when the player is on any
+story screen or in a story battle:
+
+- Story Mode Overview — badge curve, auto-heal, foe-match-size rule.
+- Battle Mechanics — what Mega / Dynamax / Tera / Z-Move each do, the
+  Classic-mode per-team cap, the ▲/▼/⊘ effectiveness arrows.
+- Catching — base catch rates, ball multipliers, per-grade flee rates,
+  Master Ball reservation for the boss.
+- Build Power Tiers (T1 → T4) — what each tier means and where each
+  trainer / facility lands you on the curve.
+- Cities & Facilities — one-line reference for every shop, tutor, and
+  hub (Pokémart, Department Store, Pokémon Center, Move Tutor, Nature
+  Rater, Battle Dojo, EV Trainer, Stone Sage, Colress, Link Station,
+  Relic Annex, Poké Casino, Safari Zone).
+- Endgame — the Crucible super-hub and the Caged God boss arc.
+- Useful Habits — tap-foe-to-inspect, "🎯 Next:" chip, vouchers,
+  difficulty's coin-mult side-effect.
+
+A new `?` Help button sits in the story HUD action row next to
+the gear icon, opening this reference in one tap from any city or
+facility. Settings → VIEW still works during battles.
+
+The Help modal now has `role="dialog"`, `aria-modal="true"`, and
+`aria-labelledby="help-title"` for screen readers, plus `max-height:
+88vh` so the long story reference scrolls on small screens instead of
+clipping. `Run Info` and `Abandon` HUD buttons get matching
+`aria-label`s alongside the existing `title` tooltips.
+
+### Changed — Underground sell prices raised for catch-light players
+
+Wild-route catches now sell for meaningful gold so the Underground
+isn't a dead facility unless you mostly skip wild catching.
+`_PC_UNDERGROUND_PRICE_BY_GRADE`:
+
+- G3: 100G → **250G**
+- G4: 20G → **60G**
+- G2 unchanged at 450G (small bump from 400G to soften the curve).
+- G1 unchanged at 1,800G.
+
+Safari spam is still net-negative: a typical 6-encounter session at
+the live weights (g1:3 / g2:22 / g3:50 / g4:25) yields ~1,758G
+expected sell value before catch-rate failures — well below the
+2,500G Safari entry. Keeping and training mons remains the rewarding
+play; the Underground is now a real gold source for the PC overflow,
+not a token-effort facility.
+
+### Changed — City 9 (Pokémon League) gains Pokémart access
+
+Previously the league hub had Department Store but no Pokémart. A
+player who entered the league with low Poké Ball stocks could only
+buy 1,000G Great Balls, locking them out of cheap catches even though
+the Crucible's wild route remains available post-HoF. City 9 now has
+both shops, restoring access to 300G Poké Balls. The action key was
+added to row idx 58 in `STORY_EVENTS_RAW`.
+
+### Changed — Run-setup screen clarifies what difficulty actually does
+
+The difficulty `<select>` previously only told the player about foe
+stat scaling. The description now lists all three knobs:
+
+- **Foe stats** — Very Easy −30% to Very Hard +30%, scaling HP /
+  Atk / Def / SpA / SpD / Spe.
+- **Coin rewards** — Very Easy ×1.60 down to Hard ×1.00 (floored
+  from 0.92 so the hardest non-challenge mode isn't pure punishment).
+  Easier modes earn more gold for facility visits.
+- **Retreat fee** — Normal and above; veryeasy / easy waive it.
+- **Early-game softening** — Gym Leader 1 and 2 are gently scaled to
+  ×0.95 foe stats so a fresh save can't brick at the first wall.
+
+### Changed — Generation toggles get per-gen tooltips + scope reminder
+
+The 9 G1–G9 checkboxes had no explanation of which generation they
+gate or what the filter affects. Each checkbox now has a `title`
+attribute naming the region and dex range, and a one-line scope note
+under the row spells out that the filter affects species rolls only —
+move learnsets, abilities, items, and the type chart are
+generation-independent. A G1-only run plays the full game with the
+G1 roster.
+
+### Doc — Spec drift caught up
+
+- `STORY_MODE_FLOW.md` §5 (Catch minigame) was the last place still
+  saying `SAFARI_BALL_MULT = 1.25×`; the Safari Zone gameplay-loop
+  pass bumped this to 1.35× in `battle.html`. Spec text now matches
+  live constant.
+- §14c city specialties: City 7 was described as "last Pokémart
+  city" but City 8 has a Pokémart too (and now City 9 does). Table
+  rows for City 7 / 8 / 9 updated to match the live action lists.
+- §6 Underground sell table updated to the new 1800/450/250/60
+  rebalance with a note on why Safari spam is still unprofitable.
+
+### Reason
+
+This pass is the polish layer on top of a story mode that's
+~95% spec-aligned: every major system (catch math, party-cap
+badge curve, foe sizing, build-power tiers, Safari, boss arc,
+PC/Underground, Crucible, Battle Frontier) is shipped and
+tuned. The remaining gaps were all educational — the player
+who reads the design doc can engage every facility intentionally,
+but the player who doesn't was being asked to figure out
+Mega / Dynamax / Tera / Z-Move, EV training, the Link Station,
+and Colress purely by clicking around. The tutorial tips plus
+the Help reference close that gap without changing any of the
+underlying balance. The Underground price buff + City-9 Pokémart
++ difficulty / gen-toggle descriptions are the small drag points
+the audit surfaced alongside the big tutorial gap.
+
 ## Unreleased — Battle KO ordering & switch-in edge cases 2026-05-17 (`claude/fix-battle-ko-ordering-7UoSZ`)
 
 ### Fixed — Simultaneous-KO switch-in (Explosion / mutual faint)
