@@ -9707,17 +9707,50 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Story-mode foe stat multiplier (difficulty knob).
         // Multiplies HP and the five non-HP stats post-build. Damage formula stays Showdown-correct.
-        // Pre-Gym-1 forced battles (intro rival, first route trainer, Gym Trainer 1) get an additional
-        // softening factor so new players have room to learn before the first real test.
-        // Configurable via PRE_GYM1_FOE_STAT_MULT — set to 1.0 to disable the early-game nerf entirely.
-        window.PRE_GYM1_FOE_STAT_MULT = 0.85;
+        // Early-game battles get a tiered softening factor so new players have room to develop
+        // a team before the curve ramps. Magnitude scales with badges and event tier:
+        //   - badges 0, non-GL fight   → PRE_GYM1_FOE_STAT_MULT   (deepest — pre-first-gym fodder)
+        //   - badges 0, Gym Leader 1   → EARLY_GL_FOE_STAT_MULT   (gentle softening so GL1 still gates)
+        //   - badges 1, non-GL fight   → EARLY_GAME_FOE_STAT_MULT (route fights between GL1 and GL2)
+        //   - badges 1, Gym Leader 2   → EARLY_GL_FOE_STAT_MULT   (gentle softening — same)
+        //   - badges >= 2              → no early-game nerf
+        // The "gym leaders keep their signature ace identity" guarantee is enforced through
+        // *composition* (rollTrainerTeam's gwForFiller shifts non-sig fillers one tier weaker
+        // while signature aces stay in the canonical grade), not via per-mon stat exemptions —
+        // a 5% across-the-board softening keeps the fight winnable without changing who the
+        // leader fields. Set any constant to 1.0 to disable that tier's softening.
+        window.PRE_GYM1_FOE_STAT_MULT = 0.82;
+        window.EARLY_GAME_FOE_STAT_MULT = 0.92;
+        window.EARLY_GL_FOE_STAT_MULT = 0.95;
+        function _earlyGameFoeStatMult() {
+            const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
+            if (!sm) return 1.0;
+            const badges = sm.badges | 0;
+            if (badges >= 2) return 1.0;
+            const idx = sm.eventIndex | 0;
+            // STORY_EVENTS_RAW lives inside the StoryMode IIFE — reach it via window.
+            const SER = window.STORY_EVENTS_RAW;
+            const row = (SER && idx >= 0 && idx < SER.length) ? SER[idx] : null;
+            if (!row || row[1] !== 'Battle') return 1.0;
+            const evt = String(row[2] || '');
+            if (badges === 0) {
+                if (evt === 'Gym Leader 1') return window.EARLY_GL_FOE_STAT_MULT || 1.0;
+                return window.PRE_GYM1_FOE_STAT_MULT || 1.0;
+            }
+            // badges === 1
+            if (evt === 'Gym Leader 2') return window.EARLY_GL_FOE_STAT_MULT || 1.0;
+            return window.EARLY_GAME_FOE_STAT_MULT || 1.0;
+        }
+        window._earlyGameFoeStatMult = _earlyGameFoeStatMult;
+        // Back-compat shim — any external caller still asking "is this the pre-Gym-1 nerf?"
+        // gets a true answer for the original pre-GL1 non-GL fights only.
         function _isPreGym1NerfedBattle() {
             const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
             if (!sm || (sm.badges | 0) > 0) return false;
             const idx = sm.eventIndex | 0;
-            const row = (typeof STORY_EVENTS_RAW !== 'undefined') ? STORY_EVENTS_RAW[idx] : null;
+            const SER = window.STORY_EVENTS_RAW;
+            const row = (SER && idx >= 0 && idx < SER.length) ? SER[idx] : null;
             if (!row || row[1] !== 'Battle') return false;
-            // Exclude Gym Leader 1 itself — the gating fight should remain a real test.
             return row[2] !== 'Gym Leader 1';
         }
         window._isPreGym1NerfedBattle = _isPreGym1NerfedBattle;
@@ -9730,7 +9763,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (d === 'easy') mult = 0.85;
             else if (d === 'hard') mult = 1.15;
             else if (d === 'challenge') mult = 1.30; // labeled "Very Hard" in UI
-            if (_isPreGym1NerfedBattle()) mult *= (window.PRE_GYM1_FOE_STAT_MULT || 1.0);
+            mult *= _earlyGameFoeStatMult();
             if (mult === 1.0) return;
             const newMaxHp = Math.max(1, Math.floor(mon.maxHp * mult));
             mon.maxHp = newMaxHp;
@@ -23197,6 +23230,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [66,'Hall of Fame','Hall of Fame',null,0,null],
           [67,'Battle','Mystery Figure',{g1:100,g2:0,g3:0,g4:0},12000,null],
         ];
+        // Expose to script-top scope (this module is wrapped in `window.StoryMode = (function(){…})()`).
+        // `applyFoeDifficultyScaling` and `_earlyGameFoeStatMult` live outside the IIFE and need
+        // to look up the current row's event type — without this, `typeof STORY_EVENTS_RAW`
+        // resolves to 'undefined' from there and the early-game softening silently no-ops.
+        window.STORY_EVENTS_RAW = STORY_EVENTS_RAW;
 
         const STORY_MAIN_PATH_BATTLE_COUNT = STORY_EVENTS_RAW.reduce(function (acc, row) {
             return acc + (row && row[1] === 'Battle' ? 1 : 0);
@@ -24869,6 +24907,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (d === 'easy' || d === 'veryeasy') { o.g1 *= 0.88; o.g4 *= 1.12; }
             else if (d === 'hard') { o.g1 *= 1.1; o.g4 *= 0.9; }
             else if (d === 'challenge') { o.g1 *= 1.18; o.g4 *= 0.82; }
+            // Universal slight nerf on opponent team-generation grade rolls — moves a
+            // small fraction of g1/g2 mass down to g3 so RNG can't hand the foe a
+            // clutch top-tier mon on a battle whose tier weights barely allow it.
+            const _lostG1 = o.g1 * 0.08;
+            const _lostG2 = o.g2 * 0.04;
+            o.g1 -= _lostG1;
+            o.g2 -= _lostG2;
+            o.g3 += _lostG1 + _lostG2;
             return o;
         }
 
@@ -25608,17 +25654,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(teamR, battleEventType), battleEventType, storyRowIdx);
             }
 
+            // Gym leaders already have signature Pokémon as their identity — the rest
+            // of their team can roll slightly weaker. Shift a small fraction of g1/g2
+            // mass to one tier weaker for the non-signature pickThematic call only.
+            const _isGymLeader = /^Gym Leader\s*\d$/.test(String(battleEventType || ''));
+            const gwForFiller = (() => {
+                if (!_isGymLeader) return gwIn;
+                let { g1 = 0, g2 = 0, g3 = 0, g4 = 0 } = gwIn;
+                const _g1to2 = g1 * 0.20;
+                const _g2to3 = g2 * 0.15;
+                return {
+                    g1: g1 - _g1to2,
+                    g2: g2 - _g2to3 + _g1to2,
+                    g3: g3 + _g2to3,
+                    g4,
+                };
+            })();
             function pickThematic() {
-                const total = (gwIn.g1||0)+(gwIn.g2||0)+(gwIn.g3||0)+(gwIn.g4||0);
+                const _gw = gwForFiller;
+                const total = (_gw.g1||0)+(_gw.g2||0)+(_gw.g3||0)+(_gw.g4||0);
                 if (total === 0) {
                     const all = [...T[1],...T[2],...T[3],...T[4]];
                     return all.length ? all[Math.floor(rng() * all.length)] : null;
                 }
                 let r = rng() * total;
                 let g = 4;
-                r -= (gwIn.g4||0); if (r<=0) g=4;
-                else { r-=(gwIn.g3||0); if(r<=0) g=3;
-                else { r-=(gwIn.g2||0); if(r<=0) g=2;
+                r -= (_gw.g4||0); if (r<=0) g=4;
+                else { r-=(_gw.g3||0); if(r<=0) g=3;
+                else { r-=(_gw.g2||0); if(r<=0) g=2;
                 else g=1; } }
                 let pool = T[g];
                 if (!pool.length) {
@@ -25972,6 +26035,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         }
                     }
                 }
+                // Pre-Gym-1 route fodder: the lone Basic Trainer between intro rival and
+                // City 1 should *always* be a classic route trainer (Youngster, Bug
+                // Catcher, Lass, …), not a Rocket Executive or Cursed Vagrant. Locks the
+                // very first fight after the starter city to a thematic early-route
+                // class so the curve eases the player in.
+                if (event === 'Basic Trainer' && countGymBadgesBeforeStoryRow(posInRaw) === 0) {
+                    const early = _pickEarlyRouteBasicTrainer(eg, usedBase);
+                    if (early) {
+                        sm.trainerAssignments[idx] = early.name;
+                        usedBase.add(_baseTrainerName(early.name));
+                        return;
+                    }
+                    // fall through to standard picker if the filter somehow empties
+                }
                 const t = selectTrainerForRole(event, eg, usedBase);
                 if (t) {
                     sm.trainerAssignments[idx] = t.name;
@@ -25979,6 +26056,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             });
             sm.usedTrainerNames = [...usedBase];
+        }
+
+        /** Untagged ("classic route class") Basic Trainers only — Youngster, Bug
+         * Catcher, Lass, Hiker, Fisherman, Hex Maniac, Black Belt, Bird Keeper,
+         * Dragon Tamer and the 2-type thematic fillers. Excludes villain / cursed /
+         * multitype / eldritch flavor trainers so the pre-Gym-1 route fight always
+         * reads as an easy starter-route fodder match. */
+        function _pickEarlyRouteBasicTrainer(enabledGens, usedBaseNames) {
+            const genSet = new Set(normalizeEnabledGens(enabledGens));
+            let pool = TRAINER_DATA.filter(t => {
+                if (!t || String(t.role || '').toLowerCase() !== 'basic trainer') return false;
+                if (t.tag) return false; // exclude cursed / multitype / villain / eldritch
+                // Route trainers are gen-agnostic class fillers; charGen gating already
+                // exempts them, but keep the same fallback shape as selectTrainerForRole.
+                return !_isRegionalBasicTrainer(t) || genSet.has(t.charGen);
+            });
+            if (usedBaseNames) {
+                const fresh = pool.filter(t => !usedBaseNames.has(_baseTrainerName(t.name)));
+                if (fresh.length) pool = fresh;
+            }
+            if (!pool.length) return null;
+            const _rng = (sm && sm.active) ? storyRngNext : Math.random;
+            // Type-first pick (same flatten as selectTrainerForRole) so Normal-typed
+            // trainers don't dominate.
+            const byType = {};
+            for (const t of pool) {
+                const key = isPlaceholderSignatureList(t.sigs || []) ? 'Mixed' : (t.type || 'Mixed');
+                if (!byType[key]) byType[key] = [];
+                byType[key].push(t);
+            }
+            const typeKeys = Object.keys(byType);
+            const chosenType = typeKeys[Math.floor(_rng() * typeKeys.length)];
+            const typePool = byType[chosenType];
+            return typePool[Math.floor(_rng() * typePool.length)];
         }
 
         /** Find a trainer whose `tag` matches `theme` and whose role matches the slot.
