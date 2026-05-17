@@ -222,15 +222,15 @@
             background: #0a0e14 !important;
         }
         /* Portrait crop, vignette pan, and overlay pan removed — bg/vignette/overlays now anchor to --battle-ui-h directly */
-        /* Portrait: overlap chrome like GBA; z-index 5 < .battle-bottom-stack (6) so HP row paints on top */
+        /* Portrait: overlap chrome like GBA; z-index 5 < .battle-bottom-stack (6) so HP row paints on top.
+           Small Y nudge ties feet into the stat-bar; X nudge avoided so wider portrait viewports (tablets) don't overflow. */
         body.is-mobile #screen-battle[data-battle-layout="portrait"] #player-sprite-container {
             z-index: 5;
-            /* Anchor just above chrome; +y on transform nudges feet toward the stat bar (no big −Y — that lifted the mon into mid-arena) */
-            bottom: calc(var(--battle-player-hud-est) + var(--battle-ui-h) + max(0px, env(safe-area-inset-bottom, 0px)) + 6px - 0.5cm);
-            transform: translate(-0.5cm, 0.45cm);
+            bottom: calc(var(--battle-player-hud-est) + var(--battle-ui-h) + max(0px, env(safe-area-inset-bottom, 0px)) + 4px - 0.45cm);
+            transform: translateY(0.45cm);
         }
         body.is-mobile #screen-battle[data-battle-layout="portrait"] #foe-sprite-container {
-            transform: translateX(0.2cm);
+            transform: none;
         }
         /* Landscape: avoid a tall “film” over the arena — tint only the chrome rows, not the whole stack */
         @media screen and (orientation: landscape) and ((hover: none) or (pointer: coarse)) {
@@ -1407,14 +1407,18 @@
         .story-bag-item .eff { font-size:10px; color:#ccc; line-height:1.3; }
         .badge-icon { display:inline-block; width:14px; height:14px; border-radius:50%; background:var(--accent); border:1px solid #000; }
 
-        /* Battle screen — mobile-first (base = phone portrait ≤768px) */
+        /* Battle screen — mobile-first (base = phone portrait ≤768px)
+           Sprite sizing follows VGC depth perspective:
+             • Foe sits "far" (smaller, ~60–65% of player width)
+             • Player sits "near" (larger, fills foreground)
+           Per-layout overrides below keep this ratio across viewports. */
 
         /* ── Variables (phone portrait base) ─────────────────────────────── */
         #screen-battle {
             --battle-ui-h: clamp(210px, 44dvh, 295px);
             --battle-player-hud-est: clamp(56px, 9dvh, 76px);
-            --sprite-foe-w: min(52vw, 210px);
-            --sprite-player-w: min(54vw, 220px);
+            --sprite-foe-w: min(38vw, 156px);
+            --sprite-player-w: min(58vw, 246px);
             /* Nudge arena art downward (−Y in Y-up framing): smaller bottom inset ≈ field sits lower behind sprites */
             --arena-bg-shift-y: 5cm;
             font-family: var(--battle-font);
@@ -1429,28 +1433,28 @@
         }
 
         /* ── Per-layout independent tokens ───────────────────────────────── */
-        /* Each layout owns its own sizing — no cross-layout bleed */
+        /* Each layout owns its own sizing — no cross-layout bleed. Player ≈ 1.55–1.7× foe for VGC depth. */
         #screen-battle[data-battle-layout="desktop"] {
             --battle-ui-h: 280px;
             --battle-player-hud-est: 0px;
             /* Player stat row stacked above .ui-bottom — include in sprite baseline + tuck under chrome */
             --battle-player-hud-strip-h: clamp(92px, 13.5vh, 112px);
-            /* Sprites −15% vs prior max so more fits in the arena without clipping */
-            --sprite-foe-w: min(265px, calc(34vmin * 0.85));
-            --sprite-player-w: min(281px, calc(34vmin * 0.85));
+            /* VGC depth: foe small (back of arena), player ~1.65× (foreground). */
+            --sprite-foe-w: 188px;
+            --sprite-player-w: 310px;
         }
         #screen-battle[data-battle-layout="ultrawide"] {
             --battle-ui-h: 300px;
             --battle-player-hud-est: 0px;
             --battle-player-hud-strip-h: clamp(96px, 12vh, 116px);
-            --sprite-foe-w: min(287px, calc(29vmin * 0.85));
-            --sprite-player-w: min(298px, calc(30vmin * 0.85));
+            --sprite-foe-w: 200px;
+            --sprite-player-w: 332px;
         }
         #screen-battle[data-battle-layout="portrait"] {
             --battle-ui-h: clamp(330px, 48dvh, 410px);
             --battle-player-hud-est: clamp(52px, 9dvh, 68px);
-            --sprite-foe-w: min(38vw, 156px);
-            --sprite-player-w: min(42vw, 176px);
+            --sprite-foe-w: min(34vw, 138px);
+            --sprite-player-w: min(56vw, 224px);
         }
         #screen-battle[data-battle-layout="landscape-touch"] {
             --battle-ui-h: clamp(180px, 42dvh, 230px);
@@ -1462,16 +1466,25 @@
         #screen-battle[data-battle-layout="ultrawide"].battle-log-dock { --battle-ui-h: 308px; }
 
         /* ── Vignette ─────────────────────────────────────────────────────── */
+        /* Top dim (stadium shadow), bottom dim (frame the action), centre breathes */
         #screen-battle::before {
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0;
             bottom: var(--battle-ui-h, 190px);
             background:
-                radial-gradient(ellipse 80% 60% at 50% 100%, rgba(0,0,0,0.0) 40%, rgba(0,0,0,0.55) 100%),
-                radial-gradient(ellipse 100% 40% at 50% 0%, rgba(0,0,0,0.35) 0%, transparent 70%);
+                radial-gradient(ellipse 80% 60% at 50% 100%, rgba(0,0,0,0.0) 40%, rgba(0,0,0,0.50) 100%),
+                radial-gradient(ellipse 110% 45% at 50% 0%, rgba(0,0,0,0.38) 0%, transparent 72%);
             pointer-events: none;
             z-index: 0;
+        }
+        /* Desktop: extra foreground shade to push the floor edge toward the player */
+        #screen-battle[data-battle-layout="desktop"]::before,
+        #screen-battle[data-battle-layout="ultrawide"]::before {
+            background:
+                radial-gradient(ellipse 95% 60% at 50% 110%, rgba(0,0,0,0.0) 28%, rgba(0,0,0,0.60) 100%),
+                radial-gradient(ellipse 135% 55% at 50% -8%, rgba(0,0,0,0.45) 0%, transparent 72%),
+                linear-gradient(180deg, transparent 58%, rgba(0,0,0,0.22) 100%);
         }
 
         /* ── Battle field ─────────────────────────────────────────────────── */
@@ -1481,8 +1494,19 @@
             bottom: var(--battle-ui-h, 190px);
             overflow: hidden;
         }
-        .foe-platform { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 140px; height: 35px; background: rgba(0,0,0,0.6); border-radius: 50%; filter: blur(4px); pointer-events: none; z-index: 0; }
-        .player-platform { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 180px; height: 45px; background: rgba(0,0,0,0.65); border-radius: 50%; filter: blur(6px); pointer-events: none; z-index: 0; }
+        /* Floor shadows scale with container so larger Pokémon get larger shadows */
+        .foe-platform {
+            position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+            width: 76%; height: 22px;
+            background: radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.18) 60%, transparent 100%);
+            border-radius: 50%; filter: blur(3px); pointer-events: none; z-index: 0;
+        }
+        .player-platform {
+            position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+            width: 82%; height: 32px;
+            background: radial-gradient(ellipse at center, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.22) 60%, transparent 100%);
+            border-radius: 50%; filter: blur(4px); pointer-events: none; z-index: 0;
+        }
         /* Portrait: shared horizon seam instead of separate platforms */
         #screen-battle[data-battle-layout="portrait"] .foe-platform,
         #screen-battle[data-battle-layout="portrait"] .player-platform { display: none; }
@@ -1567,10 +1591,11 @@
         #screen-battle[data-battle-layout="ultrawide"] #foe-stat-box,
         body:not(.is-mobile) #screen-battle[data-battle-layout="landscape-touch"] #foe-stat-box {
             top: 12px; left: auto; right: max(12px, env(safe-area-inset-right, 0px)); bottom: auto;
-            width: 300px; max-width: min(300px, 42vw); border-radius: var(--battle-radius);
-            border: 1px solid var(--border-color);
+            width: 300px; max-width: min(300px, 42vw); border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.12);
             padding: 8px 12px; font-size: 13px;
-            background: var(--battle-panel-bg);
+            background: linear-gradient(180deg, rgba(22,22,30,0.94) 0%, rgba(14,14,20,0.96) 100%);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 6px 16px rgba(0,0,0,0.5);
         }
         #screen-battle[data-battle-layout="desktop"] #foe-stat-box .stat-info-row,
         #screen-battle[data-battle-layout="ultrawide"] #foe-stat-box .stat-info-row,
@@ -1587,21 +1612,29 @@
         #foe-sprite {
             position: absolute; bottom: 10px; left: 50%;
             transform: translateX(-50%); image-rendering: pixelated;
-            width: 92%; height: 90%; max-width: 100%; max-height: 92%;
-            object-fit: contain; z-index: 2;
+            width: 100%; height: 92%; max-width: 100%; max-height: 92%;
+            object-fit: contain; object-position: bottom center; z-index: 2;
         }
         #screen-battle[data-battle-layout="desktop"] #foe-sprite-container,
         #screen-battle[data-battle-layout="ultrawide"] #foe-sprite-container {
-            /* Lower than before so back-line mon clears the top / stat card and reads fully on-screen */
-            top: calc(14px + clamp(24px, 3.2vmin, 40px) + 1.5cm); right: clamp(12px, 6%, 88px);
+            /* VGC: foe sits on the arena's back horizon — right-of-center, smaller (perspective) */
+            top: 138px;
+            right: clamp(64px, 11%, 168px);
             width: var(--sprite-foe-w); aspect-ratio: auto;
-            height: min(252px, calc(34vmin * 0.85));
+            height: 184px;
+        }
+        #screen-battle[data-battle-layout="ultrawide"] #foe-sprite-container {
+            top: 144px;
+            right: clamp(96px, 14%, 220px);
+            height: 196px;
         }
         #screen-battle[data-battle-layout="desktop"] #foe-sprite,
-        #screen-battle[data-battle-layout="ultrawide"] #foe-sprite { width: 100%; height: 100%; bottom: 10px; object-position: bottom; }
+        #screen-battle[data-battle-layout="ultrawide"] #foe-sprite { width: 100%; height: 100%; bottom: 8px; object-position: bottom center; }
         #screen-battle[data-battle-layout="desktop"] #foe-sprite-container > .foe-platform,
         #screen-battle[data-battle-layout="ultrawide"] #foe-sprite-container > .foe-platform {
-            width: 155px !important; height: 26px !important; bottom: 8px !important;
+            width: 78% !important; height: 22px !important; bottom: 0 !important;
+            background: radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.18) 60%, transparent 100%) !important;
+            filter: blur(3px) !important;
         }
 
         /* ── PLAYER SPRITE ────────────────────────────────────────────────── */
@@ -1613,47 +1646,54 @@
             width: var(--sprite-player-w); aspect-ratio: 1 / 1.08; z-index: 4;
         }
         #player-sprite {
-            position: absolute; bottom: 18px; left: 50%;
+            position: absolute; bottom: 14px; left: 50%;
             transform: translateX(-50%); image-rendering: pixelated;
-            width: 92%; height: 90%; max-width: 100%; max-height: 92%;
-            object-fit: contain; z-index: 2;
+            width: 100%; height: 92%; max-width: 100%; max-height: 96%;
+            object-fit: contain; object-position: bottom center; z-index: 2;
         }
         #screen-battle[data-battle-layout="desktop"] #player-sprite-container,
         #screen-battle[data-battle-layout="ultrawide"] #player-sprite-container {
-            left: clamp(8px, 3.5%, 56px); right: auto;
-            /* Feet tuck under player HP row + command chrome (GBA-style overlap; z-index below #battle-bottom-stack) */
-            bottom: calc(var(--battle-ui-h) + var(--battle-player-hud-strip-h) - 52px);
+            /* VGC: player fills foreground — slightly left of center, feet tuck behind player HUD */
+            left: clamp(24px, 5%, 72px); right: auto;
+            bottom: calc(var(--battle-ui-h) + var(--battle-player-hud-strip-h) - 132px);
             width: var(--sprite-player-w); aspect-ratio: auto;
-            height: min(323px, calc(42vmin * 0.85));
+            height: 296px;
+        }
+        #screen-battle[data-battle-layout="ultrawide"] #player-sprite-container {
+            left: clamp(36px, 7%, 96px);
+            bottom: calc(var(--battle-ui-h) + var(--battle-player-hud-strip-h) - 138px);
+            height: 312px;
         }
         #screen-battle[data-battle-layout="desktop"] #player-sprite,
         #screen-battle[data-battle-layout="ultrawide"] #player-sprite {
-            width: 100%; height: 100%; bottom: 8px; object-position: bottom;
+            width: 100%; height: 100%; bottom: 8px; object-position: bottom center;
         }
         #screen-battle[data-battle-layout="desktop"] #player-sprite-container > .player-platform,
         #screen-battle[data-battle-layout="ultrawide"] #player-sprite-container > .player-platform {
-            width: 170px !important; height: 32px !important; bottom: 4px !important;
+            width: 82% !important; height: 36px !important; bottom: 0 !important;
+            background: radial-gradient(ellipse at center, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.22) 60%, transparent 100%) !important;
+            filter: blur(4px) !important;
         }
-        /* Portrait: DS-style depth — foe upper-right, player front lower-left */
-        /* Inset from top/right; foe lower for headroom; object-position = feet baseline; slight size skew = classic depth */
+        /* Portrait: DS-style depth — foe upper-right (smaller), player front lower-left (larger).
+           Player ≈ 1.6× foe for clear "near/far" depth. */
         #screen-battle[data-battle-layout="portrait"] #foe-sprite-container {
             top: clamp(96px, 15dvh, 132px);
-            right: calc(clamp(14px, 3.5vw, 26px) + env(safe-area-inset-right, 0px)); left: auto; bottom: auto;
-            width: min(35vw, 142px); height: min(37vw, 150px);
+            right: calc(clamp(20px, 7vw, 48px) + env(safe-area-inset-right, 0px)); left: auto; bottom: auto;
+            width: var(--sprite-foe-w); height: calc(var(--sprite-foe-w) + 6px);
         }
         #screen-battle[data-battle-layout="portrait"] #foe-sprite {
-            width: min(32vw, 134px); height: min(32vw, 134px);
+            width: 100%; height: 92%;
             max-width: 100%; max-height: 92%; object-fit: contain;
             object-position: bottom center;
         }
         #screen-battle[data-battle-layout="portrait"] #player-sprite-container {
-            width: min(43vw, 182px); height: min(45vw, 190px);
+            width: var(--sprite-player-w); height: calc(var(--sprite-player-w) + 8px);
             bottom: calc(var(--battle-player-hud-est) + var(--battle-ui-h) + max(0px, env(safe-area-inset-bottom, 0px)) + 6px);
-            left: clamp(2px, 1vw, 10px);
+            left: clamp(4px, 2vw, 16px);
         }
         #screen-battle[data-battle-layout="portrait"] #player-sprite {
-            width: min(41vw, 172px); height: min(41vw, 172px);
-            max-width: 100%; max-height: 92%; object-fit: contain;
+            width: 100%; height: 92%;
+            max-width: 100%; max-height: 96%; object-fit: contain;
             object-position: bottom center;
         }
 
@@ -1811,9 +1851,12 @@
         #screen-battle[data-battle-layout="desktop"] .battle-player-hud-row,
         #screen-battle[data-battle-layout="ultrawide"] .battle-player-hud-row,
         body:not(.is-mobile) #screen-battle[data-battle-layout="landscape-touch"] .battle-player-hud-row {
-            border-top: 1px solid rgba(255,255,255,0.1);
-            /* Right side masks empty strip toward log; card sits bottom-left (mirrors old gradient) */
-            background: linear-gradient(90deg, transparent 28%, rgba(5,5,8,0.35) 52%, rgba(5,5,8,0.72) 100%);
+            border-top: 1px solid transparent;
+            /* Subtle bottom shade so HP card reads without a hard horizontal seam */
+            background: linear-gradient(180deg,
+                transparent 0%,
+                rgba(6,8,14,0.18) 60%,
+                rgba(6,8,14,0.42) 100%);
             padding: 6px 12px 8px;
             justify-content: flex-start;
             align-items: flex-end;
@@ -1824,9 +1867,10 @@
             width: 300px;
             max-width: min(300px, 42vw);
             align-self: flex-end;
-            border-radius: var(--battle-radius);
-            border: 1px solid var(--border-color);
-            background: var(--battle-panel-bg);
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: linear-gradient(180deg, rgba(22,22,30,0.94) 0%, rgba(14,14,20,0.96) 100%);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 6px 16px rgba(0,0,0,0.5);
             margin: 0;
             padding: 8px 12px;
             font-size: 13px;
@@ -1848,6 +1892,16 @@
             background: linear-gradient(180deg, rgba(14,14,18,0.97) 0%, var(--battle-chrome-bg) 22%);
             border-top: 1px solid rgba(255,255,255,0.1);
             padding: 6px; z-index: 2; align-items: stretch;
+        }
+        /* Desktop/ultrawide: subtler chrome — let arena bleed in along the top edge */
+        #screen-battle[data-battle-layout="desktop"] .ui-bottom,
+        #screen-battle[data-battle-layout="ultrawide"] .ui-bottom {
+            background: linear-gradient(180deg,
+                rgba(8,10,16,0.55) 0%,
+                rgba(8,10,16,0.88) 24%,
+                var(--battle-chrome-bg) 100%);
+            border-top: 1px solid rgba(255,255,255,0.08);
+            padding: 8px 12px;
         }
         body.is-mobile .ui-bottom { flex-direction: column; padding: 4px 5px; gap: 4px; }
 
@@ -1948,14 +2002,27 @@
         #screen-battle[data-battle-layout="ultrawide"] .ui-bottom #battle-log {
             order: 2;
             align-self: stretch;
-            flex: 0 0 clamp(280px, 26vw, 380px);
-            width: clamp(280px, 26vw, 380px);
-            max-width: clamp(280px, 26vw, 380px);
+            flex: 0 0 clamp(260px, 24vw, 340px);
+            width: clamp(260px, 24vw, 340px);
+            max-width: clamp(260px, 24vw, 340px);
             max-height: none;
-            font-size: 13px;
+            font-size: 12px;
             line-height: 1.5;
             padding: 8px 12px;
+            /* Semi-transparent so the arena breathes through; subtle gradient + soft outline */
+            background: linear-gradient(180deg, rgba(10,12,18,0.78) 0%, rgba(6,8,14,0.92) 100%);
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 6px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 12px rgba(0,0,0,0.45);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.18) transparent;
         }
+        #screen-battle[data-battle-layout="desktop"] .ui-bottom #battle-log::-webkit-scrollbar,
+        #screen-battle[data-battle-layout="ultrawide"] .ui-bottom #battle-log::-webkit-scrollbar { width: 6px; }
+        #screen-battle[data-battle-layout="desktop"] .ui-bottom #battle-log::-webkit-scrollbar-thumb,
+        #screen-battle[data-battle-layout="ultrawide"] .ui-bottom #battle-log::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 3px; }
         #screen-battle[data-battle-layout="desktop"] .ui-bottom .ui-bottom-menus,
         #screen-battle[data-battle-layout="ultrawide"] .ui-bottom .ui-bottom-menus {
             order: 1;
@@ -2234,19 +2301,22 @@
         /* ── Tablet preset (700–1100px viewport) ──────────────────────────────
            Bridges between phone-mobile and desktop. Applied additively on top
            of whichever data-battle-layout JS picked (typically "portrait" for
-           iPad portrait, "desktop" for iPad landscape). Tighter UI footprint
-           than the phone-portrait clamp (which assumed a small arena), looser
-           touch targets than the cramped landscape-touch rules. */
+           iPad portrait, "desktop" for iPad landscape). Maintains the VGC
+           depth ratio (~1.6× player vs foe) at this in-between size. */
         body.layout-tablet-preset #screen-battle {
             --battle-ui-h: clamp(220px, 32dvh, 280px);
-            --sprite-foe-w: min(38vw, 200px);
-            --sprite-player-w: min(40vw, 215px);
+            --sprite-foe-w: min(22vw, 178px);
+            --sprite-player-w: min(36vw, 292px);
         }
         body.layout-tablet-preset #screen-battle[data-battle-layout="portrait"] {
             --battle-ui-h: clamp(280px, 38dvh, 360px);
+            --sprite-foe-w: min(24vw, 188px);
+            --sprite-player-w: min(40vw, 300px);
         }
         body.layout-tablet-preset #screen-battle[data-battle-layout="landscape-touch"] {
             --battle-ui-h: clamp(200px, 36dvh, 250px);
+            --sprite-foe-w: min(20vw, 168px);
+            --sprite-player-w: min(34vw, 282px);
         }
         body.layout-tablet-preset #screen-battle #command-menu.command-grid .battle-cmd-btn { min-height: 52px; font-size: 12px; }
         body.layout-tablet-preset #screen-battle #move-menu .move-menu-back { min-height: 44px; padding: 5px 10px; font-size: 12px; }
@@ -2381,8 +2451,9 @@
         /* ── Phone landscape ──────────────────────────────────────────────── */
         @media screen and (max-height: 500px) and (max-width: 900px) and (orientation: landscape) and ((hover: none) or (pointer: coarse)) {
             /* Short landscape: keep more room for the arena; 52dvh was eating ~half the viewport.
-               Lifted from 138/190 to 180/230 so cmd-grid (2×46) + 2-row move grid (2×44+gap) + 44px back fit without overflow. */
-            #screen-battle { --battle-ui-h: clamp(180px, 42dvh, 230px); --sprite-foe-w: min(32vw, 152px); --sprite-player-w: min(32vw, 148px); }
+               Lifted from 138/190 to 180/230 so cmd-grid (2×46) + 2-row move grid (2×44+gap) + 44px back fit without overflow.
+               Foe small + player ≈ 1.5× foe for VGC depth. */
+            #screen-battle { --battle-ui-h: clamp(180px, 42dvh, 230px); --sprite-foe-w: min(22vw, 132px); --sprite-player-w: min(32vw, 200px); }
             body.is-mobile #screen-battle.battle-phase-moves { --battle-ui-h: clamp(180px, 42dvh, 230px); }
             body { align-items: stretch; justify-content: stretch; }
             .screen, #app-root { max-width: 100vw; width: 100vw; height: 100dvh; max-height: 100dvh; font-size: 11px; }
@@ -2431,20 +2502,22 @@
             #foe-stages, #player-stages { max-height: none; overflow: visible; }
             .hp-bar-container { height: 5px; margin-top: 2px; border-radius: 0; }
             #foe-sprite-container {
-                width: min(140px, 28vw);
-                height: min(150px, 30vw, calc(100dvh - var(--battle-ui-h) - 64px));
-                top: calc(52px + var(--safe-top, 0px)); bottom: auto;
-                left: auto; right: calc(16px + min(6vw, 56px) + var(--safe-right, 0px));
+                /* Phone landscape: small foe in back-right (~22vw) so player feels close */
+                width: var(--sprite-foe-w);
+                height: min(118px, 22vw, calc(100dvh - var(--battle-ui-h) - 60px));
+                top: calc(46px + var(--safe-top, 0px)); bottom: auto;
+                left: auto; right: calc(32px + min(8vw, 70px) + var(--safe-right, 0px));
                 transform: none; z-index: 2;
             }
-            #foe-sprite { width: min(128px, 26vw); height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; object-position: bottom center; bottom: 0; }
-            /* Player sprite: bottom-left, feet tucked ~12px behind the bottom UI for GBA-style depth.
-               Height capped against available arena so it never collides with the floated HP card. */
+            #foe-sprite { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; object-position: bottom center; bottom: 0; }
+            /* Player sprite: bottom-left, feet tucked ~16px behind the bottom UI for GBA-style depth.
+               Cap height against arena so head never clips top edge. */
             #player-sprite-container {
-                width: min(150px, 30vw);
-                height: min(160px, 32vw, calc(100dvh - var(--battle-ui-h) - 64px));
-                bottom: calc(var(--battle-ui-h) - 12px);
-                left: calc(8px + min(4vw, 36px) + var(--safe-left, 0px)); right: auto; top: auto;
+                /* Player ≈ 1.55× foe — fills foreground */
+                width: var(--sprite-player-w);
+                height: min(168px, 32vw, calc(100dvh - var(--battle-ui-h) - 28px));
+                bottom: calc(var(--battle-ui-h) - 22px);
+                left: calc(10px + min(4vw, 36px) + var(--safe-left, 0px)); right: auto; top: auto;
                 transform: none; z-index: 3;
             }
             #player-sprite { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; object-position: bottom center; bottom: 0; }
@@ -2533,7 +2606,11 @@
             /* Same as portrait mobile: fill the viewport — avoids letterboxing + “floating” chrome on wide tablets */
             body { align-items: stretch; justify-content: stretch; }
             .screen, #app-root { max-width: 100vw; width: 100vw; height: 100dvh; max-height: 100dvh; box-sizing: border-box; }
-            #screen-battle { --battle-ui-h: clamp(140px, 20svh, 200px); }
+            #screen-battle {
+                --battle-ui-h: clamp(140px, 20svh, 200px);
+                --sprite-foe-w: min(20vw, 158px);
+                --sprite-player-w: min(32vw, 256px);
+            }
             body.is-mobile #screen-battle.battle-phase-moves { --battle-ui-h: clamp(140px, 20svh, 200px); }
             #foe-stat-box {
                 width: min(228px, 40vw); top: 6px; left: auto; right: 52px;
@@ -2582,17 +2659,17 @@
             #player-hp-text, #foe-hp-text { font-size: 10px; }
             .hp-bar-container { height: 6px; margin-top: 2px; }
             #foe-sprite-container {
-                width: min(176px, 28vw);
-                height: min(190px, 30vw, calc(100dvh - var(--battle-ui-h) - 76px));
-                top: calc(60px + var(--safe-top, 0px)); bottom: auto;
-                left: auto; right: calc(14px + min(3vw, 36px) + var(--safe-right, 0px)); transform: none;
+                width: var(--sprite-foe-w);
+                height: min(166px, 22vw, calc(100dvh - var(--battle-ui-h) - 76px));
+                top: calc(64px + var(--safe-top, 0px)); bottom: auto;
+                left: auto; right: calc(28px + min(8vw, 72px) + var(--safe-right, 0px)); transform: none;
             }
-            #foe-sprite { width: min(164px, 27vw); height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; object-position: bottom center; bottom: 0; }
+            #foe-sprite { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; object-position: bottom center; bottom: 0; }
             #player-sprite-container {
-                width: min(180px, 30vw);
-                height: min(200px, 32vw, calc(100dvh - var(--battle-ui-h) - 80px));
-                bottom: calc(var(--battle-ui-h) - 14px);
-                left: calc(10px + min(3vw, 32px) + var(--safe-left, 0px)); right: auto; top: auto; transform: none;
+                width: var(--sprite-player-w);
+                height: min(270px, 34vw, calc(100dvh - var(--battle-ui-h) - 60px));
+                bottom: calc(var(--battle-ui-h) - 18px);
+                left: calc(12px + min(3vw, 40px) + var(--safe-left, 0px)); right: auto; top: auto; transform: none;
             }
             #player-sprite { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; object-position: bottom center; bottom: 0; }
             #field-conditions {
@@ -6430,16 +6507,16 @@
         <div id="field-conditions" aria-live="polite"></div>
         </div>
 
-        <!-- Foe sprite: upper-back (CSS positions per layout; inline = desktop fallback) -->
+        <!-- Foe sprite: upper-back (CSS positions per layout) -->
         <div id="foe-sprite-container">
-            <div class="foe-platform" style="position:absolute; bottom:10px; left:50%; transform:translateX(-50%); width:140px; height:24px;"></div>
+            <div class="foe-platform"></div>
             <img id="foe-sprite" class="sprite opponent-sprite" src="" alt="Foe" onerror="handleSpriteError(this)">
             <span id="foe-status-icon" class="status-icon" style="display:none; z-index:5;"></span>
         </div>
 
         <!-- PLAYER: lower-front (left); bottom tracks --battle-ui-h + player HUD strip -->
         <div id="player-sprite-container">
-            <div class="player-platform" style="position:absolute; bottom:16px; left:50%; transform:translateX(-50%); width:168px; height:32px;"></div>
+            <div class="player-platform"></div>
             <img id="player-sprite" class="sprite player-sprite" src="" alt="Player" data-back="true" onerror="handleSpriteError(this)">
             <span id="player-status-icon" class="status-icon" style="display:none;"></span>
         </div>
