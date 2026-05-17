@@ -3,6 +3,92 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — VGC depth pass + responsive battle UI 2026-05-17 (`claude/battle-scenery-backgrounds-PagsV`)
+
+### Changed — Battle screen now reads as a 3D VGC arena
+
+The battle scene used to render the player and foe at nearly the same on-screen
+size, which killed the "I'm standing behind my Pokémon, looking across the
+arena" perspective the rest of the chrome was hinting at. Three things together
+were responsible:
+
+1. The `--sprite-foe-w` / `--sprite-player-w` tokens were within ~6% of each
+   other on every layout (e.g. desktop 265 / 281), so lore-scaling alone
+   couldn't make the foe feel distant.
+2. The desktop foe sat well above the arena's back wall, planting it in the
+   audience seats rather than on the floor near the horizon.
+3. The desktop player container was 322px tall with its baseline far above the
+   chrome line, so on a 720px canvas its head was pushed up into the stadium
+   rafters and its feet floated awkwardly above the HUD.
+
+Per layout the new sizing is roughly player ≈ 1.55–1.7× foe:
+
+| Layout              | Foe      | Player    | Ratio  |
+| ------------------- | -------- | --------- | ------ |
+| Desktop (1280×720)  | 198×184  | 310×296   | ~1.57× |
+| Ultrawide           | 212×196  | 332×312   | ~1.57× |
+| Portrait (phone)    | 138 sq   | 224 sq    | ~1.62× |
+| Tablet portrait     | 188 sq   | 300 sq    | ~1.60× |
+| Phone landscape     | 132 sq   | 200 sq    | ~1.52× |
+
+The foe was repositioned so its feet land on the arena's back horizon line
+(top 138px on desktop, right ~11%). The player was shortened (322 → 296),
+widened (281 → 310), and moved so its feet tuck behind the HUD strip
+GBA-style.
+
+### Changed — Floor shadows scale with the sprite
+
+`.foe-platform` / `.player-platform` were 140/180px flat with hard-stop
+shadows. They now use percentage widths against the container (76% / 82%) and
+a radial-gradient ellipse, so larger Pokémon get larger, softer ground
+shadows automatically. Inline `style="width:140px"` overrides in the HTML
+that were locking them at the old size are gone.
+
+### Changed — Battle log no longer a slab of pure black on desktop
+
+The right-hand log on desktop was solid `#161616` filling the whole bottom
+strip. It now renders as a translucent panel (`rgba(10,12,18,0.78) → 0.92`)
+with a soft border, light backdrop-blur, and a thin scrollbar — the arena
+art reads through it, the panel still has enough contrast for readability.
+The `.ui-bottom` chrome gradient was softened so the boundary between arena
+and chrome is a fade rather than a hard horizontal seam, and the player HUD
+row's `90deg → flex-end` wedge was replaced with a subtle vertical shade.
+
+### Changed — Vignette frames the action with depth
+
+The base vignette darkened the top and bottom uniformly. Desktop now uses a
+foreground-tinted variant (extra bottom-radial + a 60→100% linear shade)
+that nudges the eye toward the centre arena floor where the sprites stand —
+classic VGC framing.
+
+### Changed — Tablet preset keeps the same player-to-foe ratio
+
+The 700–1100px viewport preset was overriding sprite tokens with
+`foe = min(38vw, 200)` and `player = min(40vw, 215)` — almost equal,
+breaking the depth ratio on iPad-class screens. Replaced with width-aware
+clamps that mirror the desktop/portrait 1.6× ratio (foe 168–198, player
+282–332 depending on the data-battle-layout JS picked).
+
+### Changed — Phone-portrait nudge transform no longer overflows wider tablets
+
+`#player-sprite-container` had `transform: translate(-0.5cm, 0.45cm)` to
+overlap the chrome GBA-style. On phone widths this was fine; on 768px
+tablet portrait it pushed the larger 300px container 19px past the canvas's
+left edge. The X translation is gone; the Y nudge stays, and the `bottom`
+calc compensates so feet still tuck behind the HUD.
+
+### Implementation notes
+
+- Production sprite loading (`getSprite(name, shiny, isPlayer)` →
+  `gen5ani-back/<sid>.gif`) is unchanged. The player back-sprite chain
+  already hands off to PokeAPI back-static
+  (`/sprites/pokemon/back/<dex>.png`) when Showdown is unreachable, so the
+  player still shows from-behind in every browser even when the CDN is down.
+- `getSpriteLoreScaleNumber()` and the per-species `weight/height` curve
+  still drive the additional ±12% scale around the per-layout base — so
+  Wailord still feels huge next to Joltik, on top of the new player/foe
+  depth ratio.
+
 ## Unreleased — Game-wide text standardization pass 2026-05-17 (`claude/standardize-game-text-xGSU9`)
 
 ### Changed — Tone & writing sweep across every visible screen
