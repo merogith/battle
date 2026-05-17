@@ -37593,6 +37593,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
+            // Remember what was focused BEFORE we blow away the DOM, so we
+            // can refocus the same input after the partial re-render.
+            let _focusKind = null;
+            let _focusSelStart = null, _focusSelEnd = null;
+            try {
+                const a = document.activeElement;
+                if (a && a.classList && a.classList.contains('tx-search-input') && el.contains(a)) {
+                    _focusKind = a.dataset.kind || null;
+                    try { _focusSelStart = a.selectionStart; _focusSelEnd = a.selectionEnd; } catch (e) {}
+                }
+            } catch (e) {}
+
             el.innerHTML = sm.team.map((t, idx) => {
                 const expanded = idx === _storyTutorOpenIdx;
                 if (!expanded) return _txRenderCollapsedMonHtml(t, idx, mode);
@@ -37605,19 +37617,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return _txRenderCollapsedMonHtml(t, idx, mode);
             }).join('');
 
-            // Refocus search inputs (so typing isn't interrupted by re-render)
-            try {
-                const focusKind = (showMoves && document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('tx-search-input'))
-                    ? document.activeElement.dataset.kind : null;
-                if (focusKind) {
-                    const newInput = el.querySelector(`.tx-search-input[data-kind="${focusKind}"]`);
+            // Refocus the search input that was active before the re-render so
+            // typing stays uninterrupted. Restore caret position too.
+            if (_focusKind) {
+                try {
+                    const newInput = el.querySelector(`.tx-search-input[data-kind="${_focusKind}"]`);
                     if (newInput) {
                         newInput.focus();
                         const v = newInput.value;
-                        newInput.setSelectionRange(v.length, v.length);
+                        const start = _focusSelStart != null ? Math.min(_focusSelStart, v.length) : v.length;
+                        const end   = _focusSelEnd   != null ? Math.min(_focusSelEnd,   v.length) : v.length;
+                        try { newInput.setSelectionRange(start, end); } catch (e) {}
                     }
-                }
-            } catch (e) {}
+                } catch (e) {}
+            }
         }
 
         async function tutorChangeMove(teamIdx, moveSlot, newMove) {
