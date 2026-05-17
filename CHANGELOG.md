@@ -3,6 +3,31 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — AI over-switching fix 2026-05-17 (`claude/fix-enemy-ai-switching-bQGZV`)
+
+### Fixed — Enemy AI cycling its whole bench against one wall-breaker
+
+`aiDecision()` had two clauses that compounded into a bench-cycling
+bug. When the active matchup was `walled` (AI's best damaging move did
+< 8% of the defender's max HP and < 12% of its current HP):
+
+1. The "don't switch into a guaranteed KO" guard
+   (`switchThreat >= switchTo.currentHp && !walled`) bypassed itself —
+   the `!walled` carve-out let the AI feed fresh bench mons into a
+   one-shot whenever the active matchup was walled.
+2. The final commit check
+   (`newBestDmg > myBestDmg * 1.2 || willDieFirst || walled`) returned
+   the switch unconditionally because `walled` is true, regardless of
+   whether the picked target was *also* walled by the same defender.
+   `aiBestSwitch` always returns a best-of-bench, so against a single
+   wall-breaker (Mega Lucario, Garchomp, etc.) the AI burned its entire
+   team switching every turn without ever attacking.
+
+Both clauses now reject pointless swaps: the KO guard is unconditional,
+and a walled trigger only commits if the picked switch-in actually
+breaks the wall. `willDieFirst` still overrides — when the current mon
+won't get a move off, switching is correct even into a bad target.
+
 ## Unreleased — Story-mode regression sweep 2026-05-17 (`claude/fix-story-mode-bugs-1L4dU`)
 
 ### Fixed — Post-KO party modal + Pokémon summary blanking

@@ -14730,12 +14730,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         let switchTo = aiBestSwitch(bench, defender);
         if (switchTo) {
             let switchIdx = state.foeParty.indexOf(switchTo);
-            // Validate the switch target won't just die immediately
+            // Validate the switch target won't just die immediately. Previously the `&& !walled`
+            // carve-out let the AI feed fresh bench mons into a guaranteed KO whenever the active
+            // matchup was walled — that doesn't break the wall, it just snowballs the loss.
             let switchThreat = aiThreatScore(defender, switchTo);
-            if (switchThreat >= switchTo.currentHp && !walled) return null; // Don't switch into a KO
+            if (switchThreat >= switchTo.currentHp) return null;
 
             let newBestDmg = 0;
             switchTo.moves.forEach(m => { if (m.cat !== "Status") { let d = aiEstimateDmg(switchTo, defender, m); if (d > newBestDmg) newBestDmg = d; } });
+
+            // If the trigger was "walled" but the switch target is also walled by the same defender,
+            // switching just burns a turn (and possibly entry-hazard chip) without breaking the wall.
+            // aiBestSwitch always returns a best-of-bench, so the AI was cycling its whole team
+            // against a single wall-breaker. Hold position and chip / status instead.
+            let switchTargetWalled = newBestDmg < defender.maxHp * 0.08 && newBestDmg < defender.currentHp * 0.12;
+            if (walled && switchTargetWalled && !willDieFirst) return null;
 
             // Switch if the new mon is meaningfully better, or if we're dying anyway
             if (newBestDmg > myBestDmg * 1.2 || willDieFirst || walled) return switchIdx;
