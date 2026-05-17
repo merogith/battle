@@ -38101,8 +38101,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (cur) { cur.n++; }
                 else { counts.set(key, { evs: norm, archetype: b.archetype || 'Meta Spread', n: 1 }); }
             }
+            // Canonical CSV archetype slugs → human-readable labels for the cards.
+            const _PRETTY = {
+                'physical-attacker': 'Physical Attacker',
+                'special-attacker':  'Special Attacker',
+                'physical-sweeper':  'Physical Sweeper',
+                'special-sweeper':   'Special Sweeper',
+                'physical-tank':     'Physical Tank',
+                'special-tank':      'Special Tank',
+                'physical-wall':     'Physical Wall',
+                'special-wall':      'Special Wall',
+                'mixed-attacker':    'Mixed Attacker',
+                'bulky-attacker':    'Bulky Attacker',
+                'bulky-sweeper':     'Bulky Sweeper',
+                'support':           'Support',
+                'wall':              'Defensive Wall',
+                'sweeper':           'Sweeper',
+                'tank':              'Tank',
+                'utility':           'Utility',
+                'pivot':             'Pivot',
+                'lead':              'Lead',
+                'choice':            'Choice Bander',
+                'scarfer':           'Scarfer',
+                'specs':             'Specs Wallbreaker',
+                'sub':               'Sub Builder',
+                'stall':             'Stall',
+            };
+            const prettyLabel = s => {
+                if (!s) return 'Meta Spread';
+                const k = String(s).toLowerCase();
+                if (_PRETTY[k]) return _PRETTY[k];
+                // Fallback: Title Case the slug
+                return k.split('-').map(w => w ? w[0].toUpperCase() + w.slice(1) : '').join(' ');
+            };
             return Array.from(counts.values()).sort((a,b) => b.n - a.n).slice(0, 4)
-                .map((m, i) => ({ id: 'meta_'+i, label: m.archetype, evs: m.evs }));
+                .map((m, i) => ({ id: 'meta_'+i, label: prettyLabel(m.archetype), evs: m.evs }));
         }
         function _evTrainerCharge() {
             if (sm.gold < EVTRAINER_COST) {
