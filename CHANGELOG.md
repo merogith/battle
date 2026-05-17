@@ -81,6 +81,107 @@ journey, same Pokémon rules — without rewriting the engine each time.
   rolls bound by enabled gens, the row's grade weights, and the badge
   curve).
 
+## Unreleased — Calmer city hub + responsive tutor/market screens 2026-05-16 (`claude/improve-city-design-0pNO3`)
+
+### Changed — City hub visual design
+
+- Toned down the seven competing border colors on action buttons
+  (red / green / orange / cyan / teal / purple / pink) to a single calm
+  neutral surface. Section identity now lives on a small left-edge accent
+  stripe + a section-coloured icon + the section header. Only the
+  primary call-to-action (the next gym / route / league button) keeps
+  its bold red border — the eye now lands on it immediately instead of
+  fighting seven equally loud chips.
+- The pulsing red **"New!"** badge that flashed on every unvisited
+  facility is gone. Unvisited facilities now show a calm gold **"New"**
+  pill, and visited facilities show a soft **"✓"** tag — the same
+  information without the carnival lights. Visited rows also dim ~22 %
+  so the player can scan "what's left to try" at a glance.
+- Hover no longer slides the whole button 4px to the right; it now
+  brightens the border in place, which feels less twitchy on touch
+  devices that fire hover on first tap.
+- Section headers gained a subtle `(n)` count, so "Train (5)" tells
+  the player how dense each group is before they scroll.
+- The NPC dialogue box no longer gets stuffed with milestone shoutouts
+  ("📻 4 Badges earned…"), facility barkers, or rival warnings. Milestones
+  fire once as a calm toast on entry; everything else lives in the tip rail.
+
+### Changed — Should-be-visited / smart suggestion rail
+
+- The tip rail is capped at 3 items (was 4 + a quote-stuffed barker).
+  The first slot is always **"Next: …"** with a soft gold treatment, so
+  the answer to "what now?" is the first thing the eye lands on.
+- Tips are now **directly wired to the relevant facility button**:
+  when "3 Pokémon have empty move slots" appears in the rail, the
+  Move Tutor button below picks up a soft gold outline so the player
+  can find it without scanning. Suggestions feed: empty move slots →
+  Move Tutor, missing held items → Battle Dojo, no EVs → EV Trainer,
+  free relic available → Relic Annex, unspent Rare Candies →
+  Evolution Tutor, unspent Vitamins → EV Trainer.
+- Per-city / per-facility "seen" state (`sm.facilitiesSeen[cityIdx][key]`)
+  is unchanged on the data side — only the visual presentation changed.
+
+### Changed — Mobile city portrait sidebar
+
+- On phone portrait, the NPC portrait + name now sit side-by-side in
+  a 72px-tall strip (was a 120px stacked block). That recovers ~50 px
+  of vertical space above the action list, so on a typical 720×640
+  phone window the first action button is visible without scrolling.
+
+### Changed — Pokémart & Department Store
+
+- Items are grouped into **Balls / Healing & Revives / Stat Boosters /
+  Field Effects / Battle Utility** sections, each with a small
+  uppercase strap and a count chip. The Pokémart used to be a 12-item
+  unsorted grid that all looked alike; now a player looking for "the
+  ball" or "an X Speed" lands on the right group instantly.
+- The **Buy** button bumped from a cramped 24 px-tall, 11 px-font
+  tap target to a 34 px desktop / 42 px mobile button, so accidental
+  taps on the wrong row are no longer reported.
+- Prices that the player can't afford render in red instead of gold,
+  matching the existing "cant-afford" tone used on city action badges.
+- The Relic Annex got the same button treatment plus a cleaner card
+  background; the artifact cards now feel like first-class siblings
+  of the Pokémart cards instead of a one-off styling.
+
+### Changed — Move Tutor / Dojo / Nature / EV Trainer / Stone Sage on phone
+
+- When a Pokémon is expanded in the tutor accordion, the mon's header
+  row now sticks to the top of the scroll area. Players editing 4
+  move slots in a row no longer lose track of *which* mon they were
+  editing while scrolling.
+- Move-tutor filter input, move list, and "Teach selected" button all
+  scale up on phone (38–42 px tap targets, 13 px font) — same
+  treatment for the dojo's item/ability option buttons and the
+  Stone Sage's evolution chips.
+- The tutor card accordion header itself grew to a 56 px tap target
+  (was ~36 px), removing the "I keep tapping the wrong mon" reports.
+
+### Reason
+
+The city hub is the screen players see the most — between every
+battle, often dozens of times per run — and it had gradually
+accumulated seven button colors, a pulsing red badge per facility,
+and a quote box that was stuffed with system messages on top of NPC
+dialogue. The combined effect was chaotic on desktop and overwhelming
+on phone portrait, where the action grid was pushed below the fold by
+the noisy NPC sidebar + bloated quote + 4-pill tip rail. The redesign
+keeps every facility, every facility's identity (via icon + stripe +
+section header), and every cost / new / free indicator — but presents
+them with the restraint the rest of the retro-GBA UI uses elsewhere.
+
+The "should-be-visited" suggestion rail closes a separate gap: the
+old system surfaced the *need* ("3 mons have no EVs") but didn't link
+it visually to the *solution* button below. New players had to read
+each tip, then re-scan the action list to find the right facility.
+Now the suggested button glows softly, so the tip and the answer line
+up at a glance.
+
+The tutor/market screens shared the same family of problems — tiny
+tap targets, long lists with no grouping, no sticky context — and
+got the matching mobile-first treatment in the same pass since they
+sit one tap away from the hub.
+
 ## Unreleased — Story-mode investigation pass: cleanup, climax, casino 2026-05-16 (`claude/story-mode-investigation-lILFs`)
 
 ### Changed — Active party cap = `2 + badges`, foes match player team size 1:1
