@@ -435,84 +435,261 @@
             #modal-party .party-slot .party-actions button { flex: 1 1 auto; min-width: 0; max-width: 100%; }
         }
 
-        /* Summary */
-        .summary-stat-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
-        .summary-stat-label { width: 44px; font-size: 11px; color: #888; text-align: right; }
-        .summary-stat-bar-bg { flex: 1; height: 7px; background: #222; border-radius: 4px; overflow: hidden; }
-        .summary-stat-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
-        .summary-stat-val { width: 30px; font-size: 12px; font-weight: bold; text-align: right; }
-        .summary-move-slot { padding: 10px; border: 1px solid #333; background: var(--surface); border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+        /* ──────────────────────────────────────────────────────────────────
+           Summary modal — unified Pokémon overview/moves/matchups page.
+           Used everywhere a full Pokémon summary is shown: in-battle party
+           inspection, draft pool preview, story party reorder, gauntlet
+           swap cards, professor pick previews, online PvP, etc.
+
+           Layout: persistent header (sprite + name + types + gimmicks +
+           live battle state + party nav) + sticky tab strip + scrollable
+           tab content. Header reads live from the battle target so HP,
+           status, stat stages, and volatile conditions all reflect the
+           current battle whenever it's opened mid-game.
+           ────────────────────────────────────────────────────────────── */
         #modal-summary .modal-summary-shell {
-            display: flex; flex-direction: column; max-height: min(92vh, 880px); padding: 10px 12px; box-sizing: border-box;
-            overflow-y: hidden; min-height: 0;
-            width: 100%; max-width: min(420px, 96vw); margin-left: auto; margin-right: auto;
+            display: flex; flex-direction: column;
+            max-height: min(92dvh, 920px); padding: 10px;
+            box-sizing: border-box; overflow-y: hidden; min-height: 0;
+            width: 100%; max-width: min(460px, 96vw);
+            margin-left: auto; margin-right: auto;
+            gap: 8px;
         }
-        /* Same stacked Overview / single-column details as narrow phones — all viewports */
-        #modal-summary .sum-overview-top { grid-template-columns: 1fr; justify-items: center; }
-        #modal-summary .sum-overview-stats { width: 100%; max-width: 100%; }
-        #modal-summary .sum-overview-details { grid-template-columns: 1fr; }
-        #modal-summary .sum-tabs > .sum-tab { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-        .summary-body-row { display: flex; gap: 8px; align-items: stretch; flex: 1 1 auto; min-height: 0; max-height: min(72vh, 720px); }
-        .summary-pages-scroll { flex: 1; min-width: 0; min-height: 0; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-        .summary-party-nav { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; flex-shrink: 0; padding: 2px 0; }
-        .sum-nav-btn { width: 42px; min-height: 42px; padding: 0; font-size: 15px; line-height: 1; border-radius: 5px; cursor: pointer; font-family: inherit; background: var(--surface2); border: 1px solid #555; color: var(--accent); transition: all 0.12s; }
+
+        /* === Persistent header === */
+        .sum-header {
+            flex-shrink: 0; display: flex; flex-direction: column; gap: 6px;
+            padding: 8px 10px 10px; border-radius: 6px;
+            background: linear-gradient(180deg, var(--surface2) 0%, var(--surface) 100%);
+            border: 1px solid #2c2c30;
+        }
+        .sum-header-main { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 6px 10px; align-items: center; }
+        .sum-header-sprite-wrap {
+            position: relative; width: 76px; height: 76px;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden; flex-shrink: 0;
+        }
+        /* font-size:0 suppresses the broken-image alt fallback text on offline /
+           blocked-sprite environments — the alt attribute stays present for AT. */
+        .sum-header-sprite { width: 76px; height: 76px; image-rendering: pixelated; object-fit: contain; display: block; font-size: 0; color: transparent; }
+        .sum-header-info { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+        .sum-header-title { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; line-height: 1.2; }
+        .sum-header-name { font-size: 15px; font-weight: bold; color: var(--accent); word-break: break-word; min-width: 0; }
+        .sum-header-nick { font-size: 10px; color: #888; font-weight: normal; }
+        .sum-header-types { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; line-height: 1.2; }
+        .sum-header-gimmicks { display: flex; flex-wrap: wrap; gap: 3px; }
+        .sum-gimm-badge { font-size: 9px; font-weight: bold; border-radius: 3px; padding: 2px 6px; letter-spacing: 0.5px; line-height: 1.2; }
+        .sum-header-party { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; flex-shrink: 0; }
+        .sum-nav-btn {
+            width: 32px; min-height: 32px; padding: 0; font-size: 13px; line-height: 1;
+            border-radius: 4px; cursor: pointer; font-family: inherit;
+            background: var(--surface2); border: 1px solid #555; color: var(--accent);
+            transition: all 0.12s; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
         .sum-nav-btn:hover:not(:disabled) { border-color: var(--accent); background: #1a1700; }
-        .sum-nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-        .summary-party-slot-label { font-size: 10px; color: #777; font-weight: bold; line-height: 1.2; text-align: center; max-width: 46px; user-select: none; }
-        /* Overview grid — fills width, less vertical dead space */
-        .sum-overview { display: flex; flex-direction: column; gap: 8px; }
-        .sum-overview-top { display: grid; grid-template-columns: 118px minmax(0, 1fr); gap: 8px 12px; align-items: start; }
-        .sum-overview-img { width: 96px; height: 96px; image-rendering: pixelated; display: block; margin: 0 auto; }
-        .sum-overview-left { text-align: center; min-width: 0; }
-        .sum-overview-name { font-size: 14px; font-weight: bold; color: var(--accent); margin: 4px 0 3px; line-height: 1.15; word-break: break-word; }
-        .sum-overview-types { margin: 2px 0; line-height: 1.25; }
-        .sum-gimmick-row--tight { margin: 4px 0 0; justify-content: center; gap: 4px; flex-wrap: wrap; }
-        .sum-gimmick-row--tight .sum-gimm-badge { font-size: 10px; padding: 2px 6px; }
-        .sum-overview-stats { min-width: 0; }
-        .sum-overview-total { text-align: right; font-size: 10px; color: #555; margin-top: 3px; }
-        .sum-overview-details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 10px; border-top: 1px solid #252525; padding-top: 8px; font-size: 11px; line-height: 1.35; }
-        .sum-detail-lbl { color: #888; font-size: 10px; display: block; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
-        @media (max-width: 440px) {
-            .sum-overview-top { grid-template-columns: 1fr; }
-            .sum-overview-details { grid-template-columns: 1fr; }
+        .sum-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .summary-party-slot-label { font-size: 10px; color: #999; font-weight: bold; line-height: 1.1; text-align: center; min-width: 32px; user-select: none; }
+
+        /* Live battle state row — only rendered when there's something to show */
+        .sum-live-row { display: flex; flex-direction: column; gap: 5px; padding-top: 6px; border-top: 1px dashed #2a2a2a; }
+        .sum-hp-row { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #888; }
+        .sum-hp-row > .sum-hp-label { font-weight: bold; color: #aaa; font-size: 9px; letter-spacing: 0.4px; text-transform: uppercase; flex-shrink: 0; }
+        .sum-hp-bar { flex: 1; height: 8px; background: #222; border-radius: 4px; overflow: hidden; min-width: 60px; box-shadow: inset 0 1px 0 rgba(0,0,0,0.4); }
+        .sum-hp-fill { height: 100%; border-radius: 4px; transition: width 0.4s, background 0.3s; box-shadow: inset 0 -1px 0 rgba(0,0,0,0.25); }
+        .sum-hp-text { font-size: 11px; color: #ddd; font-weight: bold; min-width: 56px; text-align: right; font-variant-numeric: tabular-nums; }
+        .sum-state-pills { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; min-height: 0; }
+        .sum-state-pill {
+            font-size: 9px; font-weight: bold; padding: 2px 6px; border-radius: 3px;
+            border: 1px solid transparent; background: rgba(0,0,0,0.4);
+            line-height: 1.25; white-space: nowrap;
         }
-        /* 3-page summary tabs */
-        .sum-tabs { display: flex; gap: 4px; margin-bottom: 8px; flex-shrink: 0; }
-        .sum-tab { flex: 1; padding: 7px 4px; border: 1px solid #444; background: var(--surface); color: #888; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; text-align: center; transition: all 0.15s; }
+        .sum-state-pill--status-BRN { background: #e65100; color: #fff; border-color: #ff8a50; }
+        .sum-state-pill--status-PSN { background: #7b1fa2; color: #fff; border-color: #ba68c8; }
+        .sum-state-pill--status-TOX { background: #4a148c; color: #fff; border-color: #ab47bc; }
+        .sum-state-pill--status-PAR { background: #f9a825; color: #000; border-color: #ffd54f; }
+        .sum-state-pill--status-SLP { background: #546e7a; color: #fff; border-color: #90a4ae; }
+        .sum-state-pill--status-FRZ { background: #00acc1; color: #fff; border-color: #80deea; }
+        .sum-state-pill--stage-up { color: #a5d6a7; border-color: rgba(129, 199, 132, 0.85); }
+        .sum-state-pill--stage-down { color: #ffcdd2; border-color: rgba(239, 83, 80, 0.85); }
+        .sum-state-pill--buff { color: #a5d6a7; border-color: rgba(129, 199, 132, 0.75); }
+        .sum-state-pill--debuff { color: #ffcdd2; border-color: rgba(239, 83, 80, 0.75); }
+        .sum-state-pill--neutral { color: #cfd8dc; border-color: rgba(178, 190, 200, 0.55); }
+        .sum-state-pill--field { color: #ffd54f; border-color: rgba(255, 213, 79, 0.55); }
+
+        /* === Tab strip === */
+        .sum-tabs { display: flex; gap: 4px; flex-shrink: 0; }
+        .sum-tab {
+            flex: 1; padding: 8px 4px; border: 1px solid #444; background: var(--surface);
+            color: #888; border-radius: 4px; cursor: pointer; font-size: 12px;
+            font-weight: bold; text-align: center; transition: all 0.15s; font-family: inherit;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+            min-height: 38px;
+        }
         .sum-tab.active { border-color: var(--accent); background: #1a1700; color: var(--accent); }
         .sum-tab:hover:not(.active) { border-color: #666; color: #ccc; }
-        /* Z/Max/Base toggles on summary Moves page (not main Overview/Moves/Matchups tabs) */
+        .sum-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+        /* === Scrollable content area === */
+        .summary-pages-scroll {
+            flex: 1; min-width: 0; min-height: 0;
+            overflow-x: hidden; overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-right: 2px;
+        }
+        .sum-page { display: none; }
+        .sum-page.active { display: block; }
+
+        /* === Overview tab === */
+        .sum-stats-grid { display: flex; flex-direction: column; gap: 3px; }
+        .summary-stat-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; min-height: 18px; }
+        .summary-stat-label { width: 44px; font-size: 11px; color: #888; text-align: right; font-weight: 500; flex-shrink: 0; }
+        .summary-stat-bar-bg { flex: 1; height: 7px; background: #222; border-radius: 4px; overflow: hidden; min-width: 40px; }
+        .summary-stat-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+        .summary-stat-val { width: 64px; font-size: 11px; font-weight: bold; text-align: right; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+        .sum-stat-total { display: flex; justify-content: flex-end; font-size: 10px; color: #888; margin-top: 4px; padding-top: 4px; border-top: 1px dashed #2a2a2a; }
+        .sum-stat-total b { color: #ccc; margin-left: 6px; }
+        .sum-overview-details {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px;
+            margin-top: 10px; padding: 10px; border-radius: 5px;
+            background: rgba(0,0,0,0.25); border: 1px solid #232325;
+            font-size: 11px; line-height: 1.35;
+        }
+        .sum-detail-cell { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .sum-detail-cell--full { grid-column: 1 / -1; }
+        .sum-detail-lbl { color: #888; font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.6px; }
+        .sum-detail-val { color: #ddd; font-size: 11px; word-break: break-word; line-height: 1.3; }
+        .sum-evs-row {
+            margin-top: 8px; padding: 8px 10px; border-radius: 5px;
+            background: rgba(0,0,0,0.25); border: 1px solid #232325;
+            font-size: 10px; color: #aaa; line-height: 1.55;
+        }
+        .sum-evs-row b { color: #9ccc65; font-size: 9px; text-transform: uppercase; letter-spacing: 0.6px; }
+        .sum-evs-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px 8px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+        .sum-evs-grid > span { display: flex; justify-content: space-between; gap: 4px; }
+        .sum-evs-grid > span > i { font-style: normal; color: #888; }
+
+        /* === Moves tab === */
+        .sum-mode-row { display: flex; gap: 6px; margin-bottom: 8px; }
         .sum-mode-btn {
-            flex: 1; padding: 7px 4px; border: 1px solid #444; background: var(--surface); color: #888; border-radius: 4px; cursor: pointer;
-            font-size: 11px; font-weight: bold; text-align: center; transition: all 0.15s; font-family: inherit; touch-action: manipulation;
+            flex: 1; padding: 7px 4px; border: 1px solid #444; background: var(--surface);
+            color: #888; border-radius: 4px; cursor: pointer;
+            font-size: 11px; font-weight: bold; text-align: center;
+            transition: all 0.15s; font-family: inherit; touch-action: manipulation;
+            min-height: 36px;
         }
         .sum-mode-btn:hover { border-color: #666; color: #ccc; }
-        .sum-page { display: none; } .sum-page.active { display: block; }
-        /* Gimmick dashboard */
-        .sum-gimmick-row { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin: 6px 0; }
-        .sum-gimm-badge { font-size: 11px; font-weight: bold; border-radius: 4px; padding: 3px 8px; letter-spacing: 0.5px; }
-        /* Move cards (page 2) */
-        .sum-move-card { border: 1px solid #333; border-radius: 5px; padding: 6px 9px; background: var(--surface); margin-bottom: 5px; }
+        .sum-mode-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+        .sum-move-card { border: 1px solid #2c2c2e; border-radius: 5px; padding: 7px 9px; background: var(--surface); margin-bottom: 5px; }
         .sum-move-card.upgraded { border-color: #f9a825; background: #1a1500; }
         .sum-move-card.upgraded-max { border-color: #b71c1c; background: #1a0000; }
-        .sum-move-header { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 3px; }
-        .sum-move-name { font-size: 13px; font-weight: bold; color: var(--accent); flex: 1; min-width: 120px; }
+        .sum-move-card--blocked { opacity: 0.55; border-color: #6c3535; background: #1a0d0d; }
+        .sum-move-card--blocked .sum-move-name { color: #aaa; }
+        .sum-move-blocked-badge {
+            font-size: 9px; font-weight: bold; letter-spacing: 0.4px;
+            padding: 2px 5px; border-radius: 3px; line-height: 1.2;
+            background: rgba(239, 83, 80, 0.18); color: #ef9a9a; border: 1px solid #ef5350;
+            margin-left: auto; white-space: nowrap;
+        }
+        .sum-move-blocked-reason {
+            font-size: 9.5px; color: #ef9a9a; font-style: italic;
+            margin-top: 3px; border-top: 1px dashed #4a2828; padding-top: 3px;
+        }
+        .sum-move-header { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+        .sum-move-name { font-size: 13px; font-weight: bold; color: var(--accent); flex: 1; min-width: 100px; }
         .sum-move-name.tip-move-cell { cursor: help; text-decoration: underline dotted rgba(255, 213, 79, 0.35); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-        .sum-move-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2px 6px; font-size: 10px; color: #999; margin-top: 2px; }
+        .sum-move-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px 6px; font-size: 10px; color: #999; margin-top: 2px; }
         .sum-move-stat-val { color: #ddd; font-weight: bold; }
-        .sum-move-eff { font-size: 10px; color: #aaa; font-style: italic; margin-top: 3px; border-top: 1px dashed #2a2a2a; padding-top: 3px; line-height: 1.35; }
-        /* Matchup matrix (page 3) */
+        .sum-move-eff { font-size: 10px; color: #aaa; font-style: italic; margin-top: 4px; border-top: 1px dashed #2a2a2a; padding-top: 4px; line-height: 1.35; }
+        .sum-move-pp-low { color: #ffb74d !important; }
+        .sum-move-pp-out { color: #f44336 !important; }
+        .sum-note {
+            font-size: 10px; padding: 5px 8px; border-radius: 3px;
+            margin-bottom: 8px; line-height: 1.35;
+        }
+        .sum-note--info { color: #b3e5fc; background: rgba(2, 119, 189, 0.18); border: 1px solid #0277bd; }
+        .sum-note--accent { color: #e1bee7; background: rgba(123, 31, 162, 0.22); border: 1px solid #7b1fa2; }
+        .sum-note--warn { color: #ffe082; background: rgba(255, 145, 0, 0.16); border: 1px solid #ff9100; }
+
+        /* === Matchups tab === */
         .sum-matchup-section { margin-bottom: 10px; }
-        .sum-matchup-title { font-size: 11px; font-weight: bold; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 3px; }
-        .sum-matchup-row { display: flex; align-items: baseline; gap: 5px; margin-bottom: 4px; font-size: 10px; }
-        .sum-matchup-label { color: #888; width: 64px; flex-shrink: 0; text-align: right; }
+        .sum-matchup-title { font-size: 11px; font-weight: bold; color: var(--accent); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 3px; }
+        .sum-matchup-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 4px; font-size: 10px; }
+        .sum-matchup-label { color: #888; width: 70px; flex-shrink: 0; text-align: right; font-weight: bold; }
         .sum-matchup-types { display: flex; flex-wrap: wrap; gap: 2px; }
-        .sum-cov-card { border: 1px solid #2a2a2a; border-radius: 4px; padding: 5px 7px; margin-bottom: 5px; background: var(--surface); }
-        .sum-cov-move-name { font-size: 11px; font-weight: bold; color: #ddd; margin-bottom: 3px; line-height: 1.35; }
+        .sum-cov-card { border: 1px solid #2a2a2a; border-radius: 4px; padding: 6px 8px; margin-bottom: 5px; background: var(--surface); }
+        .sum-cov-move-name { font-size: 11px; font-weight: bold; color: #ddd; margin-bottom: 4px; line-height: 1.35; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
         .sum-cov-row { display: flex; align-items: flex-start; gap: 4px; margin-bottom: 2px; font-size: 10px; }
         .sum-cov-row .type-badge { font-size: 9px; padding: 1px 4px; }
-        .sum-cov-label { color: #888; width: 64px; flex-shrink: 0; text-align: right; }
-        .tera-note { font-size: 10px; color: #0277bd; background: #011824; border: 1px solid #0277bd; border-radius: 3px; padding: 4px 8px; margin-bottom: 8px; }
+        .sum-cov-label { color: #888; width: 70px; flex-shrink: 0; text-align: right; font-weight: bold; }
+        .tera-note { font-size: 10px; color: #b3e5fc; background: #011824; border: 1px solid #0277bd; border-radius: 3px; padding: 5px 8px; margin-bottom: 8px; line-height: 1.35; }
+
+        /* === Footer reorder row + close === */
+        .sum-reorder-row { display: flex; flex-direction: row; gap: 8px; flex-shrink: 0; }
+        .sum-reorder-row.hidden { display: none !important; }
+        .sum-reorder-row > button { flex: 1; min-height: 38px; }
+        .sum-close-btn { width: 100%; flex-shrink: 0; min-height: 38px; }
+
+        /* === Responsive === */
+        @media (min-width: 520px) {
+            #modal-summary .modal-summary-shell { max-width: min(540px, 96vw); }
+            .sum-header-main { grid-template-columns: 100px minmax(0, 1fr) auto; }
+            .sum-header-sprite-wrap, .sum-header-sprite { width: 100px; height: 100px; }
+            .sum-overview-details { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            .sum-evs-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+        }
+        @media (max-width: 380px) {
+            #modal-summary .modal-summary-shell { padding: 8px; gap: 6px; }
+            .sum-header { padding: 6px 8px 8px; }
+            .sum-header-main { grid-template-columns: 64px minmax(0, 1fr) auto; gap: 5px 8px; }
+            .sum-header-sprite-wrap, .sum-header-sprite { width: 64px; height: 64px; }
+            .sum-header-name { font-size: 13px; }
+            .summary-stat-label { width: 38px; font-size: 10px; }
+            .summary-stat-val { width: 56px; font-size: 10px; }
+            .sum-overview-details { padding: 8px; gap: 6px 8px; }
+            .sum-state-pill { font-size: 8.5px; padding: 1.5px 5px; }
+            .sum-gimm-badge { font-size: 8.5px; padding: 1.5px 5px; }
+        }
+        /* Touch targets on phones (portrait) — 44px guideline */
+        @media screen and (max-width: 768px) and (orientation: portrait) {
+            #modal-summary .sum-tab { min-height: 44px; }
+            #modal-summary .sum-mode-btn { min-height: 44px; }
+            #modal-summary .sum-nav-btn { min-height: 36px; width: 36px; }
+            #modal-summary .sum-reorder-row > button,
+            #modal-summary .sum-close-btn { min-height: 44px; }
+        }
+        /* Landscape phones — use the wider viewport: wider modal, two-column body
+           (header + tabs on the left, tab content scrolls on the right). */
+        @media screen and (max-height: 480px) and (orientation: landscape) {
+            #modal-summary .modal-summary-shell {
+                max-width: min(720px, 96vw);
+                max-height: 96dvh;
+                padding: 8px;
+                display: grid;
+                grid-template-columns: 240px minmax(0, 1fr);
+                grid-template-rows: auto auto 1fr auto;
+                grid-template-areas:
+                    "header content"
+                    "tabs   content"
+                    "tabs   content"
+                    "close  close";
+                gap: 6px 10px;
+            }
+            #modal-summary .sum-header { grid-area: header; padding: 6px 8px; }
+            #modal-summary .sum-tabs { grid-area: tabs; flex-direction: column; }
+            #modal-summary .sum-tab { min-height: 36px; }
+            #modal-summary #summary-pages-scroll { grid-area: content; min-height: 0; }
+            #modal-summary .sum-reorder-row,
+            #modal-summary .sum-close-btn { grid-area: close; }
+            /* In landscape grid, if the reorder row is visible we hide the close button (the
+               reorder row owns the bottom slot). :not(.hidden) is needed because the adjacent-
+               sibling selector matches regardless of computed display state otherwise. */
+            #modal-summary .sum-reorder-row:not(.hidden) + .sum-close-btn { display: none; }
+            .sum-header-main { grid-template-columns: 56px minmax(0, 1fr); gap: 4px 6px; }
+            .sum-header-sprite-wrap, .sum-header-sprite { width: 56px; height: 56px; }
+            .sum-header-name { font-size: 13px; }
+            /* Hide party nav row in compact landscape — most landscape uses are dev/QA. */
+            .sum-header-party { display: none; }
+        }
 
         /* Tiers */
         .tier-1 { border-color: #ff8c00 !important; } .tier-2 { border-color: #9c27b0 !important; } .tier-3 { border-color: #1565c0 !important; } .tier-4 { border-color: #2e7d32 !important; }
@@ -6158,30 +6335,28 @@
         </div>
     </div>
 
-    <div id="modal-summary" class="modal hidden">
-        <div class="modal-content white-outline modal-summary-shell" style="position: relative;">
-            <div class="sum-tabs">
-                <button type="button" class="sum-tab active" id="sum-tab-1" onclick="window.switchSummaryTab(1)">Overview</button>
-                <button type="button" class="sum-tab" id="sum-tab-2" onclick="window.switchSummaryTab(2)">Moves</button>
-                <button type="button" class="sum-tab" id="sum-tab-3" onclick="window.switchSummaryTab(3)">Matchups</button>
+    <div id="modal-summary" class="modal hidden" role="dialog" aria-labelledby="sum-header-name" aria-modal="true">
+        <div class="modal-content white-outline modal-summary-shell">
+            <!-- Persistent header: sprite, name, types, gimmicks, live battle state, party nav -->
+            <div class="sum-header" id="sum-header"></div>
+            <!-- Tab strip -->
+            <div class="sum-tabs" role="tablist">
+                <button type="button" class="sum-tab active" id="sum-tab-1" role="tab" aria-controls="sum-page-1" aria-selected="true" onclick="window.switchSummaryTab(1)">Overview</button>
+                <button type="button" class="sum-tab" id="sum-tab-2" role="tab" aria-controls="sum-page-2" aria-selected="false" onclick="window.switchSummaryTab(2)">Moves</button>
+                <button type="button" class="sum-tab" id="sum-tab-3" role="tab" aria-controls="sum-page-3" aria-selected="false" onclick="window.switchSummaryTab(3)">Matchups</button>
             </div>
-            <div class="summary-body-row">
-                <div id="summary-pages-scroll" class="summary-pages-scroll">
-                    <div id="sum-page-1" class="sum-page active"></div>
-                    <div id="sum-page-2" class="sum-page"></div>
-                    <div id="sum-page-3" class="sum-page"></div>
-                </div>
-                <div class="summary-party-nav" title="Party">
-                    <button type="button" id="sum-nav-up" class="sum-nav-btn" onclick="window.summaryNavigateParty(-1)" aria-label="Previous Pokémon">Prev</button>
-                    <span id="summary-party-slot" class="summary-party-slot-label">1/1</span>
-                    <button type="button" id="sum-nav-down" class="sum-nav-btn" onclick="window.summaryNavigateParty(1)" aria-label="Next Pokémon">Next</button>
-                </div>
+            <!-- Tab pages (one is always active) -->
+            <div id="summary-pages-scroll" class="summary-pages-scroll">
+                <div id="sum-page-1" class="sum-page active" role="tabpanel" aria-labelledby="sum-tab-1"></div>
+                <div id="sum-page-2" class="sum-page" role="tabpanel" aria-labelledby="sum-tab-2"></div>
+                <div id="sum-page-3" class="sum-page" role="tabpanel" aria-labelledby="sum-tab-3"></div>
             </div>
-            <div id="story-team-reorder-row" class="hidden" style="display:none;flex-direction:row;gap:8px;margin-top:10px;flex-shrink:0;">
-                <button type="button" onclick="window.StoryMode.summaryMove(-1)" style="flex:1;">Move up in party</button>
-                <button type="button" onclick="window.StoryMode.summaryMove(1)" style="flex:1;">Move down in party</button>
+            <!-- Story reorder row (shown only when story-mode opens via party reorder flow) -->
+            <div id="story-team-reorder-row" class="hidden sum-reorder-row" style="display:none;">
+                <button type="button" onclick="window.StoryMode.summaryMove(-1)">Move up in party</button>
+                <button type="button" onclick="window.StoryMode.summaryMove(1)">Move down in party</button>
             </div>
-            <button onclick="window.closeModal('modal-summary')" style="margin-top: 8px; width: 100%; flex-shrink: 0;">Close</button>
+            <button class="sum-close-btn" onclick="window.closeModal('modal-summary')">Close</button>
         </div>
     </div>
 
@@ -6554,19 +6729,7 @@
         </div>
     </div>
 
-    <div id="modal-story-pokemon-summary" class="modal hidden">
-        <div class="modal-content white-outline" style="max-width:420px;max-height:85dvh;overflow-y:auto;">
-            <h3 id="story-sum-title" style="color:var(--accent);margin-top:0;">Pokémon</h3>
-            <div id="story-sum-body" style="font-size:12px;color:#ccc;"></div>
-            <div style="display:flex;gap:8px;margin-top:12px;">
-                <button type="button" id="story-sum-up" onclick="window.StoryMode.summaryMove(-1)" style="flex:1;" title="Move this Pokémon up in your party order">↑ Move Up</button>
-                <button type="button" id="story-sum-down" onclick="window.StoryMode.summaryMove(1)" style="flex:1;" title="Move this Pokémon down in your party order">↓ Move Down</button>
-            </div>
-            <button onclick="window.closeModal('modal-story-pokemon-summary')" style="width:100%;margin-top:10px;">Close</button>
-        </div>
-    </div>
-
-    <div id="screen-story-artifacts" class="screen hidden" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+<div id="screen-story-artifacts" class="screen hidden" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div style="padding:10px 14px;background:#0d0d0d;border-bottom:1px solid #333;flex-shrink:0;">
             <div style="display:flex;align-items:center;gap:10px;">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
@@ -11042,22 +11205,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!mon) return 'translateX(-50%)';
             return `translateX(-50%) scale(${getSpriteLoreScaleNumber(mon)})`;
         }
-        window.storySummaryScrollInfo = function() {
-            const m = document.getElementById('modal-story-pokemon-summary');
-            const el = document.getElementById('story-sum-body');
-            if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
-            if (m) {
-                const c = m.querySelector('.modal-content');
-                if (c) c.scrollTop = 0;
-            }
-        };
-        function summaryStatBarHTML(label, val) {
-            let max = label === 'HP' ? (window.HP_SCALE_MAX || 255) : (window.STAT_SCALE_MAX || 200);
-            let pct = Math.min(100, (val / max) * 100);
-            let color = getStatColor(val);
-            return `<div class="summary-stat-row"><span class="summary-stat-label">${label}</span><div class="summary-stat-bar-bg"><div class="summary-stat-bar-fill" style="width:${pct}%; background:${color};"></div></div><span class="summary-stat-val" style="color:${color}">${val}</span></div>`;
-        }
-
         function getSummaryStatBoosts(mon) {
             const boosts = {};
             const item = mon.item || '';
@@ -14522,22 +14669,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             window._summaryDraftPartyIdx = typeof opts.index === 'number' ? opts.index : 0;
             window._summaryIdx = window._summaryDraftPartyIdx;
             window._summaryIsP1 = true;
+            // Reset Z/Max preview to base on every new open so it doesn't persist across mons.
+            window._sumUpgradeMode = 'base';
             window.switchSummaryTab(1);
             sumModal.classList.remove('hidden');
-            let nav = document.querySelector('.summary-party-nav');
-            if (nav) {
-                const showNav = window._summaryDraftPartyList && window._summaryDraftPartyList.length > 1;
-                nav.style.display = showNav ? '' : 'none';
-            }
-            let reorderRow = document.getElementById('story-team-reorder-row');
+            const reorderRow = document.getElementById('story-team-reorder-row');
             if (reorderRow) {
                 const showReorder = !!(opts.storyReorder && window._summaryDraftPartyList && window._summaryDraftPartyList.length > 1);
                 reorderRow.classList.toggle('hidden', !showReorder);
                 reorderRow.style.display = showReorder ? 'flex' : 'none';
             }
-            let sumScroll = document.getElementById('summary-pages-scroll');
+            const sumScroll = document.getElementById('summary-pages-scroll');
             if (sumScroll) sumScroll.scrollTop = 0;
-            window.updateSummaryNavUI();
         };
 
         window.showSummary = function(index, isP1 = true, opts) {
@@ -14545,32 +14688,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             window._summaryShowEVs = false;
             window._summaryDraftPoolMode = false;
             window._summaryDraftPartyList = null;
-            let reorderRow = document.getElementById('story-team-reorder-row');
+            const reorderRow = document.getElementById('story-team-reorder-row');
             if (reorderRow) { reorderRow.classList.add('hidden'); reorderRow.style.display = 'none'; }
-            let resetTab = opts.resetTab !== false;
-            let party = isP1 ? state.playerParty : state.foeParty;
+            const resetTab = opts.resetTab !== false;
+            const party = isP1 ? state.playerParty : state.foeParty;
             if (!party || index < 0 || index >= party.length) return;
             window._summaryIdx = index;
             window._summaryIsP1 = !!isP1;
             summaryTarget = party[index];
-            let nav = document.querySelector('.summary-party-nav');
-            if (nav) nav.style.display = '';
-            if (resetTab) window.switchSummaryTab(1);
-            else window.switchSummaryTab(window._summaryActivePage || 1);
+            if (resetTab) {
+                // Fresh open — reset preview mode and start on Overview.
+                window._sumUpgradeMode = 'base';
+                window.switchSummaryTab(1);
+            } else {
+                window.switchSummaryTab(window._summaryActivePage || 1);
+            }
             document.getElementById('modal-summary').classList.remove('hidden');
-            let sumScroll = document.getElementById('summary-pages-scroll');
+            const sumScroll = document.getElementById('summary-pages-scroll');
             if (sumScroll) sumScroll.scrollTop = 0;
-            window.updateSummaryNavUI();
         };
 
         window.summaryNavigateParty = function(delta) {
             if (!summaryTarget || !delta) return;
+            // Draft / story party list mode — navigate the precomputed list of {name, build} entries.
             if (window._summaryDraftPartyList && window._summaryDraftPartyList.length > 1) {
-                let list = window._summaryDraftPartyList;
-                let n = list.length;
-                let idx = window._summaryDraftPartyIdx + delta;
+                const list = window._summaryDraftPartyList;
+                const n = list.length;
+                const idx = window._summaryDraftPartyIdx + delta;
                 if (idx < 0 || idx >= n) return;
-                let entry = list[idx];
+                const entry = list[idx];
                 if (!entry || !entry.name) return;
                 let next;
                 try {
@@ -14584,14 +14730,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 window._storySumIdx = idx;
                 summaryTarget = next;
                 window.switchSummaryTab(window._summaryActivePage || 1);
-                window.updateSummaryNavUI();
                 return;
             }
+            // Draft pool preview — nothing to navigate to.
             if (window._summaryDraftPoolMode) return;
-            let party = window._summaryIsP1 ? state.playerParty : state.foeParty;
+            // Battle / in-game party — navigate live party array.
+            const party = window._summaryIsP1 ? state.playerParty : state.foeParty;
             if (!party || party.length <= 1) return;
-            let n = party.length;
-            let idx = ((window._summaryIdx + delta) % n + n) % n;
+            const n = party.length;
+            const idx = ((window._summaryIdx + delta) % n + n) % n;
             window.showSummary(idx, window._summaryIsP1, { resetTab: false });
         };
 
@@ -14624,10 +14771,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         if (!window._summaryKeyNavBound) {
             window._summaryKeyNavBound = true;
             document.addEventListener('keydown', function(e) {
-                let mod = document.getElementById('modal-summary');
+                const mod = document.getElementById('modal-summary');
                 if (!mod || mod.classList.contains('hidden')) return;
+                // Up/Down — navigate party. Left/Right — switch tabs. Esc — close.
                 if (e.key === 'ArrowUp') { e.preventDefault(); window.summaryNavigateParty(-1); }
                 else if (e.key === 'ArrowDown') { e.preventDefault(); window.summaryNavigateParty(1); }
+                else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    const cur = window._summaryActivePage || 1;
+                    const delta = e.key === 'ArrowLeft' ? -1 : 1;
+                    const next = ((cur - 1 + delta + 3) % 3) + 1;
+                    window.switchSummaryTab(next);
+                }
+                else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    window.closeModal('modal-summary');
+                }
             });
         }
 
@@ -14673,228 +14832,512 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             </div>`;
         }
 
+        /** Stat-stage tooltip / display labels. */
+        const SUM_STAT_LABELS = { hp:'HP', atk:'Atk', def:'Def', spa:'SpA', spd:'SpD', spe:'Spe', acc:'Acc', eva:'Eva' };
+
+        /** Render the persistent header (sprite, name, types, gimmicks, live battle state, party nav).
+         *  Runs every switchSummaryTab call so HP/status/stages/volatiles reflect live battle data. */
+        function renderSummaryHeader(s) {
+            const headerEl = document.getElementById('sum-header');
+            if (!headerEl || !s) return;
+            const bd = s.buildData || {};
+            const isFoe = !window._summaryIsP1;
+
+            // Effective typing — switches to pure Tera type if Terastallized in-battle.
+            const effType1 = s.teraActivated ? (bd.teraType || s.type1) : s.type1;
+            const effType2 = s.teraActivated ? null : s.type2;
+
+            // Gimmick badges — hide foe's Tera type until they activate (canonical VGC reveal rules).
+            const gimm = [];
+            if (bd.gimmick === 'MEGA' || s.megaEvolved) {
+                gimm.push(`<span class="sum-gimm-badge" style="background:#7b1fa2;color:#fff;">MEGA${s.megaEvolved ? '' : ' READY'}</span>`);
+            }
+            if (bd.gimmick === 'GMAXDYNAMAX' || bd.gimmick === 'DYNAMAX' || s.dynamaxed) {
+                const label = (bd.gimmick === 'GMAXDYNAMAX') ? 'G-MAX' : 'DYNAMAX';
+                gimm.push(`<span class="sum-gimm-badge" style="background:#b71c1c;color:#fff;">${label}${s.dynamaxed ? '' : ' READY'}</span>`);
+            }
+            if (bd.gimmick === 'ZMOVE' || s.zMoveUsed) {
+                gimm.push(`<span class="sum-gimm-badge" style="background:#f9a825;color:#000;">Z-MOVE${s.zMoveUsed ? ' USED' : ' READY'}</span>`);
+            }
+            if (bd.teraType || s.teraActivated) {
+                const _hideForFoe = isFoe && !s.teraActivated;
+                const tDisp = _hideForFoe ? '???' : (bd.teraType || '');
+                gimm.push(`<span class="sum-gimm-badge" style="background:#0277bd;color:#fff;">TERA ${tDisp}${s.teraActivated ? '' : ' READY'}</span>`);
+            }
+            if (s.isShiny) gimm.push(`<span class="sum-gimm-badge" style="background:#ffd700;color:#000;">✦ SHINY</span>`);
+
+            // Live battle state — only render the live row when there's something dynamic to show.
+            const liveHtml = buildSummaryLiveRow(s);
+
+            // Party navigation visibility:
+            //   - Draft party list mode (story reorder, gauntlet swap): only when length > 1
+            //   - Draft pool mode (single-mon preview from pool): hidden
+            //   - In-battle / generic mode: always visible (disabled state set by updateSummaryNavUI)
+            let showParty;
+            if (window._summaryDraftPartyList) showParty = window._summaryDraftPartyList.length > 1;
+            else if (window._summaryDraftPoolMode) showParty = false;
+            else {
+                // Battle / in-game route — read live party. Guard against the modal being opened
+                // before state.playerParty exists (e.g. on the title screen via dev tools).
+                const party = (typeof state !== 'undefined' && state)
+                    ? (window._summaryIsP1 ? state.playerParty : state.foeParty)
+                    : null;
+                showParty = !!(party && party.length);
+            }
+            const navHtml = showParty ? `<div class="sum-header-party">
+                <button type="button" id="sum-nav-up" class="sum-nav-btn" onclick="window.summaryNavigateParty(-1)" aria-label="Previous Pokémon">▲</button>
+                <span id="summary-party-slot" class="summary-party-slot-label">1/1</span>
+                <button type="button" id="sum-nav-down" class="sum-nav-btn" onclick="window.summaryNavigateParty(1)" aria-label="Next Pokémon">▼</button>
+            </div>` : '';
+
+            // Nickname (story mode persists nicknames on the team entry, not the battle mon).
+            let nickHtml = '';
+            try {
+                if (window.StoryMode && typeof window.StoryMode.isActive === 'function' && window.StoryMode.isActive()) {
+                    const sm = window.StoryMode.state;
+                    if (sm && Array.isArray(sm.team)) {
+                        const idx = (typeof window._summaryDraftPartyIdx === 'number') ? window._summaryDraftPartyIdx
+                                  : (typeof window._summaryIdx === 'number') ? window._summaryIdx : -1;
+                        const entry = (idx >= 0) ? sm.team[idx] : null;
+                        if (entry && entry.nickname && entry.name === s.name) {
+                            nickHtml = `<span class="sum-header-nick">"${entry.nickname}"</span>`;
+                        }
+                    }
+                }
+            } catch (e) {}
+
+            headerEl.innerHTML = `
+                <div class="sum-header-main">
+                    <div class="sum-header-sprite-wrap">
+                        <img class="sum-header-sprite" src="${getSprite(spriteDisplayName(s), s.isShiny)}" alt="${s.name}" onerror="handleSpriteError(this)" style="${s.isShiny ? 'filter:drop-shadow(0 0 6px gold);' : ''}">
+                    </div>
+                    <div class="sum-header-info">
+                        <div class="sum-header-title">
+                            <span class="sum-header-name" id="sum-header-name">${s.name}</span>
+                            ${nickHtml}
+                        </div>
+                        <div class="sum-header-types">${getTypeHTML(effType1, effType2)}${s.teraActivated ? '<span style="font-size:9px;color:#4fc3f7;margin-left:4px;">▼ TERA</span>' : ''}</div>
+                        ${gimm.length ? `<div class="sum-header-gimmicks">${gimm.join('')}</div>` : ''}
+                    </div>
+                    ${navHtml}
+                </div>
+                ${liveHtml}`;
+        }
+
+        /** Build the live battle state row: HP bar, status, stages, volatiles, field-context buffs.
+         *  Returns '' when nothing dynamic is happening (fresh draft pick, full-HP benched mon). */
+        function buildSummaryLiveRow(s) {
+            if (!s) return '';
+            const v = s.volatile || {};
+            const stages = s.stages || {};
+
+            // HP bar — always show; even draft previews show the max-HP-at-full state for context.
+            const hp = Math.max(0, s.currentHp | 0);
+            const max = Math.max(1, s.maxHp | 0);
+            const pct = Math.min(100, (hp / max) * 100);
+            const hpCls = pct <= 20 ? 'hp-low' : (pct <= 50 ? 'hp-mid' : 'hp-high');
+            const hpColor = pct <= 20 ? 'var(--hp-red)' : (pct <= 50 ? 'var(--hp-yellow)' : 'var(--hp-green)');
+            const hpRow = `<div class="sum-hp-row">
+                <span class="sum-hp-label">HP</span>
+                <div class="sum-hp-bar"><div class="sum-hp-fill ${hpCls}" style="width:${pct}%;background:${hpColor};"></div></div>
+                <span class="sum-hp-text">${hp}/${max}</span>
+            </div>`;
+
+            // Build state pills.
+            const pills = [];
+
+            // Status condition (with toxic/sleep counter if applicable).
+            if (s.status) {
+                let label = s.status;
+                if (s.status === 'TOX' && s.statusTurns > 0) label += ` ${s.statusTurns}`;
+                else if (s.status === 'SLP' && s.sleepDuration > 0) label += ` ${s.sleepDuration}`;
+                pills.push(`<span class="sum-state-pill sum-state-pill--status-${s.status}" title="${getStatusTooltip(s.status)}">${label}</span>`);
+            }
+            // Fainted indicator (battle context only).
+            if (hp <= 0) {
+                pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="Knocked out">KO</span>`);
+            }
+
+            // Stat stages: Atk/Def/SpA/SpD/Spe/Acc/Eva.
+            for (const key of ['atk','def','spa','spd','spe','acc','eva']) {
+                const val = stages[key];
+                if (typeof val === 'number' && val !== 0) {
+                    const sign = val > 0 ? '+' : '';
+                    const cls = val > 0 ? 'sum-state-pill--stage-up' : 'sum-state-pill--stage-down';
+                    pills.push(`<span class="sum-state-pill ${cls}" title="${SUM_STAT_LABELS[key]} stage ${sign}${val} (×${getStageMult(val).toFixed(2)})">${SUM_STAT_LABELS[key]} ${sign}${val}</span>`);
+                }
+            }
+            // Crit boost (Focus Energy / Dire Hit / Lansat Berry) tracked as volatile.focusEnergy.
+            if (v.focusEnergy) {
+                const crit = typeof v.focusEnergy === 'number' ? v.focusEnergy : 2;
+                pills.push(`<span class="sum-state-pill sum-state-pill--stage-up" title="Critical-hit ratio +${crit} (Focus Energy / Dire Hit / Lansat Berry)">Crit +${crit}</span>`);
+            }
+
+            // Volatile conditions — surface meaningful ones only.
+            if (v.sub > 0) pills.push(`<span class="sum-state-pill sum-state-pill--neutral" title="Substitute absorbs damage until depleted">Sub ${v.sub}</span>`);
+            if (v.leechSeed) pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="Leech Seed — loses HP each turn">Seeded</span>`);
+            if (v.confusion > 0) pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="Confused — may hit itself (${v.confusion} turn${v.confusion === 1 ? '' : 's'} left)">Confused ${v.confusion}</span>`);
+            if (v.taunt > 0) pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="Taunted — only attacking moves allowed (${v.taunt} turn${v.taunt === 1 ? '' : 's'} left)">Taunt ${v.taunt}</span>`);
+            if (v.encore > 0 && v.encoreMove) pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="Encore — locked into ${v.encoreMove} (${v.encore} turn${v.encore === 1 ? '' : 's'} left)">Encore: ${v.encoreMove}</span>`);
+            if (v.disabled && v.disabledTurns > 0) pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="${v.disabled} disabled (${v.disabledTurns} turn${v.disabledTurns === 1 ? '' : 's'} left)">Dis: ${v.disabled}</span>`);
+            if (v.perishCount >= 0) pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="Perish Song — KO at 0">Perish ${v.perishCount}</span>`);
+            if (v.cursed) pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="Cursed — loses HP each turn">Curse</span>`);
+            if (v.partialTrap > 0) {
+                const src = v.partialTrapSrc || 'Trap';
+                const sticky = src === 'Octolock' || v.partialTrap > 120;
+                pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="${src} — trapped${sticky ? ' (sticky)' : ` (${v.partialTrap} turn${v.partialTrap === 1 ? '' : 's'} left)`}">${sticky ? 'Octolock' : `${src} ${v.partialTrap}`}</span>`);
+            }
+            if (v.yawnTurns > 0) pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="Yawn — falling asleep in ${v.yawnTurns} turn${v.yawnTurns === 1 ? '' : 's'}">Yawn ${v.yawnTurns}</span>`);
+            if (v.healBlock > 0) pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="Heal Block — cannot heal (${v.healBlock} turn${v.healBlock === 1 ? '' : 's'} left)">Heal-Block ${v.healBlock}</span>`);
+            if (v.throatChop > 0) pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="Throat Chop — sound moves blocked (${v.throatChop} turn${v.throatChop === 1 ? '' : 's'} left)">Throat ${v.throatChop}</span>`);
+            if (v.embargo > 0) pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="Embargo — item disabled (${v.embargo} turn${v.embargo === 1 ? '' : 's'} left)">Embargo ${v.embargo}</span>`);
+            if (v.torment) pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="Torment — cannot use the same move twice in a row">Torment</span>`);
+            if (v.lockMove && v.lockTurns > 0) pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="Locked into ${v.lockMove} (${v.lockTurns} turn${v.lockTurns === 1 ? '' : 's'} left)">Lock: ${v.lockMove}</span>`);
+            if (v.aquaRing) pills.push(`<span class="sum-state-pill sum-state-pill--buff" title="Aqua Ring — recovers 1/16 HP each turn">Aqua Ring</span>`);
+            if (v.ingrain) pills.push(`<span class="sum-state-pill sum-state-pill--neutral" title="Ingrained — heals each turn but can't switch out">Ingrain</span>`);
+            if (v.magnetRise) pills.push(`<span class="sum-state-pill sum-state-pill--buff" title="Magnet Rise — Ground-immune">Magnet Rise</span>`);
+            if (v.destinyBond) pills.push(`<span class="sum-state-pill sum-state-pill--neutral" title="Destiny Bond — if KO'd, the attacker faints too">D-Bond</span>`);
+            if (v.recharge) pills.push(`<span class="sum-state-pill sum-state-pill--debuff" title="Must recharge — cannot move this turn">Recharging</span>`);
+            if (v.charging && typeof v.charging === 'string') pills.push(`<span class="sum-state-pill sum-state-pill--neutral" title="Charging ${v.charging}">Charging: ${v.charging}</span>`);
+            if (v.futureSightTurns > 0) pills.push(`<span class="sum-state-pill sum-state-pill--neutral" title="${v.futureSightName || 'Future Sight'} inbound (${v.futureSightTurns} turn${v.futureSightTurns === 1 ? '' : 's'})">FS ${v.futureSightTurns}</span>`);
+            if (v.wishHp > 0 && v.wishTurns > 0) pills.push(`<span class="sum-state-pill sum-state-pill--buff" title="Wish — restores ${v.wishHp} HP in ${v.wishTurns} turn${v.wishTurns === 1 ? '' : 's'}">Wish ${v.wishTurns}</span>`);
+            if (v.protect) pills.push(`<span class="sum-state-pill sum-state-pill--buff" title="Protected from attacks this turn">Protect</span>`);
+            if (v.endure) pills.push(`<span class="sum-state-pill sum-state-pill--buff" title="Will survive any attack at 1 HP this turn">Endure</span>`);
+            if (v.stockpile > 0) pills.push(`<span class="sum-state-pill sum-state-pill--buff" title="Stockpile ${v.stockpile} — boosts defenses">Stockpile ${v.stockpile}</span>`);
+
+            // Field-context buffs — flag abilities/items that are firing because of weather/terrain.
+            const fieldNote = getSummaryFieldContext(s);
+            if (fieldNote) pills.push(`<span class="sum-state-pill sum-state-pill--field" title="${fieldNote.tip}">${fieldNote.label}</span>`);
+
+            // In battle / in-game contexts always surface HP — the player wants to see live HP
+            // even for an undamaged benched mon. For draft pool / draft party previews, hide
+            // the live row entirely at full HP with no state (keeps preview clean).
+            const inBattleCtx = !window._summaryDraftPoolMode && !window._summaryDraftPartyList;
+            const hasState = pills.length > 0 || hp !== max || !!s.status;
+            if (!inBattleCtx && !hasState) return '';
+            return `<div class="sum-live-row">${hpRow}${pills.length ? `<div class="sum-state-pills">${pills.join('')}</div>` : ''}</div>`;
+        }
+
+        /** Tooltip body for a status condition badge. */
+        function getStatusTooltip(st) {
+            const m = {
+                BRN: 'Burn — loses 1/16 HP each turn · Physical attack halved',
+                PSN: 'Poisoned — loses 1/8 HP each turn',
+                TOX: 'Badly Poisoned — escalating HP loss each turn',
+                PAR: 'Paralyzed — Speed quartered · 25% chance to skip turn',
+                SLP: 'Asleep — cannot move (Sleep Talk / Snore excepted)',
+                FRZ: 'Frozen — cannot move (Fire moves thaw)'
+            };
+            return m[st] || st;
+        }
+
+        /** Detect ability/item buffs that fire because of current weather/terrain. */
+        function getSummaryFieldContext(s) {
+            if (!s || !s.ability) return null;
+            const ab = s.ability;
+            const w = (typeof getCurrentWeather === 'function') ? getCurrentWeather() : null;
+            const t = (typeof state !== 'undefined' && state) ? state.terrain : null;
+            const tActive = (typeof state !== 'undefined' && state) ? state.terrainTurns > 0 : false;
+            const inSun = (w === 'Sun' || w === 'HarshSun');
+            const inRain = (w === 'Rain' || w === 'HeavyRain');
+            if (ab === 'Chlorophyll' && inSun) return { label: 'Chlorophyll ▲', tip: 'Speed doubled in sun' };
+            if (ab === 'Swift Swim' && inRain) return { label: 'Swift Swim ▲', tip: 'Speed doubled in rain' };
+            if (ab === 'Sand Rush' && w === 'Sandstorm') return { label: 'Sand Rush ▲', tip: 'Speed doubled in sandstorm' };
+            if (ab === 'Slush Rush' && (w === 'Hail' || w === 'Snow')) return { label: 'Slush Rush ▲', tip: 'Speed doubled in snow/hail' };
+            if (ab === 'Surge Surfer' && t === 'Electric' && tActive) return { label: 'Surge Surfer ▲', tip: 'Speed doubled on Electric Terrain' };
+            if (ab === 'Solar Power' && inSun) return { label: 'Solar Power ▲', tip: 'SpA ×1.5 in sun (chips 1/8 HP/turn)' };
+            if (ab === 'Flower Gift' && inSun) return { label: 'Flower Gift ▲', tip: 'Atk and SpD ×1.5 in sun' };
+            if (ab === 'Sand Force' && w === 'Sandstorm') return { label: 'Sand Force ▲', tip: 'Rock/Ground/Steel moves ×1.3 in sand' };
+            return null;
+        }
+
+        /** Render an individual stat-bar row with nature, EV-derived value, and live stage multiplier. */
+        function renderSummaryStatBar(s, sk, nMod, sumBoosts) {
+            const isUp = nMod && sk === nMod.up;
+            const isDown = nMod && sk === nMod.down;
+            const isHp = sk === 'hp';
+            const raw = isHp ? s.maxHp : s.stats[sk];
+            const stage = (!isHp && s.stages && typeof s.stages[sk] === 'number') ? s.stages[sk] : 0;
+            const stageMult = stage !== 0 ? getStageMult(stage) : 1;
+            const itemAbiMult = sumBoosts[sk] || 1;
+            // Composite multiplier shown as "(eff)" suffix when anything is changing the base.
+            const totalMult = stageMult * itemAbiMult;
+            const accent = isUp ? '#ff8a65' : (isDown ? '#7986cb' : getStatColor(raw));
+            const arrow = isUp ? ' ▲' : isDown ? ' ▼' : '';
+            const max = isHp ? (window.HP_SCALE_MAX || 500) : (window.STAT_SCALE_MAX || 250);
+            const pct = Math.min(100, (raw / max) * 100);
+            let valHtml = `${raw}`;
+            if (totalMult !== 1) {
+                const eff = Math.floor(raw * totalMult);
+                let extra = '';
+                if (stage !== 0 && itemAbiMult !== 1) extra = ` ×${stageMult.toFixed(2)}·${itemAbiMult.toFixed(2)}`;
+                else if (stage !== 0) extra = ` ×${stageMult.toFixed(2)}`;
+                else extra = ` ×${itemAbiMult.toFixed(2)}`;
+                valHtml = `${raw}<span style="color:#ffd54f;font-size:0.85em;opacity:0.92;" title="Live battle multiplier${extra}"> (${eff})</span>`;
+            }
+            const label = SUM_STAT_LABELS[sk] + arrow;
+            return `<div class="summary-stat-row">
+                <span class="summary-stat-label" style="color:${accent};">${label}</span>
+                <div class="summary-stat-bar-bg"><div class="summary-stat-bar-fill" style="width:${pct}%;background:${accent};"></div></div>
+                <span class="summary-stat-val" style="color:${accent};">${valHtml}</span>
+            </div>`;
+        }
+
         window.switchSummaryTab = function(page) {
-            let s = summaryTarget;
+            const s = summaryTarget;
             if (!s) return;
             window._summaryActivePage = page;
-            let bd = s.buildData || {};
+            const bd = s.buildData || {};
 
-            // Update tab buttons
+            // Refresh persistent header so HP/status/stages stay live.
+            renderSummaryHeader(s);
+
+            // Update tab buttons + aria state.
             [1,2,3].forEach(i => {
-                let tab = document.getElementById(`sum-tab-${i}`);
-                let pg = document.getElementById(`sum-page-${i}`);
-                if (tab) tab.classList.toggle('active', i === page);
+                const tab = document.getElementById(`sum-tab-${i}`);
+                const pg = document.getElementById(`sum-page-${i}`);
+                if (tab) {
+                    tab.classList.toggle('active', i === page);
+                    tab.setAttribute('aria-selected', i === page ? 'true' : 'false');
+                }
                 if (pg) pg.classList.toggle('active', i === page);
             });
 
             if (page === 1) {
-                // === PAGE 1: OVERVIEW ===
-                let nMod = natureModifiers[s.nature] || null;
-                let statUp = nMod ? nMod.up : null, statDown = nMod ? nMod.down : null;
-                let statKeys = ['atk','def','spa','spd','spe'];
-                let statLabels = {hp:'HP',atk:'Atk',def:'Def',spa:'SpA',spd:'SpD',spe:'Spe'};
-                let total = s.maxHp + s.stats.atk + s.stats.def + s.stats.spa + s.stats.spd + s.stats.spe;
+                // === OVERVIEW ===
+                const nMod = natureModifiers[s.nature] || null;
+                const total = s.maxHp + s.stats.atk + s.stats.def + s.stats.spa + s.stats.spd + s.stats.spe;
+                const sumBoosts = getSummaryStatBoosts(s);
+                // When the live header is showing current HP, the HP stat bar in Overview is
+                // visually redundant — skip it so the player isn't reading the same number twice.
+                // (We always include the 5 non-HP stat bars; total stat sum still includes HP.)
+                const hasLiveHp = !!document.querySelector('#sum-header .sum-hp-row');
+                const statKeys = hasLiveHp ? ['atk','def','spa','spd','spe'] : ['hp','atk','def','spa','spd','spe'];
+                const statBars = statKeys.map(sk => renderSummaryStatBar(s, sk, nMod, sumBoosts)).join('');
 
-                // Stat bars with nature color tint
-                const _sumBoosts = getSummaryStatBoosts(s);
-                let statBarsHtml = `<div class="summary-stat-row">
-                    <span class="summary-stat-label">HP</span>
-                    <div class="summary-stat-bar-bg"><div class="summary-stat-bar-fill" style="width:${Math.min(100,(s.maxHp/(window.HP_SCALE_MAX||500))*100)}%;background:${getStatColor(s.maxHp)};"></div></div>
-                    <span class="summary-stat-val" style="color:${getStatColor(s.maxHp)}">${s.maxHp}</span></div>`;
-                for (let sk of statKeys) {
-                    let isUp = sk === statUp, isDown = sk === statDown;
-                    let accent = isUp ? '#ff6b6b' : (isDown ? '#6b9fff' : getStatColor(s.stats[sk]));
-                    let label = statLabels[sk] + (isUp ? ' ▲' : isDown ? ' ▼' : '');
-                    let rawVal = s.stats[sk];
-                    let effMult = _sumBoosts[sk] || 1;
-                    let effVal = effMult !== 1 ? Math.floor(rawVal * effMult) : null;
-                    let valHtml = effVal !== null
-                        ? `${rawVal}<span style="color:#ffd700;font-size:0.85em;opacity:0.9"> (${effVal})</span>`
-                        : `${rawVal}`;
-                    statBarsHtml += `<div class="summary-stat-row">
-                        <span class="summary-stat-label" style="color:${accent}">${label}</span>
-                        <div class="summary-stat-bar-bg"><div class="summary-stat-bar-fill" style="width:${Math.min(100,(rawVal/(window.STAT_SCALE_MAX||250))*100)}%;background:${accent};"></div></div>
-                        <span class="summary-stat-val" style="color:${accent}">${valHtml}</span></div>`;
+                // Nature line with up/down highlights.
+                const natureLine = s.nature + (nMod
+                    ? ` <span style="color:#ff8a65;font-size:10px;">▲${SUM_STAT_LABELS[nMod.up]}</span> <span style="color:#7986cb;font-size:10px;">▼${SUM_STAT_LABELS[nMod.down]}</span>`
+                    : ' <span style="color:#666;font-size:10px;">(neutral)</span>');
+
+                // EV/IV display — opt-in for player perspective via _summaryShowEVs flag (story mode).
+                let evIvHtml = '';
+                if (window._summaryShowEVs && bd) {
+                    const evs = bd.evs || {};
+                    const ivs = bd.ivs || {};
+                    const allKeys = ['hp','atk','def','spa','spd','spe'];
+                    const evTotal = allKeys.reduce((sum, k) => sum + (evs[k] || 0), 0);
+                    const evCells = allKeys.map(k => `<span><i>${SUM_STAT_LABELS[k]}</i> ${evs[k] || 0}</span>`).join('');
+                    const ivCells = allKeys.map(k => `<span><i>${SUM_STAT_LABELS[k]}</i> ${ivs[k] != null ? ivs[k] : 31}</span>`).join('');
+                    evIvHtml = `<div class="sum-evs-row">
+                        <b>EVs (${evTotal}/510)</b>
+                        <div class="sum-evs-grid">${evCells}</div>
+                        <b style="display:block;margin-top:6px;color:#80deea;">IVs</b>
+                        <div class="sum-evs-grid">${ivCells}</div>
+                    </div>`;
                 }
 
-                // Gimmick dashboard
-                let gimBadges = '';
-                if (bd.gimmick === 'MEGA' || s.megaEvolved) {
-                    let active = s.megaEvolved ? '' : ' (ready)';
-                    gimBadges += `<span class="sum-gimm-badge" style="background:#7b1fa2;color:#fff;">MEGA${active}</span>`;
-                }
-                if (bd.gimmick === 'GMAXDYNAMAX' || bd.gimmick === 'DYNAMAX' || s.dynamaxed) {
-                    let label = bd.gimmick === 'GMAXDYNAMAX' ? 'G-MAX' : 'DYNAMAX';
-                    let active = s.dynamaxed ? '' : ' (ready)';
-                    gimBadges += `<span class="sum-gimm-badge" style="background:#b71c1c;color:#fff;">${label}${active}</span>`;
-                }
-                if (bd.gimmick === 'ZMOVE' || s.zMoveUsed) {
-                    let used = s.zMoveUsed ? ' (used)' : ' (ready)';
-                    gimBadges += `<span class="sum-gimm-badge" style="background:#f9a825;color:#000;">Z-MOVE${used}</span>`;
-                }
-                if (bd.teraType || s.teraActivated) {
-                    let ttype = bd.teraType || '';
-                    let active = s.teraActivated ? '' : ' (ready)';
-                    // Hide pre-activation Tera type on foe Pokémon (canonical VGC: opponent sees badge but not type).
-                    let _hideForFoe = !window._summaryIsP1 && !s.teraActivated;
-                    let _display = _hideForFoe ? '???' : ttype;
-                    gimBadges += `<span class="sum-gimm-badge" style="background:#0277bd;color:#fff;">TERA ${_display}${active}</span>`;
-                }
-                if (s.isShiny) gimBadges += `<span class="sum-gimm-badge" style="background:#ffd700;color:#000;">SHINY</span>`;
+                // Item / Ability live values (s.item / s.ability are battle-current; bd.i / bd.a are originals).
+                const itemNow = s.item || 'No Item';
+                const itemOrig = s.originalItem || bd.i || '';
+                const itemChanged = itemOrig && itemNow !== itemOrig;
+                const itemDisplay = itemChanged
+                    ? `${itemNow}<span style="color:#888;font-size:9px;display:block;">was: ${itemOrig}</span>`
+                    : itemNow;
+                const abilityNow = s.ability || 'None';
+                const abilityOrig = bd.a || '';
+                const abilityChanged = abilityOrig && abilityNow !== abilityOrig;
+                const abilityDisplay = abilityChanged
+                    ? `${abilityNow}<span style="color:#888;font-size:9px;display:block;">was: ${abilityOrig}</span>`
+                    : abilityNow;
 
-                // Effective typing display (changes if tera activated)
-                let effType1 = s.teraActivated ? bd.teraType : s.type1;
-                let effType2 = s.teraActivated ? null : s.type2;
-                let typingNote = s.teraActivated ? `<div style="font-size:10px;color:#0277bd;margin-top:2px;">Terastallized - type changed</div>` : '';
-
-                let natureLine = s.nature + (nMod ? ` <span style="color:#ff6b6b;font-size:10px;">+${statLabels[nMod.up]}</span> <span style="color:#6b9fff;font-size:10px;">-${statLabels[nMod.down]}</span>` : '');
+                // Gender + level summary (level is locked at Lv50 in this game).
+                let metaBits = '';
+                if (s.gender === 'M') metaBits += '<span style="color:#64b5f6;">♂</span>';
+                else if (s.gender === 'F') metaBits += '<span style="color:#f48fb1;">♀</span>';
+                metaBits += '<span style="color:#888;">Lv50</span>';
 
                 document.getElementById('sum-page-1').innerHTML = `
-                <div class="sum-overview">
-                    <div class="sum-overview-top">
-                        <div class="sum-overview-left">
-                            <img class="sum-overview-img" src="${getSprite(spriteDisplayName(s), s.isShiny)}" alt="${s.name}" onerror="handleSpriteError(this)" style="${s.isShiny?'filter:drop-shadow(0 0 6px gold);':''}">
-                            <div class="sum-overview-name">${s.name}</div>
-                            <div class="sum-overview-types">${getTypeHTML(effType1, effType2)}</div>
-                            ${typingNote}
-                            ${gimBadges ? `<div class="sum-gimmick-row sum-gimmick-row--tight">${gimBadges}</div>` : ''}
-                        </div>
-                        <div class="sum-overview-stats">
-                            ${statBarsHtml}
-                            <div class="sum-overview-total">Total: ${total}</div>
-                            ${(window._summaryShowEVs && bd && bd.evs) ? `<div class="sum-ev-row" style="font-size:10px;color:#aaa;margin-top:4px;border-top:1px dashed #333;padding-top:4px;"><b style="color:#9ccc65;">EVs</b>: HP ${bd.evs.hp||0} · Atk ${bd.evs.atk||0} · Def ${bd.evs.def||0} · SpA ${bd.evs.spa||0} · SpD ${bd.evs.spd||0} · Spe ${bd.evs.spe||0}</div>` : ''}
-                        </div>
-                    </div>
+                    <div class="sum-stats-grid">${statBars}</div>
+                    <div class="sum-stat-total"><span>Base stat total</span><b>${total}</b></div>
                     <div class="sum-overview-details">
-                        <div class="sum-detail-cell"><span class="sum-detail-lbl">Item</span><span class="hover-text" data-tip-key="${encodeURIComponent(s.item || 'No Item')}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()" style="color:#ddd;">${s.item || 'No Item'}</span></div>
-                        <div class="sum-detail-cell"><span class="sum-detail-lbl">Ability</span><span class="hover-text" data-tip-key="${encodeURIComponent(s.ability || 'None')}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()" style="color:#ddd;">${s.ability || 'None'}</span></div>
-                        <div class="sum-detail-cell"><span class="sum-detail-lbl">Nature</span><div>${natureLine}</div></div>
+                        <div class="sum-detail-cell"><span class="sum-detail-lbl">Item</span><span class="sum-detail-val hover-text" data-tip-key="${encodeURIComponent(itemNow)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${itemDisplay}</span></div>
+                        <div class="sum-detail-cell"><span class="sum-detail-lbl">Ability</span><span class="sum-detail-val hover-text" data-tip-key="${encodeURIComponent(abilityNow)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${abilityDisplay}</span></div>
+                        <div class="sum-detail-cell"><span class="sum-detail-lbl">Nature</span><span class="sum-detail-val">${natureLine}</span></div>
+                        <div class="sum-detail-cell sum-detail-cell--full"><span class="sum-detail-lbl">Profile</span><span class="sum-detail-val" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">${metaBits}</span></div>
                     </div>
-                </div>`;
+                    ${evIvHtml}`;
 
             } else if (page === 2) {
-                // === PAGE 2: MOVES ===
-                const sereneGraceNote = s.ability === 'Serene Grace'
-                    ? `<div style="font-size:10px;color:#e1bee7;background:rgba(40,20,50,0.55);border:1px solid #7b1fa2;border-radius:3px;padding:4px 8px;margin-bottom:8px;">Serene Grace: secondary effect odds are doubled in battle (capped at 100%).</div>`
-                    : '';
-                let canUpgradeZ = bd.gimmick === 'ZMOVE' && !s.zMoveUsed;
-                let canUpgradeDyna = bd.gimmick === 'DYNAMAX' || bd.gimmick === 'GMAXDYNAMAX';
-                let upgradeMode = window._sumUpgradeMode || 'base';
-                let summarySpriteHeader = `<div class="sum-overview-left" style="margin-bottom:8px;">
-                    <img class="sum-overview-img" src="${getSprite(spriteDisplayName(s), s.isShiny)}" alt="${s.name}" onerror="handleSpriteError(this)" style="${s.isShiny?'filter:drop-shadow(0 0 6px gold);':''}">
-                    <div class="sum-overview-name" style="margin-top:6px;">${s.name}</div>
-                    <div class="sum-overview-types">${getTypeHTML(s.type1, s.type2)}</div>
-                </div>`;
+                // === MOVES ===
+                const canUpgradeZ = bd.gimmick === 'ZMOVE' && !s.zMoveUsed;
+                const canUpgradeDyna = bd.gimmick === 'DYNAMAX' || bd.gimmick === 'GMAXDYNAMAX';
+                const upgradeMode = window._sumUpgradeMode || 'base';
+                const v = s.volatile || {};
 
-                let movesHtml = '';
-                s.moves.forEach((rawMove, i) => {
+                // Toggle buttons for Z / Max preview.
+                let modeRowHtml = '';
+                const mkModeBtn = (mode, label, color) => {
+                    const active = upgradeMode === mode;
+                    const style = active ? `border-color:${color};color:${color};` : '';
+                    return `<button type="button" class="sum-mode-btn" style="${style}" onclick="window._sumUpgradeMode='${mode}';window.switchSummaryTab(2)">${label}</button>`;
+                };
+                if (canUpgradeZ && canUpgradeDyna) {
+                    modeRowHtml = `<div class="sum-mode-row">${mkModeBtn('base','Base','var(--accent)')}${mkModeBtn('z','Z-Power','#f9a825')}${mkModeBtn('max','Max','#ef5350')}</div>`;
+                } else if (canUpgradeZ) {
+                    modeRowHtml = `<div class="sum-mode-row">${mkModeBtn('base','Base','var(--accent)')}${mkModeBtn('z','View Z-Power','#f9a825')}</div>`;
+                } else if (canUpgradeDyna) {
+                    modeRowHtml = `<div class="sum-mode-row">${mkModeBtn('base','Base','var(--accent)')}${mkModeBtn('max','View Max','#ef5350')}</div>`;
+                }
+
+                // Top-level "what is restricting moves right now" note. Multiple can stack:
+                // hard locks (Choice / Encore / lockMove) get priority; secondary blocks (Taunt,
+                // Throat Chop, Heal Block, Torment, Disable, Imprison) come after.
+                const lockNotes = [];
+                if (v.lockMove && v.lockTurns > 0) lockNotes.push(`Locked into <b>${v.lockMove}</b> for ${v.lockTurns} more turn${v.lockTurns === 1 ? '' : 's'}.`);
+                else if (v.encore > 0 && v.encoreMove) lockNotes.push(`Encored — must repeat <b>${v.encoreMove}</b> for ${v.encore} more turn${v.encore === 1 ? '' : 's'}.`);
+                else if (v.choiceLock) lockNotes.push(`Choice-locked into <b>${v.choiceLock}</b>.`);
+                if (v.taunt > 0) lockNotes.push(`Taunted — status moves blocked (${v.taunt} turn${v.taunt === 1 ? '' : 's'} left).`);
+                if (v.throatChop > 0) lockNotes.push(`Throat Chop — sound moves blocked (${v.throatChop} turn${v.throatChop === 1 ? '' : 's'} left).`);
+                if (v.healBlock > 0) lockNotes.push(`Heal Block — healing moves blocked (${v.healBlock} turn${v.healBlock === 1 ? '' : 's'} left).`);
+                if (v.torment) lockNotes.push(`Tormented — can't use the same move twice in a row.`);
+                if (v.disabled && v.disabledTurns > 0) lockNotes.push(`Disabled: <b>${v.disabled}</b> (${v.disabledTurns} turn${v.disabledTurns === 1 ? '' : 's'} left).`);
+                const lockNoteHtml = lockNotes.length
+                    ? `<div class="sum-note sum-note--warn">${lockNotes.join(' ')}</div>`
+                    : '';
+
+                // Serene Grace flavour note.
+                const sereneNote = s.ability === 'Serene Grace'
+                    ? `<div class="sum-note sum-note--accent">Serene Grace: secondary effect odds doubled in battle (capped at 100%).</div>`
+                    : '';
+
+                // Per-move blocking flags. We mirror the active-mon move-button gating logic
+                // (sound / healing sets are duplicated locally to avoid coupling to the move
+                // grid renderer; if either grows, refactor into a shared SOUND_MOVES set).
+                const SUM_SOUND_MOVES = new Set(["Alluring Voice","Boomburst","Bug Buzz","Chatter","Clanging Scales","Clangorous Soul","Confide","Disarming Voice","Echoed Voice","Eerie Spell","Grass Whistle","Growl","Heal Bell","Howl","Hyper Voice","Metal Sound","Noble Roar","Overdrive","Parting Shot","Perish Song","Psychic Noise","Relic Song","Roar","Round","Screech","Sing","Snarl","Snore","Sparkling Aria","Supersonic","Torch Song","Uproar"]);
+                const SUM_HEALING_MOVES = new Set(["Recover","Roost","Moonlight","Morning Sun","Synthesis","Slack Off","Soft-Boiled","Milk Drink","Heal Order","Shore Up","Strength Sap","Wish","Rest","Heal Bell","Heal Pulse"]);
+                function moveBlockedReason(rawMove) {
+                    if (rawMove.pp <= 0) return 'No PP';
+                    if (v.choiceLock && v.choiceLock !== rawMove.name) return `Choice-locked into ${v.choiceLock}`;
+                    if (v.encore > 0 && v.encoreMove && v.encoreMove !== rawMove.name) return `Encored into ${v.encoreMove}`;
+                    if (v.lockMove && v.lockMove !== rawMove.name && v.lockTurns > 0) return `Locked into ${v.lockMove}`;
+                    if (v.disabled && v.disabled === rawMove.name && v.disabledTurns > 0) return `Disabled`;
+                    if (v.taunt > 0 && rawMove.cat === 'Status') return `Taunted — status blocked`;
+                    if (v.throatChop > 0 && SUM_SOUND_MOVES.has(rawMove.name)) return `Throat Chop — sound blocked`;
+                    if (v.healBlock > 0 && SUM_HEALING_MOVES.has(rawMove.name)) return `Heal Block`;
+                    if (v.torment && v.lastMoveUsed === rawMove.name) return `Torment — can't repeat`;
+                    return null;
+                }
+
+                // Move cards.
+                const movesHtml = s.moves.map((rawMove, i) => {
                     let displayMove = rawMove;
                     let cardClass = 'sum-move-card';
                     let upgradeTag = '';
                     if (upgradeMode === 'z' && canUpgradeZ) {
-                        // Use original item (not battle-state item which may be consumed/knocked)
-                        let _zDisplayMon = { ...s, item: s.originalItem || (bd && bd.i) || s.item, zMoveUsed: false };
-                        displayMove = buildZMove(_zDisplayMon, rawMove);
+                        // Use ORIGINAL item — battle-state item may have been consumed / knocked off.
+                        const _zMon = { ...s, item: s.originalItem || (bd && bd.i) || s.item, zMoveUsed: false };
+                        displayMove = buildZMove(_zMon, rawMove);
                         if (displayMove.isZMove) {
                             cardClass += ' upgraded';
                             upgradeTag = `<span style="color:#f9a825;font-size:10px;margin-left:6px;">${rawMove.cat === 'Status' ? 'Z-STATUS' : 'Z-POWER'}</span>`;
                         }
                     } else if (upgradeMode === 'max' && canUpgradeDyna) {
                         displayMove = buildMaxMove(s, rawMove, true);
-                        cardClass += ' upgraded-max'; upgradeTag = `<span style="color:#ef5350;font-size:10px;margin-left:6px;">MAX MOVE</span>`;
+                        cardClass += ' upgraded-max';
+                        upgradeTag = `<span style="color:#ef5350;font-size:10px;margin-left:6px;">MAX MOVE</span>`;
                     }
-                    let pow = displayMove.pow > 0 ? displayMove.pow : '—';
-                    let acc = displayMove.isMaxMove ? '—' : ((displayMove.acc || 0) <= 100 ? displayMove.acc + '%' : '—');
-                    let ppDisp = displayMove.isMaxMove ? '∞' : `${rawMove.pp}/${rawMove.maxPp}`;
+                    const blocked = moveBlockedReason(rawMove);
+                    if (blocked) cardClass += ' sum-move-card--blocked';
+                    const pow = displayMove.pow > 0 ? displayMove.pow : '—';
+                    const acc = displayMove.isMaxMove ? '—' : ((displayMove.acc || 0) <= 100 ? displayMove.acc + '%' : '—');
+                    const ppCur = (typeof rawMove.pp === 'number') ? rawMove.pp : 0;
+                    const ppMax = (typeof rawMove.maxPp === 'number') ? rawMove.maxPp : 0;
+                    let ppCls = '';
+                    if (!displayMove.isMaxMove && ppMax > 0) {
+                        if (ppCur <= 0) ppCls = 'sum-move-pp-out';
+                        else if (ppCur <= Math.ceil(ppMax * 0.25)) ppCls = 'sum-move-pp-low';
+                    }
+                    const ppDisp = displayMove.isMaxMove ? '∞' : `${ppCur}/${ppMax}`;
                     const _dmn = displayMove.name;
                     const _denc = encodeURIComponent(_dmn);
                     const moveNameSpan = movesDB[_dmn]
                         ? `<span class="sum-move-name tip-move-cell" data-mn="${_denc}" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${_dmn}</span>`
                         : `<span class="sum-move-name tip-move-cell" data-mn="${_denc}" onclick="event.stopPropagation(); window.showRawMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showRawMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${_dmn}</span>`;
-                    movesHtml += `<div class="${cardClass}">
+                    const blockedBadge = blocked
+                        ? `<span class="sum-move-blocked-badge" title="${blocked}">BLOCKED</span>`
+                        : '';
+                    return `<div class="${cardClass}">
                         <div class="sum-move-header">
                             ${moveNameSpan}${upgradeTag}
                             ${getTypeHTML(displayMove.type, null)}
                             <span class="cat-${displayMove.cat}" style="font-size:11px;font-weight:bold;">${displayMove.cat}</span>
+                            ${blockedBadge}
                         </div>
                         <div class="sum-move-stats">
                             <div>Power: <span class="sum-move-stat-val">${pow}</span></div>
                             <div>Accuracy: <span class="sum-move-stat-val">${acc}</span></div>
-                            <div>PP: <span class="sum-move-stat-val">${ppDisp}</span></div>
+                            <div>PP: <span class="sum-move-stat-val ${ppCls}">${ppDisp}</span></div>
                         </div>
                         ${(displayMove.effectStr || displayMove.eff) ? `<div class="sum-move-eff">${displayMove.effectStr || displayMove.eff}</div>` : ''}
+                        ${blocked ? `<div class="sum-move-blocked-reason">${blocked}</div>` : ''}
                     </div>`;
-                });
+                }).join('');
 
-                let upgradeBtns = '';
-                if (canUpgradeZ && canUpgradeDyna) {
-                    upgradeBtns = `<div style="display:flex;gap:6px;margin-bottom:6px;">
-                        <button type="button" onclick="window._sumUpgradeMode='base';window.switchSummaryTab(2)" style="${upgradeMode==='base'?'border-color:var(--accent);':''}" class="sum-mode-btn">Base Moves</button>
-                        <button type="button" onclick="window._sumUpgradeMode='z';window.switchSummaryTab(2)" style="${upgradeMode==='z'?'border-color:#f9a825;color:#f9a825;':''}" class="sum-mode-btn">Z-Power</button>
-                        <button type="button" onclick="window._sumUpgradeMode='max';window.switchSummaryTab(2)" style="${upgradeMode==='max'?'border-color:#ef5350;color:#ef5350;':''}" class="sum-mode-btn">Max Moves</button>
-                    </div>`;
-                } else if (canUpgradeZ) {
-                    upgradeBtns = `<div style="display:flex;gap:6px;margin-bottom:6px;">
-                        <button type="button" onclick="window._sumUpgradeMode='base';window.switchSummaryTab(2)" style="${upgradeMode==='base'?'border-color:var(--accent);':''}" class="sum-mode-btn">Base Moves</button>
-                        <button type="button" onclick="window._sumUpgradeMode='z';window.switchSummaryTab(2)" style="${upgradeMode==='z'?'border-color:#f9a825;color:#f9a825;':''}" class="sum-mode-btn">View Z-Power</button>
-                    </div>`;
-                } else if (canUpgradeDyna) {
-                    upgradeBtns = `<div style="display:flex;gap:6px;margin-bottom:6px;">
-                        <button type="button" onclick="window._sumUpgradeMode='base';window.switchSummaryTab(2)" style="${upgradeMode==='base'?'border-color:var(--accent);':''}" class="sum-mode-btn">Base Moves</button>
-                        <button type="button" onclick="window._sumUpgradeMode='max';window.switchSummaryTab(2)" style="${upgradeMode==='max'?'border-color:#ef5350;color:#ef5350;':''}" class="sum-mode-btn">View Max Moves</button>
-                    </div>`;
-                }
-
-                document.getElementById('sum-page-2').innerHTML = summarySpriteHeader + sereneGraceNote + upgradeBtns + movesHtml;
+                document.getElementById('sum-page-2').innerHTML = lockNoteHtml + sereneNote + modeRowHtml + movesHtml;
 
             } else if (page === 3) {
-                // === PAGE 3: MATCHUP MATRIX ===
-                let baseType1 = s.type1, baseType2 = s.type2;
-                let teraType = bd.teraType || null;
-                let summarySpriteHeader = `<div class="sum-overview-left" style="margin-bottom:8px;">
-                    <img class="sum-overview-img" src="${getSprite(spriteDisplayName(s), s.isShiny)}" alt="${s.name}" onerror="handleSpriteError(this)" style="${s.isShiny?'filter:drop-shadow(0 0 6px gold);':''}">
-                    <div class="sum-overview-name" style="margin-top:6px;">${s.name}</div>
-                    <div class="sum-overview-types">${getTypeHTML(s.type1, s.type2)}</div>
-                </div>`;
+                // === MATCHUPS ===
+                const baseType1 = s.type1, baseType2 = s.type2;
+                const teraType = bd.teraType || null;
+                const isFoe = !window._summaryIsP1;
+                const hideFoeTera = isFoe && !s.teraActivated;
 
-                // Defensive section
-                let defHtml = renderMatchupDefSection(baseType1, baseType2, `Defending as ${baseType1}${baseType2 ? '/' + baseType2 : ''}`);
+                // Defensive section — current type combo (post-tera if activated).
+                const defType1 = s.teraActivated ? (bd.teraType || baseType1) : baseType1;
+                const defType2 = s.teraActivated ? null : baseType2;
+                const defLabel = `Defending as ${defType1}${defType2 ? '/' + defType2 : ''}`;
+                let defHtml = renderMatchupDefSection(defType1, defType2, defLabel);
+
+                // Tera defense — show only if pre-activation player Tera (or not hidden for foe).
                 let teraDefHtml = '';
-                let _hideFoeTera = !window._summaryIsP1 && !s.teraActivated;
-                if (teraType && !_hideFoeTera) {
-                    teraDefHtml = `<div class="tera-note">If Terastallized (${teraType}): defensive type changes to pure ${teraType}.</div>`;
-                    teraDefHtml += renderMatchupDefSection(teraType, null, `Defending as TERA ${teraType}`);
-                } else if (teraType && _hideFoeTera) {
+                if (teraType && !s.teraActivated && !hideFoeTera) {
+                    teraDefHtml = `<div class="tera-note">If Terastallized (<b>${teraType}</b>): defensive typing becomes pure ${teraType}.</div>`;
+                    teraDefHtml += renderMatchupDefSection(teraType, null, `If TERA ${teraType}`);
+                } else if (teraType && hideFoeTera) {
                     teraDefHtml = `<div class="tera-note">Carries a Tera Crystal — type undisclosed until activation.</div>`;
                 }
 
-                // Offensive coverage per move
-                let covHtml = '';
-                let allTypes = Object.keys(typeChart);
-                s.moves.forEach(m => {
+                // Offensive coverage — per-move SE / Resist / Immune lists.
+                const allTypes = Object.keys(typeChart);
+                const covHtml = s.moves.map(m => {
                     if (m.cat === 'Status' || !m.pow || m.pow <= 0) {
-                        covHtml += `<div class="sum-cov-card"><div class="sum-cov-move-name">${getTypeHTML(m.type, null)} ${m.name} <span style="color:#555;font-size:10px;">(Status — no damage)</span></div></div>`;
-                        return;
+                        return `<div class="sum-cov-card"><div class="sum-cov-move-name">${getTypeHTML(m.type, null)} <span>${m.name}</span> <span style="color:#555;font-size:10px;">(Status)</span></div></div>`;
                     }
-                    let se = [], res = [], immune = [];
-                    for (let defType of allTypes) {
-                        let m1 = (typeChart[m.type] && typeChart[m.type][defType] !== undefined) ? typeChart[m.type][defType] : 1;
+                    const se = [], res = [], immune = [];
+                    for (const defType of allTypes) {
+                        const m1 = (typeChart[m.type] && typeChart[m.type][defType] !== undefined) ? typeChart[m.type][defType] : 1;
                         if (m1 > 1) se.push(defType);
                         else if (m1 === 0) immune.push(defType);
                         else if (m1 < 1) res.push(defType);
                     }
-                    let typeList = arr => arr.length ? arr.map(t => `<span class="type-badge type-${t}">${t}</span>`).join('') : '<span style="color:#555;font-size:10px;">None</span>';
-                    covHtml += `<div class="sum-cov-card">
-                        <div class="sum-cov-move-name">${getTypeHTML(m.type, null)} ${m.name} <span style="color:#888;font-size:10px;">Pow:${m.pow}</span></div>
+                    const typeList = arr => arr.length
+                        ? arr.map(t => `<span class="type-badge type-${t}">${t}</span>`).join('')
+                        : '<span style="color:#555;font-size:10px;">None</span>';
+                    return `<div class="sum-cov-card">
+                        <div class="sum-cov-move-name">${getTypeHTML(m.type, null)} <span>${m.name}</span> <span style="color:#888;font-size:10px;">${m.pow} BP</span></div>
                         ${se.length ? `<div class="sum-cov-row"><span class="sum-cov-label" style="color:#4caf50;">Super Eff.</span><div style="display:flex;flex-wrap:wrap;gap:2px;">${typeList(se)}</div></div>` : ''}
                         ${res.length ? `<div class="sum-cov-row"><span class="sum-cov-label" style="color:#ff9800;">Resisted</span><div style="display:flex;flex-wrap:wrap;gap:2px;">${typeList(res)}</div></div>` : ''}
                         ${immune.length ? `<div class="sum-cov-row"><span class="sum-cov-label" style="color:#607d8b;">No Effect</span><div style="display:flex;flex-wrap:wrap;gap:2px;">${typeList(immune)}</div></div>` : ''}
                     </div>`;
-                });
+                }).join('');
 
-                document.getElementById('sum-page-3').innerHTML = summarySpriteHeader + defHtml + teraDefHtml +
-                    `<div class="sum-matchup-title" style="margin-top:10px;">Offensive Coverage (by Move)</div>` + covHtml;
+                document.getElementById('sum-page-3').innerHTML = defHtml + teraDefHtml +
+                    `<div class="sum-matchup-title" style="margin-top:12px;">Offensive Coverage (by Move)</div>` + covHtml;
             }
+
+            // Keep nav UI in sync — labels, disabled states, etc.
+            window.updateSummaryNavUI();
         }
 
         /** Gimmick intent { kind, slot }: `slot` indexes playerParty / foeParty; applies only while that slot is still the active Pokémon. */
@@ -31050,59 +31493,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         let _storySumIdx = 0;
-        function _storyBuildSummaryHTML(speciesName, build) {
-            const b = build || {};
-            let mon = null;
-            try {
-                if (typeof buildPokemon === 'function' && b && (b.m || b.i || b.gimmick !== undefined)) {
-                    mon = buildPokemon(speciesName, b);
-                }
-            } catch (e) { console.warn('[Story] summary buildPokemon', e); }
-            const typeLine = mon
-                ? getTypeHTML(mon.type1, mon.type2 || '')
-                : (() => {
-                    const st = baseStats[speciesName] || {};
-                    const t1 = st.t1 || 'Normal';
-                    const t2 = st.t2 || '';
-                    return getTypeHTML(t1, t2);
-                })();
-            const movRows = (mon && mon.moves && mon.moves.length)
-                ? mon.moves.map(mv => {
-                    const ppStr = (mv.pp != null && mv.maxPp != null) ? `${mv.pp}/${mv.maxPp} PP` : '—';
-                    const typHtml = mv.type ? getTypeHTML(mv.type, null) : '<span style="color:#888;font-size:10px;">?</span>';
-                    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid #222;flex-wrap:wrap;">
-                        <span style="font-weight:600;">${mv.name}</span>
-                        <span style="font-size:10px;color:#888;">${ppStr}</span>
-                        ${typHtml}</div>`;
-                }).join('')
-                : (b.m || []).filter(Boolean).map(moveName => {
-                    const mv = (typeof ensureMoveData === 'function' && moveName) ? ensureMoveData(moveName) : null;
-                    const typ = mv && mv.type ? mv.type : '?';
-                    return `<div style="display:flex;justify-content:space-between;gap:6px;padding:2px 0;border-bottom:1px solid #222;">
-                        <span>${moveName}</span><span style="color:#888;font-size:10px;">${typ}</span></div>`;
-                }).join('') || '—';
-            const statBlock = mon ? `
-                    <div style="font-size:11px;font-weight:bold;color:var(--accent);margin-top:6px;">Stats</div>
-                    <div style="display:flex;flex-direction:column;gap:3px;">${statBarHTML('HP', mon.maxHp)}${statBarHTML('Atk', mon.stats.atk)}${statBarHTML('Def', mon.stats.def)}${statBarHTML('SpA', mon.stats.spa)}${statBarHTML('SpD', mon.stats.spd)}${statBarHTML('Spe', mon.stats.spe)}</div>` : '';
-            const _ev = b.evs || {};
-            const evLine = `<div style="font-size:10px;color:#9ccc65;margin-top:2px;">EVs: HP ${_ev.hp||0} / Atk ${_ev.atk||0} / Def ${_ev.def||0} / SpA ${_ev.spa||0} / SpD ${_ev.spd||0} / Spe ${_ev.spe||0}</div>`;
-            return `
-                <div class="draft-card" style="padding:8px;flex-direction:column;align-items:stretch;gap:6px;">
-                    <div style="display:flex;gap:10px;align-items:flex-start;">
-                        <img src="${getSprite(speciesName,false)}" style="width:64px;height:64px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.display='none'">
-                        <div style="flex:1;min-width:0;">
-                            <div style="font-size:11px;color:#aaa;margin-bottom:4px;">Types: ${typeLine}</div>
-                            <div style="font-size:11px;color:#aaa;">Item: <b style="color:#ccc;">${b.i || '—'}</b> | Nature: <b style="color:#ccc;">${b.n || '—'}</b></div>
-                            <div style="font-size:11px;color:#aaa;">Gimmick: <b style="color:#ff9800;">${b.gimmick || 'STANDARD'}</b> ${b.teraType ? '· Tera ' + b.teraType : ''}</div>
-                        </div>
-                    </div>
-                    <div style="font-size:10px;color:#888;">Ability: ${b.a || '—'}</div>
-                    ${statBlock}
-                    ${evLine}
-                    <div style="font-size:11px;font-weight:bold;color:var(--accent);margin-top:4px;">Moves</div>
-                    ${movRows}
-                </div>`;
-        }
         function profOpenSummary(idx) {
             const ch = (_pendingProfChoices || [])[idx];
             if (!ch) return;
