@@ -37,6 +37,8 @@ sites; numbers below are approximate post-edit.
 | `getCurrentCityDisplayName` | 24862 |
 | `enterCity`, `renderCityActions` | ~24446, ~24600 |
 | **Build power tier system** (`STORY_BUILD_TIER`, `_storyBuildTierForEvent`, `_storyDowngradeBuildForTier`, `_applyStoryBuildPowerTier`, `_storyBuildTierForProfessor`) | ~24750 (block immediately before `rollTrainerTeam`) |
+| **Story-embedded tutorial scenes** (`STORY_TUTORIAL_SCENES` data, `_showStoryTutorialScene`, `playStoryTutorial` dispatcher) | ~30566 (right after `STORY_COLD_OPENS`) |
+| Tutorial scene CSS (`@keyframes storyTutorial*`) | ~3853 (after `storyfx-puff`) |
 | `rollTrainerTeam` + tier hook on both branches | 24938, 25067 |
 | `rollMysteryFigureFinalBossTeam` + tier hook | 25156 |
 | `enterProfessor` choice loop + tier hook | ~26865 |
