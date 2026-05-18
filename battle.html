@@ -29885,16 +29885,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.usedTrainerNames = [...usedBase];
         }
 
-        /** Untagged ("classic route class") Basic Trainers only — Youngster, Bug
-         * Catcher, Lass, Hiker, Fisherman, Hex Maniac, Black Belt, Bird Keeper,
-         * Dragon Tamer and the 2-type thematic fillers. Excludes villain / cursed /
-         * multitype / eldritch flavor trainers so the pre-Gym-1 route fight always
-         * reads as an easy starter-route fodder match. */
+        /** "Extra-easy" fodder-class allowlist for the lone pre-Gym-1 Basic
+         * Trainer slot (the route fight between intro rival and City 1). Tightens
+         * the broader untagged Basic-Trainer pool to only the classes whose
+         * signature roster reads as Route-1 fodder — Rattata, Caterpie, Wurmple,
+         * Geodude, Magikarp tier. Explicitly drops Dragon Tamer (Dratini/Bagon/
+         * Gible feel premium even at Grade 4), Hex Maniac, Black Belt, Bird
+         * Keeper (Pidgeotto/Staravia sigs), Reactor Tech (Beldum sig), Mystic
+         * (Abra family), Crooked Beat. Result: the first non-rival fight always
+         * reads as "easy starter route" — a Youngster with a Rattata, never a
+         * Dragon Tamer with a Dratini. */
+        const _EARLY_ROUTE_FODDER_CLASSES = new Set([
+            'Youngster', 'Lass', 'Bug Catcher', 'Hiker', 'Fisherman',
+            'Lab Rat', 'Mountain Guide', 'Ace Diver', 'Tea Aroma',
+            'Glacial Trekker', 'Marsh Walker'
+        ]);
         function _pickEarlyRouteBasicTrainer(enabledGens, usedBaseNames) {
             const genSet = new Set(normalizeEnabledGens(enabledGens));
             let pool = TRAINER_DATA.filter(t => {
                 if (!t || String(t.role || '').toLowerCase() !== 'basic trainer') return false;
                 if (t.tag) return false; // exclude cursed / multitype / villain / eldritch
+                if (!_EARLY_ROUTE_FODDER_CLASSES.has(t.name)) return false;
                 // Route trainers are gen-agnostic class fillers; charGen gating already
                 // exempts them, but keep the same fallback shape as selectTrainerForRole.
                 return !_isRegionalBasicTrainer(t) || genSet.has(t.charGen);
@@ -32317,54 +32328,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _pendingProfRoll = null;
         }
 
-        // Catch-tutorial partner pool — small, friendly, low-tier species used
-        // by the post-intro-rival catch tutorial event (see `_runCatchTutorial`).
-        // Each is the kind of mon the Professor would point at as "your first
-        // wild — try a ball, see how the bond forms." Curated for warmth and
-        // approachability rather than competitive power; the catch is highly
-        // forgiving (90% per throw, no flee).
+        // Catch-tutorial partner picker — draws a random Grade-4 species from the
+        // player's enabled gens, matching what a real pre-Gym-1 route wild would
+        // surface. Grade 4 is already the entire pre-Gym-1 wild pool (see
+        // `_WILD_GRADE_CURVE_BY_BADGES[0] = { g4: 100 }`), so the tutorial mon
+        // sits in the same tier the player will encounter on the very next
+        // route — just with guaranteed catch and no flee.
         //
-        // One species per generation so a single-gen run still gets a
-        // generation-appropriate tutorial partner.
-        const STARTER_PARTNER_POOL = [
-            { name: 'Pidgey',     gen: 1 },
-            { name: 'Rattata',    gen: 1 },
-            { name: 'Sentret',    gen: 2 },
-            { name: 'Hoothoot',   gen: 2 },
-            { name: 'Zigzagoon',  gen: 3 },
-            { name: 'Poochyena',  gen: 3 },
-            { name: 'Bidoof',     gen: 4 },
-            { name: 'Starly',     gen: 4 },
-            { name: 'Lillipup',   gen: 5 },
-            { name: 'Patrat',     gen: 5 },
-            { name: 'Bunnelby',   gen: 6 },
-            { name: 'Fletchling', gen: 6 },
-            { name: 'Pikipek',    gen: 7 },
-            { name: 'Yungoos',    gen: 7 },
-            { name: 'Skwovet',    gen: 8 },
-            { name: 'Rookidee',   gen: 8 },
-            { name: 'Lechonk',    gen: 9 },
-            { name: 'Tarountula',  gen: 9 },
-        ];
+        // Skips species already on the player's team so the tutorial doesn't
+        // hand them a duplicate of their freshly-picked starter. Uses
+        // Math.random (not seeded story RNG) so save-reload reroots the pick,
+        // matching `rollWildEncounter`.
         function _pickStarterPartner(enabledGens) {
-            const gens = (enabledGens && enabledGens.length)
-                ? new Set(enabledGens.map(n => Number(n)))
-                : new Set([1,2,3,4,5,6,7,8,9]);
-            const pool = STARTER_PARTNER_POOL.filter(p =>
-                gens.has(Number(p.gen)) && baseStats && baseStats[p.name]
-            );
+            const pool = buildGradePool(enabledGens, 4);
             if (!pool.length) return null;
-            const _rng = (sm && sm.active) ? storyRngNext : Math.random;
-            const pick = pool[Math.floor(_rng() * pool.length)];
+            const owned = new Set();
+            if (sm && Array.isArray(sm.team)) {
+                for (const slot of sm.team) if (slot && slot.name) owned.add(slot.name);
+            }
+            let avail = pool.filter(n => !owned.has(n));
+            if (!avail.length) avail = pool;
+            const name = avail[Math.floor(Math.random() * avail.length)];
             // Tutorial partner is conceptually a wild — uses makeWildBuild so its
             // training tier matches what the player would catch on a normal route
             // (no item, default ability, neutral nature, ~170 EV head-start). Keeps
             // the partner from out-classing the freshly-picked starter and slots
             // into the same tier curve as every other catch.
-            const build = makeWildBuild(pick.name);
+            const build = makeWildBuild(name);
             if (!build) return null;
             return {
-                name: pick.name,
+                name,
                 build,
                 id: 'm_' + Math.random().toString(36).slice(2, 10),
                 partner: true,
@@ -33016,7 +33009,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         //      so the first wild route, the next basic trainer, and Gym 1
         //      are all at least 2v2 (no 1v1 number-cheese).
         //
-        // The tutorial mon is drawn from STARTER_PARTNER_POOL (gen-filtered).
+        // The tutorial mon is a random Grade-4 species from the player's
+        // enabled gens (`_pickStarterPartner` → `buildGradePool(gens, 4)`),
+        // mirroring what they'd encounter on the very next wild route.
         // Fires exactly once per save (`sm.catchTutorialDone` flag), and only
         // when the player has just enough to handle it (party < 6, has at
         // least 1 Poké Ball — which the starting kit guarantees).
