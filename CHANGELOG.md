@@ -3,6 +3,76 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — `startBattle` is now bulletproof against every kind of init crash 2026-05-18 (`claude/fix-recent-bugs-eiMsL`)
+
+### Fixed — placeholder "MissingNo" battle screen with no command menu
+
+A user kept reporting the static "MissingNo / 0/0 / empty Player/Foe
+sprites / no battle log / no command menu" screen at the start of
+every battle, even after the `anime.js` fix below. The remaining cause
+was that **any** throw between "show battle screen" and "show command
+menu" inside `startBattle` would leave the user with the static
+placeholder HUD: corrupt p1Draft/p2Draft, a build missing `.m`, a bad
+foe scaling helper, a Pokédex side-effect with a stale species name,
+`state.fActive` undefined when `state.revealedFoe.add(state.fActive.name)`
+runs, etc. None of those were wrapped — they all crashed init silently.
+
+Now every step from "battle screen shown" through "command menu shown"
+is individually try/caught:
+
+- **Team build (fatal path)**: empty p1Draft, empty p2Draft, or a
+  `buildPokemon` throw bails to the main menu with a "corrupted team
+  data" alert. The battle screen is re-hidden so the user isn't stuck.
+- **Recoverable steps** (story scaling, Crucible boost, difficulty
+  scale, weather/terrain rolls, `aiBestSwitch`, foe story inventory,
+  artifact effects, leftover-sprite cleanup, `updateUI`,
+  `applySwitchInAbilities`, the first-battle tip): each logs and
+  continues — the battle still starts, just without the optional bit
+  that failed.
+- **Command menu show**: now in its own try/catch so even if
+  everything else is on fire, the user gets input controls and can at
+  least flee.
+
+Verified headlessly:
+- Normal battle start (`?locktest=1`): names render, command menu
+  visible, no errors — same as before.
+- Corrupt state (`p1Draft=[]`): bails to main menu cleanly, no JS
+  errors, no stuck placeholder screen.
+
+## Unreleased — anime.js failure no longer strands the player on a blank battle screen 2026-05-18 (`claude/fix-recent-bugs-eiMsL`)
+
+### Fixed — `playPokeballAnimation` crashes `startBattle` when `anime` is undefined
+
+The entrance animation called `anime({...}).finished` unguarded.
+`anime.js` is CDN-loaded (`cdn.jsdelivr.net/npm/animejs@3.2.2`), so a
+slow / blocked / failed CDN response left `anime` undefined; the
+unhandled `ReferenceError` rejected the `Promise.all` in `startBattle`
+mid-init. The user was then left on a half-built battle screen — the
+static "MissingNo" HUD with empty `Player` / `Foe` sprite alt text,
+**no** battle log line ("Battle started!" never fires), and **no**
+command menu (it's unhidden 20 lines later, past the throw).
+
+Reproduced headlessly with `?locktest=1`:
+
+```
+PAGEERROR: anime is not defined
+  at playPokeballAnimation (battle.html:13337)
+  at async Promise.all (index 0)
+  at async startBattle (battle.html:13440)
+```
+
+After the fix, the same headless run with `anime` completely absent
+yields `foeName: "Blissey"`, `playerName: "Garchomp"`,
+`cmdVisible: true` — battle starts cleanly, just without the bounce-in.
+
+Fixes:
+- `playPokeballAnimation` now feature-detects `typeof anime === 'function'`
+  before calling it. If anime is missing, it snaps the sprite in
+  (opacity 1, visibility visible) and skips the bounce.
+- The `Promise.all([player, foe])` call in `startBattle` is wrapped in
+  a try/catch that force-shows both sprites on failure, so any future
+  animation regression also can't kill the rest of init.
+
 ## Unreleased — Soft-lock recovery no longer paints a fake MissingNo battle 2026-05-18 (`claude/fix-recent-bugs-eiMsL`)
 
 ### Fixed — `__recoverBattleSoftLock` could fabricate a placeholder battle
