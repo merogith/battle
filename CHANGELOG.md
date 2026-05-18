@@ -58,6 +58,132 @@ fall back through the same form-resolution chain as
 species blended) so the strip is never empty.
 
 
+## Unreleased — Story-embedded tutorials replace one-time alerts 2026-05-18 (`claude/add-tutorial-events-EIPjH`)
+
+### Added — `STORY_TUTORIAL_SCENES` data table + `playStoryTutorial(id)` dispatcher
+
+The previous first-time tutorial layer was a bare `window.showGameAlert`
+modal — useful, but jarring against the story-mode framing where every
+other narrative beat (intro rival, gym victories, Hall of Fame) gets
+sprite + dialogue treatment. Each new mechanic now opens with a one-shot
+character cameo: NPC sprite slides in from the lower-left, nameplate
+fades on, dialogue box pops, Continue → dismisses and the player drops
+into the live screen.
+
+14 scenes shipped, one per first-encounter mechanic. Sprite picks reuse
+the existing trainer roster (no new art):
+
+| Scene | Sprite | Fires at | Replaces tip |
+|---|---|---|---|
+| `firstTrainerBattle` | Oak | first `showBattleIntro` (intro rival) | `first-battle` |
+| `firstWild` | Oak | first catch-tutorial encounter | `catch-tutorial` |
+| `firstWildRoute` | Oak | first route-node wild | `catch` |
+| `firstSafariCatch` | Hiker | first Safari Zone encounter | `safari-catch` |
+| `firstMart` | Clerk | first Pokémart | `first-mart` |
+| `firstDept` | Clerk-2 | first Department Store (City 6+) | `first-dept` |
+| `firstSafari` | Hiker | first free Safari Zone entry (City 4) | (free-entry alert) |
+| `firstCasino` | Gambler | first Poké Casino (City 5) | `first-casino` |
+| `firstPokemonCenter` | Nurse | first Pokémon Center | `center` |
+| `firstMoveTutor` | Veteran | first Move Tutor | `first-tutor` |
+| `firstNatureRater` | Aroma_Lady | first Nature Rater | `first-nature` |
+| `firstBattleDojo` | Blackbelt | first Battle Dojo (City 4+) | `first-dojo` |
+| `firstEVTrainer` | Battle_Girl | first EV Trainer (City 4+) | `first-ev` |
+| `firstColress` | Scientist | first Colress (City 6+) | `first-colress` |
+
+### Stage alignment — automatic via city-action gating
+
+Each mechanic is already stage-gated by the city's action list in
+`STORY_EVENTS_RAW` (see `STORY_MODE_FLOW.md` §15f), so first-interaction
+firing aligns with the power-stage rollout without any new gating logic:
+
+- **Stage 1 (pre-G3)** — `firstTrainerBattle` (intro rival), `firstWild`
+  (catch tutorial after intro rival), `firstWildRoute` (any route
+  beyond), `firstMart`, `firstPokemonCenter`, `firstMoveTutor`,
+  `firstNatureRater`
+- **Stage 2 entry (City 4)** — `firstBattleDojo`, `firstEVTrainer`,
+  `firstSafari` / `firstSafariCatch`
+- **Stage 2 (City 5)** — `firstCasino`
+- **Stage 3 (City 6)** — `firstDept`, `firstColress`
+
+### Sequencing — battle intro gated on tutorial dismiss
+
+`showBattleIntro` previously fired the alert tip and the intro overlay in
+parallel, with a `setTimeout` ticking the battle off behind the alert
+modal. The tutorial scene is animated and longer to read, so the rest of
+the intro now sits behind a `playStoryTutorial('firstTrainerBattle',
+_runIntro)` callback — the trainer-sprite overlay and the 2.2-3.4s
+delayed `launchBattle` only fire after the player taps Continue. Subsequent
+fights see no delay (dispatcher fires `onDone` synchronously on the
+dedupe path).
+
+### Dedupe — shared `tipsShown` bucket
+
+Each scene declares its own `metaKey` (`tutorial-first-*`); the
+dispatcher stamps `tipsShown[metaKey]` in `pbs_story_meta` on first
+play. The keys are deliberately distinct from the legacy alert keys
+(`first-mart`, `center`, etc.) so existing saves see the new scene once
+even if they'd seen the prior alert — a one-time enriched onboarding,
+then quiet.
+
+### Animation — three keyframes, staggered entry
+
+CSS additions (~70 lines, inline near the existing storyfx animations):
+`storyTutorialOverlayIn` (0.32s background fade), `storyTutorialSpriteIn`
+(0.55s cubic-bezier slide-in for the NPC), `storyTutorialNameIn` (0.4s
+fade for the nameplate + Continue button, delayed 0.25s and 0.7s
+respectively), `storyTutorialDialogIn` (0.5s pop for the dialogue box,
+delayed 0.4s). Total entry choreography ≈ 1.1s before the player can
+read the full scene.
+
+### Files touched
+
+- `battle.html` — CSS keyframes (~70 LOC), `STORY_TUTORIAL_SCENES` data
+  table + `_showStoryTutorialScene` / `playStoryTutorial` helpers
+  (~180 LOC, near `STORY_COLD_OPENS`), 8 entry-point rewrites
+  (`enterShop`, `enterSafariZone`, `enterCasino`, `enterPokemonCenter`,
+  `enterTutor`, `enterColress`, `enterEVTrainer`, `_catchRender`,
+  `showBattleIntro`), one export added to `window.StoryMode`
+  (`playTutorial`).
+- `CHANGELOG.md` — this entry.
+
+## Unreleased — Wild & Safari catch curve shifted one tier easier 2026-05-18 (`claude/improve-pokemon-catch-rates-E1Y8U`)
+
+### Changed — Base catch rates lifted one grade across the board
+
+The previous tightening pass (the v15 → v16 rebalance) left G3 and G4
+encounters reading as "you still might bounce three Ultra Balls off this
+Bidoof," which doesn't match what those tiers are supposed to feel like —
+G4 is supposed to be the trivial filler tier, and G3 the mid-game routine
+catch. Each grade now adopts the *next* grade's old base rate, and G4 gets
+a fresh, deliberately lenient ceiling:
+
+| Grade | Old base catch | New base catch | Old flee on miss | New flee on miss |
+|---|---|---|---|---|
+| G1 | 4% | **12%** | 55% | **40%** |
+| G2 | 12% | **22%** | 40% | **28%** |
+| G3 | 22% | **35%** | 28% | **20%** |
+| G4 | 35% | **50%** | 20% | **12%** |
+
+The shift propagates through the existing `_CATCH_RATE_BY_GRADE` /
+`_CATCH_FLEE_BY_GRADE` lookups, so wild routes, Safari encounters, boss
+arena phase-2, and roaming legendaries all pick up the new curve from a
+single source. Ball multipliers (Poké 1.0× / Great 1.5× / Ultra 2.0× /
+Master ∞) and Safari extras (`SAFARI_BALL_MULT 1.35×`, bait 0.70× catch /
+0.55× flee, rock 1.65× catch / 1.70× flee) are unchanged — the bump comes
+purely from the species base, so the Safari mini-game still trades the
+same way, just on a friendlier baseline.
+
+Sanity check on the new ceiling: G4 × Great Ball = 75%, G4 × Ultra = 100%
+(capped), G3 × Ultra = 70%. Great Ball stays meaningfully better than
+Poké on G4 instead of both balls capping, which was the alternative if
+we'd pushed G4 to 55%+.
+
+Touched: `battle.html` lines 33896-33897 (constants), line 8374 (Help
+overlay copy), `STORY_MODE_FLOW.md` §5 catch-rate table. The stale
+v15→v16 comment block above the constants was removed — the numbers are
+the spec.
+
+## Unreleased — Route pacing: 2 wilds per route + "Up next" hints across transitions 2026-05-18 (`claude/improve-game-flow-s723x`)
 
 ### Changed — Wild encounters now fire two-in-a-row per route node
 
