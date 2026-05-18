@@ -32,8 +32,8 @@ writing — they will drift as work proceeds.
 | Pokémon Center button | New city hub action. Contains PC + Underground. No heal function (battles auto-heal). |
 | Foe sizing | **Badge curve**: `min(6, 2 + badges)` for everyone except story finales (always 6) and the intro rival (pure player-match for a 1v1 starter duel). So foes = 2 pre-Gym-1, 3 post-Gym-1, …, 6 from post-Gym-4 on. |
 | Player party cap | **Same badge curve**: `min(6, 2 + badges)`. Catch tutorial fills slot 2 right after intro rival (cap = 2). Each gym victory unlocks one more slot up to 6 at four badges. Catches and Professor gifts above the cap overflow to PC — the player can always *catch*, they just can't *field* past the cap until the next badge unlocks. |
-| Expected sequence (non-catcher) | Intro rival 1v1 → catch tutorial → cap 2 (2v2) → GL1 2v2 → **(badge 1, cap 3)** → next Pro available → GL2 3v3 → **(badge 2, cap 4)** → next Pro → GL3 4v4 → **(badge 3, cap 5)** → GL4 5v5 → **(badge 4, cap 6)** → GL5+ / E4 / Champion 6v6. A wild-catcher fills the cap immediately; foes still follow the badge curve, so over-catching means PC overflow, never a foe mismatch. |
-| Professor visibility | Each city's Professor (cities 0–5 by action list; cities 6–8 via `shouldForceCityProfessor`) appears **only while the player's active party is below the current cap**. So pre-Gym-1 with a full 2/2 party, no Pro buttons. After Gym 1 (cap → 3), the next available city's Pro reopens for the 3rd slot. Lone exception: City-8 post-Gym-8 legendary gate (Mystery Figure), which stays visible at 6/6. |
+| Expected sequence (non-catcher) | Intro rival 1v1 → catch tutorial → cap 2 (2v2) → GL1 2v2 → **(badge 1, cap 3)** → leave the post-gym hub → route wild → arrive at next city → Pro available → GL2 3v3 → **(badge 2, cap 4)** → next route wild → next city's Pro → GL3 4v4 → **(badge 3, cap 5)** → GL4 5v5 → **(badge 4, cap 6)** → GL5+ / E4 / Champion 6v6. A wild-catcher fills the cap immediately on the route; foes still follow the badge curve, so over-catching means PC overflow, never a foe mismatch. |
+| Professor visibility | Each city's Professor (cities 0–5 by action list; cities 6–8 via `shouldForceCityProfessor`) appears **only at pre-gym hubs, and only while the player's active party is below the current cap**. So pre-Gym-1 with a full 2/2 party, no Pro button. After Gym 1 (cap → 3), the post-gym hub of City 1 is intentionally Pro-less — the badge unlocks the slot, but the player walks the route (with its wild-encounter beat) and meets the next Professor at City 2's pre-gym hub. Post-gym hubs still keep the Pokémon Center (PC swap-in for any mon already stored) so the new slot isn't dead until the route. Lone exception: City-8 post-Gym-8 legendary gate (Mystery Figure), which stays visible at 6/6 because the swap is required to enter Victory Road. |
 | Rival adaptation | Read live `sm.team` at battle entry. **Do not** filter `wild:true` mons. |
 | Intro rival | Special-cased to pure player-match (1v1 starter duel). The catch tutorial fires *after* this fight. |
 | Catch tutorial | After the intro rival victory, a one-time static event fires before the next battle: a guaranteed Grade-4 friendly wild (from `STARTER_PARTNER_POOL`) appears, 100% catch on first throw, no flee, with a tutorial overlay (FireRed/Emerald-style). Marked done via `sm.catchTutorialDone`. Fills the 2nd slot exactly at the 0-badge cap of 2. |
@@ -71,15 +71,16 @@ Trade-off: keeps `eventIndex` semantics clean; needs the save/restore wrapper.
 
 | Aspect | Value |
 |---|---|
-| When | Once per route node, between consecutive Battles that cross a city boundary. Forced — no skip. |
-| Where | Virtual screen, not a timeline row. |
+| When | **`STORY_WILDS_PER_ROUTE_NODE` (= 2)** wilds per route node, fired back-to-back between consecutive Battles that cross a city boundary. Each wild rolls independently from the grade curve below, so the pair is usually two different species. Forced — no skip (Run still ends the current encounter; the next one fires after). |
+| Where | Virtual screen, not a timeline row. The same `screen-story-catch` screen renders both wilds; on resolution of the first, the interrupt chain re-runs and the second slides in. |
 | Pool grade | Driven by a dedicated **wild grade curve keyed on `sm.badges`** (0–8, see `_WILD_GRADE_CURVE_BY_BADGES`). Independent of the upcoming trainer's `gradeWeights` — wilds reflect the route's biology, not the next fight's lineup. Each tier sits one step behind the contemporaneous trainer roll, so wilds are intentionally inferior to Professor picks and to the foe ahead. |
 | Pool species | Filtered by `sm.settings.enabledGens`, same as trainer rolls. The two toggles (grade curve + enabled gens) are the **only** inputs to the wild roll. |
 | Build | Rough build per the prior audit's A4 — 4 random level-up moves, no held item, default ability, neutral nature, no EVs. Tagged `wild: true`. |
 | Player options | Throw (any ball type from inventory) or Run. |
 | Flee | Foe may flee on a missed throw (per-species flee chance; baseline 25%). |
 | Capture state | Full HP / full PP / no status. |
-| If party + PC are both full | Capture fails with explicit modal. |
+| Counter | `sm.wildSeenByEventIdx[battleIdx]` — increments on each fire. Legacy `true` (pre-multi-wild saves) reads as 1, so a save mid-route just gets the remaining slot rather than re-firing a wild that was already cleared. Roaming legendary fires consume *all* slots at once. |
+| If party + PC are both full | Capture fails with explicit modal. The remaining wild slot still fires after; the player can Run to move on. |
 
 ---
 
@@ -117,10 +118,10 @@ Species `catchRate` is derived from grade. G1 is the strongest tier (pseudo + le
 
 | Grade | Base catch rate (PokéBall) | Flee chance on a miss |
 |---|---|---|
-| G1 (strongest) | 0.04 | 0.55 |
-| G2 | 0.12 | 0.40 |
-| G3 | 0.22 | 0.28 |
-| G4 (weakest) | 0.35 | 0.20 |
+| G1 (strongest) | 0.12 | 0.40 |
+| G2 | 0.22 | 0.28 |
+| G3 | 0.35 | 0.20 |
+| G4 (weakest) | 0.50 | 0.12 |
 
 Ball multipliers: PokéBall 1.0×, Great 1.5×, Ultra 2.0×, Master ∞ (`Infinity`).
 
@@ -694,6 +695,169 @@ A Frontier round-1 fight is now slightly *harder* than the post-HoF
 Mystery climax used to be. Round 10 caps the Frontier curve near a
 Caged-God-tier wall — the player is expected to be carrying
 perm-boost vitamins and Cable Link Upgrades into the late ladder.
+
+---
+
+## 15f. Grade-to-Gym progression overhaul (v18+)
+
+A controlled-pacing rewrite of the gym power curve, anti-bricking, NPC
+placement, and end-game build mechanics. The goal: a clear "real Pokémon
+progression vibe" with four explicit stages, each with its own grade
+era and unlock set. Veterans can still rush early game; new players get
+a Fire-Red-baseline ramp through Stage 2.
+
+### Four explicit stages
+
+| Stage | Era | Gyms | gradeWeights (filler) | Sig pool | Foe stat mult | Player gear unlocks |
+|---|---|---|---|---|---|---|
+| **1 — G4 Era** | Foundation | Pre-G1 → G2 | G4-dominant (`{g3:25, g4:75}` GL1, `{g3:50, g4:50}` GL2) | G3 ace | 1.00 | Starter (G4 basic), Move Tutor, Evo Sage (cheap), Nature Rater |
+| **2 — G3 Era** | Transition + Core | G3 → G5 | G3-dominant (`{g3:75, g4:25}` GL3, `{g3:100}` GL4-5) | G3 | 1.00 | + EV Trainer @ City 4, Battle Dojo @ City 4 |
+| **3 — G2 Era** | Optimization | G6 → G8 | G3 filler with G2 sig (GL6) → 50/50 G2/G3 (GL7) → pure G2 (GL8) | G2 (GL6-7), **G1 ace exception** at GL8 | 1.05 (G6), 1.10 (G8) | + Department Store, Colress |
+| **4 — G1 Era** | Endgame | E4 → Mystery | G1/G2 mix (E1 30/70 → E4 70/30), Champion 80/20, Mystery 100/0 | G1 | 1.15 (E4), 1.20 (Champion+) | + Crucible / Frontier |
+
+Sigs are *composition-locked*: `rollTrainerTeam`'s signature roll picks
+from the gym leader's curated `sigs` list at the canonical grade,
+filler grades drop one tier via `gwForFiller`. So GL6 reads as
+"G3 team with a G2 ace" without an ad-hoc weight override.
+
+### Starter and Professor gifts — "match the era"
+
+- Starter (City 0) is rolled from `PROF_ROLLS[0] = {g4:100}` — G4
+  basics only. Player gets a Bulbasaur, not an Ivysaur; investing in
+  Evolution Sage and EV/Move Tutors is the *only* path to G3+ on the
+  starter line.
+- Per-city Professor gifts (`PROF_ROLLS`) now match the contemporary
+  era exactly (no longer one tier above). The match-era table:
+  City 0–1 pure G4; City 2 transition (30/70 G3/G4); Cities 3–5 pure
+  G3; City 6 transition (30/70 G2/G3); Cities 7–8 climbing G2; City 9
+  legendary pool.
+- `_storyBuildTierForProfessor` matches the gym tier curve (UNTRAINED
+  pre-G2, NOVICE in G3 era, COMPETENT in G2 era, TOURNAMENT in G1
+  era).
+
+### Wild route encounters — strict G3 cap
+
+- `_WILD_GRADE_CURVE_BY_BADGES` rewritten: G1/G2 are forbidden in
+  wilds except for a 5% G2 leak from badge 6 onward. Safari Zone is
+  the *only* path to mid- and high-tier catches.
+- Multi-wild routes use `STORY_WILDS_PER_ROUTE_NODE` (= 2, see §3)
+  + the `wildSeenByEventIdx` counter + the `chainAfter: true` flag
+  on the `wildRoute` interrupt. After each catch screen resolves,
+  `_runFirstStoryInterrupt` re-enters `enterBattleEvent` to let the
+  chain re-evaluate; the predicate ends the loop when the counter
+  hits the constant. (Original brief asked for "2–3"; playtest
+  settled at 2 — one wild felt thin, three+ dragged route pacing.
+  Tunable via the constant.)
+- Player can Run from any individual encounter; the next wild on
+  the route still fires, then the trainer battle starts.
+
+### Anti-bricking — softening extends through Gym 3
+
+| Phase | Multiplier |
+|---|---|
+| Pre-Gym 1 non-GL | 0.82× (`PRE_GYM1_FOE_STAT_MULT`) |
+| GL1 / GL2 | 0.95× (`EARLY_GL_FOE_STAT_MULT`) |
+| Routes badges 1–2 (non-GL) | 0.92× (`EARLY_GAME_FOE_STAT_MULT`) |
+| **GL3 (Stage 2 entry)** | **0.97× (`STAGE2_GL_FOE_STAT_MULT`)** |
+| ≥ Gym 4 (Stage 2 core) | 1.00× (softening ends) |
+
+The G4 strip in `storyStripGrade4IfPartyMature` is now gated on
+`badges < 2` (was `< 1`) so Stage 1 properly extends through Gym 2
+without G4 mass getting silently lifted into G3.
+
+### Stage-gated late-game foe stat mult
+
+`_stageGatedFoeStatMult` is a second multiplier layered into
+`applyFoeDifficultyScaling`. The brief asks for "regular Fire Red
+difficulty through the Stage 2 unlock" and "slightly harder than Fire
+Red" from Stage 3 onward. Curve:
+
+- Stages 1–2 (badges 0–4 / GLs 1–5) → 1.00 (true FR feel)
+- Stage 3 entry (G6, badge 5) → 1.05
+- Gym 8 / late Stage 3 → 1.10
+- E1–E4 → 1.15
+- Champion / Mystery Figure → 1.20
+
+Crucible / Frontier opt out (`atCrucible`, `sm.frontier.active`) so
+their own stat-boost stacks don't double-dip.
+
+### NPC placement changes
+
+| NPC | Was | Now |
+|---|---|---|
+| Professor | All cities, era + 1 tier | All cities, **match era exactly** |
+| Starter pool | G3-leaning | **G4 basics only** |
+| Move Tutor | All cities, full pool | unchanged |
+| Nature Rater | All cities | unchanged |
+| Evolution Sage | All cities | unchanged |
+| **EV Trainer** | City 1 | **City 4 first** (paired with Stage 2 entry) |
+| **Battle Dojo** | Cities 1–3 + 6–8 | **City 4 first** (paired with Stage 2 entry) |
+| PokéMart / Dept Store | unchanged | unchanged |
+| Safari Zone | City 4 only | unchanged |
+
+EV Trainer + Battle Dojo cluster at City 4 so the player crossing into
+Stage 2 has a single "now you're optimizing" hub. Earlier cities
+intentionally have *no* held-item or EV-shaping facility — the team
+fights with what the Professor gave them and what wilds they caught.
+
+### Enemy build tier — stage-aligned
+
+`_storyBuildTierForEvent` now mirrors the gym index directly:
+
+| Stage / Gym | Basic Trainer | Gym Trainer | Gym Leader |
+|---|---|---|---|
+| Stage 1 (Pre-G1, G1, G2) | T1 | T1 | T1 (ace T2 via composition) |
+| Stage 2 (G3, G4, G5) | T2 | T2 | T2 (ace T3 via composition) |
+| Stage 3 (G6, G7, G8) | T3 | T3 | T3/T4 (T4 ace at GL8) |
+| Stage 4 (E4 → Mystery) | T3/T4 | T4 | T4 |
+
+Builds in the same fight share a tier — the *signature ace* gets its
+power-up through grade composition, not via a per-mon tier hack.
+
+### Illegal Smogon builds — auto-detected, end-game injection
+
+Background: the Smogon builds CSV (`data/builds.csv`) silently mixes
+in presets from fan-made side modes ("Almost Any Ability", "all
+abilities free") — Pokémon with abilities they can't legally have
+(Aerodactyl with Tough Claws, Altaria with Pixilate, Aegislash with
+Prankster, etc.). These presets are inherently stronger.
+
+- **Detection** (`_isBuildAbilityIllegal`): cross-reference each
+  build's `ability` field against `baseStats[name].abilities` at CSV
+  load time. Builds with abilities outside the species' canonical
+  list are tagged `build._illegal = true`. Detection runs in both
+  `loadBuildsCSV` and the `populateCsvBuildsFromAPI` fallback.
+- **Default pool behavior**: `makeBuild` filters illegal builds out
+  of all pools by default. Pre-E4 fights see only legal presets.
+- **End-game injection** (`_storyInjectIllegalBuilds`): after a
+  trainer team is rolled, non-signature slots are re-rolled with
+  `{ allowIllegal: true, forceIllegal: true }` until the event's
+  illegal count is met. Signature aces are protected — a leader's
+  identity mon never morphs into an illegal preset.
+
+Distribution (`_storyIllegalCountForEvent`):
+
+| Event | Illegal slots |
+|---|---|
+| E1–E4 trainers | 1 |
+| Champion | 2 |
+| League Rival (post-G8) | 2 |
+| Mystery Figure | 3 |
+| Frontier rounds 2-3 | 1 |
+| Frontier rounds 4-6 | 2 |
+| Frontier rounds 7+ | 3 |
+
+A species that has no illegal preset in its pool falls back to a
+legal build (the injection silently no-ops for that slot). The
+fallback is rare in practice — the CSV carries illegal presets for
+most species that surface in late-game rolls.
+
+### Rollout
+
+Fresh runs only — no schema migration. The new gradeWeights /
+PROF_ROLLS / wild curve / build tier are static tables, so existing
+saves automatically pick up the new tuning on their next battle.
+`SAVE_VER` is **not** bumped.
 
 ---
 

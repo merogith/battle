@@ -71,6 +71,211 @@ appears twice in the list. The recommender also picks the *best* preset
 within each purpose (scored against the mon's base stats), not just the
 first matching label.
 
+## Unreleased — Wild & Safari catch curve shifted one tier easier 2026-05-18 (`claude/improve-pokemon-catch-rates-E1Y8U`)
+
+### Changed — Base catch rates lifted one grade across the board
+
+The previous tightening pass (the v15 → v16 rebalance) left G3 and G4
+encounters reading as "you still might bounce three Ultra Balls off this
+Bidoof," which doesn't match what those tiers are supposed to feel like —
+G4 is supposed to be the trivial filler tier, and G3 the mid-game routine
+catch. Each grade now adopts the *next* grade's old base rate, and G4 gets
+a fresh, deliberately lenient ceiling:
+
+| Grade | Old base catch | New base catch | Old flee on miss | New flee on miss |
+|---|---|---|---|---|
+| G1 | 4% | **12%** | 55% | **40%** |
+| G2 | 12% | **22%** | 40% | **28%** |
+| G3 | 22% | **35%** | 28% | **20%** |
+| G4 | 35% | **50%** | 20% | **12%** |
+
+The shift propagates through the existing `_CATCH_RATE_BY_GRADE` /
+`_CATCH_FLEE_BY_GRADE` lookups, so wild routes, Safari encounters, boss
+arena phase-2, and roaming legendaries all pick up the new curve from a
+single source. Ball multipliers (Poké 1.0× / Great 1.5× / Ultra 2.0× /
+Master ∞) and Safari extras (`SAFARI_BALL_MULT 1.35×`, bait 0.70× catch /
+0.55× flee, rock 1.65× catch / 1.70× flee) are unchanged — the bump comes
+purely from the species base, so the Safari mini-game still trades the
+same way, just on a friendlier baseline.
+
+Sanity check on the new ceiling: G4 × Great Ball = 75%, G4 × Ultra = 100%
+(capped), G3 × Ultra = 70%. Great Ball stays meaningfully better than
+Poké on G4 instead of both balls capping, which was the alternative if
+we'd pushed G4 to 55%+.
+
+Touched: `battle.html` lines 33896-33897 (constants), line 8374 (Help
+overlay copy), `STORY_MODE_FLOW.md` §5 catch-rate table. The stale
+v15→v16 comment block above the constants was removed — the numbers are
+the spec.
+
+## Unreleased — Route pacing: 2 wilds per route + "Up next" hints across transitions 2026-05-18 (`claude/improve-game-flow-s723x`)
+
+### Changed — Wild encounters now fire two-in-a-row per route node
+
+Leaving a city to reach the next one used to surface a single wild
+encounter before the trainer battle. One wild felt thin once the player
+learned the beat — the loop barely had room to breathe between "click
+Continue Route" and the foe portrait. Now each route node fires
+**`STORY_WILDS_PER_ROUTE_NODE` (= 2)** wilds back-to-back before the
+trainer fight. Each wild is rolled independently from the wild grade
+curve, so the two species are usually distinct.
+
+How it's wired:
+
+* `sm.wildSeenByEventIdx[battleIdx]` is now a **count** (legacy boolean
+  `true` reads as 1, so saves mid-route on the previous version don't
+  re-fire a wild they already cleared).
+* `_shouldFireWildBeforeBattle` returns `true` while the count is below
+  `STORY_WILDS_PER_ROUTE_NODE`.
+* `_runFirstStoryInterrupt` honors a new `chainAfter: true` flag on the
+  `wildRoute` entry — it re-enters `enterBattleEvent(ev)` *without* the
+  `_wildAlreadyChecked` short-circuit, so the interrupt chain re-runs
+  and fires the next wild. The counter eventually crosses the threshold
+  and the trainer battle launches normally.
+* One-shot beats (`catchTutorial`, `roamingLegendary`) still use the
+  original onComplete that jumps straight to the trainer fight — they
+  don't chain. Roaming legendaries also consume *both* wild slots at
+  once (`_markWildSeen(idx, STORY_WILDS_PER_ROUTE_NODE)`), preserving
+  the "roaming replaces the route's wild" framing.
+
+### Added — "Up next" pill on every transition screen
+
+Between events the player used to hop opaquely: click Continue on a
+victory overlay and just *land* on the next screen with no breadcrumb.
+Each transition card now carries a small **"Up next →"** chip that names
+what comes next:
+
+* Catch encounter (route) — "One more wild on this route" while a wild
+  slot remains; otherwise the upcoming trainer ("Gym Leader — Brock") or
+  city ("Cerulean City") or finale ("Hall of Fame").
+* Catch resolution card ("Continue →" after catch / flee / run) — same.
+* Battle victory overlay — same, computed against the already-advanced
+  `sm.eventIndex` and accounting for any wild slot still queued before
+  the next trainer.
+
+The pill is suppressed in Safari mode (it has its own per-encounter
+counter), boss mode (cage-only flow), and the catch tutorial (the
+tutorial framing is its own narrative beat). Driven by a single
+`_storyComputeUpNext({ phase: 'inCatch' | 'postVictory' })` helper, so
+every surface reads the same source of truth.
+
+`STORY_MODE_FLOW.md §3` will want a follow-up edit to document the new
+constant; the prose still reads "Once per route node" but the table row
+will need to point at `STORY_WILDS_PER_ROUTE_NODE` for the actual count.
+
+## Unreleased — Gym → route → next-city Professor sequencing 2026-05-18 (`claude/fix-gym-party-sequencing-5j6NH`)
+
+### Changed — Professor no longer arrives right after the gym badge
+
+Beating a gym unlocks `+1` party slot, but the next Professor was appearing
+on the same post-gym hub — i.e. immediately after the badge, before the
+player ever walked the road. The route wild-encounter beat the design
+relies on was effectively skippable: take the badge, take a partner from
+the same Center, never see a wild.
+
+The post-gym hub now drops the **Professor** action entirely (cities 1–5
+in the action list; cities 6–8 via the `shouldForceCityProfessor` rule
+flipping off whenever the current row sits immediately after a
+`Gym Leader N` battle). The intended beat sequence after each badge is:
+
+1. **Beat the gym** → `+1` slot unlocked.
+2. **Post-gym hub** — Pokémon Center / Pokémart / tutors stay open. If
+   the player already has stored Pokémon, they can withdraw one from the
+   PC into the new slot here.
+3. **Leave the city** → forced **wild encounter** on the first battle of
+   the new route (unchanged from the existing wild-route flow).
+4. **Catch attempt** → if caught, the new partner fills the slot. Either
+   way the route continues.
+5. **Next city's pre-gym hub** → Professor is available there (cap-gated
+   as before), so a non-catcher still finishes the front half with a
+   full team without ever needing to wild-hunt.
+
+Lone exception preserved: **City-8 post-Gym-8 legendary gate** (Mystery
+Figure / `isPreLeagueLegendaryMysteryGate`) still surfaces at the
+post-gym hub — that swap is required to enter Victory Road and takes
+precedence over the post-gym suppression.
+
+No save-format change; existing runs land in the new flow on next reload.
+The PC, Pokémart, tutors, EV Trainer, Battle Dojo, Safari Zone (City 4),
+and Poké Casino (City 5) remain on post-gym hubs — the post-gym town is
+still a real stop, just not where the new partner is handed out.
+
+`STORY_MODE_FLOW.md §1` updated to match: the "expected sequence" row
+now spells out the route-wild beat between badge and next Pro, and the
+Professor-visibility row reads "appears only at pre-gym hubs".
+
+## Unreleased — Sheer Force / Life Orb / every held item now fire on freshly caught + evolved Pokémon 2026-05-18 (`claude/fix-item-effects-evolved-pokemon-Za2en`)
+
+### Fixed — Item effect + ability silently no-oping on edited builds
+
+User report: a story-mode Nidoking that the team panel and summary screen
+showed as holding **Life Orb** with the **Sheer Force** ability was hitting
+Earth Power on Arcanine for 175 damage (consistent with Life Orb alone
+applying — Sheer Force's 1.3× base-power boost never fired). Sludge Bomb on
+the next foe still poisoned the target, which directly proved Sheer Force
+was off (it should consume the 30% poison chance for the damage trade).
+
+Root cause is a snapshot drift between two views of the same mon:
+
+* `summaryTarget` / team-panel / overview UI reads `mon.item` and
+  `mon.ability` straight off the live `state.playerParty[i]` object — but
+  the team panel rebuilds that view through `buildPokemon` whenever it
+  renders, so the *render* always reflects the latest `build.a` / `build.i`.
+* The battle engine's damage path reads the **string snapshot** that
+  `buildPokemon` captured *once* at battle start — `let abilityVal = build.a;`
+  and `item: build.i`. If the saved build was edited (Dojo / catch / evolve)
+  between the snapshot and the read, the engine kept using the stale value
+  while every UI surface kept showing the new one.
+
+So the player saw "Ability: Sheer Force" in the summary, told us Sheer
+Force was broken, and they were right — the engine's `attacker.ability`
+was still the pre-Dojo ability slot.
+
+### Fix
+
+New `_resyncMonFromBuildData(mon)` helper rebinds `mon.item` and
+`mon.ability` to `mon.buildData.i` / `mon.buildData.a` (which is the same
+object reference the Dojo / catch / evolve flow already mutates) whenever
+no battle effect has touched them this fight. Three call sites cover every
+path a mon can reach a damage roll on:
+
+1. **`startBattle`** — runs once after `state.playerParty` /
+   `state.foeParty` are built. Catches the lead.
+2. **`applySwitchInAbilities`** — runs on every switch-in (including the
+   initial lead, second slot via Roar/Whirlwind, U-turn replacement, …).
+3. **`performAction`** — runs once per acting turn, just before the move
+   resolves. Last-line safety net.
+
+The resync is guarded so it never undoes a legitimate in-battle change:
+
+* **Items**: skipped when `mon.itemConsumed === true` (Berry / Gem /
+  Power Herb / Normal Gem / …) or `mon.knockedOff === true` (Knock Off,
+  Trick / Switcheroo, Embargo-driven loss, Thief), so consumed items don't
+  resurrect.
+* **Abilities**: tracked with a new `mon._abilityMutatedInBattle` flag,
+  set wherever the engine overwrites ability mid-battle —
+  Mega Evolution's locked slot, Terapagos / Tera Shift / Teraform Zero,
+  Mummy / Lingering Aroma, Wandering Spirit, Trace, Imposter, Transform,
+  Skill Swap, Role Play, Simple Beam, Worry Seed, Entrainment. When the
+  flag is set, the resync leaves `mon.ability` alone.
+
+### Verification
+
+Reproduced the bug headlessly: construct `state.pActive` with
+`buildData.a = "Sheer Force"`, `buildData.i = "Life Orb"`, then corrupt
+`mon.ability = "Poison Point"` and `mon.item = "Leftovers"` to simulate
+the stale snapshot. Pre-fix, Earth Power dealt ~150 dmg with Poison
+Point + Leftovers and Sludge Bomb still poisoned. Post-fix, the resync
+inside `performAction` flips the in-battle mon back to Sheer Force +
+Life Orb before the damage roll, Earth Power one-shots Arcanine for 197
+dmg with Sheer Force's basePower×1.3 + Life Orb's modifier×1.3, takes
+0 Life Orb recoil (Sheer Force suppresses), and Sludge Bomb no longer
+applies its secondary poison.
+
+Also verified no-clobber on legitimate mid-battle mutations: a Trace'd
+ability ("Trace" → "Sheer Force" on switch-in) survives the resync (flag
+set), and a consumed Sitrus Berry stays consumed (`itemConsumed === true`).
+
 ## Unreleased — `sm is not defined` no longer crashes every story battle 2026-05-18 (`claude/fix-recent-bugs-eiMsL`)
 
 ### Fixed — Story mode "MissingNo" placeholder screen (real root cause)
