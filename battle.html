@@ -37891,26 +37891,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (sm.inventory[key] <= 0) delete sm.inventory[key];
         }
 
-        async function tutorChangeMoveWithVoucher(teamIdx, moveSlot, newMove) {
+        // Shared scaffolding for the four tutor*WithVoucher entry points:
+        // interaction lock, mon/inventory guards, voucher consume, save + sfx + render.
+        // `applier(mon, remaining)` runs the kind-specific validation and confirm
+        // prompt, then mutates `mon` and returns true to commit; false aborts without
+        // consuming the voucher.
+        async function _tutorApplyChangeWithVoucher(teamIdx, voucherKey, voucherLabel, applier) {
             if (!_storyTryBeginInteraction()) return;
             try {
                 const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
                 _storyEnsureInventory();
-                if ((sm.inventory.heartScale | 0) <= 0) {
-                    try { window.showGameAlert && window.showGameAlert('No Heart Scales in your bag.'); } catch (e) {}
+                if ((sm.inventory[voucherKey] | 0) <= 0) {
+                    try { window.showGameAlert && window.showGameAlert(`No ${voucherLabel}s in your bag.`); } catch (e) {}
                     return;
                 }
-                const currentMoves = (mon.build.m || []).map(m => m.split('/')[0]);
-                if (currentMoves.includes(newMove)) return;
-                const oldMove = (mon.build.m && mon.build.m[moveSlot]) ? mon.build.m[moveSlot].split('/')[0] : '(empty slot)';
-                const remaining = (sm.inventory.heartScale | 0) - 1;
-                const ok = await _storyConfirmTutorChange(`Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Replaces "${oldMove}". Saves ${TUTOR_COST_MOVE.toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`, 0);
-                if (!ok) return;
-                _consumeVoucher('heartScale');
-                mon.build.m[moveSlot] = newMove;
-                mon.currentHp = null;
-                mon.status = null;
-                mon.pp = null;
+                const committed = await applier(mon, (sm.inventory[voucherKey] | 0) - 1);
+                if (!committed) return;
+                _consumeVoucher(voucherKey);
                 save();
                 try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
                 _txPending = null;
@@ -37919,100 +37916,64 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } finally {
                 _storyEndInteraction();
             }
+        }
+
+        async function tutorChangeMoveWithVoucher(teamIdx, moveSlot, newMove) {
+            return _tutorApplyChangeWithVoucher(teamIdx, 'heartScale', 'Heart Scale', async (mon, remaining) => {
+                const cur = (mon.build.m || []).map(m => m.split('/')[0]);
+                if (cur.includes(newMove)) return false;
+                const oldMove = (mon.build.m && mon.build.m[moveSlot]) ? mon.build.m[moveSlot].split('/')[0] : '(empty slot)';
+                if (!await _storyConfirmTutorChange(`Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Replaces "${oldMove}". Saves ${TUTOR_COST_MOVE.toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`, 0)) return false;
+                mon.build.m[moveSlot] = newMove;
+                mon.currentHp = null; mon.status = null; mon.pp = null;
+                return true;
+            });
         }
 
         async function tutorChangeItemWithVoucher(teamIdx, newItem) {
-            if (!_storyTryBeginInteraction()) return;
-            try {
-                const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
-                _storyEnsureInventory();
-                if ((sm.inventory.emblemHonor | 0) <= 0) {
-                    try { window.showGameAlert && window.showGameAlert('No Emblems of Honor in your bag.'); } catch (e) {}
-                    return;
-                }
-                if (isMegaStone(newItem) || Z_TYPE_MAP_VALUES.has(newItem) || BANNED_ITEMS.has(newItem)) return;
+            return _tutorApplyChangeWithVoucher(teamIdx, 'emblemHonor', 'Emblem of Honor', async (mon, remaining) => {
+                if (isMegaStone(newItem) || Z_TYPE_MAP_VALUES.has(newItem) || BANNED_ITEMS.has(newItem)) return false;
                 const curItem = mon.build.i;
-                if (curItem === newItem) return;
+                if (curItem === newItem) return false;
                 const curGimmick = mon.build.gimmick;
-                const swappingAwayMegaStone = curGimmick === 'MEGA' && isMegaStone(curItem);
-                const swappingAwayZCrystal  = curGimmick === 'ZMOVE' && Z_TYPE_MAP_VALUES.has(curItem);
-                const remaining = (sm.inventory.emblemHonor | 0) - 1;
-                if (swappingAwayMegaStone || swappingAwayZCrystal) {
-                    const which = swappingAwayMegaStone ? 'Mega Evolution' : 'Z-Move';
+                const swapMega = curGimmick === 'MEGA'  && isMegaStone(curItem);
+                const swapZ    = curGimmick === 'ZMOVE' && Z_TYPE_MAP_VALUES.has(curItem);
+                if (swapMega || swapZ) {
+                    const which = swapMega ? 'Mega Evolution' : 'Z-Move';
                     const ok = (typeof window !== 'undefined' && typeof window.showGameConfirm === 'function')
                         ? await window.showGameConfirm(`Replacing the ${curItem} will disable ${which} on ${mon.name}. Visit Colress again (10,000G) to restore it. Use 1 Emblem of Honor anyway? (${remaining} left after.)`)
                         : true;
-                    if (!ok) return;
+                    if (!ok) return false;
                     mon.build.gimmick = 'STANDARD';
                 } else {
-                    const oldItemLabel = curItem && curItem !== '(none)' ? `"${curItem}"` : 'no item';
-                    const ok = await _storyConfirmTutorChange(`Use 1 Emblem of Honor to give ${newItem} to ${mon.name}? Replaces ${oldItemLabel}. Saves ${TUTOR_COST_ITEM.toLocaleString()}G. ${remaining} Emblem${remaining===1?'':'s'} left after.`, 0);
-                    if (!ok) return;
+                    const oldLabel = curItem && curItem !== '(none)' ? `"${curItem}"` : 'no item';
+                    if (!await _storyConfirmTutorChange(`Use 1 Emblem of Honor to give ${newItem} to ${mon.name}? Replaces ${oldLabel}. Saves ${TUTOR_COST_ITEM.toLocaleString()}G. ${remaining} Emblem${remaining===1?'':'s'} left after.`, 0)) return false;
                 }
-                _consumeVoucher('emblemHonor');
                 mon.build.i = newItem;
-                save();
-                try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
-                _txPending = null;
-                void renderTutorTeam(true);
-                renderTeamPanel();
-            } finally {
-                _storyEndInteraction();
-            }
+                return true;
+            });
         }
 
         async function tutorChangeAbilityWithVoucher(teamIdx, newAbility) {
-            if (!_storyTryBeginInteraction()) return;
-            try {
-                const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
-                _storyEnsureInventory();
-                if ((sm.inventory.abilityCapsule | 0) <= 0) {
-                    try { window.showGameAlert && window.showGameAlert('No Ability Capsules in your bag.'); } catch (e) {}
-                    return;
-                }
-                if (mon.build.a === newAbility) return;
+            return _tutorApplyChangeWithVoucher(teamIdx, 'abilityCapsule', 'Ability Capsule', async (mon, remaining) => {
+                if (mon.build.a === newAbility) return false;
                 const oldAbil = mon.build.a || '(none)';
-                const remaining = (sm.inventory.abilityCapsule | 0) - 1;
-                const ok = await _storyConfirmTutorChange(`Use 1 Ability Capsule to change ${mon.name}'s ability to ${newAbility}? Replaces "${oldAbil}". Saves ${TUTOR_COST_ABILITY.toLocaleString()}G. ${remaining} Capsule${remaining===1?'':'s'} left after.`, 0);
-                if (!ok) return;
-                _consumeVoucher('abilityCapsule');
+                if (!await _storyConfirmTutorChange(`Use 1 Ability Capsule to change ${mon.name}'s ability to ${newAbility}? Replaces "${oldAbil}". Saves ${TUTOR_COST_ABILITY.toLocaleString()}G. ${remaining} Capsule${remaining===1?'':'s'} left after.`, 0)) return false;
                 mon.build.a = newAbility;
-                save();
-                try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
-                _txPending = null;
-                void renderTutorTeam(true);
-                renderTeamPanel();
-            } finally {
-                _storyEndInteraction();
-            }
+                return true;
+            });
         }
 
         async function tutorChangeNatureWithVoucher(teamIdx, newNature) {
-            if (!_storyTryBeginInteraction()) return;
-            try {
-                const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
-                _storyEnsureInventory();
-                if ((sm.inventory.mint | 0) <= 0) {
-                    try { window.showGameAlert && window.showGameAlert('No Mints in your bag.'); } catch (e) {}
-                    return;
-                }
-                if (!Object.prototype.hasOwnProperty.call(natureModifiers, newNature)) return;
-                if (mon.build.n === newNature) return;
+            return _tutorApplyChangeWithVoucher(teamIdx, 'mint', 'Mint', async (mon, remaining) => {
+                if (!Object.prototype.hasOwnProperty.call(natureModifiers, newNature)) return false;
+                if (mon.build.n === newNature) return false;
                 const oldNature = mon.build.n || '(none)';
-                const remaining = (sm.inventory.mint | 0) - 1;
-                const ok = await _storyConfirmTutorChange(`Use 1 Mint to set ${mon.name}'s nature to ${newNature}? Was "${oldNature}". Saves ${TUTOR_COST_NATURE.toLocaleString()}G. ${remaining} Mint${remaining===1?'':'s'} left after.`, 0);
-                if (!ok) return;
-                _consumeVoucher('mint');
+                if (!await _storyConfirmTutorChange(`Use 1 Mint to set ${mon.name}'s nature to ${newNature}? Was "${oldNature}". Saves ${TUTOR_COST_NATURE.toLocaleString()}G. ${remaining} Mint${remaining===1?'':'s'} left after.`, 0)) return false;
                 mon.build.n = newNature;
                 mon.currentHp = null;
-                save();
-                try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
-                _txPending = null;
-                void renderTutorTeam(true);
-                renderTeamPanel();
-            } finally {
-                _storyEndInteraction();
-            }
+                return true;
+            });
         }
 
         // ── COLRESS — POWER AWAKENING NPC ────────────────────────────────
