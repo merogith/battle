@@ -13378,7 +13378,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { window.runScreenTransition('fade'); } catch (e) {}
             try { applyBattleLayoutMode(); } catch (e) {}
             if (state.mode === 'gauntlet') document.getElementById('gauntlet-score').classList.remove('hidden'); else document.getElementById('gauntlet-score').classList.add('hidden');
-            state.playerParty = state.p1Draft.map(d => buildPokemon(d.name, d.build)); state.foeParty = state.p2Draft.map(d => buildPokemon(d.name, d.build));
+            // Defensive: anything between here and updateUI() that throws (corrupt draft,
+            // missing build, AI helper bug, story scaling regression…) used to leave the
+            // user staring at the static "MissingNo" HUD with no command menu. Bail back
+            // to the main menu with a toast so they're never stranded.
+            try {
+                if (!Array.isArray(state.p1Draft) || state.p1Draft.length === 0) {
+                    throw new Error('player draft is empty');
+                }
+                if (!Array.isArray(state.p2Draft) || state.p2Draft.length === 0) {
+                    throw new Error('foe draft is empty');
+                }
+                state.playerParty = state.p1Draft.map(d => buildPokemon(d.name, d.build));
+                state.foeParty = state.p2Draft.map(d => buildPokemon(d.name, d.build));
+                if (!state.playerParty[0]) throw new Error('player party empty after build');
+                if (!state.foeParty[0]) throw new Error('foe party empty after build');
+            } catch (initErr) {
+                console.error('[startBattle] team build failed — returning to menu:', initErr);
+                try { window.showGameAlert && window.showGameAlert('Could not start the battle (corrupted team data). Returning to the main menu — try again.'); } catch (e) {}
+                try { document.getElementById('screen-battle').classList.add('hidden'); } catch (e) {}
+                try { if (typeof window.returnToHome === 'function') await window.returnToHome(); } catch (e) {}
+                return;
+            }
             // Story Pokédex — every foe a story-mode trainer brings is "seen".
             try {
                 if (window.StoryMode && window.StoryMode.isActive && window.StoryMode.isActive()) {
@@ -13390,21 +13411,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             } catch (e) {}
             // Story League (E4 line / Champion / post-HoF boss): tiered stat boosts, then global difficulty mult.
+            // These foe-scaling helpers must not be allowed to crash startBattle and leave the
+            // user on a placeholder MissingNo screen — wrap each one so a single bad mon entry
+            // can't take down the whole init.
             if (state.mode === 'story' && typeof window.applyStoryLeagueFoeStatBoost === 'function') {
-                state.foeParty.forEach(window.applyStoryLeagueFoeStatBoost);
+                try { state.foeParty.forEach(window.applyStoryLeagueFoeStatBoost); } catch (e) { console.warn('[startBattle] applyStoryLeagueFoeStatBoost failed:', e); }
             }
-            // Crucible Hard Mode (+30% foe stats) — applied AFTER the per-event
-            // boss boost but BEFORE difficulty scaling so all three multipliers
-            // stack cleanly. Only fires when sm.crucibleHardMode is on AND the
-            // current battle is Crucible-sourced (rematch / frontier / league /
-            // gym pick / mystery / wild).
             if (state.mode === 'story' && sm && sm.crucibleHardMode && sm.crucibleBattleSource
                 && typeof window.crucibleApplyHardModeToFoes === 'function') {
-                window.crucibleApplyHardModeToFoes();
+                try { window.crucibleApplyHardModeToFoes(); } catch (e) { console.warn('[startBattle] crucibleApplyHardModeToFoes failed:', e); }
             }
-            // Story-mode difficulty: scale foe stats (Very Easy/Easy weaken, Hard/Very Hard strengthen)
             if (state.mode === 'story' && typeof window.applyFoeDifficultyScaling === 'function') {
-                state.foeParty.forEach(window.applyFoeDifficultyScaling);
+                try { state.foeParty.forEach(window.applyFoeDifficultyScaling); } catch (e) { console.warn('[startBattle] applyFoeDifficultyScaling failed:', e); }
             }
             state.pActive = state.playerParty[0];
             // Field must match this battle before aiBestSwitch — aiEstimateDmg(getCurrentWeather) must not see the previous battle's weather.
@@ -13419,31 +13437,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.usedMega = false; state.usedZ = false; state.usedDyna = false; state.usedTera = false;
             state.fUsedMega = false; state.fUsedZ = false; state.fUsedDyna = false; state.fUsedTera = false;
             state.p1GimmickIntent = null; state.p2GimmickIntent = null;
-            if (settings.randomWeather) rollRandomWeather();
-            if (settings.randomTerrain) rollRandomTerrain();
-            {
+            try { if (settings.randomWeather) rollRandomWeather(); } catch (e) { console.warn('[startBattle] rollRandomWeather:', e); }
+            try { if (settings.randomTerrain) rollRandomTerrain(); } catch (e) { console.warn('[startBattle] rollRandomTerrain:', e); }
+            try {
                 const _foeAlive = state.foeParty.filter(m => m.currentHp > 0);
                 const _foeLead = _foeAlive.length ? aiBestSwitch(_foeAlive, state.pActive, { isLead: true }) : null;
                 state.fActive = _foeLead || state.foeParty[0];
+            } catch (e) {
+                console.warn('[startBattle] aiBestSwitch failed, using party[0]:', e);
+                state.fActive = state.foeParty[0];
             }
             state.turnNumber = 0;
             if (state.mode === 'story') {
                 state.storyItemUsedThisTurn = false;
                 state.foeStoryItemUsedThisTurn = false;
-                state.foeStoryInv = typeof window.buildFoeStoryInventoryForBattle === 'function' ? window.buildFoeStoryInventoryForBattle() : null;
+                try { state.foeStoryInv = typeof window.buildFoeStoryInventoryForBattle === 'function' ? window.buildFoeStoryInventoryForBattle() : null; } catch (e) { console.warn('[startBattle] buildFoeStoryInventoryForBattle:', e); state.foeStoryInv = null; }
             } else {
                 state.foeStoryInv = null;
                 state.foeStoryItemUsedThisTurn = false;
             }
             state.revealedFoe = new Set();
-            state.revealedFoe.add(state.fActive.name);
+            try { if (state.fActive && state.fActive.name) state.revealedFoe.add(state.fActive.name); } catch (e) {}
 
-            logMsg(`Battle started!`, 'info');
+            try { logMsg(`Battle started!`, 'info'); } catch (e) {}
             // Apply Story Mode artifact effects (Trick Room, Gravity, etc.) after field init
-            if (state.mode === 'story' && typeof window._storyApplyArtifacts === 'function') window._storyApplyArtifacts();
+            if (state.mode === 'story' && typeof window._storyApplyArtifacts === 'function') {
+                try { window._storyApplyArtifacts(); } catch (e) { console.warn('[startBattle] _storyApplyArtifacts:', e); }
+            }
             // Clear leftover Dynamax/animation styles from previous battle
-            ['player-sprite','foe-sprite'].forEach((id, i) => { let el = document.getElementById(id); if (el) { el.style.filter = ''; const mon = i === 0 ? state.pActive : state.fActive; el.style.transform = getSpriteTransformStyle(mon); } });
-            updateUI();
+            try { ['player-sprite','foe-sprite'].forEach((id, i) => { let el = document.getElementById(id); if (el) { el.style.filter = ''; const mon = i === 0 ? state.pActive : state.fActive; if (mon) el.style.transform = getSpriteTransformStyle(mon); } }); } catch (e) {}
+            try { updateUI(); } catch (e) { console.warn('[startBattle] updateUI threw:', e); }
 
             // Pokeball throw animations
             logMsg(`Player 1 sent out ${state.pActive.name}!`, 'info');
@@ -13466,17 +13489,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } catch (e2) {}
             }
 
-            applySwitchInAbilities(state.pActive, state.fActive); applySwitchInAbilities(state.fActive, state.pActive);
-            updateUI();
+            try { applySwitchInAbilities(state.pActive, state.fActive); applySwitchInAbilities(state.fActive, state.pActive); } catch (e) { console.warn('[startBattle] applySwitchInAbilities:', e); }
+            try { updateUI(); } catch (e) { console.warn('[startBattle] updateUI (post-anim) threw:', e); }
 
             // Show contextual tip on first battle
-            if (showTipsEnabled && !window._battleTipShown) {
-                window._battleTipShown = true;
-                logMsg(`Tip: Tap moves or "i" for info. ▲▼ = damage matchup. Tap names for stats.`, 'info');
-            }
+            try {
+                if (showTipsEnabled && !window._battleTipShown) {
+                    window._battleTipShown = true;
+                    logMsg(`Tip: Tap moves or "i" for info. ▲▼ = damage matchup. Tap names for stats.`, 'info');
+                }
+            } catch (e) {}
 
-            document.getElementById('move-menu').classList.add('hidden');
-            document.getElementById('command-menu').classList.remove('hidden');
+            // Always show the command menu — this is the only thing standing between the
+            // user and a usable battle screen.
+            try { document.getElementById('move-menu').classList.add('hidden'); } catch (e) {}
+            try { document.getElementById('command-menu').classList.remove('hidden'); } catch (e) {}
             try { if (window.syncBattlePhaseClass) window.syncBattlePhaseClass(); } catch (e) {}
             try { syncBattleActiveHighlight(); } catch (e) {}
             if (typeof window.applyBattleLogDockClass === 'function') window.applyBattleLogDockClass();
