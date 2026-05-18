@@ -11466,6 +11466,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.abilityActivated = false;
             mon.originalItem = build.i;
             mon.knockedOff = false;
+            // Track whether ability has been overwritten by a battle effect (Trace, Wandering
+            // Spirit, Mummy/Lingering Aroma, Mega Evolution, Tera form change, Skill Swap, …).
+            // The switch-in resync below leaves the in-battle ability alone whenever this is
+            // set so legitimate mid-battle ability changes are not clobbered.
+            mon._abilityMutatedInBattle = false;
             mon.isShiny = build._isShiny !== undefined ? build._isShiny : (Math.random() < 0.01);
             build._isShiny = mon.isShiny; // persist so rebuilds keep same shiny state
             mon._baseName = monName; // always the pre-mega/pre-gmax base species name
@@ -11708,7 +11713,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         mon.type2 = types[1] || '';
                         // Mega forms always expose their locked ability at slot 0 in the dex.
                         let megaAbil = megaSpecies.abilities && megaSpecies.abilities['0'];
-                        if (megaAbil) mon.ability = megaAbil;
+                        if (megaAbil) { mon.ability = megaAbil; mon._abilityMutatedInBattle = true; }
                         mon.name = megaFormName;
                         applied = true;
                     }
@@ -11858,7 +11863,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     state.terrain = ''; state.terrainTurns = 0;
                 } catch (e) {}
                 // Stellar form also bumps ability marker (used by Tera Shell to gate full-HP resist while still pre-Tera)
-                mon.ability = 'Teraform Zero';
+                mon.ability = 'Teraform Zero'; mon._abilityMutatedInBattle = true;
             }
 
             let teraSprite = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
@@ -13391,6 +13396,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 state.playerParty = state.p1Draft.map(d => buildPokemon(d.name, d.build));
                 state.foeParty = state.p2Draft.map(d => buildPokemon(d.name, d.build));
+                // Defensive resync: keep `mon.item` / `mon.ability` aligned with the live build
+                // reference (`buildData`). buildPokemon already does this, but the resync covers
+                // any path where the buildData object the engine reads from later is the same
+                // saved-build instance the Dojo / catch / evolve flow continues to mutate.
+                try {
+                    (state.playerParty || []).forEach(m => { try { _resyncMonFromBuildData(m); } catch (e) {} });
+                    (state.foeParty || []).forEach(m => { try { _resyncMonFromBuildData(m); } catch (e) {} });
+                } catch (e) {}
                 if (!state.playerParty[0]) throw new Error('player party empty after build');
                 if (!state.foeParty[0]) throw new Error('foe party empty after build');
             } catch (initErr) {
@@ -17621,6 +17634,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let attacker = isPlayer ? state.pActive : state.fActive;
             let defender = isPlayer ? state.fActive : state.pActive;
             if (attacker.currentHp <= 0) return;
+            // Per-turn safety net for the item-effect / ability-effect drift that bit story-mode
+            // mons after Dojo / catch / evolve flows: keep the attacker's item + ability locked
+            // to the saved build whenever no in-battle effect has mutated them. Without this an
+            // already-built state.pActive (carrying a stale ability snapshot) silently bypassed
+            // Sheer Force, Life Orb, and friends even though the team panel showed the updated
+            // values. The flag and consumed/knocked-off guards keep legitimate battle changes
+            // intact. Same call also runs at startBattle (lead) and applySwitchInAbilities.
+            try { _resyncMonFromBuildData(attacker); } catch (e) {}
             attacker.volatile.movedThisTurn = true;
             // Metronome (item): consecutive same-move counter
             if (move && move.name && move.cat !== "Status") {
@@ -20407,6 +20428,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (!_abilityLockSet.has(attacker.ability) && attacker.ability !== defender.ability && !hasAbilityShield(attacker)) {
                             const _oldAb = attacker.ability;
                             attacker.ability = defender.ability;
+                            attacker._abilityMutatedInBattle = true;
                             logMsg(`${attacker.name}'s ${_oldAb} became ${defender.ability}!`, 'info');
                         }
                     }
@@ -20418,6 +20440,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             const _atkOld = attacker.ability;
                             attacker.ability = "Wandering Spirit";
                             defender.ability = _atkOld;
+                            attacker._abilityMutatedInBattle = true;
+                            defender._abilityMutatedInBattle = true;
                             logMsg(`${attacker.name} and ${defender.name} swapped abilities via Wandering Spirit!`, 'info');
                         }
                     }
@@ -21357,11 +21381,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        // Re-sync the in-battle mon's `item` and `ability` from the source-of-truth build
+        // (`mon.buildData`, which is the same object reference as `sm.team[i].build` for story
+        // mode mons). Without this, an in-battle mon that was constructed via `buildPokemon`
+        // and then had its build mutated through the Battle Dojo / evolution / catch flow could
+        // enter battle showing the new item/ability in the summary modal (which is built fresh
+        // from the live build) while the engine's damage path still read the stale snapshot
+        // `mon.ability`/`mon.item` captured at construction — Sheer Force then silently fails
+        // to fire on Sludge Bomb / Earth Power and Life Orb's recoil suppression is bypassed.
+        //
+        // Guards:
+        //   - Item: skipped if the holder consumed an item this battle (Gem, Berry, Power Herb,
+        //     Normal Gem, …) or had it knocked off / stolen. `mon.itemConsumed` and
+        //     `mon.knockedOff` already track those.
+        //   - Ability: skipped if a battle effect (Trace, Wandering Spirit, Mummy / Lingering
+        //     Aroma, Mega Evolution's locked ability, Tera form change, Skill Swap, Role Play,
+        //     Worry Seed, Simple Beam, Doodle, Transform) overwrote it — tracked via
+        //     `mon._abilityMutatedInBattle`.
+        function _resyncMonFromBuildData(mon) {
+            if (!mon || !mon.buildData) return;
+            const bd = mon.buildData;
+            if (bd.a && mon.ability !== bd.a && !mon._abilityMutatedInBattle && !mon.megaEvolved) {
+                mon.ability = bd.a;
+            }
+            if (bd.i && bd.i !== 'None' && bd.i !== '(none)' && bd.i !== '' && mon.item !== bd.i
+                && !mon.itemConsumed && !mon.knockedOff) {
+                mon.item = bd.i;
+            }
+        }
+        try { window._resyncMonFromBuildData = _resyncMonFromBuildData; } catch (e) {}
+
         function applySwitchInAbilities(mon, foe, _storySwitchDepth = 0) {
             // Switch-in proceeds even when the opposing slot is empty/fainted (e.g. simultaneous KO
             // from Explosion): weather setters, terrain setters, and self-boost abilities still need
             // to fire. Foe-targeted abilities (Intimidate, Download, Frisk, …) guard themselves below.
             if (mon.currentHp <= 0) return;
+            // Defensive: ensure the in-battle mon's item / ability still match the saved build.
+            // Catches stale snapshots when the player edited their build (Dojo / catch / evolve)
+            // between the buildPokemon call and the actual switch-in.
+            _resyncMonFromBuildData(mon);
             const _foeAlive = !!(foe && foe.currentHp > 0);
             // Cure incompatible status upon ability acquisition / switch-in
             _abilityStatusCure(mon);
@@ -21481,7 +21539,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     for (const k of Object.keys(_deltas)) { if (mon.stats[k] != null) mon.stats[k] += _deltas[k]; }
                     if (mon.maxHp != null) { mon.maxHp += _deltas.hp; mon.currentHp += _deltas.hp; mon.baseMaxHp = mon.maxHp; }
                 } catch (e) {}
-                mon.ability = "Tera Shell";
+                mon.ability = "Tera Shell"; mon._abilityMutatedInBattle = true;
                 logMsg(`${mon.name}'s Tera Shift transformed it into its Terastal form!`, 'info');
             }
             // Unnerve: Prevent opponent berry usage (simplified — handled at berry activation checks)
@@ -21558,7 +21616,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     mon.stats = { ...foe.stats };
                     mon.type1 = foe.type1; mon.type2 = foe.type2;
                     mon.stages = { ...foe.stages };
-                    if (foe.ability && !noImposterAbilities.has(foe.ability)) mon.ability = foe.ability;
+                    if (foe.ability && !noImposterAbilities.has(foe.ability)) { mon.ability = foe.ability; mon._abilityMutatedInBattle = true; }
                     mon.moves = foe.moves.filter(Boolean).map(m => ({...m, pp: Math.min(5, m.pp || 5), maxPp: Math.min(5, m.maxPp || 5)}));
                     mon.transformedInto = foe.name;
                     mon.transformTargetShiny = !!foe.isShiny;
@@ -21589,7 +21647,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (mon.ability === "Trace" && _foeAlive && foe.ability && foe.ability !== "Trace" && !hasAbilityShield(mon) && !hasAbilityShield(foe)) {
                 logMsg(`${mon.name} traced ${foe.name}'s ${foe.ability}!`, 'info');
-                mon.ability = foe.ability;
+                mon.ability = foe.ability; mon._abilityMutatedInBattle = true;
                 try { applySwitchInAbilities(mon, foe, _storySwitchDepth + 1); }
                 catch (e) { console.warn('[Trace] re-check applySwitchInAbilities threw — keeping new ability without re-trigger:', e); }
             }
@@ -22181,7 +22239,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 attacker.stats = { ...target.stats };
                 attacker.type1 = target.type1; attacker.type2 = target.type2;
                 attacker.stages = { ...target.stages };
-                if (!noTransformAbilities.has(target.ability)) attacker.ability = target.ability;
+                if (!noTransformAbilities.has(target.ability)) { attacker.ability = target.ability; attacker._abilityMutatedInBattle = true; }
                 attacker.moves = target.moves.map(m => ({...m, pp: Math.min(5, m.pp || 5), maxPp: Math.min(5, m.maxPp || 5)}));
                 attacker.transformedInto = target.name;
                 attacker.transformTargetShiny = !!target.isShiny;
@@ -22612,6 +22670,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_noSwap.has(attacker.ability) || _noSwap.has(defender.ability)) { logMsg(`But it failed!`, 'info'); return; }
                 if (hasAbilityShield(attacker) || hasAbilityShield(defender)) { logMsg(`But it failed!`, 'info'); return; }
                 let _tmpAb = attacker.ability; attacker.ability = defender.ability; defender.ability = _tmpAb;
+                attacker._abilityMutatedInBattle = true; defender._abilityMutatedInBattle = true;
                 try { _abilityStatusCure(attacker); _abilityStatusCure(defender); } catch(e) {}
                 logMsg(`${attacker.name} and ${defender.name} swapped their abilities!`, 'info'); return;
             }
@@ -22620,7 +22679,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _noRolePlay = new Set(["Wonder Guard","Illusion","Stance Change","Schooling","Comatose","Shields Down","Disguise","RKS System","Battle Bond","Neutralizing Gas","Ice Face","Hunger Switch","Power Construct","Multitype","Zen Mode"]);
                 if (_noRolePlay.has(defender.ability)) { logMsg(`But it failed!`, 'info'); return; }
                 if (hasAbilityShield(attacker) || hasAbilityShield(defender)) { logMsg(`But it failed!`, 'info'); return; }
-                attacker.ability = defender.ability;
+                attacker.ability = defender.ability; attacker._abilityMutatedInBattle = true;
                 try { _abilityStatusCure(attacker); } catch(e) {}
                 logMsg(`${attacker.name} copied ${defender.name}'s ${defender.ability}!`, 'info'); return;
             }
@@ -22629,7 +22688,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _noSimple = new Set(["Truant","Multitype","Stance Change","Schooling","Comatose","Shields Down","Disguise","RKS System","Battle Bond","Power Construct","Zen Mode","Neutralizing Gas","Ice Face","Hunger Switch"]);
                 if (_noSimple.has(defender.ability)) { logMsg(`But it failed!`, 'info'); return; }
                 if (hasAbilityShield(defender)) { logMsg(`But it failed!`, 'info'); return; }
-                defender.ability = "Simple";
+                defender.ability = "Simple"; defender._abilityMutatedInBattle = true;
                 logMsg(`${defender.name}'s ability became Simple!`, 'info'); return;
             }
             // Worry Seed: defender's ability becomes Insomnia
@@ -22637,7 +22696,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _noWorry = new Set(["Truant","Multitype","Stance Change","Schooling","Comatose","Shields Down","Disguise","RKS System","Battle Bond","Power Construct"]);
                 if (_noWorry.has(defender.ability)) { logMsg(`But it failed!`, 'info'); return; }
                 if (hasAbilityShield(defender)) { logMsg(`But it failed!`, 'info'); return; }
-                defender.ability = "Insomnia";
+                defender.ability = "Insomnia"; defender._abilityMutatedInBattle = true;
                 if (defender.status === "SLP") { defender.status = null; defender.statusTurns = 0; logMsg(`${defender.name} woke up due to Worry Seed!`, 'info'); }
                 logMsg(`${defender.name}'s ability became Insomnia!`, 'info'); return;
             }
@@ -23060,7 +23119,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _noEntrain = new Set(["Multitype","Stance Change","Schooling","Comatose","Shields Down","Disguise","RKS System","Battle Bond","Neutralizing Gas","Power Construct","Zen Mode","Ice Face","Hunger Switch","Truant"]);
                 if (_noEntrain.has(attacker.ability) || _noEntrain.has(defender.ability)) { logMsg(`But it failed!`, 'info'); return; }
                 if (hasAbilityShield(defender)) { logMsg(`But it failed!`, 'info'); return; }
-                defender.ability = attacker.ability;
+                defender.ability = attacker.ability; defender._abilityMutatedInBattle = true;
                 logMsg(`${defender.name} acquired ${attacker.ability} via Entrainment!`, 'info'); return;
             }
 

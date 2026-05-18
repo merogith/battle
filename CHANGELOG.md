@@ -3,6 +3,78 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Sheer Force / Life Orb / every held item now fire on freshly caught + evolved Pokémon 2026-05-18 (`claude/fix-item-effects-evolved-pokemon-Za2en`)
+
+### Fixed — Item effect + ability silently no-oping on edited builds
+
+User report: a story-mode Nidoking that the team panel and summary screen
+showed as holding **Life Orb** with the **Sheer Force** ability was hitting
+Earth Power on Arcanine for 175 damage (consistent with Life Orb alone
+applying — Sheer Force's 1.3× base-power boost never fired). Sludge Bomb on
+the next foe still poisoned the target, which directly proved Sheer Force
+was off (it should consume the 30% poison chance for the damage trade).
+
+Root cause is a snapshot drift between two views of the same mon:
+
+* `summaryTarget` / team-panel / overview UI reads `mon.item` and
+  `mon.ability` straight off the live `state.playerParty[i]` object — but
+  the team panel rebuilds that view through `buildPokemon` whenever it
+  renders, so the *render* always reflects the latest `build.a` / `build.i`.
+* The battle engine's damage path reads the **string snapshot** that
+  `buildPokemon` captured *once* at battle start — `let abilityVal = build.a;`
+  and `item: build.i`. If the saved build was edited (Dojo / catch / evolve)
+  between the snapshot and the read, the engine kept using the stale value
+  while every UI surface kept showing the new one.
+
+So the player saw "Ability: Sheer Force" in the summary, told us Sheer
+Force was broken, and they were right — the engine's `attacker.ability`
+was still the pre-Dojo ability slot.
+
+### Fix
+
+New `_resyncMonFromBuildData(mon)` helper rebinds `mon.item` and
+`mon.ability` to `mon.buildData.i` / `mon.buildData.a` (which is the same
+object reference the Dojo / catch / evolve flow already mutates) whenever
+no battle effect has touched them this fight. Three call sites cover every
+path a mon can reach a damage roll on:
+
+1. **`startBattle`** — runs once after `state.playerParty` /
+   `state.foeParty` are built. Catches the lead.
+2. **`applySwitchInAbilities`** — runs on every switch-in (including the
+   initial lead, second slot via Roar/Whirlwind, U-turn replacement, …).
+3. **`performAction`** — runs once per acting turn, just before the move
+   resolves. Last-line safety net.
+
+The resync is guarded so it never undoes a legitimate in-battle change:
+
+* **Items**: skipped when `mon.itemConsumed === true` (Berry / Gem /
+  Power Herb / Normal Gem / …) or `mon.knockedOff === true` (Knock Off,
+  Trick / Switcheroo, Embargo-driven loss, Thief), so consumed items don't
+  resurrect.
+* **Abilities**: tracked with a new `mon._abilityMutatedInBattle` flag,
+  set wherever the engine overwrites ability mid-battle —
+  Mega Evolution's locked slot, Terapagos / Tera Shift / Teraform Zero,
+  Mummy / Lingering Aroma, Wandering Spirit, Trace, Imposter, Transform,
+  Skill Swap, Role Play, Simple Beam, Worry Seed, Entrainment. When the
+  flag is set, the resync leaves `mon.ability` alone.
+
+### Verification
+
+Reproduced the bug headlessly: construct `state.pActive` with
+`buildData.a = "Sheer Force"`, `buildData.i = "Life Orb"`, then corrupt
+`mon.ability = "Poison Point"` and `mon.item = "Leftovers"` to simulate
+the stale snapshot. Pre-fix, Earth Power dealt ~150 dmg with Poison
+Point + Leftovers and Sludge Bomb still poisoned. Post-fix, the resync
+inside `performAction` flips the in-battle mon back to Sheer Force +
+Life Orb before the damage roll, Earth Power one-shots Arcanine for 197
+dmg with Sheer Force's basePower×1.3 + Life Orb's modifier×1.3, takes
+0 Life Orb recoil (Sheer Force suppresses), and Sludge Bomb no longer
+applies its secondary poison.
+
+Also verified no-clobber on legitimate mid-battle mutations: a Trace'd
+ability ("Trace" → "Sheer Force" on switch-in) survives the resync (flag
+set), and a consumed Sitrus Berry stays consumed (`itemConsumed === true`).
+
 ## Unreleased — `sm is not defined` no longer crashes every story battle 2026-05-18 (`claude/fix-recent-bugs-eiMsL`)
 
 ### Fixed — Story mode "MissingNo" placeholder screen (real root cause)
