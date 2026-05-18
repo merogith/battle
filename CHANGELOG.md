@@ -3,6 +3,164 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Full game balance & economy overhaul 2026-05-17 (`claude/game-balance-economy-overhaul-a5h2s`)
+
+### Changed — Heal vs X-item price rebalance (pass 2)
+
+Initial overhaul priced healing too high relative to X items, making the
+"bench a mon to set up +6 stages" cheese strictly cheaper than healing
+through damage. Healing prices dropped, X items raised so the two sit
+at parity.
+
+| Item | Pass 1 | Pass 2 |
+|---|---|---|
+| Super Potion (60 HP) | 700G | **500G** |
+| Hyper Potion (120 HP) | 1500G | **1000G** |
+| Max Potion (full HP) | 2200G | **1500G** |
+| Full Restore (full + status) | 3000G | **2000G** |
+| Elixir (10 PP all) | 1200G | **1000G** |
+| Max Elixir (full PP) | 1800G | **1500G** |
+| Revival Herb (30% HP) | 1500G | **1200G** |
+| Revive (50% HP) | 3000G | **2500G** |
+| Max Revive (full HP) | 4500G | **4000G** |
+| X Attack / Defense / Sp.Atk / Sp.Def / Speed / Accuracy | 800G | **1000G** |
+| Dire Hit | 300G | **400G** |
+| Guard Spec. | 350G | **450G** |
+
+X items now cost the same as a Hyper Potion: heal 120 HP, or +2 a stat
+for the fight. Same gold, different decision.
+
+### Changed — Tutor/Colress price tweaks
+
+- **Battle Dojo (Ability swap)**: 2500G → **2000G**. Now matches Item-swap
+  cost; the +500G ability premium wasn't earning its keep given how often
+  enemy teams field non-baseline abilities post-overhaul.
+- **Colress (gimmick swap)**: 10000G → **7500G**. Gimmick density on
+  enemy teams rose with the Frontier per-round bands and Crucible Hard
+  Mode (+20% absolute frequency). The player needs to keep up without
+  spending a small fortune per change.
+
+Move Tutor (1500G), Nature Rater (2000G), EV Trainer (5000G), Stone Sage
+(1.5K/6K/16K by target grade), and Cable Link (variable) were left as-is
+— each remains correctly calibrated for what it delivers under the new
+build-tier pipeline.
+
+### Added — Heal/PP gradient + mid-tier revive
+
+The PokéMart now stocks a full Potion ladder where there used to be a
+jump from 300G (Full Heal — status only) straight to 1000G (Max Potion).
+New entries (pass-1 prices; superseded by the pass-2 rebalance above):
+
+- **Potion** (200G, +20 HP)
+- **Super Potion** (700G, +60 HP)
+- **Hyper Potion** (1500G, +120 HP)
+- **Ether** (400G, restores 10 PP of one move)
+- **Elixir** (1200G, restores 10 PP of every move)
+
+The PP gradient closes the same gap (no PP option below Max Elixir 500G).
+
+The Department Store gains a mid-tier **Revival Herb** (revives to 30% HP)
+so early-game runs aren't forced to choose between no revive and the
+high-cost Dept-store revives.
+
+### Added — Permanent stat-boost vitamins (drop-only)
+
+A new mon-side stat-investment layer, distinct from EVs (which the EV
+Trainer still handles via 252/252/4 presets) and from the existing
+Vitamin Pack voucher (which still buys a free EV Trainer preset).
+
+Six new earned-only items:
+
+| Vitamin | Stat | Cap per mon |
+|---|---|---|
+| HP Up   | HP        | +10 |
+| Protein | Attack    | +10 |
+| Iron    | Defense   | +10 |
+| Calcium | Sp. Atk   | +10 |
+| Zinc    | Sp. Def   | +10 |
+| Carbos  | Speed     | +10 |
+
+Each gives +1 to that stat permanently when applied. Stored on
+`mon.build.permBoosts[stat]`; additive on top of the EV-derived
+stat at `buildPokemon` time. Cap is **+10 per stat per mon** (60 total
+when fully boosted). Carries through Cable Link Rebuild (same mon) and
+Stone Sage evolution (same identity); does NOT carry through Cable Link
+Reroll/Upgrade (which trade the mon for a new species).
+
+**Drop schedule** (~110 vitamins across a perfect run — enough to fully
+boost ~1.8 mons or partially invest across 4-5):
+- Gym Leader 1-8: 2-5 each, themed to the gym's combat style
+- Elite Four E1-E4 + Champion: 3-12 each, escalating
+- Pokédex milestones 25/50/75/100: 2-8 each
+- Post-HoF Mystery Figure: 18 (3 of each)
+- Caged God (boss arc): 30 (5 of each)
+
+UI: surfaced in the **City Bag** with a Use button that opens a roster
+picker (party + PC mons). Rows show current boost vs cap; at-cap rows
+are dimmed. Vitamins are never sellable.
+
+### Changed — Cable Link build pipeline (no more T4 free skip)
+
+Cable Link Reroll / Upgrade / Rebuild were calling `makeBuild()` directly,
+which produced Tournament-tier builds at every action regardless of cost.
+After the overhaul:
+
+- **Reroll** (cheap, same grade) → **Competent** tier (EVs capped at 420
+  instead of 510; still competitive, Tutor / Dojo / EV Trainer still add
+  meaningful polish)
+- **Upgrade** (expensive, one grade up) → **Tournament** tier — premium
+  service stays premium
+- **Rebuild** (medium, same species) → **Competent** tier; perm-boost
+  vitamin investment is carried through (the mon is still the same mon)
+
+The shared `_makePlayerLinkBuild(name, tierTag)` helper preserves the
+existing player gimmick gating (only roll gimmicks the player has
+unlocked via gym victories) and tags `build.powerTier` so any future
+tier-aware UI can display it.
+
+### Added — Crucible Hard Mode toggle
+
+A single checkbox at the top of the Crucible Battles grid. When on:
+
+- **+30% foe HP / bulk / speed** on every Crucible rematch (Mystery
+  Figure, Rival, League Run E1→Champion, Random Gym Rematch, Battle
+  Frontier). Stacks multiplicatively with the per-event boss boost
+  (Champion +40% HP) and the difficulty mode (`hard` +15%, `challenge`
+  +30%). A Champion rematch on Hard difficulty with Crucible Hard Mode
+  on hits ≈ 1.40 × 1.30 × 1.15 = **2.09× canonical foe HP**.
+- **+20% absolute gimmick frequency** on League/Mystery/Rival/Gym
+  rematches (so a hard-mode Champion rematch fields gimmicks at ~100%
+  per eligible mon).
+- **+15% absolute** in Battle Frontier rounds.
+
+Toggled via the `sm.crucibleHardMode` boolean, persisted in the save.
+
+### Changed — Champion / Mystery Figure / Elite Four buff
+
+The boss-tier multipliers now hit harder so post-vitamin / post-Cable-Link
+investment doesn't trivialize the league climb. New values:
+
+| Event | HP boost | Bulk boost | Speed boost |
+|---|---|---|---|
+| E1-E4 | 1.20 → 1.22 | 1.15 → 1.17 | 1.10 → 1.12 |
+| Champion / league Rival | 1.30 → 1.40 | 1.15 → 1.22 | 1.15 → 1.18 |
+| Mystery Figure (post-HoF) | 1.35 → 1.50 | 1.20 → 1.28 | 1.20 → 1.25 |
+
+### Changed — Battle Frontier scaling acceleration
+
+The Frontier ramp was too gentle — round 10+ felt comparable to a
+mid-game gym fight. New values:
+
+| Curve | Old | New |
+|---|---|---|
+| HP per round | 1.35 + 0.05/r (cap 2.50) | 1.50 + 0.075/r (cap 3.00) |
+| Bulk per round | 1.20 + 0.03/r (cap 1.80) | 1.25 + 0.045/r (cap 2.00) |
+| Speed per round | 1.20 + 0.03/r (cap 1.80) | 1.25 + 0.045/r (cap 2.00) |
+| Mech frequency (per round band) | flat per event-type | round-tiered: 25% → 45% → 70% → 90% → 100% |
+
+Round 1 is now harder than the post-HoF Mystery climax; round 10+ caps
+out near a Caged-God-tier wall.
+
 ## Unreleased — VGC depth pass + responsive battle UI 2026-05-17 (`claude/battle-scenery-backgrounds-PagsV`)
 
 ### Changed — Battle screen now reads as a 3D VGC arena
