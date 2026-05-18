@@ -3,6 +3,47 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Gym → route → next-city Professor sequencing 2026-05-18 (`claude/fix-gym-party-sequencing-5j6NH`)
+
+### Changed — Professor no longer arrives right after the gym badge
+
+Beating a gym unlocks `+1` party slot, but the next Professor was appearing
+on the same post-gym hub — i.e. immediately after the badge, before the
+player ever walked the road. The route wild-encounter beat the design
+relies on was effectively skippable: take the badge, take a partner from
+the same Center, never see a wild.
+
+The post-gym hub now drops the **Professor** action entirely (cities 1–5
+in the action list; cities 6–8 via the `shouldForceCityProfessor` rule
+flipping off whenever the current row sits immediately after a
+`Gym Leader N` battle). The intended beat sequence after each badge is:
+
+1. **Beat the gym** → `+1` slot unlocked.
+2. **Post-gym hub** — Pokémon Center / Pokémart / tutors stay open. If
+   the player already has stored Pokémon, they can withdraw one from the
+   PC into the new slot here.
+3. **Leave the city** → forced **wild encounter** on the first battle of
+   the new route (unchanged from the existing wild-route flow).
+4. **Catch attempt** → if caught, the new partner fills the slot. Either
+   way the route continues.
+5. **Next city's pre-gym hub** → Professor is available there (cap-gated
+   as before), so a non-catcher still finishes the front half with a
+   full team without ever needing to wild-hunt.
+
+Lone exception preserved: **City-8 post-Gym-8 legendary gate** (Mystery
+Figure / `isPreLeagueLegendaryMysteryGate`) still surfaces at the
+post-gym hub — that swap is required to enter Victory Road and takes
+precedence over the post-gym suppression.
+
+No save-format change; existing runs land in the new flow on next reload.
+The PC, Pokémart, tutors, EV Trainer, Battle Dojo, Safari Zone (City 4),
+and Poké Casino (City 5) remain on post-gym hubs — the post-gym town is
+still a real stop, just not where the new partner is handed out.
+
+`STORY_MODE_FLOW.md §1` updated to match: the "expected sequence" row
+now spells out the route-wild beat between badge and next Pro, and the
+Professor-visibility row reads "appears only at pre-gym hubs".
+
 ## Unreleased — Sheer Force / Life Orb / every held item now fire on freshly caught + evolved Pokémon 2026-05-18 (`claude/fix-item-effects-evolved-pokemon-Za2en`)
 
 ### Fixed — Item effect + ability silently no-oping on edited builds
