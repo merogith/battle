@@ -3,6 +3,43 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Wild & Safari catch curve shifted one tier easier 2026-05-18 (`claude/improve-pokemon-catch-rates-E1Y8U`)
+
+### Changed — Base catch rates lifted one grade across the board
+
+The previous tightening pass (the v15 → v16 rebalance) left G3 and G4
+encounters reading as "you still might bounce three Ultra Balls off this
+Bidoof," which doesn't match what those tiers are supposed to feel like —
+G4 is supposed to be the trivial filler tier, and G3 the mid-game routine
+catch. Each grade now adopts the *next* grade's old base rate, and G4 gets
+a fresh, deliberately lenient ceiling:
+
+| Grade | Old base catch | New base catch | Old flee on miss | New flee on miss |
+|---|---|---|---|---|
+| G1 | 4% | **12%** | 55% | **40%** |
+| G2 | 12% | **22%** | 40% | **28%** |
+| G3 | 22% | **35%** | 28% | **20%** |
+| G4 | 35% | **50%** | 20% | **12%** |
+
+The shift propagates through the existing `_CATCH_RATE_BY_GRADE` /
+`_CATCH_FLEE_BY_GRADE` lookups, so wild routes, Safari encounters, boss
+arena phase-2, and roaming legendaries all pick up the new curve from a
+single source. Ball multipliers (Poké 1.0× / Great 1.5× / Ultra 2.0× /
+Master ∞) and Safari extras (`SAFARI_BALL_MULT 1.35×`, bait 0.70× catch /
+0.55× flee, rock 1.65× catch / 1.70× flee) are unchanged — the bump comes
+purely from the species base, so the Safari mini-game still trades the
+same way, just on a friendlier baseline.
+
+Sanity check on the new ceiling: G4 × Great Ball = 75%, G4 × Ultra = 100%
+(capped), G3 × Ultra = 70%. Great Ball stays meaningfully better than
+Poké on G4 instead of both balls capping, which was the alternative if
+we'd pushed G4 to 55%+.
+
+Touched: `battle.html` lines 33896-33897 (constants), line 8374 (Help
+overlay copy), `STORY_MODE_FLOW.md` §5 catch-rate table. The stale
+v15→v16 comment block above the constants was removed — the numbers are
+the spec.
+
 ## Unreleased — Route pacing: 2 wilds per route + "Up next" hints across transitions 2026-05-18 (`claude/improve-game-flow-s723x`)
 
 ### Changed — Wild encounters now fire two-in-a-row per route node
