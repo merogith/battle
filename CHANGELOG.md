@@ -3,6 +3,50 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Closing the game autosaves a retreat to the last city 2026-05-18 (`claude/autosave-city-return-u7rTa`)
+
+### Changed — `pagehide` now writes the same warp-to-last-city the gameover button does
+
+Before this change, closing the tab (or refreshing) mid-battle or mid-route
+left the save pointing at the active row, so the next session resumed
+right where the player left off. That made the existing "Return to Last
+City" button — which charges half the player's gold (rounded up to 100G,
+min 100G) to teleport back to amenities — pointless: anyone could just
+close the tab and rejoin in place, free.
+
+Closing the game now forces the same retreat outcome:
+
+* `_storyApplyRetreatToCity()` was extracted from
+  `retreatToLastPokemonCenter()` and now holds the shared mutation —
+  pulls the in-battle party snapshot into `sm.team`, full-heals every
+  slot, deducts the gold fee, snaps `sm.eventIndex` to
+  `lastStoryCityEventIndexAtOrBefore(sm.eventIndex)`, and clears the
+  mid-battle locks / retry inventory snapshot. The manual gameover
+  button calls this helper and then handles its own UI (`hide all
+  screens` + `enterCity()`).
+* A `pagehide` listener inside the StoryMode IIFE calls a new
+  `_storyAutosaveOnClose()` which runs the same mutation and saves to
+  `pbs_story_save`. The handler bails when the current row is already
+  a `City` or `Hall of Fame` (no warp, no fee — just persist), and when
+  `event.persisted === true` (bfcache transition: the page can be
+  restored without a reload, so the live DOM must not be desynced from
+  `sm`).
+* The gold fee is computed by the existing `_storyCalcRetreatGoldFee()`,
+  which already returns `0` when `_storyDifficultyIsCasual()` is true.
+  Easy / very easy keep their free-retreat semantics — closing on those
+  difficulties warps back to the city for free, no per-close penalty.
+* `pagehide` does *not* fire on tab switch or minimize (those go through
+  `visibilitychange`), so this doesn't bleed gold every time the player
+  alt-tabs. The existing `load()`-time sanitizer at battle.html:28156
+  clears any transient `crucibleBattleSource` left over from a mid-fight
+  close, so post-game Crucible / Frontier / rematch flows recover
+  cleanly on reload.
+
+Touched: `battle.html` lines 31807–31837 (new `_storyApplyRetreatToCity`
+helper), 33195–33223 (refactored `retreatToLastPokemonCenter` +
+new `_storyAutosaveOnClose`), 40154–40167 (the `pagehide` listener
+registration just before the IIFE's public-API return).
+
 ## Unreleased — Wild & Safari catch curve shifted one tier easier 2026-05-18 (`claude/improve-pokemon-catch-rates-E1Y8U`)
 
 ### Changed — Base catch rates lifted one grade across the board
