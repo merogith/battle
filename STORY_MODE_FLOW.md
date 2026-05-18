@@ -118,10 +118,10 @@ Species `catchRate` is derived from grade. G1 is the strongest tier (pseudo + le
 
 | Grade | Base catch rate (PokéBall) | Flee chance on a miss |
 |---|---|---|
-| G1 (strongest) | 0.04 | 0.55 |
-| G2 | 0.12 | 0.40 |
-| G3 | 0.22 | 0.28 |
-| G4 (weakest) | 0.35 | 0.20 |
+| G1 (strongest) | 0.12 | 0.40 |
+| G2 | 0.22 | 0.28 |
+| G3 | 0.35 | 0.20 |
+| G4 (weakest) | 0.50 | 0.12 |
 
 Ball multipliers: PokéBall 1.0×, Great 1.5×, Ultra 2.0×, Master ∞ (`Infinity`).
 
