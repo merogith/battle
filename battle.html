@@ -892,6 +892,14 @@
         .tx-confirm-bar-btn--secondary:hover:not(:disabled) {
             background: linear-gradient(180deg, #546e7a, #455a64);
         }
+        .tx-confirm-bar-btn--voucher {
+            background: linear-gradient(180deg, #f48fb1, #ec407a);
+            border-color: #ad1457; color: #fff;
+        }
+        .tx-confirm-bar-btn--voucher:hover:not(:disabled) {
+            background: linear-gradient(180deg, #f8bbd0, #f48fb1);
+            transform: translateY(-1px); box-shadow: 0 2px 8px rgba(236,64,122,0.4);
+        }
 
         /* Nature grid (5×5) */
         .tx-nature-grid {
@@ -30169,6 +30177,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const _rcN = (sm.inventory && sm.inventory.rareCandy) | 0;
             const _vtN = (sm.inventory && sm.inventory.vitamin)   | 0;
+            const _hsN = (sm.inventory && sm.inventory.heartScale) | 0;
+            const _mtN = (sm.inventory && sm.inventory.mint)       | 0;
+            const _acN = (sm.inventory && sm.inventory.abilityCapsule) | 0;
+            const _ehN = (sm.inventory && sm.inventory.emblemHonor) | 0;
             if (_rcN > 0 && actions.includes('Evolution Tutor') && sm.team.length) {
                 suggestedFacilities.add('evolab');
                 tips.push({ iconPath: 'sprites/pokesprite/items/rare-candy.png', label: `${_rcN} Rare Cand${_rcN===1?'y':'ies'} — free evolution`, click: 'window.StoryMode.enterEvolutionLab()' });
@@ -30178,6 +30190,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 tips.push({ iconPath: 'sprites/pokesprite/items/protein.png', label: `${_vtN} Vitamin Pack${_vtN===1?'':'s'} — free EV preset`, click: 'window.StoryMode.enterEVTrainer()' });
             } else if (_vtN > 0 && !actions.includes('EV Trainer') && sm.team.length) {
                 tips.push({ iconPath: 'sprites/pokesprite/items/protein.png', label: `${_vtN} Vitamin Pack${_vtN===1?'':'s'} saved — use at next EV Trainer`, click: 'window.StoryMode.openCityBag()' });
+            }
+            // New voucher tips: facility-only (keeps the 4-tip rail uncluttered;
+            // bag is one click away if you want a city-wide reminder).
+            if (_hsN > 0 && actions.includes('Move Tutor') && sm.team.length) {
+                suggestedFacilities.add('tutor');
+                tips.push({ iconPath: 'sprites/pokesprite/items/heart-scale.png', label: `${_hsN} Heart Scale${_hsN===1?'':'s'} — free move swap`, click: "window.StoryMode.enterTutor('moves')" });
+            }
+            if (_mtN > 0 && actions.includes('Nature Rater') && sm.team.length) {
+                suggestedFacilities.add('nature');
+                tips.push({ iconPath: 'sprites/pokesprite/items/mint.png', label: `${_mtN} Mint${_mtN===1?'':'s'} — free nature change`, click: "window.StoryMode.enterTutor('nature')" });
+            }
+            if ((_acN > 0 || _ehN > 0) && actions.includes('Battle Dojo') && sm.team.length) {
+                suggestedFacilities.add('dojo');
+                const parts = [];
+                if (_acN > 0) parts.push(`${_acN} Ability Capsule${_acN===1?'':'s'}`);
+                if (_ehN > 0) parts.push(`${_ehN} Emblem of Honor`);
+                tips.push({ iconPath: _acN > 0 ? 'sprites/pokesprite/items/ability-capsule.png' : 'sprites/pokesprite/items/emblem-of-honor.png', label: `${parts.join(' + ')} — free dojo swap`, click: "window.StoryMode.enterTutor('loadout')" });
             }
             // Cap the rail at 3 — "Next:" plus the two most relevant follow-ups. More than
             // that pushes the action grid below the fold on phone portrait.
@@ -30475,6 +30504,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'Move Tutor: "Every species has a quirk in its learnset. Find that, and the rest of the build writes itself."',
                 'Move Tutor: "Take your time on this one. A wrong move slot is a hole the foe finds in the first round."',
                 'Move Tutor: "You\'d be surprised what these things will learn when you ask politely. And pay."',
+                'Move Tutor: "Fifteen hundred a lesson, free with a Heart Scale. Gyms drop those — keep one in your bag and the next swap\'s on the house."',
             ],
             natureRater: [
                 'Nature Rater: "Show me your partner. I\'ll tell you what it\'s built for, and what we can make it built for."',
@@ -30483,6 +30513,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'Nature Rater: "Adamant for muscle. Timid for tempo. Calm for the long game. The rest are debates."',
                 'Nature Rater: "If your starter\'s nature reads Hardy or Serious, that means nobody\'s touched it yet. Let\'s fix that."',
                 'Nature Rater: "Re-pick as often as the run needs. Natures are a conversation, not a contract."',
+                'Nature Rater: "Two thousand a reading. Free if you bring a Mint — those grow under gym roofs, ask around."',
             ],
             battleDojo: [
                 'Dojo Master: "Two slots on every fighter — held item, ability. Get both right and the Pokémon does the rest."',
@@ -30491,6 +30522,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'Dojo Master: "Hidden Abilities are on the shelf here. Most gyms still pretend otherwise."',
                 'Dojo Master: "Swap a held item for a different one any day. Swap an ability when the role changes."',
                 'Dojo Master: "A clean swap costs gold. A bad swap costs the match. I sell both."',
+                'Dojo Master: "An Emblem of Honor covers an item swap on the house. An Ability Capsule covers an ability one. Bring both, leave the gold for the road."',
             ],
             evTrainer: [
                 'Buck: "Welcome to the bench. Pull up a partner — let\'s put some real training under it."',
@@ -31346,36 +31378,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── VICTORY REWARDS, POKÉDEX MILESTONES, ROAMING LEGENDARIES ─────
         // Themed gifts dropped on first victory for each Gym Leader + select Elite/Champion.
-        // Rare Candy = one free Stone Sage evolution (any tier). Vitamin = one free
-        // EV Trainer preset application. Both surface in the existing tutor screens as
-        // alt buttons when sm.inventory.rareCandy / sm.inventory.vitamin > 0.
+        // Each voucher (Rare Candy / Vitamin / Heart Scale / Mint / Ability Capsule /
+        // Emblem of Honor) = one free tutor or facility action at its matching shop.
+        // They surface in the existing tutor screens as a pink alt button whenever
+        // the matching inventory counter is > 0.
         const GYM_VICTORY_REWARDS = {
-            'Gym Leader 1': { pokeBall:3, vitamin:1, gold:500,
-                msg:'"You earned this." +3 Poké Balls, +1 Vitamin Pack, and a 500G purse from the gym council.' },
-            'Gym Leader 2': { rareCandy:1, vitamin:1, gold:1000,
-                msg:'A glittering Rare Candy and a Vitamin Pack. "Save them for when one of yours is ready." +1 Rare Candy, +1 Vitamin Pack, +1,000G.' },
-            'Gym Leader 3': { greatBall:2, vitamin:1,
-                msg:'+2 Great Balls and a Vitamin Pack — gym sponsors look after trainers on the road.' },
-            'Gym Leader 4': { ultraBall:1, rareCandy:1, vitamin:1,
-                msg:'The Gym Leader nods. "Take these — they go far together." +1 Ultra Ball, +1 Rare Candy, +1 Vitamin Pack.' },
-            'Gym Leader 5': { greatBall:2, vitamin:1, gold:1000,
-                msg:'+2 Great Balls, +1 Vitamin Pack, and a 1,000G honorarium from the gym apothecary.' },
-            'Gym Leader 6': { ultraBall:2, rareCandy:1, vitamin:1, gold:1500,
-                msg:'+2 Ultra Balls, +1 Rare Candy, +1 Vitamin Pack, and a 1,500G stipend.' },
-            'Gym Leader 7': { ultraBall:1, rareCandy:1, vitamin:1,
-                msg:'A Rare Candy and a Vitamin Pack. The Leader winks: "You\'ll need both." +1 Ultra Ball, +1 Rare Candy, +1 Vitamin.' },
-            'Gym Leader 8': { ultraBall:3, vitamin:2,
-                msg:'The eighth badge — and three Ultra Balls + two Vitamin Packs from the League.' },
-            'E1': { greatBall:2, vitamin:1,
-                msg:'The first Elite tips a hat. +2 Great Balls, +1 Vitamin Pack.' },
-            'E2': { ultraBall:1, rareCandy:1,
-                msg:'An attendant emerges from the chamber. "Top League issue." +1 Ultra Ball, +1 Rare Candy.' },
-            'E3': { ultraBall:1, vitamin:1,
-                msg:'The third Elite salutes the climb. +1 Ultra Ball, +1 Vitamin Pack.' },
-            'E4': { ultraBall:2, rareCandy:1,
-                msg:'The fourth Elite bows. +2 Ultra Balls and a Rare Candy.' },
-            'Champion': { ultraBall:2, rareCandy:1, vitamin:2,
-                msg:'The Champion bows. "These are yours by right." +2 Ultra Balls, +1 Rare Candy, +2 Vitamin Packs.' }
+            'Gym Leader 1': { pokeBall:3, vitamin:1, heartScale:1, gold:500,
+                msg:'"You earned this." +3 Poké Balls, +1 Vitamin Pack, +1 Heart Scale, and a 500G purse from the gym council.' },
+            'Gym Leader 2': { rareCandy:1, vitamin:1, mint:1, gold:1000,
+                msg:'A glittering Rare Candy, a Vitamin Pack, and a fresh Mint. "Save them for when one of yours is ready." +1 Rare Candy, +1 Vitamin Pack, +1 Mint, +1,000G.' },
+            'Gym Leader 3': { greatBall:2, vitamin:1, heartScale:1, emblemHonor:1,
+                msg:'+2 Great Balls, +1 Vitamin Pack, +1 Heart Scale, and an Emblem of Honor from the gym\'s dojo wing.' },
+            'Gym Leader 4': { ultraBall:1, rareCandy:1, vitamin:1, abilityCapsule:1,
+                msg:'The Gym Leader nods. "Take these — they go far together." +1 Ultra Ball, +1 Rare Candy, +1 Vitamin Pack, +1 Ability Capsule.' },
+            'Gym Leader 5': { greatBall:2, vitamin:1, heartScale:1, gold:1000,
+                msg:'+2 Great Balls, +1 Vitamin Pack, +1 Heart Scale, and a 1,000G honorarium from the gym apothecary.' },
+            'Gym Leader 6': { ultraBall:2, rareCandy:1, vitamin:1, mint:1, emblemHonor:1, gold:1500,
+                msg:'+2 Ultra Balls, +1 Rare Candy, +1 Vitamin Pack, +1 Mint, +1 Emblem of Honor, and a 1,500G stipend.' },
+            'Gym Leader 7': { ultraBall:1, rareCandy:1, vitamin:1, abilityCapsule:1,
+                msg:'A Rare Candy, a Vitamin Pack, and an Ability Capsule. The Leader winks: "You\'ll need all three." +1 Ultra Ball, +1 Rare Candy, +1 Vitamin, +1 Ability Capsule.' },
+            'Gym Leader 8': { ultraBall:3, vitamin:2, heartScale:1, mint:1,
+                msg:'The eighth badge — three Ultra Balls, two Vitamin Packs, a Heart Scale, and a Mint from the League.' },
+            'E1': { greatBall:2, vitamin:1, heartScale:1,
+                msg:'The first Elite tips a hat. +2 Great Balls, +1 Vitamin Pack, +1 Heart Scale.' },
+            'E2': { ultraBall:1, rareCandy:1, emblemHonor:1,
+                msg:'An attendant emerges from the chamber. "Top League issue." +1 Ultra Ball, +1 Rare Candy, +1 Emblem of Honor.' },
+            'E3': { ultraBall:1, vitamin:1, mint:1,
+                msg:'The third Elite salutes the climb. +1 Ultra Ball, +1 Vitamin Pack, +1 Mint.' },
+            'E4': { ultraBall:2, rareCandy:1, abilityCapsule:1, emblemHonor:1,
+                msg:'The fourth Elite bows. +2 Ultra Balls, +1 Rare Candy, +1 Ability Capsule, +1 Emblem of Honor.' },
+            'Champion': { ultraBall:2, rareCandy:1, vitamin:2, heartScale:1, mint:1, abilityCapsule:1, emblemHonor:1,
+                msg:'The Champion bows. "These are yours by right." +2 Ultra Balls, +1 Rare Candy, +2 Vitamin Packs, +1 Heart Scale, +1 Mint, +1 Ability Capsule, +1 Emblem of Honor.' }
         };
 
         // Foe party size = player party size (1:1 match), with story-finale
@@ -31440,6 +31473,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _storyEnsureInventory() {
             if (!sm.inventory || typeof sm.inventory !== 'object') sm.inventory = {};
         }
+        // Inventory keys treated as vouchers — earned-not-bought freebies that unlock
+        // a tutor / facility action without spending gold. Adding a new id here is
+        // all _storyGrantBundle needs to start accepting it from reward tables.
+        const VOUCHER_KEYS = ['rareCandy', 'vitamin', 'heartScale', 'mint', 'abilityCapsule', 'emblemHonor'];
         function _storyGrantBundle(r) {
             if (!r) return;
             _storyEnsureBalls();
@@ -31448,8 +31485,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (r.greatBall)  sm.balls.great  = (sm.balls.great  | 0) + r.greatBall;
             if (r.ultraBall)  sm.balls.ultra  = (sm.balls.ultra  | 0) + r.ultraBall;
             if (r.masterBall) sm.balls.master = (sm.balls.master | 0) + r.masterBall;
-            if (r.rareCandy)  sm.inventory.rareCandy = (sm.inventory.rareCandy | 0) + r.rareCandy;
-            if (r.vitamin)    sm.inventory.vitamin   = (sm.inventory.vitamin   | 0) + r.vitamin;
+            for (const k of VOUCHER_KEYS) {
+                if (r[k]) sm.inventory[k] = (sm.inventory[k] | 0) + r[k];
+            }
             if (r.gold)       sm.gold = (sm.gold | 0) + r.gold;
         }
         function _storyApplyVictoryReward(eventName) {
@@ -31466,12 +31504,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const POKEDEX_CAUGHT_MILESTONES = [
             { n: 25,  reward: { ultraBall:1, gold:2000 },
               msg:'25 species in the Pokédex. The lab calls it a quarter-region survey. +1 Ultra Ball, +2,000G.' },
-            { n: 50,  reward: { ultraBall:2, vitamin:1 },
-              msg:'50 species. Half a region\'s biology in your notebook — the Professor leaves you a Vitamin Pack and two Ultra Balls on the bench.' },
-            { n: 75,  reward: { rareCandy:2, gold:5000 },
-              msg:'75 species. Your Pokédex outranks most field researchers in the region. +2 Rare Candies, +5,000G.' },
-            { n: 100, reward: { ultraBall:3, rareCandy:1, vitamin:1 },
-              msg:'100 species. The dex is no longer a notebook — it\'s a record. +3 Ultra Balls, +1 Rare Candy, +1 Vitamin Pack.' }
+            { n: 50,  reward: { ultraBall:2, vitamin:1, heartScale:1 },
+              msg:'50 species. Half a region\'s biology in your notebook — the Professor leaves you a Vitamin Pack, a Heart Scale, and two Ultra Balls on the bench.' },
+            { n: 75,  reward: { rareCandy:2, emblemHonor:1, gold:5000 },
+              msg:'75 species. Your Pokédex outranks most field researchers in the region. +2 Rare Candies, +1 Emblem of Honor, +5,000G.' },
+            { n: 100, reward: { ultraBall:3, rareCandy:1, vitamin:1, mint:1, abilityCapsule:1 },
+              msg:'100 species. The dex is no longer a notebook — it\'s a record. +3 Ultra Balls, +1 Rare Candy, +1 Vitamin Pack, +1 Mint, +1 Ability Capsule.' }
         ];
         function _storyCheckPokedexMilestones() {
             if (!sm.pokedex || !Array.isArray(sm.pokedex.caught)) return;
@@ -35433,12 +35471,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             const allItems = [...POKEMART_ITEMS, ...DEPT_ITEMS, ...getStoryFeaturedItems()];
             let hasAny = false;
-            // Voucher items (Rare Candy / Vitamin Pack) — earned, not bought, and not
-            // sellable. Surface them at the top so players see the bundle they earned
-            // from gym victories and Pokédex milestones.
+            // Voucher items — earned, not bought, and not sellable. Surface them at
+            // the top so players see the bundle they earned from gym victories and
+            // Pokédex milestones. Each voucher = one free use of its matching tutor
+            // or facility action (same effect as paying the gold cost).
             const _voucherItems = [
-                { id:'rareCandy', name:'<img src="sprites/pokesprite/items/rare-candy.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Rare Candy', desc:'Use at the Stone Sage to evolve any party Pokémon for free. Earned from gym leaders + dex milestones.' },
-                { id:'vitamin',   name:'<img src="sprites/pokesprite/items/protein.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Vitamin Pack', desc:'Permanently trains stat boosts (e.g. +252 Atk / +252 Speed) into one Pokémon for free at the EV Trainer — same effect as paying 5,000G. Earned from gym leaders + Pokédex milestones. Training stays with the mon through PC, evolution, the works. Only lost on release or sale.' }
+                { id:'rareCandy',      name:'<img src="sprites/pokesprite/items/rare-candy.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Rare Candy', desc:'Use at the Stone Sage to evolve any party Pokémon for free. Earned from gym leaders + dex milestones.' },
+                { id:'vitamin',        name:'<img src="sprites/pokesprite/items/protein.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Vitamin Pack', desc:'Permanently trains stat boosts (e.g. +252 Atk / +252 Speed) into one Pokémon for free at the EV Trainer — same effect as paying 5,000G. Earned from gym leaders + Pokédex milestones. Training stays with the mon through PC, evolution, the works. Only lost on release or sale.' },
+                { id:'heartScale',     name:'<img src="sprites/pokesprite/items/heart-scale.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Heart Scale', desc:'Hand to the Move Tutor to teach any move to any Pokémon for free — same effect as paying 1,500G. Earned from gym leaders + Pokédex milestones. The classic move-tutor coin from real games.' },
+                { id:'mint',           name:'<img src="sprites/pokesprite/items/mint.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Mint', desc:'Drop one at the Nature Rater to re-pick a Pokémon\'s nature for free — same effect as paying 2,000G. Earned from gym leaders + Pokédex milestones. The new nature sticks through PC, evolution, the works.' },
+                { id:'abilityCapsule', name:'<img src="sprites/pokesprite/items/ability-capsule.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Ability Capsule', desc:'Pop one at the Battle Dojo to swap a Pokémon\'s ability for free — same effect as paying 2,500G. Earned from gym leaders + Pokédex milestones. Hidden Abilities included, just like the dojo\'s gold path.' },
+                { id:'emblemHonor',    name:'<img src="sprites/pokesprite/items/emblem-of-honor.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Emblem of Honor', desc:'Present at the Battle Dojo to swap a Pokémon\'s held item for free — same effect as paying 2,000G. Earned from gym leaders + Pokédex milestones. Mega Stones and Z-Crystals included (same Colress caveat as the dojo\'s gold path).' }
             ];
             _voucherItems.forEach(item => {
                 const qty = (sm.inventory && sm.inventory[item.id]) | 0;
@@ -36976,6 +37019,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     else if (action === 'item') void window.StoryMode.tutorChangeItem(teamIdx, _txPending.value);
                     else if (action === 'ability') void window.StoryMode.tutorChangeAbility(teamIdx, _txPending.value);
                     else if (action === 'nature') void window.StoryMode.tutorChangeNature(teamIdx, _txPending.value);
+                    else if (action === 'moveVoucher')    void window.StoryMode.tutorChangeMoveWithVoucher(teamIdx, _txPending.slot, _txPending.value);
+                    else if (action === 'itemVoucher')    void window.StoryMode.tutorChangeItemWithVoucher(teamIdx, _txPending.value);
+                    else if (action === 'abilityVoucher') void window.StoryMode.tutorChangeAbilityWithVoucher(teamIdx, _txPending.value);
+                    else if (action === 'natureVoucher')  void window.StoryMode.tutorChangeNatureWithVoucher(teamIdx, _txPending.value);
                     return;
                 }
 
@@ -37123,6 +37170,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             </button>`;
         }
 
+        // Per-action voucher metadata. Adding a 5th tutor kind = add a row here +
+        // an entry in _storyGrantBundle's VOUCHER_KEYS + a tutorChangeXxxWithVoucher
+        // function and a public-API export. Click handler routing is generic
+        // ({action}Voucher → tutorChange<Kind>WithVoucher) so it doesn't need touching.
+        const TUTOR_VOUCHERS = {
+            move:    { key:'heartScale',     label:'Heart Scale',     icon:'heart-scale.png' },
+            item:    { key:'emblemHonor',    label:'Emblem of Honor', icon:'emblem-of-honor.png' },
+            ability: { key:'abilityCapsule', label:'Ability Capsule', icon:'ability-capsule.png' },
+            nature:  { key:'mint',           label:'Mint',            icon:'mint.png' },
+        };
+
         // Build the confirm bar that sticks to the bottom of the picker.
         function _txConfirmBarHtml(teamIdx, kind, mon, build) {
             const pending = _txPending;
@@ -37145,9 +37203,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const costStr = canAfford
                 ? `<span style="color:#ffd700;">${cost.toLocaleString()}G</span>`
                 : `<span style="color:#ef9a9a;">Need ${(cost - sm.gold).toLocaleString()}G more</span>`;
+            const vDef = TUTOR_VOUCHERS[action];
+            const vCount = (vDef && sm.inventory && sm.inventory[vDef.key]) | 0;
+            const voucherBtn = (vDef && vCount > 0)
+                ? `<button type="button" class="tx-confirm-bar-btn tx-confirm-bar-btn--voucher" data-action="${action}Voucher" data-team="${teamIdx}" title="Use 1 ${vDef.label} (you have ${vCount}) — free swap"><img src="sprites/pokesprite/items/${vDef.icon}" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:5px;">${vDef.label} (${vCount})</button>`
+                : '';
             return `<div class="tx-confirm-bar">
                 <span class="tx-confirm-bar-text">Replace <strong style="color:#ef9a9a;">${_esc(current)}</strong> → <strong>${_esc(pending.value)}</strong> · ${costStr}</span>
                 <button type="button" class="tx-confirm-bar-btn tx-confirm-bar-btn--secondary">Cancel</button>
+                ${voucherBtn}
                 <button type="button" class="tx-confirm-bar-btn" data-action="${action}" data-team="${teamIdx}" ${canAfford?'':'disabled'}>${canAfford ? 'Confirm' : 'Locked'}</button>
             </div>`;
         }
@@ -37805,6 +37869,140 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const ok = await _storyConfirmTutorChange(`Set ${mon.name}'s nature to ${newNature}? Was "${oldNature}".`, TUTOR_COST_NATURE);
                 if (!ok) return;
                 sm.gold -= TUTOR_COST_NATURE;
+                mon.build.n = newNature;
+                mon.currentHp = null;
+                save();
+                try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
+                _txPending = null;
+                void renderTutorTeam(true);
+                renderTeamPanel();
+            } finally {
+                _storyEndInteraction();
+            }
+        }
+
+        // ── VOUCHER ALT PATHS — same effect as the gold paths above, but consume one
+        // voucher from sm.inventory instead of charging gold. Mirrors the structure of
+        // evTrainerApplyPresetWithVitamin / evoLabEvolveWithCandy so every tutor screen
+        // has a consistent "use voucher" flow.
+        function _consumeVoucher(key) {
+            const remaining = (sm.inventory[key] | 0) - 1;
+            sm.inventory[key] = Math.max(0, remaining);
+            if (sm.inventory[key] <= 0) delete sm.inventory[key];
+        }
+
+        async function tutorChangeMoveWithVoucher(teamIdx, moveSlot, newMove) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+                _storyEnsureInventory();
+                if ((sm.inventory.heartScale | 0) <= 0) {
+                    try { window.showGameAlert && window.showGameAlert('No Heart Scales in your bag.'); } catch (e) {}
+                    return;
+                }
+                const currentMoves = (mon.build.m || []).map(m => m.split('/')[0]);
+                if (currentMoves.includes(newMove)) return;
+                const oldMove = (mon.build.m && mon.build.m[moveSlot]) ? mon.build.m[moveSlot].split('/')[0] : '(empty slot)';
+                const remaining = (sm.inventory.heartScale | 0) - 1;
+                const ok = await _storyConfirmTutorChange(`Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Replaces "${oldMove}". Saves ${TUTOR_COST_MOVE.toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`, 0);
+                if (!ok) return;
+                _consumeVoucher('heartScale');
+                mon.build.m[moveSlot] = newMove;
+                mon.currentHp = null;
+                mon.status = null;
+                mon.pp = null;
+                save();
+                try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
+                _txPending = null;
+                void renderTutorTeam(true);
+                renderTeamPanel();
+            } finally {
+                _storyEndInteraction();
+            }
+        }
+
+        async function tutorChangeItemWithVoucher(teamIdx, newItem) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+                _storyEnsureInventory();
+                if ((sm.inventory.emblemHonor | 0) <= 0) {
+                    try { window.showGameAlert && window.showGameAlert('No Emblems of Honor in your bag.'); } catch (e) {}
+                    return;
+                }
+                if (isMegaStone(newItem) || Z_TYPE_MAP_VALUES.has(newItem) || BANNED_ITEMS.has(newItem)) return;
+                const curItem = mon.build.i;
+                if (curItem === newItem) return;
+                const curGimmick = mon.build.gimmick;
+                const swappingAwayMegaStone = curGimmick === 'MEGA' && isMegaStone(curItem);
+                const swappingAwayZCrystal  = curGimmick === 'ZMOVE' && Z_TYPE_MAP_VALUES.has(curItem);
+                const remaining = (sm.inventory.emblemHonor | 0) - 1;
+                if (swappingAwayMegaStone || swappingAwayZCrystal) {
+                    const which = swappingAwayMegaStone ? 'Mega Evolution' : 'Z-Move';
+                    const ok = (typeof window !== 'undefined' && typeof window.showGameConfirm === 'function')
+                        ? await window.showGameConfirm(`Replacing the ${curItem} will disable ${which} on ${mon.name}. Visit Colress again (10,000G) to restore it. Use 1 Emblem of Honor anyway? (${remaining} left after.)`)
+                        : true;
+                    if (!ok) return;
+                    mon.build.gimmick = 'STANDARD';
+                } else {
+                    const oldItemLabel = curItem && curItem !== '(none)' ? `"${curItem}"` : 'no item';
+                    const ok = await _storyConfirmTutorChange(`Use 1 Emblem of Honor to give ${newItem} to ${mon.name}? Replaces ${oldItemLabel}. Saves ${TUTOR_COST_ITEM.toLocaleString()}G. ${remaining} Emblem${remaining===1?'':'s'} left after.`, 0);
+                    if (!ok) return;
+                }
+                _consumeVoucher('emblemHonor');
+                mon.build.i = newItem;
+                save();
+                try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
+                _txPending = null;
+                void renderTutorTeam(true);
+                renderTeamPanel();
+            } finally {
+                _storyEndInteraction();
+            }
+        }
+
+        async function tutorChangeAbilityWithVoucher(teamIdx, newAbility) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+                _storyEnsureInventory();
+                if ((sm.inventory.abilityCapsule | 0) <= 0) {
+                    try { window.showGameAlert && window.showGameAlert('No Ability Capsules in your bag.'); } catch (e) {}
+                    return;
+                }
+                if (mon.build.a === newAbility) return;
+                const oldAbil = mon.build.a || '(none)';
+                const remaining = (sm.inventory.abilityCapsule | 0) - 1;
+                const ok = await _storyConfirmTutorChange(`Use 1 Ability Capsule to change ${mon.name}'s ability to ${newAbility}? Replaces "${oldAbil}". Saves ${TUTOR_COST_ABILITY.toLocaleString()}G. ${remaining} Capsule${remaining===1?'':'s'} left after.`, 0);
+                if (!ok) return;
+                _consumeVoucher('abilityCapsule');
+                mon.build.a = newAbility;
+                save();
+                try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
+                _txPending = null;
+                void renderTutorTeam(true);
+                renderTeamPanel();
+            } finally {
+                _storyEndInteraction();
+            }
+        }
+
+        async function tutorChangeNatureWithVoucher(teamIdx, newNature) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+                _storyEnsureInventory();
+                if ((sm.inventory.mint | 0) <= 0) {
+                    try { window.showGameAlert && window.showGameAlert('No Mints in your bag.'); } catch (e) {}
+                    return;
+                }
+                if (!Object.prototype.hasOwnProperty.call(natureModifiers, newNature)) return;
+                if (mon.build.n === newNature) return;
+                const oldNature = mon.build.n || '(none)';
+                const remaining = (sm.inventory.mint | 0) - 1;
+                const ok = await _storyConfirmTutorChange(`Use 1 Mint to set ${mon.name}'s nature to ${newNature}? Was "${oldNature}". Saves ${TUTOR_COST_NATURE.toLocaleString()}G. ${remaining} Mint${remaining===1?'':'s'} left after.`, 0);
+                if (!ok) return;
+                _consumeVoucher('mint');
                 mon.build.n = newNature;
                 mon.currentHp = null;
                 save();
@@ -38526,6 +38724,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openSummary, profOpenSummary, summaryMove, moveInParty, openPartyModal,
             enterArtifactHall, toggleArtifactDisabled,
             enterTutor, tutorChangeMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
+            tutorChangeMoveWithVoucher, tutorChangeItemWithVoucher, tutorChangeAbilityWithVoucher, tutorChangeNatureWithVoucher,
             enterColress, colressApplyMega, colressApplyDmax, colressApplyZ, colressApplyZSig, colressApplyTera,
             enterEVTrainer, evTrainerApplyPreset, evTrainerApplyPresetWithVitamin,
             openTeamTester, openTeamTesterSyncFromStory, runTeamTester, copyTeamTesterText, closeTeamTester,
