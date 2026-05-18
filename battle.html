@@ -17200,6 +17200,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { window.showGameAlert && window.showGameAlert('No active battle to continue.'); } catch (e) {}
                     return false;
                 }
+                // If the battle screen is up without a live battle (placeholder MissingNo HUD),
+                // restoring the command menu would just paint that placeholder forever. Bail out
+                // and point the user at a clean recovery instead.
+                if (!__battleHasLiveActives() && (!state.isOver)) {
+                    try { window.showGameAlert && window.showGameAlert('No active battle to continue — return to the main menu or reload the page.'); } catch (e) {}
+                    return false;
+                }
                 const party = document.getElementById('modal-party');
                 const cmd = document.getElementById('command-menu');
                 const move = document.getElementById('move-menu');
@@ -17301,10 +17308,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         };
 
+        // A "real" in-progress battle means both sides have an active Pokémon with HP fields.
+        // Without this gate, recovery would happily force the command menu open during draft /
+        // menu transitions where state.pActive/fActive are momentarily null, leaving the user
+        // staring at the static "MissingNo / 0/0 / empty sprite" placeholders.
+        function __battleHasLiveActives() {
+            try {
+                if (typeof state === 'undefined' || !state) return false;
+                const pa = state.pActive, fa = state.fActive;
+                return !!(pa && fa
+                    && Number.isFinite(pa.currentHp) && Number.isFinite(pa.maxHp) && pa.maxHp > 0
+                    && Number.isFinite(fa.currentHp) && Number.isFinite(fa.maxHp) && fa.maxHp > 0);
+            } catch (e) { return false; }
+        }
+
         /** If the resolver exited mid-turn while locked (save-specific edge cases), restore command menu. Console: __recoverBattleSoftLock() */
         window.__recoverBattleSoftLock = function() {
             try {
                 if (typeof state === 'undefined' || !state) return false;
+                // Only attempt recovery while the battle screen is actually on-screen — the tab
+                // visibility / pageshow hooks fire on every screen, including menu/draft.
+                if (!__battleHasActiveScreen()) return false;
                 const party = document.getElementById('modal-party');
                 const cmd = document.getElementById('command-menu');
                 const move = document.getElementById('move-menu');
@@ -17319,6 +17343,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     return true;
                 }
+                // No live battle (e.g. screen still showing from a previous run, or transition mid-rematch).
+                // Restoring the command menu here would paint the placeholder MissingNo HUD; bail instead.
+                if (!__battleHasLiveActives()) return false;
                 const partyHidden = party.classList.contains('hidden');
                 const cmdHidden = cmd.classList.contains('hidden');
                 const moveHidden = !move || move.classList.contains('hidden');
@@ -17328,6 +17355,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     state.residualPhaseComplete = false;
                     state.isLocked = false;
                     __restoreBattleCommandMenu('Battle UI was stuck — commands restored. If the battle still looks wrong, use Force Continue again or reload.');
+                    // Refresh the HUD so stale name / HP / sprite values don't linger from before the soft-lock.
+                    try { if (typeof updateUI === 'function') updateUI(); } catch (e) {}
                     return true;
                 }
             } catch (e) { console.warn('[recoverBattleSoftLock]', e); }
@@ -17338,10 +17367,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             window.__battleSoftLockRecoverHooksInstalled = true;
             document.addEventListener('visibilitychange', function() {
                 if (document.visibilityState !== 'visible') return;
+                if (typeof __battleHasActiveScreen === 'function' && !__battleHasActiveScreen()) return;
                 try { if (typeof window.__recoverBattleSoftLock === 'function') window.__recoverBattleSoftLock(); } catch (e) {}
             });
             window.addEventListener('pageshow', function(ev) {
                 if (!ev.persisted) return;
+                if (typeof __battleHasActiveScreen === 'function' && !__battleHasActiveScreen()) return;
                 try { if (typeof window.__recoverBattleSoftLock === 'function') window.__recoverBattleSoftLock(); } catch (e) {}
             });
             // Passive watchdog: rescue dead-locked battles where the resolver promise was lost
