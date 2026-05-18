@@ -841,6 +841,14 @@
             display: inline-flex; align-items: center; gap: 6px; flex: 1; min-width: 0;
         }
         .tx-recs-panel-hint { font-size: 10px; color: #8b9a8b; }
+        /* On narrow phones the title + hint compete for one row and the title
+           ends up wrapping over 2-3 lines. Hide the hint there — the tag
+           pills and clickable rows already make the panel's purpose obvious. */
+        @media (max-width: 480px) {
+            .tx-recs-panel-head { flex-wrap: nowrap; }
+            .tx-recs-panel-hint { display: none; }
+            .tx-recs-panel-title { white-space: normal; line-height: 1.25; }
+        }
         .tx-recs-list { display: flex; flex-direction: column; gap: 0; }
         .tx-rec-row {
             display: grid;
@@ -1100,6 +1108,20 @@
             .tx-grid { gap: 6px; }
         }
 
+        /* On very narrow phones the gold value (coin icon + "25,000G") collides
+           with the floating settings gear. Drop the coin icon to claw back
+           ~25px so the value renders fully clear of the gear. */
+        @media (max-width: 400px) {
+            #screen-story-tutor #story-tutor-gold .story-gold-icon,
+            #screen-story-evtrainer #story-evtrainer-gold .story-gold-icon {
+                display: none !important;
+            }
+            #screen-story-tutor #story-tutor-gold,
+            #screen-story-evtrainer #story-evtrainer-gold {
+                font-size: 11px !important;
+            }
+        }
+
         @media (min-width: 720px) {
             .story-tutor-move-picker {
                 display: grid; grid-template-columns: 1fr minmax(200px, 1fr); grid-template-rows: auto 1fr auto;
@@ -1117,18 +1139,33 @@
             .story-tutor-mon-meta { max-width: 42vw; }
         }
         @media (max-width: 719px) {
+            /* The 52px reservation for the floating settings gear (rule near
+               line 2926) isn't quite enough on phones where "25,000G" plus the
+               coin icon needs ~85px. Bump the header's right padding so the
+               gold stays clear of the gear. Applied to every story screen with
+               the standard header chrome (tutor / dojo / nature / EV / shop). */
+            #screen-story-tutor .story-shop-header-row,
+            #screen-story-evtrainer .story-shop-header-row,
+            #screen-story-shop .story-shop-header-row,
+            #screen-story-artifact-shop .story-shop-header-row,
+            #screen-story-colress .story-shop-header-row,
+            #screen-story-link .story-link-header-row {
+                padding-right: 64px !important;
+            }
             #screen-story-tutor .story-shop-header-row {
                 position: sticky;
                 top: 0;
                 z-index: 4;
                 padding: 8px 10px !important;
+                padding-right: 64px !important;
                 gap: 8px;
             }
             #screen-story-tutor #story-tutor-head-title {
                 min-width: 0;
                 flex: 1;
             }
-            #screen-story-tutor #story-tutor-gold {
+            #screen-story-tutor #story-tutor-gold,
+            #screen-story-evtrainer #story-evtrainer-gold {
                 flex-shrink: 0;
                 white-space: nowrap;
                 font-size: 12px !important;
@@ -37780,8 +37817,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 used.add(preset.id);
                 out.push({ purpose, preset, reason });
             };
+            // Drop the +30 meta bonus for Offensive/Defensive/Speed picks — otherwise
+            // any meta-tagged sweeper beats the cleaner Role preset (Physical Sweeper)
+            // even when the two are functionally identical. The META slot still uses
+            // the bonused score so species-specific meta builds surface there.
+            const scoreNoMetaBonus = p => {
+                const s = _evTrainerScorePreset(p, mon);
+                return (p.id && /^meta_/.test(p.id)) ? s - 30 : s;
+            };
             const score = p => _evTrainerScorePreset(p, mon);
-            const pickBest = pred => _txBestBy(pool, p => !used.has(p.id) && pred(p), score);
+            const pickBest = pred => _txBestBy(pool, p => !used.has(p.id) && pred(p), scoreNoMetaBonus);
 
             const offensive = pickBest(p => /sweep|attacker|atk/i.test(p.label));
             if (offensive) push('Offensive', offensive, 'Max one offense + Speed — the classic glass cannon.');
@@ -37789,8 +37834,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const defensive = pickBest(p => /wall|tank/i.test(p.label));
             if (defensive) push('Defensive', defensive, 'Max HP + defense — survives big hits.');
 
-            // Prefer meta as a third pick — these are pulled straight from CSV tier-list builds.
-            const meta = pickBest(p => /^meta_/.test(p.id));
+            const meta = _txBestBy(pool, p => !used.has(p.id) && /^meta_/.test(p.id), score);
             if (meta) push('Meta', meta, 'Spread pulled from competitive tier lists for this species.');
 
             // Speed / utility pick — Fast Utility or Mixed Sweeper if the mon is fast.
@@ -39354,8 +39398,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Fallback: Title Case the slug
                 return k.split('-').map(w => w ? w[0].toUpperCase() + w.slice(1) : '').join(' ');
             };
-            return Array.from(counts.values()).sort((a,b) => b.n - a.n).slice(0, 4)
-                .map((m, i) => ({ id: 'meta_'+i, label: prettyLabel(m.archetype), evs: m.evs }));
+            // When two meta entries share the same archetype label, the user sees
+            // them as "Physical Attacker" / "Physical Attacker" — same name,
+            // different EVs (one with 4 Def, one with 4 SpD). Disambiguate by
+            // appending the leftover-EV stat so the player can tell them apart
+            // at a glance.
+            const _statLetter = { hp:'HP', atk:'Atk', def:'Def', spa:'SpA', spd:'SpD', spe:'Spe' };
+            const _leftoverStat = (evs) => {
+                let bestKey = null, bestVal = Infinity;
+                for (const k of Object.keys(evs)) {
+                    const v = evs[k] || 0;
+                    if (v > 0 && v < 64 && v < bestVal) { bestVal = v; bestKey = k; }
+                }
+                return bestKey ? _statLetter[bestKey] : null;
+            };
+            const ranked = Array.from(counts.values()).sort((a,b) => b.n - a.n).slice(0, 4);
+            const labelSeen = new Map(); // label → count
+            for (const m of ranked) {
+                const base = prettyLabel(m.archetype);
+                labelSeen.set(base, (labelSeen.get(base) || 0) + 1);
+            }
+            const labelCount = new Map();
+            return ranked.map((m, i) => {
+                const base = prettyLabel(m.archetype);
+                let label = base;
+                if ((labelSeen.get(base) || 0) > 1) {
+                    const leftover = _leftoverStat(m.evs);
+                    label = leftover ? `${base} (+${leftover})` : `${base} ${(labelCount.get(base) || 0) + 1}`;
+                }
+                labelCount.set(base, (labelCount.get(base) || 0) + 1);
+                return { id: 'meta_'+i, label, evs: m.evs };
+            });
         }
         function _evTrainerCharge() {
             if (sm.gold < EVTRAINER_COST) {
@@ -39486,7 +39559,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _evTrainerScorePreset(p, mon) {
             if (!p || !p.evs) return 0;
             if (!mon) return 50;
-            const atk = mon.atk || 0, spa = mon.spa || 0, spe = mon.spe || 0, hp = mon.hp || 0, def = mon.def || 0, spd = mon.spd || 0;
+            // buildPokemon stores per-stat values on mon.stats (not on mon directly);
+            // reading mon.atk/spa/etc. yields undefined and every mon was being
+            // scored as a slow physical attacker, so the +30 meta bonus always won.
+            const s_ = mon.stats || {};
+            const atk = s_.atk || 0, spa = s_.spa || 0, spe = s_.spe || 0;
+            const hp = mon.maxHp || 0, def = s_.def || 0, spd = s_.spd || 0;
             const physical = atk >= spa;
             const fast = spe >= 90;
             const bulky = (hp + def + spd) >= 240;
