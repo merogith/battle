@@ -13332,18 +13332,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Play Pokemon cry on entrance
             const mon = isPlayer ? state.pActive : state.fActive;
             if (mon && mon.name) AudioSystem.playCry(mon.name, 0.45);
-            // anime.js — bounce in; scale keyframes use lore + Dynamax (same as getSpriteTransformStyle)
+            // anime.js — bounce in; scale keyframes use lore + Dynamax (same as getSpriteTransformStyle).
+            // anime.js is CDN-loaded; if the request failed (slow / blocked / offline), skip the
+            // bounce and just snap the sprite in. Without this guard a single network hiccup
+            // would throw ReferenceError out of Promise.all → crash startBattle → leave the
+            // user staring at the static "MissingNo" battle screen with no command menu.
             const sEnd = mon ? getSpriteLoreScaleNumber(mon) : 1;
-            await anime({
-                targets: spriteEl,
-                translateX: '-50%',
-                scale: [0.3 * sEnd, 1.06 * sEnd, sEnd],
-                opacity: [0, 1, 1],
-                duration: 420,
-                easing: 'easeOutBack'
-            }).finished;
+            if (typeof anime === 'function') {
+                try {
+                    await anime({
+                        targets: spriteEl,
+                        translateX: '-50%',
+                        scale: [0.3 * sEnd, 1.06 * sEnd, sEnd],
+                        opacity: [0, 1, 1],
+                        duration: 420,
+                        easing: 'easeOutBack'
+                    }).finished;
+                } catch (e) { console.warn('[pokeball-anim] anime() failed:', e); }
+                try { anime.remove(spriteEl); } catch (e) {}
+            } else {
+                spriteEl.style.opacity = '1';
+                spriteEl.style.visibility = 'visible';
+            }
             if (mon) spriteEl.style.transform = getSpriteTransformStyle(mon);
-            anime.remove(spriteEl);
 
             flash.remove();
         }
@@ -13437,10 +13448,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Pokeball throw animations
             logMsg(`Player 1 sent out ${state.pActive.name}!`, 'info');
             logMsg(`${state.mode === 'pvp' ? 'Player 2' : 'Foe'} sent out ${state.fActive.name}!`, 'info');
-            await Promise.all([
-                playPokeballAnimation('player-sprite', true),
-                playPokeballAnimation('foe-sprite', false)
-            ]);
+            // Defensive: a thrown animation here used to crash startBattle outright (e.g. anime.js
+            // failed to load), leaving the user with no command menu and a static "MissingNo" HUD.
+            // Always continue to the input-ready state even if the entrance animation blows up.
+            try {
+                await Promise.all([
+                    playPokeballAnimation('player-sprite', true),
+                    playPokeballAnimation('foe-sprite', false)
+                ]);
+            } catch (e) {
+                console.warn('[startBattle] entrance animation failed:', e);
+                try {
+                    const ps = document.getElementById('player-sprite');
+                    const fs = document.getElementById('foe-sprite');
+                    if (ps) { ps.style.opacity = '1'; ps.style.visibility = 'visible'; }
+                    if (fs) { fs.style.opacity = '1'; fs.style.visibility = 'visible'; }
+                } catch (e2) {}
+            }
 
             applySwitchInAbilities(state.pActive, state.fActive); applySwitchInAbilities(state.fActive, state.pActive);
             updateUI();
