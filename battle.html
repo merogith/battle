@@ -6024,7 +6024,7 @@
     </script>
 </head>
 <body>
-    <div id="deploy-version-patch" class="deploy-version-patch" aria-hidden="true">v1.1.002</div>
+    <div id="deploy-version-patch" class="deploy-version-patch" aria-hidden="true">v1.1.003</div>
     <!-- Rotate overlay (portrait phones only) -->
     <div id="rotate-overlay">
         <div class="rotate-icon">▒</div>
@@ -7885,6 +7885,11 @@
                 console.warn('[CSV] builds.csv unavailable, fetching from pkmn.cc API...');
                 await populateCsvBuildsFromAPI();
             }
+            // Invalidate the data-driven recommendation caches — the tutor / dojo /
+            // nature rater scoring tables read from csvBuilds and would otherwise
+            // serve empty results if a screen rendered before this resolved.
+            try { if (typeof _txMetaCache !== 'undefined') _txMetaCache.clear(); } catch (e) {}
+            try { _txGlobalMetaCached = null; } catch (e) {}
         }
 
         // Fallback: populate csvBuilds from pkmn.cc Smogon sets API (used when builds.csv can't be fetched,
@@ -7933,6 +7938,10 @@
                 }
             }
             console.log(`[CSV] API fallback loaded builds for ${Object.keys(csvBuilds).length} Pokémon`);
+            // Invalidate the data-driven recommendation caches so per-species
+            // popularity stats reflect the freshly-loaded sets.
+            try { if (typeof _txMetaCache !== 'undefined') _txMetaCache.clear(); } catch (e) {}
+            try { _txGlobalMetaCached = null; } catch (e) {}
         }
 
         // Returns a list of Pokémon names suitable for draft pool generation.
@@ -38401,13 +38410,164 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return out;
         }
 
-        // Move scoring — produces a recommendation score used both for the
-        // recommended-strip and the default "Recommended" sort. Considers:
-        //  - STAB (1.5×)
-        //  - Effective power including accuracy
-        //  - Match physical/special category with the user's strongest offense
-        //  - Bonus for status moves with useful effects on slow / bulky mons
-        function _txScoreMove(moveName, mon, build, monName) {
+        // ── DATA-DRIVEN META STATS ──────────────────────────────────────
+        // Per-species popularity counts pulled from the loaded Smogon CSV
+        // (csvBuilds). Powers the Move Tutor / Battle Dojo / Nature Rater
+        // "Recommended" strip and the default sort across every picker.
+        //
+        // Falls back to a global baseline (all builds) when the species
+        // has < _TX_META_MIN_BUILDS rows — covers obscure forms (Pikachu-PhD,
+        // unviable mons) and the period before builds.csv has loaded.
+        const _TX_META_MIN_BUILDS = 5;
+        const _txMetaCache = new Map();   // monName → MetaStats
+        let _txGlobalMetaCached = null;    // lazy global baseline
+
+        function _txEmptyMeta() {
+            return { items:new Map(), moves:new Map(), abilities:new Map(), natures:new Map(), total:0, _sorted:null };
+        }
+        function _txAccumulateBuilds(out, builds, speciesName) {
+            if (!Array.isArray(builds)) return;
+            // Smogon's CSV leaves ability blank when the build uses the species'
+            // default (Tyranitar's Sand Stream, Garchomp's Sand Veil). Resolving
+            // those blanks to the species' Ability-0 lets the popular default
+            // win runner-up against explicit tech abilities — 56% of all rows
+            // in builds.csv are blank-ability, so skipping them buried real
+            // popularity.
+            let defaultAbility = '';
+            try {
+                const bs = (typeof baseStats === 'object' && speciesName) ? baseStats[speciesName] : null;
+                if (bs && bs.abilities) {
+                    defaultAbility = bs.abilities['0'] || bs.abilities[0] || '';
+                }
+            } catch (e) {}
+            for (const b of builds) {
+                if (!b || b._illegal) continue;
+                out.total++;
+                if (b.i && b.i !== 'NO_ITEM' && b.i !== '') {
+                    out.items.set(b.i, (out.items.get(b.i) || 0) + 1);
+                }
+                const aRaw = b.a && String(b.a).trim();
+                const a = aRaw || defaultAbility;
+                if (a) {
+                    out.abilities.set(a, (out.abilities.get(a) || 0) + 1);
+                }
+                if (b.n && String(b.n).trim()) {
+                    out.natures.set(b.n, (out.natures.get(b.n) || 0) + 1);
+                }
+                if (Array.isArray(b.m)) {
+                    // Count a move once per build even if it's slashed or in multiple slots —
+                    // matches Smogon's "% of sets that include X" usage definition.
+                    const seen = new Set();
+                    for (const slot of b.m) {
+                        if (!slot) continue;
+                        for (const raw of String(slot).split('/')) {
+                            const mv = raw.trim();
+                            if (!mv || seen.has(mv)) continue;
+                            seen.add(mv);
+                            out.moves.set(mv, (out.moves.get(mv) || 0) + 1);
+                        }
+                    }
+                }
+            }
+        }
+        function _txComputeMetaForMon(monName) {
+            // Walk the same candidate chain as resolveCsvBuildEntry, but track
+            // which species each pool comes from so blank abilities resolve to
+            // the correct default.
+            const out = _txEmptyMeta();
+            let cands = [monName];
+            try {
+                if (typeof speciesNamesForBuildLookup === 'function') {
+                    cands = speciesNamesForBuildLookup(monName) || [monName];
+                }
+            } catch (e) {}
+            for (const cand of cands) {
+                const e = (typeof csvBuilds === 'object' && csvBuilds && csvBuilds[cand]) ? csvBuilds[cand] : null;
+                if (!e) continue;
+                let hasAny = false;
+                for (const tag of ['regular','weather','mega','z-attack','tera']) {
+                    if (Array.isArray(e[tag]) && e[tag].length) { hasAny = true; break; }
+                }
+                if (!hasAny) continue;
+                for (const tag of ['regular','weather','mega','z-attack','tera']) {
+                    _txAccumulateBuilds(out, e[tag], cand);
+                }
+                break;
+            }
+            return out;
+        }
+        function _txMetaStatsFor(monName) {
+            if (!monName) return _txGlobalMeta();
+            if (_txMetaCache.has(monName)) return _txMetaCache.get(monName);
+            const stats = _txComputeMetaForMon(monName);
+            _txMetaCache.set(monName, stats);
+            return stats;
+        }
+        function _txGlobalMeta() {
+            if (_txGlobalMetaCached) return _txGlobalMetaCached;
+            const out = _txEmptyMeta();
+            const all = (typeof csvBuilds === 'object' && csvBuilds) ? csvBuilds : {};
+            for (const name of Object.keys(all)) {
+                const e = all[name];
+                if (!e) continue;
+                for (const tag of ['regular','weather','mega','z-attack','tera']) {
+                    _txAccumulateBuilds(out, e[tag], name);
+                }
+            }
+            _txGlobalMetaCached = out;
+            return out;
+        }
+        // Sorted [{name, count, pct}] cached on the stats object.
+        function _txMetaSorted(stats, kind) {
+            if (!stats || !stats[kind]) return [];
+            if (!stats._sorted) stats._sorted = {};
+            if (stats._sorted[kind]) return stats._sorted[kind];
+            const total = stats.total || 1;
+            const arr = [...stats[kind].entries()]
+                .map(([name, count]) => ({ name, count, pct: (count / total) * 100 }))
+                .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+            stats._sorted[kind] = arr;
+            return arr;
+        }
+        // Get popularity rank+pct for one option. source = 'species' | 'global' | 'none'.
+        // Score curves so 30% ≈ 92, 15% ≈ 75, 5% ≈ 50, 1% ≈ 22; everything ≤ 100.
+        function _txPopFor(name, kind, monName) {
+            const sp = monName ? _txMetaStatsFor(monName) : null;
+            const haveSpecies = sp && sp.total >= _TX_META_MIN_BUILDS;
+            const stats = haveSpecies ? sp : _txGlobalMeta();
+            if (!stats || !stats.total) return { score:0, pct:0, rank:0, source:'none', haveSpecies:false };
+            const count = (stats[kind] && stats[kind].get(name)) || 0;
+            if (!count) return { score:0, pct:0, rank:0, source: haveSpecies?'species':'global', haveSpecies };
+            const pct = (count / stats.total) * 100;
+            const score = Math.min(100, 22 * Math.log2(1 + pct) + pct * 0.5);
+            const sorted = _txMetaSorted(stats, kind);
+            const rank = sorted.findIndex(x => x.name === name) + 1;
+            return { score, pct, rank, source: haveSpecies?'species':'global', haveSpecies };
+        }
+        // Resolve top-N popular options for a species (with global fallback).
+        // Returns [{name,count,pct}] sorted descending. Excludes names in `excludeSet`.
+        function _txTopFromMeta(monName, kind, n, excludeSet) {
+            const sp = monName ? _txMetaStatsFor(monName) : null;
+            const haveSpecies = sp && sp.total >= _TX_META_MIN_BUILDS;
+            const stats = haveSpecies ? sp : _txGlobalMeta();
+            if (!stats || !stats.total) return { rows:[], haveSpecies:false };
+            let rows = _txMetaSorted(stats, kind);
+            if (excludeSet && excludeSet.size) rows = rows.filter(r => !excludeSet.has(r.name));
+            return { rows: rows.slice(0, n), haveSpecies };
+        }
+        // Blend a 0..150 heuristic score with the 0..100 popularity score.
+        // Species data dominates (65/35); global baseline is softer (40/60);
+        // no data → pure heuristic so we stay graceful when csvBuilds is empty.
+        function _txBlend(heur, pop) {
+            const heurN = heur > 100 ? Math.min(100, heur * (100/150)) : heur;
+            if (!pop || pop.score <= 0 || pop.source === 'none') return heurN;
+            if (pop.source === 'species') return pop.score * 0.65 + heurN * 0.35;
+            return pop.score * 0.40 + heurN * 0.60;
+        }
+
+        // Move heuristic — STAB / power / accuracy / category fit / utility (unchanged
+        // from prior version; meta popularity is applied on top via _txBlend).
+        function _txMoveHeuristic(moveName, mon, build, monName) {
             const md = (typeof movesDB !== 'undefined' && movesDB[moveName]) ? movesDB[moveName] : null;
             if (!md) return 0;
             const types = [];
@@ -38420,15 +38580,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const s = _txMonStats(mon, monName);
             let score = 0;
             if (isDamage) {
-                // Effective power × STAB × accuracy
                 score = pow * stab * acc;
-                // Reward category that matches the user's stronger offense (more if the gap is wide)
                 if (md.cat === 'Physical' && s.atk >= s.spa) score *= 1 + (s.atk - s.spa) / Math.max(s.atk, 1) * 0.5;
                 if (md.cat === 'Special'  && s.spa >= s.atk) score *= 1 + (s.spa - s.atk) / Math.max(s.spa, 1) * 0.5;
-                // Priority moves are tactical — small bonus
                 if (md.pri && md.pri > 0) score += 15;
             } else {
-                // Status — score on archetype: hazards / heal / boosts / phaze
                 const hazards = ['Stealth Rock','Spikes','Toxic Spikes','Sticky Web','Defog','Rapid Spin'];
                 const recover = ['Recover','Roost','Slack Off','Soft-Boiled','Synthesis','Morning Sun','Moonlight','Rest','Wish','Strength Sap','Shore Up','Milk Drink'];
                 const boost   = ['Swords Dance','Nasty Plot','Dragon Dance','Quiver Dance','Calm Mind','Bulk Up','Iron Defense','Cosmic Power','Coil','Shell Smash','Geomancy','Tail Glow','Belly Drum','Curse'];
@@ -38439,9 +38595,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (support.includes(moveName)) score = 70;
                 else score = 30;
             }
-            return Math.round(score * 100) / 100;
+            return score;
         }
-
+        // Public scoring — heuristic blended with Smogon popularity per species.
+        function _txScoreMove(moveName, mon, build, monName) {
+            const heur = _txMoveHeuristic(moveName, mon, build, monName);
+            const pop  = _txPopFor(moveName, 'moves', monName);
+            return Math.round(_txBlend(heur, pop) * 100) / 100;
+        }
         // Sort comparator factory
         function _txMoveCmp(sortKey, mon, build, monName) {
             return (a, b) => {
@@ -38452,20 +38613,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (sortKey === 'type')  return (ma.type || '').localeCompare(mb.type || '') || a.localeCompare(b);
                 if (sortKey === 'power') return (mb.pow|0) - (ma.pow|0) || a.localeCompare(b);
                 if (sortKey === 'acc')   return (mb.acc|0) - (ma.acc|0) || a.localeCompare(b);
-                // recommended (default)
                 return _txScoreMove(b, mon, build, monName) - _txScoreMove(a, mon, build, monName) || a.localeCompare(b);
             };
         }
 
-        // Item scoring for recommendations
-        function _txScoreItem(itemName, mon, build, monName) {
+        // Item heuristic — same hardcoded fit table as before. Smogon popularity
+        // is blended in through _txScoreItem; this keeps a sane fallback for
+        // items the species' build pool has never used.
+        function _txItemHeuristic(itemName, mon, build, monName) {
             if (!itemName) return 0;
             const cat = _txItemCategory(itemName);
             const s = _txMonStats(mon, monName);
             const off = Math.max(s.atk, s.spa);
             const isPhys = s.atk >= s.spa;
             let score = 0;
-            // Universal staples
             if (itemName === 'Leftovers') score = 75;
             else if (itemName === 'Life Orb') score = 70 + (off > 100 ? 10 : 0);
             else if (itemName === 'Heavy-Duty Boots') score = 65;
@@ -38475,19 +38636,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (itemName === 'Choice Band')  score = isPhys ? 85 : 30;
             else if (itemName === 'Choice Specs') score = !isPhys ? 85 : 30;
             else if (itemName === 'Choice Scarf') score = s.spe > 80 ? 75 : 50;
-            else if (itemName === 'Eviolite') {
-                // Only added by classifier when the species has evolutions
-                score = 95;
-            } else if (cat === 'offensive') score = 50;
+            else if (itemName === 'Eviolite') score = 95;
+            else if (cat === 'offensive') score = 50;
             else if (cat === 'defensive') score = 55;
             else if (cat === 'utility')   score = 45;
             else if (cat === 'berry')     score = 40;
             else score = 35;
-            // Penalize bad fits
             if (itemName === 'Choice Band'  && s.atk < s.spa)   score -= 30;
             if (itemName === 'Choice Specs' && s.spa < s.atk)   score -= 30;
             if (itemName === 'Choice Scarf' && s.spe > 120)   score -= 10;
             return score;
+        }
+        function _txScoreItem(itemName, mon, build, monName) {
+            const heur = _txItemHeuristic(itemName, mon, build, monName);
+            const pop  = _txPopFor(itemName, 'items', monName);
+            return _txBlend(heur, pop);
         }
         function _txItemCmp(sortKey, mon, build, monName) {
             return (a, b) => {
@@ -38500,17 +38663,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
         }
 
-        // Nature recommendation: which natures match the Pokémon's strongest stat & role.
-        // Uses BASE stats (pre-nature) so the recommendation matches the species' intrinsic
-        // profile rather than the already-boosted current nature.
-        function _txScoreNature(natureName, mon, build, monName) {
+        // Nature heuristic — matches +/- stat with the species' base spread.
+        // Smogon usage is blended in through _txScoreNature, so popular natures
+        // like Timid still surface even on mons with mixed stat lines.
+        function _txNatureHeuristic(natureName, mon, build, monName) {
             const mod = natureModifiers[natureName];
-            if (!mod) return 5; // neutral natures don't help most builds
-            // Prefer the species' base stat distribution as the source of truth
+            if (!mod) return 5;
             let base = null;
             if (monName && baseStats[monName]) base = baseStats[monName];
             else if (mon && mon.stats) {
-                // Fall back to current stats (less ideal — already nature-adjusted)
                 base = { atk: mon.stats.atk||0, def: mon.stats.def||0, spa: mon.stats.spa||0, spd: mon.stats.spd||0, spe: mon.stats.spe||0 };
             }
             if (!base) return 50;
@@ -38520,22 +38681,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const slow = (base.spe||0) < 70;
             const fast = (base.spe||0) >= 90;
             let score = 50;
-            // +stat preference
             if (mod.up === 'atk' && physicalLeaner) score += 35;
             if (mod.up === 'spa' && specialLeaner) score += 35;
             if (mod.up === 'spe' && fast) score += 25;
             if ((mod.up === 'def' || mod.up === 'spd' || mod.up === 'hp') && slow) score += 15;
-            // -stat preference (drop what you don't use)
             if (mod.down === 'spa' && physicalLeaner) score += 25;
             if (mod.down === 'atk' && specialLeaner) score += 25;
             if (mod.down === 'spe' && slow) score += 10;
-            // Misalignments
             if (mod.up === 'atk' && specialLeaner) score -= 25;
             if (mod.up === 'spa' && physicalLeaner) score -= 25;
             if (mod.down === 'atk' && physicalLeaner) score -= 25;
             if (mod.down === 'spa' && specialLeaner) score -= 25;
             if (mod.down === 'spe' && fast) score -= 25;
             return score;
+        }
+        function _txScoreNature(natureName, mon, build, monName) {
+            const heur = _txNatureHeuristic(natureName, mon, build, monName);
+            const pop  = _txPopFor(natureName, 'natures', monName);
+            return _txBlend(heur, pop);
         }
         function _txNatureCmp(sortKey, mon, build, monName) {
             return (a, b) => {
@@ -38544,7 +38707,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
         }
 
-        // Ability recommendation — score the obvious good abilities
+        // Ability heuristic — fallback when meta data is too thin to rank by usage.
+        // `_TX_GOOD_ABILITIES` is the catch-all "obvious-good" list; popularity
+        // refines it per species (e.g. Garchomp prefers Rough Skin over Sand Veil).
         const _TX_GOOD_ABILITIES = new Set([
             'Magic Guard','Levitate','Multiscale','Regenerator','Volt Absorb','Water Absorb',
             'Sap Sipper','Flash Fire','Storm Drain','Lightning Rod','Speed Boost',
@@ -38556,24 +38721,67 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Unaware','Filter','Solid Rock','Fluffy','Ice Scales','Thick Fat','Disguise','Wonder Guard',
             'Mummy','Lingering Aroma','Wandering Spirit','Defiant','Competitive','Justified'
         ]);
-        function _txScoreAbility(abilityName, mon, build) {
+        function _txAbilityHeuristic(abilityName) {
             if (!abilityName || abilityName === '(none)') return 5;
             if (_TX_GOOD_ABILITIES.has(abilityName)) return 90;
             return 50;
         }
-        function _txAbilityCmp(sortKey, mon, build) {
+        function _txScoreAbility(abilityName, mon, build, monName) {
+            const heur = _txAbilityHeuristic(abilityName);
+            const pop  = _txPopFor(abilityName, 'abilities', monName);
+            return _txBlend(heur, pop);
+        }
+        function _txAbilityCmp(sortKey, mon, build, monName) {
             return (a, b) => {
                 if (sortKey === 'name') return a.localeCompare(b);
-                return _txScoreAbility(b, mon, build) - _txScoreAbility(a, mon, build) || a.localeCompare(b);
+                return _txScoreAbility(b, mon, build, monName) - _txScoreAbility(a, mon, build, monName) || a.localeCompare(b);
             };
         }
 
-        // Pick the top-N recommendations after filtering
+        // Pick the top-N recommendations after filtering (sorted by scoreFn desc)
         function _txTopRecommended(items, scoreFn, n) {
             if (!items || !items.length) return [];
             const scored = items.map(it => ({ it, s: scoreFn(it) }));
             scored.sort((a, b) => b.s - a.s);
             return scored.slice(0, n).map(x => x.it);
+        }
+
+        // Compose the ordered list shown in the "Recommended" strip.
+        // First pulls popular Smogon picks for this species (or global fallback),
+        // intersected with the actually-available pool. If the meta has fewer
+        // legal picks than `n`, pad with heuristic-best options so the strip
+        // is always useful (e.g. obscure forms with no Smogon coverage).
+        function _txStripPicks(kind, monName, available, excludeSet, scoreFn, n) {
+            const pool = (available || []).filter(x => !excludeSet || !excludeSet.has(x));
+            const inPool = new Set(pool);
+            const { rows, haveSpecies } = _txTopFromMeta(monName, kind, n * 4, excludeSet);
+            const popOrdered = rows.map(r => r.name).filter(x => inPool.has(x));
+            const picks = popOrdered.slice(0, n);
+            if (picks.length < n && pool.length > picks.length) {
+                // Pad with heuristic-ranked options that didn't show up in meta data
+                const seen = new Set(picks);
+                const rest = pool.filter(x => !seen.has(x));
+                const heur = _txTopRecommended(rest, scoreFn, n - picks.length);
+                for (const h of heur) { if (!seen.has(h)) { picks.push(h); seen.add(h); } }
+            }
+            return { picks, haveSpecies };
+        }
+        // Render the "Top picks" strip from an ordered list. `kindLabel` is
+        // the rendered noun ("moves", "items", "abilities", "natures").
+        // `decorate(name) → string` lets natures append "(+Spe / −SpA)" etc.
+        function _txStripHtml(kindLabel, monName, picks, haveSpecies, decorate) {
+            if (!picks || !picks.length) return '';
+            const title = haveSpecies
+                ? `★ Top ${kindLabel} for ${_esc(monName)}`
+                : `★ Popular ${kindLabel} (meta-wide)`;
+            const detail = picks.map(p => {
+                const extra = decorate ? decorate(p) : '';
+                return `<strong>${_esc(p)}</strong>${extra ? ` <span style="font-size:10px;opacity:0.8;">${extra}</span>` : ''}`;
+            }).join(' · ');
+            return `<div class="tx-recs-strip">
+                <div class="tx-recs-strip-title">${title}</div>
+                <div class="tx-recs-strip-detail">${detail}</div>
+            </div>`;
         }
 
         // Format short effect/description for a move
@@ -39094,8 +39302,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Filtered + sorted
             const filtered = _txApplyMoveFilters(availForActive, mon, b, t.name);
-            // Recommendation set
-            const recList = _txTopRecommended(availForActive, (it) => _txScoreMove(it, mon, b, t.name), 5);
+            // Data-driven top picks: 10 in the strip, top 5 of those marked "★ Pick"
+            // on the cards. Strip pulls from Smogon usage for the species (or the
+            // global pool when the species has < 5 builds), so popular tech moves
+            // surface even when they're niche by raw BP / accuracy.
+            const moveScoreFn = (it) => _txScoreMove(it, mon, b, t.name);
+            const { picks: stripPicks, haveSpecies: stripHaveSpec } =
+                _txStripPicks('moves', t.name, availForActive, null, moveScoreFn, 10);
+            const recList = stripPicks.slice(0, 5);
             const recSet = new Set(recList);
             const stabTypes = new Set([mon && mon.type1, mon && mon.type2].filter(Boolean));
             const pendingMove = (_txPending && _txPending.kind === 'move') ? _txPending.value : null;
@@ -39105,22 +39319,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? filtered.map(m => _txMoveCardHtml(m, ctx)).join('')
                 : `<div class="tx-grid-empty">No moves match these filters. Loosen them or clear the search.</div>`;
 
-            // Recommended strip — show top-1 with reason
-            let recsStrip = '';
-            if (recList.length) {
-                const top = recList[0];
-                const md = movesDB[top];
-                if (md) {
-                    const stab = stabTypes.has(md.type) ? ' STAB' : '';
-                    const reason = md.cat === 'Status'
-                        ? 'top utility option for this build'
-                        : `${md.pow||'—'} BP${stab} ${md.type} ${md.cat.toLowerCase()}`;
-                    recsStrip = `<div class="tx-recs-strip">
-                        <div class="tx-recs-strip-title">★ Recommended</div>
-                        <div class="tx-recs-strip-detail"><strong>${_esc(top)}</strong> — ${reason}.</div>
-                    </div>`;
-                }
-            }
+            // Top-10 strip ordered by popularity for this species.
+            const recsStrip = _txStripHtml('moves', t.name, stripPicks, stripHaveSpec, null);
 
             const toolbar = _txToolbarHtml('moves', {
                 placeholder: 'Search moves (e.g. earthquake, hidden, ice)',
@@ -39170,20 +39370,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pool = _tutorGetPoolForMon(t.name);
             const tab = _txState.dojoTab || 'item';
 
-            // Items
+            // Items — top 3 by Smogon usage (excludes the currently-equipped item)
             const curItem = b.i || '(none)';
             const items = pool.items.slice();
             const filtItems = _txApplyItemFilters(items, mon, b, t.name);
-            const recItems = _txTopRecommended(items.filter(it => it !== curItem), (it) => _txScoreItem(it, mon, b, t.name), 5);
+            const itemScoreFn = (it) => _txScoreItem(it, mon, b, t.name);
+            const { picks: recItems, haveSpecies: itemHaveSpec } =
+                _txStripPicks('items', t.name, items, new Set([curItem]), itemScoreFn, 3);
             const recItemSet = new Set(recItems);
             const pendingItem = (_txPending && _txPending.kind === 'item') ? _txPending.value : null;
             const itemCtx = { pending: pendingItem, current: curItem, recommended: recItemSet };
 
-            // Abilities — note that hidden abilities are tagged from baseStats.abilities slot 'H'
+            // Abilities — top + runner-up (top 2 by Smogon usage, current excluded).
+            // Hidden abilities are tagged from baseStats.abilities slot 'H'.
             const curAbility = b.a || (mon && mon.ability) || '(none)';
             const abils = pool.abilities.slice();
             const filtAbils = _txApplyAbilityFilters(abils, mon, b, t.name);
-            const recAbils = _txTopRecommended(abils.filter(a => a !== curAbility), (it) => _txScoreAbility(it, mon, b, t.name), 3);
+            const abilScoreFn = (it) => _txScoreAbility(it, mon, b, t.name);
+            const { picks: recAbils, haveSpecies: abilHaveSpec } =
+                _txStripPicks('abilities', t.name, abils, new Set([curAbility]), abilScoreFn, 2);
             const recAbilSet = new Set(recAbils);
             const haSet = new Set();
             try {
@@ -39196,12 +39401,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Item tab content
             const itemTabHtml = (() => {
                 if (!items.length) return '<div class="tx-grid-empty">No items available for this Pokémon.</div>';
-                const recDesc = recItems.length
-                    ? `<div class="tx-recs-strip">
-                        <div class="tx-recs-strip-title">★ Recommended for ${_esc(t.name)}</div>
-                        <div class="tx-recs-strip-detail">${recItems.slice(0,3).map(it => `<strong>${_esc(it)}</strong>`).join(' · ')}</div>
-                    </div>`
-                    : '';
+                const recDesc = _txStripHtml('items', t.name, recItems, itemHaveSpec, null);
                 const cards = filtItems.length
                     ? filtItems.map(it => _txItemCardHtml(it, itemCtx)).join('')
                     : `<div class="tx-grid-empty">No items match — try a different category or clear the search.</div>`;
@@ -39221,12 +39421,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Ability tab content
             const abilTabHtml = (() => {
                 if (!abils.length) return '<div class="tx-grid-empty">No abilities available for this Pokémon.</div>';
-                const recDesc = recAbils.length
-                    ? `<div class="tx-recs-strip">
-                        <div class="tx-recs-strip-title">★ Strong choices</div>
-                        <div class="tx-recs-strip-detail">${recAbils.slice(0,3).map(a => `<strong>${_esc(a)}</strong>`).join(' · ')}</div>
-                    </div>`
-                    : '';
+                // Top + runner-up — labeled inline so the strip reads naturally
+                // even when meta usage is heavily skewed (e.g. Regenerator 90% / X 8%).
+                const recDesc = (() => {
+                    if (!recAbils.length) return '';
+                    const title = abilHaveSpec
+                        ? `★ Top abilities for ${_esc(t.name)}`
+                        : `★ Popular abilities (meta-wide)`;
+                    const inner = recAbils.length === 1
+                        ? `<strong>${_esc(recAbils[0])}</strong>`
+                        : `<strong>${_esc(recAbils[0])}</strong> <span style="font-size:10px;opacity:0.8;">· runner-up:</span> <strong>${_esc(recAbils[1])}</strong>`;
+                    return `<div class="tx-recs-strip">
+                        <div class="tx-recs-strip-title">${title}</div>
+                        <div class="tx-recs-strip-detail">${inner}</div>
+                    </div>`;
+                })();
                 const cards = filtAbils.length
                     ? filtAbils.map(a => _txAbilityCardHtml(a, abilCtx)).join('')
                     : `<div class="tx-grid-empty">No abilities match the search.</div>`;
@@ -39277,8 +39486,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const natAvailable = pool.natures.slice();
             const curNature = b.n || 'Hardy';
 
-            // Recommendation list (top 3) — only non-neutral with decent score
-            const recList = _txTopRecommended(natAvailable.filter(n => n !== curNature && natureModifiers[n]), (n) => _txScoreNature(n, mon, b, t.name), 3);
+            // Top 3 natures by Smogon usage for this species (current excluded).
+            // Neutral natures are filtered out — they're shown separately in the
+            // neutral row and never end up in the data-driven recommendations.
+            const natScoreFn = (n) => _txScoreNature(n, mon, b, t.name);
+            const natPool = natAvailable.filter(n => natureModifiers[n]);
+            const { picks: recList, haveSpecies: natHaveSpec } =
+                _txStripPicks('natures', t.name, natPool, new Set([curNature]), natScoreFn, 3);
             const recSet = new Set(recList);
 
             // Build a 5×5 grid mapping (up, down) → nature
@@ -39352,16 +39566,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>`;
             };
 
-            // Top "Recommended" strip
-            const recsStrip = recList.length
-                ? `<div class="tx-recs-strip">
-                    <div class="tx-recs-strip-title">★ Recommended for ${_esc(t.name)}</div>
-                    <div class="tx-recs-strip-detail">${recList.map(n => {
-                        const m = natureModifiers[n];
-                        return `<strong>${_esc(n)}</strong> <span style="font-size:10px;opacity:0.8;">(+${_TX_STAT_LABEL[m.up]}/−${_TX_STAT_LABEL[m.down]})</span>`;
-                    }).join(' · ')}</div>
-                </div>`
-                : '';
+            // Top-3 strip — decorate each entry with its +/− stat axis so the
+            // tradeoff is legible without tapping the cell.
+            const natDecorate = (n) => {
+                const m = natureModifiers[n];
+                return m ? `(+${_TX_STAT_LABEL[m.up]}/−${_TX_STAT_LABEL[m.down]})` : '';
+            };
+            const recsStrip = _txStripHtml('natures', t.name, recList, natHaveSpec, natDecorate);
 
             const headerSummary = `<div class="story-tutor-mon-meta" style="margin-top:0;">Nature: <strong>${_esc(curNature)}</strong>${
                 natureModifiers[curNature] ? ` <span style="opacity:0.7;">(+${_TX_STAT_LABEL[natureModifiers[curNature].up]}/−${_TX_STAT_LABEL[natureModifiers[curNature].down]})</span>` : ' (neutral)'
@@ -40198,6 +40409,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Score an EV preset against the Pokémon's base stats — surfaces which
         // preset is the strongest "fit" for the highlighted-mon recommendation.
+        // Meta spreads are tiered by Smogon popularity rank: meta_0 (the single
+        // most-used spread) gets the biggest bonus, then meta_1, etc., so the
+        // top recommendation tracks the actual most-popular real-world build.
         function _evTrainerScorePreset(p, mon) {
             if (!p || !p.evs) return 0;
             if (!mon) return 50;
@@ -40206,17 +40420,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const fast = spe >= 90;
             const bulky = (hp + def + spd) >= 240;
             let s = 0;
-            // Reward matching the build's strongest stat with EVs
             const evs = p.evs;
-            const weight = (key, ifTrue, ifFalse) => (ifTrue ? (evs[key] || 0) : -(evs[key] || 0) * 0.4) || 0;
+            const weight = (key, ifTrue) => (ifTrue ? (evs[key] || 0) : -(evs[key] || 0) * 0.4) || 0;
             s += weight('atk', physical) * 0.35;
             s += weight('spa', !physical) * 0.35;
             s += weight('spe', fast) * 0.25;
             s += (evs.hp || 0) * (bulky ? 0.20 : 0.10);
             s += (evs.def || 0) * 0.10;
             s += (evs.spd || 0) * 0.10;
-            // Bonus for meta archetypes
-            if (p.id && /^meta_/.test(p.id)) s += 30;
+            // Smogon-popularity tier — meta_0 is the most-used spread for this
+            // species, meta_1 second most-used, etc. Bigger bonus on top tier so
+            // the recommendation tracks real-world meta rather than the heuristic.
+            if (p.id && /^meta_/.test(p.id)) {
+                const rank = parseInt(p.id.slice(5), 10) || 0;
+                s += (rank === 0 ? 60 : rank === 1 ? 40 : rank === 2 ? 25 : 15);
+            }
             return Math.round(s);
         }
 
