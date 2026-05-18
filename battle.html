@@ -5594,30 +5594,6 @@
             box-shadow: inset 2px 2px 0px 0px #0a0c14;
         }
         .story-create-input:focus { outline: 2px solid #4fc3f7; outline-offset: 1px; border-color: #4fc3f7; }
-        .story-create-gender-row { display: flex; gap: 8px; }
-        .story-create-gender-btn {
-            flex: 1;
-            display: flex; align-items: center; justify-content: center; gap: 6px;
-            padding: 10px 12px;
-            background: linear-gradient(180deg, #1e2030 0%, #12141e 100%);
-            border: 2px solid #555;
-            color: #b3c2d6;
-            cursor: pointer;
-            border-radius: 0;
-            font-family: var(--battle-font) !important;
-            font-size: 11px;
-            min-height: 42px;
-            box-shadow: inset -2px -2px 0px 0px #212529, inset 2px 2px 0px 0px #495057;
-            transition: border-color 0.12s, color 0.12s, background 0.12s;
-        }
-        .story-create-gender-btn:hover { border-color: #4fc3f7; }
-        .story-create-gender-btn[aria-checked="true"] {
-            border-color: #4caf50;
-            color: #aed581;
-            background: linear-gradient(180deg, #142a18 0%, #0a1a0c 100%);
-            box-shadow: inset -2px -2px 0px 0px #0a1a0c, inset 2px 2px 0px 0px #2a5a2c;
-        }
-        .story-create-gender-icon { font-size: 16px; }
         .story-create-sprite-controls { display: flex; gap: 8px; flex-wrap: wrap; }
         .story-create-mini-btn {
             font-family: var(--battle-font) !important;
@@ -6910,23 +6886,11 @@
                             <input type="text" id="story-create-name" maxlength="12" autocomplete="off" spellcheck="false" placeholder="Enter your name" class="story-create-input">
                         </label>
                         <div class="story-create-field">
-                            <span class="story-create-label">Choose look</span>
-                            <div class="story-create-gender-row" role="radiogroup" aria-label="Trainer gender">
-                                <button type="button" id="story-create-gender-m" class="story-create-gender-btn" role="radio" aria-checked="true" onclick="window.StoryMode.trainerCreateSetGender('M')">
-                                    <span class="story-create-gender-icon">&#9794;</span>
-                                    <span class="story-create-gender-text">Boy</span>
-                                </button>
-                                <button type="button" id="story-create-gender-f" class="story-create-gender-btn" role="radio" aria-checked="false" onclick="window.StoryMode.trainerCreateSetGender('F')">
-                                    <span class="story-create-gender-icon">&#9792;</span>
-                                    <span class="story-create-gender-text">Girl</span>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="story-create-field">
-                            <span class="story-create-label">Trainer sprite</span>
+                            <span class="story-create-label">Trainer look</span>
                             <div class="story-create-sprite-controls">
-                                <button type="button" class="story-create-mini-btn" onclick="window.StoryMode.trainerCreateUseDefault()">Default</button>
+                                <button type="button" class="story-create-mini-btn" aria-label="Previous sprite" onclick="window.StoryMode.trainerCreatePrevSprite()">&#9664; Prev</button>
                                 <button type="button" class="story-create-mini-btn" onclick="window.StoryMode.trainerCreateRandomSprite()">&#127922; Random</button>
+                                <button type="button" class="story-create-mini-btn" aria-label="Next sprite" onclick="window.StoryMode.trainerCreateNextSprite()">Next &#9654;</button>
                             </div>
                         </div>
                     </div>
@@ -27720,7 +27684,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 date: Date.now(),
                 trainerName: (sm.trainerProfile && sm.trainerProfile.name) || 'Trainer',
                 trainerSprite: (sm.trainerProfile && sm.trainerProfile.sprite) || '',
-                trainerGender: (sm.trainerProfile && sm.trainerProfile.gender) || '',
                 difficulty: sm.storyDifficulty || 'normal',
                 gens: Array.isArray(sm.settings && sm.settings.enabledGens) ? sm.settings.enabledGens.slice() : [],
                 seed: sm.runSeed != null ? (sm.runSeed >>> 0).toString() : '',
@@ -27738,8 +27701,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const meta = readStoryMeta();
             meta.trainerProfile = {
                 name: String(profile.name || '').slice(0, 16),
-                sprite: String(profile.sprite || ''),
-                gender: (profile.gender === 'F' ? 'F' : 'M')
+                sprite: String(profile.sprite || '')
             };
             writeStoryMeta(meta);
         }
@@ -29947,45 +29909,47 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── TRAINER PROFILE — CREATION SCREEN ────────────────────────────
-        // Curated player-style sprite pools used by the trainer creation
-        // screen. Defaults are Red (M) / Leaf (F) — the most recognizable
-        // Gen-1 player pair. The "Random" button rolls from the full
-        // gender-matched pool.
-        const TRAINER_SPRITE_POOL_M = [
-            'Red.png','Ethan.png','Brendan.png','Lucas.png','Hilbert.png','Hilbert-2.png','Elio.png',
-            'Ace_Trainer.png','Cooltrainer.png','Youngster.png','Black_Belt.png','Hiker.png',
-            'Psychic.png','Fisherman.png','Bug_Catcher.png','Camper.png','Bird_Keeper.png',
-            'Karate_King.png','Pokemaniac.png','Sailor.png','Tamer.png','Engineer.png','Schoolboy.png',
-            'Ace_Trainer-Snow.png','Pokemon_Breeder.png','Pokemon_Ranger.png','Bug_Maniac.png',
-            'Rich_Boy.png','Roughneck.png','Ruin_Maniac.png','Skier.png','Snowboarder.png',
-            'Ace_Trainer-GS.png','Beauty.png','Burglar.png','Gambler.png','Gentleman.png',
-            'Hex_Maniac.png','Backpacker.png','Pokefan.png','Veteran.png','Lady.png'
+        // Curated trainer sprite pool used by the trainer creation screen.
+        // A single unified roster — the player picks whichever sprite they
+        // like via Prev / Random / Next. Iconic Gen 1–7 player avatars lead
+        // (Red, Leaf, Ethan, Kris, … Elio, Selene) so the first impression is
+        // recognizable, then trainer-class sprites follow for variety. Every
+        // entry below has been verified against `sprites/trainers/` — the
+        // older split pools referenced several files that didn't exist, and
+        // those were silently rerouted to the default at runtime.
+        const TRAINER_SPRITE_POOL = [
+            // Iconic player characters across generations.
+            'Red.png','Leaf.png','Ethan.png','Kris.png','Brendan.png','May.png',
+            'Lucas.png','Dawn.png','Hilbert.png','Hilda.png','Hilbert-2.png','Hilda-2.png',
+            'Elio.png','Selene.png',
+            // Trainer classes (alphabetised, mixed presentations).
+            'Ace_Trainer.png','Ace_Trainer~F.png','Ace_Trainer-Snow.png','Ace_Trainer~F-Snow.png',
+            'Aroma_Lady.png','Backpacker.png','Backpacker~F.png','Battle_Girl.png',
+            'Beauty.png','Belle___0026_Pa.png','Bird_Keeper.png','Blackbelt.png',
+            'Bug_Catcher.png','Bug_Maniac.png','Burglar.png','Camper.png',
+            'Cooltrainer.png','Cooltrainer~F.png','Cyclist.png','Cyclist~F.png',
+            'Engineer.png','Expert.png','Expert~F.png','Fisherman.png',
+            'Gambler.png','Gentleman.png','Hex_Maniac.png','Hiker.png',
+            'Idol.png','Jr._Trainer.png','Jr._Trainer~F.png','Lady.png',
+            'Lass.png','Picnicker.png','Poke__0301_Maniac.png','Poke__0301mon_Breeder.png',
+            'Poke__0301mon_Breeder~F.png','Poke__0301mon_Ranger.png','Poke__0301mon_Ranger~F.png',
+            'Preschooler.png','Preschooler~F.png','Psychic.png','Psychic~F.png',
+            'Rich_Boy.png','Rising_Star.png','Rising_Star~F.png','Roughneck.png',
+            'Ruin_Maniac.png','Sailor.png','School_Kid.png','School_Kid~F.png',
+            'Schoolboy.png','Skier.png','Skier~F.png','Tamer.png',
+            'Twins.png','Veteran.png','Veteran~F.png','Youngster.png'
         ];
-        const TRAINER_SPRITE_POOL_F = [
-            'Leaf.png','Kris.png','May.png','Dawn.png','Hilda.png','Hilda-2.png','Selene.png',
-            'Ace_Trainer~F.png','Cooltrainer~F.png','Lass.png','Battle_Girl.png','Psychic~F.png',
-            'Hex_Maniac.png','Cyclist~F.png','Backpacker~F.png','Expert~F.png','Jr._Trainer~F.png',
-            'Pokemon_Breeder~F.png','Pokemon_Ranger~F.png','Picnicker.png','Aroma_Lady.png',
-            'Beauty.png','Ace_Trainer~F-Snow.png','Ace_Trainer~F-GS.png','Rising_Star~F.png',
-            'Twin.png','Preschooler~F.png','Schoolgirl.png','Idol.png','Lady.png','Madame.png',
-            'Pokefan~F.png','Veteran~F.png','Lass-JPN.png','Belle___0026_Pa.png'
-        ];
-        const TRAINER_DEFAULT_M = 'Red.png';
-        const TRAINER_DEFAULT_F = 'Leaf.png';
+        const TRAINER_DEFAULT = TRAINER_SPRITE_POOL[0];
         // In-memory edit state for the trainer-create screen. Persisted to
         // sm.trainerProfile + meta.trainerProfile on confirm.
         const _tcState = {
             name: '',
-            gender: 'M',
-            sprite: TRAINER_DEFAULT_M,
+            sprite: TRAINER_DEFAULT,
             difficulty: 'normal',
             genPreset: 'all'
         };
         function _trainerSpritePath(filename) {
             return 'sprites/trainers/' + String(filename || '');
-        }
-        function _trainerPoolForGender(g) {
-            return g === 'F' ? TRAINER_SPRITE_POOL_F : TRAINER_SPRITE_POOL_M;
         }
         function _trainerPrettyName(filename) {
             return String(filename || '')
@@ -30001,21 +29965,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (img) {
                 img.src = _trainerSpritePath(_tcState.sprite);
                 img.onerror = function() {
-                    // Fall back to default for current gender if the sprite is missing.
-                    const def = _tcState.gender === 'F' ? TRAINER_DEFAULT_F : TRAINER_DEFAULT_M;
-                    if (img.src.indexOf(def) === -1) {
-                        _tcState.sprite = def;
-                        img.src = _trainerSpritePath(def);
+                    if (img.src.indexOf(TRAINER_DEFAULT) === -1) {
+                        _tcState.sprite = TRAINER_DEFAULT;
+                        img.src = _trainerSpritePath(TRAINER_DEFAULT);
                     }
                 };
             }
             if (cap) cap.textContent = _trainerPrettyName(_tcState.sprite);
-        }
-        function _tcSyncGenderButtons() {
-            const m = document.getElementById('story-create-gender-m');
-            const f = document.getElementById('story-create-gender-f');
-            if (m) m.setAttribute('aria-checked', _tcState.gender === 'M' ? 'true' : 'false');
-            if (f) f.setAttribute('aria-checked', _tcState.gender === 'F' ? 'true' : 'false');
         }
         function _tcSyncDifficultyCards() {
             const cards = document.querySelectorAll('#screen-story-trainercreate .story-create-diff-card');
@@ -30056,12 +30012,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const prof = meta.trainerProfile || null;
             if (prof) {
                 _tcState.name = String(prof.name || '');
-                _tcState.gender = (prof.gender === 'F') ? 'F' : 'M';
-                _tcState.sprite = String(prof.sprite || (_tcState.gender === 'F' ? TRAINER_DEFAULT_F : TRAINER_DEFAULT_M));
+                _tcState.sprite = String(prof.sprite || TRAINER_DEFAULT);
             } else {
                 _tcState.name = '';
-                _tcState.gender = 'M';
-                _tcState.sprite = TRAINER_DEFAULT_M;
+                _tcState.sprite = TRAINER_DEFAULT;
             }
             // Try last-run defaults for difficulty / mechanics.
             try {
@@ -30080,7 +30034,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const nameInput = document.getElementById('story-create-name');
             if (nameInput) nameInput.value = _tcState.name;
             _tcSyncPortrait();
-            _tcSyncGenderButtons();
             _tcSyncDifficultyCards();
             // Apply saved mechanic defaults first (sets gen checkboxes if any).
             try { applyStoryMenuDefaultsFromStorage(); } catch (e) {}
@@ -30110,24 +30063,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function cancelTrainerCreate() {
             showMenu(true);
         }
-        function trainerCreateSetGender(g) {
-            const next = (g === 'F') ? 'F' : 'M';
-            if (next === _tcState.gender) return;
-            _tcState.gender = next;
-            // Reset to the gender's default sprite unless the current one is already in the new pool.
-            const pool = _trainerPoolForGender(next);
-            if (pool.indexOf(_tcState.sprite) === -1) {
-                _tcState.sprite = (next === 'F') ? TRAINER_DEFAULT_F : TRAINER_DEFAULT_M;
-            }
-            _tcSyncGenderButtons();
+        function _trainerStepSprite(delta) {
+            const pool = TRAINER_SPRITE_POOL;
+            if (!pool.length) return;
+            let idx = pool.indexOf(_tcState.sprite);
+            if (idx < 0) idx = 0;
+            const n = pool.length;
+            idx = ((idx + delta) % n + n) % n;
+            _tcState.sprite = pool[idx];
             _tcSyncPortrait();
         }
-        function trainerCreateUseDefault() {
-            _tcState.sprite = (_tcState.gender === 'F') ? TRAINER_DEFAULT_F : TRAINER_DEFAULT_M;
-            _tcSyncPortrait();
-        }
+        function trainerCreatePrevSprite() { _trainerStepSprite(-1); }
+        function trainerCreateNextSprite() { _trainerStepSprite(1); }
         function trainerCreateRandomSprite() {
-            const pool = _trainerPoolForGender(_tcState.gender);
+            const pool = TRAINER_SPRITE_POOL;
             if (!pool.length) return;
             // Avoid picking the same sprite twice in a row if possible.
             let pick = pool[Math.floor(Math.random() * pool.length)];
@@ -30194,7 +30143,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // back through the (now-removed) story-menu inputs.
             sm._trainerProfilePending = {
                 name: v.value,
-                gender: _tcState.gender,
                 sprite: _tcState.sprite,
                 difficulty: _tcState.difficulty
             };
@@ -30501,13 +30449,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 runSeed: ((Math.random() * 0xFFFFFFFF) | 0),
                 trainerProfile: _pending ? {
                     name: String(_pending.name || 'Trainer').slice(0, 16),
-                    sprite: String(_pending.sprite || TRAINER_DEFAULT_M),
-                    gender: (_pending.gender === 'F' ? 'F' : 'M')
+                    sprite: String(_pending.sprite || TRAINER_DEFAULT)
                 } : (function() {
                     // Fall back to last-saved profile or a generic default.
                     const meta = readStoryMeta();
                     if (meta.trainerProfile) return { ...meta.trainerProfile };
-                    return { name: 'Trainer', sprite: TRAINER_DEFAULT_M, gender: 'M' };
+                    return { name: 'Trainer', sprite: TRAINER_DEFAULT };
                 })(),
                 version: SAVE_VER,
                 storyCityVisit: null,
@@ -30530,7 +30477,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _storyBattleInventorySnapshot = null;
             try { delete sm._trainerProfilePending; } catch (e) {}
             // Persist trainer profile cross-run so the next New Adventure
-            // remembers the name / sprite / gender.
+            // remembers the name and sprite.
             try { _storySaveTrainerProfile(sm.trainerProfile); } catch (e) {}
             resetProfessorPickSession();
             applyMechanicsToSettings();
@@ -37560,7 +37507,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (resume) {
                     if (hasSv && sm) {
                         const profile = sm.trainerProfile || (readStoryMeta().trainerProfile) || null;
-                        const sprite = profile && profile.sprite ? profile.sprite : TRAINER_DEFAULT_M;
+                        const sprite = profile && profile.sprite ? profile.sprite : TRAINER_DEFAULT;
                         const name = profile && profile.name ? profile.name : 'Trainer';
                         const spriteEl = document.getElementById('story-menu-resume-sprite');
                         const nameEl = document.getElementById('story-menu-resume-name');
@@ -37569,7 +37516,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (spriteEl) {
                             spriteEl.src = _trainerSpritePath(sprite);
                             spriteEl.onerror = function() {
-                                spriteEl.src = _trainerSpritePath(TRAINER_DEFAULT_M);
+                                spriteEl.src = _trainerSpritePath(TRAINER_DEFAULT);
                             };
                         }
                         if (nameEl) nameEl.textContent = name;
@@ -40696,8 +40643,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             previewHallOfFame, seedDebugMysteryLegendGate, seedDebugPostHofClimax, seedTestMegaFromUrl, seedStoryChampionWeakTestFromUrl, clearCurrentEnemyLock,
             openRunSummary,
             // Trainer creation + cross-run collection (Pokédex / achievements / HoF)
-            openTrainerCreate, cancelTrainerCreate, trainerCreateSetGender, trainerCreateUseDefault,
-            trainerCreateRandomSprite, trainerCreateSetDifficulty, trainerCreateSetGenPreset,
+            openTrainerCreate, cancelTrainerCreate,
+            trainerCreatePrevSprite, trainerCreateNextSprite, trainerCreateRandomSprite,
+            trainerCreateSetDifficulty, trainerCreateSetGenPreset,
             confirmTrainerAndStart,
             openCollection, closeCollection, pokedexSetGen,
             _markDexSeen: _storyMarkDexSeen,

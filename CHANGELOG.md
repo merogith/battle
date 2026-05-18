@@ -3,6 +3,67 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Character creation is now sprite-based, not gender-based 2026-05-18 (`claude/sprite-based-characters-VfHkk`)
+
+### Changed — New Adventure: removed Boy/Girl picker, added Prev/Random/Next sprite browser
+
+The "1 — Your trainer" panel used to make players pick a gender first
+(Boy → Red.png pool / Girl → Leaf.png pool) before choosing a sprite,
+which served no mechanical purpose — gender wasn't passed to anything in
+battle, online play, or the Hall of Fame UI, so the choice was a
+decorative gate that funnelled players into one of two narrower rosters.
+The new flow lets the player browse a single 71-entry trainer-sprite
+pool directly:
+
+* The `Boy` / `Girl` radio row is gone. In its place the Trainer-look
+  field now exposes three buttons: `◀ Prev`, `🎲 Random`, `Next ▶`.
+  Prev/Next wrap around the pool so it's quick to scan; Random rolls
+  any other sprite (never the current one).
+* `TRAINER_SPRITE_POOL_M` and `TRAINER_SPRITE_POOL_F` were merged into a
+  single curated `TRAINER_SPRITE_POOL` led by the iconic Gen 1–7 player
+  avatars (Red, Leaf, Ethan, Kris, Brendan, May, Lucas, Dawn, Hilbert,
+  Hilda, Elio, Selene) and rounded out alphabetically with 57 trainer
+  classes (Ace Trainers in both Snow variants, Aroma Lady, Battle Girl,
+  Blackbelt, Cooltrainers, Cyclists, Hex Maniac, Lass, Picnicker,
+  Psychics, Rising Stars, Veterans, …). The new default is `Red.png` —
+  the first entry in the pool — used as the reset target when an old
+  saved sprite filename fails to load.
+* While auditing the pool I caught that the two old gender-split arrays
+  referenced 16 filenames that didn't actually exist in
+  `sprites/trainers/` (e.g. `Pokemon_Breeder.png`, `Karate_King.png`,
+  `Schoolgirl.png`, `Snowboarder.png`, `Twin.png`, `Lass-JPN.png`,
+  `Madame.png`, …). The runtime `onerror` handler was silently
+  rerouting those to the default sprite, so hitting Random had hidden
+  dead-end picks. The new pool only contains files that exist on disk,
+  with the typo'd entries swapped for their real-world counterparts
+  (`Blackbelt.png`, `Poke__0301mon_Breeder.png`,
+  `Poke__0301mon_Ranger.png`, `Poke__0301_Maniac.png`, `Twins.png`,
+  `School_Kid{,~F}.png`, etc.).
+* `gender` is no longer written to `sm.trainerProfile`, the
+  cross-run `pbs_story_meta.trainerProfile`, the pending payload that
+  feeds `startNewRun`, or new Hall-of-Fame records (`trainerGender` is
+  removed from the HoF record schema). Existing saves that *do* carry a
+  `gender` field still load fine — it's simply ignored now, and any
+  rewrite drops it.
+* Removed: `trainerCreateSetGender`, `trainerCreateUseDefault`,
+  `_trainerPoolForGender`, `_tcSyncGenderButtons`,
+  `TRAINER_DEFAULT_M`, `TRAINER_DEFAULT_F`, the
+  `.story-create-gender-row` / `-btn` / `-icon` CSS class block, and the
+  two `#story-create-gender-{m,f}` buttons from the screen markup.
+  Added: `trainerCreatePrevSprite`, `trainerCreateNextSprite`,
+  `_trainerStepSprite`, a single `TRAINER_DEFAULT` constant.
+* The "Default" button was removed alongside the gender row — without a
+  per-gender default it didn't carry a clear meaning, and Prev/Next/
+  Random already cover every navigation need.
+
+Touched: `battle.html` — trainer-create section markup (~line 6815–6837),
+`.story-create-gender-*` CSS block (removed around line 5536), trainer
+pool / state / handlers (~line 29845–30015), `confirmTrainerAndStart`
+pending payload (~line 30072), `startNewRun` trainer-profile defaults
+(~line 30378), `_storySaveTrainerProfile` (~line 27666), HoF record
+creation (~line 27649), the resume-card sprite fallback (~line 37183),
+and the `window.StoryMode` export list (~line 40101).
+
 ## Unreleased — Closing the game autosaves a retreat to the last city 2026-05-18 (`claude/autosave-city-return-u7rTa`)
 
 ### Changed — `pagehide` now writes the same warp-to-last-city the gameover button does
