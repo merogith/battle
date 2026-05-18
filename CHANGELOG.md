@@ -34,9 +34,12 @@ Fixes:
 - After a legitimate recovery, `updateUI()` is called so the HUD
   reflects current state rather than whatever was painted at the
   moment of the soft-lock.
-- `__forceBattleContinue` (the Settings → Force Continue button) shows
-  a clearer alert and aborts cleanly when the battle screen is up but
-  no live battle exists, instead of repainting the same placeholder.
+- `__forceBattleContinue` (the Settings → Force Continue button) now
+  actively escapes a stuck placeholder screen: if the battle UI is up
+  but `state.pActive` / `state.fActive` are missing, it calls
+  `returnToHome()` (online dispose, story-forfeit handling) instead of
+  repainting the same placeholder, so the user is never left staring
+  at a `MissingNo` vs `MissingNo` card that doesn't accept input.
 
 ## Unreleased — Full game balance & economy overhaul 2026-05-17 (`claude/game-balance-economy-overhaul-a5h2s`)
 

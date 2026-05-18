@@ -17201,11 +17201,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return false;
                 }
                 // If the battle screen is up without a live battle (placeholder MissingNo HUD),
-                // restoring the command menu would just paint that placeholder forever. Bail out
-                // and point the user at a clean recovery instead.
+                // restoring the command menu would just paint that placeholder forever. Bail the
+                // user out to the main menu (the only thing they can do from here) instead.
                 if (!__battleHasLiveActives() && (!state.isOver)) {
-                    try { window.showGameAlert && window.showGameAlert('No active battle to continue — return to the main menu or reload the page.'); } catch (e) {}
-                    return false;
+                    try { if (typeof logMsg === 'function') logMsg('Battle data missing — returning to menu.', 'info'); } catch (e) {}
+                    try {
+                        if (typeof window.returnToHome === 'function') {
+                            await window.returnToHome();
+                        } else {
+                            document.querySelectorAll('.screen, .modal').forEach(el => el.classList.add('hidden'));
+                            const menu = document.getElementById('screen-menu');
+                            if (menu) menu.classList.remove('hidden');
+                        }
+                    } catch (e) {
+                        console.warn('[ForceContinue] menu-fallback failed:', e);
+                        try { window.showGameAlert && window.showGameAlert('Battle data lost — please reload the page.'); } catch (e2) {}
+                    }
+                    return true;
                 }
                 const party = document.getElementById('modal-party');
                 const cmd = document.getElementById('command-menu');
