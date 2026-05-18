@@ -4097,6 +4097,67 @@
             100% { opacity: 0; transform: translate(-50%, -120%) scale(0.9); }
         }
 
+        /* ───── Story tutorial scene — sprite + nameplate + dialogue overlay ───── */
+        /* Used by STORY_TUTORIAL_SCENES / playStoryTutorial for first-time
+           mechanic introductions (wild, shop, safari, casino, trainer battle,
+           pokemon center, tutors). Sits at z 9998 — above the city/shop screen
+           but below the modal alert layer (z 1200 alerts can still pop on top
+           if a recovery condition triggers). Each child animates in on a small
+           delay stagger so the scene reads as "NPC arrives, then speaks". */
+        .story-tutorial-overlay {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.94);
+            z-index: 9998;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 14px; padding: 16px; box-sizing: border-box;
+            cursor: pointer;
+            animation: storyTutorialOverlayIn 0.32s ease-out both;
+        }
+        @keyframes storyTutorialOverlayIn {
+            0%   { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        .story-tutorial-sprite {
+            width: 180px; height: 180px;
+            object-fit: contain; image-rendering: pixelated;
+            animation: storyTutorialSpriteIn 0.55s cubic-bezier(0.18,0.9,0.32,1.18) both;
+        }
+        @keyframes storyTutorialSpriteIn {
+            0%   { opacity: 0; transform: translate(-28px, 18px) scale(0.7); }
+            60%  { opacity: 1; transform: translate(0, -4px)     scale(1.05); }
+            100% { opacity: 1; transform: translate(0, 0)        scale(1); }
+        }
+        .story-tutorial-name {
+            color: var(--accent); font-size: 18px; font-weight: bold;
+            text-align: center;
+            animation: storyTutorialNameIn 0.4s ease-out 0.25s both;
+        }
+        @keyframes storyTutorialNameIn {
+            0%   { opacity: 0; transform: translateY(-6px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .story-tutorial-dialog-host {
+            margin-top: 4px; width: 100%; max-width: 560px;
+            animation: storyTutorialDialogIn 0.5s ease-out 0.4s both;
+        }
+        @keyframes storyTutorialDialogIn {
+            0%   { opacity: 0; transform: translateY(10px) scale(0.96); }
+            100% { opacity: 1; transform: translateY(0)    scale(1); }
+        }
+        .story-tutorial-continue {
+            margin-top: 8px; padding: 8px 22px;
+            background: #1a2a4a; color: #fff;
+            border: 1px solid #4a6a9a; border-radius: 4px;
+            cursor: pointer; font-family: inherit; font-size: 13px;
+            animation: storyTutorialNameIn 0.4s ease-out 0.7s both;
+        }
+        .story-tutorial-continue:hover {
+            background: #243756; border-color: #5d7eb0;
+        }
+        .story-tutorial-continue:active { transform: translateY(1px); }
+
         /* ───── Evolution scene — Gen3-style silhouette → flash → reveal ───── */
         .storyfx-evo-overlay {
             position: fixed; inset: 0;
@@ -30857,6 +30918,213 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         };
 
+        /** Story-embedded tutorial scenes — first-time mechanic introductions
+         *  rendered as NPC-led cameos. Each scene is a one-shot overlay with a
+         *  sprite slide-in, nameplate, multi-line dialogue box, and Continue
+         *  button. Cross-run-deduped via tipsShown[scene.metaKey] (same bucket
+         *  as _storyShowOneTimeTip).
+         *
+         *  Adding a tutorial = one entry below + one call to
+         *  `playStoryTutorial(sceneId, onDone)` at the entry point. The
+         *  mechanic itself is already stage-gated by the city's action list in
+         *  STORY_EVENTS_RAW, so first-interaction firing aligns with the
+         *  power-stage rollout (see STORY_MODE_FLOW.md §15f).
+         *
+         *  Sprite picks lean on the existing trainer roster so we don't ship
+         *  new art: Oak for the mentor beats, Clerk for the mart, Gambler for
+         *  the casino, Nurse for the center, etc. */
+        const STORY_TUTORIAL_SCENES = {
+            firstTrainerBattle: {
+                metaKey: 'tutorial-first-trainer-battle',
+                sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Your First Fight',
+                lines: [
+                    '"Two trainers, two teams, one road. That\'s a battle."',
+                    '"Tap ⚔ FIGHT to pick a move. Each one has its own PP, so the strongest hit isn\'t always the right one. Physical, Special, and Status all read off different stats — type matters more than raw level. Super-effective doubles your damage; the wrong type can half it."',
+                    '"🔴 POKÉMON swaps your active partner — it costs your turn, so use it on a read. 🎒 BAG burns an item. 🏃 RUN forfeits the fight and a slice of gold. Keep that HP bar green."'
+                ]
+            },
+            firstWild: {
+                metaKey: 'tutorial-first-wild',
+                sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Catching 101',
+                lines: [
+                    '"A wild one. They don\'t walk over of their own accord — you have to invite them."',
+                    '"This first throw is on the house — guaranteed catch, no flee. After this, the number on each ball is your honest chance: species × ball multiplier. Greats land 1.5×, Ultras 2.0×, a Master Ball never misses."',
+                    '"Caught Pokémon arrive at full HP, fresh PP, ready to walk. Take good care of them."'
+                ]
+            },
+            firstWildRoute: {
+                metaKey: 'tutorial-first-wild-route',
+                sprite: 'Oak', name: 'Prof. Oak', nameplate: 'The Road',
+                lines: [
+                    '"Between every two cities, the road has its own residents — wild Pokémon, hanging in the grass."',
+                    '"Tap a ball to throw it. The percentage is your real chance. Rarer mons (G1) take more throws and flee easier on a miss; common ones (G4) hang around. Either way, a missed throw might be the last you see of it."',
+                    '"You can always Run — the next wild on the route will still fire, then the trainer battle starts. The road won\'t wait for long."'
+                ]
+            },
+            firstSafariCatch: {
+                metaKey: 'tutorial-first-safari-catch',
+                sprite: 'Hiker', name: 'Safari Warden', nameplate: 'Safari Rules',
+                lines: [
+                    '"Past the gate, only Safari Balls work — your own stash stays at the door."',
+                    '"🍓 Bait calms the wild: catch chance drops, but it sticks around longer. 🪨 Rock pushes the other way — sharper catch chance, much higher flee. They stack up to 3× each and reset between encounters."',
+                    '"Every turn — bait, rock, missed throw — the wild may bolt. A stacked rock is the best swing in the game, and the most dangerous. Pick your moment."'
+                ]
+            },
+            firstMart: {
+                metaKey: 'tutorial-first-mart',
+                sprite: 'Clerk', name: 'Mart Clerk', nameplate: 'Pokémart',
+                lines: [
+                    '"Welcome to the Pokémart. The basics, always in stock."',
+                    '"Poké Balls (300G) for the road. Potions, Full Restore, Max Elixir for the long fights. X items push a stat two stages for one battle. Dire Hit for a crit edge. Guard Spec. locks your stats safe for five turns."',
+                    '"Cities heal you between fights as a matter of course — Potions only matter when you spend a turn on one mid-battle. Buy what fits your read."'
+                ]
+            },
+            firstDept: {
+                metaKey: 'tutorial-first-dept',
+                sprite: 'Clerk-2', name: 'Dept Store Clerk', nameplate: 'Department Store',
+                lines: [
+                    '"The big-city upgrade. Five floors, one elevator, and the goods aren\'t cheap."',
+                    '"Great Balls (1,000G) — 1.5× catch rate. Revives and Max Revives for partners who go down mid-battle. Weather and Terrain Orbs tilt the field the moment a fight begins. The Emergency Teleporter pulls you out of any trapping move, once per battle."',
+                    '"Stock does not refresh between visits — every item is a single sale, per city. Buy what you need while it\'s on the shelf."'
+                ]
+            },
+            firstSafari: {
+                metaKey: 'tutorial-first-safari',
+                sprite: 'Hiker', name: 'Safari Warden', nameplate: 'Safari Zone',
+                lines: [
+                    '"Welcome to the Safari Zone! First trip is on the house."',
+                    '"Take this satchel — 15 Safari Balls, the only ball that works past this gate. Room for up to 6 encounters before the bell rings."',
+                    '"Two levers inside: 🍓 Bait calms the wild down. 🪨 Rock sharpens the catch but risks a flee. The wild may bolt at the end of any turn. Unused Safari Balls stay at the gate when you leave. Good hunting."'
+                ]
+            },
+            firstCasino: {
+                metaKey: 'tutorial-first-casino',
+                sprite: 'Gambler', name: 'Casino Dealer', nameplate: 'Poké Casino',
+                lines: [
+                    '"Three games, one bet field. House always plays clean — and the house always wins, given long enough."',
+                    '"Coin Flip pays even money on roughly even odds. Color — red or black — pays two-to-one at about 30%. Jackpot pays nine-to-one on a one-in-ten guess. Each spin is its own roll, no streaks."',
+                    '"Play it for the swing, not the income. The casino can dry a run faster than any trainer. Don\'t bring the gym money."'
+                ]
+            },
+            firstPokemonCenter: {
+                metaKey: 'tutorial-first-pokemon-center',
+                sprite: 'Nurse', name: 'Nurse Joy', nameplate: 'Pokémon Center',
+                lines: [
+                    '"Welcome to the Pokémon Center! Your team\'s already healed — the road takes care of that for me."',
+                    '"Upstairs is the PC: ten slots of cold storage for every partner you\'ve caught but can\'t field today. Deposit, withdraw, release — the usual courtesies."',
+                    '"Downstairs is the Underground. Quieter, dimmer, very interested in buying any Pokémon you\'ll never use. The only mons off the table are your starter and your last party member — every center on the road draws those lines."'
+                ]
+            },
+            firstMoveTutor: {
+                metaKey: 'tutorial-first-move-tutor',
+                sprite: 'Veteran', name: 'Move Tutor', nameplate: 'Move Tutor',
+                lines: [
+                    '"Every move your Pokémon was meant to learn is in here somewhere — level-up, TM, egg moves, all of it."',
+                    '"Tap a slot to see what\'s available; tap Teach to confirm. Costs scale with power and the mon\'s training tier, so polishing a weaker partner stays cheap."',
+                    '"Coverage matters more than raw base power. A single Fairy hit for the one Dragon you keep losing to. A status-clearing move. A way to plug a 4× Ice weakness. The new move is permanent — no second-thought penalty."'
+                ]
+            },
+            firstNatureRater: {
+                metaKey: 'tutorial-first-nature-rater',
+                sprite: 'Aroma_Lady', name: 'Nature Rater', nameplate: 'Nature Rater',
+                lines: [
+                    '"A Pokémon\'s nature is +10% to one stat and -10% to another. Small numbers, big consequences."',
+                    '"Adamant and Modest sharpen power. Jolly and Timid sharpen speed. Bold, Calm, Impish, and Careful build bulk. The neutral natures — Hardy, Docile, Serious, Bashful, Quirky — leave the spread untouched."',
+                    '"Flat fee per change. Re-pick freely as you learn what the team actually needs."'
+                ]
+            },
+            firstBattleDojo: {
+                metaKey: 'tutorial-first-battle-dojo',
+                sprite: 'Blackbelt', name: 'Dojo Master', nameplate: 'Battle Dojo',
+                lines: [
+                    '"Items, abilities — the polish on the blade. Comes in here, walks out sharper."',
+                    '"Most species carry two or three abilities. The Dojo lets you pick which one is active, Hidden Abilities included where the species learns them."',
+                    '"Defensive items — Leftovers, Eviolite. Offensive — Choice Band, Specs, Life Orb. Mega Stones and Z-Crystals are tied to Colress\'s battle forms; set the form there. Otherwise, swap freely and shape every mon for the role it\'ll actually play."'
+                ]
+            },
+            firstEVTrainer: {
+                metaKey: 'tutorial-first-ev-trainer',
+                sprite: 'Battle_Girl', name: 'EV Trainer', nameplate: 'EV Training',
+                lines: [
+                    '"Effort Values — the invisible reps your Pokémon never got from grinding wilds."',
+                    '"252 in the two stats that matter, 4 in a third — that\'s the classic spread. I can lay it down in an afternoon for a fee. Defensive mons want HP plus a defense; sweepers want the offensive stat plus speed."',
+                    '"This is the difference between a partner that survives a hit and a partner that doesn\'t. Start with your team\'s leads."'
+                ]
+            },
+            firstColress: {
+                metaKey: 'tutorial-first-colress',
+                sprite: 'Scientist', name: 'Colress', nameplate: 'Battle Mechanics',
+                lines: [
+                    '"Battle forms — Mega Evolution, Z-Moves, Dynamax, Terastallize, Ultra Burst. Each one bends the rules in a different direction."',
+                    '"You unlock them gym by gym. I\'ll let you choose which form a given mon carries into battle, and which signature move comes with it. Don\'t double up — one form per team is enough to feel."',
+                    '"The trade-off is always: spectacular swing, finite window. Read the fight before you spend the trick."'
+                ]
+            }
+        };
+
+        /** Render a tutorial scene overlay. Mirrors _showIntroRivalColdOpen
+         *  but is data-driven from STORY_TUTORIAL_SCENES. The scene's lines
+         *  are HTML-escaped per-line so prose like "Joy's" survives the
+         *  attribute-quote pass. Click-to-dismiss is bound on the overlay
+         *  background and the Continue button. */
+        function _showStoryTutorialScene(scene, onDone) {
+            if (!scene) { try { onDone && onDone(); } catch (e) {} return; }
+            const ov = document.createElement('div');
+            ov.className = 'story-tutorial-overlay';
+            const spriteFile = scene.sprite || 'Oak';
+            const npcName = scene.name || '';
+            const nameplate = scene.nameplate || npcName || '';
+            const lines = Array.isArray(scene.lines) ? scene.lines : [];
+            const linesHtml = lines.map((line, i) => {
+                const style = i === 0 ? '' : ' style="margin-top:8px;"';
+                return `<p class="story-dialog-text"${style}>${_esc(line)}</p>`;
+            }).join('');
+            ov.innerHTML = `
+                <img class="story-tutorial-sprite" src="${getTrainerSprite({ spriteFile })}" alt="${_esc(npcName)}" onerror="this.style.display='none'">
+                <div class="story-tutorial-name">${_esc(npcName)}</div>
+                <div class="story-dialog-host story-tutorial-dialog-host">
+                    <div class="story-dialog-nameplate">${_esc(nameplate)}</div>
+                    <div class="story-dialog-box">${linesHtml}</div>
+                </div>
+                <button type="button" class="story-tutorial-continue">Continue →</button>
+            `;
+            const dismiss = function () {
+                try { ov.remove(); } catch (e) {}
+                try { onDone && onDone(); } catch (e) { console.error('[StoryTutorial] onDone threw:', e); }
+            };
+            ov.querySelector('button').onclick = function (e) { e.stopPropagation(); dismiss(); };
+            ov.onclick = function (e) { if (e.target === ov) dismiss(); };
+            document.body.appendChild(ov);
+        }
+
+        /** Play a story tutorial scene by id. Cross-run-deduped via
+         *  tipsShown[scene.metaKey]. `onDone` always fires — synchronously
+         *  on dedupe, or on Continue when the scene plays. Returns true iff
+         *  the scene actually rendered. */
+        function playStoryTutorial(sceneId, onDone) {
+            const scene = STORY_TUTORIAL_SCENES[sceneId];
+            if (!scene) {
+                try { onDone && onDone(); } catch (e) {}
+                return false;
+            }
+            const key = scene.metaKey || ('tutorial-' + sceneId);
+            try {
+                const meta = readStoryMeta();
+                if (meta && meta.tipsShown && meta.tipsShown[key]) {
+                    try { onDone && onDone(); } catch (e) {}
+                    return false;
+                }
+                const m2 = readStoryMeta();
+                if (!m2.tipsShown) m2.tipsShown = {};
+                m2.tipsShown[key] = true;
+                writeStoryMeta(m2);
+            } catch (e) {
+                console.warn('[StoryTutorial] meta dedupe failed:', sceneId, e);
+            }
+            _showStoryTutorialScene(scene, onDone);
+            return true;
+        }
+
         /** Storyline variants — let the same STORY_EVENTS_RAW timeline play
          *  differently from run to run. A variant can shadow any beat
          *  (`beatOverrides[rowId] = { …partial beat… }`) and set a default
@@ -33228,57 +33496,62 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function showBattleIntro(trainer, eventType, callback, storyBattleRowIdx) {
             // Overlay: trainer sprite + quote(s); longer pause for Rival (extra line). Uses Math.random for rival secondary line only — does not advance story battle RNG.
-            // First-battle tutorial: pops a one-time alert (cross-run-deduped) the very
-            // first time any battle intro fires. The alert lives at modal z-index 1200;
-            // the intro overlay sits on top at z 9999, so the player sees: intro → tip → battle.
-            try { _storyShowOneTimeTip('first-battle',
-                'Your first fight.\n\nTap ⚔ FIGHT to pick one of your Pokémon\'s four moves. Each move has its own PP — a finite number of uses — so a long battle won\'t let you spam the strongest one. Moves come in three flavors: Physical (the fist icon) lean on Attack and Defense, Special (the sparkle) on Sp. Atk and Sp. Def, Status (the bars) trade damage for effects like sleep or stat shifts.\n\nType matters more than level. A super-effective hit lands at double damage, and the wrong type can land at half or even nothing. The classic triangle still holds: Fire burns Grass, Water douses Fire, Electric jolts Water.\n\n🔴 POKÉMON swaps your active partner — costs your turn, so use it on a read, not a panic. 🎒 BAG uses healing items. 🏃 RUN forfeits the fight and a chunk of gold.\n\nKeep that HP bar green.'); } catch (e) {}
-            const overlay = document.createElement('div');
-            overlay.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;';
-            const roleLookup = {
-                'Basic Trainer':'Basic Trainer','Gym Trainer':'Gym Trainer',
-                'Gym Leader 1':'Gym Leader','Gym Leader 2':'Gym Leader','Gym Leader 3':'Gym Leader',
-                'Gym Leader 4':'Gym Leader','Gym Leader 5':'Gym Leader','Gym Leader 6':'Gym Leader',
-                'Gym Leader 7':'Gym Leader','Gym Leader 8':'Gym Leader',
-                'Rival':'Rival','Elite Trainer':'Elite Trainer',
-                'E1':'E1','E2':'E2','E3':'E3','E4':'E4','Champion':'Champion','Victory Road':'Victory Road',
-                'Mystery Figure':'Rival',
-            };
-            const quoteRole = roleLookup[eventType] || 'Basic Trainer';
-            const quote = getTrainerQuoteForBattle(trainer, quoteRole, storyBattleRowIdx);
-            const roleLabel = storyDisplayRoleLabel(eventType);
-            const isRivalBattle = String(eventType) === 'Rival';
-            const rivalPhase = isRivalBattle && storyBattleRowIdx != null ? getRivalEncounterPhase(storyBattleRowIdx) : null;
-            const badgesNow = (sm && sm.badges) | 0;
-            const extraLine = isRivalBattle && rivalPhase !== null && rivalPhase !== undefined
-                ? pickRivalSecondaryIntroLine(rivalPhase, badgesNow)
-                : '';
-            overlay.innerHTML = `
-                <img src="${getTrainerSprite(trainer)}" onerror="this.style.display='none'" style="width:200px;height:200px;object-fit:contain;image-rendering:pixelated;border:none;">
-                <div style="color:var(--accent);font-size:20px;font-weight:bold;">${trainer.name}</div>
-                <div class="story-dialog-host story-battle-intro-dialog" style="margin-top:4px;">
-                    <div class="story-dialog-nameplate">${roleLabel}</div>
-                    <div class="story-dialog-box">
-                        <p class="story-dialog-text">"${quote}"</p>
-                        ${isRivalBattle ? `<p class="story-dialog-text" style="margin-top:10px;font-size:14px;opacity:0.92;">"${extraLine}"</p>` : ''}
+            // First-battle tutorial: story-embedded scene (Prof. Oak cameo) gates the
+            // very first battle intro behind a Continue tap. The intro overlay and
+            // timeout are deferred until the tutorial dismisses, so the sequence is
+            // strictly serial: city → tutorial cameo → battle intro → fight.
+            // `playStoryTutorial` fires onDone synchronously on the dedupe path,
+            // so subsequent fights see no delay.
+            const _runIntro = () => {
+                const overlay = document.createElement('div');
+                overlay.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;';
+                const roleLookup = {
+                    'Basic Trainer':'Basic Trainer','Gym Trainer':'Gym Trainer',
+                    'Gym Leader 1':'Gym Leader','Gym Leader 2':'Gym Leader','Gym Leader 3':'Gym Leader',
+                    'Gym Leader 4':'Gym Leader','Gym Leader 5':'Gym Leader','Gym Leader 6':'Gym Leader',
+                    'Gym Leader 7':'Gym Leader','Gym Leader 8':'Gym Leader',
+                    'Rival':'Rival','Elite Trainer':'Elite Trainer',
+                    'E1':'E1','E2':'E2','E3':'E3','E4':'E4','Champion':'Champion','Victory Road':'Victory Road',
+                    'Mystery Figure':'Rival',
+                };
+                const quoteRole = roleLookup[eventType] || 'Basic Trainer';
+                const quote = getTrainerQuoteForBattle(trainer, quoteRole, storyBattleRowIdx);
+                const roleLabel = storyDisplayRoleLabel(eventType);
+                const isRivalBattle = String(eventType) === 'Rival';
+                const rivalPhase = isRivalBattle && storyBattleRowIdx != null ? getRivalEncounterPhase(storyBattleRowIdx) : null;
+                const badgesNow = (sm && sm.badges) | 0;
+                const extraLine = isRivalBattle && rivalPhase !== null && rivalPhase !== undefined
+                    ? pickRivalSecondaryIntroLine(rivalPhase, badgesNow)
+                    : '';
+                overlay.innerHTML = `
+                    <img src="${getTrainerSprite(trainer)}" onerror="this.style.display='none'" style="width:200px;height:200px;object-fit:contain;image-rendering:pixelated;border:none;">
+                    <div style="color:var(--accent);font-size:20px;font-weight:bold;">${trainer.name}</div>
+                    <div class="story-dialog-host story-battle-intro-dialog" style="margin-top:4px;">
+                        <div class="story-dialog-nameplate">${roleLabel}</div>
+                        <div class="story-dialog-box">
+                            <p class="story-dialog-text">"${quote}"</p>
+                            ${isRivalBattle ? `<p class="story-dialog-text" style="margin-top:10px;font-size:14px;opacity:0.92;">"${extraLine}"</p>` : ''}
+                        </div>
                     </div>
-                </div>
-                <div style="font-size:11px;color:#555;margin-top:8px;">Battle starting…</div>`;
-            document.body.appendChild(overlay);
-            const introMs = isRivalBattle ? 3400 : 2200;
-            setTimeout(() => {
-                try { overlay.remove(); } catch (e) {}
-                // Defensive: callback() is launchBattle → startBattle (async, NOT awaited). If
-                // startBattle throws synchronously (corrupt lock team, missing build, bad foe
-                // sprite), the unhandled rejection silently strands the player on a half-built
-                // battle screen. Catch + bail back to the city is much better than infinite black.
-                try { callback(); }
-                catch (e) {
-                    console.error('[showBattleIntro] callback threw — recovering to city:', e);
-                    try { if (window.StoryMode && typeof window.StoryMode.afterBattleReturn === 'function') window.StoryMode.afterBattleReturn(); } catch (e2) {}
-                    try { window.showGameAlert && window.showGameAlert('Could not start the battle (corrupted team data). Returning to the city — try again from the map.'); } catch (e2) {}
-                }
-            }, introMs);
+                    <div style="font-size:11px;color:#555;margin-top:8px;">Battle starting…</div>`;
+                document.body.appendChild(overlay);
+                const introMs = isRivalBattle ? 3400 : 2200;
+                setTimeout(() => {
+                    try { overlay.remove(); } catch (e) {}
+                    // Defensive: callback() is launchBattle → startBattle (async, NOT awaited). If
+                    // startBattle throws synchronously (corrupt lock team, missing build, bad foe
+                    // sprite), the unhandled rejection silently strands the player on a half-built
+                    // battle screen. Catch + bail back to the city is much better than infinite black.
+                    try { callback(); }
+                    catch (e) {
+                        console.error('[showBattleIntro] callback threw — recovering to city:', e);
+                        try { if (window.StoryMode && typeof window.StoryMode.afterBattleReturn === 'function') window.StoryMode.afterBattleReturn(); } catch (e2) {}
+                        try { window.showGameAlert && window.showGameAlert('Could not start the battle (corrupted team data). Returning to the city — try again from the map.'); } catch (e2) {}
+                    }
+                }, introMs);
+            };
+            try { playStoryTutorial('firstTrainerBattle', _runIntro); }
+            catch (e) { _runIntro(); }
         }
 
         function launchBattle(enemyTeam) {
@@ -33737,8 +34010,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // play save.wav (Joy's friendly cue) on entry. The party already
                 // heals between battles, so this is the audible "you're safe here".
                 try { window.StoryFx && window.StoryFx.playSfx('save', 0.55); } catch (e) {}
-                try { _storyShowOneTimeTip('center',
-                    'The Pokémon Center.\n\nUpstairs is the PC: ten slots of cold storage for every partner you\'ve caught but can\'t field today. Deposit, withdraw, release — the usual courtesies.\n\nDownstairs is the Underground. Quieter, dimmer, and very interested in buying any Pokémon you\'ll never use. They pay best for the rare ones, and they don\'t ask questions. The only mons off the table are your starter and your last party member — every center on the road draws those lines.\n\nNo healing nurse: your party is restored between every fight as a matter of course.'); } catch (e) {}
+                // Story-embedded tutorial — Nurse Joy cameo. Replaces the
+                // prior 'center' alert.
+                try { playStoryTutorial('firstPokemonCenter'); } catch (e) {}
             } finally {
                 _storyEndInteraction();
             }
@@ -33933,7 +34207,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (isFree) {
                 sm.safari.freeEntryUsed = true;
-                try { window.showGameAlert && window.showGameAlert(`📣 "Welcome to the Safari Zone! First trip is on the house."\n\nThe warden hands you a satchel — ${SAFARI_BALLS_PER_SESSION} Safari Balls, the only ball that works past this gate. You\'ve got room for up to ${SAFARI_MAX_ENCOUNTERS} encounters before the bell rings.\n\nYou\'ll find two levers in the satchel. 🍓 Bait calms the wild down — catch rate drops, but it sticks around longer. 🪨 Rock pushes the opposite way: a sharper catch chance, a much higher chance it bolts.\n\nThe wild may flee at the end of any turn — every bait, every rock, every missed throw. Pick your moments.\n\nUnused Safari Balls stay at the gate when you leave. Good hunting.`); } catch (e) {}
+                // Story-embedded tutorial — Warden cameo. Replaces the prior
+                // free-entry alert. Dedupe is per-save (freeEntryUsed gates
+                // free entry to once anyway, but the cross-run tipsShown stamp
+                // also keeps NG+ players from re-seeing it).
+                try { playStoryTutorial('firstSafari'); } catch (e) {}
             } else {
                 sm.gold = Math.max(0, (sm.gold | 0) - SAFARI_ENTRY_COST);
             }
@@ -34991,17 +35269,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             } catch (e) {}
             if (!_catchState.bossMode) {
+                // Story-embedded tutorial scenes — NPC cameo with sprite +
+                // dialogue + Continue. Each scene fires once per save (cross-
+                // run-deduped via tipsShown). The catch screen is already
+                // rendered behind the overlay; on Continue the player drops
+                // into the live encounter. See STORY_TUTORIAL_SCENES.
                 if (_catchState.tutorialMode) {
-                    try { _storyShowOneTimeTip('catch-tutorial',
-                        '🎓 Your first wild Pokémon.\n\nTap a ball to throw it. The percentage on the button is your real catch chance — species, ball, the works. Poké Ball is your baseline; Great Balls land 1.5× the rate, Ultra 2.0×, and a Master Ball never misses.\n\nThis first throw is on the house — guaranteed catch, no flee. Caught Pokémon arrive at full HP, fresh PP, and ready to walk.'); } catch (e) {}
+                    try { playStoryTutorial('firstWild'); } catch (e) {}
                 } else if (_catchState.safariMode) {
-                    try { _storyShowOneTimeTip('safari-catch',
-                        'Safari Zone rules: only Safari Balls work past the gate.\n\nThrow one to try your luck — or use the levers. 🍓 Bait calms the wild down. Catch chance drops, but it sticks around longer. 🪨 Rock pushes it the other way: a sharper catch chance and a much higher flee risk.\n\nBait and Rock stack up to 3× each, and reset between encounters. Every turn — Bait, Rock, or a missed throw — the wild may bolt. A stacked rock is the best swing in the game, and the most dangerous. Pick your moment.'); } catch (e) {}
+                    try { playStoryTutorial('firstSafariCatch'); } catch (e) {}
                 } else {
-                    try { _storyShowOneTimeTip('catch',
-                        'A wild Pokémon.\n\nTap a ball to throw it. The percentage on the button is your honest catch chance — species times ball multiplier. Rarer mons (G1) take more throws and are more likely to flee on a miss; common ones (G4) hang around. Either way, a missed throw might be the last you see of it.'); } catch (e) {}
+                    try { playStoryTutorial('firstWildRoute'); } catch (e) {}
                 }
                 if (_catchState.roamingLabel) {
+                    // Roaming legendaries keep the plain one-time-tip — they're
+                    // a rare in-the-grass surprise, not a new mechanic class.
                     try { _storyShowOneTimeTip('roaming',
                         'A roaming Pokémon.\n\nThese turn up exactly once, on a single route after a gym victory, and they won\'t wait for the next attempt. Catch rate is a flat 30% × ball multiplier; a Master Ball is the only guaranteed throw. Miss, and it\'s gone for this run.'); } catch (e) {}
                 }
@@ -35738,14 +36020,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function enterShop(type) {
             _markFacilitySeen(type === 'dept' ? 'dept' : 'mart');
+            // Story-embedded tutorial — Clerk cameo. Replaces the prior plain
+            // alert tips ('first-mart', 'first-dept'). The shop screen is
+            // rendered below the overlay; on Continue the player drops into it.
             try {
-                if (type === 'dept') {
-                    _storyShowOneTimeTip('first-dept',
-                        'The Department Store. The big-city upgrade.\n\nGreat Balls (1,000G) — 1.5× the catch rate of a standard Poké Ball. Revives and Max Revives, for the partners who go down mid-battle. Weather and Terrain Orbs, if you want the field tilted your way the moment a fight begins. The Emergency Teleporter pulls you out of any trapping move once per battle.\n\nStock does not refresh between visits — every item is a single sale, per city. Buy what you need while it\'s on the shelf.');
-                } else {
-                    _storyShowOneTimeTip('first-mart',
-                        'The Pokémart. The basics, always in stock.\n\nPoké Balls (300G) for the road, and the standard kit of trainer supplies: Potions, Full Restore, Max Elixir for the long fights; X items to push a stat two stages for one battle; Dire Hit for a crit edge; Guard Spec. to lock your stats safe for five turns.\n\nCities heal you between fights as a matter of course — Potions only matter when you spend a turn on one mid-battle.');
-                }
+                playStoryTutorial(type === 'dept' ? 'firstDept' : 'firstMart');
             } catch (e) {}
             const shopScreen = document.getElementById('screen-story-shop');
             if (shopScreen) shopScreen.setAttribute('data-shop-type', type === 'dept' ? 'dept' : 'mart');
@@ -36134,8 +36413,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Slot-machine dial when the casino door swings open.
                 try { window.StoryFx && window.StoryFx.playSfx('gachaDial', 0.4); } catch (e) {}
                 try { _storyShowFacilityQuote('screen-story-casino', 'casino'); } catch (e) {}
-                try { _storyShowOneTimeTip('first-casino',
-                    'The Poké Casino. Three games, one bet field.\n\nCoin Flip pays even money on roughly even odds. Color — red or black — pays two-to-one at about 30%. Jackpot pays nine-to-one on a one-in-ten guess.\n\nThe math belongs to the house. Play it for the swing, not the income — the casino can dry a run faster than any trainer.'); } catch (e) {}
+                // Story-embedded tutorial — Gambler cameo. Replaces the prior
+                // 'first-casino' alert.
+                try { playStoryTutorial('firstCasino'); } catch (e) {}
             } finally {
                 _storyEndInteraction();
             }
@@ -39945,17 +40225,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // all share the same screen, so a single neutral cue works for all.
             try { window.StoryFx && window.StoryFx.playSfx('pbTrayEnter', 0.45); } catch (e) {}
             void renderTutorTeam();
+            // Story-embedded tutorial — sprite + dialogue cameo for each mode.
+            // Replaces the prior 'first-tutor' / 'first-nature' / 'first-dojo'
+            // alerts. The tutor screen renders behind the overlay; on Continue
+            // the player drops into it.
             try {
-                if (m === 'moves') {
-                    _storyShowOneTimeTip('first-tutor',
-                        'The Move Tutor.\n\nAny of your Pokémon\'s four move slots can be swapped for any move the species can legally learn — level-up, TM, egg moves, the lot. Costs scale with the move\'s power and the Pokémon\'s training tier, so polishing a weaker mon stays cheap.\n\nTap a slot to see what\'s available; tap Teach to confirm. Coverage matters more than raw base power — a single Fairy hit for the one Dragon you keep losing to, a status-clearing move, a way to plug a 4× Ice weakness. The new move is permanent, no second-thought penalty.');
-                } else if (m === 'nature') {
-                    _storyShowOneTimeTip('first-nature',
-                        'The Nature Rater.\n\nA Pokémon\'s nature is +10% to one stat and -10% to another. The right nature often beats any single held item, and the wrong one quietly hobbles a roster.\n\nAdamant and Modest sharpen power. Jolly and Timid sharpen speed. Bold, Calm, Impish, and Careful build bulk. The neutral natures — Hardy, Docile, Serious, Bashful, Quirky — leave the spread untouched, and usually mean the mon hasn\'t been trained yet.\n\nThe Rater charges a flat fee per change. Re-pick freely as you learn what the team actually needs.');
-                } else if (m === 'loadout') {
-                    _storyShowOneTimeTip('first-dojo',
-                        'The Battle Dojo.\n\nSwap a Pokémon\'s held item, its ability, or both. Most species carry two or three abilities — the Dojo lets you pick which one is active, Hidden Abilities included where the species learns them.\n\nItems range from defensive — Leftovers, Eviolite — through offensive — Choice Band, Specs, Life Orb — to gimmick-bound. Mega Stones and Z-Crystals are tied to Colress\'s battle forms; set the form there, not here. Otherwise, swap freely and shape every mon for the role it\'ll actually play.');
-                }
+                if (m === 'moves')        playStoryTutorial('firstMoveTutor');
+                else if (m === 'nature')  playStoryTutorial('firstNatureRater');
+                else if (m === 'loadout') playStoryTutorial('firstBattleDojo');
             } catch (e) {}
             } finally {
                 _storyEndInteraction();
@@ -40307,8 +40584,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { window.StoryFx && window.StoryFx.playSfx('beam', 0.4); } catch (e) {}
             renderColressTeam();
             try { _storyShowFacilityQuote('screen-story-colress', 'colress'); } catch (e) {}
-            try { _storyShowOneTimeTip('first-colress',
-                'Colress and his battle forms.\n\nEach activation installs one of the great gimmicks on one of your Pokémon: a permanent assignment, 10,000G per mon.\n\nMEGA fits a Mega Stone — replaces the held item, fires once per team per battle. Z-MOVE installs a Z-Crystal matched to the species\' typing, also once per team. DYNAMAX / G-MAX hands a mon three turns of giant size with Max Moves and doubled HP. TERA locks in a Tera type — once per Pokémon, even in Unlimited mode.\n\nGimmicks are powerful, and Classic mode lets you fire exactly one per team per battle, so spend the slot deliberately. A Mega on the fragile sweeper. Tera on the mon that keeps losing to its 4× weakness. Z-Move on something with a big STAB it can\'t afford to spam.\n\nStandard mode — no battle form at all — is a perfectly valid run. Gimmicks are an edge, not a requirement.'); } catch (e) {}
+            // Story-embedded tutorial — Colress cameo (Scientist sprite).
+            // Replaces the prior 'first-colress' alert.
+            try { playStoryTutorial('firstColress'); } catch (e) {}
         }
 
         function renderColressTeam() {
@@ -40741,8 +41019,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _storyEVTrainerOpenIdx = 0;
             renderEVTrainerTeam();
             try { _storyShowFacilityQuote('screen-story-evtrainer', 'evTrainer'); } catch (e) {}
-            try { _storyShowOneTimeTip('first-ev',
-                'Buck and the EV bench.\n\nEffort Values are the permanent training under a Pokémon\'s stats. Two of them can be maxed at +252 each, with a total cap of 510 — enough to make a trained mon hit 30 to 50 percent harder than an untrained one of the same species.\n\nPick a preset — Physical Sweeper, Special Wall, the rest of the rack — and Buck applies the whole spread at once. The going rate is 5,000G a preset. A 💊 Vitamin Pack, from gym rewards or Pokédex milestones, waives the cost.\n\nTraining stays with the mon through party, PC, and evolution. The only ways to lose it are release and the Underground.'); } catch (e) {}
+            // Story-embedded tutorial — Buck cameo (Battle_Girl sprite).
+            // Replaces the prior 'first-ev' alert.
+            try { playStoryTutorial('firstEVTrainer'); } catch (e) {}
         }
 
         function _evTrainerHelpBannerHtml() {
@@ -41128,6 +41407,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openCollection, closeCollection, pokedexSetGen,
             _markDexSeen: _storyMarkDexSeen,
             showOneTimeTip: _storyShowOneTimeTip,
+            playTutorial: playStoryTutorial,
             // Story-mode event registry (read-only inspection surface)
             getStoryBeat: function(rowId) { return getStoryBeatForRow(rowId | 0); },
             getActiveStoryline: function() { return _storyActiveVariant(); },
