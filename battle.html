@@ -32081,6 +32081,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             });
         }
 
+        // Shared mutation for "retreat to last city": pulls the in-battle party
+        // snapshot back into sm.team, heals everyone, deducts the gold fee (0
+        // on easy / very easy via `_storyCalcRetreatGoldFee`), warps
+        // `sm.eventIndex` to the last city row, and clears mid-battle locks
+        // and the retry inventory snapshot. Callers are responsible for
+        // saving and any UI navigation afterwards — this is just the state
+        // mutation shared by the manual "Return to Last City" button and the
+        // autosave-on-close handler.
+        function _storyApplyRetreatToCity() {
+            try {
+                if (typeof state !== 'undefined' && state && state.mode === 'story' && state.playerParty && state.playerParty.length && sm.team) {
+                    sm.team = state.playerParty.map(m => ({
+                        name: m._baseName || m.name,
+                        build: m.buildData ? deepClone(m.buildData) : (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).build,
+                        id: (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).id
+                    })).filter(t => t.build);
+                }
+            } catch (e) { console.warn('[Story] retreat team sync', e); }
+            _storyFullHealPartySlots();
+            const fee = _storyCalcRetreatGoldFee();
+            sm.gold = Math.max(0, (sm.gold | 0) - fee);
+            const failedBattleIdx = sm.eventIndex;
+            sm.eventIndex = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
+            // Keep the frozen foe team for the battle the player left so Leave City → rematch uses the same party (RNG is not re-rolled).
+            const lock = sm.currentEnemyLock;
+            if (!lock || lock.eventIdx !== failedBattleIdx || !Array.isArray(lock.team) || !lock.team.length) {
+                sm.currentEnemyLock = null;
+            }
+            sm.storyRetryInventorySnapshot = null;
+            _storyBattleInventorySnapshot = null;
+        }
+
         function refreshStoryGameOverRetreatUI() {
             const targetIdx = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
             const cityEv = STORY_EVENTS_RAW[targetIdx];
@@ -33444,30 +33476,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function retreatToLastPokemonCenter() {
             if (!sm.active) return;
-            try {
-                if (typeof state !== 'undefined' && state.mode === 'story' && state.playerParty && state.playerParty.length && sm.team) {
-                    sm.team = state.playerParty.map(m => ({
-                        name: m._baseName || m.name,
-                        build: m.buildData ? deepClone(m.buildData) : (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).build,
-                        id: (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).id
-                    })).filter(t => t.build);
-                }
-            } catch (e) { console.warn('[Story] retreat team sync', e); }
-            _storyFullHealPartySlots();
-            const fee = _storyCalcRetreatGoldFee();
-            sm.gold = Math.max(0, (sm.gold | 0) - fee);
-            const failedBattleIdx = sm.eventIndex;
-            sm.eventIndex = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
-            // Keep the frozen foe team for the battle you lost so Leave City → rematch uses the same party (RNG is not re-rolled).
-            const lock = sm.currentEnemyLock;
-            if (!lock || lock.eventIdx !== failedBattleIdx || !Array.isArray(lock.team) || !lock.team.length) {
-                sm.currentEnemyLock = null;
-            }
-            sm.storyRetryInventorySnapshot = null;
-            _storyBattleInventorySnapshot = null;
+            _storyApplyRetreatToCity();
             try { save(); } catch (e) { console.warn('[Story] retreat save', e); }
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             enterCity();
+        }
+
+        // Closing/refreshing/navigating-away from an active story run autosaves
+        // the same warp-back-to-city outcome the "Return to Last City" gameover
+        // button writes — heals the party, applies the half-gold fee (free on
+        // easy / very easy), and snaps `sm.eventIndex` to the last city row.
+        // Without this, the player could close mid-battle or mid-route and
+        // resume in place, bypassing the existing retreat cost.
+        function _storyAutosaveOnClose() {
+            if (!sm || sm.active !== true) return;
+            const curEv = STORY_EVENTS_RAW[sm.eventIndex];
+            if (!curEv) return;
+            const rowType = curEv[1];
+            // Already standing in a city (amenities at hand) or at the Hall of
+            // Fame transition — no warp, no fee. Persist the current state so
+            // any unsaved mid-flow change is still captured.
+            if (rowType === 'City' || rowType === 'Hall of Fame') {
+                try { save(); } catch (e) {}
+                return;
+            }
+            _storyApplyRetreatToCity();
+            try { save(); } catch (e) {}
         }
         function retryFromGameOver() {
             if (!load()) { showMenu(true); return; }
@@ -40613,6 +40647,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _storyEndInteraction();
             }
         }
+
+        // Autosave on close → warp player to last city (with the retreat
+        // half-gold fee on normal+; free on easy / very easy). `pagehide`
+        // fires on tab close, browser close, reload, and navigation, but
+        // NOT on tab switch / minimize — so this won't drain gold each time
+        // the player alt-tabs. `event.persisted === true` means we're going
+        // into the back-forward cache (the page may be restored without a
+        // reload), so we must NOT rewrite sm out from under the live DOM in
+        // that case — only act when the page is actually being unloaded.
+        try {
+            window.addEventListener('pagehide', function (ev) {
+                if (ev && ev.persisted) return;
+                try { _storyAutosaveOnClose(); } catch (e) { console.warn('[Story] autosave-on-close', e); }
+            });
+        } catch (e) {}
 
         // ── PUBLIC API ────────────────────────────────────────────────────
         return {
