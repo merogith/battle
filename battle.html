@@ -29851,12 +29851,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 id: 'roamingLegendary',
                 prepare(battleIdx, ev) {
                     if (!_shouldFireRoamingBeforeBattle(battleIdx)) return null;
-                    // Legacy parity: consume the pending roaming AND the
-                    // wild slot the moment the predicate fires, even if
-                    // makeBuild then fails. The legendary is silently
-                    // lost in that case so the slot can't re-fire.
+                    // Legacy parity: consume the pending roaming AND every
+                    // wild slot on this route the moment the predicate fires,
+                    // even if makeBuild then fails. The legendary is silently
+                    // lost in that case so the slot can't re-fire — and on a
+                    // multi-wild route the roaming *replaces* the encounters,
+                    // it doesn't share the route with a random wild.
                     const pending = _consumeRoamingPending();
-                    _markWildSeen(battleIdx);
+                    _markWildSeen(battleIdx, STORY_WILDS_PER_ROUTE_NODE);
                     if (!pending || !pending.name) return null;
                     let build = null;
                     try { build = makeBuild(pending.name); } catch (e) { build = null; }
@@ -29876,6 +29878,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             },
             {
                 id: 'wildRoute',
+                // Route wilds fire up to STORY_WILDS_PER_ROUTE_NODE times back-to-back
+                // before the next trainer battle. `chainAfter` tells the bus to re-enter
+                // `enterBattleEvent(ev)` *without* the `_wildAlreadyChecked` flag so the
+                // chain re-evaluates — the wildSeen counter advances each fire and the
+                // predicate eventually returns null, letting the trainer battle launch.
+                chainAfter: true,
                 prepare(battleIdx, ev) {
                     if (!_shouldFireWildBeforeBattle(battleIdx)) return null;
                     // Wild grade is keyed on `sm.badges` (see _WILD_GRADE_CURVE_BY_BADGES),
@@ -29894,7 +29902,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         /** Walk STORY_BATTLE_INTERRUPTS in order; on the first match, fire
          *  the catch screen and return `true` so the caller short-circuits.
-         *  Returns `false` if no interrupt fired. */
+         *  Returns `false` if no interrupt fired.
+         *
+         *  When the matched interrupt sets `chainAfter: true`, the catch-screen
+         *  onComplete re-enters `enterBattleEvent(ev)` *without* the
+         *  `_wildAlreadyChecked` short-circuit — so the chain can keep firing
+         *  more wilds on this route (the wildSeen counter is what eventually
+         *  ends the loop). One-shot interrupts (catch tutorial, roaming) use
+         *  the caller's `onComplete`, which jumps straight to the trainer
+         *  battle as before. */
         function _runFirstStoryInterrupt(battleIdx, ev, onComplete) {
             for (const intr of STORY_BATTLE_INTERRUPTS) {
                 let prepared = null;
@@ -29905,8 +29921,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (prepared && prepared.encounter) {
                     if (!prepared.markWildSeenOnPrepare) _markWildSeen(battleIdx);
+                    const chained = intr.chainAfter
+                        ? function () { enterBattleEvent(ev); }
+                        : onComplete;
                     try {
-                        enterCatchEncounter(prepared.encounter, onComplete, prepared.options || {});
+                        enterCatchEncounter(prepared.encounter, chained, prepared.options || {});
                     } catch (e) {
                         console.error('[Story] interrupt enterCatchEncounter failed:', intr.id, e);
                         return false;
@@ -32543,6 +32562,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _firstClearBanner = _isCareerFirstClear
                 ? '<div style="font-size:13px;color:#ffd54f;letter-spacing:0.08em;text-transform:uppercase;text-shadow:0 0 6px rgba(255,213,79,0.4);">★ First time, any run ★</div>'
                 : '';
+            // "Up next" pill — tells the player what they walk into when they
+            // tap Continue. Bridges the abrupt overlay → next screen hop.
+            const _upNextHtml = (typeof _storyUpNextPillHtml === 'function')
+                ? _storyUpNextPillHtml({ accent: '#bca455', tone: 'rgba(28,22,8,0.55)', labelColor: '#e7d6a3', valueColor: '#fff8d6', phase: 'postVictory' })
+                : '';
             ov.innerHTML = `
                 <div class="story-fx-confetti" style="position:absolute;inset:0;pointer-events:none;z-index:0;"></div>
                 <div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;width:100%;max-width:420px;padding:12px;">
@@ -32552,7 +32576,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ${isGymBadgeEvent?`<div style="font-size:16px;color:#4caf50;">Badge ${sm.badges} of 8 — earned and pinned.</div>` : (gotBadge?`<div style="font-size:16px;color:#4caf50;">A milestone falls.</div>`:'')}
                 ${badgeFlavor}
                 <div style="font-size:14px;color:#ffeb3b;">${storyGoldHtml((coins || 0).toLocaleString(), true, '+')}</div>
-                <div style="font-size:13px;color:#888;">Total Gold: ${storyGoldHtml(sm.gold.toLocaleString())}</div></div>`;
+                <div style="font-size:13px;color:#888;">Total Gold: ${storyGoldHtml(sm.gold.toLocaleString())}</div>
+                ${_upNextHtml ? `<div style="margin-top:4px;">${_upNextHtml}</div>` : ''}
+                </div>`;
             const conf = ov.querySelector('.story-fx-confetti');
             storySpawnConfetti(conf, _isCareerFirstClear ? 96 : (gotBadge ? 32 : 16));
             ov.appendChild(contBtn);
@@ -33515,9 +33541,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return false;
         }
 
+        // How many wild encounters fire back-to-back per route node — leaving
+        // a city to reach the next one runs the player through this many
+        // catch screens before the trainer battle. Two settled in playtest
+        // (one wild felt thin once the player learned the beat; three+ dragged
+        // the route pacing into a chore). See STORY_MODE_FLOW.md §3.
+        const STORY_WILDS_PER_ROUTE_NODE = 2;
+
+        /** Read the wild-seen counter for a battle row. Legacy saves stored
+         *  a `true` boolean for "one wild fired" — treat that as 1 so existing
+         *  saves don't suddenly get an extra wild on their currently-pending
+         *  route. */
+        function _wildSeenCount(battleIdx) {
+            if (battleIdx == null) return 0;
+            const v = sm.wildSeenByEventIdx && sm.wildSeenByEventIdx[battleIdx];
+            if (typeof v === 'number') return v;
+            return v ? 1 : 0;
+        }
+        function _wildSlotsRemainingForBattle(battleIdx) {
+            return Math.max(0, STORY_WILDS_PER_ROUTE_NODE - _wildSeenCount(battleIdx));
+        }
         function _shouldFireWildBeforeBattle(battleIdx) {
             if (battleIdx == null) return false;
-            if (sm.wildSeenByEventIdx && sm.wildSeenByEventIdx[battleIdx]) return false;
+            if (_wildSeenCount(battleIdx) >= STORY_WILDS_PER_ROUTE_NODE) return false;
             const row = STORY_EVENTS_RAW[battleIdx];
             if (!row || row[1] !== 'Battle') return false;
             // M4 boss arc (post-HoF Mystery) handles its own catch step; no route wild here.
@@ -33532,10 +33578,95 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_isFirstBattleOfNewRoute(battleIdx)) return false;
             return true;
         }
-        function _markWildSeen(battleIdx) {
+        function _markWildSeen(battleIdx, delta) {
             if (!sm.wildSeenByEventIdx || typeof sm.wildSeenByEventIdx !== 'object') sm.wildSeenByEventIdx = {};
-            sm.wildSeenByEventIdx[battleIdx] = true;
+            const d = (typeof delta === 'number' && delta > 0) ? (delta | 0) : 1;
+            const prior = _wildSeenCount(battleIdx);
+            sm.wildSeenByEventIdx[battleIdx] = prior + d;
             try { save(); } catch (e) {}
+        }
+
+        /** "Up next" label for transition screens — the catch screen, the
+         *  catch-end success/flee card, and the post-battle victory overlay
+         *  all surface this so the player always sees what they're walking
+         *  into next. Keeps the event-to-event hop legible.
+         *
+         *  `opts.phase`:
+         *    'inCatch'      — currently in a catch screen interrupting the
+         *                     battle at `sm.eventIndex`. If another wild slot
+         *                     remains on this route, the next step is the
+         *                     *next wild*; otherwise it's the trainer battle.
+         *    'postVictory'  — just won a battle; `sm.eventIndex` already
+         *                     points at the next event row.
+         *  Default = 'postVictory'. */
+        function _storyComputeUpNext(opts) {
+            const phase = (opts && opts.phase) || 'postVictory';
+            try {
+                if (phase === 'inCatch') {
+                    const battleIdx = sm.eventIndex;
+                    // wildSeen is incremented *before* the catch screen mounts
+                    // (see `_runFirstStoryInterrupt`), so `remaining` already
+                    // counts only the wilds still ahead of the current one.
+                    const remaining = _wildSlotsRemainingForBattle(battleIdx);
+                    if (remaining > 0 && _isFirstBattleOfNewRoute(battleIdx)) {
+                        return { icon: '🌿', text: 'One more wild on this route' };
+                    }
+                    const row = STORY_EVENTS_RAW[battleIdx];
+                    return _storyEventRowToUpNext(row);
+                }
+                // postVictory — sm.eventIndex has been advanced to the next event.
+                const row = STORY_EVENTS_RAW[sm.eventIndex];
+                if (!row) return null;
+                if (row[1] === 'Battle') {
+                    const battleIdx = sm.eventIndex | 0;
+                    // If a route wild is still queued before this battle, that's the
+                    // *actual* next thing the player will see, not the trainer.
+                    if (_shouldFireWildBeforeBattle(battleIdx) || _shouldFireRoamingBeforeBattle(battleIdx) || _shouldFireCatchTutorialBeforeBattle(battleIdx)) {
+                        return { icon: '🌿', text: 'A wild encounter on the road' };
+                    }
+                }
+                return _storyEventRowToUpNext(row);
+            } catch (e) { return null; }
+        }
+        function _storyEventRowToUpNext(row) {
+            if (!row) return null;
+            if (row[1] === 'Hall of Fame') return { icon: '🏛', text: 'Hall of Fame' };
+            if (row[1] === 'City') {
+                const town = (typeof getStoryDisplayTownNameForCityRow === 'function')
+                    ? getStoryDisplayTownNameForCityRow(row)
+                    : 'the next town';
+                return { icon: '🏙', text: town };
+            }
+            if (row[1] === 'Battle') {
+                const event = String(row[2] || '');
+                const role = (typeof storyDisplayRoleLabel === 'function') ? storyDisplayRoleLabel(event) : event;
+                const trainerName = sm.trainerAssignments && sm.trainerAssignments[row[0] | 0];
+                const isFinale = /^(E[1-4]|Champion|Mystery Figure|Victory Road)$/.test(event);
+                const isGymLeader = /^Gym Leader/i.test(event);
+                const icon = isFinale ? '🏆' : (isGymLeader ? '🏟' : '⚔');
+                const text = trainerName ? (role + ' — ' + trainerName) : role;
+                return { icon, text };
+            }
+            return null;
+        }
+        /** Render an "Up next" pill HTML fragment. Returns '' when no label is
+         *  available so call sites can drop it into a template literal without
+         *  guarding. `accent` controls the border color so the pill fits the
+         *  surrounding palette (catch screen = green, victory overlay = gold). */
+        function _storyUpNextPillHtml(opts) {
+            const o = opts || {};
+            const data = _storyComputeUpNext(o);
+            if (!data) return '';
+            const accent = o.accent || '#8b9bb4';
+            const tone = o.tone || 'rgba(20,28,40,0.55)';
+            const labelColor = o.labelColor || '#cfd8dc';
+            const valueColor = o.valueColor || '#fff';
+            const txt = (typeof _esc === 'function') ? _esc(data.text) : String(data.text);
+            return '<div style="display:inline-flex;align-items:center;gap:8px;padding:6px 10px;background:' + tone + ';border:1px solid ' + accent + ';color:' + labelColor + ';font-size:11px;letter-spacing:0.04em;text-transform:uppercase;">'
+                + '<span style="opacity:0.75;">Up next</span>'
+                + '<span style="opacity:0.5;">→</span>'
+                + '<span style="text-transform:none;letter-spacing:0;color:' + valueColor + ';font-size:12px;">' + data.icon + ' ' + txt + '</span>'
+                + '</div>';
         }
 
         /** Wild encounter grade curve — keyed by badges (0–8). Independent of
@@ -33954,6 +34085,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const subText = _catchState.bossMode
                 ? 'One percent per throw with a standard ball. A Master Ball never misses.'
                 : _catchState.safariMode ? `Safari Balls only (${SAFARI_BALL_MULT}× catch). Bait calms, Rock angers — every turn the wild may flee.` : 'Catch chance is the species rate times the ball you throw.';
+            // "Up next" pill — surfaced on route catch screens (not safari /
+            // boss / tutorial, which have their own framing). Tells the player
+            // what they walk into next: another wild on the same route, or
+            // the trainer waiting at the end of it.
+            const _showUpNext = !_catchState.bossMode && !_catchState.safariMode && !_catchState.tutorialMode;
+            const upNextHtml = _showUpNext
+                ? `<div style="text-align:center;margin:-2px 0 6px;">${_storyUpNextPillHtml({ accent: '#4a6c44', tone: 'rgba(10,18,12,0.45)', labelColor: '#9eb89e', valueColor: '#e8f3e6', phase: 'inCatch' })}</div>`
+                : '';
             // Stage placeholder — actual animated stage is mounted after innerHTML.
             // We keep `_catchStageEl` alive across re-renders so the encounter
             // reveal / wobble state survives the ball-throw re-render cycle.
@@ -33965,6 +34104,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <div style="display:inline-block;font-size:10px;font-weight:bold;color:#111;background:${gradeBg};padding:2px 8px;letter-spacing:0.04em;">Grade ${grade}</div>
                     <div style="margin-top:8px;font-size:10px;color:#888;">${subText}</div>
                 </div>
+                ${upNextHtml}
                 ${message}
                 ${safariStatusRow}
                 <div style="display:flex;flex-direction:column;gap:6px;">
@@ -34289,8 +34429,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _catchState.ended = true;
             const body = document.getElementById('story-catch-body');
             if (body) {
-                body.innerHTML = `<div style="margin:auto;text-align:center;padding:24px 12px;display:flex;flex-direction:column;gap:16px;align-items:center;">
+                // Skip the up-next pill in safari (per-encounter loop has its own
+                // counter), boss (cage-only flow), and tutorial (the next step is
+                // narrative-baked into the tutorial message itself).
+                const _showUpNext = !_catchState.bossMode && !_catchState.safariMode && !_catchState.tutorialMode;
+                const upNextHtml = _showUpNext
+                    ? `<div>${_storyUpNextPillHtml({ accent: '#4a6c44', tone: 'rgba(10,18,12,0.45)', labelColor: '#9eb89e', valueColor: '#e8f3e6', phase: 'inCatch' })}</div>`
+                    : '';
+                body.innerHTML = `<div style="margin:auto;text-align:center;padding:24px 12px;display:flex;flex-direction:column;gap:14px;align-items:center;">
                     <div style="font-size:13px;color:#fff;line-height:1.55;max-width:min(90vw,380px);white-space:pre-line;">${_esc(message)}</div>
+                    ${upNextHtml}
                     <button type="button" onclick="window.StoryMode.catchContinue()" style="padding:10px 24px;background:rgba(20,28,40,0.6);color:#aed581;border:1px solid #aed581;font-family:inherit;cursor:pointer;">Continue →</button>
                 </div>`;
             }

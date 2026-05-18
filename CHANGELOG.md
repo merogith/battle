@@ -3,6 +3,61 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Route pacing: 2 wilds per route + "Up next" hints across transitions 2026-05-18 (`claude/improve-game-flow-s723x`)
+
+### Changed — Wild encounters now fire two-in-a-row per route node
+
+Leaving a city to reach the next one used to surface a single wild
+encounter before the trainer battle. One wild felt thin once the player
+learned the beat — the loop barely had room to breathe between "click
+Continue Route" and the foe portrait. Now each route node fires
+**`STORY_WILDS_PER_ROUTE_NODE` (= 2)** wilds back-to-back before the
+trainer fight. Each wild is rolled independently from the wild grade
+curve, so the two species are usually distinct.
+
+How it's wired:
+
+* `sm.wildSeenByEventIdx[battleIdx]` is now a **count** (legacy boolean
+  `true` reads as 1, so saves mid-route on the previous version don't
+  re-fire a wild they already cleared).
+* `_shouldFireWildBeforeBattle` returns `true` while the count is below
+  `STORY_WILDS_PER_ROUTE_NODE`.
+* `_runFirstStoryInterrupt` honors a new `chainAfter: true` flag on the
+  `wildRoute` entry — it re-enters `enterBattleEvent(ev)` *without* the
+  `_wildAlreadyChecked` short-circuit, so the interrupt chain re-runs
+  and fires the next wild. The counter eventually crosses the threshold
+  and the trainer battle launches normally.
+* One-shot beats (`catchTutorial`, `roamingLegendary`) still use the
+  original onComplete that jumps straight to the trainer fight — they
+  don't chain. Roaming legendaries also consume *both* wild slots at
+  once (`_markWildSeen(idx, STORY_WILDS_PER_ROUTE_NODE)`), preserving
+  the "roaming replaces the route's wild" framing.
+
+### Added — "Up next" pill on every transition screen
+
+Between events the player used to hop opaquely: click Continue on a
+victory overlay and just *land* on the next screen with no breadcrumb.
+Each transition card now carries a small **"Up next →"** chip that names
+what comes next:
+
+* Catch encounter (route) — "One more wild on this route" while a wild
+  slot remains; otherwise the upcoming trainer ("Gym Leader — Brock") or
+  city ("Cerulean City") or finale ("Hall of Fame").
+* Catch resolution card ("Continue →" after catch / flee / run) — same.
+* Battle victory overlay — same, computed against the already-advanced
+  `sm.eventIndex` and accounting for any wild slot still queued before
+  the next trainer.
+
+The pill is suppressed in Safari mode (it has its own per-encounter
+counter), boss mode (cage-only flow), and the catch tutorial (the
+tutorial framing is its own narrative beat). Driven by a single
+`_storyComputeUpNext({ phase: 'inCatch' | 'postVictory' })` helper, so
+every surface reads the same source of truth.
+
+`STORY_MODE_FLOW.md §3` will want a follow-up edit to document the new
+constant; the prose still reads "Once per route node" but the table row
+will need to point at `STORY_WILDS_PER_ROUTE_NODE` for the actual count.
+
 ## Unreleased — Gym → route → next-city Professor sequencing 2026-05-18 (`claude/fix-gym-party-sequencing-5j6NH`)
 
 ### Changed — Professor no longer arrives right after the gym badge
