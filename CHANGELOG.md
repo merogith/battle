@@ -5,6 +5,48 @@ All notable user-visible changes land here. Sessions append entries under
 
 ## Unreleased — Full game balance & economy overhaul 2026-05-17 (`claude/game-balance-economy-overhaul-a5h2s`)
 
+### Changed — Heal vs X-item price rebalance (pass 2)
+
+Initial overhaul priced healing too high relative to X items, making the
+"bench a mon to set up +6 stages" cheese strictly cheaper than healing
+through damage. Healing prices dropped, X items raised so the two sit
+at parity.
+
+| Item | Pass 1 | Pass 2 |
+|---|---|---|
+| Super Potion (60 HP) | 700G | **500G** |
+| Hyper Potion (120 HP) | 1500G | **1000G** |
+| Max Potion (full HP) | 2200G | **1500G** |
+| Full Restore (full + status) | 3000G | **2000G** |
+| Elixir (10 PP all) | 1200G | **1000G** |
+| Max Elixir (full PP) | 1800G | **1500G** |
+| Revival Herb (30% HP) | 1500G | **1200G** |
+| Revive (50% HP) | 3000G | **2500G** |
+| Max Revive (full HP) | 4500G | **4000G** |
+| X Attack / Defense / Sp.Atk / Sp.Def / Speed / Accuracy | 800G | **1000G** |
+| Dire Hit | 300G | **400G** |
+| Guard Spec. | 350G | **450G** |
+
+X items now cost the same as a Hyper Potion: heal 120 HP, or +2 a stat
+for the fight. Same gold, different decision.
+
+### Changed — Tutor/Colress price tweaks
+
+- **Battle Dojo (Ability swap)**: 2500G → **2000G**. Now matches Item-swap
+  cost; the +500G ability premium wasn't earning its keep given how often
+  enemy teams field non-baseline abilities post-overhaul.
+- **Colress (gimmick swap)**: 10000G → **7500G**. Gimmick density on
+  enemy teams rose with the Frontier per-round bands and Crucible Hard
+  Mode (+20% absolute frequency). The player needs to keep up without
+  spending a small fortune per change.
+
+Move Tutor (1500G), Nature Rater (2000G), EV Trainer (5000G), Stone Sage
+(1.5K/6K/16K by target grade), and Cable Link (variable) were left as-is
+— each remains correctly calibrated for what it delivers under the new
+build-tier pipeline.
+
+
+
 ### Added — Heal/PP gradient + mid-tier revive
 
 The PokéMart now stocks a full Potion ladder where there used to be a

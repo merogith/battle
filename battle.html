@@ -25672,33 +25672,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // Shop item definitions — Pokémart
-        // Heal gradient (post-overhaul): Potion 200 → Super 700 → Hyper 1500 → Max 2200 → Full Restore 3000.
-        // PP gradient: Ether 400 (one move) → Elixir 1200 (all moves) → Max Elixir 1800 (all moves to max).
+        // Heal gradient (post-overhaul, X-item rebalance pass):
+        //   Potion 200 → Super 500 → Hyper 1000 → Max 1500 → Full Restore 2000.
+        //   PP: Ether 400 → Elixir 1000 → Max Elixir 1500.
+        // X items raised to 1000G so they sit at parity with Hyper Potion —
+        // the player choice "+2 stat for the fight" vs "heal 120 HP" has the
+        // same gold cost, fixing the X-cheese economy where benching a mon
+        // to set up +6 was strictly cheaper than healing through damage.
         const POKEMART_ITEMS = [
           { id:'pokeBall',      name:'Poké Ball',     price:300,  desc:'A standard ball for catching wild Pokémon.', kind:'ball', ballKey:'poke', battleBag:false },
           { id:'potion',        name:'Potion',        price:200,  desc:'Restores 20 HP.',                     effect:'heal20' },
-          { id:'superPotion',   name:'Super Potion',  price:700,  desc:'Restores 60 HP.',                     effect:'heal60' },
-          { id:'hyperPotion',   name:'Hyper Potion',  price:1500, desc:'Restores 120 HP.',                    effect:'heal120' },
-          { id:'maxPotion',     name:'Max Potion',    price:2200, desc:'Fully restores HP of one Pokémon.',   effect:'healFull' },
-          { id:'fullRestore',   name:'Full Restore',  price:3000, desc:'Fully restores HP & cures status.',   effect:'fullRestore' },
+          { id:'superPotion',   name:'Super Potion',  price:500,  desc:'Restores 60 HP.',                     effect:'heal60' },
+          { id:'hyperPotion',   name:'Hyper Potion',  price:1000, desc:'Restores 120 HP.',                    effect:'heal120' },
+          { id:'maxPotion',     name:'Max Potion',    price:1500, desc:'Fully restores HP of one Pokémon.',   effect:'healFull' },
+          { id:'fullRestore',   name:'Full Restore',  price:2000, desc:'Fully restores HP & cures status.',   effect:'fullRestore' },
           { id:'fullHeal',      name:'Full Heal',     price:300,  desc:'Cures all status conditions.',        effect:'cureStatus' },
           { id:'ether',         name:'Ether',         price:400,  desc:'Restores 10 PP of one move.',         effect:'etherSingle' },
-          { id:'elixir',        name:'Elixir',        price:1200, desc:'Restores 10 PP of every move.',       effect:'elixirAll' },
-          { id:'maxElixir',     name:'Max Elixir',    price:1800, desc:'Fully restores PP of all moves.',     effect:'elixirFull' },
-          { id:'xAttack',       name:'X Attack',      price:800,  desc:'+2 Attack stages for this battle.',         effect:'xAtk' },
-          { id:'xDefense',      name:'X Defense',     price:800,  desc:'+2 Defense stages for this battle.',        effect:'xDef' },
-          { id:'xSpAtk',        name:'X Sp. Atk',     price:800,  desc:'+2 Sp. Attack stages for this battle.',     effect:'xSpA' },
-          { id:'xSpDef',        name:'X Sp. Def',     price:800,  desc:'+2 Sp. Defense stages for this battle.',    effect:'xSpD' },
-          { id:'xSpeed',        name:'X Speed',       price:800,  desc:'+2 Speed stages for this battle.',          effect:'xSpe' },
-          { id:'xAccuracy',     name:'X Accuracy',    price:800,  desc:'+2 Accuracy stages for this battle.',       effect:'xAcc' },
-          { id:'direHit',       name:'Dire Hit',      price:300,  desc:'Raises critical hit ratio.',          effect:'direHit' },
-          { id:'guardSpec',     name:'Guard Spec.',   price:350,  desc:'Prevents stat drops for 5 turns.',   effect:'guardSpec' },
+          { id:'elixir',        name:'Elixir',        price:1000, desc:'Restores 10 PP of every move.',       effect:'elixirAll' },
+          { id:'maxElixir',     name:'Max Elixir',    price:1500, desc:'Fully restores PP of all moves.',     effect:'elixirFull' },
+          { id:'xAttack',       name:'X Attack',      price:1000, desc:'+2 Attack stages for this battle.',         effect:'xAtk' },
+          { id:'xDefense',      name:'X Defense',     price:1000, desc:'+2 Defense stages for this battle.',        effect:'xDef' },
+          { id:'xSpAtk',        name:'X Sp. Atk',     price:1000, desc:'+2 Sp. Attack stages for this battle.',     effect:'xSpA' },
+          { id:'xSpDef',        name:'X Sp. Def',     price:1000, desc:'+2 Sp. Defense stages for this battle.',    effect:'xSpD' },
+          { id:'xSpeed',        name:'X Speed',       price:1000, desc:'+2 Speed stages for this battle.',          effect:'xSpe' },
+          { id:'xAccuracy',     name:'X Accuracy',    price:1000, desc:'+2 Accuracy stages for this battle.',       effect:'xAcc' },
+          { id:'direHit',       name:'Dire Hit',      price:400,  desc:'Raises critical hit ratio.',          effect:'direHit' },
+          { id:'guardSpec',     name:'Guard Spec.',   price:450,  desc:'Prevents stat drops for 5 turns.',   effect:'guardSpec' },
         ];
         const DEPT_ITEMS = [
           { id:'greatBall',     name:'Great Ball',    price:1000, desc:'A better ball. 1.5× catch rate vs Poké Ball.', kind:'ball', ballKey:'great', battleBag:false },
-          { id:'revivalHerb',   name:'Revival Herb',  price:1500, desc:'Bitter remedy: revives a fainted Pokémon to 30% HP.', effect:'revive30' },
-          { id:'revive',        name:'Revive',        price:3000, desc:'Revives a fainted Pokémon to 50% HP.', effect:'revive50' },
-          { id:'maxRevive',     name:'Max Revive',    price:4500, desc:'Revives a fainted Pokémon to full HP.', effect:'reviveFull' },
+          { id:'revivalHerb',   name:'Revival Herb',  price:1200, desc:'Bitter remedy: revives a fainted Pokémon to 30% HP.', effect:'revive30' },
+          { id:'revive',        name:'Revive',        price:2500, desc:'Revives a fainted Pokémon to 50% HP.', effect:'revive50' },
+          { id:'maxRevive',     name:'Max Revive',    price:4000, desc:'Revives a fainted Pokémon to full HP.', effect:'reviveFull' },
           { id:'sunOrb',        name:'Sun Orb',       price:1000, desc:'Starts Harsh Sunlight for 5 turns on battle entry.', effect:'weatherSun' },
           { id:'rainOrb',       name:'Rain Orb',      price:1000, desc:'Starts Rain for 5 turns on battle entry.', effect:'weatherRain' },
           { id:'hailOrb',       name:'Hail Orb',      price:1000, desc:'Starts Hail for 5 turns on battle entry.', effect:'weatherHail' },
@@ -36510,9 +36515,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── MOVE TUTOR ────────────────────────────────────────────────────
+        // Tutor pricing (overhaul pass 2): Ability dropped from 2500 → 2000
+        // so it matches Item cost. Hidden abilities are now gated and
+        // gimmick-enemy density rose with the Frontier/Hard Mode changes;
+        // the +500G ability premium wasn't earning its keep.
         const TUTOR_COST_MOVE    = 1500;
         const TUTOR_COST_ITEM    = 2000;
-        const TUTOR_COST_ABILITY = 2500;
+        const TUTOR_COST_ABILITY = 2000;
         const TUTOR_COST_NATURE  = 2000;
         /** 'moves' | 'nature' | 'loadout' — set by enterTutor(mode); renderTutorTeam reads this */
         let _storyTutorMode = 'moves';
@@ -38078,7 +38087,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── COLRESS — POWER AWAKENING NPC ────────────────────────────────
-        const COLRESS_COST = 10000;
+        // Colress (gimmick swap) — 10000 → 7500. Enemy gimmick density rose
+        // with the Frontier per-round bands and Crucible Hard Mode (+20%
+        // absolute). The player needs to keep up without spending a small
+        // fortune per change.
+        const COLRESS_COST = 7500;
         const COLRESS_ALL_TYPES = ["Normal","Fire","Water","Electric","Grass","Ice","Fighting","Poison","Ground","Flying","Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel","Fairy"];
 
         function _colressMechAvailable(kind) {
