@@ -3,7 +3,61 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
-## Unreleased — Route pacing: 2 wilds per route + "Up next" hints across transitions 2026-05-18 (`claude/improve-game-flow-s723x`)
+## Unreleased — Data-driven recommendations across tutor / dojo / nature rater / EV trainer 2026-05-18 (`claude/data-driven-recommendations-OvBV7`)
+
+### Changed — Tutor / Dojo / Nature Rater / EV Trainer recommendations now read directly from Smogon usage
+
+The "★ Recommended" strip on every facility used to score options with a
+fixed heuristic table — Choice Band = 85 if physical, Leftovers = 75
+flat, Magic Guard = 90, etc. The picks were sensible but generic: every
+physical sweeper got the same top items regardless of what Smogon
+players actually use on the species. Tyranitar's heuristic preferred
+Magic Guard ahead of Sand Stream; Garchomp's "top moves" were ranked by
+raw BP × accuracy, not by what 99% of Garchomp sets actually carry.
+
+The pickers now compute a per-species **popularity table** from the
+loaded `data/builds.csv` (16,744 Smogon sets across gens 1–9, the same
+file the EV-trainer Meta Spreads already used). Every blank-ability row
+resolves to the species' default — that was 56% of the dataset, so the
+old counts buried Sand Stream, Intimidate, Flash Fire, Levitate, and
+every other implicit-default ability under sub-1% explicit-tech picks.
+A composite score blends Smogon usage with the existing heuristic
+(65% data / 35% heuristic when the species has ≥ 5 builds; 40 / 60
+when falling back to the global pool; pure heuristic when csvBuilds
+hasn't loaded yet).
+
+What changed in each surface:
+
+* **Move Tutor** — Strip now lists the **top 10** moves by Smogon usage
+  for the active mon (Garchomp → Earthquake · Swords Dance · Outrage ·
+  Stealth Rock · Stone Edge · Fire Blast · Dragon Claw · Fire Fang ·
+  Scale Shot · Dragon Tail). The first 5 still get the "★ Pick" pill on
+  their cards, and the "Recommended" sort uses the same composite score
+  so the grid orders correctly even after filter chips are applied.
+* **Battle Dojo / Held Item** — Strip shows the **top 3** items by
+  species usage (Heatran → Leftovers · Air Balloon · Choice Scarf).
+  Currently-equipped item is excluded from the strip but stays in the
+  grid.
+* **Battle Dojo / Ability** — Strip shows the **top + runner-up**
+  (Garchomp → Rough Skin · runner-up: Sand Veil; Tyranitar → Sand
+  Stream · runner-up: Unnerve). Blank-ability resolution means default
+  abilities now win against scattered tech picks the way they should.
+* **Nature Rater** — Strip shows the **top 3** natures with their
+  stat axes (Volcarona → Timid (+Spe/−Atk) · Modest (+SpA/−Atk) ·
+  Bold (+Def/−Atk)).
+* **EV Trainer** — The "★ Pick" recommendation is now tiered by Smogon
+  rank for meta spreads. `meta_0` (the single most-used spread for the
+  species) gets a +60 score bonus, `meta_1` +40, `meta_2` +25,
+  `meta_3` +15 — so the top recommendation tracks the actual most-popular
+  real-world build instead of falling back to the universal "Physical
+  Sweeper" template.
+
+Obscure forms with no Smogon coverage (Pikachu-PhD, fringe gen-1 rows)
+fall back through the same form-resolution chain as
+`resolveCsvBuildEntry`, and finally to a one-time global aggregate (all
+species blended) so the strip is never empty.
+
+
 
 ### Changed — Wild encounters now fire two-in-a-row per route node
 
