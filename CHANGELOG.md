@@ -3,6 +3,47 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — `sm is not defined` no longer crashes every story battle 2026-05-18 (`claude/fix-recent-bugs-eiMsL`)
+
+### Fixed — Story mode "MissingNo" placeholder screen (real root cause)
+
+Reproduced the user's exact bug via headless playwright: Story Mode →
+New Adventure → pick starter → Battle Your Rival → through the Prof.
+Oak cold-open → battle screen comes up with "MissingNo" placeholders
+and no command menu. Console:
+
+```
+PAGEERROR: sm is not defined
+  at startBattle (battle.html:13420:43)
+  at launchBattle (battle.html:32105:13)
+  at startFight (battle.html:31995:17)
+```
+
+`sm` is declared `let sm = …` *inside* the StoryMode IIFE (line
+~27235). It is therefore invisible at script-top scope, where
+`startBattle` lives. The Crucible Hard Mode check —
+`if (state.mode === 'story' && sm && sm.crucibleHardMode && …)` —
+added in the balance-overhaul commit (`dee8cb3`) referenced bare `sm`,
+which has thrown ReferenceError on **every** story battle since.
+
+The fix uses the public getter `window.StoryMode.state` (already used
+the same way at lines 11342 / 11364 / 11375):
+
+```js
+const _smRef = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
+if (state.mode === 'story' && _smRef && _smRef.crucibleHardMode && …) { … }
+```
+
+The hardening from the previous commits in this branch (defensive
+try/catch around buildPokemon, foe scaling, aiBestSwitch, updateUI,
+animation, etc.) means this same regression wouldn't be capable of
+stranding the player on a half-built battle screen again even if it
+reoccurred — startBattle would now log + skip the bad step and still
+reach the command menu.
+
+Verified headlessly: first rival fight now lands on `Eldegoss vs
+Torchic`, command menu visible, four log entries, zero errors.
+
 ## Unreleased — `startBattle` is now bulletproof against every kind of init crash 2026-05-18 (`claude/fix-recent-bugs-eiMsL`)
 
 ### Fixed — placeholder "MissingNo" battle screen with no command menu

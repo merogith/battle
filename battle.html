@@ -13417,7 +13417,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (state.mode === 'story' && typeof window.applyStoryLeagueFoeStatBoost === 'function') {
                 try { state.foeParty.forEach(window.applyStoryLeagueFoeStatBoost); } catch (e) { console.warn('[startBattle] applyStoryLeagueFoeStatBoost failed:', e); }
             }
-            if (state.mode === 'story' && sm && sm.crucibleHardMode && sm.crucibleBattleSource
+            // `sm` lives inside the StoryMode IIFE (`let sm` at line ~27235) — it is NOT
+            // visible at this script-top scope, so bare `sm.crucibleHardMode` here threw
+            // ReferenceError on EVERY story battle since the balance-overhaul commit,
+            // crashing startBattle mid-init and stranding the player on the static
+            // MissingNo HUD. Read via `window.StoryMode.state` (the public getter).
+            const _smRef = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
+            if (state.mode === 'story' && _smRef && _smRef.crucibleHardMode && _smRef.crucibleBattleSource
                 && typeof window.crucibleApplyHardModeToFoes === 'function') {
                 try { window.crucibleApplyHardModeToFoes(); } catch (e) { console.warn('[startBattle] crucibleApplyHardModeToFoes failed:', e); }
             }
