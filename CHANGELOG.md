@@ -3,6 +3,94 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Story-embedded tutorials replace one-time alerts 2026-05-18 (`claude/add-tutorial-events-EIPjH`)
+
+### Added — `STORY_TUTORIAL_SCENES` data table + `playStoryTutorial(id)` dispatcher
+
+The previous first-time tutorial layer was a bare `window.showGameAlert`
+modal — useful, but jarring against the story-mode framing where every
+other narrative beat (intro rival, gym victories, Hall of Fame) gets
+sprite + dialogue treatment. Each new mechanic now opens with a one-shot
+character cameo: NPC sprite slides in from the lower-left, nameplate
+fades on, dialogue box pops, Continue → dismisses and the player drops
+into the live screen.
+
+14 scenes shipped, one per first-encounter mechanic. Sprite picks reuse
+the existing trainer roster (no new art):
+
+| Scene | Sprite | Fires at | Replaces tip |
+|---|---|---|---|
+| `firstTrainerBattle` | Oak | first `showBattleIntro` (intro rival) | `first-battle` |
+| `firstWild` | Oak | first catch-tutorial encounter | `catch-tutorial` |
+| `firstWildRoute` | Oak | first route-node wild | `catch` |
+| `firstSafariCatch` | Hiker | first Safari Zone encounter | `safari-catch` |
+| `firstMart` | Clerk | first Pokémart | `first-mart` |
+| `firstDept` | Clerk-2 | first Department Store (City 6+) | `first-dept` |
+| `firstSafari` | Hiker | first free Safari Zone entry (City 4) | (free-entry alert) |
+| `firstCasino` | Gambler | first Poké Casino (City 5) | `first-casino` |
+| `firstPokemonCenter` | Nurse | first Pokémon Center | `center` |
+| `firstMoveTutor` | Veteran | first Move Tutor | `first-tutor` |
+| `firstNatureRater` | Aroma_Lady | first Nature Rater | `first-nature` |
+| `firstBattleDojo` | Blackbelt | first Battle Dojo (City 4+) | `first-dojo` |
+| `firstEVTrainer` | Battle_Girl | first EV Trainer (City 4+) | `first-ev` |
+| `firstColress` | Scientist | first Colress (City 6+) | `first-colress` |
+
+### Stage alignment — automatic via city-action gating
+
+Each mechanic is already stage-gated by the city's action list in
+`STORY_EVENTS_RAW` (see `STORY_MODE_FLOW.md` §15f), so first-interaction
+firing aligns with the power-stage rollout without any new gating logic:
+
+- **Stage 1 (pre-G3)** — `firstTrainerBattle` (intro rival), `firstWild`
+  (catch tutorial after intro rival), `firstWildRoute` (any route
+  beyond), `firstMart`, `firstPokemonCenter`, `firstMoveTutor`,
+  `firstNatureRater`
+- **Stage 2 entry (City 4)** — `firstBattleDojo`, `firstEVTrainer`,
+  `firstSafari` / `firstSafariCatch`
+- **Stage 2 (City 5)** — `firstCasino`
+- **Stage 3 (City 6)** — `firstDept`, `firstColress`
+
+### Sequencing — battle intro gated on tutorial dismiss
+
+`showBattleIntro` previously fired the alert tip and the intro overlay in
+parallel, with a `setTimeout` ticking the battle off behind the alert
+modal. The tutorial scene is animated and longer to read, so the rest of
+the intro now sits behind a `playStoryTutorial('firstTrainerBattle',
+_runIntro)` callback — the trainer-sprite overlay and the 2.2-3.4s
+delayed `launchBattle` only fire after the player taps Continue. Subsequent
+fights see no delay (dispatcher fires `onDone` synchronously on the
+dedupe path).
+
+### Dedupe — shared `tipsShown` bucket
+
+Each scene declares its own `metaKey` (`tutorial-first-*`); the
+dispatcher stamps `tipsShown[metaKey]` in `pbs_story_meta` on first
+play. The keys are deliberately distinct from the legacy alert keys
+(`first-mart`, `center`, etc.) so existing saves see the new scene once
+even if they'd seen the prior alert — a one-time enriched onboarding,
+then quiet.
+
+### Animation — three keyframes, staggered entry
+
+CSS additions (~70 lines, inline near the existing storyfx animations):
+`storyTutorialOverlayIn` (0.32s background fade), `storyTutorialSpriteIn`
+(0.55s cubic-bezier slide-in for the NPC), `storyTutorialNameIn` (0.4s
+fade for the nameplate + Continue button, delayed 0.25s and 0.7s
+respectively), `storyTutorialDialogIn` (0.5s pop for the dialogue box,
+delayed 0.4s). Total entry choreography ≈ 1.1s before the player can
+read the full scene.
+
+### Files touched
+
+- `battle.html` — CSS keyframes (~70 LOC), `STORY_TUTORIAL_SCENES` data
+  table + `_showStoryTutorialScene` / `playStoryTutorial` helpers
+  (~180 LOC, near `STORY_COLD_OPENS`), 8 entry-point rewrites
+  (`enterShop`, `enterSafariZone`, `enterCasino`, `enterPokemonCenter`,
+  `enterTutor`, `enterColress`, `enterEVTrainer`, `_catchRender`,
+  `showBattleIntro`), one export added to `window.StoryMode`
+  (`playTutorial`).
+- `CHANGELOG.md` — this entry.
+
 ## Unreleased — Wild & Safari catch curve shifted one tier easier 2026-05-18 (`claude/improve-pokemon-catch-rates-E1Y8U`)
 
 ### Changed — Base catch rates lifted one grade across the board
