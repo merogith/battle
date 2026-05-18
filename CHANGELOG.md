@@ -3,6 +3,41 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Soft-lock recovery no longer paints a fake MissingNo battle 2026-05-18 (`claude/fix-recent-bugs-eiMsL`)
+
+### Fixed — `__recoverBattleSoftLock` could fabricate a placeholder battle
+
+When the user tabbed away and back (or the battle watchdog scanned a
+between-battles transition), `__recoverBattleSoftLock` would happily
+force the command menu open even if no real battle was loaded — the
+party / command / move menus are all hidden in that state too. The
+result was the static HTML defaults you can never normally see:
+`MissingNo` for both names, empty `Player` / `Foe` alt text where the
+sprites should be, `0/0` HP, and the misleading log line *"Battle UI
+was stuck — commands restored. If the battle still looks wrong, use
+Force Continue again or reload."* — followed by `FIGHT / POKÉMON /
+BAG / RUN` buttons that pointed at nothing.
+
+Root cause: the recovery path didn't gate on (a) `screen-battle`
+actually being on-screen, or (b) `state.pActive` / `state.fActive`
+being real Pokémon. The tab-visibility and `pageshow` hooks attached
+to the recovery also fired on every screen, not just battle.
+
+Fixes:
+- New `__battleHasLiveActives()` helper requires both sides to have an
+  active Pokémon with finite HP / maxHp before the recovery is allowed
+  to do anything.
+- `__recoverBattleSoftLock` now early-returns when the battle screen
+  is hidden or when there are no live actives.
+- The `visibilitychange` and `pageshow` listeners also gate on the
+  battle screen being visible before invoking recovery.
+- After a legitimate recovery, `updateUI()` is called so the HUD
+  reflects current state rather than whatever was painted at the
+  moment of the soft-lock.
+- `__forceBattleContinue` (the Settings → Force Continue button) shows
+  a clearer alert and aborts cleanly when the battle screen is up but
+  no live battle exists, instead of repainting the same placeholder.
+
 ## Unreleased — Full game balance & economy overhaul 2026-05-17 (`claude/game-balance-economy-overhaul-a5h2s`)
 
 ### Changed — Heal vs X-item price rebalance (pass 2)
