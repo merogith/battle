@@ -449,7 +449,7 @@
            ────────────────────────────────────────────────────────────── */
         #modal-summary .modal-summary-shell {
             display: flex; flex-direction: column;
-            max-height: min(92dvh, 920px); padding: 12px;
+            max-height: min(92dvh, 920px); padding: 10px;
             box-sizing: border-box; overflow-y: hidden; min-height: 0;
             width: 100%; max-width: min(460px, 96vw);
             margin-left: auto; margin-right: auto;
@@ -463,9 +463,15 @@
             background: linear-gradient(180deg, var(--surface2) 0%, var(--surface) 100%);
             border: 1px solid #2c2c30;
         }
-        .sum-header-main { display: grid; grid-template-columns: 84px minmax(0, 1fr) auto; gap: 8px 10px; align-items: center; }
-        .sum-header-sprite-wrap { position: relative; width: 84px; height: 84px; display: flex; align-items: center; justify-content: center; }
-        .sum-header-sprite { width: 84px; height: 84px; image-rendering: pixelated; object-fit: contain; display: block; }
+        .sum-header-main { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 6px 10px; align-items: center; }
+        .sum-header-sprite-wrap {
+            position: relative; width: 76px; height: 76px;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden; flex-shrink: 0;
+        }
+        /* font-size:0 suppresses the broken-image alt fallback text on offline /
+           blocked-sprite environments — the alt attribute stays present for AT. */
+        .sum-header-sprite { width: 76px; height: 76px; image-rendering: pixelated; object-fit: contain; display: block; font-size: 0; color: transparent; }
         .sum-header-info { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
         .sum-header-title { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; line-height: 1.2; }
         .sum-header-name { font-size: 15px; font-weight: bold; color: var(--accent); word-break: break-word; min-width: 0; }
@@ -475,21 +481,21 @@
         .sum-gimm-badge { font-size: 9px; font-weight: bold; border-radius: 3px; padding: 2px 6px; letter-spacing: 0.5px; line-height: 1.2; }
         .sum-header-party { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; flex-shrink: 0; }
         .sum-nav-btn {
-            width: 34px; min-height: 34px; padding: 0; font-size: 14px; line-height: 1;
+            width: 32px; min-height: 32px; padding: 0; font-size: 13px; line-height: 1;
             border-radius: 4px; cursor: pointer; font-family: inherit;
             background: var(--surface2); border: 1px solid #555; color: var(--accent);
             transition: all 0.12s; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
         }
         .sum-nav-btn:hover:not(:disabled) { border-color: var(--accent); background: #1a1700; }
         .sum-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-        .summary-party-slot-label { font-size: 10px; color: #999; font-weight: bold; line-height: 1.1; text-align: center; min-width: 34px; user-select: none; }
+        .summary-party-slot-label { font-size: 10px; color: #999; font-weight: bold; line-height: 1.1; text-align: center; min-width: 32px; user-select: none; }
 
         /* Live battle state row — only rendered when there's something to show */
-        .sum-live-row { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; border-top: 1px dashed #2a2a2a; }
+        .sum-live-row { display: flex; flex-direction: column; gap: 5px; padding-top: 6px; border-top: 1px dashed #2a2a2a; }
         .sum-hp-row { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #888; }
-        .sum-hp-row > .sum-hp-label { font-weight: bold; color: #aaa; font-size: 10px; letter-spacing: 0.4px; text-transform: uppercase; flex-shrink: 0; }
-        .sum-hp-bar { flex: 1; height: 8px; background: #222; border-radius: 4px; overflow: hidden; min-width: 60px; }
-        .sum-hp-fill { height: 100%; border-radius: 4px; transition: width 0.4s, background 0.3s; }
+        .sum-hp-row > .sum-hp-label { font-weight: bold; color: #aaa; font-size: 9px; letter-spacing: 0.4px; text-transform: uppercase; flex-shrink: 0; }
+        .sum-hp-bar { flex: 1; height: 8px; background: #222; border-radius: 4px; overflow: hidden; min-width: 60px; box-shadow: inset 0 1px 0 rgba(0,0,0,0.4); }
+        .sum-hp-fill { height: 100%; border-radius: 4px; transition: width 0.4s, background 0.3s; box-shadow: inset 0 -1px 0 rgba(0,0,0,0.25); }
         .sum-hp-text { font-size: 11px; color: #ddd; font-weight: bold; min-width: 56px; text-align: right; font-variant-numeric: tabular-nums; }
         .sum-state-pills { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; min-height: 0; }
         .sum-state-pill {
@@ -539,7 +545,7 @@
         .summary-stat-label { width: 44px; font-size: 11px; color: #888; text-align: right; font-weight: 500; flex-shrink: 0; }
         .summary-stat-bar-bg { flex: 1; height: 7px; background: #222; border-radius: 4px; overflow: hidden; min-width: 40px; }
         .summary-stat-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
-        .summary-stat-val { width: 58px; font-size: 11px; font-weight: bold; text-align: right; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+        .summary-stat-val { width: 64px; font-size: 11px; font-weight: bold; text-align: right; font-variant-numeric: tabular-nums; flex-shrink: 0; }
         .sum-stat-total { display: flex; justify-content: flex-end; font-size: 10px; color: #888; margin-top: 4px; padding-top: 4px; border-top: 1px dashed #2a2a2a; }
         .sum-stat-total b { color: #ccc; margin-left: 6px; }
         .sum-overview-details {
@@ -597,8 +603,8 @@
         .sum-move-pp-low { color: #ffb74d !important; }
         .sum-move-pp-out { color: #f44336 !important; }
         .sum-note {
-            font-size: 10px; padding: 4px 8px; border-radius: 3px;
-            margin-bottom: 8px; line-height: 1.4;
+            font-size: 10px; padding: 5px 8px; border-radius: 3px;
+            margin-bottom: 8px; line-height: 1.35;
         }
         .sum-note--info { color: #b3e5fc; background: rgba(2, 119, 189, 0.18); border: 1px solid #0277bd; }
         .sum-note--accent { color: #e1bee7; background: rgba(123, 31, 162, 0.22); border: 1px solid #7b1fa2; }
@@ -632,19 +638,57 @@
             .sum-evs-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
         }
         @media (max-width: 380px) {
-            .sum-header-main { grid-template-columns: 72px minmax(0, 1fr) auto; gap: 6px 8px; }
-            .sum-header-sprite-wrap, .sum-header-sprite { width: 72px; height: 72px; }
-            .sum-header-name { font-size: 14px; }
+            #modal-summary .modal-summary-shell { padding: 8px; gap: 6px; }
+            .sum-header { padding: 6px 8px 8px; }
+            .sum-header-main { grid-template-columns: 64px minmax(0, 1fr) auto; gap: 5px 8px; }
+            .sum-header-sprite-wrap, .sum-header-sprite { width: 64px; height: 64px; }
+            .sum-header-name { font-size: 13px; }
             .summary-stat-label { width: 38px; font-size: 10px; }
-            .summary-stat-val { width: 52px; font-size: 10px; }
+            .summary-stat-val { width: 56px; font-size: 10px; }
+            .sum-overview-details { padding: 8px; gap: 6px 8px; }
+            .sum-state-pill { font-size: 8.5px; padding: 1.5px 5px; }
+            .sum-gimm-badge { font-size: 8.5px; padding: 1.5px 5px; }
         }
         /* Touch targets on phones (portrait) — 44px guideline */
         @media screen and (max-width: 768px) and (orientation: portrait) {
             #modal-summary .sum-tab { min-height: 44px; }
             #modal-summary .sum-mode-btn { min-height: 44px; }
-            #modal-summary .sum-nav-btn { min-height: 38px; width: 38px; }
+            #modal-summary .sum-nav-btn { min-height: 36px; width: 36px; }
             #modal-summary .sum-reorder-row > button,
             #modal-summary .sum-close-btn { min-height: 44px; }
+        }
+        /* Landscape phones — use the wider viewport: wider modal, two-column body
+           (header + tabs on the left, tab content scrolls on the right). */
+        @media screen and (max-height: 480px) and (orientation: landscape) {
+            #modal-summary .modal-summary-shell {
+                max-width: min(720px, 96vw);
+                max-height: 96dvh;
+                padding: 8px;
+                display: grid;
+                grid-template-columns: 240px minmax(0, 1fr);
+                grid-template-rows: auto auto 1fr auto;
+                grid-template-areas:
+                    "header content"
+                    "tabs   content"
+                    "tabs   content"
+                    "close  close";
+                gap: 6px 10px;
+            }
+            #modal-summary .sum-header { grid-area: header; padding: 6px 8px; }
+            #modal-summary .sum-tabs { grid-area: tabs; flex-direction: column; }
+            #modal-summary .sum-tab { min-height: 36px; }
+            #modal-summary #summary-pages-scroll { grid-area: content; min-height: 0; }
+            #modal-summary .sum-reorder-row,
+            #modal-summary .sum-close-btn { grid-area: close; }
+            /* In landscape grid, if the reorder row is visible we hide the close button (the
+               reorder row owns the bottom slot). :not(.hidden) is needed because the adjacent-
+               sibling selector matches regardless of computed display state otherwise. */
+            #modal-summary .sum-reorder-row:not(.hidden) + .sum-close-btn { display: none; }
+            .sum-header-main { grid-template-columns: 56px minmax(0, 1fr); gap: 4px 6px; }
+            .sum-header-sprite-wrap, .sum-header-sprite { width: 56px; height: 56px; }
+            .sum-header-name { font-size: 13px; }
+            /* Hide party nav row in compact landscape — most landscape uses are dev/QA. */
+            .sum-header-party { display: none; }
         }
 
         /* Tiers */
@@ -15054,9 +15098,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (page === 1) {
                 // === OVERVIEW ===
                 const nMod = natureModifiers[s.nature] || null;
-                const statKeys = ['hp','atk','def','spa','spd','spe'];
                 const total = s.maxHp + s.stats.atk + s.stats.def + s.stats.spa + s.stats.spd + s.stats.spe;
                 const sumBoosts = getSummaryStatBoosts(s);
+                // When the live header is showing current HP, the HP stat bar in Overview is
+                // visually redundant — skip it so the player isn't reading the same number twice.
+                // (We always include the 5 non-HP stat bars; total stat sum still includes HP.)
+                const hasLiveHp = !!document.querySelector('#sum-header .sum-hp-row');
+                const statKeys = hasLiveHp ? ['atk','def','spa','spd','spe'] : ['hp','atk','def','spa','spd','spe'];
                 const statBars = statKeys.map(sk => renderSummaryStatBar(s, sk, nMod, sumBoosts)).join('');
 
                 // Nature line with up/down highlights.
@@ -15069,9 +15117,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (window._summaryShowEVs && bd) {
                     const evs = bd.evs || {};
                     const ivs = bd.ivs || {};
-                    const evTotal = ['hp','atk','def','spa','spd','spe'].reduce((sum, k) => sum + (evs[k] || 0), 0);
-                    const evCells = statKeys.map(k => `<span><i>${SUM_STAT_LABELS[k]}</i> ${evs[k] || 0}</span>`).join('');
-                    const ivCells = statKeys.map(k => `<span><i>${SUM_STAT_LABELS[k]}</i> ${ivs[k] != null ? ivs[k] : 31}</span>`).join('');
+                    const allKeys = ['hp','atk','def','spa','spd','spe'];
+                    const evTotal = allKeys.reduce((sum, k) => sum + (evs[k] || 0), 0);
+                    const evCells = allKeys.map(k => `<span><i>${SUM_STAT_LABELS[k]}</i> ${evs[k] || 0}</span>`).join('');
+                    const ivCells = allKeys.map(k => `<span><i>${SUM_STAT_LABELS[k]}</i> ${ivs[k] != null ? ivs[k] : 31}</span>`).join('');
                     evIvHtml = `<div class="sum-evs-row">
                         <b>EVs (${evTotal}/510)</b>
                         <div class="sum-evs-grid">${evCells}</div>
