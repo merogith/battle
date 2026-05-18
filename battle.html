@@ -11438,23 +11438,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let natureVal = build.n || 'Hardy';
             let mon = { name: monName, type1: base.t1, type2: base.t2, item: build.i, ability: abilityVal, nature: natureVal, moves: generatedMoves, buildData: build };
 
-            // Lv50 stat formulas with IVs (default 31), EVs and Nature
+            // Lv50 stat formulas with IVs (default 31), EVs and Nature.
+            // permBoosts: flat +1..+10 per stat earned from perm-boost items
+            // (HP Up / Protein / Iron / Calcium / Zinc / Carbos); additive
+            // on top of the EV-derived stat.
             let ivs = build.ivs || {};
             let getIV = stat => (ivs[stat] !== undefined ? ivs[stat] : 31);
-            // HP: floor((2 * base + IV + floor(EV/4)) * 50 / 100) + 50 + 10
-            mon.maxHp = (monName === 'Shedinja') ? 1 : Math.floor((2 * base.hp + getIV('hp') + Math.floor((evs.hp||0) / 4)) * 50 / 100) + 60;
+            const _pb = (typeof window !== 'undefined' && typeof window._permBoostsRead === 'function')
+                ? window._permBoostsRead(build)
+                : { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
+            // HP: floor((2 * base + IV + floor(EV/4)) * 50 / 100) + 50 + 10 + permBoost
+            mon.maxHp = (monName === 'Shedinja') ? 1 : Math.floor((2 * base.hp + getIV('hp') + Math.floor((evs.hp||0) / 4)) * 50 / 100) + 60 + (_pb.hp || 0);
             mon.currentHp = mon.maxHp;
 
-            // Other stats: floor((floor((2 * base + IV + floor(EV/4)) * 50 / 100) + 5) * nature)
+            // Other stats: floor((floor((2 * base + IV + floor(EV/4)) * 50 / 100) + 5) * nature) + permBoost
             let nMults = { atk: 1, def: 1, spa: 1, spd: 1, spe: 1 };
             let n = natureModifiers[mon.nature];
             if (n) { nMults[n.up] = 1.1; nMults[n.down] = 0.9; }
             mon.stats = {
-                atk: Math.floor((Math.floor((2 * base.atk + getIV('atk') + Math.floor((evs.atk||0)/4)) * 50 / 100) + 5) * nMults.atk),
-                def: Math.floor((Math.floor((2 * base.def + getIV('def') + Math.floor((evs.def||0)/4)) * 50 / 100) + 5) * nMults.def),
-                spa: Math.floor((Math.floor((2 * base.spa + getIV('spa') + Math.floor((evs.spa||0)/4)) * 50 / 100) + 5) * nMults.spa),
-                spd: Math.floor((Math.floor((2 * base.spd + getIV('spd') + Math.floor((evs.spd||0)/4)) * 50 / 100) + 5) * nMults.spd),
-                spe: Math.floor((Math.floor((2 * base.spe + getIV('spe') + Math.floor((evs.spe||0)/4)) * 50 / 100) + 5) * nMults.spe)
+                atk: Math.floor((Math.floor((2 * base.atk + getIV('atk') + Math.floor((evs.atk||0)/4)) * 50 / 100) + 5) * nMults.atk) + (_pb.atk || 0),
+                def: Math.floor((Math.floor((2 * base.def + getIV('def') + Math.floor((evs.def||0)/4)) * 50 / 100) + 5) * nMults.def) + (_pb.def || 0),
+                spa: Math.floor((Math.floor((2 * base.spa + getIV('spa') + Math.floor((evs.spa||0)/4)) * 50 / 100) + 5) * nMults.spa) + (_pb.spa || 0),
+                spd: Math.floor((Math.floor((2 * base.spd + getIV('spd') + Math.floor((evs.spd||0)/4)) * 50 / 100) + 5) * nMults.spd) + (_pb.spd || 0),
+                spe: Math.floor((Math.floor((2 * base.spe + getIV('spe') + Math.floor((evs.spe||0)/4)) * 50 / 100) + 5) * nMults.spe) + (_pb.spe || 0)
             };
 
             mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0;
@@ -11468,6 +11474,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.abilityActivated = false;
             mon.originalItem = build.i;
             mon.knockedOff = false;
+            // Track whether ability has been overwritten by a battle effect (Trace, Wandering
+            // Spirit, Mummy/Lingering Aroma, Mega Evolution, Tera form change, Skill Swap, …).
+            // The switch-in resync below leaves the in-battle ability alone whenever this is
+            // set so legitimate mid-battle ability changes are not clobbered.
+            mon._abilityMutatedInBattle = false;
             mon.isShiny = build._isShiny !== undefined ? build._isShiny : (Math.random() < 0.01);
             build._isShiny = mon.isShiny; // persist so rebuilds keep same shiny state
             mon._baseName = monName; // always the pre-mega/pre-gmax base species name
@@ -11710,7 +11721,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         mon.type2 = types[1] || '';
                         // Mega forms always expose their locked ability at slot 0 in the dex.
                         let megaAbil = megaSpecies.abilities && megaSpecies.abilities['0'];
-                        if (megaAbil) mon.ability = megaAbil;
+                        if (megaAbil) { mon.ability = megaAbil; mon._abilityMutatedInBattle = true; }
                         mon.name = megaFormName;
                         applied = true;
                     }
@@ -11860,7 +11871,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     state.terrain = ''; state.terrainTurns = 0;
                 } catch (e) {}
                 // Stellar form also bumps ability marker (used by Tera Shell to gate full-HP resist while still pre-Tera)
-                mon.ability = 'Teraform Zero';
+                mon.ability = 'Teraform Zero'; mon._abilityMutatedInBattle = true;
             }
 
             let teraSprite = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
@@ -13334,18 +13345,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Play Pokemon cry on entrance
             const mon = isPlayer ? state.pActive : state.fActive;
             if (mon && mon.name) AudioSystem.playCry(mon.name, 0.45);
-            // anime.js — bounce in; scale keyframes use lore + Dynamax (same as getSpriteTransformStyle)
+            // anime.js — bounce in; scale keyframes use lore + Dynamax (same as getSpriteTransformStyle).
+            // anime.js is CDN-loaded; if the request failed (slow / blocked / offline), skip the
+            // bounce and just snap the sprite in. Without this guard a single network hiccup
+            // would throw ReferenceError out of Promise.all → crash startBattle → leave the
+            // user staring at the static "MissingNo" battle screen with no command menu.
             const sEnd = mon ? getSpriteLoreScaleNumber(mon) : 1;
-            await anime({
-                targets: spriteEl,
-                translateX: '-50%',
-                scale: [0.3 * sEnd, 1.06 * sEnd, sEnd],
-                opacity: [0, 1, 1],
-                duration: 420,
-                easing: 'easeOutBack'
-            }).finished;
+            if (typeof anime === 'function') {
+                try {
+                    await anime({
+                        targets: spriteEl,
+                        translateX: '-50%',
+                        scale: [0.3 * sEnd, 1.06 * sEnd, sEnd],
+                        opacity: [0, 1, 1],
+                        duration: 420,
+                        easing: 'easeOutBack'
+                    }).finished;
+                } catch (e) { console.warn('[pokeball-anim] anime() failed:', e); }
+                try { anime.remove(spriteEl); } catch (e) {}
+            } else {
+                spriteEl.style.opacity = '1';
+                spriteEl.style.visibility = 'visible';
+            }
             if (mon) spriteEl.style.transform = getSpriteTransformStyle(mon);
-            anime.remove(spriteEl);
 
             flash.remove();
         }
@@ -13369,7 +13391,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { window.runScreenTransition('fade'); } catch (e) {}
             try { applyBattleLayoutMode(); } catch (e) {}
             if (state.mode === 'gauntlet') document.getElementById('gauntlet-score').classList.remove('hidden'); else document.getElementById('gauntlet-score').classList.add('hidden');
-            state.playerParty = state.p1Draft.map(d => buildPokemon(d.name, d.build)); state.foeParty = state.p2Draft.map(d => buildPokemon(d.name, d.build));
+            // Defensive: anything between here and updateUI() that throws (corrupt draft,
+            // missing build, AI helper bug, story scaling regression…) used to leave the
+            // user staring at the static "MissingNo" HUD with no command menu. Bail back
+            // to the main menu with a toast so they're never stranded.
+            try {
+                if (!Array.isArray(state.p1Draft) || state.p1Draft.length === 0) {
+                    throw new Error('player draft is empty');
+                }
+                if (!Array.isArray(state.p2Draft) || state.p2Draft.length === 0) {
+                    throw new Error('foe draft is empty');
+                }
+                state.playerParty = state.p1Draft.map(d => buildPokemon(d.name, d.build));
+                state.foeParty = state.p2Draft.map(d => buildPokemon(d.name, d.build));
+                // Defensive resync: keep `mon.item` / `mon.ability` aligned with the live build
+                // reference (`buildData`). buildPokemon already does this, but the resync covers
+                // any path where the buildData object the engine reads from later is the same
+                // saved-build instance the Dojo / catch / evolve flow continues to mutate.
+                try {
+                    (state.playerParty || []).forEach(m => { try { _resyncMonFromBuildData(m); } catch (e) {} });
+                    (state.foeParty || []).forEach(m => { try { _resyncMonFromBuildData(m); } catch (e) {} });
+                } catch (e) {}
+                if (!state.playerParty[0]) throw new Error('player party empty after build');
+                if (!state.foeParty[0]) throw new Error('foe party empty after build');
+            } catch (initErr) {
+                console.error('[startBattle] team build failed — returning to menu:', initErr);
+                try { window.showGameAlert && window.showGameAlert('Could not start the battle (corrupted team data). Returning to the main menu — try again.'); } catch (e) {}
+                try { document.getElementById('screen-battle').classList.add('hidden'); } catch (e) {}
+                try { if (typeof window.returnToHome === 'function') await window.returnToHome(); } catch (e) {}
+                return;
+            }
             // Story Pokédex — every foe a story-mode trainer brings is "seen".
             try {
                 if (window.StoryMode && window.StoryMode.isActive && window.StoryMode.isActive()) {
@@ -13381,12 +13432,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             } catch (e) {}
             // Story League (E4 line / Champion / post-HoF boss): tiered stat boosts, then global difficulty mult.
+            // These foe-scaling helpers must not be allowed to crash startBattle and leave the
+            // user on a placeholder MissingNo screen — wrap each one so a single bad mon entry
+            // can't take down the whole init.
             if (state.mode === 'story' && typeof window.applyStoryLeagueFoeStatBoost === 'function') {
-                state.foeParty.forEach(window.applyStoryLeagueFoeStatBoost);
+                try { state.foeParty.forEach(window.applyStoryLeagueFoeStatBoost); } catch (e) { console.warn('[startBattle] applyStoryLeagueFoeStatBoost failed:', e); }
             }
-            // Story-mode difficulty: scale foe stats (Very Easy/Easy weaken, Hard/Very Hard strengthen)
+            // `sm` lives inside the StoryMode IIFE (`let sm` at line ~27235) — it is NOT
+            // visible at this script-top scope, so bare `sm.crucibleHardMode` here threw
+            // ReferenceError on EVERY story battle since the balance-overhaul commit,
+            // crashing startBattle mid-init and stranding the player on the static
+            // MissingNo HUD. Read via `window.StoryMode.state` (the public getter).
+            const _smRef = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
+            if (state.mode === 'story' && _smRef && _smRef.crucibleHardMode && _smRef.crucibleBattleSource
+                && typeof window.crucibleApplyHardModeToFoes === 'function') {
+                try { window.crucibleApplyHardModeToFoes(); } catch (e) { console.warn('[startBattle] crucibleApplyHardModeToFoes failed:', e); }
+            }
             if (state.mode === 'story' && typeof window.applyFoeDifficultyScaling === 'function') {
-                state.foeParty.forEach(window.applyFoeDifficultyScaling);
+                try { state.foeParty.forEach(window.applyFoeDifficultyScaling); } catch (e) { console.warn('[startBattle] applyFoeDifficultyScaling failed:', e); }
             }
             state.pActive = state.playerParty[0];
             // Field must match this battle before aiBestSwitch — aiEstimateDmg(getCurrentWeather) must not see the previous battle's weather.
@@ -13401,51 +13464,73 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.usedMega = false; state.usedZ = false; state.usedDyna = false; state.usedTera = false;
             state.fUsedMega = false; state.fUsedZ = false; state.fUsedDyna = false; state.fUsedTera = false;
             state.p1GimmickIntent = null; state.p2GimmickIntent = null;
-            if (settings.randomWeather) rollRandomWeather();
-            if (settings.randomTerrain) rollRandomTerrain();
-            {
+            try { if (settings.randomWeather) rollRandomWeather(); } catch (e) { console.warn('[startBattle] rollRandomWeather:', e); }
+            try { if (settings.randomTerrain) rollRandomTerrain(); } catch (e) { console.warn('[startBattle] rollRandomTerrain:', e); }
+            try {
                 const _foeAlive = state.foeParty.filter(m => m.currentHp > 0);
                 const _foeLead = _foeAlive.length ? aiBestSwitch(_foeAlive, state.pActive, { isLead: true }) : null;
                 state.fActive = _foeLead || state.foeParty[0];
+            } catch (e) {
+                console.warn('[startBattle] aiBestSwitch failed, using party[0]:', e);
+                state.fActive = state.foeParty[0];
             }
             state.turnNumber = 0;
             if (state.mode === 'story') {
                 state.storyItemUsedThisTurn = false;
                 state.foeStoryItemUsedThisTurn = false;
-                state.foeStoryInv = typeof window.buildFoeStoryInventoryForBattle === 'function' ? window.buildFoeStoryInventoryForBattle() : null;
+                try { state.foeStoryInv = typeof window.buildFoeStoryInventoryForBattle === 'function' ? window.buildFoeStoryInventoryForBattle() : null; } catch (e) { console.warn('[startBattle] buildFoeStoryInventoryForBattle:', e); state.foeStoryInv = null; }
             } else {
                 state.foeStoryInv = null;
                 state.foeStoryItemUsedThisTurn = false;
             }
             state.revealedFoe = new Set();
-            state.revealedFoe.add(state.fActive.name);
+            try { if (state.fActive && state.fActive.name) state.revealedFoe.add(state.fActive.name); } catch (e) {}
 
-            logMsg(`Battle started!`, 'info');
+            try { logMsg(`Battle started!`, 'info'); } catch (e) {}
             // Apply Story Mode artifact effects (Trick Room, Gravity, etc.) after field init
-            if (state.mode === 'story' && typeof window._storyApplyArtifacts === 'function') window._storyApplyArtifacts();
+            if (state.mode === 'story' && typeof window._storyApplyArtifacts === 'function') {
+                try { window._storyApplyArtifacts(); } catch (e) { console.warn('[startBattle] _storyApplyArtifacts:', e); }
+            }
             // Clear leftover Dynamax/animation styles from previous battle
-            ['player-sprite','foe-sprite'].forEach((id, i) => { let el = document.getElementById(id); if (el) { el.style.filter = ''; const mon = i === 0 ? state.pActive : state.fActive; el.style.transform = getSpriteTransformStyle(mon); } });
-            updateUI();
+            try { ['player-sprite','foe-sprite'].forEach((id, i) => { let el = document.getElementById(id); if (el) { el.style.filter = ''; const mon = i === 0 ? state.pActive : state.fActive; if (mon) el.style.transform = getSpriteTransformStyle(mon); } }); } catch (e) {}
+            try { updateUI(); } catch (e) { console.warn('[startBattle] updateUI threw:', e); }
 
             // Pokeball throw animations
             logMsg(`Player 1 sent out ${state.pActive.name}!`, 'info');
             logMsg(`${state.mode === 'pvp' ? 'Player 2' : 'Foe'} sent out ${state.fActive.name}!`, 'info');
-            await Promise.all([
-                playPokeballAnimation('player-sprite', true),
-                playPokeballAnimation('foe-sprite', false)
-            ]);
-
-            applySwitchInAbilities(state.pActive, state.fActive); applySwitchInAbilities(state.fActive, state.pActive);
-            updateUI();
-
-            // Show contextual tip on first battle
-            if (showTipsEnabled && !window._battleTipShown) {
-                window._battleTipShown = true;
-                logMsg(`Tip: Tap moves or "i" for info. ▲▼ = damage matchup. Tap names for stats.`, 'info');
+            // Defensive: a thrown animation here used to crash startBattle outright (e.g. anime.js
+            // failed to load), leaving the user with no command menu and a static "MissingNo" HUD.
+            // Always continue to the input-ready state even if the entrance animation blows up.
+            try {
+                await Promise.all([
+                    playPokeballAnimation('player-sprite', true),
+                    playPokeballAnimation('foe-sprite', false)
+                ]);
+            } catch (e) {
+                console.warn('[startBattle] entrance animation failed:', e);
+                try {
+                    const ps = document.getElementById('player-sprite');
+                    const fs = document.getElementById('foe-sprite');
+                    if (ps) { ps.style.opacity = '1'; ps.style.visibility = 'visible'; }
+                    if (fs) { fs.style.opacity = '1'; fs.style.visibility = 'visible'; }
+                } catch (e2) {}
             }
 
-            document.getElementById('move-menu').classList.add('hidden');
-            document.getElementById('command-menu').classList.remove('hidden');
+            try { applySwitchInAbilities(state.pActive, state.fActive); applySwitchInAbilities(state.fActive, state.pActive); } catch (e) { console.warn('[startBattle] applySwitchInAbilities:', e); }
+            try { updateUI(); } catch (e) { console.warn('[startBattle] updateUI (post-anim) threw:', e); }
+
+            // Show contextual tip on first battle
+            try {
+                if (showTipsEnabled && !window._battleTipShown) {
+                    window._battleTipShown = true;
+                    logMsg(`Tip: Tap moves or "i" for info. ▲▼ = damage matchup. Tap names for stats.`, 'info');
+                }
+            } catch (e) {}
+
+            // Always show the command menu — this is the only thing standing between the
+            // user and a usable battle screen.
+            try { document.getElementById('move-menu').classList.add('hidden'); } catch (e) {}
+            try { document.getElementById('command-menu').classList.remove('hidden'); } catch (e) {}
             try { if (window.syncBattlePhaseClass) window.syncBattlePhaseClass(); } catch (e) {}
             try { syncBattleActiveHighlight(); } catch (e) {}
             if (typeof window.applyBattleLogDockClass === 'function') window.applyBattleLogDockClass();
@@ -17193,6 +17278,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { window.showGameAlert && window.showGameAlert('No active battle to continue.'); } catch (e) {}
                     return false;
                 }
+                // If the battle screen is up without a live battle (placeholder MissingNo HUD),
+                // restoring the command menu would just paint that placeholder forever. Bail the
+                // user out to the main menu (the only thing they can do from here) instead.
+                if (!__battleHasLiveActives() && (!state.isOver)) {
+                    try { if (typeof logMsg === 'function') logMsg('Battle data missing — returning to menu.', 'info'); } catch (e) {}
+                    try {
+                        if (typeof window.returnToHome === 'function') {
+                            await window.returnToHome();
+                        } else {
+                            document.querySelectorAll('.screen, .modal').forEach(el => el.classList.add('hidden'));
+                            const menu = document.getElementById('screen-menu');
+                            if (menu) menu.classList.remove('hidden');
+                        }
+                    } catch (e) {
+                        console.warn('[ForceContinue] menu-fallback failed:', e);
+                        try { window.showGameAlert && window.showGameAlert('Battle data lost — please reload the page.'); } catch (e2) {}
+                    }
+                    return true;
+                }
                 const party = document.getElementById('modal-party');
                 const cmd = document.getElementById('command-menu');
                 const move = document.getElementById('move-menu');
@@ -17294,10 +17398,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         };
 
+        // A "real" in-progress battle means both sides have an active Pokémon with HP fields.
+        // Without this gate, recovery would happily force the command menu open during draft /
+        // menu transitions where state.pActive/fActive are momentarily null, leaving the user
+        // staring at the static "MissingNo / 0/0 / empty sprite" placeholders.
+        function __battleHasLiveActives() {
+            try {
+                if (typeof state === 'undefined' || !state) return false;
+                const pa = state.pActive, fa = state.fActive;
+                return !!(pa && fa
+                    && Number.isFinite(pa.currentHp) && Number.isFinite(pa.maxHp) && pa.maxHp > 0
+                    && Number.isFinite(fa.currentHp) && Number.isFinite(fa.maxHp) && fa.maxHp > 0);
+            } catch (e) { return false; }
+        }
+
         /** If the resolver exited mid-turn while locked (save-specific edge cases), restore command menu. Console: __recoverBattleSoftLock() */
         window.__recoverBattleSoftLock = function() {
             try {
                 if (typeof state === 'undefined' || !state) return false;
+                // Only attempt recovery while the battle screen is actually on-screen — the tab
+                // visibility / pageshow hooks fire on every screen, including menu/draft.
+                if (!__battleHasActiveScreen()) return false;
                 const party = document.getElementById('modal-party');
                 const cmd = document.getElementById('command-menu');
                 const move = document.getElementById('move-menu');
@@ -17312,6 +17433,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     return true;
                 }
+                // No live battle (e.g. screen still showing from a previous run, or transition mid-rematch).
+                // Restoring the command menu here would paint the placeholder MissingNo HUD; bail instead.
+                if (!__battleHasLiveActives()) return false;
                 const partyHidden = party.classList.contains('hidden');
                 const cmdHidden = cmd.classList.contains('hidden');
                 const moveHidden = !move || move.classList.contains('hidden');
@@ -17321,6 +17445,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     state.residualPhaseComplete = false;
                     state.isLocked = false;
                     __restoreBattleCommandMenu('Battle UI was stuck — commands restored. If the battle still looks wrong, use Force Continue again or reload.');
+                    // Refresh the HUD so stale name / HP / sprite values don't linger from before the soft-lock.
+                    try { if (typeof updateUI === 'function') updateUI(); } catch (e) {}
                     return true;
                 }
             } catch (e) { console.warn('[recoverBattleSoftLock]', e); }
@@ -17331,10 +17457,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             window.__battleSoftLockRecoverHooksInstalled = true;
             document.addEventListener('visibilitychange', function() {
                 if (document.visibilityState !== 'visible') return;
+                if (typeof __battleHasActiveScreen === 'function' && !__battleHasActiveScreen()) return;
                 try { if (typeof window.__recoverBattleSoftLock === 'function') window.__recoverBattleSoftLock(); } catch (e) {}
             });
             window.addEventListener('pageshow', function(ev) {
                 if (!ev.persisted) return;
+                if (typeof __battleHasActiveScreen === 'function' && !__battleHasActiveScreen()) return;
                 try { if (typeof window.__recoverBattleSoftLock === 'function') window.__recoverBattleSoftLock(); } catch (e) {}
             });
             // Passive watchdog: rescue dead-locked battles where the resolver promise was lost
@@ -17514,6 +17642,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let attacker = isPlayer ? state.pActive : state.fActive;
             let defender = isPlayer ? state.fActive : state.pActive;
             if (attacker.currentHp <= 0) return;
+            // Per-turn safety net for the item-effect / ability-effect drift that bit story-mode
+            // mons after Dojo / catch / evolve flows: keep the attacker's item + ability locked
+            // to the saved build whenever no in-battle effect has mutated them. Without this an
+            // already-built state.pActive (carrying a stale ability snapshot) silently bypassed
+            // Sheer Force, Life Orb, and friends even though the team panel showed the updated
+            // values. The flag and consumed/knocked-off guards keep legitimate battle changes
+            // intact. Same call also runs at startBattle (lead) and applySwitchInAbilities.
+            try { _resyncMonFromBuildData(attacker); } catch (e) {}
             attacker.volatile.movedThisTurn = true;
             // Metronome (item): consecutive same-move counter
             if (move && move.name && move.cat !== "Status") {
@@ -20300,6 +20436,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (!_abilityLockSet.has(attacker.ability) && attacker.ability !== defender.ability && !hasAbilityShield(attacker)) {
                             const _oldAb = attacker.ability;
                             attacker.ability = defender.ability;
+                            attacker._abilityMutatedInBattle = true;
                             logMsg(`${attacker.name}'s ${_oldAb} became ${defender.ability}!`, 'info');
                         }
                     }
@@ -20311,6 +20448,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             const _atkOld = attacker.ability;
                             attacker.ability = "Wandering Spirit";
                             defender.ability = _atkOld;
+                            attacker._abilityMutatedInBattle = true;
+                            defender._abilityMutatedInBattle = true;
                             logMsg(`${attacker.name} and ${defender.name} swapped abilities via Wandering Spirit!`, 'info');
                         }
                     }
@@ -21250,11 +21389,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        // Re-sync the in-battle mon's `item` and `ability` from the source-of-truth build
+        // (`mon.buildData`, which is the same object reference as `sm.team[i].build` for story
+        // mode mons). Without this, an in-battle mon that was constructed via `buildPokemon`
+        // and then had its build mutated through the Battle Dojo / evolution / catch flow could
+        // enter battle showing the new item/ability in the summary modal (which is built fresh
+        // from the live build) while the engine's damage path still read the stale snapshot
+        // `mon.ability`/`mon.item` captured at construction — Sheer Force then silently fails
+        // to fire on Sludge Bomb / Earth Power and Life Orb's recoil suppression is bypassed.
+        //
+        // Guards:
+        //   - Item: skipped if the holder consumed an item this battle (Gem, Berry, Power Herb,
+        //     Normal Gem, …) or had it knocked off / stolen. `mon.itemConsumed` and
+        //     `mon.knockedOff` already track those.
+        //   - Ability: skipped if a battle effect (Trace, Wandering Spirit, Mummy / Lingering
+        //     Aroma, Mega Evolution's locked ability, Tera form change, Skill Swap, Role Play,
+        //     Worry Seed, Simple Beam, Doodle, Transform) overwrote it — tracked via
+        //     `mon._abilityMutatedInBattle`.
+        function _resyncMonFromBuildData(mon) {
+            if (!mon || !mon.buildData) return;
+            const bd = mon.buildData;
+            if (bd.a && mon.ability !== bd.a && !mon._abilityMutatedInBattle && !mon.megaEvolved) {
+                mon.ability = bd.a;
+            }
+            if (bd.i && bd.i !== 'None' && bd.i !== '(none)' && bd.i !== '' && mon.item !== bd.i
+                && !mon.itemConsumed && !mon.knockedOff) {
+                mon.item = bd.i;
+            }
+        }
+        try { window._resyncMonFromBuildData = _resyncMonFromBuildData; } catch (e) {}
+
         function applySwitchInAbilities(mon, foe, _storySwitchDepth = 0) {
             // Switch-in proceeds even when the opposing slot is empty/fainted (e.g. simultaneous KO
             // from Explosion): weather setters, terrain setters, and self-boost abilities still need
             // to fire. Foe-targeted abilities (Intimidate, Download, Frisk, …) guard themselves below.
             if (mon.currentHp <= 0) return;
+            // Defensive: ensure the in-battle mon's item / ability still match the saved build.
+            // Catches stale snapshots when the player edited their build (Dojo / catch / evolve)
+            // between the buildPokemon call and the actual switch-in.
+            _resyncMonFromBuildData(mon);
             const _foeAlive = !!(foe && foe.currentHp > 0);
             // Cure incompatible status upon ability acquisition / switch-in
             _abilityStatusCure(mon);
@@ -21374,7 +21547,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     for (const k of Object.keys(_deltas)) { if (mon.stats[k] != null) mon.stats[k] += _deltas[k]; }
                     if (mon.maxHp != null) { mon.maxHp += _deltas.hp; mon.currentHp += _deltas.hp; mon.baseMaxHp = mon.maxHp; }
                 } catch (e) {}
-                mon.ability = "Tera Shell";
+                mon.ability = "Tera Shell"; mon._abilityMutatedInBattle = true;
                 logMsg(`${mon.name}'s Tera Shift transformed it into its Terastal form!`, 'info');
             }
             // Unnerve: Prevent opponent berry usage (simplified — handled at berry activation checks)
@@ -21451,7 +21624,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     mon.stats = { ...foe.stats };
                     mon.type1 = foe.type1; mon.type2 = foe.type2;
                     mon.stages = { ...foe.stages };
-                    if (foe.ability && !noImposterAbilities.has(foe.ability)) mon.ability = foe.ability;
+                    if (foe.ability && !noImposterAbilities.has(foe.ability)) { mon.ability = foe.ability; mon._abilityMutatedInBattle = true; }
                     mon.moves = foe.moves.filter(Boolean).map(m => ({...m, pp: Math.min(5, m.pp || 5), maxPp: Math.min(5, m.maxPp || 5)}));
                     mon.transformedInto = foe.name;
                     mon.transformTargetShiny = !!foe.isShiny;
@@ -21482,7 +21655,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (mon.ability === "Trace" && _foeAlive && foe.ability && foe.ability !== "Trace" && !hasAbilityShield(mon) && !hasAbilityShield(foe)) {
                 logMsg(`${mon.name} traced ${foe.name}'s ${foe.ability}!`, 'info');
-                mon.ability = foe.ability;
+                mon.ability = foe.ability; mon._abilityMutatedInBattle = true;
                 try { applySwitchInAbilities(mon, foe, _storySwitchDepth + 1); }
                 catch (e) { console.warn('[Trace] re-check applySwitchInAbilities threw — keeping new ability without re-trigger:', e); }
             }
@@ -22074,7 +22247,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 attacker.stats = { ...target.stats };
                 attacker.type1 = target.type1; attacker.type2 = target.type2;
                 attacker.stages = { ...target.stages };
-                if (!noTransformAbilities.has(target.ability)) attacker.ability = target.ability;
+                if (!noTransformAbilities.has(target.ability)) { attacker.ability = target.ability; attacker._abilityMutatedInBattle = true; }
                 attacker.moves = target.moves.map(m => ({...m, pp: Math.min(5, m.pp || 5), maxPp: Math.min(5, m.maxPp || 5)}));
                 attacker.transformedInto = target.name;
                 attacker.transformTargetShiny = !!target.isShiny;
@@ -22505,6 +22678,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_noSwap.has(attacker.ability) || _noSwap.has(defender.ability)) { logMsg(`But it failed!`, 'info'); return; }
                 if (hasAbilityShield(attacker) || hasAbilityShield(defender)) { logMsg(`But it failed!`, 'info'); return; }
                 let _tmpAb = attacker.ability; attacker.ability = defender.ability; defender.ability = _tmpAb;
+                attacker._abilityMutatedInBattle = true; defender._abilityMutatedInBattle = true;
                 try { _abilityStatusCure(attacker); _abilityStatusCure(defender); } catch(e) {}
                 logMsg(`${attacker.name} and ${defender.name} swapped their abilities!`, 'info'); return;
             }
@@ -22513,7 +22687,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _noRolePlay = new Set(["Wonder Guard","Illusion","Stance Change","Schooling","Comatose","Shields Down","Disguise","RKS System","Battle Bond","Neutralizing Gas","Ice Face","Hunger Switch","Power Construct","Multitype","Zen Mode"]);
                 if (_noRolePlay.has(defender.ability)) { logMsg(`But it failed!`, 'info'); return; }
                 if (hasAbilityShield(attacker) || hasAbilityShield(defender)) { logMsg(`But it failed!`, 'info'); return; }
-                attacker.ability = defender.ability;
+                attacker.ability = defender.ability; attacker._abilityMutatedInBattle = true;
                 try { _abilityStatusCure(attacker); } catch(e) {}
                 logMsg(`${attacker.name} copied ${defender.name}'s ${defender.ability}!`, 'info'); return;
             }
@@ -22522,7 +22696,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _noSimple = new Set(["Truant","Multitype","Stance Change","Schooling","Comatose","Shields Down","Disguise","RKS System","Battle Bond","Power Construct","Zen Mode","Neutralizing Gas","Ice Face","Hunger Switch"]);
                 if (_noSimple.has(defender.ability)) { logMsg(`But it failed!`, 'info'); return; }
                 if (hasAbilityShield(defender)) { logMsg(`But it failed!`, 'info'); return; }
-                defender.ability = "Simple";
+                defender.ability = "Simple"; defender._abilityMutatedInBattle = true;
                 logMsg(`${defender.name}'s ability became Simple!`, 'info'); return;
             }
             // Worry Seed: defender's ability becomes Insomnia
@@ -22530,7 +22704,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _noWorry = new Set(["Truant","Multitype","Stance Change","Schooling","Comatose","Shields Down","Disguise","RKS System","Battle Bond","Power Construct"]);
                 if (_noWorry.has(defender.ability)) { logMsg(`But it failed!`, 'info'); return; }
                 if (hasAbilityShield(defender)) { logMsg(`But it failed!`, 'info'); return; }
-                defender.ability = "Insomnia";
+                defender.ability = "Insomnia"; defender._abilityMutatedInBattle = true;
                 if (defender.status === "SLP") { defender.status = null; defender.statusTurns = 0; logMsg(`${defender.name} woke up due to Worry Seed!`, 'info'); }
                 logMsg(`${defender.name}'s ability became Insomnia!`, 'info'); return;
             }
@@ -22953,7 +23127,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _noEntrain = new Set(["Multitype","Stance Change","Schooling","Comatose","Shields Down","Disguise","RKS System","Battle Bond","Neutralizing Gas","Power Construct","Zen Mode","Ice Face","Hunger Switch","Truant"]);
                 if (_noEntrain.has(attacker.ability) || _noEntrain.has(defender.ability)) { logMsg(`But it failed!`, 'info'); return; }
                 if (hasAbilityShield(defender)) { logMsg(`But it failed!`, 'info'); return; }
-                defender.ability = attacker.ability;
+                defender.ability = attacker.ability; defender._abilityMutatedInBattle = true;
                 logMsg(`${defender.name} acquired ${attacker.ability} via Entrainment!`, 'info'); return;
             }
 
@@ -25742,25 +25916,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // Shop item definitions — Pokémart
+        // Heal gradient (post-overhaul, X-item rebalance pass):
+        //   Potion 200 → Super 500 → Hyper 1000 → Max 1500 → Full Restore 2000.
+        //   PP: Ether 400 → Elixir 1000 → Max Elixir 1500.
+        // X items raised to 1000G so they sit at parity with Hyper Potion —
+        // the player choice "+2 stat for the fight" vs "heal 120 HP" has the
+        // same gold cost, fixing the X-cheese economy where benching a mon
+        // to set up +6 was strictly cheaper than healing through damage.
         const POKEMART_ITEMS = [
           { id:'pokeBall',      name:'Poké Ball',     price:300,  desc:'A standard ball for catching wild Pokémon.', kind:'ball', ballKey:'poke', battleBag:false },
-          { id:'maxPotion',     name:'Max Potion',    price:1000, desc:'Fully restores HP of one Pokémon.',   effect:'healFull' },
-          { id:'fullRestore',   name:'Full Restore',  price:1500, desc:'Fully restores HP & cures status.',   effect:'fullRestore' },
+          { id:'potion',        name:'Potion',        price:200,  desc:'Restores 20 HP.',                     effect:'heal20' },
+          { id:'superPotion',   name:'Super Potion',  price:500,  desc:'Restores 60 HP.',                     effect:'heal60' },
+          { id:'hyperPotion',   name:'Hyper Potion',  price:1000, desc:'Restores 120 HP.',                    effect:'heal120' },
+          { id:'maxPotion',     name:'Max Potion',    price:1500, desc:'Fully restores HP of one Pokémon.',   effect:'healFull' },
+          { id:'fullRestore',   name:'Full Restore',  price:2000, desc:'Fully restores HP & cures status.',   effect:'fullRestore' },
           { id:'fullHeal',      name:'Full Heal',     price:300,  desc:'Cures all status conditions.',        effect:'cureStatus' },
-          { id:'maxElixir',     name:'Max Elixir',    price:500,  desc:'Fully restores PP of all moves.',     effect:'elixirFull' },
-          { id:'xAttack',       name:'X Attack',      price:800,  desc:'+2 Attack stages for this battle.',         effect:'xAtk' },
-          { id:'xDefense',      name:'X Defense',     price:800,  desc:'+2 Defense stages for this battle.',        effect:'xDef' },
-          { id:'xSpAtk',        name:'X Sp. Atk',     price:800,  desc:'+2 Sp. Attack stages for this battle.',     effect:'xSpA' },
-          { id:'xSpDef',        name:'X Sp. Def',     price:800,  desc:'+2 Sp. Defense stages for this battle.',    effect:'xSpD' },
-          { id:'xSpeed',        name:'X Speed',       price:800,  desc:'+2 Speed stages for this battle.',          effect:'xSpe' },
-          { id:'xAccuracy',     name:'X Accuracy',    price:800,  desc:'+2 Accuracy stages for this battle.',       effect:'xAcc' },
-          { id:'direHit',       name:'Dire Hit',      price:300,  desc:'Raises critical hit ratio.',          effect:'direHit' },
-          { id:'guardSpec',     name:'Guard Spec.',   price:350,  desc:'Prevents stat drops for 5 turns.',   effect:'guardSpec' },
+          { id:'ether',         name:'Ether',         price:400,  desc:'Restores 10 PP of one move.',         effect:'etherSingle' },
+          { id:'elixir',        name:'Elixir',        price:1000, desc:'Restores 10 PP of every move.',       effect:'elixirAll' },
+          { id:'maxElixir',     name:'Max Elixir',    price:1500, desc:'Fully restores PP of all moves.',     effect:'elixirFull' },
+          { id:'xAttack',       name:'X Attack',      price:1000, desc:'+2 Attack stages for this battle.',         effect:'xAtk' },
+          { id:'xDefense',      name:'X Defense',     price:1000, desc:'+2 Defense stages for this battle.',        effect:'xDef' },
+          { id:'xSpAtk',        name:'X Sp. Atk',     price:1000, desc:'+2 Sp. Attack stages for this battle.',     effect:'xSpA' },
+          { id:'xSpDef',        name:'X Sp. Def',     price:1000, desc:'+2 Sp. Defense stages for this battle.',    effect:'xSpD' },
+          { id:'xSpeed',        name:'X Speed',       price:1000, desc:'+2 Speed stages for this battle.',          effect:'xSpe' },
+          { id:'xAccuracy',     name:'X Accuracy',    price:1000, desc:'+2 Accuracy stages for this battle.',       effect:'xAcc' },
+          { id:'direHit',       name:'Dire Hit',      price:400,  desc:'Raises critical hit ratio.',          effect:'direHit' },
+          { id:'guardSpec',     name:'Guard Spec.',   price:450,  desc:'Prevents stat drops for 5 turns.',   effect:'guardSpec' },
         ];
         const DEPT_ITEMS = [
           { id:'greatBall',     name:'Great Ball',    price:1000, desc:'A better ball. 1.5× catch rate vs Poké Ball.', kind:'ball', ballKey:'great', battleBag:false },
-          { id:'revive',        name:'Revive',        price:3000, desc:'Revives a fainted Pokémon to 50% HP.', effect:'revive50' },
-          { id:'maxRevive',     name:'Max Revive',    price:4500, desc:'Revives a fainted Pokémon to full HP.', effect:'reviveFull' },
+          { id:'revivalHerb',   name:'Revival Herb',  price:1200, desc:'Bitter remedy: revives a fainted Pokémon to 30% HP.', effect:'revive30' },
+          { id:'revive',        name:'Revive',        price:2500, desc:'Revives a fainted Pokémon to 50% HP.', effect:'revive50' },
+          { id:'maxRevive',     name:'Max Revive',    price:4000, desc:'Revives a fainted Pokémon to full HP.', effect:'reviveFull' },
           { id:'sunOrb',        name:'Sun Orb',       price:1000, desc:'Starts Harsh Sunlight for 5 turns on battle entry.', effect:'weatherSun' },
           { id:'rainOrb',       name:'Rain Orb',      price:1000, desc:'Starts Rain for 5 turns on battle entry.', effect:'weatherRain' },
           { id:'hailOrb',       name:'Hail Orb',      price:1000, desc:'Starts Hail for 5 turns on battle entry.', effect:'weatherHail' },
@@ -25774,6 +25961,56 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const STORY_BATTLE_BAG_SHOP_IDS = new Set(
             [...POKEMART_ITEMS, ...DEPT_ITEMS].filter(row => row.battleBag !== false).map(row => row.id)
         );
+
+        // ── PERMANENT STAT BOOST ITEMS (vitamins) ────────────────────────
+        // Drop-only — earned from gym leaders, milestones, and boss arcs.
+        // NEVER sold (battleBag:false). Each application gives a stat-buff
+        // mon-side via mon.build.permBoosts[stat] (additive after EV-derived
+        // stat in buildPokemon). Cap PERM_BOOST_CAP per stat per mon to keep
+        // investment scarce — drops are tuned so a careful player can fully
+        // boost ~2 favorites + lightly invest 2-3 more across a full run.
+        // Distinct from Vitamin Pack voucher (EV Trainer preset waiver) —
+        // EVs and perm boosts are two separate progression layers.
+        const PERM_BOOST_CAP = 10;
+        const PERM_BOOST_ITEMS = [
+          { id:'hpUp',     name:'HP Up',   stat:'hp',  desc:'Permanently raises a Pokémon\'s HP by 1 (max +'+10+' per mon).' },
+          { id:'protein',  name:'Protein', stat:'atk', desc:'Permanently raises a Pokémon\'s Attack by 1 (max +'+10+' per mon).' },
+          { id:'iron',     name:'Iron',    stat:'def', desc:'Permanently raises a Pokémon\'s Defense by 1 (max +'+10+' per mon).' },
+          { id:'calcium',  name:'Calcium', stat:'spa', desc:'Permanently raises a Pokémon\'s Sp. Atk by 1 (max +'+10+' per mon).' },
+          { id:'zinc',     name:'Zinc',    stat:'spd', desc:'Permanently raises a Pokémon\'s Sp. Def by 1 (max +'+10+' per mon).' },
+          { id:'carbos',   name:'Carbos',  stat:'spe', desc:'Permanently raises a Pokémon\'s Speed by 1 (max +'+10+' per mon).' },
+        ];
+        const PERM_BOOST_IDS = new Set(PERM_BOOST_ITEMS.map(v => v.id));
+        const PERM_BOOST_STAT_LABEL = { hp:'HP', atk:'Atk', def:'Def', spa:'Sp.Atk', spd:'Sp.Def', spe:'Spe' };
+        function _permBoostsRead(mon) {
+            if (!mon || !mon.build) return { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
+            const pb = mon.build.permBoosts || {};
+            return {
+                hp: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.hp||0))),
+                atk: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.atk||0))),
+                def: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.def||0))),
+                spa: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.spa||0))),
+                spd: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.spd||0))),
+                spe: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.spe||0))),
+            };
+        }
+        function _permBoostTotal(mon) {
+            const pb = _permBoostsRead(mon);
+            return pb.hp + pb.atk + pb.def + pb.spa + pb.spd + pb.spe;
+        }
+        // For use by buildPokemon — exposed via window for cross-IIFE access.
+        window._permBoostsRead = function(buildObj) {
+            if (!buildObj || !buildObj.permBoosts) return { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
+            const pb = buildObj.permBoosts;
+            return {
+                hp: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.hp||0))),
+                atk: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.atk||0))),
+                def: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.def||0))),
+                spa: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.spa||0))),
+                spd: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.spd||0))),
+                spe: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.spe||0))),
+            };
+        };
         function isNoItemRunBattleBagExcluded(item) {
             if (!sm || !sm.settings || !sm.settings.noItemRun || !item) return false;
             if (item.battleBag === false) return false;
@@ -26474,11 +26711,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         })();
         // Official item artwork filenames (PokeAPI / Gen3-style sprites in sprites/items/*.png)
         const STORY_SHOP_ITEM_SPRITE_SLUG = {
+            potion:'max-potion', superPotion:'max-potion', hyperPotion:'max-potion',
             maxPotion:'max-potion', fullRestore:'full-restore', fullHeal:'full-heal',
-            maxElixir:'max-ether',
+            ether:'ether', elixir:'elixir', maxElixir:'max-ether',
             xAttack:'x-attack', xDefense:'x-defense', xSpAtk:'x-sp-atk', xSpDef:'x-sp-def',
             xSpeed:'x-speed', xAccuracy:'x-accuracy', direHit:'dire-hit', guardSpec:'guard-spec',
-            revive:'revive', maxRevive:'max-revive', revivalHerb:'revival-herb',
+            revivalHerb:'revival-herb', revive:'revive', maxRevive:'max-revive',
+            // Permanent stat-boost vitamins — each maps to a thematically appropriate sprite.
+            hpUp:'big-root', protein:'muscle-band', iron:'iron-ball',
+            calcium:'wise-glasses', zinc:'mental-herb', carbos:'quick-claw',
             sunOrb:'heat-rock', rainOrb:'damp-rock', hailOrb:'icy-rock', sandOrb:'smooth-rock',
             electricOrb:'electric-seed', grassyOrb:'grassy-seed', psychicOrb:'psychic-seed', mistyOrb:'misty-seed',
             emergencyTeleporter:'escape-rope',
@@ -27131,11 +27372,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window.applyStoryLeagueFoeStatBoost = function(mon) {
             if (!mon || !sm.active) return;
             // Battle Frontier override — scales every round; ignores the timeline.
+            // Post-overhaul: accelerated ramp. HP starts at +50% (round 1)
+            // and caps at +300% (round 21+); bulk/speed start at +25% and cap
+            // at +100% (round 18+). The sharper curve means a fresh Frontier
+            // run feels noticeably harder than the post-HoF Mystery climax by
+            // round 3-4, and round 10+ demands a fully-tuned team to survive.
+            // Crucible Hard Mode multiplier is applied separately by
+            // crucibleApplyHardModeToFoes after this boost so it stacks on
+            // ALL Crucible fights (gym rematches included), not just the
+            // league/boss subset this function handles.
             if (sm.frontier && sm.frontier.active) {
                 const round = (sm.frontier.currentRound | 0) || 1;
-                const hpM   = Math.min(2.50, 1.35 + (round - 1) * 0.05);
-                const bulkM = Math.min(1.80, 1.20 + (round - 1) * 0.03);
-                const speM  = Math.min(1.80, 1.20 + (round - 1) * 0.03);
+                const hpM   = Math.min(3.00, 1.50 + (round - 1) * 0.075);
+                const bulkM = Math.min(2.00, 1.25 + (round - 1) * 0.045);
+                const speM  = Math.min(2.00, 1.25 + (round - 1) * 0.045);
                 const newMaxHp = Math.max(1, Math.floor(mon.maxHp * hpM));
                 mon.maxHp = newMaxHp;
                 mon.currentHp = newMaxHp;
@@ -27155,21 +27405,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let hpM = 1;
             let bulkM = 1;
             let speM = 1;
+            // Boss-tier stat boosts (applied BEFORE difficulty scaling, so
+            // hard/challenge mode stacks on top multiplicatively). Tuned post-
+            // overhaul to make Champion / Mystery a real wall — the player
+            // has perm-boost vitamins to invest and Cable Link Upgrade for a
+            // last polish, so the curve needs to bite harder to stay tense.
             if (/^E[1-4]$/.test(eventName)) {
-                hpM = 1.20;
-                bulkM = 1.15;
-                speM = 1.10;
+                hpM = 1.22;
+                bulkM = 1.17;
+                speM = 1.12;
             } else if (eventName === 'Champion' || (eventName === 'Rival' && rowIdx === STORY_LEAGUE_RIVAL_ROW)) {
-                hpM = 1.30;
-                bulkM = 1.15;
-                speM = 1.15;
+                hpM = 1.40;
+                bulkM = 1.22;
+                speM = 1.18;
             } else if (eventName === 'Mystery Figure' && rowIdx === STORY_POST_HOF_MYSTERY_ROW) {
-                hpM = 1.35;
-                bulkM = 1.20;
-                speM = 1.20;
+                hpM = 1.50;
+                bulkM = 1.28;
+                speM = 1.25;
             } else {
                 return;
             }
+            // Per-event boss boost. Crucible Hard Mode multiplier is applied
+            // separately by crucibleApplyHardModeToFoes so every Crucible-
+            // sourced fight (including gym rematches that fall outside this
+            // function's filter) gets the +30%.
             const newMaxHp = Math.max(1, Math.floor(mon.maxHp * hpM));
             mon.maxHp = newMaxHp;
             mon.currentHp = newMaxHp;
@@ -27680,7 +27939,39 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return 1.00;
         }
         function _perMonMechChance(eventType) {
+            // Battle Frontier per-round mechanic frequency. Rounds 1–2 ~25%
+            // (gentle entry), 3–4 ~45%, 5–6 ~70%, 7–8 ~90%, 9+ ~100%
+            // (every eligible mon gets a gimmick). Hard Mode bumps each
+            // band by +15% absolute (capped at 1.0).
+            if (sm && sm.frontier && sm.frontier.active) {
+                const round = (sm.frontier.currentRound | 0) || 1;
+                let base;
+                if (round <= 2)      base = 0.25;
+                else if (round <= 4) base = 0.45;
+                else if (round <= 6) base = 0.70;
+                else if (round <= 8) base = 0.90;
+                else                 base = 1.00;
+                if (sm.crucibleHardMode) base = Math.min(1.0, base + 0.15);
+                return base;
+            }
+            // Crucible Hard Mode bumps non-Frontier rematches by +20% absolute
+            // — a rematch Mystery Figure or League Run feels noticeably more
+            // gimmick-dense than the canonical version.
             const e = String(eventType || '');
+            if (sm && sm.crucibleHardMode && sm.crucibleBattleSource) {
+                if (e === 'Mystery Figure') return 1.0;
+                if (e === 'Champion') return Math.min(1.0, 0.85 + 0.20);
+                if (e === 'Rival') return Math.min(1.0, ((sm.badges|0) >= 8 ? 0.85 : 0.55) + 0.20);
+                if (e === 'E4') return Math.min(1.0, 0.75 + 0.20);
+                if (e === 'E3') return Math.min(1.0, 0.65 + 0.20);
+                if (e === 'E2') return Math.min(1.0, 0.55 + 0.20);
+                if (e === 'E1') return Math.min(1.0, 0.45 + 0.20);
+                const glHard = e.match(/^Gym Leader\s*(\d)$/);
+                if (glHard) {
+                    const tiers = {1:0.10, 2:0.15, 3:0.20, 4:0.25, 5:0.30, 6:0.35, 7:0.40, 8:0.45};
+                    return Math.min(1.0, (tiers[+glHard[1]] || 0.20) + 0.20);
+                }
+            }
             if (e === 'Mystery Figure') return 1.0;
             const tier = _trainerTierForEvent(e);
             const prog = _storyProgressFactor(sm && sm.badges);
@@ -29270,10 +29561,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 active:true, eventIndex:0, badges:0, gold:2000 + _startingGoldBonus, team:[],
                 inventory: {
                     potion:0,superPotion:0,hyperPotion:0,maxPotion:0,fullRestore:0,fullHeal:0,
-                    antidote:0,burnHeal:0,maxElixir:0,
+                    antidote:0,burnHeal:0,
+                    ether:0,elixir:0,maxElixir:0,
                     xAttack:0,xDefense:0,xSpAtk:0,xSpDef:0,xSpeed:0,xAccuracy:0,
-                    direHit:0,guardSpec:0,revive:0,maxRevive:0,
+                    direHit:0,guardSpec:0,revivalHerb:0,revive:0,maxRevive:0,
                     sunOrb:0,rainOrb:0,hailOrb:0,sandOrb:0,electricOrb:0,grassyOrb:0,psychicOrb:0,mistyOrb:0,emergencyTeleporter:0,
+                    // Perm stat-boost vitamins (earned-only)
+                    hpUp:0,protein:0,iron:0,calcium:0,zinc:0,carbos:0,
                 },
                 artifacts:[], activeArtifactType:null, trainerAssignments:{}, currentTrainerData:null,
                 profUsed:{}, usedTrainerNames:[], gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{},
@@ -29739,10 +30033,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.inventory) {
                 sm.inventory = {
                     potion:0,superPotion:0,hyperPotion:0,maxPotion:0,fullRestore:0,fullHeal:0,
-                    antidote:0,burnHeal:0,maxElixir:0,
+                    antidote:0,burnHeal:0,
+                    ether:0,elixir:0,maxElixir:0,
                     xAttack:0,xDefense:0,xSpAtk:0,xSpDef:0,xSpeed:0,xAccuracy:0,
-                    direHit:0,guardSpec:0,revive:0,maxRevive:0,
+                    direHit:0,guardSpec:0,revivalHerb:0,revive:0,maxRevive:0,
                     sunOrb:0,rainOrb:0,hailOrb:0,sandOrb:0,electricOrb:0,grassyOrb:0,psychicOrb:0,mistyOrb:0,emergencyTeleporter:0,
+                    hpUp:0,protein:0,iron:0,calcium:0,zinc:0,carbos:0,
                 };
             }
             if (!sm.settings) sm.settings = { megaOn: true, zOn: true, dynaOn: true, teraOn: true, classicMode: true, noItemRun: false };
@@ -29850,10 +30146,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.storyDifficulty = sm.storyDifficulty || 'normal';
             sm.inventory = {
                 potion: 10, superPotion: 10, hyperPotion: 10, maxPotion: 5, fullRestore: 5, fullHeal: 5,
-                antidote: 5, burnHeal: 5, maxElixir: 3,
+                antidote: 5, burnHeal: 5,
+                ether: 5, elixir: 3, maxElixir: 3,
                 xAttack: 3, xDefense: 3, xSpAtk: 3, xSpDef: 3, xSpeed: 3, xAccuracy: 2,
-                direHit: 2, guardSpec: 2, revive: 3, maxRevive: 1,
+                direHit: 2, guardSpec: 2, revivalHerb: 3, revive: 3, maxRevive: 1,
                 sunOrb: 0, rainOrb: 0, hailOrb: 0, sandOrb: 0, electricOrb: 0, grassyOrb: 0, psychicOrb: 0, mistyOrb: 0, emergencyTeleporter: 0,
+                hpUp: 8, protein: 8, iron: 8, calcium: 8, zinc: 8, carbos: 8,
             };
             if (!sm.settings) sm.settings = { megaOn: true, zOn: true, dynaOn: true, teraOn: true, classicMode: true, noItemRun: false };
             if (!sm.settings.enabledGens || !sm.settings.enabledGens.length) {
@@ -31377,38 +31675,46 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── VICTORY REWARDS, POKÉDEX MILESTONES, ROAMING LEGENDARIES ─────
-        // Themed gifts dropped on first victory for each Gym Leader + select Elite/Champion.
-        // Each voucher (Rare Candy / Vitamin / Heart Scale / Mint / Ability Capsule /
-        // Emblem of Honor) = one free tutor or facility action at its matching shop.
-        // They surface in the existing tutor screens as a pink alt button whenever
-        // the matching inventory counter is > 0.
+        // Themed gifts dropped on first victory for each Gym Leader + select
+        // Elite/Champion. Mix of currency (balls, gold), tutor vouchers (Rare
+        // Candy / Vitamin Pack / Heart Scale / Mint / Ability Capsule / Emblem
+        // of Honor — each = one free use of its matching tutor facility), and
+        // perm-boost vitamins (HP Up / Protein / Iron / Calcium / Zinc /
+        // Carbos — each gives +1 to that stat, capped at +10 per stat per
+        // mon). The perm-boost drop schedule is tuned so a full run yields
+        // ~30-40 vitamins — enough to fully boost ~1 favorite mon or
+        // partially invest across 3-4 mons. Distribution skews to "matching
+        // stat" per leader specialty: physical-leaning gyms drop Protein /
+        // Iron / Carbos, special-leaning gyms drop Calcium / Zinc, etc. The
+        // voucher pool layers on top of that and surfaces in tutor screens
+        // as a pink alt button whenever the matching counter is > 0.
         const GYM_VICTORY_REWARDS = {
-            'Gym Leader 1': { pokeBall:3, vitamin:1, heartScale:1, gold:500,
-                msg:'"You earned this." +3 Poké Balls, +1 Vitamin Pack, +1 Heart Scale, and a 500G purse from the gym council.' },
-            'Gym Leader 2': { rareCandy:1, vitamin:1, mint:1, gold:1000,
-                msg:'A glittering Rare Candy, a Vitamin Pack, and a fresh Mint. "Save them for when one of yours is ready." +1 Rare Candy, +1 Vitamin Pack, +1 Mint, +1,000G.' },
-            'Gym Leader 3': { greatBall:2, vitamin:1, heartScale:1, emblemHonor:1,
-                msg:'+2 Great Balls, +1 Vitamin Pack, +1 Heart Scale, and an Emblem of Honor from the gym\'s dojo wing.' },
-            'Gym Leader 4': { ultraBall:1, rareCandy:1, vitamin:1, abilityCapsule:1,
-                msg:'The Gym Leader nods. "Take these — they go far together." +1 Ultra Ball, +1 Rare Candy, +1 Vitamin Pack, +1 Ability Capsule.' },
-            'Gym Leader 5': { greatBall:2, vitamin:1, heartScale:1, gold:1000,
-                msg:'+2 Great Balls, +1 Vitamin Pack, +1 Heart Scale, and a 1,000G honorarium from the gym apothecary.' },
-            'Gym Leader 6': { ultraBall:2, rareCandy:1, vitamin:1, mint:1, emblemHonor:1, gold:1500,
-                msg:'+2 Ultra Balls, +1 Rare Candy, +1 Vitamin Pack, +1 Mint, +1 Emblem of Honor, and a 1,500G stipend.' },
-            'Gym Leader 7': { ultraBall:1, rareCandy:1, vitamin:1, abilityCapsule:1,
-                msg:'A Rare Candy, a Vitamin Pack, and an Ability Capsule. The Leader winks: "You\'ll need all three." +1 Ultra Ball, +1 Rare Candy, +1 Vitamin, +1 Ability Capsule.' },
-            'Gym Leader 8': { ultraBall:3, vitamin:2, heartScale:1, mint:1,
-                msg:'The eighth badge — three Ultra Balls, two Vitamin Packs, a Heart Scale, and a Mint from the League.' },
-            'E1': { greatBall:2, vitamin:1, heartScale:1,
-                msg:'The first Elite tips a hat. +2 Great Balls, +1 Vitamin Pack, +1 Heart Scale.' },
-            'E2': { ultraBall:1, rareCandy:1, emblemHonor:1,
-                msg:'An attendant emerges from the chamber. "Top League issue." +1 Ultra Ball, +1 Rare Candy, +1 Emblem of Honor.' },
-            'E3': { ultraBall:1, vitamin:1, mint:1,
-                msg:'The third Elite salutes the climb. +1 Ultra Ball, +1 Vitamin Pack, +1 Mint.' },
-            'E4': { ultraBall:2, rareCandy:1, abilityCapsule:1, emblemHonor:1,
-                msg:'The fourth Elite bows. +2 Ultra Balls, +1 Rare Candy, +1 Ability Capsule, +1 Emblem of Honor.' },
-            'Champion': { ultraBall:2, rareCandy:1, vitamin:2, heartScale:1, mint:1, abilityCapsule:1, emblemHonor:1,
-                msg:'The Champion bows. "These are yours by right." +2 Ultra Balls, +1 Rare Candy, +2 Vitamin Packs, +1 Heart Scale, +1 Mint, +1 Ability Capsule, +1 Emblem of Honor.' }
+            'Gym Leader 1': { pokeBall:3, vitamin:1, heartScale:1, hpUp:1, protein:1, gold:500,
+                msg:'"You earned this." +3 Poké Balls, +1 Vitamin Pack, +1 Heart Scale, +1 HP Up, +1 Protein, and a 500G purse.' },
+            'Gym Leader 2': { rareCandy:1, vitamin:1, mint:1, iron:1, hpUp:1, gold:1000,
+                msg:'A glittering Rare Candy, a Vitamin Pack, and a fresh Mint. +1 Rare Candy, +1 Vitamin Pack, +1 Mint, +1 Iron, +1 HP Up, +1,000G.' },
+            'Gym Leader 3': { greatBall:2, vitamin:1, heartScale:1, emblemHonor:1, calcium:1, zinc:1,
+                msg:'+2 Great Balls, +1 Vitamin Pack, +1 Heart Scale, +1 Emblem of Honor, +1 Calcium, +1 Zinc — the gym apothecary keeps its researchers stocked.' },
+            'Gym Leader 4': { ultraBall:1, rareCandy:1, vitamin:1, abilityCapsule:1, carbos:2,
+                msg:'The Gym Leader nods. "Take these — they go far together." +1 Ultra Ball, +1 Rare Candy, +1 Vitamin Pack, +1 Ability Capsule, +2 Carbos.' },
+            'Gym Leader 5': { greatBall:2, vitamin:1, heartScale:1, protein:2, hpUp:1, gold:1000,
+                msg:'+2 Great Balls, +1 Vitamin Pack, +1 Heart Scale, +2 Protein, +1 HP Up, and a 1,000G honorarium.' },
+            'Gym Leader 6': { ultraBall:2, rareCandy:1, vitamin:1, mint:1, emblemHonor:1, calcium:2, zinc:1, gold:1500,
+                msg:'+2 Ultra Balls, +1 Rare Candy, +1 Vitamin Pack, +1 Mint, +1 Emblem of Honor, +2 Calcium, +1 Zinc, and a 1,500G stipend.' },
+            'Gym Leader 7': { ultraBall:1, rareCandy:1, vitamin:1, abilityCapsule:1, iron:2, carbos:1,
+                msg:'A Rare Candy, a Vitamin Pack, and an Ability Capsule. "You\'ll need all three." +1 Ultra Ball, +1 Rare Candy, +1 Vitamin Pack, +1 Ability Capsule, +2 Iron, +1 Carbos.' },
+            'Gym Leader 8': { ultraBall:3, vitamin:2, heartScale:1, mint:1, hpUp:2, protein:1, calcium:1, carbos:1,
+                msg:'The eighth badge — three Ultra Balls, two Vitamin Packs, a Heart Scale, a Mint, and a hand-picked vitamin bundle: +2 HP Up, +1 Protein, +1 Calcium, +1 Carbos.' },
+            'E1': { greatBall:2, vitamin:1, heartScale:1, protein:2, iron:1,
+                msg:'The first Elite tips a hat. +2 Great Balls, +1 Vitamin Pack, +1 Heart Scale, +2 Protein, +1 Iron.' },
+            'E2': { ultraBall:1, rareCandy:1, emblemHonor:1, calcium:2, zinc:1,
+                msg:'"Top League issue." +1 Ultra Ball, +1 Rare Candy, +1 Emblem of Honor, +2 Calcium, +1 Zinc.' },
+            'E3': { ultraBall:1, vitamin:1, mint:1, carbos:2, hpUp:1,
+                msg:'The third Elite salutes the climb. +1 Ultra Ball, +1 Vitamin Pack, +1 Mint, +2 Carbos, +1 HP Up.' },
+            'E4': { ultraBall:2, rareCandy:1, abilityCapsule:1, emblemHonor:1, hpUp:2, protein:1, iron:1, zinc:1,
+                msg:'The fourth Elite bows. +2 Ultra Balls, +1 Rare Candy, +1 Ability Capsule, +1 Emblem of Honor, +2 HP Up, +1 Protein, +1 Iron, +1 Zinc.' },
+            'Champion': { ultraBall:2, rareCandy:1, vitamin:2, heartScale:1, mint:1, abilityCapsule:1, emblemHonor:1, hpUp:2, protein:2, iron:2, calcium:2, zinc:2, carbos:2,
+                msg:'The Champion bows. "These are yours by right." +2 Ultra Balls, +1 Rare Candy, +2 Vitamin Packs, +1 Heart Scale, +1 Mint, +1 Ability Capsule, +1 Emblem of Honor — and one of each perm-boost vitamin (+2 each). The League stocks the strongest a final-leg trainer can carry.' }
         };
 
         // Foe party size = player party size (1:1 match), with story-finale
@@ -31485,9 +31791,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (r.greatBall)  sm.balls.great  = (sm.balls.great  | 0) + r.greatBall;
             if (r.ultraBall)  sm.balls.ultra  = (sm.balls.ultra  | 0) + r.ultraBall;
             if (r.masterBall) sm.balls.master = (sm.balls.master | 0) + r.masterBall;
+            // Tutor vouchers (Rare Candy / Vitamin Pack / Heart Scale / Mint /
+            // Ability Capsule / Emblem of Honor) — see VOUCHER_KEYS above.
             for (const k of VOUCHER_KEYS) {
                 if (r[k]) sm.inventory[k] = (sm.inventory[k] | 0) + r[k];
             }
+            // Perm-boost vitamin drops (each = +1 to that stat, applied via city bag).
+            // Distinct from the Vitamin Pack voucher (EV preset waiver) — both
+            // coexist in inventory under their own ids.
+            if (r.hpUp)       sm.inventory.hpUp     = (sm.inventory.hpUp     | 0) + r.hpUp;
+            if (r.protein)    sm.inventory.protein  = (sm.inventory.protein  | 0) + r.protein;
+            if (r.iron)       sm.inventory.iron     = (sm.inventory.iron     | 0) + r.iron;
+            if (r.calcium)    sm.inventory.calcium  = (sm.inventory.calcium  | 0) + r.calcium;
+            if (r.zinc)       sm.inventory.zinc     = (sm.inventory.zinc     | 0) + r.zinc;
+            if (r.carbos)     sm.inventory.carbos   = (sm.inventory.carbos   | 0) + r.carbos;
             if (r.gold)       sm.gold = (sm.gold | 0) + r.gold;
         }
         function _storyApplyVictoryReward(eventName) {
@@ -31502,14 +31819,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // trophy bundle instead of a 2nd Master Ball, keeping the Master Ball uniquely
         // tied to the Caged God arc.
         const POKEDEX_CAUGHT_MILESTONES = [
-            { n: 25,  reward: { ultraBall:1, gold:2000 },
-              msg:'25 species in the Pokédex. The lab calls it a quarter-region survey. +1 Ultra Ball, +2,000G.' },
-            { n: 50,  reward: { ultraBall:2, vitamin:1, heartScale:1 },
-              msg:'50 species. Half a region\'s biology in your notebook — the Professor leaves you a Vitamin Pack, a Heart Scale, and two Ultra Balls on the bench.' },
-            { n: 75,  reward: { rareCandy:2, emblemHonor:1, gold:5000 },
-              msg:'75 species. Your Pokédex outranks most field researchers in the region. +2 Rare Candies, +1 Emblem of Honor, +5,000G.' },
-            { n: 100, reward: { ultraBall:3, rareCandy:1, vitamin:1, mint:1, abilityCapsule:1 },
-              msg:'100 species. The dex is no longer a notebook — it\'s a record. +3 Ultra Balls, +1 Rare Candy, +1 Vitamin Pack, +1 Mint, +1 Ability Capsule.' }
+            { n: 25,  reward: { ultraBall:1, hpUp:1, carbos:1, gold:2000 },
+              msg:'25 species in the Pokédex — a quarter-region survey. +1 Ultra Ball, +1 HP Up, +1 Carbos, +2,000G.' },
+            { n: 50,  reward: { ultraBall:2, vitamin:1, heartScale:1, protein:1, calcium:1 },
+              msg:'50 species. Half a region\'s biology in your notebook — the Professor leaves a Vitamin Pack, a Heart Scale, two Ultra Balls, and a paired Protein/Calcium bundle on the bench.' },
+            { n: 75,  reward: { rareCandy:2, emblemHonor:1, iron:1, zinc:1, gold:5000 },
+              msg:'75 species. Your Pokédex outranks most field researchers in the region. +2 Rare Candies, +1 Emblem of Honor, +1 Iron, +1 Zinc, +5,000G.' },
+            { n: 100, reward: { ultraBall:3, rareCandy:1, vitamin:1, mint:1, abilityCapsule:1, hpUp:1, protein:1, iron:1, calcium:1, zinc:1, carbos:1 },
+              msg:'100 species. The dex is no longer a notebook — it\'s a record. +3 Ultra Balls, +1 Rare Candy, +1 Vitamin Pack, +1 Mint, +1 Ability Capsule, and one of every perm-boost vitamin (+1 each).' }
         ];
         function _storyCheckPokedexMilestones() {
             if (!sm.pokedex || !Array.isArray(sm.pokedex.caught)) return;
@@ -32255,7 +32572,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // The hub action opens a tabbed screen: PC Storage (deposit/withdraw/release)
         // and the Underground (sell mons for gold). Battles auto-restore HP/PP between
         // fights, so the Center does not heal — it manages your roster instead.
-        const PC_BOX_CAP = 10;
+        const PC_BOX_CAP = 30;
         // Underground sell prices were tuned to make catch-and-sell a losing
         // strategy: a Pokémon you train is worth more than its sale, so the
         // Underground is for roster management (clearing PC slots), not for
@@ -32624,8 +32941,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const btn = (icon, label, onClick, accent, tip) => `<button type="button" onclick="${onClick}"${tip ? ` title="${_esc(tip)}"` : ''} style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(20,28,40,0.6);border:1px solid ${accent || '#3a4a64'};color:#fff;font-family:inherit;font-size:11px;cursor:pointer;text-align:left;line-height:1.3;">
                 <span style="font-size:14px;flex-shrink:0;display:flex;align-items:center;">${icon}</span><span style="flex:1;min-width:0;">${label}</span>
             </button>`;
+            const hardOn = !!sm.crucibleHardMode;
             body.innerHTML = `
                 <h4 style="color:#ffab40;margin:0 0 8px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;">Battles</h4>
+                <label style="display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:8px 10px;background:rgba(40,0,0,${hardOn ? '0.55' : '0.25'});border:1px solid ${hardOn ? '#ff5252' : '#5a2a2a'};cursor:pointer;font-size:11px;color:${hardOn ? '#ffcdd2' : '#bba'};">
+                    <input type="checkbox" ${hardOn ? 'checked' : ''} onchange="window.StoryMode.toggleCrucibleHardMode(this.checked)" style="margin:0;cursor:pointer;">
+                    <span><b style="color:#ff5252;">Hard Mode</b> — +30% foe HP / bulk / speed and +1 gimmick budget on every Crucible rematch. Stacks on top of difficulty mode and per-event boss boosts.</span>
+                </label>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
                     ${btn(png('icons/story/story_vr.png'),         `Battle Frontier <span style="color:#888;font-size:9px;">(best streak: ${bestStreak})</span>`, 'window.StoryMode.enterFrontierHub()', '#ff5722', 'Endless 6v6 ladder. One loss ends the run; final streak goes to the Top-10.')}
                     ${btn(png('icons/story/story_mystery.png'),    'Mystery Figure', 'window.StoryMode.crucibleMysteryFight()', '#ce93d8', 'Replay the post-HoF masked challenger.')}
@@ -32678,6 +33000,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const row = _CRUCIBLE_GYM_ROWS[Math.floor(Math.random() * _CRUCIBLE_GYM_ROWS.length)];
             _crucibleBattleSetup(row, 'gym');
         }
+        // Hard Mode toggle. Single boolean read by applyStoryLeagueFoeStatBoost
+        // (for Mystery / Rival / League / Frontier) and crucibleApplyHardModeToFoes
+        // (for Random Gym Rematch, which falls outside the league boss filter).
+        function toggleCrucibleHardMode(on) {
+            sm.crucibleHardMode = !!on;
+            try { save(); } catch (e) {}
+            try { _renderCrucible(); } catch (e) {}
+        }
+        // Random Gym Rematch doesn't pass through the league boss boost path,
+        // so apply the Hard Mode multiplier here when launching the battle.
+        // No-op for non-Hard sessions. Safe to call multiple times — guarded
+        // by mon._crucibleHardApplied so a re-entry doesn't double-stack.
+        window.crucibleApplyHardModeToFoes = function() {
+            if (!sm.crucibleHardMode) return;
+            if (typeof state === 'undefined' || !state.foeParty) return;
+            const m = 1.30;
+            for (const mon of state.foeParty) {
+                if (!mon || mon._crucibleHardApplied) continue;
+                mon._crucibleHardApplied = true;
+                mon.maxHp = Math.max(1, Math.floor(mon.maxHp * m));
+                mon.currentHp = mon.maxHp;
+                if (mon.stats) {
+                    mon.stats.atk = Math.max(1, Math.floor(mon.stats.atk * m));
+                    mon.stats.def = Math.max(1, Math.floor(mon.stats.def * m));
+                    mon.stats.spa = Math.max(1, Math.floor(mon.stats.spa * m));
+                    mon.stats.spd = Math.max(1, Math.floor(mon.stats.spd * m));
+                    mon.stats.spe = Math.max(1, Math.floor(mon.stats.spe * m));
+                }
+            }
+        };
         function crucibleWildEncounter() {
             // Post-HoF, so the badge curve resolves to the 8-badge entry —
             // same curve a player would see on a late-route wild. Keeps the
@@ -32853,12 +33205,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (source === 'postHofMystery') {
                 // First post-HoF climax: flip the climax flag so continuePostGame
                 // falls through past its climax branch into the Master-Ball /
-                // boss-arc / lastCity flow.
+                // boss-arc / lastCity flow. On a win, drop a post-game vitamin
+                // bundle — fuels investment in the Crucible / Frontier grind.
+                if (won && !sm.staticDrops?.rwdPostHofMystery) {
+                    if (!sm.staticDrops) sm.staticDrops = {};
+                    _storyGrantBundle({ ultraBall:3, masterBall:0, rareCandy:2, vitamin:3,
+                        hpUp:3, protein:3, iron:3, calcium:3, zinc:3, carbos:3, gold:5000 });
+                    sm.staticDrops.rwdPostHofMystery = true;
+                }
                 sm.postHofMysteryClimaxDone = true;
                 try { save(); } catch (e) {}
                 try {
                     window.showGameAlert && window.showGameAlert(won
-                        ? 'The mask falls. Whatever was underneath turns and walks into the dark — and the post-game opens behind you.'
+                        ? 'The mask falls. Whatever was underneath turns and walks into the dark — and the post-game opens behind you.\n\n+3 Ultra Balls, +2 Rare Candies, +3 Vitamin Packs, +3 of every vitamin (+18 perm-boosts total), +5,000G.'
                         : 'The masked figure tips a glove and steps back into the dark, mask still in place. The post-game opens anyway.');
                 } catch (e) {}
                 continuePostGame();
@@ -33844,6 +34203,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (bossMode) {
                 _bossArcEnsureState();
                 sm.bossArc.cleared = true;
+                // Caged God reward — the apex of the post-game arc. A full
+                // vitamin set lets the player fully boost a second favorite mon,
+                // plus an oversized voucher bundle for Stone Sage / EV Trainer
+                // polish on Subject Zero itself.
+                if (!sm.staticDrops) sm.staticDrops = {};
+                if (!sm.staticDrops.rwdCagedGod) {
+                    _storyGrantBundle({
+                        rareCandy:3, vitamin:5,
+                        hpUp:5, protein:5, iron:5, calcium:5, zinc:5, carbos:5,
+                        gold:10000
+                    });
+                    sm.staticDrops.rwdCagedGod = true;
+                }
             }
             // Catch tutorial: mark done only on actual catch success, so a
             // mid-tutorial reload doesn't lock the once-per-save flag without
@@ -34730,6 +35102,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }).join('');
         }
 
+        // ── Cable Link build pipeline ────────────────────────────────────
+        // Wraps makeBuild() with two pieces of glue the bare call was missing
+        // before the overhaul:
+        //   1. Player gimmick gating (only roll gimmicks the player has unlocked
+        //      via gym victories) — preserved from the original code.
+        //   2. Tier-appropriate downgrade so Cable Link isn't a free skip to
+        //      Tournament-grade builds at every cost level. Reroll/Rebuild
+        //      give COMPETENT (EVs capped at 420 instead of 510 — competitive
+        //      but a Tutor / Dojo / EV Trainer pass still adds value).
+        //      Upgrade keeps TOURNAMENT (premium service stays premium).
+        // Returns the new build object; never null (falls back to makeBuild
+        // raw on tier resolution failure).
+        function _makePlayerLinkBuild(name, tierTag) {
+            let newBuild;
+            try {
+                window._pbsStoryUsePlayerGimmickGate = true;
+                window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
+                newBuild = makeBuild(name);
+            } finally {
+                window._pbsStoryUsePlayerGimmickGate = false;
+                delete window._pbsStoryUnlockedGimmicks;
+            }
+            if (!newBuild) return null;
+            const tier = (typeof STORY_BUILD_TIER !== 'undefined' && STORY_BUILD_TIER[tierTag]) || STORY_BUILD_TIER.TOURNAMENT;
+            if (tier < STORY_BUILD_TIER.TOURNAMENT && typeof _storyDowngradeBuildForTier === 'function') {
+                try { _storyDowngradeBuildForTier(name, newBuild, tier); } catch (e) { /* fall through */ }
+            }
+            newBuild.powerTier = tier;
+            return newBuild;
+        }
+
         async function linkReroll(idx) {
             if (!_storyTryBeginInteraction()) return;
             try {
@@ -34742,19 +35145,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (sm.gold < cost) return;
                 const pool = buildGradePool(storySettingsGens(), g).filter(n=>n!==mon.name&&!sm.team.some((t,i)=>i!==idx&&t.name===n));
                 if (!pool.length) { window.showGameAlert('No other Pokémon available at this grade.'); return; }
-                const ok = await _storyConfirmTutorChange(`Trade ${mon.name} for a random Grade ${g} Pokémon? You will receive a new species with a new build.`, cost);
+                const ok = await _storyConfirmTutorChange(`Trade ${mon.name} for a random Grade ${g} Pokémon? You will receive a new species with a Competent-tier build — polish at the Tutor / Dojo / EV Trainer for full power.`, cost);
                 if (!ok) return;
                 sm.cityRerollsUsed[rk] = rn;
                 const newName  = pool[Math.floor(storyRngNext() * pool.length)];
-                let newBuild;
-                try {
-                    window._pbsStoryUsePlayerGimmickGate = true;
-                    window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
-                    newBuild = makeBuild(newName);
-                } finally {
-                    window._pbsStoryUsePlayerGimmickGate = false;
-                    delete window._pbsStoryUnlockedGimmicks;
-                }
+                const newBuild = _makePlayerLinkBuild(newName, 'COMPETENT');
+                if (!newBuild) { window.showGameAlert('Build pipeline error — try again.'); return; }
                 sm.gold -= cost;
                 sm.team[idx] = { name:newName, build:newBuild, id:'m_'+Math.random().toString(36).slice(2,10) };
                 save();
@@ -34779,19 +35175,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (sm.gold < cost) return;
                 const pool = buildGradePool(storySettingsGens(), newG).filter(n=>!sm.team.some((t,i)=>i!==idx&&t.name===n));
                 if (!pool.length) { window.showGameAlert('No Pokémon available at that grade.'); return; }
-                const ok = await _storyConfirmTutorChange(`Trade ${mon.name} (Grade ${g}) for a random Grade ${newG} Pokémon?`, cost);
+                const ok = await _storyConfirmTutorChange(`Trade ${mon.name} (Grade ${g}) for a random Grade ${newG} Pokémon? Tournament-grade build included — no further polish needed.`, cost);
                 if (!ok) return;
                 sm.cityRerollsUsed[uk] = un;
                 const newName  = pool[Math.floor(storyRngNext() * pool.length)];
-                let newBuild;
-                try {
-                    window._pbsStoryUsePlayerGimmickGate = true;
-                    window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
-                    newBuild = makeBuild(newName);
-                } finally {
-                    window._pbsStoryUsePlayerGimmickGate = false;
-                    delete window._pbsStoryUnlockedGimmicks;
-                }
+                const newBuild = _makePlayerLinkBuild(newName, 'TOURNAMENT');
+                if (!newBuild) { window.showGameAlert('Build pipeline error — try again.'); return; }
                 sm.gold -= cost;
                 sm.team[idx] = { name:newName, build:newBuild, id:'m_'+Math.random().toString(36).slice(2,10) };
                 save();
@@ -35063,6 +35452,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (old.evs)      evoBuild.evs      = { ...old.evs };
             if (old.teraType) evoBuild.teraType = old.teraType;
             if (old.i && old.i !== 'Eviolite' && old.i !== '(none)') evoBuild.i = old.i;
+            // Carry perm-boost vitamin investment through evolution — the
+            // player applied these to this specific mon, evolution doesn't
+            // un-train them.
+            if (old.permBoosts) evoBuild.permBoosts = { ...old.permBoosts };
 
             // Preserve the pre-evolution's gimmick if the evolved species supports it.
             // For MEGA/ZMOVE the species-specific item must be re-derived for the new form
@@ -35252,18 +35645,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const bn = (sm.cityRerollsUsed[bk] || 0) + 1;
                 const cost = Math.ceil(REBUILD_COST * Math.pow(1.5, bn - 1));
                 if (sm.gold < cost) return;
-                const ok = await _storyConfirmTutorChange(`Reroll ${mon.name}'s entire build (moves, item, nature, EVs)? Species stays.`, cost);
+                const ok = await _storyConfirmTutorChange(`Reroll ${mon.name}'s entire build (moves, item, nature, EVs)? Species stays. Competent-tier build — polish at Tutor/Dojo/EV Trainer to top it off.`, cost);
                 if (!ok) return;
                 sm.cityRerollsUsed[bk] = bn;
-                let newBuild;
-                try {
-                    window._pbsStoryUsePlayerGimmickGate = true;
-                    window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
-                    newBuild = makeBuild(mon.name);
-                } finally {
-                    window._pbsStoryUsePlayerGimmickGate = false;
-                    delete window._pbsStoryUnlockedGimmicks;
-                }
+                // Carry perm-boost progress through the rebuild — the mon's
+                // permBoosts (HP Up / Protein / …) represent player investment
+                // that lives independently of the rolled build.
+                const carriedPB = mon.build && mon.build.permBoosts ? { ...mon.build.permBoosts } : null;
+                const newBuild = _makePlayerLinkBuild(mon.name, 'COMPETENT');
+                if (!newBuild) { window.showGameAlert('Build pipeline error — try again.'); return; }
+                if (carriedPB) newBuild.permBoosts = carriedPB;
                 sm.gold -= cost;
                 // Rebuild just rerolls the moveset/nature/item — same species, same
                 // identity. Preserve starter/unsellable/nickname/id so a player who
@@ -35411,6 +35802,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (eff==='healFull'&&mon&&mon.currentHp>0){ const h=mon.maxHp-mon.currentHp; mon.currentHp=mon.maxHp; msg=`${mon.name} fully healed! (+${h} HP)`; }
             else if (eff==='fullRestore'&&mon&&mon.currentHp>0){ const h=mon.maxHp-mon.currentHp; mon.currentHp=mon.maxHp; mon.status=null; msg=`${mon.name} fully restored!`; }
             else if (eff==='cureStatus'&&mon){ mon.status=null; msg=`${mon.name}'s status cleared!`; }
+            else if (eff==='revive30'&&mon&&mon.currentHp<=0){ mon.currentHp=Math.max(1, Math.floor(mon.maxHp*0.3)); msg=`${mon.name} revived to 30%!`; }
             else if (eff==='revive50'&&mon&&mon.currentHp<=0){ mon.currentHp=Math.floor(mon.maxHp/2); msg=`${mon.name} revived to 50%!`; }
             else if (eff==='reviveFull'&&mon&&mon.currentHp<=0){ mon.currentHp=mon.maxHp; msg=`${mon.name} fully revived!`; }
             else if (eff==='xAtk'&&mon){ mon.stages.atk=Math.min(6,mon.stages.atk+(2*effMul)); msg=`${mon.name}'s Attack rose sharply!`; }
@@ -35421,6 +35813,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (eff==='xAcc'&&mon){ mon.stages.acc=Math.min(6,(mon.stages.acc||0)+(2*effMul)); msg=`${mon.name}'s Accuracy rose sharply!`; }
             else if (eff==='direHit'&&mon){ mon.volatile=mon.volatile||{}; const fe = (typeof mon.volatile.focusEnergy === 'number') ? mon.volatile.focusEnergy : (mon.volatile.focusEnergy ? 2 : 0); mon.volatile.focusEnergy = Math.min(6, fe + (2 * effMul)); msg=`${mon.name} is focused!`; }
             else if (eff==='elixirFull'&&mon){ mon.moves.forEach(mv=>mv.pp=mv.maxPp||mv.pp); msg=`${mon.name}'s PP fully restored!`; }
+            else if (eff==='elixirAll'&&mon){ mon.moves.forEach(mv=>{ const cap = mv.maxPp||mv.pp; mv.pp = Math.min(cap, (mv.pp||0) + 10); }); msg=`${mon.name}'s PP restored (+10 each)!`; }
+            else if (eff==='etherSingle'&&mon){ const usable = mon.moves.filter(mv => (mv.pp||0) < (mv.maxPp||mv.pp)); if (!usable.length) { msg='No move needs PP!'; } else { const tgt = usable[0]; const cap = tgt.maxPp||tgt.pp; tgt.pp = Math.min(cap, (tgt.pp||0) + 10); msg=`${mon.name}'s ${tgt.name} regained 10 PP!`; } }
             else if (eff==='guardSpec'&&mon){ state.pSide.mist=Math.max(state.pSide.mist||0,5); msg='Guard Spec. raised a barrier for your team! Stat drops blocked for 5 turns.'; }
             else if (eff==='weatherSun') { state.weather='Sun'; state.weatherTurns=5; if(typeof logMsg==='function') logMsg('The sun turned harsh!','info'); msg='Sun Orb: Harsh Sunlight for 5 turns!'; }
             else if (eff==='weatherRain') { state.weather='Rain'; state.weatherTurns=5; if(typeof logMsg==='function') logMsg('It started to rain!','info'); msg='Rain Orb: Rain for 5 turns!'; }
@@ -35498,6 +35892,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <span style="font-size:10px;color:#888;align-self:center;padding:4px 8px;border:1px solid #444;">Voucher</span>`;
                 bagEl.appendChild(div);
             });
+            // Permanent stat-boost vitamins (earned-only). Each surfaces a Use
+            // button that opens a roster picker; applying decrements the count
+            // and bumps the chosen mon's permBoosts in place. Capped at
+            // PERM_BOOST_CAP per stat per mon so a single mon can't be poured
+            // limitlessly — drops force priority calls across the party.
+            PERM_BOOST_ITEMS.forEach(v => {
+                const qty = (sm.inventory && sm.inventory[v.id]) | 0;
+                if (qty === 0) return;
+                hasAny = true;
+                const icon = storyShopIconCellHtml(v.id);
+                const statLabel = PERM_BOOST_STAT_LABEL[v.stat] || v.stat;
+                const div = document.createElement('div');
+                div.className = 'story-bag-item';
+                div.style.cursor = 'default';
+                div.innerHTML = icon + `<div class="story-bag-item-text">
+                    <div class="name">${v.name} <span style="color:#9ab;font-size:10px;">(+1 ${statLabel}, cap +${PERM_BOOST_CAP})</span></div>
+                    <div class="qty">×${qty}</div>
+                    <div class="eff">${v.desc}</div>
+                </div>
+                <button onclick="event.stopPropagation();window.StoryMode.openPermBoostPicker('${v.id}')"
+                    style="font-size:11px;padding:4px 10px;color:#9bf;border-color:#9bf;flex-shrink:0;align-self:center;">
+                    Use
+                </button>`;
+                bagEl.appendChild(div);
+            });
             allItems.forEach(item => {
                 const qty = sm.inventory[item.id] || 0;
                 if (qty === 0) return;
@@ -35526,6 +35945,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function sellItem(itemId, sellPrice) {
             if (!sm.inventory[itemId] || sm.inventory[itemId] <= 0) return;
+            // Perm-boost vitamins are earned-only and never sellable.
+            if (PERM_BOOST_IDS.has(itemId)) return;
             sm.inventory[itemId]--;
             if (sm.inventory[itemId] <= 0) delete sm.inventory[itemId];
             sm.gold += sellPrice;
@@ -35533,6 +35954,87 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             updateHUD();
             // Re-render the city bag so qty and gold update instantly
             openCityBag();
+        }
+
+        // ── PERMANENT STAT BOOST PICKER ──────────────────────────────────
+        // Repaint the city-bag modal with a roster picker for the selected
+        // vitamin. Each row shows the mon's current stat boost vs cap; rows
+        // at cap are dimmed and not clickable. A Back button restores the
+        // normal city-bag view.
+        function openPermBoostPicker(vitaminId) {
+            const vit = PERM_BOOST_ITEMS.find(v => v.id === vitaminId);
+            if (!vit) return;
+            const qty = (sm.inventory && sm.inventory[vitaminId]) | 0;
+            if (qty <= 0) { try { window.showGameAlert && window.showGameAlert('No ' + vit.name + ' left.'); } catch (e) {} return; }
+            const modal = document.getElementById('modal-story-bag');
+            const bagEl = document.getElementById('story-bag-grid');
+            if (!bagEl || !modal) return;
+            const team = Array.isArray(sm.team) ? sm.team : [];
+            const pcBox = Array.isArray(sm.pcBox) ? sm.pcBox : [];
+            const statLabel = PERM_BOOST_STAT_LABEL[vit.stat] || vit.stat;
+            bagEl.style.gridTemplateColumns = '1fr';
+            const h3 = modal.querySelector('h3');
+            if (h3) h3.innerHTML = '<img src="icons/story/story_bag.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:pixelated;vertical-align:-3px;margin-right:6px;">Use ' + vit.name + ' (×' + qty + ')';
+            const rowHtml = (mon, idx, source) => {
+                if (!mon) return '';
+                const cur = ((mon.build && mon.build.permBoosts && mon.build.permBoosts[vit.stat]) | 0);
+                const atCap = cur >= PERM_BOOST_CAP;
+                const tone = atCap ? '#555' : '#fff';
+                const disabled = atCap ? 'pointer-events:none;opacity:0.45;' : 'cursor:pointer;';
+                const sprite = (typeof getSprite === 'function') ? getSprite((typeof spriteDisplayName === 'function' ? spriteDisplayName({name:mon.name}) : mon.name), mon.build && mon.build._isShiny) : '';
+                const where = source === 'pc' ? '<span style="color:#888;font-size:9px;">[PC]</span>' : '';
+                const onClick = atCap ? '' : `onclick="window.StoryMode.applyPermBoost('${vitaminId}','${source}',${idx})"`;
+                return `<div style="display:flex;align-items:center;gap:8px;padding:6px;border:1px solid #333;border-radius:6px;color:${tone};${disabled}" ${onClick}>
+                    ${sprite ? `<img src="${sprite}" style="width:32px;height:32px;image-rendering:pixelated;" alt="">` : ''}
+                    <div style="flex:1;">
+                        <div style="font-weight:bold;">${mon.name} ${where}</div>
+                        <div style="font-size:10px;color:#9ab;">${statLabel} boost: +${cur} / +${PERM_BOOST_CAP}${atCap ? ' (at cap)' : ''}</div>
+                    </div>
+                </div>`;
+            };
+            const partyRows = team.map((m,i) => rowHtml(m, i, 'team')).join('');
+            const pcRows = pcBox.map((m,i) => rowHtml(m, i, 'pc')).join('');
+            bagEl.innerHTML = `
+                <div style="font-size:11px;color:#9ab;margin-bottom:8px;line-height:1.5;">
+                    Apply <b style="color:#fff;">${vit.name}</b> to a Pokémon. Each application gives <b>+1 ${statLabel}</b> permanently, up to <b>+${PERM_BOOST_CAP}</b> per stat per mon. Distinct from EVs — stacks on top of the EV-derived stat.
+                </div>
+                <button onclick="window.StoryMode.openCityBag()"
+                    style="font-size:11px;padding:4px 10px;margin-bottom:10px;color:#9ab;border:1px solid #9ab;background:transparent;border-radius:4px;cursor:pointer;align-self:flex-start;">
+                    ← Back to Bag
+                </button>
+                <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Party</div>
+                <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">${partyRows || '<div style="color:#555;font-size:11px;">No party mons.</div>'}</div>
+                ${pcBox.length ? `<div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">PC Storage</div>
+                <div style="display:flex;flex-direction:column;gap:4px;">${pcRows}</div>` : ''}
+            `;
+            modal.classList.remove('hidden');
+        }
+        // Apply +1 to the chosen mon's permBoosts for the vitamin's stat,
+        // decrement inventory, save, refresh open UIs.
+        function applyPermBoost(vitaminId, source, idx) {
+            const vit = PERM_BOOST_ITEMS.find(v => v.id === vitaminId);
+            if (!vit) return;
+            const qty = (sm.inventory && sm.inventory[vitaminId]) | 0;
+            if (qty <= 0) return;
+            let mon = null;
+            if (source === 'team') mon = sm.team && sm.team[idx];
+            else if (source === 'pc') mon = sm.pcBox && sm.pcBox[idx];
+            if (!mon || !mon.build) return;
+            if (!mon.build.permBoosts) mon.build.permBoosts = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
+            const cur = (mon.build.permBoosts[vit.stat] | 0);
+            if (cur >= PERM_BOOST_CAP) return;
+            mon.build.permBoosts[vit.stat] = cur + 1;
+            sm.inventory[vitaminId] = qty - 1;
+            if (sm.inventory[vitaminId] <= 0) delete sm.inventory[vitaminId];
+            try { save(); } catch (e) {}
+            try { updateHUD && updateHUD(); } catch (e) {}
+            try { window.StoryFx && window.StoryFx.playSfx('statUp', 0.7); } catch (e) {}
+            const statLabel = PERM_BOOST_STAT_LABEL[vit.stat] || vit.stat;
+            try { window.showGameAlert && window.showGameAlert(`${mon.name}'s ${statLabel} permanently rose by 1! (now +${cur+1}/+${PERM_BOOST_CAP})`); } catch (e) {}
+            // If there are more of this vitamin, stay on the picker so the
+            // player can keep applying. Otherwise return to the main bag.
+            if ((sm.inventory && sm.inventory[vitaminId]) | 0) openPermBoostPicker(vitaminId);
+            else openCityBag();
         }
 
         // ── HALL OF FAME (Gen-3 style: 2×3 sprites, confetti, welcome text) ─
@@ -36293,9 +36795,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── MOVE TUTOR ────────────────────────────────────────────────────
+        // Tutor pricing (overhaul pass 2): Ability dropped from 2500 → 2000
+        // so it matches Item cost. Hidden abilities are now gated and
+        // gimmick-enemy density rose with the Frontier/Hard Mode changes;
+        // the +500G ability premium wasn't earning its keep.
         const TUTOR_COST_MOVE    = 1500;
         const TUTOR_COST_ITEM    = 2000;
-        const TUTOR_COST_ABILITY = 2500;
+        const TUTOR_COST_ABILITY = 2000;
         const TUTOR_COST_NATURE  = 2000;
         /** 'moves' | 'nature' | 'loadout' — set by enterTutor(mode); renderTutorTeam reads this */
         let _storyTutorMode = 'moves';
@@ -37977,7 +38483,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── COLRESS — POWER AWAKENING NPC ────────────────────────────────
-        const COLRESS_COST = 10000;
+        // Colress (gimmick swap) — 10000 → 7500. Enemy gimmick density rose
+        // with the Frontier per-round bands and Crucible Hard Mode (+20%
+        // absolute). The player needs to keep up without spending a small
+        // fortune per change.
+        const COLRESS_COST = 7500;
         const COLRESS_ALL_TYPES = ["Normal","Fire","Water","Electric","Grass","Ice","Fighting","Poison","Ground","Flying","Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel","Fairy"];
 
         function _colressMechAvailable(kind) {
@@ -38677,10 +39187,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterCrucible, leaveCrucible,
             enterFrontierHub, frontierStartRun, frontierStartNext, frontierSurrender,
             crucibleMysteryFight, crucibleRivalFight, crucibleLeagueRun, crucibleGymPick, crucibleWildEncounter,
+            toggleCrucibleHardMode,
             enterLink, linkReroll, linkUpgrade, linkRebuild, linkMoveUp, linkMoveDown,
             enterEvolutionLab, evoLabEvolve, evoLabEvolveWithCandy,
             enterCasino, casinoSetBetChip, casinoPlay,
             openBattleBag, useBagItemOn, openCityBag, sellItem,
+            openPermBoostPicker, applyPermBoost,
             confirmAbandon, abandonAndReturn, continuePostGame,
             openSummary, profOpenSummary, summaryMove, moveInParty, openPartyModal,
             enterArtifactHall, toggleArtifactDisabled,

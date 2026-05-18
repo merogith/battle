@@ -3,6 +3,385 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Sheer Force / Life Orb / every held item now fire on freshly caught + evolved Pokémon 2026-05-18 (`claude/fix-item-effects-evolved-pokemon-Za2en`)
+
+### Fixed — Item effect + ability silently no-oping on edited builds
+
+User report: a story-mode Nidoking that the team panel and summary screen
+showed as holding **Life Orb** with the **Sheer Force** ability was hitting
+Earth Power on Arcanine for 175 damage (consistent with Life Orb alone
+applying — Sheer Force's 1.3× base-power boost never fired). Sludge Bomb on
+the next foe still poisoned the target, which directly proved Sheer Force
+was off (it should consume the 30% poison chance for the damage trade).
+
+Root cause is a snapshot drift between two views of the same mon:
+
+* `summaryTarget` / team-panel / overview UI reads `mon.item` and
+  `mon.ability` straight off the live `state.playerParty[i]` object — but
+  the team panel rebuilds that view through `buildPokemon` whenever it
+  renders, so the *render* always reflects the latest `build.a` / `build.i`.
+* The battle engine's damage path reads the **string snapshot** that
+  `buildPokemon` captured *once* at battle start — `let abilityVal = build.a;`
+  and `item: build.i`. If the saved build was edited (Dojo / catch / evolve)
+  between the snapshot and the read, the engine kept using the stale value
+  while every UI surface kept showing the new one.
+
+So the player saw "Ability: Sheer Force" in the summary, told us Sheer
+Force was broken, and they were right — the engine's `attacker.ability`
+was still the pre-Dojo ability slot.
+
+### Fix
+
+New `_resyncMonFromBuildData(mon)` helper rebinds `mon.item` and
+`mon.ability` to `mon.buildData.i` / `mon.buildData.a` (which is the same
+object reference the Dojo / catch / evolve flow already mutates) whenever
+no battle effect has touched them this fight. Three call sites cover every
+path a mon can reach a damage roll on:
+
+1. **`startBattle`** — runs once after `state.playerParty` /
+   `state.foeParty` are built. Catches the lead.
+2. **`applySwitchInAbilities`** — runs on every switch-in (including the
+   initial lead, second slot via Roar/Whirlwind, U-turn replacement, …).
+3. **`performAction`** — runs once per acting turn, just before the move
+   resolves. Last-line safety net.
+
+The resync is guarded so it never undoes a legitimate in-battle change:
+
+* **Items**: skipped when `mon.itemConsumed === true` (Berry / Gem /
+  Power Herb / Normal Gem / …) or `mon.knockedOff === true` (Knock Off,
+  Trick / Switcheroo, Embargo-driven loss, Thief), so consumed items don't
+  resurrect.
+* **Abilities**: tracked with a new `mon._abilityMutatedInBattle` flag,
+  set wherever the engine overwrites ability mid-battle —
+  Mega Evolution's locked slot, Terapagos / Tera Shift / Teraform Zero,
+  Mummy / Lingering Aroma, Wandering Spirit, Trace, Imposter, Transform,
+  Skill Swap, Role Play, Simple Beam, Worry Seed, Entrainment. When the
+  flag is set, the resync leaves `mon.ability` alone.
+
+### Verification
+
+Reproduced the bug headlessly: construct `state.pActive` with
+`buildData.a = "Sheer Force"`, `buildData.i = "Life Orb"`, then corrupt
+`mon.ability = "Poison Point"` and `mon.item = "Leftovers"` to simulate
+the stale snapshot. Pre-fix, Earth Power dealt ~150 dmg with Poison
+Point + Leftovers and Sludge Bomb still poisoned. Post-fix, the resync
+inside `performAction` flips the in-battle mon back to Sheer Force +
+Life Orb before the damage roll, Earth Power one-shots Arcanine for 197
+dmg with Sheer Force's basePower×1.3 + Life Orb's modifier×1.3, takes
+0 Life Orb recoil (Sheer Force suppresses), and Sludge Bomb no longer
+applies its secondary poison.
+
+Also verified no-clobber on legitimate mid-battle mutations: a Trace'd
+ability ("Trace" → "Sheer Force" on switch-in) survives the resync (flag
+set), and a consumed Sitrus Berry stays consumed (`itemConsumed === true`).
+
+## Unreleased — `sm is not defined` no longer crashes every story battle 2026-05-18 (`claude/fix-recent-bugs-eiMsL`)
+
+### Fixed — Story mode "MissingNo" placeholder screen (real root cause)
+
+Reproduced the user's exact bug via headless playwright: Story Mode →
+New Adventure → pick starter → Battle Your Rival → through the Prof.
+Oak cold-open → battle screen comes up with "MissingNo" placeholders
+and no command menu. Console:
+
+```
+PAGEERROR: sm is not defined
+  at startBattle (battle.html:13420:43)
+  at launchBattle (battle.html:32105:13)
+  at startFight (battle.html:31995:17)
+```
+
+`sm` is declared `let sm = …` *inside* the StoryMode IIFE (line
+~27235). It is therefore invisible at script-top scope, where
+`startBattle` lives. The Crucible Hard Mode check —
+`if (state.mode === 'story' && sm && sm.crucibleHardMode && …)` —
+added in the balance-overhaul commit (`dee8cb3`) referenced bare `sm`,
+which has thrown ReferenceError on **every** story battle since.
+
+The fix uses the public getter `window.StoryMode.state` (already used
+the same way at lines 11342 / 11364 / 11375):
+
+```js
+const _smRef = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
+if (state.mode === 'story' && _smRef && _smRef.crucibleHardMode && …) { … }
+```
+
+The hardening from the previous commits in this branch (defensive
+try/catch around buildPokemon, foe scaling, aiBestSwitch, updateUI,
+animation, etc.) means this same regression wouldn't be capable of
+stranding the player on a half-built battle screen again even if it
+reoccurred — startBattle would now log + skip the bad step and still
+reach the command menu.
+
+Verified headlessly: first rival fight now lands on `Eldegoss vs
+Torchic`, command menu visible, four log entries, zero errors.
+
+## Unreleased — `startBattle` is now bulletproof against every kind of init crash 2026-05-18 (`claude/fix-recent-bugs-eiMsL`)
+
+### Fixed — placeholder "MissingNo" battle screen with no command menu
+
+A user kept reporting the static "MissingNo / 0/0 / empty Player/Foe
+sprites / no battle log / no command menu" screen at the start of
+every battle, even after the `anime.js` fix below. The remaining cause
+was that **any** throw between "show battle screen" and "show command
+menu" inside `startBattle` would leave the user with the static
+placeholder HUD: corrupt p1Draft/p2Draft, a build missing `.m`, a bad
+foe scaling helper, a Pokédex side-effect with a stale species name,
+`state.fActive` undefined when `state.revealedFoe.add(state.fActive.name)`
+runs, etc. None of those were wrapped — they all crashed init silently.
+
+Now every step from "battle screen shown" through "command menu shown"
+is individually try/caught:
+
+- **Team build (fatal path)**: empty p1Draft, empty p2Draft, or a
+  `buildPokemon` throw bails to the main menu with a "corrupted team
+  data" alert. The battle screen is re-hidden so the user isn't stuck.
+- **Recoverable steps** (story scaling, Crucible boost, difficulty
+  scale, weather/terrain rolls, `aiBestSwitch`, foe story inventory,
+  artifact effects, leftover-sprite cleanup, `updateUI`,
+  `applySwitchInAbilities`, the first-battle tip): each logs and
+  continues — the battle still starts, just without the optional bit
+  that failed.
+- **Command menu show**: now in its own try/catch so even if
+  everything else is on fire, the user gets input controls and can at
+  least flee.
+
+Verified headlessly:
+- Normal battle start (`?locktest=1`): names render, command menu
+  visible, no errors — same as before.
+- Corrupt state (`p1Draft=[]`): bails to main menu cleanly, no JS
+  errors, no stuck placeholder screen.
+
+## Unreleased — anime.js failure no longer strands the player on a blank battle screen 2026-05-18 (`claude/fix-recent-bugs-eiMsL`)
+
+### Fixed — `playPokeballAnimation` crashes `startBattle` when `anime` is undefined
+
+The entrance animation called `anime({...}).finished` unguarded.
+`anime.js` is CDN-loaded (`cdn.jsdelivr.net/npm/animejs@3.2.2`), so a
+slow / blocked / failed CDN response left `anime` undefined; the
+unhandled `ReferenceError` rejected the `Promise.all` in `startBattle`
+mid-init. The user was then left on a half-built battle screen — the
+static "MissingNo" HUD with empty `Player` / `Foe` sprite alt text,
+**no** battle log line ("Battle started!" never fires), and **no**
+command menu (it's unhidden 20 lines later, past the throw).
+
+Reproduced headlessly with `?locktest=1`:
+
+```
+PAGEERROR: anime is not defined
+  at playPokeballAnimation (battle.html:13337)
+  at async Promise.all (index 0)
+  at async startBattle (battle.html:13440)
+```
+
+After the fix, the same headless run with `anime` completely absent
+yields `foeName: "Blissey"`, `playerName: "Garchomp"`,
+`cmdVisible: true` — battle starts cleanly, just without the bounce-in.
+
+Fixes:
+- `playPokeballAnimation` now feature-detects `typeof anime === 'function'`
+  before calling it. If anime is missing, it snaps the sprite in
+  (opacity 1, visibility visible) and skips the bounce.
+- The `Promise.all([player, foe])` call in `startBattle` is wrapped in
+  a try/catch that force-shows both sprites on failure, so any future
+  animation regression also can't kill the rest of init.
+
+## Unreleased — Soft-lock recovery no longer paints a fake MissingNo battle 2026-05-18 (`claude/fix-recent-bugs-eiMsL`)
+
+### Fixed — `__recoverBattleSoftLock` could fabricate a placeholder battle
+
+When the user tabbed away and back (or the battle watchdog scanned a
+between-battles transition), `__recoverBattleSoftLock` would happily
+force the command menu open even if no real battle was loaded — the
+party / command / move menus are all hidden in that state too. The
+result was the static HTML defaults you can never normally see:
+`MissingNo` for both names, empty `Player` / `Foe` alt text where the
+sprites should be, `0/0` HP, and the misleading log line *"Battle UI
+was stuck — commands restored. If the battle still looks wrong, use
+Force Continue again or reload."* — followed by `FIGHT / POKÉMON /
+BAG / RUN` buttons that pointed at nothing.
+
+Root cause: the recovery path didn't gate on (a) `screen-battle`
+actually being on-screen, or (b) `state.pActive` / `state.fActive`
+being real Pokémon. The tab-visibility and `pageshow` hooks attached
+to the recovery also fired on every screen, not just battle.
+
+Fixes:
+- New `__battleHasLiveActives()` helper requires both sides to have an
+  active Pokémon with finite HP / maxHp before the recovery is allowed
+  to do anything.
+- `__recoverBattleSoftLock` now early-returns when the battle screen
+  is hidden or when there are no live actives.
+- The `visibilitychange` and `pageshow` listeners also gate on the
+  battle screen being visible before invoking recovery.
+- After a legitimate recovery, `updateUI()` is called so the HUD
+  reflects current state rather than whatever was painted at the
+  moment of the soft-lock.
+- `__forceBattleContinue` (the Settings → Force Continue button) now
+  actively escapes a stuck placeholder screen: if the battle UI is up
+  but `state.pActive` / `state.fActive` are missing, it calls
+  `returnToHome()` (online dispose, story-forfeit handling) instead of
+  repainting the same placeholder, so the user is never left staring
+  at a `MissingNo` vs `MissingNo` card that doesn't accept input.
+
+## Unreleased — Full game balance & economy overhaul 2026-05-17 (`claude/game-balance-economy-overhaul-a5h2s`)
+
+### Changed — Heal vs X-item price rebalance (pass 2)
+
+Initial overhaul priced healing too high relative to X items, making the
+"bench a mon to set up +6 stages" cheese strictly cheaper than healing
+through damage. Healing prices dropped, X items raised so the two sit
+at parity.
+
+| Item | Pass 1 | Pass 2 |
+|---|---|---|
+| Super Potion (60 HP) | 700G | **500G** |
+| Hyper Potion (120 HP) | 1500G | **1000G** |
+| Max Potion (full HP) | 2200G | **1500G** |
+| Full Restore (full + status) | 3000G | **2000G** |
+| Elixir (10 PP all) | 1200G | **1000G** |
+| Max Elixir (full PP) | 1800G | **1500G** |
+| Revival Herb (30% HP) | 1500G | **1200G** |
+| Revive (50% HP) | 3000G | **2500G** |
+| Max Revive (full HP) | 4500G | **4000G** |
+| X Attack / Defense / Sp.Atk / Sp.Def / Speed / Accuracy | 800G | **1000G** |
+| Dire Hit | 300G | **400G** |
+| Guard Spec. | 350G | **450G** |
+
+X items now cost the same as a Hyper Potion: heal 120 HP, or +2 a stat
+for the fight. Same gold, different decision.
+
+### Changed — Tutor/Colress price tweaks
+
+- **Battle Dojo (Ability swap)**: 2500G → **2000G**. Now matches Item-swap
+  cost; the +500G ability premium wasn't earning its keep given how often
+  enemy teams field non-baseline abilities post-overhaul.
+- **Colress (gimmick swap)**: 10000G → **7500G**. Gimmick density on
+  enemy teams rose with the Frontier per-round bands and Crucible Hard
+  Mode (+20% absolute frequency). The player needs to keep up without
+  spending a small fortune per change.
+
+Move Tutor (1500G), Nature Rater (2000G), EV Trainer (5000G), Stone Sage
+(1.5K/6K/16K by target grade), and Cable Link (variable) were left as-is
+— each remains correctly calibrated for what it delivers under the new
+build-tier pipeline.
+
+### Added — Heal/PP gradient + mid-tier revive
+
+The PokéMart now stocks a full Potion ladder where there used to be a
+jump from 300G (Full Heal — status only) straight to 1000G (Max Potion).
+New entries (pass-1 prices; superseded by the pass-2 rebalance above):
+
+- **Potion** (200G, +20 HP)
+- **Super Potion** (700G, +60 HP)
+- **Hyper Potion** (1500G, +120 HP)
+- **Ether** (400G, restores 10 PP of one move)
+- **Elixir** (1200G, restores 10 PP of every move)
+
+The PP gradient closes the same gap (no PP option below Max Elixir 500G).
+
+The Department Store gains a mid-tier **Revival Herb** (revives to 30% HP)
+so early-game runs aren't forced to choose between no revive and the
+high-cost Dept-store revives.
+
+### Added — Permanent stat-boost vitamins (drop-only)
+
+A new mon-side stat-investment layer, distinct from EVs (which the EV
+Trainer still handles via 252/252/4 presets) and from the existing
+Vitamin Pack voucher (which still buys a free EV Trainer preset).
+
+Six new earned-only items:
+
+| Vitamin | Stat | Cap per mon |
+|---|---|---|
+| HP Up   | HP        | +10 |
+| Protein | Attack    | +10 |
+| Iron    | Defense   | +10 |
+| Calcium | Sp. Atk   | +10 |
+| Zinc    | Sp. Def   | +10 |
+| Carbos  | Speed     | +10 |
+
+Each gives +1 to that stat permanently when applied. Stored on
+`mon.build.permBoosts[stat]`; additive on top of the EV-derived
+stat at `buildPokemon` time. Cap is **+10 per stat per mon** (60 total
+when fully boosted). Carries through Cable Link Rebuild (same mon) and
+Stone Sage evolution (same identity); does NOT carry through Cable Link
+Reroll/Upgrade (which trade the mon for a new species).
+
+**Drop schedule** (~110 vitamins across a perfect run — enough to fully
+boost ~1.8 mons or partially invest across 4-5):
+- Gym Leader 1-8: 2-5 each, themed to the gym's combat style
+- Elite Four E1-E4 + Champion: 3-12 each, escalating
+- Pokédex milestones 25/50/75/100: 2-8 each
+- Post-HoF Mystery Figure: 18 (3 of each)
+- Caged God (boss arc): 30 (5 of each)
+
+UI: surfaced in the **City Bag** with a Use button that opens a roster
+picker (party + PC mons). Rows show current boost vs cap; at-cap rows
+are dimmed. Vitamins are never sellable.
+
+### Changed — Cable Link build pipeline (no more T4 free skip)
+
+Cable Link Reroll / Upgrade / Rebuild were calling `makeBuild()` directly,
+which produced Tournament-tier builds at every action regardless of cost.
+After the overhaul:
+
+- **Reroll** (cheap, same grade) → **Competent** tier (EVs capped at 420
+  instead of 510; still competitive, Tutor / Dojo / EV Trainer still add
+  meaningful polish)
+- **Upgrade** (expensive, one grade up) → **Tournament** tier — premium
+  service stays premium
+- **Rebuild** (medium, same species) → **Competent** tier; perm-boost
+  vitamin investment is carried through (the mon is still the same mon)
+
+The shared `_makePlayerLinkBuild(name, tierTag)` helper preserves the
+existing player gimmick gating (only roll gimmicks the player has
+unlocked via gym victories) and tags `build.powerTier` so any future
+tier-aware UI can display it.
+
+### Added — Crucible Hard Mode toggle
+
+A single checkbox at the top of the Crucible Battles grid. When on:
+
+- **+30% foe HP / bulk / speed** on every Crucible rematch (Mystery
+  Figure, Rival, League Run E1→Champion, Random Gym Rematch, Battle
+  Frontier). Stacks multiplicatively with the per-event boss boost
+  (Champion +40% HP) and the difficulty mode (`hard` +15%, `challenge`
+  +30%). A Champion rematch on Hard difficulty with Crucible Hard Mode
+  on hits ≈ 1.40 × 1.30 × 1.15 = **2.09× canonical foe HP**.
+- **+20% absolute gimmick frequency** on League/Mystery/Rival/Gym
+  rematches (so a hard-mode Champion rematch fields gimmicks at ~100%
+  per eligible mon).
+- **+15% absolute** in Battle Frontier rounds.
+
+Toggled via the `sm.crucibleHardMode` boolean, persisted in the save.
+
+### Changed — Champion / Mystery Figure / Elite Four buff
+
+The boss-tier multipliers now hit harder so post-vitamin / post-Cable-Link
+investment doesn't trivialize the league climb. New values:
+
+| Event | HP boost | Bulk boost | Speed boost |
+|---|---|---|---|
+| E1-E4 | 1.20 → 1.22 | 1.15 → 1.17 | 1.10 → 1.12 |
+| Champion / league Rival | 1.30 → 1.40 | 1.15 → 1.22 | 1.15 → 1.18 |
+| Mystery Figure (post-HoF) | 1.35 → 1.50 | 1.20 → 1.28 | 1.20 → 1.25 |
+
+### Changed — Battle Frontier scaling acceleration
+
+The Frontier ramp was too gentle — round 10+ felt comparable to a
+mid-game gym fight. New values:
+
+| Curve | Old | New |
+|---|---|---|
+| HP per round | 1.35 + 0.05/r (cap 2.50) | 1.50 + 0.075/r (cap 3.00) |
+| Bulk per round | 1.20 + 0.03/r (cap 1.80) | 1.25 + 0.045/r (cap 2.00) |
+| Speed per round | 1.20 + 0.03/r (cap 1.80) | 1.25 + 0.045/r (cap 2.00) |
+| Mech frequency (per round band) | flat per event-type | round-tiered: 25% → 45% → 70% → 90% → 100% |
+
+Round 1 is now harder than the post-HoF Mystery climax; round 10+ caps
+out near a Caged-God-tier wall.
+
 ## Unreleased — VGC depth pass + responsive battle UI 2026-05-17 (`claude/battle-scenery-backgrounds-PagsV`)
 
 ### Changed — Battle screen now reads as a 3D VGC arena

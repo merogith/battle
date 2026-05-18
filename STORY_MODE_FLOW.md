@@ -558,6 +558,145 @@ Things that need decisions before later milestones but don't block schema work:
 
 ---
 
+## 15b. Permanent stat-boost vitamins (v18+)
+
+Six earned-only items — **HP Up / Protein / Iron / Calcium / Zinc /
+Carbos** — that add +1 to a single stat, capped at +10 per stat per mon.
+Tracked at `mon.build.permBoosts[stat]`; additive after the EV-derived
+stat in `buildPokemon` (`battle.html:11362`). Total max is +60 across all
+six stats per mon.
+
+Constants live at the top of the IIFE near `POKEMART_ITEMS`:
+
+- `PERM_BOOST_CAP` (= 10) — per-stat cap per mon
+- `PERM_BOOST_ITEMS` — array of `{ id, name, stat, desc }`
+- `PERM_BOOST_IDS` — `Set` of ids for fast inclusion checks
+- `PERM_BOOST_STAT_LABEL` — pretty-print map (`'spa' → 'Sp.Atk'`)
+
+### Drop schedule
+
+Distinct from the existing **Vitamin Pack voucher** (EV Trainer preset
+waiver) — both coexist in inventory under their own ids and never
+conflict. Drops are weighted toward "matching stat" per leader's combat
+style, so a physical-leaning gym tends to drop Protein/Iron/Carbos and a
+special-leaning gym drops Calcium/Zinc.
+
+A perfect playthrough yields ~110 vitamins total — enough to fully boost
+~1.8 mons (60 caps each) or partially invest across 4-5. The drop tuning
+forces priority calls.
+
+| Source | Vitamins |
+|---|---|
+| GL1-GL8 | 2-5 each |
+| E1-E4 + Champion | 3-12 each |
+| Pokédex 25 / 50 / 75 / 100 | 2 / 2 / 2 / 8 |
+| Post-HoF Mystery Figure | 18 (3 of each) |
+| Caged God boss arc | 30 (5 of each) |
+
+`_storyGrantBundle` reads `hpUp` / `protein` / `iron` / `calcium` /
+`zinc` / `carbos` keys from a reward bundle and adds them to
+`sm.inventory` under the matching id.
+
+### UI
+
+Surfaced in the **City Bag** (`openCityBag`) as a new block between the
+existing vouchers and the standard shop items. Each row has a **Use**
+button that opens `openPermBoostPicker(vitaminId)` — a roster picker
+showing party + PC mons with each mon's current `+N/+10` boost for the
+relevant stat. Rows already at the cap are dimmed and not clickable.
+
+`applyPermBoost(vitaminId, source, idx)` increments
+`mon.build.permBoosts[stat]`, decrements inventory, saves, and re-opens
+the picker if more vitamins of that type remain (so a player who earned
+5 HP Ups can apply them all without modal bouncing).
+
+### Carry-through
+
+| Action | Carry permBoosts? |
+|---|---|
+| Stone Sage evolution | yes — same identity |
+| Cable Link Rebuild | yes — same species |
+| Cable Link Reroll / Upgrade | no — different species, fresh start |
+| PC deposit / withdraw | yes — lives on the build, not on the slot |
+| Underground sale | irrelevant — mon is gone |
+
+Implementation: `_evoLabApplyEvolution` copies `old.permBoosts` into
+`evoBuild.permBoosts`. `linkRebuild` snapshots the old permBoosts before
+the new build and restores them. `linkReroll` / `linkUpgrade`
+intentionally do not — the player is trading the mon away for a new
+species.
+
+---
+
+## 15c. Crucible Hard Mode (v18+)
+
+Single boolean `sm.crucibleHardMode`, toggled by a checkbox at the top
+of the Crucible Battles grid (`_renderCrucible`). Applies +30% foe
+HP / bulk / speed plus a gimmick-frequency bump on every
+Crucible-sourced battle: Mystery Figure, Rival Rematch, League Run,
+Random Gym Rematch, Battle Frontier, and the Crucible Wild Encounter.
+
+| Layer | Where | Multiplier |
+|---|---|---|
+| Per-event boss boost | `applyStoryLeagueFoeStatBoost` — fires for E1-4 / Champion / Mystery / league Rival | 1.22-1.50 HP |
+| Hard Mode | `crucibleApplyHardModeToFoes` — fires after the boss boost in `startBattle` | × 1.30 HP/bulk/speed |
+| Difficulty mode | `applyFoeDifficultyScaling` — applies last | × 0.70-1.30 |
+
+Champion rematch HP on Hard Mode + hard difficulty:
+`base × 1.40 × 1.30 × 1.15 = base × 2.09`.
+
+Random Gym Rematch falls outside the boss-boost filter, so the dedicated
+`crucibleApplyHardModeToFoes` (window-scoped) applies the +30% directly.
+Guarded by `mon._crucibleHardApplied` so re-entry can't double-stack.
+
+Gimmick frequency bumps are baked into `_perMonMechChance`:
+- Frontier band base + 0.15 absolute when Hard
+- All other Crucible rematches + 0.20 absolute
+
+---
+
+## 15d. Cable Link build tier (v18+)
+
+Pre-overhaul, Cable Link Reroll / Upgrade / Rebuild all called
+`makeBuild(name)` directly, producing Tournament-tier (T4) builds at
+every action regardless of which one the player paid for. The trainer
+build pipeline runs `_applyStoryBuildPowerTier` to downgrade builds per
+event tier, so player Cable Link teams were structurally stronger than
+any same-grade foe team.
+
+Post-overhaul, the new `_makePlayerLinkBuild(name, tierTag)` helper
+applies tier-appropriate downgrade:
+
+| Action | Tier | EV cap | Notes |
+|---|---|---|---|
+| Reroll (cheap, same grade) | COMPETENT (T3) | 420 / 510 | Tutor / Dojo / EV Trainer still add polish |
+| Upgrade (premium, one grade up) | TOURNAMENT (T4) | 510 | Full polish included — the priciest option |
+| Rebuild (same species, new build) | COMPETENT (T3) | 420 / 510 | Carries perm-boost vitamins through the rebuild |
+
+The shared helper preserves the existing player gimmick gating
+(`_pbsStoryUsePlayerGimmickGate`) — Cable Link only rolls gimmicks the
+player has unlocked via gym victories.
+
+---
+
+## 15e. Frontier & boss curve retune (v18+)
+
+| Curve | Old | New |
+|---|---|---|
+| E1-E4 HP boost | 1.20 | 1.22 |
+| Champion / league Rival HP | 1.30 | 1.40 |
+| Mystery Figure HP | 1.35 | 1.50 |
+| Frontier HP per round | 1.35 + 0.05/r (cap 2.50) | 1.50 + 0.075/r (cap 3.00) |
+| Frontier bulk/speed per round | 1.20 + 0.03/r (cap 1.80) | 1.25 + 0.045/r (cap 2.00) |
+| Mech frequency per round band | flat per event-type | round-tiered: 25% / 45% / 70% / 90% / 100% |
+
+A Frontier round-1 fight is now slightly *harder* than the post-HoF
+Mystery climax used to be. Round 10 caps the Frontier curve near a
+Caged-God-tier wall — the player is expected to be carrying
+perm-boost vitamins and Cable Link Upgrades into the late ladder.
+
+---
+
 ## 16. References
 
 - `docs/STORY_MODE_AUDIT.md` — full 6-agent audit of current story mode (~400 lines)
