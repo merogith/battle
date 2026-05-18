@@ -697,6 +697,166 @@ perm-boost vitamins and Cable Link Upgrades into the late ladder.
 
 ---
 
+## 15f. Grade-to-Gym progression overhaul (v18+)
+
+A controlled-pacing rewrite of the gym power curve, anti-bricking, NPC
+placement, and end-game build mechanics. The goal: a clear "real Pokémon
+progression vibe" with four explicit stages, each with its own grade
+era and unlock set. Veterans can still rush early game; new players get
+a Fire-Red-baseline ramp through Stage 2.
+
+### Four explicit stages
+
+| Stage | Era | Gyms | gradeWeights (filler) | Sig pool | Foe stat mult | Player gear unlocks |
+|---|---|---|---|---|---|---|
+| **1 — G4 Era** | Foundation | Pre-G1 → G2 | G4-dominant (`{g3:25, g4:75}` GL1, `{g3:50, g4:50}` GL2) | G3 ace | 1.00 | Starter (G4 basic), Move Tutor, Evo Sage (cheap), Nature Rater |
+| **2 — G3 Era** | Transition + Core | G3 → G5 | G3-dominant (`{g3:75, g4:25}` GL3, `{g3:100}` GL4-5) | G3 | 1.00 | + EV Trainer @ City 4, Battle Dojo @ City 4 |
+| **3 — G2 Era** | Optimization | G6 → G8 | G3 filler with G2 sig (GL6) → 50/50 G2/G3 (GL7) → pure G2 (GL8) | G2 (GL6-7), **G1 ace exception** at GL8 | 1.05 (G6), 1.10 (G8) | + Department Store, Colress |
+| **4 — G1 Era** | Endgame | E4 → Mystery | G1/G2 mix (E1 30/70 → E4 70/30), Champion 80/20, Mystery 100/0 | G1 | 1.15 (E4), 1.20 (Champion+) | + Crucible / Frontier |
+
+Sigs are *composition-locked*: `rollTrainerTeam`'s signature roll picks
+from the gym leader's curated `sigs` list at the canonical grade,
+filler grades drop one tier via `gwForFiller`. So GL6 reads as
+"G3 team with a G2 ace" without an ad-hoc weight override.
+
+### Starter and Professor gifts — "match the era"
+
+- Starter (City 0) is rolled from `PROF_ROLLS[0] = {g4:100}` — G4
+  basics only. Player gets a Bulbasaur, not an Ivysaur; investing in
+  Evolution Sage and EV/Move Tutors is the *only* path to G3+ on the
+  starter line.
+- Per-city Professor gifts (`PROF_ROLLS`) now match the contemporary
+  era exactly (no longer one tier above). The match-era table:
+  City 0–1 pure G4; City 2 transition (30/70 G3/G4); Cities 3–5 pure
+  G3; City 6 transition (30/70 G2/G3); Cities 7–8 climbing G2; City 9
+  legendary pool.
+- `_storyBuildTierForProfessor` matches the gym tier curve (UNTRAINED
+  pre-G2, NOVICE in G3 era, COMPETENT in G2 era, TOURNAMENT in G1
+  era).
+
+### Wild route encounters — strict G3 cap, 2–3 per hunt
+
+- `_WILD_GRADE_CURVE_BY_BADGES` rewritten: G1/G2 are forbidden in
+  wilds except for a 5% G2 leak from badge 6 onward. Safari Zone is
+  the *only* path to mid- and high-tier catches.
+- The wild-route interrupt rolls **2–3 encounters per route node**
+  (random 2 or 3 per hunt). `_runFirstStoryInterrupt` wraps the
+  catch-screen `onComplete` to chain successive encounters before
+  deferring to the trainer-fight continuation. Player can Run from
+  any individual encounter to advance to the next.
+- Header shows `🌿 Wild Encounter — N/Total` so the player knows how
+  many more catches are left in the hunt.
+
+### Anti-bricking — softening extends through Gym 3
+
+| Phase | Multiplier |
+|---|---|
+| Pre-Gym 1 non-GL | 0.82× (`PRE_GYM1_FOE_STAT_MULT`) |
+| GL1 / GL2 | 0.95× (`EARLY_GL_FOE_STAT_MULT`) |
+| Routes badges 1–2 (non-GL) | 0.92× (`EARLY_GAME_FOE_STAT_MULT`) |
+| **GL3 (Stage 2 entry)** | **0.97× (`STAGE2_GL_FOE_STAT_MULT`)** |
+| ≥ Gym 4 (Stage 2 core) | 1.00× (softening ends) |
+
+The G4 strip in `storyStripGrade4IfPartyMature` is now gated on
+`badges < 2` (was `< 1`) so Stage 1 properly extends through Gym 2
+without G4 mass getting silently lifted into G3.
+
+### Stage-gated late-game foe stat mult
+
+`_stageGatedFoeStatMult` is a second multiplier layered into
+`applyFoeDifficultyScaling`. The brief asks for "regular Fire Red
+difficulty through the Stage 2 unlock" and "slightly harder than Fire
+Red" from Stage 3 onward. Curve:
+
+- Stages 1–2 (badges 0–4 / GLs 1–5) → 1.00 (true FR feel)
+- Stage 3 entry (G6, badge 5) → 1.05
+- Gym 8 / late Stage 3 → 1.10
+- E1–E4 → 1.15
+- Champion / Mystery Figure → 1.20
+
+Crucible / Frontier opt out (`atCrucible`, `sm.frontier.active`) so
+their own stat-boost stacks don't double-dip.
+
+### NPC placement changes
+
+| NPC | Was | Now |
+|---|---|---|
+| Professor | All cities, era + 1 tier | All cities, **match era exactly** |
+| Starter pool | G3-leaning | **G4 basics only** |
+| Move Tutor | All cities, full pool | unchanged |
+| Nature Rater | All cities | unchanged |
+| Evolution Sage | All cities | unchanged |
+| **EV Trainer** | City 1 | **City 4 first** (paired with Stage 2 entry) |
+| **Battle Dojo** | Cities 1–3 + 6–8 | **City 4 first** (paired with Stage 2 entry) |
+| PokéMart / Dept Store | unchanged | unchanged |
+| Safari Zone | City 4 only | unchanged |
+
+EV Trainer + Battle Dojo cluster at City 4 so the player crossing into
+Stage 2 has a single "now you're optimizing" hub. Earlier cities
+intentionally have *no* held-item or EV-shaping facility — the team
+fights with what the Professor gave them and what wilds they caught.
+
+### Enemy build tier — stage-aligned
+
+`_storyBuildTierForEvent` now mirrors the gym index directly:
+
+| Stage / Gym | Basic Trainer | Gym Trainer | Gym Leader |
+|---|---|---|---|
+| Stage 1 (Pre-G1, G1, G2) | T1 | T1 | T1 (ace T2 via composition) |
+| Stage 2 (G3, G4, G5) | T2 | T2 | T2 (ace T3 via composition) |
+| Stage 3 (G6, G7, G8) | T3 | T3 | T3/T4 (T4 ace at GL8) |
+| Stage 4 (E4 → Mystery) | T3/T4 | T4 | T4 |
+
+Builds in the same fight share a tier — the *signature ace* gets its
+power-up through grade composition, not via a per-mon tier hack.
+
+### Illegal Smogon builds — auto-detected, end-game injection
+
+Background: the Smogon builds CSV (`data/builds.csv`) silently mixes
+in presets from fan-made side modes ("Almost Any Ability", "all
+abilities free") — Pokémon with abilities they can't legally have
+(Aerodactyl with Tough Claws, Altaria with Pixilate, Aegislash with
+Prankster, etc.). These presets are inherently stronger.
+
+- **Detection** (`_isBuildAbilityIllegal`): cross-reference each
+  build's `ability` field against `baseStats[name].abilities` at CSV
+  load time. Builds with abilities outside the species' canonical
+  list are tagged `build._illegal = true`. Detection runs in both
+  `loadBuildsCSV` and the `populateCsvBuildsFromAPI` fallback.
+- **Default pool behavior**: `makeBuild` filters illegal builds out
+  of all pools by default. Pre-E4 fights see only legal presets.
+- **End-game injection** (`_storyInjectIllegalBuilds`): after a
+  trainer team is rolled, non-signature slots are re-rolled with
+  `{ allowIllegal: true, forceIllegal: true }` until the event's
+  illegal count is met. Signature aces are protected — a leader's
+  identity mon never morphs into an illegal preset.
+
+Distribution (`_storyIllegalCountForEvent`):
+
+| Event | Illegal slots |
+|---|---|
+| E1–E4 trainers | 1 |
+| Champion | 2 |
+| League Rival (post-G8) | 2 |
+| Mystery Figure | 3 |
+| Frontier rounds 2-3 | 1 |
+| Frontier rounds 4-6 | 2 |
+| Frontier rounds 7+ | 3 |
+
+A species that has no illegal preset in its pool falls back to a
+legal build (the injection silently no-ops for that slot). The
+fallback is rare in practice — the CSV carries illegal presets for
+most species that surface in late-game rolls.
+
+### Rollout
+
+Fresh runs only — no schema migration. The new gradeWeights /
+PROF_ROLLS / wild curve / build tier are static tables, so existing
+saves automatically pick up the new tuning on their next battle.
+`SAVE_VER` is **not** bumped.
+
+---
+
 ## 16. References
 
 - `docs/STORY_MODE_AUDIT.md` — full 6-agent audit of current story mode (~400 lines)

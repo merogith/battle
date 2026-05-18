@@ -7584,11 +7584,42 @@
             return 'other';
         }
 
+        // ── Illegal Smogon build detection ─────────────────────────────────
+        // The CSV mixes in builds from fan-made side modes ("Almost Any Ability",
+        // "all abilities free", etc.) — these surface Pokémon with abilities they
+        // can't legally have (e.g. base Aerodactyl with Tough Claws, Altaria with
+        // Pixilate, Aegislash with Prankster). They're inherently stronger and we
+        // want to use them as a controlled late-game difficulty spike: excluded
+        // from all pools through Gym 8, then injected into Elite Four / Champion /
+        // Mystery Figure rosters in fixed counts (see `_storyIllegalCountForEvent`).
+        //
+        // Detection is heuristic — we cross-reference each build's `ability` field
+        // against the species' canonical ability list in `baseStats[name].abilities`.
+        // Builds with empty ability strings (the engine resolves these to a legal
+        // ability at runtime) are always legal. Builds whose ability matches none
+        // of the species' regular/hidden/special abilities are tagged `_illegal`.
+        function _normalizeAbilityKey(s) {
+            return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        }
+        function _isBuildAbilityIllegal(speciesName, ability) {
+            if (!ability) return false; // unset → resolves to species default → legal
+            const bs = baseStats[speciesName];
+            if (!bs || !bs.abilities) return false; // unknown species — assume legal
+            const want = _normalizeAbilityKey(ability);
+            if (!want) return false;
+            const slots = bs.abilities;
+            for (const k of Object.keys(slots)) {
+                if (_normalizeAbilityKey(slots[k]) === want) return false;
+            }
+            return true;
+        }
+
         async function loadBuildsCSV() {
             try {
                 const text = await fetch('data/builds.csv').then(r => r.text());
                 if (!text || text.trim().length < 10) throw new Error('empty');
                 const rows = parseCSV(text, ',');
+                let illegalCount = 0;
                 for (const row of rows) {
                     const name = row.name;
                     const tag  = row.tag;
@@ -7611,9 +7642,13 @@
                         }
                     };
                     buildObj.archetype = classifyArchetype(buildObj);
+                    if (_isBuildAbilityIllegal(name, buildObj.a)) {
+                        buildObj._illegal = true;
+                        illegalCount++;
+                    }
                     csvBuilds[name][tag].push(buildObj);
                 }
-                console.log(`[CSV] Loaded builds for ${Object.keys(csvBuilds).length} Pokémon`);
+                console.log(`[CSV] Loaded builds for ${Object.keys(csvBuilds).length} Pokémon (${illegalCount} flagged as illegal — reserved for end-game)`);
             } catch(e) {
                 console.warn('[CSV] builds.csv unavailable, fetching from pkmn.cc API...');
                 await populateCsvBuildsFromAPI();
@@ -7659,6 +7694,7 @@
                                 evs: { hp: evs.hp||0, atk: evs.atk||0, def: evs.def||0, spa: evs.spa||0, spd: evs.spd||0, spe: evs.spe||0 }
                             };
                             buildObj.archetype = classifyArchetype(buildObj);
+                            if (_isBuildAbilityIllegal(pokemon, buildObj.a)) buildObj._illegal = true;
                             csvBuilds[pokemon][tag].push(buildObj);
                         }
                     }
@@ -7956,17 +7992,24 @@
         }
         window.makeDesignedBuild = makeDesignedBuild;
 
-        // Central build factory — used by draft, gauntlet rounds, and draw recovery
+        // Central build factory — used by draft, gauntlet rounds, and draw recovery.
+        //   gimmickOpts.forceGimmick  — pin to MEGA / ZMOVE / TERA / STANDARD
+        //   gimmickOpts.allowIllegal  — let illegal builds into the pool (default: false; story end-game opts in)
+        //   gimmickOpts.forceIllegal  — only roll from illegal builds (falls back to legal if species has none)
         function makeBuild(name, gimmickOpts) {
             // Designed-build path: rolled BEFORE gimmick resolution so the mix knob
             // can't be skipped by a forced-STANDARD call. Skip when a non-standard
             // gimmick is being forced (mega/Z/Tera flows need the CSV item).
             const forced = gimmickOpts && gimmickOpts.forceGimmick;
+            const allowIllegal = !!(gimmickOpts && gimmickOpts.allowIllegal);
+            const forceIllegal = !!(gimmickOpts && gimmickOpts.forceIllegal);
             if (!forced || forced === 'STANDARD') {
                 const mix = (typeof settings.csvBuildMix === 'number')
                     ? Math.max(0, Math.min(1, settings.csvBuildMix))
                     : 0.7;
-                if (mix < 1.0 && Math.random() >= mix) {
+                // Designed builds bypass illegal logic entirely (they're never flagged) —
+                // but if the caller is forcing an illegal pick (end-game), skip the designed path.
+                if (mix < 1.0 && Math.random() >= mix && !forceIllegal) {
                     const designed = makeDesignedBuild(name);
                     if (designed) return designed;
                 }
@@ -7990,6 +8033,21 @@
             }
             // Fallback to regular+weather when specific tag pool is empty
             if (!pool.length) pool = (entry.regular || []).concat(entry.weather || []);
+
+            // Illegal-build filtering — default is "exclude". End-game callers opt in
+            // via allowIllegal. forceIllegal narrows to ONLY illegal (with legal fallback
+            // when the species has no illegal preset in the pool).
+            if (pool.length) {
+                if (forceIllegal) {
+                    const illegalOnly = pool.filter(bd => bd && bd._illegal);
+                    if (illegalOnly.length) pool = illegalOnly;
+                    // else: keep full pool; caller wanted illegal but species has none, take what we can get.
+                } else if (!allowIllegal) {
+                    const legalOnly = pool.filter(bd => !bd || !bd._illegal);
+                    if (legalOnly.length) pool = legalOnly;
+                    // else: species ONLY has illegal builds (very rare) — fall through with full pool.
+                }
+            }
 
             if (pool.length) {
                 if (settings.smartDraftPool && pool.length > 1) {
@@ -11323,26 +11381,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Story-mode foe stat multiplier (difficulty knob).
         // Multiplies HP and the five non-HP stats post-build. Damage formula stays Showdown-correct.
-        // Early-game battles get a tiered softening factor so new players have room to develop
-        // a team before the curve ramps. Magnitude scales with badges and event tier:
-        //   - badges 0, non-GL fight   → PRE_GYM1_FOE_STAT_MULT   (deepest — pre-first-gym fodder)
-        //   - badges 0, Gym Leader 1   → EARLY_GL_FOE_STAT_MULT   (gentle softening so GL1 still gates)
-        //   - badges 1, non-GL fight   → EARLY_GAME_FOE_STAT_MULT (route fights between GL1 and GL2)
-        //   - badges 1, Gym Leader 2   → EARLY_GL_FOE_STAT_MULT   (gentle softening — same)
-        //   - badges >= 2              → no early-game nerf
+        // Two stacking layers:
+        //   1. Early-game softening (extended through Gym 3): protects fresh saves from RNG bricks.
+        //        - badges 0, non-GL fight   → PRE_GYM1_FOE_STAT_MULT     0.82 (deepest)
+        //        - badges 0, Gym Leader 1   → EARLY_GL_FOE_STAT_MULT     0.95
+        //        - badges 1, non-GL fight   → EARLY_GAME_FOE_STAT_MULT   0.92
+        //        - badges 1, Gym Leader 2   → EARLY_GL_FOE_STAT_MULT     0.95
+        //        - badges 2, non-GL fight   → EARLY_GAME_FOE_STAT_MULT   0.92
+        //        - badges 2, Gym Leader 3   → STAGE2_GL_FOE_STAT_MULT    0.97 (gentlest — Stage 2 entry)
+        //        - badges >= 3 (Gym 4+)     → 1.00, softening ends
+        //   2. Stage-gated late-game ramp ("slightly harder than Fire Red" past G2 unlock):
+        //        - Stages 1–2 (badges 0–4) → 1.00 (true FR feel)
+        //        - Stage 3 start (G6, badge 5) → 1.05
+        //        - Gym 8 (badge 7) → 1.10
+        //        - E4 (badge 8 / Elite Four event) → 1.15
+        //        - Champion+ (Champion / Mystery Figure / Frontier) → 1.20
         // The "gym leaders keep their signature ace identity" guarantee is enforced through
         // *composition* (rollTrainerTeam's gwForFiller shifts non-sig fillers one tier weaker
-        // while signature aces stay in the canonical grade), not via per-mon stat exemptions —
-        // a 5% across-the-board softening keeps the fight winnable without changing who the
-        // leader fields. Set any constant to 1.0 to disable that tier's softening.
-        window.PRE_GYM1_FOE_STAT_MULT = 0.82;
-        window.EARLY_GAME_FOE_STAT_MULT = 0.92;
-        window.EARLY_GL_FOE_STAT_MULT = 0.95;
+        // while signature aces stay in the canonical grade), not via per-mon stat exemptions.
+        // Set any constant to 1.0 to disable that tier's softening.
+        window.PRE_GYM1_FOE_STAT_MULT     = 0.82;
+        window.EARLY_GAME_FOE_STAT_MULT   = 0.92;
+        window.EARLY_GL_FOE_STAT_MULT     = 0.95;
+        window.STAGE2_GL_FOE_STAT_MULT    = 0.97; // GL3 gentle softening — Stage 2 entry
         function _earlyGameFoeStatMult() {
             const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
             if (!sm) return 1.0;
             const badges = sm.badges | 0;
-            if (badges >= 2) return 1.0;
+            if (badges >= 3) return 1.0;
             const idx = sm.eventIndex | 0;
             // STORY_EVENTS_RAW lives inside the StoryMode IIFE — reach it via window.
             const SER = window.STORY_EVENTS_RAW;
@@ -11353,11 +11419,47 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (evt === 'Gym Leader 1') return window.EARLY_GL_FOE_STAT_MULT || 1.0;
                 return window.PRE_GYM1_FOE_STAT_MULT || 1.0;
             }
-            // badges === 1
-            if (evt === 'Gym Leader 2') return window.EARLY_GL_FOE_STAT_MULT || 1.0;
+            if (badges === 1) {
+                if (evt === 'Gym Leader 2') return window.EARLY_GL_FOE_STAT_MULT || 1.0;
+                return window.EARLY_GAME_FOE_STAT_MULT || 1.0;
+            }
+            // badges === 2 (Stage 1→2 boundary, G3 era starting)
+            if (evt === 'Gym Leader 3') return window.STAGE2_GL_FOE_STAT_MULT || 1.0;
             return window.EARLY_GAME_FOE_STAT_MULT || 1.0;
         }
         window._earlyGameFoeStatMult = _earlyGameFoeStatMult;
+        // Stage-gated foe stat mult: the "slightly harder than Fire Red" ramp the design
+        // calls for past the G2 unlock. Reads the current story row's event type to
+        // determine which stage we're in — late-stage rows ramp up, early-stage rows
+        // stay at 1.0 so Normal mode keeps a pure FR feel through the G3 era.
+        window._stageGatedFoeStatMult = function _stageGatedFoeStatMult() {
+            const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
+            if (!sm) return 1.0;
+            // Crucible / Frontier / post-HoF replay rooms already stack their own boost — don't double.
+            if (sm.frontier && sm.frontier.active) return 1.0;
+            if (sm.atCrucible) return 1.0;
+            const idx = sm.eventIndex | 0;
+            const SER = window.STORY_EVENTS_RAW;
+            const row = (SER && idx >= 0 && idx < SER.length) ? SER[idx] : null;
+            if (!row || row[1] !== 'Battle') return 1.0;
+            const evt = String(row[2] || '');
+            if (evt === 'Mystery Figure' || evt === 'Champion') return 1.20;
+            if (/^E[1-4]$/.test(evt)) return 1.15;
+            const gl = evt.match(/^Gym Leader\s*(\d)$/);
+            if (gl) {
+                const n = +gl[1];
+                if (n >= 8) return 1.10;
+                if (n >= 6) return 1.05;
+                return 1.0;
+            }
+            // Non-leader fights inherit the contemporary stage's multiplier so route
+            // trainers between Gyms 7 and 8 don't feel suddenly weaker than the leaders.
+            const b = sm.badges | 0;
+            if (b >= 8) return 1.15;  // post-G8 league run
+            if (b >= 7) return 1.10;  // post-G7
+            if (b >= 5) return 1.05;  // post-G5 (Stage 3 entry)
+            return 1.0;
+        };
         // Back-compat shim — any external caller still asking "is this the pre-Gym-1 nerf?"
         // gets a true answer for the original pre-GL1 non-GL fights only.
         function _isPreGym1NerfedBattle() {
@@ -11380,6 +11482,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (d === 'hard') mult = 1.15;
             else if (d === 'challenge') mult = 1.30; // labeled "Very Hard" in UI
             mult *= _earlyGameFoeStatMult();
+            mult *= window._stageGatedFoeStatMult();
             if (mult === 1.0) return;
             const newMaxHp = Math.max(1, Math.floor(mon.maxHp * mult));
             mon.maxHp = newMaxHp;
@@ -25443,70 +25546,77 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Intro Rival after City0 (from hub); one Basic route fight before City1; eight badges; Victory Road (3 Elite); League City; E1–E4, Champion, Rival, HoF, Mystery.
         // Rival row ids 68 / 12 / 39 are fought from the city hub (button) before Leave / Continue Route, like Gym checks.
         // City actions: each hub has ≥2 training NPCs (tutor / rater / dojo / EV / Colress); post-gym row mirrors its pre-gym facilities (the 'Gym Battle' action is swapped for 'Leave City', AND the 'Professor' action is dropped — the unlocked +1 slot from the badge is filled at the *next* city's Professor, after the route's wild-encounter beat) so the player returns to the same town for shopping/PC after the badge but walks the road to meet a new partner. Department Store on hubs 35, 50, 59. Poké Casino: row 59.
+        // ── STAGE-ALIGNED GRADE LADDER ──────────────────────────────────────
+        // Stage 1 (G4 Era):  Pre-G1 → G2.   Player has G4 basics, optionally a single G3 evolution.
+        // Stage 2 (G3 Era):  G3 → G5.       Evo/EV/Dojo tools open at City 4 (paired with the G3 era).
+        // Stage 3 (G2 Era):  G6 → G8.       G2 introduced via signature aces at G6, full G2 floor at G8.
+        // Stage 4 (G1 Era):  E4 → Mystery.  G1 freely unlocked, illegal Smogon presets injected here.
+        // Gym Leader signature aces escalate one tier ahead of fillers — the ace defines the threat,
+        // fillers stay in the era's baseline. GL6 signature pool = G2; GL8 signature pool = G1.
         const STORY_EVENTS_RAW = [
           [0,'City','City0',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Move Tutor','Nature Rater','Leave City']],
           [68,'Battle','Rival',{g1:0,g2:0,g3:0,g4:100},2000,null],
           [1,'Battle','Basic Trainer',{g1:0,g2:0,g3:0,g4:100},1400,null],
-          [3,'City','City1',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Battle Dojo','EV Trainer','Gym Battle','Leave City']],
-          [4,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:20,g4:80},1850,null],
-          [5,'Battle','Gym Leader 1',{g1:0,g2:0,g3:100,g4:0},2350,null],
-          [6,'City','City1',null,0,['Link Station','Evolution Tutor','Pokemart','Battle Dojo','EV Trainer','Leave City']],
-          [7,'Battle','Basic Trainer',{g1:0,g2:0,g3:60,g4:40},1200,null],
-          [8,'Battle','Basic Trainer',{g1:0,g2:0,g3:70,g4:30},1200,null],
-          [9,'City','City2',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Move Tutor','Battle Dojo','Gym Battle','Leave City']],
-          [10,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:80,g4:20},2100,null],
-          [11,'Battle','Gym Leader 2',{g1:0,g2:0,g3:100,g4:0},2950,null],
-          [13,'City','City2',null,0,['Link Station','Evolution Tutor','Pokemart','Move Tutor','Battle Dojo','Leave City']],
-          [14,'Battle','Basic Trainer',{g1:0,g2:0,g3:80,g4:20},1500,null],
-          [15,'Battle','Basic Trainer',{g1:0,g2:0,g3:90,g4:10},1500,null],
+          [3,'City','City1',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Gym Battle','Leave City']],
+          [4,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:10,g4:90},1850,null],
+          [5,'Battle','Gym Leader 1',{g1:0,g2:0,g3:25,g4:75},2350,null],
+          [6,'City','City1',null,0,['Link Station','Evolution Tutor','Pokemart','Leave City']],
+          [7,'Battle','Basic Trainer',{g1:0,g2:0,g3:25,g4:75},1200,null],
+          [8,'Battle','Basic Trainer',{g1:0,g2:0,g3:35,g4:65},1200,null],
+          [9,'City','City2',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Move Tutor','Gym Battle','Leave City']],
+          [10,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:45,g4:55},2100,null],
+          [11,'Battle','Gym Leader 2',{g1:0,g2:0,g3:50,g4:50},2950,null],
+          [13,'City','City2',null,0,['Link Station','Evolution Tutor','Pokemart','Move Tutor','Leave City']],
+          [14,'Battle','Basic Trainer',{g1:0,g2:0,g3:65,g4:35},1500,null],
+          [15,'Battle','Basic Trainer',{g1:0,g2:0,g3:75,g4:25},1500,null],
           [16,'City','City3',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Move Tutor','Nature Rater','Gym Battle']],
-          [17,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:95,g4:5},2450,null],
-          [18,'Battle','Gym Leader 3',{g1:0,g2:30,g3:70,g4:0},3550,null],
+          [17,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:80,g4:20},2450,null],
+          [18,'Battle','Gym Leader 3',{g1:0,g2:0,g3:75,g4:25},3550,null],
           [19,'City','City3',null,0,['Link Station','Evolution Tutor','Pokemart','Move Tutor','Nature Rater','Leave City']],
-          [12,'Battle','Rival',{g1:0,g2:0,g3:100,g4:0},3500,null],
-          [20,'Battle','Basic Trainer',{g1:0,g2:10,g3:90,g4:0},1700,null],
-          [21,'Battle','Basic Trainer',{g1:0,g2:15,g3:85,g4:0},1700,null],
-          [22,'City','City4',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Safari Zone','Move Tutor','EV Trainer','Gym Battle','Leave City']],
-          [23,'Battle','Gym Trainer 1',{g1:0,g2:30,g3:70,g4:0},2800,null],
-          [24,'Battle','Gym Leader 4',{g1:0,g2:50,g3:50,g4:0},3800,null],
-          [25,'City','City4',null,0,['Link Station','Evolution Tutor','Pokemart','Safari Zone','Move Tutor','EV Trainer','Leave City']],
-          [26,'Battle','Basic Trainer',{g1:0,g2:25,g3:75,g4:0},2000,null],
-          [27,'Battle','Basic Trainer',{g1:0,g2:35,g3:65,g4:0},2000,null],
-          [28,'City','City5',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Poké Casino','Move Tutor','Nature Rater','Gym Battle','Leave City']],
-          [29,'Battle','Gym Trainer 1',{g1:0,g2:50,g3:50,g4:0},3050,null],
-          [30,'Battle','Gym Trainer 2',{g1:0,g2:60,g3:40,g4:0},3050,null],
-          [31,'Battle','Gym Leader 5',{g1:0,g2:70,g3:30,g4:0},4150,null],
-          [32,'City','City5',null,0,['Link Station','Evolution Tutor','Pokemart','Poké Casino','Move Tutor','Nature Rater','Leave City']],
-          [33,'Battle','Basic Trainer',{g1:0,g2:50,g3:50,g4:0},2200,null],
-          [34,'Battle','Elite Trainer',{g1:0,g2:70,g3:30,g4:0},2700,null],
+          [12,'Battle','Rival',{g1:0,g2:0,g3:80,g4:20},3500,null],
+          [20,'Battle','Basic Trainer',{g1:0,g2:0,g3:90,g4:10},1700,null],
+          [21,'Battle','Basic Trainer',{g1:0,g2:0,g3:95,g4:5},1700,null],
+          [22,'City','City4',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Safari Zone','Move Tutor','Battle Dojo','EV Trainer','Gym Battle','Leave City']],
+          [23,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:100,g4:0},2800,null],
+          [24,'Battle','Gym Leader 4',{g1:0,g2:0,g3:100,g4:0},3800,null],
+          [25,'City','City4',null,0,['Link Station','Evolution Tutor','Pokemart','Safari Zone','Move Tutor','Battle Dojo','EV Trainer','Leave City']],
+          [26,'Battle','Basic Trainer',{g1:0,g2:0,g3:100,g4:0},2000,null],
+          [27,'Battle','Basic Trainer',{g1:0,g2:0,g3:100,g4:0},2000,null],
+          [28,'City','City5',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Poké Casino','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Gym Battle','Leave City']],
+          [29,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:100,g4:0},3050,null],
+          [30,'Battle','Gym Trainer 2',{g1:0,g2:5, g3:95,g4:0},3050,null],
+          [31,'Battle','Gym Leader 5',{g1:0,g2:0,g3:100,g4:0},4150,null],
+          [32,'City','City5',null,0,['Link Station','Evolution Tutor','Pokemart','Poké Casino','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Leave City']],
+          [33,'Battle','Basic Trainer',{g1:0,g2:0, g3:100,g4:0},2200,null],
+          [34,'Battle','Elite Trainer',{g1:0,g2:15,g3:85, g4:0},2700,null],
           [35,'City','City6',null,0,['Link Station','Evolution Tutor','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
-          [36,'Battle','Gym Trainer 1',{g1:0,g2:75,g3:25,g4:0},3300,null],
-          [37,'Battle','Gym Trainer 2',{g1:0,g2:80,g3:20,g4:0},3300,null],
-          [38,'Battle','Gym Leader 6',{g1:0,g2:90,g3:10,g4:0},5550,null],
+          [36,'Battle','Gym Trainer 1',{g1:0,g2:10,g3:90,g4:0},3300,null],
+          [37,'Battle','Gym Trainer 2',{g1:0,g2:15,g3:85,g4:0},3300,null],
+          [38,'Battle','Gym Leader 6',{g1:0,g2:0, g3:100,g4:0},5550,null],
           [40,'City','City6',null,0,['Link Station','Evolution Tutor','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
-          [39,'Battle','Rival',{g1:5,g2:95,g3:0,g4:0},5400,null],
-          [41,'Battle','Basic Trainer',{g1:0,g2:100,g3:0,g4:0},2500,null],
-          [42,'Battle','Elite Trainer',{g1:5,g2:95,g3:0,g4:0},2900,null],
+          [39,'Battle','Rival',{g1:0,g2:50,g3:50,g4:0},5400,null],
+          [41,'Battle','Basic Trainer',{g1:0,g2:20,g3:80,g4:0},2500,null],
+          [42,'Battle','Elite Trainer',{g1:0,g2:40,g3:60,g4:0},2900,null],
           [43,'City','City7',null,0,['Link Station','Evolution Tutor','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
-          [44,'Battle','Gym Trainer 1',{g1:5,g2:95,g3:0,g4:0},3550,null],
-          [45,'Battle','Gym Trainer 2',{g1:8,g2:92,g3:0,g4:0},3550,null],
-          [46,'Battle','Gym Leader 7',{g1:15,g2:85,g3:0,g4:0},5800,null],
+          [44,'Battle','Gym Trainer 1',{g1:0,g2:35,g3:65,g4:0},3550,null],
+          [45,'Battle','Gym Trainer 2',{g1:0,g2:45,g3:55,g4:0},3550,null],
+          [46,'Battle','Gym Leader 7',{g1:0,g2:50,g3:50,g4:0},5800,null],
           [47,'City','City7',null,0,['Link Station','Evolution Tutor','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
-          [48,'Battle','Elite Trainer',{g1:10,g2:90,g3:0,g4:0},3000,null],
-          [49,'Battle','Elite Trainer',{g1:12,g2:88,g3:0,g4:0},3000,null],
+          [48,'Battle','Elite Trainer',{g1:0,g2:70,g3:30,g4:0},3000,null],
+          [49,'Battle','Elite Trainer',{g1:0,g2:80,g3:20,g4:0},3000,null],
           [50,'City','City8',null,0,['Link Station','Evolution Tutor','Pokemart','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
-          [51,'Battle','Gym Trainer 1',{g1:15,g2:85,g3:0,g4:0},3650,null],
-          [52,'Battle','Gym Trainer 2',{g1:20,g2:80,g3:0,g4:0},3650,null],
-          [53,'Battle','Gym Leader 8',{g1:25,g2:75,g3:0,g4:0},5950,null],
+          [51,'Battle','Gym Trainer 1',{g1:0,g2:85,g3:15,g4:0},3650,null],
+          [52,'Battle','Gym Trainer 2',{g1:0,g2:95,g3:5, g4:0},3650,null],
+          [53,'Battle','Gym Leader 8',{g1:0,g2:100,g3:0,g4:0},5950,null],
           [55,'City','City8',null,0,['Link Station','Evolution Tutor','Pokemart','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
-          [56,'Battle','Elite Trainer',{g1:30,g2:70,g3:0,g4:0},4200,null],
-          [57,'Battle','Elite Trainer',{g1:35,g2:65,g3:0,g4:0},4800,null],
-          [58,'Battle','Elite Trainer',{g1:40,g2:60,g3:0,g4:0},5200,null],
+          [56,'Battle','Elite Trainer',{g1:0,  g2:100,g3:0,g4:0},4200,null],
+          [57,'Battle','Elite Trainer',{g1:10, g2:90, g3:0,g4:0},4800,null],
+          [58,'Battle','Elite Trainer',{g1:20, g2:80, g3:0,g4:0},5200,null],
           [59,'City','City9',null,0,['Link Station','Evolution Tutor','Pokemart','Department Store','Poké Casino','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Enter Pokemon League']],
-          [60,'Battle','E1',{g1:35,g2:65,g3:0,g4:0},5000,null],
-          [61,'Battle','E2',{g1:45,g2:55,g3:0,g4:0},5000,null],
+          [60,'Battle','E1',{g1:30,g2:70,g3:0,g4:0},5000,null],
+          [61,'Battle','E2',{g1:40,g2:60,g3:0,g4:0},5000,null],
           [62,'Battle','E3',{g1:55,g2:45,g3:0,g4:0},5000,null],
-          [63,'Battle','E4',{g1:65,g2:35,g3:0,g4:0},5000,null],
+          [63,'Battle','E4',{g1:70,g2:30,g3:0,g4:0},5000,null],
           [64,'Battle','Champion',{g1:80,g2:20,g3:0,g4:0},7500,null],
           [65,'Battle','Rival',{g1:75,g2:25,g3:0,g4:0},7200,null],
           [66,'Hall of Fame','Hall of Fame',null,0,null],
@@ -25553,17 +25663,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Professor grade rolls per city (0-based city index)
         // With 3-choice system: weights determine what appears across 3 options
+        // Professor gifts: match the current grade era (no longer one tier above).
+        // Stage 1 (G4 era): City 0–1 → G4 basics only. Player has to invest (Evo Sage / catches) to grow up.
+        // Stage 2 (G3 era): City 2 transition, Cities 3–5 settle into G3.
+        // Stage 3 (G2 era): City 6 transition, Cities 7–8 settle into G2.
+        // Stage 4 (G1 era): City 9 league hub stays G1 legendary pool.
         const PROF_ROLLS = [
-          {g1:0, g2:0,  g3:90, g4:10},  // City0  — starter pool weighted to G3 so locked-in starters can handle the Gym-1 (100% G3) wall
-          {g1:0, g2:0,  g3:80, g4:20},  // City1
-          {g1:0, g2:20, g3:60, g4:20},  // City2
-          {g1:0, g2:40, g3:60, g4:0},   // City3
-          {g1:0, g2:50, g3:50, g4:0},   // City4
-          {g1:0, g2:60, g3:40, g4:0},   // City5
-          {g1:0, g2:80, g3:20, g4:0},   // City6
-          {g1:10,g2:90, g3:0,  g4:0},   // City7
-          {g1:20,g2:80, g3:0,  g4:0},   // City8
-          {g1:100,g2:0, g3:0,  g4:0},   // City9 — League City
+          {g1:0,  g2:0,  g3:0,   g4:100}, // City0 — starter pool: G4 basics only (Bulbasaur, not Ivysaur)
+          {g1:0,  g2:0,  g3:0,   g4:100}, // City1 — G4 era
+          {g1:0,  g2:0,  g3:30,  g4:70 }, // City2 — G4→G3 transition
+          {g1:0,  g2:0,  g3:80,  g4:20 }, // City3 — G3 settling in
+          {g1:0,  g2:0,  g3:100, g4:0  }, // City4 — G3 era
+          {g1:0,  g2:0,  g3:100, g4:0  }, // City5 — G3 era
+          {g1:0,  g2:30, g3:70,  g4:0  }, // City6 — G2 introduced
+          {g1:0,  g2:60, g3:40,  g4:0  }, // City7 — G2 emerging
+          {g1:0,  g2:100,g3:0,   g4:0  }, // City8 — G2 era
+          {g1:100,g2:0,  g3:0,   g4:0  }, // City9 — League City (post-G8 legendary gate)
         ];
         // Maps each gym leader's name to their in-game city/town
         const GYM_LEADER_CITY_NAMES = {
@@ -27827,10 +27942,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         /** From Gym 1 onward, strip all grade-4 probability from weight rolls (mass moves to g3) so route trainers between gyms can't fall below the gym's grade floor. */
         function storyStripGrade4IfPartyMature(gw) {
             if (!gw || !sm || !sm.active) return gw;
-            // Pre-Gym-1 route is the player's "easy ramp" — the first basic trainer
-            // after the intro rival is meant to roll a G4 team (the row's gradeWeights
-            // are already {g4:100}). From Gym 1 onward, the floor lifts.
-            if ((sm.badges | 0) < 1) return gw;
+            // Stage 1 (the G4 era) runs from Pre-Gym 1 through Gym 2. Both gyms
+            // keep G4 mass in their rolls so the early game feels like a real
+            // G4 era, not just one pre-Gym-1 ramp. From Gym 3 onward (badges ≥ 2,
+            // Stage 2 entry), the floor lifts and any residual G4 mass is rolled
+            // up into G3.
+            if ((sm.badges | 0) < 2) return gw;
             const g1 = gw.g1 || 0, g2 = gw.g2 || 0, g3 = gw.g3 || 0, g4 = gw.g4 || 0;
             if (g4 <= 0) return { g1, g2, g3, g4: 0 };
             return { g1, g2, g3: g3 + g4, g4: 0 };
@@ -28318,6 +28435,113 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return false;
         }
+
+        // ── Tier-aware move scaling ──────────────────────────────────────────
+        // Moves an "untrained" route trainer wouldn't be drilling yet: setup,
+        // hazards, screens, recovery, status, weather, room/screens, pivots.
+        // At T1 these are replaced with the species' primary-type basic attack
+        // so the mon just hits with what it can already do. At T2 only the
+        // screens / Trick Room family is replaced — Novice trainers know about
+        // status and hazards (gym trainer 1 vibe) but haven't learned screens.
+        const _T1_DOWNGRADE_MOVES = new Set([
+            // Setup moves (full _SETUP_MOVES + a few hat-tip extras)
+            'Swords Dance','Nasty Plot','Dragon Dance','Calm Mind','Shell Smash',
+            'Quiver Dance','Belly Drum','Coil','Shift Gear','Bulk Up','Iron Defense',
+            'Agility','Rock Polish','Autotomize','Geomancy','Clangorous Soul',
+            'No Retreat','Victory Dance','Tail Glow','Growth','Work Up','Curse',
+            'Tidy Up','Filament Dance',
+            // Hazards
+            'Stealth Rock','Spikes','Toxic Spikes','Sticky Web','Ceaseless Edge',
+            // Recovery
+            'Recover','Roost','Soft-Boiled','Slack Off','Synthesis','Moonlight',
+            'Morning Sun','Wish','Heal Pulse','Pain Split','Rest','Milk Drink',
+            'Strength Sap','Shore Up','Heal Order','Heal Bell','Aromatherapy',
+            // Status conditions (the "expert" status moves; basic status like
+            // Growl, Tail Whip, Leer stays — those are level-1 staples)
+            'Toxic','Will-O-Wisp','Thunder Wave','Spore','Sleep Powder',
+            'Stun Spore','Glare','Hypnosis','Yawn','Nuzzle','Lovely Kiss',
+            // Pivots, screens, room/terrain
+            'U-turn','Volt Switch','Flip Turn','Parting Shot','Teleport','Baton Pass',
+            'Light Screen','Reflect','Aurora Veil','Trick Room','Tailwind',
+            'Magic Room','Wonder Room','Trick','Switcheroo','Knock Off',
+            'Defog','Rapid Spin','Mortal Spin','Court Change',
+            // Weather setters (untrained mons aren't running weather teams)
+            'Rain Dance','Sunny Day','Sandstorm','Hail','Snowscape','Chilly Reception',
+            // Terrains (same logic — too strategic for T1)
+            'Electric Terrain','Grassy Terrain','Misty Terrain','Psychic Terrain',
+            // Substitute / Protect family — kept; Protect is canonically the
+            // first move a basic trainer is allowed (FR-style "wait it out")
+            'Substitute','Disable','Encore','Taunt'
+        ]);
+        // T2 (Novice) trims only the most strategy-defining tools — pivots and
+        // screens. Setup / hazards / status can stay because route-Trainer 1
+        // shows up with one Stealth Rock or a Swords Dance and the player has
+        // to react. The Novice tier should *feel* like an FR Gym Trainer.
+        const _T2_DOWNGRADE_MOVES = new Set([
+            'Light Screen','Reflect','Aurora Veil',
+            'Trick Room','Wonder Room','Magic Room','Tailwind',
+            'Baton Pass','Trick','Switcheroo'
+        ]);
+        // Type-keyed basic STAB attacks used as T1 replacements. Curated to
+        // moderate BP (55–80) — untrained mons hit, but not as hard as a
+        // CSV preset's high-BP STAB. Each entry must be a move the engine
+        // already knows; `ensureMoveData(...)` is called in buildPokemon's
+        // fallback path so unknown moves don't crash.
+        const _T1_BASIC_STAB_BY_TYPE = {
+            'Normal':   'Body Slam',
+            'Fire':     'Flame Wheel',
+            'Water':    'Bubble Beam',
+            'Electric': 'Spark',
+            'Grass':    'Vine Whip',
+            'Ice':      'Icy Wind',
+            'Fighting': 'Brick Break',
+            'Poison':   'Poison Jab',
+            'Ground':   'Bulldoze',
+            'Flying':   'Aerial Ace',
+            'Psychic':  'Psybeam',
+            'Bug':      'Fury Cutter',
+            'Rock':     'Rock Throw',
+            'Ghost':    'Shadow Sneak',
+            'Dragon':   'Dragon Breath',
+            'Dark':     'Bite',
+            'Steel':    'Metal Claw',
+            'Fairy':    'Fairy Wind'
+        };
+        function _t1ReplacementForSpecies(name) {
+            const bs = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
+            const t1 = bs.t1 || 'Normal';
+            const t2 = bs.t2 || null;
+            const primary = _T1_BASIC_STAB_BY_TYPE[t1];
+            const secondary = t2 ? _T1_BASIC_STAB_BY_TYPE[t2] : null;
+            // 70% primary, 30% secondary when species is dual-typed so the
+            // replacement set varies per encounter.
+            if (secondary && Math.random() < 0.30) return secondary;
+            return primary || 'Tackle';
+        }
+        function _storyDowngradeMovesForTier(name, build, tier) {
+            if (!build || !Array.isArray(build.m) || !build.m.length) return;
+            const t = tier | 0;
+            if (t >= STORY_BUILD_TIER.COMPETENT) return; // T3/T4 keep all moves
+            const dropSet = (t === STORY_BUILD_TIER.UNTRAINED) ? _T1_DOWNGRADE_MOVES : _T2_DOWNGRADE_MOVES;
+            const replacement = _t1ReplacementForSpecies(name);
+            const seen = new Set();
+            for (let i = 0; i < build.m.length; i++) {
+                const mv = build.m[i];
+                if (!mv) continue;
+                if (dropSet.has(mv)) build.m[i] = replacement;
+                // De-dupe: if the replacement is already in the slot, pick
+                // a secondary type's move or fall back to Tackle so we don't
+                // end up with two identical moves.
+                if (seen.has(build.m[i])) {
+                    const bs = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
+                    const t2 = bs.t2 && _T1_BASIC_STAB_BY_TYPE[bs.t2];
+                    if (t2 && !seen.has(t2)) build.m[i] = t2;
+                    else if (!seen.has('Tackle')) build.m[i] = 'Tackle';
+                    else if (!seen.has('Quick Attack')) build.m[i] = 'Quick Attack';
+                }
+                seen.add(build.m[i]);
+            }
+        }
         // Public-facing tier names used in tooltips / debug output. The badge UI
         // and the one-time educational tip read from this table so labels stay
         // consistent across the screens.
@@ -28328,56 +28552,80 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return STORY_BUILD_TIER_LABEL[t] || '';
         }
 
-        /** Map trainer event + progression → target training tier. Mystery Figure
-         *  / Champion / E1–E4 / Victory Road always T4. Frontier ladder stays T4
-         *  (rounds scale via stat-boost, not build polish). Post-HoF (badges 8)
-         *  flattens to T4 so Crucible gym rematches don't degrade. */
+        /** Map trainer event + progression → target training tier.
+         *  Stage-aligned with the grade curve (see STORY_EVENTS_RAW comment):
+         *    Stage 1 (Pre-G1 → G2, G4 era):  T1 enemies — untrained, no items.
+         *    Stage 2 (G3 → G5, G3 era):      T2 enemies — semi-EV, berries + Leftovers.
+         *    Stage 3 (G6 → G8, G2 era):      T3 enemies — real EVs, most items.
+         *    Stage 4 (E4 → Mystery, G1 era): T4 enemies — full optimization + illegal builds.
+         *  Gym Leader signature aces get one tier above the row's filler tier so the
+         *  ace stays the threat the player remembers, fillers stay in the baseline.
+         *  Mystery Figure / Champion / E1–E4 / Victory Road always T4. Post-HoF
+         *  (badges 8) flattens to T4 so Crucible rematches don't degrade. */
         function _storyBuildTierForEvent(eventType, storyRowIdx, badges) {
             const e = String(eventType || '');
             const b = badges | 0;
             if (sm && sm.frontier && sm.frontier.active) return STORY_BUILD_TIER.TOURNAMENT;
+            // post-HoF: everything in the Crucible loop runs at T4 so rematches stay sharp.
             if (b >= 8) return STORY_BUILD_TIER.TOURNAMENT;
             if (e === 'Mystery Figure' || e === 'Champion' || e === 'Victory Road' || /^E[1-4]$/.test(e)) return STORY_BUILD_TIER.TOURNAMENT;
             if (e === 'Rival') {
-                if (b >= 6) return STORY_BUILD_TIER.TOURNAMENT;
-                if (b >= 3) return STORY_BUILD_TIER.COMPETENT;
-                if (b >= 1) return STORY_BUILD_TIER.NOVICE;
+                // Rival follows the stage of the badges they're encountered at.
+                // Mid-game rivals (row 12, 39) hit at badges 2 and 5 — Stage 2 and Stage 3 mid.
+                // The league Rival (row 65, badges 8+) is T4 via the earlier b>=8 short-circuit.
+                if (b >= 7) return STORY_BUILD_TIER.COMPETENT;  // Stage 3 — T3, T4 via b>=8 above
+                if (b >= 5) return STORY_BUILD_TIER.COMPETENT;
+                if (b >= 2) return STORY_BUILD_TIER.NOVICE;
                 return STORY_BUILD_TIER.UNTRAINED;
             }
             const gl = e.match(/^Gym Leader\s*(\d)$/);
             if (gl) {
                 const n = +gl[1];
-                if (n >= 6) return STORY_BUILD_TIER.TOURNAMENT;
-                if (n >= 3) return STORY_BUILD_TIER.COMPETENT;
-                return STORY_BUILD_TIER.NOVICE;
+                // Leader's filler tier follows the stage. The signature ace is one
+                // grade higher than fillers via composition (gwForFiller in
+                // rollTrainerTeam), so the "threat ace" identity reads even when
+                // the whole team is at the stage's baseline tier. GL8 is the
+                // "last power phase" — promoted to T4 as the Stage 3 finale so
+                // the player feels a real cap before E4.
+                if (n >= 8) return STORY_BUILD_TIER.TOURNAMENT; // GL8 — last power phase, full polish
+                if (n >= 6) return STORY_BUILD_TIER.COMPETENT;  // Stage 3 mid — T3 floor, G2 ace via composition
+                if (n >= 3) return STORY_BUILD_TIER.NOVICE;     // Stage 2 — T2 floor, G3 ace
+                return STORY_BUILD_TIER.UNTRAINED;              // Stage 1 — T1 floor, G3 ace
             }
+            // Sub-leader trainers (gym trainers, basic trainers, elite trainers)
+            // follow the stage they're in. The "leading up to GL8" wave still
+            // sits at T3 (Stage 3 baseline) — only GL8 itself spikes to T4.
             if (e === 'Gym Trainer 2' || e === 'Elite Trainer') {
-                if (b >= 6) return STORY_BUILD_TIER.TOURNAMENT;
-                if (b >= 3) return STORY_BUILD_TIER.COMPETENT;
-                return STORY_BUILD_TIER.NOVICE;
+                if (b >= 5) return STORY_BUILD_TIER.COMPETENT;  // Stage 3 — T3
+                if (b >= 2) return STORY_BUILD_TIER.NOVICE;     // Stage 2 — T2
+                return STORY_BUILD_TIER.UNTRAINED;              // Stage 1 — T1
             }
             if (e === 'Gym Trainer 1' || e === 'Gym Trainer') {
                 if (b >= 5) return STORY_BUILD_TIER.COMPETENT;
-                if (b >= 1) return STORY_BUILD_TIER.NOVICE;
+                if (b >= 2) return STORY_BUILD_TIER.NOVICE;
                 return STORY_BUILD_TIER.UNTRAINED;
             }
             if (e === 'Basic Trainer') {
-                if (b >= 6) return STORY_BUILD_TIER.COMPETENT;
-                if (b >= 3) return STORY_BUILD_TIER.NOVICE;
+                // Route fodder sits one tier below the gym trainer of the same
+                // stage so the player has a clear "wild trainer < gym staff <
+                // gym leader" ladder within each stage.
+                if (b >= 5) return STORY_BUILD_TIER.NOVICE;
+                if (b >= 2) return STORY_BUILD_TIER.NOVICE;
                 return STORY_BUILD_TIER.UNTRAINED;
             }
             return STORY_BUILD_TIER.NOVICE;
         }
 
-        /** Professor gift: scaled with city + badges. Always one tier above the
-         *  contemporary trainer floor — these are curated picks the Professor
-         *  hand-trained, not random route fauna. */
+        /** Professor gift: matches the contemporary trainer floor for the city.
+         *  No longer "one tier above" — the player has to invest (Evo Sage / EV
+         *  Trainer / Move Tutor / Battle Dojo) to push their team beyond the
+         *  current era's baseline. */
         function _storyBuildTierForProfessor(cityIdx, badges) {
             const c = cityIdx | 0;
             const b = badges | 0;
-            if (b >= 6 || c >= 7) return STORY_BUILD_TIER.TOURNAMENT;
-            if (b >= 4 || c >= 5) return STORY_BUILD_TIER.COMPETENT;
-            if (b >= 1 || c >= 2) return STORY_BUILD_TIER.NOVICE;
+            if (b >= 8 || c >= 9) return STORY_BUILD_TIER.TOURNAMENT;
+            if (b >= 5 || c >= 6) return STORY_BUILD_TIER.COMPETENT;
+            if (b >= 2 || c >= 3) return STORY_BUILD_TIER.NOVICE;
             return STORY_BUILD_TIER.UNTRAINED;
         }
 
@@ -28396,9 +28644,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pickFlavorItem = pool => pool[Math.floor(Math.random() * pool.length)];
 
             if (t === STORY_BUILD_TIER.UNTRAINED) {
+                // EV: zeroed — raw species stats only.
                 build.evs = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+                // Nature: forced neutral — no +10%/-10% bias.
                 build.n = pickNeutralNature();
+                // Ability: forced to canonical slot 0 — no hidden abilities, no
+                // surprise reactives. T1 mons run the species' "out of the egg"
+                // ability so route trainers feel like route trainers.
                 if (base.abilities && base.abilities['0']) build.a = base.abilities['0'];
+                // Item: flavor berry or no item.
                 if (!gimmickBound) {
                     if (_storyBuildPrefersNoItem(build)) {
                         build.i = '';
@@ -28407,10 +28661,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         build.i = it == null ? '' : it;
                     }
                 }
+                // Moves: replace setup/hazard/recovery/status/screen/pivot moves
+                // with the species' primary-type basic STAB. Untrained trainers
+                // throw four attacks; strategy emerges at T2+.
+                _storyDowngradeMovesForTier(name, build, t);
                 return build;
             }
 
             if (t === STORY_BUILD_TIER.NOVICE) {
+                // EV: capped at 220 total (Smogon "semi-EV"). 35% chance to roll
+                // the nature back to neutral so some T2 mons still feel like
+                // untrained graduates.
                 const evs = build.evs || { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
                 let total = 0;
                 for (const k of ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) total += (evs[k] | 0);
@@ -28422,13 +28683,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     build.evs = evs;
                 }
                 if (Math.random() < 0.35) build.n = pickNeutralNature();
+                // Ability: 25% chance to drop a hidden ability back to slot 0.
+                // The CSV mixes regular and hidden ability builds; at Novice
+                // tier we want some mons running their base ability so the
+                // player sees the "trainer hasn't unlocked HA yet" feel.
+                if (base.abilities && base.abilities['0'] && Math.random() < 0.25) {
+                    build.a = base.abilities['0'];
+                }
+                // Item: elite-tier items get swapped for flavor type-boost gear.
                 if (!gimmickBound && _ELITE_ITEMS_SET.has(build.i)) {
                     build.i = _storyBuildPrefersNoItem(build) ? '' : pickFlavorItem(_T2_FLAVOR_ITEMS);
                 }
+                // Moves: trim screens / room / pivot family only. Hazards,
+                // setup, and status stay — Novice trainers are showing off
+                // their first strategic tools.
+                _storyDowngradeMovesForTier(name, build, t);
                 return build;
             }
 
             if (t === STORY_BUILD_TIER.COMPETENT) {
+                // EV: capped at 420 (most of a competitive spread, missing the
+                // last 90 points of polish). Nature, ability, moves, items
+                // stay — Competent trainers play real builds, just not fully
+                // optimized.
                 const evs = build.evs || { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
                 let total = 0;
                 for (const k of ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) total += (evs[k] | 0);
@@ -28458,6 +28735,86 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 slot.build.powerTier = tier;
             }
             return team;
+        }
+
+        /** How many roster slots should be promoted to illegal Smogon presets
+         *  for this event. Returns 0 for everything pre-E4; 1 for E1–E4 trainers;
+         *  2 for the Champion and the post-G8 League Rival; 3 for the post-HoF
+         *  Mystery Figure. Anything else (Frontier rounds 4+) gets 1 too —
+         *  Crucible kaizo ladder rewards opting into the harder pool. */
+        function _storyIllegalCountForEvent(eventType, storyRowIdx) {
+            const e = String(eventType || '');
+            const b = (sm && sm.badges) | 0;
+            if (e === 'Mystery Figure') return 3;
+            if (e === 'Champion') return 2;
+            if (e === 'Rival' && b >= 8) return 2;          // post-G8 league rival only
+            if (/^E[1-4]$/.test(e)) return 1;
+            if (e === 'Victory Road') return 2;
+            if (sm && sm.frontier && sm.frontier.active) {
+                const r = (sm.frontier.round | 0) || 1;
+                if (r >= 7) return 3;
+                if (r >= 4) return 2;
+                if (r >= 2) return 1;
+                return 0;
+            }
+            return 0;
+        }
+
+        /** Promote up to `count` non-signature slots in a freshly rolled team to
+         *  illegal Smogon builds, where the species' build pool has an illegal
+         *  preset available. Re-rolls `slot.build` in-place with
+         *  `{ allowIllegal: true, forceIllegal: true }` so the existing
+         *  pickThematic species selection stays — we're only changing the *build*
+         *  pulled for that species, never the species itself. Signature aces are
+         *  protected so a leader's identity mon doesn't morph mid-game.
+         *  Returns the number of slots actually promoted. */
+        function _storyInjectIllegalBuilds(team, sigNames, count) {
+            if (!Array.isArray(team) || !team.length || count <= 0) return 0;
+            const protectedNames = new Set();
+            if (sigNames && typeof sigNames.forEach === 'function') {
+                sigNames.forEach(n => protectedNames.add(n));
+            }
+            const candidates = [];
+            for (let i = 0; i < team.length; i++) {
+                const slot = team[i];
+                if (!slot || !slot.name) continue;
+                if (protectedNames.has(slot.name)) continue;
+                const entry = (typeof resolveCsvBuildEntry === 'function') ? resolveCsvBuildEntry(slot.name) : null;
+                if (!entry) continue;
+                const allPools = [
+                    ...(entry.regular || []),
+                    ...(entry.weather || []),
+                    ...(entry.mega || []),
+                    ...(entry['z-attack'] || []),
+                    ...(entry.tera || [])
+                ];
+                const hasIllegal = allPools.some(bd => bd && bd._illegal);
+                if (hasIllegal) candidates.push(i);
+            }
+            // Shuffle candidates so the same slots aren't always picked
+            for (let i = candidates.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+            }
+            const target = Math.min(count, candidates.length);
+            let promoted = 0;
+            for (let k = 0; k < target; k++) {
+                const slotIdx = candidates[k];
+                const slot = team[slotIdx];
+                let newBuild = null;
+                try {
+                    newBuild = makeBuild(slot.name, {
+                        forceGimmick: 'STANDARD',
+                        allowIllegal: true,
+                        forceIllegal: true
+                    });
+                } catch (e) { newBuild = null; }
+                if (newBuild && newBuild._illegal) {
+                    slot.build = newBuild;
+                    promoted++;
+                }
+            }
+            return promoted;
         }
 
         function rollTrainerTeam(trainer, partySize, gradeWeights, enabledGensIn, battleEventType, storyRowIdx) {
@@ -28589,6 +28946,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 enforceRoleCoverage(teamR, _lockedR);
                 enforceTypeBalance(teamR, _candR, _lockedR);
                 enforceItemClause(teamR);
+                // End-game illegal-build injection (Rival post-G8 → 2 slots).
+                const _illegalCountR = _storyIllegalCountForEvent(battleEventType, storyRowIdx);
+                if (_illegalCountR > 0) _storyInjectIllegalBuilds(teamR, _origSigsR, _illegalCountR);
                 return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(teamR, battleEventType), battleEventType, storyRowIdx);
             }
 
@@ -28693,6 +29053,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enforceRoleCoverage(team, _locked);
             enforceTypeBalance(team, _cand, _locked);
             enforceItemClause(team);
+            // End-game illegal-build injection (E1-E4 → 1; Champion → 2; Frontier → tiered).
+            // Signature aces are protected so a leader's identity mon doesn't morph mid-run.
+            const _illegalCount = _storyIllegalCountForEvent(battleEventType, storyRowIdx);
+            if (_illegalCount > 0) _storyInjectIllegalBuilds(team, _origSigs, _illegalCount);
             return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(team, battleEventType), battleEventType, storyRowIdx);
         }
         function rollMysteryFigureFinalBossTeam(partySize, enabledGensIn) {
@@ -28743,6 +29107,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.settings.teraOn = true;
                 sm.settings.zOn = true;
                 sm.badges = 8;
+                // Mystery Figure is the heaviest illegal injection (3 slots). No
+                // signature lock — the boss roster is freshly rolled and any slot
+                // is eligible for an illegal-build promotion if the species has one.
+                _storyInjectIllegalBuilds(picks, new Set(), 3);
                 return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(picks, 'Mystery Figure'), 'Mystery Figure', null);
             } finally {
                 sm.settings.megaOn = oldMech.megaOn;
@@ -29881,11 +30249,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Wild grade is keyed on `sm.badges` (see _WILD_GRADE_CURVE_BY_BADGES),
                     // independent of the upcoming trainer's gradeWeights — wilds reflect
                     // the route's biology, not the next fight's lineup.
+                    // Hunt size: roll 2–3 distinct encounters so the player gets a real
+                    // catch window per route, not a single coin flip. The chain is
+                    // driven through onComplete in _runFirstStoryInterrupt below.
                     const enc = rollWildEncounter(storySettingsGens());
                     if (!enc) return null;
+                    const huntSize = 2 + Math.floor(Math.random() * 2); // 2 or 3
+                    const queue = [];
+                    const seenNames = new Set([enc.name]);
+                    for (let i = 0; i < huntSize - 1; i++) {
+                        let next = null;
+                        for (let t = 0; t < 6; t++) {
+                            const candidate = rollWildEncounter(storySettingsGens());
+                            if (candidate && !seenNames.has(candidate.name)) {
+                                next = candidate;
+                                seenNames.add(candidate.name);
+                                break;
+                            }
+                            if (candidate && i > 0) next = candidate; // allow dupes on final slot
+                        }
+                        if (next) queue.push(next);
+                    }
                     return {
                         encounter: enc,
-                        options: {},
+                        options: { wildHuntQueue: queue, wildHuntIndex: 1, wildHuntTotal: huntSize },
                         markWildSeenOnPrepare: false
                     };
                 }
@@ -29894,7 +30281,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         /** Walk STORY_BATTLE_INTERRUPTS in order; on the first match, fire
          *  the catch screen and return `true` so the caller short-circuits.
-         *  Returns `false` if no interrupt fired. */
+         *  Returns `false` if no interrupt fired.
+         *  Wild-route interrupts may carry a hunt queue in options — when set,
+         *  onComplete is wrapped so successive encounters chain until the queue
+         *  drains, before deferring to the original (trainer-battle) continuation. */
         function _runFirstStoryInterrupt(battleIdx, ev, onComplete) {
             for (const intr of STORY_BATTLE_INTERRUPTS) {
                 let prepared = null;
@@ -29905,8 +30295,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (prepared && prepared.encounter) {
                     if (!prepared.markWildSeenOnPrepare) _markWildSeen(battleIdx);
+                    const queue = (prepared.options && Array.isArray(prepared.options.wildHuntQueue))
+                        ? prepared.options.wildHuntQueue.slice()
+                        : null;
+                    let wrappedComplete = onComplete;
+                    if (queue && queue.length) {
+                        const total = (prepared.options && prepared.options.wildHuntTotal) | 0 || (queue.length + 1);
+                        let position = (prepared.options && prepared.options.wildHuntIndex) | 0 || 1;
+                        wrappedComplete = function _chainHunt() {
+                            if (!queue.length) { try { onComplete && onComplete(); } catch (e) {} return; }
+                            const next = queue.shift();
+                            position++;
+                            const chainedOpts = { wildHuntIndex: position, wildHuntTotal: total };
+                            try {
+                                enterCatchEncounter(next, _chainHunt, chainedOpts);
+                            } catch (e) {
+                                console.error('[Story] wild hunt chain failed:', e);
+                                try { onComplete && onComplete(); } catch (e2) {}
+                            }
+                        };
+                    }
                     try {
-                        enterCatchEncounter(prepared.encounter, onComplete, prepared.options || {});
+                        const launchOpts = Object.assign({}, prepared.options || {});
+                        // Strip the queue from the launch opts — _catchState shouldn't carry it.
+                        delete launchOpts.wildHuntQueue;
+                        enterCatchEncounter(prepared.encounter, wrappedComplete, launchOpts);
                     } catch (e) {
                         console.error('[Story] interrupt enterCatchEncounter failed:', intr.id, e);
                         return false;
@@ -33545,16 +33958,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *  after Gym N will usually be outpaced by the foe at Gym N+1 unless
          *  trained. Post-Gym-8 falls back to the 8-badge entry (Crucible /
          *  League trips reuse it). */
+        // Wild route encounters are intentionally inferior to both the trainer-floor and the Safari pool.
+        // G1 and G2 are reserved exclusively for Safari Zone — wilds never roll them under any
+        // circumstance, with one small exception: a 5% G2 leak from badge 6 onward gives late-game
+        // routes a flash of "rare wild" tension without undermining Safari's identity as the only
+        // path to mid- and high-tier catches.
         const _WILD_GRADE_CURVE_BY_BADGES = {
-            0: { g1: 0,  g2: 0,  g3: 0,  g4: 100 },
-            1: { g1: 0,  g2: 0,  g3: 20, g4: 80  },
-            2: { g1: 0,  g2: 0,  g3: 40, g4: 60  },
-            3: { g1: 0,  g2: 10, g3: 60, g4: 30  },
-            4: { g1: 0,  g2: 25, g3: 60, g4: 15  },
-            5: { g1: 0,  g2: 40, g3: 55, g4: 5   },
-            6: { g1: 3,  g2: 60, g3: 35, g4: 2   },
-            7: { g1: 10, g2: 70, g3: 20, g4: 0   },
-            8: { g1: 20, g2: 70, g3: 10, g4: 0   }
+            0: { g1: 0, g2: 0, g3: 0,   g4: 100 }, // pre-Gym 1 — pure G4
+            1: { g1: 0, g2: 0, g3: 15,  g4: 85  }, // post-G1
+            2: { g1: 0, g2: 0, g3: 35,  g4: 65  }, // post-G2
+            3: { g1: 0, g2: 0, g3: 60,  g4: 40  }, // post-G3 — G3 starts taking over
+            4: { g1: 0, g2: 0, g3: 85,  g4: 15  }, // post-G4 — G3 era
+            5: { g1: 0, g2: 0, g3: 100, g4: 0   }, // post-G5 — pure G3
+            6: { g1: 0, g2: 5, g3: 95,  g4: 0   }, // post-G6 — first G2 leak
+            7: { g1: 0, g2: 5, g3: 95,  g4: 0   }, // post-G7 — same
+            8: { g1: 0, g2: 5, g3: 95,  g4: 0   }  // post-G8 — same
         };
         function _wildGradeWeightsForBadges(badges) {
             const b = Math.max(0, Math.min(8, badges | 0));
@@ -33610,6 +34028,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // makes them comparable to a T1 trainer mon's structural moves but with
             // a small head-start to make caught wilds feel like a real partner. The
             // existing tutor economy still has full headroom to T4.
+            // Moves: same T1 downgrade as untrained trainers — setup / hazards /
+            // recovery / status / screens get swapped for the species' primary-type
+            // basic STAB. So a freshly-caught Rattata can't open with Knock Off
+            // or Stealth Rock; the player has to invest in tutors to unlock
+            // utility movesets. Mirrors what a wild mon would actually know.
+            try {
+                if (typeof _storyDowngradeMovesForTier === 'function' && typeof STORY_BUILD_TIER !== 'undefined') {
+                    _storyDowngradeMovesForTier(name, b, STORY_BUILD_TIER.UNTRAINED);
+                }
+            } catch (e) {}
             if (typeof STORY_BUILD_TIER !== 'undefined') b.powerTier = STORY_BUILD_TIER.UNTRAINED;
             return b;
         }
@@ -33674,6 +34102,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 forcedCatchRate: (options && typeof options.forcedCatchRate === 'number') ? options.forcedCatchRate : null,
                 forcedFleeRate: (options && typeof options.forcedFleeRate === 'number') ? options.forcedFleeRate : null,
                 roamingLabel: (options && typeof options.roamingLabel === 'string') ? options.roamingLabel : null,
+                wildHuntIndex: (options && (options.wildHuntIndex | 0)) || 0,
+                wildHuntTotal: (options && (options.wildHuntTotal | 0)) || 0,
                 bossHp: null,
                 bossMaxHp: null
             };
@@ -33690,14 +34120,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Header reflects the mode so the catch screen reads as
             // "🦒 Safari Zone" inside a Safari run instead of a generic
             // "🌿 Wild Encounter" — matches the canonical game's
-            // dedicated Safari Zone screen feel.
+            // dedicated Safari Zone screen feel. For multi-encounter wild route
+            // hunts, append " — N/Total" so the player knows how many they have left.
             try {
                 const headerEl = document.querySelector('#screen-story-catch .story-screen-head-text');
                 if (headerEl) {
-                    if (_catchState.bossMode) headerEl.textContent = '🔮 The Caged God';
-                    else if (_catchState.safariMode) headerEl.textContent = '🦒 Safari Zone';
-                    else if (_catchState.tutorialMode) headerEl.textContent = '🎓 Catch Tutorial';
-                    else headerEl.textContent = '🌿 Wild Encounter';
+                    let label;
+                    if (_catchState.bossMode) label = '🔮 The Caged God';
+                    else if (_catchState.safariMode) label = '🦒 Safari Zone';
+                    else if (_catchState.tutorialMode) label = '🎓 Catch Tutorial';
+                    else label = '🌿 Wild Encounter';
+                    if (!_catchState.bossMode && !_catchState.safariMode && !_catchState.tutorialMode
+                        && _catchState.wildHuntTotal > 1 && _catchState.wildHuntIndex > 0) {
+                        label += ` — ${_catchState.wildHuntIndex}/${_catchState.wildHuntTotal}`;
+                    }
+                    headerEl.textContent = label;
                 }
             } catch (e) {}
             // Roaming-legendary one-shot framing — set the opening message before render
