@@ -3,7 +3,55 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
-## Unreleased — Character creation is now sprite-based, not gender-based 2026-05-18 (`claude/sprite-based-characters-VfHkk`)
+## Unreleased — Cable Link Station repriced as a premium over manual training 2026-05-20 (`claude/cable-link-pokemon-pricing-bb96A`)
+
+### Changed — Cable Link Station: Reroll / Upgrade / Rebuild prices bumped to match the value they deliver
+
+The Cable Link Station still ships fully battle-ready Pokémon — Reroll
+and Rebuild at Competent (T3), Upgrade at Tournament (T4) — but the old
+prices badly undercut the manual Tutor + Dojo + EV-Trainer path. A
+Same-Tier Swap on a Grade 4 mon was **400G**, less than a single Move
+Tutor visit (1,500G), yet it returned a full T3 build (moves, item,
+ability, nature, EVs). An Upgrade G4 → G3 at **3,500G** replaced
+roughly **17,000G** worth of training-NPC visits. The "Spend it on a
+keeper" framing from the first-time tip wasn't holding up — Cable Link
+was the keeper, and the tutoring ladder was the trap.
+
+Repriced so the Link is the premium one-click route, not the discount one:
+
+* `REROLL_COSTS` — was `{ 1:4000, 2:2000, 3:900, 4:400 }`, now
+  `{ 1:16000, 2:14000, 3:12000, 4:10000 }`. Every Reroll now costs more
+  than fully tutoring one mon by hand (~17,000G); G1 species rolls cost
+  the most because the pool is rarer.
+* `UPGRADE_COSTS` — was `{ 4:3500, 3:9000, 2:22000 }`, now
+  `{ 4:18000, 3:20000, 2:22000 }`. G2 → G1 (the late-game anchor) is
+  untouched at 22,000G — already in the "premium over manual" band. The
+  early ramps (G4 → G3, G3 → G2) climb sharply so a single early
+  Upgrade no longer skips the entire mid-game training-NPC ladder.
+* `REBUILD_COST` — was `1,200G`, now `8,000G`. Still the cheapest
+  Cable Link option (no grade lift, same species, no typing-clash risk),
+  but no longer cheaper than a single Move Tutor.
+
+What didn't change:
+
+* **Build tier output is the same.** Reroll and Rebuild still return T3
+  (capped EVs, polish at Tutor / Dojo / EV Trainer for full T4). Upgrade
+  still returns T4 with full EVs, top-pool ability, and top-pool item.
+  No quality nerf — only the price.
+* **Per-city counter reset stays.** Each new city starts fresh; the
+  intra-city ×1.5ⁿ ramp on repeat use is unchanged.
+* **Casual difficulty discount stays** — first Reroll in a city is
+  still 22% off on Casual.
+* **Stone Sage / Move Tutor / Battle Dojo / EV Trainer prices are
+  unchanged.** Only the Link is repriced; the manual path is now the
+  cheaper one if the player has the patience to walk it.
+
+Header text on the Cable Link screen and the first-time tip were
+rewritten to call out the new pricing logic — random species means
+random typing, and the Link's job is "one click instead of five visits,
+at a markup", not "the cheap shortcut".
+
+
 
 ### Changed — New Adventure: removed Boy/Girl picker, added Prev/Random/Next sprite browser
 
