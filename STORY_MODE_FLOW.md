@@ -92,7 +92,7 @@ The Safari Zone replicates the canonical gameplay loop (no battles, only Safari 
 |---|---|
 | Unlock | City 4 ("Wilderness town") action button — both pre- and post-Gym-4 hub rows carry it. |
 | Location | City 4 only in the main timeline. Post-HoF access is via the Crucible (which also exposes the same screen). |
-| Cost | First entry free. Subsequent entries cost `SAFARI_ENTRY_COST` (2,500G). |
+| Cost | First entry free. Subsequent entries cost `SAFARI_ENTRY_COST` (10,000G). |
 | Encounters | Continuous random encounters up to `SAFARI_MAX_ENCOUNTERS` (6 per session). Each encounter is a single mon. |
 | Pool grade | `SAFARI_GRADE_WEIGHTS` g1:3 / g2:22 / g3:50 / g4:25 — tightened to make Safari a "spend money for a real chance" trip rather than a guaranteed haul. |
 | Balls | Safari-session pool only (`SAFARI_BALLS_PER_SESSION` = 15). The player's PokéBall stack does **not** apply inside; leftover Safari Balls are forfeited on exit. Safari Ball multiplier `SAFARI_BALL_MULT` = 1.35× (between Poké and Great). |
@@ -157,7 +157,7 @@ Initial peg (G1 is the strongest tier per the existing `getMonGrade` convention 
 | Sell G3 mon | 250 |
 | Sell G4 mon | 60 |
 
-(Originally tightened from 2500/700/150/30 to 1800/400/100/20 to keep *keeping* mons the rewarding play; then rebalanced from 1800/400/100/20 to 1800/450/250/60 so route catches are worth selling for catch-light players. Safari spam still loses money — typical 6-encounter session pulls ~1,758G expected, less than the 2,500G entry, even before catch-rate failures. See `_PC_UNDERGROUND_PRICE_BY_GRADE`.)
+(Originally tightened from 2500/700/150/30 to 1800/400/100/20 to keep *keeping* mons the rewarding play; then rebalanced from 1800/400/100/20 to 1800/450/250/60 so route catches are worth selling for catch-light players. Safari spam still loses money — typical 6-encounter session pulls ~1,758G expected, far less than the 10,000G entry, even before catch-rate failures. See `_PC_UNDERGROUND_PRICE_BY_GRADE`.)
 
 ---
 
