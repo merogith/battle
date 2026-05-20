@@ -26511,6 +26511,269 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Red':"Red: \"…\"",
         };
 
+        /** Per-storyline-variant Champion fight dialogue. Each variant gets
+         *  three intro options (rolled randomly per fight) and a single
+         *  outro line (the post-victory crown moment). Falls through to the
+         *  existing CHAMPION_VICTORY_LINES + TRAINER_QUOTES_BY_NAME pool
+         *  when a variant has no entry. The intros are voiced by the
+         *  Champion regardless of which canonical champion was rolled —
+         *  the variant's voice overrides the per-name personality at this
+         *  one beat. */
+        const _CHAMPION_DIALOGUE_BY_VARIANT = {
+            classic: {
+                // No overrides — falls through to existing per-name pool.
+            },
+            second_sun: {
+                intros: [
+                    'I trained for you specifically. I knew you\'d be the one in the door. Begin.',
+                    'You picked second on the morning we started. You won\'t pick second today.',
+                    'Same starter morning, same sky. Different chairs. Let\'s settle whose is whose.'
+                ],
+                outro: 'Champion (your rival): "I trained for you. You trained for me. The chair is yours — until I take it back. Same morning, same road, second sun. Walk well."'
+            },
+            bone_keepers: {
+                intros: [
+                    'The Champion\'s candle has been lit for twenty years. You and I will keep it lit tonight. Begin.',
+                    'Every Champion of this region has lost something. The crown weighs more than it looks.',
+                    'I won\'t make you wait. The chamber is cold. Show me how the road shaped you.'
+                ],
+                outro: 'Champion: "You walked the road quiet. You walked the tower with respect. The candle stays lit. So does the chair." The candle by the chair does not flicker.'
+            },
+            project_mewtwo: {
+                intros: [
+                    'I was the lab\'s first volunteer. I lost. They made me useful. Then I broke the leash. Begin.',
+                    'Your starter has the same serial number on the same paw as mine. I have been waiting for you.',
+                    'Beat me. Take the road to the cage. End what I couldn\'t. Begin.'
+                ],
+                outro: 'Champion: "You won. The leash is broken on both of us now. Walk to the broker. They have the Master Ball. End it." They press a magnetic key into your hand and step aside.'
+            },
+            hypnos_lullaby: {
+                intros: [
+                    'I have been Champion for two years. I have not slept in either of them. Begin.',
+                    'Look at the children\'s drawings on the wall before the fight. Not after. After is too late.',
+                    'I won\'t waste your time. The broker is waiting. Begin.'
+                ],
+                outro: 'Champion: "You earned this chair. The walls in this hall come down for what comes after badges. Walk to the broker. Bring the child home." They turn off the wall lights as you walk out.'
+            },
+            dead_raticate: {
+                intros: [
+                    'You came up the stairs ahead of your rival. I expected the other order. The fight is the fight. Begin.',
+                    'I lost a partner once. I never filled the slot. You\'ll feel it across the battlefield. Begin.',
+                    'I\'ll keep this short. Your rival is downstairs. They couldn\'t come up. They want you to. Begin.'
+                ],
+                outro: 'Champion: "I lost one too. I kept the slot empty. So has your rival. So have I." They look at the empty slot on their own belt — there are five sprites on it. "Walk down the stairs. They are waiting for you."'
+            },
+            lavender_frequency: {
+                intros: [
+                    'I\'ve been Champion since before the last loop. I\'ll be Champion after this one too. Begin.',
+                    'The wall plaque has your name on it. I haven\'t written it. The plaque writes itself.',
+                    'You\'ve been here before. So have I. The fight is new every time anyway. Begin.'
+                ],
+                outro: 'The Champion takes their cap off. The face under it is yours, weathered different. They tip the cap once and walk out the chamber\'s back door. The plaque on the wall now shows two of your names, on different shelves.'
+            },
+            static: {
+                intros: [
+                    '?ou\'re ?ack. The chair has be?n waiting. Begin.',
+                    'Loop ???. Final batt?e. ?ou\'ve won th?s before. Win it ag?in.',
+                    'I am ?ou. ?ou are me. The save file remem?ers. Fight any?ay.'
+                ],
+                outro: 'CHAMPION (??? / save file B) drops the cap. The face is your trainer sprite, inverted. The chamber says: SUBJECT 0001 / RECAPTURED. The save file logs a new entry. The loop count increments.'
+            }
+        };
+        /** Look up per-variant Champion lines. Returns
+         *  `{ intros: [...], outro: '...' }` or null for variants without
+         *  overrides (`classic` and any unknown id). */
+        function _variantChampionDialogue() {
+            const variantId = (sm && sm.storyLine) || 'classic';
+            const entry = _CHAMPION_DIALOGUE_BY_VARIANT[variantId];
+            return (entry && (entry.intros || entry.outro)) ? entry : null;
+        }
+
+        /** Per-variant Mystery Figure outro override. Maps
+         *  `variantId → identityKey → outro string`. When a variant has
+         *  an exclusive identity (`buried_alive` for lavender_frequency,
+         *  `cartridge_self` for static) the per-variant entry is the only
+         *  outro the player ever sees. For shared identities the override
+         *  reframes the outro through the variant's lens. */
+        const _MYSTERY_OUTRO_BY_VARIANT = {
+            // classic: no overrides — uses MYSTERY_FIGURE_IDENTITIES[id].outro as-is.
+            second_sun: {
+                red: 'Red doesn\'t speak. He looks at your team for a long moment, then at the empty chair next to yours where your rival should be. He tips his cap once. He is gone.',
+                cynthia: 'Cynthia smiles, briefly. "Your rival sent me. They wanted you to fight someone you couldn\'t scout. I enjoyed the assignment. The chair is yours, again."'
+            },
+            bone_keepers: {
+                cyrus: 'Cyrus stands as still as the candle by the chair. "You wear the road quietly. That is the highest mark this region gives." He walks out without speaking again. The candle does not flicker.',
+                ghetsis: 'Ghetsis grimaces and turns away. "A worthy fight in a region built on graves. I will remember it." The chamber door closes behind him; the candle stays lit.',
+                lance: 'Lance looks at the candle by your chair for a long moment. "Dragons do remember. So do regions. Wear the candle well." He walks out.',
+                red: 'Red does not speak. He looks at the candle by the chair, then at your starter. He kneels by the candle. He stands. He is gone.'
+            },
+            project_mewtwo: {
+                cyrus: 'Cyrus drops a magnetic key into your palm. "The lab\'s last director told me to give you this. They told me the door was already open." He walks out without explanation.',
+                ghetsis: 'Ghetsis grimaces, then laughs. "A worthy specimen. The original director got the leash they always wanted." He turns; his shadow on the wall is taller than he is.',
+                n: 'N kneels by your starter\'s feet. "She told me what they did to her. She forgave you. She forgives all of them. That is enough for me." He stands and is gone.'
+            },
+            hypnos_lullaby: {
+                n: 'N kneels by your lead Pokémon, then turns to the children\'s drawings on the wall. "The dream has a door. She is at the door. Walk to the broker." He stands and is gone.',
+                ghetsis: 'Ghetsis grimaces at the children\'s drawings, then at you. "Useful tool. Bring me the dream when you crack it." He turns; he is no longer in the doorway.',
+                cyrus: 'Cyrus does not look at the drawings on the wall. "Emotion is a weakness I do not share. But I understand why you came for them. The broker is waiting."'
+            },
+            dead_raticate: {
+                red: 'Red looks at the five mons on your rival\'s belt (downstairs, in your memory), then at his own Pikachu. Pikachu touches the empty slot once. Red tips his cap. He is gone.',
+                cynthia: 'Cynthia smiles softly. "I lost a partner once. I never fill the slot. So has your rival, downstairs. So have you, in some run. The chair carries the loss for all of us."',
+                lance: 'Lance does not laugh this time. "I lost a Dragonair once. The slot on my belt stayed empty for a year. Wear the empty slot proudly. The dragons remember it too."',
+                n: 'N kneels by the empty slot on your belt. "She does not speak. She does not need to. The empty slot is loud enough." He stands. He is gone.'
+            },
+            lavender_frequency: {
+                buried_alive: 'The figure does not move. The Lavender song quiets. The chamber dims. The figure sinks back into the floor it came from. The radio in the wall plays the song one last time, very softly, and then it stops.',
+                cyrus: 'Cyrus stands inside a room he was not in a moment ago. "You weren\'t supposed to come back here. But you did. The plaque outside has your name. Twice now." He walks out through a wall.',
+                ghetsis: 'Ghetsis is in the chamber. Then he is not. The plaque on the chamber wall now has three of your names. The radio in the wall plays the song.'
+            },
+            static: {
+                cartridge_self: 'The figure drops the cap. Your trainer sprite, inverted, faces you. The save file logs: SUBJECT 0001 / RECAPTURED. The loop counter increments. The chamber dissolves into ?',
+                cyrus: 'Cy?us st?nds ta?l. "?our save file is older than mine. The road ?ill let you pass. Until next l?op." He doesn\'t walk out. He is in the doorway. Then he isn\'t.',
+                red: 'R?d r?ises his cap. The cap is yours. The trainer sprite under it is yours. The save file says: ALREADY LOGGED.'
+            }
+        };
+        function _variantMysteryOutro(identityKey) {
+            const variantId = (sm && sm.storyLine) || 'classic';
+            const table = _MYSTERY_OUTRO_BY_VARIANT[variantId];
+            if (!table) return '';
+            return table[identityKey] || '';
+        }
+
+        /** Per-variant Caged-God / Subject Zero capture epilogue. Replaces
+         *  the generic "Subject Zero is yours" success message with a
+         *  storyline-tone line that closes the boss arc. */
+        const _SUBJECT_ZERO_EPILOGUE_BY_VARIANT = {
+            classic: 'Subject Zero is yours.\n\nThe cage closes behind you. The Underground is quiet again. Whatever comes next, you walk into it together.',
+            second_sun: 'Subject Zero is yours.\n\nYour rival is at the cage door. They didn\'t walk in. "I couldn\'t. You could. The chair was always going to be yours. So is this." They turn and walk back to the road.',
+            bone_keepers: 'Subject Zero is yours.\n\nThe Tower Attendant is at the cage door. "It found peace through you. The candle stays lit. The chimes in the tower will ring tonight." They walk back to the tower without another word.',
+            project_mewtwo: 'Subject Zero is yours.\n\nColress is at the cage door. He removes his lab coat and folds it once. "The lab is closed. Officially. Permanently. The leash is broken on all three of us." He hands you the magnetic key. It will not open the cage again.',
+            hypnos_lullaby: 'Subject Zero is yours.\n\nThe rival\'s sister is at the cage door. She is awake. She does not remember the dream. She holds her brother\'s hand. The radio in the broker\'s office is silent for the first time in two years.',
+            dead_raticate: 'Subject Zero is yours.\n\nYour rival is at the cage door. They look at the empty slot on their belt. They look at Subject Zero. "Not for me. For you. The slot stays empty. That\'s how it should be." They walk back to the road.',
+            lavender_frequency: 'Subject Zero is yours.\n\nThe figure that watched you for eight gyms is no longer in the doorway. The Pokémart radio is silent. The Champion\'s plaque shows only your name now, weathered clean. The loop is over.',
+            static: 'Subject Zero is yours.\n\nThe save file logs: SUBJECT 0001 / RECAPTURED / LOOP RESOLVED.\n\nThe loop counter resets. The trainer sprite in the next save is your own.\n\nThe save file is quiet.'
+        };
+        function _variantSubjectZeroEpilogue() {
+            const variantId = (sm && sm.storyLine) || 'classic';
+            return _SUBJECT_ZERO_EPILOGUE_BY_VARIANT[variantId] || _SUBJECT_ZERO_EPILOGUE_BY_VARIANT.classic;
+        }
+
+        /** Per-variant post-Hall-of-Fame epilogue scene. Fires once per save
+         *  on the first post-HoF city re-entry, before the standard
+         *  orientation tip. Closes the variant's narrative arc — the
+         *  recurring NPC's last appearance, the rival's last word, the
+         *  radio's last broadcast. */
+        const _POSTHOF_EPILOGUE_BY_VARIANT = {
+            classic: {
+                sprite: 'Oak', name: 'Prof. Oak', nameplate: 'The wall is yours',
+                lines: [
+                    '"I was at the gym door before your eighth fight. I came to watch you go in. I stayed to walk back with you."',
+                    '"Whatever the road made of you — it\'s yours now. The wall doesn\'t come down for badges. The road just keeps going."',
+                    '"Take a few days. Then come find me at the lab. The next part of the journey isn\'t numbered."'
+                ]
+            },
+            second_sun: {
+                toneClass: 'story-tone-amber',
+                sprite: 'Youngster', name: 'Your rival', nameplate: 'Walking the city with you',
+                lines: [
+                    '"I sat in the chair for ten minutes after you walked out. I wanted to see what it felt like."',
+                    '"It felt like the same morning we picked starters. Same sky. Different number of suns."',
+                    '"I\'ll be on the road. Crucible, rematches, you know where to find me. We\'ll do this again. Without the handicap this time."'
+                ]
+            },
+            bone_keepers: {
+                toneClass: 'story-tone-ash',
+                sprite: 'Hex_Maniac', name: 'Tower attendant', nameplate: 'The chimes ring tonight',
+                lines: [
+                    '"They\'re ringing the chimes for you tonight. Every floor. Every name on every stone, all of them remembered at once."',
+                    '"Your starter\'s parent walked off the ridge two nights ago. We buried them under the tower. The candle in the Champion\'s chamber lit itself the morning you walked in."',
+                    '"You\'re welcome back any time. The lower floors will remember. The upper ones will too."'
+                ]
+            },
+            project_mewtwo: {
+                toneClass: 'story-tone-cold',
+                sprite: 'Colress', name: 'Colress', nameplate: 'The annex is closed',
+                lines: [
+                    '"I drove out to the annex this morning. The doors are welded shut. The director who was waiting for you in the chair signed the order."',
+                    '"Your starter is yours. Officially. No serial number, no paperwork that follows them. I burned the file. We\'re done with the lab."',
+                    '"Subject 0001 is waiting in the cage. The Master Ball is on the road. Walk when you\'re ready."'
+                ]
+            },
+            hypnos_lullaby: {
+                toneClass: 'story-tone-purple',
+                sprite: 'Youngster', name: 'Your rival', nameplate: 'Holding their sister\'s hand',
+                lines: [
+                    '"She\'s here. She\'s awake. She doesn\'t remember the dream. She remembers her brother walking eight gym towns to find her, but she thinks it was a fairy tale."',
+                    '"The radio in the broker\'s office stopped reading names this morning. The names just stopped. Whatever the Caged God was, it let them all go before you got there."',
+                    '"I\'ll go with you to the cage. We end it together. Then I take her home."'
+                ]
+            },
+            dead_raticate: {
+                toneClass: 'story-tone-mourning',
+                sprite: 'Youngster', name: 'Your rival', nameplate: 'Walking the city quietly',
+                lines: [
+                    '"You used the empty slot in the Champion fight. I saw. Thank you."',
+                    '"The slot fills different now. It\'s for the friend who walks the road with you. That\'s what it was always for. The Raticate filled it once. You fill it now."',
+                    '"I\'m staying in this city for a while. Come find me when you go to the cage. I\'ll walk it with you."'
+                ]
+            },
+            lavender_frequency: {
+                toneClass: 'story-tone-frequency',
+                banner: '— THE RADIO IS QUIET —',
+                sprite: 'Hiker', name: 'A figure (no longer at the gate)', nameplate: 'They are not in the doorway',
+                lines: [
+                    '"The figure that watched you on the ridge, at the bend, at the gate, in the Champion\'s chamber — is not at this city\'s gate."',
+                    '"The plaque in the Plateau lobby shows your name once now. Single plate. Polished. Engraved cleanly. The other plates are gone. The wall is the right size again."',
+                    '"The Pokémart radio plays a different song. You don\'t recognize it. That is the point."'
+                ]
+            },
+            static: {
+                toneClass: 'story-tone-static',
+                banner: '— SAVE FILE A / RECOVERED —',
+                sprite: 'Red', name: 'You (your trainer sprite, ordinary colors)', nameplate: 'In the mirror',
+                lines: [
+                    '"The mirror in the Pokémon Center bathroom shows your trainer sprite. Not inverted. Same colors as the morning you left Pallet."',
+                    '"The save file logs: SUBJECT 0001 / RESOLVED. LOOP COUNT: 1. The loop count is no longer a question mark."',
+                    '"The road keeps going. The save file is quiet. You walk out of the bathroom. You are alone in the mirror."'
+                ]
+            }
+        };
+        /** Show the per-variant post-HoF epilogue once per save. Returns true
+         *  when the scene fires; false when already shown or no variant
+         *  entry exists. `onDone` is called after dismiss. */
+        function _showVariantPostHofEpilogue(onDone) {
+            const variantId = (sm && sm.storyLine) || 'classic';
+            const entry = _POSTHOF_EPILOGUE_BY_VARIANT[variantId];
+            if (!entry) { try { onDone && onDone(); } catch (e) {} return false; }
+            const metaKey = 'posthof-epilogue-' + variantId;
+            try {
+                const meta = readStoryMeta();
+                if (meta && meta.tipsShown && meta.tipsShown[metaKey]) {
+                    try { onDone && onDone(); } catch (e) {}
+                    return false;
+                }
+            } catch (e) {}
+            try {
+                _renderNarrativeOverlay({
+                    metaKey,
+                    banner: entry.banner || '— AFTER THE HALL OF FAME —',
+                    toneClass: entry.toneClass || '',
+                    sprite: entry.sprite,
+                    name: entry.name,
+                    nameplate: entry.nameplate,
+                    lines: entry.lines || [],
+                    continueLabel: 'Continue →',
+                    onDone
+                });
+                return true;
+            } catch (e) {
+                console.warn('[Story] post-HoF epilogue overlay failed:', e);
+                try { onDone && onDone(); } catch (e2) {}
+                return false;
+            }
+        }
+
         // Maps city index (1–8) to the STORY_EVENTS_RAW event index of its Gym Leader battle.
         // Derived at boot so future timeline shuffles or migrations don't silently desync.
         const GYM_CITY_LEADER_EVENT = (function buildGymCityLeaderMap() {
@@ -27046,6 +27309,153 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             3: ['Six badges. Two gyms left, and you can hear the Plateau from here.','This is the dress rehearsal. Fight it like the curtain\'s up.','I rebuilt the whole bench for the late game. I assume you did too.'],
             4: ['Crown or no crown, you\'re still my rival.','Being Champion means nothing the moment you slack against me.','Hall of Fame ink dries fast. Mine\'s still wet — and I\'m still here.'],
         };
+        /** Per-storyline-variant Rival dialogue overrides for the three
+         *  rebattle rows: 12 (early, post-Gym 3), 39 (mid, post-Gym 6),
+         *  65 (league rival, post-Champion route). The intro rival (row 68)
+         *  is already covered by per-variant cold-opens; these are the
+         *  in-battle quotes that play when the player meets the Rival again.
+         *
+         *  Falls through to the existing RIVAL_PROGRESS_PRIMARY_QUOTES +
+         *  TRAINER_QUOTES_BY_NAME pool when a variant has no override for
+         *  a row. `classic` intentionally has no overrides so existing
+         *  saves replay identically. */
+        const _RIVAL_DIALOGUE_BY_VARIANT = {
+            classic: {
+                // No overrides — falls through to the existing merged pool.
+            },
+            second_sun: {
+                12: [
+                    'Three gyms in and I\'m still one badge ahead. That used to be more. Show me you\'re closing the gap.',
+                    'I waited at the gym door for an hour so we could fight the same week. Don\'t make me regret it.',
+                    'Second-best is a starting line, not a finish line. Begin.'
+                ],
+                39: [
+                    'Six and six. We\'re finally matched. I trained for this. Don\'t waste it.',
+                    'You\'ve walked into the same gym I walked out of, six times now. Let\'s see whose road shows the wear.',
+                    'I scouted your last three fights. You scouted mine. Begin — and surprise me.'
+                ],
+                65: [
+                    'I beat the Elite Four three weeks ago. You did it last week. Three weeks isn\'t much.',
+                    'Same morning, same starter. Different roads to the same chair. One of us sits.',
+                    'Whichever one of us wins this — it was always going to be us. Begin.'
+                ]
+            },
+            bone_keepers: {
+                12: [
+                    'Tower at City 4. You went up. I went up. We didn\'t speak. Today we will. Begin.',
+                    'Three gyms in, three names on stones I didn\'t know before. You met any of them?',
+                    'Some trainers leave the tower lighter. Some heavier. Let\'s see which you are.'
+                ],
+                39: [
+                    'Six badges. I lost a partner between Gym 4 and here. I don\'t talk about it. The fight\'s still the fight.',
+                    'You walked past the Marowak on the ridge too, didn\'t you. I saw your face the next day.',
+                    'The tower\'s waiting list is longer this year. Means we\'re fighting harder. Means the badges matter more.'
+                ],
+                65: [
+                    'Plateau is uphill from here. Whatever you walked past on the road, I walked past too. Let\'s see who carried it lighter.',
+                    'Eight badges and one funeral each. We\'re both stronger and quieter. Begin.',
+                    'I wear black under the trainer coat. You wear it differently. Doesn\'t matter for the fight.'
+                ]
+            },
+            project_mewtwo: {
+                12: [
+                    'Your starter\'s been quiet. Mine\'s been loud. Three gyms in — let\'s see whose temper plays.',
+                    'You took a longer route through City 2 than the map shows. I noticed. I don\'t need to know why.',
+                    'Three gyms, three checkups at the lab. Mine reads normal. Yours… they didn\'t share. Begin.'
+                ],
+                39: [
+                    'You\'re carrying something heavier than I am, but I can\'t see it. I\'m fighting it anyway.',
+                    'Six badges. Your starter\'s grown into something I don\'t have a name for. Mine\'s just a Pokémon. Let\'s see if that matters.',
+                    'I went to the Cinnabar coast last week. The lab\'s officially closed. Officially. Don\'t answer. Begin.'
+                ],
+                65: [
+                    'Champion in a week. We both walk in. One of us walks out. The other will know why.',
+                    'I figured out about half of what your starter is. You\'re still ahead. Begin — and finish this part of it.',
+                    'Whatever the road made of you, I made of myself. Different methods. Same arena.'
+                ]
+            },
+            hypnos_lullaby: {
+                12: [
+                    'Three gyms, no leads. I keep fighting because if I stop walking I\'ll start screaming. Don\'t go easy.',
+                    'Sister\'s been gone four weeks. The radio reads three new names today. Begin — quickly.',
+                    'You saw the pendulum at City 2 too, didn\'t you. We\'ll both pretend we didn\'t. Fight.'
+                ],
+                39: [
+                    'Sister\'s been gone six weeks. I\'m catching up to whoever took her. You\'re the only person keeping pace. Don\'t fall behind now.',
+                    'Six badges and I haven\'t slept right since two. Your team\'s sharper than mine. Use it.',
+                    'I dreamed I found her. I woke up in the gym lobby. I don\'t want to dream again. Fight.'
+                ],
+                65: [
+                    'If she\'s at the Plateau, I\'m walking past you to find her. Beat me here so I have to.',
+                    'The Champion\'s hall has children\'s drawings on the walls. I haven\'t looked at them. I will, after this fight. Begin.',
+                    'I rebuilt the whole team for who I think did this. You don\'t know who that is yet. Fight me anyway.'
+                ]
+            },
+            dead_raticate: {
+                12: [
+                    'Yeah. You saw, didn\'t you. Don\'t say anything. Five mons is six fights if I work harder.',
+                    'The tower at City 4 has a fresh stone. I won\'t tell you the name. Don\'t ask. Begin.',
+                    'I trained the empty slot harder than the other five. You\'ll feel it.'
+                ],
+                39: [
+                    'Six badges. Five mons. I don\'t fill the slot. I won\'t fill the slot. Begin.',
+                    'I tried to catch a Rattata three towns ago. I couldn\'t throw the ball. I came back without it. Don\'t go easy.',
+                    'Empty slot at the front of the belt. You think it\'s sentimental. It\'s a strategy. You\'ll see.'
+                ],
+                65: [
+                    'I\'ve been training the empty slot for the league. You\'ll see. Fight me like it matters.',
+                    'Champion\'s door is past me. I get there with five. I sit in the chair with five. Fight.',
+                    'You and I started six and six. Now I\'m five. I want to be six again, but not the way you think. Begin.'
+                ]
+            },
+            lavender_frequency: {
+                12: [
+                    'Hey. …Wait. Have we fought before? I keep losing the count. Doesn\'t matter. Begin.',
+                    'I think the gym was empty when I won. The badge was on the floor. You ever feel like the rooms keep moving? No? Fine.',
+                    'The Pokémart radio at the last city was playing the song. You heard it too. We don\'t need to talk about it. Fight.'
+                ],
+                39: [
+                    'Six badges. I think. The count keeps doubling. You ever check yours twice? Doesn\'t matter. Begin.',
+                    'I saw your name on the Plateau plaque already. I haven\'t fought you yet. Time\'s wrong, isn\'t it.',
+                    'I came back to the gym entrance and the leader was a different person with the same name. You noticed too. Fight.'
+                ],
+                65: [
+                    'I made it to the league. So did you. I think we always make it to the league.',
+                    'The Champion\'s hall has a name plate I can\'t read. You\'ll see it in a minute. Begin.',
+                    'Loop seven. Or six. I keep losing the count. Fight me anyway.'
+                ]
+            },
+            static: {
+                12: [
+                    '?ou\'re ?ack. The fi?st time was different. The s?cond too. Begin.',
+                    'Tea? six. Tea? f?ve. Tea? th?ee. ?ou\'ve seen me dif?erent. Begin.',
+                    '?ne of us is the s?ve file. The o?her is the in?tance. Loop count: ???. Fight.'
+                ],
+                39: [
+                    'Loop count: ???. Round s?x. Diffe?ent te?m again. ?ou won\'t kn?w until you try.',
+                    'I\'m the ?aved version. ?ou\'re the new one. The save will pa?ch wh?che?er of us l??es.',
+                    'Six b?dges. Same as last l?op. ?ou keep playing th? same way. Fight differen?ly.'
+                ],
+                65: [
+                    'Le?gue. ?inal r?val. You\'ve done this. ?ou\'ll do this again. Begin.',
+                    'Champion\'s door past me. ?ou\'ve walked through it. Save file remem?ers. F?ght.',
+                    'L?st loop\'s y?u beat me here. T?is loop\'s ?ou will too. Or won\'t. Begin.'
+                ]
+            }
+        };
+
+        /** Look up per-variant Rival lines for a given storyBattleRowIdx.
+         *  Returns an array (possibly empty) of intro quote strings. Used by
+         *  mergeRivalQuotePools to prepend variant-specific lines on top of
+         *  the existing merged pool. Empty for classic. */
+        function _variantRivalIntros(storyBattleRowIdx) {
+            const variantId = (sm && sm.storyLine) || 'classic';
+            const table = _RIVAL_DIALOGUE_BY_VARIANT[variantId];
+            if (!table) return [];
+            const arr = table[storyBattleRowIdx | 0];
+            return Array.isArray(arr) ? arr : [];
+        }
+
         function rivalStandingPrimaryQuotePool(phase) {
             const last = sm && sm.rivalLastWinner;
             const rivalChamp = !!(sm && sm.rivalChampionClaimed);
@@ -27059,7 +27469,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return [];
         }
-        function mergeRivalQuotePools(trainerName, phase) {
+        function mergeRivalQuotePools(trainerName, phase, storyBattleRowIdx) {
             const nm = String(trainerName || '');
             const byKey = nm && TRAINER_QUOTES_BY_NAME[nm];
             const base = nm && TRAINER_QUOTES_BY_NAME[_storyTrainerBaseName(nm)];
@@ -27067,7 +27477,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const prog = (phase !== null && phase !== undefined && RIVAL_PROGRESS_PRIMARY_QUOTES[phase]) ? RIVAL_PROGRESS_PRIMARY_QUOTES[phase].slice() : [];
             const generic = (TRAINER_QUOTES['Rival'] || []).slice();
             const standing = rivalStandingPrimaryQuotePool(phase);
-            const merged = standing.concat(prog).concat(charPool).concat(generic);
+            // Per-storyline-variant overrides go to the front of the pool so
+            // they win on first roll. The variant lines are written for the
+            // specific rebattle row, not just the phase, so they should
+            // dominate the picker.
+            const variantLines = (storyBattleRowIdx !== null && storyBattleRowIdx !== undefined)
+                ? _variantRivalIntros(storyBattleRowIdx) : [];
+            // Variant lines weighted ~2× by duplication so the roll favors
+            // them without locking out the existing personality/standing
+            // quotes entirely. A pure prepend would still see all variant
+            // lines but the original pool would dominate by sheer count.
+            const variantWeighted = variantLines.concat(variantLines);
+            const merged = variantWeighted.concat(standing).concat(prog).concat(charPool).concat(generic);
             return merged.length ? merged : generic;
         }
 
@@ -27178,8 +27599,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (quoteRole === 'Rival' && storyBattleRowIdx != null && storyBattleRowIdx !== undefined) {
                 const phase = getRivalEncounterPhase(storyBattleRowIdx);
                 if (phase !== null && phase !== undefined) {
-                    const pool = mergeRivalQuotePools(nm, phase);
+                    const pool = mergeRivalQuotePools(nm, phase, storyBattleRowIdx);
                     return pool[Math.floor(rng() * pool.length)];
+                }
+            }
+            // Per-variant Champion intro override — fires only on the row-64
+            // Champion fight, not Crucible Champion rematches (those route
+            // through a different storyBattleRowIdx). Variant intros win
+            // when present; falls through to the existing name pool otherwise.
+            if (quoteRole === 'Champion' && (storyBattleRowIdx | 0) === 64) {
+                const champVoice = _variantChampionDialogue();
+                if (champVoice && Array.isArray(champVoice.intros) && champVoice.intros.length) {
+                    return champVoice.intros[Math.floor(rng() * champVoice.intros.length)];
                 }
             }
             const skipNameQuotes = quoteRole === 'Champion' && trainer && trainer.role === 'Champion' && nm === 'Blue';
@@ -31293,6 +31724,472 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ],
                     onDone
                 }); }
+            },
+            // ── E4: Recurring NPC scenes per variant ───────────────────────
+            // Each variant gets 3 mid-route NPC appearances at rows 20 (post-
+            // Gym 3), 33 (post-Gym 5), and 48 (post-Gym 7). The NPC grows
+            // across appearances; the player recognizes them by the third
+            // scene. Wires via beatOverrides[20/33/48] on each variant.
+            classic_npc_r20: {
+                metaKey: 'cold-classic-npc-r20',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-classic-npc-r20',
+                    sprite: 'Oak', name: 'Prof. Oak', nameplate: 'A route bench',
+                    lines: [
+                        '"Just checking. The third gym usually marks where trainers either bloom or burn out. You look ready."',
+                        '"I brought sandwiches. Take one. Walking gyms back-to-back without food is the rookie mistake."',
+                        '"Heal at the next center. Keep your starter near the front. Walk on."'
+                    ],
+                    onDone
+                }); }
+            },
+            classic_npc_r33: {
+                metaKey: 'cold-classic-npc-r33',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-classic-npc-r33',
+                    sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Outside the casino',
+                    lines: [
+                        '"Don\'t tell the press I come here for the buffet."',
+                        '"Five badges. You\'re past the middle and pulling ahead of my old students at this point. I\'m not surprised. I knew when you picked the starter."',
+                        '"Don\'t look at the slots on the way out. The next gym is harder, not richer."'
+                    ],
+                    onDone
+                }); }
+            },
+            classic_npc_r48: {
+                metaKey: 'cold-classic-npc-r48',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-classic-npc-r48',
+                    sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Gate to City 8',
+                    lines: [
+                        '"Last city before the Plateau. Take a long look down the road behind you."',
+                        '"Seven badges, the team you raised, the choices you made on six routes. That\'s the trainer who walks into the eighth gym."',
+                        '"Whatever waits at the chair — you earned the right to walk there. Go."'
+                    ],
+                    onDone
+                }); }
+            },
+            secondsun_npc_r20: {
+                metaKey: 'cold-secondsun-npc-r20',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-secondsun-npc-r20',
+                    toneClass: 'story-tone-amber',
+                    sprite: 'Youngster', name: 'Your rival', nameplate: 'A route bench',
+                    lines: [
+                        '"Beat Gym 3 yesterday. Heard you got there today. We\'re matched again."',
+                        '"Don\'t make me work harder than I already am. Two gyms ago you were a week behind. Now we\'re hours apart."',
+                        '"I\'ll meet you at the next route. Don\'t be slow."'
+                    ],
+                    onDone
+                }); }
+            },
+            secondsun_npc_r33: {
+                metaKey: 'cold-secondsun-npc-r33',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-secondsun-npc-r33',
+                    toneClass: 'story-tone-amber',
+                    sprite: 'Youngster', name: 'Your rival', nameplate: 'The casino door',
+                    lines: [
+                        '"Lost three thousand gold in here last week. I came back to apologize to nobody."',
+                        '"Five and five. We\'re matched. Don\'t let me catch you slipping."',
+                        '"I\'ll see you after the next gym. Either I beat the leader the day before or the day after. We\'re close enough that those are the only options now."'
+                    ],
+                    onDone
+                }); }
+            },
+            secondsun_npc_r48: {
+                metaKey: 'cold-secondsun-npc-r48',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-secondsun-npc-r48',
+                    toneClass: 'story-tone-amber',
+                    sprite: 'Youngster', name: 'Your rival', nameplate: 'Gate to City 8',
+                    lines: [
+                        '"Last city. Then Victory Road. Then the league."',
+                        '"I picked first the morning we started. You picked second. We\'ve been closing that gap for seven gyms. It closes here. Or in the Plateau."',
+                        '"Don\'t be there second. Begin walking."'
+                    ],
+                    onDone
+                }); }
+            },
+            bonekeepers_npc_r20: {
+                metaKey: 'cold-bonekeepers-npc-r20',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-bonekeepers-npc-r20',
+                    toneClass: 'story-tone-ash',
+                    sprite: 'Hex_Maniac', name: 'Tower attendant', nameplate: 'Route bench',
+                    lines: [
+                        '"I work the upper floors. Sometimes I see Cubones at the route gate, looking up. I bring them flowers. The flowers don\'t last."',
+                        '"You walked the tower with respect last city. Word gets around the lower floors. Keep walking."',
+                        '"If a Marowak watches you from the ridge later, don\'t run. They are slow to forgive but they remember kindness."'
+                    ],
+                    onDone
+                }); }
+            },
+            bonekeepers_npc_r33: {
+                metaKey: 'cold-bonekeepers-npc-r33',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-bonekeepers-npc-r33',
+                    toneClass: 'story-tone-ash',
+                    sprite: 'Hex_Maniac', name: 'Tower attendant', nameplate: 'At the casino',
+                    lines: [
+                        '"Came down for the casino. Lost everything in twenty minutes. Walked back to the tower with nothing."',
+                        '"The tower understood. So do you, I think. Not everyone does. Most people would have asked for the gold back."',
+                        '"Walk on. The next chime tonight is for someone you don\'t know yet. It will be for someone you do, eventually."'
+                    ],
+                    onDone
+                }); }
+            },
+            bonekeepers_npc_r48: {
+                metaKey: 'cold-bonekeepers-npc-r48',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-bonekeepers-npc-r48',
+                    toneClass: 'story-tone-ash',
+                    sprite: 'Hex_Maniac', name: 'Tower attendant', nameplate: 'Gate to City 8',
+                    lines: [
+                        '"The leaders come to the tower too. Even the Champion. They don\'t talk about it."',
+                        '"You\'ll meet them in a few days. Don\'t bring it up. The candle in their chamber is for the same reason. They know you know."',
+                        '"Walk on. The tower chimes ring louder when a Champion is crowned. We\'ll be ringing them for you soon."'
+                    ],
+                    onDone
+                }); }
+            },
+            projectmewtwo_npc_r20: {
+                metaKey: 'cold-projectmewtwo-npc-r20',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-projectmewtwo-npc-r20',
+                    toneClass: 'story-tone-cold',
+                    sprite: 'Colress', name: 'Colress', nameplate: 'On the route',
+                    lines: [
+                        '"Walks with you for a few minutes. Hands you a Quick Ball without breaking stride."',
+                        '"\'The next lab assistant on your route will say the right number. Listen. Don\'t answer.\'"',
+                        '"He\'s gone before you can return the ball. The Quick Ball stays in your bag."'
+                    ],
+                    onDone
+                }); }
+            },
+            projectmewtwo_npc_r33: {
+                metaKey: 'cold-projectmewtwo-npc-r33',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-projectmewtwo-npc-r33',
+                    toneClass: 'story-tone-cold',
+                    sprite: 'Colress', name: 'Colress', nameplate: 'A route bench',
+                    lines: [
+                        '"I almost burned the annex paperwork last week. I didn\'t. The original director said I shouldn\'t."',
+                        '"Take this magnetic key. The drawer in City 5\'s casino back office will open for it. Don\'t go in the casino front. Go around."',
+                        '"Don\'t thank me. I haven\'t done anything yet. Walk."'
+                    ],
+                    onDone
+                }); }
+            },
+            projectmewtwo_npc_r48: {
+                metaKey: 'cold-projectmewtwo-npc-r48',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-projectmewtwo-npc-r48',
+                    toneClass: 'story-tone-cold',
+                    sprite: 'Colress', name: 'Colress', nameplate: 'On the route gate',
+                    lines: [
+                        '"The Champion knows. They\'ve been waiting for someone with your starter\'s paperwork longer than you\'ve been alive."',
+                        '"They\'re not going to make it easy. They shouldn\'t. The lab made them what they are too."',
+                        '"Walk in carefully. End the loop. Then come back and we\'ll talk about what closes the annex permanently."'
+                    ],
+                    onDone
+                }); }
+            },
+            hypnos_npc_r20: {
+                metaKey: 'cold-hypnos-npc-r20',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-hypnos-npc-r20',
+                    toneClass: 'story-tone-purple',
+                    sprite: 'Youngster', name: 'Your rival', nameplate: 'On the route',
+                    lines: [
+                        '"Three more names on the radio today. I keep getting to the city after the trail goes cold."',
+                        '"I haven\'t slept in two days. The team is fine. The trainer is the problem."',
+                        '"Keep walking. I\'ll catch up at the next gym. Or I\'ll find her tonight. Either, both."'
+                    ],
+                    onDone
+                }); }
+            },
+            hypnos_npc_r33: {
+                metaKey: 'cold-hypnos-npc-r33',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-hypnos-npc-r33',
+                    toneClass: 'story-tone-purple',
+                    sprite: 'Youngster', name: 'Your rival', nameplate: 'At the casino entrance',
+                    lines: [
+                        '"Found a pendulum on the casino bench. It wasn\'t there an hour earlier. I went back. Nobody saw who left it."',
+                        '"Don\'t go in. Walk around the city block. I\'ll meet you at the gym."',
+                        '"My sister drew pictures of a Hypno. She drew them before she went missing. We didn\'t understand then."'
+                    ],
+                    onDone
+                }); }
+            },
+            hypnos_npc_r48: {
+                metaKey: 'cold-hypnos-npc-r48',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-hypnos-npc-r48',
+                    toneClass: 'story-tone-purple',
+                    sprite: 'Youngster', name: 'Your rival', nameplate: 'Catches up',
+                    lines: [
+                        '"I think I know where they are. I think I know who took them."',
+                        '"I need you at the Plateau. The Champion knows. They\'ve been letting us walk into this. Don\'t hate them yet. The walls in the hall come down for what comes after badges."',
+                        '"Walk fast. I\'ll meet you in Victory Road. Promise me."'
+                    ],
+                    onDone
+                }); }
+            },
+            deadraticate_npc_r20: {
+                metaKey: 'cold-deadraticate-npc-r20',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-deadraticate-npc-r20',
+                    toneClass: 'story-tone-mourning',
+                    sprite: 'Youngster', name: 'Your rival', nameplate: 'On the route',
+                    lines: [
+                        '"Five sprites on the belt. One slot grayed. Don\'t look at it."',
+                        '"I\'ve been training the empty slot harder than the other five. You\'ll see at the league."',
+                        '"Walk. I\'ll meet you at the next gym. The fight is the fight."'
+                    ],
+                    onDone
+                }); }
+            },
+            deadraticate_npc_r33: {
+                metaKey: 'cold-deadraticate-npc-r33',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-deadraticate-npc-r33',
+                    toneClass: 'story-tone-mourning',
+                    sprite: 'Youngster', name: 'Your rival', nameplate: 'On the route',
+                    lines: [
+                        '"Caught a Linoone yesterday on Route 7. Released it after one route. The slot stays empty."',
+                        '"Don\'t suggest a replacement. Don\'t bring it up. It\'s not about the Pokémon."',
+                        '"I\'ll see you at the eighth gym. The fight will be tighter. I\'m sharpening every other slot."'
+                    ],
+                    onDone
+                }); }
+            },
+            deadraticate_npc_r48: {
+                metaKey: 'cold-deadraticate-npc-r48',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-deadraticate-npc-r48',
+                    toneClass: 'story-tone-mourning',
+                    sprite: 'Youngster', name: 'Your rival', nameplate: 'On the route gate',
+                    lines: [
+                        '"You\'ll see what the empty slot does at the Plateau. It\'s not what you think."',
+                        '"I figured something out last week. The slot isn\'t empty for them. It\'s empty for me. There\'s a difference."',
+                        '"Walk. Meet me in the Champion\'s chamber. I\'ll be in the chair."'
+                    ],
+                    onDone
+                }); }
+            },
+            lavender_npc_r20: {
+                metaKey: 'cold-lavender-npc-r20',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-lavender-npc-r20',
+                    toneClass: 'story-tone-frequency',
+                    banner: '— ON THE RIDGE —',
+                    sprite: 'Hiker', name: 'A figure on the ridge', nameplate: 'They wave',
+                    lines: [
+                        '"A figure on the ridge above the route. They wave once."',
+                        '"They\'re too far for that gesture to register. You see them clearly anyway."',
+                        '"You walk on. The figure is still on the ridge when you look back. Then they aren\'t."'
+                    ],
+                    onDone
+                }); }
+            },
+            lavender_npc_r33: {
+                metaKey: 'cold-lavender-npc-r33',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-lavender-npc-r33',
+                    toneClass: 'story-tone-frequency',
+                    sprite: 'Hiker', name: 'A figure at the bend', nameplate: 'They smile',
+                    lines: [
+                        '"A figure at the route bend. They are watching you. They smile."',
+                        '"You raise a hand. They wave back. The wave is exactly the wave from the ridge two gyms ago."',
+                        '"They are gone before you reach the bend. The bend is the same bend as the one you walked yesterday."'
+                    ],
+                    onDone
+                }); }
+            },
+            lavender_npc_r48: {
+                metaKey: 'cold-lavender-npc-r48',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-lavender-npc-r48',
+                    toneClass: 'story-tone-frequency',
+                    banner: '— AT THE NEXT GATE —',
+                    sprite: 'Hiker', name: 'A figure', nameplate: 'The gate is open',
+                    lines: [
+                        '"A figure stands at the next gate. They have your trainer sprite."',
+                        '"They turn away as you approach. They walk through the gate before you. The gate stays open."',
+                        '"You walk through. The gate is the same gate. The figure is gone. Was the Lavender song playing? You can\'t remember."'
+                    ],
+                    onDone
+                }); }
+            },
+            static_npc_r20: {
+                metaKey: 'cold-static-npc-r20',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-static-npc-r20',
+                    toneClass: 'story-tone-static',
+                    banner: '— FILE B / OBSERVED —',
+                    sprite: 'Red', name: '???', nameplate: 'On the route',
+                    lines: [
+                        '"A figure on the route. Their sprite is yours, inverted colors. Loop count: ???."',
+                        '"They wave once. Routine. They walk past you. They are gone behind a tree that wasn\'t there a moment ago."',
+                        '"Save file logs: SUBJECT 0001 / OBSERVED PLAYER. The log line is not shown to you. You see this scene anyway."'
+                    ],
+                    onDone
+                }); }
+            },
+            static_npc_r33: {
+                metaKey: 'cold-static-npc-r33',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-static-npc-r33',
+                    toneClass: 'story-tone-static',
+                    banner: '— FILE B / APPROACHED —',
+                    sprite: 'Red', name: '???', nameplate: 'At the route gate',
+                    lines: [
+                        '"The figure is at the route gate. Their sprite is yours, inverted, slightly less inverted than two gyms ago."',
+                        '"They are catching up. The save file logs: SUBJECT 0001 / DISTANCE: NARROWING."',
+                        '"You walk through the gate. The figure does not move. The gate closes behind you. You hear it close. The gate is normally open."'
+                    ],
+                    onDone
+                }); }
+            },
+            static_npc_r48: {
+                metaKey: 'cold-static-npc-r48',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-static-npc-r48',
+                    toneClass: 'story-tone-static',
+                    banner: '— FILE B / FOUND PLAYER —',
+                    sprite: 'Red', name: '???', nameplate: 'At the door',
+                    lines: [
+                        '"The figure is at the next door. Your trainer sprite. Inverted. The colors are almost yours now."',
+                        '"Save file logs: SUBJECT 0001 / FOUND PLAYER."',
+                        '"You walk past. The figure turns to watch. They follow you to City 8 from a distance you cannot measure but can feel."'
+                    ],
+                    onDone
+                }); }
+            },
+            // ── E5: Plot twist per variant — fires at row 53 (pre-Gym 8) ────
+            // Each twist recontextualizes everything the player has seen so
+            // far. Single scene; once per save; metaKey-deduped. Wires via
+            // beatOverrides[53] on each variant.
+            classic_twist: {
+                metaKey: 'cold-classic-twist',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-classic-twist',
+                    banner: '— BEFORE THE EIGHTH GYM —',
+                    sprite: 'Oak', name: 'Prof. Oak', nameplate: 'At the gym door',
+                    lines: [
+                        '"Hold up. Before you walk in."',
+                        '"My first journey ended at this gym. I didn\'t win it. I went home. I became a professor. I think about it most days. I was the same age you are now."',
+                        '"You\'re going in instead of going home. I came to watch. End it right."'
+                    ],
+                    onDone
+                }); }
+            },
+            secondsun_twist: {
+                metaKey: 'cold-secondsun-twist',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-secondsun-twist',
+                    banner: '— BEFORE THE EIGHTH GYM —',
+                    toneClass: 'story-tone-amber',
+                    sprite: 'Youngster', name: 'Your rival', nameplate: 'At the gym door',
+                    lines: [
+                        '"Wait. Before you walk in."',
+                        '"I handicapped myself at every gym so we\'d stay matched. Used five mons against six. Switched off my fastest sweepers. The gap between us has always been wider than it looked on the board."',
+                        '"I\'m not going to do that in the league. Be ready. End this gym, then come find me."'
+                    ],
+                    onDone
+                }); }
+            },
+            bonekeepers_twist: {
+                metaKey: 'cold-bonekeepers-twist',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-bonekeepers-twist',
+                    banner: '— ON THE RIDGE —',
+                    toneClass: 'story-tone-ash',
+                    sprite: 'Hex_Maniac', name: 'Tower attendant', nameplate: 'Walks beside you',
+                    lines: [
+                        '"The Marowak on the ridge has been watching you for three gyms. Look up."',
+                        '"Your starter remembers. The lab paperwork the broker showed me last week confirmed it — your starter\'s parent was on that ridge the night the Rocket grunts came up. The Marowak is the parent that survived."',
+                        '"Don\'t take this badge for yourself. Take it for them. Walk in."'
+                    ],
+                    onDone
+                }); }
+            },
+            projectmewtwo_twist: {
+                metaKey: 'cold-projectmewtwo-twist',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-projectmewtwo-twist',
+                    banner: '— AT THE LAB ANNEX —',
+                    toneClass: 'story-tone-cold',
+                    sprite: 'Colress', name: 'Colress', nameplate: 'The drawer is open',
+                    lines: [
+                        '"I had to be sure before I gave you this. I waited until Gym 7 to be sure."',
+                        '"Your starter\'s lab paperwork. Subject 0002. The number behind the redaction on the badge you found at the Safari fence. The annex bred your starter from 0001\'s DNA. You knew, in some way. You also didn\'t know."',
+                        '"Walk into the eighth gym. Then walk to the broker. We end the loop together."'
+                    ],
+                    onDone
+                }); }
+            },
+            hypnos_twist: {
+                metaKey: 'cold-hypnos-twist',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-hypnos-twist',
+                    banner: '— THE CHILDREN\'S DRAWINGS —',
+                    toneClass: 'story-tone-purple',
+                    sprite: 'Youngster', name: 'Your rival', nameplate: 'A drawing in hand',
+                    lines: [
+                        '"I went into the Champion\'s hall last week. I looked at the children\'s drawings."',
+                        '"They\'re all signed. My sister signed one. The date on the signature is from inside the dream — three weeks after she went missing. She\'s alive in there. They\'re all alive in there."',
+                        '"Walk into the eighth gym. The Champion knows. The broker is the way back out. Walk fast."'
+                    ],
+                    onDone
+                }); }
+            },
+            deadraticate_twist: {
+                metaKey: 'cold-deadraticate-twist',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-deadraticate-twist',
+                    banner: '— THE EMPTY SLOT —',
+                    toneClass: 'story-tone-mourning',
+                    sprite: 'Youngster', name: 'Your rival', nameplate: 'A PokéBall in hand',
+                    lines: [
+                        '"Take this. It\'s empty. I want you to bring it to the Champion fight."',
+                        '"The empty slot was never for the Raticate. The Raticate filled the slot. The slot is for the friend who walks the road with you. You\'re the friend. The slot is for you."',
+                        '"Use it. At the chair. You\'ll know when. Walk into the eighth gym first."'
+                    ],
+                    onDone
+                }); }
+            },
+            lavender_twist: {
+                metaKey: 'cold-lavender-twist',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-lavender-twist',
+                    banner: '— THE CHAMPION\'S PLAQUE —',
+                    toneClass: 'story-tone-frequency',
+                    sprite: 'Hiker', name: 'The figure (closer now)', nameplate: 'At the Plateau lobby',
+                    lines: [
+                        '"You walked past the Plateau lobby on your way to City 8. Did you see the plaque?"',
+                        '"Two of your names, weathered different. A third plate, clean, polished for engraving. The plate is also yours. There are infinite plates. The wall extends past the doorframe further than it should."',
+                        '"Walk into the eighth gym. End the loop. Or don\'t. The plaque will engrave either way."'
+                    ],
+                    onDone
+                }); }
+            },
+            static_twist: {
+                metaKey: 'cold-static-twist',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-static-twist',
+                    banner: '— SAVE FILE STATE / OBSERVED —',
+                    toneClass: 'story-tone-static',
+                    sprite: 'Red', name: '??? (you, inverted)', nameplate: 'At the gym door',
+                    lines: [
+                        '"?ou ?ave been play?ng wi?h an in?erted trainer sprite for the past ?hree r?ws. ?ou h?ven\'t no?iced."',
+                        '"The save file logs: SUBJECT 0001 / IS PLAYER. ?ou were th? Cag?d God all alon?. The lo?p ?as just letting you ?orget."',
+                        '"Walk into the eighth gym. ?nd the loop. ?ne way or the o?her."'
+                    ],
+                    onDone
+                }); }
             }
         };
 
@@ -31526,7 +32423,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 beatOverrides: {
                     68: { coldOpen: 'introRival' },
                     7:  { coldOpen: 'classic_gym1' },
+                    20: { coldOpen: 'classic_npc_r20' },
                     26: { coldOpen: 'classic_gym4' },
+                    33: { coldOpen: 'classic_npc_r33' },
+                    48: { coldOpen: 'classic_npc_r48' },
+                    53: { coldOpen: 'classic_twist' },
                     56: { coldOpen: 'classic_gym8' },
                     64: { coldOpen: 'classic_champion' }
                 }
@@ -31546,7 +32447,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 beatOverrides: {
                     68: { coldOpen: 'introRival' },
                     7:  { coldOpen: 'secondsun_gym1' },
+                    20: { coldOpen: 'secondsun_npc_r20' },
                     26: { coldOpen: 'secondsun_gym4' },
+                    33: { coldOpen: 'secondsun_npc_r33' },
+                    48: { coldOpen: 'secondsun_npc_r48' },
+                    53: { coldOpen: 'secondsun_twist' },
                     56: { coldOpen: 'secondsun_gym8' },
                     64: { coldOpen: 'secondsun_champion' }
                 }
@@ -31567,7 +32472,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 beatOverrides: {
                     68: { coldOpen: 'introRival' },
                     7:  { coldOpen: 'bonekeepers_gym1' },
+                    20: { coldOpen: 'bonekeepers_npc_r20' },
                     26: { coldOpen: 'bonekeepers_gym4' },
+                    33: { coldOpen: 'bonekeepers_npc_r33' },
+                    48: { coldOpen: 'bonekeepers_npc_r48' },
+                    53: { coldOpen: 'bonekeepers_twist' },
                     56: { coldOpen: 'bonekeepers_gym8' },
                     64: { coldOpen: 'bonekeepers_champion' }
                 }
@@ -31587,7 +32496,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 beatOverrides: {
                     68: { coldOpen: 'introRival' },
                     7:  { coldOpen: 'projectmewtwo_gym1' },
+                    20: { coldOpen: 'projectmewtwo_npc_r20' },
                     26: { coldOpen: 'projectmewtwo_gym4' },
+                    33: { coldOpen: 'projectmewtwo_npc_r33' },
+                    48: { coldOpen: 'projectmewtwo_npc_r48' },
+                    53: { coldOpen: 'projectmewtwo_twist' },
                     56: { coldOpen: 'projectmewtwo_gym8' },
                     64: { coldOpen: 'projectmewtwo_champion' }
                 }
@@ -31608,7 +32521,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 beatOverrides: {
                     68: { coldOpen: 'introRival' },
                     7:  { coldOpen: 'hypnos_gym1' },
+                    20: { coldOpen: 'hypnos_npc_r20' },
                     26: { coldOpen: 'hypnos_gym4' },
+                    33: { coldOpen: 'hypnos_npc_r33' },
+                    48: { coldOpen: 'hypnos_npc_r48' },
+                    53: { coldOpen: 'hypnos_twist' },
                     56: { coldOpen: 'hypnos_gym8' },
                     64: { coldOpen: 'hypnos_champion' }
                 }
@@ -31628,7 +32545,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 beatOverrides: {
                     68: { coldOpen: 'introRival' },
                     7:  { coldOpen: 'deadraticate_gym1' },
+                    20: { coldOpen: 'deadraticate_npc_r20' },
                     26: { coldOpen: 'deadraticate_gym4' },
+                    33: { coldOpen: 'deadraticate_npc_r33' },
+                    48: { coldOpen: 'deadraticate_npc_r48' },
+                    53: { coldOpen: 'deadraticate_twist' },
                     56: { coldOpen: 'deadraticate_gym8' },
                     64: { coldOpen: 'deadraticate_champion' }
                 }
@@ -31649,7 +32570,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 beatOverrides: {
                     68: { coldOpen: 'introRival' },
                     7:  { coldOpen: 'lavender_gym1' },
+                    20: { coldOpen: 'lavender_npc_r20' },
                     26: { coldOpen: 'lavender_gym4' },
+                    33: { coldOpen: 'lavender_npc_r33' },
+                    48: { coldOpen: 'lavender_npc_r48' },
+                    53: { coldOpen: 'lavender_twist' },
                     56: { coldOpen: 'lavender_gym8' },
                     64: { coldOpen: 'lavender_champion' }
                 }
@@ -31669,7 +32594,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 beatOverrides: {
                     68: { coldOpen: 'introRival' },
                     7:  { coldOpen: 'static_gym1' },
+                    20: { coldOpen: 'static_npc_r20' },
                     26: { coldOpen: 'static_gym4' },
+                    33: { coldOpen: 'static_npc_r33' },
+                    48: { coldOpen: 'static_npc_r48' },
+                    53: { coldOpen: 'static_twist' },
                     56: { coldOpen: 'static_gym8' },
                     64: { coldOpen: 'static_champion' }
                 }
@@ -34851,7 +35780,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _leaderLookup = (LEADER_VICTORY_LINES[_trainerName] || LEADER_VICTORY_LINES[_baseTrainerName] || '');
             const _badgeName = (LEADER_BADGE_NAMES[_trainerName] || LEADER_BADGE_NAMES[_baseTrainerName] || 'Gym Badge');
             const _eliteLookup = (ELITE_VICTORY_LINES[_trainerName] || ELITE_VICTORY_LINES[_baseTrainerName] || '');
-            const _champLookup = (CHAMPION_VICTORY_LINES[_trainerName] || CHAMPION_VICTORY_LINES[_baseTrainerName] || '');
+            // Per-variant Champion outro override wins when the active
+            // storyline has a custom finale line. Falls through to the
+            // existing name-based pool for classic and any variant without
+            // an outro. Only fires on the row-64 Champion fight (not
+            // Crucible Champion rematches).
+            const _variantChampVoice = ((storyRowIdx | 0) === 64) ? _variantChampionDialogue() : null;
+            const _variantChampOutro = (_variantChampVoice && _variantChampVoice.outro) ? _variantChampVoice.outro : '';
+            const _champLookup = _variantChampOutro || (CHAMPION_VICTORY_LINES[_trainerName] || CHAMPION_VICTORY_LINES[_baseTrainerName] || '');
             // Cross-run first-clear: stamp a meta flag only the very first time
             // a player ever cleared THIS milestone (across all runs). Used below
             // to pulse extra confetti and surface a "FIRST EVER" line.
@@ -34911,7 +35847,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (evn === 'Mystery Figure') {
                     const face = (sm && sm.mysteryIdentity && MYSTERY_FIGURE_IDENTITIES[sm.mysteryIdentity]) || null;
                     const reveal = face ? face.reveal : null;
-                    const outro = face ? face.outro : '';
+                    // Per-variant outro wins when the active storyline has
+                    // a specific reading of this identity. Falls through to
+                    // the identity's default outro otherwise (so non-pasta
+                    // saves keep the original line).
+                    const variantOutro = sm && sm.mysteryIdentity ? _variantMysteryOutro(sm.mysteryIdentity) : '';
+                    const outro = variantOutro || (face ? face.outro : '');
                     badgeFlavor = reveal
                         ? `<div style="font-size:14px;color:#ce93d8;line-height:1.55;max-width:400px;">The mask falls. It was <strong>${reveal}</strong> all along.${outro ? `<div style="margin-top:10px;font-style:italic;color:#e1bee7;font-size:13px;">${outro}</div>` : ''}</div>`
                         : `<div style="font-size:14px;color:#ce93d8;">The mask falls — but the figure dissolves before you can see who wore it.</div>`;
@@ -36825,7 +37766,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             try { save(); } catch (e) {}
             const successMsg = bossMode
-                ? `Subject Zero is yours.\n\nThe cage closes behind you. The Underground is quiet again. Whatever comes next, you walk into it together.`
+                ? _variantSubjectZeroEpilogue()
                 : `Gotcha! ${enc.name} joined your party — fully healed and ready to walk.`;
             _catchFinishWithMessage(successMsg);
         }
@@ -38855,16 +39796,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.balls.master = (sm.balls.master | 0) + 1;
                 try { window.showGameAlert && window.showGameAlert('The Underground broker hands you a Master Ball.\n\n"Specimen 0001 has been held for decades. Visit the brokers in Cities 2, 5, and 8 to find it."\n\n🟣 Master Ball added to your inventory.'); } catch (e) {}
             }
-            // Post-HoF orientation tip (once across all runs) — without it players often
-            // miss that the Crucible / Battle Frontier / boss arc even exist.
-            try { _storyShowOneTimeTip('postHof',
-                'The wall is yours. The road keeps going.\n\nThree doors open after the Hall of Fame, and all three reach from any city you\'ve visited.\n\n🧨 The Crucible — every facility you used on the road, gathered under one roof, with the endless Battle Frontier ladder waiting in the back.\n\n🔮 The Caged God — three leads, hidden in the Pokémon Centers of Cities 2, 5, and 8. Find all three, then walk into the Cage.\n\n🚪 The Mystery Figure — the Crucible\'s Mystery button summons one final masked challenger. The mask doesn\'t come off until you win.'); } catch (e) {}
             // Return to the last visited city. The boss arc is the canonical post-game beat,
             // triggered from the Underground from here on.
             const lastCityEv = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
             sm.eventIndex = lastCityEv;
             save();
-            enterCity();
+            // Per-variant post-HoF epilogue first (cinematic closure of the
+            // narrative arc), then the generic orientation tip, then drop the
+            // player into the city. The epilogue is a metaKey-deduped one-shot
+            // overlay; if it already played on a prior run for this variant,
+            // we fall straight through to the orientation tip.
+            const _showOrientationTipThenCity = function () {
+                try { _storyShowOneTimeTip('postHof',
+                    'The wall is yours. The road keeps going.\n\nThree doors open after the Hall of Fame, and all three reach from any city you\'ve visited.\n\n🧨 The Crucible — every facility you used on the road, gathered under one roof, with the endless Battle Frontier ladder waiting in the back.\n\n🔮 The Caged God — three leads, hidden in the Pokémon Centers of Cities 2, 5, and 8. Find all three, then walk into the Cage.\n\n🚪 The Mystery Figure — the Crucible\'s Mystery button summons one final masked challenger. The mask doesn\'t come off until you win.'); } catch (e) {}
+                enterCity();
+            };
+            try {
+                const fired = _showVariantPostHofEpilogue(_showOrientationTipThenCity);
+                if (!fired) _showOrientationTipThenCity();
+            } catch (e) {
+                console.warn('[Story] post-HoF epilogue dispatch failed:', e);
+                _showOrientationTipThenCity();
+            }
         }
 
         // ── UI HELPERS ────────────────────────────────────────────────────

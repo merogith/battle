@@ -3,6 +3,107 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Storyline depth pass: recurring NPCs, plot twists, per-variant Champion + Mystery outros 2026-05-20 (`claude/pokemon-mature-storyline-Xk3ut`)
+
+### Changed — Each of the 8 storyline variants now carries 15+ beats with a recurring character and a Gym-8 plot twist
+
+The 8-variant narrative system from the prior commit was thin — each
+storyline had 5 cold-open beats totalling ~15 lines of dialogue.
+Players who picked a variant felt the tone for the first 30 minutes,
+then the variant faded into background flavor. This pass deepens every
+variant so it carries the whole run.
+
+* **Recurring NPC per variant** — each storyline now has a single
+  character who appears in 3 mid-route scenes (rows 20, 33, 48 of
+  `STORY_EVENTS_RAW`). The NPC grows across appearances; the player
+  recognizes them by the third scene. Classic stays Prof. Oak; the
+  rival deepens for `second_sun`, `dead_raticate`, and `hypnos_lullaby`;
+  bone_keepers gets a Tower Attendant; project_mewtwo gets Colress;
+  the pasta variants get a "figure who watches you" / "your inverted
+  trainer sprite" that closes the gap to the player across the run.
+* **Plot twist per variant at row 53** — every storyline gets a single
+  recontextualizing moment between Gym 7 and Gym 8 that reframes the
+  whole journey. Project Subject Zero's starter paperwork; Bone
+  Keepers' ridge-Marowak as your starter's parent; Dead Raticate's
+  empty slot being for *you*; Lavender Frequency's third Champion
+  plaque; Static's "you have been playing inverted for three rows."
+  Each is a single cold-open scene; metaKey-deduped; ~5 lines.
+* **Per-variant Rival rebattle dialogue at rows 12, 39, 65** — the
+  three Rival rebattles after the intro duel are now voiced
+  per-storyline. 24 entries × ~3-5 lines = ~120 new lines. Variant
+  lines are weighted ~2× in the merged pool so the variant's voice
+  wins on the picker, but doesn't lock out the per-character pool.
+  `classic` falls through to the existing merged pool unchanged.
+* **Per-variant Champion intro + outro at row 64** — extends the
+  Champion fight's randomized intro pool with 3 variant lines, and
+  overrides the post-victory outro with a single variant-specific
+  finale line. The classic name pool stays intact when there's no
+  variant override.
+* **Per-variant Mystery Figure outro** — `MYSTERY_FIGURE_IDENTITIES`
+  outros were single lines per identity, the same regardless of
+  storyline. Each variant now overlays its own outro for the
+  identities that fit its tone (e.g. Project Subject Zero reframes
+  Cyrus's mask-drop around the lab director's handoff; Lavender
+  Frequency overlays `buried_alive`'s lines through the radio
+  song; Static overlays `cartridge_self` through the save-file log).
+  Falls through to the identity's default outro otherwise.
+* **Per-variant Subject Zero capture epilogue** — the Caged God boss
+  capture used to print one generic "Subject Zero is yours" message.
+  Each variant now closes the boss arc in its own voice: rival hands
+  you the cage at the door (`dead_raticate`); rival's sister awake
+  (`hypnos_lullaby`); Colress folding his lab coat (`project_mewtwo`);
+  the save file logging RESOLVED with loop count: 1 (`static`).
+* **Per-variant post-Hall-of-Fame epilogue** — first post-HoF city
+  re-entry now fires a one-shot cinematic scene closing the variant's
+  arc — the recurring NPC's last word, the rival's last visit, the
+  radio falling silent. Chains in front of the existing post-HoF
+  orientation tip; metaKey-deduped per (variant × save). The
+  recurring NPC across the run ends here.
+
+### Coverage per variant now
+
+Each of the 8 variants currently carries:
+
+* 1 intro cold-open (row 68) — already shipped on prior commit
+* 4 gym-milestone cold-opens (rows 7, 26, 56, 64) — already shipped
+* **3 new mid-route NPC scenes (rows 20, 33, 48)** — this pass
+* **1 new plot-twist scene (row 53)** — this pass
+* **3 new Rival rebattle dialogue overrides (rows 12, 39, 65)** — this pass
+* **1 new Champion intro pool + outro** — this pass
+* **1 new Mystery Figure outro override** — this pass
+* **1 new Subject Zero boss-arc epilogue** — this pass
+* **1 new post-Hall-of-Fame epilogue** — this pass
+* Plus passive flavor (per-variant roaming legendary sighting,
+  first-sighting Pokédex lore on mature+ tiers) — already shipped
+
+Total: **~16 distinct narrative moments per variant** across a single
+run. A player who clears the game on all 8 variants reads roughly
+~120 unique scenes' worth of dialogue.
+
+### Implementation notes
+
+| Touchpoint | What changed | LOC |
+|---|---|---|
+| `_RIVAL_DIALOGUE_BY_VARIANT` (new, ~27050) | 8 variants × 3 rebattle rows × ~5 lines | ~90 |
+| `mergeRivalQuotePools` (~27062) | Variant lines weighted 2× into the pool | ~5 |
+| `_CHAMPION_DIALOGUE_BY_VARIANT` (new, ~26515) | Per-variant intros + outro | ~80 |
+| `getTrainerQuoteForBattle` (~27170) | Champion intro override on row 64 | ~10 |
+| Champion outro resolver (~35012) | Variant outro wins on row 64 | ~5 |
+| `_MYSTERY_OUTRO_BY_VARIANT` (new) + `_variantMysteryOutro` | Per-variant identity outros | ~50 |
+| Mystery Figure render path (~35165) | Variant outro override hook | ~5 |
+| `_SUBJECT_ZERO_EPILOGUE_BY_VARIANT` (new) + `_variantSubjectZeroEpilogue` | Per-variant boss-arc capture epilogue | ~25 |
+| Subject Zero capture message (~37081) | Reads variant epilogue | ~2 |
+| `STORY_COLD_OPENS` (~31610) | 24 new NPC scenes + 8 new plot-twist scenes | ~280 |
+| `STORYLINE_VARIANTS.*.beatOverrides` (~31470) | Add rows 20, 33, 48, 53 to each | ~32 |
+| `_POSTHOF_EPILOGUE_BY_VARIANT` (new) + `_showVariantPostHofEpilogue` | Per-variant Hall-of-Fame epilogue | ~110 |
+| `continuePostGame` (~39651) | Chains epilogue → orientation tip → enterCity | ~15 |
+
+Touched: `battle.html` (12 sections, all additive). Zero new asset
+files. No save-schema bump (`sm.storyLine` already at v17).
+Existing saves migrate cleanly — variant lines fall through to the
+classic pool when not overridden, and the new metaKeys are unique so
+already-stamped tips never collide.
+
 ## Unreleased — Eight-storyline narrative system + roaming legendary cinematic 2026-05-20 (`claude/pokemon-mature-storyline-Xk3ut`)
 
 ### Added — Pick your storyline at New Adventure, four tones from Classic to Creepypasta
