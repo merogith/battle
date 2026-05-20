@@ -29011,6 +29011,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             { id: 'dex_seen',       cat: 'collection', name: 'Researcher',      desc: 'See unique Pokémon species.',                     icon: '👁', ranks: [50, 200, 500, 800] },
             { id: 'dex_caught',     cat: 'collection', name: 'Pokémaster',      desc: 'Catch unique Pokémon species.',                   icon: '📖', ranks: [25, 100, 250, 500] },
             { id: 'dex_shiny',      cat: 'collection', name: 'Shiny Curator',   desc: 'Catch unique shiny species.',                     icon: '🌟', ranks: [1, 5, 25, 50] },
+            // Replayability — challenge-run + lifetime-flavor unlocks. All
+            // hookable from existing victory / catch / spend code paths; each
+            // is a one-time milestone keyed off cross-run meta.
+            { id: 'r_first_step',     cat: 'replay', name: 'First Step',         desc: 'Clear the first Gym battle.',                                       icon: '👣' },
+            { id: 'r_hall_of_fame',   cat: 'replay', name: 'Hall of Fame',       desc: 'Defeat the Champion and reach the Hall of Fame once.',              icon: '🏆' },
+            { id: 'r_champion_twice', cat: 'replay', name: 'Champion Twice',     desc: 'Defeat the Champion across two separate runs.',                     icon: '👑' },
+            { id: 'r_monotype',       cat: 'replay', name: 'Monotype Master',    desc: 'Clear the Champion with a 6-mon party that all share one type.',    icon: '🎨' },
+            { id: 'r_challenge_clr',  cat: 'replay', name: 'Veryeasy No More',   desc: 'Clear the Champion on Very Hard (Challenge) difficulty.',           icon: '🔥' },
+            { id: 'r_no_item',        cat: 'replay', name: 'No-Item Run',        desc: 'Clear the Champion without using any mid-battle bag item.',         icon: '🚫' },
+            { id: 'r_solo',           cat: 'replay', name: 'Solo Run',           desc: 'Clear the Champion with only one Pokémon in your party.',           icon: '☝' },
+            { id: 'r_perfect_rival',  cat: 'replay', name: 'Perfect Rival',      desc: 'Beat your rival in every story rival encounter in a single run.',   icon: '⚔' },
+            { id: 'r_catch_some',     cat: 'replay', name: 'Catch \'Em (Some)',  desc: 'Catch 10 distinct species across all runs.',                        icon: '🪺' },
+            { id: 'r_big_spender',    cat: 'replay', name: 'Big Spender',        desc: 'Spend over 50,000G in a single run.',                               icon: '💸' },
+            { id: 'r_frontier_vet',   cat: 'replay', name: 'Frontier Veteran',   desc: 'Clear 10 Battle Frontier rounds (lifetime).',                       icon: '🗼' },
+            { id: 'r_safari',         cat: 'replay', name: 'Safari Saga',        desc: 'Catch a Pokémon inside the Safari Zone.',                           icon: '🦒' },
+            { id: 'r_mystery',        cat: 'replay', name: 'Mystery Solved',     desc: 'Defeat the post-Hall-of-Fame Mystery Figure.',                      icon: '🎭' },
+            { id: 'r_caged_god',      cat: 'replay', name: 'Caged God',          desc: 'Complete the Caged God post-game boss arc.',                        icon: '🔮' },
+            { id: 'r_three_runs',     cat: 'replay', name: 'Three Runs',         desc: 'Clear three full story runs.',                                      icon: '🌟' },
         ];
         const STORY_ACHIEVEMENTS_BY_ID = (() => { const m = {}; for (const a of STORY_ACHIEVEMENTS) m[a.id] = a; return m; })();
 
@@ -32092,13 +32110,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _renderAchievementsTab() {
             const meta = readStoryMeta();
             const ach = meta.achievements || {};
-            const groups = { milestone: [], count: [], collection: [] };
+            const groups = { milestone: [], count: [], collection: [], replay: [] };
             for (const def of STORY_ACHIEVEMENTS) {
                 groups[def.cat] = groups[def.cat] || [];
                 groups[def.cat].push(def);
             }
-            const labels = { milestone: 'Story Milestones', count: 'Battle & Catch Counters', collection: 'Pokédex Collection' };
-            const order = ['milestone', 'count', 'collection'];
+            const labels = { milestone: 'Story Milestones', count: 'Battle & Catch Counters', collection: 'Pokédex Collection', replay: 'Replayability Trophies' };
+            const order = ['replay', 'milestone', 'count', 'collection'];
             let unlockedTotal = 0, total = 0;
             for (const def of STORY_ACHIEVEMENTS) {
                 total++;
@@ -32107,7 +32125,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const headerHtml = `<div class="pdex-summary">
                 <div class="pdex-summary-stat"><span class="pdex-summary-stat-label">Unlocked</span><span class="pdex-summary-stat-value">${unlockedTotal} <span style="color:#607d8b;font-size:10px;">/ ${total}</span></span></div>
-                <div class="pdex-summary-stat"><span class="pdex-summary-stat-label">Categories</span><span class="pdex-summary-stat-value">3</span></div>
+                <div class="pdex-summary-stat"><span class="pdex-summary-stat-label">Categories</span><span class="pdex-summary-stat-value">${order.length}</span></div>
             </div>`;
             const sections = order.map(cat => {
                 const defs = groups[cat] || [];
