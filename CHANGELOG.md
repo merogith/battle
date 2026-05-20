@@ -69,6 +69,159 @@ Existing saves preserve their stats. The migration:
 Net effect: a loaded save has the same combat power it had pre-patch
 plus a generous fresh budget of vitamins to spend on freshly-caught
 wilds.
+## Unreleased — Battle-form pacing rebalanced + Wishing Piece introduces Colress 2026-05-20 (`claude/balance-encounter-pacing-T4FyA`)
+
+### Changed — Enemy gimmick distribution: guaranteed mech-aces + smoother progress curve
+
+The per-mon mechanic chance (`_perMonMechChance`) used to multiply a flat
+trainer-tier weight by a `_storyProgressFactor` that was **0% at badges
+0–3 and then jumped to 40% at badge 4**. Combined with the independent
+per-mon roll, the same Gym Leader 6 fight could roll 0, 1, 2, or 3
+gimmick mons across consecutive attempts — gimmicks felt like static
+RNG, not story progression.
+
+The fix is two parts:
+
+* `_storyProgressFactor` is now a smooth ramp:
+  `0/0/0, 0.15, 0.35, 0.55, 0.75, 0.90, 1.00` across badges 0–8.
+  No more cliff at badge 4; the first feathering of gimmicks now starts
+  on the Gym Leader 4 fight (badge 3) at ~3–4% per non-ace mon, then
+  climbs.
+* New `_minGuaranteedMechsForEvent(eventType)` returns a floor of
+  guaranteed gimmick mons that bypass the random roll entirely:
+  GL6 = 1 (the ace), GL7 = 2, GL8 = 3, E1/E2 = 2, E3/E4 = 3, Victory
+  Road = 3, post-G8 League Rival = 3, Champion = 4, post-HoF Mystery
+  Figure = 6 (full team). `_applyEnemyGimmickDistribution` walks the
+  team in slot order (slot 0 = signature ace by composition) and forces
+  the highest-priority eligible mechanic onto each of those mons before
+  the random roll fires for the remaining slots.
+
+Net effect: a Gym 6 fight is no longer "roll the dice and hope" — the
+leader's ace **always** comes out swinging with a Mega / Z / Dynamax /
+Tera, and the rest of the team rolls on a smoothed curve that ramps
+predictably toward the Champion.
+
+### Added — Wishing Piece voucher + Gym Leader 5 intro beat
+
+Gym Leader 5 victory now drops one **Wishing Piece** (canonical SwSh
+item, slotted into the existing voucher framework alongside Rare Candy,
+Vitamin Pack, Heart Scale, Mint, Ability Capsule, Emblem of Honor). The
+gym leader's victory message has been extended with a flavor line
+pointing the player to Colress in the next city.
+
+City 6 is the first city to host Colress, so the voucher is immediately
+redeemable on arrival. The Colress screen renders a purple "🌠 Wishing
+Piece ×N" banner at the top whenever the voucher is in inventory, and
+every Mega / Dynamax / Z-Move button shows a `🌠 Use Wishing Piece`
+sibling button that consumes one voucher instead of charging 7,500G.
+For Tera, where each type would otherwise need its own paired button,
+the buttons stay single but **shift-click** spends a voucher.
+
+The `firstColress` tutorial scene now reads `sm.inventory.wishingPiece`
+dynamically — when the player walks in carrying a Wishing Piece, an
+extra line of Colress dialogue is inserted that calls out the voucher
+explicitly. The base tutorial copy has also been expanded from 3 lines
+to 4 to introduce the "first door opens at Gym 5" rule.
+
+### Changed — Player gimmick unlock now aligns with Colress availability
+
+Previously, gimmicks unlocked one-per-badge starting at Gym 1, but the
+player had no way to **equip** any of them until Colress at City 6
+(after Gym 5). The result was a 4-badge stretch of "unlocked but
+useless" status. The unlock now gates on `badges >= 5`:
+
+| Badge | Unlocked mechanics |
+|---|---|
+| 0–4 | none |
+| 5 | mega |
+| 6 | mega + dmax |
+| 7 | mega + dmax + tera |
+| 8 | mega + dmax + tera + z |
+
+The fixed order (mega → dmax → tera → z, filtered by which mechanics
+the player enabled in run setup) is unchanged; only the start point and
+gating logic moved. Cable Link rebuilds, Professor gifts, and the
+`?testmega=1` debug seed pick this up automatically. The testmega seed
+now also explicitly stamps `unlockedGimmicks` to match `badges = 6` and
+seeds 2 Wishing Pieces for voucher-path verification.
+
+### Files touched
+
+* `battle.html` — `_storyProgressFactor` rewrite, `_minGuaranteedMechsForEvent`
+  + ace-pass in `_applyEnemyGimmickDistribution`, player unlock rewrite,
+  `VOUCHER_KEYS` + `wishingPiece` entry, `GYM_VICTORY_REWARDS['Gym Leader 5']`
+  msg, city-bag voucher row, `firstColress` tutorial with `getLines`
+  callback, `_showStoryTutorialScene` `getLines` support, Colress
+  voucher banner + `_colressPay` + `_colressConfirmPay` helpers, all
+  five `colressApply*` functions take a `useVoucher` arg, testmega seed
+  wires up the voucher loadout.
+
+## Unreleased — Poké Casino overhaul: coins currency + Coin Flip / Slots / Roulette 2026-05-20 (`claude/pokemon-casino-overhaul-0ssdb`)
+
+### Changed — Casino is now a real Game Corner
+
+The casino used to be a single screen with three abstract one-shot bets
+(Coin / Color / Jackpot) that all shared a `Math.random()*10` roll, no
+animation past a small ASCII reel, and no progression beyond `sm.gold`
+debited or credited per click. The Game Corner Manager is now actually
+running a building.
+
+**Coin wallet.** Gold no longer plays at the tables. A Cashier panel
+collapses out of the header — buy in at **100🪙 = 1,000G**, cash out at
+**100🪙 = 800G**. The 20% spread is the only house edge in the building;
+every individual table plays close to fair. Min buy 10G, min cash-out
+100🪙. `sm.casinoCoins` persists across sessions and migrates onto old
+saves as 0.
+
+**Three tabs, three games.**
+
+- **🪙 Coin Flip.** Big 3D coin tumbles 1.1s and lands on Heads or Tails.
+  Pick a side, bet 1+ coins, win pays 2×. ~49% win rate, low volatility,
+  streak counter for flavor. The coin preview shows your current pick
+  even before you spin.
+- **🎰 Slots.** Three reels with Pokémon symbols (7 · ★ · ⚡ Pika · ◓
+  Great · ● Poké · 🍒 Cherry · ↻ Replay). Bet 1, 2, or 3 coins to light
+  one to three paylines. Reels slide with eased deceleration and a
+  cubic-bezier bounce on each stop. **777** pays 300×, **★★★** pays 100×,
+  Pikachu line pays 50×, and **↻↻↻** awards a free re-spin where you can
+  hold any reel for the follow-up.
+- **🎯 Roulette.** Twelve-cell board (4 colors × 3 Pokémon icons) plus a
+  cumulative-rotation wheel that doesn't snap back between spins. Place
+  any number of chips on any cells, or Repeat your last spread.
+  Cell-direct hit pays **11×**. A pointer marks the winning slot; the
+  cell flashes gold when it pays.
+
+**First-visit walk-through.** The Game Corner Manager (Gambler sprite)
+now opens with four beats on first entry — intro → cashier → tab guide
+→ closer — replacing the old single 3-line cameo. Subsequent visits
+skip the tutorial via the existing `tutorial-first-casino` meta key.
+The cashier panel auto-opens on entry only while the player has zero
+coins, so the buy-in flow is one tap away the first time.
+
+**UI / polish.**
+
+- New Game Boy Game Corner palette: cream/mauve panels over dark felt
+  green, pixel borders matching the existing shop / tutor language.
+- Twin gold + coin balance pills in the header pulse on every gain or
+  spend.
+- All buttons keep the ≥44 px touch target on mobile; cashier inputs
+  and bet chips inherit the existing phone-tuned sizes.
+- Reduced-motion mode collapses 1-2 second spins to ~300 ms fades.
+- Five-and-a-half new SFX cues per table reuse the shipped wav library
+  (`gachaDial`, `pbBounce1/2`, `pbLock`, `achv`, `sparkle`, `danger`).
+
+**Internals.**
+
+- New `window.StoryFx.coinFlip()`, `.slotsSpin()`, `.slotsFlashWin()`,
+  `.rouletteSpin()` animation helpers, plus `casinoSpin` retained as a
+  back-compat shim.
+- Single `_casinoTryBet()` / `_casinoRefreshBetCaps()` chokepoint for
+  every wager; per-tab spin-in-flight lock prevents double-spend races.
+- Lifetime `sm.casinoStats[game]` (`spins`, `wins`, `losses`, `coinsWon`,
+  `coinsLost`, `biggestWin`, etc.) is tracked but not yet surfaced in
+  UI — kept extensible for a future stats panel or achievement layer.
+- Old `casinoSetBetChip` / `casinoPlay` API kept as shims that reroute
+  to the new tab/bet flow.
 
 ## Unreleased — Character creation is now sprite-based, not gender-based 2026-05-18 (`claude/sprite-based-characters-VfHkk`)
 
