@@ -29657,15 +29657,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sm.eventIndex = _cap;
                 }
                 // Validate currentEnemyLock — a corrupted lock crashes launchBattle. Drop it
-                // when malformed so the engine rerolls a fresh team instead of dying.
-                if (sm.currentEnemyLock && (
-                    typeof sm.currentEnemyLock !== 'object' ||
-                    sm.currentEnemyLock.eventIdx == null ||
-                    !Array.isArray(sm.currentEnemyLock.team) ||
-                    sm.currentEnemyLock.team.length === 0 ||
-                    sm.currentEnemyLock.team.some(t => !t || typeof t !== 'object' || !t.name || !t.build)
-                )) {
-                    console.warn('[Story] dropping malformed currentEnemyLock', sm.currentEnemyLock);
+                // when malformed so the engine rerolls a fresh team instead of dying. Wrap
+                // the structural probe itself in try/catch so a bizarrely-shaped blob
+                // (mid-edit save, proxy/getter that throws) nulls the lock instead of
+                // killing the whole load.
+                try {
+                    if (sm.currentEnemyLock && (
+                        typeof sm.currentEnemyLock !== 'object' ||
+                        sm.currentEnemyLock.eventIdx == null ||
+                        !Array.isArray(sm.currentEnemyLock.team) ||
+                        sm.currentEnemyLock.team.length === 0 ||
+                        sm.currentEnemyLock.team.some(t => !t || typeof t !== 'object' || !t.name || !t.build)
+                    )) {
+                        console.warn('[Story] dropping malformed currentEnemyLock', sm.currentEnemyLock);
+                        sm.currentEnemyLock = null;
+                    }
+                } catch (e) {
+                    console.warn('[Story] currentEnemyLock validation threw — nulling lock', e);
                     sm.currentEnemyLock = null;
                 }
                 // crucibleBattleSource is a transient flag set only while a Crucible/
