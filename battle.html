@@ -29482,8 +29482,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return normalizeEnabledGens((sm.settings && sm.settings.enabledGens) || rangeToEnabledGens(sm.settings.minGen ?? 1, sm.settings.maxGen ?? 9));
         }
 
+        // Cache of computed grade pools by `(sortedEnabledGens|grade)`. Scoped at
+        // the StoryMode module level so it survives multiple battles within a
+        // single run. Cleared by `_invalidateBuildGradePoolCache` whenever the
+        // enabled-gens set could have changed (run start / settings change).
+        const _BUILD_GRADE_POOL_CACHE = new Map();
+        function _invalidateBuildGradePoolCache() { _BUILD_GRADE_POOL_CACHE.clear(); }
         function buildGradePool(enabledGens, grade) {
-            const genSet = new Set(normalizeEnabledGens(enabledGens));
+            const normalized = normalizeEnabledGens(enabledGens);
+            const key = normalized.slice().sort((a, b) => a - b).join(',') + '|' + grade;
+            const hit = _BUILD_GRADE_POOL_CACHE.get(key);
+            if (hit) return hit.slice();
+            const genSet = new Set(normalized);
             const result = [];
             for (const name of Object.keys(baseStats)) {
                 if (isStoryRollExcluded(name)) continue;
@@ -29491,7 +29501,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!b || !genSet.has(b.gen)) continue;
                 if (getMonGrade(name, getBST(name)) === grade) result.push(name);
             }
-            return result;
+            _BUILD_GRADE_POOL_CACHE.set(key, result);
+            return result.slice();
         }
 
         function applyDifficultyToGradeWeights(gw) {
