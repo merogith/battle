@@ -559,73 +559,109 @@ Things that need decisions before later milestones but don't block schema work:
 
 ---
 
-## 15b. Permanent stat-boost vitamins (v18+)
+## 15b. IV training via vitamins + Pokémon Fan Club (v19+)
 
-Six earned-only items — **HP Up / Protein / Iron / Calcium / Zinc /
-Carbos** — that add +1 to a single stat, capped at +10 per stat per mon.
-Tracked at `mon.build.permBoosts[stat]`; additive after the EV-derived
-stat in `buildPokemon` (`battle.html:11362`). Total max is +60 across all
-six stats per mon.
+Pre-v19 every Pokémon resolved as 31 IVs and vitamins stacked a separate
+`permBoosts` flat-stat layer (+1 per use, cap +10 per stat). v19 collapsed
+both into a single layer: **vitamins train IVs directly**, +3 per use, cap
+31. Random IV rolls are now visible identity for the player's mons and
+tier-scaled identity for enemy trainers.
 
-Constants live at the top of the IIFE near `POKEMART_ITEMS`:
+### Player IV rolls
 
-- `PERM_BOOST_CAP` (= 10) — per-stat cap per mon
-- `PERM_BOOST_ITEMS` — array of `{ id, name, stat, desc }`
-- `PERM_BOOST_IDS` — `Set` of ids for fast inclusion checks
-- `PERM_BOOST_STAT_LABEL` — pretty-print map (`'spa' → 'Sp.Atk'`)
+Every player-side Pokémon — starter, professor gift, wild catch, Crucible
+mystery offer — calls `_rollRandomIVs()` to populate `build.ivs` with six
+independent 0-31 rolls. Hook points:
 
-### Drop schedule
+- `makeWildBuild` (`battle.html:34883` area) — wild catches and the
+  starter partner.
+- Professor pick loop in `enterProfessor` — calls `_ensureBuildIVs` after
+  `makeBuild` for each rolled choice.
+- Subject Zero (boss-arc catch) — overrides to perfect `{31,31,31,31,31,31}`
+  before commit, since the lore is "synthetic apex specimen".
 
-Distinct from the existing **Vitamin Pack voucher** (EV Trainer preset
-waiver) — both coexist in inventory under their own ids and never
-conflict. Drops are weighted toward "matching stat" per leader's combat
-style, so a physical-leaning gym tends to drop Protein/Iron/Carbos and a
-special-leaning gym drops Calcium/Zinc.
+`_ensureBuildIVs(build, ivs)` only sets the IV map if no explicit spread
+is present, so Smogon imports that ship intentional 0-stat IVs (Trick
+Room sweepers, Foul Play offload sets) are preserved.
 
-A perfect playthrough yields ~110 vitamins total — enough to fully boost
-~1.8 mons (60 caps each) or partially invest across 4-5. The drop tuning
-forces priority calls.
+### Enemy IV rolls (tier-scaled)
 
-| Source | Vitamins |
-|---|---|
-| GL1-GL8 | 2-5 each |
-| E1-E4 + Champion | 3-12 each |
-| Pokédex 25 / 50 / 75 / 100 | 2 / 2 / 2 / 8 |
-| Post-HoF Mystery Figure | 18 (3 of each) |
-| Caged God boss arc | 30 (5 of each) |
+`_applyStoryBuildPowerTier(team, eventType, storyRowIdx, sigNames)` now
+takes an extra `sigNames` Set and stamps `build.ivs` per slot:
 
-`_storyGrantBundle` reads `hpUp` / `protein` / `iron` / `calcium` /
-`zinc` / `carbos` keys from a reward bundle and adds them to
-`sm.inventory` under the matching id.
+| Tier | Range | Ace bonus |
+|---|---|---|
+| T1 Untrained | 0-15 | top quartile (~12-15) |
+| T2 Novice | 10-22 | top quartile (~19-22) |
+| T3 Competent | 18-28 | top quartile (~26-28) |
+| T4 Tournament | 26-31 | top quartile (~30-31) |
 
-### UI
+`STORY_IV_TIER_RANGES` lives next to `_rollTieredIVs`. `rollTrainerTeam`
+passes `_origSigs` through as the 4th arg so identity mons get the boost.
+The Mystery Figure boss caller passes nothing — every slot rolls
+uniformly within T4.
 
-Surfaced in the **City Bag** (`openCityBag`) as a new block between the
-existing vouchers and the standard shop items. Each row has a **Use**
-button that opens `openPermBoostPicker(vitaminId)` — a roster picker
-showing party + PC mons with each mon's current `+N/+10` boost for the
-relevant stat. Rows already at the cap are dimmed and not clickable.
+### Vitamins (`PERM_BOOST_ITEMS`)
 
-`applyPermBoost(vitaminId, source, idx)` increments
-`mon.build.permBoosts[stat]`, decrements inventory, saves, and re-opens
-the picker if more vitamins of that type remain (so a player who earned
-5 HP Ups can apply them all without modal bouncing).
+Six items, drop-only, never sold. Each application calls
+`applyPermBoost(vitaminId, source, idx)` which:
+
+1. Reads the mon's current `ivs[stat]` (default 31 if missing).
+2. If at 31, no-ops (picker dims the row).
+3. Else sets `ivs[stat] = min(31, cur + 3)`, decrements inventory, saves.
+4. If more vitamins of that type remain, re-opens the picker; else
+   returns to the City Bag.
+
+Constants (`battle.html:26648` area):
+- `IV_VITAMIN_STEP` (= 3) — per-application IV gain
+- `IV_MAX` (= 31) — natural cap
+- `PERM_BOOST_CAP` — legacy alias kept at 31 for older callers
+- `PERM_BOOST_ITEMS` — `[{ id, name, stat, desc }, ...]`
+
+`_permBoostsRead` / `window._permBoostsRead` retained as zero-returning
+stubs so any older call site that hadn't been audited yet adds nothing
+to the stat formula.
+
+### Pokémon Fan Club facility
+
+Recurring action available in every city. Auto-inserted into each
+`STORY_EVENTS_RAW` City row's actions array at module init via
+`_seedFanClubAcrossCities()` — no per-row edits needed.
+
+* **City button** (`window.StoryMode.enterFanClub`) — green-soft badge
+  showing "Gift" on first visit, "Free" thereafter. Sits in the training
+  column next to EV Trainer / Move Tutor.
+* **Screen** (`#screen-story-fanclub`) — Gentleman portrait, roster of
+  party cards. Each card shows sprite + name + nature + EV total + six
+  per-stat IV rows with colored progress bars and a `+3 (×N)` apply
+  button. Bag stash (live vitamin counts per stat) lives in the header.
+* **First-visit gift** — `sm.fanClubGiftClaimed` flag, single source of
+  truth across cities. On first enter, +1 of each vitamin is added to
+  inventory; tutorial scene `firstFanClub` plays with the Chairman line
+  about IVs.
+* **Color tiers** on the IV bars: red <10, amber 10-20, green 21-30,
+  gold 31.
+
+### Save migration (v18 → v19)
+
+`migrateStoryPreV19()` runs once at load if `sm.version < 19`:
+
+1. Grandfathers every mon's IVs: missing → `{31×6}`; partial → fills
+   missing keys to 31, leaves existing values alone.
+2. Refunds any leftover `permBoosts[stat]` as vitamins in
+   `sm.inventory` (1 permBoost point → 1 vitamin of matching stat).
+3. Deletes `build.permBoosts`. Combat power preserved; vitamin budget
+   refreshed for re-spending on freshly-caught wilds.
 
 ### Carry-through
 
-| Action | Carry permBoosts? |
+| Action | Carry IVs? |
 |---|---|
-| Stone Sage evolution | yes — same identity |
-| Cable Link Rebuild | yes — same species |
-| Cable Link Reroll / Upgrade | no — different species, fresh start |
-| PC deposit / withdraw | yes — lives on the build, not on the slot |
+| Stone Sage evolution | yes — `evoBuild.ivs = { ...old.ivs }` |
+| Cable Link Rebuild | yes — snapshot + restore |
+| Cable Link Reroll / Upgrade | no — new species, fresh roll |
+| PC deposit / withdraw | yes — lives on the build, not the slot |
 | Underground sale | irrelevant — mon is gone |
-
-Implementation: `_evoLabApplyEvolution` copies `old.permBoosts` into
-`evoBuild.permBoosts`. `linkRebuild` snapshots the old permBoosts before
-the new build and restores them. `linkReroll` / `linkUpgrade`
-intentionally do not — the player is trading the mon away for a new
-species.
 
 ---
 
