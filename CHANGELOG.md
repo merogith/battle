@@ -3,6 +3,93 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Battle-form pacing rebalanced + Wishing Piece introduces Colress 2026-05-20 (`claude/balance-encounter-pacing-T4FyA`)
+
+### Changed — Enemy gimmick distribution: guaranteed mech-aces + smoother progress curve
+
+The per-mon mechanic chance (`_perMonMechChance`) used to multiply a flat
+trainer-tier weight by a `_storyProgressFactor` that was **0% at badges
+0–3 and then jumped to 40% at badge 4**. Combined with the independent
+per-mon roll, the same Gym Leader 6 fight could roll 0, 1, 2, or 3
+gimmick mons across consecutive attempts — gimmicks felt like static
+RNG, not story progression.
+
+The fix is two parts:
+
+* `_storyProgressFactor` is now a smooth ramp:
+  `0/0/0, 0.15, 0.35, 0.55, 0.75, 0.90, 1.00` across badges 0–8.
+  No more cliff at badge 4; the first feathering of gimmicks now starts
+  on the Gym Leader 4 fight (badge 3) at ~3–4% per non-ace mon, then
+  climbs.
+* New `_minGuaranteedMechsForEvent(eventType)` returns a floor of
+  guaranteed gimmick mons that bypass the random roll entirely:
+  GL6 = 1 (the ace), GL7 = 2, GL8 = 3, E1/E2 = 2, E3/E4 = 3, Victory
+  Road = 3, post-G8 League Rival = 3, Champion = 4, post-HoF Mystery
+  Figure = 6 (full team). `_applyEnemyGimmickDistribution` walks the
+  team in slot order (slot 0 = signature ace by composition) and forces
+  the highest-priority eligible mechanic onto each of those mons before
+  the random roll fires for the remaining slots.
+
+Net effect: a Gym 6 fight is no longer "roll the dice and hope" — the
+leader's ace **always** comes out swinging with a Mega / Z / Dynamax /
+Tera, and the rest of the team rolls on a smoothed curve that ramps
+predictably toward the Champion.
+
+### Added — Wishing Piece voucher + Gym Leader 5 intro beat
+
+Gym Leader 5 victory now drops one **Wishing Piece** (canonical SwSh
+item, slotted into the existing voucher framework alongside Rare Candy,
+Vitamin Pack, Heart Scale, Mint, Ability Capsule, Emblem of Honor). The
+gym leader's victory message has been extended with a flavor line
+pointing the player to Colress in the next city.
+
+City 6 is the first city to host Colress, so the voucher is immediately
+redeemable on arrival. The Colress screen renders a purple "🌠 Wishing
+Piece ×N" banner at the top whenever the voucher is in inventory, and
+every Mega / Dynamax / Z-Move button shows a `🌠 Use Wishing Piece`
+sibling button that consumes one voucher instead of charging 7,500G.
+For Tera, where each type would otherwise need its own paired button,
+the buttons stay single but **shift-click** spends a voucher.
+
+The `firstColress` tutorial scene now reads `sm.inventory.wishingPiece`
+dynamically — when the player walks in carrying a Wishing Piece, an
+extra line of Colress dialogue is inserted that calls out the voucher
+explicitly. The base tutorial copy has also been expanded from 3 lines
+to 4 to introduce the "first door opens at Gym 5" rule.
+
+### Changed — Player gimmick unlock now aligns with Colress availability
+
+Previously, gimmicks unlocked one-per-badge starting at Gym 1, but the
+player had no way to **equip** any of them until Colress at City 6
+(after Gym 5). The result was a 4-badge stretch of "unlocked but
+useless" status. The unlock now gates on `badges >= 5`:
+
+| Badge | Unlocked mechanics |
+|---|---|
+| 0–4 | none |
+| 5 | mega |
+| 6 | mega + dmax |
+| 7 | mega + dmax + tera |
+| 8 | mega + dmax + tera + z |
+
+The fixed order (mega → dmax → tera → z, filtered by which mechanics
+the player enabled in run setup) is unchanged; only the start point and
+gating logic moved. Cable Link rebuilds, Professor gifts, and the
+`?testmega=1` debug seed pick this up automatically. The testmega seed
+now also explicitly stamps `unlockedGimmicks` to match `badges = 6` and
+seeds 2 Wishing Pieces for voucher-path verification.
+
+### Files touched
+
+* `battle.html` — `_storyProgressFactor` rewrite, `_minGuaranteedMechsForEvent`
+  + ace-pass in `_applyEnemyGimmickDistribution`, player unlock rewrite,
+  `VOUCHER_KEYS` + `wishingPiece` entry, `GYM_VICTORY_REWARDS['Gym Leader 5']`
+  msg, city-bag voucher row, `firstColress` tutorial with `getLines`
+  callback, `_showStoryTutorialScene` `getLines` support, Colress
+  voucher banner + `_colressPay` + `_colressConfirmPay` helpers, all
+  five `colressApply*` functions take a `useVoucher` arg, testmega seed
+  wires up the voucher loadout.
+
 ## Unreleased — Poké Casino overhaul: coins currency + Coin Flip / Slots / Roulette 2026-05-20 (`claude/pokemon-casino-overhaul-0ssdb`)
 
 ### Changed — Casino is now a real Game Corner
