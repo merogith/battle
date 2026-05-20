@@ -14558,6 +14558,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.usedMega = false; state.usedZ = false; state.usedDyna = false; state.usedTera = false;
             state.fUsedMega = false; state.fUsedZ = false; state.fUsedDyna = false; state.fUsedTera = false;
             state.p1GimmickIntent = null; state.p2GimmickIntent = null;
+            // Clear per-mon gimmick flags on every party member so a benched/recalled mon
+            // can use its gimmick in a future battle (Dynamax used to be permanently
+            // locked because `dynamaxUsed` was never reset).
+            try {
+                const _clearMonGimmick = (m) => {
+                    if (!m) return;
+                    m.megaEvolved = false;
+                    m.dynamaxed = false; m.dynamaxTurns = 0; m.dynamaxUsed = false;
+                    if (m._preDynaName) { m.name = m._preDynaName; m._preDynaName = null; }
+                    if (m.baseMaxHp) { m.maxHp = m.baseMaxHp; m.baseMaxHp = null; }
+                    m.teraActivated = false;
+                    if (m.stellarTypesUsed) m.stellarTypesUsed = null;
+                    m.zMoveUsed = false;
+                };
+                (state.playerParty || []).forEach(_clearMonGimmick);
+                (state.foeParty || []).forEach(_clearMonGimmick);
+                // Remove leftover Tera crystal overlay from sprites that haven't yet
+                // Tera'd this battle (the class is added by activateTera but never removed).
+                document.querySelectorAll('.tera-crystal-on').forEach(el => el.classList.remove('tera-crystal-on'));
+            } catch (e) { console.warn('[startBattle] per-mon gimmick reset:', e); }
             try { if (settings.randomWeather) rollRandomWeather(); } catch (e) { console.warn('[startBattle] rollRandomWeather:', e); }
             try { if (settings.randomTerrain) rollRandomTerrain(); } catch (e) { console.warn('[startBattle] rollRandomTerrain:', e); }
             try {
@@ -17131,17 +17151,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 // Offensive trigger: does Tera unlock a KO that base form can't?
                 let teraUnlocksKO = false;
+                const origActivated = attacker.teraActivated;
+                const origT1 = attacker.type1, origT2 = attacker.type2;
                 try {
-                    const origActivated = attacker.teraActivated;
-                    const origT1 = attacker.type1, origT2 = attacker.type2;
                     let baseDmg = Math.max(0, ...attacker.moves.filter(m => m.pp > 0 && m.cat !== 'Status').map(m => aiEstimateDmg(attacker, defender, m)));
                     attacker.teraActivated = true; attacker.type1 = bd.teraType; attacker.type2 = '';
                     let teraDmg = Math.max(0, ...attacker.moves.filter(m => m.pp > 0 && m.cat !== 'Status').map(m => aiEstimateDmg(attacker, defender, m)));
-                    attacker.teraActivated = origActivated; attacker.type1 = origT1; attacker.type2 = origT2;
                     if (teraDmg >= defender.currentHp && baseDmg < defender.currentHp) teraUnlocksKO = true;
                     // Also fire if Tera boosts top-move damage by ≥30% on a healthy foe (sweep setup)
                     else if (defHpPct > 0.6 && teraDmg >= baseDmg * 1.3 && baseDmg > 0) teraUnlocksKO = true;
-                } catch (e) { /* fall through */ }
+                } catch (e) { /* fall through */ } finally {
+                    attacker.teraActivated = origActivated; attacker.type1 = origT1; attacker.type2 = origT2;
+                }
 
                 // Stellar: opportunistic offensive Tera once per type — very strong, fire eagerly.
                 let stellarOpportunity = (bd.teraType === 'Stellar') && (defHpPct > 0.4);
@@ -25925,6 +25946,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.usedMega = false; state.usedZ = false; state.usedDyna = false; state.usedTera = false;
             state.fUsedMega = false; state.fUsedZ = false; state.fUsedDyna = false; state.fUsedTera = false;
             state.p1GimmickIntent = null; state.p2GimmickIntent = null;
+            try {
+                const _clearMonGimmick = (m) => {
+                    if (!m) return;
+                    m.megaEvolved = false;
+                    m.dynamaxed = false; m.dynamaxTurns = 0; m.dynamaxUsed = false;
+                    if (m._preDynaName) { m.name = m._preDynaName; m._preDynaName = null; }
+                    if (m.baseMaxHp) { m.maxHp = m.baseMaxHp; m.baseMaxHp = null; }
+                    m.teraActivated = false;
+                    if (m.stellarTypesUsed) m.stellarTypesUsed = null;
+                    m.zMoveUsed = false;
+                };
+                (state.playerParty || []).forEach(_clearMonGimmick);
+                (state.foeParty || []).forEach(_clearMonGimmick);
+                document.querySelectorAll('.tera-crystal-on').forEach(el => el.classList.remove('tera-crystal-on'));
+            } catch (e) { console.warn('[gauntlet round] per-mon gimmick reset:', e); }
             logMsg(`Gauntlet Round ${state.score + 1} begins!`, 'info');
             AudioSystem.startNewBattle();
             // Hide all modals so we cleanly return to battle
