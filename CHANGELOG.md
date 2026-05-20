@@ -3,6 +3,64 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Cable Link Station repriced as a flat premium over manual training 2026-05-20 (`claude/cable-link-pokemon-pricing-bb96A`)
+
+### Changed — Cable Link Station: Reroll / Upgrade / Rebuild prices bumped, intra-city ×1.5 ramp removed
+
+The Cable Link Station still ships fully battle-ready Pokémon — Reroll
+and Rebuild at Competent (T3), Upgrade at Tournament (T4) — but the old
+prices badly undercut the manual Tutor + Dojo + EV-Trainer path. A
+Same-Tier Swap on a Grade 4 mon was **400G**, less than a single Move
+Tutor visit (1,500G), yet it returned a full T3 build (moves, item,
+ability, nature, EVs). An Upgrade G4 → G3 at **3,500G** replaced
+roughly **17,000G** worth of training-NPC visits, and on top of that the
+**×1.5ⁿ intra-city ramp** punished any second use of the Link in the
+same city — a mechanic that made sense when first uses were near-free
+but turned vicious once base prices climbed. The "Spend it on a keeper"
+framing from the first-time tip wasn't holding up either: Cable Link
+was the keeper, the tutoring ladder was the trap.
+
+Repriced so the Link is the premium one-click route — flat per-action,
+with the gold floor as the only spam-deterrent:
+
+* `REROLL_COSTS` — was `{ 1:4000, 2:2000, 3:900, 4:400 }`, now
+  `{ 1:14000, 2:12000, 3:9000, 4:6000 }`. G1 species rolls cost the most
+  because the pool is rarer; G4 at 6,000G is reachable after a handful
+  of early-route wins.
+* `UPGRADE_COSTS` — was `{ 4:3500, 3:9000, 2:22000 }`, now
+  `{ 4:9000, 3:13000, 2:22000 }`. G2 → G1 (the late-game luxury anchor)
+  is untouched at 22,000G. The lower ramps climb more gently than the
+  old curve — you're paying for the grade lift + T4 build + random
+  species roll, so the tax stays proportional to what's at risk if the
+  rolled species doesn't fit your team's typing.
+* `REBUILD_COST` — was `1,200G`, now `5,000G`. Still the cheapest Cable
+  Link option (no grade lift, same species, no typing-clash risk).
+* **Removed the per-city ×1.5ⁿ price ramp** from all three Link actions.
+  The first use, second use, and tenth use within a city now all cost
+  the same flat amount. The `cityRerollsUsed` counters still increment
+  to drive the Casual first-use discount, but no longer feed the price
+  formula. (Evolution Tutor's ramp is unchanged — that's a separate NPC
+  with its own pricing model.)
+
+What didn't change:
+
+* **Build tier output is the same.** Reroll and Rebuild still return T3
+  (capped EVs, polish at Tutor / Dojo / EV Trainer for full T4). Upgrade
+  still returns T4 with full EVs, top-pool ability, and top-pool item.
+  No quality nerf — only the price.
+* **Per-city counter reset stays.** Each new city starts fresh for the
+  Casual first-use discount.
+* **Casual difficulty discount stays** — first Reroll in a city is
+  still 22% off on Casual.
+* **Stone Sage / Move Tutor / Battle Dojo / EV Trainer prices are
+  unchanged.** Only the Link is repriced; the manual path is now the
+  cheaper one if the player has the patience to walk it.
+
+Header text on the Cable Link screen and the first-time tip were
+rewritten to call out the new pricing logic — flat prices, random
+species means random typing, and the Link's job is "one click instead
+of five visits, at a markup", not "the cheap shortcut".
+
 ## Unreleased — Battle-form pacing rebalanced + Wishing Piece introduces Colress 2026-05-20 (`claude/balance-encounter-pacing-T4FyA`)
 
 ### Changed — Enemy gimmick distribution: guaranteed mech-aces + smoother progress curve
