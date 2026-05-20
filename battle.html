@@ -14516,11 +14516,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             // Story Pokédex — every foe a story-mode trainer brings is "seen".
+            // buildPokemon has already rolled mon.isShiny by this point so a
+            // trainer-owned shiny stamps into the Shiny Dex too.
             try {
                 if (window.StoryMode && window.StoryMode.isActive && window.StoryMode.isActive()) {
                     for (const f of (state.foeParty || [])) {
                         if (f && f.name && typeof window.StoryMode._markDexSeen === 'function') {
-                            window.StoryMode._markDexSeen(f.name);
+                            const fShiny = !!(f.isShiny || (f.build && f.build._isShiny));
+                            window.StoryMode._markDexSeen(f.name, fShiny);
                         }
                     }
                 }
@@ -28397,7 +28400,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lastClearSeed: '',
                 firstClears: {},
                 tipsShown: {},
-                // Cross-run Pokédex: { [speciesName]: { seen, caught, shinyCaught, firstSeenAt, firstCaughtAt } }
+                // Cross-run Pokédex: { [speciesName]: { seen, caught, shinySeen, shinyCaught, firstSeenAt, firstCaughtAt, firstShinySeenAt } }
                 pokedex: {},
                 // Achievements: { [id]: { progress, currentRank, lastUpdated } }
                 achievements: {},
@@ -28483,14 +28486,53 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         //   counters (10/50/100/200-style ladders).
         // - meta.hofRecords holds the last 10 Hall of Fame entries.
 
-        function _storyMarkDexSeen(name) {
+        // Default shape for a cross-run Pokédex slot. Centralizing it keeps the
+        // schema in one place — every reader (seen, caught, UI render) merges
+        // legacy partial slots against this so older saves transparently grow
+        // the newer shiny-seen fields on next encounter.
+        function _emptyDexSlot() {
+            return {
+                seen: false,
+                caught: false,
+                shinySeen: false,
+                shinyCaught: false,
+                firstSeenAt: 0,
+                firstCaughtAt: 0,
+                firstShinySeenAt: 0
+            };
+        }
+        function _readDexSlot(meta, name) {
+            const existing = meta && meta.pokedex && meta.pokedex[name];
+            return Object.assign(_emptyDexSlot(), existing || {});
+        }
+        function _storyMarkDexSeen(name, isShiny) {
             if (!name) return;
+            // Per-run mirror so the in-run PC tab's "Seen" counter reflects
+            // every encounter (wilds + trainer foes + evolutions), not just
+            // catches. The cross-run meta is the canonical source for the
+            // lifetime Pokédex / Shiny Dex view.
+            try {
+                if (typeof sm !== 'undefined' && sm) {
+                    if (!sm.pokedex || typeof sm.pokedex !== 'object') sm.pokedex = { seen: [], caught: [] };
+                    if (!Array.isArray(sm.pokedex.seen)) sm.pokedex.seen = [];
+                    if (!sm.pokedex.seen.includes(name)) sm.pokedex.seen.push(name);
+                }
+            } catch (e) {}
             const meta = readStoryMeta();
             if (!meta.pokedex) meta.pokedex = {};
-            const slot = meta.pokedex[name] || { seen: false, caught: false, shinyCaught: false, firstSeenAt: 0, firstCaughtAt: 0 };
+            const slot = _readDexSlot(meta, name);
+            let changed = false;
             if (!slot.seen) {
                 slot.seen = true;
                 slot.firstSeenAt = Date.now();
+                changed = true;
+            }
+            if (isShiny && !slot.shinySeen) {
+                slot.shinySeen = true;
+                slot.firstShinySeenAt = Date.now();
+                changed = true;
+            }
+            if (changed) {
                 meta.pokedex[name] = slot;
                 writeStoryMeta(meta);
                 _storyRecomputeCollectionAchievements();
@@ -28498,15 +28540,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function _storyMarkDexCaught(name, isShiny) {
             if (!name) return;
+            // Per-run mirror — keeps the in-run PC tab's "Caught" count and the
+            // 25/50/75/100 milestone bundle gate in sync with the actual roster.
+            try {
+                if (typeof sm !== 'undefined' && sm) {
+                    if (!sm.pokedex || typeof sm.pokedex !== 'object') sm.pokedex = { seen: [], caught: [] };
+                    if (!Array.isArray(sm.pokedex.seen)) sm.pokedex.seen = [];
+                    if (!Array.isArray(sm.pokedex.caught)) sm.pokedex.caught = [];
+                    if (!sm.pokedex.seen.includes(name)) sm.pokedex.seen.push(name);
+                    if (!sm.pokedex.caught.includes(name)) sm.pokedex.caught.push(name);
+                    try { _storyCheckPokedexMilestones(); } catch (e) {}
+                }
+            } catch (e) {}
             const meta = readStoryMeta();
             if (!meta.pokedex) meta.pokedex = {};
-            const slot = meta.pokedex[name] || { seen: false, caught: false, shinyCaught: false, firstSeenAt: 0, firstCaughtAt: 0 };
+            const slot = _readDexSlot(meta, name);
             const wasCaught = !!slot.caught;
             const wasShiny = !!slot.shinyCaught;
             slot.seen = true;
             slot.caught = true;
             if (!slot.firstCaughtAt) slot.firstCaughtAt = Date.now();
-            if (isShiny && !wasShiny) slot.shinyCaught = true;
+            // Catching a shiny implies seeing one. Stamp shinySeen too so the
+            // Shiny Dex view reads consistently even if the species was never
+            // marked seen as a shiny before this catch landed.
+            if (isShiny) {
+                if (!slot.shinySeen) {
+                    slot.shinySeen = true;
+                    slot.firstShinySeenAt = Date.now();
+                }
+                if (!wasShiny) slot.shinyCaught = true;
+            }
             meta.pokedex[name] = slot;
             writeStoryMeta(meta);
             if (!wasCaught) {
@@ -31164,6 +31227,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── COLLECTION SCREEN — Pokédex / Achievements / Hall of Fame ────
         let _collectionTab = 'pokedex';
         let _collectionDexGen = 0; // 0 = all
+        let _collectionDexShiny = false; // false = Regular view, true = Shiny Dex view
         let _collectionPrevScreen = null;
         function openCollection(tab) {
             const okTab = (tab === 'achievements' || tab === 'hof') ? tab : 'pokedex';
@@ -31231,80 +31295,136 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const dex = meta.pokedex || {};
             const list = _collectionAllSpeciesList();
             const filtered = genFilter ? list.filter(s => s.gen === genFilter) : list;
-            // Per-gen totals (for the summary chips).
-            const totalsByGen = {0: { total: 0, seen: 0, caught: 0, shiny: 0 }};
+            const shinyView = !!_collectionDexShiny;
+            // Per-gen totals feed the summary chips AND the per-gen counts
+            // shown on each generation tab. Both views need both numbers so
+            // the tab labels stay sensible when switching Regular ↔ Shiny.
+            const totalsByGen = {0: { total: 0, seen: 0, caught: 0, shinySeen: 0, shinyCaught: 0 }};
             for (const s of list) {
                 const slot = dex[s.name] || {};
-                totalsByGen[0].total++;
-                if (slot.seen) totalsByGen[0].seen++;
-                if (slot.caught) totalsByGen[0].caught++;
-                if (slot.shinyCaught) totalsByGen[0].shiny++;
                 const g = s.gen;
-                if (!totalsByGen[g]) totalsByGen[g] = { total: 0, seen: 0, caught: 0, shiny: 0 };
+                if (!totalsByGen[g]) totalsByGen[g] = { total: 0, seen: 0, caught: 0, shinySeen: 0, shinyCaught: 0 };
+                totalsByGen[0].total++;
                 totalsByGen[g].total++;
-                if (slot.seen) totalsByGen[g].seen++;
-                if (slot.caught) totalsByGen[g].caught++;
-                if (slot.shinyCaught) totalsByGen[g].shiny++;
+                if (slot.seen) { totalsByGen[0].seen++; totalsByGen[g].seen++; }
+                if (slot.caught) { totalsByGen[0].caught++; totalsByGen[g].caught++; }
+                if (slot.shinySeen) { totalsByGen[0].shinySeen++; totalsByGen[g].shinySeen++; }
+                if (slot.shinyCaught) { totalsByGen[0].shinyCaught++; totalsByGen[g].shinyCaught++; }
             }
-            const tot = totalsByGen[genFilter || 0] || { total: 0, seen: 0, caught: 0, shiny: 0 };
-            const pctC = tot.total ? Math.round(tot.caught * 100 / tot.total) : 0;
+            const tot = totalsByGen[genFilter || 0] || { total: 0, seen: 0, caught: 0, shinySeen: 0, shinyCaught: 0 };
 
-            const summary = `<div class="pdex-summary">
-                <div class="pdex-summary-stat"><span class="pdex-summary-stat-label">Caught</span><span class="pdex-summary-stat-value">${tot.caught} <span style="color:#607d8b;font-size:10px;">/ ${tot.total} (${pctC}%)</span></span></div>
-                <div class="pdex-summary-stat"><span class="pdex-summary-stat-label">Seen</span><span class="pdex-summary-stat-value">${tot.seen}</span></div>
-                <div class="pdex-summary-stat"><span class="pdex-summary-stat-label">Shiny</span><span class="pdex-summary-stat-value" style="color:#ffd54f;">${tot.shiny} &#10024;</span></div>
+            // View toggle — Regular | Shiny. Single source of truth for the
+            // Pokédex tab; gen filter applies to whichever view is active.
+            const viewToggleHtml = `<div class="pdex-view-toggle" style="display:flex;gap:6px;justify-content:center;margin:6px 0 10px;">
+                <button type="button" class="pdex-view-btn${!shinyView ? ' pdex-view-btn--active' : ''}" onclick="window.StoryMode.pokedexSetShinyView(false)" style="padding:6px 14px;background:${!shinyView ? '#37474f' : 'rgba(20,28,40,0.6)'};border:1px solid ${!shinyView ? '#90caf9' : '#2c3a52'};color:${!shinyView ? '#90caf9' : '#aaa'};font-family:inherit;font-size:12px;font-weight:bold;cursor:pointer;letter-spacing:0.04em;">&#128218; Regular</button>
+                <button type="button" class="pdex-view-btn${shinyView ? ' pdex-view-btn--active' : ''}" onclick="window.StoryMode.pokedexSetShinyView(true)" style="padding:6px 14px;background:${shinyView ? '#4a3a14' : 'rgba(20,28,40,0.6)'};border:1px solid ${shinyView ? '#ffd54f' : '#2c3a52'};color:${shinyView ? '#ffd54f' : '#aaa'};font-family:inherit;font-size:12px;font-weight:bold;cursor:pointer;letter-spacing:0.04em;">&#10024; Shiny</button>
             </div>`;
+
+            let summary;
+            if (shinyView) {
+                const pctSC = tot.total ? Math.round(tot.shinyCaught * 100 / tot.total) : 0;
+                summary = `<div class="pdex-summary">
+                    <div class="pdex-summary-stat"><span class="pdex-summary-stat-label">Shiny Caught</span><span class="pdex-summary-stat-value" style="color:#ffd54f;">${tot.shinyCaught} &#10024; <span style="color:#607d8b;font-size:10px;">/ ${tot.total} (${pctSC}%)</span></span></div>
+                    <div class="pdex-summary-stat"><span class="pdex-summary-stat-label">Shiny Seen</span><span class="pdex-summary-stat-value" style="color:#ffd54f;">${tot.shinySeen} &#10024;</span></div>
+                </div>`;
+            } else {
+                const pctC = tot.total ? Math.round(tot.caught * 100 / tot.total) : 0;
+                summary = `<div class="pdex-summary">
+                    <div class="pdex-summary-stat"><span class="pdex-summary-stat-label">Caught</span><span class="pdex-summary-stat-value">${tot.caught} <span style="color:#607d8b;font-size:10px;">/ ${tot.total} (${pctC}%)</span></span></div>
+                    <div class="pdex-summary-stat"><span class="pdex-summary-stat-label">Seen</span><span class="pdex-summary-stat-value">${tot.seen}</span></div>
+                    <div class="pdex-summary-stat"><span class="pdex-summary-stat-label">Shiny</span><span class="pdex-summary-stat-value" style="color:#ffd54f;">${tot.shinyCaught} &#10024;</span></div>
+                </div>`;
+            }
 
             const tabs = [['0','All']];
             for (let g = 1; g <= 9; g++) tabs.push([String(g), 'Gen ' + g]);
             const tabsHtml = '<div class="pdex-gen-tabs">' + tabs.map(([k, label]) => {
                 const active = (String(genFilter || 0) === k);
                 const t = totalsByGen[k | 0] || null;
-                const count = t ? `<span style="opacity:0.6;font-size:9px;"> ${t.caught}/${t.total}</span>` : '';
+                let count = '';
+                if (t) {
+                    const num = shinyView ? t.shinyCaught : t.caught;
+                    count = `<span style="opacity:0.6;font-size:9px;"> ${num}/${t.total}</span>`;
+                }
                 return `<button type="button" class="pdex-gen-tab${active ? ' pdex-gen-tab--active' : ''}" onclick="window.StoryMode.pokedexSetGen(${k})">${label}${count}</button>`;
             }).join('') + '</div>';
 
             if (!filtered.length) {
-                return summary + tabsHtml + '<p class="ach-empty">No Pokémon data available for this filter.</p>';
+                return viewToggleHtml + summary + tabsHtml + '<p class="ach-empty">No Pokémon data available for this filter.</p>';
             }
             const cells = filtered.map(s => {
-                const slot = dex[s.name] || { seen: false, caught: false, shinyCaught: false };
+                const slot = dex[s.name] || {};
                 let cellCls = 'pdex-cell';
                 let imgCls = 'pdex-cell-img';
                 let displayName = s.name;
                 let imgHtml = '';
-                if (!slot.seen) {
-                    cellCls += ' pdex-cell--unknown';
-                    imgCls += ' pdex-cell-img--unknown';
-                    displayName = '???';
-                    if (typeof getSprite === 'function') {
-                        imgHtml = `<img src="${_esc(getSprite(s.name, false))}" alt="" class="${imgCls}" loading="lazy" decoding="async" onerror="handleSpriteError(this)">`;
-                    }
-                } else if (slot.caught) {
-                    cellCls += ' pdex-cell--caught';
-                    if (slot.shinyCaught) cellCls += ' pdex-cell--shiny';
-                    if (typeof getSprite === 'function') {
-                        imgHtml = `<img src="${_esc(getSprite(s.name, !!slot.shinyCaught))}" alt="${_esc(s.name)}" class="${imgCls}" loading="lazy" decoding="async" data-shiny="${slot.shinyCaught ? 'true' : 'false'}" onerror="handleSpriteError(this)">`;
+                let title;
+                if (shinyView) {
+                    // Shiny Dex view — ??? until a shiny of this species has
+                    // been seen. Catching upgrades the cell to full color.
+                    if (!slot.shinySeen) {
+                        cellCls += ' pdex-cell--unknown';
+                        imgCls += ' pdex-cell-img--unknown';
+                        displayName = '???';
+                        if (typeof getSprite === 'function') {
+                            imgHtml = `<img src="${_esc(getSprite(s.name, false))}" alt="" class="${imgCls}" loading="lazy" decoding="async" onerror="handleSpriteError(this)">`;
+                        }
+                        title = 'Unknown (no shiny encountered)';
+                    } else if (slot.shinyCaught) {
+                        cellCls += ' pdex-cell--caught pdex-cell--shiny';
+                        if (typeof getSprite === 'function') {
+                            imgHtml = `<img src="${_esc(getSprite(s.name, true))}" alt="${_esc(s.name)}" class="${imgCls}" loading="lazy" decoding="async" data-shiny="true" onerror="handleSpriteError(this)">`;
+                        }
+                        title = s.name + ' — shiny caught';
+                    } else {
+                        // Shiny-seen but not caught — dim shiny sprite.
+                        imgCls += ' pdex-cell-img--seen';
+                        if (typeof getSprite === 'function') {
+                            imgHtml = `<img src="${_esc(getSprite(s.name, true))}" alt="${_esc(s.name)}" class="${imgCls}" loading="lazy" decoding="async" data-shiny="true" onerror="handleSpriteError(this)">`;
+                        }
+                        title = s.name + ' — shiny seen';
                     }
                 } else {
-                    // Seen-only
-                    imgCls += ' pdex-cell-img--seen';
-                    if (typeof getSprite === 'function') {
-                        imgHtml = `<img src="${_esc(getSprite(s.name, false))}" alt="${_esc(s.name)}" class="${imgCls}" loading="lazy" decoding="async" onerror="handleSpriteError(this)">`;
+                    // Regular view (existing behavior).
+                    if (!slot.seen) {
+                        cellCls += ' pdex-cell--unknown';
+                        imgCls += ' pdex-cell-img--unknown';
+                        displayName = '???';
+                        if (typeof getSprite === 'function') {
+                            imgHtml = `<img src="${_esc(getSprite(s.name, false))}" alt="" class="${imgCls}" loading="lazy" decoding="async" onerror="handleSpriteError(this)">`;
+                        }
+                        title = 'Unknown';
+                    } else if (slot.caught) {
+                        cellCls += ' pdex-cell--caught';
+                        if (slot.shinyCaught) cellCls += ' pdex-cell--shiny';
+                        if (typeof getSprite === 'function') {
+                            imgHtml = `<img src="${_esc(getSprite(s.name, !!slot.shinyCaught))}" alt="${_esc(s.name)}" class="${imgCls}" loading="lazy" decoding="async" data-shiny="${slot.shinyCaught ? 'true' : 'false'}" onerror="handleSpriteError(this)">`;
+                        }
+                        title = s.name + ' — caught' + (slot.shinyCaught ? ' (shiny)' : '');
+                    } else {
+                        imgCls += ' pdex-cell-img--seen';
+                        if (typeof getSprite === 'function') {
+                            imgHtml = `<img src="${_esc(getSprite(s.name, false))}" alt="${_esc(s.name)}" class="${imgCls}" loading="lazy" decoding="async" onerror="handleSpriteError(this)">`;
+                        }
+                        title = s.name + ' — seen';
                     }
                 }
                 const dexStr = '#' + String(s.dex).padStart(3, '0');
-                return `<div class="${cellCls}" title="${_esc(slot.caught ? s.name + ' — caught' + (slot.shinyCaught ? ' (shiny)' : '') : slot.seen ? s.name + ' — seen' : 'Unknown')}">
+                return `<div class="${cellCls}" title="${_esc(title)}">
                     ${imgHtml}
                     <span class="pdex-cell-dex">${dexStr}</span>
                     <span class="pdex-cell-name">${_esc(displayName)}</span>
                 </div>`;
             }).join('');
-            return summary + tabsHtml + '<div class="pdex-grid">' + cells + '</div>';
+            return viewToggleHtml + summary + tabsHtml + '<div class="pdex-grid">' + cells + '</div>';
         }
         function pokedexSetGen(g) {
             const gg = g | 0;
             _collectionDexGen = (gg >= 1 && gg <= 9) ? gg : 0;
+            _renderCollectionBody();
+        }
+        function pokedexSetShinyView(on) {
+            _collectionDexShiny = !!on;
             _renderCollectionBody();
         }
 
@@ -33693,6 +33813,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.team.push(newSlot);
             if (!sm.profUsed) sm.profUsed = {};
             sm.profUsed[cityIdx] = true;
+            // Pokédex — the gift mon is now in your roster, so it's caught.
+            // _storyMarkDexCaught handles both per-run sm.pokedex (for the PC
+            // tab + milestone bundles) and cross-run meta (lifetime + shiny).
+            try { _storyMarkDexCaught(ch.name, !!(ch.build && ch.build._isShiny)); } catch (e) {}
             save();
             document.getElementById('story-prof-status').textContent = `✓ ${ch.name} joined your team!`;
             const btnsEl = document.getElementById('story-prof-buttons');
@@ -33719,6 +33843,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.profUsed) sm.profUsed = {};
             sm.profUsed[cityIdx] = true;
             _pendingProfChoices = null; _profSelectedIdx = null; _profMysteryMode = false; _pendingProfCityIdx = null; _pendingProfWasMystery = false; _profLegendaryMysteryMode = false;
+            // Pokédex — Mystery Figure legendary now in your party = caught.
+            try { _storyMarkDexCaught(ch.name, !!(ch.build && ch.build._isShiny)); } catch (e) {}
             save();
             document.getElementById('story-prof-status').textContent = `✓ ${ch.name} replaced ${replaced}!`;
             document.getElementById('story-prof-rolled-card').innerHTML = '';
@@ -35934,16 +36060,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function enterCatchEncounter(wildMon, onComplete, options) {
-            // Defensive shiny lock — every encounter path (wild, safari,
-            // roaming, boss, tutorial) ought to have rolled this already,
-            // but stamping it here guarantees the catch header, sprite,
-            // and Pokédex marker all read the same value even if a future
-            // caller forgets the upstream `ensureShinyRolled`.
+            // Lock in the shiny roll at encounter time. Every catch path (wild,
+            // safari, roaming, boss, tutorial) ought to have rolled this
+            // already, but stamping it here guarantees the catch header,
+            // sprite, encounter-reveal animation, and dex marker all read the
+            // same value even if an upstream caller forgets to seed it.
             try {
                 if (wildMon && wildMon.build && typeof ensureShinyRolled === 'function') {
                     ensureShinyRolled(wildMon.build);
                 }
             } catch (e) {}
+            const wildShiny = !!(wildMon && wildMon.build && wildMon.build._isShiny);
             _catchState = {
                 encounter: wildMon,
                 onComplete: onComplete || null,
@@ -35966,7 +36093,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _catchState.message = `The cage opens. ${wildMon.name} stirs. Wear it down, then throw your strongest ball.`;
             }
             try { _storyMarkPokedexSeen(wildMon && wildMon.name); } catch (e) {}
-            try { _storyMarkDexSeen(wildMon && wildMon.name); } catch (e) {}
+            try { _storyMarkDexSeen(wildMon && wildMon.name, wildShiny); } catch (e) {}
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             // Header reflects the mode so the catch screen reads as
             // "🦒 Safari Zone" inside a Safari run instead of a generic
@@ -36038,8 +36165,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Boss mode has its own HP-bar phase (no stage), so skip.
             try {
                 if (!_catchState.bossMode && _catchStageEl && window.StoryFx) {
-                    const _wildShiny = !!(wildMon && wildMon.build && wildMon.build._isShiny);
-                    window.StoryFx.encounterReveal(_catchStageEl, wildMon && wildMon.name, { shiny: _wildShiny });
+                    window.StoryFx.encounterReveal(_catchStageEl, wildMon && wildMon.name, { shiny: wildShiny });
                 }
             } catch (e) {}
             if (!_catchState.bossMode) {
@@ -38642,6 +38768,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Spreading `mon` first then overriding name/build keeps every metadata
             // flag (starter, unsellable, nickname, id, caughtAt, …) attached.
             sm.team[idx] = { ...mon, name: evoName, build: evoBuild };
+            // Pokédex — evolving into a new species means the player now owns
+            // that species, so it's both seen and caught (mainline behavior).
+            // Shiny carries from the pre-evo via the identity carry-over block
+            // above, so the new species hits the Shiny Dex if appropriate.
+            // _storyMarkDexCaught handles per-run + cross-run + milestone gate.
+            try { _storyMarkDexCaught(evoName, !!(old && old._isShiny)); } catch (e) {}
             return true;
         }
 
@@ -42556,8 +42688,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             trainerCreatePrevSprite, trainerCreateNextSprite, trainerCreateRandomSprite,
             trainerCreateSetDifficulty, trainerCreateSetGenPreset,
             confirmTrainerAndStart,
-            openCollection, closeCollection, pokedexSetGen,
+            openCollection, closeCollection, pokedexSetGen, pokedexSetShinyView,
             _markDexSeen: _storyMarkDexSeen,
+            _markDexCaught: _storyMarkDexCaught,
             showOneTimeTip: _storyShowOneTimeTip,
             playTutorial: playStoryTutorial,
             // Story-mode event registry (read-only inspection surface)
