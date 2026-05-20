@@ -71,6 +71,386 @@ appears twice in the list. The recommender also picks the *best* preset
 within each purpose (scored against the mon's base stats), not just the
 first matching label.
 
+### Added — "Close all" affordance on the mon-switcher pill bar
+
+A sticky red "▾ CLOSE" chip lives at the left edge of the pill bar
+whenever one mon is expanded — one tap collapses the whole accordion
+back to the compact picker so the player can scan the full team. The
+active gold pill also toggles closed when re-tapped. While everything
+is collapsed the chip swaps in for a "Tap a Pokémon →" hint so the bar
+still communicates its purpose.
+
+## Unreleased — Cable Link Station repriced as a flat premium over manual training 2026-05-20 (`claude/cable-link-pokemon-pricing-bb96A`)
+
+### Changed — Cable Link Station: Reroll / Upgrade / Rebuild prices bumped, intra-city ×1.5 ramp removed
+
+The Cable Link Station still ships fully battle-ready Pokémon — Reroll
+and Rebuild at Competent (T3), Upgrade at Tournament (T4) — but the old
+prices badly undercut the manual Tutor + Dojo + EV-Trainer path. A
+Same-Tier Swap on a Grade 4 mon was **400G**, less than a single Move
+Tutor visit (1,500G), yet it returned a full T3 build (moves, item,
+ability, nature, EVs). An Upgrade G4 → G3 at **3,500G** replaced
+roughly **17,000G** worth of training-NPC visits, and on top of that the
+**×1.5ⁿ intra-city ramp** punished any second use of the Link in the
+same city — a mechanic that made sense when first uses were near-free
+but turned vicious once base prices climbed. The "Spend it on a keeper"
+framing from the first-time tip wasn't holding up either: Cable Link
+was the keeper, the tutoring ladder was the trap.
+
+Repriced so the Link is the premium one-click route — flat per-action,
+with the gold floor as the only spam-deterrent:
+
+* `REROLL_COSTS` — was `{ 1:4000, 2:2000, 3:900, 4:400 }`, now
+  `{ 1:14000, 2:12000, 3:9000, 4:6000 }`. G1 species rolls cost the most
+  because the pool is rarer; G4 at 6,000G is reachable after a handful
+  of early-route wins.
+* `UPGRADE_COSTS` — was `{ 4:3500, 3:9000, 2:22000 }`, now
+  `{ 4:9000, 3:13000, 2:22000 }`. G2 → G1 (the late-game luxury anchor)
+  is untouched at 22,000G. The lower ramps climb more gently than the
+  old curve — you're paying for the grade lift + T4 build + random
+  species roll, so the tax stays proportional to what's at risk if the
+  rolled species doesn't fit your team's typing.
+* `REBUILD_COST` — was `1,200G`, now `5,000G`. Still the cheapest Cable
+  Link option (no grade lift, same species, no typing-clash risk).
+* **Removed the per-city ×1.5ⁿ price ramp** from all three Link actions.
+  The first use, second use, and tenth use within a city now all cost
+  the same flat amount. The `cityRerollsUsed` counters still increment
+  to drive the Casual first-use discount, but no longer feed the price
+  formula. (Evolution Tutor's ramp is unchanged — that's a separate NPC
+  with its own pricing model.)
+
+What didn't change:
+
+* **Build tier output is the same.** Reroll and Rebuild still return T3
+  (capped EVs, polish at Tutor / Dojo / EV Trainer for full T4). Upgrade
+  still returns T4 with full EVs, top-pool ability, and top-pool item.
+  No quality nerf — only the price.
+* **Per-city counter reset stays.** Each new city starts fresh for the
+  Casual first-use discount.
+* **Casual difficulty discount stays** — first Reroll in a city is
+  still 22% off on Casual.
+* **Stone Sage / Move Tutor / Battle Dojo / EV Trainer prices are
+  unchanged.** Only the Link is repriced; the manual path is now the
+  cheaper one if the player has the patience to walk it.
+
+Header text on the Cable Link screen and the first-time tip were
+rewritten to call out the new pricing logic — flat prices, random
+species means random typing, and the Link's job is "one click instead
+of five visits, at a markup", not "the cheap shortcut".
+
+## Unreleased — Battle-form pacing rebalanced + Wishing Piece introduces Colress 2026-05-20 (`claude/balance-encounter-pacing-T4FyA`)
+
+### Changed — Enemy gimmick distribution: guaranteed mech-aces + smoother progress curve
+
+The per-mon mechanic chance (`_perMonMechChance`) used to multiply a flat
+trainer-tier weight by a `_storyProgressFactor` that was **0% at badges
+0–3 and then jumped to 40% at badge 4**. Combined with the independent
+per-mon roll, the same Gym Leader 6 fight could roll 0, 1, 2, or 3
+gimmick mons across consecutive attempts — gimmicks felt like static
+RNG, not story progression.
+
+The fix is two parts:
+
+* `_storyProgressFactor` is now a smooth ramp:
+  `0/0/0, 0.15, 0.35, 0.55, 0.75, 0.90, 1.00` across badges 0–8.
+  No more cliff at badge 4; the first feathering of gimmicks now starts
+  on the Gym Leader 4 fight (badge 3) at ~3–4% per non-ace mon, then
+  climbs.
+* New `_minGuaranteedMechsForEvent(eventType)` returns a floor of
+  guaranteed gimmick mons that bypass the random roll entirely:
+  GL6 = 1 (the ace), GL7 = 2, GL8 = 3, E1/E2 = 2, E3/E4 = 3, Victory
+  Road = 3, post-G8 League Rival = 3, Champion = 4, post-HoF Mystery
+  Figure = 6 (full team). `_applyEnemyGimmickDistribution` walks the
+  team in slot order (slot 0 = signature ace by composition) and forces
+  the highest-priority eligible mechanic onto each of those mons before
+  the random roll fires for the remaining slots.
+
+Net effect: a Gym 6 fight is no longer "roll the dice and hope" — the
+leader's ace **always** comes out swinging with a Mega / Z / Dynamax /
+Tera, and the rest of the team rolls on a smoothed curve that ramps
+predictably toward the Champion.
+
+### Added — Wishing Piece voucher + Gym Leader 5 intro beat
+
+Gym Leader 5 victory now drops one **Wishing Piece** (canonical SwSh
+item, slotted into the existing voucher framework alongside Rare Candy,
+Vitamin Pack, Heart Scale, Mint, Ability Capsule, Emblem of Honor). The
+gym leader's victory message has been extended with a flavor line
+pointing the player to Colress in the next city.
+
+City 6 is the first city to host Colress, so the voucher is immediately
+redeemable on arrival. The Colress screen renders a purple "🌠 Wishing
+Piece ×N" banner at the top whenever the voucher is in inventory, and
+every Mega / Dynamax / Z-Move button shows a `🌠 Use Wishing Piece`
+sibling button that consumes one voucher instead of charging 7,500G.
+For Tera, where each type would otherwise need its own paired button,
+the buttons stay single but **shift-click** spends a voucher.
+
+The `firstColress` tutorial scene now reads `sm.inventory.wishingPiece`
+dynamically — when the player walks in carrying a Wishing Piece, an
+extra line of Colress dialogue is inserted that calls out the voucher
+explicitly. The base tutorial copy has also been expanded from 3 lines
+to 4 to introduce the "first door opens at Gym 5" rule.
+
+### Changed — Player gimmick unlock now aligns with Colress availability
+
+Previously, gimmicks unlocked one-per-badge starting at Gym 1, but the
+player had no way to **equip** any of them until Colress at City 6
+(after Gym 5). The result was a 4-badge stretch of "unlocked but
+useless" status. The unlock now gates on `badges >= 5`:
+
+| Badge | Unlocked mechanics |
+|---|---|
+| 0–4 | none |
+| 5 | mega |
+| 6 | mega + dmax |
+| 7 | mega + dmax + tera |
+| 8 | mega + dmax + tera + z |
+
+The fixed order (mega → dmax → tera → z, filtered by which mechanics
+the player enabled in run setup) is unchanged; only the start point and
+gating logic moved. Cable Link rebuilds, Professor gifts, and the
+`?testmega=1` debug seed pick this up automatically. The testmega seed
+now also explicitly stamps `unlockedGimmicks` to match `badges = 6` and
+seeds 2 Wishing Pieces for voucher-path verification.
+
+### Files touched
+
+* `battle.html` — `_storyProgressFactor` rewrite, `_minGuaranteedMechsForEvent`
+  + ace-pass in `_applyEnemyGimmickDistribution`, player unlock rewrite,
+  `VOUCHER_KEYS` + `wishingPiece` entry, `GYM_VICTORY_REWARDS['Gym Leader 5']`
+  msg, city-bag voucher row, `firstColress` tutorial with `getLines`
+  callback, `_showStoryTutorialScene` `getLines` support, Colress
+  voucher banner + `_colressPay` + `_colressConfirmPay` helpers, all
+  five `colressApply*` functions take a `useVoucher` arg, testmega seed
+  wires up the voucher loadout.
+
+## Unreleased — Poké Casino overhaul: coins currency + Coin Flip / Slots / Roulette 2026-05-20 (`claude/pokemon-casino-overhaul-0ssdb`)
+
+### Changed — Casino is now a real Game Corner
+
+The casino used to be a single screen with three abstract one-shot bets
+(Coin / Color / Jackpot) that all shared a `Math.random()*10` roll, no
+animation past a small ASCII reel, and no progression beyond `sm.gold`
+debited or credited per click. The Game Corner Manager is now actually
+running a building.
+
+**Coin wallet.** Gold no longer plays at the tables. A Cashier panel
+collapses out of the header — buy in at **100🪙 = 1,000G**, cash out at
+**100🪙 = 800G**. The 20% spread is the only house edge in the building;
+every individual table plays close to fair. Min buy 10G, min cash-out
+100🪙. `sm.casinoCoins` persists across sessions and migrates onto old
+saves as 0.
+
+**Three tabs, three games.**
+
+- **🪙 Coin Flip.** Big 3D coin tumbles 1.1s and lands on Heads or Tails.
+  Pick a side, bet 1+ coins, win pays 2×. ~49% win rate, low volatility,
+  streak counter for flavor. The coin preview shows your current pick
+  even before you spin.
+- **🎰 Slots.** Three reels with Pokémon symbols (7 · ★ · ⚡ Pika · ◓
+  Great · ● Poké · 🍒 Cherry · ↻ Replay). Bet 1, 2, or 3 coins to light
+  one to three paylines. Reels slide with eased deceleration and a
+  cubic-bezier bounce on each stop. **777** pays 300×, **★★★** pays 100×,
+  Pikachu line pays 50×, and **↻↻↻** awards a free re-spin where you can
+  hold any reel for the follow-up.
+- **🎯 Roulette.** Twelve-cell board (4 colors × 3 Pokémon icons) plus a
+  cumulative-rotation wheel that doesn't snap back between spins. Place
+  any number of chips on any cells, or Repeat your last spread.
+  Cell-direct hit pays **11×**. A pointer marks the winning slot; the
+  cell flashes gold when it pays.
+
+**First-visit walk-through.** The Game Corner Manager (Gambler sprite)
+now opens with four beats on first entry — intro → cashier → tab guide
+→ closer — replacing the old single 3-line cameo. Subsequent visits
+skip the tutorial via the existing `tutorial-first-casino` meta key.
+The cashier panel auto-opens on entry only while the player has zero
+coins, so the buy-in flow is one tap away the first time.
+
+**UI / polish.**
+
+- New Game Boy Game Corner palette: cream/mauve panels over dark felt
+  green, pixel borders matching the existing shop / tutor language.
+- Twin gold + coin balance pills in the header pulse on every gain or
+  spend.
+- All buttons keep the ≥44 px touch target on mobile; cashier inputs
+  and bet chips inherit the existing phone-tuned sizes.
+- Reduced-motion mode collapses 1-2 second spins to ~300 ms fades.
+- Five-and-a-half new SFX cues per table reuse the shipped wav library
+  (`gachaDial`, `pbBounce1/2`, `pbLock`, `achv`, `sparkle`, `danger`).
+
+**Internals.**
+
+- New `window.StoryFx.coinFlip()`, `.slotsSpin()`, `.slotsFlashWin()`,
+  `.rouletteSpin()` animation helpers, plus `casinoSpin` retained as a
+  back-compat shim.
+- Single `_casinoTryBet()` / `_casinoRefreshBetCaps()` chokepoint for
+  every wager; per-tab spin-in-flight lock prevents double-spend races.
+- Lifetime `sm.casinoStats[game]` (`spins`, `wins`, `losses`, `coinsWon`,
+  `coinsLost`, `biggestWin`, etc.) is tracked but not yet surfaced in
+  UI — kept extensible for a future stats panel or achievement layer.
+- Old `casinoSetBetChip` / `casinoPlay` API kept as shims that reroute
+  to the new tab/bet flow.
+
+## Unreleased — Character creation is now sprite-based, not gender-based 2026-05-18 (`claude/sprite-based-characters-VfHkk`)
+
+### Changed — New Adventure: removed Boy/Girl picker, added Prev/Random/Next sprite browser
+
+The "1 — Your trainer" panel used to make players pick a gender first
+(Boy → Red.png pool / Girl → Leaf.png pool) before choosing a sprite,
+which served no mechanical purpose — gender wasn't passed to anything in
+battle, online play, or the Hall of Fame UI, so the choice was a
+decorative gate that funnelled players into one of two narrower rosters.
+The new flow lets the player browse a single 71-entry trainer-sprite
+pool directly:
+
+* The `Boy` / `Girl` radio row is gone. In its place the Trainer-look
+  field now exposes three buttons: `◀ Prev`, `🎲 Random`, `Next ▶`.
+  Prev/Next wrap around the pool so it's quick to scan; Random rolls
+  any other sprite (never the current one).
+* `TRAINER_SPRITE_POOL_M` and `TRAINER_SPRITE_POOL_F` were merged into a
+  single curated `TRAINER_SPRITE_POOL` led by the iconic Gen 1–7 player
+  avatars (Red, Leaf, Ethan, Kris, Brendan, May, Lucas, Dawn, Hilbert,
+  Hilda, Elio, Selene) and rounded out alphabetically with 57 trainer
+  classes (Ace Trainers in both Snow variants, Aroma Lady, Battle Girl,
+  Blackbelt, Cooltrainers, Cyclists, Hex Maniac, Lass, Picnicker,
+  Psychics, Rising Stars, Veterans, …). The new default is `Red.png` —
+  the first entry in the pool — used as the reset target when an old
+  saved sprite filename fails to load.
+* While auditing the pool I caught that the two old gender-split arrays
+  referenced 16 filenames that didn't actually exist in
+  `sprites/trainers/` (e.g. `Pokemon_Breeder.png`, `Karate_King.png`,
+  `Schoolgirl.png`, `Snowboarder.png`, `Twin.png`, `Lass-JPN.png`,
+  `Madame.png`, …). The runtime `onerror` handler was silently
+  rerouting those to the default sprite, so hitting Random had hidden
+  dead-end picks. The new pool only contains files that exist on disk,
+  with the typo'd entries swapped for their real-world counterparts
+  (`Blackbelt.png`, `Poke__0301mon_Breeder.png`,
+  `Poke__0301mon_Ranger.png`, `Poke__0301_Maniac.png`, `Twins.png`,
+  `School_Kid{,~F}.png`, etc.).
+* `gender` is no longer written to `sm.trainerProfile`, the
+  cross-run `pbs_story_meta.trainerProfile`, the pending payload that
+  feeds `startNewRun`, or new Hall-of-Fame records (`trainerGender` is
+  removed from the HoF record schema). Existing saves that *do* carry a
+  `gender` field still load fine — it's simply ignored now, and any
+  rewrite drops it.
+* Removed: `trainerCreateSetGender`, `trainerCreateUseDefault`,
+  `_trainerPoolForGender`, `_tcSyncGenderButtons`,
+  `TRAINER_DEFAULT_M`, `TRAINER_DEFAULT_F`, the
+  `.story-create-gender-row` / `-btn` / `-icon` CSS class block, and the
+  two `#story-create-gender-{m,f}` buttons from the screen markup.
+  Added: `trainerCreatePrevSprite`, `trainerCreateNextSprite`,
+  `_trainerStepSprite`, a single `TRAINER_DEFAULT` constant.
+* The "Default" button was removed alongside the gender row — without a
+  per-gender default it didn't carry a clear meaning, and Prev/Next/
+  Random already cover every navigation need.
+
+Touched: `battle.html` — trainer-create section markup (~line 6815–6837),
+`.story-create-gender-*` CSS block (removed around line 5536), trainer
+pool / state / handlers (~line 29845–30015), `confirmTrainerAndStart`
+pending payload (~line 30072), `startNewRun` trainer-profile defaults
+(~line 30378), `_storySaveTrainerProfile` (~line 27666), HoF record
+creation (~line 27649), the resume-card sprite fallback (~line 37183),
+and the `window.StoryMode` export list (~line 40101).
+
+## Unreleased — Closing the game autosaves a retreat to the last city 2026-05-18 (`claude/autosave-city-return-u7rTa`)
+
+### Changed — `pagehide` now writes the same warp-to-last-city the gameover button does
+
+Before this change, closing the tab (or refreshing) mid-battle or mid-route
+left the save pointing at the active row, so the next session resumed
+right where the player left off. That made the existing "Return to Last
+City" button — which charges half the player's gold (rounded up to 100G,
+min 100G) to teleport back to amenities — pointless: anyone could just
+close the tab and rejoin in place, free.
+
+Closing the game now forces the same retreat outcome:
+
+* `_storyApplyRetreatToCity()` was extracted from
+  `retreatToLastPokemonCenter()` and now holds the shared mutation —
+  pulls the in-battle party snapshot into `sm.team`, full-heals every
+  slot, deducts the gold fee, snaps `sm.eventIndex` to
+  `lastStoryCityEventIndexAtOrBefore(sm.eventIndex)`, and clears the
+  mid-battle locks / retry inventory snapshot. The manual gameover
+  button calls this helper and then handles its own UI (`hide all
+  screens` + `enterCity()`).
+* A `pagehide` listener inside the StoryMode IIFE calls a new
+  `_storyAutosaveOnClose()` which runs the same mutation and saves to
+  `pbs_story_save`. The handler bails when the current row is already
+  a `City` or `Hall of Fame` (no warp, no fee — just persist), and when
+  `event.persisted === true` (bfcache transition: the page can be
+  restored without a reload, so the live DOM must not be desynced from
+  `sm`).
+* The gold fee is computed by the existing `_storyCalcRetreatGoldFee()`,
+  which already returns `0` when `_storyDifficultyIsCasual()` is true.
+  Easy / very easy keep their free-retreat semantics — closing on those
+  difficulties warps back to the city for free, no per-close penalty.
+* `pagehide` does *not* fire on tab switch or minimize (those go through
+  `visibilitychange`), so this doesn't bleed gold every time the player
+  alt-tabs. The existing `load()`-time sanitizer at battle.html:28156
+  clears any transient `crucibleBattleSource` left over from a mid-fight
+  close, so post-game Crucible / Frontier / rematch flows recover
+  cleanly on reload.
+
+Touched: `battle.html` (new `_storyApplyRetreatToCity` helper near
+`_storyFullHealPartySlots`, refactored `retreatToLastPokemonCenter`,
+new `_storyAutosaveOnClose`, and a `pagehide` listener registered just
+before the StoryMode IIFE's public-API return).
+
+## Unreleased — Data-driven recommendations across tutor / dojo / nature rater / EV trainer 2026-05-18 (`claude/data-driven-recommendations-OvBV7`)
+
+### Changed — Tutor / Dojo / Nature Rater / EV Trainer recommendations now read directly from Smogon usage
+
+The "★ Recommended" strip on every facility used to score options with a
+fixed heuristic table — Choice Band = 85 if physical, Leftovers = 75
+flat, Magic Guard = 90, etc. The picks were sensible but generic: every
+physical sweeper got the same top items regardless of what Smogon
+players actually use on the species. Tyranitar's heuristic preferred
+Magic Guard ahead of Sand Stream; Garchomp's "top moves" were ranked by
+raw BP × accuracy, not by what 99% of Garchomp sets actually carry.
+
+The pickers now compute a per-species **popularity table** from the
+loaded `data/builds.csv` (16,744 Smogon sets across gens 1–9, the same
+file the EV-trainer Meta Spreads already used). Every blank-ability row
+resolves to the species' default — that was 56% of the dataset, so the
+old counts buried Sand Stream, Intimidate, Flash Fire, Levitate, and
+every other implicit-default ability under sub-1% explicit-tech picks.
+A composite score blends Smogon usage with the existing heuristic
+(65% data / 35% heuristic when the species has ≥ 5 builds; 40 / 60
+when falling back to the global pool; pure heuristic when csvBuilds
+hasn't loaded yet).
+
+What changed in each surface:
+
+* **Move Tutor** — Strip now lists the **top 10** moves by Smogon usage
+  for the active mon (Garchomp → Earthquake · Swords Dance · Outrage ·
+  Stealth Rock · Stone Edge · Fire Blast · Dragon Claw · Fire Fang ·
+  Scale Shot · Dragon Tail). The first 5 still get the "★ Pick" pill on
+  their cards, and the "Recommended" sort uses the same composite score
+  so the grid orders correctly even after filter chips are applied.
+* **Battle Dojo / Held Item** — Strip shows the **top 3** items by
+  species usage (Heatran → Leftovers · Air Balloon · Choice Scarf).
+  Currently-equipped item is excluded from the strip but stays in the
+  grid.
+* **Battle Dojo / Ability** — Strip shows the **top + runner-up**
+  (Garchomp → Rough Skin · runner-up: Sand Veil; Tyranitar → Sand
+  Stream · runner-up: Unnerve). Blank-ability resolution means default
+  abilities now win against scattered tech picks the way they should.
+* **Nature Rater** — Strip shows the **top 3** natures with their
+  stat axes (Volcarona → Timid (+Spe/−Atk) · Modest (+SpA/−Atk) ·
+  Bold (+Def/−Atk)).
+* **EV Trainer** — The "★ Pick" recommendation is now tiered by Smogon
+  rank for meta spreads. `meta_0` (the single most-used spread for the
+  species) gets a +60 score bonus, `meta_1` +40, `meta_2` +25,
+  `meta_3` +15 — so the top recommendation tracks the actual most-popular
+  real-world build instead of falling back to the universal "Physical
+  Sweeper" template.
+
+Obscure forms with no Smogon coverage (Pikachu-PhD, fringe gen-1 rows)
+fall back through the same form-resolution chain as
+`resolveCsvBuildEntry`, and finally to a one-time global aggregate (all
+species blended) so the strip is never empty.
+
 ## Unreleased — Story-embedded tutorials replace one-time alerts 2026-05-18 (`claude/add-tutorial-events-EIPjH`)
 
 ### Added — `STORY_TUTORIAL_SCENES` data table + `playStoryTutorial(id)` dispatcher

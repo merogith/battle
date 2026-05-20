@@ -36,7 +36,7 @@ writing — they will drift as work proceeds.
 | Professor visibility | Each city's Professor (cities 0–5 by action list; cities 6–8 via `shouldForceCityProfessor`) appears **only at pre-gym hubs, and only while the player's active party is below the current cap**. So pre-Gym-1 with a full 2/2 party, no Pro button. After Gym 1 (cap → 3), the post-gym hub of City 1 is intentionally Pro-less — the badge unlocks the slot, but the player walks the route (with its wild-encounter beat) and meets the next Professor at City 2's pre-gym hub. Post-gym hubs still keep the Pokémon Center (PC swap-in for any mon already stored) so the new slot isn't dead until the route. Lone exception: City-8 post-Gym-8 legendary gate (Mystery Figure), which stays visible at 6/6 because the swap is required to enter Victory Road. |
 | Rival adaptation | Read live `sm.team` at battle entry. **Do not** filter `wild:true` mons. |
 | Intro rival | Special-cased to pure player-match (1v1 starter duel). The catch tutorial fires *after* this fight. |
-| Catch tutorial | After the intro rival victory, a one-time static event fires before the next battle: a guaranteed Grade-4 friendly wild (from `STARTER_PARTNER_POOL`) appears, 100% catch on first throw, no flee, with a tutorial overlay (FireRed/Emerald-style). Marked done via `sm.catchTutorialDone`. Fills the 2nd slot exactly at the 0-badge cap of 2. |
+| Catch tutorial | After the intro rival victory, a one-time static event fires before the next battle: a random Grade-4 wild from the player's enabled gens (`buildGradePool(gens, 4)`, excluding species already on the team) appears, 100% catch on first throw, no flee, with a tutorial overlay (FireRed/Emerald-style). Same Grade-4 pool the next route wild will draw from, so the tutorial mon tiers with the route. Marked done via `sm.catchTutorialDone`. Fills the 2nd slot exactly at the 0-badge cap of 2. |
 | Pokédex | Seen + Caught. Persisted cross-run in a separate `pbs_story_meta` localStorage key. |
 | NG+ carryover | Pokédex + achievements + run-clear marks. PC empties between runs. |
 
@@ -92,7 +92,7 @@ The Safari Zone replicates the canonical gameplay loop (no battles, only Safari 
 |---|---|
 | Unlock | City 4 ("Wilderness town") action button — both pre- and post-Gym-4 hub rows carry it. |
 | Location | City 4 only in the main timeline. Post-HoF access is via the Crucible (which also exposes the same screen). |
-| Cost | First entry free. Subsequent entries cost `SAFARI_ENTRY_COST` (2,500G). |
+| Cost | First entry free. Subsequent entries cost `SAFARI_ENTRY_COST` (10,000G). |
 | Encounters | Continuous random encounters up to `SAFARI_MAX_ENCOUNTERS` (6 per session). Each encounter is a single mon. |
 | Pool grade | `SAFARI_GRADE_WEIGHTS` g1:3 / g2:22 / g3:50 / g4:25 — tightened to make Safari a "spend money for a real chance" trip rather than a guaranteed haul. |
 | Balls | Safari-session pool only (`SAFARI_BALLS_PER_SESSION` = 15). The player's PokéBall stack does **not** apply inside; leftover Safari Balls are forfeited on exit. Safari Ball multiplier `SAFARI_BALL_MULT` = 1.35× (between Poké and Great). |
@@ -157,7 +157,7 @@ Initial peg (G1 is the strongest tier per the existing `getMonGrade` convention 
 | Sell G3 mon | 250 |
 | Sell G4 mon | 60 |
 
-(Originally tightened from 2500/700/150/30 to 1800/400/100/20 to keep *keeping* mons the rewarding play; then rebalanced from 1800/400/100/20 to 1800/450/250/60 so route catches are worth selling for catch-light players. Safari spam still loses money — typical 6-encounter session pulls ~1,758G expected, less than the 2,500G entry, even before catch-rate failures. See `_PC_UNDERGROUND_PRICE_BY_GRADE`.)
+(Originally tightened from 2500/700/150/30 to 1800/400/100/20 to keep *keeping* mons the rewarding play; then rebalanced from 1800/400/100/20 to 1800/450/250/60 so route catches are worth selling for catch-light players. Safari spam still loses money — typical 6-encounter session pulls ~1,758G expected, far less than the 10,000G entry, even before catch-rate failures. See `_PC_UNDERGROUND_PRICE_BY_GRADE`.)
 
 ---
 
@@ -202,7 +202,7 @@ The "gym leader's signature ace stays the identity" guarantee is enforced throug
 
 In addition, `applyDifficultyToGradeWeights` shifts a small slice of g1 (×0.92) and g2 (×0.96) mass down to g3 universally, so opponents are slightly less likely to high-roll a top-tier mon. Gym Leader teams shift another ~20% of g1 → g2 and ~15% of g2 → g3 for the non-signature pickThematic call only — the leader's signature picks stay at the original tier, the rest of the team eases up.
 
-The pre-Gym-1 Basic Trainer slot (event idx 2, the lone route fight between intro rival and City 1) is locked to an *untagged* Basic Trainer class — Youngster, Bug Catcher, Lass, Hiker, Fisherman, Hex Maniac, Black Belt, Bird Keeper, Dragon Tamer, or one of the 2-type thematic fillers — so the first non-rival fight is never a villain / cursed / multitype variant.
+The pre-Gym-1 Basic Trainer slot (event idx 2, the lone route fight between intro rival and City 1) is locked to a tight "fodder class" allowlist (`_EARLY_ROUTE_FODDER_CLASSES`): Youngster, Lass, Bug Catcher, Hiker, Fisherman plus their 2-type filler analogs (Lab Rat, Mountain Guide, Ace Diver, Tea Aroma, Glacial Trekker, Marsh Walker). Dragon Tamer, Hex Maniac, Black Belt, Bird Keeper, Reactor Tech, Mystic, and Crooked Beat are excluded — even at G4-only their type pools (Dratini, Pidgeotto, Beldum, Abra, Sneasel, etc.) read as premium for a Route-1 fight. Villain / cursed / multitype / eldritch tagged variants are also excluded, same as before.
 
 **Implementation note:** `_earlyGameFoeStatMult` and `_isPreGym1NerfedBattle` live at script top-level, *outside* the `window.StoryMode = (function() {…})()` IIFE that wraps every story-mode helper. To look up the current row, they reach in via `window.STORY_EVENTS_RAW` (re-exported next to the array's definition). Without that re-export, `typeof STORY_EVENTS_RAW` resolves to `'undefined'` from the top-level scope and the softening silently no-ops — which is the state the prior `PRE_GYM1_FOE_STAT_MULT = 0.85` ship was in before the early-game-curve pass.
 
