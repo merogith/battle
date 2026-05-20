@@ -3,6 +3,187 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Eight-storyline narrative system + roaming legendary cinematic 2026-05-20 (`claude/pokemon-mature-storyline-Xk3ut`)
+
+### Added — Pick your storyline at New Adventure, four tones from Classic to Creepypasta
+
+The story-mode timeline (`STORY_EVENTS_RAW`) used to play exactly the
+same way every run, with one cold-open scene (the intro rival) and a
+single-line "📡 Sightings report" toast as the only ceremony around a
+roaming legendary. Eight badges, an Elite Four, a Champion, and the
+post-game Caged God all read the same regardless of who the player
+was. The narrative bus (`STORYLINE_VARIANTS`, added in v17) was wired
+for variants — it just only had one entry.
+
+This pass populates the bus with **eight storylines** across four
+tonal tiers, plus a randomized "Surprise Me" sentinel. Every variant
+re-skins the same iron 68-row spine — no new events, no new
+mechanics, no save schema change — by re-routing the existing beat
+overrides, broker dialogue, and Mystery Figure identity:
+
+* `classic` — **The Champion's Road**. The standard journey,
+  preserved verbatim for existing saves.
+* `second_sun` — **The Second Sun**. You and the rival picked up
+  starters the same morning. They picked first. The whole road is
+  catching up.
+* `bone_keepers` — **Bone Keepers**. *Mature canon.* Lavender's
+  tower casts shadows north and south of the eight-gym route. The
+  Marowak murder is canon; this is the journey that walks past it.
+* `project_mewtwo` — **Project Subject Zero**. *Mature canon.* The
+  Cinnabar lab never officially closed. Your starter has a serial
+  number on its paw. The Caged God arc is the spine, not subtext.
+* `hypnos_lullaby` — **Hypno's Lullaby**. *Soft creepypasta.* The
+  radio in every gym town reads the same missing-children names.
+  So does the broker. Pendulum sightings escalate by gym.
+* `dead_raticate` — **The Empty Slot**. *Soft creepypasta.* Your
+  rival has six Pokémon. After Lavender Town, they have five. They
+  never bring it up. Neither does the game.
+* `lavender_frequency` — **Lavender Frequency**. *Full creepypasta.*
+  Visual: hue shift + scanlines on every overlay. The Pokémart
+  radio plays the Lavender theme. The Champion's plaque has your
+  name on it, weathered. The Mystery Figure is `BURIED ALIVE`.
+* `static` — **STATIC**. *Full creepypasta.* Visual: text shake +
+  corrupted glyphs on overlays. Save File B, loop count unknown.
+  Your starter says one line in a font the game shouldn't have.
+  The Mystery Figure is your trainer sprite in inverted colors.
+* `surprise_me` — sentinel. Rolls one of the eight at run start.
+  The variant-specific intro cold-open is the reveal.
+
+### Added — Cinematic roaming-legendary "sighting" before the catch screen
+
+After Gym 5 / Gym 7 victories, a sub-legendary is queued for the
+next route. Today the player saw a one-line toast and walked
+straight onto the catch screen. The new flow inserts a
+**sighting cinematic** in front:
+
+* Dark fade-in, type-themed background (the legendary's primary
+  type drives the BG pick from the existing `menu_bg_*.png`
+  library).
+* Pulsing legendary sprite with gold drop-shadow.
+* Per-species **canonical lore line** — drawn from real Pokédex
+  flavor, not invented horror. ~50 entries cover the entire
+  `SUB_LEGENDARY_POOL`: Suicune purifying poisoned water, Mewtwo's
+  Specimen 0002 lab note ("there was a 0001"), Spiritomb's 108
+  grudges, Mimikyu wanting to be loved like the friend on the
+  box, etc.
+* Per-variant **narrator block** above the species line — same
+  two-line stanza, but rewritten 8 different ways for each
+  storyline's voice.
+* `sparkle.wav` + `danger.wav` mix on appearance, `shine.wav` on
+  dismiss. All from the existing `music/ui_sfx` library.
+* "Approach the legend →" button drops into the existing catch
+  screen unchanged. Catch mechanics, flee chance, ball rules — all
+  untouched.
+
+This is the user-facing improvement that started the pass: making
+the legendary appearance feel like a *moment*, not a toast.
+
+### Added — First-sighting Pokédex lore overlay on mature+ storylines
+
+On the four mature/soft/full storylines, the first time the player
+encounters certain species on a save, a one-shot overlay fires
+between the encounter slide-in and the first ball throw. Each entry
+is a two-line in-world quote drawn from canonical Pokédex flavor.
+~24 species are covered, with restraint over horror:
+
+> **Cubone.** "It wears the skull of its mother. The crying never quite stops."
+> **Yamask.** "It carries a mask that was once its face. It looks at it sometimes, and weeps."
+> **Drifloon.** "Children's stories warn against grabbing its string. Some children don't come back."
+> **Hypno.** "Lavender Town keeps a missing-persons board. Three of them last saw a pendulum."
+> **Mewtwo.** "The lab notes call it Specimen 0002. There was a 0001."
+> **Porygon.** "Code can be killed. They wrote it that way on purpose."
+
+The classic tier never sees these overlays — the line gates on the
+variant's `tier` ∈ `mature` / `soft_pasta` / `pasta`. Dedupe uses
+the existing `tipsShown[firstsighting-<species>]` bucket so a
+playthrough on `bone_keepers` doesn't replay the same lines on a
+later `static` run.
+
+### Added — Caged God broker scenes promoted from `window.alert()` to cinematic overlay
+
+The three Caged-God leads (Ledger at City 2, Recording at City 5,
+Key at City 8) used to fire as plain browser `alert()` boxes. They
+now use the same narrative overlay as the cold-opens, with a
+**per-variant broker voice** for the six variants where it makes
+sense to override:
+
+* `bone_keepers` — tower attendant lineage, kind but tired.
+* `project_mewtwo` — locked door, redacted ledger, magnetic key
+  with a barcode.
+* `hypnos_lullaby` — missing-persons binder, child's voice memo,
+  pendulum on a chain.
+* `dead_raticate` — stuffed Raticate on the broker's shelf, "kid
+  who couldn't keep going" returns list.
+* `lavender_frequency` — the broker is in the room but you can't
+  look at them directly.
+* `static` — the iron box has *your* trainer name engraved on the
+  lid.
+
+`classic` and `second_sun` use the existing prose verbatim.
+
+### Added — Two Mystery Figure identities + per-variant identity bias
+
+`MYSTERY_FIGURE_IDENTITIES` adds two storyline-exclusive entries:
+
+* `buried_alive` — the Lavender Frequency mask-drop. Sprite reuses
+  the existing Hiker; the variant's tone class on the cold-open
+  carries the visual distortion.
+* `cartridge_self` — the STATIC mask-drop. Sprite reuses Red; the
+  variant's tone class flips the rendering effect.
+
+`_storyPickMysteryIdentity` now reads `variant.mysteryBias` —
+`{ identityKey: weight }`. The full Pasta variants 100%-bias to
+their exclusive identity; mature variants nudge toward
+canonical-feeling matches (e.g. Bone Keepers → cyrus / ghetsis /
+red); classic and second_sun stay uniform.
+
+### Added — Storyline picker card in New Adventure → step 3
+
+The trainer-create screen grows a new "3 — Storyline" section
+between Difficulty and Pokémon generations. Card grid mirrors the
+existing `.story-create-diff-card` style, with a color-coded tier
+bar (gold for classic, gray for mature, purple for soft pasta, red
+for full pasta, blue for random) and a one-line tagline per
+variant. Cards on the pasta tiers carry an inline warning.
+
+The user's pick persists in `pbs_story_run_menu_defaults.storyLine`
+so the next New Adventure remembers the last storyline used.
+
+### Implementation notes
+
+| Touchpoint | What changed | LOC |
+|---|---|---|
+| CSS (`battle.html` near line 1523) | Eight `.story-tone-*` classes + sighting-overlay layout + storyline picker grid | ~120 |
+| `STORYLINE_VARIANTS` (~31470) | 1 entry → 9 entries, each with `beatOverrides` / `mysteryBias` / `toneClass` | ~150 |
+| `STORY_COLD_OPENS` (~30810) | 1 entry → 33 entries (1 intro + 32 per-variant beat scenes) | ~330 |
+| `_renderNarrativeOverlay` (~33420) | New shared overlay helper | ~80 |
+| `_STORY_INTRO_SCENES` (~33575) | Per-variant intro-rival rewrites | ~85 |
+| `_LEGENDARY_LORE` (~33470) | ~50-entry canonical lore table | ~60 |
+| `_LEGENDARY_SIGHTING_FRAMES` (~33530) | Per-variant narrator framing | ~30 |
+| `_showRoamingLegendarySighting` (~33540) | Cinematic overlay function | ~70 |
+| `_FIRST_SIGHTING_LORE` (~33495) | ~24-species canonical Pokédex flavor | ~50 |
+| `_showFirstSightingLoreOverlay` + gate (~33575) | First-sighting overlay + tier gate | ~70 |
+| `_runFirstStoryInterrupt` (~31830) | `preRender` hook so roaming sighting fires before catch screen | ~15 |
+| `MYSTERY_FIGURE_IDENTITIES` (~26555) | `buried_alive` + `cartridge_self` entries + biased picker | ~45 |
+| `_BOSS_LEAD_FLAVOR_BY_VARIANT` (~35590) | Per-variant broker voice override table | ~60 |
+| `bossCollectLead` (~35680) | `window.alert()` → `_renderNarrativeOverlay()` | ~25 |
+| `enterCatchEncounter` (~36195) | First-sighting overlay hook | ~10 |
+| `_tcState` + handlers (~30075) | `storyline` field + `trainerCreateSetStoryline` + grid renderer | ~75 |
+| HTML — trainer-create screen (~6925) | New "3 — Storyline" section + picker grid | ~10 |
+| `_readStorylineFromUI` + `_pickRandomStorylineVariant` (~30855) | Surprise-me roll + picker fallback | ~30 |
+| `persistStoryMenuDefaultsFromRun` (~28358) | Persist `storyLine` to menu defaults | ~2 |
+| `docs/STORY_NARRATIVE_VARIANTS.md` | Full design spec (new file) | ~360 |
+
+Existing saves: `sm.storyLine` already migrates to `'classic'` from
+the v16→v17 pass. No new save schema. The 14 existing tutorial scenes
+keep their copy. The 7 existing Mystery Figure identities are
+untouched; the two new ones are additions.
+
+**Touched:** `battle.html` (CSS + 13 JS sections, all additive except
+the `bossCollectLead` and `_runFirstStoryInterrupt` edits which
+preserve their existing fall-through behaviour), `CHANGELOG.md`,
+`docs/STORY_NARRATIVE_VARIANTS.md` (new design doc).
+
 ## Unreleased — Character creation is now sprite-based, not gender-based 2026-05-18 (`claude/sprite-based-characters-VfHkk`)
 
 ### Changed — New Adventure: removed Boy/Girl picker, added Prev/Random/Next sprite browser

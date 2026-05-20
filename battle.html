@@ -1521,6 +1521,105 @@
         #story-city-left .story-city-portrait-wrap img { width: 135px; height: 135px; }
         #story-city-npc-name { font-size: 10px; }
         .story-dialog-host { margin-bottom: 10px; width: 100%; max-width: 640px; }
+        /* Narrative tone classes — applied to cold-open overlays so each storyline
+           variant reads slightly differently without changing the base layout. */
+        .story-tone-amber .story-dialog-nameplate { color: #ffcc80; border-color: #ffb74d; }
+        .story-tone-ash   .story-dialog-nameplate { color: #b0bec5; border-color: #78909c; }
+        .story-tone-ash   .story-dialog-box      { filter: saturate(0.65); }
+        .story-tone-cold  .story-dialog-nameplate { color: #80deea; border-color: #4dd0e1; }
+        .story-tone-cold::after {
+            content: ''; position: absolute; inset: 0; pointer-events: none;
+            background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 4px);
+        }
+        .story-tone-purple .story-dialog-nameplate { color: #ce93d8; border-color: #ba68c8; }
+        .story-tone-purple .story-dialog-box       { box-shadow: 0 0 18px rgba(186,104,200,0.18); }
+        .story-tone-mourning .story-dialog-nameplate { color: #bcaaa4; border-color: #8d6e63; }
+        .story-tone-mourning .story-dialog-box       { filter: grayscale(0.35); }
+        .story-tone-frequency { filter: hue-rotate(-12deg) saturate(0.85); }
+        .story-tone-frequency .story-dialog-box {
+            background: linear-gradient(180deg, rgba(20,8,28,0.94) 0%, rgba(6,4,12,0.98) 100%);
+            border-color: #6a1b9a;
+        }
+        .story-tone-frequency::before {
+            content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+            background-image: repeating-linear-gradient(0deg, rgba(220,180,255,0.05) 0px, rgba(220,180,255,0.05) 2px, transparent 2px, transparent 5px);
+            mix-blend-mode: screen;
+        }
+        .story-tone-static .story-dialog-text { animation: storyToneStaticShake 5.5s ease-in-out infinite; }
+        @keyframes storyToneStaticShake {
+            0%, 70%, 100% { transform: translate(0, 0); filter: none; }
+            72% { transform: translate(-1px, 0); filter: hue-rotate(30deg); }
+            73% { transform: translate(2px, 0); filter: hue-rotate(-15deg); }
+            74% { transform: translate(0, 0); filter: none; }
+            85% { transform: translate(0, 1px); }
+            86% { transform: translate(0, -1px); }
+            87% { transform: translate(0, 0); }
+        }
+        .story-tone-static .story-dialog-nameplate { color: #e57373; }
+        /* Roaming legendary sighting cinematic */
+        .story-legend-sighting {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 14px; padding: 16px; box-sizing: border-box; z-index: 9998; cursor: pointer;
+            background-color: #000; background-size: cover; background-position: center;
+            background-blend-mode: multiply;
+            animation: storyLegendSightingFadeIn 600ms ease-out;
+        }
+        @keyframes storyLegendSightingFadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+        .story-legend-sighting-banner {
+            color: #ffd54f; font-size: 11px; letter-spacing: 0.28em;
+            text-transform: uppercase; text-shadow: 0 2px 6px rgba(0,0,0,0.85);
+        }
+        .story-legend-sighting-sprite {
+            width: 192px; height: 192px; object-fit: contain;
+            image-rendering: pixelated;
+            filter: drop-shadow(0 0 24px rgba(255,213,79,0.65)) drop-shadow(0 0 48px rgba(255,213,79,0.35));
+            animation: storyLegendPulse 2.4s ease-in-out infinite;
+        }
+        @keyframes storyLegendPulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 24px rgba(255,213,79,0.65)) drop-shadow(0 0 48px rgba(255,213,79,0.35)); }
+            50%      { transform: scale(1.04); filter: drop-shadow(0 0 36px rgba(255,213,79,0.85)) drop-shadow(0 0 72px rgba(255,213,79,0.45)); }
+        }
+        .story-legend-sighting-name {
+            color: #fff; font-size: 28px; font-weight: bold; letter-spacing: 0.04em;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.85), 0 0 16px rgba(255,213,79,0.4);
+        }
+        .story-legend-sighting-lore {
+            color: #ffe082; font-size: 12px; max-width: 520px; text-align: center;
+            font-style: italic; line-height: 1.55;
+        }
+        /* Storyline picker card grid (run-setup) */
+        .story-create-storyline-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 8px; margin-top: 4px;
+        }
+        .story-create-storyline-card {
+            display: flex; flex-direction: column; gap: 4px; align-items: flex-start;
+            padding: 10px 12px; background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.12); border-radius: 6px;
+            color: #ddd; text-align: left; cursor: pointer; transition: background 0.15s, border-color 0.15s;
+            font-family: inherit; font-size: 12px;
+        }
+        .story-create-storyline-card:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.24); }
+        .story-create-storyline-card--active {
+            background: rgba(255,213,79,0.18); border-color: #ffd54f; color: #fff;
+        }
+        .story-create-storyline-card--mature { border-left: 3px solid #b0bec5; }
+        .story-create-storyline-card--soft   { border-left: 3px solid #ce93d8; }
+        .story-create-storyline-card--pasta  { border-left: 3px solid #ef5350; }
+        .story-create-storyline-card--random { border-left: 3px solid #4fc3f7; font-style: italic; }
+        .story-create-storyline-name { font-weight: bold; font-size: 13px; color: #fff; }
+        .story-create-storyline-tag {
+            font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
+            padding: 1px 6px; border-radius: 2px; color: #111; background: #b0bec5;
+        }
+        .story-create-storyline-tag--soft  { background: #ce93d8; }
+        .story-create-storyline-tag--pasta { background: #ef5350; color: #fff; }
+        .story-create-storyline-tag--classic { background: #ffd54f; }
+        .story-create-storyline-tag--random  { background: #4fc3f7; }
+        .story-create-storyline-tag--mature { background: #b0bec5; }
+        .story-create-storyline-tagline { color: #aaa; font-size: 11px; line-height: 1.45; }
+        .story-create-storyline-warn { color: #ef9a9a; font-size: 10px; font-style: italic; margin-top: 2px; }
         .story-shop-item-row { display: flex; gap: 10px; align-items: flex-start; }
         .story-shop-item-icon {
             flex-shrink: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
@@ -6924,7 +7023,14 @@
             </section>
 
             <section class="story-create-section">
-                <h2 class="story-create-sec-title">3 &mdash; Pokémon generations</h2>
+                <h2 class="story-create-sec-title">3 &mdash; Storyline</h2>
+                <p style="color:#888;font-size:11px;margin:0 0 6px;">The road north is the same. Who walks it with you, what waits at the cage, and what the radio says when no one&rsquo;s listening &mdash; that&rsquo;s the storyline.</p>
+                <div class="story-create-storyline-grid" id="story-create-storyline-grid" role="radiogroup" aria-label="Storyline"></div>
+                <p id="story-create-storyline-warn" class="story-create-storyline-warn" aria-live="polite" style="margin-top:6px;"></p>
+            </section>
+
+            <section class="story-create-section">
+                <h2 class="story-create-sec-title">4 &mdash; Pokémon generations</h2>
                 <div class="story-create-gen-presets" role="radiogroup" aria-label="Generation preset">
                     <button type="button" class="story-create-gen-preset story-create-gen-preset--active" data-preset="all" role="radio" aria-checked="true" onclick="window.StoryMode.trainerCreateSetGenPreset('all')">All Gens</button>
                     <button type="button" class="story-create-gen-preset" data-preset="kanto" role="radio" aria-checked="false" onclick="window.StoryMode.trainerCreateSetGenPreset('kanto')">Kanto only</button>
@@ -26445,10 +26551,51 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             lance:   { sprite:'Lance',   reveal:'Lance',
                 intros:['Dragons remember. Show me what you remember.','You climbed past me once. Climb again.','Hall of Fame paint dries slowly. I came for a fight.','My dragons are ready. So am I.'],
                 outro:'Lance laughs. "Dragons do remember. So will I. Wear that crown well — I\'ll be back."' },
+            // Storyline-exclusive identities. `buried_alive` is the Lavender
+            // Frequency variant's mask-drop; `cartridge_self` is the STATIC
+            // variant's reveal. Both reuse existing trainer sprites — the
+            // variant's tone class on the cold-open already carries the visual
+            // distortion, so no new art is shipped.
+            buried_alive: { sprite:'Hiker', reveal:'BURIED ALIVE',
+                intros:[
+                    '"You weren\'t supposed to come back here."',
+                    '"The song has been playing for me a long time. It plays for you now."',
+                    '"The cage was always for both of us."',
+                    '"This is not the last loop. It is one of them."'
+                ],
+                outro:'The figure does not move. The sprite slowly sinks back into the floor of the chamber. The Lavender song ends. The radio in the wall keeps humming.' },
+            cartridge_self: { sprite:'Red', reveal:'??? (Save File B)',
+                intros:[
+                    '"?? ?? ???? ?ime."',
+                    '"You are an instance. So am I. Begin."',
+                    '"Loop count: ???. Continue."',
+                    '"I was the last one to walk out of this chair. I am also the next."'
+                ],
+                outro:'The figure smiles your trainer\'s smile. The inverted colors flicker once and resolve to your own sprite. The save file logs an entry: SUBJECT 0001 / RECAPTURED.' }
         };
+        /** Pick a mystery identity. Variants can set a `mysteryBias` map of
+         *  `{ identityKey: weight, ... }` — weighted random over those keys,
+         *  falling back to uniform if no bias is set or no weighted key is
+         *  available in the identity table. */
         function _storyPickMysteryIdentity() {
-            const keys = Object.keys(MYSTERY_FIGURE_IDENTITIES);
-            return keys[Math.floor(Math.random() * keys.length)];
+            const allKeys = Object.keys(MYSTERY_FIGURE_IDENTITIES);
+            let variant = null;
+            try { variant = _storyActiveVariant(); } catch (e) { variant = null; }
+            const bias = variant && variant.mysteryBias;
+            if (bias) {
+                const entries = Object.keys(bias)
+                    .filter(k => MYSTERY_FIGURE_IDENTITIES[k] && (bias[k] | 0) > 0);
+                if (entries.length) {
+                    const total = entries.reduce((s, k) => s + (bias[k] | 0), 0);
+                    let r = Math.random() * total;
+                    for (const k of entries) {
+                        r -= (bias[k] | 0);
+                        if (r < 0) return k;
+                    }
+                    return entries[entries.length - 1];
+                }
+            }
+            return allKeys[Math.floor(Math.random() * allKeys.length)];
         }
         function _storyEnsureMysteryIdentity() {
             if (!sm.mysteryIdentity || !MYSTERY_FIGURE_IDENTITIES[sm.mysteryIdentity]) {
@@ -28209,6 +28356,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const d = {
                     enabledGens: normalizeEnabledGens(sm.settings.enabledGens || rangeToEnabledGens(sm.settings.minGen ?? 1, sm.settings.maxGen ?? 9)),
                     storyDifficulty: sm.storyDifficulty || 'normal',
+                    storyLine: (typeof sm.storyLine === 'string' && sm.storyLine) ? sm.storyLine : 'classic',
                     megaOn: !!sm.settings.megaOn,
                     zOn: !!sm.settings.zOn,
                     dynaOn: !!sm.settings.dynaOn,
@@ -29964,7 +30112,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             name: '',
             sprite: TRAINER_DEFAULT,
             difficulty: 'normal',
-            genPreset: 'all'
+            genPreset: 'all',
+            storyline: 'classic'
         };
         function _trainerSpritePath(filename) {
             return 'sprites/trainers/' + String(filename || '');
@@ -30074,6 +30223,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             })();
             _tcState.genPreset = allChecked ? 'all' : (onlyG1 ? 'kanto' : 'custom');
             _tcSyncGenPresetButtons();
+            // Render the storyline picker grid + restore the last-used pick if
+            // any. Defaults to 'classic' for a fresh first-time install.
+            if (typeof STORYLINE_VARIANTS !== 'undefined' && !STORYLINE_VARIANTS[_tcState.storyline]) {
+                _tcState.storyline = 'classic';
+            }
+            try {
+                const raw = localStorage.getItem(STORY_MENU_DEFAULTS_KEY);
+                if (raw) {
+                    const d = JSON.parse(raw);
+                    if (d && typeof d.storyLine === 'string' && STORYLINE_VARIANTS[d.storyLine]) {
+                        _tcState.storyline = d.storyLine;
+                    }
+                }
+            } catch (e) {}
+            _tcRenderStorylineGrid();
+            _tcSyncStorylineCards();
             const warn = document.getElementById('story-create-warning');
             if (warn) warn.textContent = '';
             setTimeout(() => { try { if (nameInput) nameInput.focus(); } catch (e) {} }, 80);
@@ -30116,6 +30281,57 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (p !== 'all' && p !== 'kanto' && p !== 'custom') return;
             _tcState.genPreset = p;
             _tcSyncGenPresetButtons();
+        }
+        function trainerCreateSetStoryline(id) {
+            // STORYLINE_VARIANTS is declared later in the same IIFE — the lookup
+            // happens at call time, after the IIFE has finished evaluating.
+            if (typeof STORYLINE_VARIANTS === 'undefined' || !STORYLINE_VARIANTS[id]) return;
+            _tcState.storyline = id;
+            _tcSyncStorylineCards();
+        }
+        function _tcSyncStorylineCards() {
+            const cards = document.querySelectorAll('#story-create-storyline-grid .story-create-storyline-card');
+            cards.forEach(c => {
+                const on = (c.dataset.storyline === _tcState.storyline);
+                c.classList.toggle('story-create-storyline-card--active', on);
+                c.setAttribute('aria-checked', on ? 'true' : 'false');
+            });
+            const warnEl = document.getElementById('story-create-storyline-warn');
+            if (warnEl) {
+                const v = STORYLINE_VARIANTS[_tcState.storyline] || null;
+                warnEl.textContent = (v && v.warn) ? v.warn : '';
+            }
+        }
+        function _tcRenderStorylineGrid() {
+            const grid = document.getElementById('story-create-storyline-grid');
+            if (!grid) return;
+            // STORYLINE_VARIANTS keys are walked in declaration order; the picker
+            // grid mirrors that order so the run-setup feels consistent across
+            // sessions. The 'surprise_me' sentinel comes last by design.
+            const ids = Object.keys(STORYLINE_VARIANTS);
+            grid.innerHTML = ids.map(id => {
+                const v = STORYLINE_VARIANTS[id];
+                const tierCls = v.tier === 'mature' ? 'story-create-storyline-card--mature'
+                              : v.tier === 'soft_pasta' ? 'story-create-storyline-card--soft'
+                              : v.tier === 'pasta' ? 'story-create-storyline-card--pasta'
+                              : v.tier === 'random' ? 'story-create-storyline-card--random'
+                              : '';
+                const tagCls = v.tier === 'soft_pasta' ? 'story-create-storyline-tag--soft'
+                             : v.tier === 'pasta' ? 'story-create-storyline-tag--pasta'
+                             : v.tier === 'random' ? 'story-create-storyline-tag--random'
+                             : v.tier === 'mature' ? 'story-create-storyline-tag--mature'
+                             : 'story-create-storyline-tag--classic';
+                const warn = v.warn ? `<span class="story-create-storyline-warn">${_esc(v.warn)}</span>` : '';
+                return `<button type="button"
+                    class="story-create-storyline-card ${tierCls}"
+                    data-storyline="${_esc(id)}" role="radio" aria-checked="false"
+                    onclick="window.StoryMode.trainerCreateSetStoryline('${_esc(id)}')">
+                    <span class="story-create-storyline-tag ${tagCls}">${_esc(v.tierLabel || v.tier || '')}</span>
+                    <span class="story-create-storyline-name">${_esc(v.label || id)}</span>
+                    <span class="story-create-storyline-tagline">${_esc(v.description || '')}</span>
+                    ${warn}
+                </button>`;
+            }).join('');
         }
         function _tcValidateName(raw) {
             const trimmed = String(raw || '').trim();
@@ -30591,11 +30807,492 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *  dismiss; the bus handles the meta stamp. */
         const STORY_COLD_OPENS = {
             introRival: {
-                metaKey: 'intro-rival-coldopen',
+                // Per-variant dedupe — each storyline replays its own intro
+                // exactly once per save. A player who clears classic and then
+                // starts a static run still gets the static intro fresh.
+                metaKey: (ev, beat) => 'intro-rival-coldopen-' + (
+                    (beat && beat._variantId) ||
+                    (sm && sm.storyLine) ||
+                    'classic'
+                ),
                 run(ev, onDone) {
                     const rivalName = (sm && sm.trainerAssignments) ? sm.trainerAssignments[ev[0] | 0] : null;
                     _showIntroRivalColdOpen(rivalName, onDone);
                 }
+            },
+            // ── Per-variant beat scenes ─────────────────────────────────────
+            // Each scene reuses _renderNarrativeOverlay so the layout matches the
+            // intro-rival cold-open and dedupe stays in the same tipsShown bucket.
+            // Sprite choices lean on existing trainer roster: Oak / Veteran for
+            // gym milestone scenes, named champions for finale beats.
+            classic_gym1: {
+                metaKey: 'cold-classic-gym1',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-classic-gym1',
+                    sprite: 'Oak', name: 'Prof. Oak', nameplate: 'After Badge One',
+                    lines: [
+                        '"That\'s one. One real badge, not a practice mat one."',
+                        '"Eight is the road and you\'ve walked one-eighth of it. The gap between you and a Champion just got smaller — but the next gym is harder, not easier. Don\'t stand on the badge too long."',
+                        '"Heal your team. Pick up Poké Balls. Walk."'
+                    ],
+                    onDone
+                }); }
+            },
+            classic_gym4: {
+                metaKey: 'cold-classic-gym4',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-classic-gym4',
+                    sprite: 'Oak', name: 'Prof. Oak', nameplate: 'The Halfway Mark',
+                    lines: [
+                        '"Four badges. You\'re past the halfway mark and your team has stopped being kids."',
+                        '"From here, the gyms stop testing whether you can battle and start testing whether you can plan. EV the team. Tutor the moves. Stop fighting on instinct."',
+                        '"Pallet is a long way back. That\'s not a problem. That\'s the point."'
+                    ],
+                    onDone
+                }); }
+            },
+            classic_gym8: {
+                metaKey: 'cold-classic-gym8',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-classic-gym8',
+                    sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Before the Plateau',
+                    lines: [
+                        '"The eighth gym is the last gate. Past it the road runs out of cities. What\'s left is the climb."',
+                        '"You\'ve fought the same kind of fight eight times now. The Elite Four don\'t fight that kind. They fight one kind each, and they\'re very good at it."',
+                        '"Bring six. Bring polish. Bring everything you have."'
+                    ],
+                    onDone
+                }); }
+            },
+            classic_champion: {
+                metaKey: 'cold-classic-champion',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-classic-champion',
+                    banner: '— THE CHAMPION\'S HALL —',
+                    sprite: 'Oak', name: 'Prof. Oak', nameplate: 'The Last Door',
+                    lines: [
+                        '"There\'s a quiet hallway behind the Elite chamber. The chair at the end has the Champion in it. There\'s only ever one chair."',
+                        '"Whatever happens — that chair is the end of this part of your road."',
+                        '"Walk in. Six on the belt. No regrets."'
+                    ],
+                    onDone
+                }); }
+            },
+            // ── Second Sun ─────────────────────────────────────────────────
+            secondsun_gym1: {
+                metaKey: 'cold-secondsun-gym1',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-secondsun-gym1',
+                    toneClass: 'story-tone-amber',
+                    sprite: 'Oak', name: 'Prof. Oak', nameplate: 'After Badge One',
+                    lines: [
+                        '"You earned that the same week your rival did. That\'s the first time you\'ve walked level with them since you picked starters."',
+                        '"Don\'t celebrate. Walk faster. The middle gyms are where the gap reopens — or where it stops being a gap at all."',
+                        '"Heal. Walk. They\'re already at the next city."'
+                    ],
+                    onDone
+                }); }
+            },
+            secondsun_gym4: {
+                metaKey: 'cold-secondsun-gym4',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-secondsun-gym4',
+                    toneClass: 'story-tone-amber',
+                    sprite: 'Veteran', name: 'Gym Hall Plaque', nameplate: 'Plaque, Gym 4',
+                    lines: [
+                        '"Two new badge plaques on the wall this week. Your rival\'s name above yours, in fresh paint."',
+                        '"The hall clerk wipes both with the same cloth. They\'re both real. They\'re just not the same."',
+                        '"Take a long look at the order. Then walk past it."'
+                    ],
+                    onDone
+                }); }
+            },
+            secondsun_gym8: {
+                metaKey: 'cold-secondsun-gym8',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-secondsun-gym8',
+                    toneClass: 'story-tone-amber',
+                    sprite: 'Backpacker', name: 'Roadside note', nameplate: 'Pinned to the gate',
+                    lines: [
+                        '"Note in your rival\'s handwriting, pinned to the route sign: \'Gone ahead. Training in Victory Road alone for a week. Don\'t look for me until the league.\'"',
+                        '"They\'re scared of meeting you with anything less than their best. That\'s the same fear you\'ve felt every gym, in reverse."',
+                        '"Walk the last route. They\'re waiting."'
+                    ],
+                    onDone
+                }); }
+            },
+            secondsun_champion: {
+                metaKey: 'cold-secondsun-champion',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-secondsun-champion',
+                    banner: '— THE CHAMPION\'S HALL —',
+                    toneClass: 'story-tone-amber',
+                    sprite: 'Oak', name: 'Prof. Oak', nameplate: 'The Chair',
+                    lines: [
+                        '"They beat the Elite Four before you did. They\'re sitting in the chair now."',
+                        '"This is the fight you\'ve been training for since the morning we picked starters. There\'s no second sun in this room — only the one chair."',
+                        '"Walk in. End it the way it started."'
+                    ],
+                    onDone
+                }); }
+            },
+            // ── Bone Keepers ───────────────────────────────────────────────
+            bonekeepers_gym1: {
+                metaKey: 'cold-bonekeepers-gym1',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-bonekeepers-gym1',
+                    toneClass: 'story-tone-ash',
+                    sprite: 'Hiker', name: 'City Guide', nameplate: 'On the way out',
+                    lines: [
+                        '"Badge ceremony ran short — a funeral procession passed the gym door. The leader stopped speaking for it. So did everyone else."',
+                        '"They didn\'t bury this one in the tower. There\'s waiting lists now. The tower is full."',
+                        '"Wear the badge well. The road keeps walking."'
+                    ],
+                    onDone
+                }); }
+            },
+            bonekeepers_gym4: {
+                metaKey: 'cold-bonekeepers-gym4',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-bonekeepers-gym4',
+                    toneClass: 'story-tone-ash',
+                    banner: '— LAVENDER —',
+                    sprite: 'Hex_Maniac', name: 'Tower attendant', nameplate: 'Pokémon Tower, Floor 4',
+                    lines: [
+                        '"Every trainer who walks the eight-gym road stops here. Most leave something. A name on a stone, a feather in a jar."',
+                        '"There was a Marowak murder in this tower decades ago — Team Rocket, after the skulls. The mother\'s ghost is still here some nights. She is not angry at you."',
+                        '"Take your time. The road waits. It is the only thing that waits."'
+                    ],
+                    onDone
+                }); }
+            },
+            bonekeepers_gym8: {
+                metaKey: 'cold-bonekeepers-gym8',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-bonekeepers-gym8',
+                    toneClass: 'story-tone-ash',
+                    sprite: 'Hex_Maniac', name: 'Tower attendant', nameplate: 'On the route hilltop',
+                    lines: [
+                        '"There\'s a Marowak on the ridge. It does not attack travelers. It watches them go past."',
+                        '"It has been on that ridge since I was a child. The City Guide says it is waiting for someone. We don\'t ask who."',
+                        '"If it acknowledges you tonight, walk past it gently."'
+                    ],
+                    onDone
+                }); }
+            },
+            bonekeepers_champion: {
+                metaKey: 'cold-bonekeepers-champion',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-bonekeepers-champion',
+                    banner: '— THE CHAMPION\'S HALL —',
+                    toneClass: 'story-tone-ash',
+                    sprite: 'Lance', name: 'Champion (waiting)', nameplate: 'Before the door',
+                    lines: [
+                        '"The Champion\'s chamber here is darker than the others. There\'s a candle by the chair that hasn\'t gone out in twenty years."',
+                        '"The Champion lost a partner once. They never told the press what species. The candle is the only thing they\'ll say about it."',
+                        '"Walk in. Win without ceremony. They\'ll respect that more than the badge."'
+                    ],
+                    onDone
+                }); }
+            },
+            // ── Project Subject Zero ───────────────────────────────────────
+            projectmewtwo_gym1: {
+                metaKey: 'cold-projectmewtwo-gym1',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-projectmewtwo-gym1',
+                    toneClass: 'story-tone-cold',
+                    sprite: 'Scientist', name: 'A lab assistant', nameplate: 'Route after badge one',
+                    lines: [
+                        '"Hands you a Quick Ball without making eye contact."',
+                        '"\'0001 sends regards. They watched your gym match through three relay scopes. Keep walking. Don\'t look at the cameras on the route signs.\'"',
+                        '"They are gone before you can ask what they mean. The Quick Ball is real. The story is also real."'
+                    ],
+                    onDone
+                }); }
+            },
+            projectmewtwo_gym4: {
+                metaKey: 'cold-projectmewtwo-gym4',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-projectmewtwo-gym4',
+                    toneClass: 'story-tone-cold',
+                    banner: '— A TORN BADGE —',
+                    sprite: 'Hiker', name: 'Safari fence', nameplate: 'Item discarded',
+                    lines: [
+                        '"A research badge wired to the Safari Zone fence. Half-burned, half-readable."',
+                        '"\'PROJECT: 0001 / CINNABAR ANNEX / DATE: ████ ██, ████.\' Two years ago. The annex was decommissioned three years ago — officially."',
+                        '"Pocket the badge. The broker in City 5 has been asking after artifacts like this."'
+                    ],
+                    onDone
+                }); }
+            },
+            projectmewtwo_gym8: {
+                metaKey: 'cold-projectmewtwo-gym8',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-projectmewtwo-gym8',
+                    toneClass: 'story-tone-cold',
+                    sprite: 'Colress', name: 'Colress', nameplate: 'Late at the lab',
+                    lines: [
+                        '"Colress closes the lab door behind you and locks it twice."',
+                        '"\'I was the annex\'s last director. I wrote the order to put 0001 back in the cage. I wrote the order knowing it wouldn\'t take.\'"',
+                        '"\'The broker has an address. The Master Ball you\'ll need is already in their drawer. Walk the last route. Walk into the Plateau. Then come back to me, and I\'ll send you to the door.\'"'
+                    ],
+                    onDone
+                }); }
+            },
+            projectmewtwo_champion: {
+                metaKey: 'cold-projectmewtwo-champion',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-projectmewtwo-champion',
+                    banner: '— THE CHAMPION\'S HALL —',
+                    toneClass: 'story-tone-cold',
+                    sprite: 'Cynthia', name: 'Champion (waiting)', nameplate: 'Before the door',
+                    lines: [
+                        '"The Champion stands when you enter. Their starter has the same serial number on the same paw as yours."',
+                        '"\'I was the lab\'s first volunteer. I lost. They put me through what they put 0001 through. I came out the other side useful to them — and then I broke the leash.\'"',
+                        '"\'Beat me. Take the road to the cage. End what I couldn\'t.\'"'
+                    ],
+                    onDone
+                }); }
+            },
+            // ── Hypno's Lullaby ────────────────────────────────────────────
+            hypnos_gym1: {
+                metaKey: 'cold-hypnos-gym1',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-hypnos-gym1',
+                    toneClass: 'story-tone-purple',
+                    sprite: 'Veteran', name: 'A worried local', nameplate: 'Gym lobby radio',
+                    lines: [
+                        '"The radio in the lobby is reading missing-child names. The newscaster\'s voice is tired in a way only repetition makes it."',
+                        '"Three more from three different gym towns. Same pattern: last sighting near a route at dusk, a smiling figure carrying something on a chain."',
+                        '"Wear the badge. Walk the road. Keep your eyes up at dusk."'
+                    ],
+                    onDone
+                }); }
+            },
+            hypnos_gym4: {
+                metaKey: 'cold-hypnos-gym4',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-hypnos-gym4',
+                    toneClass: 'story-tone-purple',
+                    banner: '— SAFARI GATE / DUSK —',
+                    sprite: 'Hiker', name: 'Safari Warden', nameplate: 'After hours',
+                    lines: [
+                        '"A Hypno was sighted at the Safari Zone gate at sundown. It did not engage. It watched the gate, then walked away."',
+                        '"The Warden refuses to sell you a Safari ticket. \'Find your friend\'s sister first. Then come back. The Pokémon will still be here.\'"',
+                        '"Pocket the refused ticket. Walk."'
+                    ],
+                    onDone
+                }); }
+            },
+            hypnos_gym8: {
+                metaKey: 'cold-hypnos-gym8',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-hypnos-gym8',
+                    toneClass: 'story-tone-purple',
+                    sprite: 'Youngster', name: 'Your rival', nameplate: 'Caught up at last',
+                    lines: [
+                        '"Your rival catches up at the eighth gym door. They haven\'t slept. Their team is the same five mons, all of them tense."',
+                        '"\'I\'ll walk the last route with you. Sister\'s still missing. The radio said the broker in this town knew something. I want to be there when they say it.\'"',
+                        '"They don\'t join your team. They walk beside you. That counts."'
+                    ],
+                    onDone
+                }); }
+            },
+            hypnos_champion: {
+                metaKey: 'cold-hypnos-champion',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-hypnos-champion',
+                    banner: '— THE CHAMPION\'S HALL —',
+                    toneClass: 'story-tone-purple',
+                    sprite: 'Cynthia', name: 'Champion (waiting)', nameplate: 'Children\'s drawings on the wall',
+                    lines: [
+                        '"The Plateau hallway has children\'s drawings pinned to every panel. They are all of a Hypno. They have been pinned there for years."',
+                        '"The Champion does not comment on them. \'Win in here. Then go to the broker. The wall doesn\'t come down for badges. It comes down for what comes after.\'"',
+                        '"Walk in. End the next fight. Then the one after that."'
+                    ],
+                    onDone
+                }); }
+            },
+            // ── The Empty Slot ─────────────────────────────────────────────
+            deadraticate_gym1: {
+                metaKey: 'cold-deadraticate-gym1',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-deadraticate-gym1',
+                    toneClass: 'story-tone-mourning',
+                    sprite: 'Youngster', name: 'Your rival', nameplate: 'Outside the gym',
+                    lines: [
+                        '"Rival is on the bench outside, six Pokémon on their belt and a Raticate on their lap. Both look proud."',
+                        '"\'Beat the leader same day I did. We\'re matched, you and me. Let\'s keep it that way.\' The Raticate squeaks. Rival laughs."',
+                        '"Walk. Heal. The next route\'s waiting."'
+                    ],
+                    onDone
+                }); }
+            },
+            deadraticate_gym4: {
+                metaKey: 'cold-deadraticate-gym4',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-deadraticate-gym4',
+                    toneClass: 'story-tone-mourning',
+                    banner: '— LAVENDER —',
+                    sprite: 'Hex_Maniac', name: 'Pokémon Tower', nameplate: 'A figure by a stone',
+                    lines: [
+                        '"There\'s a figure on the tower\'s third floor, hunched by a fresh stone. The stone has one name on it and a date from two days ago."',
+                        '"It\'s your rival. They don\'t turn around. They don\'t want company. The stone reads RATICATE in clean, slow letters."',
+                        '"Walk back down. Don\'t bring it up at the next gym. They\'ll mention it when they\'re ready."'
+                    ],
+                    onDone
+                }); }
+            },
+            deadraticate_gym8: {
+                metaKey: 'cold-deadraticate-gym8',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-deadraticate-gym8',
+                    toneClass: 'story-tone-mourning',
+                    sprite: 'Veteran', name: 'Gym attendant', nameplate: 'After the eighth match',
+                    lines: [
+                        '"Rival was in town three days ago for the gym. Won fast. Didn\'t stay for the badge ceremony. Five mons on the team belt; one slot grayed out."',
+                        '"They told the attendant they\'d see you at the Plateau. \'Tell them I\'m not slowing down.\' Then they left."',
+                        '"Walk the last route. They mean it."'
+                    ],
+                    onDone
+                }); }
+            },
+            deadraticate_champion: {
+                metaKey: 'cold-deadraticate-champion',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-deadraticate-champion',
+                    banner: '— THE CHAMPION\'S HALL —',
+                    toneClass: 'story-tone-mourning',
+                    sprite: 'Lance', name: 'Champion (waiting)', nameplate: 'Before the door',
+                    lines: [
+                        '"The Champion\'s door is open. Your rival is sitting in the chair. Five mons on their belt. The empty slot is a precise gray rectangle."',
+                        '"They look up at you. They don\'t smile. They don\'t need to. \'Make it count. Both of us.\'"',
+                        '"Walk in. Fight. Both of you have earned this fight."'
+                    ],
+                    onDone
+                }); }
+            },
+            // ── Lavender Frequency ─────────────────────────────────────────
+            lavender_gym1: {
+                metaKey: 'cold-lavender-gym1',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-lavender-gym1',
+                    toneClass: 'story-tone-frequency',
+                    banner: '— FROM AN UNCERTAIN ARCHIVE —',
+                    sprite: 'Ace_Trainer', name: 'Gym Leader 1', nameplate: 'After the badge',
+                    lines: [
+                        '"\'You\'ve got the same look the last one had.\' The leader hands you the badge anyway."',
+                        '"They lean in, kindly: \'The Pokémart down the street is playing the song. Don\'t go in. Pick up your supplies in the next town.\'"',
+                        '"They walk you to the door. They watch you go."'
+                    ],
+                    onDone
+                }); }
+            },
+            lavender_gym4: {
+                metaKey: 'cold-lavender-gym4',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-lavender-gym4',
+                    toneClass: 'story-tone-frequency',
+                    banner: '— FROM AN UNCERTAIN ARCHIVE —',
+                    sprite: 'Backpacker', name: 'City Guide', nameplate: 'Two streets over',
+                    lines: [
+                        '"\'You weren\'t supposed to come back here.\' The City Guide says it like an apology, then walks off."',
+                        '"From two streets over, the Lavender Town theme is playing on a Pokémart radio. There is no Pokémart on that street."',
+                        '"Walk to the gym. Don\'t go looking for the radio."'
+                    ],
+                    onDone
+                }); }
+            },
+            lavender_gym8: {
+                metaKey: 'cold-lavender-gym8',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-lavender-gym8',
+                    toneClass: 'story-tone-frequency',
+                    banner: '— THE CHAMPION\'S WALL —',
+                    sprite: 'Veteran', name: 'A plaque list', nameplate: 'On the wall',
+                    lines: [
+                        '"The Plateau lobby has a list of past Champions on a brass plaque. Your name is on it. Weathered. Below your name, a clean empty plate, polished for engraving."',
+                        '"You have not won the Plateau yet. The brass disagrees."',
+                        '"Walk in. End it whichever way the brass wants you to."'
+                    ],
+                    onDone
+                }); }
+            },
+            lavender_champion: {
+                metaKey: 'cold-lavender-champion',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-lavender-champion',
+                    banner: '— THE CHAMPION\'S HALL —',
+                    toneClass: 'story-tone-frequency',
+                    sprite: 'Red', name: 'Champion (waiting)', nameplate: 'They take off the cap',
+                    lines: [
+                        '"The Champion stands when you walk in. They reach up to take off their cap."',
+                        '"It\'s your face. Their team is your team from the morning you left Pallet."',
+                        '"They smile. The fight starts. The radio in the wall plays the song."'
+                    ],
+                    onDone
+                }); }
+            },
+            // ── STATIC ─────────────────────────────────────────────────────
+            static_gym1: {
+                metaKey: 'cold-static-gym1',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-static-gym1',
+                    toneClass: 'story-tone-static',
+                    banner: '— FILE B / LOOP 7 —',
+                    sprite: 'Veteran', name: 'GYM ATTENDANT', nameplate: 'Already engraved',
+                    lines: [
+                        '"The badge plaque reads ALREADY EARNED. The attendant nods. Your inventory shows no new badge slot opened — but sm.badges incremented anyway."',
+                        '"\'You\'ve done this part. Walk faster. The middle gyms are where you usually get stuck.\'"',
+                        '"They don\'t look up from the ledger as you leave."'
+                    ],
+                    onDone
+                }); }
+            },
+            static_gym4: {
+                metaKey: 'cold-static-gym4',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-static-gym4',
+                    toneClass: 'story-tone-static',
+                    banner: '— OVERLAY ERROR / LINE 1 —',
+                    sprite: 'Oak', name: 'YOUR STARTER', nameplate: '???',
+                    lines: [
+                        '"A flickered overlay snaps over the screen. Your starter\'s sprite. Their name. One line in a font that isn\'t in the game."',
+                        '"\'WHY DID YOU ABANDON ME.\'"',
+                        '"The overlay closes. The starter is still in your party. They do not bring it up at the next heal."'
+                    ],
+                    onDone
+                }); }
+            },
+            static_gym8: {
+                metaKey: 'cold-static-gym8',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-static-gym8',
+                    toneClass: 'story-tone-static',
+                    banner: '— LOCATION: GYM 8 / NO TRAINERS PRESENT —',
+                    sprite: 'Hiker', name: '?????', nameplate: 'On the gym floor',
+                    lines: [
+                        '"The gym is empty. No leader. No trainers. No audience. The audience light has been on for years."',
+                        '"A single mon waits on the floor. Its sprite cannot render — the gym\'s renderer falls back to a placeholder."',
+                        '"The fight starts. You win. The badge counter ticks. \'YOU\'VE BEEN HERE BEFORE,\' the gym hall says. \'KEEP GOING.\'"'
+                    ],
+                    onDone
+                }); }
+            },
+            static_champion: {
+                metaKey: 'cold-static-champion',
+                run(ev, onDone) { _renderNarrativeOverlay({
+                    metaKey: 'cold-static-champion',
+                    banner: '— THE CHAMPION\'S HALL —',
+                    toneClass: 'story-tone-static',
+                    sprite: 'Red', name: '??? (your name)', nameplate: 'The chair',
+                    lines: [
+                        '"The Champion in the chair has your trainer name on their nameplate. Inverted colors. Same sprite. Same team you had on the morning you left Pallet."',
+                        '"They look up. They mouth a word that the dialog box renders as `??? ?? ???? ?ime.`"',
+                        '"The fight starts. Win, and the cage opens. Lose, and the loop continues."'
+                    ],
+                    onDone
+                }); }
             }
         };
 
@@ -30813,15 +31510,182 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *  per-row gradeWeights and `sm.settings.enabledGens`, so variants
          *  cannot break the difficulty curve. */
         const STORYLINE_VARIANTS = {
+            // ── TIER: CLASSIC ────────────────────────────────────────────
             classic: {
                 id: 'classic',
-                label: 'Classic Journey',
-                description: 'Eight gyms, an Elite Four, and a Champion to dethrone.',
+                label: 'The Champion\'s Road',
+                tier: 'classic',
+                tierLabel: 'Classic',
+                description: 'The standard journey — mentor, rival, eight badges, the wall in the Plateau.',
                 defaultTone: 'standard',
+                toneClass: '',
+                warn: '',
+                legendaryFrame: 'classic',
+                brokerVoice: 'classic',
+                mysteryBias: null,
+                beatOverrides: {
+                    68: { coldOpen: 'introRival' },
+                    7:  { coldOpen: 'classic_gym1' },
+                    26: { coldOpen: 'classic_gym4' },
+                    56: { coldOpen: 'classic_gym8' },
+                    64: { coldOpen: 'classic_champion' }
+                }
+            },
+            second_sun: {
+                id: 'second_sun',
+                label: 'The Second Sun',
+                tier: 'classic',
+                tierLabel: 'Classic',
+                description: 'You started the same morning. Your rival started better. The whole journey is catching up.',
+                defaultTone: 'rival',
+                toneClass: 'story-tone-amber',
+                warn: '',
+                legendaryFrame: 'second_sun',
+                brokerVoice: 'second_sun',
+                mysteryBias: null,
+                beatOverrides: {
+                    68: { coldOpen: 'introRival' },
+                    7:  { coldOpen: 'secondsun_gym1' },
+                    26: { coldOpen: 'secondsun_gym4' },
+                    56: { coldOpen: 'secondsun_gym8' },
+                    64: { coldOpen: 'secondsun_champion' }
+                }
+            },
+            // ── TIER: MATURE CANON ───────────────────────────────────────
+            bone_keepers: {
+                id: 'bone_keepers',
+                label: 'Bone Keepers',
+                tier: 'mature',
+                tierLabel: 'Mature',
+                description: 'A region built on top of its dead. Lavender Town\'s tower casts long shadows north and south.',
+                defaultTone: 'grief',
+                toneClass: 'story-tone-ash',
+                warn: 'Adult themes: grief, loss, references to violence against Pokémon.',
+                legendaryFrame: 'bone_keepers',
+                brokerVoice: 'bone_keepers',
+                mysteryBias: { cyrus: 3, ghetsis: 1, lance: 1, red: 1 },
+                beatOverrides: {
+                    68: { coldOpen: 'introRival' },
+                    7:  { coldOpen: 'bonekeepers_gym1' },
+                    26: { coldOpen: 'bonekeepers_gym4' },
+                    56: { coldOpen: 'bonekeepers_gym8' },
+                    64: { coldOpen: 'bonekeepers_champion' }
+                }
+            },
+            project_mewtwo: {
+                id: 'project_mewtwo',
+                label: 'Project Subject Zero',
+                tier: 'mature',
+                tierLabel: 'Mature',
+                description: 'The Cinnabar lab never really closed. Your starter has a serial number. Subject Zero is waiting.',
+                defaultTone: 'lab',
+                toneClass: 'story-tone-cold',
+                warn: 'Adult themes: animal experimentation, scientific complicity.',
+                legendaryFrame: 'project_mewtwo',
+                brokerVoice: 'project_mewtwo',
+                mysteryBias: { cyrus: 5, ghetsis: 2, n: 1 },
+                beatOverrides: {
+                    68: { coldOpen: 'introRival' },
+                    7:  { coldOpen: 'projectmewtwo_gym1' },
+                    26: { coldOpen: 'projectmewtwo_gym4' },
+                    56: { coldOpen: 'projectmewtwo_gym8' },
+                    64: { coldOpen: 'projectmewtwo_champion' }
+                }
+            },
+            // ── TIER: SOFT CREEPYPASTA ───────────────────────────────────
+            hypnos_lullaby: {
+                id: 'hypnos_lullaby',
+                label: 'Hypno\'s Lullaby',
+                tier: 'soft_pasta',
+                tierLabel: 'Soft Pasta',
+                description: 'Children have been disappearing across every gym town. So has a Hypno.',
+                defaultTone: 'hypnotic',
+                toneClass: 'story-tone-purple',
+                warn: 'Creepypasta: references missing children, abduction. No explicit violence.',
+                legendaryFrame: 'hypnos_lullaby',
+                brokerVoice: 'hypnos_lullaby',
+                mysteryBias: { n: 4, ghetsis: 1, cyrus: 1 },
+                beatOverrides: {
+                    68: { coldOpen: 'introRival' },
+                    7:  { coldOpen: 'hypnos_gym1' },
+                    26: { coldOpen: 'hypnos_gym4' },
+                    56: { coldOpen: 'hypnos_gym8' },
+                    64: { coldOpen: 'hypnos_champion' }
+                }
+            },
+            dead_raticate: {
+                id: 'dead_raticate',
+                label: 'The Empty Slot',
+                tier: 'soft_pasta',
+                tierLabel: 'Soft Pasta',
+                description: 'Your rival has six Pokémon at every gym. After Lavender Town, they have five.',
+                defaultTone: 'mourning',
+                toneClass: 'story-tone-mourning',
+                warn: 'Creepypasta: Pokémon death, friend\'s grief.',
+                legendaryFrame: 'dead_raticate',
+                brokerVoice: 'dead_raticate',
+                mysteryBias: { lance: 2, cynthia: 1, red: 3, n: 1 },
+                beatOverrides: {
+                    68: { coldOpen: 'introRival' },
+                    7:  { coldOpen: 'deadraticate_gym1' },
+                    26: { coldOpen: 'deadraticate_gym4' },
+                    56: { coldOpen: 'deadraticate_gym8' },
+                    64: { coldOpen: 'deadraticate_champion' }
+                }
+            },
+            // ── TIER: FULL CREEPYPASTA ───────────────────────────────────
+            lavender_frequency: {
+                id: 'lavender_frequency',
+                label: 'Lavender Frequency',
+                tier: 'pasta',
+                tierLabel: 'Full Pasta',
+                description: 'The radio in every Pokémart plays the same tune. Some players hear it different.',
+                defaultTone: 'wrong',
+                toneClass: 'story-tone-frequency',
+                warn: 'Full creepypasta tone. Visual: hue shift and scanline filter on scenes.',
+                legendaryFrame: 'lavender_frequency',
+                brokerVoice: 'lavender_frequency',
+                mysteryBias: { buried_alive: 8, cyrus: 1, ghetsis: 1 },
+                beatOverrides: {
+                    68: { coldOpen: 'introRival' },
+                    7:  { coldOpen: 'lavender_gym1' },
+                    26: { coldOpen: 'lavender_gym4' },
+                    56: { coldOpen: 'lavender_gym8' },
+                    64: { coldOpen: 'lavender_champion' }
+                }
+            },
+            static: {
+                id: 'static',
+                label: 'STATIC',
+                tier: 'pasta',
+                tierLabel: 'Full Pasta',
+                description: 'Your save was already played. The cartridge remembers. The cartridge is angry.',
+                defaultTone: 'glitch',
+                toneClass: 'story-tone-static',
+                warn: 'Full creepypasta tone. Visual: text shake / corrupted glyphs on scenes.',
+                legendaryFrame: 'static',
+                brokerVoice: 'static',
+                mysteryBias: { cartridge_self: 10 },
+                beatOverrides: {
+                    68: { coldOpen: 'introRival' },
+                    7:  { coldOpen: 'static_gym1' },
+                    26: { coldOpen: 'static_gym4' },
+                    56: { coldOpen: 'static_gym8' },
+                    64: { coldOpen: 'static_champion' }
+                }
+            },
+            // ── SENTINEL: random roll at run start ───────────────────────
+            surprise_me: {
+                id: 'surprise_me',
+                label: 'Surprise Me',
+                tier: 'random',
+                tierLabel: 'Random',
+                description: 'Roll one of the eight on Begin Adventure. You see the chosen storyline before the journey starts.',
+                defaultTone: 'standard',
+                toneClass: '',
+                warn: 'Includes creepypasta tones.',
                 beatOverrides: {}
             }
-            // Future variants slot in here. See STORY_MODE_FLOW.md §17 for
-            // the contract and a worked example.
         };
 
         function _storyActiveVariantId() {
@@ -30836,11 +31700,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *  'classic'. Defined here (not below) because startNewRun calls
          *  it at run-construction time. */
         function _readStorylineFromUI() {
+            // Trainer-create card picker (preferred path — new in v18 narrative
+            // pass). The 'surprise_me' sentinel rolls one of the real variants
+            // on run start so the player walks into the trainer-create confirm
+            // already knowing which tone they got.
+            try {
+                if (typeof _tcState !== 'undefined' && _tcState && _tcState.storyline) {
+                    if (_tcState.storyline === 'surprise_me') return _pickRandomStorylineVariant();
+                    if (STORYLINE_VARIANTS[_tcState.storyline]) return _tcState.storyline;
+                }
+            } catch (e) {}
+            // Legacy select fallback (older menu still wired for compatibility).
             try {
                 const el = document.getElementById('story-setting-storyline');
-                if (el && el.value && STORYLINE_VARIANTS[el.value]) return el.value;
+                if (el && el.value && STORYLINE_VARIANTS[el.value]) {
+                    if (el.value === 'surprise_me') return _pickRandomStorylineVariant();
+                    return el.value;
+                }
             } catch (e) {}
             return 'classic';
+        }
+        /** Roll one of the eight real variants. 'surprise_me' itself and any
+         *  future sentinel ids are excluded. */
+        function _pickRandomStorylineVariant() {
+            const ids = Object.keys(STORYLINE_VARIANTS).filter(k => {
+                const v = STORYLINE_VARIANTS[k];
+                return v && v.tier !== 'random';
+            });
+            if (!ids.length) return 'classic';
+            return ids[Math.floor(Math.random() * ids.length)];
         }
 
         /** Derive a minimal beat from STORY_EVENTS_RAW for rows that don't
@@ -30929,16 +31817,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let build = null;
                     try { build = makeBuild(pending.name); } catch (e) { build = null; }
                     if (!build) return null;
+                    const speciesName = pending.name;
                     return {
                         encounter: {
-                            name: pending.name,
+                            name: speciesName,
                             build,
                             id: 'm_' + Math.random().toString(36).slice(2, 10),
                             wild: true,
                             roaming: true
                         },
                         options: { forcedCatchRate: 0.30, forcedFleeRate: 1.0, roamingLabel: 'Roaming Pokémon' },
-                        markWildSeenOnPrepare: true
+                        markWildSeenOnPrepare: true,
+                        // Cinematic sighting overlay — type-themed background,
+                        // pulsing sprite, per-variant narrator block, per-species
+                        // canonical lore. Plays once per encounter (no metaKey
+                        // dedupe: every roaming legendary spawn deserves its own
+                        // reveal). On dismiss the dispatcher proceeds to the
+                        // existing catch screen unchanged.
+                        preRender(onShown) {
+                            try { _showRoamingLegendarySighting(speciesName, onShown); }
+                            catch (e) {
+                                console.error('[Story] roaming sighting overlay failed:', e);
+                                try { onShown && onShown(); } catch (e2) {}
+                            }
+                        }
                     };
                 }
             },
@@ -30990,11 +31892,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const chained = intr.chainAfter
                         ? function () { enterBattleEvent(ev); }
                         : onComplete;
-                    try {
-                        enterCatchEncounter(prepared.encounter, chained, prepared.options || {});
-                    } catch (e) {
-                        console.error('[Story] interrupt enterCatchEncounter failed:', intr.id, e);
-                        return false;
+                    const startEncounter = function () {
+                        try {
+                            enterCatchEncounter(prepared.encounter, chained, prepared.options || {});
+                        } catch (e) {
+                            console.error('[Story] interrupt enterCatchEncounter failed:', intr.id, e);
+                        }
+                    };
+                    // Optional pre-render overlay (e.g. roaming legendary
+                    // sighting cinematic). Fires before the catch screen and
+                    // calls back into startEncounter on dismiss. If the
+                    // overlay throws, we still fall through to the encounter.
+                    if (typeof prepared.preRender === 'function') {
+                        try { prepared.preRender(startEncounter); }
+                        catch (e) {
+                            console.warn('[Story] interrupt preRender threw, continuing:', intr.id, e);
+                            startEncounter();
+                        }
+                    } else {
+                        startEncounter();
                     }
                     return true;
                 }
@@ -31013,7 +31929,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!scene || typeof scene.run !== 'function') return false;
             try {
                 const meta = readStoryMeta();
-                const tip = scene.metaKey;
+                // Scene.metaKey may be a function — used by intro-rival to key
+                // dedupe per-variant, so each storyline plays its own intro
+                // exactly once across the player's whole save history. Static
+                // metaKeys still work unchanged.
+                const tip = (typeof scene.metaKey === 'function')
+                    ? scene.metaKey(ev, beat)
+                    : scene.metaKey;
                 if (tip && meta && meta.tipsShown && meta.tipsShown[tip]) return false;
                 scene.run(ev, () => {
                     try {
@@ -33066,39 +33988,409 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         /** Intro Rival cold-open: a Professor cameo scene that fires once per save,
          *  right before the very first battle. Establishes the rival as a named
          *  character with stakes before they appear on the battle screen. */
-        function _showIntroRivalColdOpen(rivalName, onDone) {
-            const hub = (typeof cityProfessorHubSlot === 'function') ? (cityProfessorHubSlot(0) || {}) : {};
-            const profName = hub.label || 'Prof. Oak';
-            const profSpriteFile = hub.spriteFile || 'OakProfessor';
-            const displayRival = (rivalName && String(rivalName).trim()) || 'someone you know';
+        /** Generic narrative-overlay renderer used by every storyline cold-open
+         *  scene. Mirrors the layout of `_showIntroRivalColdOpen` (sprite-led
+         *  full-screen dialog) but takes everything via opts so per-variant
+         *  scenes can drop in without copy-pasting layout. The `toneClass`
+         *  parameter applies one of the `.story-tone-*` CSS classes for the
+         *  variant's visual signature; `sfx` plays through StoryFx on dismiss.
+         *  `metaKey` is the dedupe stamp — only set this on cold-opens that
+         *  must fire exactly once (left blank for repeatable broker / sighting
+         *  overlays). */
+        function _renderNarrativeOverlay(opts) {
+            const o = opts || {};
+            const lines = Array.isArray(o.lines) ? o.lines : [];
+            const sprite = o.sprite || null;
+            const name = o.name || '';
+            const nameplate = o.nameplate || name || 'Narrator';
+            const toneClass = o.toneClass || '';
+            const banner = o.banner || '';
+            const accent = o.accent || '#ffd54f';
+            const continueLabel = o.continueLabel || 'Continue →';
             const ov = document.createElement('div');
             ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.94);z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;box-sizing:border-box;cursor:pointer;';
+            if (toneClass) ov.classList.add(toneClass);
+            const spriteHtml = sprite
+                ? `<img src="${getTrainerSprite({ spriteFile: sprite })}" onerror="this.style.display='none'" style="width:180px;height:180px;object-fit:contain;image-rendering:pixelated;">`
+                : '';
+            const bannerHtml = banner
+                ? `<div style="color:#bbb;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;">${_esc(banner)}</div>`
+                : '';
+            const nameHtml = name
+                ? `<div style="color:${accent};font-size:18px;font-weight:bold;">${_esc(name)}</div>`
+                : '';
+            const linesHtml = lines.map((l, i) =>
+                `<p class="story-dialog-text"${i ? ' style="margin-top:8px;"' : ''}>${l}</p>`
+            ).join('');
             ov.innerHTML = `
-                <img src="${getTrainerSprite({ spriteFile: profSpriteFile })}" onerror="this.style.display='none'" style="width:180px;height:180px;object-fit:contain;image-rendering:pixelated;">
-                <div style="color:var(--accent);font-size:18px;font-weight:bold;">${profName}</div>
+                ${bannerHtml}
+                ${spriteHtml}
+                ${nameHtml}
                 <div class="story-dialog-host" style="margin-top:4px;max-width:560px;">
-                    <div class="story-dialog-nameplate">${profName}</div>
+                    <div class="story-dialog-nameplate">${_esc(nameplate)}</div>
+                    <div class="story-dialog-box">${linesHtml}</div>
+                </div>
+                <button type="button" style="margin-top:8px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">${_esc(continueLabel)}</button>`;
+            let dismissed = false;
+            const dismiss = function () {
+                if (dismissed) return;
+                dismissed = true;
+                if (o.metaKey) {
+                    try {
+                        const _m = readStoryMeta();
+                        if (!_m.tipsShown) _m.tipsShown = {};
+                        _m.tipsShown[o.metaKey] = true;
+                        writeStoryMeta(_m);
+                    } catch (e) {}
+                }
+                try {
+                    if (o.sfx && window.StoryFx && typeof window.StoryFx.playSfx === 'function') {
+                        window.StoryFx.playSfx(o.sfx, 0.65);
+                    }
+                } catch (e) {}
+                try { ov.remove(); } catch (e) {}
+                try { o.onDone && o.onDone(); }
+                catch (e) { console.error('[Story] narrative overlay callback', e); }
+            };
+            ov.querySelector('button').onclick = function (e) { e.stopPropagation(); dismiss(); };
+            ov.onclick = function (e) { if (e.target === ov) dismiss(); };
+            document.body.appendChild(ov);
+            return ov;
+        }
+
+        /** Per-species lore for the roaming legendary sighting cinematic. Each
+         *  entry is 1–2 lines drawn from real Pokédex flavor or canonical
+         *  Pokémon mythology — never invented horror. Missing species fall back
+         *  to a generic line ("A legend walks the route."). */
+        const _LEGENDARY_LORE = {
+            // Gen 1 — Kanto
+            'Articuno': '"It freezes the air it breathes. Travelers caught in its draft are said to find the road home twice as long."',
+            'Zapdos':   '"It nests in thunderclouds. Storms break where it lands; storms break harder when it leaves."',
+            'Moltres':  '"It carries the spring on its wings. Forests burnt by its flight grow back greener and angrier."',
+            'Mew':      '"It contains the DNA of every Pokémon that ever was. Older than the lab. Older than the lab director."',
+            // Gen 2 — Johto
+            'Raikou':   '"It runs ahead of every storm. A roll of thunder is its calling card and its goodbye."',
+            'Entei':    '"It is said to have been born of a volcano on the day three Pokémon died."',
+            'Suicune':  '"It purifies poisoned water with a touch. The trainers it has saved never speak of it again."',
+            'Celebi':   '"It walks through time the way most mons walk through grass. Forests around its footprints age in reverse."',
+            // Gen 3 — Hoenn
+            'Regirock': '"Sealed in stone by trainers who couldn\'t bring themselves to destroy it."',
+            'Regice':   '"Sealed in glacial ice. The seal is honored. The seal is never broken voluntarily."',
+            'Registeel':'"Sealed in steel deeper than mining. The seal is older than every gym on this road."',
+            'Latias':   '"It hides among people, wearing the face of someone you trust. You won\'t notice — that\'s the point."',
+            'Latios':   '"It mourns its sister when she is hurt. The forecast on those days carries an extra rain."',
+            'Jirachi':  '"It wakes once every thousand years. Today is one of those days. You will not get another."',
+            // Gen 4 — Sinnoh
+            'Uxie':     '"It carries the gift of knowledge. Trainers who meet its eyes forget the road home."',
+            'Mesprit':  '"It carries the gift of emotion. Those it touches feel everything more sharply forever."',
+            'Azelf':    '"It carries the gift of willpower. Those it judges find their answer, with or without comfort."',
+            'Heatran':  '"It walks on lava without burning. Whatever was here before the volcano belonged to it first."',
+            'Cresselia':'"Sleep with one of its feathers under your pillow. The nightmares stop. So do some dreams."',
+            'Manaphy':  '"Born from the deep current. It loves children. It loves them gently, and then it leaves."',
+            'Shaymin':  '"It is a gratitude Pokémon. Whoever first feeds it kindness is followed for the rest of their life."',
+            // Gen 5 — Unova
+            'Cobalion': '"It once protected Pokémon from a war the history books don\'t name."',
+            'Terrakion':'"It broke a fortress wall to free its kind. The fortress is now its territory."',
+            'Virizion': '"It dances around the strikes of brutal trainers. None of them have ever landed a blow."',
+            'Tornadus': '"It drags a hurricane behind it like a stray dog. The dog bites the trainers it dislikes."',
+            'Thundurus':'"It sows thunderbolts into fields. Farmers pray it visits. Farmers also pray it leaves."',
+            'Landorus': '"Where it walks, the harvest doubles. Where it stays too long, the soil is bones."',
+            'Keldeo':   '"A colt that earned a sword. It still looks for the next bigger horse to test it on."',
+            'Meloetta': '"It sings two tunes — one heals, one undoes. Which one you hear depends on what you brought to the field."',
+            // Gen 6 — Kalos
+            'Diancie':  '"It is born of compressed carbon. The mountain that made it is now a quiet open cave."',
+            'Hoopa':    '"It moves objects through rings. Some of the objects were people. They came back changed."',
+            'Volcanion':'"It boils water for a thousand kilometers around. The fog isn\'t fog. The fog is its lung."',
+            // Gen 7 — Alola
+            'Tapu Koko': '"It is the island\'s temper. Cross the boundary, take the lightning."',
+            'Tapu Lele': '"It heals trainers who deserve healing. It decides what \'deserve\' means."',
+            'Tapu Bulu': '"It is patient with farmers and hard on poachers. Nobody asks how it tells them apart."',
+            'Tapu Fini': '"It cleanses minds in the spring it guards. Several trainers have stayed in the spring too long."',
+            'Magearna': '"Built five hundred years ago for a child who is buried near here. The maker forgot to turn it off."',
+            'Marshadow':'"It mimics a fighter\'s shadow. The first time you spot it, you\'re already in its match."',
+            'Zeraora':  '"It moves on a current that bends around it. Cities it passes through have rolling blackouts."',
+            // Gen 8 — Galar
+            'Kubfu':    '"A bear cub raised in a tower. It will grow into something the tower can\'t hold."',
+            'Urshifu':  '"One strike. One outcome. It does not ask twice."',
+            'Zarude':   '"It raises lost children in the canopy. The canopy has its own laws."',
+            'Regieleki':'"Sealed away because nothing could contain its voltage safely. The seal hums when nearby."',
+            'Regidrago':'"Sealed away because nothing could contain its breath safely. The seal scorches the stone."',
+            'Enamorus': '"It brought spring to a frozen north. It also brought floods. Both are remembered."',
+            // Gen 9 — Paldea
+            'Wo-Chien': '"A sleeve of dead leaves on a sleeve of vines. It feeds on the names of broken oaths."',
+            'Chien-Pao':'"A blade of ice that hates trainers who chose the wrong starter at City 0."',
+            'Ting-Lu':  '"An old guardian with a deer\'s patience and a god\'s grudge."',
+            'Chi-Yu':   '"A goldfish in a bead of magma. The trainers who keep it eventually catch fire."',
+            'Okidogi':  '"It was chained for what it did. The chain is also the thing that keeps it angry."',
+            'Munkidori':'"It poisoned a village for laughing at it. It still laughs about it sometimes."',
+            'Fezandipiti':'"A peacock with a courtier\'s manners. It is friendly. The friendship has a price."'
+        };
+        /** Per-variant frame copy for the legendary sighting overlay. Each
+         *  variant gets two narrator lines that wrap the species lore line. */
+        const _LEGENDARY_SIGHTING_FRAMES = {
+            classic:           { banner: 'A LEGENDARY HAS BEEN SIGHTED', narrator: ['Sightings stations across the route have lit up.','Whatever is up there will not stay long. Bring your strongest ball.'] },
+            second_sun:        { banner: 'A LEGENDARY HAS BEEN SIGHTED', narrator: ['Your rival was here first. They saw it. They did not catch it.','It came back to be caught by someone else. That can still be you.'] },
+            bone_keepers:      { banner: 'A GUARDIAN HAS APPEARED',       narrator: ['The graveyard chimes have not rung in years. They ring tonight.','It is here for someone. It might be here for you. Be gentle with the throw.'] },
+            project_mewtwo:    { banner: 'A SPECIMEN HAS ESCAPED',         narrator: ['Lab tags scattered along the route. A torn bandage in a tree.','It came this far on its own. The door behind it did not stay open.'] },
+            hypnos_lullaby:    { banner: 'A LULLABY HAS WOKEN',            narrator: ['The radio at the rest stop will not stop playing the same five notes.','Whatever is on the route tonight, it has been listening to that song for a very long time.'] },
+            dead_raticate:     { banner: 'AN EMPTY SLOT IS FULL',          narrator: ['Your rival left a note pinned to the sightings board: "saw it, couldn\'t."',
+                                                                                       'Maybe you can. Maybe you should. Make the throw count.'] },
+            lavender_frequency:{ banner: 'A FREQUENCY HAS BROKEN THROUGH', narrator: ['The Pokémart radio at the last city was playing the Lavender theme.','Whatever waits ahead has been at the other end of that broadcast for longer than you have been alive.'] },
+            static:            { banner: '???? ??? ?????? ?????????',     narrator: ['A ?ighting? ?eport. The text refuses to render properly.','Whatever waits on the route is older than this save file. Throw anyway.'] }
+        };
+
+        /** Cinematic overlay that fires *before* the catch screen when a
+         *  roaming legendary is consumed. Uses the route-themed type-elemental
+         *  battle BG so the moment feels distinct from a regular wild.
+         *  Asset budget: only existing trainer/pokesprite art and existing CSS. */
+        function _showRoamingLegendarySighting(speciesName, onDone) {
+            const variant = _storyActiveVariant();
+            const frame = _LEGENDARY_SIGHTING_FRAMES[variant.id] || _LEGENDARY_SIGHTING_FRAMES.classic;
+            // Type-driven background — picks the first type's existing
+            // `bg_<type>.png` if it exists, otherwise falls back to the
+            // neutral battle backdrop.
+            let bgImg = 'sprites/bg_psychic.png';
+            try {
+                const base = baseStats[speciesName] || {};
+                const t = ((base.types && base.types[0]) || '').toString().toLowerCase();
+                if (t) bgImg = 'sprites/backgrounds/menu/menu_bg_' + t + '.png';
+            } catch (e) {}
+            // Species sprite — front, animated if available.
+            let spriteUrl = '';
+            try {
+                if (typeof getSprite === 'function') {
+                    spriteUrl = getSprite(spriteDisplayName({ name: speciesName }), false) || '';
+                }
+            } catch (e) {}
+            const lore = _LEGENDARY_LORE[speciesName] || '"A legend walks the route. The road will not forget what happened next."';
+            const tone = variant.toneClass || '';
+            const ov = document.createElement('div');
+            ov.className = 'story-legend-sighting' + (tone ? (' ' + tone) : '');
+            ov.style.backgroundImage = `linear-gradient(180deg, rgba(2,4,10,0.85) 0%, rgba(2,4,10,0.96) 100%), url("${bgImg}")`;
+            ov.innerHTML = `
+                <div class="story-legend-sighting-banner">${_esc(frame.banner)}</div>
+                ${spriteUrl ? `<img class="story-legend-sighting-sprite" src="${spriteUrl}" alt="${_esc(speciesName)}" onerror="this.style.display='none'">` : ''}
+                <div class="story-legend-sighting-name">${_esc(speciesName)}</div>
+                <div class="story-legend-sighting-lore">${lore}</div>
+                <div class="story-dialog-host" style="max-width:560px;">
+                    <div class="story-dialog-nameplate">${_esc(variant.label || 'The Road')}</div>
                     <div class="story-dialog-box">
-                        <p class="story-dialog-text">"Hold up — someone's blocking the route gate. ${displayRival}."</p>
-                        <p class="story-dialog-text" style="margin-top:8px;">"They picked up their starter the same morning you did. Same hunger, same chance. They won't let you out of Pallet Town without a fight."</p>
-                        <p class="story-dialog-text" style="margin-top:8px;">"Show them what your partner can do. From here, every road is a rival."</p>
+                        <p class="story-dialog-text">${_esc(frame.narrator[0])}</p>
+                        <p class="story-dialog-text" style="margin-top:8px;">${_esc(frame.narrator[1])}</p>
                     </div>
                 </div>
-                <button type="button" style="margin-top:8px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">Continue →</button>`;
+                <button type="button" style="margin-top:6px;padding:9px 24px;background:#1a2a4a;color:#fff;border:1px solid #ffd54f;border-radius:4px;cursor:pointer;font-weight:bold;letter-spacing:0.06em;">Approach the legend →</button>`;
+            let dismissed = false;
             const dismiss = function () {
+                if (dismissed) return;
+                dismissed = true;
+                try { if (window.StoryFx && typeof window.StoryFx.playSfx === 'function') window.StoryFx.playSfx('shine', 0.75); } catch (e) {}
+                try { ov.remove(); } catch (e) {}
+                try { onDone && onDone(); } catch (e) { console.error('[Story] roaming sighting callback', e); }
+            };
+            ov.querySelector('button').onclick = function (e) { e.stopPropagation(); dismiss(); };
+            ov.onclick = function (e) { if (e.target === ov) dismiss(); };
+            try { if (window.StoryFx && typeof window.StoryFx.playSfx === 'function') window.StoryFx.playSfx('sparkle', 0.6); } catch (e) {}
+            try { if (window.StoryFx && typeof window.StoryFx.playSfx === 'function') window.StoryFx.playSfx('danger', 0.5); } catch (e) {}
+            document.body.appendChild(ov);
+        }
+
+        /** First-sighting Pokédex lore — fires once per species when caught
+         *  on a mature+ tier storyline. Uses the same metaKey dedupe bucket
+         *  as cold-opens. Keys are CamelCase species names matching baseStats.
+         *  Content is drawn from canonical Pokédex entries with the prose
+         *  cleaned up for an adult-but-restrained reading. */
+        const _FIRST_SIGHTING_LORE = {
+            'Cubone':   { line1: '"It wears the skull of its mother."', line2: '"The crying never quite stops."' },
+            'Marowak':  { line1: '"It evolved by surviving grief."',     line2: '"Old trainers do not ask what happened to the parent."' },
+            'Yamask':   { line1: '"It carries a mask that was once its face."', line2: '"It looks at it sometimes, and weeps."' },
+            'Cofagrigus':{line1: '"A sarcophagus that walks. The bodies inside are not always its own."', line2: '"It is fed by grave robbers. It is fed gently."' },
+            'Drifloon': { line1: '"Children\'s stories warn against grabbing its string."', line2: '"Some children don\'t come back."' },
+            'Drifblim': { line1: '"It rises at dusk carrying whatever it has caught."', line2: '"Dawn arrives lighter."' },
+            'Hypno':    { line1: '"Lavender Town keeps a missing-persons board."', line2: '"Three of them last saw a pendulum."' },
+            'Drowzee':  { line1: '"It eats dreams. Some dreams it eats are not given."', line2: '"It prefers the dreams of children. It is honest about that."' },
+            'Litwick':  { line1: '"Its flame is small and warm."',       line2: '"It is fed by the life of whoever stands closest."' },
+            'Lampent':  { line1: '"It hovers near hospitals."',          line2: '"It is waiting. It is always waiting."' },
+            'Chandelure':{line1: '"It does not burn. It harvests."',      line2: '"Souls in its fire are not extinguished — they are saved for later."' },
+            'Phantump': { line1: '"Each one was a child who lost the road home."', line2: '"The tree took the rest."' },
+            'Trevenant':{ line1: '"Cross the forest without its leave, and the forest forgets the way out."', line2: '"It is kinder than the forest."' },
+            'Banette':  { line1: '"A doll that was loved, lost, and waited."', line2: '"It is looking for the child who threw it away."' },
+            'Shedinja': { line1: '"Do not look into the hole on its back."', line2: '"Whatever it stole, it does not give back."' },
+            'Mewtwo':   { line1: '"The lab notes call it Specimen 0002."', line2: '"There was a 0001."' },
+            'Porygon':  { line1: '"Code can be killed."',                 line2: '"They wrote it that way on purpose."' },
+            'Voltorb':  { line1: '"Built when someone overcharged a Poké Ball and then could not turn it off."', line2: '"They keep building more."' },
+            'Magnemite':{ line1: '"It draws power from the grid."',       line2: '"Cities it visits experience small unexplained outages."' },
+            'Genesect': { line1: '"A weapon revived by people who knew it was a weapon."', line2: '"It still works."' },
+            'Sigilyph': { line1: '"A guard for a city the sand has finished eating."', line2: '"It still patrols the perimeter."' },
+            'Mimikyu':  { line1: '"It wants to be loved like the friend on the box."', line2: '"Do not look under the rag. Do not."' },
+            'Pyukumuku':{ line1: '"Locals throw them back into the sea every evening."', line2: '"They are paid for it. The pay is not generous."' },
+            'Wobbuffet':{ line1: '"It does not strike first. It does not need to."', line2: '"Whatever it returns to you is the consequence of what you brought."' },
+            'Spiritomb':{ line1: '"It is one hundred and eight grudges in one stone."', line2: '"None of them have forgotten their reason."' },
+            'Sableye':  { line1: '"It eats gems. It eats the polish off the wedding rings."', line2: '"It is found in homes that recently went quiet."' }
+        };
+        function _showFirstSightingLoreOverlay(speciesName, onDone) {
+            const entry = _FIRST_SIGHTING_LORE[speciesName];
+            if (!entry) { try { onDone && onDone(); } catch (e) {} return; }
+            const variant = _storyActiveVariant();
+            let spriteUrl = '';
+            try { if (typeof getSprite === 'function') spriteUrl = getSprite(spriteDisplayName({ name: speciesName }), false) || ''; } catch (e) {}
+            const tone = variant.toneClass || '';
+            const ov = document.createElement('div');
+            ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.93);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;box-sizing:border-box;cursor:pointer;';
+            if (tone) ov.classList.add(tone);
+            ov.innerHTML = `
+                <div style="color:#bbb;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;">— A NEW ENTRY —</div>
+                ${spriteUrl ? `<img src="${spriteUrl}" alt="${_esc(speciesName)}" onerror="this.style.display='none'" style="width:128px;height:128px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 0 18px rgba(255,213,79,0.4));">` : ''}
+                <div style="color:#fff;font-size:20px;font-weight:bold;letter-spacing:0.04em;">${_esc(speciesName)}</div>
+                <div class="story-dialog-host" style="max-width:520px;">
+                    <div class="story-dialog-nameplate">Pokédex — first sighting</div>
+                    <div class="story-dialog-box">
+                        <p class="story-dialog-text" style="font-style:italic;">${entry.line1}</p>
+                        <p class="story-dialog-text" style="margin-top:8px;font-style:italic;">${entry.line2}</p>
+                    </div>
+                </div>
+                <button type="button" style="margin-top:4px;padding:7px 18px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">Continue →</button>`;
+            let dismissed = false;
+            const dismiss = function () {
+                if (dismissed) return;
+                dismissed = true;
                 try {
                     const _m = readStoryMeta();
                     if (!_m.tipsShown) _m.tipsShown = {};
-                    _m.tipsShown['intro-rival-coldopen'] = true;
+                    _m.tipsShown['firstsighting-' + speciesName] = true;
                     writeStoryMeta(_m);
                 } catch (e) {}
                 try { ov.remove(); } catch (e) {}
-                try { onDone && onDone(); } catch (e) { console.error('[Story] cold-open callback', e); }
+                try { onDone && onDone(); } catch (e) { console.error('[Story] first-sighting callback', e); }
             };
             ov.querySelector('button').onclick = function (e) { e.stopPropagation(); dismiss(); };
             ov.onclick = function (e) { if (e.target === ov) dismiss(); };
             document.body.appendChild(ov);
         }
+        /** Should we fire a first-sighting lore overlay for this catch screen?
+         *  Only on mature+ tier storylines, only the first time this species
+         *  is seen this save, and only when we actually have lore for it. */
+        function _shouldFireFirstSightingLore(speciesName) {
+            if (!speciesName || !_FIRST_SIGHTING_LORE[speciesName]) return false;
+            const variant = _storyActiveVariant();
+            const tier = variant && variant.tier;
+            if (tier !== 'mature' && tier !== 'soft_pasta' && tier !== 'pasta') return false;
+            try {
+                const _m = readStoryMeta();
+                if (_m && _m.tipsShown && _m.tipsShown['firstsighting-' + speciesName]) return false;
+            } catch (e) {}
+            // Skip on the very first wild — the catch tutorial is fragile and
+            // the user has enough overlays in that beat already.
+            if (typeof _catchState !== 'undefined' && _catchState && _catchState.tutorialMode) return false;
+            return true;
+        }
+
+        function _showIntroRivalColdOpen(rivalName, onDone) {
+            const variant = _storyActiveVariant();
+            // Per-variant intro framing — the introRival cold-open is the
+            // entire game's first moment, so each variant gets a full custom
+            // scene. classic / second_sun use Prof. Oak (mentor); the darker
+            // variants reframe the same beat (still a starter duel) around
+            // their own story spine.
+            const hub = (typeof cityProfessorHubSlot === 'function') ? (cityProfessorHubSlot(0) || {}) : {};
+            const profName = hub.label || 'Prof. Oak';
+            const profSpriteFile = hub.spriteFile || 'OakProfessor';
+            const displayRival = (rivalName && String(rivalName).trim()) || 'someone you know';
+            const intro = _STORY_INTRO_SCENES[variant.id] || _STORY_INTRO_SCENES.classic;
+            // metaKey is left blank here — the outer dispatcher
+            // (_runStoryColdOpen) already stamps a variant-keyed dedupe entry,
+            // so a second stamp on the overlay would just duplicate writes.
+            _renderNarrativeOverlay({
+                banner: intro.banner || '',
+                sprite: intro.sprite || profSpriteFile,
+                name: intro.name || profName,
+                nameplate: intro.nameplate || profName,
+                accent: 'var(--accent)',
+                toneClass: variant.toneClass || '',
+                lines: (intro.lines || []).map(l => String(l).replace(/{rival}/g, _esc(displayRival))),
+                continueLabel: intro.continueLabel || 'Continue →',
+                onDone
+            });
+        }
+
+        /** Per-variant intro-rival cold-open content. The original `classic`
+         *  intro is preserved verbatim so existing saves replay identically.
+         *  All other variants are new prose. Each variant's intro is the
+         *  single most important narrative moment of the run — it sets the
+         *  tone for everything that follows. */
+        const _STORY_INTRO_SCENES = {
+            classic: {
+                sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Prof. Oak',
+                lines: [
+                    '"Hold up — someone\'s blocking the route gate. {rival}."',
+                    '"They picked up their starter the same morning you did. Same hunger, same chance. They won\'t let you out of Pallet Town without a fight."',
+                    '"Show them what your partner can do. From here, every road is a rival."'
+                ]
+            },
+            second_sun: {
+                sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Prof. Oak',
+                lines: [
+                    '"You both picked your partners this morning. They picked first."',
+                    '"{rival} has been winning practice rounds against the lab\'s training mons for six months. You haven\'t. That\'s a real gap, and pretending it isn\'t won\'t close it."',
+                    '"Lose this fight gracefully. Then walk out of Pallet and start closing it for real. Second sun. Same sky."'
+                ]
+            },
+            bone_keepers: {
+                sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Prof. Oak',
+                lines: [
+                    '"There\'s a procession on Route 1 today. Pass quietly when you reach it. They didn\'t bury this one in the tower."',
+                    '"{rival} is at the gate. They\'ll fight you before you go. They always do. Don\'t take it personally — they need a fight that doesn\'t mean anything."',
+                    '"The road north passes through every grave this region has dug. Take care of your partner. They\'ll feel them."'
+                ]
+            },
+            project_mewtwo: {
+                sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Prof. Oak',
+                lines: [
+                    '"Your starter has a serial number on the underside of its left paw. I want you to know that before you leave."',
+                    '"It is yours now. Whatever it was bred for, it doesn\'t have to be. {rival} doesn\'t know about the number. You don\'t need to tell them."',
+                    '"The lab on Cinnabar closed twenty years ago. Officially. Now go win your duel."'
+                ]
+            },
+            hypnos_lullaby: {
+                sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Prof. Oak',
+                lines: [
+                    '"{rival} is at the gate. They\'ll fight you, and then they\'re going east — their little sister is missing."',
+                    '"Five children gone from five gym towns. The radio keeps reading their names. Nobody has matched a Pokémon to it yet, but everyone who saw something says the same word: pendulum."',
+                    '"Beat your rival. Then walk the road. Look up sometimes. Not too long."'
+                ],
+                toneClass: 'story-tone-purple'
+            },
+            dead_raticate: {
+                sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Prof. Oak',
+                lines: [
+                    '"{rival} came in for their starter at sunrise. Got a Raticate from the back lot to round out the team — local kid had outgrown it. Six and ready."',
+                    '"They\'re at the gate now. Show them a real fight. They\'ve been waiting all night."',
+                    '"Take care of your partner. The road north doesn\'t care who you were before you walked it."'
+                ],
+                toneClass: 'story-tone-mourning'
+            },
+            lavender_frequency: {
+                sprite: 'Oak', name: 'Prof. Oak', nameplate: 'Prof. Oak',
+                lines: [
+                    '"You\'re back. …You\'re back, aren\'t you?"',
+                    '"Sorry — never mind. {rival} is at the gate. The same as always. They\'ll fight you before they let you leave."',
+                    '"The radio in the Pokémart is playing that song again. Pay it no mind. Just go win your duel."'
+                ],
+                toneClass: 'story-tone-frequency',
+                banner: '— FROM AN UNCERTAIN ARCHIVE —'
+            },
+            static: {
+                sprite: 'Oak', name: '?ROF. ???', nameplate: 'PROF. ???',
+                lines: [
+                    '"Y?u\'re ba?k. We need to ?o this aga?n."',
+                    '"???? — {rival} — is at the ?ate. They beat you the f?rst time. They beat you the s?cond time. Try ag?in."',
+                    '"Loop ??unt: ???. C??tinue."'
+                ],
+                toneClass: 'story-tone-static',
+                banner: '— SAVE FILE B / LOOP UNKNOWN —',
+                continueLabel: 'C?ntinue →'
+            }
+        };
 
         function enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked) {
             if (!ev) return;
@@ -34345,6 +35637,57 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             recording: { title: 'The Recording', body: 'The broker plays a static-filled audio log of the original keepers. Their voices are urgent and afraid.' },
             key:       { title: 'The Key',       body: 'The broker holds up a locked iron box. "I won\'t take gold. Only your strongest Pokémon — temporarily." Lead acquired.' }
         };
+        /** Per-variant Caged-God broker voice. Each entry overrides the three
+         *  default lead bodies above with prose that fits the storyline's tone.
+         *  Variants without an entry (or with `null` slots) fall back to the
+         *  base `_BOSS_LEAD_FLAVOR` lines, so we only override where the
+         *  variant has something genuinely different to say. */
+        const _BOSS_LEAD_FLAVOR_BY_VARIANT = {
+            classic: null,
+            second_sun: {
+                ledger:    '"Your rival came in last week looking for this ledger. They paid. They walked. They couldn\'t bring themselves to open it. They\'re fine — but you\'re the one I\'m handing it to."',
+                recording: '"Same broker, same recording. They listened. They left. They didn\'t come back to talk. The cage is your fight now."',
+                key:       '"Your rival left this box at the door before walking back to the Plateau. They couldn\'t finish it. They asked me to give it to you. Don\'t make their walk away wasted."'
+            },
+            bone_keepers: {
+                ledger:    'The broker hands you a tower attendant\'s ledger. The cover is wrapped in faded cloth. "Specimen 0001. Held in the cage since before the tower was built. The keepers used to be paid to keep the chimes ringing for it. They are not paid anymore. The chimes are quiet."',
+                recording: 'The broker plays a wax-cylinder recording of the original keepers. Their voices are kind, then tired, then frightened. The last keeper speaks like she is at a funeral. "Whatever is in there deserved to be put down. We could not bring ourselves to do it."',
+                key:       'The broker hands you the iron box without negotiating. "You\'ve walked the tower with respect. The keepers would have given you this anyway. Bring it peace, not a battle."'
+            },
+            project_mewtwo: {
+                ledger:    'The broker locks the door before handing you the ledger. "Specimen 0001 — Cinnabar Annex / Project Subject Zero / Initial Volunteer: [REDACTED]. The redaction is yours to live with."',
+                recording: 'The broker plays a hard-drive backup of the lab\'s last morning. Lab assistants apologizing into the recorder. A director\'s voice ordering the cage closed. Someone screaming. The recording cuts where the door cut."',
+                key:       'The broker hands you a magnetic key tagged with a barcode. "This is the same lock the lab used. They never updated it. They never expected the volunteer to be the one walking back in. Master Ball\'s in the drawer. Take both."'
+            },
+            hypnos_lullaby: {
+                ledger:    'The broker passes you a missing-persons binder. Each child has a Pokémon listed at the bottom of their page. Every page says \'HYPNO.\' Every page is signed by a different parent."',
+                recording: 'The broker plays a child\'s voice memo. The child is humming. The child is not afraid. The hummed melody is the Pokémart radio song. The recording is fourteen seconds long. There is nothing else on the device."',
+                key:       'The broker hands you a small pendulum on a chain. "This was found in the last gym town. Not on any of the children — on a bench. We don\'t know who put it there. The cage opens for the song. Don\'t hum it on the way."'
+            },
+            dead_raticate: {
+                ledger:    'There\'s a stuffed Raticate on the broker\'s shelf. It\'s old. They don\'t bring it up. They hand you a ledger of \'specimen returns\' — partners that came back to the broker after their trainers couldn\'t keep going. Specimen 0001 is at the top of the list. So is your rival\'s name, twice."',
+                recording: 'The broker plays a child\'s voice memo from years ago — a trainer cheering on a Raticate sweep. The voice gets cut off mid-laugh by a thud. The recording ends. \'Came in with the kid who couldn\'t keep going. We keep it for them. Take what you came for.\'',
+                key:       'The broker hands you the iron box without ceremony. "Your rival walked past this drawer six times. They couldn\'t open it. You will. Bring it peace — not for me, for them."'
+            },
+            lavender_frequency: {
+                ledger:    'The broker is in the room but you can\'t look at them directly. The ledger is on the counter. "READ IT, the song reads, every time you reach for the page."',
+                recording: 'The recording is the Lavender Town theme. There is no other content. The broker mouths the words \'turn it off\' and cannot reach the switch."',
+                key:       'The iron box is already in your hands. The broker is in the doorway. They are smiling kindly. They were not in the doorway when you came in."'
+            },
+            static: {
+                ledger:    'BROKER (FILE B) hands you the LEDGER (corrupted). The first page reads: SPECIMEN ???? / SUBJECT 0001 / LOOP COUNT: ???. The handwriting is yours."',
+                recording: 'The recording is your own voice. You don\'t remember saying any of it. The broker shrugs. \'You said it last time too. The drawer is over there.\'',
+                key:       'The IRON BOX has YOUR TRAINER NAME engraved on the lid. The broker hands it over without comment. \'It always was yours. You\'re just finally taking it.\''
+            }
+        };
+        /** Resolve the per-variant body line for a lead, falling back to the
+         *  shared default if the variant doesn't override it. */
+        function _bossLeadBodyForVariant(key) {
+            const variant = _storyActiveVariant();
+            const override = (_BOSS_LEAD_FLAVOR_BY_VARIANT[variant.id] || null);
+            if (override && override[key]) return override[key];
+            return (_BOSS_LEAD_FLAVOR[key] || {}).body || '';
+        }
         function _bossArcEnsureState() {
             if (!sm.bossArc || typeof sm.bossArc !== 'object') {
                 sm.bossArc = { available: false, leads: { ledger:false, recording:false, key:false }, cageUnlocked: false, boss: null, cleared: false };
@@ -34441,11 +35784,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.bossArc.available) return;
             if (sm.bossArc.leads[key]) return;
             const flav = _BOSS_LEAD_FLAVOR[key];
-            try { window.alert(flav.title + '\n\n' + flav.body); } catch (e) {}
-            sm.bossArc.leads[key] = true;
-            _bossArcCheckCageUnlock();
-            try { save(); } catch (e) {}
-            _pcRefresh();
+            if (!flav) return;
+            const body = _bossLeadBodyForVariant(key) || flav.body;
+            const variant = _storyActiveVariant();
+            const finish = function () {
+                sm.bossArc.leads[key] = true;
+                _bossArcCheckCageUnlock();
+                try { save(); } catch (e) {}
+                try { _pcRefresh(); } catch (e) {}
+            };
+            // Promote the lead from a plain window.alert() to the standard
+            // narrative overlay. Per-variant body line is used when the
+            // variant has overridden the broker voice; otherwise we fall
+            // through to the classic body.
+            try {
+                _renderNarrativeOverlay({
+                    metaKey: 'boss-lead-' + key + '-v2',
+                    banner: '— THE UNDERGROUND —',
+                    sprite: 'Veteran',
+                    name: 'The broker',
+                    nameplate: flav.title,
+                    toneClass: variant.toneClass || '',
+                    lines: [body],
+                    continueLabel: 'Take the lead →',
+                    onDone: finish
+                });
+            } catch (e) {
+                console.warn('[Story] boss lead overlay fallback to alert:', e);
+                try { window.alert(flav.title + '\n\n' + body); } catch (e2) {}
+                finish();
+            }
         }
         function bossEnterCage() {
             _bossArcEnsureState();
@@ -34997,6 +36365,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { _storyShowOneTimeTip('roaming',
                         'A roaming Pokémon.\n\nThese turn up exactly once, on a single route after a gym victory, and they won\'t wait for the next attempt. Catch rate is a flat 30% × ball multiplier; a Master Ball is the only guaranteed throw. Miss, and it\'s gone for this run.'); } catch (e) {}
                 }
+                // First-sighting Pokédex lore — mature+ tier storylines only.
+                // Fires once per species; dedupe lives in tipsShown so a player
+                // who wakes up on a new variant gets the lore the first time
+                // they meet that species on the run.
+                try {
+                    if (_shouldFireFirstSightingLore(wildMon && wildMon.name)) {
+                        _showFirstSightingLoreOverlay(wildMon.name, null);
+                    }
+                } catch (e) {}
             }
             const runBtn = document.getElementById('story-catch-run-btn');
             if (runBtn) {
@@ -40659,6 +42036,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             openTrainerCreate, cancelTrainerCreate,
             trainerCreatePrevSprite, trainerCreateNextSprite, trainerCreateRandomSprite,
             trainerCreateSetDifficulty, trainerCreateSetGenPreset,
+            trainerCreateSetStoryline,
             confirmTrainerAndStart,
             openCollection, closeCollection, pokedexSetGen,
             _markDexSeen: _storyMarkDexSeen,
