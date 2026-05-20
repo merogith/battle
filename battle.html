@@ -6664,7 +6664,7 @@
             <span id="story-link-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
-            <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Random trades from anonymous partners — random species, random typing. Three options per Pokémon:<br><strong style="color:#aed581;">Reroll</strong> same grade, T3 build (10,000–16,000G) · <strong style="color:#ffd54f;">Upgrade</strong> to a stronger grade, T4 build (18,000–22,000G) · <strong style="color:#90caf9;">Rebuild</strong> same species, new T3 build (8,000G). Priced as a premium over the Tutor + Dojo + EV-Trainer ladder. <span style="color:#9ccc65;">To evolve, visit the Stone Sage at the Evolution Tutor.</span></p>
+            <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Random trades from anonymous partners — random species, random typing. Three options per Pokémon:<br><strong style="color:#aed581;">Reroll</strong> same grade, T3 build (6,000–14,000G) · <strong style="color:#ffd54f;">Upgrade</strong> to a stronger grade, T4 build (9,000–22,000G) · <strong style="color:#90caf9;">Rebuild</strong> same species, new T3 build (5,000G). Flat prices — no city-spam ramp. Priced as a premium over the Tutor + Dojo + EV-Trainer ladder. <span style="color:#9ccc65;">To evolve, visit the Stone Sage at the Evolution Tutor.</span></p>
             <div id="story-link-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
@@ -26033,7 +26033,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Grade weights: g4=weakest(early), g1=strongest(late). Blanks auto-interpolated.
         // Tier aim (pool strength): Mystery > Champion ≈ Rival (League) > E4 > E3 > E2 > E1 > GL8 > … > GL1 > Rival (route) > Elite Trainer > Gym Trainer > Basic Trainer.
         // Economy: ~65 main-path battles; starting 2000G base + difficulty bonus + early-route coin taper (+15% first battle → 0% last).
-        // Early route payouts set to 1400G so a few wins put Rebuild (8K) and Tutor visits (1.5–2K) in reach without trivializing them; the heavy Cable Link options (Reroll 10–16K, Upgrade 18–22K) intentionally require saving across multiple cities.
+        // Early route payouts set to 1400G so a few wins put Rebuild (5K) and Tutor visits (1.5–2K) in reach without trivializing them; the heavier Cable Link options (Reroll 6–14K, Upgrade 9–22K) intentionally require saving up but are no longer locked behind half the campaign now that the per-city ×1.5 ramp is gone.
         // Gym Trainer / Gym Leader base coins are bumped (see mod comment 2026-05) for economy.
         // Intro Rival after City0 (from hub); one Basic route fight before City1; eight badges; Victory Road (3 Elite); League City; E1–E4, Champion, Rival, HoF, Mystery.
         // Rival row ids 68 / 12 / 39 are fought from the city hub (button) before Leave / Continue Route, like Gym checks.
@@ -36016,18 +36016,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // path (~17,000G for one full T4 build): the Link bundles every visit into a
         // single click AND randomizes the species — typing can clash with the rest of
         // the team — so the gold cost reflects "convenience tax + lottery risk".
-        // G2→G1 anchors at 22K (untouched); G4→G3 and G3→G2 climb to match so a
-        // single Upgrade isn't an obvious skip past the entire training-NPC ladder.
-        // Reroll prices stay under Upgrade because Reroll only delivers a T3 build —
-        // still wants Tutor/Dojo/EV polish to top off — and pays a species-swap risk
-        // tax (random typing). Rebuild stays cheapest: same species, no grade lift.
-        const REROLL_COSTS     = { 1:16000, 2:14000, 3:12000, 4:10000 };
-        const UPGRADE_COSTS    = { 4:18000, 3:20000, 2:22000 };
+        // Flat per-action prices (no intra-city ×1.5 ramp): the gold floor is the
+        // only spam-deterrent now, so the bottom end is set high enough that an
+        // early-route player has to win a real handful of battles before a Reroll
+        // is in reach, but not so high that the first one is locked behind half
+        // the campaign. G2→G1 anchors at 22K (the late-game luxury cap); G4→G3 and
+        // G3→G2 climb toward it. Reroll prices sit under Upgrade because Reroll
+        // only delivers a T3 build — still wants Tutor/Dojo/EV polish to top off —
+        // and pays a species-swap risk tax (random typing). Rebuild stays cheapest:
+        // same species, no grade lift, no typing-clash risk.
+        const REROLL_COSTS     = { 1:14000, 2:12000, 3:9000, 4:6000 };
+        const UPGRADE_COSTS    = { 4:9000, 3:13000, 2:22000 };
         // Evolution is priced by the TARGET grade, not the source — so Magikarp → Gyarados
         // (G4 → G1 in one step) costs the same as any other G1 evolution, and a G3 → G1
         // pseudo-legend final pays the G1 tier instead of the G3 source tier.
         const EVOLVE_COST_BY_TARGET = { 3: 1500, 2: 6000, 1: 16000 };
-        const REBUILD_COST     = 8000;
+        const REBUILD_COST     = 5000;
         const STORY_INTERACTION_WARN_COOLDOWN_MS = 1200;
         let _storyInteractionBusy = false;
         let _storyInteractionWarnLastAt = 0;
@@ -36086,7 +36090,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { window.StoryFx && window.StoryFx.playSfx('beam', 0.45); } catch (e) {}
                 try { _storyShowFacilityQuote('screen-story-link', 'link'); } catch (e) {}
                 try { _storyShowOneTimeTip('first-link',
-                    'The Cable Link Station — the premium one-click route to a tournament-grade build.\n\nThree options sit on the console. Same Tier Swap trades for a different species at the same grade, with a Competent-tier build (polish at the Tutor / Dojo / EV Trainer). Upgrade kicks a Pokémon up a grade and ships it at T4 — full EVs, top-pool ability and item, no further visits required. Rebuild wipes the build on the same species and rolls a fresh Competent-tier set.\n\nPriced as a premium over the manual Tutor + Dojo + EV-Trainer ladder: one Upgrade bundles every visit into a single click, so it costs more than running the ladder by hand. Random species means random typing too — read the team before you click. Prices also escalate inside a city the more you use them, but reset when you move on. Spend on a keeper, not an impulse swap.'); } catch (e) {}
+                    'The Cable Link Station — the premium one-click route to a tournament-grade build.\n\nThree options sit on the console. Same Tier Swap trades for a different species at the same grade, with a Competent-tier build (polish at the Tutor / Dojo / EV Trainer). Upgrade kicks a Pokémon up a grade and ships it at T4 — full EVs, top-pool ability and item, no further visits required. Rebuild wipes the build on the same species and rolls a fresh Competent-tier set.\n\nFlat per-action prices — no repeat-use ramp inside a city — but the cheapest option is still a few wins away in the early game. Random species means random typing too: read the team before you click. Spend on a keeper, not an impulse swap.'); } catch (e) {}
             } finally {
                 _storyEndInteraction();
             }
@@ -36279,11 +36283,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             el.innerHTML = sm.team.map((t,i) => {
                 const g      = getMonGrade(t.name, getBST(t.name));
-                let rCost  = Math.ceil((REROLL_COSTS[g] || 100) * Math.pow(1.5, (sm.cityRerollsUsed[`r_${i}`]||0)));
+                let rCost  = REROLL_COSTS[g] || 100;
                 if (_storyDifficultyIsCasual() && (sm.cityRerollsUsed[`r_${i}`]||0) === 0) rCost = Math.ceil(rCost * 0.78);
                 const uCostBase = g > 1 ? (UPGRADE_COSTS[g] || 9999) : null;
-                const uCost    = uCostBase !== null ? Math.ceil(uCostBase * Math.pow(1.5, (sm.cityRerollsUsed[`u_${i}`]||0))) : null;
-                const rebB   = Math.ceil(REBUILD_COST * Math.pow(1.5, (sm.cityRerollsUsed[`b_${i}`]||0)));
+                const uCost    = uCostBase;
+                const rebB   = REBUILD_COST;
                 const canR   = sm.gold >= rCost;
                 const canU   = uCost  !== null && sm.gold >= uCost;
                 const canBld = sm.gold >= rebB;
@@ -36378,7 +36382,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const g   = getMonGrade(mon.name, getBST(mon.name));
                 const rk = `r_${idx}`;
                 const rn = (sm.cityRerollsUsed[rk] || 0) + 1;
-                let cost = Math.ceil((REROLL_COSTS[g]||100) * Math.pow(1.5, rn - 1));
+                let cost = REROLL_COSTS[g] || 100;
                 if (_storyDifficultyIsCasual() && rn === 1) cost = Math.ceil(cost * 0.78);
                 if (sm.gold < cost) return;
                 const pool = buildGradePool(storySettingsGens(), g).filter(n=>n!==mon.name&&!sm.team.some((t,i)=>i!==idx&&t.name===n));
@@ -36409,7 +36413,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const newG = g - 1;
                 const uk = `u_${idx}`;
                 const un = (sm.cityRerollsUsed[uk] || 0) + 1;
-                const cost = Math.ceil((UPGRADE_COSTS[g] || 9999) * Math.pow(1.5, un - 1));
+                const cost = UPGRADE_COSTS[g] || 9999;
                 if (sm.gold < cost) return;
                 const pool = buildGradePool(storySettingsGens(), newG).filter(n=>!sm.team.some((t,i)=>i!==idx&&t.name===n));
                 if (!pool.length) { window.showGameAlert('No Pokémon available at that grade.'); return; }
@@ -36881,7 +36885,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const mon = sm.team[idx]; if (!mon) return;
                 const bk = `b_${idx}`;
                 const bn = (sm.cityRerollsUsed[bk] || 0) + 1;
-                const cost = Math.ceil(REBUILD_COST * Math.pow(1.5, bn - 1));
+                const cost = REBUILD_COST;
                 if (sm.gold < cost) return;
                 const ok = await _storyConfirmTutorChange(`Reroll ${mon.name}'s entire build (moves, item, nature, EVs)? Species stays. Competent-tier build — polish at Tutor/Dojo/EV Trainer to top it off.`, cost);
                 if (!ok) return;
