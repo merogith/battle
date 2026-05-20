@@ -17141,11 +17141,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!bd) return null;
             let hpPct = attacker.currentHp / attacker.maxHp;
             let defHpPct = defender.currentHp / defender.maxHp;
+            // Last-mon override: if this is the AI side's final unfainted mon and
+            // it still has a gimmick to spend, fire it now — holding "in reserve"
+            // for a future mon that doesn't exist reads as incompetent play.
+            const _aiIsLastMon = (state && state.foeParty && state.foeParty.filter(m => m.currentHp > 0).length <= 1);
 
             // MEGA: previously activated unconditionally. Now apply a few cheap heuristics so
             // the AI doesn't waste its once-per-battle slot on a turn it's about to switch or
             // on a near-dead Pokémon. Mega is still high-value, so the bar to skip is low.
             if (bd.gimmick === 'MEGA' && !attacker.megaEvolved && (!settings.classicMode || !state.fUsedMega)) {
+                if (_aiIsLastMon) return 'MEGA';
                 // Skip if we're about to die anyway and can't recover (sub 25% HP + no recovery move).
                 const _recoveryMoves = new Set(["Recover","Roost","Slack Off","Soft-Boiled","Synthesis","Moonlight","Morning Sun","Milk Drink","Heal Order","Shore Up","Strength Sap","Wish","Pain Split","Rest"]);
                 const _hasRecovery = (attacker.moves || []).some(m => m && _recoveryMoves.has(m.name));
@@ -17167,6 +17172,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             //  e) endgame (last mons standing) — last call, use it or lose it
             //  f) opponent has a super-effective move and we're at ≥50% HP (HP buffer helps tank)
             if ((bd.gimmick === 'DYNAMAX' || bd.gimmick === 'GMAXDYNAMAX') && !attacker.dynamaxed && !attacker.dynamaxUsed && (!settings.classicMode || !state.fUsedDyna)) {
+                if (_aiIsLastMon) return bd.gimmick === 'GMAXDYNAMAX' ? 'GMAXDYNAMAX' : 'DYNAMAX';
                 let defHasSEMove = defender.moves.some(m => m.cat !== 'Status' && getMoveEffectiveness(m.type, attacker.type1, attacker.type2) >= 2);
                 let isEndgame = state.foeParty.filter(m => m.currentHp > 0).length <= 1;
                 let isFreshMatchup = (attacker.turnCount || 0) <= 1;
@@ -17180,7 +17186,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             //  b) Tera type unlocks a KO (STAB on Tera type, or Tera Blast, hits harder)
             //  c) HP low and type change provides survival
             //  d) Stellar Tera available — offensive boost is always strong
+            //  e) last-mon override (don't die with the crystal in reserve)
             if (bd.teraType && !attacker.teraActivated && (!settings.classicMode || !state.fUsedTera)) {
+                if (_aiIsLastMon) return 'TERA';
                 let teraReducesThreat = defender.moves.some(m => {
                     if (m.cat === 'Status') return false;
                     let preTera = getMoveEffectiveness(m.type, attacker.type1, attacker.type2);
@@ -17220,6 +17228,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             //  b) both sides low HP (now-or-never situation)
             //  c) opponent has screens/substitute that Z-Move bypasses
             if (bd.gimmick === 'ZMOVE' && !attacker.zMoveUsed && (!settings.classicMode || !state.fUsedZ)) {
+                if (_aiIsLastMon) return 'ZMOVE';
                 // Iterate all damaging moves, pick the highest Z damage option
                 let zDmg = 0;
                 for (let m of attacker.moves) {
@@ -29693,7 +29702,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (e === 'Mystery Figure') return 1.0;
             const tier = _trainerTierForEvent(e);
             const prog = _storyProgressFactor(sm && sm.badges);
-            return Math.max(0, Math.min(1, tier * prog));
+            // Difficulty-mode gimmick scaling — mirrors the foe-stat-mult ramp
+            // (`applyFoeDifficultyScaling`) so the chosen difficulty also shifts
+            // gimmick density. Frontier/Crucible Hard Mode bands above already
+            // returned without falling through here, so this only affects the
+            // standard story-mode roll.
+            const diff = (sm && sm.storyDifficulty) || 'normal';
+            const diffMult = ({ veryeasy: 0.70, easy: 0.85, normal: 1.00, hard: 1.15, challenge: 1.30 })[diff] || 1.00;
+            return Math.max(0, Math.min(1, tier * prog * diffMult));
         }
         function _applyEnemyGimmickDistribution(team, eventType) {
             const keys = _storyEnemyMechKeys();
