@@ -8126,7 +8126,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const show = !!(window.StoryMode && typeof window.StoryMode.isActive === 'function' && window.StoryMode.isActive());
                 srr.classList.toggle('hidden', !show);
             }
-            document.getElementById('modal-settings').classList.remove('hidden');
+            window.openModal('modal-settings');
         };
         window.applyBattleLogDockClass = function() {
             const sb = document.getElementById('screen-battle');
@@ -8145,13 +8145,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         } else {
             _syncBattleLogDockFromSettings();
         }
-        window.closeModal = function(id) { document.getElementById(id).classList.add('hidden'); }
+        // Modal focus stack — populated by openModal(); popped by closeModal().
+        // Restores focus to whatever element was active before the modal opened
+        // so keyboard / SR users land back where they came from.
+        if (!window._modalFocusStack) window._modalFocusStack = new Map();
+        window.openModal = function(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            try {
+                const prev = document.activeElement;
+                if (prev && prev !== document.body) window._modalFocusStack.set(id, prev);
+            } catch (e) {}
+            el.classList.remove('hidden');
+        };
+        window.closeModal = function(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.add('hidden');
+            try {
+                const prev = window._modalFocusStack.get(id);
+                if (prev && typeof prev.focus === 'function') prev.focus();
+                window._modalFocusStack.delete(id);
+            } catch (e) {}
+        }
         window.showGameAlert = function(msg) {
             dismissTextTooltipForModal();
             const p = document.getElementById('modal-game-alert-text');
             if (p) p.textContent = msg != null ? String(msg) : '';
-            const el = document.getElementById('modal-game-alert');
-            if (el) el.classList.remove('hidden');
+            window.openModal('modal-game-alert');
         };
         window._gameConfirmResolve = null;
         window.showGameConfirm = function(message) {
@@ -8160,8 +8181,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 window._gameConfirmResolve = resolve;
                 const t = document.getElementById('modal-game-confirm-text');
                 if (t) t.textContent = message != null ? String(message) : '';
-                const el = document.getElementById('modal-game-confirm');
-                if (el) el.classList.remove('hidden');
+                window.openModal('modal-game-confirm');
             });
         };
         window._gameConfirmResult = function(ok) {
@@ -8174,34 +8194,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             window._modalEscapeBound = true;
             document.addEventListener('keydown', function(e) {
                 if (e.key !== 'Escape') return;
-                const help = document.getElementById('modal-help');
-                const settings = document.getElementById('modal-settings');
-                if (help && !help.classList.contains('hidden')) {
-                    e.preventDefault();
-                    window.closeModal('modal-help');
-                    return;
-                }
-                const abandonC = document.getElementById('modal-story-abandon-confirm');
-                if (abandonC && !abandonC.classList.contains('hidden')) {
-                    e.preventDefault();
-                    window.closeModal('modal-story-abandon-confirm');
-                    return;
-                }
-                const gameAlert = document.getElementById('modal-game-alert');
-                if (gameAlert && !gameAlert.classList.contains('hidden')) {
-                    e.preventDefault();
-                    window.closeModal('modal-game-alert');
-                    return;
-                }
+                // game-confirm has a Promise contract — route Esc through its
+                // resolver instead of just hiding it, otherwise the awaiter hangs.
                 const gameConfirm = document.getElementById('modal-game-confirm');
                 if (gameConfirm && !gameConfirm.classList.contains('hidden')) {
                     e.preventDefault();
                     window._gameConfirmResult(false);
                     return;
                 }
-                if (settings && !settings.classList.contains('hidden')) {
-                    e.preventDefault();
-                    window.closeModal('modal-settings');
+                // Close the topmost visible modal. DOM order = stack order
+                // because openModal() pushes onto the end; the last `.modal:not(.hidden)`
+                // is what's painted on top.
+                const open = document.querySelectorAll('.modal:not(.hidden)');
+                if (open.length) {
+                    const top = open[open.length - 1];
+                    if (top.id) {
+                        e.preventDefault();
+                        window.closeModal(top.id);
+                    }
                 }
             });
         }
@@ -8216,7 +8226,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 text = helpData.draft.replace(/\bYou need to pick 3\./g, `You need to pick ${ps}.`);
             }
             if (!document.getElementById('screen-battle').classList.contains('hidden')) text = helpData.battle;
-            document.getElementById('help-text').innerHTML = text; document.getElementById('modal-help').classList.remove('hidden');
+            document.getElementById('help-text').innerHTML = text; window.openModal('modal-help');
         }
         function formatMovePriority(pri) {
             let p = pri === undefined || pri === null ? 0 : Number(pri);
@@ -28260,7 +28270,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function confirmAbandon() {
-            document.getElementById('modal-story-abandon-confirm').classList.remove('hidden');
+            window.openModal('modal-story-abandon-confirm');
         }
 
         function abandonAndReturn() {
