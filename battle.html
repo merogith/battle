@@ -1008,7 +1008,6 @@
             backdrop-filter: blur(6px);
             overflow-x: auto; overflow-y: hidden;
             -webkit-overflow-scrolling: touch;
-            scroll-snap-type: x proximity;
             scrollbar-width: thin;
             box-shadow: 0 2px 6px rgba(0,0,0,0.45);
         }
@@ -1020,7 +1019,6 @@
             background: rgba(64,72,90,0.85); border: 1px solid #5a6478;
             border-radius: 999px; cursor: pointer; transition: all 0.12s;
             font-family: inherit; color: #cdd3e0;
-            scroll-snap-align: start;
             min-height: 40px;
         }
         .tx-mon-pill:hover { border-color: var(--accent); color: #e0e4ee; }
@@ -1036,6 +1034,32 @@
         .tx-mon-pill-label {
             font-size: 11px; font-weight: 600; white-space: nowrap;
             max-width: 80px; overflow: hidden; text-overflow: ellipsis;
+        }
+        /* "Close" chip sits at the start of the pill bar when one mon is
+           expanded — lets the player collapse the whole list in one tap
+           without scrolling back to the header chevron. */
+        .tx-collapse-all {
+            display: inline-flex; align-items: center; gap: 4px;
+            flex: 0 0 auto; padding: 0 12px; min-height: 38px;
+            background: rgba(244,67,54,0.92); border: 1px solid #b04a3f;
+            color: #fff8f7; border-radius: 999px; cursor: pointer;
+            font-family: inherit; font-size: 11px; font-weight: 700;
+            letter-spacing: 0.04em; transition: all 0.12s;
+            text-transform: uppercase;
+            position: sticky; left: 4px; z-index: 2;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.55), 0 0 0 2px rgba(46,52,72,0.96);
+        }
+        .tx-collapse-all:hover { background: rgba(244,67,54,1); color: #fff; border-color: #d96459; }
+        /* "Tap a Pokémon" hint replaces the Close chip while everything is
+           collapsed, so the bar always communicates its purpose. */
+        .tx-mon-switcher-hint {
+            display: inline-flex; align-items: center; flex: 0 0 auto;
+            padding: 0 8px; color: #9aa0aa; font-size: 11px;
+            font-style: italic; white-space: nowrap;
+        }
+        @media (max-width: 380px) {
+            .tx-collapse-all { padding: 0 8px; font-size: 10px; }
+            .tx-mon-switcher-hint { font-size: 10px; padding: 0 4px; }
         }
         @media (max-width: 480px) {
             .tx-mon-switcher { padding: 5px 6px; gap: 5px; }
@@ -39318,30 +39342,60 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const t = ev.target && ev.target.closest ? ev.target : null;
                 if (!t) return;
 
+                // "Collapse all" affordance — close the open mon so the team
+                // list returns to the compact picker state. Rendered only when
+                // one mon is open.
+                if (t.closest('.tx-collapse-all[data-collapse-all]')) {
+                    if (_storyTutorOpenIdx !== -1) {
+                        _storyTutorOpenIdx = -1;
+                        _txPending = null;
+                        void renderTutorTeam();
+                    }
+                    return;
+                }
+
                 // Sticky mon-switcher pill — jump straight to a mon's editor
-                // without scrolling back to the collapsed header. After the
-                // re-render, scroll the scroller so the new mon's body starts
-                // just below the sticky pill bar (~58px = pill bar + margin).
+                // without scrolling back to the collapsed header. Tapping the
+                // currently-open mon's pill collapses everything, so the player
+                // can reach the "all closed" state without scrolling up to the
+                // header chevron. After the re-render, scroll so the new mon's
+                // body starts just below the sticky pill bar (~58px).
                 const monPill = t.closest('.tx-mon-pill[data-mon-switcher]');
                 if (monPill) {
                     const nextIdx = parseInt(monPill.dataset.monSwitcher, 10);
-                    if (Number.isFinite(nextIdx) && _storyTutorOpenIdx !== nextIdx) {
-                        _storyTutorOpenIdx = nextIdx;
-                        _txPending = null;
-                        void renderTutorTeam();
-                        setTimeout(() => {
-                            try {
-                                const teamEl = document.getElementById('story-tutor-team');
-                                const open = teamEl && teamEl.querySelector(`.story-tutor-mon-toggle[data-team="${nextIdx}"]`);
-                                const scroller = teamEl && teamEl.parentElement;
-                                if (open && scroller) {
-                                    const sb = scroller.getBoundingClientRect();
-                                    const ob = open.getBoundingClientRect();
-                                    const targetTop = scroller.scrollTop + (ob.top - sb.top) - 64;
-                                    scroller.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
-                                }
-                            } catch (e) {}
-                        }, 30);
+                    if (Number.isFinite(nextIdx)) {
+                        if (_storyTutorOpenIdx === nextIdx) {
+                            _storyTutorOpenIdx = -1;
+                            _txPending = null;
+                            void renderTutorTeam();
+                        } else {
+                            _storyTutorOpenIdx = nextIdx;
+                            _txPending = null;
+                            void renderTutorTeam();
+                            setTimeout(() => {
+                                try {
+                                    const teamEl = document.getElementById('story-tutor-team');
+                                    const open = teamEl && teamEl.querySelector(`.story-tutor-mon-toggle[data-team="${nextIdx}"]`);
+                                    const scroller = teamEl && teamEl.parentElement;
+                                    if (open && scroller) {
+                                        const sb = scroller.getBoundingClientRect();
+                                        const ob = open.getBoundingClientRect();
+                                        const targetTop = scroller.scrollTop + (ob.top - sb.top) - 64;
+                                        scroller.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+                                    }
+                                    // Center the now-active pill in the horizontal switcher
+                                    // (direct scrollLeft so we don't disturb page scroll).
+                                    const activePill = teamEl && teamEl.querySelector(`.tx-mon-pill[data-mon-switcher="${nextIdx}"]`);
+                                    const switcher = teamEl && teamEl.querySelector('.tx-mon-switcher');
+                                    if (activePill && switcher) {
+                                        const sw = switcher.getBoundingClientRect();
+                                        const pr = activePill.getBoundingClientRect();
+                                        const targetLeft = switcher.scrollLeft + (pr.left - sw.left) - (sw.width - pr.width) / 2;
+                                        switcher.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+                                    }
+                                } catch (e) {}
+                            }, 30);
+                        }
                     }
                     return;
                 }
@@ -39786,18 +39840,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Render: sticky mon-switcher pill bar — lets the player jump directly to
         // any mon's editor without scrolling back to find its collapsed header.
         // The active mon (= openIdx) is highlighted. activeIdx of -1 means "all
-        // collapsed" — every pill renders inactive.
+        // collapsed" — every pill renders inactive and the bar shows a "Tap a
+        // Pokémon" hint. When one mon is open, a "Close" chip on the right
+        // collapses everything in one tap (no need to scroll back to the
+        // chevron on the header).
         function _txMonSwitcherHtml(team, activeIdx, facility) {
             if (!team || team.length <= 1) return '';
             const pills = team.map((t, i) => {
                 const isActive = i === activeIdx;
                 const spriteUrl = getSprite(spriteDisplayName(t));
-                return `<button type="button" class="tx-mon-pill" data-mon-switcher="${i}" data-facility="${_esc(facility)}" data-active="${isActive?1:0}" aria-label="${_esc(t.name)}" title="${_esc(t.name)}">
+                const ttl = isActive ? `${t.name} — tap to collapse` : t.name;
+                return `<button type="button" class="tx-mon-pill" data-mon-switcher="${i}" data-facility="${_esc(facility)}" data-active="${isActive?1:0}" aria-label="${_esc(ttl)}" title="${_esc(ttl)}">
                     <img src="${spriteUrl}" alt="" onerror="this.style.visibility='hidden'">
                     <span class="tx-mon-pill-label">${_esc(t.name)}</span>
                 </button>`;
             }).join('');
-            return `<div class="tx-mon-switcher" role="tablist" aria-label="Switch Pokémon">${pills}</div>`;
+            const closeChip = activeIdx >= 0
+                ? `<button type="button" class="tx-collapse-all" data-collapse-all="${_esc(facility)}" aria-label="Close all" title="Close all Pokémon">▾ Close</button>`
+                : `<span class="tx-mon-switcher-hint" aria-hidden="true">Tap a Pokémon →</span>`;
+            return `<div class="tx-mon-switcher" role="tablist" aria-label="Switch Pokémon">${closeChip}${pills}</div>`;
         }
 
         // Render: collapsed mon header (same look as before, lightly polished)
@@ -40194,6 +40255,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const m = mode === 'nature' ? 'nature' : mode === 'loadout' ? 'loadout' : 'moves';
             _markFacilitySeen(m === 'nature' ? 'nature' : m === 'loadout' ? 'dojo' : 'tutor');
             _storyTutorMode = m;
+            // Lead with the first mon expanded so the rec panel is visible
+            // immediately. Use the Close chip (or tap the active pill /
+            // header chevron) to collapse to the all-closed picker.
             _storyTutorOpenIdx = 0;
             // Reset transient picker state on entry — fresh filters & no pending swap
             _txState.moveSlot = 0;
@@ -40280,6 +40344,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
 
             const facility = showMoves ? 'tutor' : (showLoadout ? 'dojo' : 'nature');
+            const _prevSwitcherScrollLeft = (() => {
+                try { const sw = el.querySelector('.tx-mon-switcher'); return sw ? sw.scrollLeft : 0; } catch (e) { return 0; }
+            })();
             const switcherHtml = _txMonSwitcherHtml(sm.team, _storyTutorOpenIdx, facility);
             el.innerHTML = switcherHtml + sm.team.map((t, idx) => {
                 const expanded = idx === _storyTutorOpenIdx;
@@ -40292,6 +40359,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (showNature)  return _txRenderNatureEditor(t, idx);
                 return _txRenderCollapsedMonHtml(t, idx, mode);
             }).join('');
+
+            // Preserve pill-bar horizontal scroll across re-renders so the
+            // active pill stays in the same spot the player left it.
+            try {
+                const sw = el.querySelector('.tx-mon-switcher');
+                if (sw) sw.scrollLeft = _prevSwitcherScrollLeft || 0;
+            } catch (e) {}
 
             // Refocus the search input that was active before the re-render so
             // typing stays uninterrupted. Restore caret position too.
@@ -41015,7 +41089,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             showScreen('screen-story-evtrainer');
             // Whistle blast — Buck's "drop and give me twenty" vibe.
             try { window.StoryFx && window.StoryFx.playSfx('statUp', 0.4); } catch (e) {}
-            // Fresh entry: first mon expanded so the player lands somewhere actionable.
+            // Lead with the first mon's preset picks visible — collapse via
+            // the Close chip / active pill / header chevron when the player
+            // wants to scan the rest of the team.
             _storyEVTrainerOpenIdx = 0;
             renderEVTrainerTeam();
             try { _storyShowFacilityQuote('screen-story-evtrainer', 'evTrainer'); } catch (e) {}
@@ -41045,29 +41121,53 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             el.addEventListener('click', function(ev) {
                 const t = ev.target && ev.target.closest ? ev.target : null;
                 if (!t) return;
+                // "Collapse all" affordance — close the open preset card so
+                // the team list returns to the compact picker.
+                if (t.closest('.tx-collapse-all[data-collapse-all="evtrainer"]')) {
+                    if (_storyEVTrainerOpenIdx !== -1) {
+                        _storyEVTrainerOpenIdx = -1;
+                        try { renderEVTrainerTeam(); } catch (e) {}
+                    }
+                    return;
+                }
                 // Sticky mon-switcher pill — jump straight to a mon's editor.
+                // Tapping the active pill collapses everything so the player
+                // can reach the "all closed" overview.
                 const monPill = t.closest('.tx-mon-pill[data-mon-switcher][data-facility="evtrainer"]');
                 if (monPill) {
                     const nextIdx = parseInt(monPill.dataset.monSwitcher, 10);
-                    if (Number.isFinite(nextIdx) && _storyEVTrainerOpenIdx !== nextIdx) {
-                        _storyEVTrainerOpenIdx = nextIdx;
-                        try { renderEVTrainerTeam(); } catch (e) {}
-                        // Scroll the new mon's header just below the sticky
-                        // pill bar (~58px). Use getBoundingClientRect → scroller
-                        // because offsetTop walks to the nearest positioned
-                        // ancestor, which is the screen root (not the scroller).
-                        setTimeout(() => {
-                            try {
-                                const open = el.querySelector(`.story-tutor-mon-toggle[data-team="${nextIdx}"][data-facility="evtrainer"]`);
-                                const scroller = el.parentElement;
-                                if (open && scroller) {
-                                    const sb = scroller.getBoundingClientRect();
-                                    const ob = open.getBoundingClientRect();
-                                    const targetTop = scroller.scrollTop + (ob.top - sb.top) - 64;
-                                    scroller.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
-                                }
-                            } catch (e) {}
-                        }, 30);
+                    if (Number.isFinite(nextIdx)) {
+                        if (_storyEVTrainerOpenIdx === nextIdx) {
+                            _storyEVTrainerOpenIdx = -1;
+                            try { renderEVTrainerTeam(); } catch (e) {}
+                        } else {
+                            _storyEVTrainerOpenIdx = nextIdx;
+                            try { renderEVTrainerTeam(); } catch (e) {}
+                            // Scroll the new mon's header just below the sticky
+                            // pill bar (~58px). Use getBoundingClientRect → scroller
+                            // because offsetTop walks to the nearest positioned
+                            // ancestor, which is the screen root (not the scroller).
+                            setTimeout(() => {
+                                try {
+                                    const open = el.querySelector(`.story-tutor-mon-toggle[data-team="${nextIdx}"][data-facility="evtrainer"]`);
+                                    const scroller = el.parentElement;
+                                    if (open && scroller) {
+                                        const sb = scroller.getBoundingClientRect();
+                                        const ob = open.getBoundingClientRect();
+                                        const targetTop = scroller.scrollTop + (ob.top - sb.top) - 64;
+                                        scroller.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+                                    }
+                                    const activePill = el.querySelector(`.tx-mon-pill[data-mon-switcher="${nextIdx}"][data-facility="evtrainer"]`);
+                                    const switcher = el.querySelector('.tx-mon-switcher');
+                                    if (activePill && switcher) {
+                                        const sw = switcher.getBoundingClientRect();
+                                        const pr = activePill.getBoundingClientRect();
+                                        const targetLeft = switcher.scrollLeft + (pr.left - sw.left) - (sw.width - pr.width) / 2;
+                                        switcher.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+                                    }
+                                } catch (e) {}
+                            }, 30);
+                        }
                     }
                     return;
                 }
@@ -41123,8 +41223,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (_storyEVTrainerOpenIdx >= sm.team.length) _storyEVTrainerOpenIdx = -1;
             // Reset cache then render
             for (const k in _evTrainerMetaCache) delete _evTrainerMetaCache[k];
+            const _prevSwitcherScrollLeft = (() => {
+                try { const sw = el.querySelector('.tx-mon-switcher'); return sw ? sw.scrollLeft : 0; } catch (e) { return 0; }
+            })();
             const switcherHtml = _txMonSwitcherHtml(sm.team, _storyEVTrainerOpenIdx, 'evtrainer');
             el.innerHTML = _evTrainerHelpBannerHtml() + switcherHtml + sm.team.map((t, idx) => _renderEVTrainerMonCard(t, idx)).join('');
+            // Preserve pill-bar horizontal scroll across re-renders.
+            try {
+                const sw = el.querySelector('.tx-mon-switcher');
+                if (sw) sw.scrollLeft = _prevSwitcherScrollLeft || 0;
+            } catch (e) {}
         }
 
         // Score an EV preset against the Pokémon's base stats — surfaces which
