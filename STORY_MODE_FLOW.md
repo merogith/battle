@@ -861,6 +861,167 @@ saves automatically pick up the new tuning on their next battle.
 
 ---
 
+## 15g. Signature grade ceiling + gym leader union pool (v19)
+
+A balance + replayability pass tightening the foe-roll pipeline. Two
+concrete bugs motivated it:
+
+- **Aerodactyl on Gym Trainer 1.** `rollTrainerTeam`'s sig pool was
+  filtered only by enabled gen, not by the row's `gradeWeights`. So
+  `Sky-Steel Ranger` (a `tag:'multitype'` Basic Trainer with sigs
+  `['Skarmory','Corviknight','Empoleon','Aerodactyl','Doduo']` — four
+  G2s + one G4) could land as Gym Trainer 1 against any Flying or
+  Steel GL1, rolling Aerodactyl at sigP 0.65 even though the row's
+  weights were `{g3:10, g4:90}`. Same risk surface for every
+  multitype / villain / cursed / eldritch Basic Trainer.
+- **Legendaries on pre-G7 Elite Trainers.** Veteran trainers
+  (`Veteran Lt. Surge` with `Zapdos`, `Brandon` with
+  `Articuno/Moltres/Zapdos`) rolled with the full sig pool at every
+  Elite Trainer slot from row 34 (post-GL5) onward.
+
+### Strict signature grade-cap
+
+`_storyMaxSigGradeForGw(gwIn)` returns the lowest grade number (=
+strongest tier) with non-zero weight in the row's `gradeWeights`
+(after difficulty + progress + G4-strip transforms). So GL1
+`{g3:25, g4:75}` → ceiling `G3`; GL8 `{g2:100}` → ceiling `G2`;
+Champion `{g1:80, g2:20}` → ceiling `G1`.
+
+`_filterSigsByGradeCeiling(sigs, ceiling)` drops every sig whose
+grade is below the ceiling. Hooked into `rollTrainerTeam` right
+after the existing gen filter:
+
+```js
+const _exemptFromSigCap = (_isEldritch
+    || _evtStr === 'Mystery Figure'
+    || _evtStr === 'Champion'
+    || /^E[1-4]$/.test(_evtStr)
+    || _evtStr === 'Rival');
+if (!_exemptFromSigCap) {
+    const _ceiling = _storyMaxSigGradeForGw(gwIn);
+    S = _filterSigsByGradeCeiling(S, _ceiling);
+    if (/^Gym Leader\s*\d$/.test(_evtStr)) {
+        S = _topUpGymLeaderSigsForCeiling(trainer, S, _ceiling, genSet);
+    }
+}
+```
+
+Boss events (`Rival` / `E1-E4` / `Champion` / `Mystery Figure`) and
+`tag:'eldritch'` trainers stay exempt — their gradeWeights already
+authorize the top tiers, and Eldritch trainers are designed to
+ambush the player with out-of-this-world species.
+
+### Gym Leader union pool
+
+`selectTrainerForRole` now accepts any `Gym Leader N` row for any
+`Gym Leader X` slot:
+
+```js
+const isGymLeaderSlot = /^gym leader\s*\d$/.test(rk);
+// …
+if (isGymLeaderSlot) return /^gym leader\s*\d$/.test(tr);
+```
+
+`assignTrainers` Pass 1 still uses `usedBaseNames` to keep each
+leader unique per run, so the pool is "8 of the 64 possible
+leaders, one per slot." Misty (canonical GL2) can roll as GL1, GL5,
+or GL8 across different runs. The build-tier and sig-rate
+calculations key off the **event type** (`Gym Leader 5`), not the
+trainer's canonical role, so all existing curves still apply
+without modification.
+
+`findTrainerDataByName` already falls through to a name-only match
+when the exact role lookup misses, so a Misty assigned to a GL5
+slot resolves correctly at battle time.
+
+### Top-up for emptied sig pools
+
+When a leader's grade-capped sig pool falls below 3 entries
+(`_GL_SIG_TOPUP_MIN`), `_topUpGymLeaderSigsForCeiling` fills it
+from a type-matched global pool at the row's ceiling grade. So
+Misty-as-GL8 (G2 ceiling) keeps Lapras (her only G2 sig) and gains
+type-matched G2 partners — reads as "veteran Misty with a stronger
+Water roster" rather than "Lapras + 5 generic filler."
+
+Blaine-as-GL3 (G3 ceiling) drops his entire sig pool
+(`Arcanine/Rapidash/Magmar/Ninetales/Magmortar` are all G2/G1) but
+gains type-matched G3 Fire from the top-up — Growlithe / Monferno
+/ Charmeleon / Vulpix — so the leader still reads as Fire-flavored
+even when none of his canonical sigs survive.
+
+### Tag-gate for Basic Trainer slot assignment
+
+`selectTrainerForRole` for `isBasicLike` now excludes
+`tag:'multitype'`, `tag:'villain'`, `tag:'cursed'`, and
+`tag:'eldritch'` trainers from normal type-matched slots:
+
+```js
+if (isBasicLike) {
+    if (tr !== 'basic trainer') return false;
+    if (t.tag === 'multitype' || t.tag === 'villain' ||
+        t.tag === 'cursed' || t.tag === 'eldritch') return false;
+    return true;
+}
+```
+
+Themed slots (rows 7/14/20/26/33/34/41/42/48/49/56/58) go through
+`_pickThemedTrainerForRole`, which still accepts tagged trainers
+by design. So the flavor beats are preserved while route Hikers
+and Gym Trainer 1/2s stop pulling from the high-sig flavor pool.
+
+### Safari Zone — badge-keyed grade curve
+
+Replaced static `SAFARI_GRADE_WEIGHTS = {g1:3, g2:22, g3:50, g4:25}`
+with `_SAFARI_GRADE_CURVE_BY_BADGES`:
+
+| Badges | g1 | g2 | g3 | g4 |
+|---|---|---|---|---|
+| 3 (first unlock at City 4) | 0 | 5 | 60 | 35 |
+| 4 | 0 | 15 | 60 | 25 |
+| 5 | 0 | 25 | 60 | 15 |
+| 6 | 1 | 35 | 54 | 10 |
+| 7 | 2 | 45 | 45 | 8 |
+| 8+ (post-game / Crucible) | 5 | 50 | 40 | 5 |
+
+Safari is the "Stage 2/3 G2-catch path" first, with a small G1
+chance only from Gym 6 onward. Players who unlock Safari at
+City 4 no longer have a 17%-per-session chance at Zapdos.
+
+### Wild route G2 leak ramp
+
+`_WILD_GRADE_CURVE_BY_BADGES` G2 entries replaced flat 5% with a
+ramp:
+
+| Badges | g2 | g3 |
+|---|---|---|
+| 6 | 3 | 97 |
+| 7 | 5 | 95 |
+| 8 | 8 | 92 |
+
+Gives the player a clearer "wilds get slightly better as you go"
+beat without undermining Safari's identity as the primary G2/G1
+path.
+
+### Audit flag
+
+`?balanceAudit=1[&auditTrials=N]` walks `STORY_EVENTS_RAW`, rolls
+each row's trainer team (N times, default 1), and dumps a console
+table with: trainer name, badges-before, gradeWeights, sig
+ceiling, raw vs capped sig pool, and sample team rolls. Flags any
+non-exempt row where a sig survived the cap above its ceiling.
+Also reachable from DevTools via
+`window.StoryMode.debugBalanceAudit({trials:N, gens:[…], difficulty:'…'})`.
+
+### Rollout
+
+Fresh runs and live runs both pick up the new tuning at the next
+battle — all changes are to static tables and roll-time helpers,
+no `SAVE_VER` bump, no migration. `sm.trainerAssignments` is
+re-evaluated lazily as the player advances, so an in-flight run
+gets new leader picks for unvisited slots.
+
+---
+
 ## 16. References
 
 - `docs/STORY_MODE_AUDIT.md` — full 6-agent audit of current story mode (~400 lines)
