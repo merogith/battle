@@ -30432,6 +30432,75 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return promoted;
         }
 
+        // ── SIGNATURE GRADE CEILING (v19 balance pass) ───────────────────────
+        // Before v19 the sig pool S was filtered only by gen, so a Basic/Gym
+        // Trainer with high-grade mons in their sig list (e.g. Sky-Steel Ranger
+        // with Aerodactyl/Empoleon/Skarmory/Corviknight, or Veteran Lt. Surge
+        // with Zapdos) could leak those tiers into an early-game fight that
+        // explicitly set `gradeWeights` to forbid them. The cap below filters
+        // the sig pool against the row's actual ceiling so the gradeWeights
+        // budget is respected by both filler picks AND signature picks.
+        //
+        // Boss events keep the full pool — Rival / E1-E4 / Champion / Mystery
+        // are designed to access top tiers via their own row gradeWeights.
+        function _storySigGradeCeiling(gw) {
+            if (!gw) return 4;
+            if ((gw.g1 || 0) > 0) return 1;
+            if ((gw.g2 || 0) > 0) return 2;
+            if ((gw.g3 || 0) > 0) return 3;
+            return 4;
+        }
+        function _filterSigsByGradeCeiling(sigs, minGradeNumber) {
+            if (!Array.isArray(sigs) || sigs.length === 0) return [];
+            const ceiling = minGradeNumber | 0;
+            return sigs.filter(name => {
+                const b = baseStats[name];
+                if (!b) return false;
+                const g = getMonGrade(name, getBST(name));
+                return g >= ceiling;
+            });
+        }
+        // Gym Leader union pool support: if a leader's post-cap sig pool falls
+        // below a useful size (e.g. Misty-as-GL8 keeps only Lapras after the
+        // G2 ceiling), top up with type-matched mons from the global pool at
+        // the row's ceiling grade. Keeps the leader's identity sigs (which
+        // already survived the cap) and rounds the team out with stage-correct
+        // picks — Misty-as-GL8 reads as "veteran Misty with a stronger water
+        // roster" rather than "one Lapras + filler."
+        const _GL_SIG_TOPUP_MIN = 3;
+        function _topUpGymLeaderSigsForCeiling(trainer, baseSigs, ceiling, genSet) {
+            if (!Array.isArray(baseSigs)) baseSigs = [];
+            if (baseSigs.length >= _GL_SIG_TOPUP_MIN) return baseSigs;
+            const types = parseTrainerTypes(trainer && trainer.type || 'Mixed');
+            const wantsMixed = types.some(t => t === 'Mixed' || t === 'All-Rounder');
+            const ceilingGrade = ceiling | 0;
+            const have = new Set(baseSigs);
+            const out = baseSigs.slice();
+            const _rng = (sm && sm.active) ? storyRngNext : Math.random;
+            for (let g = ceilingGrade; g <= 4 && out.length < _GL_SIG_TOPUP_MIN; g++) {
+                const pool = [];
+                for (const name of Object.keys(baseStats)) {
+                    if (isStoryRollExcluded(name)) continue;
+                    const b = baseStats[name];
+                    if (!b || !genSet.has(b.gen)) continue;
+                    if (getMonGrade(name, getBST(name)) !== g) continue;
+                    if (have.has(name)) continue;
+                    if (!wantsMixed) {
+                        const matches = types.some(type => b.t1 === type || (b.t2 && b.t2 === type));
+                        if (!matches) continue;
+                    }
+                    pool.push(name);
+                }
+                while (out.length < _GL_SIG_TOPUP_MIN && pool.length) {
+                    const i = Math.floor(_rng() * pool.length);
+                    const pick = pool.splice(i, 1)[0];
+                    out.push(pick);
+                    have.add(pick);
+                }
+            }
+            return out;
+        }
+
         function rollTrainerTeam(trainer, partySize, gradeWeights, enabledGensIn, battleEventType, storyRowIdx) {
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
             let gwIn = applyDifficultyToGradeWeights(gradeWeights || { g1: 0, g2: 0, g3: 50, g4: 50 });
@@ -30468,8 +30537,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const b = baseStats[name];
                 return b && genSet.has(b.gen);
             }).slice();
+            // v19 sig-grade cap: drop any sig whose tier exceeds the row's
+            // gradeWeights ceiling. Boss events (Rival/E1-E4/Champion/Mystery)
+            // already roll into top tiers via their own gradeWeights, so they
+            // skip the cap. Eldritch trainers also skip — their "out of this
+            // world" lineup is the intent.
+            const _evtStr = String(battleEventType || '');
+            const _exemptFromSigCap = (_isEldritch
+                || _evtStr === 'Mystery Figure'
+                || _evtStr === 'Champion'
+                || /^E[1-4]$/.test(_evtStr)
+                || _evtStr === 'Rival');
+            if (!_exemptFromSigCap) {
+                const _ceiling = _storySigGradeCeiling(gwIn);
+                S = _filterSigsByGradeCeiling(S, _ceiling);
+                // Gym Leader union pool top-up — Misty-as-GL8 gets her remaining
+                // identity sig plus type-matched G2 partners.
+                if (/^Gym Leader\s*\d$/.test(_evtStr)) {
+                    S = _topUpGymLeaderSigsForCeiling(trainer, S, _ceiling, genSet);
+                }
+            }
             if (_trainerIsPlaceholder) S = buildSyntheticSignaturePool({ ...trainer, type: 'Mixed' }, genSet, rng);
             else if (!S.length) S = buildSyntheticSignaturePool(trainer, genSet, rng);
+            // Synthetic-pool fallback also respects the ceiling so a trainer whose
+            // actual sigs filter to empty (e.g. Tea Aroma in a gen-1-only run, where
+            // every sig is Gen 2+) doesn't gain access to G2/G1 mons via the
+            // synthetic G2/G1 backfill in buildSyntheticSignaturePool.
+            if (!_exemptFromSigCap && Array.isArray(S) && S.length) {
+                S = _filterSigsByGradeCeiling(S, _storySigGradeCeiling(gwIn));
+            }
             const T = {1:[],2:[],3:[],4:[]};
             for (const name of Object.keys(baseStats)) {
                 if (isStoryRollExcluded(name)) continue;
@@ -30583,11 +30679,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     g4,
                 };
             })();
+            // v19 filler ceiling: pre-v19 the thematic-spiral and the two union
+            // fallbacks (pickFromUnionExcluding / pickRandomInGenWindow) ignored
+            // gradeWeights and could pull from T[1] when the type-restricted
+            // T[g] for the chosen grade was empty (common in single-gen runs).
+            // That let Zapdos land on Lt. Surge at GL4 in a gen-1-only run via
+            // the Electric-type spiral. Same exemption rule as the sig cap.
+            const _fillerCeiling = _exemptFromSigCap ? 1 : _storySigGradeCeiling(gwIn);
             function pickThematic() {
                 const _gw = gwForFiller;
                 const total = (_gw.g1||0)+(_gw.g2||0)+(_gw.g3||0)+(_gw.g4||0);
                 if (total === 0) {
-                    const all = [...T[1],...T[2],...T[3],...T[4]];
+                    const all = [];
+                    for (let gg = _fillerCeiling; gg <= 4; gg++) all.push(...T[gg]);
                     return all.length ? all[Math.floor(rng() * all.length)] : null;
                 }
                 let r = rng() * total;
@@ -30598,18 +30702,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else g=1; } }
                 let pool = T[g];
                 if (!pool.length) {
-                    // Spiral outward from target grade, preferring stronger (lower index) grades
+                    // Spiral outward, preferring stronger but never below ceiling.
                     for (let delta = 1; delta <= 3; delta++) {
                         const stronger = g - delta;
                         const weaker   = g + delta;
-                        if (stronger >= 1 && T[stronger].length) { pool = T[stronger]; break; }
-                        if (weaker   <= 4 && T[weaker].length)   { pool = T[weaker];   break; }
+                        if (stronger >= _fillerCeiling && T[stronger] && T[stronger].length) { pool = T[stronger]; break; }
+                        if (weaker   <= 4 && T[weaker]   && T[weaker].length)   { pool = T[weaker];   break; }
                     }
                 }
                 return pool.length ? pool[Math.floor(rng() * pool.length)] : null;
             }
             function pickFromUnionExcluding(usedNames) {
-                const all = [...T[1],...T[2],...T[3],...T[4]].filter(n => !usedNames.has(n));
+                const all = [];
+                for (let g = _fillerCeiling; g <= 4; g++) {
+                    for (const n of T[g]) if (!usedNames.has(n)) all.push(n);
+                }
                 return all.length ? all[Math.floor(rng() * all.length)] : null;
             }
             function pickRandomInGenWindow() {
@@ -30617,7 +30724,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 for (const name of Object.keys(baseStats)) {
                     if (isStoryRollExcluded(name)) continue;
                     const b = baseStats[name];
-                    if (b && genSet.has(b.gen)) pool.push(name);
+                    if (!b || !genSet.has(b.gen)) continue;
+                    if (getMonGrade(name, getBST(name)) < _fillerCeiling) continue;
+                    pool.push(name);
                 }
                 return pool.length ? pool[Math.floor(rng() * pool.length)] : null;
             }
@@ -30664,7 +30773,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _origSigs = new Set((trainer.sigs || []));
             const _locked = new Set();
             for (let _i = 0; _i < team.length; _i++) if (_origSigs.has(team[_i].name)) _locked.add(_i);
-            const _cand = [...T[1], ...T[2], ...T[3], ...T[4]];
+            // v19: cand pool for type-balance swap respects the same filler ceiling.
+            const _cand = [];
+            for (let g = _fillerCeiling; g <= 4; g++) _cand.push(...T[g]);
             enforceRoleCoverage(team, _locked);
             enforceTypeBalance(team, _cand, _locked);
             enforceItemClause(team);
@@ -30749,9 +30860,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const r = TRAINER_DATA.find(t => t.name === n && t.isRival);
                 if (r) return r;
             } else {
-                const m = ev.match(/^(E[1-4]|Gym Leader [1-8])$/);
-                if (m) {
+                // v19 union pool: any Gym Leader N row can be assigned to any Gym
+                // Leader X slot. Strict role match would fail for cross-slot picks
+                // (Misty as GL5 — her row is role:'Gym Leader 2'). Match by role
+                // family for gym leaders; keep strict match for E1-E4 (no union).
+                const e4 = ev.match(/^E[1-4]$/);
+                if (e4) {
                     const r = TRAINER_DATA.find(t => t.name === n && t.role === ev);
+                    if (r) return r;
+                } else if (/^Gym Leader [1-8]$/.test(ev)) {
+                    const r = TRAINER_DATA.find(t => t.name === n && /^Gym Leader \d$/.test(t.role));
                     if (r) return r;
                 } else if (ev === 'Elite Trainer') {
                     return TRAINER_DATA.find(t => t.name === n && t.role === 'Elite Trainer') || null;
@@ -30786,9 +30904,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const rk = roleKey.toLowerCase().trim();
             // 'Gym Trainer 1' and 'Gym Trainer 2' draw from the Basic Trainer pool (matching gym leader typing via preferredType).
             const isBasicLike = (rk === 'basic trainer' || rk === 'gym trainer' || rk === 'gym trainer 1' || rk === 'gym trainer 2');
+            // v19 union gym leader pool: any 'Gym Leader N' slot can pull from
+            // any gym-leader row. Misty (canonical GL2) can roll as GL5 or GL8,
+            // and the strict sig grade-cap in rollTrainerTeam keeps her at the
+            // slot's intended power. Greatly broadens leader variety per run;
+            // build-tier and sig-rate calculations key off the event type, not
+            // the trainer's canonical role, so all existing curves still apply.
+            const isGymLeaderSlot = /^gym leader\s*\d$/.test(rk);
             const roleAll = TRAINER_DATA.filter(t => {
                 const tr = t.role.toLowerCase();
-                if (isBasicLike) return tr === 'basic trainer';
+                if (isBasicLike) {
+                    if (tr !== 'basic trainer') return false;
+                    // v19 tag gate: multitype/villain/cursed/eldritch flavor
+                    // trainers stay on themed slots only (dispatched via
+                    // _pickThemedTrainerForRole at STORY_THEMED_BATTLES rows).
+                    // They carry G2+ sigs (Sky-Steel Ranger's Aerodactyl,
+                    // Plasma Sage's Hydreigon, etc.) that don't belong on a
+                    // route Hiker or a GL1 Gym Trainer.
+                    if (t.tag === 'multitype' || t.tag === 'villain' || t.tag === 'cursed' || t.tag === 'eldritch') return false;
+                    return true;
+                }
+                if (isGymLeaderSlot) return /^gym leader\s*\d$/.test(tr);
                 if (rk === 'rival') return t.isRival;
                 if (rk === 'elite trainer') return tr === 'elite trainer' && !t.isRival;
                 return tr === rk;
@@ -35168,7 +35304,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // chance at a G2/G3 you build yourself" trip, not a guaranteed haul.
         const SAFARI_ENTRY_COST = 10000;
         const SAFARI_MAX_ENCOUNTERS = 6;
-        const SAFARI_GRADE_WEIGHTS = { g1: 3, g2: 22, g3: 50, g4: 25 };
+        // v19 stage-gated Safari curve. Safari unlocks at City 4 (badges 3),
+        // and the player shouldn't see G1 legendaries until they're deep in
+        // Stage 3 (post-GL6). G2 only emerges meaningfully after the unlock
+        // so the first visit reads as "a real chance at a strong G3" rather
+        // than "a 17% chance per session at Zapdos." Pre-v19 was static
+        // {g1:3,g2:22,g3:50,g4:25}.
+        const _SAFARI_GRADE_CURVE_BY_BADGES = {
+            3: { g1: 0, g2: 5,  g3: 60, g4: 35 },  // first unlock @ City 4
+            4: { g1: 0, g2: 15, g3: 60, g4: 25 },  // post-G4 — G2 emerging
+            5: { g1: 0, g2: 25, g3: 60, g4: 15 },  // post-G5 — G2 ramping
+            6: { g1: 1, g2: 35, g3: 54, g4: 10 },  // post-G6 — first G1 leak
+            7: { g1: 2, g2: 45, g3: 45, g4: 8  },  // post-G7
+            8: { g1: 5, g2: 50, g3: 40, g4: 5  }   // post-G8 / Crucible re-entry
+        };
+        function _safariGradeWeightsForBadges() {
+            const b = Math.max(0, Math.min(8, (sm && sm.badges) | 0));
+            // Pre-unlock (badges 0-2) is unreachable in normal flow; fall back
+            // to the first-unlock curve so the engine never NaNs.
+            if (b < 3) return _SAFARI_GRADE_CURVE_BY_BADGES[3];
+            return _SAFARI_GRADE_CURVE_BY_BADGES[b];
+        }
         function enterSafariZone() {
             if (!sm.safari || typeof sm.safari !== 'object') sm.safari = { freeEntryUsed: false };
             const isFree = !sm.safari.freeEntryUsed;
@@ -35219,7 +35375,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             _safariSession.encountersUsed++;
             _safariResetEncounterMods();
-            const name = weightedPickFromGrades(SAFARI_GRADE_WEIGHTS, storySettingsGens());
+            const name = weightedPickFromGrades(_safariGradeWeightsForBadges(), storySettingsGens());
             if (!name) {
                 _safariReturnToCity('The reserve has no Pokémon native to your enabled generations. Try opening up your settings before returning.');
                 return;
@@ -36037,9 +36193,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             3: { g1: 0, g2: 0, g3: 60,  g4: 40  }, // post-G3 — G3 starts taking over
             4: { g1: 0, g2: 0, g3: 85,  g4: 15  }, // post-G4 — G3 era
             5: { g1: 0, g2: 0, g3: 100, g4: 0   }, // post-G5 — pure G3
-            6: { g1: 0, g2: 5, g3: 95,  g4: 0   }, // post-G6 — first G2 leak
-            7: { g1: 0, g2: 5, g3: 95,  g4: 0   }, // post-G7 — same
-            8: { g1: 0, g2: 5, g3: 95,  g4: 0   }  // post-G8 — same
+            // v19 ramped G2 leak: starts rare at badge 6, eases up through 8.
+            // Pre-v19 was a flat 5% from badge 6 onward; the ramp gives players
+            // a clearer "wilds get slightly better as you go" beat without
+            // undermining Safari's identity as the primary path to G2/G1.
+            6: { g1: 0, g2: 3, g3: 97,  g4: 0   }, // post-G6 — first G2 leak (rare)
+            7: { g1: 0, g2: 5, g3: 95,  g4: 0   }, // post-G7 — slight ramp
+            8: { g1: 0, g2: 8, g3: 92,  g4: 0   }  // post-G8 — wild ladder peaks
         };
         function _wildGradeWeightsForBadges(badges) {
             const b = Math.max(0, Math.min(8, badges | 0));
@@ -42926,6 +43086,137 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 console.table(profRows);
                 return { foes: foeRows, professor: profRows };
             },
+            // v19 balance audit: walk STORY_EVENTS_RAW, roll each battle's
+            // trainer team using the current sig-cap + union-pool + difficulty
+            // pipeline, and dump a per-row summary. Returns the structured rows
+            // so a developer can spot anomalies (G2 at GL1, legendary at GL3)
+            // before they hit a real save. Called via ?balanceAudit=1 or
+            // window.StoryMode.debugBalanceAudit() from DevTools.
+            debugBalanceAudit(opts) {
+                const o = opts || {};
+                const gens = Array.isArray(o.gens) && o.gens.length
+                    ? normalizeEnabledGens(o.gens)
+                    : [1,2,3,4,5,6,7,8,9];
+                const trials = Math.max(1, (o.trials | 0) || 1);
+                // Snapshot the live run state BEFORE the try — every field touched
+                // below restores in finally so a mid-loop throw can't leave the
+                // player's actual save with the audit's mock trainer assignments.
+                const wasActive = sm && sm.active;
+                const oldBadges = sm ? (sm.badges | 0) : 0;
+                const oldDiff   = sm ? sm.storyDifficulty : 'normal';
+                const oldSettingsGens = sm && sm.settings ? sm.settings.enabledGens : null;
+                const savedAssignments = sm ? sm.trainerAssignments : null;
+                const savedThemed      = sm ? sm.themedAssignments  : null;
+                if (sm) {
+                    if (!sm.settings) sm.settings = {};
+                    sm.settings.enabledGens = gens;
+                    sm.storyDifficulty = o.difficulty || 'normal';
+                    // Match the live game's RNG path so progress/strip/difficulty
+                    // helpers (which early-return when !sm.active) actually fire
+                    // during the audit. We restore wasActive in finally.
+                    sm.active = true;
+                }
+                const out = [];
+                try {
+                    try { assignTrainers(gens); } catch (e) { console.warn('[audit] assignTrainers failed:', e); }
+                    let badgesAccum = 0;
+                    for (let posInRaw = 0; posInRaw < STORY_EVENTS_RAW.length; posInRaw++) {
+                        const ev = STORY_EVENTS_RAW[posInRaw];
+                        if (!ev || ev[1] !== 'Battle') continue;
+                        const [idx, , eventName, gw, coins] = ev;
+                        const trainerName = sm && sm.trainerAssignments ? sm.trainerAssignments[idx] : null;
+                        const trainerData = trainerName ? findTrainerDataByName(trainerName, eventName) : null;
+                        if (sm) sm.badges = badgesAccum;
+                        const sigPool = trainerData ? (trainerData.sigs || []).filter(n => {
+                            const b = baseStats[n];
+                            return b && gens.includes(b.gen);
+                        }) : [];
+                        const cappedSigs = (function(){
+                            const evtStr = String(eventName || '');
+                            const isEldritch = !!(trainerData && trainerData.tag === 'eldritch');
+                            if (isEldritch || evtStr === 'Mystery Figure' || evtStr === 'Champion' || /^E[1-4]$/.test(evtStr) || evtStr === 'Rival') return sigPool.slice();
+                            // Pipeline order matches rollTrainerTeam: difficulty → progress → stripG4.
+                            const adjusted = storyStripGrade4IfPartyMature(
+                                applyStoryProgressToGradeWeights(
+                                    applyDifficultyToGradeWeights(gw || {g1:0,g2:0,g3:50,g4:50}),
+                                    posInRaw
+                                )
+                            );
+                            const ceiling = _storySigGradeCeiling(adjusted);
+                            return _filterSigsByGradeCeiling(sigPool, ceiling);
+                        })();
+                        const sampleTeams = [];
+                        if (trainerData && typeof rollTrainerTeam === 'function') {
+                            const partySize = Math.min(6, 2 + badgesAccum);
+                            for (let t = 0; t < trials; t++) {
+                                try {
+                                    const team = rollTrainerTeam(trainerData, partySize, gw, gens, eventName, idx);
+                                    sampleTeams.push(team.map(s => {
+                                        const g = getMonGrade(s.name, getBST(s.name));
+                                        return `${s.name}(G${g})`;
+                                    }).join(', '));
+                                } catch (e) {
+                                    sampleTeams.push(`<roll failed: ${e && e.message}>`);
+                                }
+                            }
+                        }
+                        out.push({
+                            row: posInRaw,
+                            idx,
+                            event: eventName,
+                            trainer: trainerName || '<unassigned>',
+                            trainerTag: (trainerData && trainerData.tag) || '',
+                            badges: badgesAccum,
+                            gradeWeights: gw ? `g1:${gw.g1||0} g2:${gw.g2||0} g3:${gw.g3||0} g4:${gw.g4||0}` : '<none>',
+                            coins,
+                            sigCeiling: gw ? _storySigGradeCeiling(gw) : 4,
+                            rawSigs: sigPool.join(','),
+                            cappedSigs: cappedSigs.join(','),
+                            sampleTeams: sampleTeams.join(' | ')
+                        });
+                        if (/^Gym Leader\s*\d$/.test(String(eventName || ''))) badgesAccum++;
+                    }
+                } finally {
+                    if (sm) {
+                        sm.active = wasActive;
+                        sm.badges = oldBadges;
+                        sm.storyDifficulty = oldDiff;
+                        if (sm.settings) sm.settings.enabledGens = oldSettingsGens;
+                        sm.trainerAssignments = savedAssignments;
+                        sm.themedAssignments  = savedThemed;
+                    }
+                }
+                try {
+                    console.log(`[balanceAudit] gens=[${gens.join(',')}] difficulty=${o.difficulty || 'normal'} trials=${trials}`);
+                    console.table(out.map(r => ({
+                        row: r.row, event: r.event, trainer: r.trainer, badges: r.badges,
+                        gw: r.gradeWeights, ceil: 'G' + r.sigCeiling,
+                        rawSigs: r.rawSigs, cappedSigs: r.cappedSigs
+                    })));
+                    if (trials > 0) {
+                        console.log('[balanceAudit] sample teams:');
+                        out.forEach(r => console.log(`  row ${r.row} (${r.event} — ${r.trainer}): ${r.sampleTeams}`));
+                    }
+                    // Flag any row where a capped sig appears at a grade exceeding the row's ceiling.
+                    // Boss events (Rival / E1-E4 / Champion / Mystery) and eldritch trainers
+                    // are exempt by design — their gradeWeights already authorize top-tier sigs.
+                    const violations = [];
+                    for (const r of out) {
+                        const e = String(r.event || '');
+                        if (e === 'Mystery Figure' || e === 'Champion' || /^E[1-4]$/.test(e) || e === 'Rival') continue;
+                        if (r.trainerTag === 'eldritch') continue;
+                        const cap = r.sigCeiling | 0;
+                        const sigs = r.cappedSigs ? r.cappedSigs.split(',').filter(Boolean) : [];
+                        for (const n of sigs) {
+                            const g = getMonGrade(n, getBST(n));
+                            if (g < cap) violations.push(`row ${r.row} (${r.event}): ${n} is G${g} but ceiling is G${cap}`);
+                        }
+                    }
+                    if (violations.length) console.warn('[balanceAudit] grade-cap violations:', violations);
+                    else console.log('[balanceAudit] no grade-cap violations detected.');
+                } catch (e) { console.warn('[balanceAudit] log render failed', e); }
+                return out;
+            },
         };
         })(); // end StoryMode IIFE
 
@@ -42988,6 +43279,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             } catch (e) {
                 console.warn('[storychampionweak] schedule', e);
+            }
+        })();
+
+        // ?balanceAudit=1 — walk the story-event timeline and dump per-row trainer
+        // teams + sig caps to the console. Verifies the v19 sig-grade-cap and
+        // union gym leader pool without playing through. Optional &auditTrials=N
+        // (default 1) re-rolls each row N times to see sig-pick variance.
+        (function scheduleBalanceAudit() {
+            try {
+                if (typeof location === 'undefined') return;
+                if (!/(?:^|[?&])balanceAudit=1(?:&|$)/.test(String(location.search || ''))) return;
+                if (!window.StoryMode || typeof window.StoryMode.debugBalanceAudit !== 'function') return;
+                const m = String(location.search || '').match(/(?:^|[?&])auditTrials=(\d+)/);
+                const trials = m ? Math.max(1, Math.min(20, parseInt(m[1], 10) | 0)) : 1;
+                const runSeed = function() {
+                    setTimeout(function() {
+                        try { window.StoryMode.debugBalanceAudit({ trials }); }
+                        catch (e) { console.warn('[balanceAudit] failed', e); }
+                    }, 0);
+                };
+                if (typeof dataReady !== 'undefined' && dataReady && typeof dataReady.then === 'function') {
+                    dataReady.then(runSeed, function(err) { console.warn('[balanceAudit] data failed', err); });
+                } else {
+                    runSeed();
+                }
+            } catch (e) {
+                console.warn('[balanceAudit] schedule', e);
             }
         })();
 
