@@ -80,6 +80,73 @@ active gold pill also toggles closed when re-tapped. While everything
 is collapsed the chip swaps in for a "Tap a Pokémon →" hint so the bar
 still communicates its purpose.
 
+## Unreleased — IVs become a real progression layer, Pokémon Fan Club opens 2026-05-20 (`claude/add-stats-guide-R3MMO`)
+
+### Changed — Player Pokémon roll random IVs at catch time
+
+Every Pokémon you acquire — starter, professor gift, wild catch, even the
+Crucible mystery offers — now rolls a fresh **0-31 IV spread** for each of
+its six stats instead of silently defaulting to a perfect 31/31/31/31/31/31.
+A starter with 7 Attack is real now, and so is a Lapras you fished out of
+the Safari Zone with 30 Speed.
+
+Enemy trainers scale their IVs to their training tier:
+
+* **T1 Untrained** (route fillers, early gym trainers): 0-15 per stat.
+* **T2 Novice** (mid-game trainers, early gym leaders): 10-22.
+* **T3 Competent** (late-game leaders, Elite Trainers): 18-28.
+* **T4 Tournament** (Champion, Elite Four, Rival post-G8, Mystery Figure,
+  Frontier Round 4+): 26-31.
+
+Signature aces (every leader's identity mon) take the **top quartile** of
+their tier's range — so Misty's Starmie still feels like Misty's Starmie
+within its tier. Subject Zero (boss-arc capture) is the lone exception
+and lands at a fixed perfect 31s.
+
+### Changed — Vitamins are now IV training, not a flat +10 stat layer
+
+`HP Up`, `Protein`, `Iron`, `Calcium`, `Zinc`, `Carbos` no longer stamp
+a separate `+1 stat` permBoost layer on top of the EV-derived stat. Each
+application now lifts the matching **IV by +3** directly, capped at the
+natural 31. The drop economy is unchanged — vitamins remain rare gym /
+milestone rewards — but they now have a clear purpose: rescue a
+weak-rolled stat back toward the cap.
+
+### Added — Pokémon Fan Club facility (every city)
+
+A new 💖 Pokémon Fan Club facility opens in **every city**, positioned
+between the Pokémart and the training row in the action grid. The
+Chairman runs a roster-level IV viewer: each of your six party mons gets
+a card showing all six stat IVs with a coloured progress bar (red <10,
+amber 10-20, green 21-30, gold 31). A `+3` button beside each stat
+applies a vitamin from your bag right there — no need to dig into the
+bag menu.
+
+* **First visit gift**: the Chairman hands you 1 of each vitamin
+  (HP Up / Protein / Iron / Calcium / Zinc / Carbos) so brand-new runs
+  have ammo to use immediately.
+* **Tutorial cameo**: a short three-line scene explains IVs and vitamins
+  the first time you enter, then never fires again.
+* The bag's vitamin Use buttons still work and route through the same
+  picker, which now shows IV X/31 + a preview of the post-apply value.
+
+### Added — Save migration v18 → v19 (grandfather + refund)
+
+Existing saves preserve their stats. The migration:
+
+1. **Grandfathers** every team/PC mon to the perfect 31/31/31/31/31/31
+   IV spread so no loaded mon loses stats it had before the patch.
+2. **Refunds** every leftover `permBoosts` point as one vitamin of the
+   matching stat (e.g. a mon with +4 HP / +7 Atk pre-patch gets back
+   4 HP Up + 7 Protein in your bag). Old `permBoosts` fields are then
+   removed.
+3. Caught explicitly **after** loading, all new wild / gift / starter
+   acquisitions go through the new random IV roll.
+
+Net effect: a loaded save has the same combat power it had pre-patch
+plus a generous fresh budget of vitamins to spend on freshly-caught
+wilds.
+
 ## Unreleased — Cable Link Station repriced as a flat premium over manual training 2026-05-20 (`claude/cable-link-pokemon-pricing-bb96A`)
 
 ### Changed — Cable Link Station: Reroll / Upgrade / Rebuild prices bumped, intra-city ×1.5 ramp removed
