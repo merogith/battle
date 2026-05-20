@@ -7151,6 +7151,14 @@
             </div>
             <div class="settings-section-title">Visuals</div>
             <label class="settings-row" for="sw-animations"><span>Battle animations</span><input type="checkbox" class="pbs-switch" id="sw-animations" role="switch" onchange="window.applySettingSwitch('animations', this.checked)"></label>
+            <div class="settings-row" style="border-bottom:1px solid #444;" title="Length of Mega Evolution / Dynamax / Tera / Z-Move activation animations.">
+                <span>Gimmick anim speed</span>
+                <select id="setting-gimmick-anim-speed" onchange="settings.gimmickAnimSpeed=this.value; persistMiscSettings();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
+                    <option value="normal">Normal</option>
+                    <option value="fast">Fast (0.5×)</option>
+                    <option value="instant">Instant</option>
+                </select>
+            </div>
             <label class="settings-row" for="sw-weather-anim"><span>Weather animation</span><input type="checkbox" class="pbs-switch" id="sw-weather-anim" role="switch" onchange="window.applySettingSwitch('weatherAnimation', this.checked)"></label>
             <label class="settings-row" for="sw-terrain-bg"><span>Terrain background</span><input type="checkbox" class="pbs-switch" id="sw-terrain-bg" role="switch" onchange="window.applySettingSwitch('terrainBackground', this.checked)"></label>
             <div class="settings-row" style="border-bottom:1px solid #444;" title="Override automatic device detection. Reload may be needed for some screens.">
@@ -9802,8 +9810,39 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             storyBattleItems: true, /* story in-battle bag */
             pvpBattleItems: false,  /* reserved: symmetric items in PvP */
             battleLogDock: true,    /* landscape tablets/desktop: dock log when wide enough */
-            displayMode: 'auto'     /* 'auto' | 'phone' | 'desktop' — manual override of UA detection */
+            displayMode: 'auto',    /* 'auto' | 'phone' | 'desktop' — manual override of UA detection */
+            gimmickAnimSpeed: 'normal'  /* 'normal' | 'fast' | 'instant' — controls Mega/Dyna/Tera/Z activation durations */
         };
+        // Central duration table for the four gimmick activation animations.
+        // The CSS keyframes (.anim-mega-activate, .anim-dmax-activate,
+        // .anim-dmax-deactivate, .anim-tera-activate, .anim-zmove-activate) carry
+        // matching durations; multiplying these JS timeouts also rescales the
+        // perceived animation length because the CSS animation is cut short when
+        // we strip the class.
+        const GIMMICK_ANIM_BASE_MS = { mega: 850, dmaxIn: 950, dmaxOut: 650, tera: 750, zmove: 750, zmoveSleep: 400 };
+        function gimmickAnimSpeedMult() {
+            const s = (settings && settings.gimmickAnimSpeed) || 'normal';
+            if (s === 'instant') return 0;
+            if (s === 'fast')    return 0.5;
+            return 1;
+        }
+        function gimmickAnimMs(key) {
+            const base = GIMMICK_ANIM_BASE_MS[key] | 0;
+            const mult = gimmickAnimSpeedMult();
+            if (mult === 0) return 0;
+            return Math.max(10, Math.round(base * mult));
+        }
+        window.gimmickAnimMs = gimmickAnimMs;
+        // One-shot CSS class for the duration returned by gimmickAnimMs(key).
+        // Centralized so PR-4's anim speed and any future "instant" mode change
+        // applies uniformly across Mega / Dyna / Tera / Z-Move sites.
+        function gimmickAnimFlash(spriteEl, animClass, key) {
+            if (!spriteEl) return;
+            const ms = gimmickAnimMs(key);
+            if (ms <= 0) return;
+            spriteEl.classList.add(animClass);
+            setTimeout(() => spriteEl.classList.remove(animClass), ms);
+        }
         try {
             const _pbs = JSON.parse(localStorage.getItem('pbs_settings') || '{}');
             if (_pbs.aiProfile) settings.aiProfile = _pbs.aiProfile;
@@ -9814,6 +9853,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.gauntletProgressiveDifficulty === 'boolean') settings.gauntletProgressiveDifficulty = _pbs.gauntletProgressiveDifficulty;
             if (typeof _pbs.csvBuildMix === 'number' && _pbs.csvBuildMix >= 0 && _pbs.csvBuildMix <= 1) settings.csvBuildMix = _pbs.csvBuildMix;
             if (_pbs.displayMode === 'phone' || _pbs.displayMode === 'desktop' || _pbs.displayMode === 'auto') settings.displayMode = _pbs.displayMode;
+            if (_pbs.gimmickAnimSpeed === 'normal' || _pbs.gimmickAnimSpeed === 'fast' || _pbs.gimmickAnimSpeed === 'instant') settings.gimmickAnimSpeed = _pbs.gimmickAnimSpeed;
         } catch (e) {}
         function persistMiscSettings() {
             try {
@@ -9825,7 +9865,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     smartDraftPool: settings.smartDraftPool,
                     gauntletProgressiveDifficulty: settings.gauntletProgressiveDifficulty,
                     csvBuildMix: settings.csvBuildMix,
-                    displayMode: settings.displayMode
+                    displayMode: settings.displayMode,
+                    gimmickAnimSpeed: settings.gimmickAnimSpeed
                 }));
             } catch (e) {}
         }
@@ -11830,6 +11871,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (ap) ap.value = settings.aiProfile || 'balanced';
             const dm = document.getElementById('setting-display-mode');
             if (dm) dm.value = settings.displayMode || 'auto';
+            const gas = document.getElementById('setting-gimmick-anim-speed');
+            if (gas) gas.value = settings.gimmickAnimSpeed || 'normal';
             try { window.syncSettingsModalSwitches(); } catch (e) {}
             try { _updateFullscreenUI(); } catch (e) {}
             const srr = document.getElementById('settings-story-run-summary-row');
@@ -13179,7 +13222,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (spriteEl) {
                 spriteEl.src = getSprite(spriteDisplayName(mon), mon.isShiny, isPlayer); spriteEl.alt = mon.name; spriteEl.dataset.shiny = mon.isShiny ? 'true' : 'false';
                 if (settings.animations) {
-                    spriteEl.classList.add('anim-mega-activate'); setTimeout(() => spriteEl.classList.remove('anim-mega-activate'), 850);
+                    gimmickAnimFlash(spriteEl, 'anim-mega-activate', 'mega');
                     try { showGimmickBanner('MEGA EVOLUTION', '#7b1fa2'); } catch(e) {}
                 }
             }
@@ -13209,7 +13252,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     spriteEl.dataset.shiny = mon.isShiny ? 'true' : 'false';
                     spriteEl.src = getSprite(spriteDisplayName(mon), mon.isShiny, isPlayer);
                 }
-                if (settings.animations) {
+                const _dmaxInMs = gimmickAnimMs('dmaxIn');
+                if (settings.animations && _dmaxInMs > 0) {
                     spriteEl.classList.add('anim-dmax-activate');
                     mon._dmaxAnimTimer = setTimeout(() => {
                         mon._dmaxAnimTimer = null;
@@ -13218,7 +13262,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             spriteEl.style.filter = 'drop-shadow(0 0 8px #ef5350) drop-shadow(0 0 4px #ef5350)';
                             spriteEl.style.transform = getSpriteTransformStyle(mon);
                         }
-                    }, 950);
+                    }, _dmaxInMs);
                 } else {
                     spriteEl.style.filter = 'drop-shadow(0 0 8px #ef5350) drop-shadow(0 0 4px #ef5350)';
                     spriteEl.style.transform = getSpriteTransformStyle(mon);
@@ -13258,8 +13302,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 spriteEl.dataset.shiny = sprShiny ? 'true' : 'false';
                 spriteEl.src = getSprite(sprName, sprShiny);
                 if (settings.animations) {
-                    spriteEl.classList.add('anim-dmax-deactivate');
-                    setTimeout(() => { spriteEl.classList.remove('anim-dmax-deactivate'); }, 650);
+                    gimmickAnimFlash(spriteEl, 'anim-dmax-deactivate', 'dmaxOut');
                 }
             }
             updateUI();
@@ -13306,9 +13349,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             let teraSprite = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
             if (teraSprite && settings.animations) {
-                teraSprite.classList.add('anim-tera-activate');
                 teraSprite.classList.add('tera-crystal-on');
-                setTimeout(() => teraSprite.classList.remove('anim-tera-activate'), 750);
+                gimmickAnimFlash(teraSprite, 'anim-tera-activate', 'tera');
             }
             updateUI();
         }
@@ -14897,6 +14939,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.usedMega = false; state.usedZ = false; state.usedDyna = false; state.usedTera = false;
             state.fUsedMega = false; state.fUsedZ = false; state.fUsedDyna = false; state.fUsedTera = false;
             state.p1GimmickIntent = null; state.p2GimmickIntent = null;
+            // Clear per-mon gimmick flags on every party member so a benched/recalled mon
+            // can use its gimmick in a future battle (Dynamax used to be permanently
+            // locked because `dynamaxUsed` was never reset).
+            try {
+                const _clearMonGimmick = (m) => {
+                    if (!m) return;
+                    m.megaEvolved = false;
+                    m.dynamaxed = false; m.dynamaxTurns = 0; m.dynamaxUsed = false;
+                    if (m._preDynaName) { m.name = m._preDynaName; m._preDynaName = null; }
+                    if (m.baseMaxHp) { m.maxHp = m.baseMaxHp; m.baseMaxHp = null; }
+                    m.teraActivated = false;
+                    if (m.stellarTypesUsed) m.stellarTypesUsed = null;
+                    m.zMoveUsed = false;
+                };
+                (state.playerParty || []).forEach(_clearMonGimmick);
+                (state.foeParty || []).forEach(_clearMonGimmick);
+                // Remove leftover Tera crystal overlay from sprites that haven't yet
+                // Tera'd this battle (the class is added by activateTera but never removed).
+                document.querySelectorAll('.tera-crystal-on').forEach(el => el.classList.remove('tera-crystal-on'));
+            } catch (e) { console.warn('[startBattle] per-mon gimmick reset:', e); }
             try { if (settings.randomWeather) rollRandomWeather(); } catch (e) { console.warn('[startBattle] rollRandomWeather:', e); }
             try { if (settings.randomTerrain) rollRandomTerrain(); } catch (e) { console.warn('[startBattle] rollRandomTerrain:', e); }
             try {
@@ -17421,11 +17483,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!bd) return null;
             let hpPct = attacker.currentHp / attacker.maxHp;
             let defHpPct = defender.currentHp / defender.maxHp;
+            // Last-mon override: if this is the AI side's final unfainted mon and
+            // it still has a gimmick to spend, fire it now — holding "in reserve"
+            // for a future mon that doesn't exist reads as incompetent play.
+            const _aiIsLastMon = (state && state.foeParty && state.foeParty.filter(m => m.currentHp > 0).length <= 1);
 
             // MEGA: previously activated unconditionally. Now apply a few cheap heuristics so
             // the AI doesn't waste its once-per-battle slot on a turn it's about to switch or
             // on a near-dead Pokémon. Mega is still high-value, so the bar to skip is low.
             if (bd.gimmick === 'MEGA' && !attacker.megaEvolved && (!settings.classicMode || !state.fUsedMega)) {
+                if (_aiIsLastMon) return 'MEGA';
                 // Skip if we're about to die anyway and can't recover (sub 25% HP + no recovery move).
                 const _recoveryMoves = new Set(["Recover","Roost","Slack Off","Soft-Boiled","Synthesis","Moonlight","Morning Sun","Milk Drink","Heal Order","Shore Up","Strength Sap","Wish","Pain Split","Rest"]);
                 const _hasRecovery = (attacker.moves || []).some(m => m && _recoveryMoves.has(m.name));
@@ -17447,6 +17514,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             //  e) endgame (last mons standing) — last call, use it or lose it
             //  f) opponent has a super-effective move and we're at ≥50% HP (HP buffer helps tank)
             if ((bd.gimmick === 'DYNAMAX' || bd.gimmick === 'GMAXDYNAMAX') && !attacker.dynamaxed && !attacker.dynamaxUsed && (!settings.classicMode || !state.fUsedDyna)) {
+                if (_aiIsLastMon) return bd.gimmick === 'GMAXDYNAMAX' ? 'GMAXDYNAMAX' : 'DYNAMAX';
                 let defHasSEMove = defender.moves.some(m => m.cat !== 'Status' && getMoveEffectiveness(m.type, attacker.type1, attacker.type2) >= 2);
                 let isEndgame = state.foeParty.filter(m => m.currentHp > 0).length <= 1;
                 let isFreshMatchup = (attacker.turnCount || 0) <= 1;
@@ -17460,7 +17528,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             //  b) Tera type unlocks a KO (STAB on Tera type, or Tera Blast, hits harder)
             //  c) HP low and type change provides survival
             //  d) Stellar Tera available — offensive boost is always strong
+            //  e) last-mon override (don't die with the crystal in reserve)
             if (bd.teraType && !attacker.teraActivated && (!settings.classicMode || !state.fUsedTera)) {
+                if (_aiIsLastMon) return 'TERA';
                 let teraReducesThreat = defender.moves.some(m => {
                     if (m.cat === 'Status') return false;
                     let preTera = getMoveEffectiveness(m.type, attacker.type1, attacker.type2);
@@ -17470,17 +17540,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 // Offensive trigger: does Tera unlock a KO that base form can't?
                 let teraUnlocksKO = false;
+                const origActivated = attacker.teraActivated;
+                const origT1 = attacker.type1, origT2 = attacker.type2;
                 try {
-                    const origActivated = attacker.teraActivated;
-                    const origT1 = attacker.type1, origT2 = attacker.type2;
                     let baseDmg = Math.max(0, ...attacker.moves.filter(m => m.pp > 0 && m.cat !== 'Status').map(m => aiEstimateDmg(attacker, defender, m)));
                     attacker.teraActivated = true; attacker.type1 = bd.teraType; attacker.type2 = '';
                     let teraDmg = Math.max(0, ...attacker.moves.filter(m => m.pp > 0 && m.cat !== 'Status').map(m => aiEstimateDmg(attacker, defender, m)));
-                    attacker.teraActivated = origActivated; attacker.type1 = origT1; attacker.type2 = origT2;
                     if (teraDmg >= defender.currentHp && baseDmg < defender.currentHp) teraUnlocksKO = true;
                     // Also fire if Tera boosts top-move damage by ≥30% on a healthy foe (sweep setup)
                     else if (defHpPct > 0.6 && teraDmg >= baseDmg * 1.3 && baseDmg > 0) teraUnlocksKO = true;
-                } catch (e) { /* fall through */ }
+                } catch (e) { /* fall through */ } finally {
+                    attacker.teraActivated = origActivated; attacker.type1 = origT1; attacker.type2 = origT2;
+                }
 
                 // Stellar: opportunistic offensive Tera once per type — very strong, fire eagerly.
                 let stellarOpportunity = (bd.teraType === 'Stellar') && (defHpPct > 0.4);
@@ -17499,6 +17570,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             //  b) both sides low HP (now-or-never situation)
             //  c) opponent has screens/substitute that Z-Move bypasses
             if (bd.gimmick === 'ZMOVE' && !attacker.zMoveUsed && (!settings.classicMode || !state.fUsedZ)) {
+                if (_aiIsLastMon) return 'ZMOVE';
                 // Iterate all damaging moves, pick the highest Z damage option
                 let zDmg = 0;
                 for (let m of attacker.moves) {
@@ -19644,9 +19716,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (isPlayer) { state.usedZ = true; clearGimmickIntent(true); } else { state.fUsedZ = true; clearGimmickIntent(false); }
                     // Z-Move activation animation
                     if (settings.animations) {
-                        let zSprite = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
-                        if (zSprite) { zSprite.classList.add('anim-zmove-activate'); setTimeout(() => zSprite.classList.remove('anim-zmove-activate'), 750); }
-                        await sleep(400);
+                        const _zSleep = gimmickAnimMs('zmoveSleep');
+                        gimmickAnimFlash(document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite'), 'anim-zmove-activate', 'zmove');
+                        if (_zSleep > 0) await sleep(_zSleep);
                     }
                     if (zBuild.zStatusEffect) {
                         logMsg(`${attacker.name} used Z-${move.name}! A surge of power filled the battlefield!`, 'info');
@@ -26264,6 +26336,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             state.usedMega = false; state.usedZ = false; state.usedDyna = false; state.usedTera = false;
             state.fUsedMega = false; state.fUsedZ = false; state.fUsedDyna = false; state.fUsedTera = false;
             state.p1GimmickIntent = null; state.p2GimmickIntent = null;
+            try {
+                const _clearMonGimmick = (m) => {
+                    if (!m) return;
+                    m.megaEvolved = false;
+                    m.dynamaxed = false; m.dynamaxTurns = 0; m.dynamaxUsed = false;
+                    if (m._preDynaName) { m.name = m._preDynaName; m._preDynaName = null; }
+                    if (m.baseMaxHp) { m.maxHp = m.baseMaxHp; m.baseMaxHp = null; }
+                    m.teraActivated = false;
+                    if (m.stellarTypesUsed) m.stellarTypesUsed = null;
+                    m.zMoveUsed = false;
+                };
+                (state.playerParty || []).forEach(_clearMonGimmick);
+                (state.foeParty || []).forEach(_clearMonGimmick);
+                document.querySelectorAll('.tera-crystal-on').forEach(el => el.classList.remove('tera-crystal-on'));
+            } catch (e) { console.warn('[gauntlet round] per-mon gimmick reset:', e); }
             logMsg(`Gauntlet Round ${state.score + 1} begins!`, 'info');
             AudioSystem.startNewBattle();
             // Hide all modals so we cleanly return to battle
@@ -29885,8 +29972,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return normalizeEnabledGens((sm.settings && sm.settings.enabledGens) || rangeToEnabledGens(sm.settings.minGen ?? 1, sm.settings.maxGen ?? 9));
         }
 
+        // Cache of computed grade pools by `(sortedEnabledGens|grade)`. Scoped at
+        // the StoryMode module level so it survives multiple battles within a
+        // single run. Cleared by `_invalidateBuildGradePoolCache` whenever the
+        // enabled-gens set could have changed (run start / settings change).
+        const _BUILD_GRADE_POOL_CACHE = new Map();
+        function _invalidateBuildGradePoolCache() { _BUILD_GRADE_POOL_CACHE.clear(); }
         function buildGradePool(enabledGens, grade) {
-            const genSet = new Set(normalizeEnabledGens(enabledGens));
+            const normalized = normalizeEnabledGens(enabledGens);
+            const key = normalized.slice().sort((a, b) => a - b).join(',') + '|' + grade;
+            const hit = _BUILD_GRADE_POOL_CACHE.get(key);
+            if (hit) return hit.slice();
+            const genSet = new Set(normalized);
             const result = [];
             for (const name of Object.keys(baseStats)) {
                 if (isStoryRollExcluded(name)) continue;
@@ -29894,7 +29991,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!b || !genSet.has(b.gen)) continue;
                 if (getMonGrade(name, getBST(name)) === grade) result.push(name);
             }
-            return result;
+            _BUILD_GRADE_POOL_CACHE.set(key, result);
+            return result.slice();
         }
 
         function applyDifficultyToGradeWeights(gw) {
@@ -30095,7 +30193,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (e === 'Mystery Figure') return 1.0;
             const tier = _trainerTierForEvent(e);
             const prog = _storyProgressFactor(sm && sm.badges);
-            return Math.max(0, Math.min(1, tier * prog));
+            // Difficulty-mode gimmick scaling — mirrors the foe-stat-mult ramp
+            // (`applyFoeDifficultyScaling`) so the chosen difficulty also shifts
+            // gimmick density. Frontier/Crucible Hard Mode bands above already
+            // returned without falling through here, so this only affects the
+            // standard story-mode roll.
+            const diff = (sm && sm.storyDifficulty) || 'normal';
+            const diffMult = ({ veryeasy: 0.70, easy: 0.85, normal: 1.00, hard: 1.15, challenge: 1.30 })[diff] || 1.00;
+            return Math.max(0, Math.min(1, tier * prog * diffMult));
         }
         // Minimum guaranteed gimmick mons by event type — beats the random
         // per-mon roll so a flagship fight always shows a signature mech-ace.
