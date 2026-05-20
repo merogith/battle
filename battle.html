@@ -29318,7 +29318,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         //
         // Boss events keep the full pool — Rival / E1-E4 / Champion / Mystery
         // are designed to access top tiers via their own row gradeWeights.
-        function _storyMaxSigGradeForGw(gw) {
+        function _storySigGradeCeiling(gw) {
             if (!gw) return 4;
             if ((gw.g1 || 0) > 0) return 1;
             if ((gw.g2 || 0) > 0) return 2;
@@ -29424,7 +29424,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 || /^E[1-4]$/.test(_evtStr)
                 || _evtStr === 'Rival');
             if (!_exemptFromSigCap) {
-                const _ceiling = _storyMaxSigGradeForGw(gwIn);
+                const _ceiling = _storySigGradeCeiling(gwIn);
                 S = _filterSigsByGradeCeiling(S, _ceiling);
                 // Gym Leader union pool top-up — Misty-as-GL8 gets her remaining
                 // identity sig plus type-matched G2 partners.
@@ -29434,6 +29434,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (_trainerIsPlaceholder) S = buildSyntheticSignaturePool({ ...trainer, type: 'Mixed' }, genSet, rng);
             else if (!S.length) S = buildSyntheticSignaturePool(trainer, genSet, rng);
+            // Synthetic-pool fallback also respects the ceiling so a trainer whose
+            // actual sigs filter to empty (e.g. Tea Aroma in a gen-1-only run, where
+            // every sig is Gen 2+) doesn't gain access to G2/G1 mons via the
+            // synthetic G2/G1 backfill in buildSyntheticSignaturePool.
+            if (!_exemptFromSigCap && Array.isArray(S) && S.length) {
+                S = _filterSigsByGradeCeiling(S, _storySigGradeCeiling(gwIn));
+            }
             const T = {1:[],2:[],3:[],4:[]};
             for (const name of Object.keys(baseStats)) {
                 if (isStoryRollExcluded(name)) continue;
@@ -29547,11 +29554,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     g4,
                 };
             })();
+            // v19 filler ceiling: pre-v19 the thematic-spiral and the two union
+            // fallbacks (pickFromUnionExcluding / pickRandomInGenWindow) ignored
+            // gradeWeights and could pull from T[1] when the type-restricted
+            // T[g] for the chosen grade was empty (common in single-gen runs).
+            // That let Zapdos land on Lt. Surge at GL4 in a gen-1-only run via
+            // the Electric-type spiral. Same exemption rule as the sig cap.
+            const _fillerCeiling = _exemptFromSigCap ? 1 : _storySigGradeCeiling(gwIn);
             function pickThematic() {
                 const _gw = gwForFiller;
                 const total = (_gw.g1||0)+(_gw.g2||0)+(_gw.g3||0)+(_gw.g4||0);
                 if (total === 0) {
-                    const all = [...T[1],...T[2],...T[3],...T[4]];
+                    const all = [];
+                    for (let gg = _fillerCeiling; gg <= 4; gg++) all.push(...T[gg]);
                     return all.length ? all[Math.floor(rng() * all.length)] : null;
                 }
                 let r = rng() * total;
@@ -29562,18 +29577,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else g=1; } }
                 let pool = T[g];
                 if (!pool.length) {
-                    // Spiral outward from target grade, preferring stronger (lower index) grades
+                    // Spiral outward, preferring stronger but never below ceiling.
                     for (let delta = 1; delta <= 3; delta++) {
                         const stronger = g - delta;
                         const weaker   = g + delta;
-                        if (stronger >= 1 && T[stronger].length) { pool = T[stronger]; break; }
-                        if (weaker   <= 4 && T[weaker].length)   { pool = T[weaker];   break; }
+                        if (stronger >= _fillerCeiling && T[stronger] && T[stronger].length) { pool = T[stronger]; break; }
+                        if (weaker   <= 4 && T[weaker]   && T[weaker].length)   { pool = T[weaker];   break; }
                     }
                 }
                 return pool.length ? pool[Math.floor(rng() * pool.length)] : null;
             }
             function pickFromUnionExcluding(usedNames) {
-                const all = [...T[1],...T[2],...T[3],...T[4]].filter(n => !usedNames.has(n));
+                const all = [];
+                for (let g = _fillerCeiling; g <= 4; g++) {
+                    for (const n of T[g]) if (!usedNames.has(n)) all.push(n);
+                }
                 return all.length ? all[Math.floor(rng() * all.length)] : null;
             }
             function pickRandomInGenWindow() {
@@ -29581,7 +29599,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 for (const name of Object.keys(baseStats)) {
                     if (isStoryRollExcluded(name)) continue;
                     const b = baseStats[name];
-                    if (b && genSet.has(b.gen)) pool.push(name);
+                    if (!b || !genSet.has(b.gen)) continue;
+                    if (getMonGrade(name, getBST(name)) < _fillerCeiling) continue;
+                    pool.push(name);
                 }
                 return pool.length ? pool[Math.floor(rng() * pool.length)] : null;
             }
@@ -29628,7 +29648,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _origSigs = new Set((trainer.sigs || []));
             const _locked = new Set();
             for (let _i = 0; _i < team.length; _i++) if (_origSigs.has(team[_i].name)) _locked.add(_i);
-            const _cand = [...T[1], ...T[2], ...T[3], ...T[4]];
+            // v19: cand pool for type-balance swap respects the same filler ceiling.
+            const _cand = [];
+            for (let g = _fillerCeiling; g <= 4; g++) _cand.push(...T[g]);
             enforceRoleCoverage(team, _locked);
             enforceTypeBalance(team, _cand, _locked);
             enforceItemClause(team);
@@ -29713,9 +29735,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const r = TRAINER_DATA.find(t => t.name === n && t.isRival);
                 if (r) return r;
             } else {
-                const m = ev.match(/^(E[1-4]|Gym Leader [1-8])$/);
-                if (m) {
+                // v19 union pool: any Gym Leader N row can be assigned to any Gym
+                // Leader X slot. Strict role match would fail for cross-slot picks
+                // (Misty as GL5 — her row is role:'Gym Leader 2'). Match by role
+                // family for gym leaders; keep strict match for E1-E4 (no union).
+                const e4 = ev.match(/^E[1-4]$/);
+                if (e4) {
                     const r = TRAINER_DATA.find(t => t.name === n && t.role === ev);
+                    if (r) return r;
+                } else if (/^Gym Leader [1-8]$/.test(ev)) {
+                    const r = TRAINER_DATA.find(t => t.name === n && /^Gym Leader \d$/.test(t.role));
                     if (r) return r;
                 } else if (ev === 'Elite Trainer') {
                     return TRAINER_DATA.find(t => t.name === n && t.role === 'Elite Trainer') || null;
@@ -29762,11 +29791,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (isBasicLike) {
                     if (tr !== 'basic trainer') return false;
                     // v19 tag gate: multitype/villain/cursed/eldritch flavor
-                    // trainers stay on themed slots only (rows 7/14/20/26/33/
-                    // 34/41/42/48/49/56/58 via STORY_THEMED_BATTLES). They
-                    // carry G2+ sigs (Sky-Steel Ranger's Aerodactyl, Plasma
-                    // Sage's Hydreigon, etc.) that don't belong on a route
-                    // Hiker or a GL1 Gym Trainer.
+                    // trainers stay on themed slots only (dispatched via
+                    // _pickThemedTrainerForRole at STORY_THEMED_BATTLES rows).
+                    // They carry G2+ sigs (Sky-Steel Ranger's Aerodactyl,
+                    // Plasma Sage's Hydreigon, etc.) that don't belong on a
+                    // route Hiker or a GL1 Gym Trainer.
                     if (t.tag === 'multitype' || t.tag === 'villain' || t.tag === 'cursed' || t.tag === 'eldritch') return false;
                     return true;
                 }
@@ -40841,24 +40870,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ? normalizeEnabledGens(o.gens)
                     : [1,2,3,4,5,6,7,8,9];
                 const trials = Math.max(1, (o.trials | 0) || 1);
+                // Snapshot the live run state BEFORE the try — every field touched
+                // below restores in finally so a mid-loop throw can't leave the
+                // player's actual save with the audit's mock trainer assignments.
                 const wasActive = sm && sm.active;
                 const oldBadges = sm ? (sm.badges | 0) : 0;
                 const oldDiff   = sm ? sm.storyDifficulty : 'normal';
                 const oldSettingsGens = sm && sm.settings ? sm.settings.enabledGens : null;
+                const savedAssignments = sm ? sm.trainerAssignments : null;
+                const savedThemed      = sm ? sm.themedAssignments  : null;
                 if (sm) {
                     if (!sm.settings) sm.settings = {};
                     sm.settings.enabledGens = gens;
                     sm.storyDifficulty = o.difficulty || 'normal';
+                    // Match the live game's RNG path so progress/strip/difficulty
+                    // helpers (which early-return when !sm.active) actually fire
+                    // during the audit. We restore wasActive in finally.
+                    sm.active = true;
                 }
                 const out = [];
                 try {
-                    // Mock an assignTrainers pass to get realistic per-row leader picks.
-                    const savedAssignments = sm ? sm.trainerAssignments : null;
-                    const savedThemed      = sm ? sm.themedAssignments  : null;
-                    if (sm) {
-                        sm.active = false; // assignTrainers uses Math.random when sm.active is false; deterministic feel doesn't matter for the audit
-                        try { assignTrainers(gens); } catch (e) { console.warn('[audit] assignTrainers failed:', e); }
-                    }
+                    try { assignTrainers(gens); } catch (e) { console.warn('[audit] assignTrainers failed:', e); }
                     let badgesAccum = 0;
                     for (let posInRaw = 0; posInRaw < STORY_EVENTS_RAW.length; posInRaw++) {
                         const ev = STORY_EVENTS_RAW[posInRaw];
@@ -40873,12 +40905,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         }) : [];
                         const cappedSigs = (function(){
                             const evtStr = String(eventName || '');
-                            if (evtStr === 'Mystery Figure' || evtStr === 'Champion' || /^E[1-4]$/.test(evtStr) || evtStr === 'Rival') return sigPool.slice();
-                            const adjusted = applyStoryProgressToGradeWeights(
-                                storyStripGrade4IfPartyMature(applyDifficultyToGradeWeights(gw || {g1:0,g2:0,g3:50,g4:50})),
-                                posInRaw
+                            const isEldritch = !!(trainerData && trainerData.tag === 'eldritch');
+                            if (isEldritch || evtStr === 'Mystery Figure' || evtStr === 'Champion' || /^E[1-4]$/.test(evtStr) || evtStr === 'Rival') return sigPool.slice();
+                            // Pipeline order matches rollTrainerTeam: difficulty → progress → stripG4.
+                            const adjusted = storyStripGrade4IfPartyMature(
+                                applyStoryProgressToGradeWeights(
+                                    applyDifficultyToGradeWeights(gw || {g1:0,g2:0,g3:50,g4:50}),
+                                    posInRaw
+                                )
                             );
-                            const ceiling = _storyMaxSigGradeForGw(adjusted);
+                            const ceiling = _storySigGradeCeiling(adjusted);
                             return _filterSigsByGradeCeiling(sigPool, ceiling);
                         })();
                         const sampleTeams = [];
@@ -40901,20 +40937,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             idx,
                             event: eventName,
                             trainer: trainerName || '<unassigned>',
+                            trainerTag: (trainerData && trainerData.tag) || '',
                             badges: badgesAccum,
                             gradeWeights: gw ? `g1:${gw.g1||0} g2:${gw.g2||0} g3:${gw.g3||0} g4:${gw.g4||0}` : '<none>',
                             coins,
-                            sigCeiling: gw ? _storyMaxSigGradeForGw(gw) : 4,
+                            sigCeiling: gw ? _storySigGradeCeiling(gw) : 4,
                             rawSigs: sigPool.join(','),
                             cappedSigs: cappedSigs.join(','),
                             sampleTeams: sampleTeams.join(' | ')
                         });
                         if (/^Gym Leader\s*\d$/.test(String(eventName || ''))) badgesAccum++;
-                    }
-                    // Restore.
-                    if (sm) {
-                        sm.trainerAssignments = savedAssignments;
-                        sm.themedAssignments  = savedThemed;
                     }
                 } finally {
                     if (sm) {
@@ -40922,6 +40954,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         sm.badges = oldBadges;
                         sm.storyDifficulty = oldDiff;
                         if (sm.settings) sm.settings.enabledGens = oldSettingsGens;
+                        sm.trainerAssignments = savedAssignments;
+                        sm.themedAssignments  = savedThemed;
                     }
                 }
                 try {
@@ -40936,12 +40970,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         out.forEach(r => console.log(`  row ${r.row} (${r.event} — ${r.trainer}): ${r.sampleTeams}`));
                     }
                     // Flag any row where a capped sig appears at a grade exceeding the row's ceiling.
-                    // Boss events (Rival / E1-E4 / Champion / Mystery) are exempt by design —
-                    // their gradeWeights already authorize top-tier sigs.
+                    // Boss events (Rival / E1-E4 / Champion / Mystery) and eldritch trainers
+                    // are exempt by design — their gradeWeights already authorize top-tier sigs.
                     const violations = [];
                     for (const r of out) {
                         const e = String(r.event || '');
                         if (e === 'Mystery Figure' || e === 'Champion' || /^E[1-4]$/.test(e) || e === 'Rival') continue;
+                        if (r.trainerTag === 'eldritch') continue;
                         const cap = r.sigCeiling | 0;
                         const sigs = r.cappedSigs ? r.cappedSigs.split(',').filter(Boolean) : [];
                         for (const n of sigs) {
