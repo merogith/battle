@@ -29038,6 +29038,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!meta.achievements[id]) meta.achievements[id] = { progress: 0, currentRank: 0, lastUpdated: 0 };
             return meta.achievements[id];
         }
+
+        /** Track gold spent for the Big Spender trophy. Called from major
+         *  spend sites (shops, tutors, EV / Colress, Stone Sage, Cable Link,
+         *  ball purchases). Unlock fires when the per-run tally crosses 50K.
+         *  Casino bets / artifact relinks are not tracked (gold sloshes in
+         *  both directions, would inflate the counter). */
+        function _storyTrackSpend(amount) {
+            const n = amount | 0;
+            if (!sm || !sm.active || n <= 0) return;
+            sm.totalGoldSpentThisRun = (sm.totalGoldSpentThisRun | 0) + n;
+            if (sm.totalGoldSpentThisRun >= 50000) {
+                try { _storyAchievementUnlock('r_big_spender'); } catch (e) {}
+            }
+        }
         function _storyAchRankFor(def, progress) {
             if (!def) return 0;
             if (!Array.isArray(def.ranks)) return progress >= 1 ? 1 : 0;
@@ -37913,6 +37927,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!ok) return;
             }
             sm.gold -= price;
+            try { _storyTrackSpend(price); } catch (e) {}
             if (_isBall) {
                 if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke:0, great:0, ultra:0, master:0 };
                 sm.balls[_itemRow.ballKey] = (sm.balls[_itemRow.ballKey] || 0) + 1;
@@ -37955,7 +37970,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (listPrice > 0 && sm.gold < listPrice) return;
             const ok = await _storyConfirmTutorChange(`Claim "${artId}" relic? This locks the Annex for this city — no second pick.`, listPrice);
             if (!ok) return;
-            if (listPrice > 0) sm.gold -= listPrice;
+            if (listPrice > 0) { sm.gold -= listPrice; try { _storyTrackSpend(listPrice); } catch (e) {} }
             else sm.artifactFreeClaimUsed = true;
             sm.artifacts.push(artId);
             sm.artifactShopPurchasedByCity[cKey] = artId;
@@ -39210,6 +39225,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const newBuild = _makePlayerLinkBuild(newName, 'COMPETENT');
                 if (!newBuild) { window.showGameAlert('Build pipeline error — try again.'); return; }
                 sm.gold -= cost;
+                try { _storyTrackSpend(cost); } catch (e) {}
                 sm.team[idx] = { name:newName, build:newBuild, id:'m_'+Math.random().toString(36).slice(2,10) };
                 save();
                 try { window.StoryFx && window.StoryFx.playSfx('shing', 0.6); } catch (e) {}
@@ -39240,6 +39256,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const newBuild = _makePlayerLinkBuild(newName, 'TOURNAMENT');
                 if (!newBuild) { window.showGameAlert('Build pipeline error — try again.'); return; }
                 sm.gold -= cost;
+                try { _storyTrackSpend(cost); } catch (e) {}
                 sm.team[idx] = { name:newName, build:newBuild, id:'m_'+Math.random().toString(36).slice(2,10) };
                 save();
                 try {
