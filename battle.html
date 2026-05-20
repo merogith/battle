@@ -21463,8 +21463,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         userParty.forEach(m => { if (m && m.currentHp > 0 && m.status) { m.status = null; m.statusTurns = 0; logMsg(`${m.name} was cured of its status!`, 'heal'); } });
                         break;
                     case "G-Max Finale": {
-                        const heal = Math.max(1, Math.floor(attacker.maxHp / 6));
-                        if (attacker.currentHp < attacker.maxHp) { attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + heal); logMsg(`${attacker.name} restored HP from G-Max Finale!`, 'heal'); }
+                        userParty.forEach(m => {
+                            if (!m || m.currentHp <= 0 || m.currentHp >= m.maxHp) return;
+                            const heal = Math.max(1, Math.floor(m.maxHp / 6));
+                            m.currentHp = Math.min(m.maxHp, m.currentHp + heal);
+                            logMsg(`${m.name} restored HP from G-Max Finale!`, 'heal');
+                        });
                         break;
                     }
                     case "G-Max Replenish": {
