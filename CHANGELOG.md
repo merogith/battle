@@ -3,6 +3,83 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — trainer NPC mobile UX + richer recommendations 2026-05-18 (`claude/improve-move-tutor-mobile-HevcJ`)
+
+### Changed — Tutor / Dojo / Nature / EV Trainer dropdowns round-trip on tap
+
+Tapping the highlighted mon card now collapses it (previously the tap was a
+no-op, so the only way to "close" a card was to open another one). The EV
+Trainer also gains the same accordion: one mon at a time, tap to toggle,
+header sticky to the top of the screen as you scroll the preset grid.
+
+### Changed — Recommendations are categorized by purpose, not just "top one"
+
+The single "★ Recommended" strip was the most common feedback target — players
+asked for more than one pick because a single move (or item, ability, nature,
+preset) doesn't cover the actual build decision. Each facility now shows three
+to four picks, each labelled with its purpose:
+
+- **Move Tutor** — STAB · Coverage · Setup · Status · Recovery · Priority ·
+  Speed · Hazards · Pivot · Screens. The engine looks at the mon's type, base
+  stats, and existing slots, then surfaces the best move from each purpose.
+- **Battle Dojo (items)** — Offensive · Defensive · Speed/Insurance · Power.
+  The "Defensive" pick prefers Heavy-Duty Boots when the mon is hazard-prone.
+- **Battle Dojo (abilities)** — Offensive · Defensive · Utility · Niche, with
+  the Hidden Ability tag on rows that match.
+- **Nature Rater** — Power · Speed · Bulk · Trick Room, with the +stat / -stat
+  spread inline.
+- **EV Trainer** — Offensive · Defensive · Meta · Speed/Balanced. Tap a
+  recommendation to scroll to that preset card; the destination card flashes
+  briefly so it's clear which preset you landed on.
+
+Each recommendation row is tappable: tapping pre-selects the pick in the
+confirm bar so the player can preview the trade before paying.
+
+### Changed — Mobile UX pass across all training facilities
+
+Phone players were doing too much scrolling. The pass tightens every trainer
+screen:
+
+- **Filter drawer** — type and category chips (which can spill to 3+ rows on
+  phones) are now hidden behind a "Filters" button with an active-count badge.
+  Always-open on desktop. A "✕ Clear" button appears next to the toggle when
+  any search or filter is set.
+- **Toolbar sticks below the mon header**, so search / sort / filter buttons
+  stay reachable as the player scrolls the option grid.
+- **Recommendations panel sits above the toolbar** so the top three or four
+  picks are the first thing on screen — most builds resolve here without ever
+  touching the long list.
+- **Tighter spacing** — slot cards, recs panel, confirm bar, and tab buttons
+  all use the Material 44-48px touch-target spec with reduced padding so more
+  options fit per viewport.
+- **Horizontally-scrollable chip rows** on phones (instead of vertical wrap),
+  preserving discoverability without spending vertical space.
+- **Nature cells** bumped to a 44px minimum tap target.
+
+### Changed — EV Trainer adds three universal spreads, drops duplicates
+
+The Roles section grew from six presets to nine so every species can pick a
+Mixed Sweeper, Mixed Wall, or Fast Utility spread without waiting on a
+species-specific Meta spread. Renamed "Physical Tank" → "Physical Wall" for
+consistency with "Special Wall", and "Bulky Attacker" → "Bulky / TR Attk"
+(same spread; the 0 Spe doubles as a Trick Room set, now called out
+explicitly).
+
+Duplicate spreads across Universal / Role / Meta are now filtered at build
+time: a meta spread with EVs identical to "Physical Sweeper" no longer
+appears twice in the list. The recommender also picks the *best* preset
+within each purpose (scored against the mon's base stats), not just the
+first matching label.
+
+### Added — "Close all" affordance on the mon-switcher pill bar
+
+A sticky red "▾ CLOSE" chip lives at the left edge of the pill bar
+whenever one mon is expanded — one tap collapses the whole accordion
+back to the compact picker so the player can scan the full team. The
+active gold pill also toggles closed when re-tapped. While everything
+is collapsed the chip swaps in for a "Tap a Pokémon →" hint so the bar
+still communicates its purpose.
+
 ## Unreleased — IVs become a real progression layer, Pokémon Fan Club opens 2026-05-20 (`claude/add-stats-guide-R3MMO`)
 
 ### Changed — Player Pokémon roll random IVs at catch time
@@ -69,6 +146,7 @@ Existing saves preserve their stats. The migration:
 Net effect: a loaded save has the same combat power it had pre-patch
 plus a generous fresh budget of vitamins to spend on freshly-caught
 wilds.
+
 ## Unreleased — Cable Link Station repriced as a flat premium over manual training 2026-05-20 (`claude/cable-link-pokemon-pricing-bb96A`)
 
 ### Changed — Cable Link Station: Reroll / Upgrade / Rebuild prices bumped, intra-city ×1.5 ramp removed

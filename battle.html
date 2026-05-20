@@ -996,20 +996,262 @@
             background: linear-gradient(180deg, transparent, rgba(206,147,216,0.06));
         }
 
-        /* Recommendation hero strip */
-        .tx-recs-strip {
-            display: flex; flex-direction: column; gap: 4px;
-            padding: 8px 10px; margin-bottom: 10px;
-            background: linear-gradient(90deg, rgba(20,40,20,0.6), rgba(20,30,15,0.4));
-            border: 1px solid #3a5b3a; border-left: 3px solid #66bb6a;
-            border-radius: 6px;
+        /* Mon-switcher pill bar — sticky at the top of the trainer screen.
+           One pill per team mon; tap to jump straight to that mon's editor
+           without scrolling back to find the collapsed header. */
+        .tx-mon-switcher {
+            display: flex; gap: 6px; flex-wrap: nowrap;
+            padding: 6px 8px; margin: 0 0 8px;
+            background: linear-gradient(180deg, rgba(46,52,72,0.96), rgba(30,36,52,0.96));
+            border: 1px solid #4d5670; border-radius: 8px;
+            position: sticky; top: 0; z-index: 5;
+            backdrop-filter: blur(6px);
+            overflow-x: auto; overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.45);
         }
-        .tx-recs-strip-title {
+        .tx-mon-switcher::-webkit-scrollbar { height: 3px; }
+        .tx-mon-switcher::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 3px; }
+        .tx-mon-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            flex: 0 0 auto; padding: 4px 10px 4px 4px;
+            background: rgba(64,72,90,0.85); border: 1px solid #5a6478;
+            border-radius: 999px; cursor: pointer; transition: all 0.12s;
+            font-family: inherit; color: #cdd3e0;
+            min-height: 40px;
+        }
+        .tx-mon-pill:hover { border-color: var(--accent); color: #e0e4ee; }
+        .tx-mon-pill[data-active="1"] {
+            background: rgba(255,213,79,0.16); border-color: var(--accent); color: #fff8e1;
+            box-shadow: 0 0 0 1px var(--accent) inset, 0 0 8px rgba(255,213,79,0.35);
+        }
+        .tx-mon-pill img {
+            width: 32px; height: 32px; image-rendering: pixelated;
+            flex-shrink: 0;
+            background: rgba(0,0,0,0.25); border-radius: 50%;
+        }
+        .tx-mon-pill-label {
+            font-size: 11px; font-weight: 600; white-space: nowrap;
+            max-width: 80px; overflow: hidden; text-overflow: ellipsis;
+        }
+        /* "Close" chip sits at the start of the pill bar when one mon is
+           expanded — lets the player collapse the whole list in one tap
+           without scrolling back to the header chevron. */
+        .tx-collapse-all {
+            display: inline-flex; align-items: center; gap: 4px;
+            flex: 0 0 auto; padding: 0 12px; min-height: 38px;
+            background: rgba(244,67,54,0.92); border: 1px solid #b04a3f;
+            color: #fff8f7; border-radius: 999px; cursor: pointer;
+            font-family: inherit; font-size: 11px; font-weight: 700;
+            letter-spacing: 0.04em; transition: all 0.12s;
+            text-transform: uppercase;
+            position: sticky; left: 4px; z-index: 2;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.55), 0 0 0 2px rgba(46,52,72,0.96);
+        }
+        .tx-collapse-all:hover { background: rgba(244,67,54,1); color: #fff; border-color: #d96459; }
+        /* "Tap a Pokémon" hint replaces the Close chip while everything is
+           collapsed, so the bar always communicates its purpose. */
+        .tx-mon-switcher-hint {
+            display: inline-flex; align-items: center; flex: 0 0 auto;
+            padding: 0 8px; color: #9aa0aa; font-size: 11px;
+            font-style: italic; white-space: nowrap;
+        }
+        @media (max-width: 380px) {
+            .tx-collapse-all { padding: 0 8px; font-size: 10px; }
+            .tx-mon-switcher-hint { font-size: 10px; padding: 0 4px; }
+        }
+        @media (max-width: 480px) {
+            .tx-mon-switcher { padding: 5px 6px; gap: 5px; }
+            .tx-mon-pill { padding: 3px 8px 3px 3px; min-height: 38px; }
+            .tx-mon-pill img { width: 28px; height: 28px; }
+            .tx-mon-pill-label { max-width: 56px; font-size: 10px; }
+        }
+        @media (max-width: 380px) {
+            /* On very narrow phones, hide labels — sprites are enough identifier */
+            .tx-mon-pill-label { display: none; }
+            .tx-mon-pill { padding: 3px; }
+        }
+
+        /* Multi-purpose recommendation panel — 3-4 clickable rows, each labelled
+           with a purpose tag (STAB / Coverage / Setup / Utility…). Rows act as
+           quick-pick shortcuts: tapping one sets the pending selection so the
+           player can review and confirm. */
+        .tx-recs-panel {
+            display: flex; flex-direction: column; gap: 0;
+            padding: 0; margin-bottom: 10px;
+            background: linear-gradient(180deg, rgba(20,40,20,0.55), rgba(14,24,14,0.55));
+            border: 1px solid #3a5b3a; border-left: 3px solid #66bb6a;
+            border-radius: 6px; overflow: hidden;
+        }
+        .tx-recs-panel-head {
+            display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+            padding: 8px 10px 6px;
+            border-bottom: 1px solid rgba(102,187,106,0.25);
+        }
+        .tx-recs-panel-title {
             font-size: 10px; color: #aed581; letter-spacing: 0.06em;
             text-transform: uppercase; font-weight: 700;
-            display: flex; align-items: center; gap: 6px;
+            display: inline-flex; align-items: center; gap: 6px; flex: 1; min-width: 0;
         }
-        .tx-recs-strip-detail { font-size: 11px; color: #c8e6c9; line-height: 1.45; }
+        .tx-recs-panel-hint { font-size: 10px; color: #8b9a8b; }
+        /* On narrow phones the title + hint compete for one row and the title
+           ends up wrapping over 2-3 lines. Hide the hint there — the tag
+           pills and clickable rows already make the panel's purpose obvious. */
+        @media (max-width: 480px) {
+            .tx-recs-panel-head { flex-wrap: nowrap; }
+            .tx-recs-panel-hint { display: none; }
+            .tx-recs-panel-title { white-space: normal; line-height: 1.25; }
+        }
+        .tx-recs-list { display: flex; flex-direction: column; gap: 0; }
+        .tx-rec-row {
+            display: grid;
+            grid-template-columns: 78px minmax(0, 1fr) auto;
+            gap: 6px 10px; align-items: center;
+            padding: 8px 10px;
+            background: transparent; border: 0;
+            border-top: 1px solid rgba(102,187,106,0.12);
+            color: inherit; font-family: inherit; text-align: left;
+            cursor: pointer; transition: background 0.12s, transform 0.08s;
+            min-height: 44px;
+        }
+        .tx-rec-row:first-child { border-top: 0; }
+        .tx-rec-row:hover, .tx-rec-row:focus-visible {
+            background: rgba(102,187,106,0.10); outline: none;
+        }
+        .tx-rec-row:active { transform: scale(0.99); }
+        .tx-rec-row[data-pending="1"] {
+            background: rgba(206,147,216,0.16);
+            box-shadow: inset 3px 0 0 var(--accent);
+        }
+        .tx-rec-row[data-disabled="1"] { opacity: 0.45; cursor: not-allowed; }
+        .tx-rec-tag {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 3px 6px; font-size: 9px; font-weight: 800;
+            letter-spacing: 0.06em; text-transform: uppercase;
+            border-radius: 999px;
+            background: rgba(102,187,106,0.18); border: 1px solid #66bb6a;
+            color: #aed581; white-space: nowrap;
+        }
+        .tx-rec-tag[data-purpose="Offensive"], .tx-rec-tag[data-purpose="STAB"],
+        .tx-rec-tag[data-purpose="Coverage"], .tx-rec-tag[data-purpose="Power"],
+        .tx-rec-tag[data-purpose="Priority"] {
+            background: rgba(255,107,107,0.18); border-color: #ff6b6b; color: #ffcaca;
+        }
+        .tx-rec-tag[data-purpose="Defensive"], .tx-rec-tag[data-purpose="Bulk"],
+        .tx-rec-tag[data-purpose="Recovery"], .tx-rec-tag[data-purpose="Insurance"],
+        .tx-rec-tag[data-purpose="Screens"] {
+            background: rgba(107,159,255,0.18); border-color: #6b9fff; color: #cbdbff;
+        }
+        .tx-rec-tag[data-purpose="Setup"], .tx-rec-tag[data-purpose="Speed"],
+        .tx-rec-tag[data-purpose="Pivot"] {
+            background: rgba(255,213,79,0.18); border-color: #ffd54f; color: #fff3cd;
+        }
+        .tx-rec-tag[data-purpose="Status"], .tx-rec-tag[data-purpose="Hazards"],
+        .tx-rec-tag[data-purpose="Utility"], .tx-rec-tag[data-purpose="Niche"],
+        .tx-rec-tag[data-purpose="Trick Room"], .tx-rec-tag[data-purpose="Meta"] {
+            background: rgba(206,147,216,0.18); border-color: #ce93d8; color: #f3e5f5;
+        }
+        .tx-rec-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .tx-rec-name {
+            font-size: 13px; font-weight: 700; color: #e8eaf0;
+            display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+            line-height: 1.2;
+        }
+        .tx-rec-name .type-badge { font-size: 9px; }
+        .tx-rec-reason {
+            font-size: 10px; color: #b0b7c4; line-height: 1.4;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .tx-rec-go {
+            font-size: 16px; color: #66bb6a; opacity: 0.85;
+            font-weight: 700; line-height: 1;
+        }
+        @media (max-width: 520px) {
+            .tx-rec-row { grid-template-columns: 66px minmax(0, 1fr) auto; padding: 9px 10px; }
+            .tx-rec-tag { font-size: 8px; padding: 2px 5px; }
+            .tx-rec-name { font-size: 12px; }
+            .tx-rec-reason { font-size: 10px; -webkit-line-clamp: 2; }
+        }
+
+        /* Mobile filter drawer — collapses the chip rows (which can pile up to
+           3+ rows on phones) behind a single toggle. Always-open on desktop. */
+        .tx-filter-row {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        }
+        .tx-filter-toggle {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 7px 12px; font-size: 11px; font-weight: 700;
+            font-family: inherit; cursor: pointer;
+            background: rgba(40,46,60,0.65); border: 1px solid #4a5168;
+            color: #d4d9e4; border-radius: 6px;
+            letter-spacing: 0.04em; text-transform: uppercase;
+            transition: all 0.12s;
+            white-space: nowrap;
+        }
+        .tx-filter-toggle:hover { border-color: var(--accent); color: var(--accent); }
+        .tx-filter-toggle[data-open="1"] {
+            background: rgba(206,147,216,0.16); border-color: var(--accent); color: var(--accent);
+        }
+        .tx-filter-toggle .tx-filter-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 18px; height: 18px; padding: 0 5px;
+            font-size: 10px; font-weight: 800;
+            background: var(--accent); color: #1a0d22;
+            border-radius: 999px;
+        }
+        /* Clear-all-filters button — appears in the toolbar only when a search or
+           filter is active. One-tap reset so phone users don't toggle chips one
+           by one. */
+        .tx-filter-clear {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 7px 10px; font-size: 11px; font-weight: 600;
+            font-family: inherit; cursor: pointer;
+            background: rgba(244,67,54,0.14); border: 1px solid #ef5350;
+            color: #ffcdd2; border-radius: 6px;
+            letter-spacing: 0.04em; transition: all 0.12s;
+            white-space: nowrap;
+        }
+        .tx-filter-clear:hover { background: rgba(244,67,54,0.22); color: #fff; }
+        .tx-filter-panel {
+            display: flex; flex-direction: column; gap: 6px;
+            padding: 0;
+        }
+        @media (max-width: 540px) {
+            .tx-filter-panel[data-open="0"] { display: none; }
+        }
+        @media (min-width: 541px) {
+            .tx-filter-toggle { display: none; }
+            .tx-filter-panel { display: flex !important; }
+        }
+        .tx-chip-row {
+            scroll-snap-type: x proximity;
+        }
+        @media (max-width: 540px) {
+            /* On phones, single-row horizontal scroll instead of vertical wrap.
+               Saves 1-2 rows of vertical space per filter section. */
+            .tx-filter-panel .tx-chip-row {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                overflow-y: hidden;
+                -webkit-overflow-scrolling: touch;
+                touch-action: pan-x;
+                padding-bottom: 2px;
+                scrollbar-width: thin;
+            }
+            .tx-filter-panel .tx-chip-row > .tx-chip { scroll-snap-align: start; }
+            .tx-filter-panel .tx-chip-row::-webkit-scrollbar { height: 4px; }
+            .tx-filter-panel .tx-chip-row::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 4px; }
+        }
+
+        /* Flash highlight when EV-trainer recs panel scrolls a preset into view —
+           gives the player a clear "this is the one we just jumped to" beat. */
+        @keyframes tx-card-flash {
+            0%, 100% { box-shadow: 0 0 0 1px rgba(102,187,106,0.35) inset, 0 2px 8px rgba(102,187,106,0.12); }
+            50%      { box-shadow: 0 0 0 2px var(--accent) inset, 0 0 24px rgba(206,147,216,0.6); }
+        }
+        .tx-card.tx-card--flash { animation: tx-card-flash 0.55s ease-in-out 2; }
 
         /* Stat bars (EV preview, nature preview) */
         .tx-stat-row {
@@ -1128,6 +1370,20 @@
             .tx-grid { gap: 6px; }
         }
 
+        /* On very narrow phones the gold value (coin icon + "25,000G") collides
+           with the floating settings gear. Drop the coin icon to claw back
+           ~25px so the value renders fully clear of the gear. */
+        @media (max-width: 400px) {
+            #screen-story-tutor #story-tutor-gold .story-gold-icon,
+            #screen-story-evtrainer #story-evtrainer-gold .story-gold-icon {
+                display: none !important;
+            }
+            #screen-story-tutor #story-tutor-gold,
+            #screen-story-evtrainer #story-evtrainer-gold {
+                font-size: 11px !important;
+            }
+        }
+
         @media (min-width: 720px) {
             .story-tutor-move-picker {
                 display: grid; grid-template-columns: 1fr minmax(200px, 1fr); grid-template-rows: auto 1fr auto;
@@ -1145,18 +1401,33 @@
             .story-tutor-mon-meta { max-width: 42vw; }
         }
         @media (max-width: 719px) {
+            /* The 52px reservation for the floating settings gear (rule near
+               line 2926) isn't quite enough on phones where "25,000G" plus the
+               coin icon needs ~85px. Bump the header's right padding so the
+               gold stays clear of the gear. Applied to every story screen with
+               the standard header chrome (tutor / dojo / nature / EV / shop). */
+            #screen-story-tutor .story-shop-header-row,
+            #screen-story-evtrainer .story-shop-header-row,
+            #screen-story-shop .story-shop-header-row,
+            #screen-story-artifact-shop .story-shop-header-row,
+            #screen-story-colress .story-shop-header-row,
+            #screen-story-link .story-link-header-row {
+                padding-right: 64px !important;
+            }
             #screen-story-tutor .story-shop-header-row {
                 position: sticky;
                 top: 0;
                 z-index: 4;
                 padding: 8px 10px !important;
+                padding-right: 64px !important;
                 gap: 8px;
             }
             #screen-story-tutor #story-tutor-head-title {
                 min-width: 0;
                 flex: 1;
             }
-            #screen-story-tutor #story-tutor-gold {
+            #screen-story-tutor #story-tutor-gold,
+            #screen-story-evtrainer #story-evtrainer-gold {
                 flex-shrink: 0;
                 white-space: nowrap;
                 font-size: 12px !important;
@@ -5037,8 +5308,11 @@
             .story-tutor-mon-toggle { padding: 12px 14px !important; min-height: 56px; }
             .story-tutor-mon-name { font-size: 14px !important; }
             .story-tutor-mon-meta { font-size: 11px !important; max-width: 60vw !important; }
+            /* The expanded mon header used to be sticky on mobile so the player
+               always knew which mon they were editing. The new mon-switcher
+               pill bar (also sticky) carries that signal now, so we let the
+               toggle scroll away — saves ~56px of sticky chrome. */
             .story-tutor-mon-toggle[aria-expanded="true"] {
-                position: sticky; top: 0; z-index: 3;
                 background: linear-gradient(180deg, rgba(22,26,40,0.98), rgba(14,18,28,0.98)) !important;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.35);
             }
@@ -5083,11 +5357,54 @@
             #screen-story-evtrainer > .story-shop-stack > div:nth-child(2),
             #screen-story-evolab > .story-shop-stack > div:nth-child(2),
             #screen-story-colress > .story-shop-stack > div:nth-child(2) {
-                padding: 10px !important;
+                padding: 8px !important;
             }
             #story-tutor-team, #story-evtrainer-team, #story-evolab-team, #story-colress-team {
-                gap: 10px !important;
+                gap: 8px !important;
             }
+            /* TX picker (Move Tutor / Battle Dojo / Nature Rater / EV Trainer):
+               tighter toolbar + slot row spacing so two-thirds of the viewport
+               can stay on the actual options list. */
+            .tx-toolbar { padding: 8px 10px !important; gap: 6px !important; margin-bottom: 8px !important; }
+            .tx-search-row { gap: 6px !important; }
+            .tx-search-input { font-size: 14px !important; padding: 8px 10px !important; }
+            .tx-sort-select { font-size: 12px !important; padding: 7px 8px !important; }
+            .tx-slot-row { gap: 6px !important; margin-bottom: 10px !important; }
+            .tx-slot-card { padding: 8px 10px !important; min-height: 52px !important; }
+            .tx-slot-name { font-size: 12px !important; }
+            .tx-slot-meta { font-size: 9px !important; }
+            .tx-card { padding: 9px 11px !important; gap: 5px !important; }
+            .tx-card-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; font-size: 10px !important; }
+            .tx-confirm-bar { padding: 8px 10px !important; gap: 8px !important; }
+            .tx-confirm-bar-text { font-size: 11px !important; flex-basis: 100% !important; }
+            .tx-confirm-bar-btn { min-height: 38px !important; padding: 8px 12px !important; font-size: 12px !important; flex: 1 1 0; }
+            .tx-recs-panel { margin-bottom: 8px !important; }
+            .tx-recs-panel-head { padding: 6px 10px 4px !important; }
+            .tx-rec-row { padding: 8px !important; gap: 4px 8px !important; }
+            .story-tutor-mon-body { padding: 8px 10px 10px !important; gap: 6px !important; }
+            .story-tutor-mon-toggle { padding: 10px 12px !important; min-height: 56px !important; }
+            /* EV preset cards: tighter padding so the single-column phone layout
+               (set by `.tx-grid` @ <=480px) doesn't waste pixels. */
+            #story-evtrainer-team .tx-card { min-height: 0 !important; }
+            #story-evtrainer-team .tx-grid { gap: 6px !important; }
+            /* Compact help banner for EV Trainer on phone */
+            #story-evtrainer-team > div:first-child {
+                font-size: 11px !important; padding: 8px 10px !important; line-height: 1.45 !important;
+            }
+            /* Stack the sticky toolbar below the sticky mon-switcher pill bar
+               so both stay visible as the player scrolls the option grid.
+               Switcher is ~50px tall on phone (38-40px pill + 5px padding × 2). */
+            .tx-toolbar { top: 52px !important; z-index: 3 !important; }
+            /* Nature Rater: bigger tap targets for the 5×5 grid + neutral row */
+            .tx-nature-cell { min-height: 44px !important; padding: 8px 4px !important; }
+            .tx-nature-cell-name { font-size: 12px !important; }
+            .tx-nature-grid { gap: 5px !important; }
+            /* Tabs (Battle Dojo Item / Ability) — Material-spec 48px tap height */
+            .tx-tab { min-height: 48px !important; padding: 12px 8px !important; font-size: 13px !important; }
+            /* Chip tap targets — keep them tappable in horizontal scroll */
+            .tx-chip { min-height: 32px !important; padding: 6px 12px !important; font-size: 11px !important; }
+            /* Recommendation rows — already 44px, but ensure visible on small screens */
+            .tx-rec-row { min-height: 52px !important; }
             /* Summary modal: readable tab targets on portrait (main tabs only) */
             #modal-summary .sum-tabs > .sum-tab {
                 min-height: 44px;
@@ -40500,6 +40817,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         /** 'moves' | 'nature' | 'loadout' — set by enterTutor(mode); renderTutorTeam reads this */
         let _storyTutorMode = 'moves';
         let _storyTutorOpenIdx = 0;
+        // EV Trainer accordion: which team idx is currently expanded, or -1 for none.
+        let _storyEVTrainerOpenIdx = 0;
 
         function _applyStoryTutorHeader() {
             const mode = _storyTutorMode || 'moves';
@@ -40797,7 +41116,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 items: 'recommended',
                 abilities: 'recommended',
                 natures: 'recommended',
-            }
+            },
+            // Mobile-only: whether the chip-filter drawer is expanded for this kind.
+            // Always-visible on desktop via CSS — this just gates the mobile collapse.
+            filterPanelOpen: { moves: false, items: false, abilities: false, natures: false },
         };
         function _txResetFilters(kind) {
             _txState.search[kind] = '';
@@ -41205,6 +41527,366 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return scored.slice(0, n).map(x => x.it);
         }
 
+        // ── CATEGORIZED RECOMMENDATIONS ──────────────────────────────────
+        // Pick the single best item in `items` matching `predicate`, scored by `scoreFn`.
+        function _txBestBy(items, predicate, scoreFn) {
+            let best = null, bestScore = -Infinity;
+            for (const it of items) {
+                if (!predicate(it)) continue;
+                const s = scoreFn(it);
+                if (s > bestScore) { bestScore = s; best = it; }
+            }
+            return best;
+        }
+
+        // Move tutor — produce 3-4 categorized recommendations for distinct purposes
+        // (STAB / Coverage / Setup / Utility / Recovery / Priority / Speed Control)
+        // so the player sees several genuinely different builds, not just the
+        // top-scoring damage move. Each entry includes a short reason for the pick.
+        function _txMoveRecsByPurpose(availMoves, mon, build, monName) {
+            if (!availMoves || !availMoves.length) return [];
+            const types = new Set([mon && mon.type1, mon && mon.type2].filter(Boolean));
+            const stats = _txMonStats(mon, monName);
+            const physical = stats.atk >= stats.spa;
+            const slow = stats.spe < 70;
+
+            const isDamage = m => { const md = movesDB[m]; return md && (md.cat === 'Physical' || md.cat === 'Special'); };
+            const isStab = m => { const md = movesDB[m]; return md && types.has(md.type) && isDamage(m); };
+            const isPriority = m => { const md = movesDB[m]; return md && md.pri && md.pri > 0 && isDamage(m); };
+            const isCoverage = m => { const md = movesDB[m]; return md && !types.has(md.type) && isDamage(m); };
+
+            const SETUP = new Set(['Swords Dance','Nasty Plot','Dragon Dance','Quiver Dance','Calm Mind','Bulk Up','Iron Defense','Cosmic Power','Coil','Shell Smash','Geomancy','Tail Glow','Belly Drum','Curse','Agility','Rock Polish','Autotomize','Work Up','Hone Claws','Power-Up Punch','Howl']);
+            const RECOVERY = new Set(['Recover','Roost','Slack Off','Soft-Boiled','Synthesis','Morning Sun','Moonlight','Rest','Wish','Strength Sap','Shore Up','Milk Drink','Heal Order','Pain Split','Leech Life','Drain Punch','Giga Drain','Horn Leech','Parabolic Charge','Oblivion Wing','Aqua Ring','Ingrain']);
+            const STATUS_AILMENT = new Set(['Toxic','Will-O-Wisp','Thunder Wave','Sleep Powder','Spore','Hypnosis','Sing','Yawn','Glare','Stun Spore','Lovely Kiss','Dark Void']);
+            const SPEED_CONTROL = new Set(['Tailwind','Trick Room','Sticky Web','Icy Wind','Electroweb','Bulldoze','Rock Tomb','Glaciate','Drum Beating','Mud Shot','Low Sweep']);
+            const HAZARDS = new Set(['Stealth Rock','Spikes','Toxic Spikes','Sticky Web']);
+            const SCREENS = new Set(['Reflect','Light Screen','Aurora Veil']);
+            const PIVOT   = new Set(['U-turn','Volt Switch','Flip Turn','Teleport','Parting Shot','Baton Pass','Chilly Reception']);
+
+            const used = new Set();
+            const out = [];
+            const push = (purpose, move, reason, hint) => {
+                if (!move || used.has(move)) return;
+                used.add(move);
+                out.push({ purpose, move, reason, hint });
+            };
+
+            // 1) Best STAB damage move — STAB × power × accuracy, prefer matching offensive category.
+            const bestStab = _txBestBy(availMoves, isStab, m => _txScoreMove(m, mon, build, monName));
+            if (bestStab) {
+                const md = movesDB[bestStab];
+                push('STAB', bestStab, `${md.pow > 0 ? md.pow + ' BP' : 'Utility'} ${md.type} ${md.cat.toLowerCase()} — same type as ${monName} for the 1.5× boost.`, 'core');
+            }
+
+            // 2) Best Coverage damage — different type than the mon, fills holes.
+            const bestCoverage = _txBestBy(availMoves, isCoverage, m => {
+                const md = movesDB[m];
+                if (!md) return 0;
+                // Bias toward the mon's stronger offense
+                const catBias = (md.cat === 'Physical' && physical) || (md.cat === 'Special' && !physical) ? 1.0 : 0.5;
+                return (md.pow || 0) * ((md.acc || 100) / 100) * catBias;
+            });
+            if (bestCoverage) {
+                const md = movesDB[bestCoverage];
+                push('Coverage', bestCoverage, `${md.pow > 0 ? md.pow + ' BP' : 'Utility'} ${md.type} ${md.cat.toLowerCase()} — answers types your STAB can't hit.`, 'core');
+            }
+
+            // 3) Setup move — only if the mon has the bulk or speed to invest a turn.
+            const bestSetup = _txBestBy(availMoves, m => SETUP.has(m), m => {
+                // Prefer setup that boosts the user's strongest offense or speed
+                if (m === 'Swords Dance' && physical) return 100;
+                if (m === 'Nasty Plot' && !physical) return 100;
+                if (m === 'Dragon Dance' && physical) return 95;
+                if (m === 'Quiver Dance' && !physical) return 95;
+                if (m === 'Calm Mind' && !physical) return 80;
+                if (m === 'Bulk Up' && physical) return 80;
+                if (m === 'Shell Smash') return 85;
+                return 50;
+            });
+            if (bestSetup) push('Setup', bestSetup, `Boosts a key stat. Use on a free turn to snowball.`, 'flex');
+
+            // 4) Recovery — heal moves are gold on bulkier mons.
+            const bestRecovery = _txBestBy(availMoves, m => RECOVERY.has(m), m => {
+                if (['Recover','Roost','Slack Off','Soft-Boiled','Synthesis','Strength Sap','Shore Up','Milk Drink'].includes(m)) return 100;
+                if (['Morning Sun','Moonlight'].includes(m)) return 90;
+                if (m === 'Wish') return 85;
+                if (m === 'Rest') return 70;
+                return 50;
+            });
+            if (bestRecovery && (stats.hp + stats.def + stats.spd >= 200 || used.size <= 2)) {
+                push('Recovery', bestRecovery, 'Heals roughly half HP — keeps tanks alive across exchanges.', 'flex');
+            }
+
+            // 5) Status / threat — cripple a fast attacker or stall.
+            const bestStatus = _txBestBy(availMoves, m => STATUS_AILMENT.has(m), m => {
+                if (m === 'Will-O-Wisp' || m === 'Spore') return 100;
+                if (m === 'Thunder Wave') return 90;
+                if (m === 'Toxic') return 85;
+                if (m === 'Sleep Powder') return 80;
+                return 60;
+            });
+            if (bestStatus && out.length < 4) push('Status', bestStatus, 'Burn / paralyze / sleep — wins matchups against bulky attackers.', 'flex');
+
+            // 6) Priority — for revenge-killing or making up for speed.
+            const bestPriority = _txBestBy(availMoves, isPriority, m => _txScoreMove(m, mon, build, monName));
+            if (bestPriority && out.length < 4 && slow) {
+                const md = movesDB[bestPriority];
+                push('Priority', bestPriority, `${md.pow > 0 ? md.pow + ' BP ' : ''}${md.type} — moves first, plugs slow speed.`, 'flex');
+            }
+
+            // 7) Hazards (entry damage) — if no offense gap yet.
+            const bestHazard = _txBestBy(availMoves, m => HAZARDS.has(m), m => {
+                if (m === 'Stealth Rock') return 100;
+                if (m === 'Sticky Web') return 80;
+                if (m === 'Spikes') return 75;
+                return 60;
+            });
+            if (bestHazard && out.length < 4) push('Hazards', bestHazard, 'Entry damage — wears down switch-ins all match.', 'flex');
+
+            // 8) Speed control — Tailwind, Trick Room, etc.
+            const bestSpeedCtrl = _txBestBy(availMoves, m => SPEED_CONTROL.has(m), m => {
+                if (m === 'Tailwind') return 95;
+                if (m === 'Trick Room' && slow) return 100;
+                if (m === 'Sticky Web') return 80;
+                return 50;
+            });
+            if (bestSpeedCtrl && out.length < 4) push('Speed', bestSpeedCtrl, 'Shifts the speed tier — flip the matchup before it starts.', 'flex');
+
+            // 9) Pivot move — for momentum-keeping.
+            const bestPivot = _txBestBy(availMoves, m => PIVOT.has(m), m => {
+                if (m === 'U-turn' || m === 'Volt Switch' || m === 'Flip Turn') return 95;
+                if (m === 'Teleport') return 75;
+                return 60;
+            });
+            if (bestPivot && out.length < 4) push('Pivot', bestPivot, 'Hits and switches — keeps you in control of the matchup.', 'flex');
+
+            // Screens for support builds.
+            if (out.length < 4) {
+                const bestScreens = _txBestBy(availMoves, m => SCREENS.has(m), m => m === 'Aurora Veil' ? 100 : 80);
+                if (bestScreens) push('Screens', bestScreens, 'Halves damage for 5 turns — anchors a defensive team.', 'flex');
+            }
+
+            return out.slice(0, 4);
+        }
+
+        // Item recs by purpose — choose distinct offensive / defensive / utility picks
+        function _txItemRecsByPurpose(availItems, mon, build, monName) {
+            if (!availItems || !availItems.length) return [];
+            const stats = _txMonStats(mon, monName);
+            const physical = stats.atk >= stats.spa;
+
+            const curItem = (build && build.i) || '(none)';
+            const pool = availItems.filter(it => it !== curItem);
+            if (!pool.length) return [];
+
+            const bestIn = (cat) => _txBestBy(pool, it => _txItemCategory(it) === cat, it => _txScoreItem(it, mon, build, monName));
+
+            const out = [];
+            const used = new Set();
+            const push = (purpose, item, reason) => {
+                if (!item || used.has(item)) return;
+                used.add(item);
+                out.push({ purpose, item, reason });
+            };
+
+            // 1) Offensive — power up the stronger stat with a Choice item or Life Orb.
+            const offChoice = physical ? 'Choice Band' : 'Choice Specs';
+            const choiceOk = pool.includes(offChoice);
+            if (choiceOk) push('Offensive', offChoice, `Locks in ${physical ? 'Atk +50%' : 'SpA +50%'} — wallbreaker.`);
+            else {
+                const bestOff = bestIn('offensive');
+                if (bestOff) push('Offensive', bestOff, 'Boosts damage output every turn.');
+            }
+
+            // 2) Defensive — sustain over the long game.
+            const wantsBoots = pool.includes('Heavy-Duty Boots') && (mon && (mon.type1 === 'Flying' || mon.type2 === 'Flying' || (stats.spd + stats.def >= 200)));
+            if (wantsBoots) push('Defensive', 'Heavy-Duty Boots', 'Ignores hazards on switch-in.');
+            else if (pool.includes('Leftovers')) push('Defensive', 'Leftovers', 'Heals 1/16 HP each turn — anchor for bulky sets.');
+            else {
+                const bestDef = bestIn('defensive');
+                if (bestDef) push('Defensive', bestDef, 'Improves longevity in the matchup.');
+            }
+
+            // 3) Speed — Choice Scarf if fast-leaning, otherwise utility.
+            if (pool.includes('Choice Scarf') && stats.spe >= 70 && stats.spe <= 110) {
+                push('Speed', 'Choice Scarf', 'Speed +50% — outspeeds tier-leaders.');
+            } else if (pool.includes('Focus Sash') && stats.hp < 200) {
+                push('Insurance', 'Focus Sash', 'Survives any one OHKO at full HP — guarantees a hit.');
+            } else {
+                const bestUtil = bestIn('utility');
+                if (bestUtil) push('Utility', bestUtil, 'Disrupts the opponent — momentum tool.');
+            }
+
+            // 4) Special / niche — Life Orb is the universal damage upgrade if not yet picked.
+            if (out.length < 4 && pool.includes('Life Orb') && !used.has('Life Orb')) {
+                push('Power', 'Life Orb', '+30% damage at 10% HP cost — best on hit-and-switch sets.');
+            } else if (out.length < 4) {
+                const bestRest = _txBestBy(pool, it => !used.has(it), it => _txScoreItem(it, mon, build, monName));
+                if (bestRest) push('Flex', bestRest, _txDescriptionFor(bestRest, 'item').slice(0, 80));
+            }
+
+            return out.slice(0, 4);
+        }
+
+        // Ability recs by purpose — distinct offensive / defensive / utility / hidden picks
+        function _txAbilityRecsByPurpose(availAbils, mon, build, monName) {
+            if (!availAbils || !availAbils.length) return [];
+            const curAbil = (build && build.a) || (mon && mon.ability) || '(none)';
+            const pool = availAbils.filter(a => a !== curAbil);
+            if (!pool.length) return [];
+
+            const OFFENSIVE = new Set(['Adaptability','Tough Claws','Strong Jaw','Sheer Force','Technician','Skill Link','Iron Fist','Mega Launcher','Aerilate','Pixilate','Galvanize','Refrigerate','Huge Power','Pure Power','Beast Boost','Soul-Heart','Moxie','Sheer Force','Mold Breaker','Sand Force','Iron Barbs','Tinted Lens']);
+            const DEFENSIVE = new Set(['Magic Guard','Multiscale','Regenerator','Unaware','Filter','Solid Rock','Fluffy','Ice Scales','Thick Fat','Disguise','Wonder Guard','Levitate']);
+            const UTILITY = new Set(['Intimidate','Magic Bounce','Speed Boost','Prankster','Triage','Gale Wings','Drought','Drizzle','Sand Stream','Snow Warning','Electric Surge','Psychic Surge','Misty Surge','Grassy Surge','Cursed Body']);
+            const NICHE = new Set(['Sap Sipper','Flash Fire','Storm Drain','Lightning Rod','Water Absorb','Volt Absorb','Motor Drive','Justified','Defiant','Competitive']);
+
+            const haSet = new Set();
+            try { const bs = baseStats[monName]; if (bs && bs.abilities && bs.abilities.H) haSet.add(bs.abilities.H); } catch (e) {}
+
+            const out = [];
+            const used = new Set();
+            const push = (purpose, ability, reason) => {
+                if (!ability || used.has(ability)) return;
+                used.add(ability);
+                out.push({ purpose, ability, reason, hidden: haSet.has(ability) });
+            };
+
+            const bestIn = (set) => _txBestBy(pool, a => set.has(a), a => _txScoreAbility(a, mon, build));
+
+            const off = bestIn(OFFENSIVE);
+            if (off) push('Offensive', off, 'Boosts damage output every turn.');
+
+            const def = bestIn(DEFENSIVE);
+            if (def) push('Defensive', def, 'Cuts incoming damage or blocks status.');
+
+            const util = bestIn(UTILITY);
+            if (util) push('Utility', util, 'Shifts the matchup the moment you switch in.');
+
+            if (out.length < 4) {
+                const niche = bestIn(NICHE);
+                if (niche) push('Niche', niche, 'Immunity / counter — wins specific matchups.');
+            }
+
+            // Fallback: best by score (if categories couldn't produce 3 distinct picks)
+            if (out.length < 3) {
+                const rest = _txBestBy(pool, a => !used.has(a), a => _txScoreAbility(a, mon, build));
+                if (rest) push('Flex', rest, _txDescriptionFor(rest, 'ability').slice(0, 80));
+            }
+
+            return out.slice(0, 4);
+        }
+
+        // Nature recs by purpose — Power / Speed / Bulk picks, with clear reasoning.
+        function _txNatureRecsByPurpose(availNats, mon, build, monName) {
+            if (!availNats || !availNats.length) return [];
+            const cur = (build && build.n) || 'Hardy';
+            const pool = availNats.filter(n => n !== cur && natureModifiers[n]);
+            if (!pool.length) return [];
+
+            const base = (monName && baseStats[monName]) ? baseStats[monName] : null;
+            const physical = base ? (base.atk || 0) >= (base.spa || 0) : true;
+            const fast = base ? (base.spe || 0) >= 90 : false;
+            const slow = base ? (base.spe || 0) < 70 : false;
+
+            const out = [];
+            const used = new Set();
+            const push = (purpose, nature, reason) => {
+                if (!nature || used.has(nature)) return;
+                const mod = natureModifiers[nature];
+                if (!mod) return;
+                used.add(nature);
+                out.push({ purpose, nature, reason, mod });
+            };
+
+            // For Power — Adamant (phys/-SpA) or Modest (spec/-Atk)
+            const powerNat = physical ? 'Adamant' : 'Modest';
+            if (pool.includes(powerNat)) push('Power', powerNat, `+${physical ? 'Atk' : 'SpA'} ${physical ? 'Adamant' : 'Modest'} hits ~10% harder.`);
+
+            // For Speed — Jolly (phys/-SpA) or Timid (spec/-Atk)
+            const speedNat = physical ? 'Jolly' : 'Timid';
+            if (pool.includes(speedNat) && !slow) push('Speed', speedNat, `+Spe ${speedNat} outspeeds the next tier.`);
+
+            // For Bulk — Bold (def/-Atk) or Calm (spd/-Atk), Impish or Careful for phys leaners
+            let bulkNat = null;
+            if (physical && pool.includes('Impish')) bulkNat = 'Impish';
+            else if (physical && pool.includes('Careful')) bulkNat = 'Careful';
+            else if (!physical && pool.includes('Bold')) bulkNat = 'Bold';
+            else if (!physical && pool.includes('Calm')) bulkNat = 'Calm';
+            if (bulkNat) {
+                const m = natureModifiers[bulkNat];
+                push('Bulk', bulkNat, `+${_TX_STAT_LABEL[m.up]} on a ${physical?'physical':'special'} attacker — keeps offense and adds tank.`);
+            }
+
+            // Trick Room — if slow, Brave / Quiet drop speed for power
+            if (slow && out.length < 4) {
+                const trN = physical ? 'Brave' : 'Quiet';
+                if (pool.includes(trN)) {
+                    const m = natureModifiers[trN];
+                    push('Trick Room', trN, `+${_TX_STAT_LABEL[m.up]} / -Spe — slow attacker for Trick Room teams.`);
+                }
+            }
+
+            // Fallback: top scoring remaining
+            if (out.length < 3) {
+                const rest = _txBestBy(pool, n => !used.has(n), n => _txScoreNature(n, mon, build, monName));
+                if (rest) {
+                    const m = natureModifiers[rest];
+                    push('Flex', rest, `+${_TX_STAT_LABEL[m.up]} / -${_TX_STAT_LABEL[m.down]}.`);
+                }
+            }
+
+            return out.slice(0, 4);
+        }
+
+        // EV preset recs by purpose — Sweeper / Wall / Meta / Balanced picks.
+        // Within each purpose, score remaining presets against the mon and pick
+        // the highest-scoring match so e.g. a Special-leaning Pokémon gets the
+        // Special Sweeper over the Physical Sweeper for the Offensive slot.
+        function _txEvPresetRecsByPurpose(presets, currentEvs, mon) {
+            if (!presets || !presets.length) return [];
+            const pool = presets.filter(p => !_evsEqual(currentEvs, p.evs));
+            if (!pool.length) return [];
+
+            const out = [];
+            const used = new Set();
+            const push = (purpose, preset, reason) => {
+                if (!preset || used.has(preset.id)) return;
+                used.add(preset.id);
+                out.push({ purpose, preset, reason });
+            };
+            // Drop the +30 meta bonus for Offensive/Defensive/Speed picks — otherwise
+            // any meta-tagged sweeper beats the cleaner Role preset (Physical Sweeper)
+            // even when the two are functionally identical. The META slot still uses
+            // the bonused score so species-specific meta builds surface there.
+            const scoreNoMetaBonus = p => {
+                const s = _evTrainerScorePreset(p, mon);
+                return (p.id && /^meta_/.test(p.id)) ? s - 30 : s;
+            };
+            const score = p => _evTrainerScorePreset(p, mon);
+            const pickBest = pred => _txBestBy(pool, p => !used.has(p.id) && pred(p), scoreNoMetaBonus);
+
+            const offensive = pickBest(p => /sweep|attacker|atk/i.test(p.label));
+            if (offensive) push('Offensive', offensive, 'Max one offense + Speed — the classic glass cannon.');
+
+            const defensive = pickBest(p => /wall|tank/i.test(p.label));
+            if (defensive) push('Defensive', defensive, 'Max HP + defense — survives big hits.');
+
+            const meta = _txBestBy(pool, p => !used.has(p.id) && /^meta_/.test(p.id), score);
+            if (meta) push('Meta', meta, 'Spread pulled from competitive tier lists for this species.');
+
+            // Speed / utility pick — Fast Utility or Mixed Sweeper if the mon is fast.
+            const speedy = pickBest(p => /fast|sweep|mixed/i.test(p.label));
+            if (speedy && out.length < 4) push('Speed', speedy, 'Outspeeds opponents — speed creep matters at this tier.');
+
+            // Balanced fallback so the panel always shows at least 3 picks.
+            if (out.length < 3) {
+                const balanced = pickBest(() => true);
+                if (balanced) push('Balanced', balanced, 'Mixes offense and bulk — stays useful across matchups.');
+            }
+
+            return out.slice(0, 4);
+        }
+
         // Compose the ordered list shown in the "Recommended" strip.
         // First pulls popular Smogon picks for this species (or global fallback),
         // intersected with the actually-available pool. If the meta has fewer
@@ -41327,12 +42009,72 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const t = ev.target && ev.target.closest ? ev.target : null;
                 if (!t) return;
 
-                // Team accordion toggle
+                // "Collapse all" affordance — close the open mon so the team
+                // list returns to the compact picker state. Rendered only when
+                // one mon is open.
+                if (t.closest('.tx-collapse-all[data-collapse-all]')) {
+                    if (_storyTutorOpenIdx !== -1) {
+                        _storyTutorOpenIdx = -1;
+                        _txPending = null;
+                        void renderTutorTeam();
+                    }
+                    return;
+                }
+
+                // Sticky mon-switcher pill — jump straight to a mon's editor
+                // without scrolling back to the collapsed header. Tapping the
+                // currently-open mon's pill collapses everything, so the player
+                // can reach the "all closed" state without scrolling up to the
+                // header chevron. After the re-render, scroll so the new mon's
+                // body starts just below the sticky pill bar (~58px).
+                const monPill = t.closest('.tx-mon-pill[data-mon-switcher]');
+                if (monPill) {
+                    const nextIdx = parseInt(monPill.dataset.monSwitcher, 10);
+                    if (Number.isFinite(nextIdx)) {
+                        if (_storyTutorOpenIdx === nextIdx) {
+                            _storyTutorOpenIdx = -1;
+                            _txPending = null;
+                            void renderTutorTeam();
+                        } else {
+                            _storyTutorOpenIdx = nextIdx;
+                            _txPending = null;
+                            void renderTutorTeam();
+                            setTimeout(() => {
+                                try {
+                                    const teamEl = document.getElementById('story-tutor-team');
+                                    const open = teamEl && teamEl.querySelector(`.story-tutor-mon-toggle[data-team="${nextIdx}"]`);
+                                    const scroller = teamEl && teamEl.parentElement;
+                                    if (open && scroller) {
+                                        const sb = scroller.getBoundingClientRect();
+                                        const ob = open.getBoundingClientRect();
+                                        const targetTop = scroller.scrollTop + (ob.top - sb.top) - 64;
+                                        scroller.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+                                    }
+                                    // Center the now-active pill in the horizontal switcher
+                                    // (direct scrollLeft so we don't disturb page scroll).
+                                    const activePill = teamEl && teamEl.querySelector(`.tx-mon-pill[data-mon-switcher="${nextIdx}"]`);
+                                    const switcher = teamEl && teamEl.querySelector('.tx-mon-switcher');
+                                    if (activePill && switcher) {
+                                        const sw = switcher.getBoundingClientRect();
+                                        const pr = activePill.getBoundingClientRect();
+                                        const targetLeft = switcher.scrollLeft + (pr.left - sw.left) - (sw.width - pr.width) / 2;
+                                        switcher.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+                                    }
+                                } catch (e) {}
+                            }, 30);
+                        }
+                    }
+                    return;
+                }
+
+                // Team accordion toggle. Tapping a collapsed mon opens it; tapping
+                // the open mon closes it (so the dropdown round-trips on/off and
+                // the team list stays compact on phones).
                 const toggleBtn = t.closest('.story-tutor-mon-toggle');
                 if (toggleBtn) {
                     const nextIdx = parseInt(toggleBtn.dataset.team, 10);
-                    if (Number.isFinite(nextIdx) && _storyTutorOpenIdx !== nextIdx) {
-                        _storyTutorOpenIdx = nextIdx;
+                    if (Number.isFinite(nextIdx)) {
+                        _storyTutorOpenIdx = (_storyTutorOpenIdx === nextIdx) ? -1 : nextIdx;
                         _txPending = null;
                         void renderTutorTeam();
                     }
@@ -41358,6 +42100,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (tab && _txState.dojoTab !== tab) {
                         _txState.dojoTab = tab;
                         _txPending = null;
+                        void renderTutorTeam(true);
+                    }
+                    return;
+                }
+
+                // Mobile filter drawer toggle (open/close the chip rows)
+                const filterToggle = t.closest('.tx-filter-toggle[data-filter-toggle]');
+                if (filterToggle) {
+                    const kind = filterToggle.dataset.filterToggle;
+                    if (kind && Object.prototype.hasOwnProperty.call(_txState.filterPanelOpen, kind)) {
+                        _txState.filterPanelOpen[kind] = !_txState.filterPanelOpen[kind];
+                        void renderTutorTeam(true);
+                    }
+                    return;
+                }
+
+                // One-tap clear for search + filter chips
+                const clearBtn = t.closest('.tx-filter-clear[data-clear-filters]');
+                if (clearBtn) {
+                    const kind = clearBtn.dataset.clearFilters;
+                    if (kind) {
+                        _txResetFilters(kind);
+                        void renderTutorTeam(true);
+                    }
+                    return;
+                }
+
+                // Recommendation row — set pending selection (same effect as picking
+                // the card from the grid). The data attributes match `.tx-card`, so
+                // we just normalize to the card-pick path below.
+                const recRow = t.closest('.tx-rec-row[data-card-kind]');
+                if (recRow && recRow.dataset.disabled !== '1') {
+                    const kind = recRow.dataset.cardKind;
+                    const value = recRow.dataset.cardValue;
+                    if (kind && value) {
+                        _txPending = { kind, value, slot: kind === 'move' ? _txState.moveSlot : undefined };
                         void renderTutorTeam(true);
                     }
                     return;
@@ -41438,7 +42216,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             });
         }
 
-        // Render the toolbar (search + filter chips + sort) for a given kind
+        // Count of active filters for a given kind — drives the drawer badge so the
+        // player knows filters are applied even when the drawer is collapsed.
+        function _txActiveFilterCount(kind) {
+            if (kind === 'moves') return _txState.filter.moveTypes.size + _txState.filter.moveCats.size;
+            if (kind === 'items') return _txState.filter.itemCat !== 'all' ? 1 : 0;
+            if (kind === 'natures') return (_txState.filter.natureUp !== 'any' ? 1 : 0) + (_txState.filter.natureDown !== 'any' ? 1 : 0);
+            return 0;
+        }
+
+        // Render the toolbar (search + filter chips + sort) for a given kind.
+        // The chip rows live in a collapsible drawer that's always-open on desktop
+        // but collapsed by default on phones — saves 2-3 rows of vertical space.
         function _txToolbarHtml(kind, opts) {
             opts = opts || {};
             const search = _txState.search[kind] || '';
@@ -41450,13 +42239,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sortHtml = `<select class="tx-sort-select" data-kind="${kind}">${sortOpts.map(o => `<option value="${o.value}"${o.value===sortVal?' selected':''}>${_esc(o.label)}</option>`).join('')}</select>`;
             const countHtml = (opts.count != null) ? `<span class="tx-count-pill">${opts.count} ${opts.countLabel || 'options'}</span>` : '';
             const placeholder = opts.placeholder || 'Search…';
+            const hasChips = !!opts.chipsHtml;
+            const drawerOpen = _txState.filterPanelOpen[kind] ? 1 : 0;
+            const activeN = _txActiveFilterCount(kind);
+            const hasActiveFilters = activeN > 0 || (search && search.length > 0);
+            const filterToggle = hasChips
+                ? `<button type="button" class="tx-filter-toggle" data-filter-toggle="${kind}" data-open="${drawerOpen}" aria-expanded="${drawerOpen?'true':'false'}">
+                        ${drawerOpen ? 'Hide' : 'Filters'}
+                        ${activeN ? `<span class="tx-filter-badge">${activeN}</span>` : ''}
+                    </button>`
+                : '';
+            const clearBtn = hasActiveFilters
+                ? `<button type="button" class="tx-filter-clear" data-clear-filters="${kind}" title="Clear search and filters">✕ Clear</button>`
+                : '';
+            const drawerHtml = hasChips
+                ? `<div class="tx-filter-panel" data-open="${drawerOpen}">${opts.chipsHtml}</div>`
+                : '';
             return `<div class="tx-toolbar">
                 <div class="tx-search-row">
                     <input type="search" class="tx-search-input" data-kind="${kind}" placeholder="${_esc(placeholder)}" value="${_esc(search)}" autocomplete="off" />
                     ${sortHtml}
+                    ${filterToggle}
+                    ${clearBtn}
                     ${countHtml}
                 </div>
-                ${opts.chipsHtml || ''}
+                ${drawerHtml}
             </div>`;
         }
 
@@ -41615,6 +42422,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             </div>`;
         }
 
+        // Render a multi-purpose recommendations panel. Each entry is a clickable
+        // row that sets the pending selection. Entries shape:
+        //   { purpose: 'STAB', value: 'Earthquake', reason: '…', kind: 'move', extraHtml?: '...' }
+        function _txRecsPanelHtml(title, entries, pendingValue, hint) {
+            if (!entries || !entries.length) return '';
+            const rows = entries.map(e => {
+                const isPending = pendingValue === e.value;
+                const tagHtml = `<span class="tx-rec-tag" data-purpose="${_esc(e.purpose)}">${_esc(e.purpose)}</span>`;
+                return `<button type="button" class="tx-rec-row"
+                            data-card-kind="${_esc(e.kind)}" data-card-value="${_esc(e.value)}"
+                            data-pending="${isPending?1:0}"
+                            aria-label="${_esc(e.purpose)}: ${_esc(e.value)}">
+                    ${tagHtml}
+                    <span class="tx-rec-body">
+                        <span class="tx-rec-name">${_esc(e.value)}${e.extraHtml || ''}</span>
+                        <span class="tx-rec-reason">${_esc(e.reason)}</span>
+                    </span>
+                    <span class="tx-rec-go" aria-hidden="true">›</span>
+                </button>`;
+            }).join('');
+            const hintHtml = hint ? `<span class="tx-recs-panel-hint">${_esc(hint)}</span>` : '';
+            return `<div class="tx-recs-panel">
+                <div class="tx-recs-panel-head">
+                    <span class="tx-recs-panel-title">★ ${_esc(title)}</span>
+                    ${hintHtml}
+                </div>
+                <div class="tx-recs-list">${rows}</div>
+            </div>`;
+        }
+
         // Apply text + chip + sort filters to a flat list, returning the filtered+sorted list.
         function _txApplyMoveFilters(allMoves, mon, build, monName) {
             const q = (_txState.search.moves || '').toLowerCase();
@@ -41665,6 +42502,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             });
             filt.sort(_txNatureCmp(sortKey, mon, build, monName));
             return filt;
+        }
+
+        // Render: sticky mon-switcher pill bar — lets the player jump directly to
+        // any mon's editor without scrolling back to find its collapsed header.
+        // The active mon (= openIdx) is highlighted. activeIdx of -1 means "all
+        // collapsed" — every pill renders inactive and the bar shows a "Tap a
+        // Pokémon" hint. When one mon is open, a "Close" chip on the right
+        // collapses everything in one tap (no need to scroll back to the
+        // chevron on the header).
+        function _txMonSwitcherHtml(team, activeIdx, facility) {
+            if (!team || team.length <= 1) return '';
+            const pills = team.map((t, i) => {
+                const isActive = i === activeIdx;
+                const spriteUrl = getSprite(spriteDisplayName(t));
+                const ttl = isActive ? `${t.name} — tap to collapse` : t.name;
+                return `<button type="button" class="tx-mon-pill" data-mon-switcher="${i}" data-facility="${_esc(facility)}" data-active="${isActive?1:0}" aria-label="${_esc(ttl)}" title="${_esc(ttl)}">
+                    <img src="${spriteUrl}" alt="" onerror="this.style.visibility='hidden'">
+                    <span class="tx-mon-pill-label">${_esc(t.name)}</span>
+                </button>`;
+            }).join('');
+            const closeChip = activeIdx >= 0
+                ? `<button type="button" class="tx-collapse-all" data-collapse-all="${_esc(facility)}" aria-label="Close all" title="Close all Pokémon">▾ Close</button>`
+                : `<span class="tx-mon-switcher-hint" aria-hidden="true">Tap a Pokémon →</span>`;
+            return `<div class="tx-mon-switcher" role="tablist" aria-label="Switch Pokémon">${closeChip}${pills}</div>`;
         }
 
         // Render: collapsed mon header (same look as before, lightly polished)
@@ -41761,15 +42622,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Filtered + sorted
             const filtered = _txApplyMoveFilters(availForActive, mon, b, t.name);
-            // Data-driven top picks: 10 in the strip, top 5 of those marked "★ Pick"
-            // on the cards. Strip pulls from Smogon usage for the species (or the
-            // global pool when the species has < 5 builds), so popular tech moves
-            // surface even when they're niche by raw BP / accuracy.
-            const moveScoreFn = (it) => _txScoreMove(it, mon, b, t.name);
-            const { picks: stripPicks, haveSpecies: stripHaveSpec } =
-                _txStripPicks('moves', t.name, availForActive, null, moveScoreFn, 10);
-            const recList = stripPicks.slice(0, 5);
-            const recSet = new Set(recList);
+            // Recommendations: categorized by purpose (STAB / Coverage / Setup / Utility…).
+            // Replaces the older flat "top 10 / top 5" strip — purpose-tagged picks
+            // give the player a directly-actionable shortlist.
+            const recByPurpose = _txMoveRecsByPurpose(availForActive, mon, b, t.name);
+            const recSet = new Set(recByPurpose.map(r => r.move));
             const stabTypes = new Set([mon && mon.type1, mon && mon.type2].filter(Boolean));
             const pendingMove = (_txPending && _txPending.kind === 'move') ? _txPending.value : null;
             const ctx = { pending: pendingMove, recommended: recSet, stabTypes };
@@ -41778,8 +42635,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? filtered.map(m => _txMoveCardHtml(m, ctx)).join('')
                 : `<div class="tx-grid-empty">No moves match these filters. Loosen them or clear the search.</div>`;
 
-            // Top-10 strip ordered by popularity for this species.
-            const recsStrip = _txStripHtml('moves', t.name, stripPicks, stripHaveSpec, null);
+            // Recommended panel — 3-4 distinct picks, each labelled with its purpose.
+            const recsStrip = _txRecsPanelHtml(
+                `Picks for ${t.name} · Slot ${activeSlot + 1}`,
+                recByPurpose.map(r => {
+                    const md = movesDB[r.move];
+                    const typeBadge = md ? ` <span class="type-badge type-${md.type}">${md.type}</span>` : '';
+                    return { kind: 'move', value: r.move, purpose: r.purpose, reason: r.reason, extraHtml: typeBadge };
+                }),
+                pendingMove,
+                'Tap a pick to preview it before confirming.'
+            );
 
             const toolbar = _txToolbarHtml('moves', {
                 placeholder: 'Search moves (e.g. earthquake, hidden, ice)',
@@ -41814,7 +42680,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </button>
                 <div class="story-tutor-mon-body">
                     <div class="tx-slot-row">${slotCards}</div>
-                    ${curMove ? toolbar + recsStrip + `<div class="tx-grid">${cardsHtml}</div>` + _txConfirmBarHtml(idx, 'move', mon, b) : '<div class="tx-grid-empty">Add a move first to swap moves.</div>'}
+                    ${curMove ? recsStrip + toolbar + `<div class="tx-grid">${cardsHtml}</div>` + _txConfirmBarHtml(idx, 'move', mon, b) : '<div class="tx-grid-empty">Add a move first to swap moves.</div>'}
                 </div>
             </div>`;
         }
@@ -41833,10 +42699,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const curItem = b.i || '(none)';
             const items = pool.items.slice();
             const filtItems = _txApplyItemFilters(items, mon, b, t.name);
-            const itemScoreFn = (it) => _txScoreItem(it, mon, b, t.name);
-            const { picks: recItems, haveSpecies: itemHaveSpec } =
-                _txStripPicks('items', t.name, items, new Set([curItem]), itemScoreFn, 3);
-            const recItemSet = new Set(recItems);
+            const itemRecs = _txItemRecsByPurpose(items, mon, b, t.name);
+            const recItemSet = new Set(itemRecs.map(r => r.item));
             const pendingItem = (_txPending && _txPending.kind === 'item') ? _txPending.value : null;
             const itemCtx = { pending: pendingItem, current: curItem, recommended: recItemSet };
 
@@ -41845,10 +42709,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const curAbility = b.a || (mon && mon.ability) || '(none)';
             const abils = pool.abilities.slice();
             const filtAbils = _txApplyAbilityFilters(abils, mon, b, t.name);
-            const abilScoreFn = (it) => _txScoreAbility(it, mon, b, t.name);
-            const { picks: recAbils, haveSpecies: abilHaveSpec } =
-                _txStripPicks('abilities', t.name, abils, new Set([curAbility]), abilScoreFn, 2);
-            const recAbilSet = new Set(recAbils);
+            const abilRecs = _txAbilityRecsByPurpose(abils, mon, b, t.name);
+            const recAbilSet = new Set(abilRecs.map(r => r.ability));
             const haSet = new Set();
             try {
                 const bs = baseStats[t.name];
@@ -41860,7 +42722,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Item tab content
             const itemTabHtml = (() => {
                 if (!items.length) return '<div class="tx-grid-empty">No items available for this Pokémon.</div>';
-                const recDesc = _txStripHtml('items', t.name, recItems, itemHaveSpec, null);
+                const recDesc = _txRecsPanelHtml(
+                    `Picks for ${t.name}`,
+                    itemRecs.map(r => ({ kind: 'item', value: r.item, purpose: r.purpose, reason: r.reason })),
+                    pendingItem,
+                    'Different goals, different items.'
+                );
                 const cards = filtItems.length
                     ? filtItems.map(it => _txItemCardHtml(it, itemCtx)).join('')
                     : `<div class="tx-grid-empty">No items match — try a different category or clear the search.</div>`;
@@ -41874,27 +42741,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         { value:'name', label:'Name (A→Z)' },
                     ],
                 });
-                return toolbar + recDesc + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'item', mon, b);
+                return recDesc + toolbar + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'item', mon, b);
             })();
 
             // Ability tab content
             const abilTabHtml = (() => {
                 if (!abils.length) return '<div class="tx-grid-empty">No abilities available for this Pokémon.</div>';
-                // Top + runner-up — labeled inline so the strip reads naturally
-                // even when meta usage is heavily skewed (e.g. Regenerator 90% / X 8%).
-                const recDesc = (() => {
-                    if (!recAbils.length) return '';
-                    const title = abilHaveSpec
-                        ? `★ Top abilities for ${_esc(t.name)}`
-                        : `★ Popular abilities (meta-wide)`;
-                    const inner = recAbils.length === 1
-                        ? `<strong>${_esc(recAbils[0])}</strong>`
-                        : `<strong>${_esc(recAbils[0])}</strong> <span style="font-size:10px;opacity:0.8;">· runner-up:</span> <strong>${_esc(recAbils[1])}</strong>`;
-                    return `<div class="tx-recs-strip">
-                        <div class="tx-recs-strip-title">${title}</div>
-                        <div class="tx-recs-strip-detail">${inner}</div>
-                    </div>`;
-                })();
+                const recDesc = _txRecsPanelHtml(
+                    `Strong abilities for ${t.name}`,
+                    abilRecs.map(r => ({
+                        kind: 'ability', value: r.ability, purpose: r.purpose, reason: r.reason,
+                        extraHtml: r.hidden ? ' <span class="tx-pill tx-pill--ha">Hidden</span>' : '',
+                    })),
+                    pendingAbility,
+                    'Pick the one that fits your role.'
+                );
                 const cards = filtAbils.length
                     ? filtAbils.map(a => _txAbilityCardHtml(a, abilCtx)).join('')
                     : `<div class="tx-grid-empty">No abilities match the search.</div>`;
@@ -41906,7 +42767,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         { value:'name', label:'Name (A→Z)' },
                     ],
                 });
-                return toolbar + recDesc + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'ability', mon, b);
+                return recDesc + toolbar + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'ability', mon, b);
             })();
 
             const headerSummary = `<div class="story-tutor-mon-meta" style="margin-top:0;">
@@ -41945,14 +42806,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const natAvailable = pool.natures.slice();
             const curNature = b.n || 'Hardy';
 
-            // Top 3 natures by Smogon usage for this species (current excluded).
-            // Neutral natures are filtered out — they're shown separately in the
-            // neutral row and never end up in the data-driven recommendations.
-            const natScoreFn = (n) => _txScoreNature(n, mon, b, t.name);
-            const natPool = natAvailable.filter(n => natureModifiers[n]);
-            const { picks: recList, haveSpecies: natHaveSpec } =
-                _txStripPicks('natures', t.name, natPool, new Set([curNature]), natScoreFn, 3);
-            const recSet = new Set(recList);
+            // Categorized recommendations (Power / Speed / Bulk / Trick Room) — 3-4 distinct picks.
+            const natRecs = _txNatureRecsByPurpose(natAvailable, mon, b, t.name);
+            const recSet = new Set(natRecs.map(r => r.nature));
+            const pendingNature = (_txPending && _txPending.kind === 'nature') ? _txPending.value : null;
 
             // Build a 5×5 grid mapping (up, down) → nature
             const stats = ['atk','def','spa','spd','spe'];
@@ -42025,13 +42882,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>`;
             };
 
-            // Top-3 strip — decorate each entry with its +/− stat axis so the
-            // tradeoff is legible without tapping the cell.
-            const natDecorate = (n) => {
-                const m = natureModifiers[n];
-                return m ? `(+${_TX_STAT_LABEL[m.up]}/−${_TX_STAT_LABEL[m.down]})` : '';
-            };
-            const recsStrip = _txStripHtml('natures', t.name, recList, natHaveSpec, natDecorate);
+            // Multi-purpose recommendations panel (Power / Speed / Bulk / Trick Room).
+            const recsStrip = _txRecsPanelHtml(
+                `Natures for ${t.name}`,
+                natRecs.map(r => ({
+                    kind: 'nature', value: r.nature, purpose: r.purpose, reason: r.reason,
+                    extraHtml: ` <span style="font-size:10px;opacity:0.8;color:#aed581;">(+${_TX_STAT_LABEL[r.mod.up]}/−${_TX_STAT_LABEL[r.mod.down]})</span>`,
+                })),
+                pendingNature,
+                'Each pick targets a different goal.'
+            );
 
             const headerSummary = `<div class="story-tutor-mon-meta" style="margin-top:0;">Nature: <strong>${_esc(curNature)}</strong>${
                 natureModifiers[curNature] ? ` <span style="opacity:0.7;">(+${_TX_STAT_LABEL[natureModifiers[curNature].up]}/−${_TX_STAT_LABEL[natureModifiers[curNature].down]})</span>` : ' (neutral)'
@@ -42065,6 +42925,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const m = mode === 'nature' ? 'nature' : mode === 'loadout' ? 'loadout' : 'moves';
             _markFacilitySeen(m === 'nature' ? 'nature' : m === 'loadout' ? 'dojo' : 'tutor');
             _storyTutorMode = m;
+            // Lead with the first mon expanded so the rec panel is visible
+            // immediately. Use the Close chip (or tap the active pill /
+            // header chevron) to collapse to the all-closed picker.
             _storyTutorOpenIdx = 0;
             // Reset transient picker state on entry — fresh filters & no pending swap
             _txState.moveSlot = 0;
@@ -42121,7 +42984,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const showMoves = mode === 'moves';
             const showNature = mode === 'nature';
             const showLoadout = mode === 'loadout';
-            if (_storyTutorOpenIdx < 0 || _storyTutorOpenIdx >= sm.team.length) _storyTutorOpenIdx = 0;
+            // Out-of-range index ⇒ collapse all (-1). The user can re-open by tapping
+            // a header. We keep -1 valid so the close-on-tap-same UX works.
+            if (_storyTutorOpenIdx >= sm.team.length) _storyTutorOpenIdx = -1;
 
             // Move pools — fetched once per facility entry, then cached.
             // Partial re-renders (filter / sort changes) pass skipFetch=true and reuse the cache.
@@ -42148,7 +43013,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             } catch (e) {}
 
-            el.innerHTML = sm.team.map((t, idx) => {
+            const facility = showMoves ? 'tutor' : (showLoadout ? 'dojo' : 'nature');
+            const _prevSwitcherScrollLeft = (() => {
+                try { const sw = el.querySelector('.tx-mon-switcher'); return sw ? sw.scrollLeft : 0; } catch (e) { return 0; }
+            })();
+            const switcherHtml = _txMonSwitcherHtml(sm.team, _storyTutorOpenIdx, facility);
+            el.innerHTML = switcherHtml + sm.team.map((t, idx) => {
                 const expanded = idx === _storyTutorOpenIdx;
                 if (!expanded) return _txRenderCollapsedMonHtml(t, idx, mode);
                 if (showMoves) {
@@ -42159,6 +43029,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (showNature)  return _txRenderNatureEditor(t, idx);
                 return _txRenderCollapsedMonHtml(t, idx, mode);
             }).join('');
+
+            // Preserve pill-bar horizontal scroll across re-renders so the
+            // active pill stays in the same spot the player left it.
+            try {
+                const sw = el.querySelector('.tx-mon-switcher');
+                if (sw) sw.scrollLeft = _prevSwitcherScrollLeft || 0;
+            } catch (e) {}
 
             // Refocus the search input that was active before the re-render so
             // typing stays uninterrupted. Restore caret position too.
@@ -42800,13 +43677,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             { id:'none',  label:'No EVs',        evs:{ hp:0,  atk:0,  def:0,  spa:0,  spd:0,  spe:0  } },
             { id:'equal', label:'Equal Spread',  evs:{ hp:84, atk:84, def:84, spa:84, spd:84, spe:84 } },
         ];
+        // Role spreads — common competitive archetypes available to every species.
+        // Each spread totals ≤510 EVs with no more than 252 in any one stat.
+        // Notes: Bulky Attacker / Bulky Special double as Trick Room sets (0 Spe).
         const EV_PRESETS_ROLE = [
-            { id:'phys_sweep', label:'Physical Sweeper', evs:{ hp:4,   atk:252, def:0,   spa:0,   spd:0,   spe:252 } },
-            { id:'spec_sweep', label:'Special Sweeper',  evs:{ hp:4,   atk:0,   def:0,   spa:252, spd:0,   spe:252 } },
-            { id:'phys_tank',  label:'Physical Tank',    evs:{ hp:252, atk:4,   def:252, spa:0,   spd:0,   spe:0   } },
-            { id:'spec_wall',  label:'Special Wall',     evs:{ hp:252, atk:0,   def:0,   spa:4,   spd:252, spe:0   } },
-            { id:'bulky_atk',  label:'Bulky Attacker',   evs:{ hp:252, atk:252, def:0,   spa:0,   spd:4,   spe:0   } },
-            { id:'bulky_spa',  label:'Bulky Special',    evs:{ hp:252, atk:0,   def:0,   spa:252, spd:4,   spe:0   } },
+            { id:'phys_sweep',  label:'Physical Sweeper', evs:{ hp:4,   atk:252, def:0,   spa:0,   spd:0,   spe:252 } },
+            { id:'spec_sweep',  label:'Special Sweeper',  evs:{ hp:4,   atk:0,   def:0,   spa:252, spd:0,   spe:252 } },
+            { id:'mixed_sweep', label:'Mixed Sweeper',    evs:{ hp:4,   atk:124, def:0,   spa:124, spd:6,   spe:252 } },
+            { id:'phys_tank',   label:'Physical Wall',    evs:{ hp:252, atk:4,   def:252, spa:0,   spd:0,   spe:0   } },
+            { id:'spec_wall',   label:'Special Wall',     evs:{ hp:252, atk:0,   def:0,   spa:4,   spd:252, spe:0   } },
+            { id:'mixed_wall',  label:'Mixed Wall',       evs:{ hp:252, atk:0,   def:128, spa:0,   spd:128, spe:2   } },
+            { id:'bulky_atk',   label:'Bulky / TR Attk',  evs:{ hp:252, atk:252, def:0,   spa:0,   spd:4,   spe:0   } },
+            { id:'bulky_spa',   label:'Bulky / TR SpAtk', evs:{ hp:252, atk:0,   def:0,   spa:252, spd:4,   spe:0   } },
+            { id:'fast_util',   label:'Fast Utility',     evs:{ hp:252, atk:0,   def:4,   spa:0,   spd:2,   spe:252 } },
         ];
         const _EV_KEYS = ['hp','atk','def','spa','spd','spe'];
         const _evTrainerMetaCache = {}; // teamIdx → meta presets array (rebuilt every render)
@@ -42819,12 +43702,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!evs) return 0;
             return _EV_KEYS.reduce((s, k) => s + (evs[k]||0), 0);
         }
+        // Key used to detect duplicate EV spreads. Comparing the JSON of the
+        // canonical 6-stat object is enough — Universal / Role / Meta share the
+        // same {hp,atk,def,spa,spd,spe} shape.
+        function _evsKey(evs) {
+            const e = evs || {};
+            return `${e.hp||0}/${e.atk||0}/${e.def||0}/${e.spa||0}/${e.spd||0}/${e.spe||0}`;
+        }
         function _evTrainerMetaSpreadsFor(name) {
             let entry;
             try { entry = (typeof resolveCsvBuildEntry === 'function') ? resolveCsvBuildEntry(name) : null; }
             catch (e) { entry = null; }
             entry = entry || {};
             const all = [].concat(entry.regular||[], entry.weather||[], entry.mega||[], entry.tera||[], entry['z-attack']||[]);
+            // Pre-build the dedup set: every spread already covered by Universal /
+            // Role is filtered out below so the player never sees the same EVs
+            // labelled twice across sections.
+            const dupKeys = new Set();
+            for (const p of EV_PRESETS_UNIVERSAL) dupKeys.add(_evsKey(p.evs));
+            for (const p of EV_PRESETS_ROLE)      dupKeys.add(_evsKey(p.evs));
             const counts = new Map();
             for (const b of all) {
                 if (!b || !b.evs) continue;
@@ -42832,7 +43728,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     hp:  b.evs.hp  || 0, atk: b.evs.atk || 0, def: b.evs.def || 0,
                     spa: b.evs.spa || 0, spd: b.evs.spd || 0, spe: b.evs.spe || 0
                 };
-                const key = JSON.stringify(norm);
+                const key = _evsKey(norm);
+                if (dupKeys.has(key)) continue; // already shown above — skip
                 const cur = counts.get(key);
                 if (cur) { cur.n++; }
                 else { counts.set(key, { evs: norm, archetype: b.archetype || 'Meta Spread', n: 1 }); }
@@ -42870,8 +43767,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Fallback: Title Case the slug
                 return k.split('-').map(w => w ? w[0].toUpperCase() + w.slice(1) : '').join(' ');
             };
-            return Array.from(counts.values()).sort((a,b) => b.n - a.n).slice(0, 4)
-                .map((m, i) => ({ id: 'meta_'+i, label: prettyLabel(m.archetype), evs: m.evs }));
+            // When two meta entries share the same archetype label, the user sees
+            // them as "Physical Attacker" / "Physical Attacker" — same name,
+            // different EVs (one with 4 Def, one with 4 SpD). Disambiguate by
+            // appending the leftover-EV stat so the player can tell them apart
+            // at a glance.
+            const _statLetter = { hp:'HP', atk:'Atk', def:'Def', spa:'SpA', spd:'SpD', spe:'Spe' };
+            const _leftoverStat = (evs) => {
+                let bestKey = null, bestVal = Infinity;
+                for (const k of Object.keys(evs)) {
+                    const v = evs[k] || 0;
+                    if (v > 0 && v < 64 && v < bestVal) { bestVal = v; bestKey = k; }
+                }
+                return bestKey ? _statLetter[bestKey] : null;
+            };
+            const ranked = Array.from(counts.values()).sort((a,b) => b.n - a.n).slice(0, 4);
+            const labelSeen = new Map(); // label → count
+            for (const m of ranked) {
+                const base = prettyLabel(m.archetype);
+                labelSeen.set(base, (labelSeen.get(base) || 0) + 1);
+            }
+            const labelCount = new Map();
+            return ranked.map((m, i) => {
+                const base = prettyLabel(m.archetype);
+                let label = base;
+                if ((labelSeen.get(base) || 0) > 1) {
+                    const leftover = _leftoverStat(m.evs);
+                    label = leftover ? `${base} (+${leftover})` : `${base} ${(labelCount.get(base) || 0) + 1}`;
+                }
+                labelCount.set(base, (labelCount.get(base) || 0) + 1);
+                return { id: 'meta_'+i, label, evs: m.evs };
+            });
         }
         function _evTrainerCharge() {
             if (sm.gold < EVTRAINER_COST) {
@@ -42913,6 +43839,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             showScreen('screen-story-evtrainer');
             // Whistle blast — Buck's "drop and give me twenty" vibe.
             try { window.StoryFx && window.StoryFx.playSfx('statUp', 0.4); } catch (e) {}
+            // Lead with the first mon's preset picks visible — collapse via
+            // the Close chip / active pill / header chevron when the player
+            // wants to scan the rest of the team.
+            _storyEVTrainerOpenIdx = 0;
             renderEVTrainerTeam();
             try { _storyShowFacilityQuote('screen-story-evtrainer', 'evTrainer'); } catch (e) {}
             // Story-embedded tutorial — Buck cameo (Battle_Girl sprite).
@@ -43045,18 +43975,127 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             </div>`;
         }
 
+        // EV Trainer: accordion toggle (open one mon at a time so the team list
+        // stays compact on phones) and smooth-scroll to recommended preset row.
+        function _initEvTrainerDelegationOnce() {
+            const el = document.getElementById('story-evtrainer-team');
+            if (!el || el._evtTrainerBound) return;
+            el._evtTrainerBound = true;
+            el.addEventListener('click', function(ev) {
+                const t = ev.target && ev.target.closest ? ev.target : null;
+                if (!t) return;
+                // "Collapse all" affordance — close the open preset card so
+                // the team list returns to the compact picker.
+                if (t.closest('.tx-collapse-all[data-collapse-all="evtrainer"]')) {
+                    if (_storyEVTrainerOpenIdx !== -1) {
+                        _storyEVTrainerOpenIdx = -1;
+                        try { renderEVTrainerTeam(); } catch (e) {}
+                    }
+                    return;
+                }
+                // Sticky mon-switcher pill — jump straight to a mon's editor.
+                // Tapping the active pill collapses everything so the player
+                // can reach the "all closed" overview.
+                const monPill = t.closest('.tx-mon-pill[data-mon-switcher][data-facility="evtrainer"]');
+                if (monPill) {
+                    const nextIdx = parseInt(monPill.dataset.monSwitcher, 10);
+                    if (Number.isFinite(nextIdx)) {
+                        if (_storyEVTrainerOpenIdx === nextIdx) {
+                            _storyEVTrainerOpenIdx = -1;
+                            try { renderEVTrainerTeam(); } catch (e) {}
+                        } else {
+                            _storyEVTrainerOpenIdx = nextIdx;
+                            try { renderEVTrainerTeam(); } catch (e) {}
+                            // Scroll the new mon's header just below the sticky
+                            // pill bar (~58px). Use getBoundingClientRect → scroller
+                            // because offsetTop walks to the nearest positioned
+                            // ancestor, which is the screen root (not the scroller).
+                            setTimeout(() => {
+                                try {
+                                    const open = el.querySelector(`.story-tutor-mon-toggle[data-team="${nextIdx}"][data-facility="evtrainer"]`);
+                                    const scroller = el.parentElement;
+                                    if (open && scroller) {
+                                        const sb = scroller.getBoundingClientRect();
+                                        const ob = open.getBoundingClientRect();
+                                        const targetTop = scroller.scrollTop + (ob.top - sb.top) - 64;
+                                        scroller.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+                                    }
+                                    const activePill = el.querySelector(`.tx-mon-pill[data-mon-switcher="${nextIdx}"][data-facility="evtrainer"]`);
+                                    const switcher = el.querySelector('.tx-mon-switcher');
+                                    if (activePill && switcher) {
+                                        const sw = switcher.getBoundingClientRect();
+                                        const pr = activePill.getBoundingClientRect();
+                                        const targetLeft = switcher.scrollLeft + (pr.left - sw.left) - (sw.width - pr.width) / 2;
+                                        switcher.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+                                    }
+                                } catch (e) {}
+                            }, 30);
+                        }
+                    }
+                    return;
+                }
+                // Accordion toggle on the mon header (open/close round-trips)
+                const toggleBtn = t.closest('.story-tutor-mon-toggle[data-facility="evtrainer"]');
+                if (toggleBtn) {
+                    const nextIdx = parseInt(toggleBtn.dataset.team, 10);
+                    if (Number.isFinite(nextIdx)) {
+                        _storyEVTrainerOpenIdx = (_storyEVTrainerOpenIdx === nextIdx) ? -1 : nextIdx;
+                        try { renderEVTrainerTeam(); } catch (e) {}
+                        // After re-render, scroll the opened header into view.
+                        if (_storyEVTrainerOpenIdx === nextIdx) {
+                            setTimeout(() => {
+                                try {
+                                    const open = el.querySelector(`.story-tutor-mon-toggle[data-team="${nextIdx}"][data-facility="evtrainer"]`);
+                                    if (open) open.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                } catch (e) {}
+                            }, 30);
+                        }
+                    }
+                    return;
+                }
+                // Recommendation row — smooth-scroll to the matching preset card.
+                const recRow = t.closest('.tx-rec-row[data-ev-rec]');
+                if (recRow) {
+                    ev.preventDefault();
+                    const presetId = recRow.dataset.evRec;
+                    const idx = _storyEVTrainerOpenIdx;
+                    if (presetId && idx >= 0) {
+                        const target = document.getElementById(`evpreset-${idx}-${presetId}`);
+                        if (target) {
+                            try { target.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+                            target.classList.add('tx-card--flash');
+                            setTimeout(() => target.classList.remove('tx-card--flash'), 1100);
+                        }
+                    }
+                    return;
+                }
+            });
+        }
+
         function renderEVTrainerTeam() {
             const el = document.getElementById('story-evtrainer-team');
             const goldEl = document.getElementById('story-evtrainer-gold');
             if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             if (!el) return;
+            _initEvTrainerDelegationOnce();
             if (!sm.team || !sm.team.length) {
                 el.innerHTML = _evTrainerHelpBannerHtml() + '<div style="color:#555;font-size:12px;">No Pokémon in your party.</div>';
                 return;
             }
+            // Clamp open index to valid range (or collapse all)
+            if (_storyEVTrainerOpenIdx >= sm.team.length) _storyEVTrainerOpenIdx = -1;
             // Reset cache then render
             for (const k in _evTrainerMetaCache) delete _evTrainerMetaCache[k];
-            el.innerHTML = _evTrainerHelpBannerHtml() + sm.team.map((t, idx) => _renderEVTrainerMonCard(t, idx)).join('');
+            const _prevSwitcherScrollLeft = (() => {
+                try { const sw = el.querySelector('.tx-mon-switcher'); return sw ? sw.scrollLeft : 0; } catch (e) { return 0; }
+            })();
+            const switcherHtml = _txMonSwitcherHtml(sm.team, _storyEVTrainerOpenIdx, 'evtrainer');
+            el.innerHTML = _evTrainerHelpBannerHtml() + switcherHtml + sm.team.map((t, idx) => _renderEVTrainerMonCard(t, idx)).join('');
+            // Preserve pill-bar horizontal scroll across re-renders.
+            try {
+                const sw = el.querySelector('.tx-mon-switcher');
+                if (sw) sw.scrollLeft = _prevSwitcherScrollLeft || 0;
+            } catch (e) {}
         }
 
         // Score an EV preset against the Pokémon's base stats — surfaces which
@@ -43067,7 +44106,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _evTrainerScorePreset(p, mon) {
             if (!p || !p.evs) return 0;
             if (!mon) return 50;
-            const atk = mon.atk || 0, spa = mon.spa || 0, spe = mon.spe || 0, hp = mon.hp || 0, def = mon.def || 0, spd = mon.spd || 0;
+            // buildPokemon stores per-stat values on mon.stats (not on mon directly);
+            // reading mon.atk/spa/etc. yields undefined and every mon was being
+            // scored as a slow physical attacker, so the +30 meta bonus always won.
+            const s_ = mon.stats || {};
+            const atk = s_.atk || 0, spa = s_.spa || 0, spe = s_.spe || 0;
+            const hp = mon.maxHp || 0, def = s_.def || 0, spd = s_.spd || 0;
             const physical = atk >= spa;
             const fast = spe >= 90;
             const bulky = (hp + def + spd) >= 240;
@@ -43114,7 +44158,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return `<span style="font-variant-numeric:tabular-nums;color:#9ccc65;font-weight:600;">${total}/510</span>`;
         }
 
-        function _evTrainerRenderPresetCard(idx, p, currentEvs, cantAfford, isRecommended) {
+        function _evTrainerRenderPresetCard(idx, p, currentEvs, cantAfford, isRecommended, purpose) {
             const isCurrent = _evsEqual(currentEvs, p.evs);
             const hasVitamin = ((sm.inventory && sm.inventory.vitamin) | 0) > 0;
             const safeId = String(p.id).replace(/'/g, "\\'");
@@ -43124,7 +44168,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const total = (p.evs.hp||0)+(p.evs.atk||0)+(p.evs.def||0)+(p.evs.spa||0)+(p.evs.spd||0)+(p.evs.spe||0);
             const pills = [
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Applied</span>` : '',
-                isRecommended && !isCurrent ? `<span class="tx-pill tx-pill--rec">★ Pick</span>` : '',
+                isRecommended && !isCurrent && purpose ? `<span class="tx-rec-tag" data-purpose="${_esc(purpose)}">${_esc(purpose)}</span>` : '',
+                isRecommended && !isCurrent && !purpose ? `<span class="tx-pill tx-pill--rec">★ Pick</span>` : '',
                 `<span class="tx-pill">${total} EVs</span>`,
             ].filter(Boolean).join('');
             const vitaBtn = (hasVitamin && !vitaDisabled)
@@ -43135,7 +44180,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const gButton = isCurrent
                 ? `<button type="button" class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;">Applied</button>`
                 : `<button type="button" class="story-tutor-btn" ${goldDisabled?'disabled':''} onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')" style="font-size:11px;padding:5px 8px;">${storyGoldHtml(EVTRAINER_COST, false)}</button>`;
-            return `<div class="tx-card" data-recommended="${isRecommended?1:0}" data-current="${isCurrent?1:0}" style="cursor:default;">
+            return `<div id="evpreset-${idx}-${_esc(p.id)}" class="tx-card" data-recommended="${isRecommended?1:0}" data-current="${isCurrent?1:0}" style="cursor:default;scroll-margin-top:80px;">
                 <div class="tx-card-head">
                     <span class="tx-card-title">${_esc(p.label)}</span>
                 </div>
@@ -43144,11 +44189,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             </div>`;
         }
 
+        // Resolve a recommended-purpose tag for a preset row so the player can see
+        // which recommendation a preset matches at a glance.
+        function _evTrainerPurposeFor(p, recById) {
+            return recById && p && recById.has(p.id) ? recById.get(p.id) : null;
+        }
+
         function _renderEVTrainerMonCard(t, idx) {
             const b = (t && t.build) || {};
             const cur = b.evs || {};
             const cantAfford = sm.gold < EVTRAINER_COST;
             const spriteUrl = (typeof getSprite === 'function') ? getSprite(spriteDisplayName(t)) : '';
+            const expanded = idx === _storyEVTrainerOpenIdx;
             let mon = null;
             let typeHtml = '';
             try {
@@ -43159,18 +44211,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const meta = _evTrainerMetaSpreadsFor(t.name);
             _evTrainerMetaCache[idx] = meta;
 
-            // Find top-recommended preset across all categories (1 winner)
-            const allPresets = [].concat(EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta);
-            let topRec = null, topScore = -Infinity;
-            for (const p of allPresets) {
-                if (_evsEqual(cur, p.evs)) continue;
-                const s = _evTrainerScorePreset(p, mon);
-                if (s > topScore) { topScore = s; topRec = p; }
+            const headerCostChip = `<span class="story-action-badge ${cantAfford ? 'cost cant-afford' : 'cost'}"${cantAfford ? ` title="You need ${(EVTRAINER_COST - sm.gold).toLocaleString()}G more"` : ''}>${EVTRAINER_COST.toLocaleString()}G / preset</span>`;
+
+            const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${idx}" data-facility="evtrainer" aria-expanded="${expanded?'true':'false'}">
+                <div class="story-tutor-mon-main">
+                    <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
+                    <div style="min-width:0;">
+                        <div class="story-tutor-mon-name">${_esc(t.name)} ${typeHtml}</div>
+                        <div class="story-tutor-mon-meta">EVs: ${_esc(_evSpreadCompact(cur))} · ${_evTrainerStatsCompactHtml(cur)}</div>
+                    </div>
+                </div>
+                <span style="display:flex;align-items:center;gap:8px;">
+                    ${headerCostChip}
+                    <span class="story-tutor-mon-chev" aria-hidden="true">${expanded?'▴':'▾'}</span>
+                </span>
+            </button>`;
+
+            if (!expanded) return `<div class="story-tutor-mon">${header}</div>`;
+
+            // Categorized recommendations (Offensive / Defensive / Meta / Balanced).
+            // Dedup at the merge so identical spreads never appear twice — this
+            // is belt-and-braces alongside the filter in _evTrainerMetaSpreadsFor.
+            const allPresets = [];
+            const _seenKeys = new Set();
+            for (const p of [].concat(EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta)) {
+                const k = _evsKey(p.evs);
+                if (_seenKeys.has(k)) continue;
+                _seenKeys.add(k);
+                allPresets.push(p);
             }
-            const topRecId = topRec ? topRec.id : null;
+            const evRecs = _txEvPresetRecsByPurpose(allPresets, cur, mon);
+            // Map preset.id → its rec purpose (so the inline preset card can echo it)
+            const recById = new Map();
+            for (const r of evRecs) recById.set(r.preset.id, r.purpose);
 
             const renderRow = (presets) => presets.map(p =>
-                _evTrainerRenderPresetCard(idx, p, cur, cantAfford, p.id === topRecId)
+                _evTrainerRenderPresetCard(idx, p, cur, cantAfford, recById.has(p.id), _evTrainerPurposeFor(p, recById))
             ).join('');
 
             const universalSection = `<div style="margin-top:10px;">
@@ -43188,25 +44264,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>`
                 : '';
 
-            // Recommended hero strip
-            const recsStrip = topRec
-                ? `<div class="tx-recs-strip">
-                    <div class="tx-recs-strip-title">★ Recommended for ${_esc(t.name)}</div>
-                    <div class="tx-recs-strip-detail"><strong>${_esc(topRec.label)}</strong> — ${_evSpreadCompact(topRec.evs)}</div>
+            // Recommendation panel — 3-4 picks labelled by purpose. Tapping a row
+            // scrolls to the matching preset card (highlighted via data-recommended).
+            const recsStrip = evRecs.length
+                ? `<div class="tx-recs-panel">
+                    <div class="tx-recs-panel-head">
+                        <span class="tx-recs-panel-title">★ Picks for ${_esc(t.name)}</span>
+                        <span class="tx-recs-panel-hint">Tap to scroll to the preset.</span>
+                    </div>
+                    <div class="tx-recs-list">${evRecs.map(r => `
+                        <a class="tx-rec-row" href="#evpreset-${idx}-${_esc(r.preset.id)}" data-ev-rec="${_esc(r.preset.id)}">
+                            <span class="tx-rec-tag" data-purpose="${_esc(r.purpose)}">${_esc(r.purpose)}</span>
+                            <span class="tx-rec-body">
+                                <span class="tx-rec-name">${_esc(r.preset.label)} <span style="font-size:10px;opacity:0.7;color:#9ccc65;">${_esc(_evSpreadCompact(r.preset.evs))}</span></span>
+                                <span class="tx-rec-reason">${_esc(r.reason)}</span>
+                            </span>
+                            <span class="tx-rec-go" aria-hidden="true">›</span>
+                        </a>`).join('')}
+                    </div>
                 </div>`
                 : '';
 
-            const headerCostChip = `<span class="story-action-badge ${cantAfford ? 'cost cant-afford' : 'cost'}"${cantAfford ? ` title="You need ${(EVTRAINER_COST - sm.gold).toLocaleString()}G more"` : ''}>${EVTRAINER_COST.toLocaleString()}G / preset</span>`;
-
             return `<div class="story-tutor-mon">
-                <div class="story-tutor-mon-main" style="display:flex;align-items:center;gap:10px;padding:10px 12px;flex-wrap:wrap;">
-                    <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.visibility='hidden'">
-                    <div style="min-width:0;flex:1;">
-                        <div class="story-tutor-mon-name">${_esc(t.name)} ${typeHtml}</div>
-                        <div class="story-tutor-mon-meta">Current EVs: ${_esc(_evSpreadCompact(cur))} · ${_evTrainerStatsCompactHtml(cur)}</div>
-                    </div>
-                    ${headerCostChip}
-                </div>
+                ${header}
                 <div class="story-tutor-mon-body" style="padding-top:6px;">
                     ${recsStrip}
                     ${_evTrainerStatBarsHtml(cur, 'Currently equipped')}
