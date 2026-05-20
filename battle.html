@@ -7274,6 +7274,27 @@
         </div>
     </div>
 
+    <div id="screen-story-fanclub" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div class="story-shop-stack">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;gap:10px;">
+            <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
+                <img id="story-fanclub-portrait" src="sprites/trainers/Gentleman.png" alt="Chairman" style="width:36px;height:36px;image-rendering:pixelated;flex-shrink:0;" onerror="this.style.visibility='hidden'">
+                <div style="min-width:0;">
+                    <h3 class="story-screen-head-title" style="color:#f8bbd0;font-size:14px;"><span class="story-screen-head-text">💖 Pokémon Fan Club</span></h3>
+                </div>
+            </div>
+            <span id="story-fanclub-stash" style="color:#f8bbd0;font-size:11px;flex-shrink:0;"></span>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
+            <div id="story-fanclub-roster" style="display:flex;flex-direction:column;gap:12px;"></div>
+        </div>
+        <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+            <button class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
+        </div>
+        </div>
+    </div>
+
     <div id="screen-story-pokemoncenter" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-pokemoncenter-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
@@ -12533,28 +12554,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let mon = { name: monName, type1: base.t1, type2: base.t2, item: build.i, ability: abilityVal, nature: natureVal, moves: generatedMoves, buildData: build };
 
             // Lv50 stat formulas with IVs (default 31), EVs and Nature.
-            // permBoosts: flat +1..+10 per stat earned from perm-boost items
-            // (HP Up / Protein / Iron / Calcium / Zinc / Carbos); additive
-            // on top of the EV-derived stat.
+            // Vitamins act on IVs directly (+3 per use, cap 31) — see Pokémon
+            // Fan Club. The old permBoost flat-stat layer is gone; legacy reads
+            // resolve to zero so any saved permBoosts that survived migration
+            // don't accidentally double-count.
             let ivs = build.ivs || {};
             let getIV = stat => (ivs[stat] !== undefined ? ivs[stat] : 31);
-            const _pb = (typeof window !== 'undefined' && typeof window._permBoostsRead === 'function')
-                ? window._permBoostsRead(build)
-                : { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
-            // HP: floor((2 * base + IV + floor(EV/4)) * 50 / 100) + 50 + 10 + permBoost
-            mon.maxHp = (monName === 'Shedinja') ? 1 : Math.floor((2 * base.hp + getIV('hp') + Math.floor((evs.hp||0) / 4)) * 50 / 100) + 60 + (_pb.hp || 0);
+            // HP: floor((2 * base + IV + floor(EV/4)) * 50 / 100) + 60
+            mon.maxHp = (monName === 'Shedinja') ? 1 : Math.floor((2 * base.hp + getIV('hp') + Math.floor((evs.hp||0) / 4)) * 50 / 100) + 60;
             mon.currentHp = mon.maxHp;
 
-            // Other stats: floor((floor((2 * base + IV + floor(EV/4)) * 50 / 100) + 5) * nature) + permBoost
+            // Other stats: floor((floor((2 * base + IV + floor(EV/4)) * 50 / 100) + 5) * nature)
             let nMults = { atk: 1, def: 1, spa: 1, spd: 1, spe: 1 };
             let n = natureModifiers[mon.nature];
             if (n) { nMults[n.up] = 1.1; nMults[n.down] = 0.9; }
             mon.stats = {
-                atk: Math.floor((Math.floor((2 * base.atk + getIV('atk') + Math.floor((evs.atk||0)/4)) * 50 / 100) + 5) * nMults.atk) + (_pb.atk || 0),
-                def: Math.floor((Math.floor((2 * base.def + getIV('def') + Math.floor((evs.def||0)/4)) * 50 / 100) + 5) * nMults.def) + (_pb.def || 0),
-                spa: Math.floor((Math.floor((2 * base.spa + getIV('spa') + Math.floor((evs.spa||0)/4)) * 50 / 100) + 5) * nMults.spa) + (_pb.spa || 0),
-                spd: Math.floor((Math.floor((2 * base.spd + getIV('spd') + Math.floor((evs.spd||0)/4)) * 50 / 100) + 5) * nMults.spd) + (_pb.spd || 0),
-                spe: Math.floor((Math.floor((2 * base.spe + getIV('spe') + Math.floor((evs.spe||0)/4)) * 50 / 100) + 5) * nMults.spe) + (_pb.spe || 0)
+                atk: Math.floor((Math.floor((2 * base.atk + getIV('atk') + Math.floor((evs.atk||0)/4)) * 50 / 100) + 5) * nMults.atk),
+                def: Math.floor((Math.floor((2 * base.def + getIV('def') + Math.floor((evs.def||0)/4)) * 50 / 100) + 5) * nMults.def),
+                spa: Math.floor((Math.floor((2 * base.spa + getIV('spa') + Math.floor((evs.spa||0)/4)) * 50 / 100) + 5) * nMults.spa),
+                spd: Math.floor((Math.floor((2 * base.spd + getIV('spd') + Math.floor((evs.spd||0)/4)) * 50 / 100) + 5) * nMults.spd),
+                spe: Math.floor((Math.floor((2 * base.spe + getIV('spe') + Math.floor((evs.spe||0)/4)) * 50 / 100) + 5) * nMults.spe)
             };
 
             mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0;
@@ -27095,6 +27114,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [66,'Hall of Fame','Hall of Fame',null,0,null],
           [67,'Battle','Mystery Figure',{g1:100,g2:0,g3:0,g4:0},12000,null],
         ];
+        // Pokémon Fan Club is a recurring facility — present in every city. Rather
+        // than dirty every row of the literal above, we splice 'Pokemon Fan Club'
+        // into each City row's actions array at module init. Idempotent: skips
+        // rows that already include it. Positioned just after Pokemart / Link
+        // Station so it reads as a "talk to townsfolk" facility, ahead of training.
+        (function _seedFanClubAcrossCities() {
+            for (const row of STORY_EVENTS_RAW) {
+                if (!Array.isArray(row) || row[1] !== 'City') continue;
+                const actions = row[5];
+                if (!Array.isArray(actions) || actions.includes('Pokemon Fan Club')) continue;
+                let insertAt = actions.indexOf('Pokemart');
+                if (insertAt < 0) insertAt = actions.indexOf('Department Store');
+                if (insertAt < 0) insertAt = actions.indexOf('Link Station');
+                if (insertAt < 0) insertAt = actions.length - 1;
+                actions.splice(insertAt + 1, 0, 'Pokemon Fan Club');
+            }
+        })();
         // Expose to script-top scope (this module is wrapped in `window.StoryMode = (function(){…})()`).
         // `applyFoeDifficultyScaling` and `_earlyGameFoeStatMult` live outside the IIFE and need
         // to look up the current row's event type — without this, `typeof STORY_EVENTS_RAW`
@@ -27573,55 +27609,86 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             [...POKEMART_ITEMS, ...DEPT_ITEMS].filter(row => row.battleBag !== false).map(row => row.id)
         );
 
-        // ── PERMANENT STAT BOOST ITEMS (vitamins) ────────────────────────
-        // Drop-only — earned from gym leaders, milestones, and boss arcs.
-        // NEVER sold (battleBag:false). Each application gives a stat-buff
-        // mon-side via mon.build.permBoosts[stat] (additive after EV-derived
-        // stat in buildPokemon). Cap PERM_BOOST_CAP per stat per mon to keep
-        // investment scarce — drops are tuned so a careful player can fully
-        // boost ~2 favorites + lightly invest 2-3 more across a full run.
-        // Distinct from Vitamin Pack voucher (EV Trainer preset waiver) —
-        // EVs and perm boosts are two separate progression layers.
-        const PERM_BOOST_CAP = 10;
+        // ── VITAMINS (IV TRAINING ITEMS) ─────────────────────────────────
+        // Drop-only — earned from gym leaders, milestones, and the Pokémon
+        // Fan Club welcome gift. NEVER sold (battleBag:false). Each
+        // application raises the targeted stat's IV by +3, capped at the
+        // natural 31. Player mons now roll random 0-31 IVs at catch time, so
+        // vitamins are how a weak roll catches up. Distinct from the EV
+        // Trainer's Vitamin Pack voucher (which waives a single EV preset
+        // fee). v19 migration grandfathers existing mons to 31s and refunds
+        // any pre-v19 permBoost points as vitamins.
+        const IV_VITAMIN_STEP = 3;
+        const IV_MAX = 31;
+        // PERM_BOOST_CAP retained as 31 alias for legacy callers (picker rows etc).
+        const PERM_BOOST_CAP = IV_MAX;
         const PERM_BOOST_ITEMS = [
-          { id:'hpUp',     name:'HP Up',   stat:'hp',  desc:'Permanently raises a Pokémon\'s HP by 1 (max +'+10+' per mon).' },
-          { id:'protein',  name:'Protein', stat:'atk', desc:'Permanently raises a Pokémon\'s Attack by 1 (max +'+10+' per mon).' },
-          { id:'iron',     name:'Iron',    stat:'def', desc:'Permanently raises a Pokémon\'s Defense by 1 (max +'+10+' per mon).' },
-          { id:'calcium',  name:'Calcium', stat:'spa', desc:'Permanently raises a Pokémon\'s Sp. Atk by 1 (max +'+10+' per mon).' },
-          { id:'zinc',     name:'Zinc',    stat:'spd', desc:'Permanently raises a Pokémon\'s Sp. Def by 1 (max +'+10+' per mon).' },
-          { id:'carbos',   name:'Carbos',  stat:'spe', desc:'Permanently raises a Pokémon\'s Speed by 1 (max +'+10+' per mon).' },
+          { id:'hpUp',     name:'HP Up',   stat:'hp',  desc:'Raises a Pokémon\'s HP IV by 3 (cap 31).' },
+          { id:'protein',  name:'Protein', stat:'atk', desc:'Raises a Pokémon\'s Attack IV by 3 (cap 31).' },
+          { id:'iron',     name:'Iron',    stat:'def', desc:'Raises a Pokémon\'s Defense IV by 3 (cap 31).' },
+          { id:'calcium',  name:'Calcium', stat:'spa', desc:'Raises a Pokémon\'s Sp. Atk IV by 3 (cap 31).' },
+          { id:'zinc',     name:'Zinc',    stat:'spd', desc:'Raises a Pokémon\'s Sp. Def IV by 3 (cap 31).' },
+          { id:'carbos',   name:'Carbos',  stat:'spe', desc:'Raises a Pokémon\'s Speed IV by 3 (cap 31).' },
         ];
         const PERM_BOOST_IDS = new Set(PERM_BOOST_ITEMS.map(v => v.id));
         const PERM_BOOST_STAT_LABEL = { hp:'HP', atk:'Atk', def:'Def', spa:'Sp.Atk', spd:'Sp.Def', spe:'Spe' };
-        function _permBoostsRead(mon) {
-            if (!mon || !mon.build) return { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
-            const pb = mon.build.permBoosts || {};
+        // Legacy hooks — kept so old callers still resolve, but always read zero now
+        // that vitamins target IVs directly. The v19 migration converts any leftover
+        // permBoosts back into vitamin inventory, so this should never see non-zero
+        // input in a normalized save.
+        function _permBoostsRead(_mon) { return { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 }; }
+        function _permBoostTotal(_mon) { return 0; }
+        window._permBoostsRead = function(_buildObj) { return { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 }; };
+
+        // ── Random IV rolls ──────────────────────────────────────────────
+        // Player paths (starter, wild catches, professor gifts) roll a fully
+        // random IV spread. Vitamins are how the player trains weak stats up
+        // toward 31. Trainer enemies get tier-scaled IVs (see _rollTieredIVs).
+        function _rollRandomIVs() {
             return {
-                hp: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.hp||0))),
-                atk: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.atk||0))),
-                def: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.def||0))),
-                spa: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.spa||0))),
-                spd: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.spd||0))),
-                spe: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.spe||0))),
+                hp:  Math.floor(Math.random() * 32),
+                atk: Math.floor(Math.random() * 32),
+                def: Math.floor(Math.random() * 32),
+                spa: Math.floor(Math.random() * 32),
+                spd: Math.floor(Math.random() * 32),
+                spe: Math.floor(Math.random() * 32)
             };
         }
-        function _permBoostTotal(mon) {
-            const pb = _permBoostsRead(mon);
-            return pb.hp + pb.atk + pb.def + pb.spa + pb.spd + pb.spe;
+        // Enemy IV scaling by training tier — matches the existing T1..T4 curve
+        // (`_storyBuildTierForEvent`). Aces get the top quartile of their tier's
+        // range so a leader's signature mon still feels surgical compared to its
+        // fillers. T4 floors at 26 so even the worst-rolled Champion mon still
+        // out-stats a wild catch in expectation.
+        const STORY_IV_TIER_RANGES = Object.freeze({
+            1: { min: 0,  max: 15 },
+            2: { min: 10, max: 22 },
+            3: { min: 18, max: 28 },
+            4: { min: 26, max: 31 }
+        });
+        function _rollTieredIVs(tier, isAce) {
+            const r = STORY_IV_TIER_RANGES[tier | 0] || STORY_IV_TIER_RANGES[4];
+            const span = r.max - r.min;
+            // Aces: top quartile of the tier's range, never below min.
+            const lo = isAce ? Math.max(r.min, r.max - Math.ceil(span / 4)) : r.min;
+            const hi = r.max;
+            const roll = () => lo + Math.floor(Math.random() * (hi - lo + 1));
+            return { hp:roll(), atk:roll(), def:roll(), spa:roll(), spd:roll(), spe:roll() };
         }
-        // For use by buildPokemon — exposed via window for cross-IIFE access.
-        window._permBoostsRead = function(buildObj) {
-            if (!buildObj || !buildObj.permBoosts) return { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
-            const pb = buildObj.permBoosts;
-            return {
-                hp: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.hp||0))),
-                atk: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.atk||0))),
-                def: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.def||0))),
-                spa: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.spa||0))),
-                spd: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.spd||0))),
-                spe: Math.max(0, Math.min(PERM_BOOST_CAP, (pb.spe||0))),
-            };
-        };
+        // Stamp IVs onto a build only when none are set yet. Smogon / CSV builds
+        // that ship explicit ivs (e.g. 0 Atk for Trick Room) are left alone.
+        function _ensureBuildIVs(build, ivs) {
+            if (!build || !ivs) return;
+            if (!build.ivs || typeof build.ivs !== 'object') {
+                build.ivs = ivs;
+                return;
+            }
+            const keys = ['hp','atk','def','spa','spd','spe'];
+            const hasExplicit = keys.some(k => typeof build.ivs[k] === 'number');
+            if (!hasExplicit) build.ivs = ivs;
+        }
+        window._rollRandomIVs = _rollRandomIVs;
+        window._rollTieredIVs = _rollTieredIVs;
+        window._ensureBuildIVs = _ensureBuildIVs;
         function isNoItemRunBattleBagExcluded(item) {
             if (!sm || !sm.settings || !sm.settings.noItemRun || !item) return false;
             if (item.battleBag === false) return false;
@@ -28393,7 +28460,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Cross-run meta. Holds permanent achievements that survive abandon/clear.
         // Today: completedRuns + lastClearSeed. Future: Pokédex carryover, totals, marks.
         const SAVE_KEY_META = 'pbs_story_meta';
-        const SAVE_VER = 18;
+        const SAVE_VER = 19;
         function _emptyStoryMeta() {
             return {
                 completedRuns: 0,
@@ -28823,6 +28890,48 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (nv) sm.trainerAssignments[k] = nv;
             }
         }
+        /** v19: IV/vitamin unification.
+         *   Pre-v19 every Pokémon resolved as 31 IVs (the buildPokemon default)
+         *   and vitamins stamped a flat +1..+10 permBoost layer on top. Post-v19
+         *   vitamins lift IVs directly and the permBoost layer is retired.
+         *
+         *   Migration policy:
+         *   - Grandfather every existing team / PC mon to perfect 31 IVs so no
+         *     loaded mon silently loses stats it had before the patch.
+         *   - Refund each leftover permBoost point as one vitamin of the matching
+         *     stat. Player can re-spend on freshly-rolled wild catches whose
+         *     vitamin gains are 3x bigger per point — generous on purpose. */
+        function migrateStoryPreV19() {
+            const VITAMIN_BY_STAT = { hp:'hpUp', atk:'protein', def:'iron', spa:'calcium', spd:'zinc', spe:'carbos' };
+            if (!sm.inventory || typeof sm.inventory !== 'object') sm.inventory = {};
+            for (const arr of [sm.team, sm.pcBox]) {
+                if (!Array.isArray(arr)) continue;
+                for (const slot of arr) {
+                    if (!slot || typeof slot !== 'object' || !slot.build) continue;
+                    const b = slot.build;
+                    // Grandfather to perfect IVs — only if the slot has no explicit IV
+                    // spread (Smogon imports with intentional 0-stat IVs are preserved).
+                    if (!b.ivs || typeof b.ivs !== 'object') {
+                        b.ivs = { hp:31, atk:31, def:31, spa:31, spd:31, spe:31 };
+                    } else {
+                        for (const k of ['hp','atk','def','spa','spd','spe']) {
+                            if (typeof b.ivs[k] !== 'number') b.ivs[k] = 31;
+                        }
+                    }
+                    // Refund any leftover permBoosts as vitamins, then zero them out.
+                    if (b.permBoosts && typeof b.permBoosts === 'object') {
+                        for (const k of ['hp','atk','def','spa','spd','spe']) {
+                            const n = (b.permBoosts[k] | 0);
+                            if (n > 0) {
+                                const vid = VITAMIN_BY_STAT[k];
+                                sm.inventory[vid] = ((sm.inventory[vid] | 0) + n);
+                            }
+                        }
+                        delete b.permBoosts;
+                    }
+                }
+            }
+        }
         /** v11: gym / sprite suffix names → plain trainer names (matches `TRAINER_DATA`). */
         const STORY_TRAINER_LEGACY_NAMES_PRE_V11 = {
             'Brock (Elite)': 'Brock', 'Misty (Elite)': 'Misty', 'Erika (Elite)': 'Erika', 'Sabrina (Elite)': 'Sabrina',
@@ -29211,6 +29320,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (_loadedVer < 18) {
                     try { migrateStoryTrainerDiacriticsPreV18(); } catch (e) { console.warn('[Story] v18 trainer-name diacritic migrate', e); }
+                }
+                if (_loadedVer < 19) {
+                    try { migrateStoryPreV19(); } catch (e) { console.warn('[Story] v19 IV/vitamin unification migrate', e); }
                 }
                 const _cap = Math.max(0, STORY_EVENTS_RAW.length - 1);
                 if (sm.eventIndex < 0 || sm.eventIndex > _cap) {
@@ -30337,17 +30449,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         /** Final-pass hook for trainer teams. Stamps `build.powerTier` on every
-         *  slot and applies degradation in-place. Tier 4 short-circuits. */
-        function _applyStoryBuildPowerTier(team, eventType, storyRowIdx) {
+         *  slot and applies degradation in-place. Tier 4 short-circuits the
+         *  move/EV downgrade path but still rolls tier-4 IVs for the slot.
+         *  `sigNames` (optional) — signature mons get the top quartile of the
+         *  tier's IV range so a leader's ace stays the threat it should be. */
+        function _applyStoryBuildPowerTier(team, eventType, storyRowIdx, sigNames) {
             if (!Array.isArray(team) || !team.length) return team;
             const badges = (sm && sm.badges) | 0;
             const tier = _storyBuildTierForEvent(eventType, storyRowIdx, badges);
+            const sigSet = new Set();
+            if (sigNames && typeof sigNames.forEach === 'function') sigNames.forEach(n => sigSet.add(n));
+            else if (Array.isArray(sigNames)) sigNames.forEach(n => sigSet.add(n));
             for (const slot of team) {
                 if (!slot || !slot.build) continue;
                 if (tier < STORY_BUILD_TIER.TOURNAMENT) {
                     _storyDowngradeBuildForTier(slot.name, slot.build, tier);
                 }
                 slot.build.powerTier = tier;
+                // Tier-scaled IVs: T1 0-15, T2 10-22, T3 18-28, T4 26-31.
+                // Aces shift to the top quartile of their tier's range. Always
+                // overwrites — enemy IVs track tier, not whatever the CSV preset
+                // happened to ship with (the IV bake for fast/Trick-Room sets is
+                // applied at engine level via getIV defaults, not by enemy roll).
+                try { slot.build.ivs = _rollTieredIVs(tier, sigSet.has(slot.name)); }
+                catch (e) {}
             }
             return team;
         }
@@ -30660,7 +30785,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // End-game illegal-build injection (Rival post-G8 → 2 slots).
                 const _illegalCountR = _storyIllegalCountForEvent(battleEventType, storyRowIdx);
                 if (_illegalCountR > 0) _storyInjectIllegalBuilds(teamR, _origSigsR, _illegalCountR);
-                return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(teamR, battleEventType), battleEventType, storyRowIdx);
+                return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(teamR, battleEventType), battleEventType, storyRowIdx, _origSigsR);
             }
 
             // Gym leaders already have signature Pokémon as their identity — the rest
@@ -30783,7 +30908,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Signature aces are protected so a leader's identity mon doesn't morph mid-run.
             const _illegalCount = _storyIllegalCountForEvent(battleEventType, storyRowIdx);
             if (_illegalCount > 0) _storyInjectIllegalBuilds(team, _origSigs, _illegalCount);
-            return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(team, battleEventType), battleEventType, storyRowIdx);
+            return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(team, battleEventType), battleEventType, storyRowIdx, _origSigs);
         }
         function rollMysteryFigureFinalBossTeam(partySize, enabledGensIn) {
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
@@ -32051,6 +32176,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     '"This is the difference between a partner that survives a hit and a partner that doesn\'t. Start with your team\'s leads."'
                 ]
             },
+            firstFanClub: {
+                metaKey: 'tutorial-first-fan-club',
+                sprite: 'Gentleman', name: 'Fan Club Chairman', nameplate: 'Pokémon Fan Club',
+                lines: [
+                    '"Welcome! We at the Pokémon Fan Club study every partner who walks through that door."',
+                    '"Every Pokémon is born with hidden potential — Individual Values, IVs for short. Zero to thirty-one in each stat. Roll well and your partner has the makings of a champion; roll poorly and they need a little help."',
+                    '"Vitamins are that help. HP Up, Protein, Iron, Calcium, Zinc, Carbos — each one lifts a single stat\'s IV by three points. Thirty-one is the ceiling. Here, take one of each as a welcome gift. Drop by any Fan Club to apply them or check on your team\'s progress."'
+                ]
+            },
             firstColress: {
                 metaKey: 'tutorial-first-colress',
                 sprite: 'Scientist', name: 'Colress', nameplate: 'Battle Mechanics',
@@ -33115,6 +33249,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (actions.includes('EV Trainer') && _tutorTeam) {
                 _push('train', makeActionBtn('🏋️ EV Trainer','evtrainer','window.StoryMode.enterEVTrainer()','training', _facOpts('evtrainer', [_costBadge(5000)], { soft:true })));
             }
+            if (actions.includes('Pokemon Fan Club') && _tutorTeam) {
+                const _fcGifted = !!sm.fanClubGiftClaimed;
+                const _fcMeta = _fcGifted ? [{label:'Free',tone:'free'}] : [{label:'Gift',tone:'free'}];
+                _push('train', makeActionBtn('💖 Pokémon Fan Club','fanclub','window.StoryMode.enterFanClub()','training', _facOpts('fanclub', _fcMeta, { soft:true })));
+            }
             if (actions.includes('Nature Rater') && _tutorTeam) {
                 _push('train', makeActionBtn('📛 Nature Rater','nature','window.StoryMode.enterTutor(\'nature\')','training', _facOpts('nature', [_costBadge(2000, '+')], { soft:true })));
             }
@@ -33856,6 +33995,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         _storyDowngradeBuildForTier(name, build, _profTier);
                     }
                     build.powerTier = _profTier;
+                    // Professor gifts are player-side mons — roll random IVs so
+                    // the Fan Club has work to do. Legendary mystery offers stay
+                    // random too (the gimmick is the species, not perfect stats).
+                    try { _ensureBuildIVs(build, _rollRandomIVs()); } catch (e) {}
                     // Lock shiny on the *real* build object now, before the
                     // pick-card renderer hands a clone to buildPokemon. Without
                     // this, each declined Professor visit could quietly miss a
@@ -36273,6 +36416,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             } catch (e) {}
             if (typeof STORY_BUILD_TIER !== 'undefined') b.powerTier = STORY_BUILD_TIER.UNTRAINED;
+            // Random IVs for wild / starter / partner — vitamins are how the
+            // player trains weak stats up. CSV builds that ship explicit IVs
+            // (rare on the wild path) are preserved by _ensureBuildIVs.
+            try { _ensureBuildIVs(b, _rollRandomIVs()); } catch (e) {}
             return b;
         }
 
@@ -36863,6 +37010,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 caught.unsellable = true;
                 caught.nickname = 'Subject Zero';
                 caught.bossArc = true;
+                // Subject Zero is a one-of-a-kind experimental partner — perfect 31 IVs
+                // override whatever the wild encounter rolled. No vitamins needed.
+                if (caught.build) caught.build.ivs = { hp:31, atk:31, def:31, spa:31, spd:31, spe:31 };
             }
             // Boss-arc catch always goes to party (or PC if full). No swap prompt —
             // the story beat needs the unique mon in your hand right now.
@@ -38960,10 +39110,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (old.evs)      evoBuild.evs      = { ...old.evs };
             if (old.teraType) evoBuild.teraType = old.teraType;
             if (old.i && old.i !== 'Eviolite' && old.i !== '(none)') evoBuild.i = old.i;
-            // Carry perm-boost vitamin investment through evolution — the
-            // player applied these to this specific mon, evolution doesn't
-            // un-train them.
-            if (old.permBoosts) evoBuild.permBoosts = { ...old.permBoosts };
+            // Carry vitamin investment through evolution: IVs are the mon's,
+            // not the species'. Without this, evolving a Fan-Club-trained mon
+            // would silently reset its stats to the species default 31s.
+            if (old.ivs) evoBuild.ivs = { ...old.ivs };
             // Identity carry-over: shiny and gender are properties of the
             // individual Pokémon, not the species. Evolving a shiny Magikarp
             // produces a shiny Gyarados; a male Eevee evolving into Espeon
@@ -39168,10 +39318,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const ok = await _storyConfirmTutorChange(`Reroll ${mon.name}'s entire build (moves, item, nature, EVs)? Species stays. Competent-tier build — polish at Tutor/Dojo/EV Trainer to top it off.`, cost);
                 if (!ok) return;
                 sm.cityRerollsUsed[bk] = bn;
-                // Carry perm-boost progress through the rebuild — the mon's
-                // permBoosts (HP Up / Protein / …) represent player investment
-                // that lives independently of the rolled build.
-                const carriedPB = mon.build && mon.build.permBoosts ? { ...mon.build.permBoosts } : null;
+                // Carry IVs through the rebuild — IVs are the mon's identity,
+                // not the rolled build. Without this, rebuilding a Fan-Club-
+                // trained mon would silently reset its stats.
+                const carriedIVs = mon.build && mon.build.ivs ? { ...mon.build.ivs } : null;
                 // Identity carry-over: shiny + gender belong to the individual,
                 // not the build. Rebuild is a moveset/nature/EV reroll on the
                 // same mon, so these must survive the swap below.
@@ -39179,7 +39329,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const carriedGender = (mon.build && mon.build._gender  !== undefined) ? mon.build._gender  : undefined;
                 const newBuild = _makePlayerLinkBuild(mon.name, 'COMPETENT');
                 if (!newBuild) { window.showGameAlert('Build pipeline error — try again.'); return; }
-                if (carriedPB) newBuild.permBoosts = carriedPB;
+                if (carriedIVs) newBuild.ivs = carriedIVs;
                 if (carriedShiny  !== undefined) newBuild._isShiny = carriedShiny;
                 if (carriedGender !== undefined) newBuild._gender  = carriedGender;
                 sm.gold -= cost;
@@ -39420,11 +39570,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <span style="font-size:10px;color:#888;align-self:center;padding:4px 8px;border:1px solid #444;">Voucher</span>`;
                 bagEl.appendChild(div);
             });
-            // Permanent stat-boost vitamins (earned-only). Each surfaces a Use
-            // button that opens a roster picker; applying decrements the count
-            // and bumps the chosen mon's permBoosts in place. Capped at
-            // PERM_BOOST_CAP per stat per mon so a single mon can't be poured
-            // limitlessly — drops force priority calls across the party.
+            // Vitamins lift IVs by +3 per use, capped at the natural 31. Each
+            // surfaces a Use button that opens the roster picker; the picker
+            // mutates ivs[stat] in place (no permBoost layer). The Pokémon Fan
+            // Club facility is the all-in-one viewer for the same data — both
+            // entry points share applyPermBoost under the hood.
             PERM_BOOST_ITEMS.forEach(v => {
                 const qty = (sm.inventory && sm.inventory[v.id]) | 0;
                 if (qty === 0) return;
@@ -39435,7 +39585,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 div.className = 'story-bag-item';
                 div.style.cursor = 'default';
                 div.innerHTML = icon + `<div class="story-bag-item-text">
-                    <div class="name">${v.name} <span style="color:#9ab;font-size:10px;">(+1 ${statLabel}, cap +${PERM_BOOST_CAP})</span></div>
+                    <div class="name">${v.name} <span style="color:#9ab;font-size:10px;">(+${IV_VITAMIN_STEP} ${statLabel} IV, cap ${IV_MAX})</span></div>
                     <div class="qty">×${qty}</div>
                     <div class="eff">${v.desc}</div>
                 </div>
@@ -39505,8 +39655,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (h3) h3.innerHTML = '<img src="icons/story/story_bag.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:pixelated;vertical-align:-3px;margin-right:6px;">Use ' + vit.name + ' (×' + qty + ')';
             const rowHtml = (mon, idx, source) => {
                 if (!mon) return '';
-                const cur = ((mon.build && mon.build.permBoosts && mon.build.permBoosts[vit.stat]) | 0);
-                const atCap = cur >= PERM_BOOST_CAP;
+                const ivs = (mon.build && mon.build.ivs) || {};
+                const curIV = (ivs[vit.stat] !== undefined) ? (ivs[vit.stat] | 0) : 31;
+                const atCap = curIV >= IV_MAX;
+                const nextIV = Math.min(IV_MAX, curIV + IV_VITAMIN_STEP);
                 const tone = atCap ? '#555' : '#fff';
                 const disabled = atCap ? 'pointer-events:none;opacity:0.45;' : 'cursor:pointer;';
                 const isShiny = !!(mon.build && mon.build._isShiny);
@@ -39515,11 +39667,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const shinyMark = isShiny ? '<span style="color:#ffd54f;margin-right:3px;">&#10024;</span>' : '';
                 const nameTone = isShiny && !atCap ? 'color:#ffd54f;' : '';
                 const onClick = atCap ? '' : `onclick="window.StoryMode.applyPermBoost('${vitaminId}','${source}',${idx})"`;
+                const previewHtml = atCap
+                    ? `<span style="color:#888;">MAX</span>`
+                    : `<span style="color:#9ab;">${curIV}/${IV_MAX}</span> <span style="color:#80deea;">→ ${nextIV}</span>`;
                 return `<div style="display:flex;align-items:center;gap:8px;padding:6px;border:1px solid ${isShiny ? '#a47800' : '#333'};border-radius:6px;color:${tone};${disabled}" ${onClick}>
                     ${sprite ? `<img src="${sprite}" data-shiny="${isShiny ? 'true' : 'false'}" style="width:32px;height:32px;image-rendering:pixelated;${isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" alt="">` : ''}
                     <div style="flex:1;">
                         <div style="font-weight:bold;${nameTone}">${shinyMark}${mon.name} ${where}</div>
-                        <div style="font-size:10px;color:#9ab;">${statLabel} boost: +${cur} / +${PERM_BOOST_CAP}${atCap ? ' (at cap)' : ''}</div>
+                        <div style="font-size:10px;">${statLabel} IV: ${previewHtml}</div>
                     </div>
                 </div>`;
             };
@@ -39527,7 +39682,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pcRows = pcBox.map((m,i) => rowHtml(m, i, 'pc')).join('');
             bagEl.innerHTML = `
                 <div style="font-size:11px;color:#9ab;margin-bottom:8px;line-height:1.5;">
-                    Apply <b style="color:#fff;">${vit.name}</b> to a Pokémon. Each application gives <b>+1 ${statLabel}</b> permanently, up to <b>+${PERM_BOOST_CAP}</b> per stat per mon. Distinct from EVs — stacks on top of the EV-derived stat.
+                    Apply <b style="color:#fff;">${vit.name}</b> to a Pokémon. Each application raises its <b>${statLabel} IV by ${IV_VITAMIN_STEP}</b>, up to the natural cap of <b>${IV_MAX}</b>. Visit the Pokémon Fan Club for a roster view of all six stats.
                 </div>
                 <button onclick="window.StoryMode.openCityBag()"
                     style="font-size:11px;padding:4px 10px;margin-bottom:10px;color:#9ab;border:1px solid #9ab;background:transparent;border-radius:4px;cursor:pointer;align-self:flex-start;">
@@ -39540,8 +39695,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             `;
             modal.classList.remove('hidden');
         }
-        // Apply +1 to the chosen mon's permBoosts for the vitamin's stat,
-        // decrement inventory, save, refresh open UIs.
+        // Apply +3 IV to the chosen mon's stat (cap 31), decrement inventory,
+        // save, refresh open UIs. The old +1-flat permBoost layer is gone —
+        // vitamins now train IVs directly, which is what the rest of the engine
+        // (buildPokemon, summary screen, Fan Club) reads from.
         function applyPermBoost(vitaminId, source, idx) {
             const vit = PERM_BOOST_ITEMS.find(v => v.id === vitaminId);
             if (!vit) return;
@@ -39551,21 +39708,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (source === 'team') mon = sm.team && sm.team[idx];
             else if (source === 'pc') mon = sm.pcBox && sm.pcBox[idx];
             if (!mon || !mon.build) return;
-            if (!mon.build.permBoosts) mon.build.permBoosts = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
-            const cur = (mon.build.permBoosts[vit.stat] | 0);
-            if (cur >= PERM_BOOST_CAP) return;
-            mon.build.permBoosts[vit.stat] = cur + 1;
+            if (!mon.build.ivs || typeof mon.build.ivs !== 'object') {
+                mon.build.ivs = { hp:31, atk:31, def:31, spa:31, spd:31, spe:31 };
+            }
+            const curIV = (mon.build.ivs[vit.stat] !== undefined) ? (mon.build.ivs[vit.stat] | 0) : 31;
+            if (curIV >= IV_MAX) return;
+            const newIV = Math.min(IV_MAX, curIV + IV_VITAMIN_STEP);
+            mon.build.ivs[vit.stat] = newIV;
             sm.inventory[vitaminId] = qty - 1;
             if (sm.inventory[vitaminId] <= 0) delete sm.inventory[vitaminId];
             try { save(); } catch (e) {}
             try { updateHUD && updateHUD(); } catch (e) {}
             try { window.StoryFx && window.StoryFx.playSfx('statUp', 0.7); } catch (e) {}
             const statLabel = PERM_BOOST_STAT_LABEL[vit.stat] || vit.stat;
-            try { window.showGameAlert && window.showGameAlert(`${mon.name}'s ${statLabel} permanently rose by 1! (now +${cur+1}/+${PERM_BOOST_CAP})`); } catch (e) {}
+            const atCapMsg = (newIV >= IV_MAX) ? ' (max)' : '';
+            try { window.showGameAlert && window.showGameAlert(`${mon.name}'s ${statLabel} IV rose by ${IV_VITAMIN_STEP}! (${curIV} → ${newIV}/${IV_MAX}${atCapMsg})`); } catch (e) {}
             // If there are more of this vitamin, stay on the picker so the
             // player can keep applying. Otherwise return to the main bag.
             if ((sm.inventory && sm.inventory[vitaminId]) | 0) openPermBoostPicker(vitaminId);
             else openCityBag();
+            // Best-effort refresh of the Fan Club roster if open.
+            try { if (typeof renderFanClubRoster === 'function') renderFanClubRoster(); } catch (e) {}
         }
 
         // ── HALL OF FAME (Gen-3 style: 2×3 sprites, confetti, welcome text) ─
@@ -42757,6 +42920,119 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { playStoryTutorial('firstEVTrainer'); } catch (e) {}
         }
 
+        // ── POKÉMON FAN CLUB ──────────────────────────────────────────────
+        // Recurring facility in every city. The Chairman gifts a starter case
+        // of vitamins on first visit (one of each, six total) and otherwise
+        // serves as a roster-level IV viewer: each party mon's six stat IVs
+        // shown with progress bars, with a one-tap "Apply" hook that re-uses
+        // the existing vitamin picker. Read-only on PC-stored mons (apply from
+        // the picker after withdrawing — keeps the screen scannable).
+        const _IV_STAT_LABEL = { hp:'HP', atk:'Atk', def:'Def', spa:'SpA', spd:'SpD', spe:'Spe' };
+        const _VITAMIN_BY_STAT = { hp:'hpUp', atk:'protein', def:'iron', spa:'calcium', spd:'zinc', spe:'carbos' };
+        function _fanClubIvColor(iv) {
+            if (iv >= 31) return '#ffd54f';   // gold — maxed
+            if (iv >= 21) return '#9ccc65';   // green — comfortable
+            if (iv >= 10) return '#ffcc80';   // amber — room to grow
+            return '#ef9a9a';                  // red — needs vitamins
+        }
+        function _fanClubStashHtml() {
+            const inv = sm.inventory || {};
+            const parts = PERM_BOOST_ITEMS.map(v => {
+                const n = (inv[v.id] | 0);
+                if (n <= 0) return null;
+                const label = (_IV_STAT_LABEL[v.stat] || v.stat);
+                return `<span style="color:#f8bbd0;">${label}×${n}</span>`;
+            }).filter(Boolean);
+            if (!parts.length) return '<span style="color:#666;">No vitamins in bag</span>';
+            return parts.join('  ');
+        }
+        function _fanClubMonCard(mon, idx) {
+            if (!mon) return '';
+            const build = mon.build || {};
+            const ivs = build.ivs || { hp:31, atk:31, def:31, spa:31, spd:31, spe:31 };
+            const sprite = (typeof getSprite === 'function')
+                ? getSprite((typeof spriteDisplayName === 'function' ? spriteDisplayName({name:mon.name}) : mon.name), build._isShiny)
+                : '';
+            const ivCells = ['hp','atk','def','spa','spd','spe'].map(k => {
+                const iv = (ivs[k] !== undefined) ? (ivs[k] | 0) : 31;
+                const pct = Math.max(0, Math.min(100, Math.round((iv / 31) * 100)));
+                const color = _fanClubIvColor(iv);
+                const vitId = _VITAMIN_BY_STAT[k];
+                const vitCount = (sm.inventory && sm.inventory[vitId]) | 0;
+                const atCap = iv >= 31;
+                const canApply = !atCap && vitCount > 0;
+                const btnLabel = atCap ? 'MAX' : (vitCount > 0 ? `+3 (×${vitCount})` : 'No vit');
+                const btnDisabled = !canApply;
+                const btnStyle = `font-size:9px;padding:2px 6px;border-radius:3px;border:1px solid ${canApply ? '#f8bbd0' : '#444'};background:${canApply ? 'rgba(248,187,208,0.12)' : 'transparent'};color:${canApply ? '#f8bbd0' : '#666'};cursor:${canApply ? 'pointer' : 'not-allowed'};white-space:nowrap;`;
+                const onClick = canApply ? `onclick="event.stopPropagation();window.StoryMode.applyPermBoost('${vitId}','team',${idx})"` : '';
+                return `<div style="display:flex;align-items:center;gap:6px;padding:4px 6px;background:rgba(0,0,0,0.25);border-radius:4px;">
+                    <span style="flex:0 0 28px;font-size:10px;color:#9ab;font-weight:bold;">${_IV_STAT_LABEL[k]}</span>
+                    <span style="flex:0 0 32px;font-size:11px;font-weight:bold;color:${color};text-align:right;">${iv}/31</span>
+                    <div style="flex:1;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;">
+                        <div style="height:100%;width:${pct}%;background:${color};"></div>
+                    </div>
+                    <button type="button" ${btnDisabled ? 'disabled' : ''} style="${btnStyle}" ${onClick}>${btnLabel}</button>
+                </div>`;
+            }).join('');
+            const evTotal = (() => {
+                const e = build.evs || {};
+                return (e.hp|0)+(e.atk|0)+(e.def|0)+(e.spa|0)+(e.spd|0)+(e.spe|0);
+            })();
+            return `<div style="border:1px solid #3a3a4a;border-radius:8px;padding:10px;background:rgba(12,14,22,0.6);">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                    ${sprite ? `<img src="${sprite}" alt="" style="width:44px;height:44px;image-rendering:pixelated;">` : ''}
+                    <div style="flex:1;min-width:0;">
+                        <div style="color:#fff;font-weight:bold;font-size:13px;">${mon.name}${build._isShiny ? ' ✦' : ''}</div>
+                        <div style="font-size:10px;color:#888;">Nature: ${build.n || 'Hardy'} · EVs ${evTotal}/510</div>
+                    </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:3px;">${ivCells}</div>
+            </div>`;
+        }
+        function renderFanClubRoster() {
+            const el = document.getElementById('story-fanclub-roster');
+            const stashEl = document.getElementById('story-fanclub-stash');
+            if (stashEl) stashEl.innerHTML = _fanClubStashHtml();
+            if (!el) return;
+            const team = Array.isArray(sm.team) ? sm.team : [];
+            if (!team.length) {
+                el.innerHTML = '<div style="color:#888;font-size:12px;text-align:center;padding:20px;">No Pokémon in your party. Visit the Professor first.</div>';
+                return;
+            }
+            const intro = `<div style="padding:10px 12px;background:linear-gradient(180deg,rgba(54,28,42,0.7) 0%,rgba(28,14,22,0.7) 100%);border:1px solid #6a3a5a;color:#f8d6e3;font-size:11px;line-height:1.55;margin-bottom:8px;border-radius:6px;">
+                <div style="font-weight:bold;color:#f8bbd0;margin-bottom:4px;">💖 Hidden Potential</div>
+                <div>Each Pokémon is born with <strong>IVs</strong> — six hidden values from 0 to 31 that quietly shape their stats. Roll low and they need vitamins to catch up; roll high and they\'re ready off the truck.</div>
+                <div style="margin-top:6px;color:#c9bcc4;">Tap a stat\'s <span style="color:#f8bbd0;font-weight:bold;">+3</span> button to apply the matching vitamin from your bag. PC mons are read-only here — withdraw to your party first.</div>
+            </div>`;
+            el.innerHTML = intro + team.map((m, i) => _fanClubMonCard(m, i)).join('');
+        }
+        function enterFanClub() {
+            _markFacilitySeen('fanclub');
+            showScreen('screen-story-fanclub');
+            // First-visit welcome gift: one of each vitamin (HP Up / Protein /
+            // Iron / Calcium / Zinc / Carbos). Set a save flag so re-entering
+            // doesn't double-tip the player.
+            const firstVisit = !sm.fanClubGiftClaimed;
+            if (firstVisit) {
+                if (!sm.inventory || typeof sm.inventory !== 'object') sm.inventory = {};
+                for (const vit of PERM_BOOST_ITEMS) {
+                    sm.inventory[vit.id] = ((sm.inventory[vit.id] | 0) + 1);
+                }
+                sm.fanClubGiftClaimed = true;
+                try { save(); } catch (e) {}
+            }
+            renderFanClubRoster();
+            try { window.StoryFx && window.StoryFx.playSfx('statUp', 0.35); } catch (e) {}
+            // Tutorial scene runs once per save; the gift fires regardless on
+            // first city visit since the flag is independent.
+            try { playStoryTutorial('firstFanClub', function () {
+                if (firstVisit) {
+                    try { window.showGameAlert && window.showGameAlert('The Chairman hands you a small case — 1 of each vitamin (HP Up, Protein, Iron, Calcium, Zinc, Carbos).'); } catch (e) {}
+                    try { renderFanClubRoster(); } catch (e) {}
+                }
+            }); } catch (e) {}
+        }
+
         function _evTrainerHelpBannerHtml() {
             const vN = (sm.inventory && sm.inventory.vitamin) | 0;
             const vitaLine = vN > 0
@@ -43039,6 +43315,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             tutorChangeMoveWithVoucher, tutorChangeItemWithVoucher, tutorChangeAbilityWithVoucher, tutorChangeNatureWithVoucher,
             enterColress, colressApplyMega, colressApplyDmax, colressApplyZ, colressApplyZSig, colressApplyTera,
             enterEVTrainer, evTrainerApplyPreset, evTrainerApplyPresetWithVitamin,
+            enterFanClub, renderFanClubRoster,
             openTeamTester, openTeamTesterSyncFromStory, runTeamTester, copyTeamTesterText, closeTeamTester,
             previewHallOfFame, seedDebugMysteryLegendGate, seedDebugPostHofClimax, seedTestMegaFromUrl, seedStoryChampionWeakTestFromUrl, clearCurrentEnemyLock,
             openRunSummary,
