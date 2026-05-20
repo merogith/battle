@@ -3,6 +3,73 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Poké Casino overhaul: coins currency + Coin Flip / Slots / Roulette 2026-05-20 (`claude/pokemon-casino-overhaul-0ssdb`)
+
+### Changed — Casino is now a real Game Corner
+
+The casino used to be a single screen with three abstract one-shot bets
+(Coin / Color / Jackpot) that all shared a `Math.random()*10` roll, no
+animation past a small ASCII reel, and no progression beyond `sm.gold`
+debited or credited per click. The Game Corner Manager is now actually
+running a building.
+
+**Coin wallet.** Gold no longer plays at the tables. A Cashier panel
+collapses out of the header — buy in at **100🪙 = 1,000G**, cash out at
+**100🪙 = 800G**. The 20% spread is the only house edge in the building;
+every individual table plays close to fair. Min buy 10G, min cash-out
+100🪙. `sm.casinoCoins` persists across sessions and migrates onto old
+saves as 0.
+
+**Three tabs, three games.**
+
+- **🪙 Coin Flip.** Big 3D coin tumbles 1.1s and lands on Heads or Tails.
+  Pick a side, bet 1+ coins, win pays 2×. ~49% win rate, low volatility,
+  streak counter for flavor. The coin preview shows your current pick
+  even before you spin.
+- **🎰 Slots.** Three reels with Pokémon symbols (7 · ★ · ⚡ Pika · ◓
+  Great · ● Poké · 🍒 Cherry · ↻ Replay). Bet 1, 2, or 3 coins to light
+  one to three paylines. Reels slide with eased deceleration and a
+  cubic-bezier bounce on each stop. **777** pays 300×, **★★★** pays 100×,
+  Pikachu line pays 50×, and **↻↻↻** awards a free re-spin where you can
+  hold any reel for the follow-up.
+- **🎯 Roulette.** Twelve-cell board (4 colors × 3 Pokémon icons) plus a
+  cumulative-rotation wheel that doesn't snap back between spins. Place
+  any number of chips on any cells, or Repeat your last spread.
+  Cell-direct hit pays **11×**. A pointer marks the winning slot; the
+  cell flashes gold when it pays.
+
+**First-visit walk-through.** The Game Corner Manager (Gambler sprite)
+now opens with four beats on first entry — intro → cashier → tab guide
+→ closer — replacing the old single 3-line cameo. Subsequent visits
+skip the tutorial via the existing `tutorial-first-casino` meta key.
+The cashier panel auto-opens on entry only while the player has zero
+coins, so the buy-in flow is one tap away the first time.
+
+**UI / polish.**
+
+- New Game Boy Game Corner palette: cream/mauve panels over dark felt
+  green, pixel borders matching the existing shop / tutor language.
+- Twin gold + coin balance pills in the header pulse on every gain or
+  spend.
+- All buttons keep the ≥44 px touch target on mobile; cashier inputs
+  and bet chips inherit the existing phone-tuned sizes.
+- Reduced-motion mode collapses 1-2 second spins to ~300 ms fades.
+- Five-and-a-half new SFX cues per table reuse the shipped wav library
+  (`gachaDial`, `pbBounce1/2`, `pbLock`, `achv`, `sparkle`, `danger`).
+
+**Internals.**
+
+- New `window.StoryFx.coinFlip()`, `.slotsSpin()`, `.slotsFlashWin()`,
+  `.rouletteSpin()` animation helpers, plus `casinoSpin` retained as a
+  back-compat shim.
+- Single `_casinoTryBet()` / `_casinoRefreshBetCaps()` chokepoint for
+  every wager; per-tab spin-in-flight lock prevents double-spend races.
+- Lifetime `sm.casinoStats[game]` (`spins`, `wins`, `losses`, `coinsWon`,
+  `coinsLost`, `biggestWin`, etc.) is tracked but not yet surfaced in
+  UI — kept extensible for a future stats panel or achievement layer.
+- Old `casinoSetBetChip` / `casinoPlay` API kept as shims that reroute
+  to the new tab/bet flow.
+
 ## Unreleased — Character creation is now sprite-based, not gender-based 2026-05-18 (`claude/sprite-based-characters-VfHkk`)
 
 ### Changed — New Adventure: removed Boy/Girl picker, added Prev/Random/Next sprite browser
