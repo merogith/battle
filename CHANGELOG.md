@@ -3,6 +3,295 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — trainer NPC mobile UX + richer recommendations 2026-05-18 (`claude/improve-move-tutor-mobile-HevcJ`)
+
+### Changed — Tutor / Dojo / Nature / EV Trainer dropdowns round-trip on tap
+
+Tapping the highlighted mon card now collapses it (previously the tap was a
+no-op, so the only way to "close" a card was to open another one). The EV
+Trainer also gains the same accordion: one mon at a time, tap to toggle,
+header sticky to the top of the screen as you scroll the preset grid.
+
+### Changed — Recommendations are categorized by purpose, not just "top one"
+
+The single "★ Recommended" strip was the most common feedback target — players
+asked for more than one pick because a single move (or item, ability, nature,
+preset) doesn't cover the actual build decision. Each facility now shows three
+to four picks, each labelled with its purpose:
+
+- **Move Tutor** — STAB · Coverage · Setup · Status · Recovery · Priority ·
+  Speed · Hazards · Pivot · Screens. The engine looks at the mon's type, base
+  stats, and existing slots, then surfaces the best move from each purpose.
+- **Battle Dojo (items)** — Offensive · Defensive · Speed/Insurance · Power.
+  The "Defensive" pick prefers Heavy-Duty Boots when the mon is hazard-prone.
+- **Battle Dojo (abilities)** — Offensive · Defensive · Utility · Niche, with
+  the Hidden Ability tag on rows that match.
+- **Nature Rater** — Power · Speed · Bulk · Trick Room, with the +stat / -stat
+  spread inline.
+- **EV Trainer** — Offensive · Defensive · Meta · Speed/Balanced. Tap a
+  recommendation to scroll to that preset card; the destination card flashes
+  briefly so it's clear which preset you landed on.
+
+Each recommendation row is tappable: tapping pre-selects the pick in the
+confirm bar so the player can preview the trade before paying.
+
+### Changed — Mobile UX pass across all training facilities
+
+Phone players were doing too much scrolling. The pass tightens every trainer
+screen:
+
+- **Filter drawer** — type and category chips (which can spill to 3+ rows on
+  phones) are now hidden behind a "Filters" button with an active-count badge.
+  Always-open on desktop. A "✕ Clear" button appears next to the toggle when
+  any search or filter is set.
+- **Toolbar sticks below the mon header**, so search / sort / filter buttons
+  stay reachable as the player scrolls the option grid.
+- **Recommendations panel sits above the toolbar** so the top three or four
+  picks are the first thing on screen — most builds resolve here without ever
+  touching the long list.
+- **Tighter spacing** — slot cards, recs panel, confirm bar, and tab buttons
+  all use the Material 44-48px touch-target spec with reduced padding so more
+  options fit per viewport.
+- **Horizontally-scrollable chip rows** on phones (instead of vertical wrap),
+  preserving discoverability without spending vertical space.
+- **Nature cells** bumped to a 44px minimum tap target.
+
+### Changed — EV Trainer adds three universal spreads, drops duplicates
+
+The Roles section grew from six presets to nine so every species can pick a
+Mixed Sweeper, Mixed Wall, or Fast Utility spread without waiting on a
+species-specific Meta spread. Renamed "Physical Tank" → "Physical Wall" for
+consistency with "Special Wall", and "Bulky Attacker" → "Bulky / TR Attk"
+(same spread; the 0 Spe doubles as a Trick Room set, now called out
+explicitly).
+
+Duplicate spreads across Universal / Role / Meta are now filtered at build
+time: a meta spread with EVs identical to "Physical Sweeper" no longer
+appears twice in the list. The recommender also picks the *best* preset
+within each purpose (scored against the mon's base stats), not just the
+first matching label.
+
+### Added — "Close all" affordance on the mon-switcher pill bar
+
+A sticky red "▾ CLOSE" chip lives at the left edge of the pill bar
+whenever one mon is expanded — one tap collapses the whole accordion
+back to the compact picker so the player can scan the full team. The
+active gold pill also toggles closed when re-tapped. While everything
+is collapsed the chip swaps in for a "Tap a Pokémon →" hint so the bar
+still communicates its purpose.
+
+## Unreleased — IVs become a real progression layer, Pokémon Fan Club opens 2026-05-20 (`claude/add-stats-guide-R3MMO`)
+
+### Changed — Player Pokémon roll random IVs at catch time
+
+Every Pokémon you acquire — starter, professor gift, wild catch, even the
+Crucible mystery offers — now rolls a fresh **0-31 IV spread** for each of
+its six stats instead of silently defaulting to a perfect 31/31/31/31/31/31.
+A starter with 7 Attack is real now, and so is a Lapras you fished out of
+the Safari Zone with 30 Speed.
+
+Enemy trainers scale their IVs to their training tier:
+
+* **T1 Untrained** (route fillers, early gym trainers): 0-15 per stat.
+* **T2 Novice** (mid-game trainers, early gym leaders): 10-22.
+* **T3 Competent** (late-game leaders, Elite Trainers): 18-28.
+* **T4 Tournament** (Champion, Elite Four, Rival post-G8, Mystery Figure,
+  Frontier Round 4+): 26-31.
+
+Signature aces (every leader's identity mon) take the **top quartile** of
+their tier's range — so Misty's Starmie still feels like Misty's Starmie
+within its tier. Subject Zero (boss-arc capture) is the lone exception
+and lands at a fixed perfect 31s.
+
+### Changed — Vitamins are now IV training, not a flat +10 stat layer
+
+`HP Up`, `Protein`, `Iron`, `Calcium`, `Zinc`, `Carbos` no longer stamp
+a separate `+1 stat` permBoost layer on top of the EV-derived stat. Each
+application now lifts the matching **IV by +3** directly, capped at the
+natural 31. The drop economy is unchanged — vitamins remain rare gym /
+milestone rewards — but they now have a clear purpose: rescue a
+weak-rolled stat back toward the cap.
+
+### Added — Pokémon Fan Club facility (every city)
+
+A new 💖 Pokémon Fan Club facility opens in **every city**, positioned
+between the Pokémart and the training row in the action grid. The
+Chairman runs a roster-level IV viewer: each of your six party mons gets
+a card showing all six stat IVs with a coloured progress bar (red <10,
+amber 10-20, green 21-30, gold 31). A `+3` button beside each stat
+applies a vitamin from your bag right there — no need to dig into the
+bag menu.
+
+* **First visit gift**: the Chairman hands you 1 of each vitamin
+  (HP Up / Protein / Iron / Calcium / Zinc / Carbos) so brand-new runs
+  have ammo to use immediately.
+* **Tutorial cameo**: a short three-line scene explains IVs and vitamins
+  the first time you enter, then never fires again.
+* The bag's vitamin Use buttons still work and route through the same
+  picker, which now shows IV X/31 + a preview of the post-apply value.
+
+### Added — Save migration v18 → v19 (grandfather + refund)
+
+Existing saves preserve their stats. The migration:
+
+1. **Grandfathers** every team/PC mon to the perfect 31/31/31/31/31/31
+   IV spread so no loaded mon loses stats it had before the patch.
+2. **Refunds** every leftover `permBoosts` point as one vitamin of the
+   matching stat (e.g. a mon with +4 HP / +7 Atk pre-patch gets back
+   4 HP Up + 7 Protein in your bag). Old `permBoosts` fields are then
+   removed.
+3. Caught explicitly **after** loading, all new wild / gift / starter
+   acquisitions go through the new random IV roll.
+
+Net effect: a loaded save has the same combat power it had pre-patch
+plus a generous fresh budget of vitamins to spend on freshly-caught
+wilds.
+
+## Unreleased — Cable Link Station repriced as a flat premium over manual training 2026-05-20 (`claude/cable-link-pokemon-pricing-bb96A`)
+
+### Changed — Cable Link Station: Reroll / Upgrade / Rebuild prices bumped, intra-city ×1.5 ramp removed
+
+The Cable Link Station still ships fully battle-ready Pokémon — Reroll
+and Rebuild at Competent (T3), Upgrade at Tournament (T4) — but the old
+prices badly undercut the manual Tutor + Dojo + EV-Trainer path. A
+Same-Tier Swap on a Grade 4 mon was **400G**, less than a single Move
+Tutor visit (1,500G), yet it returned a full T3 build (moves, item,
+ability, nature, EVs). An Upgrade G4 → G3 at **3,500G** replaced
+roughly **17,000G** worth of training-NPC visits, and on top of that the
+**×1.5ⁿ intra-city ramp** punished any second use of the Link in the
+same city — a mechanic that made sense when first uses were near-free
+but turned vicious once base prices climbed. The "Spend it on a keeper"
+framing from the first-time tip wasn't holding up either: Cable Link
+was the keeper, the tutoring ladder was the trap.
+
+Repriced so the Link is the premium one-click route — flat per-action,
+with the gold floor as the only spam-deterrent:
+
+* `REROLL_COSTS` — was `{ 1:4000, 2:2000, 3:900, 4:400 }`, now
+  `{ 1:14000, 2:12000, 3:9000, 4:6000 }`. G1 species rolls cost the most
+  because the pool is rarer; G4 at 6,000G is reachable after a handful
+  of early-route wins.
+* `UPGRADE_COSTS` — was `{ 4:3500, 3:9000, 2:22000 }`, now
+  `{ 4:9000, 3:13000, 2:22000 }`. G2 → G1 (the late-game luxury anchor)
+  is untouched at 22,000G. The lower ramps climb more gently than the
+  old curve — you're paying for the grade lift + T4 build + random
+  species roll, so the tax stays proportional to what's at risk if the
+  rolled species doesn't fit your team's typing.
+* `REBUILD_COST` — was `1,200G`, now `5,000G`. Still the cheapest Cable
+  Link option (no grade lift, same species, no typing-clash risk).
+* **Removed the per-city ×1.5ⁿ price ramp** from all three Link actions.
+  The first use, second use, and tenth use within a city now all cost
+  the same flat amount. The `cityRerollsUsed` counters still increment
+  to drive the Casual first-use discount, but no longer feed the price
+  formula. (Evolution Tutor's ramp is unchanged — that's a separate NPC
+  with its own pricing model.)
+
+What didn't change:
+
+* **Build tier output is the same.** Reroll and Rebuild still return T3
+  (capped EVs, polish at Tutor / Dojo / EV Trainer for full T4). Upgrade
+  still returns T4 with full EVs, top-pool ability, and top-pool item.
+  No quality nerf — only the price.
+* **Per-city counter reset stays.** Each new city starts fresh for the
+  Casual first-use discount.
+* **Casual difficulty discount stays** — first Reroll in a city is
+  still 22% off on Casual.
+* **Stone Sage / Move Tutor / Battle Dojo / EV Trainer prices are
+  unchanged.** Only the Link is repriced; the manual path is now the
+  cheaper one if the player has the patience to walk it.
+
+Header text on the Cable Link screen and the first-time tip were
+rewritten to call out the new pricing logic — flat prices, random
+species means random typing, and the Link's job is "one click instead
+of five visits, at a markup", not "the cheap shortcut".
+
+## Unreleased — Battle-form pacing rebalanced + Wishing Piece introduces Colress 2026-05-20 (`claude/balance-encounter-pacing-T4FyA`)
+
+### Changed — Enemy gimmick distribution: guaranteed mech-aces + smoother progress curve
+
+The per-mon mechanic chance (`_perMonMechChance`) used to multiply a flat
+trainer-tier weight by a `_storyProgressFactor` that was **0% at badges
+0–3 and then jumped to 40% at badge 4**. Combined with the independent
+per-mon roll, the same Gym Leader 6 fight could roll 0, 1, 2, or 3
+gimmick mons across consecutive attempts — gimmicks felt like static
+RNG, not story progression.
+
+The fix is two parts:
+
+* `_storyProgressFactor` is now a smooth ramp:
+  `0/0/0, 0.15, 0.35, 0.55, 0.75, 0.90, 1.00` across badges 0–8.
+  No more cliff at badge 4; the first feathering of gimmicks now starts
+  on the Gym Leader 4 fight (badge 3) at ~3–4% per non-ace mon, then
+  climbs.
+* New `_minGuaranteedMechsForEvent(eventType)` returns a floor of
+  guaranteed gimmick mons that bypass the random roll entirely:
+  GL6 = 1 (the ace), GL7 = 2, GL8 = 3, E1/E2 = 2, E3/E4 = 3, Victory
+  Road = 3, post-G8 League Rival = 3, Champion = 4, post-HoF Mystery
+  Figure = 6 (full team). `_applyEnemyGimmickDistribution` walks the
+  team in slot order (slot 0 = signature ace by composition) and forces
+  the highest-priority eligible mechanic onto each of those mons before
+  the random roll fires for the remaining slots.
+
+Net effect: a Gym 6 fight is no longer "roll the dice and hope" — the
+leader's ace **always** comes out swinging with a Mega / Z / Dynamax /
+Tera, and the rest of the team rolls on a smoothed curve that ramps
+predictably toward the Champion.
+
+### Added — Wishing Piece voucher + Gym Leader 5 intro beat
+
+Gym Leader 5 victory now drops one **Wishing Piece** (canonical SwSh
+item, slotted into the existing voucher framework alongside Rare Candy,
+Vitamin Pack, Heart Scale, Mint, Ability Capsule, Emblem of Honor). The
+gym leader's victory message has been extended with a flavor line
+pointing the player to Colress in the next city.
+
+City 6 is the first city to host Colress, so the voucher is immediately
+redeemable on arrival. The Colress screen renders a purple "🌠 Wishing
+Piece ×N" banner at the top whenever the voucher is in inventory, and
+every Mega / Dynamax / Z-Move button shows a `🌠 Use Wishing Piece`
+sibling button that consumes one voucher instead of charging 7,500G.
+For Tera, where each type would otherwise need its own paired button,
+the buttons stay single but **shift-click** spends a voucher.
+
+The `firstColress` tutorial scene now reads `sm.inventory.wishingPiece`
+dynamically — when the player walks in carrying a Wishing Piece, an
+extra line of Colress dialogue is inserted that calls out the voucher
+explicitly. The base tutorial copy has also been expanded from 3 lines
+to 4 to introduce the "first door opens at Gym 5" rule.
+
+### Changed — Player gimmick unlock now aligns with Colress availability
+
+Previously, gimmicks unlocked one-per-badge starting at Gym 1, but the
+player had no way to **equip** any of them until Colress at City 6
+(after Gym 5). The result was a 4-badge stretch of "unlocked but
+useless" status. The unlock now gates on `badges >= 5`:
+
+| Badge | Unlocked mechanics |
+|---|---|
+| 0–4 | none |
+| 5 | mega |
+| 6 | mega + dmax |
+| 7 | mega + dmax + tera |
+| 8 | mega + dmax + tera + z |
+
+The fixed order (mega → dmax → tera → z, filtered by which mechanics
+the player enabled in run setup) is unchanged; only the start point and
+gating logic moved. Cable Link rebuilds, Professor gifts, and the
+`?testmega=1` debug seed pick this up automatically. The testmega seed
+now also explicitly stamps `unlockedGimmicks` to match `badges = 6` and
+seeds 2 Wishing Pieces for voucher-path verification.
+
+### Files touched
+
+* `battle.html` — `_storyProgressFactor` rewrite, `_minGuaranteedMechsForEvent`
+  + ace-pass in `_applyEnemyGimmickDistribution`, player unlock rewrite,
+  `VOUCHER_KEYS` + `wishingPiece` entry, `GYM_VICTORY_REWARDS['Gym Leader 5']`
+  msg, city-bag voucher row, `firstColress` tutorial with `getLines`
+  callback, `_showStoryTutorialScene` `getLines` support, Colress
+  voucher banner + `_colressPay` + `_colressConfirmPay` helpers, all
+  five `colressApply*` functions take a `useVoucher` arg, testmega seed
+  wires up the voucher loadout.
+
 ## Unreleased — Poké Casino overhaul: coins currency + Coin Flip / Slots / Roulette 2026-05-20 (`claude/pokemon-casino-overhaul-0ssdb`)
 
 ### Changed — Casino is now a real Game Corner
