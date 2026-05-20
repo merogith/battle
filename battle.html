@@ -1640,6 +1640,46 @@
             0% { transform: translateY(0) rotate(0deg); opacity: 1; }
             100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
         }
+        @keyframes storySaveToastIn {
+            0% { transform: translate(-50%, 14px); opacity: 0; }
+            100% { transform: translate(-50%, 0); opacity: 1; }
+        }
+        /* Master Ball — the guaranteed-catch throw should read distinct from
+           the Poké/Great/Ultra buttons before the player even clicks. Subtle
+           purple glow pulse + brighter inner highlight. The base button colors
+           are still set inline so this class only overlays the glow effect. */
+        .story-catch-ball--master {
+            box-shadow: 0 0 14px rgba(206, 147, 216, 0.55), inset 0 0 14px rgba(206, 147, 216, 0.18) !important;
+            animation: storyCatchMasterPulse 2.2s ease-in-out infinite;
+        }
+        @keyframes storyCatchMasterPulse {
+            0%, 100% { box-shadow: 0 0 14px rgba(206, 147, 216, 0.55), inset 0 0 14px rgba(206, 147, 216, 0.18); }
+            50%      { box-shadow: 0 0 22px rgba(206, 147, 216, 0.85), inset 0 0 18px rgba(206, 147, 216, 0.32); }
+        }
+        /* Move-tile keyboard shortcut hint — small `1`-`4` chip on the top-
+           right of each move button so new players see they can press the
+           number key to pick that move. Hidden on coarse-pointer (touch-only)
+           devices where the hint is irrelevant. */
+        .battle-btn-move .move-tile-shortcut {
+            margin-left: auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 14px;
+            height: 14px;
+            padding: 0 4px;
+            font-size: 9px;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.55);
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            line-height: 1;
+            font-family: monospace;
+        }
+        @media (hover: none) and (pointer: coarse) {
+            .battle-btn-move .move-tile-shortcut { display: none; }
+        }
         .story-victory-badge-slot {
             width: 88px; height: 88px; border-radius: 50%;
             background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.35) 0%, transparent 45%),
@@ -15734,8 +15774,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let metaTail = effLabelShort ? `<span class="move-tile-sep">·</span>${effLabelShort}` : '';
                 let infoHit = isMobile ? '<span class="move-info-hit" title="Move details" role="button">i</span>' : '';
                 btn.className = 'battle-btn-move';
-                btn.setAttribute('aria-label', `${shownMove.name}, ${shownMove.type}, ${shownMove.cat}, Power ${_powStr}, Acc ${_accStr}, PP ${_ppStr}, Pri ${priStr}`);
-                btn.innerHTML = '<div class="battle-btn-move-inner"><div class="move-tile-core"><div class="move-tile-head"><span class="type-badge type-' + shownMove.type + '">' + typeShort + '</span><span class="move-tile-name">' + shownMove.name + dynaLabel + zLabel + '</span><span class="move-tile-cat" style="color:' + catColor + '" title="' + shownMove.cat + '">' + catG + '</span></div><div class="move-tile-meta"><span title="Power"><strong>' + _powStr + '</strong></span><span class="move-tile-sep">·</span><span title="Accuracy"><strong>' + _accStr + '</strong></span><span class="move-tile-sep">·</span><span title="Priority" style="color:#aed581;font-weight:bold;">' + priStr + '</span><span class="move-tile-sep">·</span><span title="PP" style="color:' + ppColor + '"><strong>' + ppDisplay + '</strong></span>' + metaTail + '</div></div>' + infoHit + '</div>';
+                btn.setAttribute('aria-label', `${shownMove.name}, ${shownMove.type}, ${shownMove.cat}, Power ${_powStr}, Acc ${_accStr}, PP ${_ppStr}, Pri ${priStr} — keyboard shortcut ${i + 1}`);
+                // Keyboard shortcut hint chip — small `1` / `2` / `3` / `4`
+                // marker in the top-right of the move tile. Hidden via CSS
+                // on touch-only devices so it doesn't crowd the mobile layout.
+                const _shortcutHintHtml = '<span class="move-tile-shortcut" aria-hidden="true">' + (i + 1) + '</span>';
+                btn.innerHTML = '<div class="battle-btn-move-inner"><div class="move-tile-core"><div class="move-tile-head"><span class="type-badge type-' + shownMove.type + '">' + typeShort + '</span><span class="move-tile-name">' + shownMove.name + dynaLabel + zLabel + '</span><span class="move-tile-cat" style="color:' + catColor + '" title="' + shownMove.cat + '">' + catG + '</span>' + _shortcutHintHtml + '</div><div class="move-tile-meta"><span title="Power"><strong>' + _powStr + '</strong></span><span class="move-tile-sep">·</span><span title="Accuracy"><strong>' + _accStr + '</strong></span><span class="move-tile-sep">·</span><span title="Priority" style="color:#aed581;font-weight:bold;">' + priStr + '</span><span class="move-tile-sep">·</span><span title="PP" style="color:' + ppColor + '"><strong>' + ppDisplay + '</strong></span>' + metaTail + '</div></div>' + infoHit + '</div>';
                 btn.title = isMobile
                     ? (shownMove.name + ' — tap “i” for full details')
                     : ('Keys ' + (i + 1) + ': ' + shownMove.name + ' — hover for details');
@@ -28664,7 +28708,56 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 sm._lastSave = Date.now();
                 localStorage.setItem(SAVE_KEY, JSON.stringify(sm));
+                _maybeShowSaveToast();
             } catch(e) { console.warn('[Story] Save failed', e); }
+        }
+        /** Throttled "💾 Saved" toast — fires at most once per
+         *  SAVE_TOAST_THROTTLE_MS, so back-to-back saves during a multi-event
+         *  chain (battle end → save → enterCity → save → renderActions →
+         *  save) only show the toast once. The localStorage write itself is
+         *  never throttled — only the visual confirmation. */
+        const _SAVE_TOAST_THROTTLE_MS = 3000;
+        let _saveToastLastAt = 0;
+        let _saveToastEl = null;
+        function _maybeShowSaveToast() {
+            // Suppress entirely until an active story run exists — the main
+            // menu also calls save() during meta writes and a "Saved" toast
+            // there would be confusing.
+            if (!sm || !sm.active) return;
+            const now = Date.now();
+            if (now - _saveToastLastAt < _SAVE_TOAST_THROTTLE_MS) return;
+            _saveToastLastAt = now;
+            // Reuse an existing toast element if it's still on-screen so
+            // rapid-fire saves just refresh the lifetime instead of stacking.
+            if (_saveToastEl && _saveToastEl.parentNode) {
+                clearTimeout(_saveToastEl._dismissTimer);
+                _saveToastEl._dismissTimer = setTimeout(() => {
+                    try { _saveToastEl && _saveToastEl.remove(); } catch (e) {}
+                    _saveToastEl = null;
+                }, 1100);
+                return;
+            }
+            const el = document.createElement('div');
+            el.className = 'story-save-toast';
+            el.textContent = '💾 Saved';
+            el.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);'
+                + 'background:rgba(20,30,40,0.92);color:#aed581;border:1px solid rgba(174,213,129,0.35);'
+                + 'padding:6px 14px;border-radius:18px;font-family:inherit;font-size:11px;'
+                + 'letter-spacing:0.06em;z-index:99999;pointer-events:none;'
+                + 'box-shadow:0 4px 14px rgba(0,0,0,0.45);'
+                + 'animation:storySaveToastIn 240ms ease-out;';
+            document.body.appendChild(el);
+            _saveToastEl = el;
+            el._dismissTimer = setTimeout(() => {
+                try {
+                    el.style.transition = 'opacity 280ms ease-out';
+                    el.style.opacity = '0';
+                    setTimeout(() => { try { el.remove(); } catch (e) {} if (_saveToastEl === el) _saveToastEl = null; }, 320);
+                } catch (e) {
+                    try { el.remove(); } catch (e2) {}
+                    if (_saveToastEl === el) _saveToastEl = null;
+                }
+            }, 1100);
         }
         function load() {
             try {
@@ -37467,8 +37560,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const pct = Math.round(chance * 100);
                     const canThrow = have > 0;
                     const multLabel = mult === Infinity ? '∞ (guaranteed)' : `${mult}×`;
-                    return `<button type="button" onclick="window.StoryMode.catchThrow('${k}')" ${canThrow ? '' : 'disabled'} style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:rgba(20,28,40,0.6);border:1px solid ${display.color};color:${display.color};font-family:inherit;font-size:12px;${canThrow ? 'cursor:pointer;' : 'opacity:0.4;cursor:not-allowed;'}">
-                        <span style="display:flex;align-items:center;gap:8px;"><img src="${display.icon}" alt="" width="22" height="22" decoding="async" style="width:22px;height:22px;image-rendering:pixelated;flex-shrink:0;"><span><strong>${display.name}</strong> <span style="color:#aaa;font-size:10px;">(${multLabel})</span> ×${have}</span></span>
+                    // Master Ball gets a dedicated CSS class so the button
+                    // glows purple and carries a ✨ marker — its guaranteed-
+                    // catch identity now reads at a glance, before throw
+                    // resolution. Other balls render exactly as before.
+                    const masterCls = (k === 'master' && canThrow) ? ' story-catch-ball--master' : '';
+                    const masterMark = (k === 'master' && canThrow) ? '<span style="margin-left:6px;color:#ce93d8;text-shadow:0 0 6px rgba(206,147,216,0.85);">✨</span>' : '';
+                    return `<button type="button" onclick="window.StoryMode.catchThrow('${k}')" ${canThrow ? '' : 'disabled'} data-ball-type="${k}" class="story-catch-ball${masterCls}" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:rgba(20,28,40,0.6);border:1px solid ${display.color};color:${display.color};font-family:inherit;font-size:12px;${canThrow ? 'cursor:pointer;' : 'opacity:0.4;cursor:not-allowed;'}">
+                        <span style="display:flex;align-items:center;gap:8px;"><img src="${display.icon}" alt="" width="22" height="22" decoding="async" style="width:22px;height:22px;image-rendering:pixelated;flex-shrink:0;"><span><strong>${display.name}</strong>${masterMark} <span style="color:#aaa;font-size:10px;">(${multLabel})</span> ×${have}</span></span>
                         <span style="color:#fff;">${pct}%</span>
                     </button>`;
                 }).join('');

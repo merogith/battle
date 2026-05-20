@@ -3,6 +3,82 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — UX polish: autosave toast, Master Ball glow, move-key hints 2026-05-20 (`claude/pokemon-mature-storyline-Xk3ut`)
+
+### Added — Three small "feel" wins on top of the deepening pass
+
+A focused, low-risk UX polish round shipped after the narrative
+deepening. Each item solves a single piece of player friction
+identified in the story-mode UX audit. Larger items from the audit
+(catch-miss animation, damage preview, story journal screen, city
+action reorder, Crucible first-entry cinematic, tutorial batching,
+per-variant BGM) are deferred to a follow-up PR — they need live
+browser testing to land cleanly and the variant work in this branch
+is shippable on its own.
+
+* **Autosave "💾 Saved" toast** — every `save()` call in the story
+  IIFE now flashes a bottom-center confirmation toast, throttled to
+  one per 3 seconds. Closing the tab mid-route used to be silent —
+  the player had no idea their last action had persisted. Now
+  there's a small visible signal. The throttle is on the toast only;
+  the underlying localStorage write is unchanged. CSS animation
+  (`@keyframes storySaveToastIn`) reuses the existing story tone
+  palette.
+* **Master Ball visual identity** — the catch screen's Master Ball
+  button now carries a purple glow pulse (`@keyframes
+  storyCatchMasterPulse`) and a ✨ marker beside the name. The other
+  three balls (Poké, Great, Ultra) render unchanged. A guaranteed-
+  catch throw reads distinct *before* the player clicks, not after
+  the outcome resolves.
+* **Move button keyboard shortcut hints** — every battle move tile
+  now shows a small `1` / `2` / `3` / `4` chip in the top-right
+  corner so new players discover the keyboard shortcuts that have
+  always worked. The chip uses a monospace font, dim color, doesn't
+  compete with the move name, and is hidden on coarse-pointer (touch-
+  only) devices where the hint is irrelevant. The aria-label gains
+  "keyboard shortcut N" for screen readers.
+
+### Deferred to a follow-up pass
+
+The story-mode UX audit identified five other improvement vectors.
+All are skipped on this branch because they need live browser
+verification and touch larger surfaces:
+
+* **Catch screen miss / flee animations** — sprite shake on miss,
+  slide-out on flee. Needs visual tuning in the browser.
+* **Damage preview on FIGHT** — estimated HP range per move vs. the
+  current foe. Touches the battle pipeline's `calculateDamage` hot
+  path; risk of side-effects without careful preview-flag plumbing.
+* **City action reordering by urgency + "NEW" badges on facility
+  unlocks** — needs in-game playthrough to verify ordering is right
+  for every city / progression state.
+* **Per-run story journal screen** — new tab in the Collection
+  screen. New HTML, new render path. Larger scope; non-trivial diff
+  on its own.
+* **Crucible first-entry cinematic** — single cold-open scene; easy
+  to add but needs the Crucible flow tested live to confirm the
+  trigger fires correctly.
+* **Per-variant BGM via existing music tracks** — audio mixing
+  needs verification across the 8 variants.
+* **Tutorial-queue batching** — changes the dispatch behavior of
+  every `_storyShowOneTimeTip` and `playStoryTutorial` call. Higher-
+  risk refactor; deserves its own commit + verification round.
+
+### Implementation notes
+
+| Touchpoint | What changed | LOC |
+|---|---|---|
+| `save()` (~28663) | Calls `_maybeShowSaveToast()` after localStorage write | ~2 |
+| `_maybeShowSaveToast` + state (new) | Throttled toast renderer | ~48 |
+| `@keyframes storySaveToastIn` (CSS ~1643) | Toast slide-in animation | ~5 |
+| Catch ball-button render (~37515) | `data-ball-type` + `.story-catch-ball--master` class + ✨ marker | ~12 |
+| `.story-catch-ball--master` + `@keyframes storyCatchMasterPulse` (CSS) | Master Ball purple glow pulse | ~14 |
+| Battle move tile render (~15752) | Adds `<span class="move-tile-shortcut">N</span>` in head, updates aria-label | ~7 |
+| `.battle-btn-move .move-tile-shortcut` + touch media query (CSS) | Shortcut chip styling | ~25 |
+
+Touched: `battle.html` only. Zero new asset files. No save-schema
+bump. No new dependencies.
+
 ## Unreleased — Storyline depth pass: recurring NPCs, plot twists, per-variant Champion + Mystery outros 2026-05-20 (`claude/pokemon-mature-storyline-Xk3ut`)
 
 ### Changed — Each of the 8 storyline variants now carries 15+ beats with a recurring character and a Gym-8 plot twist
