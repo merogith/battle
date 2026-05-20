@@ -20417,7 +20417,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (_berryTriggers) {
                         damage = Math.floor(damage / (defender.ability === "Ripen" ? 4 : 2));
                         logMsg(`${defender.name}'s ${defender.item} weakened the attack!`, 'info');
-                        defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender);
+                        const _eatenBerry = defender.item; defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender, _eatenBerry);
                     }
                 }
                 // Substitute blocks Focus Sash unless Infiltrator lets this move strike the holder's HP directly
@@ -21082,7 +21082,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if ((move.name === "Pluck" || move.name === "Bug Bite") && !hitSub && defender.currentHp > 0 && defender.item && /Berry$/.test(defender.item) && attacker.currentHp > 0) {
                     const _stolen = defender.item;
                     logMsg(`${attacker.name} stole and ate ${defender.name}'s ${_stolen}!`, 'info');
-                    defender.item = null; defender.itemConsumed = true;
+                    defender._usedBerry = _stolen; defender.item = null; defender.itemConsumed = true;
                     const _statBerryMap = { "Liechi Berry": "atk", "Ganlon Berry": "def", "Petaya Berry": "spa", "Apicot Berry": "spd", "Salac Berry": "spe" };
                     if (_stolen === "Sitrus Berry") {
                         let h = Math.min(attacker.maxHp - attacker.currentHp, _ripen(attacker, Math.floor(attacker.maxHp / 4)));
@@ -21107,7 +21107,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     else if (_stolen === "Rawst Berry" && attacker.status === "BRN") { attacker.status = null; logMsg(`${attacker.name}'s burn was cured!`, 'heal'); }
                     else if (_stolen === "Aspear Berry" && attacker.status === "FRZ") { attacker.status = null; logMsg(`${attacker.name} thawed out!`, 'heal'); }
                     else if (_stolen === "Persim Berry" && attacker.volatile.confusion > 0) { attacker.volatile.confusion = 0; logMsg(`${attacker.name}'s confusion ended!`, 'heal'); }
-                    _onBerryEaten(attacker);
+                    _onBerryEaten(attacker, null);
                 }
                 // Thief / Covet: steal target's held item if user has no item.
                 // Magician (Delphox-line ability): same effect on any damaging move. Sticky Hold prevents it.
@@ -21191,7 +21191,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let enHeal = Math.floor(defender.maxHp / 4);
                     let enAct = Math.min(defender.maxHp - defender.currentHp, _ripen(defender, enHeal));
                     if (enAct > 0) { defender.currentHp += enAct; logMsg(`${defender.name}'s Enigma Berry restored ${enAct} HP!`, 'heal'); }
-                    defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender);
+                    defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender, "Enigma Berry");
                 }
                 // Jaboca Berry: deals 1/8 of attacker's max HP to attacker when holder is hit by a Physical move (consumed)
                 if (!hitSub && defender.item === "Jaboca Berry" && move.cat === "Physical" && defender.currentHp > 0 && attacker.currentHp > 0
@@ -21200,7 +21200,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let actJb = Math.min(attacker.currentHp, jbDmg);
                     attacker.currentHp -= actJb;
                     logMsg(`${attacker.name} was hurt by ${defender.name}'s Jaboca Berry! (${actJb} damage)`, 'dmg');
-                    defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender);
+                    defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender, "Jaboca Berry");
                 }
                 // Rowap Berry: deals 1/8 of attacker's max HP when holder is hit by a Special move (consumed)
                 if (!hitSub && defender.item === "Rowap Berry" && move.cat === "Special" && defender.currentHp > 0 && attacker.currentHp > 0
@@ -21209,21 +21209,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let actRw = Math.min(attacker.currentHp, rwDmg);
                     attacker.currentHp -= actRw;
                     logMsg(`${attacker.name} was hurt by ${defender.name}'s Rowap Berry! (${actRw} damage)`, 'dmg');
-                    defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender);
+                    defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender, "Rowap Berry");
                 }
                 // Kee Berry: +1 Defense when holder is hit by a Physical move (consumed)
                 if (!hitSub && defender.item === "Kee Berry" && move.cat === "Physical" && defender.currentHp > 0
                     && state.magicRoom === 0 && !defender.volatile.embargo && attacker.ability !== "Unnerve") {
                     changeStage(defender, 'def', _ripen(defender, 1));
                     logMsg(`${defender.name}'s Kee Berry raised its Defense!`, 'info');
-                    defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender);
+                    defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender, "Kee Berry");
                 }
                 // Maranga Berry: +1 Sp. Def when holder is hit by a Special move (consumed)
                 if (!hitSub && defender.item === "Maranga Berry" && move.cat === "Special" && defender.currentHp > 0
                     && state.magicRoom === 0 && !defender.volatile.embargo && attacker.ability !== "Unnerve") {
                     changeStage(defender, 'spd', _ripen(defender, 1));
                     logMsg(`${defender.name}'s Maranga Berry raised its Sp. Def!`, 'info');
-                    defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender);
+                    defender.item = null; defender.itemConsumed = true; _onBerryEaten(defender, "Maranga Berry");
                 }
                 // Grudge: if defender faints, drain PP of attacker's last move
                 if (!hitSub && defender.volatile.grudge && defender.currentHp <= 0 && attacker.currentHp > 0) {
@@ -21463,8 +21463,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         userParty.forEach(m => { if (m && m.currentHp > 0 && m.status) { m.status = null; m.statusTurns = 0; logMsg(`${m.name} was cured of its status!`, 'heal'); } });
                         break;
                     case "G-Max Finale": {
-                        const heal = Math.max(1, Math.floor(attacker.maxHp / 6));
-                        if (attacker.currentHp < attacker.maxHp) { attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + heal); logMsg(`${attacker.name} restored HP from G-Max Finale!`, 'heal'); }
+                        userParty.forEach(m => {
+                            if (!m || m.currentHp <= 0 || m.currentHp >= m.maxHp) return;
+                            const heal = Math.max(1, Math.floor(m.maxHp / 6));
+                            m.currentHp = Math.min(m.maxHp, m.currentHp + heal);
+                            logMsg(`${m.name} restored HP from G-Max Finale!`, 'heal');
+                        });
                         break;
                     }
                     case "G-Max Replenish": {
@@ -21887,13 +21891,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let heal = Math.floor(mon.maxHp / 4);
                 let act = Math.min(mon.maxHp - mon.currentHp, _ripen(mon, heal));
                 if (act > 0) { mon.currentHp += act; logMsg(`${mon.name} ate its Sitrus Berry and restored ${act} HP!`, 'heal'); }
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); return;
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Sitrus Berry"); return;
             }
             // Oran
             if (!unnerved && mon.item === "Oran Berry" && mon.currentHp <= mon.maxHp * 0.5) {
                 let act = Math.min(mon.maxHp - mon.currentHp, _ripen(mon, 10));
                 if (act > 0) { mon.currentHp += act; logMsg(`${mon.name} ate its Oran Berry and restored ${act} HP!`, 'heal'); }
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); return;
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Oran Berry"); return;
             }
             // Berry Juice (not a berry; Unnerve doesn't apply)
             if (mon.item === "Berry Juice" && mon.currentHp <= mon.maxHp * 0.5) {
@@ -21906,40 +21910,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let heal = Math.floor(mon.maxHp / 2);
                 let act = Math.min(mon.maxHp - mon.currentHp, _ripen(mon, heal));
                 if (act > 0) { mon.currentHp += act; logMsg(`${mon.name} ate its ${mon.item} and restored ${act} HP!`, 'heal'); }
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); return;
+                const _eatenBerry = mon.item; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, _eatenBerry); return;
             }
             // Pinch stat berries
             const _pinchStat = { "Liechi Berry": "atk", "Ganlon Berry": "def", "Petaya Berry": "spa", "Apicot Berry": "spd", "Salac Berry": "spe" };
             if (!unnerved && _pinchStat[mon.item] && mon.currentHp <= mon.maxHp * pinchThresh) {
                 changeStage(mon, _pinchStat[mon.item], _ripen(mon, 1), false, { bypassStagnation: true });
                 logMsg(`${mon.name} ate its ${mon.item}!`, 'info');
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); return;
+                const _eatenBerry = mon.item; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, _eatenBerry); return;
             }
             if (!unnerved && mon.item === "Lansat Berry" && mon.currentHp <= mon.maxHp * pinchThresh) {
                 mon.volatile.focusEnergy = (mon.volatile.focusEnergy || 0) + _ripen(mon, 2);
                 logMsg(`${mon.name} ate its Lansat Berry!`, 'info');
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); return;
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Lansat Berry"); return;
             }
             if (!unnerved && mon.item === "Starf Berry" && mon.currentHp <= mon.maxHp * pinchThresh) {
                 const _ss = ['atk','def','spa','spd','spe'];
                 changeStage(mon, _ss[Math.floor(Math.random()*_ss.length)], _ripen(mon, 2), false, { bypassStagnation: true });
                 logMsg(`${mon.name} ate its Starf Berry!`, 'info');
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); return;
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Starf Berry"); return;
             }
             if (!unnerved && mon.item === "Micle Berry" && mon.currentHp <= mon.maxHp * pinchThresh) {
                 mon.volatile.micleBerry = true;
                 logMsg(`${mon.name}'s Micle Berry boosts its next move's accuracy!`, 'info');
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); return;
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Micle Berry"); return;
             }
             if (!unnerved && mon.item === "Custap Berry" && mon.currentHp <= mon.maxHp * pinchThresh) {
                 mon.volatile.custapReady = true;
                 logMsg(`${mon.name}'s Custap Berry lets it move first next turn!`, 'info');
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); return;
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Custap Berry"); return;
             }
         }
         function _pinchThreshold(mon) { return (mon && mon.ability === "Gluttony") ? 0.5 : 0.25; }
-        function _onBerryEaten(mon) {
+        function _onBerryEaten(mon, berryName) {
             if (!mon || mon.currentHp <= 0) return;
+            // Remember the most recently consumed berry so a teammate's G-Max Replenish can restore it.
+            if (berryName) mon._usedBerry = berryName;
             // Belch requires the user to have eaten a Berry. Mark the volatile so subsequent Belch attempts pass the gate.
             if (mon.volatile) mon.volatile.belchReady = true;
             if (mon.ability === "Cheek Pouch" && mon.currentHp < mon.maxHp) {
@@ -24070,9 +24076,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     logMsg(`But it failed!`, 'info'); return;
                 }
                 logMsg(`${attacker.name} ate its ${attacker.item}!`, 'info');
+                const _eatenBerry = attacker.item;
                 attacker.item = null; attacker.itemConsumed = true;
                 changeStage(attacker, 'def', 2);
-                if (typeof _onBerryEaten === 'function') _onBerryEaten(attacker);
+                if (typeof _onBerryEaten === 'function') _onBerryEaten(attacker, _eatenBerry);
                 return;
             }
 
@@ -24682,15 +24689,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let unnerved = (foe && foe.ability === "Unnerve") || state.magicRoom > 0 || mon.volatile.embargo > 0;
             // Status-curing berries (end-of-turn activation for existing statuses)
             if (!unnerved && mon.status && mon.currentHp > 0) {
-                if (mon.item === "Lum Berry") { logMsg(`${mon.name}'s Lum Berry cured its ${mon.status}!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); }
-                else if (mon.item === "Chesto Berry" && mon.status === "SLP") { logMsg(`${mon.name}'s Chesto Berry woke it up!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); }
-                else if (mon.item === "Pecha Berry" && (mon.status === "PSN" || mon.status === "TOX")) { logMsg(`${mon.name}'s Pecha Berry cured its poison!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); }
-                else if (mon.item === "Rawst Berry" && mon.status === "BRN") { logMsg(`${mon.name}'s Rawst Berry cured its burn!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); }
-                else if (mon.item === "Aspear Berry" && mon.status === "FRZ") { logMsg(`${mon.name}'s Aspear Berry thawed it out!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); }
-                else if (mon.item === "Cheri Berry" && mon.status === "PAR") { logMsg(`${mon.name}'s Cheri Berry cured its paralysis!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); }
+                if (mon.item === "Lum Berry") { logMsg(`${mon.name}'s Lum Berry cured its ${mon.status}!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Lum Berry"); }
+                else if (mon.item === "Chesto Berry" && mon.status === "SLP") { logMsg(`${mon.name}'s Chesto Berry woke it up!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Chesto Berry"); }
+                else if (mon.item === "Pecha Berry" && (mon.status === "PSN" || mon.status === "TOX")) { logMsg(`${mon.name}'s Pecha Berry cured its poison!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Pecha Berry"); }
+                else if (mon.item === "Rawst Berry" && mon.status === "BRN") { logMsg(`${mon.name}'s Rawst Berry cured its burn!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Rawst Berry"); }
+                else if (mon.item === "Aspear Berry" && mon.status === "FRZ") { logMsg(`${mon.name}'s Aspear Berry thawed it out!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Aspear Berry"); }
+                else if (mon.item === "Cheri Berry" && mon.status === "PAR") { logMsg(`${mon.name}'s Cheri Berry cured its paralysis!`, 'heal'); mon.status = null; mon.statusTurns = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Cheri Berry"); }
             }
             // Persim Berry cures confusion
-            if (!unnerved && mon.item === "Persim Berry" && mon.volatile.confusion > 0) { logMsg(`${mon.name}'s Persim Berry snapped it out of confusion!`, 'heal'); mon.volatile.confusion = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon); }
+            if (!unnerved && mon.item === "Persim Berry" && mon.volatile.confusion > 0) { logMsg(`${mon.name}'s Persim Berry snapped it out of confusion!`, 'heal'); mon.volatile.confusion = 0; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Persim Berry"); }
             // Leppa Berry: restores 10 PP to a depleted move (consumed). Restores the first move whose PP is 0.
             if (!unnerved && mon.item === "Leppa Berry" && mon.currentHp > 0 && Array.isArray(mon.moves)) {
                 const _depleted = mon.moves.find(mv => mv && mv.pp === 0 && (mv.maxPp == null || mv.maxPp > 0));
@@ -24699,57 +24706,57 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     _depleted.pp = _ripen(mon, restore);
                     if (_depleted.maxPp != null && _depleted.pp > _depleted.maxPp) _depleted.pp = _depleted.maxPp;
                     logMsg(`${mon.name} restored PP to its ${_depleted.name} with its Leppa Berry!`, 'heal');
-                    mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
+                    mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Leppa Berry");
                 }
             }
 
             if (!unnerved && mon.item === "Salac Berry" && mon.currentHp <= mon.maxHp * _pinchThreshold(mon) && mon.currentHp > 0) {
                 changeStage(mon, 'spe', _ripen(mon, 1), false, { bypassStagnation: true });
                 logMsg(`${mon.name} ate its Salac Berry!`, 'info');
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Salac Berry");
             }
             if (!unnerved && mon.item === "Liechi Berry" && mon.currentHp <= mon.maxHp * _pinchThreshold(mon) && mon.currentHp > 0) {
                 changeStage(mon, 'atk', _ripen(mon, 1), false, { bypassStagnation: true });
                 logMsg(`${mon.name} ate its Liechi Berry!`, 'info');
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Liechi Berry");
             }
             if (!unnerved && mon.item === "Ganlon Berry" && mon.currentHp <= mon.maxHp * _pinchThreshold(mon) && mon.currentHp > 0) {
                 changeStage(mon, 'def', _ripen(mon, 1), false, { bypassStagnation: true });
                 logMsg(`${mon.name} ate its Ganlon Berry!`, 'info');
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Ganlon Berry");
             }
             if (!unnerved && mon.item === "Petaya Berry" && mon.currentHp <= mon.maxHp * _pinchThreshold(mon) && mon.currentHp > 0) {
                 changeStage(mon, 'spa', _ripen(mon, 1), false, { bypassStagnation: true });
                 logMsg(`${mon.name} ate its Petaya Berry!`, 'info');
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Petaya Berry");
             }
             if (!unnerved && mon.item === "Apicot Berry" && mon.currentHp <= mon.maxHp * _pinchThreshold(mon) && mon.currentHp > 0) {
                 changeStage(mon, 'spd', _ripen(mon, 1), false, { bypassStagnation: true });
                 logMsg(`${mon.name} ate its Apicot Berry!`, 'info');
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Apicot Berry");
             }
             if (!unnerved && mon.item === "Lansat Berry" && mon.currentHp <= mon.maxHp * _pinchThreshold(mon) && mon.currentHp > 0) {
                 mon.volatile.focusEnergy = (mon.volatile.focusEnergy || 0) + _ripen(mon, 2);
                 logMsg(`${mon.name} ate its Lansat Berry and raised its critical-hit ratio!`, 'info');
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Lansat Berry");
             }
             if (!unnerved && mon.item === "Starf Berry" && mon.currentHp <= mon.maxHp * _pinchThreshold(mon) && mon.currentHp > 0) {
                 const starfStats = ['atk', 'def', 'spa', 'spd', 'spe'];
                 const starfStat = starfStats[Math.floor(Math.random() * starfStats.length)];
                 changeStage(mon, starfStat, _ripen(mon, 2), false, { bypassStagnation: true });
                 logMsg(`${mon.name} ate its Starf Berry!`, 'info');
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Starf Berry");
             }
             if (!unnerved && mon.item === "Oran Berry" && mon.currentHp <= mon.maxHp * 0.5 && mon.currentHp > 0) {
                 let actHeal = Math.min(mon.maxHp - mon.currentHp, _ripen(mon, 10));
                 if (actHeal > 0) { mon.currentHp += actHeal; logMsg(`${mon.name} ate its Oran Berry and restored ${actHeal} HP!`, 'heal'); }
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Oran Berry");
             }
             if (!unnerved && mon.item === "Sitrus Berry" && mon.currentHp <= mon.maxHp * 0.5 && mon.currentHp > 0) {
                 let heal = Math.floor(mon.maxHp / 4);
                 let actHeal = Math.min(mon.maxHp - mon.currentHp, _ripen(mon, heal));
                 if (actHeal > 0) { mon.currentHp += actHeal; logMsg(`${mon.name} ate its Sitrus Berry and restored ${actHeal} HP!`, 'heal'); }
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Sitrus Berry");
             }
             // Berry Juice: restores 20 HP at ≤50% HP, consumed (not a berry — Unnerve doesn't apply)
             if (mon.item === "Berry Juice" && mon.currentHp <= mon.maxHp * 0.5 && mon.currentHp > 0
@@ -24764,17 +24771,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let heal = Math.floor(mon.maxHp / 2);
                 let actHeal = Math.min(mon.maxHp - mon.currentHp, _ripen(mon, heal));
                 if (actHeal > 0) { mon.currentHp += actHeal; logMsg(`${mon.name} ate its ${mon.item} and restored ${actHeal} HP!`, 'heal'); }
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
+                const _eatenBerry = mon.item; mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, _eatenBerry);
             }
             if (!unnerved && mon.item === "Custap Berry" && mon.currentHp <= mon.maxHp * _pinchThreshold(mon) && mon.currentHp > 0) {
                 logMsg(`${mon.name}'s Custap Berry lets it move first next turn!`, 'info');
                 mon.volatile.custapReady = true;
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Custap Berry");
             }
             if (!unnerved && mon.item === "Micle Berry" && mon.currentHp <= mon.maxHp * _pinchThreshold(mon) && mon.currentHp > 0) {
                 logMsg(`${mon.name}'s Micle Berry boosts its next move's accuracy!`, 'info');
                 mon.volatile.micleBerry = true;
-                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon);
+                mon.item = null; mon.itemConsumed = true; _onBerryEaten(mon, "Micle Berry");
             }
 
             // Story artifact: Vampiric Fangs — all Pokémon lose 1/16 max HP at end of turn (Magic Guard immune)
