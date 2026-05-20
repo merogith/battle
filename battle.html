@@ -1609,7 +1609,8 @@
         }
         #story-hud-city,
         #story-hud-gold,
-        #story-hud-badges {
+        #story-hud-badges,
+        #story-hud-run {
             display: inline-flex;
             align-items: center;
             min-height: 34px;
@@ -1628,6 +1629,7 @@
         #story-hud-city { color: var(--accent); }
         #story-hud-gold { color: #ffd700; }
         #story-hud-badges { color: #ffcc80; }
+        #story-hud-run { color: #aed581; }
         .story-hud-trainer-portrait {
             width: 34px;
             height: 34px;
@@ -5442,7 +5444,7 @@
             .story-hud-primary {
                 gap: 8px 10px;
             }
-            #story-hud-city, #story-hud-gold, #story-hud-badges {
+            #story-hud-city, #story-hud-gold, #story-hud-badges, #story-hud-run {
                 font-size: 12px;
                 padding: 5px 10px;
                 min-height: 34px;
@@ -7437,6 +7439,7 @@
                 <span id="story-hud-city">City 0</span>
                 <span id="story-hud-gold"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
                 <span id="story-hud-badges">0/8 Badges</span>
+                <span id="story-hud-run" title="NG+ counter — number of full story clears, including the current one">Run #1</span>
             </div>
             <div class="story-hud-actions">
                 <button type="button" class="story-hud-collection" onclick="window.StoryMode.openCollection('pokedex')" title="Open Pokédex, Achievements, Hall of Fame" aria-label="Open Collection">📖</button>
@@ -19272,7 +19275,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             if (attacker.ability === "Own Tempo") {
                                 logMsg(`${attacker.name}'s Own Tempo prevented confusion from fatigue!`, 'info');
                             } else {
-                                attacker.volatile.confusion = Math.floor(Math.random() * 3) + 2;
+                                const _confFatigueRng = (sm && sm.active) ? storyRngNext : Math.random;
+                                attacker.volatile.confusion = Math.floor(_confFatigueRng() * 3) + 2;
                                 logMsg(`${attacker.name} became confused due to fatigue!`, 'status');
                             }
                         }
@@ -22563,7 +22567,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (defender.currentHp > 0) { changeStage(defender, 'spe', -2, true); logMsg(`${defender.name}'s Speed was harshly lowered!`, 'info'); }
                         break;
                     case "G-Max Smite":
-                        if (defender.currentHp > 0 && (defender.volatile.confusion|0) === 0) { defender.volatile.confusion = 2 + Math.floor(Math.random()*3); logMsg(`${defender.name} became confused!`, 'status'); }
+                        if (defender.currentHp > 0 && (defender.volatile.confusion|0) === 0) { const _gSmRng = (sm && sm.active) ? storyRngNext : Math.random; defender.volatile.confusion = 2 + Math.floor(_gSmRng()*3); logMsg(`${defender.name} became confused!`, 'status'); }
                         break;
                     case "G-Max Snooze":
                         if (defender.currentHp > 0 && !defender.status && (defender.volatile.yawnTurns|0) === 0) { defender.volatile.yawnTurns = 2; logMsg(`${defender.name} grew drowsy!`, 'status'); }
@@ -22627,12 +22631,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         break;
                     }
                     case "G-Max Gold Rush":
-                        if (defender.currentHp > 0 && (defender.volatile.confusion|0) === 0) { defender.volatile.confusion = 2 + Math.floor(Math.random()*3); logMsg(`${defender.name} became confused by the shower of coins!`, 'status'); }
+                        if (defender.currentHp > 0 && (defender.volatile.confusion|0) === 0) { const _gGrRng = (sm && sm.active) ? storyRngNext : Math.random; defender.volatile.confusion = 2 + Math.floor(_gGrRng()*3); logMsg(`${defender.name} became confused by the shower of coins!`, 'status'); }
                         break;
                     case "G-Max Sandblast":
                     case "G-Max Centiferno":
                         if (defender.currentHp > 0 && (defender.volatile.partialTrap|0) === 0) {
-                            defender.volatile.partialTrap = 4 + Math.floor(Math.random()*2);
+                            const _gTrapRng = (sm && sm.active) ? storyRngNext : Math.random;
+                            defender.volatile.partialTrap = 4 + Math.floor(_gTrapRng()*2);
                             defender.volatile.partialTrapSrc = gName;
                             logMsg(`${defender.name} was trapped by ${gName}!`, 'status');
                         }
@@ -23732,7 +23737,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${mon.name} is fast asleep.`, 'status'); return false;
             }
             if (mon.status === "FRZ") {
-                if (Math.random() < 0.2) { mon.status = null; logMsg(`${mon.name} thawed out!`, 'info'); return true; }
+                const _thawRng = (sm && sm.active) ? storyRngNext : Math.random;
+                if (_thawRng() < 0.2) { mon.status = null; logMsg(`${mon.name} thawed out!`, 'info'); return true; }
                 logMsg(`${mon.name} is frozen solid!`, 'status'); return false;
             }
             if (mon.status === "PAR" && Math.random() < 0.25) { logMsg(`${mon.name} is paralyzed! It can't move!`, 'status'); return false; }
@@ -24505,7 +24511,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (defender.volatile.confusion > 0) return;
                 if (defender.ability === "Own Tempo") { logMsg(`${defender.name}'s Own Tempo prevented confusion!`, 'info'); return; }
                 if (defender.volatile.safeguard > 0) return;
-                defender.volatile.confusion = Math.floor(Math.random()*3)+2;
+                const _confRng = (sm && sm.active) ? storyRngNext : Math.random;
+                defender.volatile.confusion = Math.floor(_confRng()*3)+2;
                 logMsg(`${defender.name} became confused!`, 'status');
             };
 
@@ -24585,7 +24592,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Partial trapping moves (secondary effect after damage)
             const trapMoves = new Set(["Wrap","Bind","Clamp","Fire Spin","Whirlpool","Sand Tomb","Magma Storm","Infestation","Snap Trap","Thunder Cage","G-Max Sandblast","G-Max Centiferno"]);
             if (trapMoves.has(move.name) && !defender.volatile.partialTrap && defender.currentHp > 0) {
-                defender.volatile.partialTrap = 4 + Math.floor(Math.random() * 2); // 4-5 turns
+                const _trapRng = (sm && sm.active) ? storyRngNext : Math.random;
+                defender.volatile.partialTrap = 4 + Math.floor(_trapRng() * 2); // 4-5 turns
                 defender.volatile.partialTrapSrc = move.name;
                 logMsg(`${defender.name} was trapped by ${move.name}!`, 'status');
                 return;
@@ -24643,13 +24651,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Swagger") {
                 changeStage(defender, 'atk', 2, true);
                 if (defender.ability === "Own Tempo") { logMsg(`${defender.name}'s Own Tempo prevented confusion!`, 'info'); }
-                else if (!defender.volatile.confusion) { defender.volatile.confusion = Math.floor(Math.random()*3)+2; logMsg(`${defender.name} became confused!`, 'status'); }
+                else if (!defender.volatile.confusion) { const _swagRng = (sm && sm.active) ? storyRngNext : Math.random; defender.volatile.confusion = Math.floor(_swagRng()*3)+2; logMsg(`${defender.name} became confused!`, 'status'); }
                 return;
             }
             if (move.name === "Flatter") {
                 changeStage(defender, 'spa', 1, true);
                 if (defender.ability === "Own Tempo") { logMsg(`${defender.name}'s Own Tempo prevented confusion!`, 'info'); }
-                else if (!defender.volatile.confusion) { defender.volatile.confusion = Math.floor(Math.random()*3)+2; logMsg(`${defender.name} became confused!`, 'status'); }
+                else if (!defender.volatile.confusion) { const _flatRng = (sm && sm.active) ? storyRngNext : Math.random; defender.volatile.confusion = Math.floor(_flatRng()*3)+2; logMsg(`${defender.name} became confused!`, 'status'); }
                 return;
             }
             if (move.name === "Tickle") { changeStage(defender, 'atk', -1, true); changeStage(defender, 'def', -1, true); return; }
@@ -25033,7 +25041,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (defender.volatile.confusion > 0) { logMsg(`${defender.name} is already confused!`, 'info'); return; }
                 if (defender.ability === "Own Tempo") { logMsg(`${defender.name}'s Own Tempo prevents confusion!`, 'info'); return; }
                 if (defender.volatile.safeguard > 0) { logMsg(`${defender.name} is protected by Safeguard!`, 'info'); return; }
-                defender.volatile.confusion = Math.floor(Math.random()*3)+2;
+                const _crRng = (sm && sm.active) ? storyRngNext : Math.random;
+                defender.volatile.confusion = Math.floor(_crRng()*3)+2;
                 logMsg(`${defender.name} became confused!`, 'status');
                 return;
             }
@@ -25987,7 +25996,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.ability === "Harvest" && mon.itemConsumed && !mon.item && mon.currentHp > 0) {
                 let _w = getCurrentWeather();
                 let _harvestChance = (_w === "Sun" || _w === "HarshSun") ? 1.0 : 0.5;
-                if (Math.random() < _harvestChance && mon.originalItem && /Berry$/.test(mon.originalItem)) {
+                const _harvestRng = (sm && sm.active) ? storyRngNext : Math.random;
+                if (_harvestRng() < _harvestChance && mon.originalItem && /Berry$/.test(mon.originalItem)) {
                     mon.item = mon.originalItem;
                     mon.itemConsumed = false;
                     logMsg(`${mon.name}'s Harvest restored its ${mon.item}!`, 'heal');
