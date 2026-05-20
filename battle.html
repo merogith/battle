@@ -7423,6 +7423,7 @@
             <button class="story-menu-btn story-menu-btn--new" onclick="window.StoryMode.openTrainerCreate()">&#9670; New Adventure</button>
             <button class="story-menu-btn story-menu-btn--abandon" id="story-abandon-btn" onclick="window.StoryMode.confirmAbandon()" style="display:none;">&#10006; Abandon Run</button>
             <button class="story-menu-btn story-menu-btn--collection" onclick="window.StoryMode.openCollection('pokedex')">&#128218; Pokédex &amp; Collection</button>
+            <button class="story-menu-btn story-menu-btn--collection" onclick="window.StoryMode.openCollection('achievements')">&#127942; Achievements</button>
             <button class="story-menu-btn story-menu-btn--back" onclick="window.StoryMode.showMenu(false)">&#8592; Back to Main Menu</button>
             <p style="font-size:9px;color:#555;text-align:center;margin:2px 0 0;text-shadow:1px 1px 0 rgba(0,0,0,0.5);">Stuck? Open Settings (⚙) → Unstick. More tools in the Developer section.</p>
         </div>
@@ -31488,6 +31489,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return files[Math.floor(rng() * files.length)];
         }
 
+        // Canonical named Elite Four candidates per slot. assignTrainers pins
+        // the first gen-eligible name from each role array to that role's
+        // STORY_EVENTS_RAW row before Pass 3's general picker runs, so the
+        // fan-favorite faces appear in their correct E-slots whenever the
+        // player has the relevant charGen enabled. Order = priority.
+        const STORY_LOCKED_ELITE_NAMES = {
+            E1: ['Lorelei', 'Will'],
+            E2: ['Bruno'],
+            E3: [],
+            E4: ['Lance', 'Karen'],
+        };
+
         function assignTrainers(enabledGens) {
             const eg = normalizeEnabledGens(enabledGens);
             sm.trainerAssignments = {};
@@ -31529,6 +31542,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     usedBase.add(_baseTrainerName(t.name));
                 }
             });
+            // Pass 2.5: pin canonical named Elite Four to their slots when their
+            // charGen is enabled, before Pass 3's untargeted picker can spend
+            // them on the Champion (Lance) or leave them out of the run entirely.
+            // Each name takes the FIRST E-slot of its role; later un-pinned
+            // E-slots fall through to Pass 3 so variety is preserved.
+            const _genSet = new Set(eg);
+            for (const role of ['E1','E2','E3','E4']) {
+                const candidates = (STORY_LOCKED_ELITE_NAMES[role] || []);
+                for (const name of candidates) {
+                    const td = TRAINER_DATA.find(t => t.role === role && t.name === name);
+                    if (!td || !_genSet.has(td.charGen)) continue;
+                    if (usedBase.has(_baseTrainerName(td.name))) continue;
+                    const row = STORY_EVENTS_RAW.find(ev => ev[1] === 'Battle' && String(ev[2]) === role);
+                    if (!row || sm.trainerAssignments[row[0]]) continue;
+                    sm.trainerAssignments[row[0]] = td.name;
+                    usedBase.add(_baseTrainerName(td.name));
+                    break;
+                }
+            }
             // Pass 3: rivals (locked) and remaining battles. Mystery Figure uses a synthetic trainer at battle time — skip to avoid name pollution.
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
             STORY_EVENTS_RAW.forEach((ev, posInRaw) => {
@@ -32148,11 +32180,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (rank >= ranks.length) progText = `${progress}/${max} &mdash; MAX`;
                     else if (nextTarget != null) progText = `${progress}/${nextTarget}`;
                     else progText = `${progress}`;
+                    // Replay category: hide name + description while locked
+                    // (silhouette + "???" feel). Show the unlock date once
+                    // unlocked so the player can see when each was earned.
+                    const isReplay = (cat === 'replay');
+                    const locked = (rank === 0);
+                    const dispName = (isReplay && locked) ? '???' : def.name;
+                    const dispDesc = (isReplay && locked) ? 'Locked — clear a special condition to reveal this trophy.' : def.desc;
+                    const dispIcon = (isReplay && locked) ? '🔒' : (def.icon || '★');
+                    let dateLine = '';
+                    if (!locked && (slot.lastUpdated | 0) > 0) {
+                        try { dateLine = ` <span class="ach-row-date">${new Date(slot.lastUpdated).toLocaleDateString()}</span>`; } catch (e) {}
+                    }
                     return `<div class="${cls}">
-                        <div class="ach-row-icon">${def.icon || '★'}</div>
-                        <div class="ach-row-name">${_esc(def.name)}</div>
+                        <div class="ach-row-icon">${dispIcon}</div>
+                        <div class="ach-row-name">${_esc(dispName)}${dateLine}</div>
                         <div class="ach-row-rank">${rankLabel}</div>
-                        <div class="ach-row-desc">${_esc(def.desc)}</div>
+                        <div class="ach-row-desc">${_esc(dispDesc)}</div>
                         <div class="ach-row-prog">
                             <div class="ach-prog-bar"><div class="ach-prog-bar-fill" style="width:${progPct}%;"></div></div>
                             <span class="ach-prog-text">${progText}</span>
@@ -32283,6 +32327,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 storyLine: _readStorylineFromUI(),
                 postHofMysteryClimaxDone: false,
                 mysteryIdentity: _storyPickMysteryIdentity(),
+                // Replayability achievement counters (per-run). noItemThisRun
+                // starts true; flipped to false on the first mid-battle item
+                // use in applyBagItem.
+                noItemThisRun: true,
+                rivalWinsThisRun: 0,
+                totalGoldSpentThisRun: 0,
             };
             sm._strngState = null;
             _storyBattleInventorySnapshot = null;
@@ -35174,6 +35224,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (_ev === 'Rival') _storyAchievementBumpCount('rival_wins', 1);
                     const _achId = _storyAchievementIdForEvent(_ev, idx);
                     if (_achId) _storyAchievementUnlock(_achId);
+                    // Replay-track triggers: first gym clear → r_first_step;
+                    // per-run rival wins counter → r_perfect_rival (checked at HoF).
+                    if (_ev === 'Gym Leader 1') _storyAchievementUnlock('r_first_step');
+                    if (_ev === 'Rival') sm.rivalWinsThisRun = (sm.rivalWinsThisRun | 0) + 1;
                 } catch (e) {}
                 let coinMult = storyDifficultyCoinMult();
                 // Cursed Coin Pouch: ×2 coin gain (applied after difficulty mult)
@@ -39862,6 +39916,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (msg && msg!=='Cannot use that right now!') {
                 sm.inventory[item.id]--;
                 if (sm.inventory[item.id] <= 0) delete sm.inventory[item.id];
+                if (typeof state !== 'undefined' && state.mode === 'story') {
+                    sm.noItemThisRun = false;
+                }
                 save();
                 if (typeof logMsg === 'function') logMsg(msg,'heal');
                 if (typeof updateUI === 'function') updateUI();
