@@ -6834,6 +6834,14 @@
             </div>
             <div class="settings-section-title">Visuals</div>
             <label class="settings-row" for="sw-animations"><span>Battle animations</span><input type="checkbox" class="pbs-switch" id="sw-animations" role="switch" onchange="window.applySettingSwitch('animations', this.checked)"></label>
+            <div class="settings-row" style="border-bottom:1px solid #444;" title="Length of Mega Evolution / Dynamax / Tera / Z-Move activation animations.">
+                <span>Gimmick anim speed</span>
+                <select id="setting-gimmick-anim-speed" onchange="settings.gimmickAnimSpeed=this.value; persistMiscSettings();" style="background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:3px;padding:4px 8px;font-size:12px;max-width:160px;">
+                    <option value="normal">Normal</option>
+                    <option value="fast">Fast (0.5×)</option>
+                    <option value="instant">Instant</option>
+                </select>
+            </div>
             <label class="settings-row" for="sw-weather-anim"><span>Weather animation</span><input type="checkbox" class="pbs-switch" id="sw-weather-anim" role="switch" onchange="window.applySettingSwitch('weatherAnimation', this.checked)"></label>
             <label class="settings-row" for="sw-terrain-bg"><span>Terrain background</span><input type="checkbox" class="pbs-switch" id="sw-terrain-bg" role="switch" onchange="window.applySettingSwitch('terrainBackground', this.checked)"></label>
             <div class="settings-row" style="border-bottom:1px solid #444;" title="Override automatic device detection. Reload may be needed for some screens.">
@@ -9464,8 +9472,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             storyBattleItems: true, /* story in-battle bag */
             pvpBattleItems: false,  /* reserved: symmetric items in PvP */
             battleLogDock: true,    /* landscape tablets/desktop: dock log when wide enough */
-            displayMode: 'auto'     /* 'auto' | 'phone' | 'desktop' — manual override of UA detection */
+            displayMode: 'auto',    /* 'auto' | 'phone' | 'desktop' — manual override of UA detection */
+            gimmickAnimSpeed: 'normal'  /* 'normal' | 'fast' | 'instant' — controls Mega/Dyna/Tera/Z activation durations */
         };
+        // Central duration table for the four gimmick activation animations.
+        // The CSS keyframes (.anim-mega-activate, .anim-dmax-activate,
+        // .anim-dmax-deactivate, .anim-tera-activate, .anim-zmove-activate) carry
+        // matching durations; multiplying these JS timeouts also rescales the
+        // perceived animation length because the CSS animation is cut short when
+        // we strip the class.
+        const GIMMICK_ANIM_BASE_MS = { mega: 850, dmaxIn: 950, dmaxOut: 650, tera: 750, zmove: 750, zmoveSleep: 400 };
+        function gimmickAnimSpeedMult() {
+            const s = (settings && settings.gimmickAnimSpeed) || 'normal';
+            if (s === 'instant') return 0;
+            if (s === 'fast')    return 0.5;
+            return 1;
+        }
+        function gimmickAnimMs(key) {
+            const base = GIMMICK_ANIM_BASE_MS[key] | 0;
+            const mult = gimmickAnimSpeedMult();
+            if (mult === 0) return 0;
+            return Math.max(10, Math.round(base * mult));
+        }
+        window.gimmickAnimMs = gimmickAnimMs;
         try {
             const _pbs = JSON.parse(localStorage.getItem('pbs_settings') || '{}');
             if (_pbs.aiProfile) settings.aiProfile = _pbs.aiProfile;
@@ -9476,6 +9505,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.gauntletProgressiveDifficulty === 'boolean') settings.gauntletProgressiveDifficulty = _pbs.gauntletProgressiveDifficulty;
             if (typeof _pbs.csvBuildMix === 'number' && _pbs.csvBuildMix >= 0 && _pbs.csvBuildMix <= 1) settings.csvBuildMix = _pbs.csvBuildMix;
             if (_pbs.displayMode === 'phone' || _pbs.displayMode === 'desktop' || _pbs.displayMode === 'auto') settings.displayMode = _pbs.displayMode;
+            if (_pbs.gimmickAnimSpeed === 'normal' || _pbs.gimmickAnimSpeed === 'fast' || _pbs.gimmickAnimSpeed === 'instant') settings.gimmickAnimSpeed = _pbs.gimmickAnimSpeed;
         } catch (e) {}
         function persistMiscSettings() {
             try {
@@ -9487,7 +9517,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     smartDraftPool: settings.smartDraftPool,
                     gauntletProgressiveDifficulty: settings.gauntletProgressiveDifficulty,
                     csvBuildMix: settings.csvBuildMix,
-                    displayMode: settings.displayMode
+                    displayMode: settings.displayMode,
+                    gimmickAnimSpeed: settings.gimmickAnimSpeed
                 }));
             } catch (e) {}
         }
@@ -11492,6 +11523,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (ap) ap.value = settings.aiProfile || 'balanced';
             const dm = document.getElementById('setting-display-mode');
             if (dm) dm.value = settings.displayMode || 'auto';
+            const gas = document.getElementById('setting-gimmick-anim-speed');
+            if (gas) gas.value = settings.gimmickAnimSpeed || 'normal';
             try { window.syncSettingsModalSwitches(); } catch (e) {}
             try { _updateFullscreenUI(); } catch (e) {}
             const srr = document.getElementById('settings-story-run-summary-row');
@@ -12843,7 +12876,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (spriteEl) {
                 spriteEl.src = getSprite(spriteDisplayName(mon), mon.isShiny, isPlayer); spriteEl.alt = mon.name; spriteEl.dataset.shiny = mon.isShiny ? 'true' : 'false';
                 if (settings.animations) {
-                    spriteEl.classList.add('anim-mega-activate'); setTimeout(() => spriteEl.classList.remove('anim-mega-activate'), 850);
+                    const _megaMs = gimmickAnimMs('mega');
+                    if (_megaMs > 0) { spriteEl.classList.add('anim-mega-activate'); setTimeout(() => spriteEl.classList.remove('anim-mega-activate'), _megaMs); }
                     try { showGimmickBanner('MEGA EVOLUTION', '#7b1fa2'); } catch(e) {}
                 }
             }
@@ -12873,7 +12907,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     spriteEl.dataset.shiny = mon.isShiny ? 'true' : 'false';
                     spriteEl.src = getSprite(spriteDisplayName(mon), mon.isShiny, isPlayer);
                 }
-                if (settings.animations) {
+                const _dmaxInMs = gimmickAnimMs('dmaxIn');
+                if (settings.animations && _dmaxInMs > 0) {
                     spriteEl.classList.add('anim-dmax-activate');
                     mon._dmaxAnimTimer = setTimeout(() => {
                         mon._dmaxAnimTimer = null;
@@ -12882,7 +12917,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             spriteEl.style.filter = 'drop-shadow(0 0 8px #ef5350) drop-shadow(0 0 4px #ef5350)';
                             spriteEl.style.transform = getSpriteTransformStyle(mon);
                         }
-                    }, 950);
+                    }, _dmaxInMs);
                 } else {
                     spriteEl.style.filter = 'drop-shadow(0 0 8px #ef5350) drop-shadow(0 0 4px #ef5350)';
                     spriteEl.style.transform = getSpriteTransformStyle(mon);
@@ -12921,9 +12956,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 spriteEl.alt = sprName;
                 spriteEl.dataset.shiny = sprShiny ? 'true' : 'false';
                 spriteEl.src = getSprite(sprName, sprShiny);
-                if (settings.animations) {
+                const _dmaxOutMs = gimmickAnimMs('dmaxOut');
+                if (settings.animations && _dmaxOutMs > 0) {
                     spriteEl.classList.add('anim-dmax-deactivate');
-                    setTimeout(() => { spriteEl.classList.remove('anim-dmax-deactivate'); }, 650);
+                    setTimeout(() => { spriteEl.classList.remove('anim-dmax-deactivate'); }, _dmaxOutMs);
                 }
             }
             updateUI();
@@ -12970,9 +13006,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             let teraSprite = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
             if (teraSprite && settings.animations) {
-                teraSprite.classList.add('anim-tera-activate');
+                const _teraMs = gimmickAnimMs('tera');
                 teraSprite.classList.add('tera-crystal-on');
-                setTimeout(() => teraSprite.classList.remove('anim-tera-activate'), 750);
+                if (_teraMs > 0) {
+                    teraSprite.classList.add('anim-tera-activate');
+                    setTimeout(() => teraSprite.classList.remove('anim-tera-activate'), _teraMs);
+                }
             }
             updateUI();
         }
@@ -19326,9 +19365,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (isPlayer) { state.usedZ = true; clearGimmickIntent(true); } else { state.fUsedZ = true; clearGimmickIntent(false); }
                     // Z-Move activation animation
                     if (settings.animations) {
+                        const _zMs = gimmickAnimMs('zmove');
+                        const _zSleep = gimmickAnimMs('zmoveSleep');
                         let zSprite = document.getElementById(isPlayer ? 'player-sprite' : 'foe-sprite');
-                        if (zSprite) { zSprite.classList.add('anim-zmove-activate'); setTimeout(() => zSprite.classList.remove('anim-zmove-activate'), 750); }
-                        await sleep(400);
+                        if (zSprite && _zMs > 0) { zSprite.classList.add('anim-zmove-activate'); setTimeout(() => zSprite.classList.remove('anim-zmove-activate'), _zMs); }
+                        if (_zSleep > 0) await sleep(_zSleep);
                     }
                     if (zBuild.zStatusEffect) {
                         logMsg(`${attacker.name} used Z-${move.name}! A surge of power filled the battlefield!`, 'info');
