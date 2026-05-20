@@ -30897,6 +30897,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const STORY_BATTLE_INTERRUPTS = [
             {
                 id: 'catchTutorial',
+                // The catch tutorial counts as wild #1 of the intro route node.
+                // Chain so the wildRoute interrupt fires a normal random wild
+                // right after the tutorial — same 2-wilds-then-trainer beat
+                // every later route uses, just with the first wild scripted.
+                chainAfter: true,
                 prepare(battleIdx, ev) {
                     if (!_shouldFireCatchTutorialBeforeBattle(battleIdx)) return null;
                     const partner = _pickStarterPartner(storySettingsGens());
@@ -34629,13 +34634,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!row || row[1] !== 'Battle') return false;
             // M4 boss arc (post-HoF Mystery) handles its own catch step; no route wild here.
             if (String(row[2] || '') === 'Mystery Figure') return false;
-            // Intro rival is a starter duel — no wild prefix. The catch tutorial
-            // (fired after the intro rival victory) is the player's first catch
-            // experience; the random route wild starts on the *next* route node.
+            // Intro rival is a starter duel — no wild prefix.
             if ((row[0] | 0) === STORY_RIVAL_ROW_INTRO) return false;
-            // Only fire on the first battle of a new route segment (city → different city).
-            // Eliminates the pre-every-battle wild repetition; in-city battles (gym trainer,
-            // gym leader) get no wild, and back-to-back route battles share one.
+            // Chain continuation: if a wild has already counted on this battleIdx
+            // (e.g. the catch tutorial fired here right after the intro rival),
+            // keep firing wilds up to STORY_WILDS_PER_ROUTE_NODE. This lets the
+            // post-intro-rival battle exhibit the same 2-wilds-then-trainer beat
+            // as every later route node, with the catch tutorial as wild #1.
+            if (_wildSeenCount(battleIdx) > 0) return true;
+            // Otherwise fire only on the first battle of a new route segment
+            // (city → different city). Eliminates the pre-every-battle wild
+            // repetition; in-city battles (gym trainer, gym leader) get no
+            // wild, and back-to-back route battles share one.
             if (!_isFirstBattleOfNewRoute(battleIdx)) return false;
             return true;
         }
@@ -34666,10 +34676,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (phase === 'inCatch') {
                     const battleIdx = sm.eventIndex;
                     // wildSeen is incremented *before* the catch screen mounts
-                    // (see `_runFirstStoryInterrupt`), so `remaining` already
-                    // counts only the wilds still ahead of the current one.
-                    const remaining = _wildSlotsRemainingForBattle(battleIdx);
-                    if (remaining > 0 && _isFirstBattleOfNewRoute(battleIdx)) {
+                    // (see `_runFirstStoryInterrupt`), so the predicate below
+                    // already counts only the wilds still ahead of the current
+                    // one. `_shouldFireWildBeforeBattle` also covers the
+                    // catch-tutorial chain at the post-intro-rival battle.
+                    if (_shouldFireWildBeforeBattle(battleIdx)) {
                         return { icon: '🌿', text: 'One more wild on this route' };
                     }
                     const row = STORY_EVENTS_RAW[battleIdx];
