@@ -29925,15 +29925,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return o;
         }
 
-        /** From Gym 1 onward, strip all grade-4 probability from weight rolls (mass moves to g3) so route trainers between gyms can't fall below the gym's grade floor. */
+        /** Once the player's party has ever reached 2+ Pokémon (monotonic), strip all grade-4 probability from weight rolls (mass moves to g3) so route trainers can't keep rolling G4 below the gym's grade floor. Keys off the monotonic flag so depositing to PC does not re-introduce G4. */
         function storyStripGrade4IfPartyMature(gw) {
             if (!gw || !sm || !sm.active) return gw;
-            // Stage 1 (the G4 era) runs from Pre-Gym 1 through Gym 2. Both gyms
-            // keep G4 mass in their rolls so the early game feels like a real
-            // G4 era, not just one pre-Gym-1 ramp. From Gym 3 onward (badges ≥ 2,
-            // Stage 2 entry), the floor lifts and any residual G4 mass is rolled
-            // up into G3.
-            if ((sm.badges | 0) < 2) return gw;
+            const len = Array.isArray(sm.team) ? sm.team.length : 0;
+            if (len >= 2) sm.partyEverReached2 = true;
+            if (!sm.partyEverReached2) return gw;
             const g1 = gw.g1 || 0, g2 = gw.g2 || 0, g3 = gw.g3 || 0, g4 = gw.g4 || 0;
             if (g4 <= 0) return { g1, g2, g3, g4: 0 };
             return { g1, g2, g3: g3 + g4, g4: 0 };
@@ -33230,6 +33227,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const hudGoldEl = el('story-hud-gold');
             if (hudGoldEl) hudGoldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             setT('story-hud-badges', `${sm.badges || 0}/8 Badges`);
+            try {
+                const _runMeta = readStoryMeta();
+                const _runN = ((_runMeta && _runMeta.completedRuns) | 0) + 1;
+                setT('story-hud-run', `Run #${_runN}`);
+            } catch (e) { setT('story-hud-run', 'Run #1'); }
             // Player trainer portrait + name (shown only when there's a profile set).
             const portrait = el('story-hud-trainer-portrait');
             const nameEl = el('story-hud-trainer-name');
@@ -40353,6 +40355,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (banner) {
                         banner.innerHTML = `🏆 Career runs cleared: <strong>${cleared}</strong>`;
                     }
+                    try { _storyShowOneTimeTip('welcomeBackRun' + cleared, `Welcome back — Run #${cleared + 1}.\n\nThe road waits. New seed, same Pokédex.`); } catch (e) {}
                 } else if (banner) {
                     banner.remove();
                 }
