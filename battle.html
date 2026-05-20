@@ -29617,12 +29617,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return 0.04;
         }
         function _storyProgressFactor(badges) {
+            // Smoothed ramp — no hard 0% wall, no 40% cliff at badge 4. Pairs
+            // with the GL6+ ace-guarantee rule so a "low" per-mon roll still
+            // produces a visible signature gimmick on flagship trainers.
             const b = badges|0;
-            if (b <= 3) return 0.00;
-            if (b === 4) return 0.40;
-            if (b === 5) return 0.60;
-            if (b === 6) return 0.80;
-            if (b === 7) return 0.95;
+            if (b <= 2) return 0.00;
+            if (b === 3) return 0.15;
+            if (b === 4) return 0.35;
+            if (b === 5) return 0.55;
+            if (b === 6) return 0.75;
+            if (b === 7) return 0.90;
             return 1.00;
         }
         function _perMonMechChance(eventType) {
@@ -29664,6 +29668,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const prog = _storyProgressFactor(sm && sm.badges);
             return Math.max(0, Math.min(1, tier * prog));
         }
+        // Minimum guaranteed gimmick mons by event type — beats the random
+        // per-mon roll so a flagship fight always shows a signature mech-ace.
+        // Slot 0 (the signature ace by team composition) gets it first, then
+        // additional teammates in order. Zero/undefined = no guarantee.
+        function _minGuaranteedMechsForEvent(eventType) {
+            const e = String(eventType || '');
+            if (e === 'Mystery Figure') return 6;
+            if (e === 'Champion') return 4;
+            if (e === 'E4') return 3;
+            if (e === 'E3') return 3;
+            if (e === 'E2') return 2;
+            if (e === 'E1') return 2;
+            if (e === 'Victory Road') return 3;
+            if (e === 'Rival' && sm && (sm.badges | 0) >= 8) return 3;
+            const gl = e.match(/^Gym Leader\s*(\d)$/);
+            if (gl) {
+                const n = +gl[1];
+                if (n >= 8) return 3;
+                if (n >= 7) return 2;
+                if (n >= 6) return 1;
+            }
+            return 0;
+        }
+
         function _applyEnemyGimmickDistribution(team, eventType) {
             const keys = _storyEnemyMechKeys();
             if (!keys.length || !team || !team.length) return team;
@@ -29672,7 +29700,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const priority = ['gmax', 'mega', 'dmax', 'z', 'tera'].filter(k => keys.includes(k));
             const evt = eventType || (sm && STORY_EVENTS_RAW[sm.eventIndex] && STORY_EVENTS_RAW[sm.eventIndex][2]) || '';
             const pPerMon = _perMonMechChance(evt);
-            if (pPerMon <= 0) return team;
+            const minGuaranteed = _minGuaranteedMechsForEvent(evt);
+            if (pPerMon <= 0 && minGuaranteed <= 0) return team;
             const eligibility = team.map(m => _eligibleKindsForSpecies(m.name, keys));
             const assigned = new Array(team.length).fill(null);
 
@@ -29684,8 +29713,47 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return false;
             };
 
+            // Pass 1: guaranteed assignments. Walk team order (slot 0 = ace),
+            // pick the best mechanic eligible for that mon, until quota is met.
+            // Uses the same kind-priority order so a Mega-capable ace gets Mega
+            // before a Tera fallback. Does not consume the per-mon roll budget.
+            let guaranteedCount = 0;
+            if (minGuaranteed > 0 && priority.length) {
+                const usedKinds = new Set();
+                for (let i = 0; i < team.length && guaranteedCount < minGuaranteed; i++) {
+                    if (assigned[i]) continue;
+                    const elig = eligibility[i];
+                    if (!elig.length) continue;
+                    let picked = null;
+                    if (classic) {
+                        for (const k of priority) {
+                            if (usedKinds.has(k)) continue;
+                            if (elig.includes(k)) { picked = k; break; }
+                        }
+                        if (!picked) {
+                            for (const k of priority) {
+                                if (elig.includes(k)) { picked = k; break; }
+                            }
+                        }
+                    } else {
+                        for (const k of priority) {
+                            if (elig.includes(k)) { picked = k; break; }
+                        }
+                    }
+                    if (picked && tryAssign(i, picked)) {
+                        usedKinds.add(picked);
+                        guaranteedCount++;
+                    }
+                }
+            }
+
+            if (pPerMon <= 0) return team;
+
             if (classic) {
                 const usedKinds = new Set();
+                for (let i = 0; i < team.length; i++) {
+                    if (assigned[i]) usedKinds.add(assigned[i]);
+                }
                 for (const kind of priority) {
                     if (usedKinds.has(kind)) continue;
                     const candIdx = [];
@@ -31850,9 +31918,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             firstColress: {
                 metaKey: 'tutorial-first-colress',
                 sprite: 'Scientist', name: 'Colress', nameplate: 'Battle Mechanics',
+                getLines: function () {
+                    const hasVoucher = (typeof sm !== 'undefined' && sm && sm.inventory && (sm.inventory.wishingPiece | 0) > 0);
+                    const base = [
+                        '"Battle forms — Mega Evolution, Z-Moves, Dynamax, Terastallize. Each one bends the rules in a different direction."',
+                        '"You earn the right to use them gym by gym. The fifth gym opens the first door. I\'ll let you choose which form a given Pokémon carries into battle, and which signature move comes with it."',
+                        '"One form per Pokémon — committing a mon means committing the held item slot too. A Mega Stone or Z-Crystal lives there. Dynamax and Tera leave the slot alone."',
+                        '"The trade-off is always: spectacular swing, finite window. Read the fight before you spend the trick."'
+                    ];
+                    if (hasVoucher) {
+                        base.splice(2, 0, '"That Wishing Piece in your bag — yes, that\'s why the gym leader sent you. The first awakening is on the house. Choose your strongest partner."');
+                    }
+                    return base;
+                },
                 lines: [
-                    '"Battle forms — Mega Evolution, Z-Moves, Dynamax, Terastallize, Ultra Burst. Each one bends the rules in a different direction."',
-                    '"You unlock them gym by gym. I\'ll let you choose which form a given mon carries into battle, and which signature move comes with it. Don\'t double up — one form per team is enough to feel."',
+                    '"Battle forms — Mega Evolution, Z-Moves, Dynamax, Terastallize. Each one bends the rules in a different direction."',
+                    '"You earn the right to use them gym by gym. The fifth gym opens the first door. I\'ll let you choose which form a given Pokémon carries into battle, and which signature move comes with it."',
+                    '"One form per Pokémon — committing a mon means committing the held item slot too. A Mega Stone or Z-Crystal lives there. Dynamax and Tera leave the slot alone."',
                     '"The trade-off is always: spectacular swing, finite window. Read the fight before you spend the trick."'
                 ]
             }
@@ -31870,7 +31952,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const spriteFile = scene.sprite || 'Oak';
             const npcName = scene.name || '';
             const nameplate = scene.nameplate || npcName || '';
-            const lines = Array.isArray(scene.lines) ? scene.lines : [];
+            let lines = [];
+            if (typeof scene.getLines === 'function') {
+                try { const dyn = scene.getLines(); if (Array.isArray(dyn)) lines = dyn; } catch (e) {}
+            }
+            if (!lines.length && Array.isArray(scene.lines)) lines = scene.lines;
             const linesHtml = lines.map((line, i) => {
                 const style = i === 0 ? '' : ' style="margin-top:8px;"';
                 return `<p class="story-dialog-text"${style}>${_esc(line)}</p>`;
@@ -32301,9 +32387,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.gymCleared) sm.gymCleared = {};
             sm.gymCleared[6] = true;
             try { _storyBackfillCitiesArrived(); } catch (e) {}
+            // Seed unlocked gimmicks to match the new badges=6 unlock state
+            // (mega + dmax), plus a Wishing Piece for voucher-path testing.
+            {
+                const order = [];
+                if (sm.settings.megaOn) order.push('mega');
+                if (sm.settings.dynaOn) order.push('dmax');
+                if (sm.settings.teraOn) order.push('tera');
+                if (sm.settings.zOn) order.push('z');
+                const slotsUnlocked = Math.min(4, Math.max(0, (sm.badges | 0) - 4));
+                sm.unlockedGimmicks = order.slice(0, Math.min(slotsUnlocked, order.length));
+            }
+            if (!sm.inventory) sm.inventory = {};
+            sm.inventory.wishingPiece = Math.max(2, (sm.inventory.wishingPiece | 0));
             save();
             enterCity();
-            console.log('[testmega] Seeded City6. Use "Colress — Awaken battle mechanics" — 10,000G per swap. Global mechanics synced from run flags.');
+            console.log('[testmega] Seeded City6 (badges=6, unlocked=' + (sm.unlockedGimmicks || []).join(',') + '). Wishing Piece ×' + (sm.inventory.wishingPiece|0) + ' in bag for voucher-path testing.');
         }
 
         /** Dev: drops the player at the Hall of Fame transition with the climax flag unset, so pressing "Continue" routes through the post-HoF Mystery Figure climax (row 67). Localhost or `?debugPostHofClimax=1` only. */
@@ -33896,8 +33995,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 msg:'+2 Great Balls, +1 Vitamin Pack, +1 Heart Scale, +1 Emblem of Honor, +1 Calcium, +1 Zinc — the gym apothecary keeps its researchers stocked.' },
             'Gym Leader 4': { ultraBall:1, rareCandy:1, vitamin:1, abilityCapsule:1, carbos:2,
                 msg:'The Gym Leader nods. "Take these — they go far together." +1 Ultra Ball, +1 Rare Candy, +1 Vitamin Pack, +1 Ability Capsule, +2 Carbos.' },
-            'Gym Leader 5': { greatBall:2, vitamin:1, heartScale:1, protein:2, hpUp:1, gold:1000,
-                msg:'+2 Great Balls, +1 Vitamin Pack, +1 Heart Scale, +2 Protein, +1 HP Up, and a 1,000G honorarium.' },
+            'Gym Leader 5': { greatBall:2, vitamin:1, heartScale:1, protein:2, hpUp:1, gold:1000, wishingPiece:1,
+                msg:'+2 Great Balls, +1 Vitamin Pack, +1 Heart Scale, +2 Protein, +1 HP Up, a 1,000G honorarium — and a curiosity: one <strong style="color:#b39ddb;">Wishing Piece</strong>. "Colress in the next city collects these. Tell him to awaken something for you — on the house."' },
             'Gym Leader 6': { ultraBall:2, rareCandy:1, vitamin:1, mint:1, emblemHonor:1, calcium:2, zinc:1, gold:1500,
                 msg:'+2 Ultra Balls, +1 Rare Candy, +1 Vitamin Pack, +1 Mint, +1 Emblem of Honor, +2 Calcium, +1 Zinc, and a 1,500G stipend.' },
             'Gym Leader 7': { ultraBall:1, rareCandy:1, vitamin:1, abilityCapsule:1, iron:2, carbos:1,
@@ -33981,7 +34080,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Inventory keys treated as vouchers — earned-not-bought freebies that unlock
         // a tutor / facility action without spending gold. Adding a new id here is
         // all _storyGrantBundle needs to start accepting it from reward tables.
-        const VOUCHER_KEYS = ['rareCandy', 'vitamin', 'heartScale', 'mint', 'abilityCapsule', 'emblemHonor'];
+        const VOUCHER_KEYS = ['rareCandy', 'vitamin', 'heartScale', 'mint', 'abilityCapsule', 'emblemHonor', 'wishingPiece'];
         function _storyGrantBundle(r) {
             if (!r) return;
             _storyEnsureBalls();
@@ -34490,15 +34589,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { _storyQueueRoamingFromVictory(en); } catch (e) {}
                 if (en === 'Rival') setRivalStanding('player', idx);
                 const isMilestoneVictory = isGymBadge || /^(E1|E2|E3|E4|Champion|Rival)$/.test(en);
-                // Unlock player gimmicks in fixed order — one per gym badge (not league badges)
+                // Unlock player gimmicks in fixed order — first unlock at
+                // Gym 5 (same gym that drops the Wishing Piece voucher) so
+                // every unlocked mechanic is immediately equippable at the
+                // next-city Colress lab. Badges 1–4 stay clean — no
+                // "unlocked but useless" indicator. From Gym 5 on, every
+                // gym victory unlocks one more mechanic up to 4 at Gym 8.
                 {
                     const order = [];
                     if (sm.settings.megaOn) order.push('mega');
                     if (sm.settings.dynaOn) order.push('dmax');
                     if (sm.settings.teraOn) order.push('tera');
                     if (sm.settings.zOn) order.push('z');
-                    const gymBeatCount = Math.min(sm.badges | 0, 8);
-                    sm.unlockedGimmicks = order.slice(0, Math.min(gymBeatCount, order.length));
+                    const badges = sm.badges | 0;
+                    const slotsUnlocked = badges < 5 ? 0 : Math.min(4, badges - 4);
+                    sm.unlockedGimmicks = order.slice(0, Math.min(slotsUnlocked, order.length));
                 }
                 sm.currentEnemyLock = null;
                 // Advance event index (clamp before persisting so a corrupted index never reaches storage).
@@ -39137,7 +39242,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 { id:'heartScale',     name:'<img src="sprites/pokesprite/items/heart-scale.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Heart Scale', desc:'Hand to the Move Tutor to teach any move to any Pokémon for free — same effect as paying 1,500G. Earned from gym leaders + Pokédex milestones. The classic move-tutor coin from real games.' },
                 { id:'mint',           name:'<img src="sprites/pokesprite/items/mint.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Mint', desc:'Drop one at the Nature Rater to re-pick a Pokémon\'s nature for free — same effect as paying 2,000G. Earned from gym leaders + Pokédex milestones. The new nature sticks through PC, evolution, the works.' },
                 { id:'abilityCapsule', name:'<img src="sprites/pokesprite/items/ability-capsule.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Ability Capsule', desc:'Pop one at the Battle Dojo to swap a Pokémon\'s ability for free — same effect as paying 2,500G. Earned from gym leaders + Pokédex milestones. Hidden Abilities included, just like the dojo\'s gold path.' },
-                { id:'emblemHonor',    name:'<img src="sprites/pokesprite/items/emblem-of-honor.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Emblem of Honor', desc:'Present at the Battle Dojo to swap a Pokémon\'s held item for free — same effect as paying 2,000G. Earned from gym leaders + Pokédex milestones. Mega Stones and Z-Crystals included (same Colress caveat as the dojo\'s gold path).' }
+                { id:'emblemHonor',    name:'<img src="sprites/pokesprite/items/emblem-of-honor.png" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:4px;">Emblem of Honor', desc:'Present at the Battle Dojo to swap a Pokémon\'s held item for free — same effect as paying 2,000G. Earned from gym leaders + Pokédex milestones. Mega Stones and Z-Crystals included (same Colress caveat as the dojo\'s gold path).' },
+                { id:'wishingPiece',   name:'<span style="display:inline-block;width:14px;text-align:center;margin-right:4px;color:#b39ddb;">🌠</span>Wishing Piece', desc:'Hand to Colress to awaken a battle form (Mega / Z / Dynamax / Tera) on one Pokémon for free — same effect as paying 7,500G. The first one drops from Gym Leader 5; redeem at the next-city lab for your first awakening.' }
             ];
             _voucherItems.forEach(item => {
                 const qty = (sm.inventory && sm.inventory[item.id]) | 0;
@@ -42027,16 +42133,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { playStoryTutorial('firstColress'); } catch (e) {}
         }
 
+        function _colressWishingPieceCount() {
+            return (sm && sm.inventory && (sm.inventory.wishingPiece | 0)) || 0;
+        }
+
+        function _colressVoucherBanner() {
+            const qty = _colressWishingPieceCount();
+            if (qty <= 0) return '';
+            const plural = qty === 1 ? '' : 's';
+            return `<div style="background:linear-gradient(180deg,#3a2e5a,#241b3d);border:1px solid #7e57c2;border-radius:6px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;gap:10px;">
+                <span style="font-size:24px;line-height:1;color:#b39ddb;flex-shrink:0;">🌠</span>
+                <div style="flex:1;min-width:0;">
+                    <div style="color:#d1c4e9;font-size:13px;font-weight:bold;">Wishing Piece ×${qty}</div>
+                    <div style="color:#b39ddb;font-size:11px;margin-top:2px;">${qty === 1 ? 'Your first awakening is on the house.' : `${qty} free awakening${plural} available.`} Each "Use Wishing Piece" button on a form below skips the 7,500G cost.</div>
+                </div>
+            </div>`;
+        }
+
         function renderColressTeam() {
             const el = document.getElementById('story-colress-team');
             const goldEl = document.getElementById('story-colress-gold');
             if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             if (!el) return;
             if (!sm.team || !sm.team.length) {
-                el.innerHTML = '<div style="color:#555;font-size:12px;">No Pokémon in your party.</div>';
+                el.innerHTML = _colressVoucherBanner() + '<div style="color:#555;font-size:12px;">No Pokémon in your party.</div>';
                 return;
             }
-            el.innerHTML = sm.team.map((t, idx) => _renderColressMonCard(t, idx)).join('');
+            el.innerHTML = _colressVoucherBanner() + sm.team.map((t, idx) => _renderColressMonCard(t, idx)).join('');
         }
 
         function _renderColressMonCard(t, idx) {
@@ -42051,7 +42174,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const badge = _colressGimmickBadge(b);
             const heldItem = b.i || '(none)';
             const cantAfford = sm.gold < COLRESS_COST;
+            const voucherQty = _colressWishingPieceCount();
+            const hasVoucher = voucherQty > 0;
             const priceTag = `<span class="story-tutor-price">${storyGoldHtml(COLRESS_COST.toLocaleString(), false)}</span>`;
+            const voucherTag = `<span class="story-tutor-price" style="color:#b39ddb;background:rgba(126,87,194,0.15);border-color:#7e57c2;">🌠 Free</span>`;
+            const voucherBtn = (applyCall, label, disabled) => hasVoucher
+                ? `<button type="button" class="story-tutor-btn" style="background:linear-gradient(180deg,#5e3a9e,#3a2470);border-color:#7e57c2;" ${disabled ? 'disabled' : ''} onclick="${applyCall}">🌠 ${label}</button>${voucherTag}`
+                : '';
             const noneEligible = !(elig.mega || elig.dmax || elig.z || elig.tera);
 
             const sections = [];
@@ -42063,11 +42192,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const buttons = stones.map(s => {
                     const formName = MEGA_FORM_NAMES[s] || (t.name + '-Mega');
                     const activeFlag = (isCurrent && b.i === s) ? ' data-current="1"' : '';
-                    const dis = cantAfford || (isCurrent && b.i === s) ? 'disabled' : '';
+                    const isActive = (isCurrent && b.i === s);
+                    const goldDis = cantAfford || isActive ? 'disabled' : '';
+                    const voucherDis = isActive;
+                    const sEsc = s.replace(/'/g,"\\'");
+                    const voucherHtml = voucherBtn(`window.StoryMode.colressApplyMega(${idx},'${sEsc}',true)`, `Use Wishing Piece`, voucherDis);
                     return `<div class="story-tutor-choice"${activeFlag}><div class="story-tutor-choice-actions">`
-                        + `<button type="button" class="story-tutor-btn" ${dis} onclick="window.StoryMode.colressApplyMega(${idx},'${s.replace(/'/g,"\\'")}')">`
+                        + `<button type="button" class="story-tutor-btn" ${goldDis} onclick="window.StoryMode.colressApplyMega(${idx},'${sEsc}',false)">`
                         + `${_esc(formName)} <span style="opacity:0.7;font-size:10px;">(${_esc(s)})</span></button>`
-                        + priceTag + `</div></div>`;
+                        + priceTag + voucherHtml + `</div></div>`;
                 }).join('');
                 sections.push(
                     `<div class="story-tutor-section"><div class="story-tutor-section-title" style="color:#ce93d8;">◆ Mega Evolution</div>`
@@ -42080,14 +42213,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const isGmax = GMAX_SPECIES.has(t.name);
                 const tag = isGmax ? 'GMAXDYNAMAX' : 'DYNAMAX';
                 const isCurrent = b.gimmick === tag;
-                const dis = (cantAfford || isCurrent) ? 'disabled' : '';
+                const goldDis = (cantAfford || isCurrent) ? 'disabled' : '';
+                const voucherDis = isCurrent;
+                const voucherHtml = voucherBtn(`window.StoryMode.colressApplyDmax(${idx},true)`, `Use Wishing Piece`, voucherDis);
                 sections.push(
                     `<div class="story-tutor-section"><div class="story-tutor-section-title" style="color:#ef9a9a;">💥 ${isGmax ? 'Gigantamax' : 'Dynamax'}</div>`
                     + `<p class="story-tutor-moves-hint">Held item is preserved.</p>`
                     + `<div class="story-tutor-choice-list">`
                     + `<div class="story-tutor-choice"><div class="story-tutor-choice-actions">`
-                    + `<button type="button" class="story-tutor-btn" ${dis} onclick="window.StoryMode.colressApplyDmax(${idx})">${isGmax ? 'Gigantamax' : 'Dynamax'}${isCurrent ? ' (active)' : ''}</button>`
-                    + priceTag + `</div></div></div></div>`
+                    + `<button type="button" class="story-tutor-btn" ${goldDis} onclick="window.StoryMode.colressApplyDmax(${idx},false)">${isGmax ? 'Gigantamax' : 'Dynamax'}${isCurrent ? ' (active)' : ''}</button>`
+                    + priceTag + voucherHtml + `</div></div></div></div>`
                 );
             }
 
@@ -42098,24 +42233,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const reqMove = SIGNATURE_Z_REQUIRED_MOVE[sigZ] || '';
                     const hasReq = reqMove ? (b.m || []).includes(reqMove) : true;
                     const isCurrent = b.gimmick === 'ZMOVE' && b.i === sigZ;
-                    const dis = (cantAfford || isCurrent) ? 'disabled' : '';
+                    const goldDis = (cantAfford || isCurrent) ? 'disabled' : '';
+                    const voucherDis = isCurrent;
                     const teachNote = reqMove
                         ? (hasReq ? '' : ' (auto-teaches ' + _esc(reqMove) + ')')
                         : '';
                     const label = `Signature: ${_esc(sigZ)}${teachNote}`;
+                    const voucherHtml = voucherBtn(`window.StoryMode.colressApplyZSig(${idx},true)`, `Use Wishing Piece`, voucherDis);
                     buttons += `<div class="story-tutor-choice"><div class="story-tutor-choice-actions">`
-                        + `<button type="button" class="story-tutor-btn" ${dis} onclick="window.StoryMode.colressApplyZSig(${idx})">${label}</button>`
-                        + priceTag + `</div></div>`;
+                        + `<button type="button" class="story-tutor-btn" ${goldDis} onclick="window.StoryMode.colressApplyZSig(${idx},false)">${label}</button>`
+                        + priceTag + voucherHtml + `</div></div>`;
                 }
                 const types = _colressZTypesForBuild(b);
                 if (types.length) {
                     buttons += types.map(typ => {
                         const crystal = Z_TYPE_MAP[typ];
                         const isCurrent = b.gimmick === 'ZMOVE' && b.i === crystal;
-                        const dis = (cantAfford || isCurrent) ? 'disabled' : '';
+                        const goldDis = (cantAfford || isCurrent) ? 'disabled' : '';
+                        const voucherDis = isCurrent;
+                        const voucherHtml = voucherBtn(`window.StoryMode.colressApplyZ(${idx},'${typ}',true)`, `Use Wishing Piece`, voucherDis);
                         return `<div class="story-tutor-choice"><div class="story-tutor-choice-actions">`
-                            + `<button type="button" class="story-tutor-btn type-badge type-${typ}" style="border:none;font-weight:bold;" ${dis} onclick="window.StoryMode.colressApplyZ(${idx},'${typ}')">${typ} (${_esc(crystal)})</button>`
-                            + priceTag + `</div></div>`;
+                            + `<button type="button" class="story-tutor-btn type-badge type-${typ}" style="border:none;font-weight:bold;" ${goldDis} onclick="window.StoryMode.colressApplyZ(${idx},'${typ}',false)">${typ} (${_esc(crystal)})</button>`
+                            + priceTag + voucherHtml + `</div></div>`;
                     }).join('');
                 }
                 if (!buttons) {
@@ -42131,14 +42270,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (elig.tera) {
                 const buttons = COLRESS_ALL_TYPES.map(typ => {
                     const isCurrent = b.gimmick === 'TERA' && b.teraType === typ;
-                    const dis = (cantAfford || isCurrent) ? 'disabled' : '';
-                    return `<button type="button" class="story-tutor-btn type-badge type-${typ}" style="border:none;font-weight:bold;${isCurrent ? 'outline:2px solid #fff;' : ''}" ${dis} onclick="window.StoryMode.colressApplyTera(${idx},'${typ}')">${typ}</button>`;
+                    const goldDis = (cantAfford || isCurrent) ? 'disabled' : '';
+                    return `<button type="button" class="story-tutor-btn type-badge type-${typ}" style="border:none;font-weight:bold;${isCurrent ? 'outline:2px solid #fff;' : ''}" ${goldDis} onclick="window.StoryMode.colressApplyTera(${idx},'${typ}',false)">${typ}</button>`;
                 }).join('');
+                const voucherTeraNote = hasVoucher
+                    ? `<div style="font-size:11px;color:#b39ddb;margin-top:6px;background:rgba(126,87,194,0.12);border:1px solid #7e57c2;border-radius:4px;padding:6px 8px;">🌠 <strong>Wishing Piece:</strong> Shift-click any type below to spend a Wishing Piece instead of gold.</div>`
+                    : '';
+                const teraOnclick = hasVoucher
+                    ? `onclick="(function(e,i,t){e.preventDefault();window.StoryMode.colressApplyTera(i,t,e.shiftKey);}).call(this,event,${idx},this.getAttribute('data-tera-type'))"`
+                    : '';
+                // For shift-click support, rebuild buttons with onclick wrapper
+                const buttonsWithShift = hasVoucher
+                    ? COLRESS_ALL_TYPES.map(typ => {
+                        const isCurrent = b.gimmick === 'TERA' && b.teraType === typ;
+                        const goldDis = (cantAfford || isCurrent) ? 'disabled' : '';
+                        return `<button type="button" class="story-tutor-btn type-badge type-${typ}" style="border:none;font-weight:bold;${isCurrent ? 'outline:2px solid #fff;' : ''}" ${goldDis} data-tera-type="${typ}" onclick="(function(e,i,t){e.preventDefault();window.StoryMode.colressApplyTera(i,t,e.shiftKey);})(event,${idx},'${typ}')">${typ}</button>`;
+                    }).join('')
+                    : buttons;
                 sections.push(
                     `<div class="story-tutor-section"><div class="story-tutor-section-title" style="color:#81d4fa;">◆ Terastallization</div>`
                     + `<p class="story-tutor-moves-hint">Choose any of the 18 Tera types. Held item unchanged.</p>`
-                    + `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;">${buttons}</div>`
+                    + `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;">${buttonsWithShift}</div>`
                     + `<div style="font-size:10px;color:#ffd54f;margin-top:6px;text-align:right;">Each pick: ${storyGoldHtml(COLRESS_COST.toLocaleString(), false)}</div>`
+                    + voucherTeraNote
                     + `</div>`
                 );
             }
@@ -42173,6 +42327,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return true;
         }
 
+        // Pay path that prefers a Wishing Piece voucher when the caller passed
+        // useVoucher=true and the player actually has one. Falls back to gold
+        // if useVoucher is false, or if the voucher count somehow reached zero
+        // between render and click (e.g. concurrent tab).
+        function _colressPay(useVoucher) {
+            if (useVoucher && _colressWishingPieceCount() > 0) {
+                _storyEnsureInventory();
+                sm.inventory.wishingPiece = (sm.inventory.wishingPiece | 0) - 1;
+                if (sm.inventory.wishingPiece <= 0) delete sm.inventory.wishingPiece;
+                return true;
+            }
+            return _colressCharge();
+        }
+
+        // Confirm dialog phrasing that swaps the gold-cost suffix for a
+        // voucher-cost suffix when useVoucher=true.
+        async function _colressConfirmPay(mon, headline, useVoucher) {
+            if (useVoucher && _colressWishingPieceCount() > 0) {
+                const remaining = _colressWishingPieceCount() - 1;
+                return await _storyConfirmTutorChange(
+                    `${headline} for ${mon.name}? Uses 1 Wishing Piece (${remaining} left after). Replaces current held item / gimmick.`,
+                    0
+                );
+            }
+            return await _colressConfirm(mon, headline);
+        }
+
         function _colressFinish() {
             save();
             // Charge + shing — gimmick activation rings a power-up chord.
@@ -42195,7 +42376,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return await _storyConfirmTutorChange(`${headline} for ${mon.name}? Replaces current held item / gimmick.`, COLRESS_COST);
         }
 
-        async function colressApplyMega(teamIdx, stone) {
+        async function colressApplyMega(teamIdx, stone, useVoucher) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('mega')) return;
             if (!MEGA_SPECIES.has(mon.name) || mon.name === 'Rayquaza') return;
@@ -42204,31 +42385,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const allowedList = Array.isArray(allowed) ? allowed : (allowed ? [allowed] : []);
             if (!allowedList.includes(stone)) return;
             if (mon.build.gimmick === 'MEGA' && mon.build.i === stone) return;
-            if ((sm.gold | 0) < COLRESS_COST) return;
-            if (!(await _colressConfirm(mon, `Awaken Mega — equip ${stone}`))) return;
-            if (!_colressCharge()) return;
+            const voucherPath = !!useVoucher && _colressWishingPieceCount() > 0;
+            if (!voucherPath && (sm.gold | 0) < COLRESS_COST) return;
+            if (!(await _colressConfirmPay(mon, `Awaken Mega — equip ${stone}`, voucherPath))) return;
+            if (!_colressPay(voucherPath)) return;
             mon.build.gimmick = 'MEGA';
             mon.build.i = stone;
             delete mon.build.teraType;
             _colressFinish();
         }
 
-        async function colressApplyDmax(teamIdx) {
+        async function colressApplyDmax(teamIdx, useVoucher) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('dmax')) return;
             if (DYNAMAX_BANNED.has(mon.name)) return;
             const tag = GMAX_SPECIES.has(mon.name) ? 'GMAXDYNAMAX' : 'DYNAMAX';
             if (mon.build.gimmick === tag) return;
-            if ((sm.gold | 0) < COLRESS_COST) return;
-            if (!(await _colressConfirm(mon, tag === 'GMAXDYNAMAX' ? 'Awaken Gigantamax' : 'Awaken Dynamax'))) return;
-            if (!_colressCharge()) return;
+            const voucherPath = !!useVoucher && _colressWishingPieceCount() > 0;
+            if (!voucherPath && (sm.gold | 0) < COLRESS_COST) return;
+            if (!(await _colressConfirmPay(mon, tag === 'GMAXDYNAMAX' ? 'Awaken Gigantamax' : 'Awaken Dynamax', voucherPath))) return;
+            if (!_colressPay(voucherPath)) return;
             mon.build.gimmick = tag;
             _colressClearStaleGimmickItem(mon.build);
             delete mon.build.teraType;
             _colressFinish();
         }
 
-        async function colressApplyZ(teamIdx, type) {
+        async function colressApplyZ(teamIdx, type, useVoucher) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('z')) return;
             if (!Z_TYPE_MAP[type]) return;
@@ -42236,24 +42419,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!eligibleTypes.includes(type)) return;
             const crystal = Z_TYPE_MAP[type];
             if (mon.build.gimmick === 'ZMOVE' && mon.build.i === crystal) return;
-            if ((sm.gold | 0) < COLRESS_COST) return;
-            if (!(await _colressConfirm(mon, `Awaken Z-Move — equip ${crystal}`))) return;
-            if (!_colressCharge()) return;
+            const voucherPath = !!useVoucher && _colressWishingPieceCount() > 0;
+            if (!voucherPath && (sm.gold | 0) < COLRESS_COST) return;
+            if (!(await _colressConfirmPay(mon, `Awaken Z-Move — equip ${crystal}`, voucherPath))) return;
+            if (!_colressPay(voucherPath)) return;
             mon.build.gimmick = 'ZMOVE';
             mon.build.i = crystal;
             delete mon.build.teraType;
             _colressFinish();
         }
 
-        async function colressApplyZSig(teamIdx) {
+        async function colressApplyZSig(teamIdx, useVoucher) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('z')) return;
             const sigZ = SIGNATURE_Z[mon.name];
             if (!sigZ) return;
             if (mon.build.gimmick === 'ZMOVE' && mon.build.i === sigZ) return;
-            if ((sm.gold | 0) < COLRESS_COST) return;
-            if (!(await _colressConfirm(mon, `Awaken Signature Z — equip ${sigZ}`))) return;
-            if (!_colressCharge()) return;
+            const voucherPath = !!useVoucher && _colressWishingPieceCount() > 0;
+            if (!voucherPath && (sm.gold | 0) < COLRESS_COST) return;
+            if (!(await _colressConfirmPay(mon, `Awaken Signature Z — equip ${sigZ}`, voucherPath))) return;
+            if (!_colressPay(voucherPath)) return;
             mon.build.gimmick = 'ZMOVE';
             mon.build.i = sigZ;
             delete mon.build.teraType;
@@ -42271,14 +42456,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _colressFinish();
         }
 
-        async function colressApplyTera(teamIdx, type) {
+        async function colressApplyTera(teamIdx, type, useVoucher) {
             const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
             if (!_colressMechAvailable('tera')) return;
             if (!COLRESS_ALL_TYPES.includes(type)) return;
             if (mon.build.gimmick === 'TERA' && mon.build.teraType === type) return;
-            if ((sm.gold | 0) < COLRESS_COST) return;
-            if (!(await _colressConfirm(mon, `Awaken Tera — lock type to ${type}`))) return;
-            if (!_colressCharge()) return;
+            const voucherPath = !!useVoucher && _colressWishingPieceCount() > 0;
+            if (!voucherPath && (sm.gold | 0) < COLRESS_COST) return;
+            if (!(await _colressConfirmPay(mon, `Awaken Tera — lock type to ${type}`, voucherPath))) return;
+            if (!_colressPay(voucherPath)) return;
             mon.build.gimmick = 'TERA';
             mon.build.teraType = type;
             _colressClearStaleGimmickItem(mon.build);
