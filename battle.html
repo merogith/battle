@@ -11685,6 +11685,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         };
 
+        // Lock in a build's shiny flag immediately so every renderer reads the
+        // same value, including code paths that only ever pass a cloned build to
+        // buildPokemon (which mutates the clone, not the original). Idempotent —
+        // re-calls are a no-op once `_isShiny` exists. Use this on the *real*
+        // build object as soon as a player-side mon is created (wild encounter,
+        // Professor pick, Link Station, evolution, boss arc) to stop the shiny
+        // state from drifting between previews, PC storage, and battle.
+        function ensureShinyRolled(build) {
+            if (!build || typeof build !== 'object') return;
+            if (build._isShiny === undefined) build._isShiny = (Math.random() < 0.01);
+        }
+        window.ensureShinyRolled = ensureShinyRolled;
+
         function buildPokemon(monName, build) {
             monName = monName.trim();
             // Handle Farfetch'd name variants
@@ -28194,6 +28207,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // active battle is gone.
                 if (sm.crucibleBattleSource) sm.crucibleBattleSource = null;
                 if (sm._crucibleBattleJustEnded) sm._crucibleBattleJustEnded = false;
+                // Shiny backfill: pre-fix saves rolled `_isShiny` lazily inside
+                // buildPokemon on each call. Mons that never reached battle
+                // (caught wilds parked in the PC, Professor / Link Station gifts
+                // bench-warmed before their first fight) could be left with
+                // _isShiny=undefined, which made the new persistent renderers
+                // flicker or flatly miss the sparkle. Lock the flag on every
+                // stored build now so the rest of the session has a single
+                // source of truth.
+                try {
+                    if (typeof ensureShinyRolled === 'function') {
+                        (sm.team || []).forEach(s => { if (s && s.build) ensureShinyRolled(s.build); });
+                        (sm.pcBox || []).forEach(s => { if (s && s.build) ensureShinyRolled(s.build); });
+                    }
+                } catch (e) { console.warn('[Story] shiny backfill', e); }
                 normalizeRivalStandingState();
                 normalizeStoryRivalLock();
                 return true;
@@ -30929,6 +30956,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let build = null;
                     try { build = makeBuild(pending.name); } catch (e) { build = null; }
                     if (!build) return null;
+                    // Lock the shiny roll before the encounter renders so the
+                    // roaming legendary's sprite can sparkle on its one and
+                    // only appearance (these don't come back if they flee).
+                    if (typeof ensureShinyRolled === 'function') ensureShinyRolled(build);
                     return {
                         encounter: {
                             name: pending.name,
@@ -32502,6 +32533,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         _storyDowngradeBuildForTier(name, build, _profTier);
                     }
                     build.powerTier = _profTier;
+                    // Lock shiny on the *real* build object now, before the
+                    // pick-card renderer hands a clone to buildPokemon. Without
+                    // this, each declined Professor visit could quietly miss a
+                    // shiny that was rolled only on the throwaway display clone.
+                    if (typeof ensureShinyRolled === 'function') ensureShinyRolled(build);
                     const g = getMonGrade(name, getBST(name));
                     choices.push({ name, build, g });
                 }
@@ -33792,6 +33828,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 html += `<div style="padding:8px 10px;margin-bottom:10px;background:rgba(255,193,7,0.12);border:1px solid #ffb300;color:#ffd54f;font-size:11px;line-height:1.4;">⚠ PC almost full (${box.length}/${PC_BOX_CAP}). Free up space soon.</div>`;
             }
 
+            // PC rows include a small species sprite + a shiny sparkle so a
+            // player can spot a stored shiny at a glance. Reads `_isShiny`
+            // straight from the persisted build — locked at mon-creation
+            // time by `ensureShinyRolled`, so it never flickers between
+            // visits to the PC.
+            const _pcSpriteFor = (slot) => {
+                if (!slot || !slot.name) return '';
+                const sh = !!(slot.build && slot.build._isShiny);
+                try {
+                    const sd = (typeof spriteDisplayName === 'function') ? spriteDisplayName(slot) : slot.name;
+                    return (typeof getSprite === 'function') ? (getSprite(sd, sh) || '') : '';
+                } catch (e) { return ''; }
+            };
+
             html += `<h4 style="color:#90caf9;font-size:11px;margin:6px 0 6px;letter-spacing:0.05em;text-transform:uppercase;">Party</h4>`;
             if (!team.length) {
                 html += `<div style="color:#888;font-size:11px;padding:8px;">No Pokémon in your party. Visit the Professor or withdraw from the PC.</div>`;
@@ -33803,8 +33853,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const id = slot.id || '';
                     const canDeposit = !partyLastOne && !boxFull && !!id;
                     const reason = partyLastOne ? 'Party needs at least one Pokémon' : boxFull ? 'PC is full — release or sell to free a slot' : !id ? 'Missing id (legacy save)' : '';
+                    const sh = !!(slot.build && slot.build._isShiny);
+                    const spr = _pcSpriteFor(slot);
+                    const shinyMark = sh ? '<span style="color:#ffd54f;margin-right:3px;">&#10024;</span>' : '';
+                    const nameHtml = slot.nickname
+                        ? `"${_esc(slot.nickname)}" <span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>`
+                        : _esc(slot.name);
                     html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;">
-                        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;">${slot.nickname ? `"${_esc(slot.nickname)}" <span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>` : _esc(slot.name)} ${_pcGradeChipHtml(g)}</span>
+                        ${spr ? `<img src="${spr}" alt="" data-shiny="${sh ? 'true' : 'false'}" style="width:32px;height:32px;image-rendering:pixelated;flex-shrink:0;${sh ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="this.style.display='none'">` : ''}
+                        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${sh ? 'color:#ffd54f;' : ''}">${shinyMark}${nameHtml} ${_pcGradeChipHtml(g)}</span>
                         <button type="button" onclick="window.StoryMode.pcDeposit('${_esc(id)}')" ${canDeposit ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canDeposit ? 'color:#4caf50;border-color:#4caf50;' : 'opacity:0.4;'}">Deposit</button>
                     </div>`;
                 });
@@ -33822,8 +33879,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const id = slot.id || '';
                     const canWithdraw = !partyFull && !!id;
                     const reason = partyFull ? `Party full (${partyCap}/${partyCap})` : !id ? 'Missing id (legacy save)' : '';
+                    const sh = !!(slot.build && slot.build._isShiny);
+                    const spr = _pcSpriteFor(slot);
+                    const shinyMark = sh ? '<span style="color:#ffd54f;margin-right:3px;">&#10024;</span>' : '';
+                    const nameHtml = slot.nickname
+                        ? `"${_esc(slot.nickname)}" <span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>`
+                        : _esc(slot.name);
                     html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;">
-                        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;">${slot.nickname ? `"${_esc(slot.nickname)}" <span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>` : _esc(slot.name)} ${_pcGradeChipHtml(g)}</span>
+                        ${spr ? `<img src="${spr}" alt="" data-shiny="${sh ? 'true' : 'false'}" style="width:32px;height:32px;image-rendering:pixelated;flex-shrink:0;${sh ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="this.style.display='none'">` : ''}
+                        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${sh ? 'color:#ffd54f;' : ''}">${shinyMark}${nameHtml} ${_pcGradeChipHtml(g)}</span>
                         <button type="button" onclick="window.StoryMode.pcWithdraw('${_esc(id)}')" ${canWithdraw ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canWithdraw ? 'color:#ce93d8;border-color:#ce93d8;' : 'opacity:0.4;'}">Withdraw</button>
                         <button type="button" onclick="window.StoryMode.pcRelease('${_esc(id)}')" style="font-size:10px;padding:3px 8px;color:#888;border-color:#888;">Release</button>
                     </div>`;
@@ -33870,9 +33934,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const isSubjectZero = unsellable && slot.nickname === 'Subject Zero';
                 const reason = isStarter ? 'Starter — bonded for life' : isSubjectZero ? 'Subject Zero — this bond cannot be broken' : unsellable ? 'Story-locked — cannot be sold' : isLastParty ? 'Party needs at least one Pokémon' : !id ? 'Missing id (legacy save)' : '';
                 const whereLabel = where === 'team' ? 'Party' : 'PC';
-                html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(28,12,12,0.55);border:1px solid #5a1818;">
+                // Underground rows also flag shiny so the player doesn't
+                // accidentally hand a shiny to the broker for pocket gold.
+                const _ugShiny = !!(slot.build && slot.build._isShiny);
+                const _ugShinyMark = _ugShiny ? '<span style="color:#ffd54f;margin-right:3px;" title="Shiny — careful!">&#10024;</span>' : '';
+                html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(28,12,12,0.55);border:1px solid ${_ugShiny ? '#a47800' : '#5a1818'};">
                     <span style="font-size:9px;color:#888;width:30px;">${whereLabel}</span>
-                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;">${_esc(slot.name)} ${_pcGradeChipHtml(g)}</span>
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${_ugShiny ? 'color:#ffd54f;' : ''}">${_ugShinyMark}${_esc(slot.name)} ${_pcGradeChipHtml(g)}</span>
                     <span style="color:#ffd700;font-size:11px;font-weight:bold;">+${price.toLocaleString()}G</span>
                     <button type="button" onclick="window.StoryMode.pcSell('${_esc(id)}')" ${canSell ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canSell ? 'color:#ff5252;border-color:#ff5252;' : 'opacity:0.4;'}">Sell</button>
                 </div>`;
@@ -34390,6 +34458,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _rng = (sm && sm.active) ? storyRngNext : Math.random;
             const name = pool[Math.floor(_rng() * pool.length)];
             const build = makeBuild(name);
+            // Lock shiny up front so the Subject Zero cage sprite and the
+            // post-catch teampanel agree (and so the Pokédex marker fires
+            // correctly on capture).
+            if (typeof ensureShinyRolled === 'function') ensureShinyRolled(build);
             return { name, build, id: 'boss_' + Math.random().toString(36).slice(2, 10) };
         }
         function _bossArcRenderSection() {
@@ -34503,7 +34575,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!found || found.where !== 'pc') return;
             const name = (found.slot && found.slot.name) || 'this Pokémon';
             const evNote = _slotHasTrainedEVs(found.slot) ? ' Its EV training will be lost too.' : '';
-            const ok = window.confirm('Release ' + name + '? This cannot be undone.' + evNote);
+            // Extra friction for releasing a shiny — accidentally letting go
+            // of a 1% roll deserves a second prompt.
+            const shinyNote = (found.slot && found.slot.build && found.slot.build._isShiny)
+                ? ' ✨ This is a SHINY Pokémon.'
+                : '';
+            const ok = window.confirm('Release ' + name + '?' + shinyNote + ' This cannot be undone.' + evNote);
             if (!ok) return;
             sm.pcBox.splice(found.index, 1);
             save();
@@ -34520,7 +34597,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const price = _pcSellPriceForSlot(slot);
             const name = slot.name || 'this Pokémon';
             const evNote = _slotHasTrainedEVs(slot) ? ' Its EV training will be lost too.' : '';
-            const ok = window.confirm('Sell ' + name + ' for ' + price.toLocaleString() + 'G? This cannot be undone.' + evNote);
+            const shinyNote = (slot.build && slot.build._isShiny) ? ' ✨ This is a SHINY Pokémon.' : '';
+            const ok = window.confirm('Sell ' + name + ' for ' + price.toLocaleString() + 'G?' + shinyNote + ' This cannot be undone.' + evNote);
             if (!ok) return;
             if (found.where === 'team') sm.team.splice(found.index, 1);
             else sm.pcBox.splice(found.index, 1);
@@ -34808,6 +34886,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function makeWildBuild(name) {
             const b = makeBuild(name);
             if (!b) return null;
+            // Lock in shiny at encounter time so the catch screen, success
+            // toast, and Pokédex all see the same value. Without this, shiny
+            // was rolled lazily on the first buildPokemon call, which for
+            // wilds didn't happen until after the catch — the player would
+            // silently inherit a shiny they were never told about, and
+            // _storyMarkDexCaught would always record shiny=false.
+            ensureShinyRolled(b);
             b.i = 'None';
             const base = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
             if (base && base.abilities && base.abilities['0']) b.a = base.abilities['0'];
@@ -34881,6 +34966,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function enterCatchEncounter(wildMon, onComplete, options) {
+            // Defensive shiny lock — every encounter path (wild, safari,
+            // roaming, boss, tutorial) ought to have rolled this already,
+            // but stamping it here guarantees the catch header, sprite,
+            // and Pokédex marker all read the same value even if a future
+            // caller forgets the upstream `ensureShinyRolled`.
+            try {
+                if (wildMon && wildMon.build && typeof ensureShinyRolled === 'function') {
+                    ensureShinyRolled(wildMon.build);
+                }
+            } catch (e) {}
             _catchState = {
                 encounter: wildMon,
                 onComplete: onComplete || null,
@@ -34975,7 +35070,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Boss mode has its own HP-bar phase (no stage), so skip.
             try {
                 if (!_catchState.bossMode && _catchStageEl && window.StoryFx) {
-                    window.StoryFx.encounterReveal(_catchStageEl, wildMon && wildMon.name, {});
+                    const _wildShiny = !!(wildMon && wildMon.build && wildMon.build._isShiny);
+                    window.StoryFx.encounterReveal(_catchStageEl, wildMon && wildMon.name, { shiny: _wildShiny });
                 }
             } catch (e) {}
             if (!_catchState.bossMode) {
@@ -35027,7 +35123,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const pct = Math.max(0, Math.min(100, Math.round((_catchState.bossHp / _catchState.bossMaxHp) * 100)));
                 let bossSpriteHtml = '';
                 try {
-                    const spriteUrl = typeof getSprite === 'function' ? getSprite(spriteDisplayName(enc), false) : '';
+                    const _bossShiny = !!(enc && enc.build && enc.build._isShiny);
+                    const spriteUrl = typeof getSprite === 'function' ? getSprite(spriteDisplayName(enc), _bossShiny) : '';
                     if (spriteUrl) {
                         bossSpriteHtml = `<img src="${spriteUrl}" alt="${_esc(enc.name)}" style="display:block;margin:0 auto 8px;width:96px;height:96px;image-rendering:pixelated;filter:drop-shadow(0 0 10px rgba(206,147,216,0.7));" onerror="this.style.display='none'">`;
                     }
@@ -35167,12 +35264,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                        <button type="button" onclick="window.StoryMode.bossRetreatToCity()" style="padding:8px 16px;background:rgba(0,0,0,0.4);border:1px solid #a060c0;color:#e0c0ff;font-family:inherit;font-size:12px;cursor:pointer;">↩ Retreat to City</button>
                    </div>`
                 : '';
+            // Shiny encounters get a sparkle on the name, a friendlier header
+            // line, and a soft gold accent on the grade chip — the player
+            // should always know they're staring at a 1% roll before they
+            // decide which ball to spend.
+            const _encShiny = !!(enc && enc.build && enc.build._isShiny);
             const headerLabel = _catchState.bossMode
                 ? 'The Caged Pokémon stirs.'
-                : _catchState.safariMode ? 'A Safari Pokémon comes into view.' : 'A wild Pokémon stepped out of the grass!';
-            const headerColor = _catchState.bossMode ? '#ce93d8' : '#a5d6a7';
+                : _catchState.safariMode
+                    ? (_encShiny ? '✨ A Shiny Safari Pokémon comes into view!' : 'A Safari Pokémon comes into view.')
+                    : (_encShiny ? '✨ A Shiny Pokémon stepped out of the grass!' : 'A wild Pokémon stepped out of the grass!');
+            const headerColor = _catchState.bossMode ? '#ce93d8' : (_encShiny ? '#ffd54f' : '#a5d6a7');
             const headerBg = _catchState.bossMode ? 'rgba(20,8,28,0.7);border:1px solid #6a1b9a' : 'rgba(10,18,12,0.55);border:1px solid #4a6c44';
-            const gradeBg = _catchState.bossMode ? '#ce93d8' : '#a5d6a7';
+            const gradeBg = _catchState.bossMode ? '#ce93d8' : (_encShiny ? '#ffd54f' : '#a5d6a7');
             const subText = _catchState.bossMode
                 ? 'One percent per throw with a standard ball. A Master Ball never misses.'
                 : _catchState.safariMode ? `Safari Balls only (${SAFARI_BALL_MULT}× catch). Bait calms, Rock angers — every turn the wild may flee.` : 'Catch chance is the species rate times the ball you throw.';
@@ -35191,8 +35295,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div style="text-align:center;padding:14px 12px 10px;background:${headerBg};">
                     <div style="font-size:11px;color:${headerColor};letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">${headerLabel}</div>
                     <div id="story-catch-stage-host" style="margin:0 auto 4px;"></div>
-                    <h2 style="margin:6px 0 4px;color:#fff;font-size:18px;">${_esc(enc.name)}</h2>
-                    <div style="display:inline-block;font-size:10px;font-weight:bold;color:#111;background:${gradeBg};padding:2px 8px;letter-spacing:0.04em;">Grade ${grade}</div>
+                    <h2 style="margin:6px 0 4px;color:${_encShiny ? '#ffd54f' : '#fff'};font-size:18px;${_encShiny ? 'text-shadow:0 0 8px rgba(255,215,0,0.45);' : ''}">${_encShiny ? '&#10024; ' : ''}${_esc(enc.name)}${_encShiny ? ' &#10024;' : ''}</h2>
+                    <div style="display:inline-block;font-size:10px;font-weight:bold;color:#111;background:${gradeBg};padding:2px 8px;letter-spacing:0.04em;">Grade ${grade}${_encShiny ? ' · ✨ SHINY' : ''}</div>
                     <div style="margin-top:8px;font-size:10px;color:#888;">${subText}</div>
                 </div>
                 ${upNextHtml}
@@ -35447,9 +35551,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _markCatchTutorialDone();
             }
             try { save(); } catch (e) {}
+            const _caughtShiny = !!(caught && caught.build && caught.build._isShiny);
+            const _shinyLine = _caughtShiny ? '\n\n✨ It\'s a shiny! One in a hundred — keep it close.' : '';
             const successMsg = bossMode
-                ? `Subject Zero is yours.\n\nThe cage closes behind you. The Underground is quiet again. Whatever comes next, you walk into it together.`
-                : `Gotcha! ${enc.name} joined your party — fully healed and ready to walk.`;
+                ? `Subject Zero is yours.${_shinyLine}\n\nThe cage closes behind you. The Underground is quiet again. Whatever comes next, you walk into it together.`
+                : `Gotcha! ${_caughtShiny ? '✨ ' : ''}${enc.name} joined your party — fully healed and ready to walk.${_shinyLine}`;
             _catchFinishWithMessage(successMsg);
         }
         // Holds the just-caught mon while the player picks "send to PC" or
@@ -35473,12 +35579,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span style="color:#a5d6a7;font-size:10px;">→ PC</span>
                 </button>`;
             }).join('');
+            const _swapShiny = !!(caught && caught.build && caught.build._isShiny);
+            const _swapNamePre = _swapShiny ? '&#10024; ' : '';
+            const _swapShinyLine = _swapShiny ? '<div style="color:#ffd54f;font-size:11px;margin-top:4px;">✨ It\'s a shiny — choose carefully where it lives.</div>' : '';
             body.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;padding:14px 6px;">
                 <div style="text-align:center;font-size:13px;color:#fff;line-height:1.5;">
-                    Gotcha! <strong>${_esc(caught.name)}</strong> is on your roster.<br/>
+                    Gotcha! <strong style="${_swapShiny ? 'color:#ffd54f;' : ''}">${_swapNamePre}${_esc(caught.name)}</strong> is on your roster.<br/>
                     <span style="color:#aed581;font-size:11px;">The bench is at capacity (${partyCap}/${partyCap}). Send the newcomer to the PC, or swap them with a current teammate.</span>
+                    ${_swapShinyLine}
                 </div>
-                <button type="button" onclick="window.StoryMode.catchResolveSendToPC()" style="padding:10px;background:rgba(20,28,40,0.6);border:1px solid #ce93d8;color:#ce93d8;font-family:inherit;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"><img src="icons/story/story_party.png?v=20260516" alt="" width="16" height="16" decoding="async" style="width:16px;height:16px;image-rendering:pixelated;"> Send ${_esc(caught.name)} to PC</button>
+                <button type="button" onclick="window.StoryMode.catchResolveSendToPC()" style="padding:10px;background:rgba(20,28,40,0.6);border:1px solid #ce93d8;color:#ce93d8;font-family:inherit;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"><img src="icons/story/story_party.png?v=20260516" alt="" width="16" height="16" decoding="async" style="width:16px;height:16px;image-rendering:pixelated;"> Send ${_swapNamePre}${_esc(caught.name)} to PC</button>
                 <div style="font-size:10px;color:#888;letter-spacing:0.06em;text-transform:uppercase;text-align:center;margin-top:4px;">— or pick a teammate to swap to PC —</div>
                 <div style="display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;">${partyList}</div>
             </div>`;
@@ -36288,7 +36398,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } catch (e) { /* ignore render-time build errors */ }
 
                 const typeHtml = tempMon ? getTypeHTML(tempMon.type1, tempMon.type2) : '';
-                const shinyPre = tempMon && tempMon.isShiny ? '&#10024; ' : '';
                 const teraHtml = (t.build && t.build.teraType && tempMon)
                     ? `<span class="tera-tip-hover" style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:pointer;touch-action:manipulation;" data-tera="${encodeURIComponent(t.build.teraType)}" data-o1="${encodeURIComponent(tempMon.type1)}" data-o2="${encodeURIComponent(tempMon.type2||'')}" onclick="event.stopPropagation();window.showTeraFromEl(event)" onmousemove="event.stopPropagation();window.showTeraTooltip('${t.build.teraType}','${tempMon.type1}','${tempMon.type2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${t.build.teraType}</span>`
                     : '';
@@ -36310,11 +36419,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </div>`
                     : `<div class="story-link-build" style="font-size:11px;color:#777;">Could not load set details.</div>`;
 
+                // Read shiny straight from the persisted build flag — the
+                // earlier `tempMon.isShiny` path goes through a display-only
+                // clone of the build, so it can flicker between true/false
+                // across re-renders if the original `_isShiny` is undefined.
+                // We now lock `_isShiny` at mon-creation time, so this is the
+                // single source of truth for whether the sprite + badge glow.
+                const _slotShiny = !!(t.build && t.build._isShiny);
+                const _slotShinyPre = _slotShiny ? '&#10024; ' : '';
                 return `<div class="story-link-mon tier-${g}">
                     <div class="story-link-mon-header">
-                        <img src="${getSprite(spriteDisplayName(t),false)}" onerror="this.src=''" alt="${t.name}">
+                        <img src="${getSprite(spriteDisplayName(t), _slotShiny)}" onerror="this.src=''" alt="${t.name}" data-shiny="${_slotShiny ? 'true' : 'false'}" style="${_slotShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}">
                         <div>
-                            <div class="story-link-title-row">${shinyPre}${t.name}${gimmickTag} ${typeHtml}${teraHtml}</div>
+                            <div class="story-link-title-row">${_slotShinyPre}${t.name}${gimmickTag} ${typeHtml}${teraHtml}</div>
                             <span class="tier-badge bg-tier-${g}">Grade ${g}</span>
                         </div>
                         <button type="button" class="draft-card-info-btn" style="width:26px;height:26px;min-width:26px;font-size:12px;" onclick="window.StoryMode.openSummary(${i})" aria-label="Full summary" title="Full summary">&#8505;</button>
@@ -36359,6 +36476,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { _storyDowngradeBuildForTier(name, newBuild, tier); } catch (e) { /* fall through */ }
             }
             newBuild.powerTier = tier;
+            // Lock shiny so renderLinkTeam's preview (a cloned-build buildPokemon
+            // call) doesn't flicker between hits and misses on every re-render.
+            // Caller may overwrite `_isShiny` after this (rebuild path carries
+            // the prior mon's value through).
+            if (typeof ensureShinyRolled === 'function') ensureShinyRolled(newBuild);
             return newBuild;
         }
 
@@ -36582,7 +36704,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } catch (e) { /* ignore render-time build errors */ }
 
                 const typeHtml = tempMon ? getTypeHTML(tempMon.type1, tempMon.type2) : '';
-                const shinyPre = tempMon && tempMon.isShiny ? '&#10024; ' : '';
+                // Mirror renderLinkTeam: read shiny from the persisted build,
+                // not from the display-only clone — so the Stone Sage card
+                // doesn't flicker between visits if `_isShiny` hasn't been
+                // locked yet.
+                const _evoSlotShiny = !!(t.build && t.build._isShiny);
+                const shinyPre = _evoSlotShiny ? '&#10024; ' : '';
 
                 const _rareCandyCount = (sm.inventory && sm.inventory.rareCandy) | 0;
                 let evoBlockHtml;
@@ -36604,7 +36731,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const evoBase = baseStats[e.name] || {};
                         const evoTypes = evoBase.t1 ? getTypeHTML(evoBase.t1, evoBase.t2 || '') : '';
                         const bst = getBST(e.name);
-                        const sprite = (typeof getSprite === 'function') ? getSprite(e.name) : '';
+                        // Preview the target form in shiny if the current mon
+                        // is shiny — evolution preserves shiny identity, so the
+                        // card the player is about to click should match what
+                        // they'll actually see in their party afterward.
+                        const sprite = (typeof getSprite === 'function') ? getSprite(e.name, _evoSlotShiny) : '';
                         if (!e.allowed) {
                             return `<div class="tx-card" data-disabled="1" style="cursor:not-allowed;">
                                 <div class="tx-card-head">
@@ -36652,7 +36783,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
                 return `<div class="story-tutor-mon">
                     <div class="story-tutor-mon-main" style="display:flex;align-items:center;gap:10px;padding:10px 12px;flex-wrap:wrap;">
-                        <img src="${getSprite(spriteDisplayName(t),false)}" onerror="this.src=''" alt="${t.name}" style="width:42px;height:42px;image-rendering:pixelated;flex-shrink:0;">
+                        <img src="${getSprite(spriteDisplayName(t), _evoSlotShiny)}" onerror="this.src=''" alt="${t.name}" data-shiny="${_evoSlotShiny ? 'true' : 'false'}" style="width:42px;height:42px;image-rendering:pixelated;flex-shrink:0;${_evoSlotShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}">
                         <div style="min-width:0;flex:1;">
                             <div class="story-tutor-mon-name">${shinyPre}${_esc(t.name)} ${typeHtml} ${gimmickTag}</div>
                             <div class="story-tutor-mon-meta">Grade ${g} · BST ${getBST(t.name)}</div>
@@ -36685,6 +36816,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // player applied these to this specific mon, evolution doesn't
             // un-train them.
             if (old.permBoosts) evoBuild.permBoosts = { ...old.permBoosts };
+            // Identity carry-over: shiny and gender are properties of the
+            // individual Pokémon, not the species. Evolving a shiny Magikarp
+            // produces a shiny Gyarados; a male Eevee evolving into Espeon
+            // stays male. Without this, makeBuild() would silently re-roll both.
+            if (old._isShiny !== undefined) evoBuild._isShiny = old._isShiny;
+            if (old._gender  !== undefined) evoBuild._gender  = old._gender;
 
             // Preserve the pre-evolution's gimmick if the evolved species supports it.
             // For MEGA/ZMOVE the species-specific item must be re-derived for the new form
@@ -36773,7 +36910,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const mon = sm.team[idx];
             if (!mon) return false;
             const fromName = mon.name;
-            const shiny = !!(mon.build && mon.build.shiny);
+            const shiny = !!(mon.build && mon.build._isShiny);
             const ok = await _evoLabApplyEvolution(idx, evoName);
             if (!ok) return false;
             // Polish: play the full scene if StoryFx is loaded. If anything in
@@ -36881,9 +37018,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // permBoosts (HP Up / Protein / …) represent player investment
                 // that lives independently of the rolled build.
                 const carriedPB = mon.build && mon.build.permBoosts ? { ...mon.build.permBoosts } : null;
+                // Identity carry-over: shiny + gender belong to the individual,
+                // not the build. Rebuild is a moveset/nature/EV reroll on the
+                // same mon, so these must survive the swap below.
+                const carriedShiny  = (mon.build && mon.build._isShiny !== undefined) ? mon.build._isShiny : undefined;
+                const carriedGender = (mon.build && mon.build._gender  !== undefined) ? mon.build._gender  : undefined;
                 const newBuild = _makePlayerLinkBuild(mon.name, 'COMPETENT');
                 if (!newBuild) { window.showGameAlert('Build pipeline error — try again.'); return; }
                 if (carriedPB) newBuild.permBoosts = carriedPB;
+                if (carriedShiny  !== undefined) newBuild._isShiny = carriedShiny;
+                if (carriedGender !== undefined) newBuild._gender  = carriedGender;
                 sm.gold -= cost;
                 // Rebuild just rerolls the moveset/nature/item — same species, same
                 // identity. Preserve starter/unsellable/nickname/id so a player who
@@ -37210,13 +37354,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const atCap = cur >= PERM_BOOST_CAP;
                 const tone = atCap ? '#555' : '#fff';
                 const disabled = atCap ? 'pointer-events:none;opacity:0.45;' : 'cursor:pointer;';
-                const sprite = (typeof getSprite === 'function') ? getSprite((typeof spriteDisplayName === 'function' ? spriteDisplayName({name:mon.name}) : mon.name), mon.build && mon.build._isShiny) : '';
+                const isShiny = !!(mon.build && mon.build._isShiny);
+                const sprite = (typeof getSprite === 'function') ? getSprite((typeof spriteDisplayName === 'function' ? spriteDisplayName({name:mon.name}) : mon.name), isShiny) : '';
                 const where = source === 'pc' ? '<span style="color:#888;font-size:9px;">[PC]</span>' : '';
+                const shinyMark = isShiny ? '<span style="color:#ffd54f;margin-right:3px;">&#10024;</span>' : '';
+                const nameTone = isShiny && !atCap ? 'color:#ffd54f;' : '';
                 const onClick = atCap ? '' : `onclick="window.StoryMode.applyPermBoost('${vitaminId}','${source}',${idx})"`;
-                return `<div style="display:flex;align-items:center;gap:8px;padding:6px;border:1px solid #333;border-radius:6px;color:${tone};${disabled}" ${onClick}>
-                    ${sprite ? `<img src="${sprite}" style="width:32px;height:32px;image-rendering:pixelated;" alt="">` : ''}
+                return `<div style="display:flex;align-items:center;gap:8px;padding:6px;border:1px solid ${isShiny ? '#a47800' : '#333'};border-radius:6px;color:${tone};${disabled}" ${onClick}>
+                    ${sprite ? `<img src="${sprite}" data-shiny="${isShiny ? 'true' : 'false'}" style="width:32px;height:32px;image-rendering:pixelated;${isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" alt="">` : ''}
                     <div style="flex:1;">
-                        <div style="font-weight:bold;">${mon.name} ${where}</div>
+                        <div style="font-weight:bold;${nameTone}">${shinyMark}${mon.name} ${where}</div>
                         <div style="font-size:10px;color:#9ab;">${statLabel} boost: +${cur} / +${PERM_BOOST_CAP}${atCap ? ' (at cap)' : ''}</div>
                     </div>
                 </div>`;
