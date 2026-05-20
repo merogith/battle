@@ -29152,7 +29152,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 Object.assign(sm, d);
                 sm.version = SAVE_VER;
                 if (!sm.gymCleared) sm.gymCleared = {};
-                if (!sm.unlockedGimmicks) sm.unlockedGimmicks = [];
+                // Recompute on every load so existing pre-unified saves pick up the
+                // new Gym-5 gate immediately. Cheap, derivable from `sm.badges`.
+                sm.unlockedGimmicks = _storyPlayerUnlockedGimmicksForBadges(sm.badges | 0);
                 if (!sm.cityRerollsUsed) sm.cityRerollsUsed = {};
                 if (!sm.artifactsDisabled) sm.artifactsDisabled = [];
                 if (!('currentEnemyLock' in sm)) sm.currentEnemyLock = null;
@@ -29631,13 +29633,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return 0.04;
         }
         function _storyProgressFactor(badges) {
+            // Unified Gym-5 unlock — no AI gimmicks pre-Gym-5 either; the curve
+            // shifts right by one badge so the reveal lands the same turn the
+            // player unlocks them via the Colress City-6 beat.
             const b = badges|0;
-            if (b <= 3) return 0.00;
-            if (b === 4) return 0.40;
-            if (b === 5) return 0.60;
-            if (b === 6) return 0.80;
-            if (b === 7) return 0.95;
+            if (b <= 4) return 0.00;
+            if (b === 5) return 0.45;
+            if (b === 6) return 0.70;
+            if (b === 7) return 0.90;
             return 1.00;
+        }
+        // Unified player-side gimmick unlock — Gym-5 gate, all four open at once.
+        // Settings toggles still gate which kinds the run uses (storyOptIn screen),
+        // but the unlock cadence no longer depends on the badge count beyond the
+        // 5-badge threshold. Mirrors `_storyProgressFactor`'s 0→0.45 jump.
+        function _storyPlayerUnlockedGimmicksForBadges(badges) {
+            if ((badges | 0) < 5) return [];
+            const out = [];
+            if (sm && sm.settings && sm.settings.megaOn) out.push('mega');
+            if (sm && sm.settings && sm.settings.zOn)    out.push('z');
+            if (sm && sm.settings && sm.settings.dynaOn) out.push('dmax');
+            if (sm && sm.settings && sm.settings.teraOn) out.push('tera');
+            return out;
         }
         function _perMonMechChance(eventType) {
             // Battle Frontier per-round mechanic frequency. Rounds 1–2 ~25%
@@ -32374,14 +32391,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.gymCleared) sm.gymCleared = {};
             for (let gi = 1; gi <= 8; gi++) sm.gymCleared[gi] = true;
             try { _storyBackfillCitiesArrived(); } catch (e) {}
-            {
-                const order = [];
-                if (sm.settings.megaOn) order.push('mega');
-                if (sm.settings.dynaOn) order.push('dmax');
-                if (sm.settings.teraOn) order.push('tera');
-                if (sm.settings.zOn) order.push('z');
-                sm.unlockedGimmicks = order.slice(0, Math.min(8, order.length));
-            }
+            sm.unlockedGimmicks = _storyPlayerUnlockedGimmicksForBadges(8);
             save();
             const loc = (typeof location !== 'undefined' && location.pathname) ? location.pathname : 'battle.html';
             console.log('[storychampionweak] Story Champion — strong:', strongPool.join(', '), '| weak foe:', weakNames.join(', '), '| reopen:', loc + '?storychampionweak=1');
@@ -34441,16 +34451,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { _storyQueueRoamingFromVictory(en); } catch (e) {}
                 if (en === 'Rival') setRivalStanding('player', idx);
                 const isMilestoneVictory = isGymBadge || /^(E1|E2|E3|E4|Champion|Rival)$/.test(en);
-                // Unlock player gimmicks in fixed order — one per gym badge (not league badges)
-                {
-                    const order = [];
-                    if (sm.settings.megaOn) order.push('mega');
-                    if (sm.settings.dynaOn) order.push('dmax');
-                    if (sm.settings.teraOn) order.push('tera');
-                    if (sm.settings.zOn) order.push('z');
-                    const gymBeatCount = Math.min(sm.badges | 0, 8);
-                    sm.unlockedGimmicks = order.slice(0, Math.min(gymBeatCount, order.length));
-                }
+                // Unified Gym-5 unlock: all four gimmicks become available to the
+                // player the moment they hit 5 badges (post-GL5, narrated as the
+                // Colress reward at City 6 in STORY_MODE_FLOW.md §14c). Mirrors the
+                // AI's `_storyProgressFactor` which flips from 0 to non-zero at the
+                // same threshold.
+                sm.unlockedGimmicks = _storyPlayerUnlockedGimmicksForBadges(sm.badges | 0);
                 sm.currentEnemyLock = null;
                 // Advance event index (clamp before persisting so a corrupted index never reaches storage).
                 sm.eventIndex = Math.min(STORY_EVENTS_RAW.length - 1, (sm.eventIndex | 0) + 1);
