@@ -10,12 +10,18 @@ by the battle engine in `battle.html`. Three layers:
 ## Quick start
 
 ```bash
-npm install        # installs jsdom (only dev dependency)
-npm run audit      # generates /tests/reports/coverage.{csv,md}
-npm test           # runs all property + suite tests (~32s)
-npm run test:property   # property tests only
-npm run test:suites     # targeted suites only
+npm install             # installs jsdom (only dev dependency)
+npm run audit           # generates /tests/reports/coverage.{csv,md}
+npm test                # runs all 884 tests (~70s)
+npm run test:property   # 9 property invariants over all 954 moves
+npm run test:suites     # targeted damage formula tests
+npm run test:moves      # 867 auto-generated per-move skeletons
 ```
+
+Reports written to `/tests/reports/`:
+- `coverage.csv` — every move with handler classification
+- `coverage.md` — gap summary
+- `deviations.md` — intentional non-VGC mechanics and known preconditions
 
 Reports land in `/tests/reports/`:
 - `coverage.csv` — one row per move with handler classification
@@ -42,23 +48,46 @@ Reports land in `/tests/reports/`:
 
 ### `/tests/property/`
 
-Nine planned invariants iterating over all 954 moves. Implemented:
+Nine invariants iterating over all 954 moves. All passing:
 
-| Test | What it checks | Status |
+| Test | What it checks | Coverage |
 |---|---|---|
-| `damaging-nonzero` | basePower>0 moves reduce defender HP | 524/524 pass |
-| `status-no-damage` | basePower=0 moves leave defender HP unchanged | 258/258 pass |
-| `boosts-target` | declared `boosts` apply to the correct target | 59/59 pass |
-| `secondary-fires` | declared `secondary` fires with RNG=0 forced | 165/176 pass* |
-
-\* The 11 secondary-fires failures are documented in `/tests/reports/deviations.md`:
-naming mismatches between JSON `volatileStatus` and engine `volatile.X` key,
-charge-move first-turn behavior, and Sceptile-immunity edge cases.
+| `damaging-nonzero` | basePower>0 moves reduce defender HP | 524 moves |
+| `status-no-damage` | basePower=0 moves leave defender HP unchanged | 258 moves |
+| `accuracy-100` | accuracy=100 moves never miss in 3 trials | 321 moves |
+| `priority-order` | positive-priority moves resolve before higher-speed opponents | 42 moves |
+| `protect-blocks` | flags.protect=1 moves are blocked by Protect; flagless moves bypass | 466 moves |
+| `boosts-target` | declared `boosts` apply to the correct target | 59 moves |
+| `secondary-fires` | declared `secondary` fires when RNG forced to 0 | 171 moves |
+| `stab-applied` | same-type attackers deal ~1.5x more than non-STAB | 336 moves |
+| `type-effectiveness` | SE > resisted on same defender; immunities = 0 | sample-based |
 
 ### `/tests/suites/`
 
 - **damage-formula.test.js** — VGC Gen 8 Lv50 formula at `battle.html:21473`:
   Tackle range, STAB ×1.5, super-effective ×2, type immunity ×0.
+
+### `/tests/moves/by-category/`
+
+Auto-generated per-move skeleton tests. 867 `it()` blocks (516 with auto-assertions,
+351 marked `todo` for manual fill-in). Regenerate via:
+
+```bash
+node tests/audit/generate-move-tests.js
+```
+
+Auto-assertion rules:
+- Damaging moves: defender HP decreases after `runTurn`
+- Status moves with declared `boosts`: target stat stage matches declared delta
+
+Moves requiring manual setup (charge moves, OHKO, Counter-like, ally-target, variable-power) are emitted as `it.todo()`.
+
+### In-Browser Self-Test
+
+Open `battle.html?testmoves=1` (or `#testmoves`) to run a 17-move quick check
+against the live engine. Results appear in a popup overlay and at
+`window._moveTestReport`. Useful for spot-checking changes without leaving the
+browser.
 
 ### `/tests/fixtures/`
 
