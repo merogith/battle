@@ -27730,6 +27730,84 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Grusha':"\"…Hmph. You can ski my mountain anytime. Ice Badge.\"",
         };
 
+        // Companion to LEADER_VICTORY_LINES — a second, quieter beat the leader speaks
+        // after handing over the badge. Each reflection ties the trainer's type / region
+        // back to the player's victory, so the moment lands as personal flavor instead of
+        // a stock "next gym is waiting" footer. Falls through silently when missing.
+        const LEADER_BADGE_REFLECTIONS = {
+            'Brock':"\"Pewter's stones aren't moving today. Maybe the rookie is.\"",
+            'Misty':"\"Cerulean's tide brings champions in. You're the first to ride it out.\"",
+            'Lt. Surge':"\"Vermilion's lights flicker for nobody — except, apparently, you.\"",
+            'Erika':"\"Celadon's perfumeries owe you a fragrance. I'll name it after your team.\"",
+            'Koga':"\"Fuchsia's poison gardens grow in shadow. You walked through them unbothered.\"",
+            'Sabrina':"\"Saffron's psychics felt the city shift the moment you arrived.\"",
+            'Blaine':"\"Cinnabar's volcano cooled long ago, but my pride hadn't. Now it has.\"",
+            'Giovanni':"\"Viridian Gym has had many leaders. The next ledger entry is yours.\"",
+            'Falkner':"\"Violet's birds circle the gym tower. Today they circled for you.\"",
+            'Bugsy':"\"Azalea's Bug Catching Contest gets a new entry in my field notes. You.\"",
+            'Whitney':"\"Goldenrod's department store is celebrating somewhere. Probably not me.\"",
+            'Morty':"\"Ecruteak's burned tower keeps its secrets. So will I, about this loss.\"",
+            'Chuck':"\"Cianwood's dojo has new mats coming in. You earned a sit-down on them.\"",
+            'Jasmine':"\"Olivine Lighthouse beams further tonight. I think Amphy approves.\"",
+            'Pryce':"\"Mahogany's ice tunnels feel a degree warmer. Probably the trainer in them.\"",
+            'Clair':"\"Blackthorn's Dragon's Den tested you, and you swam back out. Mark it.\"",
+            'Roxanne':"\"Rustboro's Trainer's School will study this match by Friday.\"",
+            'Brawly':"\"Dewford's waves never stop. Neither, apparently, did you.\"",
+            'Wattson':"\"Mauville's New Mauville Power Plant just dimmed a little — out of respect.\"",
+            'Flannery':"\"Lavaridge's hot springs run cool tonight. Like my fight did.\"",
+            'Norman':"\"Petalburg's city hall already knows. Word travels fast in my old job.\"",
+            'Winona':"\"Fortree's tree houses sway in trade winds. So does my opinion of you.\"",
+            'Tate':"\"Mossdeep's space center watches the stars. Tonight we watched you.\"",
+            'Liza':"\"Mossdeep's space center watches the stars. Tonight we watched you.\"",
+            'Wallace':"\"Sootopolis was carved by the sea. You carve battles the same way.\"",
+            'Juan':"\"Sootopolis applauds gracefully. As do I, despite the result.\"",
+            'Roark':"\"Oreburgh's mines run deep. Tonight, your team dug deeper.\"",
+            'Gardenia':"\"Eterna's forest pays attention. The wind in the trees says you won.\"",
+            'Maylene':"\"Veilstone's gym mats need replacing now. You took the lead match out of them.\"",
+            'Crasher Wake':"\"Pastoria's marsh is a wrestling ring for monsters. You ruled it tonight!\"",
+            'Fantina':"\"Hearthome's contest hall will whisper of your performance for weeks.\"",
+            'Byron':"\"Canalave's ironworks will hammer that out — every clang says your name.\"",
+            'Candice':"\"Snowpoint's snow falls quietly. So does my crown, today, on yours.\"",
+            'Volkner':"\"Sunyshore's solar panels gleam. Finally, a match worth their charge.\"",
+            'Cilan':"\"Striaton's restaurant menu has a new special: trainer who beat all three of us.\"",
+            'Chili':"\"Striaton's kitchen is cooler than my temper right now. You earned that.\"",
+            'Cress':"\"Striaton's tea cools while we lose. You drink it warm next time.\"",
+            'Lenora':"\"Nacrene's museum gets a new exhibit. A diorama of your team, perhaps.\"",
+            'Burgh':"\"Castelia's art galleries will hang your battle as a triptych.\"",
+            'Elesa':"\"Nimbasa's runway lights flash for a new model trainer tonight.\"",
+            'Clay':"\"Driftveil's market stalls were watching. They'll all sell to you cheap now.\"",
+            'Skyla':"\"Mistralton's airfield reroutes for champions. Your runway is open.\"",
+            'Brycen':"\"Icirrus's ice sculptures stand in tribute. They look like your team.\"",
+            'Drayden':"\"Opelucid's two cities — black and white — both name the same winner tonight.\"",
+            'Iris':"\"Opelucid's Dragon Tower bowed once tonight. I won't forget the angle.\"",
+            'Viola':"\"Santalune's photographer's studio just got its cover shot. You.\"",
+            'Grant':"\"Cyllage's seaside cliffs are higher than they look. You climbed mine.\"",
+            'Korrina':"\"Shalour's Tower of Mastery glows a little brighter. Lucario felt it.\"",
+            'Ramos':"\"Coumarine's monorail terraces keep growing. So does my respect for you.\"",
+            'Clemont':"\"Lumiose's Prism Tower flickered when you landed the final blow.\"",
+            'Valerie':"\"Laverre's Poké Ball Factory is making a special order. For you.\"",
+            'Olympia':"\"Anistar's sundial spins true today. Your name on its face.\"",
+            'Wulfric':"\"Snowbelle's glaciers shift in centuries. You shifted me in minutes.\"",
+            'Milo':"\"Turffield's geoglyph grew an inch tonight. Wholesome harvest, that fight.\"",
+            'Nessa':"\"Hulbury's lighthouse signals different ships. Today it signals you.\"",
+            'Kabu':"\"Motostoke's furnaces burn day and night. So does Galar's newest hopeful.\"",
+            'Bea':"\"Stow-on-Side's market criers will tell every traveler about this one.\"",
+            'Allister':"\"…Stow-on-Side's tombs are watching. They liked you. That's unusual.\"",
+            'Opal':"\"Ballonlea's pink forest blooms for a new favorite. You'll do.\"",
+            'Gordie':"\"Circhester's stone faces eroded by you in one match. Mom would laugh.\"",
+            'Melony':"\"Circhester's hot springs are colder than my heart was. You warmed both.\"",
+            'Piers':"\"Spikemuth's neon doesn't flicker for nobody. It flickered for you.\"",
+            'Raihan':"\"Hammerlocke's stadium camera caught the moment. It's already trending.\"",
+            'Katy':"\"Cortondo's bakery line has a new VIP. The kid who silenced the bugs.\"",
+            'Brassius':"\"Artazon's sunflora square has a new sculpture model: your lead Pokémon.\"",
+            'Iono':"\"Levincia's streaming district's chat is exploding. You broke the algorithm.\"",
+            'Kofu':"\"Cascarrafa's fountain plaza has fresh sushi tonight. Champion's discount, kid.\"",
+            'Larry':"\"Medali's diner has a usual. You can order it now. I recommend it.\"",
+            'Ryme':"\"Montenevera's haunted stage closes early tonight. Out of respect for the crowd.\"",
+            'Tulip':"\"Alfornada's psychics felt that match in the next valley over.\"",
+            'Grusha':"\"Glaseado's slopes are quieter than my crowd. You shut both of us up.\"",
+        };
+
         // Per-Elite Four post-battle line. Used when the matched trainer name is canonical;
         // otherwise we fall through to the role-only "Elite N passed—one step closer!" line.
         const ELITE_VICTORY_LINES = {
@@ -35537,6 +35615,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _trainerName = (sm && sm.currentTrainerData && sm.currentTrainerData.name) ? String(sm.currentTrainerData.name) : '';
             const _baseTrainerName = _trainerName ? _storyTrainerBaseName(_trainerName) : '';
             const _leaderLookup = (LEADER_VICTORY_LINES[_trainerName] || LEADER_VICTORY_LINES[_baseTrainerName] || '');
+            const _leaderReflect = (LEADER_BADGE_REFLECTIONS[_trainerName] || LEADER_BADGE_REFLECTIONS[_baseTrainerName] || '');
             const _badgeName = (LEADER_BADGE_NAMES[_trainerName] || LEADER_BADGE_NAMES[_baseTrainerName] || 'Gym Badge');
             const _eliteLookup = (ELITE_VICTORY_LINES[_trainerName] || ELITE_VICTORY_LINES[_baseTrainerName] || '');
             const _champLookup = (CHAMPION_VICTORY_LINES[_trainerName] || CHAMPION_VICTORY_LINES[_baseTrainerName] || '');
@@ -35552,7 +35631,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const line = _leaderLookup
                         ? `${speakerName}: ${_leaderLookup}`
                         : `You received the ${_badgeName}!`;
-                    badgeFlavor = `<div style="font-size:14px;color:#81c784;line-height:1.5;max-width:380px;">${line}</div>`;
+                    // Second beat: city / type reflection. Rendered slightly dimmer so the
+                    // congratulations line dominates the moment. Falls through silently
+                    // when LEADER_BADGE_REFLECTIONS has no entry for this leader.
+                    const reflectHtml = _leaderReflect
+                        ? `<div style="font-size:13px;color:#aed581;line-height:1.5;max-width:380px;margin-top:6px;font-style:italic;">${speakerName}: ${_leaderReflect}</div>`
+                        : '';
+                    badgeFlavor = `<div style="font-size:14px;color:#81c784;line-height:1.5;max-width:380px;">${line}</div>${reflectHtml}`;
                     // First-time cap teach. badges 1-4 expand the player's party (cap = 2 + badges,
                     // capped at 6). The cap change happens silently in code; surface it here exactly
                     // once per badge-tier across all saves. badges 5-8 don't grow the cap.
