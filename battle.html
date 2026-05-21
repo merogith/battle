@@ -24938,16 +24938,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 changeStage(attacker, 'def', -1); changeStage(attacker, 'spd', -1); return;
             }
 
-            // === AQUA STEP: +1 Spe ===
-            if (move.name === "Aqua Step") { changeStage(attacker, 'spe', 1); return; }
+            // Aqua Step: +1 Spe to user. Declared in moves.json as secondary.self.boosts.spe=1 (100% chance).
+            // Engine's generic secondary handler applies it - no named branch needed.
 
-            // === TRIPLE ARROWS: raise crit, 50% flinch, 30% lower Def ===
-            if (move.name === "Triple Arrows") {
-                attacker.volatile.focusEnergy = (attacker.volatile.focusEnergy || 0) + 1;
-                if (Math.random() < (sereneGrace ? 1.0 : 0.5)) defender.volatile.flinch = true;
-                if (Math.random() < (sereneGrace ? 0.6 : 0.3)) changeStage(defender, 'def', -1);
-                return;
-            }
+            // Triple Arrows: high crit (critRatio:2), 50% def -1, 30% flinch.
+            // All declared in moves.json (critRatio + secondaries array). Generic handler applies.
 
             // === BURNING JEALOUSY: burn target if it raised any stat this turn ===
             if (move.name === "Burning Jealousy") {
@@ -24955,8 +24950,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
 
-            // === CHILLING WATER: lower target's Atk by 1 ===
-            if (move.name === "Chilling Water") { changeStage(defender, 'atk', -1); return; }
+            // Chilling Water: -1 atk to target. Declared in moves.json secondary.boosts (100% chance).
 
             // === PSYCHIC NOISE: block healing for 2 turns ===
             if (move.name === "Psychic Noise") {

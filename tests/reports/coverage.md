@@ -1,17 +1,17 @@
 # Move Coverage Report
 
-Generated: 2026-05-21T20:23:55.733Z
+Generated: 2026-05-21T20:57:12.053Z
 
 **Total moves in moves.json:** 954
 
-**Engine named-branch references:** 798 (0 reference move names not in moves.json)
+**Engine named-branch references:** 796 (0 reference move names not in moves.json)
 
 ## Bucket Summary
 
 | Bucket | Count | % |
 |---|---:|---:|
-| named-branch | 798 | 83.6% |
-| data-driven | 88 | 9.2% |
+| named-branch | 796 | 83.4% |
+| data-driven | 90 | 9.4% |
 | damaging-only | 62 | 6.5% |
 | partially-handled | 0 | 0.0% |
 | unhandled | 6 | 0.6% |
@@ -20,7 +20,7 @@ Generated: 2026-05-21T20:23:55.733Z
 
 | Gen | Total | named-branch | data-driven | damaging-only | partial | unhandled |
 |---|---:|---:|---:|---:|---:|---:|
-| 9 | 954 | 798 | 88 | 62 | 0 | 6 |
+| 9 | 954 | 796 | 90 | 62 | 0 | 6 |
 
 ## Unhandled Moves (6)
 

@@ -16,12 +16,23 @@ const STATUS_NAME = {
   // Engine uses upper-case status keys; tests check defender.status against these.
 };
 
+// Charge moves: turn 1 charges, secondary fires on turn 2. Property test runs only one turn.
+const CHARGE = new Set([
+  'Solar Beam', 'Solar Blade', 'Sky Attack', 'Razor Wind', 'Skull Bash',
+  'Bounce', 'Dig', 'Dive', 'Fly', 'Phantom Force', 'Shadow Force',
+  'Geomancy', 'Meteor Beam', 'Electro Shot', 'Freeze Shock', 'Ice Burn', 'Sky Drop',
+]);
+// Snore needs user asleep; Burn Up needs user Fire-type.
+const PRECONDITION = new Set(['Snore', 'Burn Up', 'Double Shock', 'Steel Roller', 'Ice Spinner']);
+
 function isEligible(move) {
   if (!move.secondary && !move.secondaries) return false;
   if (move.isZ || move.isMax) return false;
   if (move.name.startsWith('G-Max ') || move.name.startsWith('Max ')) return false;
   if (move.basePower === 0 && move.category === 'Status') return false; // covered by other tests
   if (move.target === 'allAdjacentFoes' || move.target === 'allAdjacent') return false;
+  if (CHARGE.has(move.name)) return false;
+  if (PRECONDITION.has(move.name)) return false;
   return true;
 }
 
@@ -34,6 +45,35 @@ function describeExpected(secondary) {
   return parts.join(' ') || 'none';
 }
 
+// Engine uses camelCase for volatile names; JSON declares lowercase. Map between them.
+const VOLATILE_NAME_MAP = {
+  saltcure: 'saltCure',
+  healblock: 'healBlock',
+  partiallytrapped: 'partialTrap',
+  leechseed: 'leechSeed',
+  destinybond: 'destinyBond',
+  futuremove: 'futureSightTurns',
+  laserfocus: 'lockOn',
+  syrupbomb: 'syrupBomb',
+  // Some volatiles use the literal lowercase name in the engine
+  flinch: 'flinch',
+  confusion: 'confusion',
+  taunt: 'taunt',
+};
+
+function checkVolatile(defender, volatileName) {
+  if (!defender.volatile) return false;
+  const mapped = VOLATILE_NAME_MAP[volatileName] || volatileName;
+  const v = defender.volatile[mapped];
+  if (v === undefined || v === null || v === false || v === 0 || v === '') {
+    // Try as-is and lowercase fallbacks too
+    const direct = defender.volatile[volatileName];
+    if (direct && direct !== '') return true;
+    return false;
+  }
+  return true;
+}
+
 function checkSecondaryApplied(secondary, defender, attacker) {
   const issues = [];
   if (secondary.status) {
@@ -42,9 +82,9 @@ function checkSecondaryApplied(secondary, defender, attacker) {
     if (got !== want) issues.push(`status ${want}, got ${got}`);
   }
   if (secondary.volatileStatus) {
-    const v = secondary.volatileStatus;
-    const has = defender.volatile && (defender.volatile[v] || (v === 'flinch' && defender.volatile.flinch) || (v === 'confusion' && defender.volatile.confusion > 0));
-    if (!has) issues.push(`volatile ${v} not present`);
+    if (!checkVolatile(defender, secondary.volatileStatus)) {
+      issues.push(`volatile ${secondary.volatileStatus} not present`);
+    }
   }
   if (secondary.boosts) {
     for (const [stat, delta] of Object.entries(secondary.boosts)) {
