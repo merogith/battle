@@ -3,6 +3,364 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — UX polish: autosave toast, Master Ball glow, move-key hints 2026-05-20 (`claude/pokemon-mature-storyline-Xk3ut`)
+
+### Added — Three small "feel" wins on top of the deepening pass
+
+A focused, low-risk UX polish round shipped after the narrative
+deepening. Each item solves a single piece of player friction
+identified in the story-mode UX audit. Larger items from the audit
+(catch-miss animation, damage preview, story journal screen, city
+action reorder, Crucible first-entry cinematic, tutorial batching,
+per-variant BGM) are deferred to a follow-up PR — they need live
+browser testing to land cleanly and the variant work in this branch
+is shippable on its own.
+
+* **Autosave "💾 Saved" toast** — every `save()` call in the story
+  IIFE now flashes a bottom-center confirmation toast, throttled to
+  one per 3 seconds. Closing the tab mid-route used to be silent —
+  the player had no idea their last action had persisted. Now
+  there's a small visible signal. The throttle is on the toast only;
+  the underlying localStorage write is unchanged. CSS animation
+  (`@keyframes storySaveToastIn`) reuses the existing story tone
+  palette.
+* **Master Ball visual identity** — the catch screen's Master Ball
+  button now carries a purple glow pulse (`@keyframes
+  storyCatchMasterPulse`) and a ✨ marker beside the name. The other
+  three balls (Poké, Great, Ultra) render unchanged. A guaranteed-
+  catch throw reads distinct *before* the player clicks, not after
+  the outcome resolves.
+* **Move button keyboard shortcut hints** — every battle move tile
+  now shows a small `1` / `2` / `3` / `4` chip in the top-right
+  corner so new players discover the keyboard shortcuts that have
+  always worked. The chip uses a monospace font, dim color, doesn't
+  compete with the move name, and is hidden on coarse-pointer (touch-
+  only) devices where the hint is irrelevant. The aria-label gains
+  "keyboard shortcut N" for screen readers.
+
+### Deferred to a follow-up pass
+
+The story-mode UX audit identified five other improvement vectors.
+All are skipped on this branch because they need live browser
+verification and touch larger surfaces:
+
+* **Catch screen miss / flee animations** — sprite shake on miss,
+  slide-out on flee. Needs visual tuning in the browser.
+* **Damage preview on FIGHT** — estimated HP range per move vs. the
+  current foe. Touches the battle pipeline's `calculateDamage` hot
+  path; risk of side-effects without careful preview-flag plumbing.
+* **City action reordering by urgency + "NEW" badges on facility
+  unlocks** — needs in-game playthrough to verify ordering is right
+  for every city / progression state.
+* **Per-run story journal screen** — new tab in the Collection
+  screen. New HTML, new render path. Larger scope; non-trivial diff
+  on its own.
+* **Crucible first-entry cinematic** — single cold-open scene; easy
+  to add but needs the Crucible flow tested live to confirm the
+  trigger fires correctly.
+* **Per-variant BGM via existing music tracks** — audio mixing
+  needs verification across the 8 variants.
+* **Tutorial-queue batching** — changes the dispatch behavior of
+  every `_storyShowOneTimeTip` and `playStoryTutorial` call. Higher-
+  risk refactor; deserves its own commit + verification round.
+
+### Implementation notes
+
+| Touchpoint | What changed | LOC |
+|---|---|---|
+| `save()` (~28663) | Calls `_maybeShowSaveToast()` after localStorage write | ~2 |
+| `_maybeShowSaveToast` + state (new) | Throttled toast renderer | ~48 |
+| `@keyframes storySaveToastIn` (CSS ~1643) | Toast slide-in animation | ~5 |
+| Catch ball-button render (~37515) | `data-ball-type` + `.story-catch-ball--master` class + ✨ marker | ~12 |
+| `.story-catch-ball--master` + `@keyframes storyCatchMasterPulse` (CSS) | Master Ball purple glow pulse | ~14 |
+| Battle move tile render (~15752) | Adds `<span class="move-tile-shortcut">N</span>` in head, updates aria-label | ~7 |
+| `.battle-btn-move .move-tile-shortcut` + touch media query (CSS) | Shortcut chip styling | ~25 |
+
+Touched: `battle.html` only. Zero new asset files. No save-schema
+bump. No new dependencies.
+
+## Unreleased — Storyline depth pass: recurring NPCs, plot twists, per-variant Champion + Mystery outros 2026-05-20 (`claude/pokemon-mature-storyline-Xk3ut`)
+
+### Changed — Each of the 8 storyline variants now carries 15+ beats with a recurring character and a Gym-8 plot twist
+
+The 8-variant narrative system from the prior commit was thin — each
+storyline had 5 cold-open beats totalling ~15 lines of dialogue.
+Players who picked a variant felt the tone for the first 30 minutes,
+then the variant faded into background flavor. This pass deepens every
+variant so it carries the whole run.
+
+* **Recurring NPC per variant** — each storyline now has a single
+  character who appears in 3 mid-route scenes (rows 20, 33, 48 of
+  `STORY_EVENTS_RAW`). The NPC grows across appearances; the player
+  recognizes them by the third scene. Classic stays Prof. Oak; the
+  rival deepens for `second_sun`, `dead_raticate`, and `hypnos_lullaby`;
+  bone_keepers gets a Tower Attendant; project_mewtwo gets Colress;
+  the pasta variants get a "figure who watches you" / "your inverted
+  trainer sprite" that closes the gap to the player across the run.
+* **Plot twist per variant at row 53** — every storyline gets a single
+  recontextualizing moment between Gym 7 and Gym 8 that reframes the
+  whole journey. Project Subject Zero's starter paperwork; Bone
+  Keepers' ridge-Marowak as your starter's parent; Dead Raticate's
+  empty slot being for *you*; Lavender Frequency's third Champion
+  plaque; Static's "you have been playing inverted for three rows."
+  Each is a single cold-open scene; metaKey-deduped; ~5 lines.
+* **Per-variant Rival rebattle dialogue at rows 12, 39, 65** — the
+  three Rival rebattles after the intro duel are now voiced
+  per-storyline. 24 entries × ~3-5 lines = ~120 new lines. Variant
+  lines are weighted ~2× in the merged pool so the variant's voice
+  wins on the picker, but doesn't lock out the per-character pool.
+  `classic` falls through to the existing merged pool unchanged.
+* **Per-variant Champion intro + outro at row 64** — extends the
+  Champion fight's randomized intro pool with 3 variant lines, and
+  overrides the post-victory outro with a single variant-specific
+  finale line. The classic name pool stays intact when there's no
+  variant override.
+* **Per-variant Mystery Figure outro** — `MYSTERY_FIGURE_IDENTITIES`
+  outros were single lines per identity, the same regardless of
+  storyline. Each variant now overlays its own outro for the
+  identities that fit its tone (e.g. Project Subject Zero reframes
+  Cyrus's mask-drop around the lab director's handoff; Lavender
+  Frequency overlays `buried_alive`'s lines through the radio
+  song; Static overlays `cartridge_self` through the save-file log).
+  Falls through to the identity's default outro otherwise.
+* **Per-variant Subject Zero capture epilogue** — the Caged God boss
+  capture used to print one generic "Subject Zero is yours" message.
+  Each variant now closes the boss arc in its own voice: rival hands
+  you the cage at the door (`dead_raticate`); rival's sister awake
+  (`hypnos_lullaby`); Colress folding his lab coat (`project_mewtwo`);
+  the save file logging RESOLVED with loop count: 1 (`static`).
+* **Per-variant post-Hall-of-Fame epilogue** — first post-HoF city
+  re-entry now fires a one-shot cinematic scene closing the variant's
+  arc — the recurring NPC's last word, the rival's last visit, the
+  radio falling silent. Chains in front of the existing post-HoF
+  orientation tip; metaKey-deduped per (variant × save). The
+  recurring NPC across the run ends here.
+
+### Coverage per variant now
+
+Each of the 8 variants currently carries:
+
+* 1 intro cold-open (row 68) — already shipped on prior commit
+* 4 gym-milestone cold-opens (rows 7, 26, 56, 64) — already shipped
+* **3 new mid-route NPC scenes (rows 20, 33, 48)** — this pass
+* **1 new plot-twist scene (row 53)** — this pass
+* **3 new Rival rebattle dialogue overrides (rows 12, 39, 65)** — this pass
+* **1 new Champion intro pool + outro** — this pass
+* **1 new Mystery Figure outro override** — this pass
+* **1 new Subject Zero boss-arc epilogue** — this pass
+* **1 new post-Hall-of-Fame epilogue** — this pass
+* Plus passive flavor (per-variant roaming legendary sighting,
+  first-sighting Pokédex lore on mature+ tiers) — already shipped
+
+Total: **~16 distinct narrative moments per variant** across a single
+run. A player who clears the game on all 8 variants reads roughly
+~120 unique scenes' worth of dialogue.
+
+### Implementation notes
+
+| Touchpoint | What changed | LOC |
+|---|---|---|
+| `_RIVAL_DIALOGUE_BY_VARIANT` (new, ~27050) | 8 variants × 3 rebattle rows × ~5 lines | ~90 |
+| `mergeRivalQuotePools` (~27062) | Variant lines weighted 2× into the pool | ~5 |
+| `_CHAMPION_DIALOGUE_BY_VARIANT` (new, ~26515) | Per-variant intros + outro | ~80 |
+| `getTrainerQuoteForBattle` (~27170) | Champion intro override on row 64 | ~10 |
+| Champion outro resolver (~35012) | Variant outro wins on row 64 | ~5 |
+| `_MYSTERY_OUTRO_BY_VARIANT` (new) + `_variantMysteryOutro` | Per-variant identity outros | ~50 |
+| Mystery Figure render path (~35165) | Variant outro override hook | ~5 |
+| `_SUBJECT_ZERO_EPILOGUE_BY_VARIANT` (new) + `_variantSubjectZeroEpilogue` | Per-variant boss-arc capture epilogue | ~25 |
+| Subject Zero capture message (~37081) | Reads variant epilogue | ~2 |
+| `STORY_COLD_OPENS` (~31610) | 24 new NPC scenes + 8 new plot-twist scenes | ~280 |
+| `STORYLINE_VARIANTS.*.beatOverrides` (~31470) | Add rows 20, 33, 48, 53 to each | ~32 |
+| `_POSTHOF_EPILOGUE_BY_VARIANT` (new) + `_showVariantPostHofEpilogue` | Per-variant Hall-of-Fame epilogue | ~110 |
+| `continuePostGame` (~39651) | Chains epilogue → orientation tip → enterCity | ~15 |
+
+Touched: `battle.html` (12 sections, all additive). Zero new asset
+files. No save-schema bump (`sm.storyLine` already at v17).
+Existing saves migrate cleanly — variant lines fall through to the
+classic pool when not overridden, and the new metaKeys are unique so
+already-stamped tips never collide.
+
+## Unreleased — Eight-storyline narrative system + roaming legendary cinematic 2026-05-20 (`claude/pokemon-mature-storyline-Xk3ut`)
+
+### Added — Pick your storyline at New Adventure, four tones from Classic to Creepypasta
+
+The story-mode timeline (`STORY_EVENTS_RAW`) used to play exactly the
+same way every run, with one cold-open scene (the intro rival) and a
+single-line "📡 Sightings report" toast as the only ceremony around a
+roaming legendary. Eight badges, an Elite Four, a Champion, and the
+post-game Caged God all read the same regardless of who the player
+was. The narrative bus (`STORYLINE_VARIANTS`, added in v17) was wired
+for variants — it just only had one entry.
+
+This pass populates the bus with **eight storylines** across four
+tonal tiers, plus a randomized "Surprise Me" sentinel. Every variant
+re-skins the same iron 68-row spine — no new events, no new
+mechanics, no save schema change — by re-routing the existing beat
+overrides, broker dialogue, and Mystery Figure identity:
+
+* `classic` — **The Champion's Road**. The standard journey,
+  preserved verbatim for existing saves.
+* `second_sun` — **The Second Sun**. You and the rival picked up
+  starters the same morning. They picked first. The whole road is
+  catching up.
+* `bone_keepers` — **Bone Keepers**. *Mature canon.* Lavender's
+  tower casts shadows north and south of the eight-gym route. The
+  Marowak murder is canon; this is the journey that walks past it.
+* `project_mewtwo` — **Project Subject Zero**. *Mature canon.* The
+  Cinnabar lab never officially closed. Your starter has a serial
+  number on its paw. The Caged God arc is the spine, not subtext.
+* `hypnos_lullaby` — **Hypno's Lullaby**. *Soft creepypasta.* The
+  radio in every gym town reads the same missing-children names.
+  So does the broker. Pendulum sightings escalate by gym.
+* `dead_raticate` — **The Empty Slot**. *Soft creepypasta.* Your
+  rival has six Pokémon. After Lavender Town, they have five. They
+  never bring it up. Neither does the game.
+* `lavender_frequency` — **Lavender Frequency**. *Full creepypasta.*
+  Visual: hue shift + scanlines on every overlay. The Pokémart
+  radio plays the Lavender theme. The Champion's plaque has your
+  name on it, weathered. The Mystery Figure is `BURIED ALIVE`.
+* `static` — **STATIC**. *Full creepypasta.* Visual: text shake +
+  corrupted glyphs on overlays. Save File B, loop count unknown.
+  Your starter says one line in a font the game shouldn't have.
+  The Mystery Figure is your trainer sprite in inverted colors.
+* `surprise_me` — sentinel. Rolls one of the eight at run start.
+  The variant-specific intro cold-open is the reveal.
+
+### Added — Cinematic roaming-legendary "sighting" before the catch screen
+
+After Gym 5 / Gym 7 victories, a sub-legendary is queued for the
+next route. Today the player saw a one-line toast and walked
+straight onto the catch screen. The new flow inserts a
+**sighting cinematic** in front:
+
+* Dark fade-in, type-themed background (the legendary's primary
+  type drives the BG pick from the existing `menu_bg_*.png`
+  library).
+* Pulsing legendary sprite with gold drop-shadow.
+* Per-species **canonical lore line** — drawn from real Pokédex
+  flavor, not invented horror. ~50 entries cover the entire
+  `SUB_LEGENDARY_POOL`: Suicune purifying poisoned water, Mewtwo's
+  Specimen 0002 lab note ("there was a 0001"), Spiritomb's 108
+  grudges, Mimikyu wanting to be loved like the friend on the
+  box, etc.
+* Per-variant **narrator block** above the species line — same
+  two-line stanza, but rewritten 8 different ways for each
+  storyline's voice.
+* `sparkle.wav` + `danger.wav` mix on appearance, `shine.wav` on
+  dismiss. All from the existing `music/ui_sfx` library.
+* "Approach the legend →" button drops into the existing catch
+  screen unchanged. Catch mechanics, flee chance, ball rules — all
+  untouched.
+
+This is the user-facing improvement that started the pass: making
+the legendary appearance feel like a *moment*, not a toast.
+
+### Added — First-sighting Pokédex lore overlay on mature+ storylines
+
+On the four mature/soft/full storylines, the first time the player
+encounters certain species on a save, a one-shot overlay fires
+between the encounter slide-in and the first ball throw. Each entry
+is a two-line in-world quote drawn from canonical Pokédex flavor.
+~24 species are covered, with restraint over horror:
+
+> **Cubone.** "It wears the skull of its mother. The crying never quite stops."
+> **Yamask.** "It carries a mask that was once its face. It looks at it sometimes, and weeps."
+> **Drifloon.** "Children's stories warn against grabbing its string. Some children don't come back."
+> **Hypno.** "Lavender Town keeps a missing-persons board. Three of them last saw a pendulum."
+> **Mewtwo.** "The lab notes call it Specimen 0002. There was a 0001."
+> **Porygon.** "Code can be killed. They wrote it that way on purpose."
+
+The classic tier never sees these overlays — the line gates on the
+variant's `tier` ∈ `mature` / `soft_pasta` / `pasta`. Dedupe uses
+the existing `tipsShown[firstsighting-<species>]` bucket so a
+playthrough on `bone_keepers` doesn't replay the same lines on a
+later `static` run.
+
+### Added — Caged God broker scenes promoted from `window.alert()` to cinematic overlay
+
+The three Caged-God leads (Ledger at City 2, Recording at City 5,
+Key at City 8) used to fire as plain browser `alert()` boxes. They
+now use the same narrative overlay as the cold-opens, with a
+**per-variant broker voice** for the six variants where it makes
+sense to override:
+
+* `bone_keepers` — tower attendant lineage, kind but tired.
+* `project_mewtwo` — locked door, redacted ledger, magnetic key
+  with a barcode.
+* `hypnos_lullaby` — missing-persons binder, child's voice memo,
+  pendulum on a chain.
+* `dead_raticate` — stuffed Raticate on the broker's shelf, "kid
+  who couldn't keep going" returns list.
+* `lavender_frequency` — the broker is in the room but you can't
+  look at them directly.
+* `static` — the iron box has *your* trainer name engraved on the
+  lid.
+
+`classic` and `second_sun` use the existing prose verbatim.
+
+### Added — Two Mystery Figure identities + per-variant identity bias
+
+`MYSTERY_FIGURE_IDENTITIES` adds two storyline-exclusive entries:
+
+* `buried_alive` — the Lavender Frequency mask-drop. Sprite reuses
+  the existing Hiker; the variant's tone class on the cold-open
+  carries the visual distortion.
+* `cartridge_self` — the STATIC mask-drop. Sprite reuses Red; the
+  variant's tone class flips the rendering effect.
+
+`_storyPickMysteryIdentity` now reads `variant.mysteryBias` —
+`{ identityKey: weight }`. The full Pasta variants 100%-bias to
+their exclusive identity; mature variants nudge toward
+canonical-feeling matches (e.g. Bone Keepers → cyrus / ghetsis /
+red); classic and second_sun stay uniform.
+
+### Added — Storyline picker card in New Adventure → step 3
+
+The trainer-create screen grows a new "3 — Storyline" section
+between Difficulty and Pokémon generations. Card grid mirrors the
+existing `.story-create-diff-card` style, with a color-coded tier
+bar (gold for classic, gray for mature, purple for soft pasta, red
+for full pasta, blue for random) and a one-line tagline per
+variant. Cards on the pasta tiers carry an inline warning.
+
+The user's pick persists in `pbs_story_run_menu_defaults.storyLine`
+so the next New Adventure remembers the last storyline used.
+
+### Implementation notes
+
+| Touchpoint | What changed | LOC |
+|---|---|---|
+| CSS (`battle.html` near line 1523) | Eight `.story-tone-*` classes + sighting-overlay layout + storyline picker grid | ~120 |
+| `STORYLINE_VARIANTS` (~31470) | 1 entry → 9 entries, each with `beatOverrides` / `mysteryBias` / `toneClass` | ~150 |
+| `STORY_COLD_OPENS` (~30810) | 1 entry → 33 entries (1 intro + 32 per-variant beat scenes) | ~330 |
+| `_renderNarrativeOverlay` (~33420) | New shared overlay helper | ~80 |
+| `_STORY_INTRO_SCENES` (~33575) | Per-variant intro-rival rewrites | ~85 |
+| `_LEGENDARY_LORE` (~33470) | ~50-entry canonical lore table | ~60 |
+| `_LEGENDARY_SIGHTING_FRAMES` (~33530) | Per-variant narrator framing | ~30 |
+| `_showRoamingLegendarySighting` (~33540) | Cinematic overlay function | ~70 |
+| `_FIRST_SIGHTING_LORE` (~33495) | ~24-species canonical Pokédex flavor | ~50 |
+| `_showFirstSightingLoreOverlay` + gate (~33575) | First-sighting overlay + tier gate | ~70 |
+| `_runFirstStoryInterrupt` (~31830) | `preRender` hook so roaming sighting fires before catch screen | ~15 |
+| `MYSTERY_FIGURE_IDENTITIES` (~26555) | `buried_alive` + `cartridge_self` entries + biased picker | ~45 |
+| `_BOSS_LEAD_FLAVOR_BY_VARIANT` (~35590) | Per-variant broker voice override table | ~60 |
+| `bossCollectLead` (~35680) | `window.alert()` → `_renderNarrativeOverlay()` | ~25 |
+| `enterCatchEncounter` (~36195) | First-sighting overlay hook | ~10 |
+| `_tcState` + handlers (~30075) | `storyline` field + `trainerCreateSetStoryline` + grid renderer | ~75 |
+| HTML — trainer-create screen (~6925) | New "3 — Storyline" section + picker grid | ~10 |
+| `_readStorylineFromUI` + `_pickRandomStorylineVariant` (~30855) | Surprise-me roll + picker fallback | ~30 |
+| `persistStoryMenuDefaultsFromRun` (~28358) | Persist `storyLine` to menu defaults | ~2 |
+| `docs/STORY_NARRATIVE_VARIANTS.md` | Full design spec (new file) | ~360 |
+
+Existing saves: `sm.storyLine` already migrates to `'classic'` from
+the v16→v17 pass. No new save schema. The 14 existing tutorial scenes
+keep their copy. The 7 existing Mystery Figure identities are
+untouched; the two new ones are additions.
+
+**Touched:** `battle.html` (CSS + 13 JS sections, all additive except
+the `bossCollectLead` and `_runFirstStoryInterrupt` edits which
+preserve their existing fall-through behaviour), `CHANGELOG.md`,
+`docs/STORY_NARRATIVE_VARIANTS.md` (new design doc).
+
 ## Unreleased — trainer NPC mobile UX + richer recommendations 2026-05-18 (`claude/improve-move-tutor-mobile-HevcJ`)
 
 ### Changed — Tutor / Dojo / Nature / EV Trainer dropdowns round-trip on tap
