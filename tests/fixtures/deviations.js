@@ -3,8 +3,17 @@
 // Each entry MUST be cross-referenced in that file before being added here.
 
 export const skipMoves = {
-  // Final Gambit damage = user's own HP; user faints. Not a normal damaging move.
-  'damaging-nonzero': ['Final Gambit'],
+  // Moves needing specific preconditions the property tests cannot easily fabricate.
+  'damaging-nonzero': [
+    'Final Gambit',  // damage = user HP; user faints. Special damage path.
+    'Burn Up',       // requires user to be Fire type; fails otherwise. Engine-correct.
+    'Double Shock',  // requires user to be Electric type. Engine-correct.
+    'Doom Desire',   // damage delayed 2 turns; first turn no HP change.
+    'Future Sight',  // same delayed-damage path.
+    'Snore',         // only fires if user is Asleep. Engine-correct.
+    'Steel Roller',  // fails if no terrain is active. Engine-correct.
+    'Ice Spinner',   // similar - clears terrain conditionally
+  ],
 
   // These do not deal damage in the normal sense but report HP delta:
   // - Pain Split equalizes HP

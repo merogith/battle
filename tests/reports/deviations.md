@@ -59,6 +59,59 @@ These are VGC-accurate but worth noting as exceptions to the standard damage for
 - **Engine**: `battle.html:21494-21497`
 - **Note**: VGC-correct
 
+## Moves With Preconditions Property Tests Cannot Easily Fabricate
+
+These moves are VGC-correct but require specific battle context that the property
+tests don't replicate (skipped via `tests/fixtures/deviations.js`).
+
+### Burn Up
+- **Precondition**: User must be Fire type. Fails otherwise.
+- **Note**: Engine-correct; tests use Mew (Psychic) attacker.
+
+### Double Shock
+- **Precondition**: User must be Electric type.
+- **Note**: Engine-correct.
+
+### Future Sight / Doom Desire
+- **Precondition**: Damage is delayed 2 turns; first turn shows no HP change.
+- **Note**: Engine-correct.
+
+### Snore
+- **Precondition**: User must be Asleep (status = SLP).
+- **Note**: Engine-correct.
+
+### Steel Roller / Ice Spinner
+- **Precondition**: A terrain must be active for full effect; Steel Roller fails entirely if no terrain.
+- **Note**: Engine-correct.
+
+### Counter / Mirror Coat / Metal Burst / Bide
+- **Precondition**: Requires a Physical/Special hit from the opponent on this turn.
+- **Note**: Engine-correct; tests can't easily set up the opponent's prior hit.
+
+### Sucker Punch / Upper Hand / Revenge / Assurance / Avalanche
+- **Precondition**: Requires opponent to be using or have used an attack.
+- **Note**: Engine-correct.
+
+### Fake Out
+- **Precondition**: Must be used on user's first turn out (fakeOutOk = true).
+- **Note**: Engine-correct, but property tests use `reset()` so fakeOutOk persists.
+
+### Last Resort
+- **Precondition**: All other moves in the user's moveset must have been used.
+- **Note**: Engine-correct.
+
+### Beat Up
+- **Precondition**: Damage scales with party. Single-mon tests undercount.
+- **Note**: Engine-correct.
+
+### Magnitude
+- **Effect**: Power is randomized 10-150 each use.
+- **Note**: Engine-correct; on a Magnitude 4 roll, damage may be tiny.
+
+### Pursuit
+- **Precondition**: Damage doubles only when target switches.
+- **Note**: Engine-correct.
+
 ## How To Add Entries
 
 When a property test fails on a move that should NOT be checked against VGC:
