@@ -8773,6 +8773,8 @@
                     if (m.boosts != null && typeof m.boosts === 'object') row.boosts = m.boosts;
                     if (m.self != null && typeof m.self === 'object') row.self = m.self;
                     if (m.multihit != null) row.multihit = m.multihit;
+                    if (m.drain != null) row.drain = m.drain;
+                    if (m.recoil != null) row.recoil = m.recoil;
                     movesDB[m.name] = row;
                     if (m.name) implementedMoveNames.add(m.name);
                 }
@@ -20950,14 +20952,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let ratio = userSpe / targetSpe;
                     basePower = ratio >= 4 ? 150 : ratio >= 3 ? 120 : ratio >= 2 ? 80 : ratio >= 1 ? 60 : 40;
                 }
-                // Multi-hit: prefer moves.json `multihit` on the move object; fallback to legacy map (Metronome/Copycat moves may lack DB fields).
+                // Multi-hit: read `multihit` from moves.json (movesDB row). All known multi-hit
+                // moves are declared in data/moves.json; adding a new one only requires a JSON edit.
                 let numHits = 1;
-                const multiHitConfig = { "Icicle Spear": [2,5], "Rock Blast": [2,5], "Dual Wingbeat": [2,2], "Arm Thrust": [2,5], "Bone Rush": [2,5], "Bullet Seed": [2,5], "Pin Missile": [2,5], "Fury Attack": [2,5], "Double Slap": [2,5], "Comet Punch": [2,5], "Fury Swipes": [2,5], "Water Shuriken": [2,5], "Scale Shot": [2,5], "Tail Slap": [2,5], "Gear Grind": [2,2], "Dragon Darts": [2,2], "Double Hit": [2,2], "Twineedle": [2,2], "Spike Cannon": [2,5], "Barrage": [2,5], "Population Bomb": [1,10], "Triple Kick": [3,3], "Triple Axel": [3,3], "Triple Dive": [3,3], "Surging Strikes": [3,3], "Twin Beam": [2,2], "Double Iron Bash": [2,2], "Tachyon Cutter": [2,2] };
                 let _mhSpec = move.multihit;
-                if (_mhSpec == null && multiHitConfig[move.name]) {
-                    let [mn, mx] = multiHitConfig[move.name];
-                    _mhSpec = mn === mx ? mn : [mn, mx];
-                }
                 if (_mhSpec != null) {
                     const _roll25 = (mn, mx) => (mn === mx ? mn : [2, 2, 3, 3, 4, 5][Math.floor(Math.random() * 6)]);
                     const _rollRange = (mn, mx) => {
@@ -21857,9 +21855,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
 
                 // Drain moves: Heal a fraction of damage dealt. Data-driven from move.drain = [num, den]
-                // (50% default for legacy named-list moves) so new moves in moves.json work without code edits.
-                let _drainNamedFallback = { "Drain Punch": [1,2], "Giga Drain": [1,2], "Absorb": [1,2], "Mega Drain": [1,2], "Leech Life": [1,2], "Horn Leech": [1,2], "Parabolic Charge": [1,2], "Oblivion Wing": [3,4], "Draining Kiss": [3,4], "Dream Eater": [1,2], "Bitter Blade": [1,2], "Bouncy Bubble": [1,2], "Matcha Gotcha": [1,2] };
-                let _drainRatio = Array.isArray(move.drain) ? move.drain : _drainNamedFallback[move.name];
+                // declared in data/moves.json (movesDB row). Adding a new drain move only needs a JSON edit.
+                let _drainRatio = Array.isArray(move.drain) ? move.drain : null;
                 if (_drainRatio && !hitSub) {
                     let drainBase = actualDamage;
                     let drainNum = _drainRatio[0] || 1, drainDen = _drainRatio[1] || 2;
@@ -21940,10 +21937,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     attacker.currentHp -= actCost;
                     logMsg(`${attacker.name} took ${actCost} damage from Mind Blown!`, 'dmg');
                 }
-                // Recoil moves: data-driven from move.recoil = [num, den] (in moves.json).
+                // Recoil moves: data-driven from move.recoil = [num, den] declared in data/moves.json.
                 // Both Rock Head and Magic Guard prevent recoil damage.
-                let _recoilNamedFallback = { "Brave Bird":[33,100], "Flare Blitz":[33,100], "Wild Charge":[1,4], "Double-Edge":[33,100], "Head Smash":[1,2], "Wood Hammer":[33,100], "Take Down":[1,4], "Submission":[1,4], "Volt Tackle":[33,100], "Wave Crash":[33,100], "Head Charge":[1,4], "Light of Ruin":[1,2] };
-                let _recoilRatio = Array.isArray(move.recoil) ? move.recoil : _recoilNamedFallback[move.name];
+                let _recoilRatio = Array.isArray(move.recoil) ? move.recoil : null;
                 if (!hitSub && _recoilRatio && move.name !== "Struggle" && attacker.ability !== "Rock Head" && attacker.ability !== "Magic Guard" && attacker.currentHp > 0) {
                     let recoilBase = actualDamage > 0 ? actualDamage : damage;
                     let recoilNum = _recoilRatio[0] || 1, recoilDen = _recoilRatio[1] || 1;
