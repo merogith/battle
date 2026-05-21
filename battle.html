@@ -37112,10 +37112,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        // Roaming sub-legendaries: after Gym 5 and Gym 7 victories, queue a one-shot
-        // wild encounter for the next route. 30% catch rate, guaranteed flee on
-        // miss — they appear once, then vanish forever. Master Ball still works.
-        // Gen-filtered against sm.settings.enabledGens.
+        // Roaming sub-legendary: after the Gym 8 victory, queue a one-shot wild
+        // encounter for the route from City 8 to the League city. 30% catch rate,
+        // guaranteed flee on miss — appears once, then vanishes forever. Master
+        // Ball still works. Gen-filtered against sm.settings.enabledGens.
         const SUB_LEGENDARY_POOL = [
             // Gen 1-3 birds, beasts, regis, eons, mythicals
             'Articuno','Zapdos','Moltres','Mew',
@@ -37133,8 +37133,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Okidogi','Munkidori','Fezandipiti'
         ];
         const _ROAMING_TRIGGERS = {
-            'Gym Leader 5': 'gym5',
-            'Gym Leader 7': 'gym7'
+            'Gym Leader 8': 'gym8'
         };
         function _storyEnsureRoamingState() {
             if (!sm.roamingLegendary || typeof sm.roamingLegendary !== 'object') {
@@ -37928,7 +37927,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { window.showGameAlert && window.showGameAlert('💊 A traveler dropped a Vitamin Pack in the tall grass. +1 Vitamin Pack.'); } catch (e) {}
                 }
                 // Roaming sub-legendary trigger — queues a one-shot encounter on the
-                // next route after Gym 5 / Gym 7 victories (first clear only).
+                // route from City 8 to the League city after the Gym 8 victory (first clear only).
                 try { _storyQueueRoamingFromVictory(en); } catch (e) {}
                 if (en === 'Rival') setRivalStanding('player', idx);
                 const isMilestoneVictory = isGymBadge || /^(E1|E2|E3|E4|Champion|Rival)$/.test(en);

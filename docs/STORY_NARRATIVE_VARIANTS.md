@@ -67,10 +67,10 @@ Every variant fires cold-opens at six **stable beats**:
 
 Plus two **dynamic** scenes:
 
-* **Roaming legendary sighting** — fires once per roaming spawn (after Gym 5 / Gym 7
-  victories already queue these). The route appearance overlay carries per-variant
-  framing and per-species lore (e.g. Suicune as a north wind that purifies grief,
-  Mewtwo as a barcoded escapee).
+* **Roaming legendary sighting** — fires once per roaming spawn (the Gym 8
+  victory queues this on the route from City 8 to the League city). The route
+  appearance overlay carries per-variant framing and per-species lore (e.g.
+  Suicune as a north wind that purifies grief, Mewtwo as a barcoded escapee).
 * **Mystery Figure intro/outro** — `MYSTERY_FIGURE_IDENTITIES` already has 7
   identities; the variant biases which identity rolls and overlays additional
   lines on the existing intros/outro.
@@ -337,7 +337,7 @@ so each scene fires exactly once per save.
 ## 5. Roaming legendary sighting
 
 `battle.html:30916–30943` already queues a `pending` roaming legendary after
-gym 5/7 victories. Today the player gets:
+the gym 8 victory. Today the player gets:
 
 * `showGameAlert(...)` toast: "📡 Sightings report: a wild Lugia..."
 * Walks onto the catch screen with the message "A roaming Lugia! One throw —
