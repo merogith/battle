@@ -8931,6 +8931,8 @@
                     if (m.boosts != null && typeof m.boosts === 'object') row.boosts = m.boosts;
                     if (m.self != null && typeof m.self === 'object') row.self = m.self;
                     if (m.multihit != null) row.multihit = m.multihit;
+                    if (m.drain != null) row.drain = m.drain;
+                    if (m.recoil != null) row.recoil = m.recoil;
                     movesDB[m.name] = row;
                     if (m.name) implementedMoveNames.add(m.name);
                 }
@@ -9873,6 +9875,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
             return false;
         }
+        /** Move verification: ?testmoves=1 or #testmoves runs a quick in-browser property suite. */
+        function __testmovesUrlRequested() {
+            try {
+                const v = new URLSearchParams(location.search).get('testmoves');
+                if (v === '1' || v === 'true') return true;
+                var h = String(location.hash || '').replace(/^#/, '');
+                if (h === 'testmoves' || h === 'testmoves=1' || /^testmoves$/i.test(h)) return true;
+            } catch (e) {}
+            return false;
+        }
         /** KO / hazard / forced-switch stress test: ?kobugtest=1 or #kobugtest (see startKoBugTestBattle). */
         function __kobugtestUrlRequested() {
             try {
@@ -9939,6 +9951,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 setTimeout(function() {
                     try { window.startKoBugTestBattle(); } catch (e) { console.warn('[kobugtest]', e); }
                 }, 0);
+            } else if (__testmovesUrlRequested() && typeof window.runMoveSelfTest === 'function') {
+                setTimeout(function() {
+                    try { window.runMoveSelfTest(); } catch (e) { console.warn('[testmoves]', e); }
+                }, 100);
             } else {
                 var _ctKey = (__storyChampionWeakTestUrlRequested && __storyChampionWeakTestUrlRequested()) ? null : __championtestChampionKey();
                 if (_ctKey !== null && typeof window.startChampionTestBattle === 'function') {
@@ -10878,7 +10894,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 grade: 3, _fromAPI: true
             };
         }
-        const sleep = ms => new Promise(res => setTimeout(res, settings.animations ? ms : 10));
+        const sleep = ms => (typeof window !== 'undefined' && window.__testHarness === true) ? Promise.resolve() : new Promise(res => setTimeout(res, settings.animations ? ms : 10));
         function showBattlePopup(text, cssClass, isPlayerSide) {
             if (!settings.animations) return;
             let container = document.getElementById('screen-battle');
@@ -21212,14 +21228,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let ratio = userSpe / targetSpe;
                     basePower = ratio >= 4 ? 150 : ratio >= 3 ? 120 : ratio >= 2 ? 80 : ratio >= 1 ? 60 : 40;
                 }
-                // Multi-hit: prefer moves.json `multihit` on the move object; fallback to legacy map (Metronome/Copycat moves may lack DB fields).
+                // Multi-hit: read `multihit` from moves.json (movesDB row). All known multi-hit
+                // moves are declared in data/moves.json; adding a new one only requires a JSON edit.
                 let numHits = 1;
-                const multiHitConfig = { "Icicle Spear": [2,5], "Rock Blast": [2,5], "Dual Wingbeat": [2,2], "Arm Thrust": [2,5], "Bone Rush": [2,5], "Bullet Seed": [2,5], "Pin Missile": [2,5], "Fury Attack": [2,5], "Double Slap": [2,5], "Comet Punch": [2,5], "Fury Swipes": [2,5], "Water Shuriken": [2,5], "Scale Shot": [2,5], "Tail Slap": [2,5], "Gear Grind": [2,2], "Dragon Darts": [2,2], "Double Hit": [2,2], "Twineedle": [2,2], "Spike Cannon": [2,5], "Barrage": [2,5], "Population Bomb": [1,10], "Triple Kick": [3,3], "Triple Axel": [3,3], "Triple Dive": [3,3], "Surging Strikes": [3,3], "Twin Beam": [2,2], "Double Iron Bash": [2,2], "Tachyon Cutter": [2,2] };
                 let _mhSpec = move.multihit;
-                if (_mhSpec == null && multiHitConfig[move.name]) {
-                    let [mn, mx] = multiHitConfig[move.name];
-                    _mhSpec = mn === mx ? mn : [mn, mx];
-                }
                 if (_mhSpec != null) {
                     const _roll25 = (mn, mx) => (mn === mx ? mn : [2, 2, 3, 3, 4, 5][Math.floor(Math.random() * 6)]);
                     const _rollRange = (mn, mx) => {
@@ -22119,9 +22131,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
 
                 // Drain moves: Heal a fraction of damage dealt. Data-driven from move.drain = [num, den]
-                // (50% default for legacy named-list moves) so new moves in moves.json work without code edits.
-                let _drainNamedFallback = { "Drain Punch": [1,2], "Giga Drain": [1,2], "Absorb": [1,2], "Mega Drain": [1,2], "Leech Life": [1,2], "Horn Leech": [1,2], "Parabolic Charge": [1,2], "Oblivion Wing": [3,4], "Draining Kiss": [3,4], "Dream Eater": [1,2], "Bitter Blade": [1,2], "Bouncy Bubble": [1,2], "Matcha Gotcha": [1,2] };
-                let _drainRatio = Array.isArray(move.drain) ? move.drain : _drainNamedFallback[move.name];
+                // declared in data/moves.json (movesDB row). Adding a new drain move only needs a JSON edit.
+                let _drainRatio = Array.isArray(move.drain) ? move.drain : null;
                 if (_drainRatio && !hitSub) {
                     let drainBase = actualDamage;
                     let drainNum = _drainRatio[0] || 1, drainDen = _drainRatio[1] || 2;
@@ -22202,10 +22213,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     attacker.currentHp -= actCost;
                     logMsg(`${attacker.name} took ${actCost} damage from Mind Blown!`, 'dmg');
                 }
-                // Recoil moves: data-driven from move.recoil = [num, den] (in moves.json).
+                // Recoil moves: data-driven from move.recoil = [num, den] declared in data/moves.json.
                 // Both Rock Head and Magic Guard prevent recoil damage.
-                let _recoilNamedFallback = { "Brave Bird":[33,100], "Flare Blitz":[33,100], "Wild Charge":[1,4], "Double-Edge":[33,100], "Head Smash":[1,2], "Wood Hammer":[33,100], "Take Down":[1,4], "Submission":[1,4], "Volt Tackle":[33,100], "Wave Crash":[33,100], "Head Charge":[1,4], "Light of Ruin":[1,2] };
-                let _recoilRatio = Array.isArray(move.recoil) ? move.recoil : _recoilNamedFallback[move.name];
+                let _recoilRatio = Array.isArray(move.recoil) ? move.recoil : null;
                 if (!hitSub && _recoilRatio && move.name !== "Struggle" && attacker.ability !== "Rock Head" && attacker.ability !== "Magic Guard" && attacker.currentHp > 0) {
                     let recoilBase = actualDamage > 0 ? actualDamage : damage;
                     let recoilNum = _recoilRatio[0] || 1, recoilDen = _recoilRatio[1] || 1;
@@ -25194,16 +25204,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 changeStage(attacker, 'def', -1); changeStage(attacker, 'spd', -1); return;
             }
 
-            // === AQUA STEP: +1 Spe ===
-            if (move.name === "Aqua Step") { changeStage(attacker, 'spe', 1); return; }
+            // Aqua Step: +1 Spe to user. Declared in moves.json as secondary.self.boosts.spe=1 (100% chance).
+            // Engine's generic secondary handler applies it - no named branch needed.
 
-            // === TRIPLE ARROWS: raise crit, 50% flinch, 30% lower Def ===
-            if (move.name === "Triple Arrows") {
-                attacker.volatile.focusEnergy = (attacker.volatile.focusEnergy || 0) + 1;
-                if (Math.random() < (sereneGrace ? 1.0 : 0.5)) defender.volatile.flinch = true;
-                if (Math.random() < (sereneGrace ? 0.6 : 0.3)) changeStage(defender, 'def', -1);
-                return;
-            }
+            // Triple Arrows: high crit (critRatio:2), 50% def -1, 30% flinch.
+            // All declared in moves.json (critRatio + secondaries array). Generic handler applies.
 
             // === BURNING JEALOUSY: burn target if it raised any stat this turn ===
             if (move.name === "Burning Jealousy") {
@@ -25211,8 +25216,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
 
-            // === CHILLING WATER: lower target's Atk by 1 ===
-            if (move.name === "Chilling Water") { changeStage(defender, 'atk', -1); return; }
+            // Chilling Water: -1 atk to target. Declared in moves.json secondary.boosts (100% chance).
 
             // === PSYCHIC NOISE: block healing for 2 turns ===
             if (move.name === "Psychic Noise") {
@@ -47563,6 +47567,175 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Initialize audio system — first gesture starts session battle music; professor intro theme is story-driven
         AudioSystem.init();
+
+        // === In-browser move self-test (?testmoves=1) ===
+        // Quick property check against the live engine: every sampled move deals damage / applies its
+        // declared effect. Logs to console and shows an overlay. See /tests/property/ for the full suite.
+        window.runMoveSelfTest = async function() {
+            // Wait for game data
+            const maxWait = 30000, start = Date.now();
+            while (!(Object.keys(baseStats).length > 0 && Object.keys(movesDB).length > 0)) {
+                if (Date.now() - start > maxWait) {
+                    console.error('[testmoves] timed out waiting for data');
+                    return;
+                }
+                await new Promise(r => setTimeout(r, 100));
+            }
+
+            const results = { passed: 0, failed: 0, skipped: 0, failures: [] };
+            const SAMPLE = [
+                // Per-category samples
+                { name: 'Tackle', cat: 'damaging', defenderType: 'Sceptile' },
+                { name: 'Flamethrower', cat: 'damaging', defenderType: 'Sceptile' },
+                { name: 'Surf', cat: 'damaging', defenderType: 'Charizard' },
+                { name: 'Thunderbolt', cat: 'damaging', defenderType: 'Gyarados' },
+                { name: 'Ice Beam', cat: 'damaging', defenderType: 'Garchomp' },
+                { name: 'Earthquake', cat: 'damaging', defenderType: 'Tyranitar' },
+                { name: 'Shadow Ball', cat: 'damaging', defenderType: 'Alakazam' },
+                { name: 'Dragon Pulse', cat: 'damaging', defenderType: 'Salamence' },
+                { name: 'Moonblast', cat: 'damaging', defenderType: 'Salamence' },
+                { name: 'Body Slam', cat: 'damaging', defenderType: 'Sceptile' },
+                // Status effects
+                { name: 'Swords Dance', cat: 'boost-self', stat: 'atk', delta: 2 },
+                { name: 'Calm Mind', cat: 'boost-self', stat: 'spa', delta: 1 },
+                { name: 'Growl', cat: 'boost-target', stat: 'atk', delta: -1 },
+                { name: 'Leer', cat: 'boost-target', stat: 'def', delta: -1 },
+                { name: 'Will-O-Wisp', cat: 'status', status: 'BRN' },
+                { name: 'Thunder Wave', cat: 'status', status: 'PAR' },
+                // No-op
+                { name: 'Splash', cat: 'noop' },
+            ];
+
+            function mkTestMon(species, moveList) {
+                return buildPokemon(species, {
+                    m: [...moveList, 'Splash', 'Splash', 'Splash', 'Splash'].slice(0, 4),
+                    i: null, a: 'None', n: 'Hardy',
+                    ivs: { hp:31, atk:31, def:31, spa:31, spd:31, spe:31 },
+                    evs: { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 },
+                });
+            }
+
+            // Stub out animations/sleep for fast execution
+            const _origAnim = settings.animations;
+            const _origSfx = settings.moveSfx;
+            settings.animations = false;
+            settings.moveSfx = false;
+
+            for (const t of SAMPLE) {
+                try {
+                    if (!movesDB[t.name]) {
+                        results.skipped++;
+                        results.failures.push({ name: t.name, reason: 'not in movesDB' });
+                        continue;
+                    }
+                    const attacker = mkTestMon('Mew', [t.name]);
+                    const defender = mkTestMon(t.defenderType || 'Sceptile', ['Splash']);
+
+                    const savedState = state;
+                    state = Object.assign({}, savedState, {
+                        mode: 'pve',
+                        playerParty: [attacker],
+                        foeParty: [defender],
+                        pActive: attacker,
+                        fActive: defender,
+                        isOver: false,
+                        isLocked: false,
+                        turnNumber: 0,
+                        pSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 },
+                        fSide: { stealthRock: false, toxicSpikes: 0, spikes: 0, stickyWeb: false, reflect: 0, lightScreen: 0 },
+                    });
+
+                    const beforeHp = defender.currentHp;
+                    attacker.stats.spe = 999;
+                    // Use parseMoveEffects (status/boost) for non-damage; damage moves we sample HP via runTurn.
+                    if (t.cat === 'damaging') {
+                        await window.playTurn(0, null);
+                        const dmg = beforeHp - defender.currentHp;
+                        if (dmg > 0) results.passed++;
+                        else { results.failed++; results.failures.push({ name: t.name, reason: 'no damage dealt' }); }
+                    } else if (t.cat === 'boost-self') {
+                        await window.playTurn(0, null);
+                        if (attacker.stages[t.stat] === t.delta) results.passed++;
+                        else { results.failed++; results.failures.push({ name: t.name, reason: 'expected ' + t.stat + '=' + t.delta + ' got ' + attacker.stages[t.stat] }); }
+                    } else if (t.cat === 'boost-target') {
+                        await window.playTurn(0, null);
+                        if (defender.stages[t.stat] === t.delta) results.passed++;
+                        else { results.failed++; results.failures.push({ name: t.name, reason: 'expected ' + t.stat + '=' + t.delta + ' got ' + defender.stages[t.stat] }); }
+                    } else if (t.cat === 'status') {
+                        await window.playTurn(0, null);
+                        if (String(defender.status || '').toUpperCase() === t.status) results.passed++;
+                        else { results.failed++; results.failures.push({ name: t.name, reason: 'expected status=' + t.status + ' got ' + defender.status }); }
+                    } else if (t.cat === 'noop') {
+                        await window.playTurn(0, null);
+                        if (defender.currentHp === beforeHp) results.passed++;
+                        else { results.failed++; results.failures.push({ name: t.name, reason: 'expected no HP change' }); }
+                    }
+                    state = savedState;
+                } catch (e) {
+                    results.failed++;
+                    results.failures.push({ name: t.name, reason: String(e && e.message || e) });
+                }
+            }
+
+            settings.animations = _origAnim;
+            settings.moveSfx = _origSfx;
+
+            window._moveTestReport = results;
+            console.log('[testmoves] pass=%d fail=%d skip=%d', results.passed, results.failed, results.skipped);
+            if (results.failures.length > 0) console.table(results.failures);
+
+            // Display overlay
+            try {
+                const overlay = document.createElement('div');
+                overlay.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1a22;color:#fff;padding:24px 32px;border:2px solid #6a8;border-radius:8px;z-index:99999;font-family:monospace;font-size:14px;max-width:600px;max-height:80vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,0.6);';
+                const status = results.failed === 0 ? '<span style="color:#6f6">PASS</span>' : '<span style="color:#f66">FAIL</span>';
+                let html = '<h2 style="margin:0 0 12px;color:#6a8">Move Self-Test ' + status + '</h2>';
+                html += '<p>Sample of ' + SAMPLE.length + ' moves: <b>' + results.passed + '</b> passed, <b>' + results.failed + '</b> failed, <b>' + results.skipped + '</b> skipped.</p>';
+                if (results.failures.length > 0) {
+                    html += '<details open><summary>Failures (' + results.failures.length + ')</summary><ul style="padding-left:20px">';
+                    for (const f of results.failures) html += '<li><b>' + f.name + '</b>: ' + f.reason + '</li>';
+                    html += '</ul></details>';
+                }
+                html += '<p style="color:#aaa;font-size:12px;margin-top:16px">Full suite (954 moves) via Node: <code>npm test</code></p>';
+                html += '<button id="testmoves-close" style="margin-top:12px;padding:6px 16px;background:#6a8;color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:bold">Close</button>';
+                overlay.innerHTML = html;
+                document.body.appendChild(overlay);
+                document.getElementById('testmoves-close').addEventListener('click', () => overlay.remove());
+            } catch (e) {
+                console.warn('[testmoves] overlay failed', e);
+            }
+        };
+
+        // === Node test harness exposure ===
+        // When window.__testHarness === true (set by /tests/helpers/load-engine.js before jsdom
+        // parses this script), expose engine internals on window so headless tests can
+        // call them directly without driving the UI. The hook is inert in normal play.
+        if (typeof window !== 'undefined' && window.__testHarness === true) {
+            try {
+                window.__engine = {
+                    parseMoveEffects: parseMoveEffects,
+                    buildMoveObject: buildMoveObject,
+                    ensureMoveData: ensureMoveData,
+                    buildPokemon: buildPokemon,
+                    getStageMult: typeof getStageMult === 'function' ? getStageMult : null,
+                    get state() { return state; },
+                    set state(v) { state = v; },
+                    get baseStats() { return baseStats; },
+                    get movesDB() { return movesDB; },
+                };
+                // __testReady resolves after loadGameData populates baseStats + movesDB.
+                window.__testReady = (async () => {
+                    const start = Date.now();
+                    while (!(Object.keys(baseStats).length > 0 && Object.keys(movesDB).length > 0)) {
+                        if (Date.now() - start > 30000) throw new Error('test harness timeout waiting for data');
+                        await new Promise(r => setTimeout(r, 25));
+                    }
+                    return window.__engine;
+                })();
+            } catch (e) {
+                console.warn('[testHarness] exposure failed', e);
+            }
+        }
     </script>
 </body>
 </html>
