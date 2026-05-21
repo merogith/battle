@@ -4675,7 +4675,12 @@
             background: rgba(255, 248, 208, 0.7);
             border: 1.5px solid var(--gc-trim);
         }
-        .casino-prize-item img { display: inline-block; }
+        .casino-prize-item img {
+            display: inline-block;
+            width: 22px !important; height: 22px !important;
+            image-rendering: pixelated;
+            flex-shrink: 0;
+        }
         .casino-prize-item-count { color: var(--gc-trim-deep); }
 
         /* Tab strip — flat pixel buttons over cream wallpaper. */
@@ -5222,9 +5227,9 @@
         }
         .casino-roul-board {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 4px;
-            width: 100%; max-width: 320px;
+            width: 100%; max-width: 280px;
             padding: 8px;
             background: var(--gc-trim-deep);
             border: 2px solid var(--gc-brass);
@@ -8188,7 +8193,7 @@
             <!-- ── ROULETTE ── -->
             <div id="story-casino-panel-roulette" class="casino-panel theme-roulette hidden" role="tabpanel" aria-labelledby="story-casino-tab-roulette">
                 <h3 class="casino-game-title">Poké Roulette</h3>
-                <p class="casino-game-subtitle">Twelve squares — 4 colors × 3 Pokémon. Tap to place chips, then spin. Single-cell hits pay 11×.<br><span class="casino-subtitle-prize">Every hit rolls for Vitamin + Voucher prizes.</span></p>
+                <p class="casino-game-subtitle">Twelve squares — 3 colors × 4 Pokémon (Pika, Volt, Jiggly, Clefa). Tap to place chips, then spin. Single-cell hits pay 11×.<br><span class="casino-subtitle-prize">Every hit rolls for Vitamin + Voucher prizes.</span></p>
                 <div class="casino-roul-stage">
                     <div class="casino-roul-wheel-wrap">
                         <div class="casino-roul-pointer" aria-hidden="true"></div>
@@ -27253,7 +27258,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 banner.textContent = label;
                 const mascot = document.createElement('div');
                 mascot.className = 'casino-jackpot-mascot';
-                mascot.textContent = '✨';
+                // Pixel cluster: brass coins flanking a Clefairy heart — the Crystal
+                // Game Corner mascot pose.
+                mascot.innerHTML = '<span style="font-size:36px;">🪙</span><span style="font-size:56px;margin:0 8px;">✦</span><span style="font-size:36px;">🪙</span>';
                 banner.appendChild(document.createElement('br'));
                 if (mult > 0) {
                     const sub = document.createElement('span');
@@ -41095,7 +41102,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _casinoShowPrizeBanner(bundle, tier) {
             const host = document.getElementById('story-casino-prize-host');
             if (!host) return;
-            const tierLabel = tier === 'jackpot' ? 'JACKPOT PRIZE!' : (tier === 'big' ? 'Big Win Prize!' : 'Bonus Prize!');
+            const tierLabel = tier === 'jackpot' ? '✦ JACKPOT PRIZE! ✦' : (tier === 'big' ? '★ Big Win Prize! ★' : 'Bonus Prize ♪');
             const items = [];
             for (const k in bundle) {
                 if (k === '_tier') continue;
@@ -41621,8 +41628,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // For balance we keep payouts ≤ true odds: 11× < 12× true odds on a
         // single cell, etc.
         // ════════════════════════════════════════════════════════════════
-        const ROUL_COLORS = ['red', 'blue', 'yellow', 'green'];      // 4 columns
-        const ROUL_PIPS   = ['pikachu', 'voltorb', 'jigglypuff'];     // 3 rows
+        // Crystal Game Corner cast — 4 mascots × 3 colors = 12 cells.
+        const ROUL_COLORS = ['red', 'blue', 'green'];                              // 3 colors
+        const ROUL_PIPS   = ['pikachu', 'voltorb', 'jigglypuff', 'clefairy'];      // 4 mons
         // Cell id: `${color}-${pip}`. 12 cells total.
         function _roulCellId(color, pip) { return color + '-' + pip; }
         function _roulCellList() {
@@ -41634,8 +41642,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return out;
         }
-        const ROUL_PIP_GLYPH = { pikachu: '⚡', voltorb: '⊙', jigglypuff: '♥' };
-        const ROUL_PIP_LABEL = { pikachu: 'Pika', voltorb: 'Volt', jigglypuff: 'Jiggly' };
+        const ROUL_PIP_GLYPH = { pikachu: '⚡', voltorb: '⊙', jigglypuff: '♫', clefairy: '✦' };
+        const ROUL_PIP_LABEL = { pikachu: 'Pika', voltorb: 'Volt', jigglypuff: 'Jiggly', clefairy: 'Clefa' };
 
         let _roulInited = false;
         function _casinoRoulEnsureInit() {
