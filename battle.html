@@ -35885,8 +35885,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const d = diff || _storyDifficulty();
             return d === 'veryeasy' || d === 'easy';
         }
+        // Retreat-to-city after a loss is free on Normal and below. Only
+        // Hard / Very Hard charge the half-gold fee.
+        function _storyDifficultyHasFreeRetreat(diff) {
+            const d = diff || _storyDifficulty();
+            return d === 'veryeasy' || d === 'easy' || d === 'normal';
+        }
         function _storyGoldFeeAppliesForRetreat() {
-            return !_storyDifficultyIsCasual();
+            return !_storyDifficultyHasFreeRetreat();
         }
 
         function _storyCalcRetreatGoldFee() {
@@ -35912,7 +35918,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Shared mutation for "retreat to last city": pulls the in-battle party
         // snapshot back into sm.team, heals everyone, deducts the gold fee (0
-        // on easy / very easy via `_storyCalcRetreatGoldFee`), warps
+        // on normal / easy / very easy via `_storyCalcRetreatGoldFee`), warps
         // `sm.eventIndex` to the last city row, and clears mid-battle locks
         // and the retry inventory snapshot. Callers are responsible for
         // saving and any UI navigation afterwards — this is just the state
@@ -35966,7 +35972,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (isRivalLoss) {
                     hint.textContent = 'Retry, return to the last city, or concede to lose all gold and continue.';
                 } else {
-                    if (_storyDifficultyIsCasual()) {
+                    if (_storyDifficultyHasFreeRetreat()) {
                         hint.textContent = 'Heals your party. No gold cost on this difficulty.';
                     } else {
                         const fee = _storyCalcRetreatGoldFee();
@@ -37689,7 +37695,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Closing/refreshing/navigating-away from an active story run autosaves
         // the same warp-back-to-city outcome the "Return to Last City" gameover
         // button writes — heals the party, applies the half-gold fee (free on
-        // easy / very easy), and snaps `sm.eventIndex` to the last city row.
+        // normal / easy / very easy), and snaps `sm.eventIndex` to the last city row.
         // Without this, the player could close mid-battle or mid-route and
         // resume in place, bypassing the existing retreat cost.
         function _storyAutosaveOnClose() {
