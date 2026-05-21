@@ -12811,16 +12811,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (d === 'challenge') mult = 1.30; // labeled "Very Hard" in UI
             mult *= _earlyGameFoeStatMult();
             mult *= window._stageGatedFoeStatMult();
-            if (mult === 1.0) return;
-            const newMaxHp = Math.max(1, Math.floor(mon.maxHp * mult));
+            // League boost (E1-E4 / Champion / league Rival / post-HoF Mystery)
+            // is stored as additive deltas on the mon by applyStoryLeagueFoeStatBoost
+            // so difficulty and boss boost stack ADDITIVELY (not multiplicatively).
+            // Stops the 1.30 × 1.40 = 1.82 cliff between Normal and Challenge.
+            const lb = mon._leagueStatBonus;
+            const hpMult   = mult + (lb && lb.hp   ? lb.hp   : 0);
+            const bulkMult = mult + (lb && lb.bulk ? lb.bulk : 0);
+            const speMult  = mult + (lb && lb.spe  ? lb.spe  : 0);
+            if (hpMult === 1.0 && bulkMult === 1.0 && speMult === 1.0) return;
+            const newMaxHp = Math.max(1, Math.floor(mon.maxHp * hpMult));
             mon.maxHp = newMaxHp;
             mon.currentHp = newMaxHp;
             if (mon.stats) {
-                mon.stats.atk = Math.max(1, Math.floor(mon.stats.atk * mult));
-                mon.stats.def = Math.max(1, Math.floor(mon.stats.def * mult));
-                mon.stats.spa = Math.max(1, Math.floor(mon.stats.spa * mult));
-                mon.stats.spd = Math.max(1, Math.floor(mon.stats.spd * mult));
-                mon.stats.spe = Math.max(1, Math.floor(mon.stats.spe * mult));
+                mon.stats.atk = Math.max(1, Math.floor(mon.stats.atk * bulkMult));
+                mon.stats.def = Math.max(1, Math.floor(mon.stats.def * bulkMult));
+                mon.stats.spa = Math.max(1, Math.floor(mon.stats.spa * bulkMult));
+                mon.stats.spd = Math.max(1, Math.floor(mon.stats.spd * bulkMult));
+                mon.stats.spe = Math.max(1, Math.floor(mon.stats.spe * speMult));
             }
         };
 
@@ -29129,6 +29137,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (r3) toasts.push({ def: STORY_ACHIEVEMENTS_BY_ID.dex_shiny, rank: r3 });
             writeStoryMeta(meta);
             for (const t of toasts) _storyAchievementToast(t.def, t.rank);
+            // r_catch_some: 10 distinct species caught lifetime → unlock.
+            if (caughtN >= 10) {
+                try { _storyAchievementUnlock('r_catch_some'); } catch (e) {}
+            }
         }
 
         function _storyAchievementToast(def, rank) {
@@ -35907,6 +35919,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { playStoryTutorial('firstSafari'); } catch (e) {}
             } else {
                 sm.gold = Math.max(0, (sm.gold | 0) - SAFARI_ENTRY_COST);
+                try { _storyTrackSpend(SAFARI_ENTRY_COST); } catch (e) {}
             }
             // Gate-open chime — soft achievement ping so the safari trip starts with
             // a beat. Sits under the welcome-alert dismiss so it doesn't clash.
@@ -36237,6 +36250,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (won) {
                 sm.frontier.currentStreak = (sm.frontier.currentStreak | 0) + 1;
                 sm.frontier.currentRound = sm.frontier.currentStreak + 1;
+                try {
+                    const meta = readStoryMeta();
+                    meta.frontierRoundsTotal = (meta.frontierRoundsTotal | 0) + 1;
+                    writeStoryMeta(meta);
+                    if (meta.frontierRoundsTotal >= 10) _storyAchievementUnlock('r_frontier_vet');
+                } catch (e) {}
                 try { save(); } catch (e) {}
                 return;
             }
@@ -36292,6 +36311,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         hpUp:3, protein:3, iron:3, calcium:3, zinc:3, carbos:3, gold:5000 });
                     sm.staticDrops.rwdPostHofMystery = true;
                 }
+                if (won) { try { _storyAchievementUnlock('r_mystery'); } catch (e) {} }
                 sm.postHofMysteryClimaxDone = true;
                 try { save(); } catch (e) {}
                 try {
@@ -37458,7 +37478,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.pokedex.caught.includes(enc.name)) sm.pokedex.caught.push(enc.name);
             try { _storyCheckPokedexMilestones(); } catch (e) {}
             try { _storyMarkDexCaught(enc.name, !!(caught && caught.build && caught.build._isShiny)); } catch (e) {}
-            try { if (bossMode) _storyAchievementUnlock('caged_god'); } catch (e) {}
+            try { if (bossMode) { _storyAchievementUnlock('caged_god'); _storyAchievementUnlock('r_caged_god'); } } catch (e) {}
+            try { if (_catchState && _catchState.safariMode) _storyAchievementUnlock('r_safari'); } catch (e) {}
             if (bossMode) {
                 _bossArcEnsureState();
                 sm.bossArc.cleared = true;
@@ -38304,6 +38325,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // doesn't pocket fractional gold silently.
             const goldSpent = Math.floor((coins * CASINO_BUY_GOLD_PER_100_COIN) / 100);
             sm.gold = Math.max(0, (sm.gold | 0) - goldSpent);
+            try { _storyTrackSpend(goldSpent); } catch (e) {}
             sm.casinoCoins = (sm.casinoCoins | 0) + coins;
             _casinoStatsAdd('cashier', 'coinsBought', coins);
             _casinoStatsAdd('cashier', 'goldSpent', goldSpent);
@@ -39684,6 +39706,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.cityRerollsUsed[ek] = en;
                 if (!await _evoLabApplyEvolutionWithAnim(idx, evoName)) return;
                 sm.gold -= cost;
+                try { _storyTrackSpend(cost); } catch (e) {}
                 save();
                 renderEvoLabTeam();
                 renderTeamPanel();
@@ -39759,6 +39782,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (carriedShiny  !== undefined) newBuild._isShiny = carriedShiny;
                 if (carriedGender !== undefined) newBuild._gender  = carriedGender;
                 sm.gold -= cost;
+                try { _storyTrackSpend(cost); } catch (e) {}
                 // Rebuild just rerolls the moveset/nature/item — same species, same
                 // identity. Preserve starter/unsellable/nickname/id so a player who
                 // rebuilds their starter doesn't strip its star-starter badge.
@@ -43177,6 +43201,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const ok = await _storyConfirmTutorChange(`Teach ${newMove} to ${mon.name}? Replaces "${oldMove}".`, TUTOR_COST_MOVE);
                 if (!ok) return;
                 sm.gold -= TUTOR_COST_MOVE;
+                try { _storyTrackSpend(TUTOR_COST_MOVE); } catch (e) {}
                 mon.build.m[moveSlot] = newMove;
                 mon.currentHp = null;
                 mon.status = null;
@@ -43215,6 +43240,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!ok) return;
                 }
                 sm.gold -= TUTOR_COST_ITEM;
+                try { _storyTrackSpend(TUTOR_COST_ITEM); } catch (e) {}
                 mon.build.i = newItem;
                 save();
                 try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
@@ -43236,6 +43262,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const ok = await _storyConfirmTutorChange(`Change ${mon.name}'s ability to ${newAbility}? Replaces "${oldAbil}".`, TUTOR_COST_ABILITY);
                 if (!ok) return;
                 sm.gold -= TUTOR_COST_ABILITY;
+                try { _storyTrackSpend(TUTOR_COST_ABILITY); } catch (e) {}
                 mon.build.a = newAbility;
                 save();
                 try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
@@ -43258,6 +43285,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const ok = await _storyConfirmTutorChange(`Set ${mon.name}'s nature to ${newNature}? Was "${oldNature}".`, TUTOR_COST_NATURE);
                 if (!ok) return;
                 sm.gold -= TUTOR_COST_NATURE;
+                try { _storyTrackSpend(TUTOR_COST_NATURE); } catch (e) {}
                 mon.build.n = newNature;
                 mon.currentHp = null;
                 save();
@@ -43637,6 +43665,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return false;
             }
             sm.gold -= COLRESS_COST;
+            try { _storyTrackSpend(COLRESS_COST); } catch (e) {}
             return true;
         }
 
@@ -43920,6 +43949,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return false;
             }
             sm.gold -= EVTRAINER_COST;
+            try { _storyTrackSpend(EVTRAINER_COST); } catch (e) {}
             return true;
         }
         function _evTrainerFinish() {
