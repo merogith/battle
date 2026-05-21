@@ -13136,7 +13136,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             mon.dynamaxed = false;
             mon.dynamaxUsed = false;
             mon.dynamaxTurns = 0;
-            mon.baseMaxHp = mon.maxHp; // before dynamax
+            // baseMaxHp stays null until something actually mutates maxHp mid-battle
+            // (Dynamax doubles it, Tera Shift adds +5). Initializing it here meant
+            // _clearMonGimmick's "restore maxHp from baseMaxHp" safety net fired for
+            // every mon at startBattle, undoing the foe stat scaling on maxHp while
+            // leaving currentHp scaled — bars read e.g. 82/90 (early-game soften) or
+            // 252/180 (Champion boss).
+            mon.baseMaxHp = null;
             mon.teraActivated = false;
             mon.zMoveUsed = false;
             mon.originalType1 = base.t1 || 'Normal';
