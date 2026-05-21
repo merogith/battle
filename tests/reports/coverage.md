@@ -1,6 +1,6 @@
 # Move Coverage Report
 
-Generated: 2026-05-21T20:57:12.053Z
+Generated: 2026-05-21T20:59:34.454Z
 
 **Total moves in moves.json:** 954
 
