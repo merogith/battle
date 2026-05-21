@@ -10559,6 +10559,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return settings.mechanics;
         }
+        // Wraps a build factory call so any gimmick it rolls is constrained to
+        // the player's unlocked-mechanic list. Used by every player-side acquisition
+        // path EXCEPT Cable Link (the premium "another trainer's mon" path is allowed
+        // to surface pre-unlock gimmicks by design — see _makePlayerLinkBuild).
+        function _withStoryPlayerGimmickGate(fn) {
+            try {
+                window._pbsStoryUsePlayerGimmickGate = true;
+                window._pbsStoryUnlockedGimmicks = (typeof sm !== 'undefined' && sm && Array.isArray(sm.unlockedGimmicks)) ? sm.unlockedGimmicks : [];
+                return fn();
+            } finally {
+                window._pbsStoryUsePlayerGimmickGate = false;
+                delete window._pbsStoryUnlockedGimmicks;
+            }
+        }
 
         function rollGimmick(name, forcedTag) {
             const mech = _mechForGimmickRoll();
@@ -31012,12 +31026,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function _storyEnemyMechKeys() {
+            // Enemy trainers are gated to the player's story-mode mechanic unlocks:
+            // GL1-4 enemies are STANDARD only, GL5 boss (the unlock-reveal fight) is
+            // also STANDARD, and from GL6 onwards each newly unlocked mechanic enters
+            // the enemy candidate pool. Mirrors the player-side _withStoryPlayerGimmickGate
+            // rule so no mechanic appears anywhere before it becomes globally available.
             const k = [];
-            if (sm.settings.dynaOn) k.push('gmax');
-            if (sm.settings.megaOn) k.push('mega');
-            if (sm.settings.dynaOn) k.push('dmax');
-            if (sm.settings.zOn) k.push('z');
-            if (sm.settings.teraOn) k.push('tera');
+            const unlocked = new Set(Array.isArray(sm.unlockedGimmicks) ? sm.unlockedGimmicks : []);
+            if (sm.settings.dynaOn && unlocked.has('dmax')) k.push('gmax');
+            if (sm.settings.megaOn && unlocked.has('mega')) k.push('mega');
+            if (sm.settings.dynaOn && unlocked.has('dmax')) k.push('dmax');
+            if (sm.settings.zOn && unlocked.has('z')) k.push('z');
+            if (sm.settings.teraOn && unlocked.has('tera')) k.push('tera');
             return k;
         }
         function _kindToForcedTag(kind) {
@@ -35026,7 +35046,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     _markWildSeen(battleIdx, STORY_WILDS_PER_ROUTE_NODE);
                     if (!pending || !pending.name) return null;
                     let build = null;
-                    try { build = makeBuild(pending.name); } catch (e) { build = null; }
+                    try { build = _withStoryPlayerGimmickGate(() => makeBuild(pending.name)); } catch (e) { build = null; }
                     if (!build) return null;
                     const speciesName = pending.name;
                     // Lock the shiny roll before the encounter renders so the
@@ -39081,7 +39101,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!pool.length) return null;
             const _rng = (sm && sm.active) ? storyRngNext : Math.random;
             const name = pool[Math.floor(_rng() * pool.length)];
-            const build = makeBuild(name);
+            const build = _withStoryPlayerGimmickGate(() => makeBuild(name));
             // Lock shiny up front so the Subject Zero cage sprite and the
             // post-catch teampanel agree (and so the Pokédex marker fires
             // correctly on capture).
@@ -39537,7 +39557,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return out;
         }
         function makeWildBuild(name) {
-            const b = makeBuild(name);
+            // Gate wild rolls to the player's unlocked mechanics: pre-Gym-5 the unlocked
+            // list is empty so wild catches stay STANDARD, matching the Professor's
+            // gift rule. Cable Link is the only path that surfaces pre-unlock gimmicks.
+            const b = _withStoryPlayerGimmickGate(() => makeBuild(name));
             if (!b) return null;
             // Lock in shiny at encounter time so the catch screen, success
             // toast, and Pokédex all see the same value. Without this, shiny

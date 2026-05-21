@@ -3,6 +3,56 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Mechanics unlock gate closed on every pre-unlock leak 2026-05-21 (`claude/funny-albattani-DNkt0`)
+
+### Fixed — Wild catches, Professor-sized pre-unlock mechanic leaks
+
+The previous unlock gate (`_pbsStoryUsePlayerGimmickGate` +
+`sm.unlockedGimmicks`) was wired into Professor gifts, Cable Link
+reroll/upgrade/rebuild, and Evolution Lab — but three player-side
+acquisition paths called `makeBuild()` raw and silently bypassed it:
+
+* **Route wild encounters** — `makeWildBuild()` rolled gimmicks straight
+  from `settings.mechanics`, so a player at Gym 2 could catch a Mega
+  Charizard before any mechanic was supposed to exist in the run.
+* **Roaming Legendary** spawns triggered by Gym Leader 5 / 7 victories.
+* **Boss Arc / Subject Zero** legendary capture in the Cage.
+
+A single `_withStoryPlayerGimmickGate(fn)` helper wraps each of these
+sites with the same `try / finally` gate the Professor path already used.
+Pre-Gym-5 the unlocked list is `[]` so every wild/roaming/cage catch
+stays STANDARD; from Gym 5 onwards the catches can only roll from the
+mechanics the player has actually earned. **Cable Link is deliberately
+left ungated** — its premium "another trainer's mon" vibe (high reroll
+cost, can surface pre-unlock gimmicks) is the only sanctioned shortcut.
+
+### Changed — Enemy trainer mechanics now also follow the global unlock
+
+Enemy trainers used to pull candidate mechanics directly from the
+settings toggles (`sm.settings.megaOn` etc.) via `_storyEnemyMechKeys()`,
+softly attenuated by `_storyProgressFactor`. The soft ramp meant a Gym 3
+or Gym 4 enemy could occasionally surface a Mega even though the player
+couldn't equip one yet — and Gym 5's boss (the unlock-reveal fight)
+could already use the mechanic it was meant to introduce.
+
+`_storyEnemyMechKeys()` now filters by `sm.unlockedGimmicks`, so the
+enemy candidate pool is empty until Gym 5 clears. Result: **GL1–4 and
+the GL5 reveal fight are STANDARD-only for both sides; from GL6
+onwards each newly-unlocked mechanic enters the enemy pool**, lining
+up with the existing `_minGuaranteedMechsForEvent` curve (GL6 = 1
+guaranteed ace, GL7 = 2, GL8 = 3, E4/Champion ramp). Mechanics now
+appear in the world only after they're globally available — no more
+"the leak that taught you Mega existed before the game wanted to".
+
+### Files touched
+
+* `battle.html` — new `_withStoryPlayerGimmickGate` helper next to
+  `_mechForGimmickRoll`; `makeWildBuild`, the roaming legendary
+  `prepare()`, and `_bossArcRollLegendary` each wrap their `makeBuild`
+  call with the helper; `_storyEnemyMechKeys` filters by
+  `sm.unlockedGimmicks`. Already-caught Pokémon with pre-unlock
+  mechanics are left alone (forward-looking fix only).
+
 ## Unreleased — UX polish: autosave toast, Master Ball glow, move-key hints 2026-05-20 (`claude/pokemon-mature-storyline-Xk3ut`)
 
 ### Added — Three small "feel" wins on top of the deepening pass
