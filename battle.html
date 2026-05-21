@@ -42922,10 +42922,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const statLabel = PERM_BOOST_STAT_LABEL[vit.stat] || vit.stat;
             const atCapMsg = (newIV >= IV_MAX) ? ' (max)' : '';
             try { window.showGameAlert && window.showGameAlert(`${mon.name}'s ${statLabel} IV rose by ${IV_VITAMIN_STEP}! (${curIV} → ${newIV}/${IV_MAX}${atCapMsg})`); } catch (e) {}
-            // If there are more of this vitamin, stay on the picker so the
-            // player can keep applying. Otherwise return to the main bag.
-            if ((sm.inventory && sm.inventory[vitaminId]) | 0) openPermBoostPicker(vitaminId);
-            else openCityBag();
+            // Two entry points share this function: the bag's vitamin picker
+            // (modal-story-bag open) and the Fan Club roster (screen, modal
+            // closed). Only re-open the bag flow when we came from it —
+            // otherwise the Fan Club apply makes the bag pop over the screen.
+            const _bagModalEl = document.getElementById('modal-story-bag');
+            const _bagWasOpen = !!(_bagModalEl && !_bagModalEl.classList.contains('hidden'));
+            if (_bagWasOpen) {
+                if ((sm.inventory && sm.inventory[vitaminId]) | 0) openPermBoostPicker(vitaminId);
+                else openCityBag();
+            }
             // Best-effort refresh of the Fan Club roster if open.
             try { if (typeof renderFanClubRoster === 'function') renderFanClubRoster(); } catch (e) {}
         }
