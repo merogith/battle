@@ -40532,7 +40532,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
             const rawItems = type === 'dept' ? [...POKEMART_ITEMS, ...DEPT_ITEMS] : POKEMART_ITEMS;
             const items = rawItems.filter(item => !isNoItemRunBattleBagExcluded(item));
-            // Department store: each item is one-per-shop, lineup never refreshes (persists across gym leader fights via save state).
+            // Department store: featured Mega/Ultra items are one-per-city (persists across gym leader fights via save state). Regular shelves restock normally.
             if (type === 'dept' && (!sm.deptShopPurchasedByCity || typeof sm.deptShopPurchasedByCity !== 'object')) sm.deptShopPurchasedByCity = {};
             const _deptCKey = String(Math.max(0, cityIdx | 0));
             const _deptBoughtHere = type === 'dept' ? (sm.deptShopPurchasedByCity[_deptCKey] || {}) : {};
@@ -40598,9 +40598,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!_bucket || !_bucket.length) continue;
                 _gridParts.push(`<div class="story-shop-section-head">${_cat}<span class="story-shop-section-count">${_bucket.length}</span></div>`);
                 for (const item of _bucket) {
-                    const _isBall = item.kind === 'ball' && item.ballKey;
-                    const alreadyBought = !_isBall && type === 'dept' && !!_deptBoughtHere[item.id];
-                    _gridParts.push(_renderShopCard(item, { alreadyBought }));
+                    _gridParts.push(_renderShopCard(item));
                 }
             }
             if (sm.settings && sm.settings.noItemRun && type === 'mart' && items.length === 0) {
@@ -40644,9 +40642,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Catalog lookup once — used for ball routing and dept lockout skip.
             const _itemRow = [...POKEMART_ITEMS, ...DEPT_ITEMS].find(r => r.id === itemId) || null;
             const _isBall = !!(_itemRow && _itemRow.kind === 'ball' && _itemRow.ballKey);
-            // Department store: one of each item per city, lock persists across gym leader fights via save state.
-            // Ball items are exempt — they're unlimited consumables, not premium one-offs.
-            if (st === 'dept' && !_isBall) {
+            // Featured Mega/Ultra items use prefixed IDs and live outside POKEMART_ITEMS/DEPT_ITEMS.
+            const _isFeatured = typeof itemId === 'string' && (itemId.startsWith('mega_') || itemId.startsWith('ultra_'));
+            // Department store: featured items are one-per-city and persist across gym leader fights.
+            // Regular shelves (potions, orbs, revives) are restockable and never lock.
+            if (st === 'dept' && _isFeatured) {
                 if (!sm.deptShopPurchasedByCity || typeof sm.deptShopPurchasedByCity !== 'object') sm.deptShopPurchasedByCity = {};
                 const _cKey = String(Math.max(0, cityIndexFromEventIndex(sm.eventIndex) | 0));
                 if (!sm.deptShopPurchasedByCity[_cKey]) sm.deptShopPurchasedByCity[_cKey] = {};
@@ -40655,12 +40655,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (sm.gold < price) return;
             // Confirm only the high-stakes shop clicks. Mart consumables (potions, status
             // heals, regular balls) are repeatable and cheap — keep them direct-purchase.
-            // Department-store buys lock per-city once acquired, so even the cheap rows
-            // there get the prompt. Any non-ball purchase ≥ 1500G also gets it.
-            const needsConfirm = (st === 'dept' && !_isBall) || (!_isBall && price >= 1500);
+            // Featured dept items lock per-city, so they always get the prompt.
+            // Any non-ball purchase ≥ 1500G also gets it.
+            const needsConfirm = (st === 'dept' && _isFeatured) || (!_isBall && price >= 1500);
             if (needsConfirm) {
                 const itemLabel = (_itemRow && _itemRow.name) ? _itemRow.name : String(itemId);
-                const lockNote = (st === 'dept' && !_isBall) ? ' This is the only copy this city sells.' : '';
+                const lockNote = (st === 'dept' && _isFeatured) ? ' This is the only copy this city sells.' : '';
                 const ok = await _storyConfirmTutorChange(`Buy ${itemLabel}?${lockNote}`, price);
                 if (!ok) return;
             }
@@ -40672,7 +40672,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } else {
                 sm.inventory[itemId] = (sm.inventory[itemId]||0) + 1;
             }
-            if (st === 'dept' && !_isBall) {
+            if (st === 'dept' && _isFeatured) {
                 const _cKey = String(Math.max(0, cityIndexFromEventIndex(sm.eventIndex) | 0));
                 sm.deptShopPurchasedByCity[_cKey][itemId] = true;
             }
