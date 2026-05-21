@@ -721,7 +721,7 @@
         .story-tutor-section-title { font-size:10px; color:#8b92a4; text-transform:uppercase; margin-bottom:4px; letter-spacing:0.06em; }
         .story-tutor-option-row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:4px; }
         .story-tutor-option-row .current { font-size:11px; color:#aaa; min-width:80px; }
-        .story-tutor-btn { font-size:11px; padding:5px 9px; border:1px solid #4f5668; border-radius:5px; background:rgba(0,0,0,0.18); color:#d2d7df; cursor:pointer; }
+        .story-tutor-btn { font-size:11px; padding:5px 9px; min-height:36px; border:1px solid #4f5668; border-radius:5px; background:rgba(0,0,0,0.18); color:#d2d7df; cursor:pointer; }
         .story-tutor-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
         .story-tutor-btn:disabled { opacity: 0.55; cursor: not-allowed; color: #9a9a9a; border-color: #444; }
         .story-tutor-apply-move:disabled {
@@ -1613,7 +1613,7 @@
         #story-hud-run {
             display: inline-flex;
             align-items: center;
-            min-height: 34px;
+            min-height: 44px;
             padding: 6px 11px;
             border: 2px solid #555;
             border-radius: 0;
@@ -2053,7 +2053,7 @@
         .story-city-tips:empty { display: none; }
         .story-city-tip {
             display: inline-flex; align-items: center; gap: 6px;
-            padding: 6px 10px;
+            padding: 6px 10px; min-height: 40px;
             font-size: 11px; line-height: 1.2;
             font-family: var(--battle-font) !important;
             color: #d6e3f2;
@@ -2173,7 +2173,7 @@
         }
         .story-link-build-stats { display:flex; flex-direction:column; gap:1px; font-size:11px; }
         .story-link-btns { display:flex; gap:6px; flex-wrap:wrap; }
-        .story-link-btn { font-size:10px; padding:4px 8px; border:1px solid #444; border-radius:3px; cursor:pointer; background:var(--surface2); color:var(--text-color); font-family:inherit; transition:all 0.15s; }
+        .story-link-btn { font-size:10px; padding:4px 8px; min-height:36px; border:1px solid #444; border-radius:3px; cursor:pointer; background:var(--surface2); color:var(--text-color); font-family:inherit; transition:all 0.15s; }
         .story-link-btn:hover:not(:disabled) { border-color:#888; color:var(--accent); }
         .story-link-btn:disabled { opacity:0.35; cursor:not-allowed; }
         .story-artifact-card {
@@ -5447,7 +5447,7 @@
             #story-hud-city, #story-hud-gold, #story-hud-badges, #story-hud-run {
                 font-size: 12px;
                 padding: 5px 10px;
-                min-height: 34px;
+                min-height: 44px;
                 white-space: nowrap;
             }
             .story-hud-abandon {
@@ -11841,7 +11841,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const show = !!(window.StoryMode && typeof window.StoryMode.isActive === 'function' && window.StoryMode.isActive());
                 srr.classList.toggle('hidden', !show);
             }
-            document.getElementById('modal-settings').classList.remove('hidden');
+            window.openModal('modal-settings');
         };
         window.applyBattleLogDockClass = function() {
             const sb = document.getElementById('screen-battle');
@@ -11860,13 +11860,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         } else {
             _syncBattleLogDockFromSettings();
         }
-        window.closeModal = function(id) { document.getElementById(id).classList.add('hidden'); }
+        // Modal focus stack — populated by openModal(); popped by closeModal().
+        // Restores focus to whatever element was active before the modal opened
+        // so keyboard / SR users land back where they came from.
+        if (!window._modalFocusStack) window._modalFocusStack = new Map();
+        window.openModal = function(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            try {
+                const prev = document.activeElement;
+                if (prev && prev !== document.body) window._modalFocusStack.set(id, prev);
+            } catch (e) {}
+            el.classList.remove('hidden');
+        };
+        window.closeModal = function(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.add('hidden');
+            try {
+                const prev = window._modalFocusStack.get(id);
+                if (prev && typeof prev.focus === 'function') prev.focus();
+                window._modalFocusStack.delete(id);
+            } catch (e) {}
+        }
         window.showGameAlert = function(msg) {
             dismissTextTooltipForModal();
             const p = document.getElementById('modal-game-alert-text');
             if (p) p.textContent = msg != null ? String(msg) : '';
-            const el = document.getElementById('modal-game-alert');
-            if (el) el.classList.remove('hidden');
+            window.openModal('modal-game-alert');
         };
         window._gameConfirmResolve = null;
         window.showGameConfirm = function(message) {
@@ -11875,8 +11896,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 window._gameConfirmResolve = resolve;
                 const t = document.getElementById('modal-game-confirm-text');
                 if (t) t.textContent = message != null ? String(message) : '';
-                const el = document.getElementById('modal-game-confirm');
-                if (el) el.classList.remove('hidden');
+                window.openModal('modal-game-confirm');
             });
         };
         window._gameConfirmResult = function(ok) {
@@ -11889,34 +11909,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             window._modalEscapeBound = true;
             document.addEventListener('keydown', function(e) {
                 if (e.key !== 'Escape') return;
-                const help = document.getElementById('modal-help');
-                const settings = document.getElementById('modal-settings');
-                if (help && !help.classList.contains('hidden')) {
-                    e.preventDefault();
-                    window.closeModal('modal-help');
-                    return;
-                }
-                const abandonC = document.getElementById('modal-story-abandon-confirm');
-                if (abandonC && !abandonC.classList.contains('hidden')) {
-                    e.preventDefault();
-                    window.closeModal('modal-story-abandon-confirm');
-                    return;
-                }
-                const gameAlert = document.getElementById('modal-game-alert');
-                if (gameAlert && !gameAlert.classList.contains('hidden')) {
-                    e.preventDefault();
-                    window.closeModal('modal-game-alert');
-                    return;
-                }
+                // game-confirm has a Promise contract — route Esc through its
+                // resolver instead of just hiding it, otherwise the awaiter hangs.
                 const gameConfirm = document.getElementById('modal-game-confirm');
                 if (gameConfirm && !gameConfirm.classList.contains('hidden')) {
                     e.preventDefault();
                     window._gameConfirmResult(false);
                     return;
                 }
-                if (settings && !settings.classList.contains('hidden')) {
-                    e.preventDefault();
-                    window.closeModal('modal-settings');
+                // Close the topmost visible modal. DOM order = stack order
+                // because openModal() pushes onto the end; the last `.modal:not(.hidden)`
+                // is what's painted on top.
+                const open = document.querySelectorAll('.modal:not(.hidden)');
+                if (open.length) {
+                    const top = open[open.length - 1];
+                    if (top.id) {
+                        e.preventDefault();
+                        window.closeModal(top.id);
+                    }
                 }
             });
         }
@@ -11940,7 +11950,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     text = helpData.story;
                 }
             }
-            document.getElementById('help-text').innerHTML = text; document.getElementById('modal-help').classList.remove('hidden');
+            document.getElementById('help-text').innerHTML = text;
+            window.openModal('modal-help');
         }
         function formatMovePriority(pri) {
             let p = pri === undefined || pri === null ? 0 : Number(pri);
@@ -15337,19 +15348,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return name.replace(/\s+/g, '').slice(0, 8);
         }
 
+        /** Screen-reader friendly status label — battle status code → full word. */
+        function _statusAriaLabel(code) {
+            switch (code) {
+                case 'BRN': return 'Burn';
+                case 'PSN': return 'Poison';
+                case 'TOX': return 'Toxic poison';
+                case 'PAR': return 'Paralysis';
+                case 'SLP': return 'Sleep';
+                case 'FRZ': return 'Freeze';
+                default:    return code ? String(code) : '';
+            }
+        }
+
         /** Build HUD chips for Substitute / Leech Seed / confusion / wrap / Focus Energy crit / etc. */
         function buildBattleVolatileChipsHtml(mon) {
             if (!mon || mon.currentHp <= 0) return '';
             const v = mon.volatile || {};
             const parts = [];
-            const chip = (label, tip, mod) => {
-                parts.push(`<span class="battle-vchip battle-vchip--${mod || 'neutral'}" title="${escBattleAttr(tip)}">${label}</span>`);
+            const chip = (label, tip, mod, ariaLabel) => {
+                const ariaAttr = ariaLabel ? ` aria-label="${escBattleAttr(ariaLabel)}"` : '';
+                parts.push(`<span class="battle-vchip battle-vchip--${mod || 'neutral'}" title="${escBattleAttr(tip)}"${ariaAttr}>${label}</span>`);
             };
             if (v.sub > 0) chip(`Sub(${v.sub})`, 'Substitute — absorbs hits until HP chunk breaks', 'neutral');
             if (v.taunt > 0) chip(`Taunt ${v.taunt}`, 'Taunted — can only use attacking moves (' + v.taunt + ' turn(s) left)', 'debuff');
             if (v.encore > 0) chip(`Encore ${v.encore}`, 'Encore — locked into repeating the same move', 'debuff');
             if (v.leechSeed) chip('Seed', 'Leech Seed — loses HP each turn; heals the seeder', 'debuff');
-            if (v.confusion > 0) chip(`Conf ${v.confusion}`, 'Confused — hurt self or snap out (' + v.confusion + ' turn(s) until next check)', 'debuff');
+            if (v.confusion > 0) chip(`Conf ${v.confusion}`, 'Confused — hurt self or snap out (' + v.confusion + ' turn(s) until next check)', 'debuff', `Confused, ${v.confusion} turn${v.confusion === 1 ? '' : 's'} left`);
             if (v.partialTrap > 0) {
                 const src = v.partialTrapSrc || 'Trap';
                 const sticky = src === 'Octolock' || v.partialTrap > 120;
@@ -15452,6 +15477,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let statBox = el.status;
                 statBox.innerText = mon.status || '';
                 statBox.style.color = mon.status ? (mon.status === "BRN" ? "#ff4500" : (mon.status === "PSN" || mon.status === "TOX" ? "#a040a0" : (mon.status === "PAR" ? "#ffd700" : (mon.status === "SLP" ? "#888888" : (mon.status === "FRZ" ? "#81d4fa" : '#fff'))))) : '#9e9e9e';
+                if (mon.status) { statBox.setAttribute('aria-label', _statusAriaLabel(mon.status)); statBox.setAttribute('role', 'status'); } else { statBox.removeAttribute('aria-label'); statBox.removeAttribute('role'); }
                 if (el.volatiles) el.volatiles.innerHTML = buildBattleVolatileChipsHtml(mon);
                 // Show tera type when active, otherwise show base typing
                 let dispType1 = mon.type1, dispType2 = mon.type2;
@@ -15469,7 +15495,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (mon.status) {
                     let cls = mon.status === 'BRN' ? 'status-brn' : mon.status === 'PSN' ? 'status-psn' : mon.status === 'TOX' ? 'status-tox' : mon.status === 'PAR' ? 'status-par' : mon.status === 'SLP' ? 'status-slp' : mon.status === 'FRZ' ? 'status-frz' : '';
                     sIcon.className = 'status-icon ' + cls; sIcon.textContent = mon.status; sIcon.style.display = '';
-                } else { sIcon.style.display = 'none'; }
+                    sIcon.setAttribute('aria-label', _statusAriaLabel(mon.status));
+                } else { sIcon.style.display = 'none'; sIcon.removeAttribute('aria-label'); }
                 // Stat stage badges in stat box
                 let stageEl = el.stages;
                 if (stageEl) {
@@ -28409,6 +28436,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
             return pool[Math.floor(rng() * pool.length)];
         }
+        /** True when a quote has no spoken letters — only ellipses, periods,
+         *  whitespace. Stage directions in parens are kept (SR can read them).
+         *  Surfaces an aria-label so screen readers don't go silent on Red. */
+        function _storyQuoteIsSilent(quote) {
+            if (!quote) return true;
+            return /[A-Za-z]/.test(String(quote)) === false;
+        }
         function getTrainerQuoteForBattle(trainer, quoteRole, storyBattleRowIdx) {
             const rng = (sm && sm.active) ? storyRngNext : Math.random;
             const nm = trainer && trainer.name ? String(trainer.name) : '';
@@ -34107,7 +34141,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const details = `${displayItem(mon, false)} · ${mon.ability || 'None'} · ${mon.nature || 'Hardy'}`;
                 const movesHtml = moveNames.map(mn => `<div>${mn}</div>`).join('');
                 return `<div class="story-team-slot draft-card tier-${g}" style="align-items:stretch;justify-content:space-between;gap:8px;width:100%;box-sizing:border-box;">
-                    <div class="story-party-card-hit" style="display:flex;align-items:stretch;gap:8px;min-width:0;flex:1;" role="button" tabindex="0" data-party-idx="${i}" title="View summary">
+                    <div class="story-party-card-hit" style="display:flex;align-items:stretch;gap:8px;min-width:0;flex:1;" role="button" tabindex="0" data-party-idx="${i}" title="View summary" aria-label="View ${_esc(String(t.nickname || t.name))} summary">
                         <div class="draft-card-sprite">
                             <img src="${getSprite(spriteDisplayName(t), !!rawBuild._isShiny)}" onerror="handleSpriteError(this)" alt="${t.name}" data-shiny="${rawBuild._isShiny ? 'true' : 'false'}" class="mini-sprite" style="${rawBuild._isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}">
                             <span class="tier-badge bg-tier-${g}" title="Power tier (1 = strongest pool tier, 4 = cutest/weakest)">T${g}</span>
@@ -35137,12 +35171,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function showBattleIntro(trainer, eventType, callback, storyBattleRowIdx) {
             // Overlay: trainer sprite + quote(s); longer pause for Rival (extra line). Uses Math.random for rival secondary line only — does not advance story battle RNG.
-            // First-battle tutorial: story-embedded scene (Prof. Oak cameo) gates the
-            // very first battle intro behind a Continue tap. The intro overlay and
-            // timeout are deferred until the tutorial dismisses, so the sequence is
-            // strictly serial: city → tutorial cameo → battle intro → fight.
-            // `playStoryTutorial` fires onDone synchronously on the dedupe path,
-            // so subsequent fights see no delay.
             const _runIntro = () => {
                 const overlay = document.createElement('div');
                 overlay.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;';
@@ -35164,13 +35192,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const extraLine = isRivalBattle && rivalPhase !== null && rivalPhase !== undefined
                     ? pickRivalSecondaryIntroLine(rivalPhase, badgesNow)
                     : '';
+                const silentAttr = _storyQuoteIsSilent(quote)
+                    ? ` aria-label="${_esc(String(trainer.name || 'They'))} is silent"`
+                    : '';
                 overlay.innerHTML = `
                     <img src="${getTrainerSprite(trainer)}" onerror="this.style.display='none'" style="width:200px;height:200px;object-fit:contain;image-rendering:pixelated;border:none;">
                     <div style="color:var(--accent);font-size:20px;font-weight:bold;">${trainer.name}</div>
                     <div class="story-dialog-host story-battle-intro-dialog" style="margin-top:4px;">
                         <div class="story-dialog-nameplate">${roleLabel}</div>
                         <div class="story-dialog-box">
-                            <p class="story-dialog-text">"${quote}"</p>
+                            <p class="story-dialog-text"${silentAttr}>"${quote}"</p>
                             ${isRivalBattle ? `<p class="story-dialog-text" style="margin-top:10px;font-size:14px;opacity:0.92;">"${extraLine}"</p>` : ''}
                         </div>
                     </div>
@@ -40488,7 +40519,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function confirmAbandon() {
-            document.getElementById('modal-story-abandon-confirm').classList.remove('hidden');
+            window.openModal('modal-story-abandon-confirm');
         }
 
         function abandonAndReturn() {
