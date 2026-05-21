@@ -40865,6 +40865,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 _markFacilitySeen('link');
                 updateHUD();
+                // Lead with the first mon expanded; collapse via Close chip / header chev / pill.
+                _storyLinkOpenIdx = 0;
                 renderLinkTeam();
                 syncStoryLinkBackground();
                 showScreen('screen-story-link');
@@ -41837,10 +41839,56 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const el = document.getElementById('story-link-team');
             if (!el) return;
             document.getElementById('story-link-gold').innerHTML = storyGoldHtml(sm.gold.toLocaleString());
+            _initStoryMonAccordionDelegation({
+                facility: 'link',
+                containerId: 'story-link-team',
+                getOpenIdx: function () { return _storyLinkOpenIdx; },
+                setOpenIdx: function (n) { _storyLinkOpenIdx = n; },
+                rerender: renderLinkTeam
+            });
             if (!sm.team.length) { el.innerHTML='<div style="color:#555;font-size:12px;">No Pokémon in your party.</div>'; return; }
+            if (_storyLinkOpenIdx >= sm.team.length) _storyLinkOpenIdx = -1;
+            const _prevSwitcherScrollLeft = (function () {
+                try { const sw = el.querySelector('.tx-mon-switcher'); return sw ? sw.scrollLeft : 0; } catch (e) { return 0; }
+            })();
+            const switcherHtml = _txMonSwitcherHtml(sm.team, _storyLinkOpenIdx, 'link');
 
-            el.innerHTML = sm.team.map((t,i) => {
+            el.innerHTML = switcherHtml + sm.team.map((t,i) => {
+                const expanded = i === _storyLinkOpenIdx;
                 const g      = getMonGrade(t.name, getBST(t.name));
+                const b      = t.build || {};
+                const _slotShiny = !!(b && b._isShiny);
+                const _slotShinyPre = _slotShiny ? '&#10024; ' : '';
+                const gimmickTag = b.gimmick && b.gimmick !== 'STANDARD'
+                    ? `<span style="font-size:9px;background:#333;padding:1px 4px;border-radius:3px;color:#ff9800;margin-left:4px;">${b.gimmick}</span>` : '';
+
+                // Cheap meta strings — read straight off the persisted build.
+                // Avoids the buildPokemon() call on collapsed cards (the biggest
+                // perf win across this refactor for a 6-mon team).
+                const cheapAbility = _esc(b.a || '');
+                const cheapItem    = _esc(b.i || '');
+                const compactMeta  = `G${g}${cheapAbility ? ' · ' + cheapAbility : ''}${cheapItem ? ' · ' + cheapItem : ''}`;
+
+                const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${i}" data-facility="link" aria-expanded="${expanded?'true':'false'}">
+                    <div class="story-tutor-mon-main">
+                        <img src="${getSprite(spriteDisplayName(t), _slotShiny)}" alt="${_esc(t.name)}" data-shiny="${_slotShiny ? 'true' : 'false'}" style="width:48px;height:48px;image-rendering:pixelated;${_slotShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="handleSpriteError(this)">
+                        <div style="min-width:0;flex:1;">
+                            <div class="story-tutor-mon-name">${_slotShinyPre}${_esc(t.name)}${gimmickTag}</div>
+                            <div class="story-tutor-mon-meta">${compactMeta}</div>
+                        </div>
+                    </div>
+                    <span style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                        <span class="tier-badge bg-tier-${g}">G${g}</span>
+                        <span class="story-tutor-mon-chev" aria-hidden="true">${expanded?'▴':'▾'}</span>
+                    </span>
+                </button>`;
+
+                // Collapsed path: short-circuit before the buildPokemon() call.
+                if (!expanded) {
+                    return `<div class="story-link-mon tier-${g}" id="link-mon-${i}">${header}</div>`;
+                }
+
+                // Expanded path: now we pay the buildPokemon() cost — once.
                 let rCost  = REROLL_COSTS[g] || 100;
                 if (_storyDifficultyIsCasual() && (sm.cityRerollsUsed[`r_${i}`]||0) === 0) rCost = Math.ceil(rCost * 0.78);
                 const uCostBase = g > 1 ? (UPGRADE_COSTS[g] || 9999) : null;
@@ -41849,9 +41897,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const canR   = sm.gold >= rCost;
                 const canU   = uCost  !== null && sm.gold >= uCost;
                 const canBld = sm.gold >= rebB;
-
-                const gimmickTag = t.build?.gimmick && t.build.gimmick !== 'STANDARD'
-                    ? `<span style="font-size:9px;background:#333;padding:1px 4px;border-radius:3px;color:#ff9800;margin-left:4px;">${t.build.gimmick}</span>` : '';
 
                 let tempMon = null;
                 try {
@@ -41870,6 +41915,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     : '';
                 const buildBlock = tempMon
                     ? `<div class="story-link-build">
+                        <div class="story-link-title-row" style="margin-bottom:6px;">${typeHtml}${teraHtml}</div>
                         <div class="draft-card-details">
                             <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.nature)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.nature}</span>
                             <span class="hover-text" data-tip-key="${encodeURIComponent(tempMon.ability)}" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${tempMon.ability}</span>
@@ -41879,34 +41925,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <div class="draft-card-moves">${movesHtml}</div>
                     </div>`
                     : `<div class="story-link-build" style="font-size:11px;color:#777;">Could not load set details.</div>`;
-
-                // Read shiny straight from the persisted build flag — the
-                // earlier `tempMon.isShiny` path goes through a display-only
-                // clone of the build, so it can flicker between true/false
-                // across re-renders if the original `_isShiny` is undefined.
-                // We now lock `_isShiny` at mon-creation time, so this is the
-                // single source of truth for whether the sprite + badge glow.
-                const _slotShiny = !!(t.build && t.build._isShiny);
-                const _slotShinyPre = _slotShiny ? '&#10024; ' : '';
-                return `<div class="story-link-mon tier-${g}">
-                    <div class="story-link-mon-header">
-                        <img src="${getSprite(spriteDisplayName(t), _slotShiny)}" onerror="this.src=''" alt="${t.name}" data-shiny="${_slotShiny ? 'true' : 'false'}" style="${_slotShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}">
-                        <div>
-                            <div class="story-link-title-row">${_slotShinyPre}${t.name}${gimmickTag} ${typeHtml}${teraHtml}</div>
-                            <span class="tier-badge bg-tier-${g}">Grade ${g}</span>
+                const infoBtnRow = `<div style="display:flex;justify-content:flex-end;margin-bottom:6px;"><button type="button" class="draft-card-info-btn" style="width:26px;height:26px;min-width:26px;font-size:12px;" onclick="window.StoryMode.openSummary(${i})" aria-label="Full summary" title="Full summary">&#8505;</button></div>`;
+                return `<div class="story-link-mon tier-${g}" id="link-mon-${i}">
+                    ${header}
+                    <div class="story-tutor-mon-body">
+                        ${infoBtnRow}
+                        ${buildBlock}
+                        <div class="story-link-btns">
+                            <button class="story-link-btn" onclick="window.StoryMode.linkReroll(${i})" ${canR?'':'disabled' } title="Trade for a random different Grade ${g} Pokémon — Competent-tier build, still wants Tutor/Dojo/EV polish. Random typing — may clash with your team.">&#8634; Same Tier Swap (${storyGoldHtml(rCost, false)})</button>
+                            ${uCost!==null
+                                ? `<button class="story-link-btn" onclick="window.StoryMode.linkUpgrade(${i})" ${canU?'':'disabled'} title="Trade up for a random Grade ${g-1} Pokémon — Tournament-tier build (full EVs, top item & ability). Priced above the manual Tutor+Dojo+EV ladder; random typing risk applies.">&#9650; Upgrade to G${g-1} (${storyGoldHtml(uCost, false)})</button>`
+                                : `<button class="story-link-btn" disabled title="Already top grade">&#9733; Top Grade — No Upgrade</button>`}
+                            <button class="story-link-btn" onclick="window.StoryMode.linkRebuild(${i})" ${canBld?'':'disabled'} title="Reroll this species' build (moves, item, nature, EVs) — Competent-tier. Same species, no typing risk; cheapest Cable Link option.">&#8635; Rebuild Same Species (${storyGoldHtml(rebB, false)})</button>
                         </div>
-                        <button type="button" class="draft-card-info-btn" style="width:26px;height:26px;min-width:26px;font-size:12px;" onclick="window.StoryMode.openSummary(${i})" aria-label="Full summary" title="Full summary">&#8505;</button>
-                    </div>
-                    ${buildBlock}
-                    <div class="story-link-btns">
-                        <button class="story-link-btn" onclick="window.StoryMode.linkReroll(${i})" ${canR?'':'disabled' } title="Trade for a random different Grade ${g} Pokémon — Competent-tier build, still wants Tutor/Dojo/EV polish. Random typing — may clash with your team.">&#8634; Same Tier Swap (${storyGoldHtml(rCost, false)})</button>
-                        ${uCost!==null
-                            ? `<button class="story-link-btn" onclick="window.StoryMode.linkUpgrade(${i})" ${canU?'':'disabled'} title="Trade up for a random Grade ${g-1} Pokémon — Tournament-tier build (full EVs, top item & ability). Priced above the manual Tutor+Dojo+EV ladder; random typing risk applies.">&#9650; Upgrade to G${g-1} (${storyGoldHtml(uCost, false)})</button>`
-                            : `<button class="story-link-btn" disabled title="Already top grade">&#9733; Top Grade — No Upgrade</button>`}
-                        <button class="story-link-btn" onclick="window.StoryMode.linkRebuild(${i})" ${canBld?'':'disabled'} title="Reroll this species' build (moves, item, nature, EVs) — Competent-tier. Same species, no typing risk; cheapest Cable Link option.">&#8635; Rebuild Same Species (${storyGoldHtml(rebB, false)})</button>
                     </div>
                 </div>`;
             }).join('');
+            try {
+                const sw = el.querySelector('.tx-mon-switcher');
+                if (sw) sw.scrollLeft = _prevSwitcherScrollLeft || 0;
+            } catch (e) {}
         }
 
         // ── Cable Link build pipeline ────────────────────────────────────
@@ -42130,6 +42168,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 _markFacilitySeen('evolab');
                 updateHUD();
+                // Lead with the first mon expanded; collapse via Close chip / header chev / pill.
+                _storyEvoLabOpenIdx = 0;
                 renderEvoLabTeam();
                 syncStoryEvoLabBackground();
                 showScreen('screen-story-evolab');
@@ -42147,40 +42187,92 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!el) return;
             const goldEl = document.getElementById('story-evolab-gold');
             if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
+            _initStoryMonAccordionDelegation({
+                facility: 'evolab',
+                containerId: 'story-evolab-team',
+                getOpenIdx: function () { return _storyEvoLabOpenIdx; },
+                setOpenIdx: function (n) { _storyEvoLabOpenIdx = n; },
+                rerender: renderEvoLabTeam
+            });
             if (!sm.team.length) { el.innerHTML = '<div style="color:#555;font-size:12px;">No Pokémon in your party. Visit the Professor to get one.</div>'; return; }
+            if (_storyEvoLabOpenIdx >= sm.team.length) _storyEvoLabOpenIdx = -1;
             const sg = storySettingsGens();
             const sgList = Array.isArray(sg) ? sg : normalizeEnabledGens(sg);
             const enabledGensLabel = sgList.length ? sgList.slice().sort((a,b)=>a-b).map(n => `Gen ${n}`).join(', ') : 'none';
+            const _prevSwitcherScrollLeft = (function () {
+                try { const sw = el.querySelector('.tx-mon-switcher'); return sw ? sw.scrollLeft : 0; } catch (e) { return 0; }
+            })();
+            const switcherHtml = _txMonSwitcherHtml(sm.team, _storyEvoLabOpenIdx, 'evolab');
 
-            el.innerHTML = sm.team.map((t, i) => {
+            el.innerHTML = switcherHtml + sm.team.map((t, i) => {
+                const expanded = i === _storyEvoLabOpenIdx;
                 const g       = getMonGrade(t.name, getBST(t.name));
                 const evosAll = _getAllEvosWithStatus(t.name, sg);
-                const ek = `e_${i}`;
-                const en = (sm.cityRerollsUsed[ek] || 0) + 1;
 
                 const gimmickTag = t.build?.gimmick && t.build.gimmick !== 'STANDARD'
                     ? `<span class="tx-pill" style="background:rgba(255,152,0,0.18);border-color:#ff9800;color:#ffe0b2;">${t.build.gimmick}</span>` : '';
 
-                let tempMon = null;
-                try {
-                    if (t.build) tempMon = buildPokemon(t.name, shallowCloneBuildForDisplay(t.build));
-                } catch (e) { /* ignore render-time build errors */ }
-
-                const typeHtml = tempMon ? getTypeHTML(tempMon.type1, tempMon.type2) : '';
-                // Mirror renderLinkTeam: read shiny from the persisted build,
-                // not from the display-only clone — so the Stone Sage card
-                // doesn't flicker between visits if `_isShiny` hasn't been
-                // locked yet.
+                // Read shiny from the persisted build (locked at creation time).
                 const _evoSlotShiny = !!(t.build && t.build._isShiny);
                 const shinyPre = _evoSlotShiny ? '&#10024; ' : '';
 
+                // Collapsed-header summary line: highlight the best allowed evolution target.
+                let summary;
+                if (!evosAll.length) {
+                    summary = 'Fully evolved';
+                } else {
+                    const allowed = evosAll.filter(e => e.allowed && e.exists);
+                    if (!allowed.length) {
+                        summary = evosAll.length + ' evolution' + (evosAll.length === 1 ? '' : 's') + ' (locked by gen)';
+                    } else {
+                        let best = allowed[0];
+                        let bestGrade = getMonGrade(best.name, getBST(best.name));
+                        for (let k = 1; k < allowed.length; k++) {
+                            const cg = getMonGrade(allowed[k].name, getBST(allowed[k].name));
+                            if (cg < bestGrade) { best = allowed[k]; bestGrade = cg; }
+                        }
+                        summary = allowed.length + ' evolution' + (allowed.length === 1 ? '' : 's') + ' · ' + best.name + ' G' + bestGrade;
+                    }
+                }
+
+                // Cheap path: collapsed mons skip the (expensive) buildPokemon +
+                // per-evo card generation entirely.
+                let typeHtml = '';
+                if (expanded) {
+                    try {
+                        if (t.build) {
+                            const tempMon = buildPokemon(t.name, shallowCloneBuildForDisplay(t.build));
+                            if (tempMon) typeHtml = getTypeHTML(tempMon.type1, tempMon.type2);
+                        }
+                    } catch (e) { /* ignore render-time build errors */ }
+                }
+
+                const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${i}" data-facility="evolab" aria-expanded="${expanded?'true':'false'}">
+                    <div class="story-tutor-mon-main">
+                        <img src="${getSprite(spriteDisplayName(t), _evoSlotShiny)}" alt="${_esc(t.name)}" data-shiny="${_evoSlotShiny ? 'true' : 'false'}" style="width:42px;height:42px;image-rendering:pixelated;flex-shrink:0;${_evoSlotShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="handleSpriteError(this)">
+                        <div style="min-width:0;flex:1;">
+                            <div class="story-tutor-mon-name">${shinyPre}${_esc(t.name)} ${typeHtml} ${gimmickTag}</div>
+                            <div class="story-tutor-mon-meta">G${g} · BST ${getBST(t.name)} · ${_esc(summary)}</div>
+                        </div>
+                    </div>
+                    <span style="display:flex;align-items:center;gap:8px;">
+                        <span class="draft-card-info-btn" role="button" tabindex="0" style="width:28px;height:28px;min-width:28px;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="event.stopPropagation();window.StoryMode.openSummary(${i})" aria-label="Full summary" title="Full summary">&#8505;</span>
+                        <span class="story-tutor-mon-chev" aria-hidden="true">${expanded?'▴':'▾'}</span>
+                    </span>
+                </button>`;
+
+                if (!expanded) {
+                    return `<div class="story-tutor-mon" id="evolab-mon-${i}">${header}</div>`;
+                }
+
+                const ek = `e_${i}`;
+                const en = (sm.cityRerollsUsed[ek] || 0) + 1;
                 const _rareCandyCount = (sm.inventory && sm.inventory.rareCandy) | 0;
                 let evoBlockHtml;
                 if (!evosAll.length) {
                     evoBlockHtml = `<div class="tx-grid-empty" style="margin-top:8px;"><strong>${_esc(t.name)}</strong> is fully evolved. No more evolution paths.</div>`;
                 } else {
                     const allowedAny = evosAll.some(e => e.allowed);
-                    // Stone Sage card per evolution — show sprite, types, BST, grade, and both gold + candy actions
                     const evoCards = evosAll.map(e => {
                         if (!e.exists) {
                             return `<div class="tx-card" data-disabled="1" style="cursor:not-allowed;">
@@ -42194,10 +42286,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const evoBase = baseStats[e.name] || {};
                         const evoTypes = evoBase.t1 ? getTypeHTML(evoBase.t1, evoBase.t2 || '') : '';
                         const bst = getBST(e.name);
-                        // Preview the target form in shiny if the current mon
-                        // is shiny — evolution preserves shiny identity, so the
-                        // card the player is about to click should match what
-                        // they'll actually see in their party afterward.
                         const sprite = (typeof getSprite === 'function') ? getSprite(e.name, _evoSlotShiny) : '';
                         if (!e.allowed) {
                             return `<div class="tx-card" data-disabled="1" style="cursor:not-allowed;">
@@ -42244,18 +42332,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     evoBlockHtml = `<div class="tx-grid" style="margin-top:10px;max-height:none;">${evoCards}</div>${costHint}`;
                 }
 
-                return `<div class="story-tutor-mon">
-                    <div class="story-tutor-mon-main" style="display:flex;align-items:center;gap:10px;padding:10px 12px;flex-wrap:wrap;">
-                        <img src="${getSprite(spriteDisplayName(t), _evoSlotShiny)}" onerror="this.src=''" alt="${t.name}" data-shiny="${_evoSlotShiny ? 'true' : 'false'}" style="width:42px;height:42px;image-rendering:pixelated;flex-shrink:0;${_evoSlotShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}">
-                        <div style="min-width:0;flex:1;">
-                            <div class="story-tutor-mon-name">${shinyPre}${_esc(t.name)} ${typeHtml} ${gimmickTag}</div>
-                            <div class="story-tutor-mon-meta">Grade ${g} · BST ${getBST(t.name)}</div>
-                        </div>
-                        <button type="button" class="draft-card-info-btn" style="width:28px;height:28px;min-width:28px;font-size:12px;" onclick="window.StoryMode.openSummary(${i})" aria-label="Full summary" title="Full summary">&#8505;</button>
-                    </div>
+                return `<div class="story-tutor-mon" id="evolab-mon-${i}">
+                    ${header}
                     <div class="story-tutor-mon-body">${evoBlockHtml}</div>
                 </div>`;
             }).join('');
+            try {
+                const sw = el.querySelector('.tx-mon-switcher');
+                if (sw) sw.scrollLeft = _prevSwitcherScrollLeft || 0;
+            } catch (e) {}
         }
 
         async function _evoLabApplyEvolution(idx, evoName) {
@@ -43685,6 +43770,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         let _storyTutorOpenIdx = 0;
         // EV Trainer accordion: which team idx is currently expanded, or -1 for none.
         let _storyEVTrainerOpenIdx = 0;
+        // Colress / Evo Lab / Link Station / Fan Club accordions — same pattern.
+        let _storyColressOpenIdx  = 0;
+        let _storyEvoLabOpenIdx   = 0;
+        let _storyLinkOpenIdx     = 0;
+        let _storyFanClubOpenIdx  = 0;
 
         function _applyStoryTutorHeader() {
             const mode = _storyTutorMode || 'moves';
@@ -46196,6 +46286,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             showScreen('screen-story-colress');
             // Power-grid hum on entry — matches the lab's "battle forms" theme.
             try { window.StoryFx && window.StoryFx.playSfx('beam', 0.4); } catch (e) {}
+            // Lead with the first mon expanded; players collapse via Close chip / header chev / active pill.
+            _storyColressOpenIdx = 0;
             renderColressTeam();
             try { _storyShowFacilityQuote('screen-story-colress', 'colress'); } catch (e) {}
             // Story-embedded tutorial — Colress cameo (Scientist sprite).
@@ -46225,11 +46317,49 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const goldEl = document.getElementById('story-colress-gold');
             if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
             if (!el) return;
+            _initStoryMonAccordionDelegation({
+                facility: 'colress',
+                containerId: 'story-colress-team',
+                getOpenIdx: function () { return _storyColressOpenIdx; },
+                setOpenIdx: function (n) { _storyColressOpenIdx = n; },
+                rerender: renderColressTeam
+            });
             if (!sm.team || !sm.team.length) {
                 el.innerHTML = _colressVoucherBanner() + '<div style="color:#555;font-size:12px;">No Pokémon in your party.</div>';
                 return;
             }
-            el.innerHTML = _colressVoucherBanner() + sm.team.map((t, idx) => _renderColressMonCard(t, idx)).join('');
+            // Clamp open idx to a valid range (defends against shrinking parties)
+            if (_storyColressOpenIdx >= sm.team.length) _storyColressOpenIdx = -1;
+            const _prevSwitcherScrollLeft = (function () {
+                try { const sw = el.querySelector('.tx-mon-switcher'); return sw ? sw.scrollLeft : 0; } catch (e) { return 0; }
+            })();
+            const switcherHtml = _txMonSwitcherHtml(sm.team, _storyColressOpenIdx, 'colress');
+            el.innerHTML = _colressVoucherBanner() + switcherHtml + sm.team.map((t, idx) => _renderColressMonCard(t, idx)).join('');
+            try {
+                const sw = el.querySelector('.tx-mon-switcher');
+                if (sw) sw.scrollLeft = _prevSwitcherScrollLeft || 0;
+            } catch (e) {}
+        }
+
+        // One-line summary string for the collapsed Colress header — describes
+        // the currently-equipped gimmick (Mega / Z / Dmax / Tera) and the held
+        // item. Pure function so both collapsed and expanded paths can call it.
+        function _colressSummaryLine(b) {
+            const heldItem = b.i || '(none)';
+            let gimmick = '';
+            if (b.gimmick === 'MEGA' && b.i) {
+                gimmick = 'Mega: ' + (MEGA_FORM_NAMES[b.i] || b.i);
+            } else if (b.gimmick === 'GMAXDYNAMAX') {
+                gimmick = 'Gigantamax';
+            } else if (b.gimmick === 'DYNAMAX') {
+                gimmick = 'Dynamax';
+            } else if (b.gimmick === 'ZMOVE') {
+                gimmick = 'Z-Crystal: ' + (b.i || '');
+            } else if (b.gimmick === 'TERA' && b.teraType) {
+                gimmick = 'Tera: ' + b.teraType;
+            }
+            const pre = gimmick ? _esc(gimmick) : 'No gimmick equipped';
+            return pre + ' · Held: ' + _esc(heldItem);
         }
 
         function _renderColressMonCard(t, idx) {
@@ -46242,8 +46372,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 typeHtml = mon ? getTypeHTML(mon.type1, mon.type2 || '') : '';
             } catch (e) {}
             const badge = _colressGimmickBadge(b);
-            const heldItem = b.i || '(none)';
             const cantAfford = sm.gold < COLRESS_COST;
+            const noneEligible = !(elig.mega || elig.dmax || elig.z || elig.tera);
+            const expanded = idx === _storyColressOpenIdx;
+            const headerCostChip = noneEligible
+                ? ''
+                : `<span class="story-action-badge ${cantAfford ? 'cost cant-afford' : 'cost'}"${cantAfford ? ` title="You need ${(COLRESS_COST - sm.gold).toLocaleString()}G more"` : ''}>${COLRESS_COST.toLocaleString()}G / change</span>`;
+            const summaryLine = _colressSummaryLine(b);
+            const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${idx}" data-facility="colress" aria-expanded="${expanded?'true':'false'}">
+                <div class="story-tutor-mon-main">
+                    <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
+                    <div style="min-width:0;">
+                        <div class="story-tutor-mon-name">${_esc(t.name)} ${typeHtml} ${badge}</div>
+                        <div class="story-tutor-mon-meta">${summaryLine}</div>
+                    </div>
+                </div>
+                <span style="display:flex;align-items:center;gap:8px;">
+                    ${headerCostChip}
+                    <span class="story-tutor-mon-chev" aria-hidden="true">${expanded?'▴':'▾'}</span>
+                </span>
+            </button>`;
+
+            // Collapsed path: short-circuit before computing the (heavy) gimmick
+            // sections. Saves 4 sections × N-1 collapsed mons per render.
+            if (!expanded) {
+                return `<div class="story-tutor-mon" id="colress-mon-${idx}">${header}</div>`;
+            }
+
+            // Expanded path — build the per-gimmick sections (Mega / Dmax / Z / Tera).
             const voucherQty = _colressWishingPieceCount();
             const hasVoucher = voucherQty > 0;
             const priceTag = `<span class="story-tutor-price">${storyGoldHtml(COLRESS_COST.toLocaleString(), false)}</span>`;
@@ -46251,7 +46407,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const voucherBtn = (applyCall, label, disabled) => hasVoucher
                 ? `<button type="button" class="story-tutor-btn" style="background:linear-gradient(180deg,#5e3a9e,#3a2470);border-color:#7e57c2;" ${disabled ? 'disabled' : ''} onclick="${applyCall}">🌠 ${label}</button>${voucherTag}`
                 : '';
-            const noneEligible = !(elig.mega || elig.dmax || elig.z || elig.tera);
 
             const sections = [];
 
@@ -46371,18 +46526,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? `<div class="story-tutor-option-row"><span class="current" style="color:#888;">No battle forms available — Mega / Z / Dynamax / Tera are disabled for this run, or none are legal on this species.</span></div>`
                 : sections.join('');
 
-            const headerCostChip = noneEligible
-                ? ''
-                : `<span class="story-action-badge ${cantAfford ? 'cost cant-afford' : 'cost'}" style="margin-left:6px;"${cantAfford ? ` title="You need ${(COLRESS_COST - sm.gold).toLocaleString()}G more"` : ''}>${COLRESS_COST.toLocaleString()}G / change</span>`;
-            return `<div class="story-tutor-mon">
-                <div class="story-tutor-mon-name" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                    <img src="${spriteUrl}" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">
-                    <span>${_esc(t.name)}</span> ${typeHtml}
-                    ${badge}
-                    ${headerCostChip}
-                    <span style="font-size:10px;color:#888;margin-left:auto;">Held: <strong style="color:#bbb;">${_esc(heldItem)}</strong></span>
-                </div>
-                ${body}
+            return `<div class="story-tutor-mon" id="colress-mon-${idx}">
+                ${header}
+                <div class="story-tutor-mon-body" style="padding-top:6px;">${body}</div>
             </div>`;
         }
 
@@ -46755,6 +46901,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sprite = (typeof getSprite === 'function')
                 ? getSprite((typeof spriteDisplayName === 'function' ? spriteDisplayName({name:mon.name}) : mon.name), build._isShiny)
                 : '';
+            const expanded = idx === _storyFanClubOpenIdx;
+            const evTotal = (function () {
+                const e = build.evs || {};
+                return (e.hp|0)+(e.atk|0)+(e.def|0)+(e.spa|0)+(e.spd|0)+(e.spe|0);
+            })();
+            const ivAvg = Math.round(((ivs.hp|0)+(ivs.atk|0)+(ivs.def|0)+(ivs.spa|0)+(ivs.spd|0)+(ivs.spe|0)) / 6);
+            const summary = `Nature ${_esc(build.n || 'Hardy')} · EVs ${evTotal}/510 · IV avg ${ivAvg}/31`;
+            const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${idx}" data-facility="fanclub" aria-expanded="${expanded?'true':'false'}">
+                <div class="story-tutor-mon-main">
+                    ${sprite ? `<img src="${sprite}" alt="" style="width:40px;height:40px;image-rendering:pixelated;" onerror="handleSpriteError(this)">` : ''}
+                    <div style="min-width:0;">
+                        <div class="story-tutor-mon-name">${_esc(mon.name)}${build._isShiny ? ' ✦' : ''}</div>
+                        <div class="story-tutor-mon-meta">${summary}</div>
+                    </div>
+                </div>
+                <span class="story-tutor-mon-chev" aria-hidden="true">${expanded?'▴':'▾'}</span>
+            </button>`;
+
+            if (!expanded) {
+                return `<div class="story-tutor-mon" id="fanclub-mon-${idx}">${header}</div>`;
+            }
+
             const ivCells = ['hp','atk','def','spa','spd','spe'].map(k => {
                 const iv = (ivs[k] !== undefined) ? (ivs[k] | 0) : 31;
                 const pct = Math.max(0, Math.min(100, Math.round((iv / 31) * 100)));
@@ -46776,19 +46944,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <button type="button" ${btnDisabled ? 'disabled' : ''} style="${btnStyle}" ${onClick}>${btnLabel}</button>
                 </div>`;
             }).join('');
-            const evTotal = (() => {
-                const e = build.evs || {};
-                return (e.hp|0)+(e.atk|0)+(e.def|0)+(e.spa|0)+(e.spd|0)+(e.spe|0);
-            })();
-            return `<div style="border:1px solid #3a3a4a;border-radius:8px;padding:10px;background:rgba(12,14,22,0.6);">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-                    ${sprite ? `<img src="${sprite}" alt="" style="width:44px;height:44px;image-rendering:pixelated;">` : ''}
-                    <div style="flex:1;min-width:0;">
-                        <div style="color:#fff;font-weight:bold;font-size:13px;">${mon.name}${build._isShiny ? ' ✦' : ''}</div>
-                        <div style="font-size:10px;color:#888;">Nature: ${build.n || 'Hardy'} · EVs ${evTotal}/510</div>
-                    </div>
+
+            return `<div class="story-tutor-mon" id="fanclub-mon-${idx}">
+                ${header}
+                <div class="story-tutor-mon-body">
+                    <div style="display:flex;flex-direction:column;gap:3px;">${ivCells}</div>
                 </div>
-                <div style="display:flex;flex-direction:column;gap:3px;">${ivCells}</div>
             </div>`;
         }
         function renderFanClubRoster() {
@@ -46796,21 +46957,39 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const stashEl = document.getElementById('story-fanclub-stash');
             if (stashEl) stashEl.innerHTML = _fanClubStashHtml();
             if (!el) return;
+            _initStoryMonAccordionDelegation({
+                facility: 'fanclub',
+                containerId: 'story-fanclub-roster',
+                getOpenIdx: function () { return _storyFanClubOpenIdx; },
+                setOpenIdx: function (n) { _storyFanClubOpenIdx = n; },
+                rerender: renderFanClubRoster
+            });
             const team = Array.isArray(sm.team) ? sm.team : [];
             if (!team.length) {
                 el.innerHTML = '<div style="color:#888;font-size:12px;text-align:center;padding:20px;">No Pokémon in your party. Visit the Professor first.</div>';
                 return;
             }
+            if (_storyFanClubOpenIdx >= team.length) _storyFanClubOpenIdx = -1;
             const intro = `<div style="padding:10px 12px;background:linear-gradient(180deg,rgba(54,28,42,0.7) 0%,rgba(28,14,22,0.7) 100%);border:1px solid #6a3a5a;color:#f8d6e3;font-size:11px;line-height:1.55;margin-bottom:8px;border-radius:6px;">
                 <div style="font-weight:bold;color:#f8bbd0;margin-bottom:4px;">💖 Hidden Potential</div>
                 <div>Each Pokémon is born with <strong>IVs</strong> — six hidden values from 0 to 31 that quietly shape their stats. Roll low and they need vitamins to catch up; roll high and they\'re ready off the truck.</div>
                 <div style="margin-top:6px;color:#c9bcc4;">Tap a stat\'s <span style="color:#f8bbd0;font-weight:bold;">+3</span> button to apply the matching vitamin from your bag. PC mons are read-only here — withdraw to your party first.</div>
             </div>`;
-            el.innerHTML = intro + team.map((m, i) => _fanClubMonCard(m, i)).join('');
+            const _prevSwitcherScrollLeft = (function () {
+                try { const sw = el.querySelector('.tx-mon-switcher'); return sw ? sw.scrollLeft : 0; } catch (e) { return 0; }
+            })();
+            const switcherHtml = _txMonSwitcherHtml(team, _storyFanClubOpenIdx, 'fanclub');
+            el.innerHTML = intro + switcherHtml + team.map((m, i) => _fanClubMonCard(m, i)).join('');
+            try {
+                const sw = el.querySelector('.tx-mon-switcher');
+                if (sw) sw.scrollLeft = _prevSwitcherScrollLeft || 0;
+            } catch (e) {}
         }
         function enterFanClub() {
             _markFacilitySeen('fanclub');
             showScreen('screen-story-fanclub');
+            // Lead with the first mon expanded; collapse via Close chip / header chev / pill.
+            _storyFanClubOpenIdx = 0;
             // First-visit welcome gift: one of each vitamin (HP Up / Protein /
             // Iron / Calcium / Zinc / Carbos). Set a save flag so re-entering
             // doesn't double-tip the player.
@@ -46937,6 +47116,85 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             try { target.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
                             target.classList.add('tx-card--flash');
                             setTimeout(() => target.classList.remove('tx-card--flash'), 1100);
+                        }
+                    }
+                    return;
+                }
+            });
+        }
+
+        // Generic per-mon accordion delegation — used by Colress / Evo Lab /
+        // Link Station / Fan Club. Mirrors _initEvTrainerDelegationOnce's three
+        // branches (collapse-all chip, mon-switcher pill, header toggle) but
+        // parameterized by facility key. Idempotent via el._<facility>Bound flag.
+        function _initStoryMonAccordionDelegation(opts) {
+            const facility = opts.facility;
+            const el = document.getElementById(opts.containerId);
+            if (!el) return;
+            const boundKey = '_acc_' + facility + '_bound';
+            if (el[boundKey]) return;
+            el[boundKey] = true;
+            const getIdx = opts.getOpenIdx;
+            const setIdx = opts.setOpenIdx;
+            const rerender = function () { try { opts.rerender(); } catch (e) {} };
+            el.addEventListener('click', function (ev) {
+                const t = ev.target && ev.target.closest ? ev.target : null;
+                if (!t) return;
+                // Collapse all
+                if (t.closest('.tx-collapse-all[data-collapse-all="' + facility + '"]')) {
+                    if (getIdx() !== -1) { setIdx(-1); rerender(); }
+                    return;
+                }
+                // Switcher pill — jump to a mon (toggle off if it's the active one)
+                const monPill = t.closest('.tx-mon-pill[data-mon-switcher][data-facility="' + facility + '"]');
+                if (monPill) {
+                    const nextIdx = parseInt(monPill.dataset.monSwitcher, 10);
+                    if (Number.isFinite(nextIdx)) {
+                        if (getIdx() === nextIdx) {
+                            setIdx(-1);
+                            rerender();
+                        } else {
+                            setIdx(nextIdx);
+                            rerender();
+                            setTimeout(function () {
+                                try {
+                                    const open = el.querySelector('.story-tutor-mon-toggle[data-team="' + nextIdx + '"][data-facility="' + facility + '"]');
+                                    const scroller = el.parentElement;
+                                    if (open && scroller) {
+                                        const sb = scroller.getBoundingClientRect();
+                                        const ob = open.getBoundingClientRect();
+                                        const targetTop = scroller.scrollTop + (ob.top - sb.top) - 64;
+                                        scroller.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+                                    }
+                                    const activePill = el.querySelector('.tx-mon-pill[data-mon-switcher="' + nextIdx + '"][data-facility="' + facility + '"]');
+                                    const switcher = el.querySelector('.tx-mon-switcher');
+                                    if (activePill && switcher) {
+                                        const sw = switcher.getBoundingClientRect();
+                                        const pr = activePill.getBoundingClientRect();
+                                        const targetLeft = switcher.scrollLeft + (pr.left - sw.left) - (sw.width - pr.width) / 2;
+                                        switcher.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+                                    }
+                                } catch (e) {}
+                            }, 30);
+                        }
+                    }
+                    return;
+                }
+                // Header toggle (round-trip)
+                const toggleBtn = t.closest('.story-tutor-mon-toggle[data-facility="' + facility + '"]');
+                if (toggleBtn) {
+                    const nextIdx = parseInt(toggleBtn.dataset.team, 10);
+                    if (Number.isFinite(nextIdx)) {
+                        const wasOpen = getIdx() === nextIdx;
+                        setIdx(wasOpen ? -1 : nextIdx);
+                        rerender();
+                        if (!wasOpen) {
+                            setTimeout(function () {
+                                try {
+                                    const open = el.querySelector('.story-tutor-mon-toggle[data-team="' + nextIdx + '"][data-facility="' + facility + '"]');
+                                    if (open) open.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                } catch (e) {}
+                            }, 30);
                         }
                     }
                     return;
