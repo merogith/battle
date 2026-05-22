@@ -1189,6 +1189,92 @@
             text-shadow: 0 0 6px rgba(255,213,79,0.55);
             margin-right: 4px; flex-shrink: 0;
         }
+        /* Mechanic-tag icons (M / T / Z) — tiny pill badges next to the move
+           name when it appears in mega / tera / z-attack builds for the
+           species. Color-coded so the player can scan a column of cards and
+           spot "this move is tera-relevant" instantly. Use a fixed 16px
+           square so the row alignment stays clean alongside the % chip. */
+        .tx-mech-icon {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 16px; height: 16px;
+            font-size: 9px; font-weight: 800; letter-spacing: 0;
+            border-radius: 3px; flex-shrink: 0;
+            border: 1px solid;
+            font-family: var(--battle-font);
+        }
+        .tx-mech-icon--mega { background: rgba(244,143,177,0.18); border-color: #f48fb1; color: #fce4ec; }
+        .tx-mech-icon--tera { background: rgba(129,212,250,0.18); border-color: #81d4fa; color: #e1f5fe; }
+        .tx-mech-icon--z    { background: rgba(206,147,216,0.18); border-color: #ce93d8; color: #f3e5f5; }
+        /* Colress tera-type rec row — sits above the full 18-type grid in the
+           Terastallization section, surfacing the top-3 Smogon-recommended
+           types per species (Gen 9 set data). Players who currently Google
+           tera options manually now have the answer inline. */
+        .tx-tera-rec-row {
+            display: flex; align-items: center; flex-wrap: wrap;
+            gap: 6px; padding: 8px 10px;
+            background: linear-gradient(180deg, rgba(20,40,55,0.55), rgba(14,28,40,0.55));
+            border: 1px solid rgba(129,212,250,0.40);
+            border-radius: 6px;
+            margin: 8px 0;
+        }
+        .tx-tera-rec-label {
+            font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+            font-weight: 700; color: #81d4fa;
+            flex: 0 0 100%;
+        }
+        @media (min-width: 480px) { .tx-tera-rec-label { flex: 0 0 auto; margin-right: 6px; } }
+        .tx-tera-star {
+            display: inline-block; color: #ffd54f;
+            font-size: 11px; line-height: 1; margin-right: 3px;
+            text-shadow: 0 0 4px rgba(255,213,79,0.55);
+        }
+        .tx-tera-pct {
+            display: inline-block; font-size: 9px; font-weight: 700;
+            margin-left: 4px; padding: 1px 4px;
+            background: rgba(0,0,0,0.30); border-radius: 999px;
+        }
+        /* Highlight recommended-tera buttons in the full grid below — same
+           star + pct treatment so the player sees the alignment between
+           rows and grid at a glance. */
+        .story-tutor-btn[data-tera-recommended="1"] {
+            box-shadow: 0 0 0 2px rgba(255,213,79,0.45);
+        }
+        /* Unique gold-banner sections in colress — Mega Evolution and
+           Gigantamax both transform the Pokémon's whole form, not just a
+           stat. The banner treatment marks them as "premium" mechanics
+           visually distinct from Z / Tera. */
+        .tx-mech-section--mega,
+        .tx-mech-section--gmax {
+            background: linear-gradient(180deg, rgba(60,46,18,0.55), rgba(40,28,8,0.55)) !important;
+            border: 1px solid #c4a548 !important;
+            border-left: 4px solid #ffd54f !important;
+            box-shadow: 0 0 0 1px rgba(255,213,79,0.18) inset;
+        }
+        .tx-mech-section--mega .story-tutor-section-title,
+        .tx-mech-section--gmax .story-tutor-section-title {
+            color: #ffd54f !important;
+            text-shadow: 0 0 6px rgba(255,213,79,0.45);
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        }
+        /* "9% of meta" inline chip on colress section titles — small muted
+           pill that tells the player how often this mechanic actually gets
+           used at the competitive level. */
+        .tx-mech-section-pct {
+            display: inline-flex; align-items: center;
+            margin-left: auto;
+            font-size: 10px; font-weight: 700;
+            color: #c4a548; letter-spacing: 0.04em;
+            background: rgba(0,0,0,0.30);
+            border: 1px solid rgba(255,213,79,0.30);
+            border-radius: 999px; padding: 2px 8px;
+        }
+        /* Z-Move choices that match the species' STAB types get a subtle
+           gold outline so the rest of the row (off-STAB Z choices) read as
+           less canonical. */
+        .story-tutor-choice[data-z-stab="1"] .story-tutor-btn.type-badge,
+        .story-tutor-choice[data-z-signature="1"] .story-tutor-btn {
+            box-shadow: 0 0 0 2px rgba(255,213,79,0.40);
+        }
         /* Inline Smogon usage % tag — muted color so it doesn't compete with
            the option name, but always present on starred cards so players
            can tell "Earthquake 99%" apart from "Scale Shot 24%". */
@@ -9515,7 +9601,16 @@
                 }
             }
             await loadBuildsCSV();
-            await _loadOpAbilities();
+            // Both loaders live inside the window.StoryMode IIFE — bridge via
+            // window so this top-level boot path can reach them. Guarded so a
+            // missing function never aborts boot; the picker degrades by
+            // hiding Awaken / Tera recs until next reload.
+            try {
+                if (typeof window._loadOpAbilities === 'function') await window._loadOpAbilities();
+            } catch (e) { console.warn('[OP] preload failed:', e); }
+            try {
+                if (typeof window._loadTeraStats === 'function') await window._loadTeraStats();
+            } catch (e) { console.warn('[Tera] preload failed:', e); }
             computeStatScales();
             try { if (new URLSearchParams(location.search).get('spritescaledebug') === '1') window.__DEBUG_SPRITE_SCALE = true; } catch (e) {}
             enrichBaseStatsHeightsFromDex();
@@ -45138,6 +45233,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const list = _opAbilitiesCache[monName];
             return Array.isArray(list) ? list.slice(0, 3) : [];
         }
+        // Bridge the IIFE-scoped loader to the top-level boot path. Without
+        // this the await call at loadGameData() throws ReferenceError, the
+        // cache stays null, and every Awaken pill silently fails to render.
+        try { window._loadOpAbilities = _loadOpAbilities; } catch (e) {}
 
         /** Species names to union for learnsets: self, form bases, and full prevo chain (baseStats + @pkmn/dex). Does not walk evos (wrong for learnsets). */
         function _tutorSpeciesKeysForLearnset(monName) {
@@ -45346,9 +45445,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         let _txGlobalMetaCached = null;    // lazy global baseline
 
         function _txEmptyMeta() {
-            return { items:new Map(), moves:new Map(), abilities:new Map(), natures:new Map(), total:0, _sorted:null };
+            return {
+                items: new Map(), moves: new Map(), abilities: new Map(), natures: new Map(),
+                // Per-tag observation maps — drives the M / T / Z icons on
+                // move tutor cards and the colress mechanic recommendations.
+                // tagsByMove: Map<moveName, Set<tag>>; same for items.
+                tagsByMove: new Map(), tagsByItem: new Map(),
+                // Per-tag build counts (how many tera builds, mega builds, etc.).
+                tagCounts: { regular:0, weather:0, mega:0, 'z-attack':0, tera:0 },
+                total: 0, _sorted: null,
+            };
         }
-        function _txAccumulateBuilds(out, builds, speciesName) {
+        function _txAccumulateBuilds(out, builds, speciesName, tag) {
             if (!Array.isArray(builds)) return;
             // Smogon's CSV leaves ability blank when the build uses the species'
             // default (Tyranitar's Sand Stream, Garchomp's Sand Veil). Resolving
@@ -45366,8 +45474,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             for (const b of builds) {
                 if (!b || b._illegal) continue;
                 out.total++;
+                if (tag && out.tagCounts && out.tagCounts.hasOwnProperty(tag)) out.tagCounts[tag]++;
                 if (b.i && b.i !== 'NO_ITEM' && b.i !== '') {
                     out.items.set(b.i, (out.items.get(b.i) || 0) + 1);
+                    if (tag) {
+                        if (!out.tagsByItem.has(b.i)) out.tagsByItem.set(b.i, new Set());
+                        out.tagsByItem.get(b.i).add(tag);
+                    }
                 }
                 const aRaw = b.a && String(b.a).trim();
                 const a = aRaw || defaultAbility;
@@ -45388,6 +45501,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             if (!mv || seen.has(mv)) continue;
                             seen.add(mv);
                             out.moves.set(mv, (out.moves.get(mv) || 0) + 1);
+                            if (tag) {
+                                if (!out.tagsByMove.has(mv)) out.tagsByMove.set(mv, new Set());
+                                out.tagsByMove.get(mv).add(tag);
+                            }
                         }
                     }
                 }
@@ -45413,7 +45530,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (!hasAny) continue;
                 for (const tag of ['regular','weather','mega','z-attack','tera']) {
-                    _txAccumulateBuilds(out, e[tag], cand);
+                    _txAccumulateBuilds(out, e[tag], cand, tag);
                 }
                 break;
             }
@@ -45434,7 +45551,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const e = all[name];
                 if (!e) continue;
                 for (const tag of ['regular','weather','mega','z-attack','tera']) {
-                    _txAccumulateBuilds(out, e[tag], name);
+                    _txAccumulateBuilds(out, e[tag], name, tag);
                 }
             }
             _txGlobalMetaCached = out;
@@ -45480,28 +45597,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── STARRED POOL — usable options per Smogon for this species ──────
-        // Single source of truth for which moves/items/abilities/natures the
-        // ★ Recommended filter exposes by default. Pool thresholds, capped to
-        // keep the curated list at a useful size and floored so narrow species
-        // still produce a usable pool:
-        //   moves     ≥ 15% usage,  clamp [7, 20]
-        //   items     ≥  5% usage,  clamp [5, 12]
-        //   abilities ≥ 10% usage + always include the species' Pokédex
-        //               regular & hidden abilities (handles CSV data gaps
-        //               where e.g. Sand Stream is the implied default and
-        //               never explicitly listed in a build row)
-        //   natures   ≥ 10% usage,  clamp [3, 6]
+        // One source of truth for what the ★ Recommended filter exposes.
+        // Per-attribute rules (Recs v2):
+        //   moves     — take every move used in ≥1 Smogon build, soft cap 18
+        //               (3×6 grid). Floor-fill from the evolution chain
+        //               (terminal evos first, branches union'd) when the
+        //               species' own pool is under cap. Ties at the cap
+        //               boundary cause a soft overshoot — all tied entries
+        //               make the list, up to an absolute ceiling of 24.
+        //   items     — same logic, cap 7, ceiling 11.
+        //   abilities — ≥10% Smogon usage + always include the species'
+        //               Pokédex regular & hidden abilities. Unchanged.
+        //   natures   — every nature used in ≥1 Smogon build, no cap. Only
+        //               the top 3 by usage carry the ★ visual; the rest
+        //               display name + % + stat mod without the star.
         // Species with < 10 Smogon builds total are flagged sparse — callers
         // hide the rec system and show a "Limited competitive data" banner.
         const _TX_SPARSE_BUILD_THRESHOLD = 10;
         const _TX_POOL_RULES = {
-            moves:     { threshold: 15, cap: 20, floor: 7 },
-            items:     { threshold:  5, cap: 12, floor: 5 },
-            abilities: { threshold: 10, cap:  6, floor: 2 },
-            natures:   { threshold: 10, cap:  6, floor: 3 },
+            moves:     { mode: 'cap', cap: 18, ceiling: 24, fillFromEvo: true },
+            items:     { mode: 'cap', cap:  7, ceiling: 11, fillFromEvo: true },
+            abilities: { mode: 'threshold', threshold: 10, cap: 6, floor: 2 },
+            natures:   { mode: 'all-star-top', starN: 3 },
         };
+        // EV spreads use their own resolver (_evTrainerTopSpreadInfo) but follow
+        // the same shape: top 7, soft overshoot, evo fill.
+        const _TX_EV_RULES = { cap: 7, ceiling: 11, fillFromEvo: true };
         // Meme / non-competitive moves that occasionally appear in joke builds
-        // and clear the 15% threshold by accident (e.g. Kartana Giga Impact at
+        // and clear the threshold by accident (e.g. Kartana Giga Impact at
         // ~17% from one-off troll sets). Filtering them out at the pool layer
         // keeps the ★ list honest — players can still pick them via Show all.
         // Keep this list tight: Return / Self-Destruct / Explosion are real
@@ -45511,8 +45634,132 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             'Splash', 'Celebrate', 'Hold Hands', 'Happy Hour',
             'Frustration',
         ]);
+        // Evolution chain helper — return all related species (self + every
+        // prevo + every evo recursively, unioning every branch). For
+        // Slowpoke this surfaces both Slowbro and Slowking; for Eevee all
+        // eight Eeveelutions; for Garchomp just the Gible chain.
+        function _txEvoChainForMon(monName) {
+            const visited = new Set();
+            const queue = [monName];
+            while (queue.length) {
+                const n = queue.shift();
+                if (!n || visited.has(n)) continue;
+                visited.add(n);
+                const bs = (typeof baseStats === 'object') ? baseStats[n] : null;
+                if (!bs) continue;
+                if (Array.isArray(bs.evos)) for (const e of bs.evos) queue.push(e);
+                if (bs.prevo) queue.push(bs.prevo);
+                if (bs.baseSpecies) queue.push(bs.baseSpecies);
+                if (bs.changesFrom) queue.push(bs.changesFrom);
+            }
+            return [...visited];
+        }
+        // Order related species by descending evolution stage so terminal
+        // evos (the most meta-active form, usually) come first. For Bulbasaur:
+        // [Venusaur, Ivysaur, Bulbasaur]. For Slowpoke: [Slowbro, Slowking,
+        // Slowpoke]. Branches with identical depth get equal weight (Union).
+        function _txEvoChainOrderedForMon(monName) {
+            const related = _txEvoChainForMon(monName);
+            const remainingDepth = new Map();
+            function rd(n, seen) {
+                if (!n || seen.has(n)) return 0;
+                seen.add(n);
+                const bs = (typeof baseStats === 'object') ? baseStats[n] : null;
+                if (!bs || !Array.isArray(bs.evos) || !bs.evos.length) return 0;
+                let best = 0;
+                for (const e of bs.evos) best = Math.max(best, 1 + rd(e, seen));
+                return best;
+            }
+            for (const n of related) remainingDepth.set(n, rd(n, new Set()));
+            return related.slice().sort((a, b) => remainingDepth.get(a) - remainingDepth.get(b) || a.localeCompare(b));
+        }
+        // ── TERA TYPE STATS ─────────────────────────────────────────────
+        // The CSV doesn't carry tera_type per build but the Gen 9 Smogon JSON
+        // does. Load it once at boot and aggregate per species so colress
+        // can recommend the top 3 tera picks ("Ghost 42%, Fire 21%, Steel 14%").
+        // Falls back gracefully when the JSON is unavailable (returns null).
+        let _teraStatsCache = null;
+        let _teraStatsLoading = null;
+        function _txTeraStatsFor(monName) {
+            if (!monName || !_teraStatsCache) return null;
+            const stats = _teraStatsCache[monName];
+            return stats && stats.length ? stats : null;
+        }
+        async function _loadTeraStats() {
+            if (_teraStatsCache) return _teraStatsCache;
+            if (_teraStatsLoading) return _teraStatsLoading;
+            _teraStatsLoading = (async () => {
+                try {
+                    const j = await fetch('data/builds/gen9.json').then(r => r.json());
+                    const out = {};
+                    for (const sp in j) {
+                        const tiers = j[sp];
+                        const counts = new Map();
+                        let totalSets = 0;
+                        for (const tier in tiers) {
+                            for (const setName in tiers[tier]) {
+                                const set = tiers[tier][setName];
+                                if (!set) continue;
+                                if (set.teratypes) {
+                                    totalSets++;
+                                    const types = Array.isArray(set.teratypes) ? set.teratypes : [set.teratypes];
+                                    for (const t of types) counts.set(t, (counts.get(t) || 0) + 1);
+                                }
+                            }
+                        }
+                        if (totalSets) {
+                            out[sp] = [...counts.entries()]
+                                .sort((a, b) => b[1] - a[1])
+                                .slice(0, 3)
+                                .map(([type, c]) => ({ type, pct: (c / totalSets) * 100 }));
+                        }
+                    }
+                    _teraStatsCache = out;
+                } catch (e) {
+                    _teraStatsCache = {};
+                    console.warn('[Tera] gen9.json unavailable — Tera recommendations disabled.');
+                }
+                return _teraStatsCache;
+            })();
+            return _teraStatsLoading;
+        }
+        try { window._loadTeraStats = _loadTeraStats; } catch (e) {}
+
+        // Mechanic tags for a specific move on a specific species — drives the
+        // tiny M / T / Z icons in the move tutor. Returns a Set of tag names
+        // ('mega' | 'z-attack' | 'tera') for tags the player actually cares
+        // about (weather + regular are not surfaced — every move appears in
+        // 'regular' and 'weather' is a strategy not a transformation).
+        const _TX_MECHANIC_TAGS_SHOWN = new Set(['mega', 'z-attack', 'tera']);
+        function _txMechanicTagsForMove(monName, moveName) {
+            if (!monName || !moveName) return null;
+            const meta = _txMetaStatsFor(monName);
+            if (!meta || !meta.tagsByMove) return null;
+            const all = meta.tagsByMove.get(moveName);
+            if (!all || !all.size) return null;
+            const out = new Set();
+            for (const t of all) if (_TX_MECHANIC_TAGS_SHOWN.has(t)) out.add(t);
+            return out.size ? out : null;
+        }
+        // Soft cap with overshoot: if the option at position `cap` ties the
+        // option at position `cap-1` on usage count, extend the cut so every
+        // tied entry survives. Caps at `ceiling` to bound pathological cases
+        // (e.g. ten options all sharing the same count).
+        function _txCapWithOvershoot(sorted, cap, ceiling) {
+            if (!Array.isArray(sorted) || sorted.length <= cap) return sorted.slice();
+            const ref = sorted[cap - 1];
+            const refCount = ref && (ref.count != null ? ref.count : ref.pct);
+            let cut = cap;
+            while (cut < sorted.length && cut < (ceiling || cap * 1.5)) {
+                const cur = sorted[cut];
+                const curCount = cur && (cur.count != null ? cur.count : cur.pct);
+                if (curCount !== refCount) break;
+                cut++;
+            }
+            return sorted.slice(0, cut);
+        }
         function _txStarredPoolEmpty(total) {
-            const empty = () => ({ starred: new Set(), pctOf: new Map() });
+            const empty = () => ({ starred: new Set(), inPool: new Set(), pctOf: new Map() });
             return {
                 totalBuilds: total | 0,
                 sparse: true,
@@ -45522,29 +45769,98 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _txStarredPool(monName) {
             if (!monName) return _txStarredPoolEmpty(0);
             const meta = _txMetaStatsFor(monName);
-            if (!meta || meta.total < _TX_SPARSE_BUILD_THRESHOLD) {
-                return _txStarredPoolEmpty(meta ? meta.total : 0);
-            }
-            if (meta._starredPool) return meta._starredPool;
-
-            const buildBucket = (kind) => {
-                const rule = _TX_POOL_RULES[kind];
-                let sorted = _txMetaSorted(meta, kind);
-                // Strip joke/meme moves before applying the threshold so they
-                // don't accidentally clear the bar on tiny-sample species.
-                if (kind === 'moves') {
-                    sorted = sorted.filter(r => !_TX_MEME_MOVE_BLOCKLIST.has(r.name));
+            // Sparse only kicks in when BOTH the species' own builds AND the
+            // entire evolution chain combined are below the threshold. This
+            // lets Bulbasaur (8 own builds) borrow from Venusaur (~50) instead
+            // of falling back to the vanilla picker.
+            const ownTotal = meta ? meta.total : 0;
+            if (!meta || ownTotal < _TX_SPARSE_BUILD_THRESHOLD) {
+                const chain = _txEvoChainOrderedForMon(monName);
+                let chainTotal = ownTotal;
+                for (const sp of chain) {
+                    if (sp === monName) continue;
+                    const m2 = _txMetaStatsFor(sp);
+                    if (m2 && m2.total) chainTotal += m2.total;
                 }
+                if (chainTotal < _TX_SPARSE_BUILD_THRESHOLD) {
+                    return _txStarredPoolEmpty(ownTotal);
+                }
+            }
+            if (meta && meta._starredPool) return meta._starredPool;
+
+            // Pre-compute the evo-chain sorted-rows source per kind, only on
+            // demand. For most species this is identical to the species' own
+            // sorted rows; the chain only matters for under-capped pools.
+            const evoChainSortedRows = (kind) => {
+                const chain = _txEvoChainOrderedForMon(monName);
+                const merged = new Map();
+                for (const sp of chain) {
+                    if (sp === monName) continue; // species itself handled separately
+                    const m = _txMetaStatsFor(sp);
+                    if (!m || !m.total) continue;
+                    for (const r of _txMetaSorted(m, kind)) {
+                        if (!merged.has(r.name)) merged.set(r.name, { name: r.name, count: r.count, pct: r.pct });
+                    }
+                }
+                return [...merged.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+            };
+
+            const buildBucketCap = (kind, rule) => {
+                let sorted = _txMetaSorted(meta, kind);
+                if (kind === 'moves') sorted = sorted.filter(r => !_TX_MEME_MOVE_BLOCKLIST.has(r.name));
+                // Strict ≥1 build use; the Smogon-sorted list already has count>0
+                // entries only, so no extra filter beyond memes.
+                let pool = _txCapWithOvershoot(sorted, rule.cap, rule.ceiling);
+                // Floor-fill from the evolution chain when the species' own
+                // pool is short. Pulls highest-stage first; meme moves stay
+                // blocked across chain too.
+                if (rule.fillFromEvo && pool.length < rule.cap) {
+                    let evoRows = evoChainSortedRows(kind);
+                    if (kind === 'moves') evoRows = evoRows.filter(r => !_TX_MEME_MOVE_BLOCKLIST.has(r.name));
+                    const have = new Set(pool.map(r => r.name));
+                    for (const r of evoRows) {
+                        if (pool.length >= rule.cap) break;
+                        if (have.has(r.name)) continue;
+                        pool.push(r);
+                        have.add(r.name);
+                    }
+                }
+                const starred = new Set(); const inPool = new Set(); const pctOf = new Map();
+                for (const r of pool) { starred.add(r.name); inPool.add(r.name); pctOf.set(r.name, r.pct); }
+                for (const r of sorted) if (!pctOf.has(r.name)) pctOf.set(r.name, r.pct);
+                return { starred, inPool, pctOf };
+            };
+
+            const buildBucketThreshold = (kind, rule) => {
+                const sorted = _txMetaSorted(meta, kind);
                 let pool = sorted.filter(r => r.pct >= rule.threshold);
                 if (pool.length > rule.cap) pool = pool.slice(0, rule.cap);
                 else if (pool.length < rule.floor) pool = sorted.slice(0, Math.min(rule.floor, sorted.length));
+                const starred = new Set(); const inPool = new Set(); const pctOf = new Map();
+                for (const r of pool) { starred.add(r.name); inPool.add(r.name); pctOf.set(r.name, r.pct); }
+                for (const r of sorted) if (!pctOf.has(r.name)) pctOf.set(r.name, r.pct);
+                return { starred, inPool, pctOf };
+            };
+
+            const buildBucketAllStarTop = (kind, rule) => {
+                const sorted = _txMetaSorted(meta, kind);
                 const starred = new Set();
+                const inPool = new Set();
                 const pctOf = new Map();
-                for (const r of pool) { starred.add(r.name); pctOf.set(r.name, r.pct); }
-                // Also expose pcts for the full sorted list so the comparator
-                // can rank non-starred options by usage when "Show all" is on.
-                for (const r of sorted) { if (!pctOf.has(r.name)) pctOf.set(r.name, r.pct); }
-                return { starred, pctOf };
+                for (let i = 0; i < sorted.length; i++) {
+                    const r = sorted[i];
+                    inPool.add(r.name);
+                    pctOf.set(r.name, r.pct);
+                    if (i < rule.starN) starred.add(r.name);
+                }
+                return { starred, inPool, pctOf };
+            };
+
+            const buildBucket = (kind) => {
+                const rule = _TX_POOL_RULES[kind];
+                if (rule.mode === 'all-star-top') return buildBucketAllStarTop(kind, rule);
+                if (rule.mode === 'threshold')    return buildBucketThreshold(kind, rule);
+                return buildBucketCap(kind, rule);
             };
 
             const result = {
@@ -45567,7 +45883,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (bs && bs.abilities) {
                     for (const slot of ['0', '1', 'H']) {
                         const a = bs.abilities[slot];
-                        if (a) result.abilities.starred.add(a);
+                        if (a) { result.abilities.starred.add(a); result.abilities.inPool.add(a); }
                     }
                 }
             } catch (e) {}
@@ -46610,6 +46926,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Smogon-usable pool; data-recommended drives the gold border + glow;
         // the muted "· 53%" badge after the title gives players the ranking
         // signal both new and seasoned playtesters asked for.
+        // Tiny mechanic-tag icons (M / T / Z) — render when the move appears
+        // in the corresponding Smogon build pool for this species. M = a
+        // mega-tagged build picked this move (relevant when the mon is in
+        // Battle Dojo / colress mega flow). T = the move appears in a Gen 9
+        // tera build (Tera Blast variants etc.). Z = the move appears in a
+        // Z-attack build (often the Z-target damage move). Players see at a
+        // glance which moves carry mechanic relevance.
+        function _txMechanicIconsHtml(tags) {
+            if (!tags || !tags.size) return '';
+            const order = ['mega', 'tera', 'z-attack'];
+            const map = {
+                'mega':      { letter: 'M', title: 'Used in Mega Evolution builds', cls: 'tx-mech-icon--mega' },
+                'tera':      { letter: 'T', title: 'Used in Tera builds (Gen 9)',   cls: 'tx-mech-icon--tera' },
+                'z-attack':  { letter: 'Z', title: 'Used in Z-Move builds',         cls: 'tx-mech-icon--z' },
+            };
+            return order
+                .filter(t => tags.has(t))
+                .map(t => `<span class="tx-mech-icon ${map[t].cls}" title="${map[t].title}" aria-label="${map[t].title}">${map[t].letter}</span>`)
+                .join('');
+        }
         function _txMoveCardHtml(moveName, ctx) {
             const md = movesDB[moveName] || ensureMoveData(moveName);
             const typ = md.type || 'Normal';
@@ -46628,9 +46964,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ].filter(Boolean).join('');
             const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
             const pctHtml = _txUsagePctHtml(ctx, moveName);
+            const mechTags = ctx && ctx.mechanicTagsFor ? ctx.mechanicTagsFor(moveName) : null;
+            const mechHtml = _txMechanicIconsHtml(mechTags);
             return `<button type="button" class="tx-card" data-card-kind="move" data-card-value="${_esc(moveName)}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}">
                 <div class="tx-card-head">
-                    ${star}<span class="tx-card-title">${_esc(moveName)}</span>${pctHtml}
+                    ${star}<span class="tx-card-title">${_esc(moveName)}</span>${pctHtml}${mechHtml}
                     <span class="type-badge type-${typ}">${typ}</span>
                 </div>
                 <div class="tx-card-stats">
@@ -46809,7 +47147,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pool = _txStarredPool(monName);
             const recOnly = !pool.sparse && _txState.filter.recOnly.moves;
             const filt = allMoves.filter(m => {
-                if (recOnly && !pool.moves.starred.has(m)) return false;
+                if (recOnly && !pool.moves.inPool.has(m)) return false;
                 if (q && !m.toLowerCase().includes(q)) return false;
                 const md = movesDB[m];
                 if (!md) return true;
@@ -46829,7 +47167,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pool = _txStarredPool(monName);
             const recOnly = !pool.sparse && _txState.filter.recOnly.items;
             const filt = allItems.filter(it => {
-                if (recOnly && !pool.items.starred.has(it)) return false;
+                if (recOnly && !pool.items.inPool.has(it)) return false;
                 if (q && !it.toLowerCase().includes(q)) return false;
                 if (catFilter !== 'all' && _txItemCategory(it) !== catFilter) return false;
                 return true;
@@ -46848,7 +47186,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // surfaced when unlocked — accept an extra "always-in-pool" Set
             // from the caller so they survive the ★ Recommended filter.
             const filt = allAbils.filter(a => {
-                if (recOnly && !pool.abilities.starred.has(a) && !(extraStarred && extraStarred.has(a))) return false;
+                if (recOnly && !pool.abilities.inPool.has(a) && !(extraStarred && extraStarred.has(a))) return false;
                 return !q || a.toLowerCase().includes(q);
             });
             if (recOnly && sortKey === 'recommended') filt.sort(_txSortByUsageDesc(pool.abilities.pctOf));
@@ -46863,7 +47201,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pool = _txStarredPool(monName);
             const recOnly = !pool.sparse && _txState.filter.recOnly.natures;
             const filt = allNat.filter(n => {
-                if (recOnly && !pool.natures.starred.has(n)) return false;
+                if (recOnly && !pool.natures.inPool.has(n)) return false;
                 if (q && !n.toLowerCase().includes(q)) return false;
                 const mod = natureModifiers[n];
                 if (up !== 'any' && (!mod || mod.up !== up)) return false;
@@ -46995,7 +47333,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sPool = _txStarredPool(t.name);
             const stabTypes = new Set([mon && mon.type1, mon && mon.type2].filter(Boolean));
             const pendingMove = (_txPending && _txPending.kind === 'move') ? _txPending.value : null;
-            const ctx = { pending: pendingMove, recommended: sPool.moves.starred, stabTypes, pctOf: sPool.moves.pctOf };
+            const ctx = {
+                pending: pendingMove,
+                recommended: sPool.moves.starred,
+                stabTypes,
+                pctOf: sPool.moves.pctOf,
+                mechanicTagsFor: (m) => _txMechanicTagsForMove(t.name, m),
+            };
 
             const emptyMsg = (!sPool.sparse && _txState.filter.recOnly.moves)
                 ? `No starred moves match these filters. <button type="button" class="tx-empty-cta" data-filter-kind="recOnly" data-filter-value="moves">★ Show all</button> to expand, or clear the search.`
@@ -47823,6 +48167,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             const sections = [];
 
+            // Mega / Dmax stats from Smogon usage — surfaces "Mega used in
+            // 9.6% of builds" so the player has the same signal Smogon's
+            // strategy dex gives.
+            const colressMeta = _txMetaStatsFor(t.name);
+            const colressTagCounts = (colressMeta && colressMeta.tagCounts) || null;
+            const colressTotal = (colressMeta && colressMeta.total) || 0;
+            const pctOfBuilds = (tag) => {
+                if (!colressTagCounts || !colressTotal) return null;
+                const c = colressTagCounts[tag] || 0;
+                if (c <= 0) return null;
+                return (c / colressTotal) * 100;
+            };
+
             if (elig.mega) {
                 const stone = MEGA_STONE_MAP[t.name];
                 const stones = Array.isArray(stone) ? stone : (stone ? [stone] : []);
@@ -47840,8 +48197,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         + `${_esc(formName)} <span style="opacity:0.7;font-size:10px;">(${_esc(s)})</span></button>`
                         + priceTag + voucherHtml + `</div></div>`;
                 }).join('');
+                const megaPct = pctOfBuilds('mega');
+                const megaPctChip = megaPct != null
+                    ? `<span class="tx-mech-section-pct" title="${megaPct.toFixed(1)}% of Smogon ${_esc(t.name)} builds use a Mega Stone">${Math.round(megaPct)}% of meta</span>`
+                    : '';
                 sections.push(
-                    `<div class="story-tutor-section"><div class="story-tutor-section-title" style="color:#ce93d8;">◆ Mega Evolution</div>`
+                    `<div class="story-tutor-section tx-mech-section--mega"><div class="story-tutor-section-title">★ Mega Evolution${megaPctChip}</div>`
                     + `<p class="story-tutor-moves-hint">Auto-equips the matching Mega Stone (replaces held item).</p>`
                     + `<div class="story-tutor-choice-list">${buttons}</div></div>`
                 );
@@ -47854,9 +48215,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const goldDis = (cantAfford || isCurrent) ? 'disabled' : '';
                 const voucherDis = isCurrent;
                 const voucherHtml = voucherBtn(`window.StoryMode.colressApplyDmax(${idx},true)`, `Use Wishing Piece`, voucherDis);
+                const sectionClass = isGmax ? 'tx-mech-section--gmax' : '';
+                const titlePrefix = isGmax ? '★ ' : '';
                 sections.push(
-                    `<div class="story-tutor-section"><div class="story-tutor-section-title" style="color:#ef9a9a;">💥 ${isGmax ? 'Gigantamax' : 'Dynamax'}</div>`
-                    + `<p class="story-tutor-moves-hint">Held item is preserved.</p>`
+                    `<div class="story-tutor-section ${sectionClass}"><div class="story-tutor-section-title">${titlePrefix}💥 ${isGmax ? 'Gigantamax' : 'Dynamax'}</div>`
+                    + `<p class="story-tutor-moves-hint">${isGmax ? 'Unique G-Max move replaces a damage move during transformation.' : 'Boosts HP and supercharges moves for 3 turns.'} Held item is preserved.</p>`
                     + `<div class="story-tutor-choice-list">`
                     + `<div class="story-tutor-choice"><div class="story-tutor-choice-actions">`
                     + `<button type="button" class="story-tutor-btn" ${goldDis} onclick="window.StoryMode.colressApplyDmax(${idx},false)">${isGmax ? 'Gigantamax' : 'Dynamax'}${isCurrent ? ' (active)' : ''}</button>`
@@ -47865,6 +48228,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             if (elig.z) {
+                // STAB types for ★ marking — types that match the mon's
+                // primary or secondary typing get the Smogon-canonical Z
+                // recommendation (e.g., Garchomp → ★ Dragon / Ground Z-Moves).
+                let stabSet = new Set();
+                try {
+                    const mon = buildPokemon(t.name, shallowCloneBuildForDisplay(b));
+                    if (mon) { if (mon.type1) stabSet.add(mon.type1); if (mon.type2) stabSet.add(mon.type2); }
+                } catch (e) {}
                 const sigZ = SIGNATURE_Z[t.name];
                 let buttons = '';
                 if (sigZ) {
@@ -47876,9 +48247,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const teachNote = reqMove
                         ? (hasReq ? '' : ' (auto-teaches ' + _esc(reqMove) + ')')
                         : '';
-                    const label = `Signature: ${_esc(sigZ)}${teachNote}`;
+                    const label = `★ Signature: ${_esc(sigZ)}${teachNote}`;
                     const voucherHtml = voucherBtn(`window.StoryMode.colressApplyZSig(${idx},true)`, `Use Wishing Piece`, voucherDis);
-                    buttons += `<div class="story-tutor-choice"><div class="story-tutor-choice-actions">`
+                    buttons += `<div class="story-tutor-choice" data-z-signature="1"><div class="story-tutor-choice-actions">`
                         + `<button type="button" class="story-tutor-btn" ${goldDis} onclick="window.StoryMode.colressApplyZSig(${idx},false)">${label}</button>`
                         + priceTag + voucherHtml + `</div></div>`;
                 }
@@ -47889,46 +48260,62 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const isCurrent = b.gimmick === 'ZMOVE' && b.i === crystal;
                         const goldDis = (cantAfford || isCurrent) ? 'disabled' : '';
                         const voucherDis = isCurrent;
+                        const isStab = stabSet.has(typ);
+                        const starHtml = isStab ? '<span class="tx-tera-star" aria-hidden="true">★</span>' : '';
                         const voucherHtml = voucherBtn(`window.StoryMode.colressApplyZ(${idx},'${typ}',true)`, `Use Wishing Piece`, voucherDis);
-                        return `<div class="story-tutor-choice"><div class="story-tutor-choice-actions">`
-                            + `<button type="button" class="story-tutor-btn type-badge type-${typ}" style="border:none;font-weight:bold;" ${goldDis} onclick="window.StoryMode.colressApplyZ(${idx},'${typ}',false)">${typ} (${_esc(crystal)})</button>`
+                        return `<div class="story-tutor-choice"${isStab ? ' data-z-stab="1"' : ''}><div class="story-tutor-choice-actions">`
+                            + `<button type="button" class="story-tutor-btn type-badge type-${typ}" style="border:none;font-weight:bold;" ${goldDis} onclick="window.StoryMode.colressApplyZ(${idx},'${typ}',false)">${starHtml}${typ} (${_esc(crystal)})</button>`
                             + priceTag + voucherHtml + `</div></div>`;
                     }).join('');
                 }
                 if (!buttons) {
                     buttons = `<div class="story-tutor-option-row"><span class="current">This Pokémon needs damaging moves first. Visit the Move Tutor.</span></div>`;
                 }
+                const zPct = pctOfBuilds('z-attack');
+                const zPctChip = zPct != null
+                    ? `<span class="tx-mech-section-pct" title="${zPct.toFixed(1)}% of Smogon ${_esc(t.name)} builds use a Z-Crystal">${Math.round(zPct)}% of meta</span>`
+                    : '';
                 sections.push(
-                    `<div class="story-tutor-section"><div class="story-tutor-section-title" style="color:#ffd54f;">⚡ Z-Move</div>`
-                    + `<p class="story-tutor-moves-hint">Auto-equips the matching Z-Crystal (replaces held item). Damaging moves of that type turn into Z-Moves.</p>`
+                    `<div class="story-tutor-section"><div class="story-tutor-section-title" style="color:#ffd54f;">⚡ Z-Move${zPctChip}</div>`
+                    + `<p class="story-tutor-moves-hint">★ marks STAB types — same-type Z-moves get the natural damage boost. Auto-equips the matching Z-Crystal.</p>`
                     + `<div class="story-tutor-choice-list">${buttons}</div></div>`
                 );
             }
 
             if (elig.tera) {
-                const buttons = COLRESS_ALL_TYPES.map(typ => {
+                // Top 3 Smogon-recommended tera types for this species (Gen 9 data)
+                const teraStats = _txTeraStatsFor(t.name);
+                const recSet = new Set(teraStats ? teraStats.map(r => r.type) : []);
+                const recPctMap = new Map(teraStats ? teraStats.map(r => [r.type, r.pct]) : []);
+                const renderTeraBtn = (typ, addShift) => {
                     const isCurrent = b.gimmick === 'TERA' && b.teraType === typ;
                     const goldDis = (cantAfford || isCurrent) ? 'disabled' : '';
-                    return `<button type="button" class="story-tutor-btn type-badge type-${typ}" style="border:none;font-weight:bold;${isCurrent ? 'outline:2px solid #fff;' : ''}" ${goldDis} onclick="window.StoryMode.colressApplyTera(${idx},'${typ}',false)">${typ}</button>`;
-                }).join('');
+                    const isRec = recSet.has(typ);
+                    const recStarHtml = isRec ? '<span class="tx-tera-star" aria-hidden="true">★</span>' : '';
+                    const pct = recPctMap.get(typ);
+                    const pctHtml = (pct != null && pct >= 1) ? `<span class="tx-tera-pct">${Math.round(pct)}%</span>` : '';
+                    const recAttr = isRec ? ' data-tera-recommended="1"' : '';
+                    const onclickHtml = addShift
+                        ? `data-tera-type="${typ}" onclick="(function(e,i,t){e.preventDefault();window.StoryMode.colressApplyTera(i,t,e.shiftKey);})(event,${idx},'${typ}')"`
+                        : `onclick="window.StoryMode.colressApplyTera(${idx},'${typ}',false)"`;
+                    return `<button type="button" class="story-tutor-btn type-badge type-${typ}" style="border:none;font-weight:bold;${isCurrent ? 'outline:2px solid #fff;' : ''}"${recAttr} ${goldDis} ${onclickHtml}>${recStarHtml}${typ}${pctHtml}</button>`;
+                };
+                // Recommended-row first (shown when we have data), full 18-type grid below.
+                const recRow = teraStats && teraStats.length
+                    ? `<div class="tx-tera-rec-row" aria-label="Recommended Tera types from Smogon Gen 9 sets">
+                          <span class="tx-tera-rec-label">★ Smogon top picks</span>
+                          ${teraStats.map(r => renderTeraBtn(r.type, hasVoucher)).join('')}
+                       </div>`
+                    : '';
                 const voucherTeraNote = hasVoucher
-                    ? `<div style="font-size:11px;color:#b39ddb;margin-top:6px;background:rgba(126,87,194,0.12);border:1px solid #7e57c2;border-radius:4px;padding:6px 8px;">🌠 <strong>Wishing Piece:</strong> Shift-click any type below to spend a Wishing Piece instead of gold.</div>`
+                    ? `<div style="font-size:11px;color:#b39ddb;margin-top:6px;background:rgba(126,87,194,0.12);border:1px solid #7e57c2;border-radius:4px;padding:6px 8px;">🌠 <strong>Wishing Piece:</strong> Shift-click any type to spend a Wishing Piece instead of gold.</div>`
                     : '';
-                const teraOnclick = hasVoucher
-                    ? `onclick="(function(e,i,t){e.preventDefault();window.StoryMode.colressApplyTera(i,t,e.shiftKey);}).call(this,event,${idx},this.getAttribute('data-tera-type'))"`
-                    : '';
-                // For shift-click support, rebuild buttons with onclick wrapper
-                const buttonsWithShift = hasVoucher
-                    ? COLRESS_ALL_TYPES.map(typ => {
-                        const isCurrent = b.gimmick === 'TERA' && b.teraType === typ;
-                        const goldDis = (cantAfford || isCurrent) ? 'disabled' : '';
-                        return `<button type="button" class="story-tutor-btn type-badge type-${typ}" style="border:none;font-weight:bold;${isCurrent ? 'outline:2px solid #fff;' : ''}" ${goldDis} data-tera-type="${typ}" onclick="(function(e,i,t){e.preventDefault();window.StoryMode.colressApplyTera(i,t,e.shiftKey);})(event,${idx},'${typ}')">${typ}</button>`;
-                    }).join('')
-                    : buttons;
+                const fullGrid = COLRESS_ALL_TYPES.map(typ => renderTeraBtn(typ, hasVoucher)).join('');
                 sections.push(
                     `<div class="story-tutor-section"><div class="story-tutor-section-title" style="color:#81d4fa;">◆ Terastallization</div>`
                     + `<p class="story-tutor-moves-hint">Choose any of the 18 Tera types. Held item unchanged.</p>`
-                    + `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;">${buttonsWithShift}</div>`
+                    + recRow
+                    + `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;margin-top:${recRow ? '8px' : '0'};">${fullGrid}</div>`
                     + `<div style="font-size:10px;color:#ffd54f;margin-top:6px;text-align:right;">Each pick: ${storyGoldHtml(COLRESS_COST.toLocaleString(), false)}</div>`
                     + voucherTeraNote
                     + `</div>`
@@ -48142,24 +48529,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Top-N exact EV spreads by Smogon usage (regardless of Universal/Role
         // overlap). Returns BOTH the set of keys for ★ matching AND a Map of
         // key → usage % so preset cards can show "★ Physical Sweeper · 23%".
-        function _evTrainerTopSpreadInfo(name, n) {
-            n = n | 0 || 5;
+        // Internal helper: count EV spreads from a build pool, returning
+        // [{ key, count, evs }] sorted by count desc.
+        function _evTrainerCountSpreads(builds) {
+            const counts = new Map();
+            for (const b of (builds || [])) {
+                if (!b || !b.evs) continue;
+                const norm = { hp:b.evs.hp||0, atk:b.evs.atk||0, def:b.evs.def||0, spa:b.evs.spa||0, spd:b.evs.spd||0, spe:b.evs.spe||0 };
+                const key = _evsKey(norm);
+                const cur = counts.get(key);
+                if (cur) cur.count++;
+                else counts.set(key, { key, count: 1, evs: norm });
+            }
+            return [...counts.values()].sort((a,b) => b.count - a.count || a.key.localeCompare(b.key));
+        }
+        function _evTrainerSpeciesBuilds(name) {
             let entry;
             try { entry = (typeof resolveCsvBuildEntry === 'function') ? resolveCsvBuildEntry(name) : null; }
             catch (e) { entry = null; }
             entry = entry || {};
-            const allBuilds = [].concat(entry.regular||[], entry.weather||[], entry.mega||[], entry.tera||[], entry['z-attack']||[]);
-            const counts = new Map();
-            for (const b of allBuilds) {
-                if (!b || !b.evs) continue;
-                const norm = { hp:b.evs.hp||0, atk:b.evs.atk||0, def:b.evs.def||0, spa:b.evs.spa||0, spd:b.evs.spd||0, spe:b.evs.spe||0 };
-                const key = _evsKey(norm);
-                counts.set(key, (counts.get(key) || 0) + 1);
-            }
+            return [].concat(entry.regular||[], entry.weather||[], entry.mega||[], entry.tera||[], entry['z-attack']||[]);
+        }
+        function _evTrainerTopSpreadInfo(name, n) {
+            n = n | 0 || _TX_EV_RULES.cap;
+            const allBuilds = _evTrainerSpeciesBuilds(name);
+            const sorted = _evTrainerCountSpreads(allBuilds);
             const total = allBuilds.length || 1;
-            const sorted = [...counts.entries()].sort((a,b) => b[1] - a[1]).slice(0, n);
-            const keys = new Set(sorted.map(([k]) => k));
-            const pctOf = new Map(sorted.map(([k, c]) => [k, (c / total) * 100]));
+            const sliced = sorted.slice(0, n);
+            const keys = new Set(sliced.map(r => r.key));
+            const pctOf = new Map(sliced.map(r => [r.key, (r.count / total) * 100]));
             return { keys, pctOf };
         }
         // Back-compat: keep the old keys-only signature for any out-of-tree caller.
@@ -48239,7 +48637,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 return bestKey ? _statLetter[bestKey] : null;
             };
-            const ranked = Array.from(counts.values()).sort((a,b) => b.n - a.n).slice(0, 5);
+            // Cap with overshoot — every spread tied at the cap boundary
+            // survives, then fill from the evolution chain so the section
+            // hits the 7-card target even on Bulbasaur-tier sparse species.
+            let pre = Array.from(counts.values()).sort((a,b) => b.n - a.n);
+            let ranked = _txCapWithOvershoot(
+                pre.map(x => ({ count: x.n, _r: x })),
+                _TX_EV_RULES.cap,
+                _TX_EV_RULES.ceiling
+            ).map(x => x._r);
+            // Floor-fill from evo chain when under cap, terminal evos first.
+            if (ranked.length < _TX_EV_RULES.cap && _TX_EV_RULES.fillFromEvo) {
+                const chain = _txEvoChainOrderedForMon(name);
+                const have = new Set(ranked.map(r => _evsKey(r.evs)));
+                for (const sp of chain) {
+                    if (sp === name) continue;
+                    if (ranked.length >= _TX_EV_RULES.cap) break;
+                    const evoBuilds = _evTrainerSpeciesBuilds(sp);
+                    const evoSorted = _evTrainerCountSpreads(evoBuilds);
+                    for (const r of evoSorted) {
+                        if (ranked.length >= _TX_EV_RULES.cap) break;
+                        if (dupKeys.has(r.key) || have.has(r.key)) continue;
+                        ranked.push({ evs: r.evs, archetype: 'Meta Spread', n: r.count });
+                        have.add(r.key);
+                    }
+                }
+            }
             const labelSeen = new Map(); // label → count
             for (const m of ranked) {
                 const base = prettyLabel(m.archetype);
@@ -48815,7 +49238,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Universal / Role / Meta cards all get ★ when their exact 6-tuple
             // hits one of these top-5 picks, so the canonical card carries
             // the star even when render-level dedup hides the Meta variant.
-            const spreadInfo = _evTrainerTopSpreadInfo(t.name, 5);
+            const spreadInfo = _evTrainerTopSpreadInfo(t.name, _TX_EV_RULES.cap);
             const isStarredPreset = p => spreadInfo.keys.has(_evsKey(p.evs));
             const pctForPreset = p => spreadInfo.pctOf.get(_evsKey(p.evs));
 
