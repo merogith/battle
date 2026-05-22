@@ -123,7 +123,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 4b6cce4cb746
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Cable Link gimmick gate contradicts CHANGELOG promise that Cable Link surfaces pre-unlock mechanics
@@ -282,7 +282,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: aa41935a60b3
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Foe party size matches `team.length` with per-role floors instead of the spec'd `min(6, 2+badges)` badge curve

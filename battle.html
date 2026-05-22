@@ -10760,9 +10760,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return settings.mechanics;
         }
         // Wraps a build factory call so any gimmick it rolls is constrained to
-        // the player's unlocked-mechanic list. Used by every player-side acquisition
-        // path EXCEPT Cable Link (the premium "another trainer's mon" path is allowed
-        // to surface pre-unlock gimmicks by design — see _makePlayerLinkBuild).
+        // the player's unlocked-mechanic list. Used by every player-side
+        // acquisition path INCLUDING Cable Link, per STORY_MODE_FLOW.md §15d
+        // ("Cable Link only rolls gimmicks the player has unlocked"). An
+        // older CHANGELOG entry (2026-05-21) described Cable Link as ungated;
+        // the spec and the code disagree with that earlier note — the gate
+        // applies uniformly to make pre-unlock leaks impossible across every
+        // player-side acquisition.
         function _withStoryPlayerGimmickGate(fn) {
             try {
                 window._pbsStoryUsePlayerGimmickGate = true;
@@ -37342,33 +37346,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 msg:'The Champion bows. "These are yours by right." +2 Ultra Balls, +1 Rare Candy, +2 Vitamin Packs, +1 Heart Scale, +1 Mint, +1 Ability Capsule, +1 Emblem of Honor — and one of each perm-boost vitamin (+2 each). The League stocks the strongest a final-leg trainer can carry.' }
         };
 
-        // Foe party size = player party size (1:1 match), with story-finale
-        // exceptions and a per-role floor so a 1-mon trainer still feels like
-        // a real fight. Because the player cap follows the badge curve, foe
-        // size effectively ramps with badges via the player, but a player
-        // who runs lean fights lean parties run-to-run.
-        //
-        // Exceptions to the match:
+        // Foe party size = badge curve `min(6, 2 + badges)` (STORY_MODE_FLOW
+        // canonical spec), with two exceptions:
         //   1. Story finales (Champion / Elite Four / Victory Road / post-HoF
         //      Mystery Figure) always field a full 6.
         //   2. Intro rival is pure player-match (1v1 starter duel) — the
         //      catch tutorial fires *after* the rival, so the player has
         //      only the starter at fight time.
         //
-        // Per-role floors (`role`, looked up from the event string):
-        //   Basic / Gym Trainer / Elite Trainer: 1
-        //   Rival:                                2
-        //   Gym Leader 1–2:                       2
-        //   Gym Leader 3–4:                       3
-        //   Gym Leader 5–6:                       4
-        //   Gym Leader 7:                         5
-        //   Gym Leader 8:                         6
+        // Pre-fix this function matched player team length with role floors,
+        // which under-sized non-finale fights for a "non-catcher" player who
+        // kept their party lean (GL2 at 1 badge with 2 mons came out 2v2
+        // instead of the spec'd 3v3). The role-floor table is preserved as
+        // a SAFETY NET below the badge curve so a Gym Leader 7 fight is never
+        // accidentally a 3v3 even if the badge value is somehow stale.
         function _storyEnemyPartySize(event, playerTeamLen, eventId) {
             const e = String(event || '');
             if (/Champion/i.test(e) || /Victory Road/i.test(e) || /^E[1-4]$/i.test(e) || /Mystery Figure/i.test(e)) return 6;
             if ((eventId | 0) === STORY_RIVAL_ROW_INTRO) {
                 return Math.max(1, Math.min(6, playerTeamLen | 0));
             }
+            const badges = (sm && (sm.badges | 0)) || 0;
+            const badgeCurve = Math.min(6, 2 + badges);
+            // Role-floor safety net (kept for resilience to stale badges).
             let floor = 1;
             if (/Rival/i.test(e)) floor = 2;
             else {
@@ -37382,8 +37382,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     else floor = 6;
                 }
             }
-            const matched = Math.max(1, Math.min(6, playerTeamLen | 0));
-            return Math.max(floor, matched);
+            return Math.max(floor, badgeCurve);
         }
         // Active party cap = badge curve. Starter slot is always available
         // (slot 1); the catch tutorial fills slot 2 right after the intro
