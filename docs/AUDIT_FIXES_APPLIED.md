@@ -10,7 +10,7 @@ This document tracks which audit findings have been fixed in this branch and how
 
 ## Summary
 
-7 commits land 8 waves of fixes covering every P0 / P1 issue, most P2, and the documented P3 hygiene items. All 533 existing tests still pass.
+9 commits land 8 waves of audit fixes + a self-audit pass covering every P0 / P1 issue, most P2, the documented P3 hygiene items, and 9 critical bugs + 4 edge cases introduced by my own changes. All 533 existing tests still pass.
 
 | Severity | Audited | Fixed | Skipped (and why) |
 |---|---|---|---|
@@ -93,6 +93,28 @@ Hand-rolled Smogon-style sets for the 8 gen-9 species that had no presets:
 - **Oinkologne** (Male + Female-form): Choice Band physical, Bulk Up + Rest stall. Thick Fat / Lingering Aroma / Aroma Veil.
 
 CSV regenerated — 17,397 rows total (8 species × 1–2 formats × 1–2 roles = 16 new rows).
+
+---
+
+### Wave 9 — Self-audit closeout (commit `3283694`)
+A focused second-pass audit caught 9 critical bugs + 4 edge cases I introduced in waves 1-8. All fixed in this commit:
+
+**Critical**
+- Block / Mean Look / Spider Web / Thousand Waves were dealing 1/8 HP chip damage per turn (the sticky `partialTrap = 999` value fell through the existing trap-damage block). Exempted sticky-trap from the chip path.
+- Opportunist's `statsRaisedThisTurn` accumulator never cleared between turns or on switch — a non-Opportunist defender could pile boosts forever and a later Opportunist switch-in would mirror +12 atk in one go. Cleared in EoT loop and `clearVolatileOnSwitch`.
+- Cud Chew berry queue survived switches; bench mons "thawed" their queued berry on return. Now cleared on switch.
+- Sky Drop attacker-faint deadlock: defender stayed invulnerable forever if the user fainted mid-carry. `canMove` defensively releases the lock when the locking attacker is gone; cached target reference on `attacker.volatile.skyDropTarget` for correct turn-2 cleanup.
+- Wind Power's move list cross-checked against `data/moves.json` `flags.wind` — dropped Air Slash / Razor Wind / Sky Attack (none are wind-flagged), added Sandstorm. Extracted to `_WIND_FLAGGED` const. Also fires on Whirlwind now (non-damaging wind hit).
+- Stall priority -0.6 crossed brackets (a +1 Stall move could sort below a 0-priority Quick Claw proc at +0.4). Reduced to -0.1, stays within bracket.
+- `identified` / `identifiedDark` / `charged` volatiles persisted across switches. Now cleared in `clearVolatileOnSwitch`.
+- Klawf had Stone Axe (Kleavor signature, unlearnable) and Crabhammer (not in movepool). Swapped to Rock Slide + X-Scissor.
+- CSV multi-option ability re-pick bypassed the legal-only filter — a build flagged "legal" at load could re-pick to an illegal ability at runtime. Prune `_abilityOptions` to legal-only at load; if all alternatives illegal, flag the whole build.
+- Oinkologne had Headlong Rush (Great Tusk signature). Swapped to Body Slam.
+
+**Edge cases**
+- Sky Drop turn-2 uses the cached locked target, not the current defender slot.
+- Anticipation respects ability-based type immunities (Volt Absorb, Levitate, Earth Eater, Flash Fire, Water Absorb, Storm Drain, Lightning Rod, Motor Drive, Dry Skin, Sap Sipper).
+- Forewarn picks randomly among top-BP ties instead of first-iteration deterministic.
 
 ---
 
