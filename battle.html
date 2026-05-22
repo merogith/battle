@@ -9515,7 +9515,13 @@
                 }
             }
             await loadBuildsCSV();
-            await _loadOpAbilities();
+            // _loadOpAbilities is defined inside the window.StoryMode IIFE and
+            // exposed via window so this top-level boot path can reach it.
+            // Guarded so a missing function (or fetch failure) never aborts
+            // boot — Awaken just stays unavailable until the next reload.
+            try {
+                if (typeof window._loadOpAbilities === 'function') await window._loadOpAbilities();
+            } catch (e) { console.warn('[OP] preload failed:', e); }
             computeStatScales();
             try { if (new URLSearchParams(location.search).get('spritescaledebug') === '1') window.__DEBUG_SPRITE_SCALE = true; } catch (e) {}
             enrichBaseStatsHeightsFromDex();
@@ -44791,6 +44797,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return _opAbilitiesCache;
         }
+        // Boot loader at line ~9518 lives outside the window.StoryMode IIFE and
+        // can't see this closure-scoped function directly — expose it on the
+        // window so loadGameData() can pre-warm the cache. Without this the
+        // call throws ReferenceError, the cache never populates, and every
+        // Awaken pill silently fails to render at City 6+.
+        try { window._loadOpAbilities = _loadOpAbilities; } catch (e) {}
         function _opAbilitiesForMon(monName) {
             if (!_opAbilitiesCache) return [];
             if ((sm && (sm.badges | 0)) < 6) return [];
