@@ -9797,6 +9797,10 @@
             // Fallback to regular+weather when specific tag pool is empty
             if (!pool.length) pool = (entry.regular || []).concat(entry.weather || []);
 
+            // Singles/exotic-format filter (no-op if no entries would survive — keeps
+            // species playable when their only Smogon presence is doubles or exotic).
+            pool = _filterBuildPool(pool);
+
             // Illegal-build filtering — default is "exclude". End-game callers opt in
             // via allowIllegal. forceIllegal narrows to ONLY illegal (with legal fallback
             // when the species has no illegal preset in the pool).
@@ -10254,8 +10258,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             pvpBattleItems: false,  /* reserved: symmetric items in PvP */
             battleLogDock: true,    /* landscape tablets/desktop: dock log when wide enough */
             displayMode: 'auto',    /* 'auto' | 'phone' | 'desktop' — manual override of UA detection */
-            gimmickAnimSpeed: 'normal'  /* 'normal' | 'fast' | 'instant' — controls Mega/Dyna/Tera/Z activation durations */
+            gimmickAnimSpeed: 'normal',  /* 'normal' | 'fast' | 'instant' — controls Mega/Dyna/Tera/Z activation durations */
+            /* Build-pool filters (read by makeBuild / loadBuildsCSV consumers):
+               - allowDoublesBuilds: include VGC / Battle Spot Doubles sets in singles rolls. Off by default
+                 so Tailwind / Wide Guard / Follow Me roles don't pollute singles encounters.
+               - allowExoticFormats: include side-mode formats (AAA, BH, Stabmons, Mix-and-Mega,
+                 Camomons, Godly Gift, Inheritance, etc.). Off by default — standard tiers only. */
+            allowDoublesBuilds: false,
+            allowExoticFormats: false
         };
+        // Format keys treated as "exotic" side modes — excluded from default
+        // build rolls unless settings.allowExoticFormats is on.
+        const EXOTIC_FORMAT_KEYS = new Set([
+            'almostanyability','balancedhackmons','purehackmons','mixandmega',
+            'stabmons','godlygift','inheritance','partnersincrime','camomons',
+            'bdspou','letsgoou','dreamworldou','middlecup','ubersuu','cap'
+        ]);
+        function _isExoticFormat(fmt) { return EXOTIC_FORMAT_KEYS.has(String(fmt || '').toLowerCase()); }
+        function _isDoublesBuild(buildObj) {
+            return buildObj && buildObj._category === 'doubles';
+        }
+        // Filter a candidate build pool by the current singles/exotic settings.
+        // Returns the original pool unchanged if every entry would be filtered out
+        // (avoids reducing a species to zero choices).
+        function _filterBuildPool(pool) {
+            if (!Array.isArray(pool) || pool.length === 0) return pool;
+            const allowDoubles = !!settings.allowDoublesBuilds;
+            const allowExotic  = !!settings.allowExoticFormats;
+            if (allowDoubles && allowExotic) return pool;
+            const filtered = pool.filter(b => {
+                if (!b) return false;
+                if (!allowDoubles && _isDoublesBuild(b)) return false;
+                if (!allowExotic  && _isExoticFormat(b._format)) return false;
+                return true;
+            });
+            return filtered.length ? filtered : pool;
+        }
         // Central duration table for the four gimmick activation animations.
         // The CSS keyframes (.anim-mega-activate, .anim-dmax-activate,
         // .anim-dmax-deactivate, .anim-tera-activate, .anim-zmove-activate) carry
@@ -10297,6 +10335,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.csvBuildMix === 'number' && _pbs.csvBuildMix >= 0 && _pbs.csvBuildMix <= 1) settings.csvBuildMix = _pbs.csvBuildMix;
             if (_pbs.displayMode === 'phone' || _pbs.displayMode === 'desktop' || _pbs.displayMode === 'auto') settings.displayMode = _pbs.displayMode;
             if (_pbs.gimmickAnimSpeed === 'normal' || _pbs.gimmickAnimSpeed === 'fast' || _pbs.gimmickAnimSpeed === 'instant') settings.gimmickAnimSpeed = _pbs.gimmickAnimSpeed;
+            if (typeof _pbs.allowDoublesBuilds === 'boolean') settings.allowDoublesBuilds = _pbs.allowDoublesBuilds;
+            if (typeof _pbs.allowExoticFormats === 'boolean') settings.allowExoticFormats = _pbs.allowExoticFormats;
         } catch (e) {}
         function persistMiscSettings() {
             try {
@@ -10309,7 +10349,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     gauntletProgressiveDifficulty: settings.gauntletProgressiveDifficulty,
                     csvBuildMix: settings.csvBuildMix,
                     displayMode: settings.displayMode,
-                    gimmickAnimSpeed: settings.gimmickAnimSpeed
+                    gimmickAnimSpeed: settings.gimmickAnimSpeed,
+                    allowDoublesBuilds: settings.allowDoublesBuilds,
+                    allowExoticFormats: settings.allowExoticFormats
                 }));
             } catch (e) {}
         }
@@ -11040,34 +11082,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return name; // pkmn.cc uses display names matching our CSV
         }
 
-        async function fetchLiveBuild(name, monGen) {
-            const cands = speciesNamesForBuildLookup(name);
-            // Try gen9 first (most coverage), then Pokémon's own gen
-            for (let tryGen of [9, monGen]) {
-                let sets = await fetchSmogonSetsForGen(tryGen);
-                for (const cand of cands) {
-                    let entry = sets[smogonKey(cand)];
-                    if (entry) {
-                        let allSets = [];
-                        for (let tier in entry) {
-                            for (let setName in entry[tier]) {
-                                allSets.push(entry[tier][setName]);
-                            }
-                        }
-                        if (allSets.length > 0) {
-                            let chosen = allSets[Math.floor(Math.random() * allSets.length)];
-                            return convertSmogonSet(chosen, name);
-                        }
-                    }
-                }
-            }
-            let rands = await fetchRandbatsForGen(9);
-            for (const cand of cands) {
-                let rand = rands[smogonKey(cand)];
-                if (rand) return convertRandbatsEntry(rand, name);
-            }
-            return null;
-        }
+        // fetchLiveBuild was a per-mon live Smogon-set fetcher (the only path that
+        // historically preserved per-stat IVs and curated tera types from the JSON
+        // sources). It was never invoked anywhere in the codebase. The CSV loader
+        // now consumes both IVs and teratypes natively (see loadBuildsCSV), so the
+        // function is fully redundant and has been removed. `convertSmogonSet` is
+        // kept exposed because it's a useful low-level helper for anything that
+        // needs to coerce a raw Smogon-style set into the internal build shape.
 
         function convertSmogonSet(set, name) {
             if (!set) return null;
@@ -44673,13 +44694,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return [];
             }
             const ids = new Set();
-            for (const nm of _tutorSpeciesKeysForLearnset(monName)) {
-                try {
-                    const ls = await D.learnsets.get(nm);
-                    if (ls && ls.learnset && typeof ls.learnset === 'object') {
-                        Object.keys(ls.learnset).forEach(id => ids.add(id));
-                    }
-                } catch (e) {}
+            const keys = _tutorSpeciesKeysForLearnset(monName);
+            // Union across all gens 4-9: @pkmn/dex's default Dex is gen 9 and
+            // hides moves flagged `isNonstandard: "Past"` (Pursuit, all 16
+            // Hidden Powers, Return, Frustration, Magic Coat, Snatch, …) from
+            // gen-9 learnsets. Without this loop, those moves are reachable
+            // only on species with historical Smogon CSV builds containing them.
+            const _gens = (D.forGen && typeof D.forGen === 'function') ? [4,5,6,7,8,9] : [9];
+            for (const g of _gens) {
+                let Dg;
+                try { Dg = (g === 9 || !D.forGen) ? D : D.forGen(g); } catch (e) { Dg = D; }
+                if (!Dg || !Dg.learnsets || typeof Dg.learnsets.get !== 'function') continue;
+                for (const nm of keys) {
+                    try {
+                        const ls = await Dg.learnsets.get(nm);
+                        if (ls && ls.learnset && typeof ls.learnset === 'object') {
+                            Object.keys(ls.learnset).forEach(id => ids.add(id));
+                        }
+                    } catch (e) {}
+                }
             }
             const names = new Set();
             for (const id of ids) {
