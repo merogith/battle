@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-22T17:01:09.235Z
+> **Generated**: 2026-05-22T17:04:06.615Z
 > **Source**: `agent-state/findings/*.md` (88 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -2447,7 +2447,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 9facd1ec61ac
 confidence: high
-status: open
+status: wontfix-sm.catchUnlocked-reserved-for-future-toggle-feature
 ---
 
 **Title**: `sm.catchUnlocked` is written by migration + newStoryRun but never read anywhere
@@ -2577,7 +2577,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 6240f054e598
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `enterProfessor` duplicates gimmick-gate logic inline instead of using `_withStoryPlayerGimmickGate`
@@ -2663,7 +2663,7 @@ file: data/items.json
 agents: [data-integrity-auditor]
 fingerprint: 92eb6f313f92
 confidence: high
-status: open
+status: wontfix-isPokeball-flag-future-use-forward-compat
 ---
 
 **Title**: `isPokeball` flag set on 28 items but never read by the engine — dead metadata
@@ -2697,7 +2697,7 @@ file: data/items.json
 agents: [data-integrity-auditor]
 fingerprint: 3ebf781a4419
 confidence: medium
-status: open
+status: wontfix-gen2-berries-not-loaded-by-gen9-engine-by-design
 ---
 
 **Title**: 9 legacy gen2 berries (Bitter, Burnt, Gold, Ice, Mint, Miracle, Mystery, PRZ Cure, PSN Cure) have no engine handler
@@ -2985,7 +2985,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 67e4da6efcae
 confidence: medium
-status: open
+status: wontfix-corner-case-common-path-matches-showdown-by-the-hp
 ---
 
 **Title**: Burn applied as final-damage multiplier (`modifier *= 0.5`) instead of halving the attack stat pre-floor
@@ -3063,7 +3063,7 @@ file: online-pvp.js
 agents: [pvp-concurrency-hunter]
 fingerprint: aee012742c28
 confidence: medium
-status: open
+status: wontfix-room-code-is-addressing-not-secret-tokens-protect-writes
 ---
 
 **Title**: Room codes use `Math.random()` over 32 chars × 6 positions — 30 bits, birthday collision at ~30K concurrent rooms, retry-on-23505 saves correctness but not enumeration cost
@@ -3141,7 +3141,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: b99d78121766
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Mystery Figure intro pool fallback uses 2 lines but the identity's `intros` field has 4 — falls back silently if the identity object lacks `intros`
@@ -3402,7 +3402,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 908671f1a52f
 confidence: high
-status: open
+status: wontfix-internal-keys-stable-not-user-facing
 ---
 
 **Title**: Internal action keys use `Pokemon` (no diacritic) while UI labels use `Pokémon`

@@ -37086,15 +37086,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     usedFamilies.add(_storyBaseFamily(name));
                     let build;
                     try {
-                        window._pbsStoryUsePlayerGimmickGate = true;
-                        window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
-                        build = makeBuild(name);
+                        build = _withStoryPlayerGimmickGate(() => makeBuild(name));
                     } catch (e) {
                         console.warn('[Story prof] makeBuild threw for', name, e);
                         build = null;
-                    } finally {
-                        window._pbsStoryUsePlayerGimmickGate = false;
-                        delete window._pbsStoryUnlockedGimmicks;
                     }
                     // Skip species that failed to build — pushing a choice with a null/undefined
                     // build crashes the pick-card renderer (`buildPokemon(ch.name, ch.build)`).
@@ -38138,7 +38133,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     type: 'Mixed',
                     sigs: ['Mewtwo', 'Rayquaza', 'Dialga', 'Giratina', 'Kyogre', 'Groudon'],
                     spriteFile: (_mysteryFinalFace && _mysteryFinalFace.sprite) || 'Cyrus',
-                    introQuotes: (_mysteryFinalFace && _mysteryFinalFace.intros) || ['Your Hall of Fame crown means nothing here.', 'Show me your strongest six.']
+                    // Identity's intros field is always populated (all 9 shipped
+                    // identities define 4 lines each). If a future identity is
+                    // added without intros, log it once and fall back to a
+                    // 4-line generic pool so the rolled fight isn't visibly
+                    // shorter than the others.
+                    introQuotes: (() => {
+                        if (_mysteryFinalFace && Array.isArray(_mysteryFinalFace.intros) && _mysteryFinalFace.intros.length) {
+                            return _mysteryFinalFace.intros;
+                        }
+                        if (_mysteryFinalFace) {
+                            console.warn('[Mystery] identity missing intros field — using generic 4-line fallback:', _mysteryFinalFace);
+                        }
+                        return [
+                            'Your Hall of Fame crown means nothing here.',
+                            'I have waited a long time for this.',
+                            'Your team has carried you. Now carry yourself.',
+                            'Show me your strongest six.'
+                        ];
+                    })()
                 }
                 : (findTrainerDataByName(trainerName, event) || selectTrainerForRole(event, sg, null, prefType));
             if (!isMysteryFinal && event === 'Rival' && sm.runRivalSpriteFile) {
@@ -42513,15 +42526,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Returns the new build object; never null (falls back to makeBuild
         // raw on tier resolution failure).
         function _makePlayerLinkBuild(name, tierTag) {
-            let newBuild;
-            try {
-                window._pbsStoryUsePlayerGimmickGate = true;
-                window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
-                newBuild = makeBuild(name);
-            } finally {
-                window._pbsStoryUsePlayerGimmickGate = false;
-                delete window._pbsStoryUnlockedGimmicks;
-            }
+            const newBuild = _withStoryPlayerGimmickGate(() => makeBuild(name));
             if (!newBuild) return null;
             const tier = (typeof STORY_BUILD_TIER !== 'undefined' && STORY_BUILD_TIER[tierTag]) || STORY_BUILD_TIER.TOURNAMENT;
             if (tier < STORY_BUILD_TIER.TOURNAMENT && typeof _storyDowngradeBuildForTier === 'function') {
@@ -42900,14 +42905,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const mon = sm.team[idx];
             if (!mon) return false;
             let evoBuild;
-            try {
-                window._pbsStoryUsePlayerGimmickGate = true;
-                window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
-                evoBuild = makeBuild(evoName);
-            } finally {
-                window._pbsStoryUsePlayerGimmickGate = false;
-                delete window._pbsStoryUnlockedGimmicks;
-            }
+            evoBuild = _withStoryPlayerGimmickGate(() => makeBuild(evoName));
             const old = mon.build || {};
             if (old.n)        evoBuild.n        = old.n;
             if (old.evs)      evoBuild.evs      = { ...old.evs };

@@ -359,7 +359,7 @@ file: online-pvp.js
 agents: [pvp-concurrency-hunter]
 fingerprint: aee012742c28
 confidence: medium
-status: open
+status: wontfix-room-code-is-addressing-not-secret-tokens-protect-writes
 ---
 
 **Title**: Room codes use `Math.random()` over 32 chars × 6 positions — 30 bits, birthday collision at ~30K concurrent rooms, retry-on-23505 saves correctness but not enumeration cost

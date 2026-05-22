@@ -174,7 +174,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 67e4da6efcae
 confidence: medium
-status: open
+status: wontfix-corner-case-common-path-matches-showdown-by-the-hp
 ---
 
 **Title**: Burn applied as final-damage multiplier (`modifier *= 0.5`) instead of halving the attack stat pre-floor

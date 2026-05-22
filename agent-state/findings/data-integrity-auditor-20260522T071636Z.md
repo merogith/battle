@@ -133,7 +133,7 @@ file: data/items.json
 agents: [data-integrity-auditor]
 fingerprint: 92eb6f313f92
 confidence: high
-status: open
+status: wontfix-isPokeball-flag-future-use-forward-compat
 ---
 
 **Title**: `isPokeball` flag set on 28 items but never read by the engine — dead metadata
@@ -162,7 +162,7 @@ file: data/items.json
 agents: [data-integrity-auditor]
 fingerprint: 3ebf781a4419
 confidence: medium
-status: open
+status: wontfix-gen2-berries-not-loaded-by-gen9-engine-by-design
 ---
 
 **Title**: 9 legacy gen2 berries (Bitter, Burnt, Gold, Ice, Mint, Miracle, Mystery, PRZ Cure, PSN Cure) have no engine handler

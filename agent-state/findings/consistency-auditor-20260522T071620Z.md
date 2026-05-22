@@ -316,7 +316,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 908671f1a52f
 confidence: high
-status: open
+status: wontfix-internal-keys-stable-not-user-facing
 ---
 
 **Title**: Internal action keys use `Pokemon` (no diacritic) while UI labels use `Pokémon`

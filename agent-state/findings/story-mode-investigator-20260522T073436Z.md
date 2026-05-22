@@ -456,7 +456,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 6240f054e598
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `enterProfessor` duplicates gimmick-gate logic inline instead of using `_withStoryPlayerGimmickGate`
@@ -544,7 +544,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 9facd1ec61ac
 confidence: high
-status: open
+status: wontfix-sm.catchUnlocked-reserved-for-future-toggle-feature
 ---
 
 **Title**: `sm.catchUnlocked` is written by migration + newStoryRun but never read anywhere
@@ -931,7 +931,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: b99d78121766
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Mystery Figure intro pool fallback uses 2 lines but the identity's `intros` field has 4 — falls back silently if the identity object lacks `intros`
