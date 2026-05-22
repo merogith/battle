@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-22T10:32:07.118Z
+> **Generated**: 2026-05-22T10:34:09.937Z
 > **Source**: `agent-state/findings/*.md` (88 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -2356,7 +2356,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: d5c6a99636ec
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `_storyEnemyMechKeys` doesn't guard against missing `sm.settings` — could throw on a malformed save
@@ -2404,7 +2404,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: e02d0b455313
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `applyFoeDifficultyScaling`'s "additive league boost" comment narrates a fix that was never implemented
@@ -2488,7 +2488,7 @@ file: CHANGELOG.md
 agents: [story-mode-investigator]
 fingerprint: f7bb006d3e94
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: CHANGELOG 2026-05-21 entry claims Cable Link is ungated but the implementation in v18 explicitly gates it
@@ -2733,7 +2733,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 35349ce088b7
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `delete sm.casinoCoins` cleanup runs on every load, not gated by `_loadedVer`
@@ -3102,7 +3102,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: c83c6453be8a
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Party count chip shows "(N/6)" regardless of the actual badge-driven cap

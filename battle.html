@@ -31389,11 +31389,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // rule so no mechanic appears anywhere before it becomes globally available.
             const k = [];
             const unlocked = new Set(Array.isArray(sm.unlockedGimmicks) ? sm.unlockedGimmicks : []);
-            if (sm.settings.dynaOn && unlocked.has('dmax')) k.push('gmax');
-            if (sm.settings.megaOn && unlocked.has('mega')) k.push('mega');
-            if (sm.settings.dynaOn && unlocked.has('dmax')) k.push('dmax');
-            if (sm.settings.zOn && unlocked.has('z')) k.push('z');
-            if (sm.settings.teraOn && unlocked.has('tera')) k.push('tera');
+            // Defensive: sm.settings can be undefined on a malformed/corrupt
+            // save reaching this path before load() finishes. Pre-fix this
+            // threw "Cannot read properties of undefined (reading 'dynaOn')"
+            // and dropped the player into a dead loading state.
+            const s = sm.settings || {};
+            if (s.dynaOn && unlocked.has('dmax')) k.push('gmax');
+            if (s.megaOn && unlocked.has('mega')) k.push('mega');
+            if (s.dynaOn && unlocked.has('dmax')) k.push('dmax');
+            if (s.zOn && unlocked.has('z')) k.push('z');
+            if (s.teraOn && unlocked.has('tera')) k.push('tera');
             return k;
         }
         function _kindToForcedTag(kind) {
@@ -36713,7 +36718,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 });
             }
             const countEl = document.getElementById('story-party-count');
-            if (countEl) countEl.textContent = sm.team.length ? `(${sm.team.length}/6)` : '';
+            // Use the badge-curve cap (matches _storyMaxPartySize) so the
+            // chip shows "1/2" at 0 badges, "5/6" at 4 badges — not always
+            // "/6". Falls back to 6 if the helper isn't defined yet (boot).
+            if (countEl) {
+                const _capForDisplay = (typeof _storyMaxPartySize === 'function') ? _storyMaxPartySize() : 6;
+                countEl.textContent = sm.team.length ? `(${sm.team.length}/${_capForDisplay})` : '';
+            }
             if (!sm.team.length) {
                 panel.innerHTML='<div style="font-size:11px;color:#555;padding:4px;">Empty — visit the Professor!</div>';
                 return;
