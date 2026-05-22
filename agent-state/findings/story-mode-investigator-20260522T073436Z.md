@@ -338,7 +338,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 1877fb707d44
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: SAVE_VER stays at 19 despite an implicit v20 schema cleanup that runs on every load
@@ -622,7 +622,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: f7ba532510f0
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: "PC nearly full" warning threshold is `PC_BOX_CAP - 3` (27/30) but the spec calls for 80% (8/10)

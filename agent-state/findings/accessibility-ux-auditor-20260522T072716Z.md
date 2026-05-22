@@ -7,7 +7,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: b17b3f418817
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Story autosave "💾 Saved" toast bypasses the polite live region — screen readers miss it

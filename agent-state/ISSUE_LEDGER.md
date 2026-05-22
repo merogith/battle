@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-22T10:23:17.423Z
+> **Generated**: 2026-05-22T10:25:40.677Z
 > **Source**: `agent-state/findings/*.md` (88 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -1214,7 +1214,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: b17b3f418817
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Story autosave "💾 Saved" toast bypasses the polite live region — screen readers miss it
@@ -1253,7 +1253,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: f7ba532510f0
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: "PC nearly full" warning threshold is `PC_BOX_CAP - 3` (27/30) but the spec calls for 80% (8/10)
@@ -1913,7 +1913,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 1877fb707d44
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: SAVE_VER stays at 19 despite an implicit v20 schema cleanup that runs on every load

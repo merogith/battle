@@ -29992,7 +29992,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Cross-run meta. Holds permanent achievements that survive abandon/clear.
         // Today: completedRuns + lastClearSeed. Future: Pokédex carryover, totals, marks.
         const SAVE_KEY_META = 'pbs_story_meta';
-        const SAVE_VER = 19;
+        const SAVE_VER = 20;
         function _emptyStoryMeta() {
             return {
                 completedRuns: 0,
@@ -30861,6 +30861,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const el = document.createElement('div');
             el.className = 'story-save-toast';
+            el.setAttribute('role', 'status');
+            el.setAttribute('aria-live', 'polite');
             el.textContent = '💾 Saved';
             el.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);'
                 + 'background:rgba(20,30,40,0.92);color:#aed581;border:1px solid rgba(174,213,129,0.35);'
@@ -30868,7 +30870,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 + 'letter-spacing:0.06em;z-index:99999;pointer-events:none;'
                 + 'box-shadow:0 4px 14px rgba(0,0,0,0.45);'
                 + 'animation:storySaveToastIn 240ms ease-out;';
-            document.body.appendChild(el);
+            // Append inside the polite live region (#toast-host) so screen
+            // readers announce the save; pre-fix the toast went to body and
+            // was invisible to AT. Falls back to body if the host is missing.
+            const _toastHost = document.getElementById('toast-host');
+            (_toastHost || document.body).appendChild(el);
             _saveToastEl = el;
             el._dismissTimer = setTimeout(() => {
                 try {
@@ -30908,11 +30914,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.artifactTypeById || typeof sm.artifactTypeById !== 'object') sm.artifactTypeById = {};
                 if (!sm.deptItemOffersByCity || typeof sm.deptItemOffersByCity !== 'object') sm.deptItemOffersByCity = {};
                 if (!sm.deptShopPurchasedByCity || typeof sm.deptShopPurchasedByCity !== 'object') sm.deptShopPurchasedByCity = {};
-                // v20: casino runs on gold directly. Drop the legacy coin
-                // currency silently from old saves.
-                try { delete sm.casinoCoins; } catch (e) {}
+                // v20 migration cleanup (now gated by SAVE_VER bump): casino
+                // runs on gold directly; drop the legacy coin currency. Reads
+                // d.version directly because _loadedVer is declared further
+                // down in the load() body (temporal dead zone). The try/catch
+                // is kept for safety on weird saves with frozen sm shapes from
+                // older runtimes. casinoStats default + cashier drop remain
+                // idempotent so leaving them unconditional is fine.
+                if ((d.version | 0) < 20) {
+                    try { delete sm.casinoCoins; } catch (e) { /* old browser */ }
+                }
                 if (!sm.casinoStats || typeof sm.casinoStats !== 'object') sm.casinoStats = {};
-                try { delete sm.casinoStats.cashier; } catch (e) {}
+                try { delete sm.casinoStats.cashier; } catch (e) { /* old browser */ }
                 try { delete sm.profIntroThemePending; } catch (e) {}
                 if (!sm.storyDifficulty) sm.storyDifficulty = 'normal';
                 if (sm.settings && !('noItemRun' in sm.settings)) sm.settings.noItemRun = false;
@@ -38695,7 +38708,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const partyFull = team.length >= partyCap;
             const partyLastOne = team.length <= 1;
             const boxFull = box.length >= PC_BOX_CAP;
-            const lowSlotWarn = box.length >= (PC_BOX_CAP - 3) && box.length < PC_BOX_CAP;
+            // Warn at 80% of the cap (spec: 8/10 = 80%, applies whatever cap is).
+            // Pre-fix this was a hardcoded PC_BOX_CAP - 3 (90% at the current
+            // cap of 30), shifting the warning relative to spec.
+            const _PC_LOW_SLOT_THRESHOLD = Math.max(1, Math.floor(PC_BOX_CAP * 0.8));
+            const lowSlotWarn = box.length >= _PC_LOW_SLOT_THRESHOLD && box.length < PC_BOX_CAP;
 
             let html = '';
             const badgesNow = (sm.badges | 0);
