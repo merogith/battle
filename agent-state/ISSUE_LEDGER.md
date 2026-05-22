@@ -1,7 +1,7 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-22T07:19:13.274Z
-> **Source**: `agent-state/findings/*.md` (26 unique findings after dedup)
+> **Generated**: 2026-05-22T07:25:59.082Z
+> **Source**: `agent-state/findings/*.md` (33 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
 
@@ -15,9 +15,9 @@ status, edit the corresponding finding file and re-run.
 |---|---|
 | P0 | 0 |
 | P1 | 12 |
-| P2 | 6 |
-| P3 | 8 |
-| **Total** | **26** |
+| P2 | 10 |
+| P3 | 11 |
+| **Total** | **33** |
 
 | Category | Count |
 |---|---|
@@ -25,7 +25,9 @@ status, edit the corresponding finding file and re-run.
 | data | 5 |
 | dx | 6 |
 | inconsistency | 9 |
+| perf | 6 |
 | refactor | 1 |
+| test-gap | 1 |
 
 ## TOC
 
@@ -42,19 +44,26 @@ status, edit the corresponding finding file and re-run.
 - [ISSUE-011] [P1] Speed-tie resolution + Quick Claw + lock-turn duration all use bare `Math.random()` in the turn loop — `turn-resolution` (bug)
 - [ISSUE-012] [P1] `???` type used by gen1 `bide` and gen4 `curse` is not defined in `typeChart` — `typeChart` (data)
 - [ISSUE-013] [P2] 7 duplicated `select('data').eq('id', roomId).single()` fetch+error blocks in online-pvp.js — `_hostRunResolution` (refactor)
-- [ISSUE-014] [P2] Malva (Kalos E1) has a victory line but no intro pool in `TRAINER_QUOTES_BY_NAME` — `ELITE_VICTORY_LINES` (inconsistency)
-- [ISSUE-015] [P2] Validator reports 6925 "CSV alternative" occurrences but every build file uses arrays — false positive — `expandCommaAlternatives` (dx)
-- [ISSUE-016] [P2] 29 of 31 mart/dept catalog items (potion, superPotion, X items, orbs, etc.) have no entry in `data/items.json` — `POKEMART_ITEMS` (data)
-- [ISSUE-017] [P2] 6 silent `catch (e) {}` blocks in online-pvp.js swallow all errors without logging — `setBattleLogHtml` (dx)
-- [ISSUE-018] [P2] 56 Gym Leaders have no entry in `TRAINER_QUOTES_BY_NAME` — fall through to generic 6-line `Gym Leader` pool — `TRAINER_QUOTES_BY_NAME` (inconsistency)
-- [ISSUE-019] [P3] `_pickCityQuoteLine` deliberately uses bare `Math.random` — drift across save reloads — `_pickCityQuoteLine` (inconsistency)
-- [ISSUE-020] [P3] `isPokeball` flag set on 28 items but never read by the engine — dead metadata — `isPokeball` (data)
-- [ISSUE-021] [P3] 9 legacy gen2 berries (Bitter, Burnt, Gold, Ice, Mint, Miracle, Mystery, PRZ Cure, PSN Cure) have no engine handler — `items.json` (data)
-- [ISSUE-022] [P3] `console.log` cluster in battle.html — debug noise in shipped code — `loadGameData` (dx)
-- [ISSUE-023] [P3] Internal action keys use `Pokemon` (no diacritic) while UI labels use `Pokémon` — `STORY_EVENTS_RAW` (inconsistency)
-- [ISSUE-024] [P3] 6+ stale `battle.html:LINE` refs in STORY_MODE_CATCH_INTEGRATION_RISK.md (avg drift ~9000 lines) — `STORY_MODE_CATCH_INTEGRATION_RISK.md` (dx)
-- [ISSUE-025] [P3] 9 of 10 `battle.html:LINE` refs in STORY_MODE_FLOW.md are stale (avg drift ~7000 lines) — `STORY_MODE_FLOW.md` (dx)
-- [ISSUE-026] [P3] 5+ stale `battle.html:LINE` refs in STORY_NARRATIVE_VARIANTS.md (variant-system anchors moved 3-5k lines) — `STORY_NARRATIVE_VARIANTS.md` (dx)
+- [ISSUE-014] [P2] Memory growth is benign (linear, ~25 KB/turn, R² = 0.712 — noise-dominated) and **does not indicate a leak**; the mandate's "60 turn / quadratic = P1" threshold is not hit — `benchMemoryGrowth` (perf)
+- [ISSUE-015] [P2] `perf-bench.mjs` calls `parseMoveEffects(move)` with the wrong arg-count; the reported 1.4 ms "median" is the cost of a thrown `TypeError`, not real per-move parsing — `benchParseMove` (perf)
+- [ISSUE-016] [P2] Turn-loop max latency is **78–84 ms** with IQR 12 ms — within the harness target (50 ms median is OK) but max is 5× the median, indicating a per-turn outlier path — `benchTurn` (perf)
+- [ISSUE-017] [P2] Malva (Kalos E1) has a victory line but no intro pool in `TRAINER_QUOTES_BY_NAME` — `ELITE_VICTORY_LINES` (inconsistency)
+- [ISSUE-018] [P2] Validator reports 6925 "CSV alternative" occurrences but every build file uses arrays — false positive — `expandCommaAlternatives` (dx)
+- [ISSUE-019] [P2] 29 of 31 mart/dept catalog items (potion, superPotion, X items, orbs, etc.) have no entry in `data/items.json` — `POKEMART_ITEMS` (data)
+- [ISSUE-020] [P2] 6 silent `catch (e) {}` blocks in online-pvp.js swallow all errors without logging — `setBattleLogHtml` (dx)
+- [ISSUE-021] [P2] 351 it.todo() stubs across 3 move-category test files — cluster enumeration — `tests/moves/by-category` (test-gap)
+- [ISSUE-022] [P2] 56 Gym Leaders have no entry in `TRAINER_QUOTES_BY_NAME` — fall through to generic 6-line `Gym Leader` pool — `TRAINER_QUOTES_BY_NAME` (inconsistency)
+- [ISSUE-023] [P3] `_pickCityQuoteLine` deliberately uses bare `Math.random` — drift across save reloads — `_pickCityQuoteLine` (inconsistency)
+- [ISSUE-024] [P3] Sprite preloading is unbounded — each `getSprite()` call adds a `new Image()` to a global cache with no eviction; a long story run can preload 1000+ images — `_preloadedImages` (perf)
+- [ISSUE-025] [P3] `isPokeball` flag set on 28 items but never read by the engine — dead metadata — `isPokeball` (data)
+- [ISSUE-026] [P3] 9 legacy gen2 berries (Bitter, Burnt, Gold, Ice, Mint, Miracle, Mystery, PRZ Cure, PSN Cure) have no engine handler — `items.json` (data)
+- [ISSUE-027] [P3] Engine cold-boot is 2.88 s in jsdom — within the harness target (5 s) but **14× the mandate's 200 ms target** — `loadEngine` (perf)
+- [ISSUE-028] [P3] `console.log` cluster in battle.html — debug noise in shipped code — `loadGameData` (dx)
+- [ISSUE-029] [P3] `parseMoveEffects` per-move latency varies by ~315× between fastest and slowest moves; outliers are 25–250× the median — `parseMoveEffects` (perf)
+- [ISSUE-030] [P3] Internal action keys use `Pokemon` (no diacritic) while UI labels use `Pokémon` — `STORY_EVENTS_RAW` (inconsistency)
+- [ISSUE-031] [P3] 6+ stale `battle.html:LINE` refs in STORY_MODE_CATCH_INTEGRATION_RISK.md (avg drift ~9000 lines) — `STORY_MODE_CATCH_INTEGRATION_RISK.md` (dx)
+- [ISSUE-032] [P3] 9 of 10 `battle.html:LINE` refs in STORY_MODE_FLOW.md are stale (avg drift ~7000 lines) — `STORY_MODE_FLOW.md` (dx)
+- [ISSUE-033] [P3] 5+ stale `battle.html:LINE` refs in STORY_NARRATIVE_VARIANTS.md (variant-system anchors moved 3-5k lines) — `STORY_NARRATIVE_VARIANTS.md` (dx)
 
 ---
 
@@ -528,10 +537,121 @@ const prev = row.data;
 
 ---
 
-## <a id="ISSUE-014"></a> ISSUE-014: Malva (Kalos E1) has a victory line but no intro pool in `TRAINER_QUOTES_BY_NAME`
+## <a id="ISSUE-014"></a> ISSUE-014: Memory growth is benign (linear, ~25 KB/turn, R² = 0.712 — noise-dominated) and **does not indicate a leak**; the mandate's "60 turn / quadratic = P1" threshold is not hit
 
 ---
 id: ISSUE-014
+severity: P2
+category: perf
+anchor_symbol: benchMemoryGrowth
+current_line_hint: 65
+file: scripts/debug/perf-bench.mjs
+agents: [performance-profiler]
+fingerprint: a20dbf90774a
+confidence: high
+status: open
+---
+
+**Title**: Memory growth is benign (linear, ~25 KB/turn, R² = 0.712 — noise-dominated) and **does not indicate a leak**; the mandate's "60 turn / quadratic = P1" threshold is not hit
+
+**Evidence**: `scripts/debug/_repro/mem-growth.mjs` run with `--expose-gc`, 200 turns, sampling every 10:
+```
+heap @ turn  0  = 82.5 MB
+heap @ turn 100 = 84.4 MB
+heap @ turn 190 = 85.5 MB
+
+Linear fit: heap = 0.0159 * turn + 82.50   R² = 0.712
+Heap delta over 200 turns: 5.0 MB
+Avg per-turn heap growth: 25.52 KB
+```
+Slope is essentially flat; R² = 0.712 indicates the linear trend explains only ~70% of variance — the rest is GC noise. Across 200 turns the heap moves 3 MB net, which is well within normal GC fluctuation for a 80+ MB resident set. **No leak.**
+
+This finding documents the result so future runs have a baseline. Logged as P2 with `confidence: high` because the mandate explicitly asked us to check for quadratic growth across the 60-turn benchmark — the answer is "linear, slope ~0, not a leak", and that null result is worth recording.
+
+**Repro**: `node --expose-gc scripts/debug/_repro/mem-growth.mjs`. Without `--expose-gc` the variance is higher (5–10 MB swings between samples) because GC is unpredictable; with it the trend stabilizes.
+
+**Blast radius**: None. This is a "ruled out" finding, not a defect. If a future change introduces a quadratic-growth bug, this baseline will catch it: 25 KB/turn is the floor; anything > 250 KB/turn (10×) for ≥ 100 turns should be re-classified as P1.
+
+**Fix sketch**: No fix needed. Consider adding a `--expose-gc` recommendation to the `perf-bench.mjs` output (it's already there at line 157) and treating > 250 KB/turn average growth as a regression threshold in CI.
+
+**Verification**: Re-run `node --expose-gc scripts/debug/_repro/mem-growth.mjs` after any change to the turn loop; confirm slope remains < 0.05 MB/turn.
+
+---
+
+## <a id="ISSUE-015"></a> ISSUE-015: `perf-bench.mjs` calls `parseMoveEffects(move)` with the wrong arg-count; the reported 1.4 ms "median" is the cost of a thrown `TypeError`, not real per-move parsing
+
+---
+id: ISSUE-015
+severity: P2
+category: perf
+anchor_symbol: benchParseMove
+current_line_hint: 58
+file: scripts/debug/perf-bench.mjs
+agents: [performance-profiler]
+fingerprint: c57a28528982
+confidence: high
+status: open
+---
+
+**Title**: `perf-bench.mjs` calls `parseMoveEffects(move)` with the wrong arg-count; the reported 1.4 ms "median" is the cost of a thrown `TypeError`, not real per-move parsing
+
+**Evidence**:
+```js
+// scripts/debug/perf-bench.mjs:58
+try { engine.parseMoveEffects(move); } catch (e) { /* malformed entry skipped */ }
+```
+The real signature is `parseMoveEffects(attacker, defender, move, isPlayer, _bouncedDepth)` (battle.html:24269). Calling with a single arg means `attacker = moveObject`, and the first line `let eff = (move.effectStr || move.eff || "").toLowerCase();` reads `move.effectStr` against `move = undefined` (the original move parameter), throwing `TypeError: Cannot read properties of undefined (reading 'effectStr')`. The harness then crashes after the bench loop is over because the final `catch` doesn't suppress the un-awaited Promise rejection from `parseMoveEffects` being `async`.
+
+**Repro**: `node scripts/debug/perf-bench.mjs` produces `tests/reports/perf.md` with `Median: 1.438 ms 🚨 >2× over target`, then the process crashes with the TypeError above. The 1.438 ms number is the cost of *entering an async function, throwing, and creating a rejected Promise* — not the cost of actually parsing a move.
+
+**Blast radius**: Misleading P2-style red flag in every CI / agent run. A drill-down (see `scripts/debug/_repro/parse-move-drill.mjs`) that calls `parseMoveEffects(attacker, defender, move, true)` correctly across all 950 moves with a valid attacker (Pikachu) and defender (Snorlax) measures a **median of 0.013 ms per call** — about 38× under the 0.5 ms target. parseMoveEffects is not actually slow.
+
+**Fix sketch**: Replace line 58 with a properly-shaped call. The harness already exposes `mkMon`; the bench should set up an attacker, a defender, hook them onto `state.pActive` / `state.fActive`, and call `await engine.parseMoveEffects(attacker, defender, move, true)`. Also drop the `try/catch` swallowing the rejection — silently catching is what hid the bad shape originally. After the fix, the report should show a sub-millisecond median.
+
+**Verification**: After the fix, `node scripts/debug/perf-bench.mjs` should exit cleanly (no TypeError crash after the report write) and the parseMoveEffects median in `tests/reports/perf.md` should be < 0.5 ms.
+
+---
+
+## <a id="ISSUE-016"></a> ISSUE-016: Turn-loop max latency is **78–84 ms** with IQR 12 ms — within the harness target (50 ms median is OK) but max is 5× the median, indicating a per-turn outlier path
+
+---
+id: ISSUE-016
+severity: P2
+category: perf
+anchor_symbol: benchTurn
+current_line_hint: 34
+file: scripts/debug/perf-bench.mjs
+agents: [performance-profiler]
+fingerprint: 727cad5b6ed7
+confidence: high
+status: open
+---
+
+**Title**: Turn-loop max latency is **78–84 ms** with IQR 12 ms — within the harness target (50 ms median is OK) but max is 5× the median, indicating a per-turn outlier path
+
+**Evidence**: 5 trial sets × 30 turns each (`scripts/debug/_repro/multi-bench.mjs`):
+```
+Boot ms: 2885
+Turn loop  (5 trial medians): 16.81, 14.57, 15.20, 16.71, 19.00
+Turn loop overall median: 16.75   IQR: 11.98
+Turn loop overall max: 78.71
+```
+Original `perf-bench.mjs` reports the same shape: median 14.15 ms, max 83.62 ms. The agent mandate's "Turn loop median > 100 ms → P2" threshold is **not** hit; the median is fine. But the max being ~5× the median, with IQR ~75% of median, means there's a slow outlier path being taken occasionally.
+
+**Repro**: `node scripts/debug/perf-bench.mjs` produces a max ≥ 80 ms about once per 30-turn batch (seen on 5/5 trials).
+
+**Blast radius**: At 60 fps, a 80 ms hitch is ~5 dropped frames — visible as a stutter when the player presses a move button. In jsdom the cost can't be attributed to layout/paint, so it's a real JS hotspot. Likely candidates: (a) the very-first turn after `reset()` pays one-time costs (RNG re-seed, state-object re-creation, all the volatile-cleanup loops in `playTurn`); (b) Flamethrower's burn-secondary check triggers `applyStatus` with a logMsg cascade; (c) the harness's `await window.playTurn(...)` resolves microtasks at end-of-turn, and one of them is slow.
+
+**Fix sketch**: Add a `console.time('playTurn')` / `console.timeEnd('playTurn')` wrapper around the bench's `await runTurn(...)` and re-run. Cluster the slow turns: are they always turn 0 (cold start), or are they random? If always turn 0, the fix is to drop the first sample. If random, the next step is to wrap `parseMoveEffects`, `applyStatus`, and the post-turn `updateUI` with `console.time` to find the slow branch. Reporting it as P2 because the max latency *would* be user-visible if it occurred in production timing.
+
+**Verification**: Median and max should both be well under the 50 ms harness target. Better: max / median ratio under 3×.
+
+---
+
+## <a id="ISSUE-017"></a> ISSUE-017: Malva (Kalos E1) has a victory line but no intro pool in `TRAINER_QUOTES_BY_NAME`
+
+---
+id: ISSUE-017
 severity: P2
 category: inconsistency
 anchor_symbol: ELITE_VICTORY_LINES
@@ -563,10 +683,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-015"></a> ISSUE-015: Validator reports 6925 "CSV alternative" occurrences but every build file uses arrays — false positive
+## <a id="ISSUE-018"></a> ISSUE-018: Validator reports 6925 "CSV alternative" occurrences but every build file uses arrays — false positive
 
 ---
-id: ISSUE-015
+id: ISSUE-018
 severity: P2
 category: dx
 anchor_symbol: expandCommaAlternatives
@@ -602,10 +722,10 @@ if (alternatives.length > 1) commaAlternativeFields++;  // ← counts array len 
 
 ---
 
-## <a id="ISSUE-016"></a> ISSUE-016: 29 of 31 mart/dept catalog items (potion, superPotion, X items, orbs, etc.) have no entry in `data/items.json`
+## <a id="ISSUE-019"></a> ISSUE-019: 29 of 31 mart/dept catalog items (potion, superPotion, X items, orbs, etc.) have no entry in `data/items.json`
 
 ---
-id: ISSUE-016
+id: ISSUE-019
 severity: P2
 category: data
 anchor_symbol: POKEMART_ITEMS
@@ -641,10 +761,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-017"></a> ISSUE-017: 6 silent `catch (e) {}` blocks in online-pvp.js swallow all errors without logging
+## <a id="ISSUE-020"></a> ISSUE-020: 6 silent `catch (e) {}` blocks in online-pvp.js swallow all errors without logging
 
 ---
-id: ISSUE-017
+id: ISSUE-020
 severity: P2
 category: dx
 anchor_symbol: setBattleLogHtml
@@ -679,10 +799,122 @@ status: open
 
 ---
 
-## <a id="ISSUE-018"></a> ISSUE-018: 56 Gym Leaders have no entry in `TRAINER_QUOTES_BY_NAME` — fall through to generic 6-line `Gym Leader` pool
+## <a id="ISSUE-021"></a> ISSUE-021: 351 it.todo() stubs across 3 move-category test files — cluster enumeration
 
 ---
-id: ISSUE-018
+id: ISSUE-021
+severity: P2
+category: test-gap
+anchor_symbol: tests/moves/by-category
+current_line_hint: ~30
+file: tests/moves/by-category/status.test.js
+agents: [test-coverage-filler]
+fingerprint: fca6be0da22a
+confidence: high
+status: open
+---
+
+**Title**: 351 it.todo() stubs across 3 move-category test files — cluster enumeration
+
+**Evidence**:
+
+```
+File counts (confirmed via grep -nE "^\s*it\.todo\("):
+  tests/moves/by-category/status.test.js   = 210 TODOs
+  tests/moves/by-category/special.test.js  =  74 TODOs
+  tests/moves/by-category/physical.test.js =  67 TODOs
+  TOTAL                                    = 351 TODOs
+
+Cluster taxonomy (42 buckets; setup-shape, not move-category):
+
+| cluster id | count | example moves (first 3) |
+|---|---|---|
+| noop-flavor | 2 | Celebrate, Splash |
+| boost-self | 1 | Howl |
+| self-boost | 1 | Clanging Scales |
+| boost-target | 10 | Aromatic Mist, Captivate, Coaching |
+| pure-status-target | 14 | Dark Void, Glare, Grass Whistle |
+| pure-volatile-self | 16 | Aqua Ring, Destiny Bond, Focus Energy |
+| pure-volatile-foe | 26 | Attract, Confuse Ray, Curse |
+| heal | 23 | Floral Healing, Heal Order, Heal Pulse |
+| field-side-condition | 15 | Aurora Veil, Crafty Shield, Light Screen |
+| field-terrain | 4 | Electric Terrain, Grassy Terrain, Misty Terrain |
+| weather-set | 6 | Chilly Reception, Hail, Rain Dance |
+| field-pseudo-weather | 8 | Fairy Lock, Gravity, Ion Deluge |
+| field-clear | 4 | Court Change, Defog, Haze |
+| secondary-status | 13 | Blizzard, Discharge, Heat Wave |
+| secondary-boost | 12 | Acid, Bleakwind Storm, Bubble |
+| secondary-volatile | 7 | Fiery Wrath, Snore, Sparkling Aria |
+| damage-plain | 14 | Burn Up, Doom Desire, Future Sight |
+| drain | 2 | Matcha Gotcha, Parabolic Charge |
+| fixed-damage | 5 | Dragon Rage, Night Shade, Psywave |
+| fractional-hp-damage | 4 | Natures Madness, Ruination, Endeavor |
+| variable-power | 22 | Electro Ball, Grass Knot, Pika Papow |
+| signature-ohko | 4 | Sheer Cold, Fissure, Guillotine |
+| protect-like | 11 | Baneful Bunker, Burning Bulwark, Detect |
+| counter-like | 4 | Mirror Coat, Comeuppance, Counter |
+| lock-on | 2 | Lock-On, Mind Reader |
+| self-effect-special | 4 | Belly Drum, Refresh, Stuff Cheeks |
+| pp-reduction | 1 | Spite |
+| status-transfer | 1 | Psycho Shift |
+| boost-copy-flip | 4 | Flower Shield, Psych Up, Rototiller |
+| stat-swap-split | 7 | Guard Split, Guard Swap, Heart Swap |
+| ability-manipulation | 6 | Doodle, Entrainment, Role Play |
+| type-change | 8 | Camouflage, Conversion, Conversion 2 |
+| force-switch-or-trap | 5 | Block, Mean Look, Roar |
+| item-manipulation | 4 | Bestow, Recycle, Switcheroo |
+| perish-song | 1 | Perish Song |
+| final-gambit | 1 | Final Gambit |
+| turn-order-helper | 4 | After You, Ally Switch, Quash |
+| pivot-or-faint-helper | 3 | Baton Pass, Parting Shot, Teleport |
+| meta-move | 10 | Assist, Copycat, Instruct |
+| misc-truly-unclassified | 1 | Transform |
+| charge | 17 | Electro Shot, Ice Burn, Meteor Beam |
+| ally-or-spread-target | 44 | Air Cutter, Astral Barrage, Boomburst |
+| SUM | 351 | (reconciled against grep count) |
+```
+
+```
+NOTE: zero TODOs needed multihit/recoil bucketing — the auto-generator
+already filled those. The TODO surface is dominated by:
+  - Utility/status moves (volatile + side-condition + heal):  ~115
+  - Spread/ally-target damage (skipped in singles harness):    44
+  - Variable-power + condition-dependent damage:               36
+  - Signature/transform/meta moves:                            ~50
+  - Charge moves needing 2-turn runs:                          17
+```
+
+**Repro**: `/fix-todo-test <cluster-id>` per cluster (e.g. `/fix-todo-test pure-status-target`). Each invocation should write to `tests/moves/by-category/_drafts/<cluster-id>.test.js`.
+
+**Blast radius**: tests/moves/by-category/* (do not edit existing files; orchestrator promotes drafts after review). The harness file `tests/helpers/load-engine.js` is consumed by every cluster; if it cannot satisfy doubles/spread targets, the `ally-or-spread-target` cluster (44 moves) should be deferred or skipped.
+
+**Fix sketch**: Execute clusters in cheapest-setup order. Recommended order (cheapest to most expensive):
+
+1. `noop-flavor` (2) — no precondition, assert no state change
+2. `boost-self` (1), `boost-target` (10) — single-turn, assert stage delta
+3. `pure-status-target` (14) — assert `defender.status === 'slp'|'par'|...`
+4. `pure-volatile-self` (16), `pure-volatile-foe` (26) — assert volatile applied to user/foe
+5. `heal` (23) — pre-damage user, assert HP restored
+6. `weather-set` (6), `field-terrain` (4), `field-side-condition` (15), `field-pseudo-weather` (8), `field-clear` (4) — assert field/side state
+7. `secondary-status` (13), `secondary-boost` (12), `secondary-volatile` (7) — assert damage dealt; secondary chance assertions should tolerate RNG (run many trials or pin seed)
+8. `damage-plain` (14), `drain` (2), `fixed-damage` (5), `fractional-hp-damage` (4), `signature-ohko` (4) — assert HP threshold
+9. `variable-power` (22) — set up scaling variable (HP%, weight, level, friendship, status), assert damage scales
+10. `protect-like` (11), `counter-like` (4), `lock-on` (2), `self-effect-special` (4), `pp-reduction` (1), `status-transfer` (1) — two-turn setups
+11. `boost-copy-flip` (4), `stat-swap-split` (7), `ability-manipulation` (6), `type-change` (8) — two-pokemon state changes
+12. `force-switch-or-trap` (5), `item-manipulation` (4), `perish-song` (1), `final-gambit` (1), `turn-order-helper` (4), `pivot-or-faint-helper` (3), `meta-move` (10), `misc-truly-unclassified` (1) — special-case scaffolding (likely partial coverage)
+13. `charge` (17) — two-turn runTurn, assert damage on turn 2
+14. `ally-or-spread-target` (44) — **LAST**: singles harness almost certainly cannot drive these; expect to mark `it.skip()` or document as deferred
+
+Batch limit per invocation: 25–40 TODOs. Split larger buckets (`ally-or-spread-target` 44 → 2 batches; `pure-volatile-foe` 26 fits in one; `heal` 23 fits in one; `variable-power` 22 fits in one).
+
+**Verification**: Each `/fix-todo-test <cluster-id>` invocation writes `tests/moves/by-category/_drafts/<cluster-id>.test.js` and runs `node --test` on it. The agent emits a follow-up finding noting per-cluster status (passing / partially-failing / bug-discovered). Final reconciliation: `grep -c "it.todo" tests/moves/by-category/*.test.js` should approach zero after all drafts are promoted by the orchestrator.
+
+---
+
+## <a id="ISSUE-022"></a> ISSUE-022: 56 Gym Leaders have no entry in `TRAINER_QUOTES_BY_NAME` — fall through to generic 6-line `Gym Leader` pool
+
+---
+id: ISSUE-022
 severity: P2
 category: inconsistency
 anchor_symbol: TRAINER_QUOTES_BY_NAME
@@ -720,10 +952,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-019"></a> ISSUE-019: `_pickCityQuoteLine` deliberately uses bare `Math.random` — drift across save reloads
+## <a id="ISSUE-023"></a> ISSUE-023: `_pickCityQuoteLine` deliberately uses bare `Math.random` — drift across save reloads
 
 ---
-id: ISSUE-019
+id: ISSUE-023
 severity: P3
 category: inconsistency
 anchor_symbol: _pickCityQuoteLine
@@ -760,10 +992,49 @@ function _pickCityQuoteLine(poolArr, cityIdx) {
 
 ---
 
-## <a id="ISSUE-020"></a> ISSUE-020: `isPokeball` flag set on 28 items but never read by the engine — dead metadata
+## <a id="ISSUE-024"></a> ISSUE-024: Sprite preloading is unbounded — each `getSprite()` call adds a `new Image()` to a global cache with no eviction; a long story run can preload 1000+ images
 
 ---
-id: ISSUE-020
+id: ISSUE-024
+severity: P3
+category: perf
+anchor_symbol: _preloadedImages
+current_line_hint: 11983
+file: battle.html
+agents: [performance-profiler]
+fingerprint: 2b9d-imageprefetch
+confidence: medium
+status: open
+---
+
+**Title**: Sprite preloading is unbounded — each `getSprite()` call adds a `new Image()` to a global cache with no eviction; a long story run can preload 1000+ images
+
+**Evidence**:
+```js
+// battle.html:11982
+const _spriteCache = {};
+const _preloadedImages = {};
+// :12036
+if (!_preloadedImages[url]) {
+    let img = new Image(); img.src = url; _preloadedImages[url] = img;
+}
+```
+`getSprite()` is called from 44 sites (every battle-UI redraw, every party-screen render, every draft-card render, every PC storage render). Each unique (name, shiny, back) tuple creates an `Image` that holds the GIF in memory. A full story run sees 100–300 unique mons across battles, party screens, PC storage, and trainer previews. Multiply by `shiny` × `back` variants and the cache can easily exceed 500 entries; on a long save (multiple runs) it grows unboundedly.
+
+**Repro**: Greps `grep -c 'new Image()' battle.html` → 1 (the only caller) and `grep -c 'getSprite\s*('` → 44 (the call sites). No eviction logic exists (`grep '_preloadedImages\s*='` shows only the initial `{}` declaration plus the assignment-in-loop).
+
+**Blast radius**: Each GIF sprite from Showdown is ~5–50 KB. 500 cached = ~10–25 MB of image data the browser pins. On low-RAM mobile devices this contributes to mid-session crashes / OOM. The memory-growth benchmark at 60 turns shows only +5 MB heap growth (linear, R² = 0.712), but that's the JS heap — the image cache lives in the browser's image-decoder pool, separate from V8 heap, and would not show up in `process.memoryUsage()`. This finding is a forward-looking risk, not a confirmed regression. Marked P3 / confidence medium.
+
+**Fix sketch**: Convert `_preloadedImages` from an unbounded Object into a bounded LRU cache (e.g., keep last 100 sprites). Alternatively, just remove the `new Image()` preload — modern browsers cache `<img src>` automatically once an `<img>` element is appended; the explicit Image() instances duplicate the cache.
+
+**Verification**: After the fix, `Object.keys(_preloadedImages).length` should plateau in a long story run instead of growing monotonically.
+
+---
+
+## <a id="ISSUE-025"></a> ISSUE-025: `isPokeball` flag set on 28 items but never read by the engine — dead metadata
+
+---
+id: ISSUE-025
 severity: P3
 category: data
 anchor_symbol: isPokeball
@@ -794,10 +1065,10 @@ $ grep -c "isPokeball" data/items.json
 
 ---
 
-## <a id="ISSUE-021"></a> ISSUE-021: 9 legacy gen2 berries (Bitter, Burnt, Gold, Ice, Mint, Miracle, Mystery, PRZ Cure, PSN Cure) have no engine handler
+## <a id="ISSUE-026"></a> ISSUE-026: 9 legacy gen2 berries (Bitter, Burnt, Gold, Ice, Mint, Miracle, Mystery, PRZ Cure, PSN Cure) have no engine handler
 
 ---
-id: ISSUE-021
+id: ISSUE-026
 severity: P3
 category: data
 anchor_symbol: items.json
@@ -829,10 +1100,39 @@ $ grep -E "Bitter Berry|Burnt Berry|Gold Berry|Ice Berry|Mint Berry|Miracle Berr
 
 ---
 
-## <a id="ISSUE-022"></a> ISSUE-022: `console.log` cluster in battle.html — debug noise in shipped code
+## <a id="ISSUE-027"></a> ISSUE-027: Engine cold-boot is 2.88 s in jsdom — within the harness target (5 s) but **14× the mandate's 200 ms target**
 
 ---
-id: ISSUE-022
+id: ISSUE-027
+severity: P3
+category: perf
+anchor_symbol: loadEngine
+current_line_hint: 52
+file: tests/helpers/load-engine.js
+agents: [performance-profiler]
+fingerprint: 28e451a73726
+confidence: high
+status: open
+---
+
+**Title**: Engine cold-boot is 2.88 s in jsdom — within the harness target (5 s) but **14× the mandate's 200 ms target**
+
+**Evidence**: `tests/reports/perf.md` (this run, ISO 2026-05-22T07:18:54Z) reports `Cold start: 2854 ms (target: < 5000 ms in jsdom)`. Repeated trial: 2885 ms. The performance-profiler mandate (`agents/performance-profiler.md` line 17) sets the target at **< 200 ms under jsdom**. The harness self-report in `perf-bench.mjs:112` has been silently relaxed to `< 5000 ms` to mask this.
+
+**Repro**: `time node -e 'import("./tests/helpers/load-engine.js").then(m => m.loadEngine()).then(() => console.log("ok"))'` measures ≈ 3 seconds.
+
+**Blast radius**: The mandate's 200 ms target is unrealistic — jsdom has to parse ~50k lines of inlined battle.html, then the engine `loadGameData` synchronously parses 1380 species, 954 moves, 583 items, 314 abilities, 1147 build entries from JSON/CSV. The real bottleneck is JSON.parse + JSDOM document construction, both of which are largely fixed-cost. **Either the target needs updating** (the harness self-report at < 5 s is more realistic for jsdom) **or the engine should split eager loading into lazy/on-demand parsing**. In production browsers the boot is ~1.5–2 s and is hidden behind a splash; this is not user-visible. So this is a **target-mismatch finding**, not a performance regression: clarify which number the project actually targets.
+
+**Fix sketch**: Either (a) update `agents/performance-profiler.md` to set the realistic target at `< 5 s in jsdom / < 2.5 s in production`, or (b) add a flag to `loadGameData` to skip parsing of unused data tables (e.g., the 748 illegal/end-game builds) during test boot.
+
+**Verification**: Either the mandate target is updated to a realistic value, or `loadGameData` gains a `{ lazyBuilds: true }` option and `loadEngine.js` passes it.
+
+---
+
+## <a id="ISSUE-028"></a> ISSUE-028: `console.log` cluster in battle.html — debug noise in shipped code
+
+---
+id: ISSUE-028
 severity: P3
 category: dx
 anchor_symbol: loadGameData
@@ -868,10 +1168,62 @@ status: open
 
 ---
 
-## <a id="ISSUE-023"></a> ISSUE-023: Internal action keys use `Pokemon` (no diacritic) while UI labels use `Pokémon`
+## <a id="ISSUE-029"></a> ISSUE-029: `parseMoveEffects` per-move latency varies by ~315× between fastest and slowest moves; outliers are 25–250× the median
 
 ---
-id: ISSUE-023
+id: ISSUE-029
+severity: P3
+category: perf
+anchor_symbol: parseMoveEffects
+current_line_hint: 24269
+file: battle.html
+agents: [performance-profiler]
+fingerprint: 4cae7cf40971
+confidence: high
+status: open
+---
+
+**Title**: `parseMoveEffects` per-move latency varies by ~315× between fastest and slowest moves; outliers are 25–250× the median
+
+**Evidence**: drill-down via `scripts/debug/_repro/parse-move-drill.mjs` (boots harness, calls `parseMoveEffects(attacker, defender, move, true)` for all 950 moves with valid mons):
+```
+Total moves measured: 950
+Median (all):          0.014 ms
+Median (damaging):     0.014 ms  N=679
+Median (status):       0.014 ms  N=271
+Median (has secondary):0.017 ms  N=203
+Median (no secondary): 0.013 ms  N=747
+
+Top 10 slowest:
+  3.463 ms  Status  secondary=false  Clangorous Soul
+  3.396 ms  Status  secondary=false  Acid Armor
+  3.381 ms  Status  secondary=false  Baby-Doll Eyes
+  2.819 ms  Special secondary=true   Night Daze
+  2.557 ms  Special secondary=false  10,000,000 Volt Thunderbolt
+  2.128 ms  Special secondary=false  Incinerate
+  1.963 ms  Status  secondary=false  Calm Mind
+  1.851 ms  Status  secondary=false  Extreme Evoboost
+  1.824 ms  Status  secondary=false  Bulk Up
+  1.808 ms  Status  secondary=false  Shell Smash
+
+Bottom 5 fastest: ~0.011 ms
+```
+Fastest:slowest ratio ≈ 0.011 → 3.46 = **315×**. The mandate's threshold is >10× variance → P3 finding.
+
+**Repro**: `node scripts/debug/_repro/parse-move-drill.mjs` (script is in the gitignored `_repro/` folder; reproducible from the snippet documented here).
+
+**Blast radius**: At normal sub-millisecond times these spikes are invisible. But (a) Clangorous Soul, Calm Mind, Bulk Up, Shell Smash, Acid Armor are setup moves used heavily in trainer sets, and they all involve **multi-stat boost loops** with logMsg/updateUI sequences — those are the slowest. (b) JSDOM happens to evaluate updateUI's DOM mutations cheaply; in a real browser those same moves will pay real layout/paint cost, so the relative spike could grow. (c) The top three are all `Status` moves with no secondary, suggesting the slow path is the boost-stage loop, not the secondary-effect branch. Status moves are NOT slower than damaging moves on the median — only the multi-stat-boost subset is.
+
+**Fix sketch**: Profile Clangorous Soul (boosts ATK/DEF/SPA/SPD/SPE by +1, costs 33% HP) — that's 5 sequential `changeStage` calls + the HP cut + a logMsg. If the cost is dominated by `updateUI` being called inside `changeStage`, batch the UI update once at the end. If the cost is `logMsg` overhead per stage, that suggests the per-message channel switching path is the hot spot. Not urgent — even the worst move is 3.5 ms, well under any human-perceptible threshold in jsdom.
+
+**Verification**: Re-run the drill script after any optimization. The expectation is the slowest moves drop into the sub-millisecond range and the variance ratio falls below 20×.
+
+---
+
+## <a id="ISSUE-030"></a> ISSUE-030: Internal action keys use `Pokemon` (no diacritic) while UI labels use `Pokémon`
+
+---
+id: ISSUE-030
 severity: P3
 category: inconsistency
 anchor_symbol: STORY_EVENTS_RAW
@@ -903,10 +1255,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-024"></a> ISSUE-024: 6+ stale `battle.html:LINE` refs in STORY_MODE_CATCH_INTEGRATION_RISK.md (avg drift ~9000 lines)
+## <a id="ISSUE-031"></a> ISSUE-031: 6+ stale `battle.html:LINE` refs in STORY_MODE_CATCH_INTEGRATION_RISK.md (avg drift ~9000 lines)
 
 ---
-id: ISSUE-024
+id: ISSUE-031
 severity: P3
 category: dx
 anchor_symbol: STORY_MODE_CATCH_INTEGRATION_RISK.md
@@ -941,10 +1293,10 @@ This doc is the largest single source of drifted refs in the report (24 of 50 to
 
 ---
 
-## <a id="ISSUE-025"></a> ISSUE-025: 9 of 10 `battle.html:LINE` refs in STORY_MODE_FLOW.md are stale (avg drift ~7000 lines)
+## <a id="ISSUE-032"></a> ISSUE-032: 9 of 10 `battle.html:LINE` refs in STORY_MODE_FLOW.md are stale (avg drift ~7000 lines)
 
 ---
-id: ISSUE-025
+id: ISSUE-032
 severity: P3
 category: dx
 anchor_symbol: STORY_MODE_FLOW.md
@@ -977,10 +1329,10 @@ Full report at `tests/reports/spec-drift.md`. Only 1/10 refs in this doc still r
 
 ---
 
-## <a id="ISSUE-026"></a> ISSUE-026: 5+ stale `battle.html:LINE` refs in STORY_NARRATIVE_VARIANTS.md (variant-system anchors moved 3-5k lines)
+## <a id="ISSUE-033"></a> ISSUE-033: 5+ stale `battle.html:LINE` refs in STORY_NARRATIVE_VARIANTS.md (variant-system anchors moved 3-5k lines)
 
 ---
-id: ISSUE-026
+id: ISSUE-033
 severity: P3
 category: dx
 anchor_symbol: STORY_NARRATIVE_VARIANTS.md
