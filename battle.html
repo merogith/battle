@@ -860,6 +860,36 @@
         .tx-chip.tx-chip--cat-Physical[data-active="1"] { background: #ff6b6b; border-color: #ff6b6b; color: #1a0a0a; }
         .tx-chip.tx-chip--cat-Special[data-active="1"]  { background: #6b9fff; border-color: #6b9fff; color: #08111e; }
         .tx-chip.tx-chip--cat-Status[data-active="1"]   { background: #b4bbcc; border-color: #b4bbcc; color: #1a1a20; }
+        /* ★ Recommended toggle chip — gold when ON (curated pool), grey when
+           OFF (full list). Lives on its own row above the search input so
+           it's always visible regardless of the mobile drawer state. */
+        .tx-chip.tx-chip--rec {
+            font-weight: 700; letter-spacing: 0.04em;
+            min-height: 28px; padding: 4px 12px;
+        }
+        .tx-chip.tx-chip--rec[data-active="1"] {
+            background: linear-gradient(180deg, rgba(255,213,79,0.22), rgba(255,213,79,0.12));
+            border-color: #ffd54f; color: #fff3cd;
+            box-shadow: 0 0 0 1px rgba(255,213,79,0.25) inset;
+        }
+        .tx-chip.tx-chip--rec[data-active="0"] {
+            background: rgba(180,187,204,0.10); border-color: #4a5168; color: #b4bbcc;
+        }
+        .tx-chip-row--leading {
+            margin-bottom: 6px; padding-bottom: 6px;
+            border-bottom: 1px dashed rgba(102,113,140,0.20);
+        }
+        /* Sparse-data banner — shown when the species has < 10 Smogon builds. */
+        .tx-sparse-banner {
+            display: flex; align-items: center; gap: 6px;
+            margin-bottom: 8px; padding: 6px 10px;
+            background: rgba(180,187,204,0.08);
+            border: 1px solid rgba(180,187,204,0.20);
+            border-left: 3px solid #b4bbcc;
+            border-radius: 6px;
+            font-size: 11px; color: #c8cdd8;
+            line-height: 1.35;
+        }
         .tx-count-pill {
             display: inline-flex; align-items: center;
             padding: 2px 8px; font-size: 10px; color: #b4bbcc;
@@ -931,11 +961,34 @@
             border-color: #ffd54f; background: linear-gradient(180deg, rgba(60,45,15,0.55), rgba(30,22,8,0.85));
         }
         .tx-card[data-recommended="1"] {
-            border-color: #66bb6a;
-            box-shadow: 0 0 0 1px rgba(102,187,106,0.35) inset, 0 2px 8px rgba(102,187,106,0.12);
+            border-color: #ffd54f;
+            box-shadow: 0 0 0 1px rgba(255,213,79,0.35) inset, 0 2px 10px rgba(255,213,79,0.18);
+            background: linear-gradient(180deg, rgba(40,32,12,0.85), rgba(20,16,6,0.9));
         }
         .tx-card[data-disabled="1"] { opacity: 0.55; cursor: not-allowed; }
         .tx-card[data-disabled="1"]:hover { transform: none; }
+        /* ★ marker on starred cards — gold star prefix before the title. */
+        .tx-card-star {
+            display: inline-flex; align-items: center; justify-content: center;
+            color: #ffd54f; font-size: 14px; line-height: 1;
+            text-shadow: 0 0 6px rgba(255,213,79,0.55);
+            margin-right: 4px; flex-shrink: 0;
+        }
+        /* Ability tier backgrounds — Regular = default card bg (grey-ish).
+           Hidden abilities get a blue tint behind everything; ★ overlays on
+           top via data-recommended which keeps its gold border/glow. Future
+           tiers (Special, OP Special, locked) reuse the same selector pattern. */
+        .tx-card--ability[data-tier="hidden"] {
+            background: linear-gradient(180deg, rgba(40,55,80,0.85), rgba(20,28,42,0.92));
+            border-color: #6b9fff;
+        }
+        .tx-card--ability[data-tier="hidden"][data-recommended="1"] {
+            background: linear-gradient(180deg, rgba(50,55,40,0.85), rgba(28,28,18,0.92));
+            border-color: #ffd54f;
+            box-shadow: 0 0 0 1px rgba(255,213,79,0.35) inset,
+                        0 0 0 2px rgba(107,159,255,0.35),
+                        0 2px 10px rgba(255,213,79,0.18);
+        }
         .tx-card-head {
             display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
             font-size: 13px; font-weight: 700;
@@ -1341,7 +1394,11 @@
             border-color: var(--accent); background: rgba(206,147,216,0.2);
             font-weight: 700; box-shadow: 0 0 0 1px var(--accent);
         }
-        .tx-nature-cell[data-recommended="1"] { border-color: #66bb6a; box-shadow: 0 0 6px rgba(102,187,106,0.3); }
+        .tx-nature-cell[data-recommended="1"] {
+            border-color: #ffd54f;
+            box-shadow: 0 0 0 1px rgba(255,213,79,0.35) inset, 0 0 6px rgba(255,213,79,0.30);
+            background: linear-gradient(180deg, rgba(40,32,12,0.85), rgba(20,16,6,0.9));
+        }
         .tx-nature-cell[data-neutral="1"] {
             background: rgba(180,187,204,0.08);
             grid-column: 1 / -1;
@@ -44005,6 +44062,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 itemCat: 'all',
                 natureUp: 'any',
                 natureDown: 'any',
+                // ★ Recommended filter — when true, the picker shows only options
+                // in the starred Smogon pool for this species. Default ON for
+                // every kind so first-time players see the curated list; toggle
+                // off via the ★ chip to expand to the full option list.
+                recOnly: { moves: true, items: true, abilities: true, natures: true },
             },
             sort: {
                 moves: 'recommended',
@@ -44021,6 +44083,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (kind === 'moves') { _txState.filter.moveTypes.clear(); _txState.filter.moveCats.clear(); }
             if (kind === 'items') _txState.filter.itemCat = 'all';
             if (kind === 'natures') { _txState.filter.natureUp = 'any'; _txState.filter.natureDown = 'any'; }
+            _txState.filter.recOnly[kind] = true;
             _txState.sort[kind] = 'recommended';
         }
         const _TX_ALL_TYPES = ["Normal","Fire","Water","Electric","Grass","Ice","Fighting","Poison","Ground","Flying","Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel","Fairy"];
@@ -44230,6 +44293,87 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let rows = _txMetaSorted(stats, kind);
             if (excludeSet && excludeSet.size) rows = rows.filter(r => !excludeSet.has(r.name));
             return { rows: rows.slice(0, n), haveSpecies };
+        }
+
+        // ── STARRED POOL — usable options per Smogon for this species ──────
+        // Single source of truth for which moves/items/abilities/natures the
+        // ★ Recommended filter exposes by default. Pool thresholds, capped to
+        // keep the curated list at a useful size and floored so narrow species
+        // still produce a usable pool:
+        //   moves     ≥ 15% usage,  clamp [7, 20]
+        //   items     ≥  5% usage,  clamp [5, 12]
+        //   abilities ≥ 10% usage + always include the species' Pokédex
+        //               regular & hidden abilities (handles CSV data gaps
+        //               where e.g. Sand Stream is the implied default and
+        //               never explicitly listed in a build row)
+        //   natures   ≥ 10% usage,  clamp [3, 6]
+        // Species with < 10 Smogon builds total are flagged sparse — callers
+        // hide the rec system and show a "Limited competitive data" banner.
+        const _TX_SPARSE_BUILD_THRESHOLD = 10;
+        const _TX_POOL_RULES = {
+            moves:     { threshold: 15, cap: 20, floor: 7 },
+            items:     { threshold:  5, cap: 12, floor: 5 },
+            abilities: { threshold: 10, cap:  6, floor: 2 },
+            natures:   { threshold: 10, cap:  6, floor: 3 },
+        };
+        function _txStarredPoolEmpty(total) {
+            const empty = () => ({ starred: new Set(), pctOf: new Map() });
+            return {
+                totalBuilds: total | 0,
+                sparse: true,
+                moves: empty(), items: empty(), abilities: empty(), natures: empty(),
+            };
+        }
+        function _txStarredPool(monName) {
+            if (!monName) return _txStarredPoolEmpty(0);
+            const meta = _txMetaStatsFor(monName);
+            if (!meta || meta.total < _TX_SPARSE_BUILD_THRESHOLD) {
+                return _txStarredPoolEmpty(meta ? meta.total : 0);
+            }
+            if (meta._starredPool) return meta._starredPool;
+
+            const buildBucket = (kind) => {
+                const rule = _TX_POOL_RULES[kind];
+                const sorted = _txMetaSorted(meta, kind);
+                let pool = sorted.filter(r => r.pct >= rule.threshold);
+                if (pool.length > rule.cap) pool = pool.slice(0, rule.cap);
+                else if (pool.length < rule.floor) pool = sorted.slice(0, Math.min(rule.floor, sorted.length));
+                const starred = new Set();
+                const pctOf = new Map();
+                for (const r of pool) { starred.add(r.name); pctOf.set(r.name, r.pct); }
+                // Also expose pcts for the full sorted list so the comparator
+                // can rank non-starred options by usage when "Show all" is on.
+                for (const r of sorted) { if (!pctOf.has(r.name)) pctOf.set(r.name, r.pct); }
+                return { starred, pctOf };
+            };
+
+            const result = {
+                totalBuilds: meta.total,
+                sparse: false,
+                moves: buildBucket('moves'),
+                items: buildBucket('items'),
+                abilities: buildBucket('abilities'),
+                natures: buildBucket('natures'),
+            };
+
+            // Always include Pokédex regular + hidden abilities so the
+            // species' canonical choices are reachable from the ★ pool even
+            // when Smogon data is sparse on that slot. CSV-empty-ability
+            // rows already roll into slot 0 via _txAccumulateBuilds, so this
+            // only adds anything when the regular ability has truly never
+            // been recorded — kept as a belt-and-braces guarantee.
+            try {
+                const bs = (typeof baseStats === 'object') ? baseStats[monName] : null;
+                if (bs && bs.abilities) {
+                    for (const slot of ['0', '1', 'H']) {
+                        const a = bs.abilities[slot];
+                        if (a) result.abilities.starred.add(a);
+                    }
+                }
+            } catch (e) {}
+
+            meta._starredPool = result;
+            return result;
         }
         // Blend a 0..150 heuristic score with the 0..100 popularity score.
         // Species data dominates (65/35); global baseline is softer (40/60);
@@ -45059,6 +45203,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         _txState.filter.natureUp = (value === _txState.filter.natureUp) ? 'any' : (value || 'any');
                     } else if (kind === 'natureDown') {
                         _txState.filter.natureDown = (value === _txState.filter.natureDown) ? 'any' : (value || 'any');
+                    } else if (kind === 'recOnly') {
+                        // value carries the picker kind ('moves'|'items'|'abilities'|'natures')
+                        if (value && Object.prototype.hasOwnProperty.call(_txState.filter.recOnly, value)) {
+                            _txState.filter.recOnly[value] = !_txState.filter.recOnly[value];
+                        }
                     }
                     void renderTutorTeam(true);
                     return;
@@ -45113,6 +45262,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Count of active filters for a given kind — drives the drawer badge so the
         // player knows filters are applied even when the drawer is collapsed.
+        // The ★ Recommended chip lives outside the drawer (on the search row) so
+        // we don't include it here.
         function _txActiveFilterCount(kind) {
             if (kind === 'moves') return _txState.filter.moveTypes.size + _txState.filter.moveCats.size;
             if (kind === 'items') return _txState.filter.itemCat !== 'all' ? 1 : 0;
@@ -45150,7 +45301,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const drawerHtml = hasChips
                 ? `<div class="tx-filter-panel" data-open="${drawerOpen}">${opts.chipsHtml}</div>`
                 : '';
+            // Leading chips (e.g. ★ Recommended toggle) sit on a row above the
+            // search input so they're always visible — never hidden behind the
+            // mobile filter drawer.
+            const leadingChips = opts.leadingChipsHtml
+                ? `<div class="tx-chip-row tx-chip-row--leading">${opts.leadingChipsHtml}</div>`
+                : '';
             return `<div class="tx-toolbar">
+                ${leadingChips}
                 <div class="tx-search-row">
                     <input type="search" class="tx-search-input" data-kind="${kind}" placeholder="${_esc(placeholder)}" value="${_esc(search)}" autocomplete="off" />
                     ${sortHtml}
@@ -45160,6 +45318,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>
                 ${drawerHtml}
             </div>`;
+        }
+
+        // ★ Recommended toggle chip — the entry point for switching between the
+        // curated Smogon-usable pool ("Recommended only", default ON) and the
+        // full option list ("Show all"). Hidden when the species is too sparse
+        // for the rec system to mean anything; in that mode the picker behaves
+        // vanilla and a banner explains why.
+        function _txRecChipHtml(kind, monName) {
+            const pool = _txStarredPool(monName);
+            if (pool.sparse) return '';
+            const on = _txState.filter.recOnly[kind] ? 1 : 0;
+            const label = on ? '★ Recommended' : '★ Show all';
+            const title = on
+                ? 'Showing options used in competitive Smogon builds. Tap to expand to the full list.'
+                : 'Showing all options. Tap to narrow back to the Smogon-recommended list.';
+            return `<button type="button" class="tx-chip tx-chip--rec" data-filter-kind="recOnly" data-filter-value="${kind}" data-active="${on}" title="${_esc(title)}" aria-pressed="${on?'true':'false'}">${label}</button>`;
+        }
+
+        // Sparse-data banner — surfaced above the picker when the species has
+        // fewer than 10 Smogon builds. Tells the player the ★ system is sitting
+        // out and the picker is in vanilla mode.
+        function _txSparseBannerHtml(monName) {
+            const pool = _txStarredPool(monName);
+            if (!pool.sparse) return '';
+            const note = pool.totalBuilds > 0
+                ? `Limited competitive data (${pool.totalBuilds} build${pool.totalBuilds===1?'':'s'}) — showing all options.`
+                : 'No competitive data for this Pokémon yet — showing all options.';
+            return `<div class="tx-sparse-banner">${_esc(note)}</div>`;
         }
 
         function _txMoveTypeChipsHtml() {
@@ -45193,7 +45379,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }</div>`;
         }
 
-        // Build a Move card. Highlight if it's the pending selection.
+        // Build a Move card. The ★ prefix on the title marks options in the
+        // Smogon-usable pool; data-recommended drives the green border + glow.
         function _txMoveCardHtml(moveName, ctx) {
             const md = movesDB[moveName] || ensureMoveData(moveName);
             const typ = md.type || 'Normal';
@@ -45209,11 +45396,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pills = [
                 `<span class="tx-pill tx-pill--cat-${cat}">${cat}</span>`,
                 stab ? `<span class="tx-pill" style="background:rgba(255,213,79,0.18);border-color:#ffd54f;color:#fff3cd;">STAB</span>` : '',
-                isRec ? `<span class="tx-pill tx-pill--rec">★ Pick</span>` : '',
             ].filter(Boolean).join('');
+            const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
             return `<button type="button" class="tx-card" data-card-kind="move" data-card-value="${_esc(moveName)}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}">
                 <div class="tx-card-head">
-                    <span class="tx-card-title">${_esc(moveName)}</span>
+                    ${star}<span class="tx-card-title">${_esc(moveName)}</span>
                     <span class="type-badge type-${typ}">${typ}</span>
                 </div>
                 <div class="tx-card-stats">
@@ -45237,34 +45424,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pills = [
                 `<span class="tx-pill">${_esc(_TX_ITEM_CAT_LABEL[cat] || cat)}</span>`,
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
-                isRec && !isCurrent ? `<span class="tx-pill tx-pill--rec">★ Pick</span>` : '',
             ].filter(Boolean).join('');
+            const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
             return `<button type="button" class="tx-card" data-card-kind="item" data-card-value="${_esc(itemName)}"
                 data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-disabled="${isCurrent?1:0}" ${isCurrent?'disabled':''}>
                 <div class="tx-card-head">
-                    <span class="tx-card-title">${_esc(itemName)}</span>
+                    ${star}<span class="tx-card-title">${_esc(itemName)}</span>
                 </div>
                 ${desc ? `<div class="tx-card-desc">${_esc(desc)}</div>` : `<div class="tx-card-desc" style="opacity:0.55;font-style:italic;">No description available.</div>`}
                 <div class="tx-card-foot">${pills}</div>
             </button>`;
         }
 
-        // Build an Ability card.
+        // Build an Ability card. Tier background encodes Regular (default) vs
+        // Hidden (blue tint via the tx-card--hidden modifier). Future tiers
+        // (Special / OP Special / locked-by-city) hook onto the same data
+        // attributes so the rule stays one-source-of-truth.
         function _txAbilityCardHtml(abilityName, ctx) {
             const desc = _txDescriptionFor(abilityName, 'ability');
             const isPending = ctx && ctx.pending === abilityName;
             const isCurrent = ctx && ctx.current === abilityName;
             const isHA      = ctx && ctx.hiddenAbilities && ctx.hiddenAbilities.has(abilityName);
             const isRec     = ctx && ctx.recommended && ctx.recommended.has(abilityName);
+            const tier      = isHA ? 'hidden' : 'regular';
             const pills = [
                 isHA ? `<span class="tx-pill tx-pill--ha">Hidden</span>` : '',
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
-                isRec && !isCurrent ? `<span class="tx-pill tx-pill--rec">★ Pick</span>` : '',
             ].filter(Boolean).join('');
-            return `<button type="button" class="tx-card" data-card-kind="ability" data-card-value="${_esc(abilityName)}"
-                data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-disabled="${isCurrent?1:0}" ${isCurrent?'disabled':''}>
+            const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
+            return `<button type="button" class="tx-card tx-card--ability" data-card-kind="ability" data-card-value="${_esc(abilityName)}"
+                data-tier="${tier}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-disabled="${isCurrent?1:0}" ${isCurrent?'disabled':''}>
                 <div class="tx-card-head">
-                    <span class="tx-card-title">${_esc(abilityName)}</span>
+                    ${star}<span class="tx-card-title">${_esc(abilityName)}</span>
                 </div>
                 ${desc ? `<div class="tx-card-desc">${_esc(desc)}</div>` : `<div class="tx-card-desc" style="opacity:0.55;font-style:italic;">No description available.</div>`}
                 <div class="tx-card-foot">${pills}</div>
@@ -45347,13 +45538,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             </div>`;
         }
 
-        // Apply text + chip + sort filters to a flat list, returning the filtered+sorted list.
+        // Apply ★ Recommended + text + chip + sort filters to a flat list.
+        // When the ★ filter is on AND the species has Smogon data, the list is
+        // reduced to the starred pool and sorted descending by Smogon usage %
+        // (regardless of the sort selector — usage is the only meaningful order
+        // within a curated pool). Otherwise the existing sort comparator runs.
+        function _txSortByUsageDesc(pctOf) {
+            return (a, b) => (pctOf.get(b) || 0) - (pctOf.get(a) || 0) || a.localeCompare(b);
+        }
         function _txApplyMoveFilters(allMoves, mon, build, monName) {
             const q = (_txState.search.moves || '').toLowerCase();
             const types = _txState.filter.moveTypes;
             const cats  = _txState.filter.moveCats;
             const sortKey = _txState.sort.moves || 'recommended';
+            const pool = _txStarredPool(monName);
+            const recOnly = !pool.sparse && _txState.filter.recOnly.moves;
             const filt = allMoves.filter(m => {
+                if (recOnly && !pool.moves.starred.has(m)) return false;
                 if (q && !m.toLowerCase().includes(q)) return false;
                 const md = movesDB[m];
                 if (!md) return true;
@@ -45361,26 +45562,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (cats.size  && !cats.has(md.cat))  return false;
                 return true;
             });
-            filt.sort(_txMoveCmp(sortKey, mon, build, monName));
+            if (recOnly && sortKey === 'recommended') filt.sort(_txSortByUsageDesc(pool.moves.pctOf));
+            else filt.sort(_txMoveCmp(sortKey, mon, build, monName));
             return filt;
         }
         function _txApplyItemFilters(allItems, mon, build, monName) {
             const q = (_txState.search.items || '').toLowerCase();
             const catFilter = _txState.filter.itemCat || 'all';
             const sortKey = _txState.sort.items || 'recommended';
+            const pool = _txStarredPool(monName);
+            const recOnly = !pool.sparse && _txState.filter.recOnly.items;
             const filt = allItems.filter(it => {
+                if (recOnly && !pool.items.starred.has(it)) return false;
                 if (q && !it.toLowerCase().includes(q)) return false;
                 if (catFilter !== 'all' && _txItemCategory(it) !== catFilter) return false;
                 return true;
             });
-            filt.sort(_txItemCmp(sortKey, mon, build, monName));
+            if (recOnly && sortKey === 'recommended') filt.sort(_txSortByUsageDesc(pool.items.pctOf));
+            else filt.sort(_txItemCmp(sortKey, mon, build, monName));
             return filt;
         }
         function _txApplyAbilityFilters(allAbils, mon, build, monName) {
             const q = (_txState.search.abilities || '').toLowerCase();
             const sortKey = _txState.sort.abilities || 'recommended';
-            const filt = allAbils.filter(a => !q || a.toLowerCase().includes(q));
-            filt.sort(_txAbilityCmp(sortKey, mon, build, monName));
+            const pool = _txStarredPool(monName);
+            const recOnly = !pool.sparse && _txState.filter.recOnly.abilities;
+            const filt = allAbils.filter(a => {
+                if (recOnly && !pool.abilities.starred.has(a)) return false;
+                return !q || a.toLowerCase().includes(q);
+            });
+            if (recOnly && sortKey === 'recommended') filt.sort(_txSortByUsageDesc(pool.abilities.pctOf));
+            else filt.sort(_txAbilityCmp(sortKey, mon, build, monName));
             return filt;
         }
         function _txApplyNatureFilters(allNat, mon, build, monName) {
@@ -45388,14 +45600,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const up = _txState.filter.natureUp || 'any';
             const down = _txState.filter.natureDown || 'any';
             const sortKey = _txState.sort.natures || 'recommended';
+            const pool = _txStarredPool(monName);
+            const recOnly = !pool.sparse && _txState.filter.recOnly.natures;
             const filt = allNat.filter(n => {
+                if (recOnly && !pool.natures.starred.has(n)) return false;
                 if (q && !n.toLowerCase().includes(q)) return false;
                 const mod = natureModifiers[n];
                 if (up !== 'any' && (!mod || mod.up !== up)) return false;
                 if (down !== 'any' && (!mod || mod.down !== down)) return false;
                 return true;
             });
-            filt.sort(_txNatureCmp(sortKey, mon, build, monName));
+            if (recOnly && sortKey === 'recommended') filt.sort(_txSortByUsageDesc(pool.natures.pctOf));
+            else filt.sort(_txNatureCmp(sortKey, mon, build, monName));
             return filt;
         }
 
@@ -45517,35 +45733,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Filtered + sorted
             const filtered = _txApplyMoveFilters(availForActive, mon, b, t.name);
-            // Recommendations: categorized by purpose (STAB / Coverage / Setup / Utility…).
-            // Replaces the older flat "top 10 / top 5" strip — purpose-tagged picks
-            // give the player a directly-actionable shortlist.
-            const recByPurpose = _txMoveRecsByPurpose(availForActive, mon, b, t.name);
-            const recSet = new Set(recByPurpose.map(r => r.move));
+            // ★ pool = Smogon-usable moves for this species; drives the recommended border + star.
+            const sPool = _txStarredPool(t.name);
             const stabTypes = new Set([mon && mon.type1, mon && mon.type2].filter(Boolean));
             const pendingMove = (_txPending && _txPending.kind === 'move') ? _txPending.value : null;
-            const ctx = { pending: pendingMove, recommended: recSet, stabTypes };
+            const ctx = { pending: pendingMove, recommended: sPool.moves.starred, stabTypes };
 
+            const emptyMsg = (!sPool.sparse && _txState.filter.recOnly.moves)
+                ? 'No starred moves match these filters. Tap ★ Recommended to expand, or clear the search.'
+                : 'No moves match these filters. Loosen them or clear the search.';
             const cardsHtml = filtered.length
                 ? filtered.map(m => _txMoveCardHtml(m, ctx)).join('')
-                : `<div class="tx-grid-empty">No moves match these filters. Loosen them or clear the search.</div>`;
+                : `<div class="tx-grid-empty">${emptyMsg}</div>`;
 
-            // Recommended panel — 3-4 distinct picks, each labelled with its purpose.
-            const recsStrip = _txRecsPanelHtml(
-                `Picks for ${t.name} · Slot ${activeSlot + 1}`,
-                recByPurpose.map(r => {
-                    const md = movesDB[r.move];
-                    const typeBadge = md ? ` <span class="type-badge type-${md.type}">${md.type}</span>` : '';
-                    return { kind: 'move', value: r.move, purpose: r.purpose, reason: r.reason, extraHtml: typeBadge };
-                }),
-                pendingMove,
-                'Tap a pick to preview it before confirming.'
-            );
+            const sparseBanner = _txSparseBannerHtml(t.name);
 
             const toolbar = _txToolbarHtml('moves', {
                 placeholder: 'Search moves (e.g. earthquake, hidden, ice)',
                 count: filtered.length,
                 countLabel: 'moves',
+                leadingChipsHtml: _txRecChipHtml('moves', t.name),
                 chipsHtml: _txMoveTypeChipsHtml() + _txMoveCatChipsHtml(),
                 sortOptions: [
                     { value:'recommended', label:'Recommended' },
@@ -45575,7 +45782,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </button>
                 <div class="story-tutor-mon-body">
                     <div class="tx-slot-row">${slotCards}</div>
-                    ${curMove ? recsStrip + toolbar + `<div class="tx-grid">${cardsHtml}</div>` + _txConfirmBarHtml(idx, 'move', mon, b) : '<div class="tx-grid-empty">Add a move first to swap moves.</div>'}
+                    ${curMove ? sparseBanner + toolbar + `<div class="tx-grid">${cardsHtml}</div>` + _txConfirmBarHtml(idx, 'move', mon, b) : '<div class="tx-grid-empty">Add a move first to swap moves.</div>'}
                 </div>
             </div>`;
         }
@@ -45590,45 +45797,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pool = _tutorGetPoolForMon(t.name);
             const tab = _txState.dojoTab || 'item';
 
-            // Items — top 3 by Smogon usage (excludes the currently-equipped item)
+            // ★ pool — Smogon-usable items/abilities for this species.
+            const sPool = _txStarredPool(t.name);
+            const sparseBanner = _txSparseBannerHtml(t.name);
+
+            // Items
             const curItem = b.i || '(none)';
             const items = pool.items.slice();
             const filtItems = _txApplyItemFilters(items, mon, b, t.name);
-            const itemRecs = _txItemRecsByPurpose(items, mon, b, t.name);
-            const recItemSet = new Set(itemRecs.map(r => r.item));
             const pendingItem = (_txPending && _txPending.kind === 'item') ? _txPending.value : null;
-            const itemCtx = { pending: pendingItem, current: curItem, recommended: recItemSet };
+            const itemCtx = { pending: pendingItem, current: curItem, recommended: sPool.items.starred };
 
-            // Abilities — top + runner-up (top 2 by Smogon usage, current excluded).
-            // Hidden abilities are tagged from baseStats.abilities slot 'H'.
+            // Abilities — hidden tagged from baseStats.abilities slot 'H' for the tier badge.
             const curAbility = b.a || (mon && mon.ability) || '(none)';
             const abils = pool.abilities.slice();
             const filtAbils = _txApplyAbilityFilters(abils, mon, b, t.name);
-            const abilRecs = _txAbilityRecsByPurpose(abils, mon, b, t.name);
-            const recAbilSet = new Set(abilRecs.map(r => r.ability));
             const haSet = new Set();
             try {
                 const bs = baseStats[t.name];
                 if (bs && bs.abilities && bs.abilities.H) haSet.add(bs.abilities.H);
             } catch (e) {}
             const pendingAbility = (_txPending && _txPending.kind === 'ability') ? _txPending.value : null;
-            const abilCtx = { pending: pendingAbility, current: curAbility, recommended: recAbilSet, hiddenAbilities: haSet };
+            const abilCtx = { pending: pendingAbility, current: curAbility, recommended: sPool.abilities.starred, hiddenAbilities: haSet };
 
             // Item tab content
             const itemTabHtml = (() => {
                 if (!items.length) return '<div class="tx-grid-empty">No items available for this Pokémon.</div>';
-                const recDesc = _txRecsPanelHtml(
-                    `Picks for ${t.name}`,
-                    itemRecs.map(r => ({ kind: 'item', value: r.item, purpose: r.purpose, reason: r.reason })),
-                    pendingItem,
-                    'Different goals, different items.'
-                );
+                const emptyMsg = (!sPool.sparse && _txState.filter.recOnly.items)
+                    ? 'No starred items match this filter. Tap ★ Recommended to expand, or clear the search.'
+                    : 'No items match — try a different category or clear the search.';
                 const cards = filtItems.length
                     ? filtItems.map(it => _txItemCardHtml(it, itemCtx)).join('')
-                    : `<div class="tx-grid-empty">No items match — try a different category or clear the search.</div>`;
+                    : `<div class="tx-grid-empty">${emptyMsg}</div>`;
                 const toolbar = _txToolbarHtml('items', {
                     placeholder: 'Search items (e.g. leftovers, choice, sash)',
                     count: filtItems.length, countLabel: 'items',
+                    leadingChipsHtml: _txRecChipHtml('items', t.name),
                     chipsHtml: _txItemCatChipsHtml(),
                     sortOptions: [
                         { value:'recommended', label:'Recommended' },
@@ -45636,33 +45840,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         { value:'name', label:'Name (A→Z)' },
                     ],
                 });
-                return recDesc + toolbar + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'item', mon, b);
+                return sparseBanner + toolbar + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'item', mon, b);
             })();
 
             // Ability tab content
             const abilTabHtml = (() => {
                 if (!abils.length) return '<div class="tx-grid-empty">No abilities available for this Pokémon.</div>';
-                const recDesc = _txRecsPanelHtml(
-                    `Strong abilities for ${t.name}`,
-                    abilRecs.map(r => ({
-                        kind: 'ability', value: r.ability, purpose: r.purpose, reason: r.reason,
-                        extraHtml: r.hidden ? ' <span class="tx-pill tx-pill--ha">Hidden</span>' : '',
-                    })),
-                    pendingAbility,
-                    'Pick the one that fits your role.'
-                );
+                const emptyMsg = (!sPool.sparse && _txState.filter.recOnly.abilities)
+                    ? 'No starred abilities match this filter. Tap ★ Recommended to expand, or clear the search.'
+                    : 'No abilities match the search.';
                 const cards = filtAbils.length
                     ? filtAbils.map(a => _txAbilityCardHtml(a, abilCtx)).join('')
-                    : `<div class="tx-grid-empty">No abilities match the search.</div>`;
+                    : `<div class="tx-grid-empty">${emptyMsg}</div>`;
                 const toolbar = _txToolbarHtml('abilities', {
                     placeholder: 'Search abilities',
                     count: filtAbils.length, countLabel: 'abilities',
+                    leadingChipsHtml: _txRecChipHtml('abilities', t.name),
                     sortOptions: [
                         { value:'recommended', label:'Recommended' },
                         { value:'name', label:'Name (A→Z)' },
                     ],
                 });
-                return recDesc + toolbar + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'ability', mon, b);
+                return sparseBanner + toolbar + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'ability', mon, b);
             })();
 
             const headerSummary = `<div class="story-tutor-mon-meta" style="margin-top:0;">
@@ -45690,7 +45889,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             </div>`;
         }
 
-        // Render: Nature editor (grid + recommendation)
+        // Render: Nature editor (grid). Cells inside the ★ pool are marked
+        // with a star prefix + recommended border; the sparse-data banner
+        // appears above the grid when the species has < 10 Smogon builds.
         function _txRenderNatureEditor(t, idx) {
             const b = t.build || {};
             let mon = null;
@@ -45701,9 +45902,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const natAvailable = pool.natures.slice();
             const curNature = b.n || 'Hardy';
 
-            // Categorized recommendations (Power / Speed / Bulk / Trick Room) — 3-4 distinct picks.
-            const natRecs = _txNatureRecsByPurpose(natAvailable, mon, b, t.name);
-            const recSet = new Set(natRecs.map(r => r.nature));
+            // ★ pool — Smogon-usable natures for this species.
+            const sPool = _txStarredPool(t.name);
+            const starredNats = sPool.natures.starred;
             const pendingNature = (_txPending && _txPending.kind === 'nature') ? _txPending.value : null;
 
             // Build a 5×5 grid mapping (up, down) → nature
@@ -45730,9 +45931,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     const isCur = nat === curNature;
                     const isPend = _txPending && _txPending.kind === 'nature' && _txPending.value === nat;
-                    const isRec = recSet.has(nat);
+                    const isRec = starredNats.has(nat);
+                    const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span> ' : '';
                     cells.push(`<button type="button" class="tx-nature-cell" data-nature="${nat}" data-active="${(isCur||isPend)?1:0}" data-recommended="${isRec?1:0}" ${isCur?'disabled':''}>
-                        <span class="tx-nature-cell-name">${nat}${isCur?' ✓':''}</span>
+                        <span class="tx-nature-cell-name">${star}${nat}${isCur?' ✓':''}</span>
                     </button>`);
                 }
             }
@@ -45741,8 +45943,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const neutralCells = neutralNatures.map(n => {
                 const isCur = n === curNature;
                 const isPend = _txPending && _txPending.kind === 'nature' && _txPending.value === n;
-                return `<button type="button" class="tx-nature-cell" data-nature="${n}" data-active="${(isCur||isPend)?1:0}" ${isCur?'disabled':''} style="background:rgba(180,187,204,0.05);">
-                    <span class="tx-nature-cell-name">${n}${isCur?' ✓':''}</span>
+                const isRec = starredNats.has(n);
+                const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span> ' : '';
+                return `<button type="button" class="tx-nature-cell" data-nature="${n}" data-active="${(isCur||isPend)?1:0}" data-recommended="${isRec?1:0}" ${isCur?'disabled':''} style="background:rgba(180,187,204,0.05);">
+                    <span class="tx-nature-cell-name">${star}${n}${isCur?' ✓':''}</span>
                 </button>`;
             }).join('');
 
@@ -45777,16 +45981,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>`;
             };
 
-            // Multi-purpose recommendations panel (Power / Speed / Bulk / Trick Room).
-            const recsStrip = _txRecsPanelHtml(
-                `Natures for ${t.name}`,
-                natRecs.map(r => ({
-                    kind: 'nature', value: r.nature, purpose: r.purpose, reason: r.reason,
-                    extraHtml: ` <span style="font-size:10px;opacity:0.8;color:#aed581;">(+${_TX_STAT_LABEL[r.mod.up]}/−${_TX_STAT_LABEL[r.mod.down]})</span>`,
-                })),
-                pendingNature,
-                'Each pick targets a different goal.'
-            );
+            const sparseBanner = _txSparseBannerHtml(t.name);
 
             const headerSummary = `<div class="story-tutor-mon-meta" style="margin-top:0;">Nature: <strong>${_esc(curNature)}</strong>${
                 natureModifiers[curNature] ? ` <span style="opacity:0.7;">(+${_TX_STAT_LABEL[natureModifiers[curNature].up]}/−${_TX_STAT_LABEL[natureModifiers[curNature].down]})</span>` : ' (neutral)'
@@ -45804,8 +45999,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span class="story-tutor-mon-chev" aria-hidden="true">▴</span>
                 </button>
                 <div class="story-tutor-mon-body">
-                    ${recsStrip}
-                    <div style="font-size:11px;color:#9aa3b8;margin-bottom:4px;">Tap a cell to preview. Rows raise a stat; columns lower one. Bottom row = neutral.</div>
+                    ${sparseBanner}
+                    <div style="font-size:11px;color:#9aa3b8;margin-bottom:4px;">Tap a cell to preview. Rows raise a stat; columns lower one. ★ marks Smogon-usable picks.</div>
                     <div class="tx-nature-grid" role="grid" aria-label="Nature picker">${cells.join('')}</div>
                     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:6px;font-size:10px;">${neutralCells}</div>
                     ${buildStatPreview()}
@@ -45831,6 +46026,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _txState.filter.moveTypes.clear(); _txState.filter.moveCats.clear();
             _txState.filter.itemCat = 'all';
             _txState.filter.natureUp = 'any'; _txState.filter.natureDown = 'any';
+            // Reset ★ Recommended filter to ON for every picker — fresh entry
+            // always leads with the curated Smogon-usable pool.
+            _txState.filter.recOnly.moves = true; _txState.filter.recOnly.items = true;
+            _txState.filter.recOnly.abilities = true; _txState.filter.recOnly.natures = true;
             _txState.sort.moves = 'recommended'; _txState.sort.items = 'recommended'; _txState.sort.abilities = 'recommended'; _txState.sort.natures = 'recommended';
             _txPending = null;
             _txMovePoolCache.clear();
@@ -46609,6 +46808,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const e = evs || {};
             return `${e.hp||0}/${e.atk||0}/${e.def||0}/${e.spa||0}/${e.spd||0}/${e.spe||0}`;
         }
+        // Top-N exact EV spreads by Smogon usage (regardless of Universal/Role
+        // overlap). Used to ★ any preset card — Universal, Role, or Meta —
+        // whose 6-tuple matches a top Smogon pick, so the ★ correctly lands
+        // on the canonical card even when dedup hides the meta variant.
+        function _evTrainerTopSpreadKeys(name, n) {
+            n = n | 0 || 5;
+            let entry;
+            try { entry = (typeof resolveCsvBuildEntry === 'function') ? resolveCsvBuildEntry(name) : null; }
+            catch (e) { entry = null; }
+            entry = entry || {};
+            const allBuilds = [].concat(entry.regular||[], entry.weather||[], entry.mega||[], entry.tera||[], entry['z-attack']||[]);
+            const counts = new Map();
+            for (const b of allBuilds) {
+                if (!b || !b.evs) continue;
+                const norm = { hp:b.evs.hp||0, atk:b.evs.atk||0, def:b.evs.def||0, spa:b.evs.spa||0, spd:b.evs.spd||0, spe:b.evs.spe||0 };
+                const key = _evsKey(norm);
+                counts.set(key, (counts.get(key) || 0) + 1);
+            }
+            return new Set(
+                [...counts.entries()].sort((a,b) => b[1] - a[1]).slice(0, n).map(([k]) => k)
+            );
+        }
+
         function _evTrainerMetaSpreadsFor(name) {
             let entry;
             try { entry = (typeof resolveCsvBuildEntry === 'function') ? resolveCsvBuildEntry(name) : null; }
@@ -46681,7 +46903,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 return bestKey ? _statLetter[bestKey] : null;
             };
-            const ranked = Array.from(counts.values()).sort((a,b) => b.n - a.n).slice(0, 4);
+            const ranked = Array.from(counts.values()).sort((a,b) => b.n - a.n).slice(0, 5);
             const labelSeen = new Map(); // label → count
             for (const m of ranked) {
                 const base = prettyLabel(m.archetype);
@@ -47059,7 +47281,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return `<span style="font-variant-numeric:tabular-nums;color:#9ccc65;font-weight:600;">${total}/510</span>`;
         }
 
-        function _evTrainerRenderPresetCard(idx, p, currentEvs, cantAfford, isRecommended, purpose) {
+        // Render a single EV preset card. ★ marks any spread whose exact
+        // 6-tuple appears in the species' top-5 Smogon-usage spreads, so
+        // Universal / Role / Meta cards all show the star consistently.
+        function _evTrainerRenderPresetCard(idx, p, currentEvs, cantAfford, isRecommended) {
             const isCurrent = _evsEqual(currentEvs, p.evs);
             const hasVitamin = ((sm.inventory && sm.inventory.vitamin) | 0) > 0;
             const safeId = String(p.id).replace(/'/g, "\\'");
@@ -47069,8 +47294,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const total = (p.evs.hp||0)+(p.evs.atk||0)+(p.evs.def||0)+(p.evs.spa||0)+(p.evs.spd||0)+(p.evs.spe||0);
             const pills = [
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Applied</span>` : '',
-                isRecommended && !isCurrent && purpose ? `<span class="tx-rec-tag" data-purpose="${_esc(purpose)}">${_esc(purpose)}</span>` : '',
-                isRecommended && !isCurrent && !purpose ? `<span class="tx-pill tx-pill--rec">★ Pick</span>` : '',
                 `<span class="tx-pill">${total} EVs</span>`,
             ].filter(Boolean).join('');
             const vitaBtn = (hasVitamin && !vitaDisabled)
@@ -47081,19 +47304,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const gButton = isCurrent
                 ? `<button type="button" class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;">Applied</button>`
                 : `<button type="button" class="story-tutor-btn" ${goldDisabled?'disabled':''} onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')" style="font-size:11px;padding:5px 8px;">${storyGoldHtml(EVTRAINER_COST, false)}</button>`;
+            const star = (isRecommended && !isCurrent) ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
             return `<div id="evpreset-${idx}-${_esc(p.id)}" class="tx-card" data-recommended="${isRecommended?1:0}" data-current="${isCurrent?1:0}" style="cursor:default;scroll-margin-top:80px;">
                 <div class="tx-card-head">
-                    <span class="tx-card-title">${_esc(p.label)}</span>
+                    ${star}<span class="tx-card-title">${_esc(p.label)}</span>
                 </div>
                 ${_evTrainerStatBarsHtml(p.evs, null)}
                 <div class="tx-card-foot">${pills}<span style="flex:1;"></span>${gButton} ${vitaBtn}</div>
             </div>`;
-        }
-
-        // Resolve a recommended-purpose tag for a preset row so the player can see
-        // which recommendation a preset matches at a glance.
-        function _evTrainerPurposeFor(p, recById) {
-            return recById && p && recById.has(p.id) ? recById.get(p.id) : null;
         }
 
         function _renderEVTrainerMonCard(t, idx) {
@@ -47130,66 +47348,49 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             if (!expanded) return `<div class="story-tutor-mon">${header}</div>`;
 
-            // Categorized recommendations (Offensive / Defensive / Meta / Balanced).
-            // Dedup at the merge so identical spreads never appear twice — this
-            // is belt-and-braces alongside the filter in _evTrainerMetaSpreadsFor.
-            const allPresets = [];
+            // ★ pool — top-5 Smogon-usage EV spread keys for this species.
+            // Universal / Role / Meta cards all get ★ when their exact 6-tuple
+            // hits one of these top-5 picks, so the canonical card carries
+            // the star even when render-level dedup hides the Meta variant.
+            const topKeys = _evTrainerTopSpreadKeys(t.name, 5);
+            const isStarredPreset = p => topKeys.has(_evsKey(p.evs));
+
+            // Render-time dedup: Universal/Role win display position when their
+            // spread also appears in Meta — keeps the canonical card visible
+            // and avoids showing the same spread twice.
             const _seenKeys = new Set();
-            for (const p of [].concat(EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta)) {
+            const dedup = (presets) => presets.filter(p => {
                 const k = _evsKey(p.evs);
-                if (_seenKeys.has(k)) continue;
+                if (_seenKeys.has(k)) return false;
                 _seenKeys.add(k);
-                allPresets.push(p);
-            }
-            const evRecs = _txEvPresetRecsByPurpose(allPresets, cur, mon);
-            // Map preset.id → its rec purpose (so the inline preset card can echo it)
-            const recById = new Map();
-            for (const r of evRecs) recById.set(r.preset.id, r.purpose);
+                return true;
+            });
+            const dedupedUniversal = dedup(EV_PRESETS_UNIVERSAL);
+            const dedupedRole = dedup(EV_PRESETS_ROLE);
+            const dedupedMeta = dedup(meta);
 
             const renderRow = (presets) => presets.map(p =>
-                _evTrainerRenderPresetCard(idx, p, cur, cantAfford, recById.has(p.id), _evTrainerPurposeFor(p, recById))
+                _evTrainerRenderPresetCard(idx, p, cur, cantAfford, isStarredPreset(p))
             ).join('');
 
-            const universalSection = `<div style="margin-top:10px;">
+            const universalSection = dedupedUniversal.length ? `<div style="margin-top:10px;">
                 <div style="font-size:10px;color:#9ccc65;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;margin-bottom:6px;">Universal</div>
-                <div class="tx-grid" style="max-height:none;">${renderRow(EV_PRESETS_UNIVERSAL)}</div>
-            </div>`;
-            const roleSection = `<div style="margin-top:10px;">
+                <div class="tx-grid" style="max-height:none;">${renderRow(dedupedUniversal)}</div>
+            </div>` : '';
+            const roleSection = dedupedRole.length ? `<div style="margin-top:10px;">
                 <div style="font-size:10px;color:#9ccc65;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;margin-bottom:6px;">Roles</div>
-                <div class="tx-grid" style="max-height:none;">${renderRow(EV_PRESETS_ROLE)}</div>
-            </div>`;
-            const metaSection = meta.length
+                <div class="tx-grid" style="max-height:none;">${renderRow(dedupedRole)}</div>
+            </div>` : '';
+            const metaSection = dedupedMeta.length
                 ? `<div style="margin-top:10px;">
                     <div style="font-size:10px;color:#9ccc65;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;margin-bottom:6px;">Meta Spreads</div>
-                    <div class="tx-grid" style="max-height:none;">${renderRow(meta)}</div>
-                </div>`
-                : '';
-
-            // Recommendation panel — 3-4 picks labelled by purpose. Tapping a row
-            // scrolls to the matching preset card (highlighted via data-recommended).
-            const recsStrip = evRecs.length
-                ? `<div class="tx-recs-panel">
-                    <div class="tx-recs-panel-head">
-                        <span class="tx-recs-panel-title">★ Picks for ${_esc(t.name)}</span>
-                        <span class="tx-recs-panel-hint">Tap to scroll to the preset.</span>
-                    </div>
-                    <div class="tx-recs-list">${evRecs.map(r => `
-                        <a class="tx-rec-row" href="#evpreset-${idx}-${_esc(r.preset.id)}" data-ev-rec="${_esc(r.preset.id)}">
-                            <span class="tx-rec-tag" data-purpose="${_esc(r.purpose)}">${_esc(r.purpose)}</span>
-                            <span class="tx-rec-body">
-                                <span class="tx-rec-name">${_esc(r.preset.label)} <span style="font-size:10px;opacity:0.7;color:#9ccc65;">${_esc(_evSpreadCompact(r.preset.evs))}</span></span>
-                                <span class="tx-rec-reason">${_esc(r.reason)}</span>
-                            </span>
-                            <span class="tx-rec-go" aria-hidden="true">›</span>
-                        </a>`).join('')}
-                    </div>
+                    <div class="tx-grid" style="max-height:none;">${renderRow(dedupedMeta)}</div>
                 </div>`
                 : '';
 
             return `<div class="story-tutor-mon">
                 ${header}
                 <div class="story-tutor-mon-body" style="padding-top:6px;">
-                    ${recsStrip}
                     ${_evTrainerStatBarsHtml(cur, 'Currently equipped')}
                     ${universalSection}${roleSection}${metaSection}
                 </div>
