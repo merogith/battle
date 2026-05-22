@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildSymbolIndex } from './symbol-index.mjs';
@@ -76,12 +76,20 @@ function render(index) {
   return lines.join('\n');
 }
 
+function stripTimestamp(md) {
+  return md.replace(/^>\s*\*\*Generated\*\*:.*$/m, '> **Generated**: <stripped>');
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const index = buildSymbolIndex();
   const md = render(index);
   const outPath = join(REPO, 'agent-state', 'ANCHOR_INDEX.md');
-  writeFileSync(outPath, md);
   const resolved = ANCHORS.reduce((acc, s) => acc + s.symbols.filter(x => index[x]).length, 0);
   const totalCount = ANCHORS.reduce((acc, s) => acc + s.symbols.length, 0);
-  console.log(`[anchor-map] wrote ${outPath} (${resolved}/${totalCount} anchors resolved)`);
+  if (existsSync(outPath) && stripTimestamp(readFileSync(outPath, 'utf8')) === stripTimestamp(md)) {
+    console.log(`[anchor-map] unchanged (${resolved}/${totalCount} anchors) — skipping write`);
+  } else {
+    writeFileSync(outPath, md);
+    console.log(`[anchor-map] wrote ${outPath} (${resolved}/${totalCount} anchors resolved)`);
+  }
 }
