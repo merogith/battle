@@ -106,7 +106,10 @@ function validate() {
       const raw = b[field];
       if (!raw) continue;
       const alternatives = expandCommaAlternatives(raw);
-      if (alternatives.length > 1) commaAlternativeFields++;
+      // Only count CSV-encoded alternatives — a string with an actual comma.
+      // Array alternatives are the canonical schema; flagging them was a
+      // false-positive that produced a phantom 6925-occurrence "inconsistency".
+      if (typeof raw === 'string' && raw.includes(',')) commaAlternativeFields++;
       const target = field === 'ability' ? abilities : field === 'item' ? items : natures;
       const missing = field === 'ability' ? missingAbilities : field === 'item' ? missingItems : missingNatures;
       for (const alt of alternatives) {

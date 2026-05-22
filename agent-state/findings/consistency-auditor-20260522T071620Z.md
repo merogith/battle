@@ -283,7 +283,7 @@ file: online-pvp.js
 agents: [consistency-auditor]
 fingerprint: e261b55d36c1
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: 6 silent `catch (e) {}` blocks in online-pvp.js swallow all errors without logging

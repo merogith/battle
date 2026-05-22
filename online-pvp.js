@@ -249,7 +249,7 @@
             if (!el) return;
             el.innerHTML = sanitizeBattleLogHtml(typeof html === 'string' ? html : '');
             el.scrollTop = el.scrollHeight;
-        } catch (e) {}
+        } catch (e) { console.debug('[OnlinePvP] applyBattleLogHtml swallowed', e); }
     }
 
     async function reportWinIfConfigured(winnerIsP1) {
@@ -436,7 +436,7 @@
             const sb = getClient();
             if (!sb || !roomId) return;
             if (channel) {
-                try { sb.removeChannel(channel); } catch (e) {}
+                try { sb.removeChannel(channel); } catch (e) { /* best-effort cleanup */ }
                 channel = null;
             }
             channel = sb.channel('room-' + roomId)
@@ -454,7 +454,7 @@
         dispose() {
             const sb = getClient();
             if (channel && sb) {
-                try { sb.removeChannel(channel); } catch (e) {}
+                try { sb.removeChannel(channel); } catch (e) { /* best-effort cleanup */ }
             }
             channel = null;
             roomId = null;
@@ -479,7 +479,7 @@
                 global.__onlineHostName = null;
                 global.__onlineGuestName = null;
                 if (typeof global.clearOnlinePvPTimers === 'function') global.clearOnlinePvPTimers();
-            } catch (e) {}
+            } catch (e) { console.debug('[OnlinePvP] dispose reset swallowed', e); }
         },
 
         pushData(patch, existingData) {
@@ -587,7 +587,7 @@
                 const cmdMenu = global.document && global.document.getElementById('command-menu');
                 if (moveMenu) moveMenu.classList.add('hidden');
                 if (cmdMenu) cmdMenu.classList.remove('hidden');
-                try { global.syncBattleActiveHighlight(); } catch (e) {}
+                try { global.syncBattleActiveHighlight(); } catch (e) { /* optional UI hook */ }
                 return;
             }
 
@@ -794,7 +794,7 @@
                 applyBattleLogHtml(roomData.battle_log_html);
             }
             if (global.AudioSystem && typeof global.AudioSystem.startNewBattle === 'function') {
-                try { global.AudioSystem.startNewBattle(); } catch (e) {}
+                try { global.AudioSystem.startNewBattle(); } catch (e) { /* optional audio hook */ }
             }
             const scrDraft = global.document && global.document.getElementById('screen-draft');
             const scrBattle = global.document && global.document.getElementById('screen-battle');
@@ -809,7 +809,7 @@
             if (cmdMenuG) cmdMenuG.classList.remove('hidden');
             if (typeof global.applyBattleLogDockClass === 'function') global.applyBattleLogDockClass();
             if (typeof global.updateOnlineBattleScoreOverlay === 'function') global.updateOnlineBattleScoreOverlay();
-            try { global.syncBattleActiveHighlight(); } catch (e) {}
+            try { global.syncBattleActiveHighlight(); } catch (e) { /* optional UI hook */ }
         },
 
         async guestApplyBattleBlob(state, d) {
@@ -831,7 +831,7 @@
                 else if (p1s && !p2s) global.showEndScreen('DEFEAT', `${p1Name} won this round.`, false);
                 else global.showEndScreen('DRAW', 'The round ended in a draw.', false);
             }
-            try { global.syncBattleActiveHighlight(); } catch (e) {}
+            try { global.syncBattleActiveHighlight(); } catch (e) { /* optional UI hook */ }
             const localH = simpleHash(b.state_blob);
             if (b.state_hash && localH !== b.state_hash && typeof global.logMsg === 'function') {
                 global.logMsg('[Online] State hash mismatch — applied host snapshot.', 'info');

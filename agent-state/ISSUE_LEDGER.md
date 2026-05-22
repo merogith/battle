@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-22T10:20:22.899Z
+> **Generated**: 2026-05-22T10:23:17.423Z
 > **Source**: `agent-state/findings/*.md` (88 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -1620,7 +1620,7 @@ file: scripts/debug/data-validator.mjs
 agents: [data-integrity-auditor]
 fingerprint: 2d5d47372205
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Validator reports 6925 "CSV alternative" occurrences but every build file uses arrays — false positive
@@ -1962,7 +1962,7 @@ file: online-pvp.js
 agents: [consistency-auditor]
 fingerprint: e261b55d36c1
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: 6 silent `catch (e) {}` blocks in online-pvp.js swallow all errors without logging

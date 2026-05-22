@@ -66,7 +66,7 @@ current_line_hint: ~69
 agents: [data-integrity-auditor]
 fingerprint: 2d5d47372205
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Validator reports 6925 "CSV alternative" occurrences but every build file uses arrays — false positive
