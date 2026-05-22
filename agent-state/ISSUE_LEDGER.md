@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-22T07:25:59.082Z
+> **Generated**: 2026-05-22T07:26:14.792Z
 > **Source**: `agent-state/findings/*.md` (33 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
