@@ -13324,7 +13324,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // resolve to zero so any saved permBoosts that survived migration
             // don't accidentally double-count.
             let ivs = build.ivs || {};
-            let getIV = stat => (ivs[stat] !== undefined ? ivs[stat] : 31);
+            // Pit-blood bonus stacks ON TOP of the standard 0..31 IV range (max +5 per stat). The
+            // bonus is per-build, persisted in save, and applied universally via this single point
+            // so every downstream stat / damage read picks it up without extra plumbing.
+            let bonus = (build.bonus && typeof build.bonus === 'object') ? build.bonus : null;
+            let getIV = stat => {
+                const b = (ivs[stat] !== undefined ? ivs[stat] : 31);
+                return b + (bonus ? Math.max(0, Math.min(5, bonus[stat] | 0)) : 0);
+            };
             // HP: floor((2 * base + IV + floor(EV/4)) * 50 / 100) + 60
             mon.maxHp = (monName === 'Shedinja') ? 1 : Math.floor((2 * base.hp + getIV('hp') + Math.floor((evs.hp||0) / 4)) * 50 / 100) + 60;
             mon.currentHp = mon.maxHp;
@@ -13340,6 +13347,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 spd: Math.floor((Math.floor((2 * base.spd + getIV('spd') + Math.floor((evs.spd||0)/4)) * 50 / 100) + 5) * nMults.spd),
                 spe: Math.floor((Math.floor((2 * base.spe + getIV('spe') + Math.floor((evs.spe||0)/4)) * 50 / 100) + 5) * nMults.spe)
             };
+
+            // Fatigue debuff: 1% per stack on all combat stats AND starting HP (max 3 stacks).
+            // Max HP is unchanged so heals still ceiling at the species' full value — the mon
+            // simply enters the fight not-full. Iconic battles auto-clear stacks before entry
+            // (see `_storyClearTiredness`), so gyms/league/mystery/pits never feel this.
+            const _tiredStacks = Math.max(0, Math.min(3, (build.tired | 0)));
+            if (_tiredStacks > 0) {
+                const _mul = 1 - 0.01 * _tiredStacks;
+                mon.stats.atk = Math.max(1, Math.floor(mon.stats.atk * _mul));
+                mon.stats.def = Math.max(1, Math.floor(mon.stats.def * _mul));
+                mon.stats.spa = Math.max(1, Math.floor(mon.stats.spa * _mul));
+                mon.stats.spd = Math.max(1, Math.floor(mon.stats.spd * _mul));
+                mon.stats.spe = Math.max(1, Math.floor(mon.stats.spe * _mul));
+                mon.currentHp = Math.max(1, Math.floor(mon.maxHp * _mul));
+                mon._tiredAtBattleStart = _tiredStacks;
+            }
 
             mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0;
             mon.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, torment: false, healBlock: 0, throatChop: 0, imprisoned: false, yawnTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, ingrain: false, stockpile: 0, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false, lockOn: false, moveHistory: [], abilityGastroAcid: false, minimized: false, truanting: false, micleBerry: false, grudge: false, embargo: 0, roosting: false, roostType1: null, roostType2: null, timesHit: 0, statLoweredThisTurn: false, lastMoveFailed: false, hasMoved: false };
@@ -29998,7 +30021,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Cross-run meta. Holds permanent achievements that survive abandon/clear.
         // Today: completedRuns + lastClearSeed. Future: Pokédex carryover, totals, marks.
         const SAVE_KEY_META = 'pbs_story_meta';
-        const SAVE_VER = 19;
+        const SAVE_VER = 20;
         function _emptyStoryMeta() {
             return {
                 completedRuns: 0,
@@ -30475,6 +30498,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *   - Refund each leftover permBoost point as one vitamin of the matching
          *     stat. Player can re-spend on freshly-rolled wild catches whose
          *     vitamin gains are 3x bigger per point — generous on purpose. */
+        /** v20: introduce Daycare/Pits/Tiredness/Bonus fields on the save. */
+        function migrateStoryPreV20() {
+            if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
+            if (!sm.daycare || typeof sm.daycare !== 'object') {
+                sm.daycare = { unlocked:false, state:'idle', parentMonId:null, egg:null, endgame:false, parentSnapshot:null };
+            }
+            if (!sm.pits || typeof sm.pits !== 'object') {
+                sm.pits = { gym6Snapshot:null, winsThisVisit:0, bestStreak:0, bondedMonIds:[], lastEnemyRoster:null, payoutGold:0 };
+            }
+            for (const arr of [sm.team, sm.pcBox]) {
+                if (!Array.isArray(arr)) continue;
+                for (const slot of arr) {
+                    if (!slot || typeof slot !== 'object' || !slot.build) continue;
+                    if (!slot.build.bonus || typeof slot.build.bonus !== 'object') {
+                        slot.build.bonus = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
+                    }
+                    if (typeof slot.build.tired !== 'number') slot.build.tired = 0;
+                }
+            }
+        }
         function migrateStoryPreV19() {
             const VITAMIN_BY_STAT = { hp:'hpUp', atk:'protein', def:'iron', spa:'calcium', spd:'zinc', spe:'carbos' };
             if (!sm.inventory || typeof sm.inventory !== 'object') sm.inventory = {};
@@ -30680,6 +30723,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    postHofMysteryClimaxDone: false,
                    rivalConsecutiveWins: 0,
                    rivalConsecutiveLosses: 0,
+                   flags: {},
+                   daycare: { unlocked:false, state:'idle', parentMonId:null, egg:null, endgame:false, parentSnapshot:null },
+                   pits: { gym6Snapshot:null, winsThisVisit:0, bestStreak:0, bondedMonIds:[], lastEnemyRoster:null, payoutGold:0 },
                    version:SAVE_VER };
 
         function normalizeRivalStandingState() {
@@ -30961,6 +31007,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_loadedVer < 19) {
                     try { migrateStoryPreV19(); } catch (e) { console.warn('[Story] v19 IV/vitamin unification migrate', e); }
                 }
+                if (_loadedVer < 20) {
+                    try { migrateStoryPreV20(); } catch (e) { console.warn('[Story] v20 daycare/pits/tiredness migrate', e); }
+                }
+                // v20+ safety back-fills (also covers fresh saves that pre-date the field).
+                if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
+                if (!sm.daycare || typeof sm.daycare !== 'object') {
+                    sm.daycare = { unlocked:false, state:'idle', parentMonId:null, egg:null, endgame:false, parentSnapshot:null };
+                }
+                if (!sm.pits || typeof sm.pits !== 'object') {
+                    sm.pits = { gym6Snapshot:null, winsThisVisit:0, bestStreak:0, bondedMonIds:[], lastEnemyRoster:null, payoutGold:0 };
+                }
+                // Per-mon bonus/tired back-fill on every build (active team + PC).
+                try {
+                    for (const arr of [sm.team || [], sm.pcBox || []]) {
+                        for (const slot of arr) {
+                            if (!slot || !slot.build || typeof slot.build !== 'object') continue;
+                            if (!slot.build.bonus || typeof slot.build.bonus !== 'object') {
+                                slot.build.bonus = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
+                            } else {
+                                for (const k of ['hp','atk','def','spa','spd','spe']) {
+                                    slot.build.bonus[k] = Math.max(0, Math.min(5, (slot.build.bonus[k] | 0)));
+                                }
+                            }
+                            if (typeof slot.build.tired !== 'number') slot.build.tired = 0;
+                            slot.build.tired = Math.max(0, Math.min(3, slot.build.tired | 0));
+                        }
+                    }
+                } catch (e) { console.warn('[Story] v20 bonus/tired backfill', e); }
                 const _cap = Math.max(0, STORY_EVENTS_RAW.length - 1);
                 if (sm.eventIndex < 0 || sm.eventIndex > _cap) {
                     console.warn('[Story] eventIndex out of range — clamping', sm.eventIndex, '→', _cap);
@@ -35915,6 +35989,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function renderCityActions(ev) {
+            // Step into a "clean street" — auto-release bonded Pit mons + run any queued
+            // unlock toasts. Both are idempotent (state mutations short-circuit when nothing
+            // to do) so calling them on every city render is safe.
+            try { _pitsReleaseBondedOnCityReturn(); } catch (e) { console.warn('[Pits] city release', e); }
+            try { _storyDispatchQueuedUnlockToasts(); } catch (e) { console.warn('[Story] unlock toasts', e); }
             let actions = ev ? (ev[5]||[]).slice() : [];
             // Starting city (City0): Pokémart for Normal+; Department Store only on Easy / Very Easy
             const _sd = sm.storyDifficulty || 'normal';
@@ -36259,6 +36338,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Pokémon Center — full party heal, free, unlimited
             _push('recover', makeActionBtn('🏥 Pokémon Center','center','window.StoryMode.enterPokemonCenter()','center', _facOpts('center', [{label:'Free',tone:'free'}])));
+            // Daycare — egg quest (Gym 1 unlock, Gym 7 hatch). Endgame branch
+            // ("Crucible Daycare") appears post-HoF via sm.daycare.endgame.
+            if (_daycareIsUnlocked()) {
+                const dcEndgame = !!(sm.daycare && sm.daycare.endgame);
+                const dcBusy = _daycareIsBusy();
+                const dcReady = dcBusy && (sm.badges | 0) >= (dcEndgame ? 8 : 7);
+                const dcTitle = dcEndgame ? '🥚 Crucible Daycare' : '🥚 Daycare';
+                const dcMeta = dcReady
+                    ? [{label:'Hatched',tone:'good'}]
+                    : dcBusy
+                        ? [{label:'On Cruise',tone:'info'}]
+                        : [{label:'Egg Quest',tone:'free'}];
+                _push('recover', makeActionBtn(dcTitle, 'daycare', 'window.StoryMode.enterDaycare()', 'center', _facOpts('daycare', dcMeta, { soft: !dcReady })));
+            }
+            // Underground Pits — post-Gym-6 illegal arena. Doesn't appear in cleanly story-y
+            // hubs unless the player has six badges (it's whispered about, not advertised).
+            if (_pitsIsUnlocked()) {
+                const winsThis = (sm.pits && sm.pits.winsThisVisit) | 0;
+                const pitMeta = winsThis > 0 ? [{label:`${winsThis} streak`,tone:'good'}] : [{label:'Off-grid',tone:'info'}];
+                _push('quest', makeActionBtn('⚔ The Underground Pits','pits','window.StoryMode.enterPits()','gym', _facOpts('pits', pitMeta, { soft:true })));
+            }
             // Safari Zone — mid-game "wilderness town" destination (City 4 in the timeline).
             // Gated by actions.includes('Safari Zone') so it feels like a real city, not a
             // ubiquitous facility. Post-HoF access stays through the Crucible.
@@ -36329,7 +36429,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             casino: 'icons/story/story_dept.png?v=20260429b',
             relic: 'icons/story/story_artifacts.png?v=20260429b',
             safari: 'icons/story/story_route.png?v=20260429b',
-            crucible: 'icons/story/story_vr.png?v=20260429b'
+            crucible: 'icons/story/story_vr.png?v=20260429b',
+            daycare: 'icons/story/story_center.png?v=20260429b',
+            pits: 'icons/story/story_gym.png?v=20260429b'
         };
         function storyActionStripLeadingDecor(label) {
             if (!label || typeof label !== 'string') return '';
@@ -36540,7 +36642,670 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 slot.statusTurns = 0;
                 slot.pp = null;
                 slot.consumedItem = false;
+                // PokeCenter / iconic-fight resets also clear fatigue. (Tiredness lives on the
+                // build, not the slot, so wipe it there too — applies to every party member
+                // regardless of whether they were in the last fight.)
+                if (slot.build && typeof slot.build === 'object') slot.build.tired = 0;
             });
+        }
+
+        // List of event names that auto-heal and reset fatigue before+after the fight.
+        // Wild routes and randomized trainer encounters (Basic / Elite Trainer events) leave
+        // fatigue on the survivors. Gym leaders, league, mystery, boss arc, rival, and Pit
+        // fights are all "iconic" — full reset on entry, full reset on exit.
+        function _storyEventIsIconicFight(eventName) {
+            if (!eventName) return false;
+            const s = String(eventName);
+            return /^Gym Leader [1-8]$/.test(s)
+                || /^Gym Trainer/i.test(s)
+                || /^E[1-4]$/.test(s)
+                || s === 'Champion'
+                || s === 'Rival'
+                || /Mystery/i.test(s)
+                || /^Boss/i.test(s)
+                || s === 'Pit'
+                || s === 'Crucible'
+                || s === 'Frontier';
+        }
+
+        // Apply (or clear) fatigue on every active team member. Bench mons are *also*
+        // touched on iconic-clear so a player can't game it by rotating to the bench.
+        function _storyApplyTiredness(eventName) {
+            if (!sm.team || !sm.team.length) return;
+            if (_storyEventIsIconicFight(eventName)) {
+                // Iconic fights wipe stacks (already wiped on entry — this is the post-clear).
+                sm.team.forEach(slot => { if (slot && slot.build) slot.build.tired = 0; });
+                return;
+            }
+            // Non-iconic fight: +1 stack to every party member that holds a build.
+            sm.team.forEach(slot => {
+                if (!slot || !slot.build) return;
+                slot.build.tired = Math.min(3, ((slot.build.tired | 0) + 1));
+            });
+            // Defer the first-time intro to after the victory overlay dismisses by setting
+            // a one-shot queue flag — `afterBattleReturn()` picks it up and fires the modal
+            // once the city screen is back up.
+            try {
+                if (!sm.flags) sm.flags = {};
+                if (!sm.flags.seenTirednessIntro) sm.flags._tirednessIntroQueued = true;
+            } catch (e) {}
+        }
+
+        function _storyClearTirednessForIconic() {
+            if (!sm.team) return;
+            sm.team.forEach(slot => { if (slot && slot.build) slot.build.tired = 0; });
+        }
+
+        // Single-shot fatigue intro modal — fires the first time a team member earns a stack.
+        function _storyShowTirednessIntro() {
+            try {
+                const ov = document.createElement('div');
+                ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;';
+                ov.innerHTML = ''
+                    + '<div style="max-width:420px;width:100%;background:linear-gradient(180deg,rgba(28,40,60,0.98),rgba(12,18,30,0.98));border:1px solid #4dd0e1;padding:18px 20px;color:#e0f7fa;font-family:inherit;font-size:12px;line-height:1.55;box-shadow:0 8px 28px rgba(0,0,0,0.65);">'
+                    +   '<div style="font-size:13px;color:#4dd0e1;font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">⚕ Pokémon Center Bulletin</div>'
+                    +   '<div style="margin-bottom:10px;">Your team looks worn out from that fight.</div>'
+                    +   '<div style="margin-bottom:10px;">Battling drains them. They build up <strong style="color:#ffd54f;">Fatigue</strong> — each stack docks 1% of stats and starting HP, up to <strong>3</strong> stacks.</div>'
+                    +   '<div style="margin-bottom:10px;">A short stay at a <strong style="color:#aed581;">Pokémon Center</strong> restores HP, PP, status, <em>and</em> clears Fatigue. Gym Leaders, the League, and other iconic fights always start fresh, so you don\'t need to grind heals before them.</div>'
+                    +   '<div style="text-align:right;margin-top:6px;"><button type="button" id="story-tiredness-intro-ok" style="padding:8px 16px;background:#4dd0e1;color:#001b1e;border:none;font-weight:bold;cursor:pointer;font-family:inherit;font-size:12px;">Got it ▶▶</button></div>'
+                    + '</div>';
+                document.body.appendChild(ov);
+                const close = () => { try { ov.remove(); } catch (e) {} };
+                ov.addEventListener('click', e => { if (e.target === ov) close(); });
+                const btn = ov.querySelector('#story-tiredness-intro-ok');
+                if (btn) btn.onclick = close;
+            } catch (e) { console.warn('[Story] tiredness intro', e); }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // DAYCARE — egg quest (Gym 1 unlock, Gym 7 hatch)
+        // ─────────────────────────────────────────────────────────────────────
+        // Story arc:
+        //   • Gym 1 cleared → Daycare facility appears in cities.
+        //   • Player picks ANY mon (team or PC) → it leaves on a "cruise" at the daycare.
+        //   • Gym 7 cleared → egg hatches into a +1 grade-tier mon sharing the parent's typing.
+        //     Parent returns alongside the hatchling (dark-comic "they had a great time" beat).
+        //   • Gym 8 + HoF → endgame Crucible Daycare opens; flow repeats with higher tiers.
+        // The hand-over is irreversible until hatch (parent is gone from the player's reach).
+        function _daycareIsUnlocked() { return !!(sm.daycare && sm.daycare.unlocked); }
+        function _daycareIsBusy()     { return !!(sm.daycare && sm.daycare.state === 'incubating'); }
+        // Run any queued unlock toasts. Each toast is gated by a one-shot flag that the
+        // post-battle hook sets; this clears them as we surface the message.
+        function _storyDispatchQueuedUnlockToasts() {
+            const f = sm.flags || {};
+            const queue = [];
+            if (f._daycareUnlockToastQueued)    { queue.push('🥚 The Pokémon Daycare is open. Drop a partner off — pick them up with an egg around Gym 7.'); f._daycareUnlockToastQueued = false; }
+            if (f._pitsUnlockToastQueued)       { queue.push('⚔ Whispers from the alleys: the Underground Pits opened. A trainer who clears the bracket gets… changed.'); f._pitsUnlockToastQueued = false; }
+            if (f._daycareHatchQueued)          { queue.push('🐣 The Daycare matron called. "Your partner is back from their cruise. Bring a bag — there\'s extra."'); f._daycareHatchQueued = false; }
+            if (f._crucibleDaycareToastQueued)  { queue.push('🥚 The Crucible Daycare is open. The matron is older now. And smiling.'); f._crucibleDaycareToastQueued = false; }
+            if (!queue.length) return;
+            try { save(); } catch (_) {}
+            // Chain toasts so they don't stomp each other.
+            let i = 0;
+            const next = () => {
+                if (i >= queue.length) return;
+                try { window.showToast && window.showToast(queue[i], 4500); } catch (_) {}
+                i++;
+                setTimeout(next, 1200);
+            };
+            next();
+        }
+
+        // The "+1 grade tier" is implemented by sampling from a richer grade than the parent.
+        // The species also shares ≥1 type with the parent. Falls back to a random Normal-typed
+        // mon of the target grade if no overlap exists in the pool (rare for legendary parents).
+        function _daycareRollHatchSpecies(parentName) {
+            try {
+                const parentBase = baseStats[parentName] || {};
+                const parentTypes = [parentBase.t1, parentBase.t2].filter(Boolean);
+                const parentGrade = getMonGrade(parentName, getBST(parentName));
+                // Hatchling grade = max(1, parent grade - 1) (lower number = better tier).
+                const hatchGrade = Math.max(1, parentGrade - 1);
+                const candidates = [];
+                for (const name of Object.keys(baseStats)) {
+                    if (name === parentName) continue;
+                    const bs = baseStats[name];
+                    if (!bs) continue;
+                    const t = [bs.t1, bs.t2].filter(Boolean);
+                    const overlap = t.some(x => parentTypes.includes(x));
+                    if (!overlap) continue;
+                    const g = getMonGrade(name, getBST(name));
+                    if (g !== hatchGrade) continue;
+                    candidates.push(name);
+                }
+                if (!candidates.length) {
+                    // Type-overlap pool is empty — fall back to same-grade only.
+                    for (const name of Object.keys(baseStats)) {
+                        const g = getMonGrade(name, getBST(name));
+                        if (g === hatchGrade) candidates.push(name);
+                    }
+                }
+                if (!candidates.length) return parentName; // give up, return parent
+                return candidates[Math.floor(Math.random() * candidates.length)];
+            } catch (e) {
+                console.warn('[Daycare] hatch species roll', e);
+                return parentName;
+            }
+        }
+
+        // City facility entry. Renders the daycare screen — three states: idle, incubating,
+        // hatched.
+        function enterDaycare() {
+            try { _markFacilitySeen('daycare'); } catch (_) {}
+            const screen = document.getElementById('screen-story-city');
+            if (!screen) return;
+            // Reuse the city screen as a host — render an inline overlay that the player
+            // can dismiss to return to city actions.
+            const ov = document.createElement('div');
+            ov.id = 'story-daycare-overlay';
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9990;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
+            ov.innerHTML = _daycareRenderHTML();
+            document.body.appendChild(ov);
+            ov.addEventListener('click', e => { if (e.target === ov) _daycareClose(); });
+            _daycareBindEvents(ov);
+        }
+        function _daycareClose() {
+            const ov = document.getElementById('story-daycare-overlay');
+            if (ov) ov.remove();
+        }
+        function _daycareRenderHTML() {
+            const dc = sm.daycare || {};
+            const isEndgame = !!dc.endgame;
+            const accent = isEndgame ? '#ff7043' : '#aed581';
+            const title = isEndgame ? 'Crucible Daycare' : 'Pokémon Daycare';
+            const flavor = isEndgame
+                ? 'The endgame branch — the matron grins. "You\'re a Champion now. The Daycare upstairs is for trainers who can afford weirder vacations."'
+                : 'The matron taps a sign: "Drop a Pokémon off, we send them on a little trip. They\'ll come back when you\'ve earned your seventh badge — and they won\'t come back alone."';
+
+            // STATE: incubating (parent is on the "cruise" — show waiting card)
+            if (dc.state === 'incubating' && dc.egg) {
+                const parentName = (dc.parentSnapshot && dc.parentSnapshot.name) || 'your partner';
+                const badges = sm.badges | 0;
+                const hatchBadge = isEndgame ? 8 : 7;
+                const ready = badges >= hatchBadge;
+                return `<div style="max-width:520px;width:100%;background:linear-gradient(180deg,rgba(28,40,40,0.98),rgba(12,18,18,0.98));border:1px solid ${accent};padding:20px 22px;color:#e0f2f1;font-family:inherit;font-size:12px;line-height:1.55;box-shadow:0 12px 36px rgba(0,0,0,0.7);">
+                    <div style="font-size:14px;color:${accent};font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px;">🐣 ${title} — Vacation Log</div>
+                    <div style="margin-bottom:12px;color:#b0bec5;font-size:11px;font-style:italic;">"Postcard came in. ${_esc(parentName)} is doing… well. <em>Very</em> well, apparently."</div>
+                    <div style="padding:12px;background:rgba(0,0,0,0.4);border-left:3px solid ${accent};margin-bottom:14px;">
+                        <div style="margin-bottom:6px;">Your Pokémon's "cruise" is still in progress.</div>
+                        <div style="font-size:11px;color:#80cbc4;">An egg has been waiting at the front desk since the last postcard. ${ready ? 'You can pick it up — and your partner — now.' : `Come back after Gym ${hatchBadge}.`}</div>
+                    </div>
+                    ${ready
+                        ? `<button type="button" id="daycare-pickup-btn" style="width:100%;padding:14px;background:${accent};color:#001b1e;border:none;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;letter-spacing:0.05em;">📥 Pick Up Egg + Partner ▶▶</button>`
+                        : `<div style="text-align:center;color:#888;font-size:11px;padding:10px;">Badges: <strong style="color:#fff;">${badges}/${hatchBadge}</strong> · The egg won't open before then.</div>`
+                    }
+                    <div style="text-align:right;margin-top:14px;"><button type="button" id="daycare-close-btn" style="padding:8px 14px;background:#37474f;color:#e0f2f1;border:none;cursor:pointer;font-family:inherit;font-size:11px;">Close</button></div>
+                </div>`;
+            }
+            // STATE: idle — pick a parent
+            const partyCap = _storyMaxPartySize();
+            const team = sm.team || [];
+            const box = sm.pcBox || [];
+            const teamHtml = team.map((s,i) => _daycareSlotRow(s, 'team', i, team.length, partyCap)).join('');
+            const boxHtml = box.map((s,i) => _daycareSlotRow(s, 'pc', i, box.length, partyCap)).join('');
+            return `<div style="max-width:560px;width:100%;background:linear-gradient(180deg,rgba(28,40,40,0.98),rgba(12,18,18,0.98));border:1px solid ${accent};padding:20px 22px;color:#e0f2f1;font-family:inherit;font-size:12px;line-height:1.55;box-shadow:0 12px 36px rgba(0,0,0,0.7);">
+                <div style="font-size:14px;color:${accent};font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px;">🥚 ${title}</div>
+                <div style="margin-bottom:12px;color:#b0bec5;font-size:11px;font-style:italic;">"${_esc(flavor)}"</div>
+                <div style="padding:10px 12px;background:rgba(0,0,0,0.4);border-left:3px solid ${accent};margin-bottom:14px;font-size:11px;line-height:1.6;">
+                    <div><strong style="color:${accent};">How it works.</strong> Pick a Pokémon. They'll be away until Gym ${isEndgame ? 8 : 7}. When the egg hatches, you'll get the partner <em>and</em> a hatchling that shares their typing and sits one grade tier higher.</div>
+                    <div style="margin-top:6px;color:#80cbc4;font-size:10px;">⚠ The partner is unavailable for the duration — they're at a "spa." Don't ask. The matron <em>winks</em>.</div>
+                </div>
+                <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">From Party</div>
+                <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;">${teamHtml || '<div style="color:#666;font-size:11px;padding:6px;">Empty — visit the Professor first.</div>'}</div>
+                <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">From PC</div>
+                <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;max-height:200px;overflow-y:auto;">${boxHtml || '<div style="color:#666;font-size:11px;padding:6px;">No stored Pokémon.</div>'}</div>
+                <div style="text-align:right;margin-top:6px;"><button type="button" id="daycare-close-btn" style="padding:8px 14px;background:#37474f;color:#e0f2f1;border:none;cursor:pointer;font-family:inherit;font-size:11px;">Close</button></div>
+            </div>`;
+        }
+        function _daycareSlotRow(slot, source, idx, totalInSource, partyCap) {
+            if (!slot || !slot.name || !slot.id) return '';
+            const isStarter = slot.starter === true;
+            const isBound = slot.unsellable === true;
+            const lastInParty = source === 'team' && totalInSource <= 1;
+            const canDrop = !isStarter && !isBound && !lastInParty;
+            const reason = isStarter ? 'Starter — bonded for life' : isBound ? 'Story-locked' : lastInParty ? 'Party needs at least one Pokémon' : '';
+            const sh = !!(slot.build && slot.build._isShiny);
+            const grade = getMonGrade(slot.name, getBST(slot.name));
+            return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(20,28,32,0.6);border:1px solid #2c3a3a;">
+                <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${sh ? 'color:#ffd54f;' : ''}">${sh ? '✦ ' : ''}${_esc(slot.nickname || slot.name)} ${slot.nickname ? `<span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>` : ''} <span style="font-size:9px;color:#888;">T${grade}</span></span>
+                <button type="button" data-daycare-drop="${_esc(slot.id)}" ${canDrop ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:4px 10px;background:transparent;color:${canDrop?'#aed581':'#555'};border:1px solid ${canDrop?'#aed581':'#444'};cursor:${canDrop?'pointer':'not-allowed'};">Drop Off</button>
+            </div>`;
+        }
+        function _daycareBindEvents(ov) {
+            const close = ov.querySelector('#daycare-close-btn');
+            if (close) close.onclick = _daycareClose;
+            const pickup = ov.querySelector('#daycare-pickup-btn');
+            if (pickup) pickup.onclick = _daycareHatch;
+            ov.querySelectorAll('[data-daycare-drop]').forEach(btn => {
+                btn.onclick = () => _daycareDropOff(btn.getAttribute('data-daycare-drop'));
+            });
+        }
+        function _daycareDropOff(slotId) {
+            if (!slotId) return;
+            if (!sm.daycare) sm.daycare = {};
+            if (sm.daycare.state === 'incubating') {
+                try { window.showGameAlert && window.showGameAlert('The egg is still incubating — you can only drop off one at a time.'); } catch (_) {}
+                return;
+            }
+            // Resolve slot from team OR pc
+            const team = sm.team || [];
+            const box = sm.pcBox || [];
+            let found = team.findIndex(s => s && s.id === slotId);
+            let from = 'team';
+            if (found < 0) {
+                found = box.findIndex(s => s && s.id === slotId);
+                from = 'pc';
+            }
+            if (found < 0) {
+                try { window.showGameAlert && window.showGameAlert('Pokémon not found.'); } catch (_) {}
+                return;
+            }
+            const slot = (from === 'team') ? team[found] : box[found];
+            // Snapshot the parent so we can return them at hatch.
+            sm.daycare.parentSnapshot = {
+                name: slot.name,
+                build: slot.build ? deepClone(slot.build) : null,
+                id: slot.id,
+                nickname: slot.nickname || null,
+                from: from
+            };
+            // Roll the hatchling's species now (so it's locked at drop-off, not at hatch).
+            const eggSpecies = _daycareRollHatchSpecies(slot.name);
+            sm.daycare.egg = { species: eggSpecies, rolledAt: sm.badges | 0 };
+            sm.daycare.parentMonId = slot.id;
+            sm.daycare.state = 'incubating';
+            // Remove the parent from their source list.
+            if (from === 'team') team.splice(found, 1);
+            else box.splice(found, 1);
+            try { save(); } catch (_) {}
+            _daycareClose();
+            try {
+                window.showGameAlert && window.showGameAlert(
+                    `🚢 ${slot.nickname || slot.name} boarded the cruise. The matron promises an egg by Gym ${sm.daycare.endgame ? 8 : 7}.`
+                );
+            } catch (_) {}
+            try { renderTeamPanel(); } catch (_) {}
+            try { renderStoryCity(); } catch (_) {}
+        }
+        function _daycareHatch() {
+            const dc = sm.daycare;
+            if (!dc || dc.state !== 'incubating' || !dc.egg || !dc.parentSnapshot) return;
+            const badges = sm.badges | 0;
+            const hatchBadge = dc.endgame ? 8 : 7;
+            if (badges < hatchBadge) return;
+            const team = sm.team || [];
+            const partyCap = _storyMaxPartySize();
+            // Hatchling build: roll a fresh build via the established Story path
+            // (`makeWildBuild` gates to unlocked gimmicks and applies the wild EV/IV
+            // head-start that catches use). Falls back to the most basic build if
+            // wild gen returns null.
+            const eggSpecies = dc.egg.species;
+            let hatchBuild = null;
+            try {
+                if (typeof makeWildBuild === 'function') hatchBuild = makeWildBuild(eggSpecies);
+                else if (typeof makeBuild === 'function') hatchBuild = makeBuild(eggSpecies);
+            } catch (e) { console.warn('[Daycare] hatch build', e); }
+            if (!hatchBuild) {
+                hatchBuild = {
+                    m: ['Tackle','Tackle','Tackle','Tackle'],
+                    a: null, n: 'Hardy', i: null,
+                    ivs: { hp:31, atk:31, def:31, spa:31, spd:31, spe:31 },
+                    evs: { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 }
+                };
+            }
+            // Ensure bonus+tired fields exist.
+            if (!hatchBuild.bonus || typeof hatchBuild.bonus !== 'object') hatchBuild.bonus = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
+            if (typeof hatchBuild.tired !== 'number') hatchBuild.tired = 0;
+            // Make slot for hatchling
+            const hatchId = 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+            const hatchSlot = { name: eggSpecies, build: hatchBuild, id: hatchId };
+            // Make slot for returning parent
+            const parentSlot = {
+                name: dc.parentSnapshot.name,
+                build: dc.parentSnapshot.build || {},
+                id: dc.parentSnapshot.id || ('p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6)),
+                nickname: dc.parentSnapshot.nickname || undefined
+            };
+            // Restore tired to 0 (cruise was relaxing) on the returned parent.
+            if (parentSlot.build && typeof parentSlot.build === 'object') {
+                parentSlot.build.tired = 0;
+                if (!parentSlot.build.bonus || typeof parentSlot.build.bonus !== 'object') parentSlot.build.bonus = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
+            }
+            // Try to place hatchling and parent into team first, overflow to PC.
+            const placeOne = slot => {
+                if (team.length < partyCap) team.push(slot);
+                else (sm.pcBox = sm.pcBox || []).push(slot);
+            };
+            placeOne(parentSlot);
+            placeOne(hatchSlot);
+            // Reset daycare state — endgame stays true so the Crucible loop can repeat.
+            const wasEndgame = dc.endgame;
+            sm.daycare = { unlocked:true, state:'idle', parentMonId:null, egg:null, endgame: wasEndgame, parentSnapshot:null };
+            try { save(); } catch (_) {}
+            _daycareClose();
+            try {
+                window.showGameAlert && window.showGameAlert(
+                    `🎉 ${dc.parentSnapshot.nickname || dc.parentSnapshot.name} returned — with a freshly hatched ${eggSpecies}! Both joined your party (overflow to PC).`
+                );
+            } catch (_) {}
+            try { renderTeamPanel(); } catch (_) {}
+            try { renderStoryCity(); } catch (_) {}
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // UNDERGROUND PITS — post-Gym-6 illegal arena loop
+        // ─────────────────────────────────────────────────────────────────────
+        // Story arc:
+        //   • Gym 6 cleared → Pits unlock + a team snapshot is taken.
+        //   • Player visits Pits, picks 3 mons → an off-grid 3v3 bracket fires
+        //     (3 sequential fights against grade-tiered foes).
+        //   • WIN ALL THREE: every team member gets +1 permanent stat bonus (random stat),
+        //     gold payout, bonded mons get a "blood-witness" badge — and the bonded mons
+        //     auto-release when you return to a normal city.
+        //   • LOSE: same Game-Over flow as story battles.
+        //   • Player-vs-Foe difficulty driven by the most recent snapshot
+        //     (Champion snapshot if available, else Gym 6 snapshot).
+        function _pitsCaptureTeamSnapshot(snapshotBadges) {
+            try {
+                const team = sm.team || [];
+                return {
+                    badges: snapshotBadges | 0,
+                    capturedAt: Date.now(),
+                    teamSummary: team.map(t => ({
+                        name: t.name,
+                        grade: t.name ? getMonGrade(t.name, getBST(t.name)) : 4,
+                        bst: t.name ? getBST(t.name) : 300
+                    })),
+                    seed: Math.floor(Math.random() * 1e9)
+                };
+            } catch (e) {
+                console.warn('[Pits] snapshot', e);
+                return { badges: snapshotBadges | 0, capturedAt: Date.now(), teamSummary: [], seed: 0 };
+            }
+        }
+        function _pitsActiveSnapshot() {
+            const p = sm.pits || {};
+            return p.championSnapshot || p.gym6Snapshot || null;
+        }
+        function _pitsIsUnlocked() {
+            const p = sm.pits || {};
+            return !!(p.gym6Snapshot || p.championSnapshot);
+        }
+        function _pitsIsBondedById(id) {
+            if (!id || !sm.pits || !Array.isArray(sm.pits.bondedMonIds)) return false;
+            return sm.pits.bondedMonIds.indexOf(id) >= 0;
+        }
+
+        // Roll a 3-fight enemy roster using the snapshot's grade distribution.
+        // Each fight uses ONE mon (parsed as the foe's "champion") to keep the
+        // bracket pacey. Mons are picked so the average grade matches the
+        // player's snapshot, with one fight skewing harder (the "boss" of the
+        // bracket — fight #3).
+        function _pitsRollEnemyRoster() {
+            const snap = _pitsActiveSnapshot();
+            const avgGrade = snap && snap.teamSummary && snap.teamSummary.length
+                ? Math.max(1, Math.min(4, Math.round(snap.teamSummary.reduce((a,t)=>a+(t.grade|0),0) / snap.teamSummary.length)))
+                : 3;
+            // Bracket grades: warm-up (avg + 1, weaker), mid (avg), boss (avg - 1, stronger; min 1)
+            const tiers = [Math.min(4, avgGrade + 1), avgGrade, Math.max(1, avgGrade - 1)];
+            const fights = tiers.map((tier, i) => {
+                const candidates = [];
+                for (const name of Object.keys(baseStats)) {
+                    const g = getMonGrade(name, getBST(name));
+                    if (g === tier) candidates.push(name);
+                }
+                if (!candidates.length) return null;
+                const monName = candidates[Math.floor(Math.random() * candidates.length)];
+                let build = null;
+                try {
+                    // Pit foes are full-strength trainer builds (NOT the wild EV head-start
+                    // path), so `makeBuild` is the right call here. T3-tier moves and CSV
+                    // imports are kept intact for a competitive bracket fight.
+                    if (typeof makeBuild === 'function') build = makeBuild(monName);
+                } catch (e) {}
+                if (!build) build = { m:['Tackle','Tackle','Tackle','Tackle'], a:null, n:'Hardy', i:null, ivs:{ hp:31,atk:31,def:31,spa:31,spd:31,spe:31 }, evs:{ hp:0,atk:0,def:0,spa:0,spd:0,spe:0 } };
+                if (!build.bonus) build.bonus = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
+                if (typeof build.tired !== 'number') build.tired = 0;
+                // Boss fight: foe gets +2 bonus on every stat — represents the bracket's
+                // top dog, the trainer the player is paying to fight.
+                if (i === 2) {
+                    for (const k of ['hp','atk','def','spa','spd','spe']) build.bonus[k] = 2;
+                }
+                return { name: monName, build: build, grade: tier };
+            }).filter(Boolean);
+            return fights;
+        }
+        function enterPits() {
+            try { _markFacilitySeen('pits'); } catch (_) {}
+            if (!_pitsIsUnlocked()) {
+                try { window.showGameAlert && window.showGameAlert('The Underground is closed. Earn six badges first.'); } catch (_) {}
+                return;
+            }
+            const ov = document.createElement('div');
+            ov.id = 'story-pits-overlay';
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:9990;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
+            ov.innerHTML = _pitsRenderHTML();
+            document.body.appendChild(ov);
+            ov.addEventListener('click', e => { if (e.target === ov) _pitsClose(); });
+            _pitsBindEvents(ov);
+        }
+        function _pitsClose() {
+            const ov = document.getElementById('story-pits-overlay');
+            if (ov) ov.remove();
+        }
+        function _pitsRenderHTML() {
+            // Selection screen: pick 3 from team (bonded mons highlight differently).
+            const team = sm.team || [];
+            const picks = (sm.pits && sm.pits._pendingPicks) || [];
+            const rows = team.map((s, i) => {
+                if (!s || !s.id) return '';
+                const picked = picks.indexOf(s.id) >= 0;
+                const bonded = _pitsIsBondedById(s.id);
+                const sh = !!(s.build && s.build._isShiny);
+                const grade = getMonGrade(s.name, getBST(s.name));
+                const stats = (s.build && s.build.bonus) || {};
+                const bondTotal = ['hp','atk','def','spa','spd','spe'].reduce((a,k)=>a+(stats[k]|0),0);
+                return `<div data-pits-pick="${_esc(s.id)}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:${picked?'rgba(255,82,82,0.18)':'rgba(20,12,12,0.6)'};border:1px solid ${picked?'#ff5252':bonded?'#ce93d8':'#5a1818'};cursor:pointer;">
+                    <span style="font-size:11px;color:#888;width:18px;">${picked ? (picks.indexOf(s.id)+1) : '·'}</span>
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${sh?'color:#ffd54f;':''}">${sh?'✦ ':''}${_esc(s.nickname || s.name)} <span style="font-size:9px;color:#888;">T${grade}</span>${bonded ? ' <span style="color:#ce93d8;font-size:9px;letter-spacing:0.05em;">⛓ BONDED</span>' : ''}${bondTotal > 0 ? ` <span style="color:#80cbc4;font-size:9px;">+${bondTotal} BONUS</span>` : ''}</span>
+                </div>`;
+            }).filter(Boolean).join('');
+            const ready = picks.length === 3;
+            const winsThis = (sm.pits && sm.pits.winsThisVisit) | 0;
+            const best = (sm.pits && sm.pits.bestStreak) | 0;
+            return `<div style="max-width:560px;width:100%;background:linear-gradient(180deg,rgba(40,12,12,0.98),rgba(20,4,4,0.98));border:1px solid #ff5252;padding:20px 22px;color:#ffcdd2;font-family:inherit;font-size:12px;line-height:1.55;box-shadow:0 12px 36px rgba(0,0,0,0.7);">
+                <div style="font-size:14px;color:#ff5252;font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px;">⚔ The Underground Pits</div>
+                <div style="margin-bottom:14px;color:#ef9a9a;font-size:11px;font-style:italic;">"Cash in, blood out. Three fights. Win all three or your bonded mons go free — by their choice, not ours."</div>
+                <div style="padding:10px 12px;background:rgba(0,0,0,0.45);border-left:3px solid #ff5252;margin-bottom:14px;font-size:11px;line-height:1.6;">
+                    <div><strong style="color:#ff5252;">Bracket.</strong> Three sequential fights. Your team starts each fight at full HP; the foe is built from your team's current strength.</div>
+                    <div style="margin-top:5px;"><strong style="color:#ff5252;">Reward.</strong> Win all three: every party member gains a permanent <strong>+1 bonus</strong> on a random stat (the trauma sticks), plus gold.</div>
+                    <div style="margin-top:5px;"><strong style="color:#ff5252;">Cost.</strong> The mons that fought in the bracket become <strong>BONDED</strong> — they auto-release the moment you walk back into a normal city. The Underground takes back what it gives.</div>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:10px;color:#bcaaa4;">
+                    <span>Wins this visit: <strong style="color:#fff;">${winsThis}</strong></span>
+                    <span>Best streak: <strong style="color:#fff;">${best}</strong></span>
+                </div>
+                <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Pick 3 from your party</div>
+                <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px;">${rows || '<div style="color:#666;font-size:11px;padding:6px;">No Pokémon in party.</div>'}</div>
+                <div style="display:flex;gap:8px;">
+                    <button type="button" id="pits-start-btn" ${ready ? '' : 'disabled'} style="flex:1;padding:14px;background:${ready ? '#ff5252' : '#37474f'};color:${ready ? '#1a0000' : '#666'};border:none;font-family:inherit;font-size:13px;font-weight:bold;cursor:${ready?'pointer':'not-allowed'};letter-spacing:0.05em;">${ready ? '⚔ ENTER THE PIT ▶▶' : `Pick ${3 - picks.length} more`}</button>
+                    <button type="button" id="pits-close-btn" style="padding:14px 20px;background:#37474f;color:#ffcdd2;border:none;cursor:pointer;font-family:inherit;font-size:11px;">Leave</button>
+                </div>
+            </div>`;
+        }
+        function _pitsBindEvents(ov) {
+            const close = ov.querySelector('#pits-close-btn');
+            if (close) close.onclick = _pitsClose;
+            const start = ov.querySelector('#pits-start-btn');
+            if (start) start.onclick = _pitsStartBracket;
+            ov.querySelectorAll('[data-pits-pick]').forEach(row => {
+                row.onclick = () => _pitsTogglePick(row.getAttribute('data-pits-pick'));
+            });
+        }
+        function _pitsTogglePick(id) {
+            if (!sm.pits._pendingPicks) sm.pits._pendingPicks = [];
+            const arr = sm.pits._pendingPicks;
+            const idx = arr.indexOf(id);
+            if (idx >= 0) arr.splice(idx, 1);
+            else if (arr.length < 3) arr.push(id);
+            // Re-render selection state.
+            const ov = document.getElementById('story-pits-overlay');
+            if (ov) {
+                ov.innerHTML = _pitsRenderHTML();
+                _pitsBindEvents(ov);
+            }
+        }
+        function _pitsStartBracket() {
+            const picks = (sm.pits && sm.pits._pendingPicks) || [];
+            if (picks.length !== 3) return;
+            const team = sm.team || [];
+            const picked = picks.map(id => team.find(s => s && s.id === id)).filter(Boolean);
+            if (picked.length !== 3) {
+                try { window.showGameAlert && window.showGameAlert('Selection invalid.'); } catch (_) {}
+                return;
+            }
+            // Stash the original team so we can swap it back if the player wins/loses.
+            sm.pits._teamBeforePit = team.slice();
+            sm.pits._activePickIds = picks.slice();
+            sm.pits._fightIndex = 0;
+            sm.pits._fightsWon = 0;
+            sm.pits._enemyRoster = _pitsRollEnemyRoster();
+            sm.pits._pendingPicks = null;
+            // Pits = iconic; clear fatigue on the bracket party (and rest too — the iconic
+            // wipe is global per spec).
+            _storyClearTirednessForIconic();
+            // Auto-heal everyone before the first fight.
+            _storyFullHealPartySlots();
+            try { save(); } catch (_) {}
+            _pitsClose();
+            _pitsLaunchFight();
+        }
+        function _pitsLaunchFight() {
+            const i = sm.pits._fightIndex | 0;
+            const roster = sm.pits._enemyRoster || [];
+            if (i >= 3 || i >= roster.length) {
+                _pitsResolveBracket(true);
+                return;
+            }
+            // Reduce active team to only the picked mons for THIS bracket.
+            const team = (sm.pits._teamBeforePit || []).slice();
+            const picks = sm.pits._activePickIds || [];
+            sm.team = picks.map(id => team.find(s => s && s.id === id)).filter(Boolean);
+            // Always full-HP before each pit fight (iconic).
+            _storyFullHealPartySlots();
+            // Mark this as a Pits-source battle so onBattleEnd routes the result
+            // back to _pitsHandleBattleEnd instead of the regular timeline.
+            sm.pits._inBattle = true;
+            const enemy = roster[i];
+            const enemyTeam = [{ name: enemy.name, build: enemy.build }];
+            launchBattle(enemyTeam);
+        }
+        // Pit win path: roll +1 bonus on a random stat for every team member, pay gold,
+        // mark the bracket mons as bonded.
+        function _pitsResolveBracket(won) {
+            const team = sm.team || [];
+            const original = (sm.pits._teamBeforePit || []).slice();
+            // Restore the full original team first.
+            sm.team = original;
+            sm.pits._teamBeforePit = null;
+            const bracketIds = (sm.pits._activePickIds || []).slice();
+            sm.pits._activePickIds = null;
+            sm.pits._enemyRoster = null;
+            sm.pits._fightIndex = 0;
+            sm.pits._inBattle = false;
+            if (won) {
+                // +1 to a random stat on every party member.
+                const stats = ['hp','atk','def','spa','spd','spe'];
+                for (const slot of (sm.team || [])) {
+                    if (!slot || !slot.build) continue;
+                    if (!slot.build.bonus) slot.build.bonus = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
+                    const s = stats[Math.floor(Math.random() * stats.length)];
+                    slot.build.bonus[s] = Math.min(5, (slot.build.bonus[s] | 0) + 1);
+                }
+                // Gold payout — scales with current badge count.
+                const payout = 5000 + 2000 * (sm.badges | 0);
+                sm.gold = Math.max(0, (sm.gold | 0) + payout);
+                sm.pits.payoutGold = ((sm.pits.payoutGold | 0) + payout);
+                // Mark the bracket mons as bonded (auto-release on city return).
+                if (!Array.isArray(sm.pits.bondedMonIds)) sm.pits.bondedMonIds = [];
+                for (const id of bracketIds) if (sm.pits.bondedMonIds.indexOf(id) < 0) sm.pits.bondedMonIds.push(id);
+                sm.pits.winsThisVisit = (sm.pits.winsThisVisit | 0) + 1;
+                sm.pits.bestStreak = Math.max(sm.pits.bestStreak | 0, sm.pits.winsThisVisit | 0);
+                // Heal up + clear fatigue (iconic exit).
+                _storyClearTirednessForIconic();
+                _storyFullHealPartySlots();
+                try { save(); } catch (_) {}
+                try {
+                    window.showGameAlert && window.showGameAlert(
+                        `⚔ Three down. All your Pokémon witnessed it — they all changed. +1 random stat each, +${payout.toLocaleString()}G. The bracket mons are BONDED — the Underground claims them when you leave for clean streets.`
+                    );
+                } catch (_) {}
+            } else {
+                sm.pits.winsThisVisit = 0;
+                try { save(); } catch (_) {}
+                try { window.showGameAlert && window.showGameAlert('The Pit takes its cut. Streak ends.'); } catch (_) {}
+            }
+            try { renderTeamPanel(); } catch (_) {}
+            try { renderStoryCity(); } catch (_) {}
+        }
+        // Pit battle end interceptor — call from onBattleEnd when sm.pits._inBattle is true.
+        function _pitsHandleBattleEnd(won) {
+            if (!sm.pits) sm.pits = {};
+            if (!won) {
+                _pitsResolveBracket(false);
+                return;
+            }
+            // Sync team state from the battle snapshot so HP/PP/state carries between bracket fights.
+            try {
+                if (typeof state !== 'undefined' && state.playerParty && state.playerParty.length && sm.team) {
+                    sm.team = state.playerParty.map(m => ({
+                        name: m._baseName || m.name,
+                        build: m.buildData ? deepClone(m.buildData) : (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).build,
+                        id: (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).id
+                    })).filter(t => t.build);
+                }
+            } catch (e) {}
+            sm.pits._fightsWon = (sm.pits._fightsWon | 0) + 1;
+            sm.pits._fightIndex = (sm.pits._fightIndex | 0) + 1;
+            if (sm.pits._fightIndex >= 3) {
+                _pitsResolveBracket(true);
+                return;
+            }
+            // Continue to next fight — heal between fights (iconic auto-heal).
+            _storyFullHealPartySlots();
+            try { save(); } catch (_) {}
+            document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
+            // Short delay so the victory overlay clears before next launch.
+            setTimeout(() => { try { _pitsLaunchFight(); } catch (e) { console.warn('[Pits] next fight', e); } }, 400);
+        }
+        // City-return consequence: bonded mons auto-release when the player walks back
+        // into a regular town (Underground is NOT a town — the release happens on the
+        // NEXT city visit, not on Pit exit). Called from enterCity / showStoryCity hooks.
+        function _pitsReleaseBondedOnCityReturn() {
+            const pits = sm.pits || {};
+            const bonded = Array.isArray(pits.bondedMonIds) ? pits.bondedMonIds.slice() : [];
+            if (!bonded.length) return false;
+            const releasedNames = [];
+            const team = sm.team || [];
+            const box = sm.pcBox || [];
+            for (const id of bonded) {
+                const ti = team.findIndex(s => s && s.id === id);
+                if (ti >= 0) { releasedNames.push(team[ti].nickname || team[ti].name); team.splice(ti, 1); continue; }
+                const bi = box.findIndex(s => s && s.id === id);
+                if (bi >= 0) { releasedNames.push(box[bi].nickname || box[bi].name); box.splice(bi, 1); continue; }
+            }
+            sm.pits.bondedMonIds = [];
+            // Underground visit counter resets when the player returns to a clean city.
+            sm.pits.winsThisVisit = 0;
+            if (releasedNames.length) {
+                try {
+                    window.showGameAlert && window.showGameAlert(
+                        `⛓ The Underground claims its own. Walking back into clean streets, ${releasedNames.join(', ')} broke free and disappeared into the alleys.`
+                    );
+                } catch (_) {}
+            }
+            try { save(); } catch (_) {}
+            return releasedNames.length > 0;
         }
 
         // Shared mutation for "retreat to last city": pulls the in-battle party
@@ -38131,6 +38896,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function launchBattle(enemyTeam) {
             applyMechanicsToSettings();
+            // Iconic fights start every mon fresh — wipe fatigue *before* the draft is
+            // built so the in-battle stat snapshot reads zero stacks.
+            try {
+                const _ev = STORY_EVENTS_RAW[sm.eventIndex];
+                const _evName = _ev && _ev[1] === 'Battle' ? String(_ev[2] || '') : '';
+                if (_storyEventIsIconicFight(_evName)) _storyClearTirednessForIconic();
+            } catch (e) {}
             // Build player p1Draft and enemy p2Draft for state
             const p1Draft = sm.team.map(t => ({ name: t.name, build: t.build }));
             const p2Draft = enemyTeam;
@@ -38164,6 +38936,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // the normal victory overlay + game-over screen and route back to their hub.
             if (sm.crucibleBattleSource) {
                 _handleCrucibleBattleEnd(!!won, sm.crucibleBattleSource);
+                return;
+            }
+            // Pits-sourced bracket fight — fully off-timeline; never touches eventIndex.
+            if (sm.pits && sm.pits._inBattle) {
+                document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
+                _pitsHandleBattleEnd(!!won);
                 return;
             }
             if (won) {
@@ -38223,6 +39001,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!sm.gymCleared) sm.gymCleared = {};
                     sm.gymCleared[cityIndexFromEventIndex(sm.eventIndex)] = true;
                 }
+                // ── Daycare / Pits / Champion unlocks ─────────────────────────
+                // Each beat: a clean state mutation + a toast queued for the post-overlay
+                // city so the player sees the unlock when they're back in town.
+                try {
+                    if (!sm.daycare) sm.daycare = { unlocked:false, state:'idle', parentMonId:null, egg:null, endgame:false, parentSnapshot:null };
+                    if (!sm.pits) sm.pits = { gym6Snapshot:null, winsThisVisit:0, bestStreak:0, bondedMonIds:[], lastEnemyRoster:null, payoutGold:0 };
+                    if (!sm.flags) sm.flags = {};
+                    // Gym 1 → Daycare unlocks. Players head to the next city's Daycare to
+                    // start the egg quest. No mandatory step; just a new facility chip.
+                    if (en === 'Gym Leader 1' && !sm.daycare.unlocked) {
+                        sm.daycare.unlocked = true;
+                        sm.flags._daycareUnlockToastQueued = true;
+                    }
+                    // Gym 6 → Pits unlock + snapshot the team. Snapshot is used by Pit
+                    // foes to read player strength tier and roll a matching roster.
+                    if (en === 'Gym Leader 6' && !sm.pits.gym6Snapshot) {
+                        sm.pits.gym6Snapshot = _pitsCaptureTeamSnapshot(6);
+                        sm.flags._pitsUnlockToastQueued = true;
+                    }
+                    // Gym 7 → hatch the daycare egg (if one is incubating).
+                    if (en === 'Gym Leader 7' && sm.daycare.state === 'incubating' && sm.daycare.egg) {
+                        sm.flags._daycareHatchQueued = true;
+                    }
+                    // Champion → snapshot for Crucible Pits scaling + unlock the Crucible
+                    // Daycare endgame loop. Both gated on a fresh HoF clear so a recurring
+                    // visit doesn't re-arm the unlock.
+                    if (en === 'Champion' && (!sm.pits.championSnapshot)) {
+                        sm.pits.championSnapshot = _pitsCaptureTeamSnapshot(8);
+                        sm.daycare.endgame = true;
+                        sm.flags._crucibleDaycareToastQueued = true;
+                    }
+                } catch (e) { console.warn('[Story] story-mid unlock hooks', e); }
                 // Mid-game route find — one Vitamin Pack on the first Basic/Elite
                 // Trainer cleared after the 4th badge, before Gym 5. Surfaces as a
                 // "found on the route" pickup so the curve has a beat between gym
@@ -38254,6 +39064,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sm.unlockedGimmicks = order.slice(0, Math.min(slotsUnlocked, order.length));
                 }
                 sm.currentEnemyLock = null;
+                // Fatigue: stash the just-completed event name so afterBattleReturn() can
+                // apply (or clear) tiredness *after* the team resync from state.playerParty
+                // — applying it here would be clobbered when the sync rewrites sm.team.
+                sm._pendingTirednessFor = event;
                 // Advance event index (clamp before persisting so a corrupted index never reaches storage).
                 sm.eventIndex = Math.min(STORY_EVENTS_RAW.length - 1, (sm.eventIndex | 0) + 1);
                 save();
@@ -38409,7 +39223,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     save();
                 }
             } catch (e) { console.warn('[Story] team sync', e); }
+            // Fatigue: apply now that sm.team has been resynced from the in-battle snapshot.
+            // Iconic events wipe stacks; non-iconic events add +1 and queue the first-time
+            // intro. Stashed in onBattleEnd because that's where the event name is known.
+            try {
+                const _pend = sm._pendingTirednessFor;
+                if (_pend) {
+                    sm._pendingTirednessFor = null;
+                    _storyApplyTiredness(_pend);
+                    save();
+                }
+            } catch (e) { console.warn('[Story] tiredness apply', e); }
             document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
+            // Queued fatigue tutorial — pops once the city screen lands.
+            try {
+                if (sm.flags && sm.flags._tirednessIntroQueued && !sm.flags.seenTirednessIntro) {
+                    sm.flags._tirednessIntroQueued = false;
+                    sm.flags.seenTirednessIntro = true;
+                    save();
+                    setTimeout(() => { try { _storyShowTirednessIntro(); } catch (e) {} }, 400);
+                }
+            } catch (e) {}
             processNextEvent();
         }
 
@@ -38667,6 +39501,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!body) return;
             if (_pcCurrentTab === 'storage') body.innerHTML = _pcRenderStorageTab();
             else body.innerHTML = _pcRenderUndergroundTab();
+            _pcInstallRowClickHandler();
         }
         function pcSwitchTab(tab) {
             _pcCurrentTab = (tab === 'underground') ? 'underground' : 'storage';
@@ -38729,10 +39564,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const nameHtml = slot.nickname
                         ? `"${_esc(slot.nickname)}" <span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>`
                         : _esc(slot.name);
-                    html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;">
-                        ${spr ? `<img src="${spr}" alt="" data-shiny="${sh ? 'true' : 'false'}" style="width:32px;height:32px;image-rendering:pixelated;flex-shrink:0;${sh ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="this.style.display='none'">` : ''}
-                        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${sh ? 'color:#ffd54f;' : ''}">${shinyMark}${nameHtml} ${_pcGradeChipHtml(g)}</span>
-                        <button type="button" onclick="window.StoryMode.pcDeposit('${_esc(id)}')" ${canDeposit ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canDeposit ? 'color:#4caf50;border-color:#4caf50;' : 'opacity:0.4;'}">Deposit</button>
+                    html += `<div data-pc-row="team" data-pc-id="${_esc(id)}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;cursor:pointer;" title="Click to view full build">
+                        ${spr ? `<img src="${spr}" alt="" data-shiny="${sh ? 'true' : 'false'}" style="width:32px;height:32px;image-rendering:pixelated;flex-shrink:0;pointer-events:none;${sh ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="this.style.display='none'">` : ''}
+                        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${sh ? 'color:#ffd54f;' : ''}">${shinyMark}${nameHtml} ${_pcGradeChipHtml(g)} <span style="color:#4dd0e1;font-size:10px;opacity:0.7;margin-left:4px;">ⓘ</span></span>
+                        <button type="button" onclick="event.stopPropagation();window.StoryMode.pcDeposit('${_esc(id)}')" ${canDeposit ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canDeposit ? 'color:#4caf50;border-color:#4caf50;' : 'opacity:0.4;'}">Deposit</button>
                     </div>`;
                 });
                 html += `</div>`;
@@ -38755,16 +39590,54 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const nameHtml = slot.nickname
                         ? `"${_esc(slot.nickname)}" <span style="color:#888;font-size:10px;">(${_esc(slot.name)})</span>`
                         : _esc(slot.name);
-                    html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;">
-                        ${spr ? `<img src="${spr}" alt="" data-shiny="${sh ? 'true' : 'false'}" style="width:32px;height:32px;image-rendering:pixelated;flex-shrink:0;${sh ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="this.style.display='none'">` : ''}
-                        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${sh ? 'color:#ffd54f;' : ''}">${shinyMark}${nameHtml} ${_pcGradeChipHtml(g)}</span>
-                        <button type="button" onclick="window.StoryMode.pcWithdraw('${_esc(id)}')" ${canWithdraw ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canWithdraw ? 'color:#ce93d8;border-color:#ce93d8;' : 'opacity:0.4;'}">Withdraw</button>
-                        <button type="button" onclick="window.StoryMode.pcRelease('${_esc(id)}')" style="font-size:10px;padding:3px 8px;color:#888;border-color:#888;">Release</button>
+                    html += `<div data-pc-row="pc" data-pc-id="${_esc(id)}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;cursor:pointer;" title="Click to view full build">
+                        ${spr ? `<img src="${spr}" alt="" data-shiny="${sh ? 'true' : 'false'}" style="width:32px;height:32px;image-rendering:pixelated;flex-shrink:0;pointer-events:none;${sh ? 'filter:drop-shadow(0 0 4px gold);' : ''}" onerror="this.style.display='none'">` : ''}
+                        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${sh ? 'color:#ffd54f;' : ''}">${shinyMark}${nameHtml} ${_pcGradeChipHtml(g)} <span style="color:#4dd0e1;font-size:10px;opacity:0.7;margin-left:4px;">ⓘ</span></span>
+                        <button type="button" onclick="event.stopPropagation();window.StoryMode.pcWithdraw('${_esc(id)}')" ${canWithdraw ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canWithdraw ? 'color:#ce93d8;border-color:#ce93d8;' : 'opacity:0.4;'}">Withdraw</button>
+                        <button type="button" onclick="event.stopPropagation();window.StoryMode.pcRelease('${_esc(id)}')" style="font-size:10px;padding:3px 8px;color:#888;border-color:#888;">Release</button>
                     </div>`;
                 });
                 html += `</div>`;
             }
             return html;
+        }
+
+        // Click-anywhere-on-row → open the read-only summary. Delegated handler so it
+        // survives PC re-renders. Stops at buttons (their own onclick already calls
+        // event.stopPropagation, but we double-guard so a stray miss still works).
+        function _pcInstallRowClickHandler() {
+            const body = document.getElementById('story-pc-body');
+            if (!body || body._rowClickBound) return;
+            body._rowClickBound = true;
+            body.addEventListener('click', function (ev) {
+                if (ev.target && ev.target.tagName === 'BUTTON') return;
+                const row = ev.target.closest('[data-pc-id]');
+                if (!row || !body.contains(row)) return;
+                const id = row.getAttribute('data-pc-id');
+                const where = row.getAttribute('data-pc-row');
+                if (!id) return;
+                openSummaryFromAnyPCRow(id, where);
+            });
+        }
+
+        // Resolve a save-side slot by id (team OR pcBox), then open the existing
+        // draft-summary modal in read-only mode. Reuses the same renderer the team
+        // panel and tutor flow use — no new build-view code needed.
+        function openSummaryFromAnyPCRow(id, where) {
+            if (!id) return;
+            const team = sm.team || [];
+            const box = sm.pcBox || [];
+            let slot = null;
+            if (where === 'team') slot = team.find(s => s && s.id === id);
+            else if (where === 'pc') slot = box.find(s => s && s.id === id);
+            else slot = team.find(s => s && s.id === id) || box.find(s => s && s.id === id);
+            if (!slot || !slot.name || !slot.build) return;
+            try {
+                window.showDraftPokemonSummary(
+                    { name: String(slot.name).trim(), build: safeCloneBuild(slot.build) },
+                    { partyList: null, index: 0, storyReorder: false, showEVs: true }
+                );
+            } catch (e) { console.warn('[Story] PC row summary', e); }
         }
 
         function _pcRenderUndergroundTab() {
@@ -38808,11 +39681,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // accidentally hand a shiny to the broker for pocket gold.
                 const _ugShiny = !!(slot.build && slot.build._isShiny);
                 const _ugShinyMark = _ugShiny ? '<span style="color:#ffd54f;margin-right:3px;" title="Shiny — careful!">&#10024;</span>' : '';
-                html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(28,12,12,0.55);border:1px solid ${_ugShiny ? '#a47800' : '#5a1818'};">
-                    <span style="font-size:9px;color:#888;width:30px;">${whereLabel}</span>
-                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${_ugShiny ? 'color:#ffd54f;' : ''}">${_ugShinyMark}${_esc(slot.name)} ${_pcGradeChipHtml(g)}</span>
-                    <span style="color:#ffd700;font-size:11px;font-weight:bold;">+${price.toLocaleString()}G</span>
-                    <button type="button" onclick="window.StoryMode.pcSell('${_esc(id)}')" ${canSell ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canSell ? 'color:#ff5252;border-color:#ff5252;' : 'opacity:0.4;'}">Sell</button>
+                html += `<div data-pc-row="${where}" data-pc-id="${_esc(id)}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(28,12,12,0.55);border:1px solid ${_ugShiny ? '#a47800' : '#5a1818'};cursor:pointer;" title="Click to view full build">
+                    <span style="font-size:9px;color:#888;width:30px;pointer-events:none;">${whereLabel}</span>
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${_ugShiny ? 'color:#ffd54f;' : ''}">${_ugShinyMark}${_esc(slot.name)} ${_pcGradeChipHtml(g)} <span style="color:#4dd0e1;font-size:10px;opacity:0.7;margin-left:4px;">ⓘ</span></span>
+                    <span style="color:#ffd700;font-size:11px;font-weight:bold;pointer-events:none;">+${price.toLocaleString()}G</span>
+                    <button type="button" onclick="event.stopPropagation();window.StoryMode.pcSell('${_esc(id)}')" ${canSell ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canSell ? 'color:#ff5252;border-color:#ff5252;' : 'opacity:0.4;'}">Sell</button>
                 </div>`;
             });
             html += `</div>`;
@@ -48067,6 +48940,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _markDexCaught: _storyMarkDexCaught,
             showOneTimeTip: _storyShowOneTimeTip,
             playTutorial: playStoryTutorial,
+            // Daycare (egg quest) + Underground Pits (illegal arena)
+            enterDaycare, enterPits,
             // Story-mode event registry (read-only inspection surface)
             getStoryBeat: function(rowId) { return getStoryBeatForRow(rowId | 0); },
             getActiveStoryline: function() { return _storyActiveVariant(); },
