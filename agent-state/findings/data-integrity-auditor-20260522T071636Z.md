@@ -35,7 +35,7 @@ current_line_hint: ~9941
 agents: [data-integrity-auditor]
 fingerprint: 72e49ce309b5
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `???` type used by gen1 `bide` and gen4 `curse` is not defined in `typeChart`

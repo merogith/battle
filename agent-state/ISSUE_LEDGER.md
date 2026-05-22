@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-22T10:18:58.337Z
+> **Generated**: 2026-05-22T10:20:22.899Z
 > **Source**: `agent-state/findings/*.md` (88 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -1090,7 +1090,7 @@ file: battle.html
 agents: [data-integrity-auditor]
 fingerprint: 72e49ce309b5
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `???` type used by gen1 `bide` and gen4 `curse` is not defined in `typeChart`
