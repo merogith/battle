@@ -61,7 +61,7 @@ the bottom.
 | # | Topic | Decision |
 |---|---|---|
 | 29 | Trade shape | **Pick 1 of 3 — single irreversible choice.** NPC offers all three on screen; player selects one; the other two are gone for this run. Forces a strategic decision (legendary catch vs. mid-fight insurance vs. economy). |
-| 30 | Option 2 — battle item | **1× Mega Max Revive** — a new instant-use Max Revive that revives a fainted mon to full HP **without consuming the turn**. Reuses the existing `mega_` tier system (`battle.html:42668–42720`, `instantUse = tier === 'mega'`). Implementation: add `'maxRevive'` to `FEATURED_MEGA_ITEM_IDS` (line 28738) — single-line code change in Phase D. Phase D also adds it to `sm.inventory` as a non-purchasable item (Beat 8 trade is the only acquisition path). |
+| 30 | Option 2 — battle item | **1× Mega Max Revive** — a new instant-use Max Revive that revives a fainted mon to full HP **without consuming the turn**. Reuses the existing `mega_` tier system (`battle.html:42668–42720`, `instantUse = tier === 'mega'`). **What's already in the game (verified)**: `FEATURED_MEGA_ITEM_IDS` at line 28738 currently lists `maxPotion`, `fullRestore`, `fullHeal`, `maxElixir`, all weather/terrain orbs, `emergencyTeleporter`, and X-items. Each city's Department Store randomly offers 3 of these via `_ensureDeptItemOfferForCity` (line 40524). `maxRevive` is the only revive-tier item NOT in the mega set — so a no-turn revive does not exist in the game today. `mega_fullRestore` exists but its effect requires `mon.currentHp > 0` (line 42676), so it cannot revive a fainted mon. **Implementation**: add `'maxRevive'` to `FEATURED_MEGA_ITEM_IDS` — single-line code change in Phase D. Mark with `bossRewardOnly: true` so it doesn't appear in Dept Store offers — Beat 8 trade is the only acquisition path. |
 | 31 | Option 3 — economy | **10,000 gold** — direct credit to `sm.money`. Pure flexibility; player buys what they need at the post-Gym-8 / Victory Road shops (where Great Balls, Max Revives, vitamins, X-items are all available). |
 | 32 | Reward × legendary catch interaction | **Roaming legendary stays catchable with regular balls** at canonical Gen 1 catch rates — regardless of which option the player picked. Master Ball is the convenience path (100% catch), not a hard gate. Picking Option 2 or 3 means catching the legendary the hard way (status-spam + Ultra Balls at canonical 3 catch rate for Mewtwo etc.), which is achievable but slow. |
 
@@ -644,18 +644,32 @@ content.
     as-is — content already authored.
 - **`mega_maxRevive` item registration** (decision #30 — one-line
   change at `battle.html:28738`):
-  - Add `'maxRevive'` to the `FEATURED_MEGA_ITEM_IDS` Set.
+  - **Current state of mega/ultra item system (verified)**: the
+    `mega_` / `ultra_` tier system is FULLY IMPLEMENTED and live in
+    the game. Department Stores currently offer 3 randomized
+    mega/ultra items each. Existing mega items: `mega_maxPotion`,
+    `mega_fullRestore`, `mega_fullHeal`, `mega_maxElixir`, all
+    `mega_*Orb`, `mega_emergencyTeleporter`, `mega_xAttack` /
+    `xDefense` / `xSpAtk` / `xSpDef` / `xSpeed` / `xAccuracy` /
+    `direHit`. Existing ultra items: X-items only (+4 stages, spends
+    turn). Phase D does NOT recreate any of this; it extends the
+    existing set by one entry.
+  - The only required change: add `'maxRevive'` to the
+    `FEATURED_MEGA_ITEM_IDS` Set at line 28738.
   - Existing `getStoryFeaturedItems()` at line 28762 then automatically
-    creates a `mega_maxRevive` item with `tier: 'mega'`.
+    creates a `mega_maxRevive` item with `tier: 'mega'` and price
+    `4000 * 5 = 20,000g` — no new factory code needed.
   - Existing `applyBagItem()` at line 42654+ already handles
     `eff === 'reviveFull'` + `instantUse = tier === 'mega'`. No new
     effect logic needed — Mega Max Revive uses the same code path as
-    the existing Mega Full Restore.
+    the existing Mega Full Restore, differing only in the
+    `mon.currentHp <= 0` condition (line 42680) vs `> 0` (line 42676).
   - Bag UI inclusion is automatic via the existing tier-categorisation
     at line 40578+.
   - **Not purchasable** — Beat 8 trade is the only acquisition path.
-    Block its appearance in `getStoryFeaturedItems()` shop output via
-    a `bossRewardOnly` flag on the item definition.
+    Add a `bossRewardOnly: true` flag on the base `maxRevive` item
+    definition and have `_ensureDeptItemOfferForCity` / shop filters
+    skip mega/ultra variants of items with that flag.
 - **Lore prop drops** (decision #20): each boss KO grants a cosmetic
   Key Item per the table in §4.2. `sm.expansionLoreProps[]` array
   carries across runs (NG+ keeps the collection; cosmetic-only).
