@@ -249,7 +249,7 @@ file: online-pvp.js
 agents: [pvp-concurrency-hunter]
 fingerprint: 89314480e594
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Display names accepted up to 24 chars with zero sanitization — flow into innerText today, but one careless innerHTML downstream becomes XSS

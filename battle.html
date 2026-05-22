@@ -5665,8 +5665,8 @@
             .story-shop-item .desc { font-size: 12px !important; }
             .story-shop-item .price { font-size: 13px !important; }
             .story-shop-buy-btn {
-                min-height: 42px !important;
-                padding: 8px 18px !important;
+                min-height: 44px !important;
+                padding: 10px 18px !important;
                 font-size: 13px !important;
             }
             /* Artifact shop: bigger taps + better spacing on phone */
@@ -9095,7 +9095,7 @@
                 } catch (e) {}
             }
             if (window.__DEBUG_SPRITE_SCALE) {
-                console.log('[SpriteScale] enrichBaseStatsHeightsFromDex: heightM added for ' + n + ' species');
+                if (window.__DEBUG_LOADS) console.log('[SpriteScale] enrichBaseStatsHeightsFromDex: heightM added for ' + n + ' species');
                 if (n === 0) {
                     try {
                         const probe = D.species.get('Pikachu');
@@ -9185,7 +9185,7 @@
                 }
                 invalidateTooltipKeysCache();
 
-                console.log(`[Data] Loaded ${Object.keys(baseStats).length} species, ${Object.keys(movesDB).length} moves, ${Object.keys(itemsJSON).length} items, ${Object.keys(abilitiesJSON).length} abilities, ${Object.keys(naturesJSON).length} natures`);
+                if (window.__DEBUG_LOADS) console.log(`[Data] Loaded ${Object.keys(baseStats).length} species, ${Object.keys(movesDB).length} moves, ${Object.keys(itemsJSON).length} items, ${Object.keys(abilitiesJSON).length} abilities, ${Object.keys(naturesJSON).length} natures`);
             } catch(e) {
                 console.error("Failed to load data files!", e);
             }
@@ -9355,7 +9355,7 @@
                     }
                     csvBuilds[name][tag].push(buildObj);
                 }
-                console.log(`[CSV] Loaded builds for ${Object.keys(csvBuilds).length} Pokémon (${illegalCount} flagged as illegal — reserved for end-game)`);
+                if (window.__DEBUG_LOADS) console.log(`[CSV] Loaded builds for ${Object.keys(csvBuilds).length} Pokémon (${illegalCount} flagged as illegal — reserved for end-game)`);
             } catch(e) {
                 console.warn('[CSV] builds.csv unavailable, fetching from pkmn.cc API...');
                 await populateCsvBuildsFromAPI();
@@ -9412,7 +9412,7 @@
                     }
                 }
             }
-            console.log(`[CSV] API fallback loaded builds for ${Object.keys(csvBuilds).length} Pokémon`);
+            if (window.__DEBUG_LOADS) console.log(`[CSV] API fallback loaded builds for ${Object.keys(csvBuilds).length} Pokémon`);
             // Invalidate the data-driven recommendation caches so per-species
             // popularity stats reflect the freshly-loaded sets.
             try { if (typeof _txMetaCache !== 'undefined') _txMetaCache.clear(); } catch (e) {}
@@ -10956,13 +10956,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let r = await fetch(`data/builds/gen${gen}.json`);
                 if (!r.ok) throw new Error('local not found');
                 _smogonCache[gen] = await r.json();
-                console.log(`[Smogon] Loaded gen${gen} sets from local file`);
+                if (window.__DEBUG_LOADS) console.log(`[Smogon] Loaded gen${gen} sets from local file`);
             } catch(e) {
                 try {
                     let r = await fetch(`https://data.pkmn.cc/sets/gen${gen}.json`);
                     if (!r.ok) throw new Error('api not found');
                     _smogonCache[gen] = await r.json();
-                    console.log(`[Smogon] Loaded gen${gen} sets from pkmn.cc API`);
+                    if (window.__DEBUG_LOADS) console.log(`[Smogon] Loaded gen${gen} sets from pkmn.cc API`);
                 } catch(e2) { _smogonCache[gen] = {}; }
             }
             return _smogonCache[gen];
@@ -35034,6 +35034,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const spriteFile = scene.sprite || 'Oak';
             const npcName = scene.name || '';
             const nameplate = scene.nameplate || npcName || '';
+            // a11y: announce as a labeled dialog. The nameplate becomes the
+            // accessible name; ESC dismisses. tabIndex=-1 lets us focus the
+            // overlay for screen-reader entry; the Continue button gets
+            // explicit focus after append so keyboard users press Enter to
+            // advance.
+            ov.setAttribute('role', 'dialog');
+            ov.setAttribute('aria-modal', 'true');
+            ov.setAttribute('aria-label', npcName || nameplate || 'Story Tutorial');
+            ov.tabIndex = -1;
             let lines = [];
             if (typeof scene.getLines === 'function') {
                 try { const dyn = scene.getLines(); if (Array.isArray(dyn)) lines = dyn; } catch (e) {}
@@ -35052,13 +35061,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>
                 <button type="button" class="story-tutorial-continue">Continue →</button>
             `;
+            const escListener = function (e) {
+                if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); dismiss(); }
+            };
             const dismiss = function () {
+                document.removeEventListener('keydown', escListener);
                 try { ov.remove(); } catch (e) {}
                 try { onDone && onDone(); } catch (e) { console.error('[StoryTutorial] onDone threw:', e); }
             };
+            document.addEventListener('keydown', escListener);
             ov.querySelector('button').onclick = function (e) { e.stopPropagation(); dismiss(); };
             ov.onclick = function (e) { if (e.target === ov) dismiss(); };
             document.body.appendChild(ov);
+            try {
+                const _continueBtn = ov.querySelector('button.story-tutorial-continue');
+                setTimeout(() => { if (_continueBtn) _continueBtn.focus(); }, 0);
+            } catch (e) { /* focus best-effort */ }
         }
 
         /** Play a story tutorial scene by id. Cross-run-deduped via

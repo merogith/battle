@@ -847,7 +847,17 @@
             return (global.localStorage.getItem(STORAGE_KEY) || '').trim() || 'Trainer';
         },
         setDisplayName(n) {
-            global.localStorage.setItem(STORAGE_KEY, String(n || '').trim().slice(0, 24) || 'Trainer');
+            // Sanitize: strip HTML tags / control chars / leading-trailing
+            // whitespace, then cap at 24. Pre-fix this just trimmed + sliced;
+            // a craftedname like `<img src=x onerror=alert(1)>` survived and
+            // would have been a latent XSS if any callsite ever switched
+            // from innerText to innerHTML.
+            const clean = String(n || '')
+                .replace(/[<>]/g, '')             // strip angle brackets
+                .replace(/[\x00-\x1f\x7f]/g, '')       // strip control chars + DEL
+                .trim()
+                .slice(0, 24);
+            global.localStorage.setItem(STORAGE_KEY, clean || 'Trainer');
         }
     };
 

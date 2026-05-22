@@ -41,7 +41,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 3bc8f10d137b
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Story tutorial overlay (STORY_TUTORIAL_SCENES) is not a dialog — no role, focus trap, or ESC
@@ -325,7 +325,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: a93e15e90227
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Mobile touch targets in story shops top out at 42px — under the WCAG 44×44 baseline

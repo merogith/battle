@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-22T10:40:35.063Z
+> **Generated**: 2026-05-22T10:44:05.941Z
 > **Source**: `agent-state/findings/*.md` (88 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -1293,7 +1293,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 3bc8f10d137b
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Story tutorial overlay (STORY_TUTORIAL_SCENES) is not a dialog — no role, focus trap, or ESC
@@ -2000,7 +2000,7 @@ file: online-pvp.js
 agents: [pvp-concurrency-hunter]
 fingerprint: 89314480e594
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Display names accepted up to 24 chars with zero sanitization — flow into innerText today, but one careless innerHTML downstream becomes XSS
@@ -2801,7 +2801,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 2665d2131c90
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `console.log` cluster in battle.html — debug noise in shipped code
@@ -3629,7 +3629,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: a93e15e90227
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Mobile touch targets in story shops top out at 42px — under the WCAG 44×44 baseline
