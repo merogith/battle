@@ -22,7 +22,7 @@ the bottom.
 | 3 | Boss danger profile | **Multi-form transformation at HP thresholds** (see §3). Boss is single-action across all phases; at each threshold, boss instantly morphs — new type pairing, ability, moveset, field layer. Replaces the earlier shield-phase draft. |
 | 4 | Themed trainer integration | Beats 3 / 6 **replace the existing row's trainer roll**. No new fight rows. |
 | 5 | NG+ expansion | **Re-roll random** per new run ("Surprise Me" semantics). Explicit picker still available. |
-| 6 | Token scope | Token A = narrative gate. Token B = **trade gate** at Beat 8 → yields canonical Master Ball + closes expansion (see #25). No shop / battle effects. |
+| 6 | Token scope | Token A = narrative gate. Token B = **trade gate** at Beat 8 → yields a 3-option reward picker (see #25, #29–32) + closes expansion. No shop / battle effects for tokens themselves. |
 | 7 | Pre-boss state | **Auto full-heal** (matches universal game rule). |
 | 8 | Boss species reveal | **Hidden on the picker**. Mini-boss revealed at Beat 3 dialogue, big boss at Beat 6 dialogue. Picker shows tier badge + thematic tagline only (no type/species hint). |
 | 9 | Post-HoF Mystery Figure | **Stays a trainer fight**. Raid mechanic does not enter the CORE flow. |
@@ -51,10 +51,19 @@ the bottom.
 
 | # | Topic | Decision |
 |---|---|---|
-| 25 | Token B endpoint | **Token B is traded** at Beat 8 to a bespoke per-expansion NPC. Trade yields canonical Master Ball + closes expansion story. Replaces the prior "Token B consumed at Beat 8 dialogue" model. |
-| 26 | Roaming legendary | **Core-game content, not expansion content.** Already implemented (line 37135+: `_ROAMING_TRIGGERS`, `_storyQueueRoamingFromVictory`, `_showRoamingLegendarySighting`). Per §5.3, mid-game triggers (Gym 5/7) are deleted; single post-Gym-8 trigger fires the wild legendary. Master Ball obtained in Beat 8 is used there. |
+| 25 | Token B endpoint | **Token B is traded** at Beat 8 to a bespoke per-expansion NPC. Trade yields **one of three rewards** (player picks one — see §0.4) + closes expansion story. Replaces the prior "Token B consumed at Beat 8 dialogue" model. |
+| 26 | Roaming legendary | **Core-game content, not expansion content.** Already implemented (line 37135+: `_ROAMING_TRIGGERS`, `_storyQueueRoamingFromVictory`, `_showRoamingLegendarySighting`). Per §5.3, mid-game triggers (Gym 5/7) are deleted; single post-Gym-8 trigger fires the wild legendary. Master Ball (if picked at Beat 8) is used there. |
 | 27 | Trade NPC | **Bespoke per expansion** (lore-named). Bone Keepers = "Grave Warden" (Lavender hub). Project Mewtwo = "The Broker" (existing dialogue). Etc. NPC appears only post-Beat-7, only for that expansion's run. |
 | 28 | Expansion epilogue | **Closure screen + dialogue** after trade — per-expansion themed relief beat ("kids are safe, Drowzee is gone" for Hypno's Lullaby, etc.). Then player returns to CORE flow; the existing post-Gym-8 roaming legendary fires when player reaches Victory Road. |
+
+### 0.4 Trade-reward brainstorm (decisions 29–32)
+
+| # | Topic | Decision |
+|---|---|---|
+| 29 | Trade shape | **Pick 1 of 3 — single irreversible choice.** NPC offers all three on screen; player selects one; the other two are gone for this run. Forces a strategic decision (legendary catch vs. mid-fight insurance vs. economy). |
+| 30 | Option 2 — battle item | **1× Mega Max Revive** — a new instant-use Max Revive that revives a fainted mon to full HP **without consuming the turn**. Reuses the existing `mega_` tier system (`battle.html:42668–42720`, `instantUse = tier === 'mega'`). Implementation: add `'maxRevive'` to `FEATURED_MEGA_ITEM_IDS` (line 28738) — single-line code change in Phase D. Phase D also adds it to `sm.inventory` as a non-purchasable item (Beat 8 trade is the only acquisition path). |
+| 31 | Option 3 — economy | **10,000 gold** — direct credit to `sm.money`. Pure flexibility; player buys what they need at the post-Gym-8 / Victory Road shops (where Great Balls, Max Revives, vitamins, X-items are all available). |
+| 32 | Reward × legendary catch interaction | **Roaming legendary stays catchable with regular balls** at canonical Gen 1 catch rates — regardless of which option the player picked. Master Ball is the convenience path (100% catch), not a hard gate. Picking Option 2 or 3 means catching the legendary the hard way (status-spam + Ultra Balls at canonical 3 catch rate for Mewtwo etc.), which is achievable but slow. |
 
 ---
 
@@ -108,12 +117,12 @@ Notes on the CORE delta vs. today:
 | 5 | City 4 → City 5 area (post-Gym-4 / pre-Gym-5) | Dialogue (deliver Token A to the next NPC; new info / quest direction) | — | Consumes Token A |
 | 6 | City 5 → City 6 area (post-Gym-5 / pre-Gym-6) | Dialogue + **elite trainer battle** (multi-mon, themed ace) | Elite trainer | — |
 | 7 | **Post-Gym-7 / pre-Gym-8** (City 7 hub) | Dialogue + **big boss battle** (6v1 raid) | **Big boss** | Receives **Token B** + consumable drop + lore prop |
-| 8 | Just before Gym 8 (City 8 pre-Gym-8 hub) | Bespoke NPC trade interaction + expansion epilogue (see §4.4) | — | **Trades Token B → Master Ball** + expansion marked complete |
+| 8 | Just before Gym 8 (City 8 pre-Gym-8 hub) | Bespoke NPC trade interaction + 3-option reward picker + expansion epilogue (see §4.4) | — | **Trades Token B → picks one of: Master Ball / Mega Max Revive / 10,000 gold** + expansion marked complete |
 
 After Beat 8 the expansion is over. The player walks into Gym 8 →
-**post-Gym-8 roaming legendary wild** (existing system per §4.5, used
-with the just-obtained Master Ball) → league with the CORE flow
-untouched.
+**post-Gym-8 roaming legendary wild** (existing system per §4.5,
+catchable with regular balls at canonical rate or guaranteed by
+Master Ball if picked) → league with the CORE flow untouched.
 
 ### 2.1 Beat → `STORY_EVENTS_RAW` row mapping
 
@@ -296,8 +305,9 @@ Each phase transition plays a **full cinematic** beat:
 - **Token A** drops at Beat 4 mini-boss → consumed at Beat 5 dialogue
   (narrative gate; opens path to City 6).
 - **Token B** drops at Beat 7 big boss → **traded at Beat 8** to a
-  bespoke per-expansion NPC. Trade yields canonical Master Ball + fires
-  expansion epilogue. See §4.4 (decision #25).
+  bespoke per-expansion NPC. Trade opens a 3-option reward picker
+  (Master Ball / Mega Max Revive / 10,000 gold — pick one) + fires
+  expansion epilogue. See §4.4 (decisions #25, #29–32).
 - Token names are expansion-specific (e.g. `bone_keepers` Token A =
   "Skull Fragment", Token B = "Bone Crown"; `project_mewtwo` Token A =
   "Lab Keycard", Token B = "Magnetic Key").
@@ -324,19 +334,23 @@ but never affect battle or progression.
 - **Token A** = pure narrative gate (consumed in dialogue — no battle
   effect). Keeps the mid-arc beat simple.
 - **Token B** = trade gate (decision #25). Turns Beat 8 from a passive
-  dialogue beat into an active player choice ("trade to finish the
-  expansion"). Reward = canonical Master Ball, which the player then
-  uses on the post-Gym-8 roaming legendary (existing CORE content).
+  dialogue beat into an **active 3-option reward picker** (decision
+  #29). Player chooses Master Ball / Mega Max Revive / 10,000 gold —
+  each tuned to a different play-style for the league run.
 - **Consumables** = small material reward that scales with the run's
   difficulty curve. No power-creep per expansion (every expansion
   drops the same item tiers).
 - **Lore props** = cosmetic-only world-building. Cheap to write,
   high flavor density, zero balance cost.
-- **Master Ball** is reintroduced as the Beat 8 trade reward. Originally
-  tied to the deleted Caged God arc; now ties to the new expansion
-  closure flow.
+- **Master Ball** returns as ONE of the three trade rewards. Originally
+  tied to the deleted Caged God arc; now offered as the "legendary
+  catch" pick in the Beat 8 picker (decisions #29, #30).
+- **Mega Max Revive** is a new instant-use revive — same `mega_` tier
+  pattern as the existing Mega Full Restore, just adds `'maxRevive'`
+  to `FEATURED_MEGA_ITEM_IDS` (one-line change). Picks up all the
+  existing tier-handling code in `applyBagItem()` for free.
 
-### 4.4 Beat 8 — trade-for-Master-Ball flow (decisions 25, 27, 28)
+### 4.4 Beat 8 — trade-for-choice flow (decisions 25, 27, 28, 29–32)
 
 The closing beat of every expansion. Replaces the prior "Token B
 consumed at Beat 8 dialogue" model.
@@ -355,14 +369,26 @@ expansion).
    - `dead_raticate` → the player's own rival, post-Raticate-loss
    - `lavender_frequency` → "The Static-Voiced Operator"
    - `static` → the corrupted save file itself (4th-wall break)
-2. **Dialogue beat** — NPC asks for the lore item (Token B). Player
-   has a choice: trade or refuse. Refusing exits dialog; player can
-   return later (no time gate).
-3. **Trade confirmation** — player picks "Trade [Token B]". NPC takes
-   the token (removed from inventory). Cinematic overlay plays — uses
-   existing `story-dialog-host` UI, no new screens.
-4. **Master Ball receipt** — canonical Master Ball added to player's
-   bag. Uses standard `addItem('masterball', 1)` path.
+2. **Trade dialogue** — NPC asks for the lore item (Token B). Player
+   confirms intent to trade. Refusing exits dialog; player can return
+   later (no time gate).
+3. **Reward picker** (decision #29) — three options are presented on
+   a single card. Player picks ONE. The other two are gone forever
+   for this run.
+
+   | # | Reward | What it does | When to pick |
+   |---|---|---|---|
+   | A | **1× Master Ball** (canonical) | Guaranteed 100% catch on the post-Gym-8 roaming legendary. | If you want the legendary trophy. |
+   | B | **1× Mega Max Revive** (new) | Instant-use Max Revive — revives a fainted mon to full HP **without consuming the turn**. One-shot save for the Elite Four / Champion / Mystery Figure run. | If you want clutch mid-fight insurance for the league. |
+   | C | **10,000 gold** | Direct credit to `sm.money`. Buys ~10 Max Revives, ~5 Full Restores, or a stack of vitamins/X-items at post-Gym-8 shops. Most flexible reward. | If you want broad resource flexibility. |
+
+4. **Trade confirmation** — player picks A/B/C. Token B removed from
+   inventory. Reward applied to save:
+   - A → `addItem('masterball', 1)`
+   - B → `sm.inventory['mega_maxRevive'] = (sm.inventory['mega_maxRevive']||0) + 1`
+     (requires the small Phase D code change at decision #30:
+     add `'maxRevive'` to `FEATURED_MEGA_ITEM_IDS` at line 28738)
+   - C → `sm.money += 10000`
 5. **Expansion epilogue** (decision #28) — full-screen closure beat
    plays. Per-expansion themed dialogue captures relief / closure
    ("kids are safe now, Drowzee is gone" for `hypnos_lullaby`, etc.).
@@ -371,13 +397,22 @@ expansion).
    copy table to be drafted in §6.
 6. **Expansion marked complete** — `sm.expansionStoryComplete = true`
    in save. Beats 9+ (if any) are deleted; the player returns to the
-   CORE flow at the same eventIndex.
+   CORE flow at the same eventIndex. The reward choice is also
+   persisted (`sm.expansionRewardPicked = 'A' | 'B' | 'C'`) for the
+   end-of-run summary screen.
 
-### 4.5 Master Ball usage — handoff to CORE
+### 4.5 Reward × legendary catch interaction (decision #32)
 
-The Master Ball obtained at Beat 8 is **not used in the expansion**.
-It carries forward into the CORE post-Gym-8 roaming legendary
-encounter (decision #26).
+The post-Gym-8 roaming legendary stays catchable **regardless of which
+reward the player picked** at Beat 8 — uses canonical Gen 1 catch rates:
+
+- **Picked A (Master Ball)** → guaranteed catch. The flagship path.
+- **Picked B (Mega Max Revive)** → catch the legendary the hard way:
+  Ultra Balls at canonical rate (3 for Mewtwo etc.), status-spam to
+  improve odds, chip-down without OHKO. Achievable but slow.
+- **Picked C (10,000 gold)** → buy Great/Ultra Balls in bulk at the
+  post-Gym-8 Pokemart, then catch the hard way. Same path as B but
+  with more ball stock.
 
 The roaming legendary system is already in code (line 37135+):
 - `_ROAMING_TRIGGERS` — currently fires on Gym 5 + Gym 7 wins.
@@ -388,17 +423,17 @@ The roaming legendary system is already in code (line 37135+):
 
 Per §5.3, the mid-game triggers (Gym 5 + Gym 7) are **deleted**;
 replaced by a single **post-Gym-8 trigger** so the legendary fires
-during Victory Road approach (after the player has the Master Ball).
+during Victory Road approach.
 
 The legendary encounter:
 - Wild battle, single encounter, max IV roll.
-- Uses canonical Gen 1 catch rates — Master Ball = 100% catch;
-  regular balls work at canonical rate (3 for Mewtwo etc.). Master Ball
-  is the convenience path, not a hard gate.
+- Canonical Gen 1 catch rates — Master Ball = 100% catch; regular
+  balls work at canonical rate. Master Ball is the convenience path,
+  not a hard gate.
 - Existing `_showRoamingLegendarySighting()` cinematic plays per the
   player's chosen expansion variant — themed copy already written.
-- This is **CORE content**, not expansion content. Player has it
-  regardless of which expansion they ran.
+- This is **CORE content**, not expansion content. Encounter fires
+  regardless of which expansion ran or which Beat 8 reward was picked.
 
 ---
 
@@ -479,7 +514,7 @@ const EXPANSIONS = {
       5: { coldOpen: 'classic_b5', consumesToken: 'tokenA' },
       6: { coldOpen: 'classic_b6', battle: { kind: 'eliteTrainer', spec: {...} } },
       7: { coldOpen: 'classic_b7', battle: { kind: 'bigBoss', species: 'Dragonite', level: 65, multiplier: { hp: 9, stat: 1.35 }, phases: [{ at: 1.00, types: ['Dragon','Flying'], ability: 'Multiscale', moves: [...3 canon], custom: 'Champion Wing', field: { weather: 'Sun' } }, { at: 0.66, types: ['Dragon','Steel'], ability: 'Inner Focus', moves: [...3 canon], custom: 'Iron Roar', field: { terrain: 'Electric' } }, { at: 0.33, types: ['Dragon','Fire'], ability: 'Berserk', moves: [...3 canon], custom: 'Champion\'s Last', field: { hazards: 'Stealth Rock' } }] }, drop: { token: 'tokenB', items: ['maxRevive', 'fullRestore', 'vitamin'], loreProp: 'crown_shard' } },
-      8: { coldOpen: 'classic_b8', tradesToken: 'tokenB', tradeNpc: 'classic_warden', yields: 'masterball', epilogue: 'classic_outro' },
+      8: { coldOpen: 'classic_b8', tradesToken: 'tokenB', tradeNpc: 'classic_warden', rewards: ['masterball', 'mega_maxRevive', 'gold10k'], epilogue: 'classic_outro' },
     },
     tokenNames: { tokenA: 'Champion\'s Token', tokenB: 'Crown Shard' },
   },
@@ -580,28 +615,47 @@ content.
   existing `_storyQueueRoamingFromVictory()` path on Gym 8 victory or
   on entry to the City 8 → Victory Road transition (whichever fires
   later — gates the wild encounter on the player reaching the league
-  approach with Master Ball in hand).
+  approach, after the Beat 8 reward picker has fired regardless of
+  which reward was chosen).
 - Save migration: drop `sm.bossArc`; reset `sm.roamingLegendary`.
 - **No changes to `_showRoamingLegendarySighting()` or
   `SUB_LEGENDARY_POOL`** — per-variant copy and species pool already
   written (lines 37127–37475). Just the trigger row moves.
 
-### Phase D — Content: quest items + tokens UI + trade flow (~180 LOC)
+### Phase D — Content: quest items + tokens UI + trade flow (~220 LOC)
 
 - New inventory tab: **Key Items** (decision #6).
 - `sm.expansion.tokens` drives the tab's contents.
 - **Token A** flow: drops at Beat 4 KO; consumed at Beat 5 dialogue
   (existing `consumesToken` schema at line 477).
-- **Token B trade flow** (decision #25 — new at Beat 8):
+- **Token B trade flow** (decisions 25, 27, 29–32 — new at Beat 8):
   - Trade NPC interaction UI (reuses existing dialog host overlay).
-  - Choice card: "Trade [Token B name]" / "Refuse — come back later".
+  - **Reward picker card** with 3 options (Master Ball / Mega Max
+    Revive / 10,000 gold) — see §4.4 table. Single-pick irreversible.
+  - "Refuse — come back later" exit on the initial NPC card (token
+    intact; player can revisit hub to retry).
   - Trade confirmation: removes Token B from `sm.expansion.tokens`;
-    grants canonical Master Ball via `addItem('masterball', 1)`; sets
-    `sm.expansionStoryComplete = true`.
+    applies the chosen reward (one of three save mutations); sets
+    `sm.expansionStoryComplete = true`; sets
+    `sm.expansionRewardPicked = 'A' | 'B' | 'C'`.
   - Epilogue overlay: relocates existing `_showVariantPostHofEpilogue`
     (line 28358) from post-HoF firing to Beat 8 firing. Per-variant
     copy table `_POSTHOF_EPILOGUE_BY_VARIANT` (line 28280) is reused
     as-is — content already authored.
+- **`mega_maxRevive` item registration** (decision #30 — one-line
+  change at `battle.html:28738`):
+  - Add `'maxRevive'` to the `FEATURED_MEGA_ITEM_IDS` Set.
+  - Existing `getStoryFeaturedItems()` at line 28762 then automatically
+    creates a `mega_maxRevive` item with `tier: 'mega'`.
+  - Existing `applyBagItem()` at line 42654+ already handles
+    `eff === 'reviveFull'` + `instantUse = tier === 'mega'`. No new
+    effect logic needed — Mega Max Revive uses the same code path as
+    the existing Mega Full Restore.
+  - Bag UI inclusion is automatic via the existing tier-categorisation
+    at line 40578+.
+  - **Not purchasable** — Beat 8 trade is the only acquisition path.
+    Block its appearance in `getStoryFeaturedItems()` shop output via
+    a `bossRewardOnly` flag on the item definition.
 - **Lore prop drops** (decision #20): each boss KO grants a cosmetic
   Key Item per the table in §4.2. `sm.expansionLoreProps[]` array
   carries across runs (NG+ keeps the collection; cosmetic-only).
@@ -637,10 +691,14 @@ For each expansion:
 - **Beat 1 (intro)**: 6–10 line cold-open scene.
 - **Beat 2 (developing)**: 6–10 line scene.
 - **Beat 5 (deliver Token A)**: 5–8 line scene.
-- **Beat 8 (trade + epilogue)** — now multi-part per §4.4:
+- **Beat 8 (trade + reward + epilogue)** — multi-part per §4.4:
   - Bespoke NPC introduction (3–5 lines)
-  - Trade interaction (2–4 lines, includes "trade / refuse" choice copy)
-  - Master Ball receipt cinematic (existing item-pickup overlay)
+  - Trade interaction (2–4 lines, "trade / refuse" choice copy)
+  - **Reward picker card** with 3 options + per-option flavor blurb
+    (1–2 lines each — A: "the trophy hunter's ball", B: "a clutch
+    second chance", C: "weight to ease the road")
+  - Reward receipt cinematic (existing item-pickup / gold-credit
+    overlays; for `mega_maxRevive` reuse the rare-item overlay)
   - Expansion epilogue overlay (8–12 line themed closure, fires once
     per save via the existing `_showVariantPostHofEpilogue` overlay
     pattern relocated to Beat 8)
@@ -668,8 +726,17 @@ epilogue borrows from the deleted Caged God epilogue lines (existing
   transition behavior (type retype, ability swap, moveset replace,
   field layer apply, cinematic fires once per threshold cross).
 - Headless test: Token B trade flow — refuse path leaves token intact;
-  accept path consumes token, grants Master Ball, fires epilogue,
-  sets `sm.expansionStoryComplete = true`.
+  accept path opens reward picker.
+- Headless test: reward picker — each of 3 picks (A/B/C) consumes
+  Token B, applies the correct save mutation (`addItem('masterball', 1)`
+  / `sm.inventory['mega_maxRevive']++` / `sm.money += 10000`), fires
+  epilogue, sets `sm.expansionStoryComplete = true`, sets
+  `sm.expansionRewardPicked` to the chosen letter. Other two rewards
+  are not granted.
+- Headless test: `mega_maxRevive` registration — appears in
+  `getStoryFeaturedItems()` output, has `tier: 'mega'`, applies
+  `reviveFull` effect, does not consume turn (`instantUse === true`),
+  cannot be purchased at shop (`bossRewardOnly` blocks shop UI).
 - Headless test: post-Gym-8 roaming legendary fires once after the
   single trigger relocation (no fires on Gym 5/7 wins).
 - CHANGELOG entry.
@@ -683,12 +750,12 @@ epilogue borrows from the deleted Caged God epilogue lines (existing
 | A — Raid mechanic | ~750 | High — new battle path, multi-form transformation handler (type/ability/moveset/field swap per phase) + per-run roll dispatcher + wipe rewind |
 | B — Registry + dispatcher | ~250 | Medium — save migration v18 |
 | C — Caged God removal + roaming relocation | ~150 | Low — pure deletion + post-Gym-8 relocation |
-| D — Tokens UI + trade flow | ~180 | Low — adds trade interaction UI + epilogue overlay relocation |
+| D — Tokens UI + trade flow + reward picker | ~220 | Low — adds 3-option reward picker UI + `mega_maxRevive` item registration (one-line change) + epilogue overlay relocation |
 | E — Per-expansion battles | ~1,200 | Medium — 32 specs (8 expansions × 4 fights), per-phase movesets + custom signatures, balance per tier |
-| F — Per-expansion dialogue | ~1,000 | Low — content work, no logic; includes 8 bespoke trade NPCs + epilogues |
+| F — Per-expansion dialogue | ~1,050 | Low — content work, no logic; includes 8 bespoke trade NPCs + 3-option reward dialogue + epilogues |
 | G — Picker copy | ~60 | Low |
-| H — Tests + CHANGELOG | ~200 | Low |
-| **Total** | **~3,840 LOC** | — |
+| H — Tests + CHANGELOG | ~220 | Low — adds reward-picker permutation tests |
+| **Total** | **~3,900 LOC** | — |
 
 A → B → C must land in order. D + E + F + G can land in parallel after B.
 H runs against every phase as it merges.
@@ -722,8 +789,13 @@ H runs against every phase as it merges.
      directly; the legendary is still catchable on a later revisit.
    - **Current code default**: `_shouldFireRoamingBeforeBattle()`
      interrupts the next battle entry; player has one chance, no flee
-     return. Force is the default. Open: do we soften this for Beat-8
-     players who haven't picked up the Master Ball yet?
+     return. Force is the default. With the 3-option Beat 8 picker
+     (decision #29), a meaningful share of players will reach this
+     encounter WITHOUT a Master Ball (they picked B or C). Decision
+     #32 confirms canonical catch rates still apply, but it's worth
+     a UX pass: should the encounter telegraph "no MB? bring Ultra
+     Balls + status setup" before firing? Or stay silent / let the
+     player learn the hard way?
 
 4. **NG+ mechanic-layer roster.** Decision #22 says NG+ adds +1
    mechanic layer per phase. Need a small library of "layer" effects:
@@ -791,7 +863,7 @@ H runs against every phase as it merges.
 
 ---
 
-*This plan is the deliverable for two brainstorm passes (decisions
-1–28). No code changed. Phase A can begin once Open Questions 1–6 are
-answered. Per-expansion content work (Phase E + F) can start in
-parallel against decisions 11–28 once the framework lands.*
+*This plan is the deliverable for three brainstorm passes (decisions
+1–32). No code changed. Phase A can begin once Open Questions 1–6
+are answered. Per-expansion content work (Phase E + F) can start in
+parallel against decisions 11–32 once the framework lands.*
