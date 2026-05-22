@@ -7,7 +7,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 7ce8a9ce8254
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: League foe stat boost stacks multiplicatively despite comment claiming additive merge
@@ -84,7 +84,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: d1e01d9e6e3e
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: v14 trainer-assignment migration is bundled under `_loadedVer < 13`, so v13 saves skip it
@@ -767,7 +767,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 157f95348987
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `_loadedVer < 14` block missing — v14 trainer-name migration never runs for saves stamped at exactly v13

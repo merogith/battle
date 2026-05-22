@@ -30782,20 +30782,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } else {
                 return;
             }
-            // Per-event boss boost. Crucible Hard Mode multiplier is applied
-            // separately by crucibleApplyHardModeToFoes so every Crucible-
-            // sourced fight (including gym rematches that fall outside this
-            // function's filter) gets the +30%.
-            const newMaxHp = Math.max(1, Math.floor(mon.maxHp * hpM));
-            mon.maxHp = newMaxHp;
-            mon.currentHp = newMaxHp;
-            if (mon.stats) {
-                mon.stats.atk = Math.max(1, Math.floor(mon.stats.atk * bulkM));
-                mon.stats.def = Math.max(1, Math.floor(mon.stats.def * bulkM));
-                mon.stats.spa = Math.max(1, Math.floor(mon.stats.spa * bulkM));
-                mon.stats.spd = Math.max(1, Math.floor(mon.stats.spd * bulkM));
-                mon.stats.spe = Math.max(1, Math.floor(mon.stats.spe * speM));
-            }
+            // Per-event boss boost. Store as an ADDITIVE delta on the mon so
+            // applyFoeDifficultyScaling can merge with the difficulty multiplier
+            // additively (e.g., Challenge 1.30 + Champion 0.40 = 1.70, not the
+            // multiplicative 1.30 × 1.40 = 1.82 cliff). startBattle calls this
+            // BEFORE applyFoeDifficultyScaling at lines 15318-15332. Difficulty
+            // scaling reads `mon._leagueStatBonus` and applies the merged
+            // multiplier to maxHp / stats once. Crucible Hard Mode multiplier
+            // is applied separately by crucibleApplyHardModeToFoes so every
+            // Crucible-sourced fight (including gym rematches that fall outside
+            // this function's filter) gets the +30%.
+            mon._leagueStatBonus = {
+                hp:   hpM   - 1,
+                bulk: bulkM - 1,
+                spe:  speM  - 1,
+            };
         };
 
         /** Deterministic RNG for story rolls (team picks, etc.). Sequence continues from saved _strngState. */
@@ -30952,6 +30953,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (_loadedVer < 13) {
                     try { migrateStoryArtifactShopPreV13(); } catch (e) { console.warn('[Story] relic shop v13', e); }
+                }
+                if (_loadedVer < 14) {
                     try { migrateStoryTrainerAssignmentsPreV14(); } catch (e) { console.warn('[Story] trainer assignments v14', e); }
                 }
                 if (_loadedVer < 15) {
