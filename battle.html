@@ -44187,8 +44187,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // the +500G ability premium wasn't earning its keep.
         const TUTOR_COST_MOVE    = 1500;
         const TUTOR_COST_ITEM    = 2000;
-        const TUTOR_COST_ABILITY = 2000;
+        const TUTOR_COST_ABILITY = 2000;  // regular ability swap
+        const TUTOR_COST_HIDDEN  = 3000;  // hidden ability (slot H) swap
+        const TUTOR_COST_AWAKEN  = 5000;  // OP "Awaken" pick (City 6+)
         const TUTOR_COST_NATURE  = 2000;
+        function _abilityCostForMon(monName, abilityName) {
+            if (!abilityName) return TUTOR_COST_ABILITY;
+            const opSet = new Set(_opAbilitiesForMon(monName));
+            if (opSet.has(abilityName)) return TUTOR_COST_AWAKEN;
+            try {
+                const bs = baseStats[monName];
+                if (bs && bs.abilities && bs.abilities.H === abilityName) return TUTOR_COST_HIDDEN;
+            } catch (e) {}
+            return TUTOR_COST_ABILITY;
+        }
         /** 'moves' | 'nature' | 'loadout' — set by enterTutor(mode); renderTutorTeam reads this */
         let _storyTutorMode = 'moves';
         let _storyTutorOpenIdx = 0;
@@ -45795,7 +45807,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _txConfirmBarHtml(teamIdx, kind, mon, build) {
             const pending = _txPending;
             const action = kind === 'move' ? 'move' : kind === 'item' ? 'item' : kind === 'ability' ? 'ability' : 'nature';
-            const cost = kind === 'move' ? TUTOR_COST_MOVE : kind === 'item' ? TUTOR_COST_ITEM : kind === 'ability' ? TUTOR_COST_ABILITY : TUTOR_COST_NATURE;
+            // Ability cost is tiered by ability tier: regular 2000G, hidden 3000G, awaken 5000G.
+            // Use the pending pick's tier when present so the bar shows the actual charge.
+            let cost;
+            if (kind === 'move') cost = TUTOR_COST_MOVE;
+            else if (kind === 'item') cost = TUTOR_COST_ITEM;
+            else if (kind === 'nature') cost = TUTOR_COST_NATURE;
+            else if (kind === 'ability') {
+                const pendingAbil = (pending && pending.kind === 'ability') ? pending.value : null;
+                const monName = sm.team[teamIdx] && sm.team[teamIdx].name;
+                cost = pendingAbil ? _abilityCostForMon(monName, pendingAbil) : TUTOR_COST_ABILITY;
+            }
             const canAfford = sm.gold >= cost;
             if (!pending || pending.kind !== action) {
                 // Empty state placeholder — keeps the bottom of the picker stable
@@ -46526,13 +46548,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_storyTryBeginInteraction()) return;
             try {
                 const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
-                if (sm.gold < TUTOR_COST_ABILITY) return;
+                const cost = _abilityCostForMon(mon.name, newAbility);
+                if (sm.gold < cost) return;
                 if (mon.build.a === newAbility) return;
                 const oldAbil = mon.build.a || '(none)';
-                const ok = await _storyConfirmTutorChange(`Change ${mon.name}'s ability to ${newAbility}? Replaces "${oldAbil}".`, TUTOR_COST_ABILITY);
+                const ok = await _storyConfirmTutorChange(`Change ${mon.name}'s ability to ${newAbility}? Replaces "${oldAbil}".`, cost);
                 if (!ok) return;
-                sm.gold -= TUTOR_COST_ABILITY;
-                try { _storyTrackSpend(TUTOR_COST_ABILITY); } catch (e) {}
+                sm.gold -= cost;
+                try { _storyTrackSpend(cost); } catch (e) {}
                 mon.build.a = newAbility;
                 save();
                 try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
@@ -46645,7 +46668,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return _tutorApplyChangeWithVoucher(teamIdx, 'abilityCapsule', 'Ability Capsule', async (mon, remaining) => {
                 if (mon.build.a === newAbility) return false;
                 const oldAbil = mon.build.a || '(none)';
-                if (!await _storyConfirmTutorChange(`Use 1 Ability Capsule to change ${mon.name}'s ability to ${newAbility}? Replaces "${oldAbil}". Saves ${TUTOR_COST_ABILITY.toLocaleString()}G. ${remaining} Capsule${remaining===1?'':'s'} left after.`, 0)) return false;
+                const savedCost = _abilityCostForMon(mon.name, newAbility);
+                if (!await _storyConfirmTutorChange(`Use 1 Ability Capsule to change ${mon.name}'s ability to ${newAbility}? Replaces "${oldAbil}". Saves ${savedCost.toLocaleString()}G. ${remaining} Capsule${remaining===1?'':'s'} left after.`, 0)) return false;
                 mon.build.a = newAbility;
                 return true;
             });
