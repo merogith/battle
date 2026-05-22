@@ -2212,6 +2212,13 @@
         .story-action-badge.info { color: #b3c2d6; border-color: #5a6478; background: rgba(179,194,214,0.06); }
         /* "New" — calm gold pill, no flashing. Tells the player "you haven't tried this" without screaming. */
         .story-action-badge.new { color: #1a1408; border-color: #c4942a; background: linear-gradient(180deg,#ffd76a 0%,#e0a932 100%); font-weight: bold; }
+        /* "Required" — red pulsing pill on the debut city for a facility the player hasn't introduced
+           themselves to yet. The Leave-City gate uses the same set. Per docs/EVOLUTION_FLOW_REBUILD.md §11.1. */
+        .story-action-badge.required { color: #fff; border-color: #ef5350; background: linear-gradient(180deg,#ef5350 0%,#b71c1c 100%); font-weight: bold; animation: storyRequiredPulse 1.6s ease-in-out infinite; }
+        @keyframes storyRequiredPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239,83,80,0.55); }
+            50%      { box-shadow: 0 0 0 4px rgba(239,83,80,0.0); }
+        }
         /* "Visited" — small checkmark badge, gently de-emphasized.
            Player can scan "what's left to try" at a glance, without losing the option.
            Muted slate so it doesn't read as "Free" (mint green). */
@@ -30745,7 +30752,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{}, currentEnemyLock:null,
                    artifactsDisabled:[], storyCityVisit:null, citiesArrived:{},
                    artifactShopOffersByCity:{}, artifactShopPurchasedByCity:{}, artifactFreeClaimUsed:false,
-                   deptShopPurchasedByCity:{},
+                   deptShopPurchasedByCity:{}, facilityIntros:{},
                    storyDifficulty:'normal', runSeed:null,
                    storyMilestoneTips:{ m4:false, m8:false },
                    storyRetryInventorySnapshot: null,
@@ -30976,6 +30983,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.artifactShopOffersByCity || typeof sm.artifactShopOffersByCity !== 'object') sm.artifactShopOffersByCity = {};
                 if (!sm.artifactShopPurchasedByCity || typeof sm.artifactShopPurchasedByCity !== 'object') sm.artifactShopPurchasedByCity = {};
                 if (typeof sm.artifactFreeClaimUsed !== 'boolean') sm.artifactFreeClaimUsed = false;
+                // Per docs/EVOLUTION_FLOW_REBUILD.md §8: introduce-once gate state.
+                // sm.facilityIntros[key] flips true the first time the player enters
+                // that facility ANYWHERE in the run (intro tutorial shown). Once true,
+                // the Leave-City gate stops firing — players only ever get the welcome
+                // story once per facility per run.
+                if (!sm.facilityIntros || typeof sm.facilityIntros !== 'object') sm.facilityIntros = {};
                 if (!sm.deptArtifactTypesByCity || typeof sm.deptArtifactTypesByCity !== 'object') sm.deptArtifactTypesByCity = {};
                 if (!sm.artifactTypeById || typeof sm.artifactTypeById !== 'object') sm.artifactTypeById = {};
                 if (!sm.deptItemOffersByCity || typeof sm.deptItemOffersByCity !== 'object') sm.deptItemOffersByCity = {};
@@ -33754,6 +33767,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 currentEnemyLock:null, artifactsDisabled:[],
                 deptArtifactOffersByCity:{}, artifactShopOffersByCity:{}, artifactShopPurchasedByCity:{}, artifactFreeClaimUsed:false,
                 deptArtifactTypesByCity:{}, artifactTypeById:{}, deptItemOffersByCity:{}, deptShopPurchasedByCity:{},
+                facilityIntros:{},
                 settings:{ enabledGens, minGen, maxGen,
                     megaOn: document.getElementById('story-mech-mega')?.checked||false,
                     zOn:    document.getElementById('story-mech-z')?.checked||false,
@@ -36336,6 +36350,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // legendary-gate message above; everywhere else falls back to the generic
             // "Visit Professor first" hint.
             const routeBlockedByProfessor = gymBlocked && !routeBlockedByMysteryGate;
+            // Per docs/EVOLUTION_FLOW_REBUILD.md §8: pending facility intros block
+            // Leave City on the debut city for each facility. Once the player has
+            // visited that facility anywhere in the run, the gate stops firing.
+            const _pendingIntros = _pendingFacilityIntrosHere(cityIdx, actions);
+            const _pendingNames = _pendingIntros.map(k => _FACILITY_FRIENDLY_NAME[k] || k);
+            const routeBlockedByIntros = _pendingIntros.length > 0
+                && !routeBlockedByMysteryGate && !routeBlockedByProfessor && !gymRoutePending;
             if (actions.includes('Leave City')) {
                 if (gymRoutePending) {
                     _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Clear this area's challenge first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Complete challenge first)</span></span></button>`);
@@ -36343,6 +36364,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Talk to the Mystery Figure first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Talk to Mystery Figure first)</span></span></button>`);
                 } else if (routeBlockedByProfessor) {
                     _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Visit the Professor before leaving" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`);
+                } else if (routeBlockedByIntros) {
+                    const _label = _friendlyJoin(_pendingNames);
+                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Drop in on ${_esc(_label)} first — new in town." style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Visit ${_esc(_label)} first)</span></span></button>`);
                 } else if (rivalGateActive) {
                     _push('quest', makeActionBtn('⚔ Battle Your Rival','route','window.StoryMode.proceedToNextBattle()','primary'));
                 } else if (!hasLeague) {
@@ -36370,11 +36394,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
             // Build the per-facility button props (meta + visited/suggested flags).
             // `_withNew` returns the meta array (adds "New" pill or "✓ visited" tag);
-            // `_facOpts` bundles meta + visited + suggested + any caller-passed extras
-            // so each call site stays a single readable line.
+            // Per docs/EVOLUTION_FLOW_REBUILD.md §11.1: the "Required" pill outranks "New"
+            // on the debut city for a facility the player hasn't yet introduced themselves
+            // to anywhere. It pulses to draw the eye and the Leave-City gate keys off the
+            // same _pendingFacilityIntrosHere set, so the badges and the disabled route
+            // button always agree.
             const _withNew = (facKey, baseMeta) => {
                 if (_isFacilitySeen(cityIdx, facKey)) {
                     return baseMeta.concat([{ label: '✓', tone: 'visited', title: 'Already visited this city' }]);
+                }
+                if (_isFacilityRequiredHere(cityIdx, facKey, actions)) {
+                    return [{ label: '🔴 Required', tone: 'required', title: "First visit — required before leaving this city." }].concat(baseMeta);
                 }
                 return [{ label: 'New', tone: 'new' }].concat(baseMeta);
             };
@@ -36559,10 +36589,64 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const bucket = sm.facilitiesSeen[cityIdx] || (sm.facilitiesSeen[cityIdx] = {});
             if (bucket[key]) return;
             bucket[key] = true;
+            // Per docs/EVOLUTION_FLOW_REBUILD.md §8: a facility seen anywhere flips
+            // the cross-city "introduced" flag too. The Leave-City gate keys off
+            // sm.facilityIntros so once the player has met a facility, the gate
+            // stops firing for that key across the rest of the run.
+            if (!sm.facilityIntros || typeof sm.facilityIntros !== 'object') sm.facilityIntros = {};
+            sm.facilityIntros[key] = true;
             try { save(); } catch (e) {}
         }
         function _isFacilitySeen(cityIdx, key) {
             return !!(sm.facilitiesSeen && sm.facilitiesSeen[cityIdx] && sm.facilitiesSeen[cityIdx][key]);
+        }
+        // Per docs/EVOLUTION_FLOW_REBUILD.md §8.3-§8.4: a facility is "required this
+        // city" if (a) its action button appears in this city AND (b) the player
+        // has not yet introduced themselves anywhere in the run AND (c) this city
+        // is the FACILITY_DEBUT_CITY for that key (the canonical debut location).
+        function _isFacilityRequiredHere(cityIdx, key, actionList) {
+            if (!sm || cityIdx < 0) return false;
+            if (sm.facilityIntros && sm.facilityIntros[key]) return false;
+            if (FACILITY_DEBUT_CITY[key] !== cityIdx) return false;
+            if (!Array.isArray(actionList)) return false;
+            // Map facility key → required action label so we only gate on actions
+            // that are actually present in this city's action list.
+            const _required = {
+                mart: 'Pokemart', tutor: 'Move Tutor', nature: 'Nature Rater',
+                center: null, // Pokemon Center is implicit on every hub
+                relic: null,  // Relic Annex hangs off the Department Store / City 0
+                link: 'Link Station', stoneShop: 'Stone Shop', evolab: 'Evolution Tutor',
+                dept: 'Department Store', casino: 'Poké Casino', dojo: 'Battle Dojo',
+                evtrainer: 'EV Trainer', safari: 'Safari Zone', colress: 'Power Up',
+            };
+            const label = _required[key];
+            if (label === undefined) return false;
+            if (label === null) return true; // implicit facility, requirement satisfied by being in the city
+            return actionList.indexOf(label) !== -1;
+        }
+        // Returns the list of facility-key strings that need introducing in the
+        // current city BEFORE Leave City unlocks. Empty array = no gate.
+        function _pendingFacilityIntrosHere(cityIdx, actionList) {
+            if (!sm || cityIdx < 0) return [];
+            const pending = [];
+            for (const key of Object.keys(FACILITY_DEBUT_CITY)) {
+                if (_isFacilityRequiredHere(cityIdx, key, actionList)) pending.push(key);
+            }
+            return pending;
+        }
+        // Friendly name lookup for the "Visit X first" tooltip.
+        const _FACILITY_FRIENDLY_NAME = {
+            mart: 'Pokémart', tutor: 'Move Tutor', nature: 'Nature Rater',
+            center: 'Pokémon Center', relic: 'Relic Annex',
+            link: "Bill's Cable Link", stoneShop: 'Stone Emporium', evolab: 'Stone Sage',
+            dept: 'Department Store', casino: 'Game Corner', dojo: 'Battle Dojo',
+            evtrainer: 'EV Trainer', safari: 'Safari Zone', colress: 'Power Up',
+        };
+        function _friendlyJoin(names) {
+            if (!names.length) return '';
+            if (names.length === 1) return names[0];
+            if (names.length === 2) return names[0] + ' and ' + names[1];
+            return names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
         }
 
         // Per-facility flavor lines — gives every silent NPC a voice without committing
