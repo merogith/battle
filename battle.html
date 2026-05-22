@@ -7914,6 +7914,22 @@
         </div>
     </div>
 
+    <div id="screen-story-stone-shop" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div id="story-stone-shop-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
+        <div class="story-shop-stack">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+            <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
+            <h3 id="story-stone-shop-title" class="story-screen-head-title" style="color:#b39ddb;font-size:14px;flex:1;min-width:0;"><span style="font-size:18px;line-height:1;">&#128142;</span><span class="story-screen-head-text">Stone Emporium</span></h3>
+            <span id="story-stone-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
+        </div>
+        <p id="story-stone-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#aaa;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;">Stones and trade-method items for the Stone Sage next door. <strong style="color:#b39ddb;">500G each</strong>. The Sage consumes them on evolution. Hold a <strong style="color:#ce93d8;">Stonewise Token</strong>? Redeem at any stone (not trade items) for one free pick.</p>
+        <div id="story-stone-shop-grid" style="flex:1;overflow-y:auto;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;min-height:0;"></div>
+        <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+            <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
+        </div>
+        </div>
+    </div>
+
     <div id="screen-story-tutor" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-tutor-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
@@ -29947,6 +29963,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const u = m.shopDept || m.shopMart;
             applyStoryBgLayer(document.getElementById('story-artifact-shop-bg-layer'), u || '');
         }
+        function syncStoryStoneShopBackground() {
+            const m = getStoryBgManifest();
+            const u = m.shopDept || m.shopMart;
+            applyStoryBgLayer(document.getElementById('story-stone-shop-bg-layer'), u || '');
+        }
         function syncStoryLinkBackground() {
             applyStoryBgLayer(document.getElementById('story-link-bg-layer'), getStoryBgManifest().linkStation || '');
         }
@@ -29993,7 +30014,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             typeMagnetizer:'wide-lens', eternalSunLens:'heat-rock', eternalRainDrum:'damp-rock',
             eternalHailCrown:'icy-rock', eternalSandTotem:'smooth-rock', thunderstoneEarrings:'electric-seed',
             verdantCore:'grassy-seed', astralAntenna:'psychic-seed', moonveilIncense:'misty-seed',
-            glassCannonPact:'life-orb', reapersToll:'spell-tag', cursedCoinPouch:'amulet-coin'
+            glassCannonPact:'life-orb', reapersToll:'spell-tag', cursedCoinPouch:'amulet-coin',
+            // Stone Emporium catalog — thematic substitutes from existing in-tree art
+            // (sprites/items/ has no dedicated stone icons). Each slug picks an icon
+            // that reads as the stone's element / item flavor at a glance.
+            fireStone:'flame-orb', waterStone:'mystic-water', thunderStone:'magnet',
+            leafStone:'miracle-seed', moonStone:'misty-seed', sunStone:'heat-rock',
+            iceStone:'never-melt-ice', shinyStone:'silver-powder',
+            duskStone:'spell-tag', dawnStone:'bright-powder',
+            metalCoat:'iron-ball', dragonScale:'dragon-fang', kingsRock:'hard-stone',
+            upGrade:'wide-lens', dubiousDisc:'scope-lens', protector:'expert-belt',
+            electirizer:'magnet', magmarizer:'charcoal', reaperCloth:'black-belt',
+            deepSeaTooth:'poison-barb', deepSeaScale:'silver-powder',
+            prismScale:'bright-powder', sachet:'silk-scarf', whippedDream:'soft-sand'
         };
         const STORY_SHOP_ICON_HTML = {
             _default: '<img class="story-shop-item-img" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="30" height="30" loading="lazy" decoding="async">'
@@ -36277,6 +36310,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (actions.includes('Poké Casino')) {
                 _push('shop', makeActionBtn('🎰 Game Corner','casino','window.StoryMode.enterCasino()','casino', _facOpts('casino', [{label:'Win prizes',tone:'good'}], { soft:true })));
             }
+            if (actions.includes('Stone Shop')) {
+                const _stoneTokenN = (sm.inventory && sm.inventory.stoneToken) | 0;
+                const stoneMeta = _stoneTokenN > 0
+                    ? [{label:`Token ×${_stoneTokenN}`,tone:'free'}, {label:'500G ea',tone:'cost'}]
+                    : [{label:'500G ea',tone:'cost'}];
+                _push('shop', makeActionBtn('💎 Stone Emporium','stoneShop','window.StoryMode.enterStoneShop()','dept', _facOpts('stoneShop', stoneMeta, { soft:true })));
+            }
             const _tutorTeam = sm.team.length > 0;
             if (actions.includes('Move Tutor') && _tutorTeam) {
                 _push('train', makeActionBtn('📖 Move Tutor','tutor','window.StoryMode.enterTutor(\'moves\')','training', _facOpts('tutor', [_costBadge(1500, '+')])));
@@ -41173,6 +41213,108 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Soft mystical chime — relic shop has a treasure-room mood.
             try { window.StoryFx && window.StoryFx.playSfx('shine', 0.45); } catch (e) {}
             save();
+        }
+
+        // ── STONE EMPORIUM ────────────────────────────────────────────────
+        // New facility introduced at City 2 (see docs/EVOLUTION_FLOW_REBUILD.md §4).
+        // Sells the 10 evolution stones + 14 trade-method items the Stone Sage
+        // needs to perform evolutions previously baked into the gold fee.
+        // Flat 500G each, confirm-on-buy. The Stonewise Token voucher granted
+        // at City 2 entry redeems one free stone (not trade items).
+        const STONE_SHOP_PRICE = 500;
+        function enterStoneShop() {
+            if (!sm || !sm.active) return;
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                _markFacilitySeen('stoneShop');
+                if (sm.facilityIntros) sm.facilityIntros.stoneShop = true;
+                _storyEnsureInventory();
+                renderStoneShop();
+                syncStoryStoneShopBackground();
+                showScreen('screen-story-stone-shop');
+                try { window.StoryFx && window.StoryFx.playSfx('sparkle', 0.45); } catch (e) {}
+                save();
+            } finally {
+                _storyEndInteraction();
+            }
+        }
+        function renderStoneShop() {
+            const goldEl = document.getElementById('story-stone-shop-gold');
+            const gridEl = document.getElementById('story-stone-shop-grid');
+            if (!gridEl) return;
+            _storyEnsureInventory();
+            if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
+            const tokenN = (sm.inventory.stoneToken | 0);
+            const parts = [];
+            for (const it of STONE_SHOP_ITEMS) {
+                const owned = (sm.inventory[it.id] | 0);
+                const canAfford = sm.gold >= STONE_SHOP_PRICE;
+                const isStone = it.kind === 'stone';
+                const tokenAvail = isStone && tokenN > 0;
+                const icon = storyShopIconCellHtml(it.id);
+                const kindBadge = isStone
+                    ? '<span class="story-action-badge info" style="font-size:9px;color:#ce93d8;border-color:#7e57c2;background:rgba(206,147,216,0.1);">STONE</span>'
+                    : '<span class="story-action-badge info" style="font-size:9px;color:#90caf9;border-color:#5c6bc0;background:rgba(144,202,249,0.1);">TRADE ITEM</span>';
+                const ownedBadge = owned > 0
+                    ? `<span class="story-action-badge" style="font-size:9px;color:#aed581;border-color:#558b2f;background:rgba(174,213,129,0.1);">Owned ×${owned}</span>`
+                    : '';
+                const buyBtn = `<button type="button" class="story-shop-buy-btn" onclick="window.StoryMode.buyStoneItem('${it.id}')" ${canAfford ? '' : 'disabled'} style="${canAfford ? 'color:#ffd54f;border-color:#ffb300;' : ''}">Buy ${storyGoldHtml(STONE_SHOP_PRICE.toLocaleString(), false)}</button>`;
+                const tokenBtn = tokenAvail
+                    ? `<button type="button" class="story-shop-buy-btn" onclick="window.StoryMode.redeemStoneToken('${it.id}')" style="color:#ce93d8;border-color:#9c27b0;margin-left:6px;">Redeem Token</button>`
+                    : '';
+                parts.push(`<div class="story-shop-card" style="background:rgba(20,16,30,0.45);border:1px solid #3a2f4a;border-radius:6px;padding:8px;">
+                    <div class="story-shop-item-row" style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                        ${icon}
+                        <h4 style="flex:1;margin:0;font-size:12px;color:#e1bee7;">${it.name}</h4>
+                        ${kindBadge}
+                    </div>
+                    <div class="desc" style="font-size:10px;color:#aaa;line-height:1.35;margin-bottom:6px;min-height:26px;">${it.desc}</div>
+                    <div class="story-shop-item-bottom" style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                        <div>${ownedBadge}</div>
+                        <div style="display:flex;align-items:center;">${buyBtn}${tokenBtn}</div>
+                    </div>
+                </div>`);
+            }
+            gridEl.innerHTML = parts.join('');
+        }
+        async function buyStoneItem(itemId) {
+            if (!sm || !sm.active) return;
+            const it = STONE_SHOP_ITEMS.find(r => r.id === itemId);
+            if (!it) return;
+            if (sm.gold < STONE_SHOP_PRICE) return;
+            const ok = await _storyConfirmTutorChange(`Buy ${it.name} for ${STONE_SHOP_PRICE}G? It will sit in your bag until the Stone Sage uses it.`, STONE_SHOP_PRICE);
+            if (!ok) return;
+            _storyEnsureInventory();
+            sm.gold -= STONE_SHOP_PRICE;
+            try { _storyTrackSpend(STONE_SHOP_PRICE); } catch (e) {}
+            sm.inventory[itemId] = (sm.inventory[itemId] | 0) + 1;
+            save();
+            try {
+                if (window.StoryFx) {
+                    window.StoryFx.playSfx('shing', 0.5);
+                }
+            } catch (e) {}
+            renderStoneShop();
+        }
+        async function redeemStoneToken(stoneId) {
+            if (!sm || !sm.active) return;
+            const it = STONE_SHOP_ITEMS.find(r => r.id === stoneId);
+            if (!it || it.kind !== 'stone') return;
+            _storyEnsureInventory();
+            const tokens = (sm.inventory.stoneToken | 0);
+            if (tokens <= 0) return;
+            const ok = await _storyConfirmTutorChange(`Redeem a Stonewise Token for one ${it.name}? (Free — the Granny's gift.)`, 0);
+            if (!ok) return;
+            sm.inventory.stoneToken = tokens - 1;
+            sm.inventory[stoneId] = (sm.inventory[stoneId] | 0) + 1;
+            save();
+            try {
+                if (window.StoryFx) {
+                    window.StoryFx.playSfx('sparkle', 0.5);
+                    setTimeout(function() { window.StoryFx.playSfx('shing', 0.5); }, 180);
+                }
+            } catch (e) {}
+            renderStoneShop();
         }
 
         // ── LINK STATION ──────────────────────────────────────────────────
@@ -48102,6 +48244,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterCity, enterProfessor, profRoll, profAccept, profDecline, profSelectChoice, _mysteryDoSwap,
             proceedToNextBattle, onBattleEnd, afterBattleReturn,
             enterShop, buyItem, buyArtifact, enterArtifactShop, enterPokemonCenter,
+            enterStoneShop, buyStoneItem, redeemStoneToken,
             pcSwitchTab, pcDeposit, pcWithdraw, pcRelease, pcSell,
             catchThrow, catchRun, catchContinue,
             catchResolveSendToPC, catchResolveSwap,
