@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-22T10:44:05.941Z
+> **Generated**: 2026-05-22T10:45:44.514Z
 > **Source**: `agent-state/findings/*.md` (88 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -1585,7 +1585,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 9da9210ce0f7
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Malva (Kalos E1) has a victory line but no intro pool in `TRAINER_QUOTES_BY_NAME`

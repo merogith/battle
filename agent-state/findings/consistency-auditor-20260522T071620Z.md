@@ -220,7 +220,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 9da9210ce0f7
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Malva (Kalos E1) has a victory line but no intro pool in `TRAINER_QUOTES_BY_NAME`
