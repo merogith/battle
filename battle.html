@@ -37258,33 +37258,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Iron / Carbos, special-leaning gyms drop Calcium / Zinc, etc. The
         // voucher pool layers on top of that and surfaces in tutor screens
         // as a pink alt button whenever the matching counter is > 0.
+        // Static portion of each victory reward — balls, perm-boost vitamins,
+        // gold, and the flavor msg. Vouchers (Rare Candy / Vitamin Pack /
+        // Heart Scale / Mint / Ability Capsule / Emblem of Honor / Wishing
+        // Piece) are NOT in this table anymore — they're computed at award
+        // time via _storyComputeVoucherDrops below (teaser-before-NPC + random
+        // pool draws after-NPC), so the voucher reward pool grows with the
+        // player's NPC-unlock progression.
         const GYM_VICTORY_REWARDS = {
-            'Gym Leader 1': { pokeBall:3, vitamin:1, heartScale:1, hpUp:1, protein:1, gold:500,
-                msg:'"You earned this." +3 Poké Balls, +1 Vitamin Pack, +1 Heart Scale, +1 HP Up, +1 Protein, and a 500G purse.' },
-            'Gym Leader 2': { rareCandy:1, vitamin:1, mint:1, iron:1, hpUp:1, gold:1000,
-                msg:'A glittering Rare Candy, a Vitamin Pack, and a fresh Mint. +1 Rare Candy, +1 Vitamin Pack, +1 Mint, +1 Iron, +1 HP Up, +1,000G.' },
-            'Gym Leader 3': { greatBall:2, vitamin:1, heartScale:1, emblemHonor:1, calcium:1, zinc:1,
-                msg:'+2 Great Balls, +1 Vitamin Pack, +1 Heart Scale, +1 Emblem of Honor, +1 Calcium, +1 Zinc — the gym apothecary keeps its researchers stocked.' },
-            'Gym Leader 4': { ultraBall:1, rareCandy:1, vitamin:1, abilityCapsule:1, carbos:2,
-                msg:'The Gym Leader nods. "Take these — they go far together." +1 Ultra Ball, +1 Rare Candy, +1 Vitamin Pack, +1 Ability Capsule, +2 Carbos.' },
-            'Gym Leader 5': { greatBall:2, vitamin:1, heartScale:1, protein:2, hpUp:1, gold:1000, wishingPiece:1,
-                msg:'+2 Great Balls, +1 Vitamin Pack, +1 Heart Scale, +2 Protein, +1 HP Up, a 1,000G honorarium — and a curiosity: one <strong style="color:#b39ddb;">Wishing Piece</strong>. "Colress in the next city collects these. Tell him to awaken something for you — on the house."' },
-            'Gym Leader 6': { ultraBall:2, rareCandy:1, vitamin:1, mint:1, emblemHonor:1, calcium:2, zinc:1, gold:1500,
-                msg:'+2 Ultra Balls, +1 Rare Candy, +1 Vitamin Pack, +1 Mint, +1 Emblem of Honor, +2 Calcium, +1 Zinc, and a 1,500G stipend.' },
-            'Gym Leader 7': { ultraBall:1, rareCandy:1, vitamin:1, abilityCapsule:1, iron:2, carbos:1,
-                msg:'A Rare Candy, a Vitamin Pack, and an Ability Capsule. "You\'ll need all three." +1 Ultra Ball, +1 Rare Candy, +1 Vitamin Pack, +1 Ability Capsule, +2 Iron, +1 Carbos.' },
-            'Gym Leader 8': { ultraBall:3, vitamin:2, heartScale:1, mint:1, hpUp:2, protein:1, calcium:1, carbos:1,
-                msg:'The eighth badge — three Ultra Balls, two Vitamin Packs, a Heart Scale, a Mint, and a hand-picked vitamin bundle: +2 HP Up, +1 Protein, +1 Calcium, +1 Carbos.' },
-            'E1': { greatBall:2, vitamin:1, heartScale:1, protein:2, iron:1,
-                msg:'The first Elite tips a hat. +2 Great Balls, +1 Vitamin Pack, +1 Heart Scale, +2 Protein, +1 Iron.' },
-            'E2': { ultraBall:1, rareCandy:1, emblemHonor:1, calcium:2, zinc:1,
-                msg:'"Top League issue." +1 Ultra Ball, +1 Rare Candy, +1 Emblem of Honor, +2 Calcium, +1 Zinc.' },
-            'E3': { ultraBall:1, vitamin:1, mint:1, carbos:2, hpUp:1,
-                msg:'The third Elite salutes the climb. +1 Ultra Ball, +1 Vitamin Pack, +1 Mint, +2 Carbos, +1 HP Up.' },
-            'E4': { ultraBall:2, rareCandy:1, abilityCapsule:1, emblemHonor:1, hpUp:2, protein:1, iron:1, zinc:1,
-                msg:'The fourth Elite bows. +2 Ultra Balls, +1 Rare Candy, +1 Ability Capsule, +1 Emblem of Honor, +2 HP Up, +1 Protein, +1 Iron, +1 Zinc.' },
-            'Champion': { ultraBall:2, rareCandy:1, vitamin:2, heartScale:1, mint:1, abilityCapsule:1, emblemHonor:1, hpUp:2, protein:2, iron:2, calcium:2, zinc:2, carbos:2,
-                msg:'The Champion bows. "These are yours by right." +2 Ultra Balls, +1 Rare Candy, +2 Vitamin Packs, +1 Heart Scale, +1 Mint, +1 Ability Capsule, +1 Emblem of Honor — and one of each perm-boost vitamin (+2 each). The League stocks the strongest a final-leg trainer can carry.' }
+            'Gym Leader 1': { pokeBall:3, hpUp:1, protein:1, gold:500,
+                msg:'"You earned this." +3 Poké Balls, +1 HP Up, +1 Protein, and a 500G purse.' },
+            'Gym Leader 2': { iron:1, hpUp:1, gold:1000,
+                msg:'A trim badge purse. +1 Iron, +1 HP Up, +1,000G.' },
+            'Gym Leader 3': { greatBall:2, calcium:1, zinc:1,
+                msg:'+2 Great Balls, +1 Calcium, +1 Zinc — the gym apothecary keeps its researchers stocked.' },
+            'Gym Leader 4': { ultraBall:1, carbos:2,
+                msg:'The Gym Leader nods. "These go far together." +1 Ultra Ball, +2 Carbos.' },
+            'Gym Leader 5': { greatBall:2, protein:2, hpUp:1, gold:1000,
+                msg:'+2 Great Balls, +2 Protein, +1 HP Up, a 1,000G honorarium.' },
+            'Gym Leader 6': { ultraBall:2, calcium:2, zinc:1, gold:1500,
+                msg:'+2 Ultra Balls, +2 Calcium, +1 Zinc, and a 1,500G stipend.' },
+            'Gym Leader 7': { ultraBall:1, iron:2, carbos:1,
+                msg:'+1 Ultra Ball, +2 Iron, +1 Carbos.' },
+            'Gym Leader 8': { ultraBall:3, hpUp:2, protein:1, calcium:1, carbos:1,
+                msg:'The eighth badge — three Ultra Balls and a hand-picked vitamin bundle: +2 HP Up, +1 Protein, +1 Calcium, +1 Carbos.' },
+            'E1': { greatBall:2, protein:2, iron:1,
+                msg:'The first Elite tips a hat. +2 Great Balls, +2 Protein, +1 Iron.' },
+            'E2': { ultraBall:1, calcium:2, zinc:1,
+                msg:'"Top League issue." +1 Ultra Ball, +2 Calcium, +1 Zinc.' },
+            'E3': { ultraBall:1, carbos:2, hpUp:1,
+                msg:'The third Elite salutes the climb. +1 Ultra Ball, +2 Carbos, +1 HP Up.' },
+            'E4': { ultraBall:2, hpUp:2, protein:1, iron:1, zinc:1,
+                msg:'The fourth Elite bows. +2 Ultra Balls, +2 HP Up, +1 Protein, +1 Iron, +1 Zinc.' },
+            'Champion': { ultraBall:2, hpUp:2, protein:2, iron:2, calcium:2, zinc:2, carbos:2,
+                msg:'The Champion bows. "These are yours by right." +2 Ultra Balls and one of each perm-boost vitamin (+2 each). The League stocks the strongest a final-leg trainer can carry.' }
         };
 
         // Foe party size = player party size (1:1 match), with story-finale
@@ -37377,11 +37384,150 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (r.carbos)     sm.inventory.carbos   = (sm.inventory.carbos   | 0) + r.carbos;
             if (r.gold)       sm.gold = (sm.gold | 0) + r.gold;
         }
+        // VOUCHER REWARD ENGINE — teaser drops + growing random pool.
+        //
+        // Each voucher unlocks a free use of one NPC's facility (Stone Sage,
+        // Move Tutor, Nature Rater, EV Trainer, Battle Dojo ability swap,
+        // Battle Dojo item swap, Colress battle-form). NPCs unlock at fixed
+        // points in the city pipeline. The reward design:
+        //   - BEFORE the NPC is available, that voucher is a TEASER —
+        //     a 100% drop on the gym whose victory leads into the NPC's
+        //     first city. Builds anticipation ("you got a Wishing Piece —
+        //     but what's it for?"); walking into the next city reveals
+        //     the matching NPC waiting.
+        //   - AFTER the NPC is available, the voucher joins the random
+        //     POOL. Each gym + Elite victory draws N vouchers from the
+        //     pool. The pool grows as NPCs unlock (3 → 6 → 7), so the
+        //     variety of late-game rewards scales with progression.
+        //   - CHAMPION ends with a deterministic "one of every unlocked
+        //     voucher" finale, so the climax always feels complete.
+        //
+        // Pool draws use deficit weighting (w = 1 / (1 + currentCount)) so
+        // RNG can't pile 5 of the same voucher on one player while another
+        // gets zero — a gentle floor, not a hard quota.
+        const VOUCHER_META = {
+            rareCandy:      { npc:'Stone Sage',   unlockBadge: 0, teaserGym: null },
+            heartScale:     { npc:'Move Tutor',   unlockBadge: 0, teaserGym: null },
+            mint:           { npc:'Nature Rater', unlockBadge: 0, teaserGym: null },
+            vitamin:        { npc:'EV Trainer',   unlockBadge: 3, teaserGym: 3 },
+            abilityCapsule: { npc:'Battle Dojo',  unlockBadge: 3, teaserGym: 3 },
+            emblemHonor:    { npc:'Battle Dojo',  unlockBadge: 3, teaserGym: 2 }, // teaser one gym earlier than VP/AC so GL3 isn't piled with three teasers
+            wishingPiece:   { npc:'Colress',      unlockBadge: 5, teaserGym: 5 },
+        };
+        const _VOUCHER_DISPLAY_NAMES = {
+            rareCandy: 'Rare Candy', heartScale: 'Heart Scale', mint: 'Mint',
+            vitamin: 'Vitamin Pack', abilityCapsule: 'Ability Capsule',
+            emblemHonor: 'Emblem of Honor', wishingPiece: 'Wishing Piece'
+        };
+        const _VOUCHER_TEASER_LORE = {
+            emblemHonor:    '"Battle Dojo polishes held-item kits a couple cities out. Stash the Emblem."',
+            vitamin:        '"Buck the EV Trainer opens shop in the next city. A Vitamin Pack waives his fee."',
+            abilityCapsule: '"Dojo Master keeps an ability bench in the next city. Bring this Capsule — first swap is on the house."',
+            wishingPiece:   '"Colress in the next city collects these. Tell him to awaken something for you — on the house."'
+        };
+        const _VOUCHER_POOL_DRAW_COUNT = {
+            'Gym Leader 1': 2,
+            'Gym Leader 2': 2,
+            'Gym Leader 3': 1, // GL3 already fires two teasers (Vitamin Pack + Ability Capsule)
+            'Gym Leader 4': 2,
+            'Gym Leader 5': 1, // GL5 already fires the Wishing Piece teaser
+            'Gym Leader 6': 2,
+            'Gym Leader 7': 2,
+            'Gym Leader 8': 3,
+            'E1': 2, 'E2': 2, 'E3': 2, 'E4': 3,
+            'Champion': 0  // Champion uses the deterministic one-of-each finale, no pool draw
+        };
+        function _badgesAfterEventForRewards(eventName) {
+            const m = /^Gym Leader (\d)$/.exec(eventName);
+            if (m) return parseInt(m[1], 10) | 0;
+            if (/^(E[1-4]|Champion)$/.test(eventName)) return 8;
+            return 0;
+        }
+        function _drawVoucherFromPool(pool, draftBag) {
+            if (!pool || !pool.length) return null;
+            const w = pool.map(v => {
+                const have = ((sm.inventory && sm.inventory[v]) | 0) + ((draftBag && draftBag[v]) | 0);
+                return 1 / (1 + have);
+            });
+            const total = w.reduce((a,b) => a + b, 0);
+            if (total <= 0) return pool[(Math.random() * pool.length) | 0];
+            let r = Math.random() * total;
+            for (let i = 0; i < pool.length; i++) {
+                r -= w[i];
+                if (r < 0) return pool[i];
+            }
+            return pool[pool.length - 1];
+        }
+        function _storyComputeVoucherDrops(eventName) {
+            const out = { drops: {}, lines: [] };
+            const gymMatch = /^Gym Leader (\d)$/.exec(eventName);
+            const gymN = gymMatch ? (parseInt(gymMatch[1], 10) | 0) : null;
+            const badgesAfter = _badgesAfterEventForRewards(eventName);
+
+            // 1) Teasers — voucher fires 100% at its configured teaser gym.
+            //    The teaser gym IS the gym whose win first leads into the NPC's
+            //    city, so at drop-time the NPC is by definition not yet visible.
+            //    (Static-drops gate above ensures this only fires on first clear,
+            //    so Crucible rematches don't re-tease an already-met NPC.)
+            if (gymN !== null) {
+                for (const vid of Object.keys(VOUCHER_META)) {
+                    const meta = VOUCHER_META[vid];
+                    if (meta.teaserGym === gymN) {
+                        out.drops[vid] = (out.drops[vid] | 0) + 1;
+                        const lore = _VOUCHER_TEASER_LORE[vid] || '';
+                        out.lines.push('🔮 +1 ' + _VOUCHER_DISPLAY_NAMES[vid] + (lore ? ' — ' + lore : ''));
+                    }
+                }
+            }
+
+            // 2) Champion finale — one of every voucher whose NPC has unlocked.
+            if (eventName === 'Champion') {
+                const pieces = [];
+                for (const vid of Object.keys(VOUCHER_META)) {
+                    if (VOUCHER_META[vid].unlockBadge <= badgesAfter) {
+                        out.drops[vid] = (out.drops[vid] | 0) + 1;
+                        pieces.push('+1 ' + _VOUCHER_DISPLAY_NAMES[vid]);
+                    }
+                }
+                if (pieces.length) out.lines.push('🏆 Champion bundle: ' + pieces.join(', '));
+                return out;
+            }
+
+            // 3) Random pool draws (deficit-weighted). Voucher joins the pool
+            //    one gym AFTER its NPC unlocks (strict <), so a voucher being
+            //    teased at gym N doesn't also leak into the same gym's pool.
+            const draws = _VOUCHER_POOL_DRAW_COUNT[eventName] | 0;
+            if (draws > 0) {
+                const pool = [];
+                for (const vid of Object.keys(VOUCHER_META)) {
+                    const meta = VOUCHER_META[vid];
+                    if (meta.unlockBadge >= badgesAfter) continue; // NPC unlocks at or after this gym; not in pool yet
+                    pool.push(vid);
+                }
+                const draftBag = {};
+                for (let i = 0; i < draws; i++) {
+                    const pick = _drawVoucherFromPool(pool, draftBag);
+                    if (!pick) break;
+                    draftBag[pick] = (draftBag[pick] | 0) + 1;
+                }
+                const pieces = [];
+                for (const v of Object.keys(draftBag)) {
+                    out.drops[v] = (out.drops[v] | 0) + draftBag[v];
+                    pieces.push('+' + draftBag[v] + ' ' + _VOUCHER_DISPLAY_NAMES[v]);
+                }
+                if (pieces.length) out.lines.push('🎲 Pool draw (' + draws + '): ' + pieces.join(', '));
+            }
+            return out;
+        }
         function _storyApplyVictoryReward(eventName) {
-            const r = GYM_VICTORY_REWARDS[eventName];
-            if (!r) return null;
-            _storyGrantBundle(r);
-            return r;
+            const base = GYM_VICTORY_REWARDS[eventName];
+            if (!base) return null;
+            _storyGrantBundle(base);
+            const v = _storyComputeVoucherDrops(eventName);
+            if (v && v.drops) _storyGrantBundle(v.drops);
+            let combinedMsg = base.msg || '';
+            if (v && v.lines && v.lines.length) combinedMsg += ' ' + v.lines.join(' ');
+            return { ...base, msg: combinedMsg, _vouchers: (v && v.drops) || {} };
         }
 
         // Pokédex caught-count milestones — cross-run safe (sm.pokedexMilestones is
