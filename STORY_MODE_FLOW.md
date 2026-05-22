@@ -1273,15 +1273,29 @@ sm.daycare = {
   - Fight 2: foe at avg(team) tier (matched)
   - Fight 3: foe at avg(team) tier − 1 *and* every foe stat carries
     `bonus: +2` (the bracket's "boss")
+* Foe builds pass through `_applyStoryBuildPowerTier` with a synthetic
+  `Gym Leader N` event name (N = current badge count, clamped 1..8).
+  Pit foes share the gym-leader tier polish, IV roll, and move/EV
+  depth — no separate "Pit curve" to balance.
 * Auto-heal between fights. Fatigue never accrues during a Pit run.
 * **Win all three** →
-  - Every team member (witnesses) gets +1 on a random stat in
+  - Every team member (witnesses) gets +1 on **EVERY stat** in
     `build.bonus` (capped at +5 / stat). The bonus stacks on top of
-    the 0–31 IV range — a fully-IV-trained mon at +5 reads as effective
-    IV 36.
-  - Gold payout = `5000 + 2000 × badges`.
+    the 0–31 IV range, with the total clamped to **36 effective IV**
+    via `min(36, ivs[s] + bonus[s])` in `buildPokemon::getIV`. Five
+    winning brackets bring every stat to the ceiling; further wins
+    can't push past.
+  - Gold payout = `_pitsCalcGoldPayout()` = `floor(0.5 *
+    nextGymLeaderCoins(badges))`, floor 1000G.
   - The 3 bracket mons are added to `sm.pits.bondedMonIds`.
-* **Lose any fight** → streak resets, standard story Game-Over flow.
+* **Lose any fight** → no auto-resolve. The **Pit Defeat overlay**
+  appears (`_pitsShowDefeatOverlay`) with two options:
+  - **Try Again** (`_pitsRetryFight`) — free, unlimited; same fight
+    relaunched at full HP, bracket index unchanged.
+  - **Forfeit** (`_pitsForfeitBracket`) — death roll. One random of
+    the 3 bracket ids dies (permanent removal from team + PC + bonded
+    list). The other 2 are pushed into the PC as "barely made it"
+    survivors. Gated by a `confirm()` dialog. No win bonus.
 
 ### Pit-bonded mons
 

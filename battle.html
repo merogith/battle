@@ -13325,12 +13325,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // don't accidentally double-count.
             let ivs = build.ivs || {};
             // Pit-blood bonus stacks ON TOP of the standard 0..31 IV range (max +5 per stat). The
-            // bonus is per-build, persisted in save, and applied universally via this single point
-            // so every downstream stat / damage read picks it up without extra plumbing.
+            // total effective IV is hardcapped at 36 — a mon at IV 31 with bonus +5 reads as 36;
+            // a mon at IV 28 with bonus +5 reads as 33. The bonus is per-build, persisted in
+            // save, and applied universally via this single point so every downstream stat /
+            // damage read picks it up without extra plumbing.
             let bonus = (build.bonus && typeof build.bonus === 'object') ? build.bonus : null;
             let getIV = stat => {
                 const b = (ivs[stat] !== undefined ? ivs[stat] : 31);
-                return b + (bonus ? Math.max(0, Math.min(5, bonus[stat] | 0)) : 0);
+                const bn = bonus ? Math.max(0, Math.min(5, bonus[stat] | 0)) : 0;
+                return Math.min(36, b + bn);
             };
             // HP: floor((2 * base + IV + floor(EV/4)) * 50 / 100) + 60
             mon.maxHp = (monName === 'Shedinja') ? 1 : Math.floor((2 * base.hp + getIV('hp') + Math.floor((evs.hp||0) / 4)) * 50 / 100) + 60;
@@ -37041,6 +37044,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // bracket pacey. Mons are picked so the average grade matches the
         // player's snapshot, with one fight skewing harder (the "boss" of the
         // bracket — fight #3).
+        //
+        // Build strength: foes pass through `_applyStoryBuildPowerTier` with a
+        // synthetic "Gym Leader N" event name (N = current badge count, clamped
+        // 1..8). That means Pit foes get the exact tier polish, IV roll, and
+        // move/EV depth a same-stage Gym Leader fight would have — no special
+        // "Pit power curve" to balance, just lean on the existing gym ladder.
+        // Boss fight (#3) flags its mon as a signature ace for the top-quartile
+        // IV bump, AND carries a +2 bonus stat layer to read as "the bracket's
+        // top dog you paid to fight."
         function _pitsRollEnemyRoster() {
             const snap = _pitsActiveSnapshot();
             const avgGrade = snap && snap.teamSummary && snap.teamSummary.length
@@ -37048,6 +37060,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 : 3;
             // Bracket grades: warm-up (avg + 1, weaker), mid (avg), boss (avg - 1, stronger; min 1)
             const tiers = [Math.min(4, avgGrade + 1), avgGrade, Math.max(1, avgGrade - 1)];
+            const badges = Math.max(1, Math.min(8, (sm.badges | 0) || 6));
+            const tierEventName = `Gym Leader ${badges}`;
             const fights = tiers.map((tier, i) => {
                 const candidates = [];
                 for (const name of Object.keys(baseStats)) {
@@ -37058,21 +37072,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const monName = candidates[Math.floor(Math.random() * candidates.length)];
                 let build = null;
                 try {
-                    // Pit foes are full-strength trainer builds (NOT the wild EV head-start
-                    // path), so `makeBuild` is the right call here. T3-tier moves and CSV
-                    // imports are kept intact for a competitive bracket fight.
                     if (typeof makeBuild === 'function') build = makeBuild(monName);
                 } catch (e) {}
                 if (!build) build = { m:['Tackle','Tackle','Tackle','Tackle'], a:null, n:'Hardy', i:null, ivs:{ hp:31,atk:31,def:31,spa:31,spd:31,spe:31 }, evs:{ hp:0,atk:0,def:0,spa:0,spd:0,spe:0 } };
                 if (!build.bonus) build.bonus = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
                 if (typeof build.tired !== 'number') build.tired = 0;
-                // Boss fight: foe gets +2 bonus on every stat — represents the bracket's
-                // top dog, the trainer the player is paying to fight.
+                // Boss fight: +2 bonus on every stat. Stacks on top of the tier IV roll
+                // applied below, capped to the 36 effective-IV ceiling by buildPokemon.
                 if (i === 2) {
                     for (const k of ['hp','atk','def','spa','spd','spe']) build.bonus[k] = 2;
                 }
                 return { name: monName, build: build, grade: tier };
             }).filter(Boolean);
+            // Run the bracket through the gym-leader tier polish. The boss mon is
+            // tagged as an ace via sigNames so its IV roll lands in the top quartile.
+            try {
+                if (typeof _applyStoryBuildPowerTier === 'function' && fights.length) {
+                    const sigNames = fights.length >= 3 ? [fights[2].name] : [];
+                    _applyStoryBuildPowerTier(fights, tierEventName, -1, sigNames);
+                }
+            } catch (e) { console.warn('[Pits] tier polish', e); }
             return fights;
         }
         function enterPits() {
@@ -37214,16 +37233,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.pits._fightIndex = 0;
             sm.pits._inBattle = false;
             if (won) {
-                // +1 to a random stat on every party member.
-                const stats = ['hp','atk','def','spa','spd','spe'];
+                // +1 to EVERY stat on every party member (witnessed and changed). Each
+                // stat clamps at +5 per build; the IV+bonus total is hardcapped at 36
+                // by buildPokemon's getIV. So an IV-31 / bonus-5 mon reads as a flat
+                // 36 across the board — the engine refuses to "double-stack" past
+                // that ceiling no matter how many bracket runs the player chains.
                 for (const slot of (sm.team || [])) {
                     if (!slot || !slot.build) continue;
                     if (!slot.build.bonus) slot.build.bonus = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
-                    const s = stats[Math.floor(Math.random() * stats.length)];
-                    slot.build.bonus[s] = Math.min(5, (slot.build.bonus[s] | 0) + 1);
+                    for (const s of ['hp','atk','def','spa','spd','spe']) {
+                        slot.build.bonus[s] = Math.min(5, (slot.build.bonus[s] | 0) + 1);
+                    }
                 }
-                // Gold payout — scales with current badge count.
-                const payout = 5000 + 2000 * (sm.badges | 0);
+                // Gold payout = 50% of the next Gym Leader's reward (or the equivalent
+                // current-stage gym at HoF+). The Pits are a half-pay shadow of the
+                // legitimate ladder — the *risk*, not the *purse*, is what makes them
+                // worthwhile.
+                const payout = _pitsCalcGoldPayout();
                 sm.gold = Math.max(0, (sm.gold | 0) + payout);
                 sm.pits.payoutGold = ((sm.pits.payoutGold | 0) + payout);
                 // Mark the bracket mons as bonded (auto-release on city return).
@@ -37237,22 +37263,43 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { save(); } catch (_) {}
                 try {
                     window.showGameAlert && window.showGameAlert(
-                        `⚔ Three down. All your Pokémon witnessed it — they all changed. +1 random stat each, +${payout.toLocaleString()}G. The bracket mons are BONDED — the Underground claims them when you leave for clean streets.`
+                        `⚔ Three down. All your Pokémon witnessed it — they all changed. +1 every stat, +${payout.toLocaleString()}G. The bracket mons are BONDED — the Underground claims them when you leave for clean streets.`
                     );
                 } catch (_) {}
             } else {
+                // Pit defeat path is handled by _pitsShowDefeatOverlay (which calls
+                // _pitsForfeitBracket on player's "forfeit" choice). This branch only
+                // fires if a caller explicitly resolves(false) outside the retry loop —
+                // currently dead code, kept defensive.
                 sm.pits.winsThisVisit = 0;
                 try { save(); } catch (_) {}
-                try { window.showGameAlert && window.showGameAlert('The Pit takes its cut. Streak ends.'); } catch (_) {}
             }
             try { renderTeamPanel(); } catch (_) {}
             try { renderStoryCity(); } catch (_) {}
+        }
+        // Gold payout for a winning Pit bracket — 50% of the next Gym Leader's reward.
+        // Falls back to the highest cleared gym (capped at 8) at HoF+ so the Crucible
+        // Pit loop stays well-paid without being parsed as "level-up gold farming."
+        function _pitsCalcGoldPayout() {
+            // Gym Leader coin rewards live on STORY_EVENTS_RAW row[4]. Pull the next
+            // unbeaten gym's reward when available; fall back to the last gym otherwise.
+            const badges = Math.max(6, Math.min(8, (sm.badges | 0) || 6));
+            const targetGym = Math.min(8, badges + 1); // next gym = current+1, capped at 8
+            const ev = STORY_EVENTS_RAW.find(r => r && r[1] === 'Battle' && r[2] === `Gym Leader ${targetGym}`);
+            const gymCoins = ev ? (ev[4] | 0) : 5950;
+            return Math.max(1000, Math.floor(gymCoins * 0.5));
         }
         // Pit battle end interceptor — call from onBattleEnd when sm.pits._inBattle is true.
         function _pitsHandleBattleEnd(won) {
             if (!sm.pits) sm.pits = {};
             if (!won) {
-                _pitsResolveBracket(false);
+                // Don't tear down the bracket — surface the Pit Defeat overlay so the
+                // player can Retry (free, unlimited) or Forfeit (death roll: 1 random
+                // bracket mon dies, 2 others go to PC).
+                sm.pits._inBattle = false;
+                try { save(); } catch (_) {}
+                document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
+                setTimeout(() => { try { _pitsShowDefeatOverlay(); } catch (e) { console.warn('[Pits] defeat overlay', e); } }, 300);
                 return;
             }
             // Sync team state from the battle snapshot so HP/PP/state carries between bracket fights.
@@ -37277,6 +37324,117 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
             // Short delay so the victory overlay clears before next launch.
             setTimeout(() => { try { _pitsLaunchFight(); } catch (e) { console.warn('[Pits] next fight', e); } }, 400);
+        }
+
+        // Defeat overlay: shown on any Pit fight loss. Two options:
+        //   • RETRY — free, unlimited; restarts the same fight at full HP. The bracket
+        //     index stays put so the player can grind through fight 2 ten times if they
+        //     want before progressing.
+        //   • FORFEIT — exits the bracket; triggers _pitsForfeitBracket which rolls a
+        //     random one-of-three bracket mons to die permanently, releases the other two
+        //     to PC, and returns the player to the city. (No win bonus, no gold.)
+        function _pitsShowDefeatOverlay() {
+            const fightIdx = (sm.pits && sm.pits._fightIndex) | 0;
+            const ov = document.createElement('div');
+            ov.id = 'story-pits-defeat-overlay';
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:9995;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
+            ov.innerHTML = `<div style="max-width:520px;width:100%;background:linear-gradient(180deg,rgba(40,8,8,0.98),rgba(15,2,2,0.98));border:1px solid #ff5252;padding:22px 24px;color:#ffcdd2;font-family:inherit;font-size:12px;line-height:1.6;box-shadow:0 14px 40px rgba(0,0,0,0.8);">
+                <div style="font-size:15px;color:#ff5252;font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px;">☠ Down in the Pit</div>
+                <div style="margin-bottom:14px;color:#ef9a9a;font-style:italic;">"They're hauling your fighter off the floor. The crowd hasn't even started thinning. You can step back in — or you can walk away. Walking away here costs more than gold."</div>
+                <div style="padding:11px 14px;background:rgba(0,0,0,0.5);border-left:3px solid #ff5252;margin-bottom:16px;font-size:11px;line-height:1.65;">
+                    <div><strong style="color:#fff;">Fight ${Math.min(3, fightIdx + 1)}/3 — Lost.</strong></div>
+                    <div style="margin-top:6px;"><strong style="color:#ffd54f;">Retry</strong> is free. Same opponent, fresh full HP. The Pit doesn't care how many tries it takes.</div>
+                    <div style="margin-top:6px;"><strong style="color:#ff5252;">Forfeit</strong> ends the bracket. One of your three bracket Pokémon won't be walking out — the Underground doesn't release damaged goods. The other two… <em>barely</em> make it back to your PC.</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button type="button" id="pits-defeat-retry" style="flex:1;padding:14px;background:#ffd54f;color:#1a0000;border:none;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;letter-spacing:0.05em;">↻ TRY AGAIN ▶▶</button>
+                    <button type="button" id="pits-defeat-forfeit" style="flex:1;padding:14px;background:transparent;color:#ff5252;border:2px solid #ff5252;font-family:inherit;font-size:12px;font-weight:bold;cursor:pointer;letter-spacing:0.05em;">⚰ FORFEIT</button>
+                </div>
+            </div>`;
+            document.body.appendChild(ov);
+            const retry = ov.querySelector('#pits-defeat-retry');
+            const forfeit = ov.querySelector('#pits-defeat-forfeit');
+            if (retry) retry.onclick = () => { _pitsCloseDefeatOverlay(); _pitsRetryFight(); };
+            if (forfeit) forfeit.onclick = () => {
+                if (!confirm('Forfeit the bracket? One of your three bracket Pokémon will die. This cannot be undone.')) return;
+                _pitsCloseDefeatOverlay();
+                _pitsForfeitBracket();
+            };
+        }
+        function _pitsCloseDefeatOverlay() {
+            const ov = document.getElementById('story-pits-defeat-overlay');
+            if (ov) ov.remove();
+        }
+        // Retry: relaunch the SAME fight (index stays put). Heal team to full first.
+        function _pitsRetryFight() {
+            _storyFullHealPartySlots();
+            try { save(); } catch (_) {}
+            try { _pitsLaunchFight(); } catch (e) { console.warn('[Pits] retry launch', e); }
+        }
+        // Forfeit: roll the death — random 1-of-3 bracket mons dies (permadeath); the
+        // other 2 are released to the PC. Then restore the original team, reset Pit
+        // counters, and bail back to the city.
+        function _pitsForfeitBracket() {
+            const bracketIds = (sm.pits._activePickIds || []).slice();
+            const originalTeam = (sm.pits._teamBeforePit || []).slice();
+            sm.team = originalTeam;
+            sm.pits._teamBeforePit = null;
+            sm.pits._activePickIds = null;
+            sm.pits._enemyRoster = null;
+            sm.pits._fightIndex = 0;
+            sm.pits._fightsWon = 0;
+            sm.pits._inBattle = false;
+            sm.pits.winsThisVisit = 0;
+            // Roll the death — uniform random across the 3 bracket ids.
+            const survivors = [];
+            let deadId = null;
+            if (bracketIds.length) {
+                const rIdx = Math.floor(Math.random() * bracketIds.length);
+                deadId = bracketIds[rIdx];
+                for (let i = 0; i < bracketIds.length; i++) if (i !== rIdx) survivors.push(bracketIds[i]);
+            }
+            // Resolve names BEFORE the removal so the toast can reference them.
+            const team = sm.team || [];
+            const box  = sm.pcBox || [];
+            const findById = id => team.find(s => s && s.id === id) || box.find(s => s && s.id === id) || null;
+            const deadSlot = deadId ? findById(deadId) : null;
+            const deadName = deadSlot ? (deadSlot.nickname || deadSlot.name) : 'A bracket Pokémon';
+            const survivorNames = survivors.map(id => { const s = findById(id); return s ? (s.nickname || s.name) : 'one'; });
+            // Permadeath: remove the dead mon from team / pc entirely. Also clear it from
+            // bondedMonIds and the daycare parentMonId if it was sitting there for some
+            // reason (defensive — daycare-pinned mons aren't picklable anyway).
+            if (deadId) {
+                let ti = team.findIndex(s => s && s.id === deadId);
+                if (ti >= 0) team.splice(ti, 1);
+                let bi = box.findIndex(s => s && s.id === deadId);
+                if (bi >= 0) box.splice(bi, 1);
+            }
+            // Survivors: move team-residents into the PC. Already-in-PC stays put.
+            for (const id of survivors) {
+                const ti = team.findIndex(s => s && s.id === id);
+                if (ti >= 0) {
+                    const [moved] = team.splice(ti, 1);
+                    box.push(moved);
+                }
+            }
+            // Clear bonded list — those mons are gone (dead) or now in the PC (survivors),
+            // and the Underground has no further claim once the bracket forfeits.
+            sm.pits.bondedMonIds = [];
+            sm.pcBox = box;
+            // Iconic exit: heal + clear fatigue on the surviving team.
+            _storyClearTirednessForIconic();
+            _storyFullHealPartySlots();
+            try { save(); } catch (_) {}
+            try {
+                const survivorLine = survivorNames.length
+                    ? `${survivorNames.join(' and ')} crawled out — barely. They're in the PC now, sleeping it off.`
+                    : '';
+                window.showGameAlert && window.showGameAlert(
+                    `☠ The Pit kept ${deadName}. ${survivorLine}`
+                );
+            } catch (_) {}
+            try { renderTeamPanel(); } catch (_) {}
+            try { renderStoryCity(); } catch (_) {}
         }
         // City-return consequence: bonded mons auto-release when the player walks back
         // into a regular town (Underground is NOT a town — the release happens on the

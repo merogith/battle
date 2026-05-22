@@ -61,18 +61,47 @@ post-Champion snapshot for the Crucible loop):
 * **Fight 3** — boss: foe tier ≈ player tier − 1 *and* every foe stat
   carries a flat +2 bonus to represent the bracket's top dog.
 
+Foe builds run through the standard `_applyStoryBuildPowerTier` pass
+with a synthetic `Gym Leader N` event name (N = current badge count) —
+so Pit foes get the same tier polish, IV roll, and move/EV depth a
+same-stage Gym Leader fight would have. No special "Pit power curve"
+to balance, the bracket inherits the legitimate gym ladder directly.
+
 Auto-heal between fights; fatigue never accrues. Win all three and:
 
-* **Every team member** (witnesses) gains a permanent **+1 on a random
-  stat** (capped at +5 per stat). The bonus stacks ON TOP of the 0–31
-  IV range — a fully-IV-trained mon at +5 reads as effective IV 36.
-* Gold payout = `5000 + 2000 × badges`.
+* **Every team member** (witnesses) gains a permanent **+1 on EVERY
+  stat** (HP / Atk / Def / SpA / SpD / Spe), capped at **+5 per stat**.
+  The bonus stacks ON TOP of the 0–31 IV range, with a hardcap at
+  **effective IV 36** — `min(36, ivs[stat] + bonus[stat])` enforced
+  at the single `getIV` site in `buildPokemon`. Five winning brackets
+  bring every stat to the 36 ceiling and further wins can't push past.
+* Gold payout = **50% of the next Gym Leader's reward** (floor 1000G).
+  Pre-League: ~2,775G at 6 badges, ~2,900G at 7, ~2,975G at 8. The Pit
+  is a half-pay shadow of the legitimate ladder; the *risk*, not the
+  *purse*, is what makes the bracket worth running.
 * The 3 bracket Pokémon become **BONDED** — they're branded for the
   Underground and auto-release the moment you walk back into a clean
   city. (Streets are streets, the alleys claim their own.)
 
-Lose any of the three fights and the streak ends. No bonded mons; same
-Game-Over flow as any story battle.
+### Added — Pit defeat: retry overlay + battle-to-death forfeit
+
+Losing any of the three bracket fights surfaces a dedicated **Pit
+Defeat overlay** with two paths:
+
+* **Try Again** — free, unlimited. Heals the team to full and relaunches
+  the same fight at the same bracket index. The Pit doesn't care how
+  many tries it takes.
+* **Forfeit** — exits the bracket and rolls the death. One random
+  Pokémon out of the three you picked **dies permanently** — removed
+  from the save outright. The other two "barely" make it out and are
+  released to your **PC** (they survive but they're not playing the
+  next fight). No win bonus, no gold, no bonded list.
+
+Forfeit gates behind a `confirm()` dialog so an accidental click can't
+delete a mon. The death roll is a uniform random pick across the 3
+bracket ids. Whoever it lands on disappears from team / PC entirely
+— there is no funeral screen, no Pokédex tombstone. The Pit doesn't
+keep records.
 
 ### Added — Champion snapshot powers the endgame Pit ladder
 
