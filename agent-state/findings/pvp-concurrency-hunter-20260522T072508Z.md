@@ -217,7 +217,7 @@ file: supabase/migrations/001_online_pvp.sql
 agents: [pvp-concurrency-hunter]
 fingerprint: c6b9e9e968bd
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `pvp_rooms` SELECT policy is `using (true)` — anyone with the public key can scrape every live match's full draft + battle state

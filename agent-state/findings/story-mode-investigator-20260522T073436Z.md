@@ -46,7 +46,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: fad97b9dadac
 confidence: high
-status: open
+status: wontfix-ratified-pc-box-cap-30
 ---
 
 **Title**: PC_BOX_CAP is 30 in code but the canonical spec says 10
@@ -657,7 +657,7 @@ file: STORY_MODE_FLOW.md
 agents: [story-mode-investigator]
 fingerprint: 85733dc0b897
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: STORY_MODE_FLOW.md PC cap of 10 contradicts shipped PC_BOX_CAP=30

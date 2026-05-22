@@ -6,7 +6,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 580596d9a9df
 confidence: high
-status: open
+status: wontfix-deferred-feature-needs-scope
 ---
 
 **Title**: Black Market shop from STORY_FEATURES_INTEGRATION.md §3 is still entirely unimplemented
@@ -33,7 +33,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 09f2ddbbdfb4
 confidence: high
-status: open
+status: wontfix-deferred-feature-needs-scope
 ---
 
 **Title**: Illegal Dealer NPC encounter (STORY_FEATURES_INTEGRATION.md §3.5) still missing
@@ -60,7 +60,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: b2982543c7b0
 confidence: high
-status: open
+status: wontfix-deferred-feature-needs-scope
 ---
 
 **Title**: Battle for Pokémon wager system (STORY_FEATURES_INTEGRATION.md §6) still missing
@@ -88,7 +88,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 5ccd1b40734e
 confidence: high
-status: open
+status: wontfix-deferred-feature-needs-scope
 ---
 
 **Title**: Pokémon Trader (STORY_FEATURES_INTEGRATION.md §7) at City4 still missing
@@ -115,7 +115,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 4f2f5373374e
 confidence: high
-status: open
+status: wontfix-deferred-feature-needs-scope
 ---
 
 **Title**: Full Itinerary scaffolding (STORY_FEATURES_INTEGRATION.md §10) still entirely unimplemented

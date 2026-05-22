@@ -33,7 +33,7 @@ writing — they will drift as work proceeds.
 | Caught state | Full HP / full PP / no status. |
 | HP between battles | **Full-heal between every battle.** Attrition is removed; mart consumables matter only within a single battle. |
 | Difficulty modes | Keep `veryeasy / easy / normal / hard / challenge`. **Remove `hardcore`.** |
-| PC | Pure storage. Flat array, **cap 10** (story is battle-focused, not a collection layer). Catch fails with an explicit message when party 6/6 and PC 10/10 — player must sell or release first. Stable `id` per mon. |
+| PC | Pure storage. Flat array, **cap 30** (ratified post-spec to accommodate Pokédex completion + Safari runs + boss-arc keepers). Catch fails with an explicit message when party 6/6 and PC 30/30 — player must sell or release first. Stable `id` per mon. The shipped constant is `PC_BOX_CAP`. |
 | Underground | Built into every Pokémon Center hub button. Always visible. Sells your mons for gold (price scales with grade). Cannot sell your last party mon, the starter, or the boss-arc capture. |
 | Pokémon Center button | New city hub action. Contains PC + Underground. No heal function (battles auto-heal). |
 | Foe sizing | **Badge curve**: `min(6, 2 + badges)` for everyone except story finales (always 6) and the intro rival (pure player-match for a 1v1 starter duel). So foes = 2 pre-Gym-1, 3 post-Gym-1, …, 6 from post-Gym-4 on. |
@@ -171,7 +171,7 @@ Initial peg (G1 is the strongest tier per the existing `getMonGrade` convention 
 
 Every city gets a new hub action: **"Pokémon Center"**. Tapping it opens a screen with two tabs:
 
-- **PC Storage** — Deposit, withdraw, release. **Capacity 10** — intentionally tight, since the run is battle-focused and the Underground is meant to drive sell decisions, not a long-term collection. At ≥ 8/10 the screen shows a "PC nearly full" warning banner; at 10/10 a new wild catch fails outright with a clear modal telling the player to sell or release first.
+- **PC Storage** — Deposit, withdraw, release. **Capacity 30** (ratified post-spec — the original target was 10 but the dex-completion + Safari + boss-arc keeper workflows landed needing more headroom). At ≥ 80% of cap the screen shows a "PC nearly full" warning banner; at full a new wild catch fails outright with a clear modal telling the player to sell or release first. The shipped constant is `PC_BOX_CAP` and the warning threshold is `Math.floor(PC_BOX_CAP * 0.8)`.
 - **Underground** — Sell mons for gold. Dark visual theme. Per-grade price table above. Unsellable: starter, current last party mon, the boss-arc capture ("Subject Zero").
 
 Selling shows a confirmation modal (`"Sold to the Underground. Gone for good."`) with no take-back.
@@ -265,7 +265,7 @@ Caught: enters the player's roster as **"Subject Zero"** with a unique flag. Sta
 
 ```js
 // Add to sm defaults at battle.html:22191
-pcBox:        [],                                        // flat, cap 10
+pcBox:        [],                                        // flat, cap 30 (PC_BOX_CAP)
 balls:        { poke: 5, great: 0, ultra: 0, master: 0 }, // starting balls
 pokedex:      { seen: [], caught: [] },                   // per-run; cross-run lives in pbs_story_meta
 catchUnlocked: false,                                     // toggles wild-route prompts; flipped on after first wild route entry or starter
@@ -417,7 +417,7 @@ This spec overrides these prior recommendations:
 These remain valid from the prior docs:
 
 - **A1**: Stable `id` on every mon
-- **A2**: Flat-array PC, cap **10** (revised down from the prior audit's 60 — this is a battle-focused story mode, not a collection roguelike)
+- **A2**: Flat-array PC, cap **30** (the shipped `PC_BOX_CAP`; an earlier draft of this doc said 10 — ratified to 30 to accommodate dex-completion + Safari + boss-arc keepers)
 - **A3**: Pokédex seen + caught, cross-run
 - **A4**: Rough wild builds (not full competitive)
 - **A5**: Extend slot in place with optional new fields

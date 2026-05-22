@@ -17,6 +17,11 @@
     let pushDataQueue = Promise.resolve();
     let remoteRowQueue = Promise.resolve();
     let hostResolving = false;
+    // Per-room caller token (ISSUE-020). Host receives this from
+    // try_create_pvp_room; guest receives a different one from
+    // try_join_pvp_room. All subsequent writes go through pvp_push_data
+    // which validates the token server-side. Cleared in dispose().
+    let roomToken = null;
 
     function configured() {
         const u = global.__PBS_SUPABASE_URL;
@@ -358,21 +363,25 @@
                     state_hash: null
                 }
             };
-            let row = null;
+            // Mint the room via try_create_pvp_room RPC. The RPC generates
+            // the host_token server-side and embeds it in `data` so the host
+            // can prove ownership for subsequent pvp_push_data calls. Pre-fix
+            // (migration 004 / direct INSERT) any anon client with the room
+            // id could clobber the row's `data` jsonb. Retry on duplicate_code
+            // matches the pre-fix collision behavior.
+            let rpcRes = null;
             let lastErr = null;
             for (let attempt = 0; attempt < 8; attempt++) {
                 roomCode = randomCode();
-                const ins = await sb.from('pvp_rooms').insert({ code: roomCode, data }).select('id').single();
-                if (!ins.error) {
-                    row = ins.data;
-                    break;
-                }
-                lastErr = ins.error;
-                const dup = ins.error && (ins.error.code === '23505' || String(ins.error.message || '').toLowerCase().includes('duplicate'));
-                if (!dup) throw ins.error;
+                const { data: r, error: rpcErr } = await sb.rpc('try_create_pvp_room', { p_code: roomCode, p_data: data });
+                if (rpcErr) { lastErr = rpcErr; throw rpcErr; }
+                if (r && r.ok) { rpcRes = r; break; }
+                if (r && r.error === 'duplicate_code') { lastErr = new Error('duplicate_code'); continue; }
+                throw new Error('try_create_pvp_room: ' + ((r && r.error) || 'unknown'));
             }
-            if (!row) throw lastErr || new Error('Could not create room (code collision).');
-            roomId = row.id;
+            if (!rpcRes) throw lastErr || new Error('Could not create room (code collision).');
+            roomId = rpcRes.id;
+            roomToken = rpcRes.host_token;
             role = 1;
             lastRemoteSeq = seq;
             this._subscribe();
@@ -399,6 +408,10 @@
                 if (code === 'not_found') throw new Error('Room not found.');
                 throw new Error('Could not join room.');
             }
+            // Capture the guest token (issued only to the joining client) for
+            // subsequent pvp_push_data calls. The token is the only secret
+            // bound to the guest's identity in this room.
+            roomToken = jr.guest_token || null;
             lastRemoteSeq = (jr.data && jr.data.seq) != null ? jr.data.seq : lastRemoteSeq;
             this._subscribe();
             const { data: rowFresh, error: freshErr } = await sb.from('pvp_rooms').select('*').eq('id', roomId).single();
@@ -460,6 +473,7 @@
             roomId = null;
             roomCode = null;
             role = null;
+            roomToken = null;
             lastRemoteSeq = 0;
             pushDataQueue = Promise.resolve();
             remoteRowQueue = Promise.resolve();
@@ -492,33 +506,33 @@
             return op;
         },
 
-        async _pushDataImpl(patch, existingData) {
+        async _pushDataImpl(patch, _existingData) {
             const sb = getClient();
             if (!sb || !roomId) return;
-            let prev = existingData;
-            if (prev === undefined) {
-                const { data: row, error: selErr } = await sb.from('pvp_rooms').select('data').eq('id', roomId).single();
-                if (selErr) {
-                    console.warn('[OnlinePvP] pushData select failed — not overwriting room', selErr);
-                    throw selErr;
-                }
-                if (!row || row.data == null) {
-                    console.warn('[OnlinePvP] pushData missing row data — not overwriting room');
-                    throw new Error('pushData: no room data');
-                }
-                prev = row.data;
+            if (!roomToken) {
+                console.warn('[OnlinePvP] pushData: no roomToken — refusing to write');
+                throw new Error('pushData: no roomToken');
             }
-            const seq = (prev.seq || 0) + 1;
-            const data = mergeData(prev, patch);
-            data.seq = seq;
-            const { error: upErr } = await sb.from('pvp_rooms').update({ data, updated_at: new Date().toISOString() }).eq('id', roomId);
-            if (upErr) {
-                // Surface the write failure upstream so callers .catch can
-                // surface a UI message or retry. Pre-fix: silent console.warn
-                // and the queue advanced as if the write succeeded — local
-                // state diverged from Supabase.
-                console.warn('[OnlinePvP] pushData update failed', upErr);
-                throw upErr;
+            // Server-side merge + seq increment + token validation via the
+            // pvp_push_data RPC (migration 005). The `existingData` argument
+            // is no longer used — server reads cur state with `for update`
+            // lock so seq advances atomically even under concurrent writes.
+            // Surface the write failure upstream so callers .catch can show
+            // UI; pre-fix the queue advanced as if the write succeeded and
+            // local state diverged from Supabase.
+            const { data: result, error: rpcErr } = await sb.rpc('pvp_push_data', {
+                p_room_id: roomId,
+                p_token: roomToken,
+                p_patch: patch,
+            });
+            if (rpcErr) {
+                console.warn('[OnlinePvP] pushData RPC failed', rpcErr);
+                throw rpcErr;
+            }
+            if (!result || !result.ok) {
+                const err = (result && result.error) || 'unknown';
+                console.warn('[OnlinePvP] pushData RPC rejected:', err);
+                throw new Error('pvp_push_data: ' + err);
             }
         },
 

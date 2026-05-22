@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-22T10:45:44.514Z
+> **Generated**: 2026-05-22T17:01:09.235Z
 > **Source**: `agent-state/findings/*.md` (88 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -298,7 +298,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 580596d9a9df
 confidence: high
-status: open
+status: wontfix-deferred-feature-needs-scope
 ---
 
 **Title**: Black Market shop from STORY_FEATURES_INTEGRATION.md §3 is still entirely unimplemented
@@ -409,7 +409,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 09f2ddbbdfb4
 confidence: high
-status: open
+status: wontfix-deferred-feature-needs-scope
 ---
 
 **Title**: Illegal Dealer NPC encounter (STORY_FEATURES_INTEGRATION.md §3.5) still missing
@@ -441,7 +441,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 4f2f5373374e
 confidence: high
-status: open
+status: wontfix-deferred-feature-needs-scope
 ---
 
 **Title**: Full Itinerary scaffolding (STORY_FEATURES_INTEGRATION.md §10) still entirely unimplemented
@@ -734,7 +734,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: fad97b9dadac
 confidence: high
-status: open
+status: wontfix-ratified-pc-box-cap-30
 ---
 
 **Title**: PC_BOX_CAP is 30 in code but the canonical spec says 10
@@ -776,7 +776,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: b2982543c7b0
 confidence: high
-status: open
+status: wontfix-deferred-feature-needs-scope
 ---
 
 **Title**: Battle for Pokémon wager system (STORY_FEATURES_INTEGRATION.md §6) still missing
@@ -898,7 +898,7 @@ file: supabase/migrations/001_online_pvp.sql
 agents: [pvp-concurrency-hunter]
 fingerprint: c6b9e9e968bd
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `pvp_rooms` SELECT policy is `using (true)` — anyone with the public key can scrape every live match's full draft + battle state
@@ -1017,7 +1017,7 @@ file: battle.html
 agents: [spec-drift-auditor]
 fingerprint: 5ccd1b40734e
 confidence: high
-status: open
+status: wontfix-deferred-feature-needs-scope
 ---
 
 **Title**: Pokémon Trader (STORY_FEATURES_INTEGRATION.md §7) at City4 still missing
@@ -3511,7 +3511,7 @@ file: STORY_MODE_FLOW.md
 agents: [story-mode-investigator]
 fingerprint: 85733dc0b897
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: STORY_MODE_FLOW.md PC cap of 10 contradicts shipped PC_BOX_CAP=30
