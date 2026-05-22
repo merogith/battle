@@ -1,46 +1,4 @@
-# Issue Ledger — Pokemon Battle Arena
-
-> **Generated**: 2026-05-22T07:15:58.212Z
-> **Source**: `agent-state/findings/*.md` (8 unique findings after dedup)
-> **Regenerate**: `node scripts/debug/issue-ledger.mjs`
-> **Schema**: see `agent-state/LEDGER_SCHEMA.md`
-
-This file is **regenerated**, not hand-edited. To add an issue, drop a
-finding file into `agent-state/findings/` and re-run the ledger. To update
-status, edit the corresponding finding file and re-run.
-
-## Summary
-
-| Severity | Count |
-|---|---|
-| P0 | 0 |
-| P1 | 5 |
-| P2 | 0 |
-| P3 | 3 |
-| **Total** | **8** |
-
-| Category | Count |
-|---|---|
-| dx | 3 |
-| inconsistency | 5 |
-
-## TOC
-
-- [ISSUE-001] [P1] Black Market shop from STORY_FEATURES_INTEGRATION.md §3 is still entirely unimplemented — `BLACK_MARKET_ITEMS` (inconsistency)
-- [ISSUE-002] [P1] Illegal Dealer NPC encounter (STORY_FEATURES_INTEGRATION.md §3.5) still missing — `illegalDealer` (inconsistency)
-- [ISSUE-003] [P1] Full Itinerary scaffolding (STORY_FEATURES_INTEGRATION.md §10) still entirely unimplemented — `itineraryProgress` (inconsistency)
-- [ISSUE-004] [P1] Battle for Pokémon wager system (STORY_FEATURES_INTEGRATION.md §6) still missing — `pendingWager` (inconsistency)
-- [ISSUE-005] [P1] Pokémon Trader (STORY_FEATURES_INTEGRATION.md §7) at City4 still missing — `traderOfferByCity` (inconsistency)
-- [ISSUE-006] [P3] 6+ stale `battle.html:LINE` refs in STORY_MODE_CATCH_INTEGRATION_RISK.md (avg drift ~9000 lines) — `STORY_MODE_CATCH_INTEGRATION_RISK.md` (dx)
-- [ISSUE-007] [P3] 9 of 10 `battle.html:LINE` refs in STORY_MODE_FLOW.md are stale (avg drift ~7000 lines) — `STORY_MODE_FLOW.md` (dx)
-- [ISSUE-008] [P3] 5+ stale `battle.html:LINE` refs in STORY_NARRATIVE_VARIANTS.md (variant-system anchors moved 3-5k lines) — `STORY_NARRATIVE_VARIANTS.md` (dx)
-
 ---
-
-## <a id="ISSUE-001"></a> ISSUE-001: Black Market shop from STORY_FEATURES_INTEGRATION.md §3 is still entirely unimplemented
-
----
-id: ISSUE-001
 severity: P1
 category: inconsistency
 anchor_symbol: BLACK_MARKET_ITEMS
@@ -68,11 +26,6 @@ $ grep -nE 'BLACK_MARKET|blackMarket|BlackMarket|black_market' battle.html
 **Verification**: After implementation, `grep -nE 'BLACK_MARKET_ITEMS|enterBlackMarket' battle.html` returns ≥3 hits and a visit to City5 after itinerary beat shows the Black Market button.
 
 ---
-
-## <a id="ISSUE-002"></a> ISSUE-002: Illegal Dealer NPC encounter (STORY_FEATURES_INTEGRATION.md §3.5) still missing
-
----
-id: ISSUE-002
 severity: P1
 category: inconsistency
 anchor_symbol: illegalDealer
@@ -100,43 +53,6 @@ $ grep -nE 'illegalDealer|illegal_dealer|enterDealer|dealerOffer' battle.html
 **Verification**: Visit City6 with `sm.blackMarketUnlocked = true`; see a single-NPC offer chip; declining clears it for the visit, leaving for next city restores it.
 
 ---
-
-## <a id="ISSUE-003"></a> ISSUE-003: Full Itinerary scaffolding (STORY_FEATURES_INTEGRATION.md §10) still entirely unimplemented
-
----
-id: ISSUE-003
-severity: P1
-category: inconsistency
-anchor_symbol: itineraryProgress
-file: battle.html
-agents: [spec-drift-auditor]
-fingerprint: 4f2f5373374e
-confidence: high
-status: open
----
-
-**Title**: Full Itinerary scaffolding (STORY_FEATURES_INTEGRATION.md §10) still entirely unimplemented
-
-**Evidence**:
-```
-$ grep -niE 'itineraryProgress|itineraryBeat|runItinerary|enterItinerary|sm\.itinerary' battle.html
-(no matches)
-```
-
-**Repro**: No itinerary beat fires at any event index. Spec §8 promises ordering `itinerary → wild → wager prompt → trainer` in `proceedToNextBattle`; today the order is just `wild → trainer`.
-
-**Blast radius**: Every downstream spec system hangs off this — Black Market unlock comes from itinerary beat `blackMarketUnlock`, Safari Zone trigger is "after badge 3 / City3 segment", the three-act villain arc anchors to `sm.itineraryProgress` per `STORY_MODE_AUDIT.md` §14. Without the scaffold, the spec's narrative arc cannot exist.
-
-**Fix sketch**: Author `STORY_ITINERARY` const (one row per beat: id, trigger condition, payload such as `{kind:'blackMarketUnlock'}`, `{kind:'safariType', type:'water'}`), add `sm.itineraryProgress = {}` to migrateStoryPreV20, implement `runItineraryBeat(beatId)` and call from `proceedToNextBattle` before `enterBattleEvent`.
-
-**Verification**: After badge 3, on the route to City3, the itinerary engine fires a beat that flags `sm.blackMarketUnlocked = true` before the next trainer fight.
-
----
-
-## <a id="ISSUE-004"></a> ISSUE-004: Battle for Pokémon wager system (STORY_FEATURES_INTEGRATION.md §6) still missing
-
----
-id: ISSUE-004
 severity: P1
 category: inconsistency
 anchor_symbol: pendingWager
@@ -165,11 +81,6 @@ The only `wager` hits in battle.html (lines 36440, 41797, 42065) belong to the *
 **Verification**: Force `sm.pendingWager = true` via dev seed, fight a Basic Trainer, see wager prompt; on win the foe's worst grade mon transfers to PC.
 
 ---
-
-## <a id="ISSUE-005"></a> ISSUE-005: Pokémon Trader (STORY_FEATURES_INTEGRATION.md §7) at City4 still missing
-
----
-id: ISSUE-005
 severity: P1
 category: inconsistency
 anchor_symbol: traderOfferByCity
@@ -197,11 +108,64 @@ $ grep -niE 'traderOffer|enterTrader|tradeMon|fixedTrade|cityTrader|traderHouse'
 **Verification**: Enter City4 on first visit; Trader NPC offers e.g. Ralts ↔ Riolu (both G2); accept swaps the party slot; revisit City4 — same frozen offer (or marked traded).
 
 ---
+severity: P1
+category: inconsistency
+anchor_symbol: itineraryProgress
+file: battle.html
+agents: [spec-drift-auditor]
+fingerprint: 4f2f5373374e
+confidence: high
+status: open
+---
 
-## <a id="ISSUE-006"></a> ISSUE-006: 6+ stale `battle.html:LINE` refs in STORY_MODE_CATCH_INTEGRATION_RISK.md (avg drift ~9000 lines)
+**Title**: Full Itinerary scaffolding (STORY_FEATURES_INTEGRATION.md §10) still entirely unimplemented
+
+**Evidence**:
+```
+$ grep -niE 'itineraryProgress|itineraryBeat|runItinerary|enterItinerary|sm\.itinerary' battle.html
+(no matches)
+```
+
+**Repro**: No itinerary beat fires at any event index. Spec §8 promises ordering `itinerary → wild → wager prompt → trainer` in `proceedToNextBattle`; today the order is just `wild → trainer`.
+
+**Blast radius**: Every downstream spec system hangs off this — Black Market unlock comes from itinerary beat `blackMarketUnlock`, Safari Zone trigger is "after badge 3 / City3 segment", the three-act villain arc anchors to `sm.itineraryProgress` per `STORY_MODE_AUDIT.md` §14. Without the scaffold, the spec's narrative arc cannot exist.
+
+**Fix sketch**: Author `STORY_ITINERARY` const (one row per beat: id, trigger condition, payload such as `{kind:'blackMarketUnlock'}`, `{kind:'safariType', type:'water'}`), add `sm.itineraryProgress = {}` to migrateStoryPreV20, implement `runItineraryBeat(beatId)` and call from `proceedToNextBattle` before `enterBattleEvent`.
+
+**Verification**: After badge 3, on the route to City3, the itinerary engine fires a beat that flags `sm.blackMarketUnlocked = true` before the next trainer fight.
 
 ---
-id: ISSUE-006
+severity: P3
+category: dx
+anchor_symbol: STORY_MODE_FLOW.md
+file: STORY_MODE_FLOW.md
+agents: [spec-drift-auditor]
+fingerprint: a2c0649750f6
+confidence: high
+status: open
+---
+
+**Title**: 9 of 10 `battle.html:LINE` refs in STORY_MODE_FLOW.md are stale (avg drift ~7000 lines)
+
+**Evidence**:
+```
+STORY_MODE_FLOW.md doc-line  | claimed battle.html line | actual location
+ 47 (STORY_EVENTS_RAW)       | 21273                    | 27969 (+6696)
+117 (catchRate, getMonGrade) | 28560                    | 13062 (-15498)
+217 (STORY_EVENTS_RAW)       | 30702                    | 27969 (-2733)
+576 (makeWildBuild)          | 34883                    | 39858 (+4975)
+```
+Full report at `tests/reports/spec-drift.md`. Only 1/10 refs in this doc still resolves cleanly via the symbol table — the rest reference symbols at lines that no longer host them (or have no inferrable symbol).
+
+**Repro**: `node scripts/debug/spec-drift.mjs && head -25 tests/reports/spec-drift.md`.
+
+**Blast radius**: Anyone who follows STORY_MODE_FLOW.md's line numbers to inspect the implementation lands in unrelated code. Docs still readable for *symbol* references, just not line jumps.
+
+**Fix sketch**: One sweep: re-resolve every `battle.html:LINE` via `find-anchor`, rewrite as `battle.html` (no line) plus `(`SYMBOL`)`. Future-proof: never embed line numbers in design docs — they drift the moment a function is added above.
+
+**Verification**: After sweep, `node scripts/debug/spec-drift.mjs` reports ≤1 drift entry under STORY_MODE_FLOW.md.
+
+---
 severity: P3
 category: dx
 anchor_symbol: STORY_MODE_CATCH_INTEGRATION_RISK.md
@@ -235,47 +199,6 @@ This doc is the largest single source of drifted refs in the report (24 of 50 to
 **Verification**: `node scripts/debug/spec-drift.mjs` reports ≤2 drift entries under this doc.
 
 ---
-
-## <a id="ISSUE-007"></a> ISSUE-007: 9 of 10 `battle.html:LINE` refs in STORY_MODE_FLOW.md are stale (avg drift ~7000 lines)
-
----
-id: ISSUE-007
-severity: P3
-category: dx
-anchor_symbol: STORY_MODE_FLOW.md
-file: STORY_MODE_FLOW.md
-agents: [spec-drift-auditor]
-fingerprint: a2c0649750f6
-confidence: high
-status: open
----
-
-**Title**: 9 of 10 `battle.html:LINE` refs in STORY_MODE_FLOW.md are stale (avg drift ~7000 lines)
-
-**Evidence**:
-```
-STORY_MODE_FLOW.md doc-line  | claimed battle.html line | actual location
- 47 (STORY_EVENTS_RAW)       | 21273                    | 27969 (+6696)
-117 (catchRate, getMonGrade) | 28560                    | 13062 (-15498)
-217 (STORY_EVENTS_RAW)       | 30702                    | 27969 (-2733)
-576 (makeWildBuild)          | 34883                    | 39858 (+4975)
-```
-Full report at `tests/reports/spec-drift.md`. Only 1/10 refs in this doc still resolves cleanly via the symbol table — the rest reference symbols at lines that no longer host them (or have no inferrable symbol).
-
-**Repro**: `node scripts/debug/spec-drift.mjs && head -25 tests/reports/spec-drift.md`.
-
-**Blast radius**: Anyone who follows STORY_MODE_FLOW.md's line numbers to inspect the implementation lands in unrelated code. Docs still readable for *symbol* references, just not line jumps.
-
-**Fix sketch**: One sweep: re-resolve every `battle.html:LINE` via `find-anchor`, rewrite as `battle.html` (no line) plus `(`SYMBOL`)`. Future-proof: never embed line numbers in design docs — they drift the moment a function is added above.
-
-**Verification**: After sweep, `node scripts/debug/spec-drift.mjs` reports ≤1 drift entry under STORY_MODE_FLOW.md.
-
----
-
-## <a id="ISSUE-008"></a> ISSUE-008: 5+ stale `battle.html:LINE` refs in STORY_NARRATIVE_VARIANTS.md (variant-system anchors moved 3-5k lines)
-
----
-id: ISSUE-008
 severity: P3
 category: dx
 anchor_symbol: STORY_NARRATIVE_VARIANTS.md
@@ -308,4 +231,3 @@ The variant system is the most actively edited area of battle.html (CHANGELOG 20
 
 **Verification**: `node scripts/debug/spec-drift.mjs` reports 0 drift entries under this doc.
 
----
