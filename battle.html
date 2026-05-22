@@ -9396,7 +9396,24 @@
                         _natureOptions:  Array.isArray(natureRaw)  ? natureRaw  : null
                     };
                     buildObj.archetype = classifyArchetype(buildObj);
-                    if (_isBuildAbilityIllegal(name, buildObj.a)) {
+                    // Prune _abilityOptions to legal-only choices for this species so
+                    // makeBuild's per-encounter re-pick can't promote a legal-at-load
+                    // build into an illegal one at runtime. If ALL options are illegal
+                    // the build itself is flagged illegal and kept gated behind
+                    // _isBuildAbilityIllegal (end-game opt-in story difficulty).
+                    if (Array.isArray(buildObj._abilityOptions)) {
+                        const legalAbilities = buildObj._abilityOptions.filter(a => !_isBuildAbilityIllegal(name, a));
+                        if (legalAbilities.length === 0) {
+                            // All alternatives illegal: keep array, mark build illegal.
+                            buildObj._illegal = true;
+                            illegalCount++;
+                        } else if (legalAbilities.length < buildObj._abilityOptions.length) {
+                            // Some alternatives illegal: trim the array (preserves variety,
+                            // drops the illegal choices). Re-pick a legal scalar too.
+                            buildObj._abilityOptions = legalAbilities;
+                            buildObj.a = legalAbilities[Math.floor(Math.random() * legalAbilities.length)];
+                        }
+                    } else if (_isBuildAbilityIllegal(name, buildObj.a)) {
                         buildObj._illegal = true;
                         illegalCount++;
                     }
@@ -13924,6 +13941,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return `Raises ${bArr.join(', ')}.`;
         }
         
+        // Canonical wind-flagged moves (data/moves.json `flags.wind`). Used by
+        // Wind Power and Wind Rider on-hit triggers. Sandstorm and Tailwind are
+        // status moves so they only reach the trigger via the non-damaging path.
+        const _WIND_FLAGGED = new Set(["Aeroblast","Air Cutter","Bleakwind Storm","Blizzard","Fairy Wind","Gust","Heat Wave","Hurricane","Icy Wind","Petal Blizzard","Sandsear Storm","Sandstorm","Springtide Storm","Tailwind","Twister","Whirlwind","Wildbolt Storm"]);
+
         const SELF_TARGETING_STATUS = new Set(["Swords Dance", "Nasty Plot", "Agility", "Rock Polish", "Calm Mind", "Cosmic Power", "Dragon Dance", "Quiver Dance", "Shell Smash", "Coil", "Belly Drum", "Amnesia", "Barrier", "Iron Defense", "Acid Armor", "Cotton Guard", "Minimize", "Double Team", "Defense Curl", "Withdraw", "Growth", "Sharpen", "Meditate", "Howl", "Bulk Up", "Work Up", "Shift Gear", "Clangorous Soul", "Geomancy", "Stockpile", "Rain Dance", "Sunny Day", "Sandstorm", "Hail", "Snowscape", "Chilly Reception", "Tailwind", "Trick Room", "Reflect", "Light Screen", "Aurora Veil", "Spikes", "Stealth Rock", "Toxic Spikes", "Aromatherapy", "Heal Bell", "Wish", "Recover", "Roost", "Synthesis", "Morning Sun", "Moonlight", "Shore Up", "Slack Off", "Soft-Boiled", "Milk Drink", "Heal Order", "Rest", "Aqua Ring", "Ingrain", "Substitute", "Focus Energy", "Baton Pass", "Protect", "Detect", "Endure", "Spiky Shield", "King's Shield", "Baneful Bunker", "Silk Trap", "Obstruct", "Burning Bulwark", "Max Guard", "Defog", "Haze", "Perish Song", "Destiny Bond", "Refresh", "Tail Glow", "Swallow", "Safeguard", "Magic Coat"]);
 
 
@@ -18969,9 +18991,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Charge: ticks down once per end-of-turn. Already 0'd if consumed by an Electric move.
                 if (mon.volatile.charge > 0) mon.volatile.charge--;
             });
-            // Clear per-turn boosted flag (used by Burning Jealousy); team protection moves expire EoT
+            // Clear per-turn boosted flag (used by Burning Jealousy); team protection moves expire EoT.
+            // statsRaisedThisTurn (Opportunist accumulator) also resets here so a non-Opportunist
+            // defender doesn't pile boosts across turns and dump them all at once on a later
+            // Opportunist switch-in.
             [state.pActive, state.fActive].forEach(mon => {
                 mon.volatile.boostedThisTurn = false;
+                mon.volatile.statsRaisedThisTurn = null;
                 mon.volatile.quickGuard = false;
                 mon.volatile.wideGuard = false;
             });
@@ -19458,8 +19484,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (state.pActive.ability === "Mycelium Might" && pMove.cat === "Status") pPri -= 0.5;
                     if (state.fActive.ability === "Mycelium Might" && fMove.cat === "Status") fPri -= 0.5;
                     // Stall: holder always moves last in its priority bracket.
-                    if (state.pActive.ability === "Stall") pPri -= 0.6;
-                    if (state.fActive.ability === "Stall") fPri -= 0.6;
+                    // -0.1 keeps it within-bracket (Mycelium Might -0.5 stacks for "last
+                    // status move at last priority"); a larger offset would bleed into
+                    // the bracket below (e.g. +1 with Stall sorting against +0 Quick Claw).
+                    if (state.pActive.ability === "Stall") pPri -= 0.1;
+                    if (state.fActive.ability === "Stall") fPri -= 0.1;
 
                     let pGoesFirst = true;
                     if (fPri > pPri) pGoesFirst = false;
@@ -20436,10 +20465,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         // Turn 2: execute the attack — clear charging & invulnerability
                         attacker.volatile.charging = null;
                         attacker.volatile.invulnerable = false;
-                        // Sky Drop: drop the target back as well.
-                        if (move.name === 'Sky Drop' && defender) {
-                            defender.volatile.invulnerable = false;
-                            defender.volatile.skyDropLocked = 0;
+                        // Sky Drop: drop the cached target back as well (may have changed
+                        // active slot mid-flight; we want the locked mon, not the current).
+                        if (move.name === 'Sky Drop') {
+                            const _drop = attacker.volatile.skyDropTarget || defender;
+                            if (_drop) {
+                                _drop.volatile.invulnerable = false;
+                                _drop.volatile.skyDropLocked = 0;
+                            }
+                            attacker.volatile.skyDropTarget = null;
                         }
                     } else {
                         // Turn 1: charge up, skip attack
@@ -20448,10 +20482,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (_hideOnCharge.has(move.name)) attacker.volatile.invulnerable = true;
                         // Sky Drop: also vanish the target and lock it from acting next turn.
                         // We mirror the invulnerable flag onto the defender and set a one-turn
-                        // skyDropLocked counter that's consumed at canMove() time.
+                        // skyDropLocked counter that's consumed at canMove() time. The locked
+                        // target reference is cached on the attacker so the resolution turn can
+                        // free the *right* mon even if the active foe slot changed.
                         if (move.name === 'Sky Drop' && defender && defender.currentHp > 0) {
                             defender.volatile.invulnerable = true;
                             defender.volatile.skyDropLocked = 1;
+                            attacker.volatile.skyDropTarget = defender;
                         }
                         let chargeMsgs = { 'Bounce': 'sprang up!', 'Fly': 'flew up high!', 'Dig': 'dug underground!', 'Dive': 'dove underwater!', 'Solar Beam': 'is absorbing light!', 'Solar Blade': 'is absorbing light!', 'Phantom Force': 'vanished instantly!', 'Shadow Force': 'vanished instantly!', 'Sky Drop': 'took the foe into the sky!', 'Skull Bash': 'tucked in its head!', 'Sky Attack': 'is glowing!', 'Meteor Beam': 'is charging power!', 'Geomancy': 'is absorbing power!', 'Razor Wind': 'whipped up a whirlwind!', 'Electro Shot': 'is absorbing electricity!', 'Freeze Shock': 'is charging!', 'Ice Burn': 'is wreathed in flames!' };
                         logMsg(`${attacker.name} ${chargeMsgs[move.name] || 'is charging!'}`, 'info');
@@ -20909,7 +20946,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (attacker.ability === "Triage" && drainingMovesQM.includes(move.name)) effectivePri += 3;
                 if (attacker.ability === "Gale Wings" && move.type === "Flying" && attacker.currentHp === attacker.maxHp) effectivePri += 1;
                 if (attacker.ability === "Prankster" && move.cat === "Status") effectivePri += 1;
-                if (attacker.ability === "Stall") effectivePri -= 0.6;
+                if (attacker.ability === "Stall") effectivePri -= 0.1;
                 if (effectivePri > 0 && (defender.ability === "Queenly Majesty" || defender.ability === "Dazzling" || defender.ability === "Armor Tail")) {
                     logMsg(`${defender.name}'s ${defender.ability} blocked the priority move!`, 'info');
                     AudioSystem.playMissSound();
@@ -22687,16 +22724,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         logMsg(`${defender.name}'s Seed Sower covered the field in grass!`, 'info');
                     }
                     // Wind Power (defender): hit by a wind-flag move → "charged" (next Electric move ×2).
-                    // The wind-move tag set mirrors PS data: Aeroblast, Air Cutter, Air Slash, Bleakwind Storm,
-                    // Blizzard, Fairy Wind, Gust, Heat Wave, Hurricane, Icy Wind, Petal Blizzard, Razor Wind,
-                    // Sandsear Storm, Sandstorm, Sky Attack, Springtide Storm, Tailwind, Twister, Whirlwind,
-                    // Wildbolt Storm, Wind Power's own setter Tailwind also counts.
-                    if (defender.ability === "Wind Power" && defender.currentHp > 0) {
-                        const _windMoves = new Set(["Aeroblast","Air Cutter","Air Slash","Bleakwind Storm","Blizzard","Fairy Wind","Gust","Heat Wave","Hurricane","Icy Wind","Petal Blizzard","Razor Wind","Sandsear Storm","Sky Attack","Springtide Storm","Tailwind","Twister","Whirlwind","Wildbolt Storm"]);
-                        if (_windMoves.has(move.name)) {
-                            defender.volatile.charged = true;
-                            logMsg(`${defender.name}'s Wind Power charged it up!`, 'info');
-                        }
+                    // Canonical 17-move set per data/moves.json `flags.wind` lookup. Kept in sync
+                    // by name (Sandstorm/Tailwind are status moves and so reach here only via
+                    // the non-damaging path — see _WIND_FLAGGED below for the secondary firing).
+                    if (defender.ability === "Wind Power" && defender.currentHp > 0 && _WIND_FLAGGED.has(move.name)) {
+                        defender.volatile.charged = true;
+                        logMsg(`${defender.name}'s Wind Power charged it up!`, 'info');
                     }
                     // Opportunist (defender): when the attacker raised any stat this hit-resolve,
                     // mirror those raises onto the holder. (Singles approximation — Showdown applies
@@ -24044,29 +24077,49 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${mon.name}'s Frisk found ${foe.name}'s ${foe.item}!`, 'info');
             }
             // Anticipation: shudders on switch-in if the foe knows any super-effective
-            // or OHKO move against this Pokemon. Info-only.
+            // or OHKO move against this Pokemon. Info-only. Respects ability-based
+            // immunities (Volt Absorb → Electric, Levitate / Earth Eater → Ground,
+            // Flash Fire → Fire, Water Absorb / Dry Skin → Water, Sap Sipper → Grass,
+            // Wonder Guard → all non-super-effective) so we don't shudder when the
+            // matchup is actually safe.
             if (mon.ability === "Anticipation" && _foeAlive && Array.isArray(foe.moves)) {
                 const ohkoSet = new Set(["Sheer Cold","Fissure","Horn Drill","Guillotine"]);
+                const _typeImmunesByAbility = {
+                    "Volt Absorb": "Electric", "Lightning Rod": "Electric", "Motor Drive": "Electric",
+                    "Levitate": "Ground", "Earth Eater": "Ground",
+                    "Flash Fire": "Fire",
+                    "Water Absorb": "Water", "Dry Skin": "Water", "Storm Drain": "Water",
+                    "Sap Sipper": "Grass",
+                    "Bulletproof": null,  // move-flag based, skip
+                };
+                const _immuneType = _typeImmunesByAbility[mon.ability];
                 let shudder = false;
                 for (const m of foe.moves) {
                     if (!m) continue;
                     if (ohkoSet.has(m.name)) { shudder = true; break; }
                     if (m.cat === "Status" || !m.type) continue;
+                    if (_immuneType && m.type === _immuneType) continue;
                     const t1 = (typeChart[m.type] && typeChart[m.type][mon.type1]) ?? 1;
                     const t2 = mon.type2 ? ((typeChart[m.type] && typeChart[m.type][mon.type2]) ?? 1) : 1;
                     if ((t1 * t2) > 1) { shudder = true; break; }
                 }
                 if (shudder) logMsg(`${mon.name} shuddered with Anticipation!`, 'info');
             }
-            // Forewarn: reveals the foe's strongest-BP damaging move.
+            // Forewarn: reveals one of the foe's strongest-BP damaging moves
+            // (random tie-break per canon when several moves share top BP).
             if (mon.ability === "Forewarn" && _foeAlive && Array.isArray(foe.moves)) {
-                let best = null, bestBp = -1;
+                let bestBp = -1;
+                const ties = [];
                 for (const m of foe.moves) {
                     if (!m || m.cat === "Status") continue;
                     const bp = +m.pow || 0;
-                    if (bp > bestBp) { bestBp = bp; best = m; }
+                    if (bp > bestBp) { bestBp = bp; ties.length = 0; ties.push(m); }
+                    else if (bp === bestBp) { ties.push(m); }
                 }
-                if (best) logMsg(`${mon.name}'s Forewarn revealed ${foe.name}'s ${best.name}!`, 'info');
+                if (ties.length) {
+                    const pick = ties[Math.floor(Math.random() * ties.length)];
+                    logMsg(`${mon.name}'s Forewarn revealed ${foe.name}'s ${pick.name}!`, 'info');
+                }
             }
             // Supersweet Syrup (Hydrapple line): drop the foe's evasion by 1, once per battle.
             if (mon.ability === "Supersweet Syrup" && _foeAlive && !mon.volatile.supersweetUsed) {
@@ -24218,6 +24271,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Electromorphosis charge does NOT carry across switches in canon — clear it.
             mon.volatile.electromorphosisCharged = false;
+            // Same for Wind Power, Foresight / Odor Sleuth (identified), Miracle Eye
+            // (identifiedDark), Sky Drop target lock, and the per-turn boost tracker
+            // Opportunist mirrors. None of these survive a switch in canon.
+            mon.volatile.charged = false;
+            mon.volatile.identified = null;
+            mon.volatile.identifiedDark = false;
+            mon.volatile.skyDropLocked = 0;
+            mon.volatile.statsRaisedThisTurn = null;
+            // Cud Chew queue clears on switch — Farigiraf must be on-field for the
+            // replay tick, so a bench mon can't "thaw" the queued berry on return.
+            mon.volatile.cudChewBerry = null;
+            mon.volatile.cudChewTurns = 0;
+            // Supersweet Syrup is once-per-battle, NOT once-per-switch — keep the
+            // supersweetUsed flag through switches (only clear at battle start).
             if (mon._knockOffSashProc) delete mon._knockOffSashProc;
             // Zero to Hero (Palafin): transforms into Palafin-Hero on switch-out
             if (mon.ability === "Zero to Hero" && mon.name === "Palafin" && mon.currentHp > 0) {
@@ -24413,9 +24480,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Sky Drop target lock: the carried Pokemon can't act while up in the sky.
             // Counter is set to 1 on the carry-turn and decremented here.
             if (mon.volatile && (mon.volatile.skyDropLocked | 0) > 0) {
-                logMsg(`${mon.name} can't move — it's being held in the sky!`, 'status');
-                mon.volatile.skyDropLocked = Math.max(0, (mon.volatile.skyDropLocked | 0) - 1);
-                return false;
+                // Defensive: if the attacker that locked us is fainted or no longer
+                // pointing at us as skyDropTarget, free the lock so we don't softlock.
+                // (Original attacker faint mid-carry leaves no one to call the turn-2 clear.)
+                const _foeOf = (mon === state.pActive) ? state.fActive : state.pActive;
+                const _stillHeld = _foeOf && _foeOf.currentHp > 0 && _foeOf.volatile && _foeOf.volatile.skyDropTarget === mon;
+                if (!_stillHeld) {
+                    mon.volatile.skyDropLocked = 0;
+                    mon.volatile.invulnerable = false;
+                } else {
+                    logMsg(`${mon.name} can't move — it's being held in the sky!`, 'status');
+                    mon.volatile.skyDropLocked = Math.max(0, (mon.volatile.skyDropLocked | 0) - 1);
+                    return false;
+                }
             }
             // Truant: loaf every other turn
             if (mon.ability === "Truant") {
@@ -24932,6 +25009,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "Roar" || move.name === "Whirlwind") {
                 if (defender.dynamaxed) { logMsg(`The move failed against the Dynamaxed ${defender.name}!`, 'info'); return; }
+                // Wind Power on the target activates from non-damaging wind moves too
+                // (Whirlwind is the only one that lands here pre-switch). The defender
+                // gets the charge before the forced switch resolves.
+                if (move.name === "Whirlwind" && defender.ability === "Wind Power" && defender.currentHp > 0) {
+                    defender.volatile.charged = true;
+                    logMsg(`${defender.name}'s Wind Power charged it up!`, 'info');
+                }
                 if (state.mode !== 'pvp') {
                     let target = isPlayer ? state.foeParty : state.playerParty;
                     let activeMon = isPlayer ? state.fActive : state.pActive;
@@ -26541,8 +26625,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
-            // Partial trap (Wrap, Bind, Fire Spin, etc.) end-of-turn damage
-            if (mon.volatile.partialTrap > 0 && mon.volatile.partialTrapSrc !== "Octolock") {
+            // Partial trap (Wrap, Bind, Fire Spin, etc.) end-of-turn damage.
+            // Sticky-trap sources (Octolock, Block / Mean Look / Spider Web /
+            // Thousand Waves at 999) do NOT chip — they're switch-locks only.
+            const _stickyTrap = mon.volatile.partialTrapSrc === "Octolock" || mon.volatile.partialTrap >= 999;
+            if (mon.volatile.partialTrap > 0 && !_stickyTrap) {
                 mon.volatile.partialTrap--;
                 if (state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon)) {
                     logMsg(`Type Nullifier: ${mon.name} ignored the trap's squeeze!`, 'info');
