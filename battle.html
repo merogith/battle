@@ -19436,6 +19436,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Mycelium Might: status moves go last in their priority bracket
                     if (state.pActive.ability === "Mycelium Might" && pMove.cat === "Status") pPri -= 0.5;
                     if (state.fActive.ability === "Mycelium Might" && fMove.cat === "Status") fPri -= 0.5;
+                    // Stall: holder always moves last in its priority bracket.
+                    if (state.pActive.ability === "Stall") pPri -= 0.6;
+                    if (state.fActive.ability === "Stall") fPri -= 0.6;
 
                     let pGoesFirst = true;
                     if (fPri > pPri) pGoesFirst = false;
@@ -20885,6 +20888,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (attacker.ability === "Triage" && drainingMovesQM.includes(move.name)) effectivePri += 3;
                 if (attacker.ability === "Gale Wings" && move.type === "Flying" && attacker.currentHp === attacker.maxHp) effectivePri += 1;
                 if (attacker.ability === "Prankster" && move.cat === "Status") effectivePri += 1;
+                if (attacker.ability === "Stall") effectivePri -= 0.6;
                 if (effectivePri > 0 && (defender.ability === "Queenly Majesty" || defender.ability === "Dazzling" || defender.ability === "Armor Tail")) {
                     logMsg(`${defender.name}'s ${defender.ability} blocked the priority move!`, 'info');
                     AudioSystem.playMissSound();
@@ -21579,9 +21583,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Hydro Steam: 1.5× in Sun (canon: doubles when sun would normally weaken Water).
                 if (move.name === "Hydro Steam" && (getCurrentWeather() === "Sun" || getCurrentWeather() === "HarshSun")) basePower = Math.floor(basePower * 1.5);
                 // Charge volatile: next Electric move does 2× damage (consumed after use).
-                if (attacker.volatile && attacker.volatile.charge && move.type === "Electric" && move.cat !== "Status") {
+                // Also fires for Wind Power's `charged` flag (Kilowattrel after a wind hit).
+                if (attacker.volatile && (attacker.volatile.charge || attacker.volatile.charged) && move.type === "Electric" && move.cat !== "Status") {
                     basePower = basePower * 2;
                     attacker.volatile.charge = 0;
+                    attacker.volatile.charged = false;
                 }
                 // Electromorphosis pre-charged Electric attack at 1.5× (parallel to Charge mechanic but cleared on use)
                 if (attacker.volatile && attacker.volatile.electromorphosisCharged && move.type === "Electric" && move.cat !== "Status") {
@@ -22653,6 +22659,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         changeStage(defender, 'def', 2);
                         logMsg(`${defender.name}'s Water Compaction sharply raised its Defense!`, 'info');
                     }
+                    // Seed Sower (defender): on damaging hit, set Grassy Terrain (5 turns).
+                    if (defender.ability === "Seed Sower" && move.cat !== "Status" && defender.currentHp > 0 && actualDamage > 0) {
+                        const _ssTurns = (state.magicRoom === 0 && defender.item === "Terrain Extender" && defender.ability !== "Klutz") ? 8 : 5;
+                        state.terrain = "Grassy"; state.terrainTurns = _ssTurns;
+                        logMsg(`${defender.name}'s Seed Sower covered the field in grass!`, 'info');
+                    }
+                    // Wind Power (defender): hit by a wind-flag move → "charged" (next Electric move ×2).
+                    // The wind-move tag set mirrors PS data: Aeroblast, Air Cutter, Air Slash, Bleakwind Storm,
+                    // Blizzard, Fairy Wind, Gust, Heat Wave, Hurricane, Icy Wind, Petal Blizzard, Razor Wind,
+                    // Sandsear Storm, Sandstorm, Sky Attack, Springtide Storm, Tailwind, Twister, Whirlwind,
+                    // Wildbolt Storm, Wind Power's own setter Tailwind also counts.
+                    if (defender.ability === "Wind Power" && defender.currentHp > 0) {
+                        const _windMoves = new Set(["Aeroblast","Air Cutter","Air Slash","Bleakwind Storm","Blizzard","Fairy Wind","Gust","Heat Wave","Hurricane","Icy Wind","Petal Blizzard","Razor Wind","Sandsear Storm","Sky Attack","Springtide Storm","Tailwind","Twister","Whirlwind","Wildbolt Storm"]);
+                        if (_windMoves.has(move.name)) {
+                            defender.volatile.charged = true;
+                            logMsg(`${defender.name}'s Wind Power charged it up!`, 'info');
+                        }
+                    }
+                    // Opportunist (defender): when the attacker raised any stat this hit-resolve,
+                    // mirror those raises onto the holder. (Singles approximation — Showdown applies
+                    // it at end-of-turn against all positive boosts in the prior segment.)
+                    if (defender.ability === "Opportunist" && defender.currentHp > 0 && attacker.volatile && attacker.volatile.statsRaisedThisTurn) {
+                        const raised = attacker.volatile.statsRaisedThisTurn;
+                        for (const stat in raised) {
+                            if (raised[stat] > 0) changeStage(defender, stat, raised[stat]);
+                        }
+                        logMsg(`${defender.name}'s Opportunist mirrored the boosts!`, 'info');
+                        attacker.volatile.statsRaisedThisTurn = null;
+                    }
                     // Rattled (defender): Bug/Ghost/Dark hit raises Speed +1
                     if (defender.ability === "Rattled" && (move.type === "Bug" || move.type === "Ghost" || move.type === "Dark") && defender.currentHp > 0) {
                         changeStage(defender, 'spe', 1);
@@ -23705,6 +23740,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let act = Math.min(mon.maxHp - mon.currentHp, cp);
                 if (act > 0) { mon.currentHp += act; logMsg(`${mon.name}'s Cheek Pouch restored ${act} HP!`, 'heal'); }
             }
+            // Cud Chew (Farigiraf): when the holder eats a berry, queue it to be eaten
+            // again at the end of the NEXT turn. End-of-turn handler decrements
+            // cudChewTurns and re-applies _onBerryEaten when it hits 1.
+            if (mon.ability === "Cud Chew" && berryName && mon.volatile && !mon.volatile.cudChewBerry) {
+                mon.volatile.cudChewBerry = berryName;
+                mon.volatile.cudChewTurns = 2;
+            }
         }
 
         function _activateTerrainSeeds() {
@@ -23979,6 +24021,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (mon.ability === "Frisk" && foe && foe.currentHp > 0 && foe.item) {
                 logMsg(`${mon.name}'s Frisk found ${foe.name}'s ${foe.item}!`, 'info');
+            }
+            // Anticipation: shudders on switch-in if the foe knows any super-effective
+            // or OHKO move against this Pokemon. Info-only.
+            if (mon.ability === "Anticipation" && _foeAlive && Array.isArray(foe.moves)) {
+                const ohkoSet = new Set(["Sheer Cold","Fissure","Horn Drill","Guillotine"]);
+                let shudder = false;
+                for (const m of foe.moves) {
+                    if (!m) continue;
+                    if (ohkoSet.has(m.name)) { shudder = true; break; }
+                    if (m.cat === "Status" || !m.type) continue;
+                    const t1 = (typeChart[m.type] && typeChart[m.type][mon.type1]) ?? 1;
+                    const t2 = mon.type2 ? ((typeChart[m.type] && typeChart[m.type][mon.type2]) ?? 1) : 1;
+                    if ((t1 * t2) > 1) { shudder = true; break; }
+                }
+                if (shudder) logMsg(`${mon.name} shuddered with Anticipation!`, 'info');
+            }
+            // Forewarn: reveals the foe's strongest-BP damaging move.
+            if (mon.ability === "Forewarn" && _foeAlive && Array.isArray(foe.moves)) {
+                let best = null, bestBp = -1;
+                for (const m of foe.moves) {
+                    if (!m || m.cat === "Status") continue;
+                    const bp = +m.pow || 0;
+                    if (bp > bestBp) { bestBp = bp; best = m; }
+                }
+                if (best) logMsg(`${mon.name}'s Forewarn revealed ${foe.name}'s ${best.name}!`, 'info');
+            }
+            // Supersweet Syrup (Hydrapple line): drop the foe's evasion by 1, once per battle.
+            if (mon.ability === "Supersweet Syrup" && _foeAlive && !mon.volatile.supersweetUsed) {
+                mon.volatile.supersweetUsed = true;
+                logMsg(`${mon.name}'s Supersweet Syrup wafted across the field!`, 'info');
+                changeStage(foe, 'eva', -1, true, { bypassSub: true });
             }
             if (mon.ability === "Download" && _foeAlive && foe.stats && foe.stages) {
                 let _dlDef = foe.stats.def * getStageMult(foe.stages.def);
@@ -26108,7 +26181,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let oldStage = mon.stages[stat];
             mon.stages[stat] = Math.max(-6, Math.min(6, mon.stages[stat] + amount));
             if (mon.stages[stat] === oldStage) { logMsg(`${mon.name}'s ${stat.toUpperCase()} won't go any ${amount > 0 ? 'higher' : 'lower'}!`, 'info'); return; }
-            if (amount > 0 && mon.volatile) mon.volatile.boostedThisTurn = true;
+            if (amount > 0 && mon.volatile) {
+                mon.volatile.boostedThisTurn = true;
+                // Track per-stat positive deltas so Opportunist can mirror them on its next hit.
+                if (!mon.volatile.statsRaisedThisTurn) mon.volatile.statsRaisedThisTurn = {};
+                mon.volatile.statsRaisedThisTurn[stat] = (mon.volatile.statsRaisedThisTurn[stat] || 0) + amount;
+            }
             // Lash Out condition: any stat drop this turn flags the mon
             if (amount < 0 && mon.volatile) mon.volatile.statLoweredThisTurn = true;
             let statName = stat.toUpperCase();
@@ -26186,6 +26264,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.volatile.slowStartTurns--;
                 if (mon.volatile.slowStartTurns === 0) {
                     logMsg(`${mon.name} finally got its act together!`, 'info');
+                }
+            }
+            // Cud Chew (Farigiraf): the turn after eating a berry, swallow it again.
+            // Counter is 2 on eat (so this turn's tick → 1, next turn's tick → 0 + replay).
+            if (mon.volatile && mon.volatile.cudChewTurns > 0) {
+                mon.volatile.cudChewTurns--;
+                if (mon.volatile.cudChewTurns === 0 && mon.volatile.cudChewBerry) {
+                    const _replayBerry = mon.volatile.cudChewBerry;
+                    mon.volatile.cudChewBerry = null;
+                    logMsg(`${mon.name} chewed its cud — it swallowed the ${_replayBerry} again!`, 'info');
+                    _onBerryEaten(mon, _replayBerry);
                 }
             }
 
