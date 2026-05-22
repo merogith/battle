@@ -405,11 +405,11 @@
             #story-prof-rolled-card .prof-pick-card .prof-summary-icon-btn { display: inline-flex !important; }
         }
         /* Compact move tiles — stats row (replaces .move-btn-eff-bottom) */
-        .battle-btn-move .move-tile-meta { margin-top: var(--battle-space-1); font-size: 9px; color: #888; line-height: 1.35; }
+        .battle-btn-move .move-tile-meta { margin-top: var(--battle-space-1); font-size: 9px; color: #b8b8b8; line-height: 1.35; }
 
         /* Stat bar mini (for draft cards) */
         .stat-mini { display: flex; align-items: center; gap: 3px; font-size: 11px; }
-        .stat-mini-label { color: #888; width: 28px; text-align: right; }
+        .stat-mini-label { color: #b8b8b8; width: 28px; text-align: right; }
         .stat-mini-bar { height: 6px; border-radius: 3px; min-width: 2px; transition: width 0.3s; }
         .stat-mini-val { width: 24px; font-weight: bold; font-size: 10px; }
 
@@ -542,7 +542,7 @@
         /* === Overview tab === */
         .sum-stats-grid { display: flex; flex-direction: column; gap: 3px; }
         .summary-stat-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; min-height: 18px; }
-        .summary-stat-label { width: 44px; font-size: 11px; color: #888; text-align: right; font-weight: 500; flex-shrink: 0; }
+        .summary-stat-label { width: 44px; font-size: 11px; color: #b8b8b8; text-align: right; font-weight: 500; flex-shrink: 0; }
         .summary-stat-bar-bg { flex: 1; height: 7px; background: #222; border-radius: 4px; overflow: hidden; min-width: 40px; }
         .summary-stat-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
         .summary-stat-val { width: 64px; font-size: 11px; font-weight: bold; text-align: right; font-variant-numeric: tabular-nums; flex-shrink: 0; }
@@ -556,7 +556,7 @@
         }
         .sum-detail-cell { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
         .sum-detail-cell--full { grid-column: 1 / -1; }
-        .sum-detail-lbl { color: #888; font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.6px; }
+        .sum-detail-lbl { color: #b8b8b8; font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.6px; }
         .sum-detail-val { color: #ddd; font-size: 11px; word-break: break-word; line-height: 1.3; }
         .sum-evs-row {
             margin-top: 8px; padding: 8px 10px; border-radius: 5px;
@@ -3347,7 +3347,7 @@
         #rotate-overlay .rotate-icon { font-size: 72px; margin-bottom: 20px; animation: rotateHint 1.8s ease-in-out infinite; }
         @keyframes rotateHint { 0%, 100% { transform: rotate(0deg); } 40% { transform: rotate(-90deg); } 60% { transform: rotate(-90deg); } }
         #rotate-overlay h2 { font-size: 22px; margin: 0 0 10px; color: var(--accent); }
-        #rotate-overlay p { font-size: 14px; color: #aaa; margin: 0; }
+        #rotate-overlay p { font-size: 14px; color: #e0e0e0; margin: 0; }
         @media screen and (max-width: 768px) and (orientation: portrait) { #rotate-overlay { display: none; } }
 
         /* ── Story screens: keep top-right clear for settings button ──────── */
@@ -7596,6 +7596,8 @@
                     <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && window.StoryMode.previewHallOfFame();">Preview Hall of Fame</button>
                     <button type="button" onclick="window.closeModal('modal-settings'); window.StoryMode && window.StoryMode.seedDebugPostHofClimax && window.StoryMode.seedDebugPostHofClimax();" title="localhost or ?debugPostHofClimax=1 — drops at HoF transition with climax flag unset; pressing Continue routes through the row-67 Mystery Figure climax.">Debug: Post-HoF Mystery climax</button>
                     <button type="button" onclick="window.closeModal('modal-settings'); typeof window.__devAutoWinBattle==='function' && window.__devAutoWinBattle();" style="color:var(--hp-green);" title="Ends the current battle as a win (Story, PvE, local PvP, Gauntlet). Gauntlet opens the round swap screen. Disabled for online PvP. Console: __devAutoWinBattle()">Dev: Auto-win battle</button>
+                    <button type="button" onclick="window.__exportStorySave && window.__exportStorySave();" title="Copy your current Story Mode save (pbs_story_save) to the clipboard as JSON for backup or manual recovery.">Export story save</button>
+                    <button type="button" onclick="window.__recoverBrokenStorySave && window.__recoverBrokenStorySave();" title="Restore the most recent broken save backup (pbs_story_save.broken.latest) over your current save. Use after a corruption warning.">Recover broken save</button>
                 </div>
             </details>
             <button onclick="window.returnToHome()" style="width:100%; margin: 14px 0 10px; color:var(--hp-red);">Forfeit &amp; Exit</button>
@@ -8570,10 +8572,10 @@
             <div id="battle-log" class="white-outline scrollable" role="log" aria-label="Battle log"></div>
             <div class="ui-bottom-menus">
             <div id="command-menu" class="command-grid white-outline hidden">
-                <button type="button" class="battle-cmd-btn" data-cmd="fight" data-shortcut="F" onclick="window.showMoves()" title="Fight (keyboard: F)"><span class="battle-cmd-ico" aria-hidden="true"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" focusable="false" aria-hidden="true"><path fill="#5d4037" d="M1 12h2v2H1v-2zm0-3h2v2H1V9zm0-3h2v2H1V6z"/><path fill="#ffecb3" d="M3 2h2v10H3V2zm1 0h1v1H4V2zm0 8h1v1H4v-1z"/><path fill="#ffe082" d="M5 1h1v1H5V1zm0 2h1v1H5V3zm0 2h1v1H5V5zm0 2h1v1H5V7zm0 2h1v1H5V9z"/><path fill="#8d6e63" d="M11 3h2v8h-2V3zm-1-1h2v1h-2V2zm0 9h2v1h-2v-1z"/><path fill="#d7ccc8" d="M10 1h1v1h-1V1zm0 2h1v1h-1V3zm0 2h1v1h-1V5zm0 2h1v1h-1V7zm0 2h1v1h-1V9z"/><path fill="#eceff1" d="M6 2h4v1H6V2zm0 2h3v1H6V4zm0 2h2v1H6V6z"/></svg></span><span class="battle-cmd-label">FIGHT</span></button>
-                <button type="button" class="battle-cmd-btn" data-cmd="party" data-shortcut="P" onclick="window.openParty(false)" title="Pokémon (keyboard: P)"><span class="battle-cmd-ico" aria-hidden="true"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" focusable="false" aria-hidden="true"><path fill="#1a1a1a" d="M1 1h14v14H1V1z"/><path fill="#c62828" d="M2 2h12v5H2V2z"/><path fill="#212121" d="M2 7h12v1H2V7z"/><path fill="#f5f5f5" d="M2 8h12v6H2V8z"/><rect fill="#424242" x="6" y="6" width="4" height="1"/><rect fill="#eceff1" x="7" y="7" width="2" height="2"/></svg></span><span class="battle-cmd-label">POKÉMON</span></button>
-                <button type="button" class="battle-cmd-btn" data-cmd="bag" data-shortcut="B" onclick="window.openBag()" title="Bag (keyboard: B)"><span class="battle-cmd-ico" aria-hidden="true"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" focusable="false" aria-hidden="true"><path fill="#5c6bc0" d="M2 4h12v2H2V4zm0 2h12v8H2V6z"/><path fill="#3f51b5" d="M2 4h12v1H2V4z"/><path fill="#9fa8da" d="M5 2h6v3H5V2z"/><path fill="#c5cae9" d="M6 2h4v1H6V2z"/><path fill="#1a1a1a" d="M6 2h1v1H6V2zm3 0h1v1H9V2z"/><path fill="#5c6bc0" d="M3 7h2v2H3V7zm8 0h2v2h-2V7z"/></svg></span><span class="battle-cmd-label">BAG</span></button>
-                <button type="button" class="battle-cmd-btn" data-cmd="run" data-shortcut="R" onclick="window.runAway()" title="Run (keyboard: R)"><span class="battle-cmd-ico" aria-hidden="true"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" focusable="false" aria-hidden="true"><path fill="#90a4ae" d="M1 2h2v2H1V2zm3 0h2v2H4V2zm0 3h2v2H4V5zm-3 3h2v2H1V8zm3 0h2v2H4V8z"/><path fill="#ef9a9a" d="M8 2h4v1H8V2zm0 2h2v1H8V4z"/><path fill="#e57373" d="M10 2h2v1h-2V2zm-1 1h1v1H9V3zm-1 2h3v1H8V5z"/><path fill="#ef5350" d="M10 5h4v1h-4V5zm0 2h3v1h-3V7zm-2 2h3v1H8V9z"/></svg></span><span class="battle-cmd-label">RUN</span></button>
+                <button type="button" class="battle-cmd-btn" data-cmd="fight" data-shortcut="F" onclick="window.showMoves()" title="Fight (keyboard: F)" aria-label="Fight — choose a move (shortcut: F)"><span class="battle-cmd-ico" aria-hidden="true"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" focusable="false" aria-hidden="true"><path fill="#5d4037" d="M1 12h2v2H1v-2zm0-3h2v2H1V9zm0-3h2v2H1V6z"/><path fill="#ffecb3" d="M3 2h2v10H3V2zm1 0h1v1H4V2zm0 8h1v1H4v-1z"/><path fill="#ffe082" d="M5 1h1v1H5V1zm0 2h1v1H5V3zm0 2h1v1H5V5zm0 2h1v1H5V7zm0 2h1v1H5V9z"/><path fill="#8d6e63" d="M11 3h2v8h-2V3zm-1-1h2v1h-2V2zm0 9h2v1h-2v-1z"/><path fill="#d7ccc8" d="M10 1h1v1h-1V1zm0 2h1v1h-1V3zm0 2h1v1h-1V5zm0 2h1v1h-1V7zm0 2h1v1h-1V9z"/><path fill="#eceff1" d="M6 2h4v1H6V2zm0 2h3v1H6V4zm0 2h2v1H6V6z"/></svg></span><span class="battle-cmd-label">FIGHT</span></button>
+                <button type="button" class="battle-cmd-btn" data-cmd="party" data-shortcut="P" onclick="window.openParty(false)" title="Pokémon (keyboard: P)" aria-label="Pokémon — switch a party member (shortcut: P)"><span class="battle-cmd-ico" aria-hidden="true"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" focusable="false" aria-hidden="true"><path fill="#1a1a1a" d="M1 1h14v14H1V1z"/><path fill="#c62828" d="M2 2h12v5H2V2z"/><path fill="#212121" d="M2 7h12v1H2V7z"/><path fill="#f5f5f5" d="M2 8h12v6H2V8z"/><rect fill="#424242" x="6" y="6" width="4" height="1"/><rect fill="#eceff1" x="7" y="7" width="2" height="2"/></svg></span><span class="battle-cmd-label">POKÉMON</span></button>
+                <button type="button" class="battle-cmd-btn" data-cmd="bag" data-shortcut="B" onclick="window.openBag()" title="Bag (keyboard: B)" aria-label="Bag — use an item (shortcut: B)"><span class="battle-cmd-ico" aria-hidden="true"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" focusable="false" aria-hidden="true"><path fill="#5c6bc0" d="M2 4h12v2H2V4zm0 2h12v8H2V6z"/><path fill="#3f51b5" d="M2 4h12v1H2V4z"/><path fill="#9fa8da" d="M5 2h6v3H5V2z"/><path fill="#c5cae9" d="M6 2h4v1H6V2z"/><path fill="#1a1a1a" d="M6 2h1v1H6V2zm3 0h1v1H9V2z"/><path fill="#5c6bc0" d="M3 7h2v2H3V7zm8 0h2v2h-2V7z"/></svg></span><span class="battle-cmd-label">BAG</span></button>
+                <button type="button" class="battle-cmd-btn" data-cmd="run" data-shortcut="R" onclick="window.runAway()" title="Run (keyboard: R)" aria-label="Run — flee the battle (shortcut: R)"><span class="battle-cmd-ico" aria-hidden="true"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" focusable="false" aria-hidden="true"><path fill="#90a4ae" d="M1 2h2v2H1V2zm3 0h2v2H4V2zm0 3h2v2H4V5zm-3 3h2v2H1V8zm3 0h2v2H4V8z"/><path fill="#ef9a9a" d="M8 2h4v1H8V2zm0 2h2v1H8V4z"/><path fill="#e57373" d="M10 2h2v1h-2V2zm-1 1h1v1H9V3zm-1 2h3v1H8V5z"/><path fill="#ef5350" d="M10 5h4v1h-4V5zm0 2h3v1h-3V7zm-2 2h3v1H8V9z"/></svg></span><span class="battle-cmd-label">RUN</span></button>
             </div>
             <div id="move-menu" class="move-menu-layout white-outline hidden"></div>
             </div>
@@ -9097,6 +9099,17 @@
         }
 
         async function loadGameData() {
+            // BUG-015 fix: stage the boot loading text so the player has a sense
+            // of progress instead of staring at "Loading Pokédex & moves…" for
+            // 2–5 seconds. Falls back silently when the overlay element is
+            // missing (headless harness, embedded usage).
+            function _setLoadingText(s) {
+                try {
+                    const el = document.getElementById('app-loading-text');
+                    if (el) el.textContent = s;
+                } catch (e) {}
+            }
+            _setLoadingText('Loading species, moves, items (1/4)…');
             // === LOAD LOCAL PS_DATA JSON (Pokemon Showdown Dex) ===
             try {
                 const [speciesJSONOrig, movesJSONOrig, naturesJSONOrig, itemsJSONOrig, abilitiesJSONOrig] = await Promise.all([
@@ -9180,6 +9193,7 @@
             }
 
             // Pre-fetch gen9 randbats (covers most competitive Pokémon from all gens)
+            _setLoadingText('Loading move sets (2/4)…');
             await fetchRandbatsForGen(9);
 
             // For any Pokémon in gen9 randbats still missing from baseStats, look up via @pkmn/dex
@@ -9204,8 +9218,16 @@
                     } catch(e) {}
                 }
             }
+            _setLoadingText('Loading competitive builds (3/4)…');
             await loadBuildsCSV();
-            await _loadOpAbilities();
+            // _loadOpAbilities lives inside the StoryMode IIFE; the IIFE has
+            // executed by the time this promise chain runs, so window.* is
+            // populated. Guard so a fetch failure doesn't break the boot.
+            if (typeof window._loadOpAbilities === 'function') {
+                try { await window._loadOpAbilities(); }
+                catch (e) { console.warn('[OP] _loadOpAbilities failed:', e && e.message); }
+            }
+            _setLoadingText('Initializing engine (4/4)…');
             computeStatScales();
             try { if (new URLSearchParams(location.search).get('spritescaledebug') === '1') window.__DEBUG_SPRITE_SCALE = true; } catch (e) {}
             enrichBaseStatsHeightsFromDex();
@@ -19775,7 +19797,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             if (attacker.ability === "Own Tempo") {
                                 logMsg(`${attacker.name}'s Own Tempo prevented confusion from fatigue!`, 'info');
                             } else {
-                                const _confFatigueRng = (sm && sm.active) ? storyRngNext : Math.random;
+                                const _confFatigueRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
                                 attacker.volatile.confusion = Math.floor(_confFatigueRng() * 3) + 2;
                                 logMsg(`${attacker.name} became confused due to fatigue!`, 'status');
                             }
@@ -23061,7 +23083,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (defender.currentHp > 0) { changeStage(defender, 'spe', -2, true); logMsg(`${defender.name}'s Speed was harshly lowered!`, 'info'); }
                         break;
                     case "G-Max Smite":
-                        if (defender.currentHp > 0 && (defender.volatile.confusion|0) === 0) { const _gSmRng = (sm && sm.active) ? storyRngNext : Math.random; defender.volatile.confusion = 2 + Math.floor(_gSmRng()*3); logMsg(`${defender.name} became confused!`, 'status'); }
+                        if (defender.currentHp > 0 && (defender.volatile.confusion|0) === 0) { const _gSmRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random; defender.volatile.confusion = 2 + Math.floor(_gSmRng()*3); logMsg(`${defender.name} became confused!`, 'status'); }
                         break;
                     case "G-Max Snooze":
                         if (defender.currentHp > 0 && !defender.status && (defender.volatile.yawnTurns|0) === 0) { defender.volatile.yawnTurns = 2; logMsg(`${defender.name} grew drowsy!`, 'status'); }
@@ -23125,12 +23147,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         break;
                     }
                     case "G-Max Gold Rush":
-                        if (defender.currentHp > 0 && (defender.volatile.confusion|0) === 0) { const _gGrRng = (sm && sm.active) ? storyRngNext : Math.random; defender.volatile.confusion = 2 + Math.floor(_gGrRng()*3); logMsg(`${defender.name} became confused by the shower of coins!`, 'status'); }
+                        if (defender.currentHp > 0 && (defender.volatile.confusion|0) === 0) { const _gGrRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random; defender.volatile.confusion = 2 + Math.floor(_gGrRng()*3); logMsg(`${defender.name} became confused by the shower of coins!`, 'status'); }
                         break;
                     case "G-Max Sandblast":
                     case "G-Max Centiferno":
                         if (defender.currentHp > 0 && (defender.volatile.partialTrap|0) === 0) {
-                            const _gTrapRng = (sm && sm.active) ? storyRngNext : Math.random;
+                            const _gTrapRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
                             defender.volatile.partialTrap = 4 + Math.floor(_gTrapRng()*2);
                             defender.volatile.partialTrapSrc = gName;
                             logMsg(`${defender.name} was trapped by ${gName}!`, 'status');
@@ -24231,7 +24253,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${mon.name} is fast asleep.`, 'status'); return false;
             }
             if (mon.status === "FRZ") {
-                const _thawRng = (sm && sm.active) ? storyRngNext : Math.random;
+                const _thawRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
                 if (_thawRng() < 0.2) { mon.status = null; logMsg(`${mon.name} thawed out!`, 'info'); return true; }
                 logMsg(`${mon.name} is frozen solid!`, 'status'); return false;
             }
@@ -25005,7 +25027,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (defender.volatile.confusion > 0) return;
                 if (defender.ability === "Own Tempo") { logMsg(`${defender.name}'s Own Tempo prevented confusion!`, 'info'); return; }
                 if (defender.volatile.safeguard > 0) return;
-                const _confRng = (sm && sm.active) ? storyRngNext : Math.random;
+                const _confRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
                 defender.volatile.confusion = Math.floor(_confRng()*3)+2;
                 logMsg(`${defender.name} became confused!`, 'status');
             };
@@ -25086,7 +25108,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Partial trapping moves (secondary effect after damage)
             const trapMoves = new Set(["Wrap","Bind","Clamp","Fire Spin","Whirlpool","Sand Tomb","Magma Storm","Infestation","Snap Trap","Thunder Cage","G-Max Sandblast","G-Max Centiferno"]);
             if (trapMoves.has(move.name) && !defender.volatile.partialTrap && defender.currentHp > 0) {
-                const _trapRng = (sm && sm.active) ? storyRngNext : Math.random;
+                const _trapRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
                 defender.volatile.partialTrap = 4 + Math.floor(_trapRng() * 2); // 4-5 turns
                 defender.volatile.partialTrapSrc = move.name;
                 logMsg(`${defender.name} was trapped by ${move.name}!`, 'status');
@@ -25145,13 +25167,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Swagger") {
                 changeStage(defender, 'atk', 2, true);
                 if (defender.ability === "Own Tempo") { logMsg(`${defender.name}'s Own Tempo prevented confusion!`, 'info'); }
-                else if (!defender.volatile.confusion) { const _swagRng = (sm && sm.active) ? storyRngNext : Math.random; defender.volatile.confusion = Math.floor(_swagRng()*3)+2; logMsg(`${defender.name} became confused!`, 'status'); }
+                else if (!defender.volatile.confusion) { const _swagRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random; defender.volatile.confusion = Math.floor(_swagRng()*3)+2; logMsg(`${defender.name} became confused!`, 'status'); }
                 return;
             }
             if (move.name === "Flatter") {
                 changeStage(defender, 'spa', 1, true);
                 if (defender.ability === "Own Tempo") { logMsg(`${defender.name}'s Own Tempo prevented confusion!`, 'info'); }
-                else if (!defender.volatile.confusion) { const _flatRng = (sm && sm.active) ? storyRngNext : Math.random; defender.volatile.confusion = Math.floor(_flatRng()*3)+2; logMsg(`${defender.name} became confused!`, 'status'); }
+                else if (!defender.volatile.confusion) { const _flatRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random; defender.volatile.confusion = Math.floor(_flatRng()*3)+2; logMsg(`${defender.name} became confused!`, 'status'); }
                 return;
             }
             if (move.name === "Tickle") { changeStage(defender, 'atk', -1, true); changeStage(defender, 'def', -1, true); return; }
@@ -25529,7 +25551,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (defender.volatile.confusion > 0) { logMsg(`${defender.name} is already confused!`, 'info'); return; }
                 if (defender.ability === "Own Tempo") { logMsg(`${defender.name}'s Own Tempo prevents confusion!`, 'info'); return; }
                 if (defender.volatile.safeguard > 0) { logMsg(`${defender.name} is protected by Safeguard!`, 'info'); return; }
-                const _crRng = (sm && sm.active) ? storyRngNext : Math.random;
+                const _crRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
                 defender.volatile.confusion = Math.floor(_crRng()*3)+2;
                 logMsg(`${defender.name} became confused!`, 'status');
                 return;
@@ -26484,7 +26506,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.ability === "Harvest" && mon.itemConsumed && !mon.item && mon.currentHp > 0) {
                 let _w = getCurrentWeather();
                 let _harvestChance = (_w === "Sun" || _w === "HarshSun") ? 1.0 : 0.5;
-                const _harvestRng = (sm && sm.active) ? storyRngNext : Math.random;
+                const _harvestRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
                 if (_harvestRng() < _harvestChance && mon.originalItem && /Berry$/.test(mon.originalItem)) {
                     mon.item = mon.originalItem;
                     mon.itemConsumed = false;
@@ -29250,11 +29272,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         /** Progression-aware lines (mixed with character quotes). Sprite may differ from canon — wording stays in-universe. */
         const RIVAL_PROGRESS_PRIMARY_QUOTES = {
-            0: ['Got your first partner? Good. Battle me before you leave town — that\'s the tradition.','No route yet. First we find out whose starter walks out of this fight.','Professor gave you a Pokémon. I brought the second half of the lesson.'],
-            1: ['The early routes were the warm-up. This is the real check.','Two badges already? Let\'s find out if the team behind them holds up.','Round one of the rivalry. I\'ve been memorizing your reads since we started.'],
-            2: ['Three gyms cleared and you\'re already ahead of my pace. Slow down.','Mid-journey check-in: different roster, sharper picks. Match it.','You moved through the front half fast. The middle hits different.'],
-            3: ['Six badges. Two gyms left, and you can hear the Plateau from here.','This is the dress rehearsal. Fight it like the curtain\'s up.','I rebuilt the whole bench for the late game. I assume you did too.'],
-            4: ['Crown or no crown, you\'re still my rival.','Being Champion means nothing the moment you slack against me.','Hall of Fame ink dries fast. Mine\'s still wet — and I\'m still here.'],
+            0: ['Got your first partner? Good. Battle me before you leave town — that\'s the tradition.','No route yet. First we find out whose starter walks out of this fight.','Professor gave you a Pokémon. I brought the second half of the lesson.','Whoever wins the first battle wins the whole rivalry. Old wisdom. Probably wrong.','First fight of two careers. Make it count.','You picked your starter? Then you picked your side. Show me.'],
+            1: ['The early routes were the warm-up. This is the real check.','Two badges already? Let\'s find out if the team behind them holds up.','Round one of the rivalry. I\'ve been memorizing your reads since we started.','I\'ve seen your fights at the gym lobby — sloppy at switches. I\'m punishing every one.','You think two badges makes you a trainer. I\'m here to argue.','Different city, same routine. Battle me and prove the badges are real.'],
+            2: ['Three gyms cleared and you\'re already ahead of my pace. Slow down.','Mid-journey check-in: different roster, sharper picks. Match it.','You moved through the front half fast. The middle hits different.','Halfway home. Halfway is also where most trainers fold. I\'m betting you fold here.','You\'re trending up. So am I. One of us hits the ceiling at this fight.','Four gyms. Four chances I\'ve had to study you. I\'m using all of them.'],
+            3: ['Six badges. Two gyms left, and you can hear the Plateau from here.','This is the dress rehearsal. Fight it like the curtain\'s up.','I rebuilt the whole bench for the late game. I assume you did too.','Late-game roster check. If your seventh slot is filler, this hurts.','I\'ve been writing scouting notes since week one. This is the prepared fight.','The Plateau\'s waiting. Earn the right to make it wait a little longer.'],
+            4: ['Crown or no crown, you\'re still my rival.','Being Champion means nothing the moment you slack against me.','Hall of Fame ink dries fast. Mine\'s still wet — and I\'m still here.','League titles age fast. Rivalries don\'t. Let\'s renew yours.','Post-Hall fight. Different stakes, same opponent.','I waited at the gates for this match. Don\'t make me wait again.'],
         };
         /** Per-storyline-variant Rival dialogue overrides for the three
          *  rebattle rows: 12 (early, post-Gym 3), 39 (mid, post-Gym 6),
@@ -29406,12 +29428,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function rivalStandingPrimaryQuotePool(phase) {
             const last = sm && sm.rivalLastWinner;
             const rivalChamp = !!(sm && sm.rivalChampionClaimed);
+            const winStreak = (sm && sm.rivalConsecutiveWins) | 0;
+            const lossStreak = (sm && sm.rivalConsecutiveLosses) | 0;
+            // BUG-010 fix: surface the player's actual record. The state
+            // machine already tracks consecutive wins/losses (see
+            // setRivalStanding) but the quote picker used to ignore them.
+            // Streak-3+ lines feel earned because the player worked for them.
             if (last === 'rival') {
                 if (rivalChamp && phase === 4) return ['I took the crown last time. Come take it back if you can.','The Hall can write both names, but everyone in this stadium knows who won the actual match.'];
+                if (lossStreak >= 3) return ['Three losses in a row. I almost feel bad. Almost.','You keep showing up. I respect that. I\'ll still win.','At this point I could field my B-team. Let\'s see.'];
+                if (lossStreak === 2) return ['Twice now. You sure this is the hobby for you?','Two-for-two. Make it three and I retire.','I\'m starting to memorize your roster. Surprise me.'];
                 return ['Last fight, you walked off second. Let\'s argue about it again.','You moved on because I let you. This round you earn it.','Better trainer in the rivalry is still me. Until you fix that.'];
             }
             if (last === 'player') {
                 if (phase === 4) return ['You took the crown off my head. I came to take it back.','Champion or challenger, one win flips the story. That\'s all I need.'];
+                if (winStreak >= 3) return ['Three in a row to you. I\'m rebuilding from the ground up.','You\'ve made me train harder than the league did. This time I close the gap.','I studied every one of those wins. Don\'t expect a repeat.'];
+                if (winStreak === 2) return ['Two losses. That\'s officially a pattern. I\'m breaking it today.','You\'re ahead by two. I\'m here to make it one.','Stop winning. Seriously. Let me have one.'];
                 return ['You took the last one. I trained for the rematch.','Enjoy being the better trainer. It\'s temporary.','The last fight was yours. This one I\'m stealing back.'];
             }
             return [];
@@ -29585,7 +29617,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
         function getTrainerQuote(role) {
             const pool = TRAINER_QUOTES[role] || TRAINER_QUOTES['Basic Trainer'];
-            const rng = (sm && sm.active) ? storyRngNext : Math.random;
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             return pool[Math.floor(rng() * pool.length)];
         }
         /** True when a quote has no spoken letters — only ellipses, periods,
@@ -29596,7 +29628,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return /[A-Za-z]/.test(String(quote)) === false;
         }
         function getTrainerQuoteForBattle(trainer, quoteRole, storyBattleRowIdx) {
-            const rng = (sm && sm.active) ? storyRngNext : Math.random;
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             const nm = trainer && trainer.name ? String(trainer.name) : '';
             if (quoteRole === 'Rival' && storyBattleRowIdx != null && storyBattleRowIdx !== undefined) {
                 const phase = getRivalEncounterPhase(storyBattleRowIdx);
@@ -30814,6 +30846,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm._strngState = (Math.imul(sm._strngState, 1664525) + 1013904223) >>> 0;
             return sm._strngState / 4294967296;
         }
+        // BUG-002 fix: storyRngNext is referenced from ~11 engine call sites that
+        // live OUTSIDE this IIFE (lines 19778, 23064, 23128, 23133, 24234, 25008,
+        // 25089, 25148, 25154, 25532, 26487). Without this expose, those sites
+        // throw ReferenceError whenever sm.active is true (= every story battle
+        // that triggers fatigue-confusion, thaw, Swagger/Flatter, secondary
+        // confuse, Harvest, or a G-Max status branch). See BUG_REPORT.md.
+        try { window.storyRngNext = storyRngNext; } catch (e) {}
         let _selectedBagItem = null;
         let _storyBattleInventorySnapshot = null;
 
@@ -31011,7 +31050,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 normalizeRivalStandingState();
                 normalizeStoryRivalLock();
                 return true;
-            } catch(e) { return false; }
+            } catch(e) {
+                // BUG-005 fix: corrupted save used to silently return false; the
+                // game treated the player as a fresh user and the next auto-save
+                // overwrote the broken blob. Preserve the original to a backup
+                // key and surface a one-time toast so the player can recover
+                // (see Settings → Export save / "Recover broken save").
+                try {
+                    const raw = localStorage.getItem(SAVE_KEY);
+                    if (raw) {
+                        const backupKey = SAVE_KEY + '.broken.' + Date.now();
+                        try { localStorage.setItem(backupKey, raw); } catch (e2) {}
+                        try { localStorage.setItem(SAVE_KEY + '.broken.latest', raw); } catch (e2) {}
+                    }
+                } catch (e3) {}
+                console.error('[Story] save load failed — backed up to pbs_story_save.broken.latest', e);
+                try { window.showToast && window.showToast('Saved run could not be loaded. A backup was preserved (see Settings → Recover broken save).', 6000); } catch (e4) {}
+                return false;
+            }
         }
         function hasSave() { try { return !!localStorage.getItem(SAVE_KEY); } catch(e) { return false; } }
         function deleteSave() { try { localStorage.removeItem(SAVE_KEY); } catch(e) {} }
@@ -31307,7 +31363,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function weightedPickFromGrades(gradeWeights, enabledGens) {
             // gradeWeights: {g1,g2,g3,g4} summing to ~100
-            const rng = (sm && sm.active) ? storyRngNext : Math.random;
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             const total = (gradeWeights.g1||0)+(gradeWeights.g2||0)+(gradeWeights.g3||0)+(gradeWeights.g4||0);
             if (total === 0) return null;
             let r = rng() * total;
@@ -31474,7 +31530,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _applyEnemyGimmickDistribution(team, eventType) {
             const keys = _storyEnemyMechKeys();
             if (!keys.length || !team || !team.length) return team;
-            const rng = (sm && sm.active) ? storyRngNext : Math.random;
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             const classic = !(sm && sm.settings && sm.settings.classicMode === false);
             const priority = ['gmax', 'mega', 'dmax', 'z', 'tera'].filter(k => keys.includes(k));
             const evt = eventType || (sm && STORY_EVENTS_RAW[sm.eventIndex] && STORY_EVENTS_RAW[sm.eventIndex][2]) || '';
@@ -32268,7 +32324,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const ceilingGrade = ceiling | 0;
             const have = new Set(baseSigs);
             const out = baseSigs.slice();
-            const _rng = (sm && sm.active) ? storyRngNext : Math.random;
+            const _rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             for (let g = ceilingGrade; g <= 4 && out.length < _GL_SIG_TOPUP_MIN; g++) {
                 const pool = [];
                 for (const name of Object.keys(baseStats)) {
@@ -32294,7 +32350,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function rollTrainerTeam(trainer, partySize, gradeWeights, enabledGensIn, battleEventType, storyRowIdx) {
-            const rng = (sm && sm.active) ? storyRngNext : Math.random;
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             let gwIn = applyDifficultyToGradeWeights(gradeWeights || { g1: 0, g2: 0, g3: 50, g4: 50 });
             gwIn = applyStoryProgressToGradeWeights(gwIn, storyRowIdx);
             gwIn = storyStripGrade4IfPartyMature(gwIn);
@@ -32578,7 +32634,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(team, battleEventType), battleEventType, storyRowIdx, _origSigs);
         }
         function rollMysteryFigureFinalBossTeam(partySize, enabledGensIn) {
-            const rng = (sm && sm.active) ? storyRngNext : Math.random;
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             const allowedGens = normalizeEnabledGens(enabledGensIn != null ? enabledGensIn : storySettingsGens());
             const genSet = new Set(allowedGens);
             const gradeOnePool = [];
@@ -32765,7 +32821,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (fresh.length) candidates = fresh;
             }
             if (!candidates.length) candidates = TRAINER_DATA;
-            const _rng = (sm && sm.active) ? storyRngNext : Math.random;
+            const _rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             // For Basic/Gym Trainer picks, avoid Normal-type numerical dominance by grouping
             // candidates by their effective type and picking the type first, then the trainer.
             if (isBasicLike) {
@@ -32821,7 +32877,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const eg = normalizeEnabledGens(enabledGens);
             sm.trainerAssignments = {};
             sm.themedAssignments = {};
-            const _themeRng = (sm && sm.active) ? storyRngNext : Math.random;
+            const _themeRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             for (const k in STORY_THEMED_BATTLE_POOLS) {
                 const pool = STORY_THEMED_BATTLE_POOLS[k];
                 if (Array.isArray(pool) && pool.length) {
@@ -32878,7 +32934,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             // Pass 3: rivals (locked) and remaining battles. Mystery Figure uses a synthetic trainer at battle time — skip to avoid name pollution.
-            const rng = (sm && sm.active) ? storyRngNext : Math.random;
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             STORY_EVENTS_RAW.forEach((ev, posInRaw) => {
                 const [idx, type, event] = ev;
                 if (type !== 'Battle') return;
@@ -32968,7 +33024,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (fresh.length) pool = fresh;
             }
             if (!pool.length) return null;
-            const _rng = (sm && sm.active) ? storyRngNext : Math.random;
+            const _rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             // Type-first pick (same flatten as selectTrainerForRole) so Normal-typed
             // trainers don't dominate.
             const byType = {};
@@ -33006,7 +33062,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (fresh.length) pool = fresh;
             }
             if (!pool.length) return null;
-            const _rng = (sm && sm.active) ? storyRngNext : Math.random;
+            const _rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             return pool[Math.floor(_rng() * pool.length)];
         }
 
@@ -39404,7 +39460,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } catch (e) {}
             }
             if (!pool.length) return null;
-            const _rng = (sm && sm.active) ? storyRngNext : Math.random;
+            const _rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             const name = pool[Math.floor(_rng() * pool.length)];
             const build = _withStoryPlayerGimmickGate(() => makeBuild(name));
             // Lock shiny up front so the Subject Zero cage sprite and the
@@ -42418,7 +42474,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.cityRerollsUsed[rk] = rn;
                 const newName  = pool[Math.floor(storyRngNext() * pool.length)];
                 const newBuild = _makePlayerLinkBuild(newName, 'COMPETENT');
-                if (!newBuild) { window.showGameAlert('Build pipeline error — try again.'); return; }
+                if (!newBuild) { window.showGameAlert('Couldn\'t generate a team — please retry. (Internal: build-pipeline)'); return; }
                 sm.gold -= cost;
                 try { _storyTrackSpend(cost); } catch (e) {}
                 sm.team[idx] = { name:newName, build:newBuild, id:'m_'+Math.random().toString(36).slice(2,10) };
@@ -42449,7 +42505,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.cityRerollsUsed[uk] = un;
                 const newName  = pool[Math.floor(storyRngNext() * pool.length)];
                 const newBuild = _makePlayerLinkBuild(newName, 'TOURNAMENT');
-                if (!newBuild) { window.showGameAlert('Build pipeline error — try again.'); return; }
+                if (!newBuild) { window.showGameAlert('Couldn\'t generate a team — please retry. (Internal: build-pipeline)'); return; }
                 sm.gold -= cost;
                 try { _storyTrackSpend(cost); } catch (e) {}
                 sm.team[idx] = { name:newName, build:newBuild, id:'m_'+Math.random().toString(36).slice(2,10) };
@@ -42997,7 +43053,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const carriedShiny  = (mon.build && mon.build._isShiny !== undefined) ? mon.build._isShiny : undefined;
                 const carriedGender = (mon.build && mon.build._gender  !== undefined) ? mon.build._gender  : undefined;
                 const newBuild = _makePlayerLinkBuild(mon.name, 'COMPETENT');
-                if (!newBuild) { window.showGameAlert('Build pipeline error — try again.'); return; }
+                if (!newBuild) { window.showGameAlert('Couldn\'t generate a team — please retry. (Internal: build-pipeline)'); return; }
                 if (carriedIVs) newBuild.ivs = carriedIVs;
                 if (carriedShiny  !== undefined) newBuild._isShiny = carriedShiny;
                 if (carriedGender !== undefined) newBuild._gender  = carriedGender;
@@ -43828,7 +43884,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Cursed Amulet Coin: -1 random stat on the player's team only (foes don't share the gold reward, so they don't share the curse)
             if (active('cursedCoinPouch')) {
                 const statKeys = ['atk','def','spa','spd','spe'];
-                const rng = (sm && sm.active) ? storyRngNext : Math.random;
+                const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
                 const curseEx = { bypassStagnation: true, bypassNullifier: true };
                 (state.playerParty||[]).forEach(mon => {
                     if (!mon) return;
@@ -44422,6 +44478,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return _opAbilitiesCache;
         }
+        // BUG-001 fix: _loadOpAbilities is called from loadGameData (outside this
+        // IIFE, ~line 9208). Without this expose, the call throws ReferenceError
+        // at every boot and the OP "Awaken" abilities feature is silently
+        // disabled. See BUG_REPORT.md.
+        try { window._loadOpAbilities = _loadOpAbilities; } catch (e) {}
         function _opAbilitiesForMon(monName) {
             if (!_opAbilitiesCache) return [];
             if ((sm && (sm.badges | 0)) < 6) return [];
@@ -48181,6 +48242,49 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             },
         };
         })(); // end StoryMode IIFE
+
+        // BUG-005 fix: player-facing save export / broken-save recovery.
+        // Wired to the Settings → Developer / Story tools panel.
+        window.__exportStorySave = function () {
+            try {
+                const raw = localStorage.getItem('pbs_story_save');
+                if (!raw) {
+                    try { window.showToast && window.showToast('No story save to export — start a run first.'); } catch (e) {}
+                    return;
+                }
+                const _copy = function (s) {
+                    try {
+                        if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(s).then(()=>true,()=>false);
+                    } catch (e) {}
+                    try {
+                        const ta = document.createElement('textarea');
+                        ta.value = s; ta.style.position = 'fixed'; ta.style.opacity = '0';
+                        document.body.appendChild(ta); ta.select();
+                        const ok = document.execCommand('copy');
+                        document.body.removeChild(ta);
+                        return Promise.resolve(!!ok);
+                    } catch (e) { return Promise.resolve(false); }
+                };
+                _copy(raw).then(function (ok) {
+                    try {
+                        window.showToast && window.showToast(ok
+                            ? 'Save copied to clipboard (' + raw.length + ' chars). Paste into a text file to back up.'
+                            : 'Could not copy automatically. Open DevTools → Application → Local Storage → pbs_story_save.', 6000);
+                    } catch (e) {}
+                });
+            } catch (e) { console.warn('[exportStorySave]', e); }
+        };
+        window.__recoverBrokenStorySave = function () {
+            try {
+                const broken = localStorage.getItem('pbs_story_save.broken.latest');
+                if (!broken) {
+                    try { window.showToast && window.showToast('No broken-save backup found. (Only created automatically when a save fails to load.)'); } catch (e) {}
+                    return;
+                }
+                try { localStorage.setItem('pbs_story_save', broken); } catch (e) {}
+                try { window.showToast && window.showToast('Broken save restored. Reload the page (F5) to retry loading it.', 6000); } catch (e) {}
+            } catch (e) { console.warn('[recoverBrokenStorySave]', e); }
+        };
 
         // ?testmega=1 — schedule AFTER StoryMode exists (dataReady's .then ran too early: StoryMode was still undefined).
         (function scheduleTestMegaFromUrl() {

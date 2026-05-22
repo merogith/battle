@@ -4,6 +4,27 @@
 **Build under test:** `battle.html` @ HEAD (48,473 lines), `data/` v15-ish save schema (SAVE_VER=19).
 **Test harness:** `tests/story-walkthrough.mjs`, `tests/story-combat.mjs`, `tests/story-variants.mjs`, `npm test`, plus targeted jsdom identifier-reachability probes.
 
+## Fix status (this commit)
+
+| Bug | Status | Notes |
+|-----|--------|-------|
+| BUG-001 (`_loadOpAbilities` ReferenceError) | ✅ Fixed | `window._loadOpAbilities` exposed inside the IIFE; `loadGameData` now calls via window with a typeof guard. Headless boot is now 0 errors (was 1). |
+| BUG-002 (`storyRngNext` outside IIFE) | ✅ Fixed | `window.storyRngNext` exposed inside the IIFE; the 11 outside-IIFE call sites now use `(sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random` (lazy + safe). |
+| BUG-003 (RNG hygiene, 295 bare Math.random) | ⏳ Not in this commit | Mechanical 8-hour pass; deliberately deferred to keep this changeset small and reviewable. |
+| BUG-004 (6v6 AI stalls) | ⏳ Not in this commit | Requires AI heuristic redesign; tracked. |
+| BUG-005 (silent save corruption nuke) | ✅ Fixed | Corrupted saves are now backed up to `pbs_story_save.broken.<ts>` + `pbs_story_save.broken.latest`, a toast warns the player, and Settings → Developer / Story tools gets two new buttons: "Export story save" (clipboard) and "Recover broken save". |
+| BUG-010 (rival dialogue ignores record) | ✅ Improved | `rivalStandingPrimaryQuotePool` now branches on `rivalConsecutiveWins` / `rivalConsecutiveLosses` (1, 2, 3+ streak lines for both directions). |
+| BUG-015 (boot has no progress) | ✅ Fixed | `loadGameData` stages the `#app-loading-text` through "species/moves/items (1/4)", "move sets (2/4)", "competitive builds (3/4)", "engine (4/4)". |
+| BUG-018 (cryptic "Build pipeline error") | ✅ Fixed | Replaced with "Couldn't generate a team — please retry. (Internal: build-pipeline)". |
+| BUG-023 (rotate-overlay contrast) | ✅ Fixed | `#aaa` → `#e0e0e0`. |
+| Secondary-text contrast (BUG_REPORT 3.2, partial) | ✅ Fixed | `.stat-mini-label`, `.sum-detail-lbl`, `.summary-stat-label`, `.battle-btn-move .move-tile-meta` bumped from `#888` to `#b8b8b8`. |
+| Battle command aria-labels (UI section 3.1) | ✅ Added | FIGHT / POKÉMON / BAG / RUN each get a descriptive `aria-label` (includes the keyboard shortcut). |
+| Rival quote pool depth (Design 2.4) | ✅ Improved | `RIVAL_PROGRESS_PRIMARY_QUOTES` now has 6 lines per phase (was 3). |
+
+All other findings (BUG-006, 007, 008, 009, 011–014, 016–017, 019–022, 024–028) remain open and tracked below.
+
+---
+
 ## Executive summary
 
 **Did I beat it?** Yes — the headless walkthrough (auto-win pattern) reaches the post-HoF City9 hub, fires the Mystery Figure climax, opens Crucible / Battle Frontier / Boss Arc, with badges=8 and 174k gold. The variant matrix (5 difficulties × 4 storylines, 9 runs) also all complete. `npm test` is 533/533 green.
