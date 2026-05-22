@@ -1,0 +1,60 @@
+{
+  "root": true,
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2022": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module"
+  },
+  "rules": {
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "no-undef": "error",
+    "no-shadow-restricted-names": "error",
+    "no-self-assign": "error",
+    "no-self-compare": "error",
+    "no-unreachable": "error",
+    "no-constant-condition": ["error", { "checkLoops": false }],
+    "no-empty": ["error", { "allowEmptyCatch": true }],
+    "no-cond-assign": ["error", "except-parens"],
+    "no-redeclare": "error",
+    "valid-typeof": "error",
+    "eqeqeq": ["warn", "smart"],
+    "no-fallthrough": "error",
+    "no-implicit-globals": "off"
+  },
+  "overrides": [
+    {
+      "files": ["tests/**/*.js", "tests/**/*.mjs"],
+      "env": { "node": true },
+      "rules": { "no-unused-vars": "off" }
+    },
+    {
+      "files": ["scripts/**/*.cjs", "scripts/**/*.js"],
+      "env": { "node": true },
+      "parserOptions": { "sourceType": "script" }
+    },
+    {
+      "files": ["scripts/**/*.mjs"],
+      "env": { "node": true },
+      "parserOptions": { "sourceType": "module" }
+    },
+    {
+      "files": ["online-pvp.js", "move-anim-map.js", "move-sfx-map.js", "online-config.js", "online-config.example.js"],
+      "env": { "browser": true },
+      "parserOptions": { "sourceType": "script" },
+      "globals": {
+        "supabase": "readonly",
+        "anime": "readonly",
+        "global": "writable",
+        "window": "readonly",
+        "document": "readonly",
+        "console": "readonly",
+        "Promise": "readonly",
+        "fetch": "readonly"
+      }
+    }
+  ]
+}
