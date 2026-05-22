@@ -42719,13 +42719,59 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
 
         // Short, hover-friendly requirement note for an evolution button.
+        // Per docs/EVOLUTION_FLOW_REBUILD.md §5: requirements are now consumed
+        // from the player's inventory and trade evos require an in-city Cable
+        // Link visit. The hint surfaces what's missing so the player knows
+        // where to go.
         function _evoReqHint(evoName) {
             const stone = EVO_STONE_REQ[evoName];
-            if (stone) return ` Lore: needs a ${stone} (Sage provides, baked into the fee).`;
+            if (stone) {
+                const sid = STONE_NAME_TO_ID[stone];
+                const have = (sm && sm.inventory && sid) ? (sm.inventory[sid] | 0) : 0;
+                return have > 0
+                    ? ` Needs ${stone} (you hold ×${have}).`
+                    : ` Needs ${stone} — pick one up at the Stone Emporium (500G).`;
+            }
             const trade = EVO_TRADE_REQ[evoName];
-            if (trade === true) return ` Lore: trade evolution (Sage arranges via the Cable Link).`;
-            if (typeof trade === 'string') return ` Lore: traded while holding ${trade} (Sage arranges via the Cable Link).`;
+            if (trade === true) return ` Trade evolution — visit the Cable Link in this city first.`;
+            if (typeof trade === 'string') {
+                const tid = TRADE_ITEM_NAME_TO_ID[trade];
+                const have = (sm && sm.inventory && tid) ? (sm.inventory[tid] | 0) : 0;
+                const itemPart = have > 0 ? `${trade} (×${have} held)` : `${trade} (Stone Emporium, 500G)`;
+                return ` Trade while holding ${itemPart} — visit the Cable Link in this city first.`;
+            }
             return '';
+        }
+        // Returns { ok, reason } for whether a stone/trade evo is currently performable.
+        // Used by both the render gate and the evolve action so they stay in sync.
+        // Rare Candy callers can pass {bypassConsumables:true} to skip the stone/trade-item
+        // ownership check (Cable Link visit is still required — that's the lore, not the wallet).
+        function _evoLabCheckRequirements(evoName, opts) {
+            opts = opts || {};
+            const stone = EVO_STONE_REQ[evoName];
+            const trade = EVO_TRADE_REQ[evoName];
+            let cityIdx = -1;
+            try { cityIdx = cityIndexFromEventIndex(sm.eventIndex); } catch (e) {}
+            if (stone) {
+                if (opts.bypassConsumables) return { ok: true };
+                const sid = STONE_NAME_TO_ID[stone];
+                const have = (sm && sm.inventory && sid) ? (sm.inventory[sid] | 0) : 0;
+                if (have <= 0) return { ok: false, reason: `${evoName} needs a ${stone}. Pick one up at the Stone Emporium (500G).`, missing: 'stone', stone: stone, stoneId: sid };
+                return { ok: true, stone: stone, stoneId: sid };
+            }
+            if (trade) {
+                const linkSeen = (cityIdx >= 0) && _isFacilitySeen(cityIdx, 'link');
+                if (!linkSeen) return { ok: false, reason: `${evoName} is a trade evolution — drop in on the Cable Link Station in this city first.`, missing: 'link' };
+                if (typeof trade === 'string') {
+                    if (opts.bypassConsumables) return { ok: true, trade: trade };
+                    const tid = TRADE_ITEM_NAME_TO_ID[trade];
+                    const have = (sm && sm.inventory && tid) ? (sm.inventory[tid] | 0) : 0;
+                    if (have <= 0) return { ok: false, reason: `${evoName} needs to be traded while holding a ${trade}. Pick one up at the Stone Emporium (500G).`, missing: 'tradeItem', trade: trade, tradeId: tid };
+                    return { ok: true, trade: trade, tradeId: tid };
+                }
+                return { ok: true };
+            }
+            return { ok: true };
         }
 
         // Multi-line dialogue for the confirmation modal: Stone Sage speaks about
@@ -42734,20 +42780,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _evoFlavorLine(evoName) {
             const stone = EVO_STONE_REQ[evoName];
             if (stone) {
-                return `Stone Sage: "Ah, ${evoName}. The old method asks for a ${stone} — I keep a tray of them by the hearth. Consider one part of the fee."`;
+                const sid = STONE_NAME_TO_ID[stone];
+                const have = (sm && sm.inventory && sid) ? (sm.inventory[sid] | 0) : 0;
+                return have > 0
+                    ? `Stone Sage: "Ah, ${evoName}. The ${stone} you carry will do nicely — set it on the altar."`
+                    : `Stone Sage: "For ${evoName}, the old method asks for a ${stone}. The Emporium next door keeps a tray of them — bring one back and we'll wake the partner up."`;
             }
             const trade = EVO_TRADE_REQ[evoName];
             if (trade) {
-                let line = (trade === true)
-                    ? `Stone Sage: "${evoName}? Old hands say a trade does the trick — I'll whisper through the Cable Link on your behalf."`
-                    : `Stone Sage: "For ${evoName}, the lore wants a ${trade} traded between trainers. I'll arrange it through the Cable Link."`;
-                try {
-                    const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
-                    if (!_isFacilitySeen(cityIdx, 'link')) {
-                        line += `\n(The Cable Link Station down the road is still unvisited — drop in before you leave town and the trade-memory will season nicely.)`;
-                    }
-                } catch (e) {}
-                return line;
+                let linkSeen = false;
+                try { linkSeen = _isFacilitySeen(cityIndexFromEventIndex(sm.eventIndex), 'link'); } catch (e) {}
+                if (trade === true) {
+                    return linkSeen
+                        ? `Stone Sage: "${evoName}? Old hands say a trade does the trick — the Cable Link signal is still warm in the air. I'll lean on that to push it through."`
+                        : `Stone Sage: "${evoName} only evolves through a trade. Walk to the Cable Link Station first, let the signal hum once. Come back and the evolution remembers."`;
+                }
+                // String trade — also needs the held item.
+                const tid = TRADE_ITEM_NAME_TO_ID[trade];
+                const have = (sm && sm.inventory && tid) ? (sm.inventory[tid] | 0) : 0;
+                if (!linkSeen) {
+                    return `Stone Sage: "For ${evoName}, the lore wants a ${trade} carried through a trade. Drop in on the Cable Link Station first, then come back with the ${trade} in hand."`;
+                }
+                return have > 0
+                    ? `Stone Sage: "${evoName}? Your ${trade} and the trade-memory the Cable Link gave you — bring both to the altar."`
+                    : `Stone Sage: "${evoName} wants a ${trade} on its person at the moment of trade. The Emporium has them — fetch one and we'll finish the rite."`;
             }
             // Default — level-up evolution. The Sage acknowledges the path so the screen
             // doesn't go silent on the most common evolution type.
@@ -42941,12 +42997,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const cost = _evoCostFor(eg, en);
                         const canAfford = sm.gold >= cost;
                         const reqHint = (_evoReqHint(e.name) || '').replace(/^\.\s*/, '');
-                        const goldBtn = canAfford
-                            ? `<button class="story-tutor-btn" onclick="event.stopPropagation();window.StoryMode.evoLabEvolve(${i}, '${e.name.replace(/'/g, "\\'")}')" style="color:#76ff03;border-color:#76ff03;font-size:11px;padding:5px 8px;">⬆ Evolve · ${storyGoldHtml(cost, false)}</button>`
-                            : `<button class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;">Locked · need ${(cost - sm.gold).toLocaleString()}G</button>`;
-                        const candyBtn = (_rareCandyCount > 0)
-                            ? `<button class="story-tutor-btn" onclick="event.stopPropagation();window.StoryMode.evoLabEvolveWithCandy(${i}, '${e.name.replace(/'/g, "\\'")}')" style="color:#f8bbd0;border-color:#f8bbd0;font-size:11px;padding:5px 8px;"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="12" height="12" style="width:12px;height:12px;image-rendering:auto;vertical-align:-2px;margin-right:2px;">Candy (${_rareCandyCount})</button>`
-                            : '';
+                        // Per docs/EVOLUTION_FLOW_REBUILD.md §5: gate the gold button on
+                        // requirement availability (stone in bag / Cable Link visited / trade
+                        // item in bag). Rare Candy still bypasses gold + consumable but
+                        // honors the Cable Link visit for trade evos.
+                        const goldReq = _evoLabCheckRequirements(e.name);
+                        const candyReq = _evoLabCheckRequirements(e.name, { bypassConsumables: true });
+                        let goldBtn;
+                        if (!goldReq.ok) {
+                            const _missLabel = goldReq.missing === 'link' ? 'Visit Cable Link'
+                                            : goldReq.missing === 'stone' ? `Need ${goldReq.stone}`
+                                            : goldReq.missing === 'tradeItem' ? `Need ${goldReq.trade}`
+                                            : 'Locked';
+                            goldBtn = `<button class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;" title="${_esc(goldReq.reason || '')}">${_missLabel}</button>`;
+                        } else if (canAfford) {
+                            goldBtn = `<button class="story-tutor-btn" onclick="event.stopPropagation();window.StoryMode.evoLabEvolve(${i}, '${e.name.replace(/'/g, "\\'")}')" style="color:#76ff03;border-color:#76ff03;font-size:11px;padding:5px 8px;">⬆ Evolve · ${storyGoldHtml(cost, false)}</button>`;
+                        } else {
+                            goldBtn = `<button class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;">Locked · need ${(cost - sm.gold).toLocaleString()}G</button>`;
+                        }
+                        let candyBtn = '';
+                        if (_rareCandyCount > 0) {
+                            if (!candyReq.ok) {
+                                // Candy bypasses consumables but not the Cable Link gate.
+                                candyBtn = `<button class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;" title="${_esc(candyReq.reason || '')}"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="12" height="12" style="width:12px;height:12px;image-rendering:auto;vertical-align:-2px;margin-right:2px;opacity:0.5;">Candy locked</button>`;
+                            } else {
+                                candyBtn = `<button class="story-tutor-btn" onclick="event.stopPropagation();window.StoryMode.evoLabEvolveWithCandy(${i}, '${e.name.replace(/'/g, "\\'")}')" style="color:#f8bbd0;border-color:#f8bbd0;font-size:11px;padding:5px 8px;"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="12" height="12" style="width:12px;height:12px;image-rendering:auto;vertical-align:-2px;margin-right:2px;">Candy (${_rareCandyCount})</button>`;
+                            }
+                        }
                         return `<div class="tx-card" data-recommended="${canAfford?1:0}" style="cursor:default;">
                             <div class="tx-card-head">
                                 <img src="${sprite}" alt="" style="width:40px;height:40px;image-rendering:pixelated;" onerror="this.style.visibility='hidden'">
@@ -43130,6 +43207,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     window.showGameAlert(`${evoName} isn't in your enabled generations.`);
                     return;
                 }
+                // Per docs/EVOLUTION_FLOW_REBUILD.md §5: stone evos consume a stone from
+                // inventory; trade evos require Cable Link visited this city; held-item
+                // trade evos also consume the item. The render path also gates the button,
+                // but we re-check here for the rare hand-built callsite (URL-triggered etc).
+                const req = _evoLabCheckRequirements(evoName);
+                if (!req.ok) { window.showGameAlert(req.reason || 'Evolution requirements not met.'); return; }
                 const ek = `e_${idx}`;
                 const en = (sm.cityRerollsUsed[ek] || 0) + 1;
                 const evoGrade = getMonGrade(evoName, getBST(evoName));
@@ -43137,12 +43220,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (sm.gold < cost) { window.showGameAlert(`Need ${cost.toLocaleString()}G to evolve! (You have ${sm.gold.toLocaleString()}G)`); return; }
                 const flavor = _evoFlavorLine(evoName);
                 const head = `Evolve ${mon.name} → ${evoName} (Grade ${evoGrade}) for ${cost.toLocaleString()}G?`;
-                const tail = `Nature, EVs, item, ability (if ${evoName} can have it), gimmick (if ${evoName} supports it), and any moves ${evoName} can still legally learn are kept; only illegal moves are replaced.`;
+                const consumeNote = req.stoneId ? `\nA ${req.stone} from your bag will be consumed.`
+                                  : req.tradeId ? `\nA ${req.trade} from your bag will be consumed.`
+                                  : '';
+                const tail = `Nature, EVs, item, ability (if ${evoName} can have it), gimmick (if ${evoName} supports it), and any moves ${evoName} can still legally learn are kept; only illegal moves are replaced.${consumeNote}`;
                 const msg  = flavor ? `${head}\n\n${flavor}\n\n${tail}` : `${head}\n\n${tail}`;
                 const ok = await window.showGameConfirm(msg);
                 if (!ok) return;
                 sm.cityRerollsUsed[ek] = en;
                 if (!await _evoLabApplyEvolutionWithAnim(idx, evoName)) return;
+                _storyEnsureInventory();
+                if (req.stoneId)  sm.inventory[req.stoneId]  = Math.max(0, (sm.inventory[req.stoneId]  | 0) - 1);
+                if (req.tradeId)  sm.inventory[req.tradeId]  = Math.max(0, (sm.inventory[req.tradeId]  | 0) - 1);
                 sm.gold -= cost;
                 try { _storyTrackSpend(cost); } catch (e) {}
                 save();
@@ -43172,6 +43261,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     window.showGameAlert(`${evoName} isn't in your enabled generations.`);
                     return;
                 }
+                // Per docs/EVOLUTION_FLOW_REBUILD.md §5.5: candy bypasses gold + stone/trade-item
+                // ownership but does NOT bypass the Cable Link visit for trade evos — the lore is
+                // the friction, the wallet is the override. Re-check with bypass on.
+                const candyReq = _evoLabCheckRequirements(evoName, { bypassConsumables: true });
+                if (!candyReq.ok) { window.showGameAlert(candyReq.reason || 'Trade evolution still needs the Cable Link visit.'); return; }
                 const ek = `e_${idx}`;
                 const en = (sm.cityRerollsUsed[ek] || 0) + 1;
                 const evoGrade = getMonGrade(evoName, getBST(evoName));
