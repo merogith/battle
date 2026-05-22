@@ -35865,7 +35865,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // pre-Gym-1 is the canonical first encounter; cross-run-deduped.
             if (cidx === 1 && (sm.badges | 0) === 0 && Array.isArray(ev) && Array.isArray(ev[5]) && ev[5].indexOf('Gym Battle') !== -1) {
                 try { _storyShowOneTimeTip('what-is-a-gym',
-                    'A Gym Leader runs each of the eight towns on this road — type specialists who keep the league honest by handing out their badge only to trainers who can earn it.\n\nWin and the badge is yours. Your active party cap grows by one (2 + badges, capped at six after four badges), and the next Professor opens her bench for a new partner. Foes scale 1-for-1 with your party size — except the finals, who always field six.\n\nEvery leader builds around one type, and the city wears the color. Read the gym\'s palette on the way in, or let the City Guide tell you what they\'ve been training for.\n\nWhen you\'re ready: ⚔ Challenge the Gym Leader.'); } catch (e) {}
+                    'A Gym Leader runs each of the eight towns on this road — type specialists who keep the league honest by handing out their badge only to trainers who can earn it.\n\nWin and the badge is yours. Your active party cap grows by one (2 + badges, capped at six after four badges), and the next Professor opens her bench for a new partner. Foes scale 1-for-1 with your party size — except the finals, who always field six.\n\nEvery leader builds around one type, and the city wears the color. Read the gym\'s palette on the way in, or let the City Guide tell you what they\'ve been training for.\n\nThe gym lobby holds one or two of the leader\'s deputies — Gym Trainers who warm up the floor. Beat them and the leader\'s chamber opens.\n\nWhen you\'re ready: ⚔ Enter the Gym.'); } catch (e) {}
             }
         }
 
@@ -36016,6 +36016,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     urgent: true,
                 });
             }
+            // True next thing the player will see when they leave town. The wild
+            // interrupt chain fires *before* the next trainer when leaving a city
+            // for a different city (see `_shouldFireWildBeforeBattle`), so the
+            // "Next:" chip and the various route buttons below honor that — a
+            // post-gym hub heading into a Rival route says "Wild → Rival", not
+            // a flat "Battle Your Rival" that lied about the next two screens.
+            const _willFireWildNext = _storyNextBatIdx >= 0 && _shouldFireWildBeforeBattle(_storyNextBatIdx);
             // "Next:" is always first when a battle is queued — clearest answer to the
             // ten-second "what now?" question on entering any city.
             if (_storyNextBat) {
@@ -36030,13 +36037,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (nxEvent === 'Champion') nextLabel = trAssign ? `Champion — ${trAssign}` : 'Champion';
                 else if (nxEvent === 'Mystery Figure') nextLabel = 'Mystery Figure (???)';
                 else if (nxEvent === 'Victory Road') nextLabel = 'Victory Road';
+                else if (nxEvent === 'Elite Trainer') nextLabel = 'Ace Trainer';
+                else if (nxEvent === 'Gym Trainer 1' || nxEvent === 'Gym Trainer 2') nextLabel = 'Gym Trainer';
+                else if (nxEvent === 'Basic Trainer') nextLabel = 'Route Trainer';
                 const theme = _resolveThemeForBattleRow(nxId);
                 const themeLabel = theme && STORY_THEMED_NEXT_LABELS[theme];
                 if (themeLabel) nextLabel = `${nextLabel} — ${themeLabel}`;
-                tips.push({ kind: 'next', iconPath: 'icons/story/story_route.png?v=20260516', label: `Next: ${nextLabel}`, click: 'window.StoryMode.proceedToNextBattle()' });
+                // When wilds will fire first, surface the journey in order: the
+                // grass before the gate. Keeps the chip honest without becoming
+                // a paragraph — "🌿 Wild → ⚔ Rival" reads in one glance.
+                const _nextChipText = _willFireWildNext
+                    ? `Next: 🌿 Wild Pokémon → ${nextLabel}`
+                    : `Next: ${nextLabel}`;
+                tips.push({ kind: 'next', iconPath: 'icons/story/story_route.png?v=20260516', label: _nextChipText, click: 'window.StoryMode.proceedToNextBattle()' });
             }
             if (rivalGateActive) {
-                tips.push({ iconPath: 'icons/story/story_route.png?v=20260516', label: 'Heal — your rival is at the route gate', click: 'window.StoryMode.enterPokemonCenter()' });
+                const _healTipLabel = _willFireWildNext
+                    ? 'Heal — your rival waits at the end of the road'
+                    : 'Heal — your rival is at the route gate';
+                tips.push({ iconPath: 'icons/story/story_route.png?v=20260516', label: _healTipLabel, click: 'window.StoryMode.enterPokemonCenter()' });
             }
             const hasTeam = sm.team && sm.team.length > 0;
             if (hasTeam) {
@@ -36148,9 +36167,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const gymBlocked = hasProf && !profUsedHere;
             if (hasGym) {
                 if (gymBlocked) {
-                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_gym.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Challenge the Gym Leader <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`);
+                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Talk to the Professor first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_gym.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Enter the Gym <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`);
                 } else {
-                    _push('quest', makeActionBtn('⚔ Challenge the Gym Leader','gym','window.StoryMode.proceedToNextBattle()','primary'));
+                    // "Enter the Gym" — a gym challenge runs through 1–2 Gym
+                    // Trainers before the Leader's chamber. The old "Challenge
+                    // the Gym Leader" label promised a direct duel and lied
+                    // about the trainers in the lobby.
+                    _push('quest', makeActionBtn('⚔ Enter the Gym','gym','window.StoryMode.proceedToNextBattle()','primary'));
                 }
             }
             if (hasLeague) {
@@ -36171,9 +36194,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else if (routeBlockedByProfessor) {
                     _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Visit the Professor before leaving" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`);
                 } else if (rivalGateActive) {
-                    _push('quest', makeActionBtn('⚔ Battle Your Rival','route','window.StoryMode.proceedToNextBattle()','primary'));
+                    // Two cities have a post-gym Rival route (City 3, City 6).
+                    // Both fire 2 wild encounters before the rival fight — the
+                    // old "⚔ Battle Your Rival" label skipped past the grass.
+                    // The intro-rival path (City 0 after starter) is wild-free,
+                    // so it keeps the direct framing.
+                    const _rivalBtnLabel = _willFireWildNext
+                        ? '🌿 Set Out — Your Rival Waits on the Route'
+                        : '⚔ Battle Your Rival';
+                    _push('quest', makeActionBtn(_rivalBtnLabel,'route','window.StoryMode.proceedToNextBattle()','primary'));
                 } else if (!hasLeague) {
-                    _push('quest', makeActionBtn('→ Continue to Next Route','route','window.StoryMode.proceedToNextBattle()','primary',{ soft:true }));
+                    // City 8 post-gym leads through three Elite Trainer fights
+                    // before the League gate — that stretch IS Victory Road.
+                    // Earlier post-gym hubs name the destination town so the
+                    // route reads as "from here to there" instead of "the next
+                    // generic route." Display name picks up the assigned
+                    // leader's home, so re-rolls between runs.
+                    let _routeBtnLabel;
+                    if (cityIdx === 8) {
+                        _routeBtnLabel = '⛰ Climb Victory Road';
+                    } else {
+                        let _nextTownName = '';
+                        const _currCityName = String((STORY_EVENTS_RAW[sm.eventIndex] || [])[2] || '');
+                        for (let i = _storyNextBatIdx + 1; i < STORY_EVENTS_RAW.length; i++) {
+                            const r = STORY_EVENTS_RAW[i];
+                            if (!r || r[1] !== 'City') continue;
+                            if (String(r[2]) === _currCityName) continue;
+                            try { _nextTownName = getStoryDisplayTownNameForCityRow(r) || ''; } catch (e) { _nextTownName = ''; }
+                            break;
+                        }
+                        _routeBtnLabel = _nextTownName
+                            ? `→ Set Out for ${_nextTownName}`
+                            : '→ Continue to Next Route';
+                    }
+                    _push('quest', makeActionBtn(_routeBtnLabel,'route','window.StoryMode.proceedToNextBattle()','primary',{ soft:true }));
                 }
             }
             if (hasVR) {
@@ -39688,6 +39742,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (String(row[2] || '') === 'Mystery Figure') return false;
             // Intro rival is a starter duel — no wild prefix.
             if ((row[0] | 0) === STORY_RIVAL_ROW_INTRO) return false;
+            // League battles happen *inside* the Pokémon League — the stadium
+            // corridors, not the wilderness. No wilds before E1/E2/E3/E4, the
+            // Champion fight, or the post-Champion league Rival. The 3 Elite
+            // Trainer fights between City 8 and City 9 are Victory Road and
+            // remain a route (with their first-of-route wilds intact).
+            const _evname = String(row[2] || '');
+            if (/^E[1-4]$/.test(_evname) || _evname === 'Champion') return false;
+            if (_evname === 'Rival' && (row[0] | 0) === STORY_RIVAL_ROW_LEAGUE) return false;
             // Chain continuation: if a wild has already counted on this battleIdx
             // (e.g. the catch tutorial fired here right after the intro rival),
             // keep firing wilds up to STORY_WILDS_PER_ROUTE_NODE. This lets the
