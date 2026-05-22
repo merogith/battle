@@ -9306,14 +9306,33 @@
         }
 
         // Repair UTF-8 mojibake / lone combining marks that have historically slipped
-        // into the CSV — Farfetch'd, Flabébé. Defensive: if a future regeneration
-        // re-corrupts the file, the runtime still resolves to the canonical name.
+        // into the CSV — Farfetch’d, Flabébé. Defensive: if a future regeneration
+        // re-corrupts the file, the runtime still resolves to the canonical species
+        // name used in data/species.json (curly U+2019 apostrophe, precomposed é).
         function _csvNormalizeSpecies(name) {
             if (!name) return name;
             return String(name)
-                .replace(/Farfetchâ€™d/g,  "Farfetch'd")
-                .replace(/FlabeÌbeÌ/g,      "Flabébé")
-                .replace(/Flabébé/g,        "Flabébé");
+                .replace(/Farfetchâ€™d/g,  "Farfetch’d")
+                .replace(/Farfetch'd/g,    "Farfetch’d")
+                .replace(/FlabeÌbeÌ/g,      "Flabébé");
+        }
+
+        // Decode a pipe-delimited multi-option CSV cell into either a scalar (when
+        // there's a single option) or a frozen array (when there are alternatives).
+        // Empty / null cells return the supplied default.
+        function _csvDecodeOptions(cell, def) {
+            if (cell == null || cell === '') return def;
+            const s = String(cell);
+            if (s.indexOf('|') < 0) return s;
+            const opts = s.split('|').map(x => x.trim()).filter(Boolean);
+            return opts.length === 0 ? def : (opts.length === 1 ? opts[0] : opts);
+        }
+
+        // Resolve a possibly-array option to a single value (random pick).
+        function _csvPickOption(val, def) {
+            if (val == null) return def;
+            if (Array.isArray(val)) return val.length ? val[Math.floor(Math.random() * val.length)] : def;
+            return val;
         }
 
         async function loadBuildsCSV() {
@@ -9329,10 +9348,21 @@
                     if (!csvBuilds[name]) csvBuilds[name] = { regular: [], weather: [], mega: [], 'z-attack': [], tera: [] };
                     if (!csvBuilds[name][tag]) csvBuilds[name][tag] = [];
                     const moves = [row.move1, row.move2, row.move3, row.move4].map(m => m || 'Tackle');
+                    // Multi-option fields: kept as arrays so makeBuild can re-pick
+                    // per encounter (mirrors how /-delimited move slots already work).
+                    const itemRaw    = _csvDecodeOptions(row.item, '');
+                    const abilityRaw = _csvDecodeOptions(row.ability, '');
+                    const natureRaw  = _csvDecodeOptions(row.nature, 'Hardy');
+                    const teraRaw    = _csvDecodeOptions(row.teratypes, null);
+                    // Pick the canonical value at load (legality checks, archetype
+                    // classification need a scalar); the array stays as _options.
+                    const itemPicked    = _csvPickOption(itemRaw, '');
+                    const abilityPicked = _csvPickOption(abilityRaw, '');
+                    const naturePicked  = _csvPickOption(natureRaw, 'Hardy');
                     const buildObj = {
-                        i: !row.item ? '' : row.item === 'No Item' ? 'NO_ITEM' : row.item,
-                        a: row.ability || '',
-                        n: row.nature || 'Hardy',
+                        i: !itemPicked ? '' : itemPicked === 'No Item' ? 'NO_ITEM' : itemPicked,
+                        a: abilityPicked || '',
+                        n: naturePicked || 'Hardy',
                         m: moves,
                         evs: {
                             hp:  +row.hp_ev  || 0,
@@ -9341,7 +9371,29 @@
                             spa: +row.spa_ev || 0,
                             spd: +row.spd_ev || 0,
                             spe: +row.spe_ev || 0
-                        }
+                        },
+                        // IVs default 31 in CSV but consumed here so Trick Room (0 Spe)
+                        // and confusion / Foul Play resistant (0 Atk) sets actually apply.
+                        ivs: {
+                            hp:  row.hp_iv  !== undefined && row.hp_iv  !== '' ? +row.hp_iv  : 31,
+                            atk: row.atk_iv !== undefined && row.atk_iv !== '' ? +row.atk_iv : 31,
+                            def: row.def_iv !== undefined && row.def_iv !== '' ? +row.def_iv : 31,
+                            spa: row.spa_iv !== undefined && row.spa_iv !== '' ? +row.spa_iv : 31,
+                            spd: row.spd_iv !== undefined && row.spd_iv !== '' ? +row.spd_iv : 31,
+                            spe: row.spe_iv !== undefined && row.spe_iv !== '' ? +row.spe_iv : 31
+                        },
+                        // Source format / category — used by build-selection weighting
+                        // and by the singles/doubles filter so VGC support sets don't
+                        // appear in singles rolls unless allowed by settings.
+                        _gen:      row.gen ? (+row.gen | 0) : 9,
+                        _format:   row.format   || '',
+                        _category: row.category || 'singles',
+                        // Curated tera-type pool — consumed by rollTeraType.
+                        _teratypes: teraRaw,
+                        // Multi-option alternatives — re-picked per encounter.
+                        _itemOptions:    Array.isArray(itemRaw)    ? itemRaw    : null,
+                        _abilityOptions: Array.isArray(abilityRaw) ? abilityRaw : null,
+                        _natureOptions:  Array.isArray(natureRaw)  ? natureRaw  : null
                     };
                     buildObj.archetype = classifyArchetype(buildObj);
                     if (_isBuildAbilityIllegal(name, buildObj.a)) {
@@ -9779,6 +9831,20 @@
                     return opts[Math.floor(Math.random() * opts.length)];
                 });
                 b.evs = { ...b.evs };
+                // Per-encounter re-pick for multi-option fields. The CSV loader stores
+                // _itemOptions / _abilityOptions / _natureOptions arrays when the
+                // Smogon set lists alternatives; without this, the same option chosen
+                // at load time would freeze for the whole session.
+                if (Array.isArray(b._itemOptions) && b._itemOptions.length) {
+                    const pick = b._itemOptions[Math.floor(Math.random() * b._itemOptions.length)];
+                    b.i = !pick ? '' : pick === 'No Item' ? 'NO_ITEM' : pick;
+                }
+                if (Array.isArray(b._abilityOptions) && b._abilityOptions.length) {
+                    b.a = b._abilityOptions[Math.floor(Math.random() * b._abilityOptions.length)];
+                }
+                if (Array.isArray(b._natureOptions) && b._natureOptions.length) {
+                    b.n = b._natureOptions[Math.floor(Math.random() * b._natureOptions.length)];
+                }
             }
 
             // Fallback: randbats cache (newest gen first), including base species / evo lines when the form has no set
