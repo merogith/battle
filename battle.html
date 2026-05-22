@@ -9265,7 +9265,7 @@
 
         // Ensure a move is in movesDB — looks up @pkmn/dex if available, else creates a generic entry
         // Moves that require mechanics not in the game and should be silently replaced
-        const BANNED_MOVES = new Set(["Tera Blast","Tera Starstorm","G-Max Wildfire","G-Max Befuddle","G-Max Volt Crash","G-Max Gold Rush","G-Max Chi Strike","G-Max Terror","G-Max Resonance","G-Max Cuddle","G-Max Replenish","G-Max Malodor","G-Max Meltdown","G-Max Stun Shock","G-Max Centiferno","G-Max Vine Lash","G-Max Cannonade","G-Max Drum Solo","G-Max Fireball","G-Max Hydrosnipe","G-Max One Blow","G-Max Rapid Flow","Max Flare","Max Geyser","Max Lightning","Max Mindstorm","Max Rockfall","Max Airstream","Max Steelspike","Max Knuckle","Max Quake","Max Darkness","Max Overgrowth","Max Phantasm","Max Wyrmwind","Max Starfall","Max Ooze","Max Hailstorm","Max Flutterby","Catastropika","10,000,000 Volt Thunderbolt","Extreme Evoboost","Pulverizing Pancake","Genesis Supernova","Sinister Arrow Raid","Malicious Moonsault","Oceanic Operetta","Splintered Stormshards","Let's Snuggle Forever","Clangorous Soulblaze","Guardian of Alola","Soul-Stealing 7-Star Strike","Searing Sunraze Smash","Menacing Moonraze Maelstrom","Light That Burns the Sky","Devastating Drake","Black Hole Eclipse","Stoked Sparksurfer","Pikachu's Volt Tackle"]);
+        const BANNED_MOVES = new Set(["Tera Blast","Tera Starstorm","G-Max Wildfire","G-Max Befuddle","G-Max Volt Crash","G-Max Gold Rush","G-Max Chi Strike","G-Max Terror","G-Max Resonance","G-Max Cuddle","G-Max Replenish","G-Max Malodor","G-Max Meltdown","G-Max Stun Shock","G-Max Centiferno","G-Max Vine Lash","G-Max Cannonade","G-Max Drum Solo","G-Max Fireball","G-Max Hydrosnipe","G-Max One Blow","G-Max Rapid Flow","Max Flare","Max Geyser","Max Lightning","Max Mindstorm","Max Rockfall","Max Airstream","Max Steelspike","Max Knuckle","Max Quake","Max Darkness","Max Overgrowth","Max Phantasm","Max Wyrmwind","Max Starfall","Max Ooze","Max Hailstorm","Max Flutterby","Catastropika","10,000,000 Volt Thunderbolt","Extreme Evoboost","Pulverizing Pancake","Genesis Supernova","Sinister Arrow Raid","Malicious Moonsault","Oceanic Operetta","Splintered Stormshards","Let's Snuggle Forever","Clangorous Soulblaze","Guardian of Alola","Soul-Stealing 7-Star Strike","Searing Sunraze Smash","Menacing Moonraze Maelstrom","Light That Burns the Sky","Devastating Drake","Black Hole Eclipse","Stoked Sparksurfer","Pikachu's Volt Tackle","Corrosive Gas","Doodle","Flower Shield","Rototiller","Teatime","Venom Drench"]);
 
         // Items tied to mechanics not present in the game (Mega Evolution, Z-moves).
         // When a build rolls one of these, it's swapped to a neutral item.
@@ -9621,6 +9621,36 @@
             return true;
         }
 
+        // Repair UTF-8 mojibake / lone combining marks that have historically slipped
+        // into the CSV — Farfetch’d, Flabébé. Defensive: if a future regeneration
+        // re-corrupts the file, the runtime still resolves to the canonical species
+        // name used in data/species.json (curly U+2019 apostrophe, precomposed é).
+        function _csvNormalizeSpecies(name) {
+            if (!name) return name;
+            return String(name)
+                .replace(/Farfetchâ€™d/g,  "Farfetch’d")
+                .replace(/Farfetch'd/g,    "Farfetch’d")
+                .replace(/FlabeÌbeÌ/g,      "Flabébé");
+        }
+
+        // Decode a pipe-delimited multi-option CSV cell into either a scalar (when
+        // there's a single option) or a frozen array (when there are alternatives).
+        // Empty / null cells return the supplied default.
+        function _csvDecodeOptions(cell, def) {
+            if (cell == null || cell === '') return def;
+            const s = String(cell);
+            if (s.indexOf('|') < 0) return s;
+            const opts = s.split('|').map(x => x.trim()).filter(Boolean);
+            return opts.length === 0 ? def : (opts.length === 1 ? opts[0] : opts);
+        }
+
+        // Resolve a possibly-array option to a single value (random pick).
+        function _csvPickOption(val, def) {
+            if (val == null) return def;
+            if (Array.isArray(val)) return val.length ? val[Math.floor(Math.random() * val.length)] : def;
+            return val;
+        }
+
         async function loadBuildsCSV() {
             try {
                 const text = await fetch('data/builds.csv').then(r => r.text());
@@ -9628,16 +9658,27 @@
                 const rows = parseCSV(text, ',');
                 let illegalCount = 0;
                 for (const row of rows) {
-                    const name = row.name;
+                    const name = _csvNormalizeSpecies(row.name);
                     const tag  = row.tag;
                     if (!name || !tag) continue;
                     if (!csvBuilds[name]) csvBuilds[name] = { regular: [], weather: [], mega: [], 'z-attack': [], tera: [] };
                     if (!csvBuilds[name][tag]) csvBuilds[name][tag] = [];
                     const moves = [row.move1, row.move2, row.move3, row.move4].map(m => m || 'Tackle');
+                    // Multi-option fields: kept as arrays so makeBuild can re-pick
+                    // per encounter (mirrors how /-delimited move slots already work).
+                    const itemRaw    = _csvDecodeOptions(row.item, '');
+                    const abilityRaw = _csvDecodeOptions(row.ability, '');
+                    const natureRaw  = _csvDecodeOptions(row.nature, 'Hardy');
+                    const teraRaw    = _csvDecodeOptions(row.teratypes, null);
+                    // Pick the canonical value at load (legality checks, archetype
+                    // classification need a scalar); the array stays as _options.
+                    const itemPicked    = _csvPickOption(itemRaw, '');
+                    const abilityPicked = _csvPickOption(abilityRaw, '');
+                    const naturePicked  = _csvPickOption(natureRaw, 'Hardy');
                     const buildObj = {
-                        i: !row.item ? '' : row.item === 'No Item' ? 'NO_ITEM' : row.item,
-                        a: row.ability || '',
-                        n: row.nature || 'Hardy',
+                        i: !itemPicked ? '' : itemPicked === 'No Item' ? 'NO_ITEM' : itemPicked,
+                        a: abilityPicked || '',
+                        n: naturePicked || 'Hardy',
                         m: moves,
                         evs: {
                             hp:  +row.hp_ev  || 0,
@@ -9646,10 +9687,49 @@
                             spa: +row.spa_ev || 0,
                             spd: +row.spd_ev || 0,
                             spe: +row.spe_ev || 0
-                        }
+                        },
+                        // IVs default 31 in CSV but consumed here so Trick Room (0 Spe)
+                        // and confusion / Foul Play resistant (0 Atk) sets actually apply.
+                        ivs: {
+                            hp:  row.hp_iv  !== undefined && row.hp_iv  !== '' ? +row.hp_iv  : 31,
+                            atk: row.atk_iv !== undefined && row.atk_iv !== '' ? +row.atk_iv : 31,
+                            def: row.def_iv !== undefined && row.def_iv !== '' ? +row.def_iv : 31,
+                            spa: row.spa_iv !== undefined && row.spa_iv !== '' ? +row.spa_iv : 31,
+                            spd: row.spd_iv !== undefined && row.spd_iv !== '' ? +row.spd_iv : 31,
+                            spe: row.spe_iv !== undefined && row.spe_iv !== '' ? +row.spe_iv : 31
+                        },
+                        // Source format / category — used by build-selection weighting
+                        // and by the singles/doubles filter so VGC support sets don't
+                        // appear in singles rolls unless allowed by settings.
+                        _gen:      row.gen ? (+row.gen | 0) : 9,
+                        _format:   row.format   || '',
+                        _category: row.category || 'singles',
+                        // Curated tera-type pool — consumed by rollTeraType.
+                        _teratypes: teraRaw,
+                        // Multi-option alternatives — re-picked per encounter.
+                        _itemOptions:    Array.isArray(itemRaw)    ? itemRaw    : null,
+                        _abilityOptions: Array.isArray(abilityRaw) ? abilityRaw : null,
+                        _natureOptions:  Array.isArray(natureRaw)  ? natureRaw  : null
                     };
                     buildObj.archetype = classifyArchetype(buildObj);
-                    if (_isBuildAbilityIllegal(name, buildObj.a)) {
+                    // Prune _abilityOptions to legal-only choices for this species so
+                    // makeBuild's per-encounter re-pick can't promote a legal-at-load
+                    // build into an illegal one at runtime. If ALL options are illegal
+                    // the build itself is flagged illegal and kept gated behind
+                    // _isBuildAbilityIllegal (end-game opt-in story difficulty).
+                    if (Array.isArray(buildObj._abilityOptions)) {
+                        const legalAbilities = buildObj._abilityOptions.filter(a => !_isBuildAbilityIllegal(name, a));
+                        if (legalAbilities.length === 0) {
+                            // All alternatives illegal: keep array, mark build illegal.
+                            buildObj._illegal = true;
+                            illegalCount++;
+                        } else if (legalAbilities.length < buildObj._abilityOptions.length) {
+                            // Some alternatives illegal: trim the array (preserves variety,
+                            // drops the illegal choices). Re-pick a legal scalar too.
+                            buildObj._abilityOptions = legalAbilities;
+                            buildObj.a = legalAbilities[Math.floor(Math.random() * legalAbilities.length)];
+                        }
+                    } else if (_isBuildAbilityIllegal(name, buildObj.a)) {
                         buildObj._illegal = true;
                         illegalCount++;
                     }
@@ -10050,6 +10130,10 @@
             // Fallback to regular+weather when specific tag pool is empty
             if (!pool.length) pool = (entry.regular || []).concat(entry.weather || []);
 
+            // Singles/exotic-format filter (no-op if no entries would survive — keeps
+            // species playable when their only Smogon presence is doubles or exotic).
+            pool = _filterBuildPool(pool);
+
             // Illegal-build filtering — default is "exclude". End-game callers opt in
             // via allowIllegal. forceIllegal narrows to ONLY illegal (with legal fallback
             // when the species has no illegal preset in the pool).
@@ -10084,6 +10168,20 @@
                     return opts[Math.floor(Math.random() * opts.length)];
                 });
                 b.evs = { ...b.evs };
+                // Per-encounter re-pick for multi-option fields. The CSV loader stores
+                // _itemOptions / _abilityOptions / _natureOptions arrays when the
+                // Smogon set lists alternatives; without this, the same option chosen
+                // at load time would freeze for the whole session.
+                if (Array.isArray(b._itemOptions) && b._itemOptions.length) {
+                    const pick = b._itemOptions[Math.floor(Math.random() * b._itemOptions.length)];
+                    b.i = !pick ? '' : pick === 'No Item' ? 'NO_ITEM' : pick;
+                }
+                if (Array.isArray(b._abilityOptions) && b._abilityOptions.length) {
+                    b.a = b._abilityOptions[Math.floor(Math.random() * b._abilityOptions.length)];
+                }
+                if (Array.isArray(b._natureOptions) && b._natureOptions.length) {
+                    b.n = b._natureOptions[Math.floor(Math.random() * b._natureOptions.length)];
+                }
             }
 
             // Fallback: randbats cache (newest gen first), including base species / evo lines when the form has no set
@@ -10493,8 +10591,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             pvpBattleItems: false,  /* reserved: symmetric items in PvP */
             battleLogDock: true,    /* landscape tablets/desktop: dock log when wide enough */
             displayMode: 'auto',    /* 'auto' | 'phone' | 'desktop' — manual override of UA detection */
-            gimmickAnimSpeed: 'normal'  /* 'normal' | 'fast' | 'instant' — controls Mega/Dyna/Tera/Z activation durations */
+            gimmickAnimSpeed: 'normal',  /* 'normal' | 'fast' | 'instant' — controls Mega/Dyna/Tera/Z activation durations */
+            /* Build-pool filters (read by makeBuild / loadBuildsCSV consumers):
+               - allowDoublesBuilds: include VGC / Battle Spot Doubles sets in singles rolls. Off by default
+                 so Tailwind / Wide Guard / Follow Me roles don't pollute singles encounters.
+               - allowExoticFormats: include side-mode formats (AAA, BH, Stabmons, Mix-and-Mega,
+                 Camomons, Godly Gift, Inheritance, etc.). Off by default — standard tiers only. */
+            allowDoublesBuilds: false,
+            allowExoticFormats: false
         };
+        // Format keys treated as "exotic" side modes — excluded from default
+        // build rolls unless settings.allowExoticFormats is on.
+        const EXOTIC_FORMAT_KEYS = new Set([
+            'almostanyability','balancedhackmons','purehackmons','mixandmega',
+            'stabmons','godlygift','inheritance','partnersincrime','camomons',
+            'bdspou','letsgoou','dreamworldou','middlecup','ubersuu','cap'
+        ]);
+        function _isExoticFormat(fmt) { return EXOTIC_FORMAT_KEYS.has(String(fmt || '').toLowerCase()); }
+        function _isDoublesBuild(buildObj) {
+            return buildObj && buildObj._category === 'doubles';
+        }
+        // Filter a candidate build pool by the current singles/exotic settings.
+        // Returns the original pool unchanged if every entry would be filtered out
+        // (avoids reducing a species to zero choices).
+        function _filterBuildPool(pool) {
+            if (!Array.isArray(pool) || pool.length === 0) return pool;
+            const allowDoubles = !!settings.allowDoublesBuilds;
+            const allowExotic  = !!settings.allowExoticFormats;
+            if (allowDoubles && allowExotic) return pool;
+            const filtered = pool.filter(b => {
+                if (!b) return false;
+                if (!allowDoubles && _isDoublesBuild(b)) return false;
+                if (!allowExotic  && _isExoticFormat(b._format)) return false;
+                return true;
+            });
+            return filtered.length ? filtered : pool;
+        }
         // Central duration table for the four gimmick activation animations.
         // The CSS keyframes (.anim-mega-activate, .anim-dmax-activate,
         // .anim-dmax-deactivate, .anim-tera-activate, .anim-zmove-activate) carry
@@ -10536,6 +10668,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof _pbs.csvBuildMix === 'number' && _pbs.csvBuildMix >= 0 && _pbs.csvBuildMix <= 1) settings.csvBuildMix = _pbs.csvBuildMix;
             if (_pbs.displayMode === 'phone' || _pbs.displayMode === 'desktop' || _pbs.displayMode === 'auto') settings.displayMode = _pbs.displayMode;
             if (_pbs.gimmickAnimSpeed === 'normal' || _pbs.gimmickAnimSpeed === 'fast' || _pbs.gimmickAnimSpeed === 'instant') settings.gimmickAnimSpeed = _pbs.gimmickAnimSpeed;
+            if (typeof _pbs.allowDoublesBuilds === 'boolean') settings.allowDoublesBuilds = _pbs.allowDoublesBuilds;
+            if (typeof _pbs.allowExoticFormats === 'boolean') settings.allowExoticFormats = _pbs.allowExoticFormats;
         } catch (e) {}
         function persistMiscSettings() {
             try {
@@ -10548,7 +10682,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     gauntletProgressiveDifficulty: settings.gauntletProgressiveDifficulty,
                     csvBuildMix: settings.csvBuildMix,
                     displayMode: settings.displayMode,
-                    gimmickAnimSpeed: settings.gimmickAnimSpeed
+                    gimmickAnimSpeed: settings.gimmickAnimSpeed,
+                    allowDoublesBuilds: settings.allowDoublesBuilds,
+                    allowExoticFormats: settings.allowExoticFormats
                 }));
             } catch (e) {}
         }
@@ -11279,34 +11415,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return name; // pkmn.cc uses display names matching our CSV
         }
 
-        async function fetchLiveBuild(name, monGen) {
-            const cands = speciesNamesForBuildLookup(name);
-            // Try gen9 first (most coverage), then Pokémon's own gen
-            for (let tryGen of [9, monGen]) {
-                let sets = await fetchSmogonSetsForGen(tryGen);
-                for (const cand of cands) {
-                    let entry = sets[smogonKey(cand)];
-                    if (entry) {
-                        let allSets = [];
-                        for (let tier in entry) {
-                            for (let setName in entry[tier]) {
-                                allSets.push(entry[tier][setName]);
-                            }
-                        }
-                        if (allSets.length > 0) {
-                            let chosen = allSets[Math.floor(Math.random() * allSets.length)];
-                            return convertSmogonSet(chosen, name);
-                        }
-                    }
-                }
-            }
-            let rands = await fetchRandbatsForGen(9);
-            for (const cand of cands) {
-                let rand = rands[smogonKey(cand)];
-                if (rand) return convertRandbatsEntry(rand, name);
-            }
-            return null;
-        }
+        // fetchLiveBuild was a per-mon live Smogon-set fetcher (the only path that
+        // historically preserved per-stat IVs and curated tera types from the JSON
+        // sources). It was never invoked anywhere in the codebase. The CSV loader
+        // now consumes both IVs and teratypes natively (see loadBuildsCSV), so the
+        // function is fully redundant and has been removed. `convertSmogonSet` is
+        // kept exposed because it's a useful low-level helper for anything that
+        // needs to coerce a raw Smogon-style set into the internal build shape.
 
         function convertSmogonSet(set, name) {
             if (!set) return null;
@@ -13652,7 +13767,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
 
             mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0;
-            mon.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, torment: false, healBlock: 0, throatChop: 0, imprisoned: false, yawnTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, ingrain: false, stockpile: 0, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false, lockOn: false, moveHistory: [], abilityGastroAcid: false, minimized: false, truanting: false, micleBerry: false, grudge: false, embargo: 0, roosting: false, roostType1: null, roostType2: null, timesHit: 0, statLoweredThisTurn: false, lastMoveFailed: false, hasMoved: false };
+            mon.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, torment: false, healBlock: 0, throatChop: 0, imprisoned: false, yawnTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, ingrain: false, stockpile: 0, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false, lockOn: false, moveHistory: [], abilityGastroAcid: false, minimized: false, truanting: false, micleBerry: false, grudge: false, embargo: 0, roosting: false, roostType1: null, roostType2: null, timesHit: 0, statLoweredThisTurn: false, lastMoveFailed: false, hasMoved: false, identified: null, identifiedDark: false, supersweetUsed: false, charged: false, cudChewBerry: null, cudChewTurns: 0 };
             mon.stages = {atk:0, def:0, spa:0, spd:0, spe:0, acc:0, eva:0};
             mon.turnCount = 0;
             mon.fakeOutOk = true;
@@ -14044,7 +14159,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Embody Aspect (Ogerpon): on Terastallization, raise a stat based on form (mask).
             // Teal/base → Spe, Wellspring → SpD, Hearthflame → Atk, Cornerstone → Def.
-            if (mon.ability === 'Embody Aspect' || /^Ogerpon/.test(mon.name)) {
+            // Match bare "Embody Aspect" *or* the mask-suffixed Showdown forms like "Embody Aspect (Teal)".
+            if ((mon.ability || '').startsWith('Embody Aspect') || /^Ogerpon/.test(mon.name)) {
                 let _stat = 'spe';
                 const it = (mon.item || '').toString();
                 if (/Wellspring/i.test(it) || /Wellspring/i.test(mon.name)) _stat = 'spd';
@@ -14141,6 +14257,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return `Raises ${bArr.join(', ')}.`;
         }
         
+        // Canonical wind-flagged moves (data/moves.json `flags.wind`). Used by
+        // Wind Power and Wind Rider on-hit triggers. Sandstorm and Tailwind are
+        // status moves so they only reach the trigger via the non-damaging path.
+        const _WIND_FLAGGED = new Set(["Aeroblast","Air Cutter","Bleakwind Storm","Blizzard","Fairy Wind","Gust","Heat Wave","Hurricane","Icy Wind","Petal Blizzard","Sandsear Storm","Sandstorm","Springtide Storm","Tailwind","Twister","Whirlwind","Wildbolt Storm"]);
+
         const SELF_TARGETING_STATUS = new Set(["Swords Dance", "Nasty Plot", "Agility", "Rock Polish", "Calm Mind", "Cosmic Power", "Dragon Dance", "Quiver Dance", "Shell Smash", "Coil", "Belly Drum", "Amnesia", "Barrier", "Iron Defense", "Acid Armor", "Cotton Guard", "Minimize", "Double Team", "Defense Curl", "Withdraw", "Growth", "Sharpen", "Meditate", "Howl", "Bulk Up", "Work Up", "Shift Gear", "Clangorous Soul", "Geomancy", "Stockpile", "Rain Dance", "Sunny Day", "Sandstorm", "Hail", "Snowscape", "Chilly Reception", "Tailwind", "Trick Room", "Reflect", "Light Screen", "Aurora Veil", "Spikes", "Stealth Rock", "Toxic Spikes", "Aromatherapy", "Heal Bell", "Wish", "Recover", "Roost", "Synthesis", "Morning Sun", "Moonlight", "Shore Up", "Slack Off", "Soft-Boiled", "Milk Drink", "Heal Order", "Rest", "Aqua Ring", "Ingrain", "Substitute", "Focus Energy", "Baton Pass", "Protect", "Detect", "Endure", "Spiky Shield", "King's Shield", "Baneful Bunker", "Silk Trap", "Obstruct", "Burning Bulwark", "Max Guard", "Defog", "Haze", "Perish Song", "Destiny Bond", "Refresh", "Tail Glow", "Swallow", "Safeguard", "Magic Coat"]);
 
 
@@ -19186,9 +19307,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Charge: ticks down once per end-of-turn. Already 0'd if consumed by an Electric move.
                 if (mon.volatile.charge > 0) mon.volatile.charge--;
             });
-            // Clear per-turn boosted flag (used by Burning Jealousy); team protection moves expire EoT
+            // Clear per-turn boosted flag (used by Burning Jealousy); team protection moves expire EoT.
+            // statsRaisedThisTurn (Opportunist accumulator) also resets here so a non-Opportunist
+            // defender doesn't pile boosts across turns and dump them all at once on a later
+            // Opportunist switch-in.
             [state.pActive, state.fActive].forEach(mon => {
                 mon.volatile.boostedThisTurn = false;
+                mon.volatile.statsRaisedThisTurn = null;
                 mon.volatile.quickGuard = false;
                 mon.volatile.wideGuard = false;
             });
@@ -19674,6 +19799,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Mycelium Might: status moves go last in their priority bracket
                     if (state.pActive.ability === "Mycelium Might" && pMove.cat === "Status") pPri -= 0.5;
                     if (state.fActive.ability === "Mycelium Might" && fMove.cat === "Status") fPri -= 0.5;
+                    // Stall: holder always moves last in its priority bracket.
+                    // -0.1 keeps it within-bracket (Mycelium Might -0.5 stacks for "last
+                    // status move at last priority"); a larger offset would bleed into
+                    // the bracket below (e.g. +1 with Stall sorting against +0 Quick Claw).
+                    if (state.pActive.ability === "Stall") pPri -= 0.1;
+                    if (state.fActive.ability === "Stall") fPri -= 0.1;
 
                     let pGoesFirst = true;
                     if (fPri > pPri) pGoesFirst = false;
@@ -20650,11 +20781,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         // Turn 2: execute the attack — clear charging & invulnerability
                         attacker.volatile.charging = null;
                         attacker.volatile.invulnerable = false;
+                        // Sky Drop: drop the cached target back as well (may have changed
+                        // active slot mid-flight; we want the locked mon, not the current).
+                        if (move.name === 'Sky Drop') {
+                            const _drop = attacker.volatile.skyDropTarget || defender;
+                            if (_drop) {
+                                _drop.volatile.invulnerable = false;
+                                _drop.volatile.skyDropLocked = 0;
+                            }
+                            attacker.volatile.skyDropTarget = null;
+                        }
                     } else {
                         // Turn 1: charge up, skip attack
                         attacker.volatile.charging = move.name;
                         const _hideOnCharge = new Set(["Fly","Bounce","Dig","Dive","Phantom Force","Shadow Force","Sky Drop"]);
                         if (_hideOnCharge.has(move.name)) attacker.volatile.invulnerable = true;
+                        // Sky Drop: also vanish the target and lock it from acting next turn.
+                        // We mirror the invulnerable flag onto the defender and set a one-turn
+                        // skyDropLocked counter that's consumed at canMove() time. The locked
+                        // target reference is cached on the attacker so the resolution turn can
+                        // free the *right* mon even if the active foe slot changed.
+                        if (move.name === 'Sky Drop' && defender && defender.currentHp > 0) {
+                            defender.volatile.invulnerable = true;
+                            defender.volatile.skyDropLocked = 1;
+                            attacker.volatile.skyDropTarget = defender;
+                        }
                         let chargeMsgs = { 'Bounce': 'sprang up!', 'Fly': 'flew up high!', 'Dig': 'dug underground!', 'Dive': 'dove underwater!', 'Solar Beam': 'is absorbing light!', 'Solar Blade': 'is absorbing light!', 'Phantom Force': 'vanished instantly!', 'Shadow Force': 'vanished instantly!', 'Sky Drop': 'took the foe into the sky!', 'Skull Bash': 'tucked in its head!', 'Sky Attack': 'is glowing!', 'Meteor Beam': 'is charging power!', 'Geomancy': 'is absorbing power!', 'Razor Wind': 'whipped up a whirlwind!', 'Electro Shot': 'is absorbing electricity!', 'Freeze Shock': 'is charging!', 'Ice Burn': 'is wreathed in flames!' };
                         logMsg(`${attacker.name} ${chargeMsgs[move.name] || 'is charging!'}`, 'info');
                         if (move.name === 'Skull Bash') changeStage(attacker, 'def', 1);
@@ -21111,6 +21262,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (attacker.ability === "Triage" && drainingMovesQM.includes(move.name)) effectivePri += 3;
                 if (attacker.ability === "Gale Wings" && move.type === "Flying" && attacker.currentHp === attacker.maxHp) effectivePri += 1;
                 if (attacker.ability === "Prankster" && move.cat === "Status") effectivePri += 1;
+                if (attacker.ability === "Stall") effectivePri -= 0.1;
                 if (effectivePri > 0 && (defender.ability === "Queenly Majesty" || defender.ability === "Dazzling" || defender.ability === "Armor Tail")) {
                     logMsg(`${defender.name}'s ${defender.ability} blocked the priority move!`, 'info');
                     AudioSystem.playMissSound();
@@ -21805,9 +21957,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Hydro Steam: 1.5× in Sun (canon: doubles when sun would normally weaken Water).
                 if (move.name === "Hydro Steam" && (getCurrentWeather() === "Sun" || getCurrentWeather() === "HarshSun")) basePower = Math.floor(basePower * 1.5);
                 // Charge volatile: next Electric move does 2× damage (consumed after use).
-                if (attacker.volatile && attacker.volatile.charge && move.type === "Electric" && move.cat !== "Status") {
+                // Also fires for Wind Power's `charged` flag (Kilowattrel after a wind hit).
+                if (attacker.volatile && (attacker.volatile.charge || attacker.volatile.charged) && move.type === "Electric" && move.cat !== "Status") {
                     basePower = basePower * 2;
                     attacker.volatile.charge = 0;
+                    attacker.volatile.charged = false;
                 }
                 // Electromorphosis pre-charged Electric attack at 1.5× (parallel to Charge mechanic but cleared on use)
                 if (attacker.volatile && attacker.volatile.electromorphosisCharged && move.type === "Electric" && move.cat !== "Status") {
@@ -21941,11 +22095,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         typeEff = 2 * otherMult; // Water is x2, then multiply by the other type's Ice effectiveness
                     }
                 }
-                // Scrappy / Mind's Eye: Normal/Fighting hit Ghost
-                if ((attacker.ability === "Scrappy" || attacker.ability === "Mind's Eye") && typeEff === 0 && (move.type === "Normal" || move.type === "Fighting") && (defender.type1 === "Ghost" || defender.type2 === "Ghost")) {
+                // Scrappy / Mind's Eye: Normal/Fighting hit Ghost.
+                // Also: Foresight / Odor Sleuth (volatile.identified === "ghost") drops
+                // the Ghost-side immunity for Normal/Fighting moves on the marked target.
+                const _ghostStripped = (defender.volatile && defender.volatile.identified === "ghost");
+                if (((attacker.ability === "Scrappy" || attacker.ability === "Mind's Eye") || _ghostStripped) && typeEff === 0 && (move.type === "Normal" || move.type === "Fighting") && (defender.type1 === "Ghost" || defender.type2 === "Ghost")) {
                     // Recalculate without Ghost immunity
                     let t1eff = (defender.type1 === "Ghost") ? 1 : (typeChart[move.type] && typeChart[move.type][defender.type1] !== undefined ? typeChart[move.type][defender.type1] : 1);
                     let t2eff = (!defender.type2 || defender.type2 === "Ghost") ? 1 : (typeChart[move.type] && typeChart[move.type][defender.type2] !== undefined ? typeChart[move.type][defender.type2] : 1);
+                    typeEff = t1eff * t2eff;
+                }
+                // Miracle Eye: Psychic moves hit Dark types on the marked target.
+                if (defender.volatile && defender.volatile.identifiedDark && typeEff === 0 && move.type === "Psychic" && (defender.type1 === "Dark" || defender.type2 === "Dark")) {
+                    let t1eff = (defender.type1 === "Dark") ? 1 : (typeChart[move.type] && typeChart[move.type][defender.type1] !== undefined ? typeChart[move.type][defender.type1] : 1);
+                    let t2eff = (!defender.type2 || defender.type2 === "Dark") ? 1 : (typeChart[move.type] && typeChart[move.type][defender.type2] !== undefined ? typeChart[move.type][defender.type2] : 1);
                     typeEff = t1eff * t2eff;
                 }
                 // Struggle is typeless in Gen 4+ — it always deals neutral damage regardless of type matchup
@@ -22381,6 +22544,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 // Substitute blocks Focus Sash unless Infiltrator lets this move strike the holder's HP directly
                 const _sashHitsRealHp = (defender.volatile.sub | 0) <= 0 || attacker.ability === "Infiltrator";
+                // False Swipe / Hold Back: always leave the target with at least 1 HP.
+                // Checked first so Sash / Sturdy bookkeeping isn't burned in a hit
+                // that was guaranteed to leave the defender alive anyway.
+                if ((move.name === "False Swipe" || move.name === "Hold Back") && damage >= defender.currentHp) {
+                    damage = defender.currentHp - 1;
+                }
                 // Focus Sash
                 if (defender.item === "Focus Sash" && defender.currentHp === defender.maxHp && damage >= defender.currentHp && _sashHitsRealHp) {
                     damage = defender.currentHp - 1; defender.item = null; defender.itemConsumed = true;
@@ -22864,6 +23033,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         changeStage(defender, 'def', 2);
                         logMsg(`${defender.name}'s Water Compaction sharply raised its Defense!`, 'info');
                     }
+                    // Seed Sower (defender): on damaging hit, set Grassy Terrain (5 turns).
+                    if (defender.ability === "Seed Sower" && move.cat !== "Status" && defender.currentHp > 0 && actualDamage > 0) {
+                        const _ssTurns = (state.magicRoom === 0 && defender.item === "Terrain Extender" && defender.ability !== "Klutz") ? 8 : 5;
+                        state.terrain = "Grassy"; state.terrainTurns = _ssTurns;
+                        logMsg(`${defender.name}'s Seed Sower covered the field in grass!`, 'info');
+                    }
+                    // Wind Power (defender): hit by a wind-flag move → "charged" (next Electric move ×2).
+                    // Canonical 17-move set per data/moves.json `flags.wind` lookup. Kept in sync
+                    // by name (Sandstorm/Tailwind are status moves and so reach here only via
+                    // the non-damaging path — see _WIND_FLAGGED below for the secondary firing).
+                    if (defender.ability === "Wind Power" && defender.currentHp > 0 && _WIND_FLAGGED.has(move.name)) {
+                        defender.volatile.charged = true;
+                        logMsg(`${defender.name}'s Wind Power charged it up!`, 'info');
+                    }
+                    // Opportunist (defender): when the attacker raised any stat this hit-resolve,
+                    // mirror those raises onto the holder. (Singles approximation — Showdown applies
+                    // it at end-of-turn against all positive boosts in the prior segment.)
+                    if (defender.ability === "Opportunist" && defender.currentHp > 0 && attacker.volatile && attacker.volatile.statsRaisedThisTurn) {
+                        const raised = attacker.volatile.statsRaisedThisTurn;
+                        for (const stat in raised) {
+                            if (raised[stat] > 0) changeStage(defender, stat, raised[stat]);
+                        }
+                        logMsg(`${defender.name}'s Opportunist mirrored the boosts!`, 'info');
+                        attacker.volatile.statsRaisedThisTurn = null;
+                    }
                     // Rattled (defender): Bug/Ghost/Dark hit raises Speed +1
                     if (defender.ability === "Rattled" && (move.type === "Bug" || move.type === "Ghost" || move.type === "Dark") && defender.currentHp > 0) {
                         changeStage(defender, 'spe', 1);
@@ -23110,6 +23304,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if ((attacker.ability === "Moxie" || attacker.ability === "Chilling Neigh" || attacker.ability === "As One (Glastrier)") && defender.currentHp <= 0 && attacker.currentHp > 0 && !(state && state.mode === 'story' && state._stagnationCoreActive)) {
                     changeStage(attacker, 'atk', 1);
                     logMsg(`${attacker.name}'s ${attacker.ability} raised its Attack!`, 'info');
+                }
+                // Fell Stinger: +3 Atk to the user when the move KOs the target.
+                if (move.name === "Fell Stinger" && defender.currentHp <= 0 && attacker.currentHp > 0) {
+                    changeStage(attacker, 'atk', 3);
+                    logMsg(`${attacker.name}'s Fell Stinger sharply raised its Attack!`, 'info');
                 }
                 // Grim Neigh / As One (Spectrier) / Soul-Heart: SpA +1 per KO (in singles Soul-Heart fires same as Grim Neigh)
                 if ((attacker.ability === "Grim Neigh" || attacker.ability === "As One (Spectrier)" || attacker.ability === "Soul-Heart") && defender.currentHp <= 0 && attacker.currentHp > 0 && !(state && state.mode === 'story' && state._stagnationCoreActive)) {
@@ -23911,6 +24110,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let act = Math.min(mon.maxHp - mon.currentHp, cp);
                 if (act > 0) { mon.currentHp += act; logMsg(`${mon.name}'s Cheek Pouch restored ${act} HP!`, 'heal'); }
             }
+            // Cud Chew (Farigiraf): when the holder eats a berry, queue it to be eaten
+            // again at the end of the NEXT turn. End-of-turn handler decrements
+            // cudChewTurns and re-applies _onBerryEaten when it hits 1.
+            if (mon.ability === "Cud Chew" && berryName && mon.volatile && !mon.volatile.cudChewBerry) {
+                mon.volatile.cudChewBerry = berryName;
+                mon.volatile.cudChewTurns = 2;
+            }
         }
 
         function _activateTerrainSeeds() {
@@ -24186,6 +24392,57 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.ability === "Frisk" && foe && foe.currentHp > 0 && foe.item) {
                 logMsg(`${mon.name}'s Frisk found ${foe.name}'s ${foe.item}!`, 'info');
             }
+            // Anticipation: shudders on switch-in if the foe knows any super-effective
+            // or OHKO move against this Pokemon. Info-only. Respects ability-based
+            // immunities (Volt Absorb → Electric, Levitate / Earth Eater → Ground,
+            // Flash Fire → Fire, Water Absorb / Dry Skin → Water, Sap Sipper → Grass,
+            // Wonder Guard → all non-super-effective) so we don't shudder when the
+            // matchup is actually safe.
+            if (mon.ability === "Anticipation" && _foeAlive && Array.isArray(foe.moves)) {
+                const ohkoSet = new Set(["Sheer Cold","Fissure","Horn Drill","Guillotine"]);
+                const _typeImmunesByAbility = {
+                    "Volt Absorb": "Electric", "Lightning Rod": "Electric", "Motor Drive": "Electric",
+                    "Levitate": "Ground", "Earth Eater": "Ground",
+                    "Flash Fire": "Fire",
+                    "Water Absorb": "Water", "Dry Skin": "Water", "Storm Drain": "Water",
+                    "Sap Sipper": "Grass",
+                    "Bulletproof": null,  // move-flag based, skip
+                };
+                const _immuneType = _typeImmunesByAbility[mon.ability];
+                let shudder = false;
+                for (const m of foe.moves) {
+                    if (!m) continue;
+                    if (ohkoSet.has(m.name)) { shudder = true; break; }
+                    if (m.cat === "Status" || !m.type) continue;
+                    if (_immuneType && m.type === _immuneType) continue;
+                    const t1 = (typeChart[m.type] && typeChart[m.type][mon.type1]) ?? 1;
+                    const t2 = mon.type2 ? ((typeChart[m.type] && typeChart[m.type][mon.type2]) ?? 1) : 1;
+                    if ((t1 * t2) > 1) { shudder = true; break; }
+                }
+                if (shudder) logMsg(`${mon.name} shuddered with Anticipation!`, 'info');
+            }
+            // Forewarn: reveals one of the foe's strongest-BP damaging moves
+            // (random tie-break per canon when several moves share top BP).
+            if (mon.ability === "Forewarn" && _foeAlive && Array.isArray(foe.moves)) {
+                let bestBp = -1;
+                const ties = [];
+                for (const m of foe.moves) {
+                    if (!m || m.cat === "Status") continue;
+                    const bp = +m.pow || 0;
+                    if (bp > bestBp) { bestBp = bp; ties.length = 0; ties.push(m); }
+                    else if (bp === bestBp) { ties.push(m); }
+                }
+                if (ties.length) {
+                    const pick = ties[Math.floor(Math.random() * ties.length)];
+                    logMsg(`${mon.name}'s Forewarn revealed ${foe.name}'s ${pick.name}!`, 'info');
+                }
+            }
+            // Supersweet Syrup (Hydrapple line): drop the foe's evasion by 1, once per battle.
+            if (mon.ability === "Supersweet Syrup" && _foeAlive && !mon.volatile.supersweetUsed) {
+                mon.volatile.supersweetUsed = true;
+                logMsg(`${mon.name}'s Supersweet Syrup wafted across the field!`, 'info');
+                changeStage(foe, 'eva', -1, true, { bypassSub: true });
+            }
             if (mon.ability === "Download" && _foeAlive && foe.stats && foe.stages) {
                 let _dlDef = foe.stats.def * getStageMult(foe.stages.def);
                 let _dlSpd = foe.stats.spd * getStageMult(foe.stages.spd);
@@ -24330,6 +24587,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Electromorphosis charge does NOT carry across switches in canon — clear it.
             mon.volatile.electromorphosisCharged = false;
+            // Same for Wind Power, Foresight / Odor Sleuth (identified), Miracle Eye
+            // (identifiedDark), Sky Drop target lock, and the per-turn boost tracker
+            // Opportunist mirrors. None of these survive a switch in canon.
+            mon.volatile.charged = false;
+            mon.volatile.identified = null;
+            mon.volatile.identifiedDark = false;
+            mon.volatile.skyDropLocked = 0;
+            mon.volatile.statsRaisedThisTurn = null;
+            // Cud Chew queue clears on switch — Farigiraf must be on-field for the
+            // replay tick, so a bench mon can't "thaw" the queued berry on return.
+            mon.volatile.cudChewBerry = null;
+            mon.volatile.cudChewTurns = 0;
+            // Supersweet Syrup is once-per-battle, NOT once-per-switch — keep the
+            // supersweetUsed flag through switches (only clear at battle start).
             if (mon._knockOffSashProc) delete mon._knockOffSashProc;
             // Zero to Hero (Palafin): transforms into Palafin-Hero on switch-out
             if (mon.ability === "Zero to Hero" && mon.name === "Palafin" && mon.currentHp > 0) {
@@ -24522,6 +24793,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function canMove(mon, moveName = '') {
+            // Sky Drop target lock: the carried Pokemon can't act while up in the sky.
+            // Counter is set to 1 on the carry-turn and decremented here.
+            if (mon.volatile && (mon.volatile.skyDropLocked | 0) > 0) {
+                // Defensive: if the attacker that locked us is fainted or no longer
+                // pointing at us as skyDropTarget, free the lock so we don't softlock.
+                // (Original attacker faint mid-carry leaves no one to call the turn-2 clear.)
+                const _foeOf = (mon === state.pActive) ? state.fActive : state.pActive;
+                const _stillHeld = _foeOf && _foeOf.currentHp > 0 && _foeOf.volatile && _foeOf.volatile.skyDropTarget === mon;
+                if (!_stillHeld) {
+                    mon.volatile.skyDropLocked = 0;
+                    mon.volatile.invulnerable = false;
+                } else {
+                    logMsg(`${mon.name} can't move — it's being held in the sky!`, 'status');
+                    mon.volatile.skyDropLocked = Math.max(0, (mon.volatile.skyDropLocked | 0) - 1);
+                    return false;
+                }
+            }
             // Truant: loaf every other turn
             if (mon.ability === "Truant") {
                 if (mon.volatile.truanting) {
@@ -25037,6 +25325,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (move.name === "Roar" || move.name === "Whirlwind") {
                 if (defender.dynamaxed) { logMsg(`The move failed against the Dynamaxed ${defender.name}!`, 'info'); return; }
+                // Wind Power on the target activates from non-damaging wind moves too
+                // (Whirlwind is the only one that lands here pre-switch). The defender
+                // gets the charge before the forced switch resolves.
+                if (move.name === "Whirlwind" && defender.ability === "Wind Power" && defender.currentHp > 0) {
+                    defender.volatile.charged = true;
+                    logMsg(`${defender.name}'s Wind Power charged it up!`, 'info');
+                }
                 if (state.mode !== 'pvp') {
                     let target = isPlayer ? state.foeParty : state.playerParty;
                     let activeMon = isPlayer ? state.fActive : state.pActive;
@@ -25400,6 +25695,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 defender.volatile.partialTrap = 4 + Math.floor(_trapRng() * 2); // 4-5 turns
                 defender.volatile.partialTrapSrc = move.name;
                 logMsg(`${defender.name} was trapped by ${move.name}!`, 'status');
+                return;
+            }
+
+            // Block / Mean Look / Spider Web / Thousand Waves: switch-lock the target
+            // (no chip damage, no fixed duration — flagged "sticky" via 999 like Octolock).
+            // Ghost types ignore trapping; Run Away ability ignores it.
+            if (move.name === "Block" || move.name === "Mean Look" || move.name === "Spider Web" || move.name === "Thousand Waves") {
+                if (defender.type1 === "Ghost" || defender.type2 === "Ghost") { logMsg(`But it failed!`, 'info'); return; }
+                if (defender.ability === "Run Away") { logMsg(`${defender.name}'s Run Away prevented it from being trapped!`, 'info'); return; }
+                if (defender.volatile.partialTrap >= 999) { logMsg(`But it failed!`, 'info'); return; }
+                defender.volatile.partialTrap = 999;
+                defender.volatile.partialTrapSrc = move.name;
+                logMsg(`${defender.name} can no longer escape!`, 'status');
+                return;
+            }
+
+            // Foresight / Odor Sleuth / Miracle Eye: strip the target's type-based
+            // hit immunity (Ghost → Normal/Fighting for Foresight/Odor Sleuth, Dark → Psychic
+            // for Miracle Eye). The flag is read in the type-effectiveness branch above.
+            if (move.name === "Foresight" || move.name === "Odor Sleuth") {
+                defender.volatile.identified = "ghost";
+                logMsg(`${defender.name} was identified!`, 'status');
+                return;
+            }
+            if (move.name === "Miracle Eye") {
+                defender.volatile.identifiedDark = true;
+                logMsg(`${defender.name} was identified!`, 'status');
                 return;
             }
 
@@ -26280,7 +26602,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let oldStage = mon.stages[stat];
             mon.stages[stat] = Math.max(-6, Math.min(6, mon.stages[stat] + amount));
             if (mon.stages[stat] === oldStage) { logMsg(`${mon.name}'s ${stat.toUpperCase()} won't go any ${amount > 0 ? 'higher' : 'lower'}!`, 'info'); return; }
-            if (amount > 0 && mon.volatile) mon.volatile.boostedThisTurn = true;
+            if (amount > 0 && mon.volatile) {
+                mon.volatile.boostedThisTurn = true;
+                // Track per-stat positive deltas so Opportunist can mirror them on its next hit.
+                if (!mon.volatile.statsRaisedThisTurn) mon.volatile.statsRaisedThisTurn = {};
+                mon.volatile.statsRaisedThisTurn[stat] = (mon.volatile.statsRaisedThisTurn[stat] || 0) + amount;
+            }
             // Lash Out condition: any stat drop this turn flags the mon
             if (amount < 0 && mon.volatile) mon.volatile.statLoweredThisTurn = true;
             let statName = stat.toUpperCase();
@@ -26358,6 +26685,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.volatile.slowStartTurns--;
                 if (mon.volatile.slowStartTurns === 0) {
                     logMsg(`${mon.name} finally got its act together!`, 'info');
+                }
+            }
+            // Cud Chew (Farigiraf): the turn after eating a berry, swallow it again.
+            // Counter is 2 on eat (so this turn's tick → 1, next turn's tick → 0 + replay).
+            if (mon.volatile && mon.volatile.cudChewTurns > 0) {
+                mon.volatile.cudChewTurns--;
+                if (mon.volatile.cudChewTurns === 0 && mon.volatile.cudChewBerry) {
+                    const _replayBerry = mon.volatile.cudChewBerry;
+                    mon.volatile.cudChewBerry = null;
+                    logMsg(`${mon.name} chewed its cud — it swallowed the ${_replayBerry} again!`, 'info');
+                    _onBerryEaten(mon, _replayBerry);
                 }
             }
 
@@ -26603,8 +26941,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
-            // Partial trap (Wrap, Bind, Fire Spin, etc.) end-of-turn damage
-            if (mon.volatile.partialTrap > 0 && mon.volatile.partialTrapSrc !== "Octolock") {
+            // Partial trap (Wrap, Bind, Fire Spin, etc.) end-of-turn damage.
+            // Sticky-trap sources (Octolock, Block / Mean Look / Spider Web /
+            // Thousand Waves at 999) do NOT chip — they're switch-locks only.
+            const _stickyTrap = mon.volatile.partialTrapSrc === "Octolock" || mon.volatile.partialTrap >= 999;
+            if (mon.volatile.partialTrap > 0 && !_stickyTrap) {
                 mon.volatile.partialTrap--;
                 if (state && state.mode === 'story' && typeof _storyTypeNullifierBlocksIndirect === 'function' && _storyTypeNullifierBlocksIndirect(mon)) {
                     logMsg(`Type Nullifier: ${mon.name} ignored the trap's squeeze!`, 'info');
@@ -44849,13 +45190,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return [];
             }
             const ids = new Set();
-            for (const nm of _tutorSpeciesKeysForLearnset(monName)) {
-                try {
-                    const ls = await D.learnsets.get(nm);
-                    if (ls && ls.learnset && typeof ls.learnset === 'object') {
-                        Object.keys(ls.learnset).forEach(id => ids.add(id));
-                    }
-                } catch (e) {}
+            const keys = _tutorSpeciesKeysForLearnset(monName);
+            // Union across all gens 4-9: @pkmn/dex's default Dex is gen 9 and
+            // hides moves flagged `isNonstandard: "Past"` (Pursuit, all 16
+            // Hidden Powers, Return, Frustration, Magic Coat, Snatch, …) from
+            // gen-9 learnsets. Without this loop, those moves are reachable
+            // only on species with historical Smogon CSV builds containing them.
+            const _gens = (D.forGen && typeof D.forGen === 'function') ? [4,5,6,7,8,9] : [9];
+            for (const g of _gens) {
+                let Dg;
+                try { Dg = (g === 9 || !D.forGen) ? D : D.forGen(g); } catch (e) { Dg = D; }
+                if (!Dg || !Dg.learnsets || typeof Dg.learnsets.get !== 'function') continue;
+                for (const nm of keys) {
+                    try {
+                        const ls = await Dg.learnsets.get(nm);
+                        if (ls && ls.learnset && typeof ls.learnset === 'object') {
+                            Object.keys(ls.learnset).forEach(id => ids.add(id));
+                        }
+                    } catch (e) {}
+                }
             }
             const names = new Set();
             for (const id of ids) {
