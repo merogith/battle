@@ -43410,6 +43410,52 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { if (typeof renderFanClubRoster === 'function') renderFanClubRoster(); } catch (e) {}
         }
 
+        // Drop a single stat's IV by IV_VITAMIN_STEP (floor 0). No vitamin is
+        // refunded — the Chairman is doing the player a courtesy, not a refund.
+        // Destructive, so we gate the first use per city visit behind a confirm
+        // (sm.cityRerollsUsed is wiped on enterCity → re-asks on the next visit).
+        function removePermBoost(statId, source, idx) {
+            if (!_IV_STAT_LABEL[statId]) return;
+            let mon = null;
+            if (source === 'team') mon = sm.team && sm.team[idx];
+            else if (source === 'pc') mon = sm.pcBox && sm.pcBox[idx];
+            if (!mon || !mon.build) return;
+            if (!mon.build.ivs || typeof mon.build.ivs !== 'object') {
+                mon.build.ivs = { hp:31, atk:31, def:31, spa:31, spd:31, spe:31 };
+            }
+            const curIV = (mon.build.ivs[statId] !== undefined) ? (mon.build.ivs[statId] | 0) : 31;
+            if (curIV <= 0) return;
+            const newIV = Math.max(0, curIV - IV_VITAMIN_STEP);
+            const statLabel = PERM_BOOST_STAT_LABEL[statId] || statId;
+
+            const commit = function () {
+                mon.build.ivs[statId] = newIV;
+                try { save(); } catch (e) {}
+                try { updateHUD && updateHUD(); } catch (e) {}
+                try { window.StoryFx && window.StoryFx.playSfx('danger', 0.5); } catch (e) {}
+                const atFloorMsg = (newIV <= 0) ? ' (min)' : '';
+                try { window.showGameAlert && window.showGameAlert(`${mon.name}'s ${statLabel} IV dropped by ${curIV - newIV}. (${curIV} → ${newIV}/${IV_MAX}${atFloorMsg})`); } catch (e) {}
+                try { renderFanClubRoster(); } catch (e) {}
+            };
+
+            if (!sm.cityRerollsUsed || typeof sm.cityRerollsUsed !== 'object') sm.cityRerollsUsed = {};
+            if (sm.cityRerollsUsed.fanclubRemoveIvConfirmed) { commit(); return; }
+
+            const msg = `The Chairman steadies a notepad: "Lowering IVs is permanent — no vitamins come back, and you'll need fresh ones to climb up again."\n\nDrop ${mon.name}'s ${statLabel} IV by ${IV_VITAMIN_STEP}? (${curIV} → ${newIV}/${IV_MAX})\n\nI won't ask again until you leave town.`;
+            if (window.showGameConfirm) {
+                window.showGameConfirm(msg).then(function (ok) {
+                    if (!ok) return;
+                    sm.cityRerollsUsed.fanclubRemoveIvConfirmed = 1;
+                    try { save(); } catch (e) {}
+                    commit();
+                });
+            } else if (window.confirm(msg)) {
+                sm.cityRerollsUsed.fanclubRemoveIvConfirmed = 1;
+                try { save(); } catch (e) {}
+                commit();
+            }
+        }
+
         // ── HALL OF FAME (Gen-3 style: 2×3 sprites, confetti, welcome text) ─
         const HOF_DEMO_SPECIES = ['Pikachu', 'Charizard', 'Blastoise', 'Venusaur', 'Snorlax', 'Arcanine', 'Lapras', 'Dragonite', 'Gyarados', 'Gengar', 'Scyther', 'Zapdos', 'Golem', 'Vileplume', 'Moltres', 'Tyranitar', 'Metagross', 'Salamence', 'Garchomp', 'Lucario'];
 
@@ -47405,17 +47451,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const vitId = _VITAMIN_BY_STAT[k];
                 const vitCount = (sm.inventory && sm.inventory[vitId]) | 0;
                 const atCap = iv >= 31;
+                const atFloor = iv <= 0;
                 const canApply = !atCap && vitCount > 0;
+                const canRemove = !atFloor;
                 const btnLabel = atCap ? 'MAX' : (vitCount > 0 ? `+3 (×${vitCount})` : 'No vit');
                 const btnDisabled = !canApply;
                 const btnStyle = `font-size:9px;padding:2px 6px;border-radius:3px;border:1px solid ${canApply ? '#f8bbd0' : '#444'};background:${canApply ? 'rgba(248,187,208,0.12)' : 'transparent'};color:${canApply ? '#f8bbd0' : '#666'};cursor:${canApply ? 'pointer' : 'not-allowed'};white-space:nowrap;`;
                 const onClick = canApply ? `onclick="event.stopPropagation();window.StoryMode.applyPermBoost('${vitId}','team',${idx})"` : '';
+                const remLabel = atFloor ? 'MIN' : '−3';
+                const remDisabled = !canRemove;
+                const remStyle = `font-size:9px;padding:2px 6px;border-radius:3px;border:1px solid ${canRemove ? '#9aa3b0' : '#444'};background:${canRemove ? 'rgba(154,163,176,0.10)' : 'transparent'};color:${canRemove ? '#cfd5dd' : '#666'};cursor:${canRemove ? 'pointer' : 'not-allowed'};white-space:nowrap;`;
+                const remOnClick = canRemove ? `onclick="event.stopPropagation();window.StoryMode.removePermBoost('${k}','team',${idx})"` : '';
                 return `<div style="display:flex;align-items:center;gap:6px;padding:4px 6px;background:rgba(0,0,0,0.25);border-radius:4px;">
                     <span style="flex:0 0 28px;font-size:10px;color:#9ab;font-weight:bold;">${_IV_STAT_LABEL[k]}</span>
                     <span style="flex:0 0 32px;font-size:11px;font-weight:bold;color:${color};text-align:right;">${iv}/31</span>
                     <div style="flex:1;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;">
                         <div style="height:100%;width:${pct}%;background:${color};"></div>
                     </div>
+                    <button type="button" ${remDisabled ? 'disabled' : ''} style="${remStyle}" ${remOnClick}>${remLabel}</button>
                     <button type="button" ${btnDisabled ? 'disabled' : ''} style="${btnStyle}" ${onClick}>${btnLabel}</button>
                 </div>`;
             }).join('');
@@ -47448,7 +47501,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const intro = `<div style="padding:10px 12px;background:linear-gradient(180deg,rgba(54,28,42,0.7) 0%,rgba(28,14,22,0.7) 100%);border:1px solid #6a3a5a;color:#f8d6e3;font-size:11px;line-height:1.55;margin-bottom:8px;border-radius:6px;">
                 <div style="font-weight:bold;color:#f8bbd0;margin-bottom:4px;">💖 Hidden Potential</div>
                 <div>Each Pokémon is born with <strong>IVs</strong> — six hidden values from 0 to 31 that quietly shape their stats. Roll low and they need vitamins to catch up; roll high and they\'re ready off the truck.</div>
-                <div style="margin-top:6px;color:#c9bcc4;">Tap a stat\'s <span style="color:#f8bbd0;font-weight:bold;">+3</span> button to apply the matching vitamin from your bag. PC mons are read-only here — withdraw to your party first.</div>
+                <div style="margin-top:6px;color:#c9bcc4;">Tap a stat\'s <span style="color:#f8bbd0;font-weight:bold;">+3</span> button to apply the matching vitamin from your bag, or <span style="color:#cfd5dd;font-weight:bold;">−3</span> to have the Chairman pull a stat back down (no vitamin returned — he asks once per visit to make sure). PC mons are read-only here — withdraw to your party first.</div>
             </div>`;
             const _prevSwitcherScrollLeft = (function () {
                 try { const sw = el.querySelector('.tx-mon-switcher'); return sw ? sw.scrollLeft : 0; } catch (e) { return 0; }
@@ -47991,7 +48044,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             casinoSlotsCoins, casinoSlotsHoldToggle, casinoSlotsSpin,
             casinoRoulPlaceChip, casinoRoulClear, casinoRoulRepeat, casinoRoulSpin,
             openBattleBag, useBagItemOn, openCityBag, sellItem,
-            openPermBoostPicker, applyPermBoost,
+            openPermBoostPicker, applyPermBoost, removePermBoost,
             confirmAbandon, abandonAndReturn, continuePostGame,
             openSummary, profOpenSummary, summaryMove, moveInParty, openPartyModal,
             enterArtifactHall, toggleArtifactDisabled,
