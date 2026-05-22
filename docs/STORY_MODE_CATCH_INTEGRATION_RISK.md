@@ -1,5 +1,11 @@
 # Catch / PC / Dynamic Party — Integration Risk Analysis
 
+> **Anchor drift**: line numbers below were accurate at writing. Resolve
+> stale `battle.html:LINE` refs via `node scripts/debug/symbol-index.mjs
+> --lookup <symbol>` or `agent-state/ANCHOR_INDEX.md`. Most of the
+> mechanics this doc analyzed (Catch, PC, Safari, balls) have shipped —
+> see CHANGELOG.md and STORY_MODE_FLOW.md for the canonical current spec.
+
 **Context:** Today the player's party is established by the Professor (1–6 mons rolled at
 specific city visits) and is **never added to via wild encounters**. There is **no PC
 storage**, **no Poké Balls**, **no wild-encounter battle path**. Adding all three at once

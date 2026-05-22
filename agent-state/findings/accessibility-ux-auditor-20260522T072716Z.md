@@ -182,7 +182,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: ade33e34d4e7
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: All 24 `#screen-*` containers are plain `<div>` — no `<main>` or `role="region"`
@@ -218,7 +218,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: b14deb83ca98
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: 129 `@keyframes` definitions but only 5 `prefers-reduced-motion` overrides — sprite-in, dialog-in, master-pulse, badge-pulse all unguarded
@@ -289,7 +289,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 679f436786d4
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Master Ball purple pulse runs forever with no reduced-motion override; surrounding text/glow stays readable but the loop is hostile
@@ -360,7 +360,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: bdcd17777e9c
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Online Host/Join form labels are not programmatically associated with their inputs

@@ -142,7 +142,7 @@ file: STORY_MODE_FLOW.md
 agents: [spec-drift-auditor]
 fingerprint: a2c0649750f6
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: 9 of 10 `battle.html:LINE` refs in STORY_MODE_FLOW.md are stale (avg drift ~7000 lines)
@@ -173,7 +173,7 @@ file: docs/STORY_MODE_CATCH_INTEGRATION_RISK.md
 agents: [spec-drift-auditor]
 fingerprint: 3c47a061e632
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: 6+ stale `battle.html:LINE` refs in STORY_MODE_CATCH_INTEGRATION_RISK.md (avg drift ~9000 lines)
@@ -206,7 +206,7 @@ file: docs/STORY_NARRATIVE_VARIANTS.md
 agents: [spec-drift-auditor]
 fingerprint: b63a7fd17310
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: 5+ stale `battle.html:LINE` refs in STORY_NARRATIVE_VARIANTS.md (variant-system anchors moved 3-5k lines)

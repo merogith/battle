@@ -6207,6 +6207,22 @@
             #game-stage.screen-trans-enter-slide, #game-stage.screen-trans-enter-fade,
             body.is-mobile .modal.modal--bottom-sheet .modal-content { animation: none !important; }
             .toast-item { transition: none !important; }
+            /* Long-running pulses + cascades — disable animation but keep
+               the static end-state so the visual hierarchy stays intact. */
+            .story-master-ball-glow, .story-master-ball-pulse, .badge-pulse,
+            .story-save-toast, .story-tutorial-enter-1, .story-tutorial-enter-2,
+            .story-tutorial-enter-3, .story-tutorial-enter-4 {
+                animation: none !important;
+                transition: none !important;
+            }
+            /* Catch-all guard: any element relying on a keyframe pulse / shake
+               loses its motion. Specific overrides above still win because
+               they're already at !important. */
+            *, *::before, *::after {
+                animation-iteration-count: 1 !important;
+                animation-duration: 1ms !important;
+                transition-duration: 1ms !important;
+            }
         }
         /* Story menu — shared layout classes (reduces inline styles) */
         .story-screen-outer {
@@ -7397,7 +7413,7 @@
     <div id="game-stage">
     <button class="icon-btn settings-btn" onclick="window.openSettings()">⚙</button>
 
-    <div id="screen-menu" class="screen active">
+    <div id="screen-menu" class="screen active" role="region" aria-label="menu">
         <div class="menu-hero">
             <div class="logo-container">
                 <h1 class="title-pokemon">POKéMON</h1>
@@ -7487,7 +7503,7 @@
         </div>
     </div>
 
-    <div id="screen-draft" class="screen hidden" style="display:flex; flex-direction:column; position:relative;">
+    <div id="screen-draft" class="screen hidden" role="region" aria-label="draft" style="display:flex; flex-direction:column; position:relative;">
         <div id="draft-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-shrink:0; padding-right:72px; gap: 10px; flex-wrap: wrap;">
             <h2 id="draft-title" style="color: var(--hp-yellow); margin: 0;">Player 1: Pick a Pokémon</h2>
             <span id="online-draft-timer" class="hidden" style="font-size:12px;font-weight:bold;color:#81d4fa;padding:4px 10px;border-radius:6px;background:rgba(0,0,0,0.45);"></span>
@@ -7635,15 +7651,15 @@
         <div class="modal-content white-outline" style="max-width: 420px;">
             <h2 style="color: var(--hp-yellow); margin-top: 0; text-align: center;">Host online battle</h2>
             <p style="font-size: 12px; color: #888;">Room rules follow your current draft settings. Share the code or link with your opponent.</p>
-            <label style="display:block;font-size:12px;margin:10px 0 4px;">Your display name</label>
+            <label for="online-host-name" style="display:block;font-size:12px;margin:10px 0 4px;">Your display name</label>
             <input id="online-host-name" maxlength="24" placeholder="Host" style="width:100%;box-sizing:border-box;padding:8px;background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;font-family:inherit;">
-            <label style="display:block;font-size:12px;margin:10px 0 4px;">Match format</label>
+            <label for="online-host-format" style="display:block;font-size:12px;margin:10px 0 4px;">Match format</label>
             <select id="online-host-format" style="width:100%;box-sizing:border-box;padding:8px;background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;font-family:inherit;">
                 <option value="1">Single battle (Bo1)</option>
                 <option value="3">Best of 3</option>
                 <option value="5">Best of 5</option>
             </select>
-            <label style="display:block;font-size:12px;margin:10px 0 4px;">Turn timers</label>
+            <label for="online-host-timer-preset" style="display:block;font-size:12px;margin:10px 0 4px;">Turn timers</label>
             <select id="online-host-timer-preset" style="width:100%;box-sizing:border-box;padding:8px;background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;font-family:inherit;">
                 <option value="none">No time limit</option>
                 <option value="fast">Fast — 30s draft pick, 30s per turn (AI if time runs out)</option>
@@ -7670,9 +7686,9 @@
         <div class="modal-content white-outline" style="max-width: 420px;">
             <h2 style="color: var(--hp-yellow); margin-top: 0; text-align: center;">Join online battle</h2>
             <p style="font-size: 12px; color: #888;">Enter the 6-character room code the host shared.</p>
-            <label style="display:block;font-size:12px;margin:8px 0 4px;">Your name (leaderboard)</label>
+            <label for="online-join-name" style="display:block;font-size:12px;margin:8px 0 4px;">Your name (leaderboard)</label>
             <input id="online-join-name" maxlength="24" placeholder="Trainer" style="width:100%;box-sizing:border-box;padding:8px;background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;font-family:inherit;">
-            <label style="display:block;font-size:12px;margin:10px 0 4px;">Room code</label>
+            <label for="online-join-code" style="display:block;font-size:12px;margin:10px 0 4px;">Room code</label>
             <input id="online-join-code" maxlength="8" style="width:100%;box-sizing:border-box;padding:8px;background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;font-family:inherit;text-transform:uppercase;">
             <p id="online-join-err" style="color:#f44336;font-size:12px;min-height:18px;margin:8px 0 0;"></p>
             <button type="button" onclick="window.submitOnlineJoin && window.submitOnlineJoin()" style="width:100%;margin-top:12px;padding:10px;">Join</button>
@@ -7783,7 +7799,7 @@
     </div>
 
     <!-- ===== STORY MODE SCREENS ===== -->
-    <div id="screen-story-menu" class="screen hidden story-screen-outer">
+    <div id="screen-story-menu" class="screen hidden story-screen-outer" role="region" aria-label="story menu">
         <h1 class="story-title-main">&#9670; STORY MODE</h1>
         <p class="story-tagline">A single-player road from Pallet Town to the Champion\'s seat — and whatever waits after the credits.</p>
         <div class="story-intro-stack">
@@ -7808,7 +7824,7 @@
         </div>
     </div>
 
-    <div id="screen-story-city" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-city" class="screen hidden story-screen-root" role="region" aria-label="story city" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-city-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-city-stack">
         <!-- Top HUD -->
@@ -7853,7 +7869,7 @@
         </div>
     </div>
 
-    <div id="screen-story-professor" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-professor" class="screen hidden story-screen-root" role="region" aria-label="story professor" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
@@ -7878,7 +7894,7 @@
         </div>
     </div>
 
-    <div id="screen-story-shop" class="screen hidden story-screen-root" data-shop-type="mart" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-shop" class="screen hidden story-screen-root" role="region" aria-label="story shop" data-shop-type="mart" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-shop-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
@@ -7893,7 +7909,7 @@
         </div>
     </div>
 
-    <div id="screen-story-artifact-shop" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-artifact-shop" class="screen hidden story-screen-root" role="region" aria-label="story artifact shop" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-artifact-shop-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
@@ -7909,7 +7925,7 @@
         </div>
     </div>
 
-    <div id="screen-story-tutor" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-tutor" class="screen hidden story-screen-root" role="region" aria-label="story tutor" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-tutor-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
@@ -7927,7 +7943,7 @@
         </div>
     </div>
 
-    <div id="screen-story-colress" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-colress" class="screen hidden story-screen-root" role="region" aria-label="story colress" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-colress-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;gap:10px;">
@@ -7951,7 +7967,7 @@
         </div>
     </div>
 
-    <div id="screen-story-evtrainer" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-evtrainer" class="screen hidden story-screen-root" role="region" aria-label="story evtrainer" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-evtrainer-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;gap:10px;">
@@ -7974,7 +7990,7 @@
         </div>
     </div>
 
-    <div id="screen-story-fanclub" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-fanclub" class="screen hidden story-screen-root" role="region" aria-label="story fanclub" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;gap:10px;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
@@ -7995,7 +8011,7 @@
         </div>
     </div>
 
-    <div id="screen-story-pokemoncenter" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-pokemoncenter" class="screen hidden story-screen-root" role="region" aria-label="story pokemoncenter" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-pokemoncenter-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
@@ -8018,7 +8034,7 @@
         </div>
     </div>
 
-    <div id="screen-story-crucible" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-crucible" class="screen hidden story-screen-root" role="region" aria-label="story crucible" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
                 <span style="width:32px;"></span>
@@ -8035,7 +8051,7 @@
         </div>
     </div>
 
-    <div id="screen-story-frontier" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-frontier" class="screen hidden story-screen-root" role="region" aria-label="story frontier" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCrucible()" title="Back to The Crucible" aria-label="Back to The Crucible">&#8592;</button>
@@ -8049,7 +8065,7 @@
         </div>
     </div>
 
-    <div id="screen-story-catch" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-catch" class="screen hidden story-screen-root" role="region" aria-label="story catch" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
                 <span style="width:32px;"></span>
@@ -8063,7 +8079,7 @@
         </div>
     </div>
 
-    <div id="screen-story-link" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-link" class="screen hidden story-screen-root" role="region" aria-label="story link" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-link-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-link-stack">
         <div class="story-link-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
@@ -8081,7 +8097,7 @@
         </div>
     </div>
 
-    <div id="screen-story-evolab" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-evolab" class="screen hidden story-screen-root" role="region" aria-label="story evolab" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-evolab-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;gap:10px;">
@@ -8104,7 +8120,7 @@
         </div>
     </div>
 
-    <div id="screen-story-casino" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-casino" class="screen hidden story-screen-root" role="region" aria-label="story casino" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-casino-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
             <div class="story-shop-header-row casino-header-row">
@@ -8237,7 +8253,7 @@
         </div>
     </div>
 
-    <div id="screen-story-gameover" class="screen hidden" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:20px;font-family:var(--battle-font);">
+    <div id="screen-story-gameover" class="screen hidden" role="region" aria-label="story gameover" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:20px;font-family:var(--battle-font);">
         <h1 style="color:#f44336;font-size:32px;margin:0;letter-spacing:3px;">DEFEATED</h1>
         <p style="color:#888;font-size:12px;text-align:center;margin:0;max-width:400px;">You blacked out.</p>
         <p id="story-gameover-desc" style="color:#aaa;font-size:14px;text-align:center;margin:0;max-width:400px;"></p>
@@ -8252,7 +8268,7 @@
         </div>
     </div>
 
-<div id="screen-story-artifacts" class="screen hidden" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+<div id="screen-story-artifacts" class="screen hidden" role="region" aria-label="story artifacts" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div style="padding:10px 14px;background:#0d0d0d;border-bottom:1px solid #333;flex-shrink:0;">
             <div style="display:flex;align-items:center;gap:10px;">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
@@ -8299,7 +8315,7 @@
         </div>
     </div>
 
-    <div id="screen-story-tester" class="screen hidden" style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:#0a0a0c;">
+    <div id="screen-story-tester" class="screen hidden" role="region" aria-label="story tester" style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:#0a0a0c;">
         <div style="flex-shrink:0;padding:12px 16px;border-bottom:1px solid #333;background:#111;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
                 <h1 style="color:#ce93d8;font-size:18px;margin:0 0 6px;">Story team tester</h1>
@@ -8351,7 +8367,7 @@
     </div>
 
     <!-- Trainer creation + run setup (replaces seed + heavy settings panel) -->
-    <div id="screen-story-trainercreate" class="screen hidden story-screen-outer">
+    <div id="screen-story-trainercreate" class="screen hidden story-screen-outer" role="region" aria-label="story trainercreate">
         <div class="story-create-shell">
             <header class="story-create-head">
                 <button type="button" class="story-create-back" onclick="window.StoryMode.cancelTrainerCreate()" aria-label="Back to story menu">&#8592; Back</button>
@@ -8473,7 +8489,7 @@
     </div>
 
     <!-- Collection: Pokédex + Achievements + Hall of Fame (cross-run) -->
-    <div id="screen-collection" class="screen hidden story-screen-outer">
+    <div id="screen-collection" class="screen hidden story-screen-outer" role="region" aria-label="collection">
         <div class="story-collection-shell">
             <header class="story-collection-head">
                 <button type="button" class="story-create-back" onclick="window.StoryMode.closeCollection()" aria-label="Back">&#8592; Back</button>
@@ -8493,7 +8509,7 @@
 
     <!-- ===== END STORY MODE SCREENS ===== -->
 
-    <div id="screen-battle" class="screen hidden">
+    <div id="screen-battle" class="screen hidden" role="region" aria-label="battle">
         <button type="button" class="battle-settings-btn" onclick="window.openSettings()" title="Settings" aria-label="Settings">⚙</button>
         <div id="weather-indicator" class="hidden" style="display:none;"></div>
         <div id="terrain-overlay" class="terrain-overlay"></div>

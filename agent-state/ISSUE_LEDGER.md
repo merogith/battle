@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-22T10:34:09.937Z
+> **Generated**: 2026-05-22T10:36:59.310Z
 > **Source**: `agent-state/findings/*.md` (88 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -2891,7 +2891,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: bdcd17777e9c
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Online Host/Join form labels are not programmatically associated with their inputs
@@ -3020,7 +3020,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: b14deb83ca98
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: 129 `@keyframes` definitions but only 5 `prefers-reduced-motion` overrides — sprite-in, dialog-in, master-pulse, badge-pulse all unguarded
@@ -3183,7 +3183,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: ade33e34d4e7
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: All 24 `#screen-*` containers are plain `<div>` — no `<main>` or `role="region"`
@@ -3436,7 +3436,7 @@ file: docs/STORY_MODE_CATCH_INTEGRATION_RISK.md
 agents: [spec-drift-auditor]
 fingerprint: 3c47a061e632
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: 6+ stale `battle.html:LINE` refs in STORY_MODE_CATCH_INTEGRATION_RISK.md (avg drift ~9000 lines)
@@ -3474,7 +3474,7 @@ file: STORY_MODE_FLOW.md
 agents: [spec-drift-auditor]
 fingerprint: a2c0649750f6
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: 9 of 10 `battle.html:LINE` refs in STORY_MODE_FLOW.md are stale (avg drift ~7000 lines)
@@ -3547,7 +3547,7 @@ file: docs/STORY_NARRATIVE_VARIANTS.md
 agents: [spec-drift-auditor]
 fingerprint: b63a7fd17310
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: 5+ stale `battle.html:LINE` refs in STORY_NARRATIVE_VARIANTS.md (variant-system anchors moved 3-5k lines)
@@ -3707,7 +3707,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 679f436786d4
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Master Ball purple pulse runs forever with no reduced-motion override; surrounding text/glow stays readable but the loop is hostile
