@@ -220,12 +220,34 @@
         }
     }
 
+    // Sanitize HTML coming off the wire before injecting into the local battle log.
+    // The server-side RLS lets any client with the room id update the `data` jsonb,
+    // and the legacy `battle_log_html` field was originally set to innerHTML raw —
+    // a peer that flips a single character of html could inject script into the
+    // host's DOM. We block the common script-injection vectors below; legitimate
+    // battle-log content is plain text + <br> + a small set of <span class="...">.
+    function sanitizeBattleLogHtml(raw) {
+        if (typeof raw !== 'string') return '';
+        let html = raw;
+        // Drop <script>, <style>, <iframe>, <object>, <embed>, <link>, <meta>,
+        // <form>, <input>, <textarea>, <button>, <svg> (script-bearing namespaces).
+        html = html.replace(/<\s*(script|style|iframe|object|embed|link|meta|form|input|textarea|button|svg)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '');
+        html = html.replace(/<\s*(script|style|iframe|object|embed|link|meta|form|input|textarea|button|svg)\b[^>]*\/?>/gi, '');
+        // Drop on*= event handlers in any tag.
+        html = html.replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+        // Drop javascript: / vbscript: / data: pseudo-URLs in href / src / xlink:href.
+        html = html.replace(/(href|src|xlink:href|action|formaction)\s*=\s*(?:"\s*(?:javascript|vbscript|data)\s*:[^"]*"|'\s*(?:javascript|vbscript|data)\s*:[^']*'|(?:javascript|vbscript|data)\s*:[^\s>]*)/gi, '$1=""');
+        // Drop style="" attributes — CSS can host expression() in old IE and url(javascript:) elsewhere.
+        html = html.replace(/\sstyle\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+        return html;
+    }
+
     function applyBattleLogHtml(html) {
         if (html === undefined || html === null) return;
         try {
             const el = global.document && global.document.getElementById('battle-log');
             if (!el) return;
-            el.innerHTML = typeof html === 'string' ? html : '';
+            el.innerHTML = sanitizeBattleLogHtml(typeof html === 'string' ? html : '');
             el.scrollTop = el.scrollHeight;
         } catch (e) {}
     }

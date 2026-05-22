@@ -7,7 +7,7 @@ file: supabase/migrations/001_online_pvp.sql
 agents: [pvp-concurrency-hunter]
 fingerprint: a1f5cf704e77
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Permissive RLS (`using (true)` for UPDATE/DELETE/INSERT) lets any anon client clobber/wipe any PvP room
@@ -42,7 +42,7 @@ file: online-pvp.js
 agents: [pvp-concurrency-hunter]
 fingerprint: 965f251a0c94
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `applyBattleLogHtml` injects raw `battle_log_html` from the room row into the DOM — XSS sink fed by world-writable Supabase row
