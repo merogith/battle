@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-22T10:27:14.709Z
+> **Generated**: 2026-05-22T10:29:56.287Z
 > **Source**: `agent-state/findings/*.md` (88 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -1753,7 +1753,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: a8ccc1946cb8
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: 10 of 12 `.modal` overlays lack `role="dialog"` / `aria-modal` / labelledby
@@ -1792,7 +1792,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 44450b67ba55
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Only `modal-summary` handles Escape — settings, abandon, alert, confirm modals trap keyboard users
@@ -2042,7 +2042,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: 7196d6421a81
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Victory overlay is a plain `<div>` — no dialog role, no focus on Continue, ESC ignored
