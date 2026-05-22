@@ -967,6 +967,11 @@
         .tx-pill--rec { background: rgba(102,187,106,0.25); border-color: #66bb6a; color: #c8e6c9; }
         .tx-pill--cur { background: rgba(255,213,79,0.18); border-color: #ffd54f; color: #fff3cd; }
         .tx-pill--ha  { background: rgba(206,147,216,0.18); border-color: #ce93d8; color: #f3e5f5; }
+        .tx-pill--awaken {
+            background: linear-gradient(135deg, rgba(255,193,7,0.28), rgba(255,87,34,0.22));
+            border-color: #ffb300; color: #fff8e1;
+            box-shadow: 0 0 6px rgba(255,179,0,0.45);
+        }
         .tx-pill--cat-Physical { background: rgba(255,107,107,0.18); border-color: #ff6b6b; color: #ffcaca; }
         .tx-pill--cat-Special  { background: rgba(107,159,255,0.18); border-color: #6b9fff; color: #cbdbff; }
         .tx-pill--cat-Status   { background: rgba(180,187,204,0.15); border-color: #b4bbcc; color: #e0e5ee; }
@@ -9200,6 +9205,7 @@
                 }
             }
             await loadBuildsCSV();
+            await _loadOpAbilities();
             computeStatScales();
             try { if (new URLSearchParams(location.search).get('spritescaledebug') === '1') window.__DEBUG_SPRITE_SCALE = true; } catch (e) {}
             enrichBaseStatsHeightsFromDex();
@@ -44389,6 +44395,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
         }
 
+        // ── OP "Awaken" abilities — surfaced in the Battle Dojo Ability tab once
+        // sm.badges >= 6 (post-Gym-6 / City 6+). Each entry: species → 3 picks
+        // from a curated 30 OP abilities. Authored by scripts/gen-op-abilities.mjs.
+        // Species with >5 current legal abilities are excluded (no OP needed).
+        let _opAbilitiesCache = null;
+        async function _loadOpAbilities() {
+            if (_opAbilitiesCache) return _opAbilitiesCache;
+            try {
+                _opAbilitiesCache = await fetch('data/op-abilities.json').then(r => r.json());
+            } catch (e) {
+                _opAbilitiesCache = {};
+                console.warn('[OP] op-abilities.json unavailable — Awaken picks disabled.');
+            }
+            return _opAbilitiesCache;
+        }
+        function _opAbilitiesForMon(monName) {
+            if (!_opAbilitiesCache) return [];
+            if ((sm && (sm.badges | 0)) < 6) return [];
+            const list = _opAbilitiesCache[monName];
+            return Array.isArray(list) ? list.slice(0, 3) : [];
+        }
+
         /** Species names to union for learnsets: self, form bases, and full prevo chain (baseStats + @pkmn/dex). Does not walk evos (wrong for learnsets). */
         function _tutorSpeciesKeysForLearnset(monName) {
             const keys = [];
@@ -45734,9 +45762,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const isPending = ctx && ctx.pending === abilityName;
             const isCurrent = ctx && ctx.current === abilityName;
             const isHA      = ctx && ctx.hiddenAbilities && ctx.hiddenAbilities.has(abilityName);
+            const isAwaken  = ctx && ctx.awakenAbilities && ctx.awakenAbilities.has(abilityName);
             const isRec     = ctx && ctx.recommended && ctx.recommended.has(abilityName);
             const pills = [
-                isHA ? `<span class="tx-pill tx-pill--ha">Hidden</span>` : '',
+                isAwaken ? `<span class="tx-pill tx-pill--awaken">★ Awaken</span>` : '',
+                isHA && !isAwaken ? `<span class="tx-pill tx-pill--ha">Hidden</span>` : '',
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
                 isRec && !isCurrent ? `<span class="tx-pill tx-pill--rec">★ Pick</span>` : '',
             ].filter(Boolean).join('');
@@ -46080,8 +46110,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             // Abilities — top + runner-up (top 2 by Smogon usage, current excluded).
             // Hidden abilities are tagged from baseStats.abilities slot 'H'.
+            // OP "Awaken" picks are merged in once sm.badges >= 6 and tagged via awakenSet.
             const curAbility = b.a || (mon && mon.ability) || '(none)';
-            const abils = pool.abilities.slice();
+            const opAbils = _opAbilitiesForMon(t.name);
+            const awakenSet = new Set(opAbils);
+            const abils = [...new Set([...pool.abilities, ...opAbils])].sort();
             const filtAbils = _txApplyAbilityFilters(abils, mon, b, t.name);
             const abilRecs = _txAbilityRecsByPurpose(abils, mon, b, t.name);
             const recAbilSet = new Set(abilRecs.map(r => r.ability));
@@ -46091,7 +46124,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (bs && bs.abilities && bs.abilities.H) haSet.add(bs.abilities.H);
             } catch (e) {}
             const pendingAbility = (_txPending && _txPending.kind === 'ability') ? _txPending.value : null;
-            const abilCtx = { pending: pendingAbility, current: curAbility, recommended: recAbilSet, hiddenAbilities: haSet };
+            const abilCtx = { pending: pendingAbility, current: curAbility, recommended: recAbilSet, hiddenAbilities: haSet, awakenAbilities: awakenSet };
 
             // Item tab content
             const itemTabHtml = (() => {
