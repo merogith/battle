@@ -28861,7 +28861,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // wild-encounter beat). Mid-trip facilities (PC, Pokémart, tutors) stay
             // available so the post-gym town still serves as a real stop.
             if (_isPostGymHubAtEventIdx(sm.eventIndex | 0)) return false;
-            return sm.team.length < 6;
+            // Outer caller (renderCityActions) gates on `hasTeamRoom` (team
+            // length < badge-curve cap), which strictly implies `team.length
+            // < 6`, so the inner cap-6 check is dead. Returning true here
+            // lets the outer cap gate decide.
+            return true;
         }
         function isPreLeagueLegendaryMysteryGate(cityIdx) {
             const c = Math.max(0, cityIdx | 0);
@@ -30644,8 +30648,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.postHofMysteryClimaxDone = !!(sm.bossArc && sm.bossArc.available);
             }
             if (sm.storyDifficulty === 'hardcore') sm.storyDifficulty = 'normal';
-            if (Array.isArray(sm.team)) {
-                for (const slot of sm.team) {
+            // Stamp stable ids on every slot in team AND pcBox. The pre-v15
+            // version of this loop only iterated sm.team; pcBox didn't exist
+            // in pre-v15 schemas so it was effectively a no-op, but adding
+            // it explicitly keeps the migration symmetric with v17 and
+            // protects against forward-imported saves missing ids.
+            for (const arr of [sm.team, sm.pcBox]) {
+                if (!Array.isArray(arr)) continue;
+                for (const slot of arr) {
                     if (slot && typeof slot === 'object' && !slot.id) {
                         slot.id = 'm_' + Math.random().toString(36).slice(2, 10);
                     }
@@ -36875,6 +36885,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         let _profSelectedIdx    = null; // which of the 3 the player picked
         let _pendingProfCityIdx = null; // city index that owns current choices
         let _pendingProfWasMystery = false; // whether cached choices were rolled in mystery mode
+        let _pendingProfBadges = null; // badge count when cached; invalidate when badges change so tier curve refreshes
         let _profLegendaryMysteryMode = false;
         // (legacy _pendingProfRoll kept for safety)
         let _pendingProfRoll    = null;
@@ -36886,6 +36897,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _profSelectedIdx = null;
             _pendingProfCityIdx = null;
             _pendingProfWasMystery = false;
+            _pendingProfBadges = null;
             _profLegendaryMysteryMode = false;
             _profMysteryMode = false;
             _pendingProfRoll = null;
@@ -37018,10 +37030,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const btnsEl   = document.getElementById('story-prof-buttons');
             const cardEl   = document.getElementById('story-prof-rolled-card');
 
+            // Reuse cached choices only when ALL of: same city, same mystery
+            // mode, same badge count. Pre-fix the choices stuck across long
+            // road trips even if badges rose — locking the player into stale
+            // tier-curve-appropriate picks. Now badges-changed = re-roll.
             const shouldReuseChoices = Array.isArray(_pendingProfChoices)
                 && _pendingProfChoices.length > 0
                 && _pendingProfCityIdx === cityIdx
-                && _pendingProfWasMystery === _profMysteryMode;
+                && _pendingProfWasMystery === _profMysteryMode
+                && _pendingProfBadges === (sm.badges | 0);
 
             if (!shouldReuseChoices) {
                 // Mystery mode: offer 1 Pokémon. Professor mode: offer 3 choices.
@@ -37094,6 +37111,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _pendingProfChoices = choices;
                 _pendingProfCityIdx = cityIdx;
                 _pendingProfWasMystery = _profMysteryMode;
+                _pendingProfBadges = (sm.badges | 0);
                 // Auto-select the single mystery offer so Accept is ready immediately
                 _profSelectedIdx = _profMysteryMode ? 0 : null;
             }

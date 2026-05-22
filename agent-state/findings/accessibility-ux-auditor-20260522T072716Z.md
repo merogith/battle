@@ -435,7 +435,7 @@ file: battle.html
 agents: [accessibility-ux-auditor]
 fingerprint: dcc6311c0e55
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Tutorial overlay's four-stage entrance animation has no reduced-motion fallback

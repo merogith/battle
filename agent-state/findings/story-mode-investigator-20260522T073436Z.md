@@ -241,7 +241,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: e8d8ed327813
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `shouldForceCityProfessor` uses dead `sm.team.length < 6` floor that's shadowed by outer `hasTeamRoom` gate
@@ -689,7 +689,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 11baf155adf0
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `enterProfessor` reuses `_pendingProfChoices` across city visits at the same cityIdx — stale picks may persist past spec'd one-shot pool
@@ -721,7 +721,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 6aecb8bc20ed
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: v15 stable-ID migration only iterates `sm.team`, not `sm.pcBox` (harmless today but inconsistent with v17)
@@ -855,7 +855,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 3db327ab351c
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `shouldForceCityProfessor`'s `sm.team.length < 6` floor is dead-coded once the outer `hasTeamRoom` gate clamps to `_storyMaxPartySize()`
