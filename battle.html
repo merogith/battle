@@ -30347,10 +30347,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (quoteRole === 'Rival' && storyBattleRowIdx != null && storyBattleRowIdx !== undefined) {
                 const phase = getRivalEncounterPhase(storyBattleRowIdx);
                 if (phase !== null && phase !== undefined) {
+                    // Per-variant Rival overlay — 50% chance to draw from
+                    // the variant pool when one exists for this phase.
+                    try {
+                        const vp = _variantRivalQuoteFor(phase);
+                        if (vp && vp.length && rng() < 0.5) {
+                            return vp[Math.floor(rng() * vp.length)];
+                        }
+                    } catch (e) {}
                     const pool = mergeRivalQuotePools(nm, phase, storyBattleRowIdx);
                     return pool[Math.floor(rng() * pool.length)];
                 }
             }
+            // Per-variant generic trainer-class overlay — 35% chance when
+            // the variant has a pool for this trainer's classKey/role.
+            try {
+                const classKey = (trainer && (trainer.classKey || trainer.class || trainer.role)) || quoteRole;
+                const vp = _variantTrainerQuoteFor(classKey);
+                if (vp && vp.length && rng() < 0.35) {
+                    return vp[Math.floor(rng() * vp.length)];
+                }
+            } catch (e) {}
             // Per-variant Champion intro override — fires only on the row-64
             // Champion fight, not Crucible Champion rematches (those route
             // through a different storyBattleRowIdx). Variant intros win
@@ -30454,6 +30471,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _pickCityQuoteLine(poolArr, cityIdx) {
             const idx = Math.min(Math.max(0, cityIdx|0), poolArr.length - 1);
             const lines = poolArr[idx] || poolArr[0];
+            // Variant overlay — when the active variant has a per-city
+            // override that matches this pool's identity (City Guide vs.
+            // City Professor), mix it in at the front of the pool with
+            // moderate probability. Falls through cleanly when missing.
+            try {
+                const isProfessor = (typeof CITY_PROFESSOR_QUOTES !== 'undefined' && poolArr === CITY_PROFESSOR_QUOTES);
+                const isGuide     = (typeof CITY_GUIDE_QUOTES !== 'undefined' && poolArr === CITY_GUIDE_QUOTES);
+                let ovLines = null;
+                if (isProfessor) ovLines = _variantCityProfessorOverride(cityIdx);
+                else if (isGuide) ovLines = _variantCityGuideOverride(cityIdx);
+                if (ovLines && ovLines.length) {
+                    // City Guide: 65% variant. City Professor: 50% variant.
+                    const variantBias = isGuide ? 0.65 : 0.5;
+                    if (Math.random() < variantBias) {
+                        return ovLines[Math.floor(Math.random() * ovLines.length)];
+                    }
+                }
+            } catch (e) {}
             return lines[Math.floor(Math.random() * lines.length)];
         }
 
@@ -30538,7 +30573,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? getStoryDisplayTownNameForCityRow(STORY_EVENTS_RAW[sm.eventIndex])
                 : ('City ' + (cityIdx | 0));
             const blurb = _cityBlurbFor(cityIdx);
-            const lines = _cityArrivalLines(cityIdx);
+            const lines = (function() {
+                try {
+                    const ov = _variantCityArrivalOverride(cityIdx);
+                    if (ov && ov.length) return ov;
+                } catch (e) {}
+                return _cityArrivalLines(cityIdx);
+            })();
             const bgUrls = (getStoryBgManifest().cityUrls || DEFAULT_STORY_BG_MANIFEST.cityUrls);
             const bg = (bgUrls && bgUrls.length) ? bgUrls[(cityIdx | 0) % bgUrls.length] : '';
             const spriteFile = _cityArrivalSpeakerSpriteFile(cityIdx);
@@ -30758,7 +30799,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Hall of Fame: last 10 cleared runs.
                 hofRecords: [],
                 // Last-used trainer profile, used to pre-fill the trainer creation screen.
-                trainerProfile: null
+                trainerProfile: null,
+                // Storyline-variant clear log — keyed by variant id, value true.
+                // Powers NG+ smart default in _pickRandomStorylineVariant.
+                clearedVariants: {}
             };
         }
         function readStoryMeta() {
@@ -30776,7 +30820,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     pokedex: (obj.pokedex && typeof obj.pokedex === 'object') ? obj.pokedex : base.pokedex,
                     achievements: (obj.achievements && typeof obj.achievements === 'object') ? obj.achievements : base.achievements,
                     hofRecords: Array.isArray(obj.hofRecords) ? obj.hofRecords.slice(0, 10) : [],
-                    trainerProfile: (obj.trainerProfile && typeof obj.trainerProfile === 'object') ? obj.trainerProfile : null
+                    trainerProfile: (obj.trainerProfile && typeof obj.trainerProfile === 'object') ? obj.trainerProfile : null,
+                    clearedVariants: (obj.clearedVariants && typeof obj.clearedVariants === 'object') ? obj.clearedVariants : {}
                 };
             } catch (e) { return _emptyStoryMeta(); }
         }
@@ -30800,6 +30845,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const meta = readStoryMeta();
             meta.completedRuns = (meta.completedRuns | 0) + 1;
             if (sm && sm.runSeed != null) meta.lastClearSeed = String(sm.runSeed >>> 0);
+            // Variant clear tracking — NG+ 'Surprise Me' prefers variants
+            // the player hasn't yet seen end-to-end, so the eight variants
+            // drip out over multiple runs.
+            if (sm && typeof sm.storyLine === 'string' && sm.storyLine) {
+                if (!meta.clearedVariants || typeof meta.clearedVariants !== 'object') meta.clearedVariants = {};
+                meta.clearedVariants[sm.storyLine] = true;
+            }
             writeStoryMeta(meta);
             return meta;
         }
@@ -31382,6 +31434,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (typeof sm.storyLine !== 'string' || !sm.storyLine) {
                 sm.storyLine = 'classic';
             }
+            // Variant choice store — per-beat keys live here so cold-opens
+            // with multi-choice prompts can re-read prior picks. Defensive
+            // init (no schema bump) so old saves get the field on load.
+            if (!sm.storyChoices || typeof sm.storyChoices !== 'object') sm.storyChoices = {};
             for (const arr of [sm.team, sm.pcBox]) {
                 if (!Array.isArray(arr)) continue;
                 for (const slot of arr) {
@@ -31423,6 +31479,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    pokedex: { seen: [], caught: [] },
                    catchUnlocked: false,
                    storyLine: 'classic',
+                   storyChoices: {},
                    postHofMysteryClimaxDone: false,
                    rivalConsecutiveWins: 0,
                    rivalConsecutiveLosses: 0,
@@ -34455,6 +34512,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 pokedex: { seen: [], caught: [] },
                 catchUnlocked: false,
                 storyLine: _readStorylineFromUI(),
+                storyChoices: {},
                 postHofMysteryClimaxDone: false,
                 mysteryIdentity: _storyPickMysteryIdentity(),
                 // Replayability achievement counters (per-run). noItemThisRun
@@ -34554,7 +34612,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             62: { kind: 'elite',    eliteNumber: 3 },
             63: { kind: 'elite',    eliteNumber: 4 },
             64: { kind: 'champion' },
-            67: { kind: 'mystery',  tags: ['postHoFMystery', 'cagedGod'] }
+            67: { kind: 'mystery',  tags: ['postHoFMystery', 'cagedGod'], coldOpen: 'mystery67' }
         };
 
         /** Cold-open scenes — one-shot narrative overlays that fire before a
@@ -35516,6 +35574,55 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ],
                     onDone
                 }); }
+            },
+            // ── K: per-variant post-HoF Mystery Figure intro (row 67).
+            // Dispatches the variant-specific scene from
+            // _variantMystery67Scene. metaKey is variant-keyed so each
+            // storyline plays its own intro exactly once per save.
+            mystery67: {
+                metaKey: (ev, beat) => 'cold-mystery67-' + ((beat && beat._variantId) || (sm && sm.storyLine) || 'classic'),
+                run(ev, onDone) {
+                    const scene = _variantMystery67Scene() || {};
+                    _renderNarrativeOverlay({
+                        metaKey: 'cold-mystery67-' + (_storyActiveVariantId() || 'classic'),
+                        banner: scene.banner || '— THE FINAL MASK —',
+                        toneClass: scene.toneClass || '',
+                        nameplate: scene.nameplate || 'The figure in the doorway',
+                        lines: scene.lines || [],
+                        continueLabel: 'Step into the chamber →',
+                        sfx: _variantSfxMotif(),
+                        onDone
+                    });
+                }
+            },
+            // ── B: per-variant choice moment, mid-late beat (row 33).
+            // Replaces a variant's base row-33 scene with a multi-choice
+            // prompt when the variant has an entry in _VARIANT_CHOICE_R33.
+            // The pick is persisted to sm.storyChoices for downstream
+            // prose to optionally reference.
+            choice_r33: {
+                metaKey: (ev, beat) => 'cold-choice-r33-' + ((beat && beat._variantId) || (sm && sm.storyLine) || 'classic'),
+                run(ev, onDone) {
+                    const scene = _variantChoiceR33();
+                    if (!scene) { try { onDone && onDone(); } catch (e) {} return; }
+                    const v = _storyActiveVariant();
+                    _renderNarrativeOverlay({
+                        metaKey: 'cold-choice-r33-' + (_storyActiveVariantId() || 'classic'),
+                        toneClass: v.toneClass || '',
+                        sprite: scene.spriteFile,
+                        nameplate: scene.nameplate || 'At the trail bend',
+                        lines: scene.lines || [],
+                        choices: (scene.choices || []).map(c => ({
+                            label: c.label,
+                            value: c.value,
+                            reply: c.reply,
+                            persistKey: 'choice-r33-' + (_storyActiveVariantId() || 'classic')
+                        })),
+                        continueLabel: 'Continue →',
+                        sfx: _variantSfxMotif(),
+                        onDone
+                    });
+                }
             }
         };
 
@@ -35828,7 +35935,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     7:  { coldOpen: 'bonekeepers_gym1' },
                     20: { coldOpen: 'bonekeepers_npc_r20' },
                     26: { coldOpen: 'bonekeepers_gym4' },
-                    33: { coldOpen: 'bonekeepers_npc_r33' },
+                    33: { coldOpen: 'choice_r33' },
                     48: { coldOpen: 'bonekeepers_npc_r48' },
                     53: { coldOpen: 'bonekeepers_twist' },
                     56: { coldOpen: 'bonekeepers_gym8' },
@@ -35852,7 +35959,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     7:  { coldOpen: 'projectmewtwo_gym1' },
                     20: { coldOpen: 'projectmewtwo_npc_r20' },
                     26: { coldOpen: 'projectmewtwo_gym4' },
-                    33: { coldOpen: 'projectmewtwo_npc_r33' },
+                    33: { coldOpen: 'choice_r33' },
                     48: { coldOpen: 'projectmewtwo_npc_r48' },
                     53: { coldOpen: 'projectmewtwo_twist' },
                     56: { coldOpen: 'projectmewtwo_gym8' },
@@ -35877,7 +35984,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     7:  { coldOpen: 'hypnos_gym1' },
                     20: { coldOpen: 'hypnos_npc_r20' },
                     26: { coldOpen: 'hypnos_gym4' },
-                    33: { coldOpen: 'hypnos_npc_r33' },
+                    33: { coldOpen: 'choice_r33' },
                     48: { coldOpen: 'hypnos_npc_r48' },
                     53: { coldOpen: 'hypnos_twist' },
                     56: { coldOpen: 'hypnos_gym8' },
@@ -35901,7 +36008,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     7:  { coldOpen: 'deadraticate_gym1' },
                     20: { coldOpen: 'deadraticate_npc_r20' },
                     26: { coldOpen: 'deadraticate_gym4' },
-                    33: { coldOpen: 'deadraticate_npc_r33' },
+                    33: { coldOpen: 'choice_r33' },
                     48: { coldOpen: 'deadraticate_npc_r48' },
                     53: { coldOpen: 'deadraticate_twist' },
                     56: { coldOpen: 'deadraticate_gym8' },
@@ -35926,7 +36033,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     7:  { coldOpen: 'lavender_gym1' },
                     20: { coldOpen: 'lavender_npc_r20' },
                     26: { coldOpen: 'lavender_gym4' },
-                    33: { coldOpen: 'lavender_npc_r33' },
+                    33: { coldOpen: 'choice_r33' },
                     48: { coldOpen: 'lavender_npc_r48' },
                     53: { coldOpen: 'lavender_twist' },
                     56: { coldOpen: 'lavender_gym8' },
@@ -35950,7 +36057,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     7:  { coldOpen: 'static_gym1' },
                     20: { coldOpen: 'static_npc_r20' },
                     26: { coldOpen: 'static_gym4' },
-                    33: { coldOpen: 'static_npc_r33' },
+                    33: { coldOpen: 'choice_r33' },
                     48: { coldOpen: 'static_npc_r48' },
                     53: { coldOpen: 'static_twist' },
                     56: { coldOpen: 'static_gym8' },
@@ -36004,15 +36111,760 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return 'classic';
         }
         /** Roll one of the eight real variants. 'surprise_me' itself and any
-         *  future sentinel ids are excluded. */
+         *  future sentinel ids are excluded. NG+ smart default — prefer
+         *  variants the player hasn't yet cleared this profile, so the
+         *  eight variants drip out over multiple runs instead of re-rolling
+         *  the same one. Falls back to uniform when every variant is
+         *  cleared (or the meta is unavailable). Uses the seeded story RNG
+         *  when an active run is mid-flight so a shared seed reproduces the
+         *  rolled variant. */
         function _pickRandomStorylineVariant() {
             const ids = Object.keys(STORYLINE_VARIANTS).filter(k => {
                 const v = STORYLINE_VARIANTS[k];
                 return v && v.tier !== 'random';
             });
             if (!ids.length) return 'classic';
-            return ids[Math.floor(Math.random() * ids.length)];
+            let pool = ids;
+            try {
+                const meta = readStoryMeta();
+                const cleared = (meta && meta.clearedVariants && typeof meta.clearedVariants === 'object') ? meta.clearedVariants : {};
+                const uncleared = ids.filter(id => !cleared[id]);
+                if (uncleared.length) pool = uncleared;
+            } catch (e) {}
+            const r = (typeof sm === 'object' && sm && sm.active && typeof storyRngNext === 'function')
+                ? storyRngNext() : Math.random();
+            return pool[Math.floor(r * pool.length)] || ids[0];
         }
+
+        // ═════════════════════════════════════════════════════════════════
+        // VARIANT PROSE DENSITY LAYER
+        // ═════════════════════════════════════════════════════════════════
+        // Per-variant override tables for the recurring NPC surfaces that
+        // are otherwise variant-blind: city arrival, city guide quotes,
+        // city professor quotes, mart greeter, rival quotes, generic
+        // trainer classes, gym victory cards, wild-catch intro lines,
+        // retreat/game-over flavor, Hall of Fame card, and the post-HoF
+        // Mystery Figure pre-fight beat (row 67).
+        //
+        // Layout contract: every table is keyed by variant id; values are
+        // either a single string, an array of strings, or a per-key map
+        // (e.g. per-city, per-class). A missing variant entry — or a
+        // missing key inside a present entry — falls through cleanly to
+        // the existing variant-blind path. Classic (and second_sun where
+        // appropriate) stay sparse on purpose so the warm-baseline tone
+        // doesn't drift.
+        //
+        // Each variant declares a single SFX motif fired on cold-open
+        // dismiss via window.StoryFx.playSfx. Classic and second_sun stay
+        // silent.
+
+        const _VARIANT_SFX_MOTIF = {
+            classic: null,
+            second_sun: null,
+            // bone_keepers: a soft chime — `restore` reads as a quiet tone.
+            bone_keepers: 'restore',
+            // project_mewtwo: a hard click — `pbLock` is the lab-door snap.
+            project_mewtwo: 'pbLock',
+            // hypnos_lullaby: a soft sparkle, pendulum-like.
+            hypnos_lullaby: 'sparkle',
+            // dead_raticate: silence (the empty slot is the cue).
+            dead_raticate: null,
+            // lavender_frequency: the existing `danger` cue, dim and long.
+            lavender_frequency: 'danger',
+            // static: a charge — reads as a brief surge of distortion.
+            static: 'charge'
+        };
+        function _variantSfxMotif() {
+            const v = _storyActiveVariant();
+            return _VARIANT_SFX_MOTIF[v.id] || null;
+        }
+
+        // ── A5: per-variant city arrival overrides ──────────────────────
+        // Replaces _cityArrivalLines() output. Keys are city indices 0–9.
+        const _VARIANT_CITY_ARRIVAL = {
+            second_sun: {
+                0: ['Sea salt, sawgrass, three houses and a lab.','Two starters on the bench. Your rival got first pick this morning.'],
+                1: ['Mining sirens stop at the gate. Shift change.','Word at the inn is your rival cleared the gym at dawn.'],
+                4: ['Ranger boots, hunter boots, poacher boots.','Your rival\'s tracks at the Safari gate are a day old.'],
+                7: ['Stone gates, switchback ramps, wind off the high country.','Your rival passed through last week. They left you a note at the inn.'],
+                9: ['The Plateau hums under your boots.','The Champion\'s chair upstairs is occupied. You know who.']
+            },
+            bone_keepers: {
+                0: ['Sea salt, sawgrass, three houses and a lab.','The Professor will ask if you\'re sure. The road north passes the tower.'],
+                1: ['Mining sirens stop at the gate. Shift change.','The tower\'s bells carried this far at dawn. Someone was buried.'],
+                4: ['Tower town. Every trail forks toward the lower floors.','Past the Safari gate, the trail keeps forking until you reach the stones.'],
+                5: ['Neon over a still lake. Slot machines and the gym share a roof.','The lake holds candles every full moon. The Casino dims its lights for it.'],
+                7: ['Stone gates, switchback ramps, high country wind.','Pilgrims walk this road carrying small stones. They leave them at the gate.'],
+                8: ['The last gym sits inside an old cathedral. Bells, candles, stained-glass Lugia.','The bell tower above the gym rings for every challenger and for every grave.'],
+                9: ['The Plateau hums under your boots.','In the lobby, a candle burns for every Champion who came before. The empty stand is yours.']
+            },
+            project_mewtwo: {
+                0: ['Sea salt, sawgrass, three houses and a lab.','The Professor\'s hand shook this morning. She handed you a starter anyway.'],
+                1: ['Mining sirens stop at the gate. Shift change.','A lab assistant on the route just told you "0001 sends regards." Then walked off.'],
+                4: ['Ranger boots, hunter boots, poacher boots.','A torn research badge — Project: 0001, Cinnabar Annex — is stapled to the fence by the gate.'],
+                6: ['The skyline ate the route signs.','Colress runs a lab on the roof. He was the Cinnabar Annex\'s last director, once.'],
+                8: ['The last gym sits inside an old cathedral.','The basement under the cathedral was a lab annex, the Professor said. Officially decommissioned.'],
+                9: ['The Plateau hums under your boots.','The locker room has a slip of paper in your starter\'s file. You don\'t read it.']
+            },
+            hypnos_lullaby: {
+                0: ['Sea salt, sawgrass, three houses and a lab.','Your rival\'s sister has been missing for six days. He\'s leaving this morning anyway.'],
+                1: ['Mining sirens stop at the gate.','The bulletin board in the inn has nine missing-child posters. Three at this town.'],
+                3: ['Lecture halls bleed students into the streets.','The campus counselor\'s door has a "back in 5 min" sign. It has had that sign for weeks.'],
+                4: ['Ranger boots, hunter boots, poacher boots.','The Safari warden won\'t sell tickets today. "Find your friend\'s sister first," he says.'],
+                6: ['The skyline ate the route signs.','A pendulum-shaped pin sits in every newsstand window. Nobody sells them. They\'re just there.'],
+                9: ['The Plateau hums under your boots.','The corridor to the Champion\'s chamber has children\'s drawings tacked to the wall. All of a Hypno.']
+            },
+            dead_raticate: {
+                0: ['Sea salt, sawgrass, three houses and a lab.','Your rival is already on the road. Their party belt this morning held six.'],
+                1: ['Mining sirens stop at the gate.','Your rival cleared the gym yesterday. They mentioned a Raticate sweep at the inn.'],
+                4: ['Tower town. The trail forks toward the lower floors.','You see a figure hunched at a fresh stone in the tower. They don\'t turn around.'],
+                6: ['The skyline ate the route signs.','Your rival is at the Department Store ribbon counter. They buy one ribbon. They leave.'],
+                8: ['The last gym sits inside an old cathedral.','Your rival\'s name is on a list near the gym door. The list is for trainers carrying five.'],
+                9: ['The Plateau hums under your boots.','The slot on your rival\'s belt has been empty for five towns now. They wear it that way on purpose.']
+            },
+            lavender_frequency: {
+                0: ['Sea salt, sawgrass, three houses and a lab.','The Pokémart radio plays a song the lab assistant doesn\'t recognize. Then it stops.'],
+                3: ['Lecture halls bleed students into the streets.','The campus radio plays the song too. A student turns it off; it comes back on.'],
+                4: ['Tower town. Every trail forks toward the lower floors.','The City Guide says "you weren\'t supposed to come back here," then walks off.'],
+                6: ['The skyline ate the route signs.','Every Pokémart on the avenue is playing the same song, half a beat out of phase.'],
+                8: ['The last gym sits inside an old cathedral.','The cathedral bells ring at the wrong hour. Nobody on the street looks up.'],
+                9: ['The Plateau hums under your boots.','The plaque on the lobby wall already has your name on it, weathered. Below yours is a clean empty plate.']
+            },
+            static: {
+                0: ['Sea salt, sawgrass, three hous?s and a l?b.','The save file logs: LOAD COMPLETE / TRAINER ?????'],
+                1: ['Mining sir?ns stop at the g?te.','The save file logs: GYM 1 / ALREADY LOGGED.'],
+                4: ['T?wer town. The trail forks tow?rd the low?r floors.','The save file logs: ENTRY 0042 / RECAPTURED.'],
+                6: ['The skyline ate th? route signs.','The save file logs: SUBJECT 0001 SIGHTED / MARK NOT SET.'],
+                8: ['The last gym sits inside an old cathedr?l.','The save file logs: GYM 8 / WIN PROBABILITY: 100.00%.'],
+                9: ['The Plate?u hums under your boots.','The save file logs: CHAMPION SLOT / OCCUPIED BY YOU / LOOP ???.']
+            }
+        };
+        function _variantCityArrivalOverride(cityIdx) {
+            const v = _storyActiveVariant();
+            const tbl = _VARIANT_CITY_ARRIVAL[v.id];
+            if (!tbl) return null;
+            const arr = tbl[cityIdx | 0];
+            return (Array.isArray(arr) && arr.length) ? arr : null;
+        }
+
+        // ── A1: per-variant City Guide quote overrides ──────────────────
+        // When a variant has a line for the active city, used 65% of the
+        // time (mixed with the base pool so the variant tints rather than
+        // monopolizes the City Guide voice).
+        const _VARIANT_CITY_GUIDE = {
+            second_sun: {
+                0: ['"Your rival took their starter at sunrise. You\'re the second sun today."'],
+                1: ['"Your rival\'s already drinking with the gym crew. He cleared yesterday."'],
+                2: ['"The Move Tutor remembers your rival\'s name. He hasn\'t learned yours yet."'],
+                4: ['"Your rival\'s footprints at the Safari gate. A day old. Two at most."'],
+                7: ['"Three veterans here have lost to your rival. Two of them lost to you, too."']
+            },
+            bone_keepers: {
+                0: ['"The road north passes the tower. The town doesn\'t talk about it. The road does."'],
+                1: ['"The mining shifts let out at dusk. The graveyard shifts let out at dawn."'],
+                4: ['"Past the gate, every trail forks twice — once to the Safari, once to the stones."'],
+                5: ['"The lake holds candles every full moon. The Casino dims its lights for it."'],
+                7: ['"Trainers walk this road carrying small stones. They leave them at the gate."'],
+                8: ['"The bell tower above the gym rings for every challenger. And for every grave."'],
+                9: ['"In the lobby, a candle burns for every Champion who came before."']
+            },
+            project_mewtwo: {
+                0: ['"The Professor\'s hands shake at the morning hand-off. Have for two years."'],
+                1: ['"A lab assistant came through last night. Asked after a serial number. Walked off."'],
+                4: ['"The badge on the fence has a date on it. Two years ago. Nobody\'s taken it down."'],
+                6: ['"Colress is upstairs. Ask him about the annex; he\'ll change the subject. Try anyway."'],
+                8: ['"The basement under the cathedral was a lab. Officially decommissioned. Officially."']
+            },
+            hypnos_lullaby: {
+                0: ['"Your rival\'s sister has been gone six days. He\'s leaving this morning anyway."'],
+                1: ['"Bulletin board at the inn has nine posters. Three at this town. The numbers keep coming."'],
+                3: ['"The counselor\'s door has a back-in-5 sign. It\'s been up for weeks now."'],
+                4: ['"Warden won\'t sell tickets today. \'Find your friend\'s sister first,\' he said."'],
+                6: ['"Pendulum pins in every newsstand window. Nobody sells them. They\'re just there."'],
+                8: ['"The choir doesn\'t practice anymore. Half the choir is on the missing-children board."']
+            },
+            dead_raticate: {
+                0: ['"Your rival left at dawn with six on his belt. He named the Raticate after his sister."'],
+                1: ['"Your rival cleared yesterday. He kept calling it \'our gym\' at the bar."'],
+                4: ['"A figure was at a fresh stone in the tower last night. They didn\'t turn around."'],
+                6: ['"Ribbon counter at the Department Store sold one ribbon yesterday. Your rival bought it."'],
+                8: ['"There\'s a list at the gym door. Trainers carrying five. Your rival\'s name is on it now."']
+            },
+            lavender_frequency: {
+                0: ['"The Pokémart radio plays a song the assistant doesn\'t recognize. You do."'],
+                3: ['"Campus radio plays the same song. A student turns it off; it comes back on."'],
+                4: ['"You weren\'t supposed to come back here." (The Guide walks off without looking at you.)'],
+                6: ['"Every Pokémart on the avenue is playing the song. Half a beat out of phase."'],
+                8: ['"The cathedral bells rang at 03:17 last night. Nobody on the street looked up."'],
+                9: ['"The plaque already has your name on it. Twice. The lower one is weathered. The other is fresh."']
+            },
+            static: {
+                0: ['"L?ad complete. Trainer ?????. The save f?le is ready."'],
+                3: ['"Th? campus rad?o plays the same s?ng. The save file l?gs every play."'],
+                4: ['"You weren\'t suppos?d to come back her?. The save f?le did anyway."'],
+                6: ['"Every screen in the av?nue shows the s?me trainer sprite. Inv?rted. Yours."'],
+                8: ['"The g?m\'s win prob?bility log show? 100.00%. Every l?op."'],
+                9: ['"The Champion\'s c?air is occup?ed. By you. By a previous you. By a fut?re you."']
+            }
+        };
+        function _variantCityGuideOverride(cityIdx) {
+            const v = _storyActiveVariant();
+            const tbl = _VARIANT_CITY_GUIDE[v.id];
+            if (!tbl) return null;
+            const arr = tbl[cityIdx | 0];
+            return (Array.isArray(arr) && arr.length) ? arr : null;
+        }
+
+        // ── A6: per-variant City Professor quote overrides ──────────────
+        // Used 50% of the time for variants with a line for that city.
+        const _VARIANT_CITY_PROFESSOR = {
+            second_sun: {
+                0: ['"Your rival picked first. The one left for you isn\'t worse — different. Trust it."'],
+                1: ['"You\'re a day behind. That\'s a day, not a year. Pick a partner; close the gap."'],
+                4: ['"Your rival walked through here yesterday. They asked after the same partner you will."'],
+                7: ['"They cleared this city last week. Pick a partner that handles their last gym\'s pick."']
+            },
+            bone_keepers: {
+                0: ['"The road north passes the tower. The starter you pick will walk past it with you."','"I\'ll give you a relic. The road is kinder to those who carry something."'],
+                1: ['"The gym leader buries her old partners under the quarry. She\'ll respect the choice you make here."'],
+                4: ['"The tower at the heart of this town is honest about what it is. Pick a partner that won\'t flinch."'],
+                8: ['"This high, every starter on the bench has lost a partner once. Pick the one who didn\'t flinch."']
+            },
+            project_mewtwo: {
+                0: ['"The starter on the bench has a stat slip dated last week. Don\'t look at the bottom of the page."'],
+                1: ['"A lab assistant came through asking after these three. Pick before he comes back."'],
+                4: ['"The badge on the fence outside has a date. Pick a partner who didn\'t come from the annex."'],
+                6: ['"Colress sent over a clean partner — no serial, no slip. Pick that one if you can."']
+            },
+            hypnos_lullaby: {
+                0: ['"Your rival took the partner with the best Sleep Talk. He has reasons."'],
+                3: ['"The campus kids run mock leagues. Last week, three didn\'t come back. Pick a steady partner."'],
+                4: ['"The warden\'s not letting trainers past the gate today. Pick a partner who can wait."']
+            },
+            dead_raticate: {
+                0: ['"Your rival picked the partner that hits hardest in the early game. He named it after his sister."'],
+                4: ['"The figure at the stone last night was looking for a Raticate. Pick a partner that\'ll stay with you."']
+            },
+            lavender_frequency: {
+                0: ['"The bench has four starters today. There were three this morning. Pick three."'],
+                4: ['"You weren\'t supposed to come back here. Pick a partner who knows the way out."'],
+                8: ['"The cathedral bells rang at 03:17 last night. Pick a partner who can hear at that hour."']
+            },
+            static: {
+                0: ['"P?ck. The s?ve file remem?ers what you picked l?st loop."'],
+                4: ['"The g?te logs every entry. You h?ve entered it 0042 t?mes."'],
+                8: ['"P?ck. The win prob?bility is alr?ady 100.00%."']
+            }
+        };
+        function _variantCityProfessorOverride(cityIdx) {
+            const v = _storyActiveVariant();
+            const tbl = _VARIANT_CITY_PROFESSOR[v.id];
+            if (!tbl) return null;
+            const arr = tbl[cityIdx | 0];
+            return (Array.isArray(arr) && arr.length) ? arr : null;
+        }
+
+        // ── A3: per-variant mart greeter (used on first mart entry per
+        // city) and per-variant department-store greeter. One line each.
+        const _VARIANT_MART_GREETER = {
+            classic: '',
+            second_sun: '"Your rival was just here. Bought two Potions. Said to say hi."',
+            bone_keepers: '"The bell over the door rings differently for trainers headed to the tower. Yours rang."',
+            project_mewtwo: '"The clerk\'s nametag has been scratched off and rewritten three times. The latest one is illegible."',
+            hypnos_lullaby: '"The radio behind the counter plays the lullaby on a loop today. The clerk turns it down when you walk in."',
+            dead_raticate: '"There\'s a small framed photo by the till — a kid holding a Raticate. Nobody on staff knows whose photo it is."',
+            lavender_frequency: '"The mart radio is playing the Lavender Town theme. The clerk doesn\'t look up."',
+            static: '"The clerk\'s name tag says TRAINER ?????. The clerk says nothing."'
+        };
+        function _variantMartGreeter() {
+            const v = _storyActiveVariant();
+            return _VARIANT_MART_GREETER[v.id] || '';
+        }
+
+        // ── A4: per-variant generic trainer-class quote pools ──────────
+        // Used 35% of the time when a variant has an entry for the
+        // trainer's class. Falls through to TRAINER_QUOTES otherwise.
+        const _VARIANT_TRAINER_QUOTES = {
+            second_sun: {
+                'Youngster': ['"Your rival passed through here this morning. Said you were behind."','"I\'ll go gentle. You\'re catching up — I won\'t make it harder."'],
+                'Lass':      ['"My brother lost to your rival last week. Now it\'s your turn to me."','"I picked my starter the same day as you, you know. Different town."'],
+                'Hiker':     ['"Saw your rival at the summit pass two days ago. Strong team. Get stronger."']
+            },
+            bone_keepers: {
+                'Youngster': ['"My grandma\'s buried under the tower. Every fight is for her."','"The bell rang at dawn. That means someone went under last night."'],
+                'Lass':      ['"I leave a stone on the tower steps every gym town. So far seven."','"Mom says trainers who don\'t honor the dead don\'t make Champion. So — honor it."'],
+                'Hiker':     ['"Hauled stones up the tower path for ten years. Battling\'s the easy half."'],
+                'Bug Catcher':['"My first partner is under the tower\'s third floor. The new one is for the road north."'],
+                'Fisherman': ['"The lake by the tower has candles in it. They float for a week. Then they don\'t."']
+            },
+            project_mewtwo: {
+                'Youngster': ['"My dad worked at the annex. He doesn\'t talk about it. Let\'s just fight."','"Saw a Mewtwo in the news once. Said it had a barcode. Then the news stopped."'],
+                'Lass':      ['"I caught my starter behind a chain-link fence. It had a stat slip clipped to its tail."'],
+                'Hiker':     ['"Hauled equipment out of the Cinnabar annex when it \'closed.\' I keep one piece. Mostly to remember."'],
+                'Bug Catcher':['"My Caterpie\'s the only thing in my bag that wasn\'t in a research file. Let\'s see if that matters."']
+            },
+            hypnos_lullaby: {
+                'Youngster': ['"My friend\'s sister is on the missing list. I battle to keep my head above water. Don\'t be gentle."','"Last night I dreamed of a pendulum. I woke up at 3:17. So — let\'s do this."'],
+                'Lass':      ['"My mom takes me to the gym so I\'m not at home alone. Battles count as supervision, she says."'],
+                'Hiker':     ['"Saw a Hypno at the trail bend two nights running. Didn\'t move. Just watched. I\'m here today."']
+            },
+            dead_raticate: {
+                'Youngster': ['"My Raticate died last month. I keep an empty slot for it. So — five vs. yours."','"My friend says you don\'t fill the empty slot. The slot is the friend. So — five."'],
+                'Lass':      ['"I have five on my belt and one ribbon in my pocket. The ribbon is for the slot."'],
+                'Hiker':     ['"Lost a Geodude to a rockslide on the south face. I carry five and a ribbon now."']
+            },
+            lavender_frequency: {
+                'Youngster': ['"Have we battled before? The Pokémart radio said your name. I think."','"My belt has six. The sixth slot is humming. It\'s been humming since the last gym town."'],
+                'Lass':      ['"Don\'t look at the plaque in the Plateau lobby. Don\'t. Just battle."']
+            },
+            static: {
+                'Youngster': ['"L?op ???. We\'ve fou?ht before. Y?u win. I lose. Let\'s sk?p to the part."','"Save f?le logs say you\'re ahe?d in our series 0042 to 0001."'],
+                'Lass':      ['"The s?ve file says we\'ve never met. The save file is wrong."']
+            }
+        };
+        function _variantTrainerQuoteFor(className) {
+            const v = _storyActiveVariant();
+            const tbl = _VARIANT_TRAINER_QUOTES[v.id];
+            if (!tbl) return null;
+            const arr = tbl[String(className || '')];
+            return (Array.isArray(arr) && arr.length) ? arr : null;
+        }
+
+        // ── G: per-variant Rival quote pool, used 50% of the time when
+        // the active variant has an entry. Phase-keyed (0=intro/starter,
+        // 1=early, 2=mid, 3=late, 4=league).
+        const _VARIANT_RIVAL_QUOTES = {
+            second_sun: {
+                0: ['"Same starter morning. First and second are real differences."','"I won at sunrise. You catch up at sunset. That\'s the whole deal."'],
+                1: ['"Badge one took me a week. Took you longer. Catch up — I\'ll show you how."','"You earned that badge. I earned mine first. Same gym, different morning."'],
+                2: ['"Three badges and we\'re still on the same road. I\'m a town ahead. Close it."','"My team grew up faster. Yours grows up sharper. We\'ll see which wins."'],
+                3: ['"Six badges. You\'re a week behind me. A week is not a year."','"I cleared the gym yesterday. You\'ll clear it tomorrow. The chair is still the prize."'],
+                4: ['"Title match. Same morning. Different number of suns. Let\'s see whose."','"I sat in the chair for ten minutes after my run. Now you sit. Or I do — your call."']
+            },
+            bone_keepers: {
+                0: ['"My grandma\'s under the tower. I carry her ribbon. Let\'s do this clean."'],
+                2: ['"I left a stone at the tower for my last partner. Today I battle for the next one."'],
+                4: ['"The candle in the Champion\'s chamber lights itself for the worthy. I want to see it light for you."']
+            },
+            project_mewtwo: {
+                0: ['"My starter has a stat slip. So does yours. Don\'t look at the bottom of the page."'],
+                2: ['"I read the annex file last month. I wish I hadn\'t. Let\'s just fight."'],
+                4: ['"Colress sent me the last page of the file. The director is who you think it is."']
+            },
+            hypnos_lullaby: {
+                0: ['"My sister is still missing. Six days now. I\'m going to the gym anyway. So are you."'],
+                1: ['"The radio said three more kids last night. Let\'s fight quickly."'],
+                3: ['"She\'s still missing. Eight weeks. The pendulum in the newsstand window is still there."'],
+                4: ['"Whatever\'s upstairs in the chamber — I think it knows where she is. Win. Find out."']
+            },
+            dead_raticate: {
+                0: ['"Six on my belt. My Raticate\'s the one I named after her. Smile when you see her."'],
+                2: ['"The slot\'s empty now. You saw. Don\'t make a thing of it. Let\'s fight."'],
+                3: ['"Five and a ribbon. The ribbon is the slot. The slot is the friend."'],
+                4: ['"You used the empty slot at every gym after the tower. Use it here too. I\'ll know."']
+            },
+            lavender_frequency: {
+                0: ['"Have we — wait. Have we done this before? Doesn\'t matter. Starter duel. Go."'],
+                3: ['"The plaque has my name on it too. Below yours. Below the empty plate."'],
+                4: ['"Take the cap off. The face under it is mine. The face under that is yours."']
+            },
+            static: {
+                0: ['"i ??n\'t kno? ?ou ?ut t?e fi?? ?as ?ou. Begi?."'],
+                3: ['"L?op ???. We\'ve done th?s ?efore. You win. I los?. Skip to the part."'],
+                4: ['"The save f?le says I conc?de. The save file is wrong. Fight."']
+            }
+        };
+        function _variantRivalQuoteFor(phase) {
+            const v = _storyActiveVariant();
+            const tbl = _VARIANT_RIVAL_QUOTES[v.id];
+            if (!tbl) return null;
+            const arr = tbl[(phase | 0)];
+            return (Array.isArray(arr) && arr.length) ? arr : null;
+        }
+
+        // ── A2: per-variant Gym Leader victory card prose. One short
+        // line per leader index 1–8. Replaces the generic "You received
+        // the X Badge!" when a variant entry exists for that gym index.
+        // Sparse on purpose — only the gyms that the variant can speak
+        // to. Leader name substituted as {leader}.
+        const _VARIANT_VICTORY_CARDS = {
+            second_sun: {
+                1: '{leader} hands you the badge. "Your rival came through last week. Caught me on the back foot. You — you earned it tonight."',
+                4: '{leader} nods. "You\'re catching up. He cleared last week. You cleared tonight. That\'s a week, not a year."',
+                8: '{leader} bows briefly. "He passed through five days ago. You\'re passing through tonight. Five days. Make them count."'
+            },
+            bone_keepers: {
+                1: '{leader} hands you the badge, then looks past you toward the tower. The bell is ringing. They don\'t say anything.',
+                4: '{leader} hands you the badge and lights a candle on the gym altar. "For the partner you brought in. And for the one you didn\'t bring out."',
+                8: 'The cathedral bell rings as {leader} hands you the badge. "Eight stones for eight gyms. The road north has run out of stones."'
+            },
+            project_mewtwo: {
+                1: '{leader} hands you the badge, then a folded note. "A lab assistant left this for you. He said you\'d know who sent it."',
+                4: '{leader} pulls the badge off a row of pinned research badges on the wall. "We pin them when their owners stop coming back. This one is yours now."',
+                8: '{leader} hands you the badge. "Colress called ahead. He said the annex door has been unlocked for two years. He said to tell you."'
+            },
+            hypnos_lullaby: {
+                1: '{leader} hands you the badge, then turns up the radio in the gym lobby. Another missing-child bulletin. Three more this week.',
+                4: '{leader} hands you the badge. "The warden hasn\'t reopened the Safari. He says the gate has been humming since Tuesday."',
+                8: '{leader} hands you the badge. The choir loft above the gym is empty. It has been for weeks.'
+            },
+            dead_raticate: {
+                1: '{leader} hands you the badge. "Your rival cleared yesterday with a Raticate sweep. Good fight. Tell him I said so."',
+                4: '{leader} hands you the badge. "There was a figure at a fresh stone in the tower last night. I think you know who."',
+                8: '{leader} hands you the badge. "Your rival\'s name is on the five-belt list at the door. He carries the slot proudly. So should you."'
+            },
+            lavender_frequency: {
+                1: '{leader} hands you the badge, then pauses. "You\'ve got the same look as the last one. The badge plaque has your name on it twice now."',
+                4: '{leader} hands you the badge, then says, "You weren\'t supposed to come back here." Then they say, "Welcome back."',
+                8: '{leader} hands you the badge. The cathedral bells ring at the wrong hour. The badge in your hand is warm.'
+            },
+            static: {
+                1: '{leader} hands you the badge. The badge text reads ALREADY EARNED. Your inventory shows nothing was added. Your gold goes up anyway.',
+                4: '{leader} hands you the badge. The save file logs: BADGE 4 / ALREADY LOGGED.',
+                8: '{leader} hands you the badge. The save file logs: WIN PROBABILITY: 100.00% / EVERY LOOP.'
+            }
+        };
+        function _variantVictoryCardFor(leaderIdx, leaderName) {
+            const v = _storyActiveVariant();
+            const tbl = _VARIANT_VICTORY_CARDS[v.id];
+            if (!tbl) return '';
+            const tmpl = tbl[leaderIdx | 0];
+            if (!tmpl) return '';
+            const nm = String(leaderName || 'The Gym Leader');
+            return tmpl.replace(/\{leader\}/g, nm);
+        }
+
+        // ── I: per-variant catch-encounter intro line, prepended to the
+        // standard "A wild X appeared!" message on wild route catches.
+        // Single short line per variant; skipped for boss/safari/tutorial
+        // and for the catch-tutorial first throw. Pasta variants get a
+        // light visual touch via the variant tone class on the catch
+        // screen header. Rotation through the per-variant pool is mild.
+        const _VARIANT_CATCH_INTRO = {
+            classic: null,
+            second_sun: ['Your rival\'s tracks lead off into the brush ahead.'],
+            bone_keepers: ['The trail forks here — one path goes back toward the tower.','A small stone has been left at the trail\'s edge. Someone passed this way.'],
+            project_mewtwo: ['A torn research tag is snagged on a bush nearby.','The brush has a faint serial number burned into a fence post here.'],
+            hypnos_lullaby: ['A pendulum has been left swinging on a low branch.','Somewhere off the path, a child\'s drawing — pinned to a tree, weathered.'],
+            dead_raticate: ['A small ribbon is tied to a tree at the trail bend.','A patch of grass nearby has been flattened — something was here recently.'],
+            lavender_frequency: ['The Pokémart radio in the last town followed you onto the route.','The trail signage on this route has been switched. You\'ve been here before.'],
+            static: ['The save file logs: ENCOUNTER ROLLED / SPECIES MASKED.','The route texture flickers once and resolves. The wild appears anyway.']
+        };
+        function _variantCatchIntro() {
+            const v = _storyActiveVariant();
+            const arr = _VARIANT_CATCH_INTRO[v.id];
+            if (!Array.isArray(arr) || !arr.length) return '';
+            const rng = (sm && sm.active) ? storyRngNext : Math.random;
+            return arr[Math.floor(rng() * arr.length)];
+        }
+
+        // ── H: per-variant retreat / game-over hint. Two short lines —
+        // one for the standard battle loss, one for the rival concede.
+        const _VARIANT_RETREAT_LINES = {
+            classic: { loss: '', concede: '' },
+            second_sun: {
+                loss: 'You head back to the last city. Your rival cleared this fight on his second try, the inn says.',
+                concede: 'You concede the title. Your rival accepts it quietly. He doesn\'t gloat. He never does.'
+            },
+            bone_keepers: {
+                loss: 'You head back to the last city. The tower bell rings once for the partner you brought down. Then again.',
+                concede: 'You concede. The bells rang at dawn. The tower attendant nods at you on the road back.'
+            },
+            project_mewtwo: {
+                loss: 'You head back to the last city. A lab assistant on the road shakes their head. "0001 lost their first hundred fights too. Keep going."',
+                concede: 'You concede. The annex log marks one more entry. The page is almost full.'
+            },
+            hypnos_lullaby: {
+                loss: 'You head back to the last city. The bulletin board has one more poster than it did this morning.',
+                concede: 'You concede. The radio in the inn lobby plays the lullaby softly. Nobody moves to change it.'
+            },
+            dead_raticate: {
+                loss: 'You head back to the last city. Your rival\'s ribbon is still on his belt at the inn. He doesn\'t mention it.',
+                concede: 'You concede. The empty slot on your belt is a little louder tonight.'
+            },
+            lavender_frequency: {
+                loss: 'You head back to the last city. The plaque in the lobby has one more weathered plate on it.',
+                concede: 'You concede. The radio in every mart on the avenue plays the song. You walk through it.'
+            },
+            static: {
+                loss: 'You h?ad b?ck to the last city. The s?ve file logs: BATTLE 0042 / LOSS / LOOP COUNT UNCHANGED.',
+                concede: 'You concede. The save file l?gs: CONCEDE / FLAG UNCHANGED / SUBJECT 0001 STILL ?? CAGE.'
+            }
+        };
+        function _variantRetreatLine(kind) {
+            const v = _storyActiveVariant();
+            const tbl = _VARIANT_RETREAT_LINES[v.id];
+            if (!tbl) return '';
+            return tbl[kind] || '';
+        }
+
+        // ── J: per-variant Hall of Fame card. Shown once before the HoF
+        // grid renders. Closes the variant arc at the climax moment.
+        const _VARIANT_HOF_CARD = {
+            classic: {
+                banner: '— Hall of Fame —',
+                lines: [
+                    '"The road you walked is yours now. So is the wall."',
+                    '"They\'ll engrave your name tonight. The plate will be polished tomorrow."',
+                    '"Pallet is a long way back. But you walked here. That\'s the part that counts."'
+                ]
+            },
+            second_sun: {
+                banner: '— First Sun, Second Sun —',
+                toneClass: 'story-tone-amber',
+                lines: [
+                    '"Your rival sat in this chair ten days ago. The chair is yours tonight."',
+                    '"He\'ll come back to challenge you. That was always the plan. That\'s the long road."',
+                    '"Same starter morning. Same Pallet. The number of suns no longer matters."'
+                ]
+            },
+            bone_keepers: {
+                banner: '— The Candle is Lit —',
+                toneClass: 'story-tone-ash',
+                lines: [
+                    '"The candle in the Champion\'s chamber lit itself the morning you walked in."',
+                    '"They\'re ringing the tower bells for you tonight. Every floor. Every stone."',
+                    '"You wore the road quietly. The road remembers that. The region remembers that."'
+                ]
+            },
+            project_mewtwo: {
+                banner: '— The Annex is Closed —',
+                toneClass: 'story-tone-cold',
+                lines: [
+                    '"Colress drove out to the annex this morning. The doors are welded shut now."',
+                    '"Your starter\'s file is on his desk. He\'s going to burn it. He told you he would."',
+                    '"Subject 0001 is in the cage downroad. The Master Ball is in your bag. The chair is yours."'
+                ]
+            },
+            hypnos_lullaby: {
+                banner: '— The Lullaby Quiets —',
+                toneClass: 'story-tone-purple',
+                lines: [
+                    '"The radio in the broker\'s office stopped reading names this morning."',
+                    '"Your rival is in the lobby downstairs, with his sister. She is awake. She is holding his hand."',
+                    '"Whatever\'s upstairs in the cage — it let them all go before you walked in here."'
+                ]
+            },
+            dead_raticate: {
+                banner: '— The Slot is the Friend —',
+                toneClass: 'story-tone-mourning',
+                lines: [
+                    '"You used the empty slot in the Champion fight. He saw, downstairs."',
+                    '"He says the slot fills different now. It\'s for the friend who walks the road with you."',
+                    '"The Raticate filled it once. You fill it now. The slot will fill again."'
+                ]
+            },
+            lavender_frequency: {
+                banner: '— THE RADIO IS QUIET —',
+                toneClass: 'story-tone-frequency',
+                lines: [
+                    '"The figure that watched you for eight gyms is not in the lobby tonight."',
+                    '"The plaque on the wall has one name on it now. Yours. Single plate. Polished clean."',
+                    '"The Pokémart radio plays a different song. You don\'t recognize it. That is the point."'
+                ]
+            },
+            static: {
+                banner: '— SAVE FILE A / RESOLVED —',
+                toneClass: 'story-tone-static',
+                lines: [
+                    '"The save file logs: CHAMPION / TRAINER ????? / LOOP COUNT ???."',
+                    '"The save file logs: SUBJECT 0001 STATUS: PENDING / CAGE OPEN."',
+                    '"The save file is quiet. The mirror in the lobby shows your trainer sprite. Ordinary colors."'
+                ]
+            }
+        };
+        function _variantHallOfFameCard() {
+            const v = _storyActiveVariant();
+            return _VARIANT_HOF_CARD[v.id] || _VARIANT_HOF_CARD.classic;
+        }
+
+        // ── K: per-variant pre-fight cold-open for the post-HoF Mystery
+        // Figure climax (event row 67). Wires through the standard cold-
+        // open dispatcher via STORY_BEATS[67] + per-variant beatOverrides.
+        // The scene plays once per save (cross-run dedupe), framed by the
+        // variant's tone class. Identity-specific (bias-driven) prose
+        // continues to fire through _MYSTERY_OUTRO_BY_VARIANT after the
+        // fight; this beat is the *intro* the variant lacked.
+        const _MYSTERY67_BY_VARIANT = {
+            classic: {
+                banner: '— THE FINAL MASK —',
+                nameplate: 'The figure in the doorway',
+                lines: [
+                    'A figure waits in the chamber the Champion vacated.',
+                    'No herald, no announcement, no badge. Just the mask, the team, and the fight.',
+                    '"You\'re the one I came for. The chair will tell you the rest after."'
+                ]
+            },
+            second_sun: {
+                banner: '— THE FIRST CHAIR —',
+                toneClass: 'story-tone-amber',
+                nameplate: 'Your rival (off-screen)',
+                lines: [
+                    'The chamber is dressed for a ceremony. The chair is empty.',
+                    'A masked figure stands at the doorway. The cap on the mask is your rival\'s — and isn\'t.',
+                    '"He sent me to test the chair before he comes home. The crowd outside doesn\'t know."'
+                ]
+            },
+            bone_keepers: {
+                banner: '— EIGHTH STONE —',
+                toneClass: 'story-tone-ash',
+                nameplate: 'The Tower Attendant',
+                lines: [
+                    'The chamber is colder than the Champion fight. A candle sits on the chair.',
+                    'A masked figure carries the eighth stone in a hand the gloves don\'t cover.',
+                    '"The tower asked for one more visit. Make it a fight worth burying."'
+                ]
+            },
+            project_mewtwo: {
+                banner: '— THE DIRECTOR —',
+                toneClass: 'story-tone-cold',
+                nameplate: 'The figure with the briefcase',
+                lines: [
+                    'The chamber has been wiped down since the Champion left. The chair smells of disinfectant.',
+                    'A masked figure carries a briefcase. The briefcase has a serial number stenciled on the side.',
+                    '"The director of the annex is here. The mask is mostly for the cameras."'
+                ]
+            },
+            hypnos_lullaby: {
+                banner: '— THE PENDULUM —',
+                toneClass: 'story-tone-purple',
+                nameplate: 'The figure at the chamber door',
+                lines: [
+                    'The chamber is quiet. Too quiet. The lullaby on the lobby radio cuts off when you step inside.',
+                    'A masked figure stands at the door. A pendulum sways from the mask\'s strap.',
+                    '"She is upstairs. The fight here is the last step. Win, and we go up together."'
+                ]
+            },
+            dead_raticate: {
+                banner: '— THE EMPTY CHAIR —',
+                toneClass: 'story-tone-mourning',
+                nameplate: 'The figure at the chamber door',
+                lines: [
+                    'The chamber\'s chair has a ribbon tied to one armrest. The ribbon is new.',
+                    'A masked figure waits, five Pokéballs on a belt. The sixth slot is empty.',
+                    '"The slot is the friend. The chair carries the slot. Fight me with five too."'
+                ]
+            },
+            lavender_frequency: {
+                banner: '— BURIED ALIVE —',
+                toneClass: 'story-tone-frequency',
+                nameplate: 'The figure at the chamber door',
+                lines: [
+                    'The chamber\'s walls are vibrating at a frequency you can feel through the floor.',
+                    'A masked figure is half-buried in the chamber floor, only the head and shoulders above the tile.',
+                    '"You weren\'t supposed to come back here. Now the chamber has to fight you for the chair."'
+                ]
+            },
+            static: {
+                banner: '— CARTRIDGE SELF —',
+                toneClass: 'story-tone-static',
+                nameplate: '???',
+                lines: [
+                    'The s?ve file logs: ROOM ENTERED / FIGURE INST?NTIATED / IDENTITY HIDDEN.',
+                    'A masked f?gure stands in the chamber. The colors are inverted. The trainer sprite is yours.',
+                    '"L?op ???. We f?ght. You win. I los?. The save file ??cum?nts it. The loop continues."'
+                ]
+            }
+        };
+        function _variantMystery67Scene() {
+            const v = _storyActiveVariant();
+            return _MYSTERY67_BY_VARIANT[v.id] || _MYSTERY67_BY_VARIANT.classic;
+        }
+
+        // ── B: per-variant multi-choice moment. Inserted as an alternate
+        // cold-open scene the variant points to in its beatOverrides for
+        // row 33 (mid-late NPC). The pick is persisted to sm.storyChoices
+        // for downstream prose to reference, but does not alter battles,
+        // economy, or progression. Classic and second_sun stay silent
+        // (warm baseline + the rival arc is its own beat).
+        const _VARIANT_CHOICE_R33 = {
+            bone_keepers: {
+                nameplate: 'The Tower Attendant',
+                spriteFile: 'Hex_Maniac',
+                lines: [
+                    'They\'re standing at the trail fork between the gym town and the tower.',
+                    '"You can walk past. Most do. Or you can come down with me — for the candles, just the candles."'
+                ],
+                choices: [
+                    { label: 'Walk down with them (just the candles).', value: 'walk', reply: ['You walk the lower floor with them. The candles are warm. You don\'t stay long.','The attendant doesn\'t thank you. The tower bell rings once on the way out.'] },
+                    { label: 'Light a single candle, then leave.', value: 'one_candle', reply: ['You light one candle at the threshold. The attendant nods once.','"For whom?" they ask. You don\'t answer. They don\'t ask twice.'] },
+                    { label: 'Walk past without speaking.', value: 'past', reply: ['You walk past. The attendant doesn\'t turn. The tower bell does not ring for you.','The road north feels longer than it did this morning.'] }
+                ]
+            },
+            project_mewtwo: {
+                nameplate: 'The torn badge on the fence',
+                spriteFile: 'Colress',
+                lines: [
+                    'The Safari fence has a torn research badge stapled to it.',
+                    'The label reads: Project: 0001 / Cinnabar Annex. The date is two years ago today.'
+                ],
+                choices: [
+                    { label: 'Examine it carefully.', value: 'examine', reply: ['Your starter\'s birthday. You knew before you read the page.','You put the badge back exactly where you found it.'] },
+                    { label: 'Walk past without reading.', value: 'past', reply: ['You don\'t read it. Some signs you can\'t unread.','The road keeps going north.'] },
+                    { label: 'Pocket the badge.', value: 'pocket', reply: ['It will sit in your bag for the rest of the run.','You will not look at it again. You will not forget it is there.'] }
+                ]
+            },
+            hypnos_lullaby: {
+                nameplate: 'A pendulum on the trail',
+                spriteFile: 'Lass',
+                lines: [
+                    'Someone has left a small brass pendulum swinging from a low branch.',
+                    'A child\'s drawing is pinned beside it: a Hypno, smiling, looming.'
+                ],
+                choices: [
+                    { label: 'Take down the pendulum, pocket it.', value: 'pocket', reply: ['You stop the pendulum and pocket it. The drawing stays.','The branch sways for a moment longer than it should.'] },
+                    { label: 'Take the drawing instead.', value: 'drawing', reply: ['You take the drawing. The pendulum keeps swinging behind you.','You\'ll keep it in your trainer card for the rest of the run.'] },
+                    { label: 'Leave both. Keep walking.', value: 'past', reply: ['You leave them where they are.','You hear the pendulum tick once. Then twice. Then nothing.'] }
+                ]
+            },
+            dead_raticate: {
+                nameplate: 'A stone at the trail bend',
+                spriteFile: 'Youngster',
+                lines: [
+                    'A small flat stone sits at the trail bend. A name has been scratched into it.',
+                    'A ribbon — your rival\'s color — is folded under one corner of the stone.'
+                ],
+                choices: [
+                    { label: 'Read the name.', value: 'read', reply: ['You read the name. You\'ll think of it at every gym from here on.','You set the stone back down with the ribbon under it. You walk on.'] },
+                    { label: 'Leave a small thing of your own.', value: 'leave', reply: ['You leave a single hard candy from your bag at the foot of the stone.','You don\'t say anything. You walk on.'] },
+                    { label: 'Walk past.', value: 'past', reply: ['You walk past. The ribbon flutters once in the wind.','The road keeps going.'] }
+                ]
+            },
+            lavender_frequency: {
+                nameplate: 'A trail sign that wasn\'t here last loop',
+                spriteFile: 'Hiker',
+                lines: [
+                    'The trail sign at the bend reads: YOU\'VE BEEN HERE.',
+                    'Underneath, in a different hand: AND HERE. AND HERE. AND HERE.'
+                ],
+                choices: [
+                    { label: 'Read all the way down the sign.', value: 'read', reply: ['You count thirty-eight HERE\'s before the writing runs off the bottom of the sign.','The thirty-ninth is in your handwriting.'] },
+                    { label: 'Add your own line.', value: 'add', reply: ['You add a line at the bottom. The pen on the sign\'s string is warm.','The line is in your handwriting. It was your handwriting on the sign already.'] },
+                    { label: 'Don\'t read. Don\'t add. Walk.', value: 'past', reply: ['You walk past without reading it again.','The sign rustles. The sign is paper. There is no wind.'] }
+                ]
+            },
+            static: {
+                nameplate: 'The route texture',
+                spriteFile: 'Red',
+                lines: [
+                    'The route texture flickers once and resolves to a darker version of itself.',
+                    'The save file l?gs: ROUTE TEXTURE / ALTERNATE / LOOP ???.'
+                ],
+                choices: [
+                    { label: 'Stand still until the texture resolves.', value: 'wait', reply: ['You stand still for fifteen seconds. The texture flickers, returns to normal, flickers again.','The save file logs: TRAINER WAITED / 15 SECONDS / FLAG SET.'] },
+                    { label: 'Walk forward through the flicker.', value: 'walk', reply: ['You walk through. The flicker stops behind you.','The save file logs: TRAINER ADVANCED / TEXTURE RESOLVED ON PASS.'] },
+                    { label: 'Turn around and walk back one screen.', value: 'back', reply: ['You walk back one screen. The flicker follows.','The save file logs: TRAINER RETREATED / TEXTURE COHERENT IN ALL DIRECTIONS.'] }
+                ]
+            }
+        };
+        function _variantChoiceR33() {
+            const v = _storyActiveVariant();
+            return _VARIANT_CHOICE_R33[v.id] || null;
+        }
+
+        // ═════════════════════════════════════════════════════════════════
+        // END VARIANT PROSE DENSITY LAYER
+        // ═════════════════════════════════════════════════════════════════
 
         /** Derive a minimal beat from STORY_EVENTS_RAW for rows that don't
          *  carry an explicit STORY_BEATS entry. Returns just enough metadata
@@ -37366,6 +38218,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
             }
+            // Per-variant retreat/concede flavor — appended as an italic
+            // banner under the buttons. Skipped silently when the active
+            // variant has no entry. Pulls from #story-gameover-variant-line
+            // (lazy-created) so we don't fight the existing layout.
+            try {
+                const screenEl = document.getElementById('screen-story-gameover');
+                if (screenEl) {
+                    let banner = document.getElementById('story-gameover-variant-line');
+                    const kind = isRivalLoss ? 'concede' : 'loss';
+                    const line = _variantRetreatLine(kind);
+                    if (line) {
+                        if (!banner) {
+                            banner = document.createElement('div');
+                            banner.id = 'story-gameover-variant-line';
+                            banner.style.cssText = 'max-width:380px;margin:8px auto 0;font-size:12px;color:#ffd54f;line-height:1.45;font-style:italic;text-align:center;opacity:0.95;border-top:1px solid #4a6a9a;padding-top:8px;';
+                            // Insert near the bottom of the screen so the
+                            // primary buttons stay on top.
+                            screenEl.appendChild(banner);
+                        }
+                        banner.textContent = line;
+                        banner.style.display = 'block';
+                    } else if (banner) {
+                        banner.style.display = 'none';
+                    }
+                }
+            } catch (e) {}
         }
 
         function preferredTypeBeforeGymBattle(battleIdx) {
@@ -38365,15 +39243,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const linesHtml = lines.map((l, i) =>
                 `<p class="story-dialog-text"${i ? ' style="margin-top:8px;"' : ''}>${l}</p>`
             ).join('');
+            // Optional multi-choice prompt. Each choice is
+            //   { label, reply: [line, line, ...], persistKey? }
+            // When choices are present the Continue button is replaced with
+            // a column of choice buttons; picking one swaps the dialog body
+            // to the reply lines, then exposes a single Continue. Picked
+            // value is stamped to sm.storyChoices[persistKey] when set, so
+            // later beats can react to a prior pick.
+            const choices = Array.isArray(o.choices) ? o.choices.filter(c => c && c.label) : [];
+            const continueBtnHtml = `<button type="button" data-narr-continue="1" style="margin-top:8px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">${_esc(continueLabel)}</button>`;
+            const choiceBtnsHtml = choices.length
+                ? `<div data-narr-choices="1" style="margin-top:10px;display:flex;flex-direction:column;gap:6px;max-width:560px;width:100%;">${
+                    choices.map((c, i) => `<button type="button" data-narr-choice-idx="${i}" style="padding:9px 16px;background:#1a2a4a;color:#fff;border:1px solid #ffd54f;border-radius:4px;cursor:pointer;text-align:left;font-family:inherit;line-height:1.4;">▸ ${_esc(c.label)}</button>`).join('')
+                  }</div>`
+                : '';
             ov.innerHTML = `
                 ${bannerHtml}
                 ${spriteHtml}
                 ${nameHtml}
                 <div class="story-dialog-host" style="margin-top:4px;max-width:560px;">
                     <div class="story-dialog-nameplate">${_esc(nameplate)}</div>
-                    <div class="story-dialog-box">${linesHtml}</div>
+                    <div class="story-dialog-box" data-narr-body="1">${linesHtml}</div>
                 </div>
-                <button type="button" style="margin-top:8px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">${_esc(continueLabel)}</button>`;
+                ${choices.length ? choiceBtnsHtml : continueBtnHtml}`;
             let dismissed = false;
             const dismiss = function () {
                 if (dismissed) return;
@@ -38387,16 +39279,71 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     } catch (e) {}
                 }
                 try {
-                    if (o.sfx && window.StoryFx && typeof window.StoryFx.playSfx === 'function') {
-                        window.StoryFx.playSfx(o.sfx, 0.65);
+                    // Per-variant SFX motif default — when the caller
+                    // didn't specify an explicit sfx, fall back to the
+                    // active storyline's cue (set on cold-open dismiss
+                    // and per-variant epilogue overlays for pasta /
+                    // mature tiers). Classic and second_sun resolve to
+                    // null, which silences the cue cleanly.
+                    let _sfx = o.sfx;
+                    if (!_sfx) {
+                        try { _sfx = _variantSfxMotif(); } catch (e2) {}
+                    }
+                    if (_sfx && window.StoryFx && typeof window.StoryFx.playSfx === 'function') {
+                        window.StoryFx.playSfx(_sfx, 0.65);
                     }
                 } catch (e) {}
                 try { ov.remove(); } catch (e) {}
                 try { o.onDone && o.onDone(); }
                 catch (e) { console.error('[Story] narrative overlay callback', e); }
             };
-            ov.querySelector('button').onclick = function (e) { e.stopPropagation(); dismiss(); };
-            ov.onclick = function (e) { if (e.target === ov) dismiss(); };
+            // Wire the choice flow when choices are present.
+            if (choices.length) {
+                ov.querySelectorAll('button[data-narr-choice-idx]').forEach(btn => {
+                    btn.onclick = function (e) {
+                        e.stopPropagation();
+                        const idx = +btn.getAttribute('data-narr-choice-idx');
+                        const pick = choices[idx];
+                        if (!pick) { dismiss(); return; }
+                        // Persist the pick keyed by either an explicit
+                        // persistKey on the option, or the scene's metaKey.
+                        try {
+                            const key = pick.persistKey || (o.metaKey ? (o.metaKey + ':choice') : null);
+                            if (key && sm) {
+                                if (!sm.storyChoices || typeof sm.storyChoices !== 'object') sm.storyChoices = {};
+                                sm.storyChoices[key] = pick.value || pick.label;
+                                try { save(); } catch (e2) {}
+                            }
+                        } catch (e2) {}
+                        // Swap body to reply text + replace choice buttons
+                        // with a single Continue. No second choice tier.
+                        const body = ov.querySelector('[data-narr-body="1"]');
+                        const choiceWrap = ov.querySelector('[data-narr-choices="1"]');
+                        const reply = Array.isArray(pick.reply) ? pick.reply : [pick.reply || ''];
+                        if (body) {
+                            body.innerHTML = reply.filter(Boolean).map((l, i) =>
+                                `<p class="story-dialog-text"${i ? ' style="margin-top:8px;"' : ''}>${l}</p>`
+                            ).join('');
+                        }
+                        if (choiceWrap) {
+                            choiceWrap.outerHTML = continueBtnHtml;
+                            const newBtn = ov.querySelector('button[data-narr-continue="1"]');
+                            if (newBtn) newBtn.onclick = function (e2) { e2.stopPropagation(); dismiss(); };
+                        }
+                    };
+                });
+            } else {
+                const cb = ov.querySelector('button[data-narr-continue="1"]');
+                if (cb) cb.onclick = function (e) { e.stopPropagation(); dismiss(); };
+            }
+            ov.onclick = function (e) {
+                // Background-click dismisses ONLY when no choices are
+                // pending — otherwise the player could skip the prompt
+                // without making a pick.
+                if (e.target !== ov) return;
+                if (choices.length && ov.querySelector('[data-narr-choices="1"]')) return;
+                dismiss();
+            };
             document.body.appendChild(ov);
             return ov;
         }
@@ -39228,7 +40175,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const reflectHtml = _leaderReflect
                         ? `<div style="font-size:13px;color:#aed581;line-height:1.5;max-width:380px;margin-top:6px;font-style:italic;">${speakerName}: ${_leaderReflect}</div>`
                         : '';
-                    badgeFlavor = `<div style="font-size:14px;color:#81c784;line-height:1.5;max-width:380px;">${line}</div>${reflectHtml}`;
+                    // Per-variant gym victory card — when the active
+                    // storyline has a line for this leader index, render
+                    // it as a third beat tinted by the variant accent.
+                    // The standard leader line + reflection stay so the
+                    // base game-feel isn't displaced.
+                    let _variantCardHtml = '';
+                    try {
+                        const _glMatch = evn.match(/^Gym Leader ([1-8])$/i);
+                        if (_glMatch) {
+                            const _vcard = _variantVictoryCardFor(+_glMatch[1], speakerName);
+                            if (_vcard) {
+                                _variantCardHtml = `<div style="font-size:12px;color:#ffd54f;line-height:1.45;max-width:380px;margin-top:6px;font-style:italic;border-left:2px solid #ffd54f;padding-left:8px;text-align:left;">${_vcard}</div>`;
+                            }
+                        }
+                    } catch (e) {}
+                    badgeFlavor = `<div style="font-size:14px;color:#81c784;line-height:1.5;max-width:380px;">${line}</div>${reflectHtml}${_variantCardHtml}`;
                     // First-time cap teach. badges 1-4 expand the player's party (cap = 2 + badges,
                     // capped at 6). The cap change happens silently in code; surface it here exactly
                     // once per badge-tier across all saves. badges 5-8 don't grow the cap.
@@ -40763,6 +41725,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (_catchState.roamingLabel && !_catchState.bossMode) {
                 _catchState.message = `A roaming ${wildMon.name}! One throw — catch or it's gone forever. (Running also forfeits it.)`;
             }
+            // Per-variant catch-intro line — prepended to the standard
+            // wild encounter framing, only on plain wild routes (not
+            // boss / safari / tutorial / roaming, which all carry their
+            // own framing). Skipped when the active variant has no
+            // intro pool (classic stays silent).
+            if (!_catchState.bossMode && !_catchState.safariMode && !_catchState.tutorialMode && !_catchState.roamingLabel) {
+                try {
+                    const _vIntro = _variantCatchIntro();
+                    if (_vIntro) {
+                        _catchState.message = _vIntro + '\n\nA wild ' + (wildMon && wildMon.name ? wildMon.name : 'Pokémon') + ' appeared.';
+                    }
+                } catch (e) {}
+            }
             // Tutorial framing — warm "your first catch" opener so the player
             // reads the new mechanic with curiosity, not panic. The tutorial
             // mon is always a Grade 4 friendly species and the catch is
@@ -41608,6 +42583,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // rendered below the overlay; on Continue the player drops into it.
             try {
                 playStoryTutorial(type === 'dept' ? 'firstDept' : 'firstMart');
+            } catch (e) {}
+            // Per-variant mart greeter — fires once per city per variant
+            // (city-keyed via tipsShown). Skipped for the department
+            // store (separate dept-store identity) and for variants
+            // without an entry. The greeter sits in the top-left strip
+            // of the shop screen as a single italic line under the title.
+            try {
+                if (type !== 'dept') {
+                    const greet = _variantMartGreeter();
+                    if (greet) {
+                        const cityIdx = (typeof cityIndexFromEventIndex === 'function') ? cityIndexFromEventIndex(sm.eventIndex) : 0;
+                        const key = 'variant-mart-greet-' + (_storyActiveVariantId() || 'classic') + '-c' + (cityIdx | 0);
+                        const _m = readStoryMeta();
+                        if (!_m.tipsShown || !_m.tipsShown[key]) {
+                            if (!_m.tipsShown) _m.tipsShown = {};
+                            _m.tipsShown[key] = true;
+                            writeStoryMeta(_m);
+                            try { window.showGameAlert && window.showGameAlert(greet); } catch (e) {}
+                        }
+                    }
+                }
             } catch (e) {}
             const shopScreen = document.getElementById('screen-story-shop');
             if (shopScreen) shopScreen.setAttribute('data-shop-type', type === 'dept' ? 'dept' : 'mart');
@@ -44259,12 +45255,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Cross-run counter: bump once per HoF reach (the preview flow runs from save load,
             // so we only count when the live save flagged the run as fresh-clear).
             let metaForDisplay = readStoryMeta();
+            let _wasFreshHofClear = false;
             if (sm && sm.active && !sm._hofCountedThisRun) {
                 sm._hofCountedThisRun = true;
+                _wasFreshHofClear = true;
                 metaForDisplay = recordStoryClearInMeta();
                 try { _storyRecordHallOfFame(); } catch (e) {}
                 try { _storyAchievementUnlock('first_hof'); } catch (e) {}
                 try { _storyAchievementBumpCount('runs_cleared', 1); } catch (e) {}
+            }
+            // Per-variant Hall-of-Fame card — fires once per variant per
+            // save profile, on a fresh clear, before the grid renders.
+            // Subsequent previews skip the card so the grid loads
+            // immediately.
+            if (_wasFreshHofClear) {
+                try {
+                    const _vCard = _variantHallOfFameCard();
+                    if (_vCard && Array.isArray(_vCard.lines) && _vCard.lines.length) {
+                        const _vid = _storyActiveVariantId() || 'classic';
+                        const _hofKey = 'variant-hof-card-' + _vid;
+                        const _hofMeta = readStoryMeta();
+                        const _seenHof = _hofMeta && _hofMeta.tipsShown && _hofMeta.tipsShown[_hofKey];
+                        if (!_seenHof) {
+                            _renderNarrativeOverlay({
+                                metaKey: _hofKey,
+                                banner: _vCard.banner || '— Hall of Fame —',
+                                toneClass: _vCard.toneClass || '',
+                                nameplate: 'The wall',
+                                lines: _vCard.lines,
+                                continueLabel: 'Enter the Hall →',
+                                sfx: _variantSfxMotif()
+                            });
+                        }
+                    }
+                } catch (e) { console.warn('[Story] variant HoF card', e); }
             }
 
             const displaySlots = getHallOfFameDisplaySlots();
