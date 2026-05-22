@@ -512,7 +512,14 @@
             const data = mergeData(prev, patch);
             data.seq = seq;
             const { error: upErr } = await sb.from('pvp_rooms').update({ data, updated_at: new Date().toISOString() }).eq('id', roomId);
-            if (upErr) console.warn('[OnlinePvP] pushData update failed', upErr);
+            if (upErr) {
+                // Surface the write failure upstream so callers .catch can
+                // surface a UI message or retry. Pre-fix: silent console.warn
+                // and the queue advanced as if the write succeeded — local
+                // state diverged from Supabase.
+                console.warn('[OnlinePvP] pushData update failed', upErr);
+                throw upErr;
+            }
         },
 
         _onRemoteRow(newRow) {
@@ -520,11 +527,19 @@
             remoteRowQueue = remoteRowQueue
                 .then(async () => {
                     const d = newRow.data || {};
-                    if ((d.seq || 0) <= lastRemoteSeq) return;
-                    lastRemoteSeq = d.seq || lastRemoteSeq + 1;
+                    const incoming = d.seq || 0;
+                    if (incoming <= lastRemoteSeq) return;
                     if (typeof global.onOnlineRoomData === 'function') {
-                        await Promise.resolve(global.onOnlineRoomData(d, { role, roomCode }));
+                        // Race the handler against a 10s timeout so a hung
+                        // promise from the UI layer can't freeze every future
+                        // remote update. Also: do NOT bump lastRemoteSeq until
+                        // the handler succeeds; pre-fix a thrown handler
+                        // permanently skipped the sequence number.
+                        const handlerP = Promise.resolve(global.onOnlineRoomData(d, { role, roomCode }));
+                        const timeoutP = new Promise((_, rej) => setTimeout(() => rej(new Error('onOnlineRoomData timeout')), 10000));
+                        await Promise.race([handlerP, timeoutP]);
                     }
+                    lastRemoteSeq = incoming || lastRemoteSeq + 1;
                 })
                 .catch((e) => console.warn('[OnlinePvP] onOnlineRoomData', e));
         },

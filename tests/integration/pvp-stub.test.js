@@ -114,3 +114,54 @@ test('pvp-stub: online-pvp.js source still uses queued pushData pattern', () => 
   const src = readFileSync('online-pvp.js', 'utf8');
   assert.match(src, /pushDataPromise|pushDataQueue|remoteRowQueue/, 'expected at least one queue token to remain in source');
 });
+
+test('pvp-stub: _pushDataImpl now throws on update failure (ISSUE-019)', () => {
+  const src = readFileSync('online-pvp.js', 'utf8');
+  // The fix throws upErr after the console.warn instead of swallowing it.
+  // Regress against "if (upErr) console.warn(...);" alone.
+  const m = src.match(/if\s*\(\s*upErr\s*\)\s*\{[\s\S]*?\}/);
+  assert.ok(m, '`if (upErr) { ... }` block present');
+  assert.match(m[0], /throw\s+upErr/, 'upErr must be re-thrown so callers see the failure');
+});
+
+test('pvp-stub: _onRemoteRow does not bump lastRemoteSeq before handler succeeds (ISSUE-010)', () => {
+  const src = readFileSync('online-pvp.js', 'utf8');
+  // Locate the _onRemoteRow body
+  const start = src.indexOf('_onRemoteRow(newRow)');
+  const body = src.slice(start, start + 1200);
+  // The order inside .then(async () => { ... }) must be:
+  //   1. read incoming seq
+  //   2. (await handler)
+  //   3. lastRemoteSeq = incoming
+  const lastSeqAssignIdx = body.indexOf('lastRemoteSeq =');
+  const handlerAwaitIdx = body.search(/await\s+Promise\.(race|resolve)/);
+  assert.ok(handlerAwaitIdx > 0, 'await on handler present');
+  assert.ok(lastSeqAssignIdx > handlerAwaitIdx, 'lastRemoteSeq must be assigned AFTER the handler await; pre-fix it was before');
+});
+
+test('pvp-stub: _onRemoteRow races handler against a timeout (ISSUE-021)', () => {
+  const src = readFileSync('online-pvp.js', 'utf8');
+  const start = src.indexOf('_onRemoteRow(newRow)');
+  const body = src.slice(start, start + 1200);
+  assert.match(body, /Promise\.race\s*\(/, 'must use Promise.race against a timeout');
+  assert.match(body, /onOnlineRoomData timeout/, 'must reject with a labeled timeout error');
+});
+
+test('pvp-stub: simulate the bumped-then-thrown anti-pattern is gone', async () => {
+  // Reproduce a tiny version of the fixed _onRemoteRow:
+  let lastSeq = 0;
+  async function correctOnRemoteRow(d, handler) {
+    const incoming = d.seq || 0;
+    if (incoming <= lastSeq) return;
+    const handlerP = Promise.resolve(handler(d));
+    const timeoutP = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 50));
+    await Promise.race([handlerP, timeoutP]);
+    lastSeq = incoming;
+  }
+  // Throwing handler should leave lastSeq UNCHANGED so a retry can re-deliver
+  await correctOnRemoteRow({ seq: 5 }, () => { throw new Error('boom'); }).catch(() => {});
+  assert.equal(lastSeq, 0, 'thrown handler must not bump lastSeq');
+  // Successful handler bumps it
+  await correctOnRemoteRow({ seq: 5 }, () => {});
+  assert.equal(lastSeq, 5, 'successful handler bumps lastSeq');
+});

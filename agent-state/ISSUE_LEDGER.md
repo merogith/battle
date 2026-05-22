@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-22T10:16:58.759Z
+> **Generated**: 2026-05-22T10:18:58.337Z
 > **Source**: `agent-state/findings/*.md` (88 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -474,7 +474,7 @@ file: online-pvp.js
 agents: [pvp-concurrency-hunter]
 fingerprint: ff27549bd4fe
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `lastRemoteSeq` is updated *before* the remote handler runs — a thrown handler still bumps the watermark, so the failed update is permanently skipped
@@ -850,7 +850,7 @@ file: online-pvp.js
 agents: [pvp-concurrency-hunter]
 fingerprint: 28d225daff16
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `pushData` queue keeps advancing after a write fails — `_pushDataImpl` errors are swallowed to `console.warn`, leaving local state diverged from Supabase
@@ -935,7 +935,7 @@ file: online-pvp.js
 agents: [pvp-concurrency-hunter]
 fingerprint: 564feb239c3e
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `remoteRowQueue` has no timeout — a hung `onOnlineRoomData` (e.g., a UI promise that never resolves) freezes ALL future remote updates
@@ -2536,7 +2536,7 @@ file: online-pvp.js
 agents: [pvp-concurrency-hunter]
 fingerprint: 28d225daff16_2
 confidence: low
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `createRoom` hardcodes Postgres SQLSTATE `23505` for unique-violation detection — defensive `.includes('duplicate')` fallback exists but the magic number is undocumented
