@@ -382,7 +382,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 9e0788d6bed7
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `_storyPickMysteryIdentity` uses bare `Math.random()` — Mystery Figure roll diverges across seeded replays
@@ -1011,7 +1011,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 90afbb333f6a
 confidence: low
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Several story-mode dev seeds use `Math.random` for build / sprite picks, breaking seeded replays when debug seeds are in play

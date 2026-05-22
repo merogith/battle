@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-22T10:06:11.624Z
+> **Generated**: 2026-05-22T10:11:12.333Z
 > **Source**: `agent-state/findings/*.md` (88 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -220,7 +220,7 @@ file: battle.html
 agents: [battle-engine-debugger, consistency-auditor]
 fingerprint: 07e77424454f
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Sleep duration roll uses bare `Math.random()` (RNG drift on every sleep proc)
@@ -331,7 +331,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: ffc310969bdf
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `canMove` paralysis + confusion self-hit checks use bare `Math.random()` (RNG drift in story replays)
@@ -368,7 +368,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 39f6ad985c2c
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `canMove` paralysis fizzle uses bare `Math.random()` while sibling freeze thaw uses `storyRngNext`
@@ -572,7 +572,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 0729606b5ddb
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Many `parseMoveEffects` branches still use bare `Math.random()` — seeded story replays drift
@@ -612,7 +612,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 160c710ca9f8
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Core damage roll, crit, and accuracy use bare `Math.random()` — the highest-impact drift sites
@@ -651,7 +651,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 436d3fa608c1
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Eight contact-triggered defender ability procs (Static / Poison Point / Flame Body / Cute Charm / Effect Spore / Toxic Chain / Cursed Body / Poison Touch) all use bare `Math.random()`
@@ -692,7 +692,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: aa60883b8c97
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Contact-ability procs (Static / Poison Point / Flame Body / Cute Charm / Poison Touch / Toxic Chain / Cursed Body) all bare `Math.random()`
@@ -810,7 +810,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 22f3b567bfd3
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Turn-order priority breakers (Quick Claw, speed-tie, rampage duration) use bare `Math.random()`
@@ -1050,7 +1050,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 91037ef383da
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Speed-tie resolution + Quick Claw + lock-turn duration all use bare `Math.random()` in the turn loop
@@ -1394,7 +1394,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 9e0788d6bed7
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `_storyPickMysteryIdentity` uses bare `Math.random()` — Mystery Figure roll diverges across seeded replays
@@ -2277,7 +2277,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 2cc1751d63f6
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `_pickCityQuoteLine` deliberately uses bare `Math.random` — drift across save reloads
@@ -3224,7 +3224,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 90afbb333f6a
 confidence: low
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Several story-mode dev seeds use `Math.random` for build / sprite picks, breaking seeded replays when debug seeds are in play

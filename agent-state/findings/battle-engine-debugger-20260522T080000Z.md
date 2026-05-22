@@ -7,7 +7,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: ffc310969bdf
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `canMove` paralysis + confusion self-hit checks use bare `Math.random()` (RNG drift in story replays)
@@ -39,7 +39,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 07e77424454f
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Sleep duration roll uses bare `Math.random()` (RNG drift on every sleep proc)
@@ -69,7 +69,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 22f3b567bfd3
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Turn-order priority breakers (Quick Claw, speed-tie, rampage duration) use bare `Math.random()`
@@ -104,7 +104,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 436d3fa608c1
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Eight contact-triggered defender ability procs (Static / Poison Point / Flame Body / Cute Charm / Effect Spore / Toxic Chain / Cursed Body / Poison Touch) all use bare `Math.random()`
@@ -140,7 +140,7 @@ file: battle.html
 agents: [battle-engine-debugger]
 fingerprint: 160c710ca9f8
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Core damage roll, crit, and accuracy use bare `Math.random()` — the highest-impact drift sites

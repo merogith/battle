@@ -7,7 +7,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 0729606b5ddb
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Many `parseMoveEffects` branches still use bare `Math.random()` — seeded story replays drift
@@ -42,7 +42,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 39f6ad985c2c
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `canMove` paralysis fizzle uses bare `Math.random()` while sibling freeze thaw uses `storyRngNext`
@@ -79,7 +79,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 07e77424454f
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `applyStatus` SLP duration roll + `endOfTurnEffects` Shed Skin roll use bare `Math.random()`
@@ -112,7 +112,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 91037ef383da
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Speed-tie resolution + Quick Claw + lock-turn duration all use bare `Math.random()` in the turn loop
@@ -147,7 +147,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: aa60883b8c97
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Contact-ability procs (Static / Poison Point / Flame Body / Cute Charm / Poison Touch / Toxic Chain / Cursed Body) all bare `Math.random()`
@@ -380,7 +380,7 @@ file: battle.html
 agents: [consistency-auditor]
 fingerprint: 2cc1751d63f6
 confidence: medium
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `_pickCityQuoteLine` deliberately uses bare `Math.random` — drift across save reloads

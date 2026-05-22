@@ -30802,12 +30802,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function storyRngNext() {
             if (sm.runSeed == null || sm.runSeed === undefined) {
                 if (sm.active) console.warn('[Story] storyRngNext called with no seed during active run — using Math.random()');
-                return Math.random();
+                return _nativeMathRandom.call(Math);
             }
             if (sm._strngState == null) sm._strngState = ((sm.runSeed >>> 0) ^ 0x9E3779B9) >>> 0;
             sm._strngState = (Math.imul(sm._strngState, 1664525) + 1013904223) >>> 0;
             return sm._strngState / 4294967296;
         }
+        // Story replay determinism: when sm.active && sm.runSeed != null, every
+        // Math.random() in the engine (262 sites across battle.html) routes
+        // through storyRngNext so that two replays at the same seed produce
+        // byte-identical battle transcripts. Outside an active story run,
+        // Math.random behaves natively (PvP, casual, draft mode unaffected).
+        // The fallback inside storyRngNext uses _nativeMathRandom to avoid
+        // recursion when sm.runSeed is null but sm.active is true.
+        const _nativeMathRandom = Math.random;
+        Math.random = function () {
+            if (typeof sm !== 'undefined' && sm && sm.active === true && sm.runSeed != null) {
+                return storyRngNext();
+            }
+            return _nativeMathRandom.call(Math);
+        };
         let _selectedBagItem = null;
         let _storyBattleInventorySnapshot = null;
 
