@@ -3,6 +3,86 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Evolution flow rebuild: Stone Emporium, Bill/Granny intros, intro-once gates 2026-05-22 (`claude/gracious-mayer-H31zi`)
+
+### Added — Stone Emporium, Bill, Stonewise Granny, and a voucher per facility
+
+The evolution path is no longer a black box where the Stone Sage absorbs
+stones and trade-memory into the gold fee. Players now own the
+consumables and meet the people who hand them out.
+
+* **Stone Emporium (new facility, City 2+ onward, always available).** A
+  flat 500G-each catalog of every evolution stone (10) and every
+  trade-method item (14) the Stone Sage needs — Fire Stone, Metal
+  Coat, Dragon Scale, Reaper Cloth, all of them. Every purchase shows a
+  confirmation dialog so a misclick never burns gold. `sm.inventory.<id>`
+  tracks owned counts; items consume on evolution, not on hold.
+* **Bill — Cable Link intro on first arrival at City 2.** New
+  `firstCableLink` tutorial scene introduces the Cable Link Station
+  network, explains why trade evolutions need a visit, and hands the
+  player a **"Bill's Discount Card"** voucher (`linkDiscount50`) — a
+  one-time 50% off on any single Cable Link action (Reroll / Upgrade /
+  Rebuild). The Link Station UI now renders sibling "🎟 Half-Price"
+  buttons whenever the voucher is held.
+* **Stonewise Granny — Stone Sage intro on first arrival at City 2.**
+  New `firstStoneSage` tutorial chained right after Bill. Granny
+  explains how the new Stone Sage works (bring me a stone, I'll wake
+  the partner up) and hands over a **Stonewise Token** voucher
+  (`stoneToken`). The token redeems at the Stone Emporium for one free
+  stone of choice (not trade items).
+* **Stone Sage rewire.** Stone evolutions now consume a stone from
+  inventory; trade evolutions require the Cable Link in this city has
+  been visited at least once; held-item trade evolutions also consume
+  the item. Rare Candy still skips gold + stone/trade-item ownership
+  but **does not** skip the Cable Link visit — the lore is the
+  friction, the wallet is the override. Each evo card now shows a
+  specific "Need Fire Stone" / "Visit Cable Link" / "Need Metal Coat"
+  hint with the full reason in the title hover.
+* **Welcome voucher on every facility intro.** Each existing first-visit
+  tutorial gains a one-shot themed gift on Continue, sized to ~one
+  free use of that facility:
+  - Pokémart → +1 Poké Ball
+  - Pokémon Center → +1 Potion (battle bag)
+  - Department Store → +1 Great Ball
+  - Move Tutor → +1 Heart Scale
+  - Nature Rater → +1 Mint
+  - Battle Dojo → +1 Emblem of Honor
+  - EV Trainer → +1 Vitamin Pack
+  - Game Corner → +1 Lucky Chip (new `casinoChip500`, 500G bet credit)
+  Vouchers fire only on the tutorial's Continue, so they can never
+  appear before the player has actually seen the mechanic taught.
+* **Introduce-once Leave-City gate.** On the debut city for each
+  facility (City 0 for the basics, City 2 for the new evolution
+  trio, City 4–6 for the late-game facilities), the Leave-City button
+  blocks until the player has tapped each unfamiliar facility at
+  least once. Once introduced, the gate releases for the rest of the
+  run. A new red pulsing **🔴 Required** badge marks the facility
+  buttons that still need a first visit; the disabled Continue Route
+  button names them ("Visit Bill's Cable Link, Stone Emporium, and
+  Stone Sage first").
+
+### Changed — City 0 and City 1 no longer carry evolution facilities
+
+`STORY_EVENTS_RAW` drops `Link Station` and `Evolution Tutor` from the
+City 0 and City 1 action lists. Stone Shop is added to every City 2+
+entry. The evolution mechanic now debuts as a coherent moment instead
+of being available on the very first hub.
+
+### Files touched
+
+* `battle.html` — new Stone Emporium screen markup + `enterStoneShop` /
+  `buyStoneItem` / `redeemStoneToken` functions, `STONE_SHOP_ITEMS`
+  catalog (24 entries), `STONE_NAME_TO_ID` + `TRADE_ITEM_NAME_TO_ID`
+  lookups, `FACILITY_DEBUT_CITY` map, `sm.facilityIntros` state +
+  init + migration, `_isFacilityRequiredHere` / `_pendingFacilityIntrosHere`
+  helpers, Leave-City branch + 🔴 Required badge + CSS pulse, Bill /
+  Granny / Emporium Keeper tutorial scenes, `onContinue` voucher
+  hooks on every existing first-visit scene, Stone Sage requirement
+  gating in `renderEvoLabTeam` + `evoLabEvolve` / `evoLabEvolveWithCandy`,
+  half-price voucher support on `linkReroll` / `linkUpgrade` /
+  `linkRebuild`, 24 thematic substitute sprite slugs for the new items.
+* `docs/EVOLUTION_FLOW_REBUILD.md` — full design doc and agent fan-out spec.
+
 ## Unreleased — Mechanics unlock gate closed on every pre-unlock leak 2026-05-21 (`claude/funny-albattani-DNkt0`)
 
 ### Fixed — Wild catches, Professor-sized pre-unlock mechanic leaks

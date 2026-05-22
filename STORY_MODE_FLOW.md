@@ -1186,3 +1186,40 @@ Read-only — handy in DevTools when adding new beats / variants.
 - `enterBattleEvent` (~line 27509) — three-line dispatch now: resolve beat
   → dispatch cold-open → dispatch interrupts → run the trainer fight setup
   (unchanged).
+
+---
+
+## §15g — Evolution gating & onboarding (2026-05-22)
+
+See [`docs/EVOLUTION_FLOW_REBUILD.md`](docs/EVOLUTION_FLOW_REBUILD.md) for
+the full design. Quick reference:
+
+- **City 0–1**: no Cable Link, no Stone Sage. Stone evolutions and trade
+  evolutions are simply not on the menu yet.
+- **City 2 entry** plays a chained intro: Bill (Cable Link, grants
+  `linkDiscount50` voucher) → Stonewise Granny (Stone Sage, grants
+  `stoneToken` voucher).
+- **Stone Emporium** (new facility) appears in the action list of every
+  city from City 2 onwards. Sells 10 stones + 14 trade items at 500G
+  each with a confirm-on-buy dialog. `stoneToken` redeems for one free
+  stone of choice.
+- **Stone Sage** now consumes a stone from `sm.inventory.<id>` on
+  stone-evolutions and an item from `sm.inventory.<id>` on held-item
+  trade evos. Trade-evos additionally require
+  `_isFacilitySeen(cityIdx, 'link')` to be true in the current city
+  (enter + exit Cable Link is enough).
+- **Facility intro gate**: `sm.facilityIntros[key]` flips true the first
+  time the player enters any facility in a run. On the
+  `FACILITY_DEBUT_CITY[key]` city, the Leave-City button stays disabled
+  with a friendly "Visit X first" hint and the facility shows a red
+  pulsing **🔴 Required** badge until the player has tapped it once.
+- **Per-facility welcome vouchers**: each existing first-visit tutorial
+  grants a one-shot themed reward on Continue (Poké Ball at Mart,
+  Potion at Center, Heart Scale at Move Tutor, etc.) — sized to one
+  free use of that facility.
+- Anchors: `STONE_SHOP_ITEMS` near `DEPT_ITEMS`; `STONE_NAME_TO_ID` +
+  `TRADE_ITEM_NAME_TO_ID` near `EVO_STONE_REQ`; `FACILITY_DEBUT_CITY`
+  right after `STORY_EVENTS_RAW`; `_isFacilityRequiredHere` /
+  `_pendingFacilityIntrosHere` next to `_markFacilitySeen`; Bill /
+  Granny / Emporium Keeper scenes in `STORY_TUTORIAL_SCENES`;
+  half-price voucher UI in the link card render block.
