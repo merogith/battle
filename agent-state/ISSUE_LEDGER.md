@@ -1,6 +1,6 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-22T10:15:50.152Z
+> **Generated**: 2026-05-22T10:16:58.759Z
 > **Source**: `agent-state/findings/*.md` (88 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
@@ -984,7 +984,7 @@ file: data/builds/gen8.json
 agents: [data-integrity-auditor]
 fingerprint: 5359999bcf35
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `No Item` sentinel string used in 11 build slots is absent from `data/items.json`
@@ -1869,7 +1869,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 387fecfc77f7
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: City-hub Mystery Figure NPC sprite is hard-coded to Cyrus, ignoring `sm.mysteryIdentity` rotation

@@ -6,7 +6,7 @@ file: data/builds/gen8.json
 agents: [data-integrity-auditor]
 fingerprint: 5359999bcf35
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `No Item` sentinel string used in 11 build slots is absent from `data/items.json`

@@ -110,6 +110,10 @@ function validate() {
       const target = field === 'ability' ? abilities : field === 'item' ? items : natures;
       const missing = field === 'ability' ? missingAbilities : field === 'item' ? missingItems : missingNatures;
       for (const alt of alternatives) {
+        // "No Item" is the engine-wide sentinel for the empty held-item slot
+        // (battle.html:9322 converts it to 'NO_ITEM'; getItemDisplay returns
+        // it as the fallback when mon.item is null). Skip it during validation.
+        if (field === 'item' && alt === 'No Item') continue;
         if (!target[norm(alt)]) {
           missing.set(alt, (missing.get(alt) || []).concat([b]));
         }

@@ -35970,7 +35970,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     spriteTrainerArg = { spriteFile: hub.spriteFile };
                 } else {
                     speakerLabel = '???';
-                    spriteTrainerArg = 'Cyrus';
+                    // Use the active sm.mysteryIdentity sprite so the city-hub
+                    // tease matches the upcoming reveal (was: hardcoded 'Cyrus').
+                    const _mysteryFace = (sm && sm.mysteryIdentity && MYSTERY_FIGURE_IDENTITIES[sm.mysteryIdentity]) || null;
+                    spriteTrainerArg = _mysteryFace && _mysteryFace.sprite ? _mysteryFace.sprite : 'Cyrus';
                 }
             } else if (hasProf && profUsedHere) {
                 speakerLabel = 'City Guide';

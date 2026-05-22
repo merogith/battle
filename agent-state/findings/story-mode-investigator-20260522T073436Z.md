@@ -168,7 +168,7 @@ file: battle.html
 agents: [story-mode-investigator]
 fingerprint: 387fecfc77f7
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: City-hub Mystery Figure NPC sprite is hard-coded to Cyrus, ignoring `sm.mysteryIdentity` rotation
