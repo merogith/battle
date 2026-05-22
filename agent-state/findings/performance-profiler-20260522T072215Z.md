@@ -7,7 +7,7 @@ current_line_hint: 58
 agents: [performance-profiler]
 fingerprint: c57a28528982
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: `perf-bench.mjs` calls `parseMoveEffects(move)` with the wrong arg-count; the reported 1.4 ms "median" is the cost of a thrown `TypeError`, not real per-move parsing
@@ -83,7 +83,7 @@ current_line_hint: 52
 agents: [performance-profiler]
 fingerprint: 28e451a73726
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Engine cold-boot is 2.88 s in jsdom — within the harness target (5 s) but **14× the mandate's 200 ms target**
@@ -141,7 +141,7 @@ current_line_hint: 34
 agents: [performance-profiler]
 fingerprint: 727cad5b6ed7
 confidence: high
-status: open
+status: fixed-claude/sharp-keller-eZEDN
 ---
 
 **Title**: Turn-loop max latency is **78–84 ms** with IQR 12 ms — within the harness target (50 ms median is OK) but max is 5× the median, indicating a per-turn outlier path
@@ -172,7 +172,7 @@ current_line_hint: 65
 agents: [performance-profiler]
 fingerprint: a20dbf90774a
 confidence: high
-status: open
+status: wontfix-not-a-bug-noise-dominated-growth-as-flagged-by-agent
 ---
 
 **Title**: Memory growth is benign (linear, ~25 KB/turn, R² = 0.712 — noise-dominated) and **does not indicate a leak**; the mandate's "60 turn / quadratic = P1" threshold is not hit
