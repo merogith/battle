@@ -9305,6 +9305,17 @@
             return true;
         }
 
+        // Repair UTF-8 mojibake / lone combining marks that have historically slipped
+        // into the CSV — Farfetch'd, Flabébé. Defensive: if a future regeneration
+        // re-corrupts the file, the runtime still resolves to the canonical name.
+        function _csvNormalizeSpecies(name) {
+            if (!name) return name;
+            return String(name)
+                .replace(/Farfetchâ€™d/g,  "Farfetch'd")
+                .replace(/FlabeÌbeÌ/g,      "Flabébé")
+                .replace(/Flabébé/g,        "Flabébé");
+        }
+
         async function loadBuildsCSV() {
             try {
                 const text = await fetch('data/builds.csv').then(r => r.text());
@@ -9312,7 +9323,7 @@
                 const rows = parseCSV(text, ',');
                 let illegalCount = 0;
                 for (const row of rows) {
-                    const name = row.name;
+                    const name = _csvNormalizeSpecies(row.name);
                     const tag  = row.tag;
                     if (!name || !tag) continue;
                     if (!csvBuilds[name]) csvBuilds[name] = { regular: [], weather: [], mega: [], 'z-attack': [], tera: [] };
