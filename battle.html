@@ -31038,6 +31038,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         }
                     }
                 } catch (e) { console.warn('[Story] v20 bonus/tired backfill', e); }
+                // Interrupted Pit bracket recovery. If a save was written mid-bracket
+                // (tab closed during a Pit fight), sm.team holds only the 3 bracket mons
+                // while the full roster lives in sm.pits._teamBeforePit. Restore the full
+                // team and clear the transient bracket state so no mon is orphaned.
+                try {
+                    if (sm.pits && Array.isArray(sm.pits._teamBeforePit) && sm.pits._teamBeforePit.length) {
+                        sm.team = sm.pits._teamBeforePit.slice();
+                        sm.pits._teamBeforePit = null;
+                        sm.pits._activePickIds = null;
+                        sm.pits._enemyRoster = null;
+                        sm.pits._pendingPicks = null;
+                        sm.pits._fightIndex = 0;
+                        sm.pits._fightsWon = 0;
+                        sm.pits._inBattle = false;
+                        // Heal the recovered team — the interrupted fight is voided.
+                        try { _storyFullHealPartySlots(); } catch (e2) {}
+                        console.warn('[Story] recovered interrupted Pit bracket — team restored');
+                    }
+                } catch (e) { console.warn('[Story] pit bracket recovery', e); }
                 const _cap = Math.max(0, STORY_EVENTS_RAW.length - 1);
                 if (sm.eventIndex < 0 || sm.eventIndex > _cap) {
                     console.warn('[Story] eventIndex out of range — clamping', sm.eventIndex, '→', _cap);
@@ -36731,6 +36750,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         //   • Gym 8 + HoF → endgame Crucible Daycare opens; flow repeats with higher tiers.
         // The hand-over is irreversible until hatch (parent is gone from the player's reach).
         function _daycareIsUnlocked() { return !!(sm.daycare && sm.daycare.unlocked); }
+        // In-place hub refresh — updates HUD, party panel, and the city action strip
+        // without re-running enterCity (which would re-trigger arrival / cold-open
+        // overlays). Safe to call from Daycare / Pit handlers after a state mutation.
+        function _storyRefreshCityHubInPlace() {
+            try {
+                const ev = STORY_EVENTS_RAW[sm.eventIndex];
+                if (typeof updateHUD === 'function') updateHUD();
+                if (typeof renderTeamPanel === 'function') renderTeamPanel();
+                if (ev && typeof renderCityActions === 'function') renderCityActions(ev);
+            } catch (e) { console.warn('[Story] hub refresh', e); }
+        }
         function _daycareIsBusy()     { return !!(sm.daycare && sm.daycare.state === 'incubating'); }
         // Run any queued unlock toasts. Each toast is gated by a one-shot flag that the
         // post-battle hook sets; this clears them as we surface the message.
@@ -36928,7 +36958,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 );
             } catch (_) {}
             try { renderTeamPanel(); } catch (_) {}
-            try { renderStoryCity(); } catch (_) {}
+            try { _storyRefreshCityHubInPlace(); } catch (_) {}
         }
         function _daycareHatch() {
             const dc = sm.daycare;
@@ -36992,7 +37022,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 );
             } catch (_) {}
             try { renderTeamPanel(); } catch (_) {}
-            try { renderStoryCity(); } catch (_) {}
+            try { _storyRefreshCityHubInPlace(); } catch (_) {}
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -37232,6 +37262,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.pits._enemyRoster = null;
             sm.pits._fightIndex = 0;
             sm.pits._inBattle = false;
+            let resultMsg = '';
             if (won) {
                 // +1 to EVERY stat on every party member (witnessed and changed). Each
                 // stat clamps at +5 per build; the IV+bonus total is hardcapped at 36
@@ -37261,11 +37292,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _storyClearTirednessForIconic();
                 _storyFullHealPartySlots();
                 try { save(); } catch (_) {}
-                try {
-                    window.showGameAlert && window.showGameAlert(
-                        `⚔ Three down. All your Pokémon witnessed it — they all changed. +1 every stat, +${payout.toLocaleString()}G. The bracket mons are BONDED — the Underground claims them when you leave for clean streets.`
-                    );
-                } catch (_) {}
+                resultMsg = `⚔ Three down. All your Pokémon witnessed it — they all changed. +1 every stat, +${payout.toLocaleString()}G. The bracket mons are BONDED — the Underground claims them when you leave for clean streets.`;
             } else {
                 // Pit defeat path is handled by _pitsShowDefeatOverlay (which calls
                 // _pitsForfeitBracket on player's "forfeit" choice). This branch only
@@ -37274,8 +37301,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.pits.winsThisVisit = 0;
                 try { save(); } catch (_) {}
             }
-            try { renderTeamPanel(); } catch (_) {}
-            try { renderStoryCity(); } catch (_) {}
+            // The battle screen tore down all screens on exit — bring the player back to
+            // the city hub (not just an in-place refresh) so they don't land on a blank
+            // screen behind the result alert.
+            try { enterCity(); } catch (_) { try { _storyRefreshCityHubInPlace(); } catch (_2) {} }
+            if (resultMsg) {
+                setTimeout(() => { try { window.showGameAlert && window.showGameAlert(resultMsg); } catch (_) {} }, 250);
+            }
         }
         // Gold payout for a winning Pit bracket — 50% of the next Gym Leader's reward.
         // Falls back to the highest cleared gym (capped at 8) at HoF+ so the Crucible
@@ -37425,16 +37457,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _storyClearTirednessForIconic();
             _storyFullHealPartySlots();
             try { save(); } catch (_) {}
-            try {
-                const survivorLine = survivorNames.length
-                    ? `${survivorNames.join(' and ')} crawled out — barely. They're in the PC now, sleeping it off.`
-                    : '';
-                window.showGameAlert && window.showGameAlert(
-                    `☠ The Pit kept ${deadName}. ${survivorLine}`
-                );
-            } catch (_) {}
-            try { renderTeamPanel(); } catch (_) {}
-            try { renderStoryCity(); } catch (_) {}
+            const survivorLine = survivorNames.length
+                ? `${survivorNames.join(' and ')} crawled out — barely. They're in the PC now, sleeping it off.`
+                : '';
+            const forfeitMsg = `☠ The Pit kept ${deadName}. ${survivorLine}`;
+            // Battle screen was torn down — return to the city hub before alerting.
+            try { enterCity(); } catch (_) { try { _storyRefreshCityHubInPlace(); } catch (_2) {} }
+            setTimeout(() => { try { window.showGameAlert && window.showGameAlert(forfeitMsg); } catch (_) {} }, 250);
         }
         // City-return consequence: bonded mons auto-release when the player walks back
         // into a regular town (Underground is NOT a town — the release happens on the
