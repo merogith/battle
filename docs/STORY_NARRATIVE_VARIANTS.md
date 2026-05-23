@@ -58,16 +58,24 @@ same save offers a re-roll.
 
 ## 2. Plot beats per variant
 
-Every variant fires cold-opens at six **stable beats**:
+Every variant fires cold-opens at nine **stable beats** (shipped row
+indices reflect the v18+ variant pass — earlier spec drafts referenced
+5 / 24 / 53 / 64 / 68 against an earlier `STORY_EVENTS_RAW` layout and
+have drifted; the live table below is authoritative):
 
-| Beat            | Event row(s)            | Existing trigger                | Narrative purpose                          |
-|---              |---                      |---                              |---                                          |
-| Intro           | 68 (intro rival)        | introRival cold-open            | Set tone in the first 30 seconds            |
-| Gym 1 victory   | 5 (Gym Leader 1)        | first gym beat (new)            | Confirm the variant's first plot hook       |
-| Mid pivot       | 24 (Gym Leader 4)       | gym 4 beat (new)                | Halfway turn — stakes deepen                |
-| Pre-League      | 53 (Gym Leader 8)       | gym 8 beat (new)                | Late escalation                             |
-| Champion        | 64 (Champion)           | champion beat (new)             | The climax framing                          |
-| Caged God       | (post-HoF / boss arc)   | bossCollectLead + bossEnterCage | Per-variant epilogue                        |
+| Beat              | Event row(s)            | Cold-open scene key (per variant)   | Narrative purpose                          |
+|---                |---                      |---                                  |---                                          |
+| Intro             | 68 (intro rival)        | `introRival`                        | Set tone in the first 30 seconds            |
+| Gym 1 victory     | 7  (Gym Leader 1)       | `<variant>_gym1`                    | Confirm the variant's first plot hook       |
+| Mid NPC #1        | 20 (mid-route NPC)      | `<variant>_npc_r20`                 | Texture between Gym 2 and Gym 4             |
+| Gym 4 / mid pivot | 26 (Gym Leader 4)       | `<variant>_gym4`                    | Halfway turn — stakes deepen                |
+| Mid NPC #2 / B    | 33 (mid-late NPC)       | `<variant>_npc_r33` or `choice_r33` | Variant-aware choice prompt where present   |
+| Late NPC          | 48 (late-route NPC)     | `<variant>_npc_r48`                 | Texture between Gym 7 and Gym 8             |
+| Twist             | 53 (pre-Gym-8 beat)     | `<variant>_twist`                   | Late escalation / variant pivot             |
+| Gym 8             | 56 (Gym Leader 8)       | `<variant>_gym8`                    | Final-gym escalation                        |
+| Champion          | 64 (Champion)           | `<variant>_champion`                | The climax framing                          |
+| Mystery Figure    | 67 (post-HoF Mystery)   | `mystery67` (per-variant scene)     | Pre-fight intro for the climax mask         |
+| Caged God         | (post-HoF / boss arc)   | bossCollectLead + bossEnterCage     | Per-variant epilogue                        |
 
 Plus two **dynamic** scenes:
 
