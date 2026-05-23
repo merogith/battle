@@ -15980,6 +15980,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { state.foeParty.forEach(window.applyFoeDifficultyScaling); } catch (e) { console.warn('[startBattle] applyFoeDifficultyScaling failed:', e); }
             }
             state.pActive = state.playerParty[0];
+            // Reset story battle-EV tracking. The story IIFE reads these from
+            // window in onBattleEnd to credit the active mons and count the
+            // defeated foes. Always init even for non-story modes so a stale
+            // value from a previous story battle can't bleed into the next.
+            try {
+                window._battleActiveStoryIdxSet = new Set([0]);
+                window._battleDefeatedFoesCount = 0;
+            } catch (e) {}
             // Field must match this battle before aiBestSwitch — aiEstimateDmg(getCurrentWeather) must not see the previous battle's weather.
             state.weather = null; state.weatherTurns = 0;
             state.terrain = null; state.terrainTurns = 0;
@@ -19274,6 +19282,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     clearGimmickIntent(isP1);
                     state[activeTarget] = state[partyTarget][index];
                     if (!state[activeTarget]) throw new Error('selectPartyMember: invalid party slot ' + index);
+                    if (isP1) { try { if (window._battleActiveStoryIdxSet instanceof Set) window._battleActiveStoryIdxSet.add(index | 0); } catch (e) {} }
                     state[activeTarget].turnCount = 0;
                     state[activeTarget].fakeOutOk = true;
                     // Re-stamp the watchdog clock so multi-replacement chains stay observable to the safety net.
@@ -19893,6 +19902,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if(settings.animations){ let ps = document.getElementById('player-sprite'); await anime({targets:ps, opacity:[1,0], scale:[1,0.3], duration:280, easing:'easeInQuad'}).finished; ps.style.opacity='0'; ps.style.visibility='hidden'; anime.remove(ps); }
                     else await sleep(300);
                     state.pActive = state.playerParty[state.p1Action.switchIndex];
+                    try { if (window._battleActiveStoryIdxSet instanceof Set) window._battleActiveStoryIdxSet.add(state.p1Action.switchIndex | 0); } catch (e) {}
                     state.pActive.turnCount = 0;
                     state.pActive.fakeOutOk = true;
                     logMsg(`Player 1 sent out ${state.pActive.name}!`, "info");
@@ -23890,6 +23900,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 clearAllGimmickIntent();
                 AudioSystem.playFaintCry(state.fActive.name);
                 logMsg(`${state.fActive.name} fainted!`, 'heal');
+                try { window._battleDefeatedFoesCount = (window._battleDefeatedFoesCount | 0) + 1; } catch (e) {}
                 logMsg(`${state.pActive.name} fainted!`, 'dmg');
                 if (state.fActive.dynamaxed) deactivateDynamax(state.fActive, false);
                 if (state.pActive.dynamaxed) deactivateDynamax(state.pActive, true);
@@ -23977,6 +23988,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     while (state.fActive.currentHp <= 0 && state.foeParty.some(m => m.currentHp > 0 && m !== state.fActive)) {
                         AudioSystem.playFaintCry(state.fActive.name);
                         logMsg(`${state.fActive.name} fainted!`, 'heal');
+                        try { window._battleDefeatedFoesCount = (window._battleDefeatedFoesCount | 0) + 1; } catch (e) {}
                         clearPermanentWeatherIfHolder(state.fActive);
                         if (state.fActive.dynamaxed) deactivateDynamax(state.fActive, false);
                         state.fActive.dynamaxed = false; state.fActive.dynamaxTurns = 0;
@@ -24013,6 +24025,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 clearGimmickIntent(false);
                 AudioSystem.playFaintCry(state.fActive.name);
                 logMsg(`${state.fActive.name} fainted!`, 'heal');
+                try { window._battleDefeatedFoesCount = (window._battleDefeatedFoesCount | 0) + 1; } catch (e) {}
                 if (state.fActive.megaEvolved && state.fActive._baseName) logMsg(`${state.fActive.name} reverted.`, 'info');
                 // Reaper's Toll: foe's survivors heal 10% maxHp, one random survivor loses -1 SpD
                 if (state._reapersTollActive) {
@@ -29787,6 +29800,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { id:'psychicOrb',    name:'Psychic Orb',   price:1000, desc:'Starts Psychic Terrain for 5 turns on battle entry.', effect:'terrainPsychic' },
           { id:'mistyOrb',      name:'Misty Orb',     price:1000, desc:'Starts Misty Terrain for 5 turns on battle entry.', effect:'terrainMisty' },
           { id:'emergencyTeleporter', name:'Emergency Teleporter', price:800, desc:'Bypasses trapping effects once per battle.', effect:'teleport' },
+          { id:'evResetCharm',  name:'EV Reset Charm', price:3000, desc:"Wipes all battle training (EVs) from one Pokémon. Use when you've trained the wrong stats.", effect:'evReset', battleBag:false },
         ];
         // Stone Emporium catalog — new facility introduced at City 2 (see docs/EVOLUTION_FLOW_REBUILD.md §4).
         // Stones and trade-method items the Stone Sage consumes to perform evolutions
@@ -31968,6 +31982,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_loadedVer < 19) {
                     try { migrateStoryPreV19(); } catch (e) { console.warn('[Story] v19 IV/vitamin unification migrate', e); }
                 }
+                // Ensure every mon has a populated evs object — pre-existing
+                // saves may have mons whose `build.evs` is missing entirely
+                // (catch flow, mystery gifts, legacy migrations). buildPokemon
+                // tolerates absent EVs but the per-battle EV grant + EV Reset
+                // Charm both expect the object to exist before they mutate it.
+                try {
+                    const _zeroEVs = () => ({ hp:0, atk:0, def:0, spa:0, spd:0, spe:0 });
+                    if (Array.isArray(sm.team)) {
+                        for (const m of sm.team) {
+                            if (m && m.build && (!m.build.evs || typeof m.build.evs !== 'object')) {
+                                m.build.evs = _zeroEVs();
+                            }
+                        }
+                    }
+                    if (Array.isArray(sm.pcBox)) {
+                        for (const m of sm.pcBox) {
+                            if (m && m.build && (!m.build.evs || typeof m.build.evs !== 'object')) {
+                                m.build.evs = _zeroEVs();
+                            }
+                        }
+                    }
+                } catch (e) { console.warn('[Story] EV backfill', e); }
                 const _cap = Math.max(0, STORY_EVENTS_RAW.length - 1);
                 if (sm.eventIndex < 0 || sm.eventIndex > _cap) {
                     console.warn('[Story] eventIndex out of range — clamping', sm.eventIndex, '→', _cap);
@@ -33139,6 +33175,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return build;
         }
 
+        /** Late-game enemy EV nudge — counterbalance to the per-battle EV
+         *  training the player accumulates. From badge 4 (post-Gym-4) onward,
+         *  T2/T3 enemy trainers get a small boost (+20 EV each) into their
+         *  archetype's two best stats, then 510-clamped. T1 untrained route
+         *  trainers stay at zero EVs (the "you're starting out" signal), and
+         *  T4 tournament builds are already at the cap. Skipped entirely
+         *  pre-Gym-4 so the early game's softening curve is undisturbed. */
+        function _storyMaybeNudgeFoeEVs(name, build, tier) {
+            if (!build || !sm) return;
+            if ((sm.badges | 0) < 4) return;
+            const t = tier | 0;
+            if (t !== STORY_BUILD_TIER.NOVICE && t !== STORY_BUILD_TIER.COMPETENT) return;
+            const base = (typeof baseStats !== 'undefined') ? (baseStats[name] || null) : null;
+            if (!base) return;
+            const targets = _pickBattleEVStats(base);
+            if (!build.evs) build.evs = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+            const evs = build.evs;
+            for (const s of targets) {
+                evs[s] = Math.min(252, (evs[s] | 0) + 20);
+            }
+            // 510-total re-clamp (proportional shrink in 4-EV chunks so the
+            // distribution stays canonical).
+            let total = 0;
+            for (const k of ['hp','atk','def','spa','spd','spe']) total += (evs[k] | 0);
+            if (total > 510) {
+                const scale = 510 / total;
+                for (const k of ['hp','atk','def','spa','spd','spe']) {
+                    evs[k] = Math.max(0, Math.floor(((evs[k] | 0) * scale) / 4) * 4);
+                }
+            }
+        }
+
         /** Final-pass hook for trainer teams. Stamps `build.powerTier` on every
          *  slot and applies degradation in-place. Tier 4 short-circuits the
          *  move/EV downgrade path but still rolls tier-4 IVs for the slot.
@@ -33156,6 +33224,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (tier < STORY_BUILD_TIER.TOURNAMENT) {
                     _storyDowngradeBuildForTier(slot.name, slot.build, tier);
                 }
+                // Post-Gym-4 enemy nudge — small EV bump on T2/T3 trainers to
+                // keep pace with the per-battle EV training the player picks
+                // up. No-op on T1 (route fodder stays at 0 EV) and T4 (already
+                // capped). Skipped pre-Gym-4 so the early softening holds.
+                try { _storyMaybeNudgeFoeEVs(slot.name, slot.build, tier); } catch (e) {}
                 slot.build.powerTier = tier;
                 // Tier-scaled IVs: T1 0-15, T2 10-22, T3 18-28, T4 26-31.
                 // Aces shift to the top quartile of their tier's range. Always
@@ -40348,6 +40421,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const coinsAwarded = Math.floor((coins || 0) * coinMult);
                 sm.gold += coinsAwarded;
                 const en = String(event || '');
+                // Battle EV training — small per-defeated-foe EV gain to the
+                // team (active mons get the full pool, bench gets half). The
+                // tracking globals are populated by startBattle / switch /
+                // foe-faint hooks in battle.html's script-top scope; if a
+                // path skipped them, fall back to "lead mon only, 1 foe".
+                try {
+                    const activeIdxSet = (window._battleActiveStoryIdxSet instanceof Set)
+                        ? window._battleActiveStoryIdxSet
+                        : new Set([0]);
+                    const defeatedCount = (window._battleDefeatedFoesCount | 0) || 1;
+                    const evReport = _grantBattleEVs(en, sm.team, activeIdxSet, defeatedCount);
+                    if (evReport && evReport.length) {
+                        const _STAT_SHORT = { hp:'HP', atk:'Atk', def:'Def', spa:'SpA', spd:'SpD', spe:'Spe' };
+                        const lines = evReport.map(r => {
+                            const parts = Object.entries(r.gained)
+                                .filter(([_, v]) => v > 0)
+                                .map(([k, v]) => `+${v} ${_STAT_SHORT[k] || k}`)
+                                .join(' / ');
+                            return `${r.name}${r.active ? '' : ' (bench)'}: ${parts}`;
+                        }).join('\n');
+                        window.showGameAlert && window.showGameAlert('🏋️ Training:\n' + lines);
+                    }
+                } catch (e) { console.warn('[Story] battle-EV grant failed', e); }
                 // Themed victory rewards — one bundle per Gym Leader / Elite milestone
                 // (first clear per save). Bundles include balls, Rare Candies (free
                 // Stone Sage voucher), Vitamin Packs (free EV Trainer voucher) and
@@ -42035,6 +42131,98 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 out.spe = 85;
             }
             return out;
+        }
+
+        // ── BATTLE EV TRAINING (per-defeated-foe EV gains) ───────────────
+        // Defeating a trainer's Pokémon grants a small amount of EV training
+        // to the player's team. Mirrors canonical mechanics: active mons get
+        // the full yield, bench mons get half (Exp. Share flavor). The EV
+        // Trainer in City 4+ still polishes spreads — pre-optimizer training
+        // is now visible, additive progress instead of "zero until 5,000G".
+        const EV_GAIN_TABLE = Object.freeze({
+            BASIC:  1,   // Basic Trainer (route fodder)
+            GYM_TR: 2,   // Gym Trainer 1/2, Elite Trainer
+            LEADER: 3,   // Gym Leader, Rival, E1-E4, Champion, Mystery Figure
+        });
+        function _classifyTrainerEvent(eventName) {
+            const en = String(eventName || '');
+            if (/^Gym Leader\s*\d$/.test(en)) return 'LEADER';
+            if (/^(E[1-4]|Champion|Rival|Mystery Figure)$/.test(en)) return 'LEADER';
+            if (/^Gym Trainer\s*\d?$/.test(en)) return 'GYM_TR';
+            if (en === 'Elite Trainer') return 'GYM_TR';
+            if (en === 'Basic Trainer') return 'BASIC';
+            return null;
+        }
+        // Pick 2 stats to receive battle-EV training based on offensive vs
+        // defensive base-stat identity. Mirrors _wildPickEVs but returns the
+        // stat *keys* (not preset amounts) so the grant function can drip
+        // small EV amounts into them. 10% archetype-flip keeps surprises
+        // possible without trapping pure attackers into HP/Def.
+        function _pickBattleEVStats(base) {
+            if (!base) return ['atk', 'spe'];
+            const atk = base.atk | 0, spa = base.spa | 0, spe = base.spe | 0;
+            const hp  = base.hp  | 0, def = base.def | 0, spd = base.spd | 0;
+            const offense = atk + spa + spe;
+            const defense = hp + def + spd;
+            const archetypeDefensive = (defense > offense + 60 && atk + spa < 180);
+            const flipped = Math.random() < 0.10;
+            const goDefensive = archetypeDefensive !== flipped;
+            if (goDefensive) {
+                return ['hp', def >= spd ? 'def' : 'spd'];
+            }
+            return [atk >= spa ? 'atk' : 'spa', 'spe'];
+        }
+        // Grant battle-training EVs to the player's team after a trainer win.
+        // Returns a report array describing what each mon gained, or null if
+        // no EVs were granted. Crucible / Frontier / Mystery battles bypass
+        // (crucibleBattleSource is set). Wild Pokémon route through a
+        // separate catch-EV system and never call this.
+        function _grantBattleEVs(eventName, team, activeIdxSet, defeatedCount) {
+            if (!sm || sm.crucibleBattleSource) return null;
+            if (!Array.isArray(team) || team.length === 0) return null;
+            const cls = _classifyTrainerEvent(eventName);
+            if (!cls) return null;
+            const perFoe = EV_GAIN_TABLE[cls] | 0;
+            const foes = Math.max(1, defeatedCount | 0);
+            const fullPool = perFoe * foes;
+            if (fullPool <= 0) return null;
+            const report = [];
+            for (let i = 0; i < team.length; i++) {
+                const mon = team[i];
+                if (!mon || !mon.build) continue;
+                const isActive = activeIdxSet && activeIdxSet.has(i);
+                const grant = isActive ? fullPool : Math.floor(fullPool / 2);
+                if (grant <= 0) continue;
+                if (!mon.build.evs || typeof mon.build.evs !== 'object') {
+                    mon.build.evs = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
+                }
+                const evs = mon.build.evs;
+                let curTotal = (evs.hp|0)+(evs.atk|0)+(evs.def|0)+(evs.spa|0)+(evs.spd|0)+(evs.spe|0);
+                if (curTotal >= 510) continue;
+                const base = (typeof baseStats !== 'undefined') ? (baseStats[mon.name] || null) : null;
+                const targets = _pickBattleEVStats(base);
+                let remaining = Math.min(grant, 510 - curTotal);
+                const gained = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
+                let guard = 64;
+                while (remaining > 0 && guard-- > 0) {
+                    let placedThisLoop = false;
+                    for (const s of targets) {
+                        if (remaining <= 0) break;
+                        if ((evs[s]|0) >= 252) continue;
+                        evs[s] = (evs[s]|0) + 1;
+                        gained[s]++;
+                        remaining--;
+                        curTotal++;
+                        placedThisLoop = true;
+                    }
+                    if (!placedThisLoop) break;
+                }
+                const gainedAny = gained.hp|gained.atk|gained.def|gained.spa|gained.spd|gained.spe;
+                if (gainedAny) {
+                    report.push({ name: mon.nickname || mon.name, gained, active: isActive });
+                }
+            }
+            return report.length ? report : null;
         }
         function makeWildBuild(name) {
             // Gate wild rolls to the player's unlocked mechanics: pre-Gym-5 the unlocked
@@ -45750,6 +45938,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const div = document.createElement('div');
                 div.className = 'story-bag-item';
                 div.style.cursor = 'default';
+                // EV Reset Charm: city-bag "Use" button (opens a roster picker
+                // that wipes one mon's EVs). Treated as a one-shot consumable —
+                // not sellable to discourage farm-buy-reset loops.
+                if (item.id === 'evResetCharm') {
+                    div.innerHTML = icon + `<div class="story-bag-item-text">
+                        <div class="name">${item.name}</div>
+                        <div class="qty">×${qty}</div>
+                        <div class="eff">${item.desc}</div>
+                    </div>
+                    <button onclick="event.stopPropagation();window.StoryMode.openEvResetPicker()"
+                        style="font-size:11px;padding:4px 10px;color:#9bf;border-color:#9bf;flex-shrink:0;align-self:center;">
+                        Use
+                    </button>`;
+                    bagEl.appendChild(div);
+                    return;
+                }
                 div.innerHTML = icon + `<div class="story-bag-item-text">
                     <div class="name">${item.name}</div>
                     <div class="qty">×${qty}</div>
@@ -45881,6 +46085,96 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Best-effort refresh of the Fan Club roster if open.
             try { if (typeof renderFanClubRoster === 'function') renderFanClubRoster(); } catch (e) {}
+        }
+
+        // ── EV RESET CHARM ───────────────────────────────────────────────
+        // Repaint the city-bag modal with a roster picker for the EV Reset
+        // Charm. Each row shows the mon's current EV total; clicking confirms
+        // the wipe. A Back button restores the normal bag.
+        function openEvResetPicker() {
+            const qty = (sm.inventory && sm.inventory.evResetCharm) | 0;
+            if (qty <= 0) { try { window.showGameAlert && window.showGameAlert('No EV Reset Charms in your bag.'); } catch (e) {} return; }
+            const modal = document.getElementById('modal-story-bag');
+            const bagEl = document.getElementById('story-bag-grid');
+            if (!bagEl || !modal) return;
+            const team = Array.isArray(sm.team) ? sm.team : [];
+            const pcBox = Array.isArray(sm.pcBox) ? sm.pcBox : [];
+            bagEl.style.gridTemplateColumns = '1fr';
+            const h3 = modal.querySelector('h3');
+            if (h3) h3.innerHTML = '<img src="icons/story/story_bag.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:pixelated;vertical-align:-3px;margin-right:6px;">Use EV Reset Charm (×' + qty + ')';
+            const rowHtml = (mon, idx, source) => {
+                if (!mon) return '';
+                const evs = (mon.build && mon.build.evs) || {};
+                const total = (evs.hp|0)+(evs.atk|0)+(evs.def|0)+(evs.spa|0)+(evs.spd|0)+(evs.spe|0);
+                const atZero = total <= 0;
+                const tone = atZero ? '#555' : '#fff';
+                const disabled = atZero ? 'pointer-events:none;opacity:0.45;' : 'cursor:pointer;';
+                const isShiny = !!(mon.build && mon.build._isShiny);
+                const sprite = (typeof getSprite === 'function') ? getSprite((typeof spriteDisplayName === 'function' ? spriteDisplayName({name:mon.name}) : mon.name), isShiny) : '';
+                const where = source === 'pc' ? '<span style="color:#888;font-size:9px;">[PC]</span>' : '';
+                const shinyMark = isShiny ? '<span style="color:#ffd54f;margin-right:3px;">&#10024;</span>' : '';
+                const nameTone = isShiny && !atZero ? 'color:#ffd54f;' : '';
+                const onClick = atZero ? '' : `onclick="window.StoryMode.applyEvReset('${source}',${idx})"`;
+                const preview = atZero
+                    ? `<span style="color:#888;">No training</span>`
+                    : `<span style="color:#9ab;">${total}/510 EV</span> <span style="color:#ef9a9a;">→ wipe</span>`;
+                return `<div style="display:flex;align-items:center;gap:8px;padding:6px;border:1px solid ${isShiny ? '#a47800' : '#333'};border-radius:6px;color:${tone};${disabled}" ${onClick}>
+                    ${sprite ? `<img src="${sprite}" data-shiny="${isShiny ? 'true' : 'false'}" style="width:32px;height:32px;image-rendering:pixelated;${isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}" alt="">` : ''}
+                    <div style="flex:1;">
+                        <div style="font-weight:bold;${nameTone}">${shinyMark}${mon.name} ${where}</div>
+                        <div style="font-size:10px;">${preview}</div>
+                    </div>
+                </div>`;
+            };
+            const partyRows = team.map((m,i) => rowHtml(m, i, 'team')).join('');
+            const pcRows = pcBox.map((m,i) => rowHtml(m, i, 'pc')).join('');
+            bagEl.innerHTML = `
+                <div style="font-size:11px;color:#9ab;margin-bottom:8px;line-height:1.5;">
+                    Use one <b style="color:#fff;">EV Reset Charm</b> to wipe all battle training (EVs) from a Pokémon. <b>Cannot be undone.</b> The EV Trainer can then re-spread to a preset, or you can re-train naturally in battle.
+                </div>
+                <button onclick="window.StoryMode.openCityBag()"
+                    style="font-size:11px;padding:4px 10px;margin-bottom:10px;color:#9ab;border:1px solid #9ab;background:transparent;border-radius:4px;cursor:pointer;align-self:flex-start;">
+                    ← Back to Bag
+                </button>
+                <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Party</div>
+                <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">${partyRows || '<div style="color:#555;font-size:11px;">No party mons.</div>'}</div>
+                ${pcBox.length ? `<div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">PC Storage</div>
+                <div style="display:flex;flex-direction:column;gap:4px;">${pcRows}</div>` : ''}
+            `;
+            modal.classList.remove('hidden');
+        }
+        function applyEvReset(source, idx) {
+            const qty = (sm.inventory && sm.inventory.evResetCharm) | 0;
+            if (qty <= 0) return;
+            let mon = null;
+            if (source === 'team') mon = sm.team && sm.team[idx];
+            else if (source === 'pc') mon = sm.pcBox && sm.pcBox[idx];
+            if (!mon || !mon.build) return;
+            const evs = (mon.build.evs) || {};
+            const total = (evs.hp|0)+(evs.atk|0)+(evs.def|0)+(evs.spa|0)+(evs.spd|0)+(evs.spe|0);
+            if (total <= 0) return;
+            const commit = function () {
+                mon.build.evs = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
+                sm.inventory.evResetCharm = qty - 1;
+                if (sm.inventory.evResetCharm <= 0) delete sm.inventory.evResetCharm;
+                try { save(); } catch (e) {}
+                try { updateHUD && updateHUD(); } catch (e) {}
+                try { window.StoryFx && window.StoryFx.playSfx('danger', 0.5); } catch (e) {}
+                try { window.showGameAlert && window.showGameAlert(`✨ ${mon.name}'s training was reset. (${total} EV → 0)`); } catch (e) {}
+                // Refresh the picker if charms remain, else fall back to bag.
+                const _bagModalEl = document.getElementById('modal-story-bag');
+                const _bagWasOpen = !!(_bagModalEl && !_bagModalEl.classList.contains('hidden'));
+                if (_bagWasOpen) {
+                    if ((sm.inventory && sm.inventory.evResetCharm) | 0) openEvResetPicker();
+                    else openCityBag();
+                }
+            };
+            const msg = `Wipe all training from ${mon.name}? Current: ${total}/510 EV. This cannot be undone.`;
+            if (window.showGameConfirm) {
+                window.showGameConfirm(msg).then(function (ok) { if (ok) commit(); });
+            } else if (window.confirm(msg)) {
+                commit();
+            }
         }
 
         // Drop a single stat's IV by IV_VITAMIN_STEP (floor 0). No vitamin is
@@ -50433,6 +50727,59 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { _storyTrackSpend(EVTRAINER_COST); } catch (e) {}
             return true;
         }
+        // Charge for a partial fill — the player pays for the EVs the trainer
+        // actually adds, not a flat 5,000G. A fully-untrained mon paying for a
+        // 510-EV preset still costs EVTRAINER_COST; a mon already 70% trained
+        // pays ~30%. Floors at a tiny minimum so trivial top-ups still cost
+        // something. Returns the charged amount, or 0 on failure.
+        function _evTrainerChargeScaled(delta) {
+            const d = Math.max(0, delta | 0);
+            if (d <= 0) return 0;
+            const cost = Math.max(100, Math.ceil((d / 510) * EVTRAINER_COST));
+            if (sm.gold < cost) {
+                if (typeof window !== 'undefined' && typeof window.showGameAlert === 'function') {
+                    window.showGameAlert(`EV Trainer needs ${cost.toLocaleString()}G for this top-up. You have ${sm.gold.toLocaleString()}G.`);
+                }
+                return 0;
+            }
+            sm.gold -= cost;
+            try { _storyTrackSpend(cost); } catch (e) {}
+            return cost;
+        }
+        // Compute additive fill-to-target. Pre-battle training is never
+        // discarded — the trainer fills the gap between current EVs and the
+        // target preset, respecting the 252/stat and 510/total caps. Returns
+        // { next, delta }: the final EV object and the total EVs added.
+        function _evTrainerFillToTarget(cur, target) {
+            const out = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
+            const stats = ['hp','atk','def','spa','spd','spe'];
+            const c = cur || {};
+            const t = target || {};
+            for (const s of stats) out[s] = Math.max(0, Math.min(252, (c[s]|0)));
+            // Compute the additive gap per stat (positive only — never strips).
+            const gap = {};
+            let gapTotal = 0;
+            for (const s of stats) {
+                gap[s] = Math.max(0, Math.min(252, t[s]|0) - out[s]);
+                gapTotal += gap[s];
+            }
+            if (gapTotal <= 0) return { next: out, delta: 0 };
+            // 510 total cap — scale gap down if existing EVs already use the
+            // budget. Each stat's add is the proportional share of available
+            // headroom, then 252-clamped (in case scaling rounded a stat over).
+            const curTotal = stats.reduce((a, s) => a + out[s], 0);
+            const room = Math.max(0, 510 - curTotal);
+            const scale = (gapTotal > room) ? (room / gapTotal) : 1;
+            let delta = 0;
+            for (const s of stats) {
+                const add = Math.floor(gap[s] * scale);
+                if (add <= 0) continue;
+                const before = out[s];
+                out[s] = Math.min(252, out[s] + add);
+                delta += out[s] - before;
+            }
+            return { next: out, delta };
+        }
         function _evTrainerFinish() {
             try { save(); } catch (e) {}
             // Stat-up arrow chime — the rolled spread just landed on the mon.
@@ -50914,7 +51261,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const hasVitamin = ((sm.inventory && sm.inventory.vitamin) | 0) > 0;
             const safeId = String(p.id).replace(/'/g, "\\'");
             const vitaCount = (sm.inventory && sm.inventory.vitamin) | 0;
-            const goldDisabled = cantAfford || isCurrent;
             const vitaDisabled = !hasVitamin || isCurrent;
             const total = (p.evs.hp||0)+(p.evs.atk||0)+(p.evs.def||0)+(p.evs.spa||0)+(p.evs.spd||0)+(p.evs.spe||0);
             const pills = [
@@ -50926,9 +51272,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <img src="sprites/pokesprite/items/protein.png" alt="" width="12" height="12" decoding="async" style="width:12px;height:12px;image-rendering:auto;vertical-align:-2px;margin-right:2px;">Vitamin (${vitaCount})
                 </button>`
                 : '';
+            // Fill-to-target preview: estimate the gap & gold cost so the
+            // button label reflects what THIS preset would actually charge
+            // (additive fill, not a flat 5,000G). Already-met or exceeded
+            // presets disable the button.
+            const _fillPreview = _evTrainerFillToTarget(currentEvs, p.evs);
+            const fillCost = _fillPreview.delta > 0 ? Math.max(100, Math.ceil((_fillPreview.delta / 510) * EVTRAINER_COST)) : 0;
+            const goldDisabledFill = fillCost === 0 || (sm.gold | 0) < fillCost;
             const gButton = isCurrent
                 ? `<button type="button" class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;">Applied</button>`
-                : `<button type="button" class="story-tutor-btn" ${goldDisabled?'disabled':''} onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')" style="font-size:11px;padding:5px 8px;">${storyGoldHtml(EVTRAINER_COST, false)}</button>`;
+                : (_fillPreview.delta <= 0
+                    ? `<button type="button" class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;">Already trained</button>`
+                    : `<button type="button" class="story-tutor-btn" ${goldDisabledFill?'disabled':''} onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')" style="font-size:11px;padding:5px 8px;" title="+${_fillPreview.delta} EV training">${storyGoldHtml(fillCost, false)}</button>`);
             const star = (isRecommended && !isCurrent) ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
             const pctHtml = (pct != null && pct >= 1)
                 ? `<span class="tx-card-pct" title="${pct.toFixed(1)}% of Smogon builds use this spread">${Math.round(pct)}%</span>`
@@ -50958,7 +51313,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const meta = _evTrainerMetaSpreadsFor(t.name);
             _evTrainerMetaCache[idx] = meta;
 
-            const headerCostChip = `<span class="story-action-badge ${cantAfford ? 'cost cant-afford' : 'cost'}"${cantAfford ? ` title="You need ${(EVTRAINER_COST - sm.gold).toLocaleString()}G more"` : ''}>${EVTRAINER_COST.toLocaleString()}G / preset</span>`;
+            const headerCostChip = `<span class="story-action-badge cost" title="Cost scales with the gap between current and preset EVs.">up to ${EVTRAINER_COST.toLocaleString()}G / preset</span>`;
 
             const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${idx}" data-facility="evtrainer" aria-expanded="${expanded?'true':'false'}">
                 <div class="story-tutor-mon-main">
@@ -51039,20 +51394,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const all = [].concat(EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta);
                 const preset = all.find(p => p.id === presetId);
                 if (!preset) return;
-                if (_evsEqual(mon.build.evs || {}, preset.evs)) return;
-                if ((sm.gold | 0) < EVTRAINER_COST) return;
-                const spreadLabel = (typeof _evSpreadCompact === 'function') ? _evSpreadCompact(preset.evs) : 'new spread';
-                const ok = await _storyConfirmTutorChange(`Apply "${preset.label}" EVs to ${mon.name}? Overwrites current spread.\n→ ${spreadLabel}`, EVTRAINER_COST);
+                const cur = mon.build.evs || {};
+                // Fill-to-target: trainer adds EVs from current to the preset's
+                // amounts (cap-respecting). Pre-battle training is preserved.
+                const fill = _evTrainerFillToTarget(cur, preset.evs);
+                if (fill.delta <= 0) {
+                    try { window.showGameAlert && window.showGameAlert(`${mon.name} already meets or exceeds the "${preset.label}" preset.`); } catch (e) {}
+                    return;
+                }
+                const cost = Math.max(100, Math.ceil((fill.delta / 510) * EVTRAINER_COST));
+                if ((sm.gold | 0) < cost) {
+                    try { window.showGameAlert && window.showGameAlert(`EV Trainer needs ${cost.toLocaleString()}G for this top-up. You have ${sm.gold.toLocaleString()}G.`); } catch (e) {}
+                    return;
+                }
+                const spreadLabel = (typeof _evSpreadCompact === 'function') ? _evSpreadCompact(fill.next) : 'new spread';
+                const ok = await _storyConfirmTutorChange(`Train ${mon.name} toward the "${preset.label}" preset?\n+${fill.delta} EV training (additive, preserves prior work).\n→ ${spreadLabel}`, cost);
                 if (!ok) return;
-                if (!_evTrainerCharge()) return;
-                mon.build.evs = { ...preset.evs };
+                if (_evTrainerChargeScaled(fill.delta) <= 0) return;
+                mon.build.evs = fill.next;
                 _evTrainerFinish();
             } finally {
                 _storyEndInteraction();
             }
         }
 
-        // Vitamin Pack alt path — free EV preset application, consumes one Vitamin.
+        // Vitamin Pack alt path — free EV fill-to-target, consumes one Vitamin.
         async function evTrainerApplyPresetWithVitamin(idx, presetId) {
             if (!_storyTryBeginInteraction()) return;
             try {
@@ -51067,14 +51433,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const all = [].concat(EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta);
                 const preset = all.find(p => p.id === presetId);
                 if (!preset) return;
-                if (_evsEqual(mon.build.evs || {}, preset.evs)) return;
-                const spreadLabel = (typeof _evSpreadCompact === 'function') ? _evSpreadCompact(preset.evs) : 'new spread';
+                const cur = mon.build.evs || {};
+                const fill = _evTrainerFillToTarget(cur, preset.evs);
+                if (fill.delta <= 0) {
+                    try { window.showGameAlert && window.showGameAlert(`${mon.name} already meets or exceeds the "${preset.label}" preset.`); } catch (e) {}
+                    return;
+                }
+                const spreadLabel = (typeof _evSpreadCompact === 'function') ? _evSpreadCompact(fill.next) : 'new spread';
+                const goldCost = Math.max(100, Math.ceil((fill.delta / 510) * EVTRAINER_COST));
                 const remaining = (sm.inventory.vitamin | 0) - 1;
-                const ok = await window.showGameConfirm(`💊 Use 1 Vitamin Pack to apply "${preset.label}" EVs to ${mon.name}?\nOverwrites current spread → ${spreadLabel}\nSaves ${EVTRAINER_COST.toLocaleString()}G. Vitamins left after use: ${remaining}.`);
+                const ok = await window.showGameConfirm(`💊 Use 1 Vitamin Pack to train ${mon.name} toward "${preset.label}"?\n+${fill.delta} EV training (additive) → ${spreadLabel}\nSaves ${goldCost.toLocaleString()}G. Vitamins left after use: ${remaining}.`);
                 if (!ok) return;
                 sm.inventory.vitamin = Math.max(0, remaining);
                 if (sm.inventory.vitamin <= 0) delete sm.inventory.vitamin;
-                mon.build.evs = { ...preset.evs };
+                mon.build.evs = fill.next;
                 _evTrainerFinish();
             } finally {
                 _storyEndInteraction();
@@ -51123,6 +51495,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             casinoRoulPlaceChip, casinoRoulClear, casinoRoulRepeat, casinoRoulSpin,
             openBattleBag, useBagItemOn, openCityBag, sellItem,
             openPermBoostPicker, applyPermBoost, removePermBoost,
+            openEvResetPicker, applyEvReset,
             confirmAbandon, abandonAndReturn, continuePostGame,
             openSummary, profOpenSummary, summaryMove, moveInParty, openPartyModal,
             enterArtifactHall, toggleArtifactDisabled,

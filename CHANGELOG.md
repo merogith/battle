@@ -3,6 +3,111 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Per-battle EV training + EV Trainer fill-to-target 2026-05-22 (`claude/laughing-planck-9DK9U`)
+
+### Added — Battle EVs (training without the optimizer)
+
+Defeating a trainer's Pokémon now grants a small EV training reward to
+the player's team. The amount scales with how serious the foe was:
+
+* **Basic Trainer** mon defeated → **+1 EV**
+* **Gym Trainer / Elite Trainer** mon → **+2 EV**
+* **Gym Leader / Rival / Elite Four / Champion / Mystery Figure** mon → **+3 EV**
+* Wild Pokémon → unchanged (wild catches still get the existing 170 EV
+  archetype head-start; defeated wilds don't drip into the team).
+* Crucible / Frontier / Mystery rerun battles → no EVs (the entry-point
+  check uses `sm.crucibleBattleSource`, so post-HoF rematches don't
+  trivialize the cap).
+
+**Active vs bench:** mons that took a turn (lead + any switch-in) get
+the full pool. Bench mons get half. The tracking globals live on
+`window._battleActiveStoryIdxSet` and `window._battleDefeatedFoesCount`,
+populated by `startBattle`, the voluntary-switch path, and the
+forced-switch (faint-replacement) path.
+
+**Stat distribution:** mirrors `_wildPickEVs` — the species' base-stat
+identity picks 2 stats (offensive: best-of-atk/spa + spe, defensive:
+hp + best-of-def/spd). 10% archetype-flip keeps surprises possible
+without trapping pure attackers into HP. Re-uses the existing
+`_pickBattleEVStats` helper so the same logic is used for player gain
+and the post-Gym-4 enemy nudge.
+
+**Caps:** each grant respects 252 per stat and 510 total. Once a mon
+is fully trained, further battles silently no-op.
+
+By the time a player clears the league, an active lead would have
+~340 EVs (66% of cap) from natural battling — comparable to "polished
+but not perfect." The EV Trainer is now the icing, not the cake.
+
+### Changed — EV Trainer is now additive (fill-to-target)
+
+Previously the EV Trainer **overwrote** a Pokémon's EVs with the chosen
+preset, which would have erased the new per-battle training. Now the
+trainer **adds toward** the preset target, respecting the 252/stat and
+510/total caps:
+
+* Cost scales with the EVs actually added (`max(100G, ceil(delta/510 ·
+  5000G))`). A fully untrained mon paying for a 510-EV preset still
+  costs ~5,000G; a mon already 70% trained pays ~1,500G.
+* Already-met or exceeded presets disable the button with an "Already
+  trained" label.
+* Vitamin Pack still waives the gold cost entirely.
+* Header chip now reads **"up to 5,000G / preset"** instead of a flat
+  amount, to signal the dynamic pricing.
+
+### Added — EV Reset Charm (Department Store, 3,000G)
+
+A consumable item that wipes all EVs from a single Pokémon. Use case:
+a mon whose top 3 base stats made for a suboptimal random EV
+distribution (e.g. a Slaking that landed EVs in HP/Atk instead of
+Atk/Spe). Buy from any Department Store (Cities 6 + 8) for 3,000G,
+use from the city bag. Single-use, confirmation gate, no refund.
+
+### Changed — Mid-game enemy trainers get a tiny EV nudge from Gym 4+
+
+To counterbalance the player's natural training, T2 (Novice) and
+T3 (Competent) trainer mons get **+20 EV in their archetype's top 2
+stats** once the player clears Gym 4. T1 untrained route fodder still
+runs at 0 EVs (the "you're starting out" signal stays intact). T4
+tournament builds are already at the cap and are unchanged. The
+existing pre-Gym-4 stat softening (×0.82 → ×0.95 → ×1.00 at Gym 3+)
+is **not** touched — early game stays gentle.
+
+### Files touched
+
+* `battle.html`:
+  * `_pickBattleEVStats` helper next to `_wildPickEVs`
+  * `EV_GAIN_TABLE`, `_classifyTrainerEvent`, `_grantBattleEVs` in
+    the StoryMode IIFE
+  * `onBattleEnd` hook (post-coin grant) — fires the EV grant and
+    surfaces a `🏋️ Training: …` toast
+  * `startBattle` / voluntary switch / `selectPartyMember` forced
+    switch → populate `window._battleActiveStoryIdxSet`
+  * Foe-faint paths in `checkFaints` (simultaneous, single, chain-KO
+    loop) → increment `window._battleDefeatedFoesCount`
+  * `_evTrainerFillToTarget` + `_evTrainerChargeScaled`
+  * `evTrainerApplyPreset` / `evTrainerApplyPresetWithVitamin` rewritten
+    to additive fill
+  * EV Trainer preset card now shows the dynamic cost and an "Already
+    trained" state
+  * `DEPT_ITEMS` → new `evResetCharm` entry, custom bag-render handler,
+    `openEvResetPicker` + `applyEvReset` functions, public API export
+  * `_storyMaybeNudgeFoeEVs` called from the trainer-team roll pipeline
+    after the tier downgrade
+  * Save-load (`load()`) — backfill `build.evs` for any team / pcBox
+    mon missing the object
+
+### Tests
+
+* All 533 existing tests still pass.
+* Story walkthrough (`tests/story-walkthrough.mjs`) clears through to
+  the post-HoF Mystery Figure with the new EV grants firing on every
+  trainer win.
+* In-process smoke test verified: +1 active / +0.5 bench from Basic
+  Trainer, +9 active per mon from a 3v3 Gym Leader fight, EV Reset
+  Charm wipes cleanly and decrements inventory, EV Trainer fill-to-
+  target preserves prior training.
+
 ## Unreleased — Evolution flow rebuild: Stone Emporium, Bill/Granny intros, intro-once gates 2026-05-22 (`claude/gracious-mayer-H31zi`)
 
 ### Added — Stone Emporium, Bill, Stonewise Granny, and a voucher per facility
