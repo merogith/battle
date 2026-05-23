@@ -46,3 +46,33 @@ Story runs are stored in **one** browser `localStorage` key: `pbs_story_save`. T
 ## Alternative (no server)
 
 You can open `battle.html` directly in the browser (`file://`), but some features (fetch to APIs, certain CORS cases) behave better over `http://localhost`, so prefer `npm start` when testing online/PvP-related behavior.
+
+## Debug & issue resolution system
+
+The repo ships a multi-agent debug system under `.claude/` and `scripts/debug/`. Findings collect into a single `agent-state/ISSUE_LEDGER.md` so you can review and fix at your own pace.
+
+Slash commands (in Claude Code):
+
+- `/deep-debug` — full battery (9 specialists in 3 waves, ~30–60 min). Maximum coverage.
+- `/story-audit` — story-mode-focused subset (~10–15 min).
+- `/perf-check` — performance profile only (~3–5 min).
+- `/data-check` — data integrity check only (~1 min). Useful smoke test.
+- `/triage-issues` — re-synthesize the ledger after manually editing findings.
+- `/fix-todo-test <cluster-id>` — convert one cluster of `it.todo()` stubs to real assertions.
+- `/anchor <symbol>` — drift-tolerant symbol → file:line lookup.
+- `/ledger-show` — print summary of the current ledger.
+
+Scripts (any shell):
+
+- `npm run debug:anchors` — regenerate the symbol index and `agent-state/ANCHOR_INDEX.md`.
+- `npm run debug:data` — cross-validate `data/*.json`.
+- `npm run debug:spec-drift` — check `STORY_MODE_FLOW.md` and other specs vs current code.
+- `npm run debug:perf` — turn-loop / parseMoveEffects / memory benchmarks.
+- `npm run debug:replay` — deterministic story-run replay; diffs two runs from the same seed.
+- `npm run debug:ledger` — regenerate `agent-state/ISSUE_LEDGER.md` from `agent-state/findings/`.
+
+Live debug logger (browser):
+
+- `npm run start:debug` — dev server that injects `scripts/debug/debug-logger.js` when you load `battle.html?debug=1`. Once loaded, `window.__debugLogger.export()` downloads a postmortem JSON (last 2000 console events + engine state snapshot).
+
+The full architecture and schema live in `agent-state/LEDGER_SCHEMA.md` and the agent definitions under `.claude/agents/`. All agents are read-only — they emit findings but do not modify game code.

@@ -101,6 +101,313 @@ suite (`npm test`, 544 active) and the headless story walkthrough stay green.
   reworked, and the Set hoist above already removes that loop's per-call
   allocation churn.
 
+## Unreleased — Per-battle EV training + EV Trainer fill-to-target 2026-05-22 (`claude/laughing-planck-9DK9U`)
+
+### Added — Battle EVs (training without the optimizer)
+
+Winning a trainer battle now grants a small, flat EV training reward to
+the player's team (per battle — not per defeated foe):
+
+* **Regular trainers** (Basic Trainer, Gym Trainer, Elite Trainer) →
+  **+4 EV** to each active mon, **+2** to each bench mon.
+* **Boss fights** (Gym Leader, Rival, Elite Four, Champion, Mystery
+  Figure) → **double**: **+8 EV** active, **+4** bench.
+* Wild Pokémon → unchanged (wild catches still get the existing 170 EV
+  archetype head-start; defeated wilds don't drip into the team).
+* Crucible / Frontier / Mystery rerun battles → no EVs (the entry-point
+  check uses `sm.crucibleBattleSource`, so post-HoF rematches don't
+  trivialize the cap).
+
+**Active vs bench:** mons that took a turn (lead + any switch-in) get
+the full amount; everyone else gets half. The active-mon set lives on
+`window._battleActiveStoryIdxSet`, populated by `startBattle`, the
+voluntary-switch path, and the forced-switch (faint-replacement) path.
+(No per-foe faint counting — the flat-per-battle model dropped that
+fragile bookkeeping entirely.)
+
+**Stat distribution:** deterministic per species so an active mon's EVs
+*converge* on the same two stats every fight instead of scattering —
+the story RNG only breaks exact atk==spa / def==spd ties (seeded runs
+still reproduce). The two stats follow base-stat identity:
+
+* Offensive mons → best of Atk/SpA + Speed (sweeper).
+* **Bulky high-attack mons → HP + their best attacking stat** — so a
+  Snorlax or Tyranitar trains offense, not pure walling. (This was the
+  one real hole in the first cut: bulky attackers were flagged
+  "defensive" and got HP/SpD with zero Attack.)
+* Pure walls → HP + best defense (Blissey → HP/SpD, Shuckle → HP/Def).
+
+The same `_pickBattleEVStats` helper drives both the player gain and the
+post-Gym-4 enemy nudge.
+
+**Caps:** each grant respects 252 per stat and 510 total. Once a mon is
+fully trained, further battles silently no-op.
+
+By the time a player clears the league, an always-active lead earns
+~200 EV (≈40% of cap) from natural battling — noticeable progress, but
+the EV Trainer still matters for the final polish.
+
+### Changed — EV Trainer is now additive (fill-to-target)
+
+Previously the EV Trainer **overwrote** a Pokémon's EVs with the chosen
+preset, which would have erased the new per-battle training. Now the
+trainer **adds toward** the preset target, respecting the 252/stat and
+510/total caps:
+
+* Cost scales with the EVs actually added (`max(100G, ceil(delta/510 ·
+  5000G))`). A fully untrained mon paying for a 510-EV preset still
+  costs ~5,000G; a mon already 70% trained pays ~1,500G.
+* Already-met or exceeded presets disable the button with an "Already
+  trained" label.
+* Vitamin Pack still waives the gold cost entirely.
+* Header chip now reads **"up to 5,000G / preset"** instead of a flat
+  amount, to signal the dynamic pricing.
+
+### Added — EV Reset Charm (Department Store, 3,000G)
+
+A consumable item that wipes all EVs from a single Pokémon. Use case:
+a mon whose top 3 base stats made for a suboptimal random EV
+distribution (e.g. a Slaking that landed EVs in HP/Atk instead of
+Atk/Spe). Buy from any Department Store (Cities 6 + 8) for 3,000G,
+use from the city bag. Single-use, confirmation gate, no refund.
+
+### Changed — Mid-game enemy trainers get a tiny EV nudge from Gym 4+
+
+To counterbalance the player's natural training, T2 (Novice) and
+T3 (Competent) trainer mons get **+20 EV in their archetype's top 2
+stats** once the player clears Gym 4. T1 untrained route fodder still
+runs at 0 EVs (the "you're starting out" signal stays intact). T4
+tournament builds are already at the cap and are unchanged. The
+existing pre-Gym-4 stat softening (×0.82 → ×0.95 → ×1.00 at Gym 3+)
+is **not** touched — early game stays gentle.
+
+### Files touched
+
+* `battle.html`:
+  * `_pickBattleEVStats` helper next to `_wildPickEVs` (deterministic
+    spread + bulky-attacker handling, seeded-RNG tiebreak only)
+  * `EV_GAIN_ACTIVE`, `_classifyTrainerEvent`, `_grantBattleEVs` in
+    the StoryMode IIFE (flat per-battle, REGULAR/BOSS tiers)
+  * `onBattleEnd` hook (post-coin grant) — fires the EV grant and
+    surfaces a `🏋️ Training: …` toast
+  * `startBattle` / voluntary switch / `selectPartyMember` forced
+    switch → populate `window._battleActiveStoryIdxSet`
+  * `_evTrainerFillToTarget` + `_evTrainerChargeScaled`
+  * `evTrainerApplyPreset` / `evTrainerApplyPresetWithVitamin` rewritten
+    to additive fill
+  * EV Trainer preset card now shows the dynamic cost and an "Already
+    trained" state
+  * `DEPT_ITEMS` → new `evResetCharm` entry, custom bag-render handler,
+    `openEvResetPicker` + `applyEvReset` functions, public API export
+  * `_storyMaybeNudgeFoeEVs` called from the trainer-team roll pipeline
+    after the tier downgrade
+  * Save-load (`load()`) — backfill `build.evs` for any team / pcBox
+    mon missing the object
+
+### Tests
+
+* All 546 existing tests still pass.
+* Story walkthrough (`tests/story-walkthrough.mjs`) clears through to
+  the post-HoF Mystery Figure with the new EV grants firing on every
+  trainer win.
+* In-process smoke test verified: +4 active / +2 bench from a regular
+  trainer, +8 active from a boss fight, Snorlax (bulky attacker) trains
+  HP+Atk while Blissey (pure wall) trains HP+SpD, an always-active
+  Garchomp converges on exactly Atk+Spe over 10 fights (no scatter),
+  EV Reset Charm wipes cleanly, EV Trainer fill-to-target preserves
+  prior training.
+
+## Unreleased — Evolution flow rebuild: Stone Emporium, Bill/Granny intros, intro-once gates 2026-05-22 (`claude/gracious-mayer-H31zi`)
+
+### Added — Stone Emporium, Bill, Stonewise Granny, and a voucher per facility
+
+The evolution path is no longer a black box where the Stone Sage absorbs
+stones and trade-memory into the gold fee. Players now own the
+consumables and meet the people who hand them out.
+
+* **Stone Emporium (new facility, City 2+ onward, always available).** A
+  flat 500G-each catalog of every evolution stone (10) and every
+  trade-method item (14) the Stone Sage needs — Fire Stone, Metal
+  Coat, Dragon Scale, Reaper Cloth, all of them. Every purchase shows a
+  confirmation dialog so a misclick never burns gold. `sm.inventory.<id>`
+  tracks owned counts; items consume on evolution, not on hold.
+* **Bill — Cable Link intro on first arrival at City 2.** New
+  `firstCableLink` tutorial scene introduces the Cable Link Station
+  network, explains why trade evolutions need a visit, and hands the
+  player a **"Bill's Discount Card"** voucher (`linkDiscount50`) — a
+  one-time 50% off on any single Cable Link action (Reroll / Upgrade /
+  Rebuild). The Link Station UI now renders sibling "🎟 Half-Price"
+  buttons whenever the voucher is held.
+* **Stonewise Granny — Stone Sage intro on first arrival at City 2.**
+  New `firstStoneSage` tutorial chained right after Bill. Granny
+  explains how the new Stone Sage works (bring me a stone, I'll wake
+  the partner up) and hands over a **Stonewise Token** voucher
+  (`stoneToken`). The token redeems at the Stone Emporium for one free
+  stone of choice (not trade items).
+* **Stone Sage rewire.** Stone evolutions now consume a stone from
+  inventory; trade evolutions require the Cable Link in this city has
+  been visited at least once; held-item trade evolutions also consume
+  the item. Rare Candy still skips gold + stone/trade-item ownership
+  but **does not** skip the Cable Link visit — the lore is the
+  friction, the wallet is the override. Each evo card now shows a
+  specific "Need Fire Stone" / "Visit Cable Link" / "Need Metal Coat"
+  hint with the full reason in the title hover.
+* **Welcome voucher on every facility intro.** Each existing first-visit
+  tutorial gains a one-shot themed gift on Continue, sized to ~one
+  free use of that facility:
+  - Pokémart → +1 Poké Ball
+  - Pokémon Center → +1 Potion (battle bag)
+  - Department Store → +1 Great Ball
+  - Move Tutor → +1 Heart Scale
+  - Nature Rater → +1 Mint
+  - Battle Dojo → +1 Emblem of Honor
+  - EV Trainer → +1 Vitamin Pack
+  - Game Corner → +1 Lucky Chip (new `casinoChip500`, 500G bet credit)
+  Vouchers fire only on the tutorial's Continue, so they can never
+  appear before the player has actually seen the mechanic taught.
+* **Introduce-once Leave-City gate.** On the debut city for each
+  facility (City 0 for the basics, City 2 for the new evolution
+  trio, City 4–6 for the late-game facilities), the Leave-City button
+  blocks until the player has tapped each unfamiliar facility at
+  least once. Once introduced, the gate releases for the rest of the
+  run. A new red pulsing **🔴 Required** badge marks the facility
+  buttons that still need a first visit; the disabled Continue Route
+  button names them ("Visit Bill's Cable Link, Stone Emporium, and
+  Stone Sage first").
+
+### Changed — City 0 and City 1 no longer carry evolution facilities
+
+`STORY_EVENTS_RAW` drops `Link Station` and `Evolution Tutor` from the
+City 0 and City 1 action lists. Stone Shop is added to every City 2+
+entry. The evolution mechanic now debuts as a coherent moment instead
+of being available on the very first hub.
+
+### Files touched
+
+* `battle.html` — new Stone Emporium screen markup + `enterStoneShop` /
+  `buyStoneItem` / `redeemStoneToken` functions, `STONE_SHOP_ITEMS`
+  catalog (24 entries), `STONE_NAME_TO_ID` + `TRADE_ITEM_NAME_TO_ID`
+  lookups, `FACILITY_DEBUT_CITY` map, `sm.facilityIntros` state +
+  init + migration, `_isFacilityRequiredHere` / `_pendingFacilityIntrosHere`
+  helpers, Leave-City branch + 🔴 Required badge + CSS pulse, Bill /
+  Granny / Emporium Keeper tutorial scenes, `onContinue` voucher
+  hooks on every existing first-visit scene, Stone Sage requirement
+  gating in `renderEvoLabTeam` + `evoLabEvolve` / `evoLabEvolveWithCandy`,
+  half-price voucher support on `linkReroll` / `linkUpgrade` /
+  `linkRebuild`, 24 thematic substitute sprite slugs for the new items.
+* `docs/EVOLUTION_FLOW_REBUILD.md` — full design doc and agent fan-out spec.
+
+## Unreleased — Storyline-variant prose density pass 2026-05-22 (`claude/bold-maxwell-KATFd`)
+
+A single multi-surface pass that takes the 8 narrative storylines from
+"cosmetic prose at 9 cold-open beats" to "ambient variant presence
+across the whole run". Pure additive — no engine changes, no
+timeline/structure changes, no save schema bump, no new mechanics.
+Every existing variant continues to fire its 9 cold-opens; this layer
+adds variant-tinted prose to the *gaps between* them.
+
+### Added
+
+* **Variant-aware City Guide and Professor quotes.** When the active
+  storyline has a line for the current city, the city's NPC pool draws
+  from the variant pool 50–65% of the time. Tables at
+  `_VARIANT_CITY_GUIDE` and `_VARIANT_CITY_PROFESSOR` in `battle.html`.
+* **Variant-aware city arrival scenes.** `_showCityArrivalScreen` now
+  consults `_VARIANT_CITY_ARRIVAL` for a per-variant pair of arrival
+  lines, falling through to the base `CITY_ARRIVAL_LINES` when absent.
+* **Variant-aware Pokémart greeter.** First mart entry per city per
+  variant fires a one-shot variant flavor toast via `showGameAlert`.
+  Sparse — classic stays silent; pasta-tier variants get the loudest
+  greeters.
+* **Variant-aware Gym Leader victory cards.** `showVictoryOverlay`
+  appends a third beat under the leader's line + reflection when the
+  variant has an entry for that gym index (1–8). Yellow-tinted,
+  italic, leader name substituted.
+* **Variant-aware Rival quote pool.** `getTrainerQuoteForBattle` draws
+  from the per-variant Rival pool 50% of the time when the active
+  variant has an entry for the current rival phase (0–4).
+* **Variant-aware generic trainer-class pool.** Same function, 35%
+  bias toward the per-variant pool for `Youngster`, `Lass`, `Hiker`,
+  `Bug Catcher`, `Fisherman` when the variant has an entry.
+* **Variant-aware wild-catch intro line.** Plain wild route catches
+  (not Safari / boss / tutorial / roaming) get a one-line
+  variant-tinted opener prepended to the standard "A wild X appeared!"
+  framing.
+* **Variant-aware retreat / game-over banner.** Both the standard
+  loss and the rival concede paths surface a single italic
+  variant-tinted line under the buttons. Silent on classic.
+* **Variant-aware Hall of Fame card.** First-clear HoF flow renders
+  a per-variant card (banner + 3 lines + tone class) before the grid
+  slides in. Once per variant per save (cross-run deduped).
+* **Per-variant post-HoF Mystery Figure pre-fight beat (row 67).** A
+  new `mystery67` cold-open dispatched through the standard cold-open
+  pipeline, with a per-variant scene table at `_MYSTERY67_BY_VARIANT`
+  (banner, tone class, nameplate, lines). Fires once per variant per
+  save before the climax mask reveal.
+* **Per-variant audio motif on cold-open dismiss.** New
+  `_VARIANT_SFX_MOTIF` map; `_renderNarrativeOverlay` defaults the
+  dismiss SFX to the active variant's motif when no scene-specific
+  SFX is set. `classic` / `second_sun` / `dead_raticate` stay silent;
+  `bone_keepers` rings a chime, `project_mewtwo` clicks, etc.
+
+### Added — Choice moments (mild player agency)
+
+* **`_renderNarrativeOverlay` now supports `choices: [{label, reply,
+  value, persistKey}]`.** When choices are present the Continue button
+  is replaced with a vertical stack of choice buttons; picking one
+  swaps the dialog body to the reply lines and exposes a single
+  Continue. Picks persist to `sm.storyChoices[persistKey]` so future
+  prose can optionally reference them.
+* **One multi-choice moment per pasta / mature variant** (row 33,
+  mid-late beat). `_VARIANT_CHOICE_R33` + new `choice_r33` cold-open
+  scene. Variants that had a base `<variant>_npc_r33` cold-open
+  re-point their row-33 beat to `choice_r33`; classic and second_sun
+  stay with their existing prose-only beat. Each variant's choice is
+  a 3-option prompt with 2-line replies. **No outcome change** — the
+  choice purely tints the scene and stamps `sm.storyChoices`.
+
+### Added — Save / RNG / NG+ hygiene
+
+* **Seeded variant roll.** `_pickRandomStorylineVariant` now uses the
+  active story RNG when called mid-run so shared seeds reproduce the
+  rolled variant; falls back to `Math.random` for the pre-run picker
+  (no active sm yet).
+* **NG+ smart default.** When `'Surprise Me'` rolls, the function
+  prefers variants the player hasn't yet cleared on this profile,
+  drawing from `meta.clearedVariants`. Falls back to uniform when
+  every variant is cleared.
+* **Variant clear tracking.** `recordStoryClearInMeta` (fires on
+  Hall of Fame entry) now stamps `meta.clearedVariants[sm.storyLine]
+  = true`. New field added to `_emptyStoryMeta` schema and the
+  `readStoryMeta` whitelist.
+* **`sm.storyChoices`** added to the `sm` defaults and to
+  `migrateStoryPreV17` so old saves get an empty object on load. No
+  `SAVE_VER` bump — defensive init in the v17 migration covers older
+  saves (the field is additive).
+
+### Changed
+
+* **Cold-open beat row table in `docs/STORY_NARRATIVE_VARIANTS.md`
+  rewritten** to match the shipped variant rows (7 / 20 / 26 / 33 /
+  48 / 53 / 56 / 64 / 67 / 68) — the earlier spec drafts referenced
+  5 / 24 / 53 / 64 / 68 against a pre-v18 `STORY_EVENTS_RAW` layout
+  and had drifted.
+
+### Why this matters
+
+Before this pass: a `static` run and a `classic` run played the same
+68-row timeline, fought the same trainers, traded with the same shop,
+and only differed at 9 cold-open scenes per variant (totalling ~5
+minutes of variant-tinted dialogue across a ~10-hour run). Between
+beats the storyline was invisible. After this pass: the variant
+texture leaks into city arrivals, City Guide / Professor patter, mart
+greeters, every rival fight, every gym victory card, every wild catch,
+every retreat. The structure of the run is unchanged — the player still
+walks the same path — but the road sounds and looks different the whole
+way through.
+
+---
+
 ## Unreleased — Mechanics unlock gate closed on every pre-unlock leak 2026-05-21 (`claude/funny-albattani-DNkt0`)
 
 ### Fixed — Wild catches, Professor-sized pre-unlock mechanic leaks
