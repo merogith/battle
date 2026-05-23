@@ -5,6 +5,44 @@ All notable user-visible changes land here. Sessions append entries under
 
 ## Unreleased — Fatigue, Daycare egg quest, Underground Pits, PC click-to-detail 2026-05-22 (`claude/dreamy-goodall-5A3lZ`)
 
+### Reworked — Daycare Inn + Fight Club: one dark one-time storyline 2026-05-23 (`claude/dreamy-goodall-5A3lZ`)
+
+The Daycare/Pits pair from the entry below is **superseded** by a single
+authored, one-time arc. The mechanics that changed:
+
+* **Renamed** "Underground Pits" → **"Fight Club"** (with a tasteful film
+  nod on first entry — *"first rule: you don't talk about it"*).
+* **Daycare Inn is now a front.** Drop a partner off and **they don't come
+  back** — you walk out with a **real, carryable Egg** (🥚 icon, sits in a
+  party or PC slot, deposit/withdraw like any mon, can't battle or be sold).
+  When you ask where your Pokémon went, the matron gets shaky and evasive —
+  a cruise, an island, a "different career," a bald man with a plane and a
+  Persian, *"making money."* A water-stained *"120 Days of Pika"* poster by
+  the staff door. Dark-comic, played as innuendo — nothing graphic. The
+  drop-off is **one-time**.
+* **Eggs hatch in place after Gym 7** (the slot becomes the typed, +1-grade
+  hatchling wherever it sits — party or PC). The parent is gone; the egg is
+  what you get.
+* **Fight Club unlock is narrative-gated.** At 6 badges the matron offers a
+  **secret** → a basement door → you choose to **go down** (one-time; "walk
+  away" leaves it re-offerable). Replaces the old auto-unlock toast.
+* **Entry requires a full stable of six fighters** (eggs don't count).
+* **Win = nobody is released.** The old "bonded mons auto-release on city
+  return" rental model is **removed**. Clear all three fights and **all six**
+  (fighters and witnesses) keep a permanent **+1 to every stat** (capped;
+  buildPokemon hardcaps IV+bonus at 36) — plus gold. The cost is a haunting
+  epilogue, not a mechanical loss. The story club is **one-time**.
+* **Lose** → retry is free and unlimited; **crawl home beaten** and one of
+  your three fighters dies (to-the-death), the other two land in the PC.
+* **Endgame Fight Club** (post-Champion): a repeatable, **money-only** loop —
+  no Daycare, no egg, no permanent buff. The Daycare Inn is shuttered.
+
+Eggs are filtered out of the battle draft and preserved across the
+post-battle team rebuild; every party-rendering facility (PC, Cable Link,
+Evolution Lab, EV Trainer, Colress, tutors, Professor swap) skips eggs so a
+buildless egg slot can never crash a screen. Tests:
+`tests/suites/story-daycare-pits.test.js`.
+
 ### Added — Pokémon Fatigue (1% stat / start-HP debuff, capped at 3 stacks)
 
 Every random / route trainer / wild fight now leaves the **whole team** with

@@ -30505,10 +30505,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function migrateStoryPreV20() {
             if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
             if (!sm.daycare || typeof sm.daycare !== 'object') {
-                sm.daycare = { unlocked:false, state:'idle', parentMonId:null, egg:null, endgame:false, parentSnapshot:null };
+                sm.daycare = { unlocked:false, eggEventDone:false };
             }
             if (!sm.pits || typeof sm.pits !== 'object') {
-                sm.pits = { gym6Snapshot:null, winsThisVisit:0, bestStreak:0, bondedMonIds:[], lastEnemyRoster:null, payoutGold:0 };
+                sm.pits = { gym6Snapshot:null, championSnapshot:null, winsThisVisit:0, bestStreak:0, payoutGold:0, fightClubUnlocked:false, secretRevealed:false, storyClubDone:false };
             }
             for (const arr of [sm.team, sm.pcBox]) {
                 if (!Array.isArray(arr)) continue;
@@ -30727,8 +30727,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    rivalConsecutiveWins: 0,
                    rivalConsecutiveLosses: 0,
                    flags: {},
-                   daycare: { unlocked:false, state:'idle', parentMonId:null, egg:null, endgame:false, parentSnapshot:null },
-                   pits: { gym6Snapshot:null, winsThisVisit:0, bestStreak:0, bondedMonIds:[], lastEnemyRoster:null, payoutGold:0 },
+                   daycare: { unlocked:false, eggEventDone:false },
+                   pits: { gym6Snapshot:null, championSnapshot:null, winsThisVisit:0, bestStreak:0, payoutGold:0, fightClubUnlocked:false, secretRevealed:false, storyClubDone:false },
                    version:SAVE_VER };
 
         function normalizeRivalStandingState() {
@@ -31016,10 +31016,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // v20+ safety back-fills (also covers fresh saves that pre-date the field).
                 if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
                 if (!sm.daycare || typeof sm.daycare !== 'object') {
-                    sm.daycare = { unlocked:false, state:'idle', parentMonId:null, egg:null, endgame:false, parentSnapshot:null };
+                    sm.daycare = { unlocked:false, eggEventDone:false };
                 }
                 if (!sm.pits || typeof sm.pits !== 'object') {
-                    sm.pits = { gym6Snapshot:null, winsThisVisit:0, bestStreak:0, bondedMonIds:[], lastEnemyRoster:null, payoutGold:0 };
+                    sm.pits = { gym6Snapshot:null, championSnapshot:null, winsThisVisit:0, bestStreak:0, payoutGold:0, fightClubUnlocked:false, secretRevealed:false, storyClubDone:false };
                 }
                 // Per-mon bonus/tired back-fill on every build (active team + PC).
                 try {
@@ -31707,7 +31707,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm || !Array.isArray(sm.team) || !sm.team.length) return 0;
             let s = 0;
             for (const slot of sm.team) {
-                if (!slot || !slot.name) continue;
+                if (!slot || !slot.name || slot.isEgg) continue;
                 const pb = baseStats[slot.name];
                 if (!pb || !pb.t1) continue;
                 const m = _rivalCombinedEffVsMon(atkType, pb.t1, pb.t2 || null);
@@ -36360,26 +36360,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             // Pokémon Center — full party heal, free, unlimited
             _push('recover', makeActionBtn('🏥 Pokémon Center','center','window.StoryMode.enterPokemonCenter()','center', _facOpts('center', [{label:'Free',tone:'free'}])));
-            // Daycare — egg quest (Gym 1 unlock, Gym 7 hatch). Endgame branch
-            // ("Crucible Daycare") appears post-HoF via sm.daycare.endgame.
-            if (_daycareIsUnlocked()) {
-                const dcEndgame = !!(sm.daycare && sm.daycare.endgame);
-                const dcBusy = _daycareIsBusy();
-                const dcReady = dcBusy && (sm.badges | 0) >= (dcEndgame ? 8 : 7);
-                const dcTitle = dcEndgame ? '🥚 Crucible Daycare' : '🥚 Daycare';
-                const dcMeta = dcReady
-                    ? [{label:'Hatched',tone:'good'}]
-                    : dcBusy
-                        ? [{label:'On Cruise',tone:'info'}]
-                        : [{label:'Egg Quest',tone:'free'}];
-                _push('recover', makeActionBtn(dcTitle, 'daycare', 'window.StoryMode.enterDaycare()', 'center', _facOpts('daycare', dcMeta, { soft: !dcReady })));
+            // Daycare Inn — the dark front. One-time egg event (Gym 1+), then the
+            // one-time Fight Club secret (6+ badges). Hidden once it has no business
+            // left, and shuttered entirely in the endgame.
+            {
+                const dcEggDone = !!(sm.daycare && sm.daycare.eggEventDone);
+                const dcSecretReady = dcEggDone && (sm.badges | 0) >= 6 && !(sm.pits && sm.pits.fightClubUnlocked);
+                const dcHasBusiness = !dcEggDone || dcSecretReady;
+                if (_daycareIsUnlocked() && !_pitsIsEndgame() && dcHasBusiness) {
+                    const dcMeta = dcSecretReady ? [{label:'A word…',tone:'info'}] : [{label:'Egg Quest',tone:'free'}];
+                    _push('recover', makeActionBtn('🥚 Daycare Inn', 'daycare', 'window.StoryMode.enterDaycare()', 'center', _facOpts('daycare', dcMeta, { soft: true })));
+                }
             }
-            // Underground Pits — post-Gym-6 illegal arena. Doesn't appear in cleanly story-y
-            // hubs unless the player has six badges (it's whispered about, not advertised).
+            // Fight Club — the one-time story arena (unlocked via the daycare secret) and,
+            // post-Champion, a repeatable money loop. Whispered about, never advertised.
             if (_pitsIsUnlocked()) {
+                const endgame = _pitsIsEndgame();
                 const winsThis = (sm.pits && sm.pits.winsThisVisit) | 0;
-                const pitMeta = winsThis > 0 ? [{label:`${winsThis} streak`,tone:'good'}] : [{label:'Off-grid',tone:'info'}];
-                _push('quest', makeActionBtn('⚔ The Underground Pits','pits','window.StoryMode.enterPits()','gym', _facOpts('pits', pitMeta, { soft:true })));
+                const fcMeta = endgame
+                    ? (winsThis > 0 ? [{label:`${winsThis} tonight`,tone:'good'}] : [{label:'Open',tone:'info'}])
+                    : [{label:'Tonight',tone:'info'}];
+                _push('quest', makeActionBtn('🥊 Fight Club','pits','window.StoryMode.enterPits()','gym', _facOpts('pits', fcMeta, { soft:true })));
             }
             // Safari Zone — mid-game "wilderness town" destination (City 4 in the timeline).
             // Gated by actions.includes('Safari Zone') so it feels like a real city, not a
@@ -36740,6 +36741,125 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ─────────────────────────────────────────────────────────────────────
+        // STORY SCENE RUNNER — lightweight branching dialogue / choice overlay
+        // ─────────────────────────────────────────────────────────────────────
+        // Used by the Daycare front + the Fight Club story beats. `beats` is an
+        // array of nodes:
+        //   { id?, accent?, title?, html, options? }
+        //   • options: [{ label, goto?, onPick?, danger? }] → choice buttons.
+        //       goto = id of a beat to jump to; omit goto to END (after onPick()).
+        //   • no options → a single "Continue ▶▶" advancing to the next beat.
+        // `onDone()` fires exactly once when the script ends. Trusted HTML only
+        // (all copy is authored here — never interpolate raw player text).
+        function _storyScene(beats, onDone, sceneId) {
+            sceneId = sceneId || 'story-scene-overlay';
+            let done = false;
+            const finish = () => {
+                if (done) return; done = true;
+                const o = document.getElementById(sceneId); if (o) o.remove();
+                try { onDone && onDone(); } catch (e) { console.warn('[Story] scene done', e); }
+            };
+            const byId = id => beats.find(b => b && b.id === id) || null;
+            const render = (beat) => {
+                if (!beat) { finish(); return; }
+                let ov = document.getElementById(sceneId);
+                if (!ov) {
+                    ov = document.createElement('div');
+                    ov.id = sceneId;
+                    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
+                    document.body.appendChild(ov);
+                }
+                const accent = beat.accent || '#aed581';
+                const opts = Array.isArray(beat.options) ? beat.options : null;
+                let btns;
+                if (opts) {
+                    btns = opts.map((o, i) => `<button type="button" data-scene-opt="${i}" style="display:block;width:100%;text-align:left;margin-top:7px;padding:10px 13px;background:rgba(0,0,0,0.42);color:${o.danger ? '#ff8a80' : '#e0f2f1'};border:1px solid ${o.danger ? '#ff5252' : accent};cursor:pointer;font-family:inherit;font-size:12px;line-height:1.4;">${o.label}</button>`).join('');
+                } else {
+                    btns = `<div style="text-align:right;margin-top:15px;"><button type="button" data-scene-cont="1" style="padding:9px 18px;background:${accent};color:#001b1e;border:none;font-weight:bold;cursor:pointer;font-family:inherit;font-size:12px;letter-spacing:0.04em;">Continue ▶▶</button></div>`;
+                }
+                ov.innerHTML = `<div style="max-width:540px;width:100%;background:linear-gradient(180deg,rgba(22,28,30,0.99),rgba(10,14,15,0.99));border:1px solid ${accent};padding:20px 22px;color:#e0f2f1;font-family:inherit;font-size:12px;line-height:1.65;box-shadow:0 14px 44px rgba(0,0,0,0.8);">
+                    ${beat.title ? `<div style="font-size:13px;color:${accent};font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px;">${beat.title}</div>` : ''}
+                    <div>${beat.html || ''}</div>
+                    ${btns}
+                </div>`;
+                if (opts) {
+                    ov.querySelectorAll('[data-scene-opt]').forEach(b => {
+                        b.onclick = () => {
+                            const o = opts[parseInt(b.getAttribute('data-scene-opt'), 10)];
+                            if (!o) return;
+                            try { o.onPick && o.onPick(); } catch (e) { console.warn('[Story] scene pick', e); }
+                            if (o.goto) render(byId(o.goto)); else finish();
+                        };
+                    });
+                } else {
+                    const c = ov.querySelector('[data-scene-cont]');
+                    if (c) c.onclick = () => render(beats[beats.indexOf(beat) + 1] || null);
+                }
+            };
+            render(beats[0]);
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // EGG SLOTS — a real, carryable party/PC slot (icon, depositable, hatches)
+        // ─────────────────────────────────────────────────────────────────────
+        // An egg occupies a party or PC slot but cannot battle (filtered from the
+        // battle draft) and cannot be sold. Its hatch species is locked the moment
+        // it is laid; it hatches in place once the player clears Gym 7.
+        const STORY_EGG_HATCH_BADGE = 7;
+        function _isEggSlot(s) { return !!(s && s.isEgg); }
+        // Count battle-eligible (non-egg) party members — the real "do I have a
+        // fightable team" number that the deposit / sell / Fight-Club guards use.
+        function _storyCountFighters() { return (sm.team || []).filter(s => s && !s.isEgg).length; }
+        function _makeEggSlot(species, badges) {
+            return {
+                id: 'egg' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                isEgg: true,
+                name: species,            // real species kept so any unguarded path degrades gracefully
+                eggSpecies: species,      // the locked hatch species (UI hides it)
+                eggLaidAt: (badges | 0)
+            };
+        }
+        // Build the hatchling for an egg's locked species (mirrors the legacy hatch path).
+        function _eggBuildFor(species) {
+            let b = null;
+            try {
+                if (typeof makeWildBuild === 'function') b = makeWildBuild(species);
+                else if (typeof makeBuild === 'function') b = makeBuild(species);
+            } catch (e) { console.warn('[Egg] build', e); }
+            if (!b) b = { m: ['Tackle','Tackle','Tackle','Tackle'], a: null, n: 'Hardy', i: null, ivs: { hp:31,atk:31,def:31,spa:31,spd:31,spe:31 }, evs: { hp:0,atk:0,def:0,spa:0,spd:0,spe:0 } };
+            if (!b.bonus || typeof b.bonus !== 'object') b.bonus = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
+            if (typeof b.tired !== 'number') b.tired = 0;
+            return b;
+        }
+        // Hatch every egg whose gate badge is met, in place (party + PC). Keeps the
+        // slot id/position so a party egg becomes a party mon (no slot juggling).
+        // Returns the hatched species names (for the reveal scene).
+        function _storyHatchEligibleEggs() {
+            if ((sm.badges | 0) < STORY_EGG_HATCH_BADGE) return [];
+            const hatched = [];
+            const doList = (arr) => {
+                if (!Array.isArray(arr)) return;
+                for (const slot of arr) {
+                    if (!slot || !slot.isEgg) continue;
+                    const sp = slot.eggSpecies || slot.name;
+                    slot.build = _eggBuildFor(sp);
+                    slot.name = sp;
+                    delete slot.isEgg; delete slot.eggSpecies; delete slot.eggLaidAt;
+                    hatched.push(sp);
+                }
+            };
+            doList(sm.team);
+            doList(sm.pcBox);
+            if (hatched.length) { try { save(); } catch (_) {} }
+            return hatched;
+        }
+        // 🥚 icon block sized to match the 32px species sprite used in PC/party rows.
+        function _eggIconHTML(size) {
+            const px = size || 32;
+            return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${px}px;height:${px}px;font-size:${Math.round(px*0.7)}px;line-height:1;flex-shrink:0;filter:drop-shadow(0 0 3px rgba(255,213,79,0.5));">🥚</span>`;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
         // DAYCARE — egg quest (Gym 1 unlock, Gym 7 hatch)
         // ─────────────────────────────────────────────────────────────────────
         // Story arc:
@@ -36761,16 +36881,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (ev && typeof renderCityActions === 'function') renderCityActions(ev);
             } catch (e) { console.warn('[Story] hub refresh', e); }
         }
-        function _daycareIsBusy()     { return !!(sm.daycare && sm.daycare.state === 'incubating'); }
         // Run any queued unlock toasts. Each toast is gated by a one-shot flag that the
         // post-battle hook sets; this clears them as we surface the message.
         function _storyDispatchQueuedUnlockToasts() {
             const f = sm.flags || {};
             const queue = [];
-            if (f._daycareUnlockToastQueued)    { queue.push('🥚 The Pokémon Daycare is open. Drop a partner off — pick them up with an egg around Gym 7.'); f._daycareUnlockToastQueued = false; }
-            if (f._pitsUnlockToastQueued)       { queue.push('⚔ Whispers from the alleys: the Underground Pits opened. A trainer who clears the bracket gets… changed.'); f._pitsUnlockToastQueued = false; }
-            if (f._daycareHatchQueued)          { queue.push('🐣 The Daycare matron called. "Your partner is back from their cruise. Bring a bag — there\'s extra."'); f._daycareHatchQueued = false; }
-            if (f._crucibleDaycareToastQueued)  { queue.push('🥚 The Crucible Daycare is open. The matron is older now. And smiling.'); f._crucibleDaycareToastQueued = false; }
+            if (f._daycareUnlockToastQueued)    { queue.push('🥚 The Daycare Inn is open. Leave a partner, walk out with an egg — it hatches after Gym 7.'); f._daycareUnlockToastQueued = false; }
+            if (f._pitsUnlockToastQueued)       { queue.push('🥚 The Daycare matron has been asking after you. "Strong trainer like that… I might have something to tell them."'); f._pitsUnlockToastQueued = false; }
+            if (f._daycareHatchQueued)          { queue.push('🐣 An egg on your belt is stirring…'); f._daycareHatchQueued = false; }
+            if (f._crucibleDaycareToastQueued)  { queue.push('🥊 Word travels. The Fight Club door is open to a Champion — any night, no questions.'); f._crucibleDaycareToastQueued = false; }
             if (!queue.length) return;
             try { save(); } catch (_) {}
             // Chain toasts so they don't stomp each other.
@@ -36821,14 +36940,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        // City facility entry. Renders the daycare screen — three states: idle, incubating,
-        // hatched.
+        // City facility entry. The Daycare Inn is the friendly face on a much darker
+        // business. It routes through one of a few one-time beats:
+        //   • egg event not done → drop a partner off (they don't come back; you get an egg)
+        //   • 6+ badges, Fight Club not yet unlocked → the matron lets you in on the secret
+        //   • otherwise → idle flavor (foreshadow pre-6, or "you know the way" post-unlock)
+        //   • post-Champion → the Inn is shuttered (endgame Fight Club needs no front)
         function enterDaycare() {
             try { _markFacilitySeen('daycare'); } catch (_) {}
             const screen = document.getElementById('screen-story-city');
             if (!screen) return;
-            // Reuse the city screen as a host — render an inline overlay that the player
-            // can dismiss to return to city actions.
+            const dc = sm.daycare || (sm.daycare = {});
+            const badges = sm.badges | 0;
+            if (_pitsIsEndgame()) { _daycareIdleScene(true); return; }
+            // Secret takes priority at 6+ badges so the Fight Club is never locked out,
+            // even for a player who skipped the egg event entirely.
+            if (badges >= 6 && !(sm.pits && sm.pits.fightClubUnlocked)) { _daycareRunSecret(); return; }
+            if (!dc.eggEventDone) { _daycareOpenDropOff(); return; }
+            _daycareIdleScene(false);
+        }
+        function _daycareOpenDropOff() {
+            _daycareClose(); // never stack two daycare overlays on re-entry
             const ov = document.createElement('div');
             ov.id = 'story-daycare-overlay';
             ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9990;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
@@ -36842,47 +36974,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (ov) ov.remove();
         }
         function _daycareRenderHTML() {
-            const dc = sm.daycare || {};
-            const isEndgame = !!dc.endgame;
-            const accent = isEndgame ? '#ff7043' : '#aed581';
-            const title = isEndgame ? 'Crucible Daycare' : 'Pokémon Daycare';
-            const flavor = isEndgame
-                ? 'The endgame branch — the matron grins. "You\'re a Champion now. The Daycare upstairs is for trainers who can afford weirder vacations."'
-                : 'The matron taps a sign: "Drop a Pokémon off, we send them on a little trip. They\'ll come back when you\'ve earned your seventh badge — and they won\'t come back alone."';
-
-            // STATE: incubating (parent is on the "cruise" — show waiting card)
-            if (dc.state === 'incubating' && dc.egg) {
-                const parentName = (dc.parentSnapshot && dc.parentSnapshot.name) || 'your partner';
-                const badges = sm.badges | 0;
-                const hatchBadge = isEndgame ? 8 : 7;
-                const ready = badges >= hatchBadge;
-                return `<div style="max-width:520px;width:100%;background:linear-gradient(180deg,rgba(28,40,40,0.98),rgba(12,18,18,0.98));border:1px solid ${accent};padding:20px 22px;color:#e0f2f1;font-family:inherit;font-size:12px;line-height:1.55;box-shadow:0 12px 36px rgba(0,0,0,0.7);">
-                    <div style="font-size:14px;color:${accent};font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px;">🐣 ${title} — Vacation Log</div>
-                    <div style="margin-bottom:12px;color:#b0bec5;font-size:11px;font-style:italic;">"Postcard came in. ${_esc(parentName)} is doing… well. <em>Very</em> well, apparently."</div>
-                    <div style="padding:12px;background:rgba(0,0,0,0.4);border-left:3px solid ${accent};margin-bottom:14px;">
-                        <div style="margin-bottom:6px;">Your Pokémon's "cruise" is still in progress.</div>
-                        <div style="font-size:11px;color:#80cbc4;">An egg has been waiting at the front desk since the last postcard. ${ready ? 'You can pick it up — and your partner — now.' : `Come back after Gym ${hatchBadge}.`}</div>
-                    </div>
-                    ${ready
-                        ? `<button type="button" id="daycare-pickup-btn" style="width:100%;padding:14px;background:${accent};color:#001b1e;border:none;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;letter-spacing:0.05em;">📥 Pick Up Egg + Partner ▶▶</button>`
-                        : `<div style="text-align:center;color:#888;font-size:11px;padding:10px;">Badges: <strong style="color:#fff;">${badges}/${hatchBadge}</strong> · The egg won't open before then.</div>`
-                    }
-                    <div style="text-align:right;margin-top:14px;"><button type="button" id="daycare-close-btn" style="padding:8px 14px;background:#37474f;color:#e0f2f1;border:none;cursor:pointer;font-family:inherit;font-size:11px;">Close</button></div>
-                </div>`;
-            }
-            // STATE: idle — pick a parent
+            const accent = '#aed581';
             const partyCap = _storyMaxPartySize();
             const team = sm.team || [];
             const box = sm.pcBox || [];
             const teamHtml = team.map((s,i) => _daycareSlotRow(s, 'team', i, team.length, partyCap)).join('');
             const boxHtml = box.map((s,i) => _daycareSlotRow(s, 'pc', i, box.length, partyCap)).join('');
             return `<div style="max-width:560px;width:100%;background:linear-gradient(180deg,rgba(28,40,40,0.98),rgba(12,18,18,0.98));border:1px solid ${accent};padding:20px 22px;color:#e0f2f1;font-family:inherit;font-size:12px;line-height:1.55;box-shadow:0 12px 36px rgba(0,0,0,0.7);">
-                <div style="font-size:14px;color:${accent};font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px;">🥚 ${title}</div>
-                <div style="margin-bottom:12px;color:#b0bec5;font-size:11px;font-style:italic;">"${_esc(flavor)}"</div>
-                <div style="padding:10px 12px;background:rgba(0,0,0,0.4);border-left:3px solid ${accent};margin-bottom:14px;font-size:11px;line-height:1.6;">
-                    <div><strong style="color:${accent};">How it works.</strong> Pick a Pokémon. They'll be away until Gym ${isEndgame ? 8 : 7}. When the egg hatches, you'll get the partner <em>and</em> a hatchling that shares their typing and sits one grade tier higher.</div>
-                    <div style="margin-top:6px;color:#80cbc4;font-size:10px;">⚠ The partner is unavailable for the duration — they're at a "spa." Don't ask. The matron <em>winks</em>.</div>
+                <div style="font-size:14px;color:${accent};font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:4px;">🥚 Daycare Inn</div>
+                <div style="font-size:10px;color:#7a8a7a;margin-bottom:10px;letter-spacing:0.04em;">"We'll love 'em like our own." ❤</div>
+                <div style="margin-bottom:10px;color:#b0bec5;font-size:11px;font-style:italic;">The matron beams a little too warmly. "Leave a partner with us, dearie — go win your badges. We'll take <em>real</em> good care of them. You won't go home empty-handed."</div>
+                <div style="padding:8px 10px;background:rgba(0,0,0,0.4);border-left:3px solid ${accent};margin-bottom:6px;font-size:11px;line-height:1.6;">
+                    <div><strong style="color:${accent};">The deal.</strong> Hand over one Pokémon, walk out with an <strong>egg</strong>. It hatches into something that shares their typing — one grade tier stronger — after your <strong>seventh badge</strong>.</div>
+                    <div style="margin-top:6px;color:#80cbc4;font-size:10px;">⚠ You only get to do this once. Pick someone you can bear to part with — they'll be… <em>busy</em> for a good while.</div>
                 </div>
+                <div style="margin-bottom:12px;font-size:9px;color:#8d6e63;border:1px dashed #5d4037;padding:4px 7px;background:rgba(40,20,12,0.3);letter-spacing:0.03em;">📽 taped by the staff door, water-stained: <span style="font-style:italic;">"120 DAYS OF PIKA — private screening · members only"</span></div>
                 <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">From Party</div>
                 <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;">${teamHtml || '<div style="color:#666;font-size:11px;padding:6px;">Empty — visit the Professor first.</div>'}</div>
                 <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">From PC</div>
@@ -36892,9 +36998,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function _daycareSlotRow(slot, source, idx, totalInSource, partyCap) {
             if (!slot || !slot.name || !slot.id) return '';
+            if (slot.isEgg) return '';
             const isStarter = slot.starter === true;
             const isBound = slot.unsellable === true;
-            const lastInParty = source === 'team' && totalInSource <= 1;
+            const lastInParty = source === 'team' && _storyCountFighters() <= 1;
             const canDrop = !isStarter && !isBound && !lastInParty;
             const reason = isStarter ? 'Starter — bonded for life' : isBound ? 'Story-locked' : lastInParty ? 'Party needs at least one Pokémon' : '';
             const sh = !!(slot.build && slot.build._isShiny);
@@ -36907,8 +37014,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _daycareBindEvents(ov) {
             const close = ov.querySelector('#daycare-close-btn');
             if (close) close.onclick = _daycareClose;
-            const pickup = ov.querySelector('#daycare-pickup-btn');
-            if (pickup) pickup.onclick = _daycareHatch;
             ov.querySelectorAll('[data-daycare-drop]').forEach(btn => {
                 btn.onclick = () => _daycareDropOff(btn.getAttribute('data-daycare-drop'));
             });
@@ -36916,113 +37021,96 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _daycareDropOff(slotId) {
             if (!slotId) return;
             if (!sm.daycare) sm.daycare = {};
-            if (sm.daycare.state === 'incubating') {
-                try { window.showGameAlert && window.showGameAlert('The egg is still incubating — you can only drop off one at a time.'); } catch (_) {}
+            if (sm.daycare.eggEventDone) {
+                try { window.showGameAlert && window.showGameAlert('The matron waves you off. "Just the one, dearie. We\'re not running a charity."'); } catch (_) {}
                 return;
             }
-            // Resolve slot from team OR pc
+            // Resolve slot from team OR pc.
             const team = sm.team || [];
             const box = sm.pcBox || [];
             let found = team.findIndex(s => s && s.id === slotId);
             let from = 'team';
-            if (found < 0) {
-                found = box.findIndex(s => s && s.id === slotId);
-                from = 'pc';
-            }
+            if (found < 0) { found = box.findIndex(s => s && s.id === slotId); from = 'pc'; }
             if (found < 0) {
                 try { window.showGameAlert && window.showGameAlert('Pokémon not found.'); } catch (_) {}
                 return;
             }
             const slot = (from === 'team') ? team[found] : box[found];
-            // Snapshot the parent so we can return them at hatch.
-            sm.daycare.parentSnapshot = {
-                name: slot.name,
-                build: slot.build ? deepClone(slot.build) : null,
-                id: slot.id,
-                nickname: slot.nickname || null,
-                from: from
-            };
-            // Roll the hatchling's species now (so it's locked at drop-off, not at hatch).
+            if (slot.isEgg) return;
+            const pname = slot.nickname || slot.name;
+            // Lock the hatch species now (shares parent typing, one grade tier up).
             const eggSpecies = _daycareRollHatchSpecies(slot.name);
-            sm.daycare.egg = { species: eggSpecies, rolledAt: sm.badges | 0 };
-            sm.daycare.parentMonId = slot.id;
-            sm.daycare.state = 'incubating';
-            // Remove the parent from their source list.
-            if (from === 'team') team.splice(found, 1);
-            else box.splice(found, 1);
+            const eggSlot = _makeEggSlot(eggSpecies, sm.badges | 0);
+            // The parent does NOT come back. Remove them, drop the egg in the SAME
+            // source (guarantees a free slot — we just vacated one).
+            if (from === 'team') { team.splice(found, 1); team.push(eggSlot); }
+            else { box.splice(found, 1); box.push(eggSlot); }
+            const placed = from;
+            sm.daycare.eggEventDone = true;
             try { save(); } catch (_) {}
             _daycareClose();
-            try {
-                window.showGameAlert && window.showGameAlert(
-                    `🚢 ${slot.nickname || slot.name} boarded the cruise. The matron promises an egg by Gym ${sm.daycare.endgame ? 8 : 7}.`
-                );
-            } catch (_) {}
             try { renderTeamPanel(); } catch (_) {}
-            try { _storyRefreshCityHubInPlace(); } catch (_) {}
+            // The dark-comic beat: you don't get them back, and the matron knows it.
+            _storyScene([
+                { accent:'#aed581', title:'Daycare Inn', html:`You set <strong>${_esc(pname)}</strong> on the counter. The matron scoops them up — they vanish behind a beaded curtain before you can even say goodbye.<br><br>She slides something warm across the counter to you. An <strong>egg.</strong> "There we are. Healthy little thing. On the house."` },
+                { accent:'#aed581', title:'Daycare Inn', html:`Something about how fast that curtain closed.`, options:[
+                    { label:`"Wait — where's ${_esc(pname)} going?"`, goto:'q1' },
+                    { label:`"…Thanks, I guess." (take the egg and leave)`, goto:'end' }
+                ]},
+                { id:'q1', accent:'#aed581', html:`She doesn't look up from her ledger. "Oh, ${_esc(pname)}? On a cruise. Lovely weather this time of year." A beat. "...Different career now, actually. Real go-getter, that one."`, options:[
+                    { label:`"A career? Doing what?"`, goto:'q2' },
+                    { label:`"I'd like ${_esc(pname)} back, please."`, goto:'q3' }
+                ]},
+                { id:'q2', accent:'#aed581', html:`"Island work. Private clientele." She smiles at some memory. "There was a plane — lovely man, bald, never stopped petting this Persian. Very generous. Don't you fret, dearie. ${_esc(pname)} is <em>making money.</em>"`, options:[
+                    { label:`"…I'd like ${_esc(pname)} back."`, goto:'q3' }
+                ]},
+                { id:'q3', accent:'#ff8a80', html:`For the first time she meets your eyes. The smile stays put. It just stops meaning anything.<br><br>"<strong>No.</strong>"<br><br>Somewhere under the floorboards a sound comes up — cheering, something heavy hitting something soft, and a long low cry that doesn't sound like winning. The matron reaches over and turns up the radio.`, options:[
+                    { label:`(take the egg and go)`, goto:'end' }
+                ]},
+                { id:'end', accent:'#aed581', html:`"Take the egg, dearie. It'll hatch after your seventh badge. Off you pop now." <br><br><span style="color:#80cbc4;font-size:11px;">🥚 You received an Egg — it's in your ${placed === 'team' ? 'party' : 'PC'}. It will hatch once you clear Gym ${STORY_EGG_HATCH_BADGE}.</span>` }
+            ], () => { try { _storyRefreshCityHubInPlace(); } catch (_) {} }, 'story-daycare-scene');
         }
-        function _daycareHatch() {
-            const dc = sm.daycare;
-            if (!dc || dc.state !== 'incubating' || !dc.egg || !dc.parentSnapshot) return;
-            const badges = sm.badges | 0;
-            const hatchBadge = dc.endgame ? 8 : 7;
-            if (badges < hatchBadge) return;
-            const team = sm.team || [];
-            const partyCap = _storyMaxPartySize();
-            // Hatchling build: roll a fresh build via the established Story path
-            // (`makeWildBuild` gates to unlocked gimmicks and applies the wild EV/IV
-            // head-start that catches use). Falls back to the most basic build if
-            // wild gen returns null.
-            const eggSpecies = dc.egg.species;
-            let hatchBuild = null;
-            try {
-                if (typeof makeWildBuild === 'function') hatchBuild = makeWildBuild(eggSpecies);
-                else if (typeof makeBuild === 'function') hatchBuild = makeBuild(eggSpecies);
-            } catch (e) { console.warn('[Daycare] hatch build', e); }
-            if (!hatchBuild) {
-                hatchBuild = {
-                    m: ['Tackle','Tackle','Tackle','Tackle'],
-                    a: null, n: 'Hardy', i: null,
-                    ivs: { hp:31, atk:31, def:31, spa:31, spd:31, spe:31 },
-                    evs: { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 }
-                };
+        // Idle daycare visit — egg already taken, no secret to give yet (or already
+        // given). `shuttered` = post-Champion, the Inn is closed for good.
+        function _daycareIdleScene(shuttered) {
+            if (shuttered) {
+                _storyScene([{ accent:'#6d4c41', title:'Daycare Inn', html:`The Inn is dark. A card taped inside the window, in the matron's looping hand: <span style="font-style:italic;">"CLOSED — gone where the money is. ❤ M."</span><br><br>The smell of it still hangs in the doorway. You don't go in.` }], null, 'story-daycare-idle');
+                return;
             }
-            // Ensure bonus+tired fields exist.
-            if (!hatchBuild.bonus || typeof hatchBuild.bonus !== 'object') hatchBuild.bonus = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
-            if (typeof hatchBuild.tired !== 'number') hatchBuild.tired = 0;
-            // Make slot for hatchling
-            const hatchId = 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
-            const hatchSlot = { name: eggSpecies, build: hatchBuild, id: hatchId };
-            // Make slot for returning parent
-            const parentSlot = {
-                name: dc.parentSnapshot.name,
-                build: dc.parentSnapshot.build || {},
-                id: dc.parentSnapshot.id || ('p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6)),
-                nickname: dc.parentSnapshot.nickname || undefined
-            };
-            // Restore tired to 0 (cruise was relaxing) on the returned parent.
-            if (parentSlot.build && typeof parentSlot.build === 'object') {
-                parentSlot.build.tired = 0;
-                if (!parentSlot.build.bonus || typeof parentSlot.build.bonus !== 'object') parentSlot.build.bonus = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
-            }
-            // Try to place hatchling and parent into team first, overflow to PC.
-            const placeOne = slot => {
-                if (team.length < partyCap) team.push(slot);
-                else (sm.pcBox = sm.pcBox || []).push(slot);
-            };
-            placeOne(parentSlot);
-            placeOne(hatchSlot);
-            // Reset daycare state — endgame stays true so the Crucible loop can repeat.
-            const wasEndgame = dc.endgame;
-            sm.daycare = { unlocked:true, state:'idle', parentMonId:null, egg:null, endgame: wasEndgame, parentSnapshot:null };
-            try { save(); } catch (_) {}
-            _daycareClose();
-            try {
-                window.showGameAlert && window.showGameAlert(
-                    `🎉 ${dc.parentSnapshot.nickname || dc.parentSnapshot.name} returned — with a freshly hatched ${eggSpecies}! Both joined your party (overflow to PC).`
-                );
-            } catch (_) {}
-            try { renderTeamPanel(); } catch (_) {}
-            try { _storyRefreshCityHubInPlace(); } catch (_) {}
+            const unlocked = !!(sm.pits && sm.pits.fightClubUnlocked);
+            const html = unlocked
+                ? `The matron tips you a wink. "You know where the door is, dearie. First rule, remember." She goes back to her ledger.`
+                : `"Nothing for you today." She studies you a moment, head tilted. "...Come back when you've got a few more badges. Strong trainer like you — I might just have something to tell you."`;
+            _storyScene([{ accent:'#aed581', title:'Daycare Inn', html }], null, 'story-daycare-idle');
+        }
+
+        // The one-time secret: at 6+ badges the matron wires the player into the Fight
+        // Club. "No thanks" / "Walk away" leave it re-offerable; only "Step inside"
+        // commits the unlock.
+        function _daycareRunSecret() {
+            if (!sm.pits) sm.pits = {};
+            _storyScene([
+                { accent:'#ce93d8', title:'Daycare Inn', html:`The matron looks at you a long moment. "Six badges. Strong. And those Pokémon of yours — <em>strong.</em>" She leans across the counter and drops her voice. "...Can I tell you a secret?"`, options:[
+                    { label:`"Tell me."`, goto:'tell' },
+                    { label:`"What kind of secret?"`, goto:'tell' },
+                    { label:`"No thanks." (leave)` }
+                ]},
+                { id:'tell', accent:'#ce93d8', html:`"There's a place. Down below — right under this Inn. After dark, the right Pokémon settle things the way they were <em>born</em> to. No badges. No rules. Just teeth." She straightens up. "First rule: you don't talk about it. Second rule —" she winks "— you <em>don't talk about it.</em> Come tonight. Knock twice."` },
+                { accent:'#b71c1c', title:'That Night', html:`Behind the Inn, half a flight down, there's a door. Dim red light bleeds out from under it. You can hear it now — cheering, the wet sound of impacts, and a low animal cry that does not, in any way, sound like winning.<br><br>Your hand finds the rail.`, options:[
+                    { label:`Go down the stairs.`, goto:'down' },
+                    { label:`Walk away.` }
+                ]},
+                { id:'down', accent:'#ff5252', title:'Fight Club', html:`The door opens before your knuckles land. Someone was expecting you.<br><br><span style="color:#bcaaa4;">A bare bulb. A ring of faces. A man with a split lip presses a rag to it and grins. "First-timer? Then welcome." His eyes drop to the Poké Balls on your belt. "How much can you really know about your Pokémon… if they've never been in a real fight?"</span>`, options:[
+                    { label:`Step inside.`, onPick:()=>{ sm.pits.secretRevealed = true; sm.pits.fightClubUnlocked = true; sm.pits._sawClubIntro = true; try { save(); } catch (_) {} } }
+                ]}
+            ], () => { try { _storyRefreshCityHubInPlace(); } catch (_) {} }, 'story-daycare-secret');
+        }
+
+        // Egg-hatch reveal — fired after Gym 7 once _storyHatchEligibleEggs() runs.
+        function _storyHatchRevealScene(names) {
+            if (!names || !names.length) return;
+            const list = names.map(n => _esc(n)).join(', ');
+            _storyScene([{ accent:'#ffd54f', title:'Your Egg Hatched!', html:`The egg shudders, cracks, goes still — and a <strong>${list}</strong> blinks up at you.<br><br><span style="color:#80cbc4;font-size:11px;">It shares the typing of the partner you left at the Inn. It will never ask where they went. <em>You</em> still might.</span>` }], () => { try { renderTeamPanel(); _storyRefreshCityHubInPlace(); } catch (_) {} }, 'story-hatch-scene');
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -37060,9 +37148,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const p = sm.pits || {};
             return p.championSnapshot || p.gym6Snapshot || null;
         }
+        // Post-Champion the Fight Club becomes a repeatable, money-only loop with no
+        // daycare/egg wrapping and no permanent stat reward — just functional.
+        function _pitsIsEndgame() {
+            return !!(sm.pits && sm.pits.championSnapshot);
+        }
+        // The one-time STORY Fight Club: available only after the daycare secret wires
+        // it (fightClubUnlocked) and only until the player has cleared it once.
+        function _pitsStoryAvailable() {
+            return !!(sm.pits && sm.pits.fightClubUnlocked && !sm.pits.storyClubDone);
+        }
         function _pitsIsUnlocked() {
-            const p = sm.pits || {};
-            return !!(p.gym6Snapshot || p.championSnapshot);
+            return _pitsIsEndgame() || _pitsStoryAvailable();
         }
         function _pitsIsBondedById(id) {
             if (!id || !sm.pits || !Array.isArray(sm.pits.bondedMonIds)) return false;
@@ -37127,9 +37224,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function enterPits() {
             try { _markFacilitySeen('pits'); } catch (_) {}
             if (!_pitsIsUnlocked()) {
-                try { window.showGameAlert && window.showGameAlert('The Underground is closed. Earn six badges first.'); } catch (_) {}
+                try { window.showGameAlert && window.showGameAlert("You don't know about any such place."); } catch (_) {}
                 return;
             }
+            const endgame = _pitsIsEndgame();
+            const fighters = _storyCountFighters();
+            const need = endgame ? 3 : 6;
+            if (fighters < need) {
+                const msg = endgame
+                    ? "The Fight Club needs at least three fighters on your belt. (Eggs don't count.)"
+                    : `The Fight Club only takes a full stable — bring six fighters. You've got ${fighters}. (Eggs don't count; stash one in the PC if you must.)`;
+                try { window.showGameAlert && window.showGameAlert(msg); } catch (_) {}
+                return;
+            }
+            if (!sm.pits) sm.pits = {};
+            sm.pits._pendingPicks = [];
+            _pitsClose(); // never stack two selection overlays on re-entry
             const ov = document.createElement('div');
             ov.id = 'story-pits-overlay';
             ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:9990;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
@@ -37143,41 +37253,49 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (ov) ov.remove();
         }
         function _pitsRenderHTML() {
-            // Selection screen: pick 3 from team (bonded mons highlight differently).
+            const endgame = _pitsIsEndgame();
+            const accent = '#ff5252';
+            // Selection screen: pick 3 fightable party mons (eggs are excluded).
             const team = sm.team || [];
             const picks = (sm.pits && sm.pits._pendingPicks) || [];
             const rows = team.map((s, i) => {
-                if (!s || !s.id) return '';
+                if (!s || !s.id || s.isEgg) return '';
                 const picked = picks.indexOf(s.id) >= 0;
-                const bonded = _pitsIsBondedById(s.id);
                 const sh = !!(s.build && s.build._isShiny);
                 const grade = getMonGrade(s.name, getBST(s.name));
-                const stats = (s.build && s.build.bonus) || {};
-                const bondTotal = ['hp','atk','def','spa','spd','spe'].reduce((a,k)=>a+(stats[k]|0),0);
-                return `<div data-pits-pick="${_esc(s.id)}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:${picked?'rgba(255,82,82,0.18)':'rgba(20,12,12,0.6)'};border:1px solid ${picked?'#ff5252':bonded?'#ce93d8':'#5a1818'};cursor:pointer;">
+                const bonus = (s.build && s.build.bonus) || {};
+                const bonusTotal = ['hp','atk','def','spa','spd','spe'].reduce((a,k)=>a+(bonus[k]|0),0);
+                return `<div data-pits-pick="${_esc(s.id)}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:${picked?'rgba(255,82,82,0.18)':'rgba(20,12,12,0.6)'};border:1px solid ${picked?'#ff5252':'#5a1818'};cursor:pointer;">
                     <span style="font-size:11px;color:#888;width:18px;">${picked ? (picks.indexOf(s.id)+1) : '·'}</span>
-                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${sh?'color:#ffd54f;':''}">${sh?'✦ ':''}${_esc(s.nickname || s.name)} <span style="font-size:9px;color:#888;">T${grade}</span>${bonded ? ' <span style="color:#ce93d8;font-size:9px;letter-spacing:0.05em;">⛓ BONDED</span>' : ''}${bondTotal > 0 ? ` <span style="color:#80cbc4;font-size:9px;">+${bondTotal} BONUS</span>` : ''}</span>
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${sh?'color:#ffd54f;':''}">${sh?'✦ ':''}${_esc(s.nickname || s.name)} <span style="font-size:9px;color:#888;">T${grade}</span>${bonusTotal > 0 ? ` <span style="color:#80cbc4;font-size:9px;" title="Permanent stat bonus">+${bonusTotal}</span>` : ''}</span>
                 </div>`;
             }).filter(Boolean).join('');
             const ready = picks.length === 3;
             const winsThis = (sm.pits && sm.pits.winsThisVisit) | 0;
             const best = (sm.pits && sm.pits.bestStreak) | 0;
-            return `<div style="max-width:560px;width:100%;background:linear-gradient(180deg,rgba(40,12,12,0.98),rgba(20,4,4,0.98));border:1px solid #ff5252;padding:20px 22px;color:#ffcdd2;font-family:inherit;font-size:12px;line-height:1.55;box-shadow:0 12px 36px rgba(0,0,0,0.7);">
-                <div style="font-size:14px;color:#ff5252;font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px;">⚔ The Underground Pits</div>
-                <div style="margin-bottom:14px;color:#ef9a9a;font-size:11px;font-style:italic;">"Cash in, blood out. Three fights. Win all three or your bonded mons go free — by their choice, not ours."</div>
-                <div style="padding:10px 12px;background:rgba(0,0,0,0.45);border-left:3px solid #ff5252;margin-bottom:14px;font-size:11px;line-height:1.6;">
-                    <div><strong style="color:#ff5252;">Bracket.</strong> Three sequential fights. Your team starts each fight at full HP; the foe is built from your team's current strength.</div>
-                    <div style="margin-top:5px;"><strong style="color:#ff5252;">Reward.</strong> Win all three: every party member gains a permanent <strong>+1 bonus</strong> on a random stat (the trauma sticks), plus gold.</div>
-                    <div style="margin-top:5px;"><strong style="color:#ff5252;">Cost.</strong> The mons that fought in the bracket become <strong>BONDED</strong> — they auto-release the moment you walk back into a normal city. The Underground takes back what it gives.</div>
+            const flavor = endgame
+                ? '"Back again. No badges, no daycare nonsense, no questions. Cash in, blood out. You know the rules by now."'
+                : '"First rule — you remember. Three fights, to the finish. Send in three; the rest watch from the rail. They\'ll learn something either way."';
+            const rewardLine = endgame
+                ? `<div style="margin-top:5px;"><strong style="color:${accent};">Purse.</strong> Clear all three and the house pays out in <strong>gold</strong>. That's the whole arrangement now.</div>`
+                : `<div style="margin-top:5px;"><strong style="color:${accent};">What it does to them.</strong> Clear all three and every one of your six — the three who fought and the three who watched — comes home with <strong>+1 to every stat.</strong> It doesn't wash off. Plus gold.</div>`;
+            return `<div style="max-width:560px;width:100%;background:linear-gradient(180deg,rgba(40,12,12,0.98),rgba(20,4,4,0.98));border:1px solid ${accent};padding:20px 22px;color:#ffcdd2;font-family:inherit;font-size:12px;line-height:1.55;box-shadow:0 12px 36px rgba(0,0,0,0.7);">
+                <div style="font-size:14px;color:${accent};font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:3px;">🥊 Fight Club</div>
+                <div style="font-size:9px;color:#7a4a4a;margin-bottom:9px;letter-spacing:0.08em;">first rule: you don't talk about it</div>
+                <div style="margin-bottom:14px;color:#ef9a9a;font-size:11px;font-style:italic;">${flavor}</div>
+                <div style="padding:10px 12px;background:rgba(0,0,0,0.45);border-left:3px solid ${accent};margin-bottom:14px;font-size:11px;line-height:1.6;">
+                    <div><strong style="color:${accent};">Bracket.</strong> Three fights, back to back. You start each at full HP; the house reads your team's strength and matches it.</div>
+                    ${rewardLine}
+                    <div style="margin-top:5px;"><strong style="color:${accent};">The price of quitting.</strong> Lose a fight and you can step back in, free, all night. But <strong>walk away beaten</strong> and one of your three doesn't walk out with you. These fights go to the death.</div>
                 </div>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:10px;color:#bcaaa4;">
-                    <span>Wins this visit: <strong style="color:#fff;">${winsThis}</strong></span>
-                    <span>Best streak: <strong style="color:#fff;">${best}</strong></span>
+                    <span>Wins tonight: <strong style="color:#fff;">${winsThis}</strong></span>
+                    <span>Best run: <strong style="color:#fff;">${best}</strong></span>
                 </div>
-                <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Pick 3 from your party</div>
-                <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px;">${rows || '<div style="color:#666;font-size:11px;padding:6px;">No Pokémon in party.</div>'}</div>
+                <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Pick 3 to send in</div>
+                <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px;">${rows || '<div style="color:#666;font-size:11px;padding:6px;">No fighters in your party.</div>'}</div>
                 <div style="display:flex;gap:8px;">
-                    <button type="button" id="pits-start-btn" ${ready ? '' : 'disabled'} style="flex:1;padding:14px;background:${ready ? '#ff5252' : '#37474f'};color:${ready ? '#1a0000' : '#666'};border:none;font-family:inherit;font-size:13px;font-weight:bold;cursor:${ready?'pointer':'not-allowed'};letter-spacing:0.05em;">${ready ? '⚔ ENTER THE PIT ▶▶' : `Pick ${3 - picks.length} more`}</button>
+                    <button type="button" id="pits-start-btn" ${ready ? '' : 'disabled'} style="flex:1;padding:14px;background:${ready ? accent : '#37474f'};color:${ready ? '#1a0000' : '#666'};border:none;font-family:inherit;font-size:13px;font-weight:bold;cursor:${ready?'pointer':'not-allowed'};letter-spacing:0.05em;">${ready ? '🥊 STEP INTO THE RING ▶▶' : `Pick ${3 - picks.length} more`}</button>
                     <button type="button" id="pits-close-btn" style="padding:14px 20px;background:#37474f;color:#ffcdd2;border:none;cursor:pointer;font-family:inherit;font-size:11px;">Leave</button>
                 </div>
             </div>`;
@@ -37249,65 +37367,66 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const enemyTeam = [{ name: enemy.name, build: enemy.build }];
             launchBattle(enemyTeam);
         }
-        // Pit win path: roll +1 bonus on a random stat for every team member, pay gold,
-        // mark the bracket mons as bonded.
+        // Fight Club win path. STORY (one-time): +1 every stat on ALL six, pay gold,
+        // mark the run done — NO release, you keep everyone; the cost is the epilogue.
+        // ENDGAME (repeatable): gold only, no permanent buff.
         function _pitsResolveBracket(won) {
-            const team = sm.team || [];
+            const endgame = _pitsIsEndgame();
             const original = (sm.pits._teamBeforePit || []).slice();
-            // Restore the full original team first.
+            // Restore the full original team first (eggs and all).
             sm.team = original;
             sm.pits._teamBeforePit = null;
-            const bracketIds = (sm.pits._activePickIds || []).slice();
             sm.pits._activePickIds = null;
             sm.pits._enemyRoster = null;
             sm.pits._fightIndex = 0;
             sm.pits._inBattle = false;
-            let resultMsg = '';
-            if (won) {
-                // +1 to EVERY stat on every party member (witnessed and changed). Each
-                // stat clamps at +5 per build; the IV+bonus total is hardcapped at 36
-                // by buildPokemon's getIV. So an IV-31 / bonus-5 mon reads as a flat
-                // 36 across the board — the engine refuses to "double-stack" past
-                // that ceiling no matter how many bracket runs the player chains.
+            if (!won) {
+                sm.pits.winsThisVisit = 0;
+                try { save(); } catch (_) {}
+                try { enterCity(); } catch (_) { try { _storyRefreshCityHubInPlace(); } catch (_2) {} }
+                return;
+            }
+            // WIN. Gold either way — half the next gym's purse (see _pitsCalcGoldPayout).
+            const payout = _pitsCalcGoldPayout();
+            sm.gold = Math.max(0, (sm.gold | 0) + payout);
+            sm.pits.payoutGold = ((sm.pits.payoutGold | 0) + payout);
+            sm.pits.winsThisVisit = (sm.pits.winsThisVisit | 0) + 1;
+            sm.pits.bestStreak = Math.max(sm.pits.bestStreak | 0, sm.pits.winsThisVisit | 0);
+            if (!endgame) {
+                // +1 to EVERY stat on every (non-egg) party member — the three who fought
+                // and the three who watched. Clamps at +5 per build; buildPokemon hardcaps
+                // IV+bonus at 36, so this is a one-time lift, not a farmable spiral. The
+                // story club closes after this win.
                 for (const slot of (sm.team || [])) {
-                    if (!slot || !slot.build) continue;
+                    if (!slot || !slot.build || slot.isEgg) continue;
                     if (!slot.build.bonus) slot.build.bonus = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
                     for (const s of ['hp','atk','def','spa','spd','spe']) {
                         slot.build.bonus[s] = Math.min(5, (slot.build.bonus[s] | 0) + 1);
                     }
                 }
-                // Gold payout = 50% of the next Gym Leader's reward (or the equivalent
-                // current-stage gym at HoF+). The Pits are a half-pay shadow of the
-                // legitimate ladder — the *risk*, not the *purse*, is what makes them
-                // worthwhile.
-                const payout = _pitsCalcGoldPayout();
-                sm.gold = Math.max(0, (sm.gold | 0) + payout);
-                sm.pits.payoutGold = ((sm.pits.payoutGold | 0) + payout);
-                // Mark the bracket mons as bonded (auto-release on city return).
-                if (!Array.isArray(sm.pits.bondedMonIds)) sm.pits.bondedMonIds = [];
-                for (const id of bracketIds) if (sm.pits.bondedMonIds.indexOf(id) < 0) sm.pits.bondedMonIds.push(id);
-                sm.pits.winsThisVisit = (sm.pits.winsThisVisit | 0) + 1;
-                sm.pits.bestStreak = Math.max(sm.pits.bestStreak | 0, sm.pits.winsThisVisit | 0);
-                // Heal up + clear fatigue (iconic exit).
-                _storyClearTirednessForIconic();
-                _storyFullHealPartySlots();
-                try { save(); } catch (_) {}
-                resultMsg = `⚔ Three down. All your Pokémon witnessed it — they all changed. +1 every stat, +${payout.toLocaleString()}G. The bracket mons are BONDED — the Underground claims them when you leave for clean streets.`;
-            } else {
-                // Pit defeat path is handled by _pitsShowDefeatOverlay (which calls
-                // _pitsForfeitBracket on player's "forfeit" choice). This branch only
-                // fires if a caller explicitly resolves(false) outside the retry loop —
-                // currently dead code, kept defensive.
-                sm.pits.winsThisVisit = 0;
-                try { save(); } catch (_) {}
+                sm.pits.storyClubDone = true;
             }
-            // The battle screen tore down all screens on exit — bring the player back to
-            // the city hub (not just an in-place refresh) so they don't land on a blank
-            // screen behind the result alert.
+            // Iconic exit: heal + clear fatigue.
+            _storyClearTirednessForIconic();
+            _storyFullHealPartySlots();
+            try { save(); } catch (_) {}
+            // Battle screen tore down all screens — return to the city hub before the scene.
             try { enterCity(); } catch (_) { try { _storyRefreshCityHubInPlace(); } catch (_2) {} }
-            if (resultMsg) {
-                setTimeout(() => { try { window.showGameAlert && window.showGameAlert(resultMsg); } catch (_) {} }, 250);
-            }
+            setTimeout(() => {
+                if (endgame) {
+                    _storyScene([{ accent:'#ff5252', title:'Fight Club', html:`Three down. The house counts out your purse without a word.<br><br><span style="color:#80cbc4;font-size:11px;">+${payout.toLocaleString()}G. Come back when you need more.</span>` }], null, 'story-pits-result');
+                } else {
+                    _pitsStoryWinScene(payout);
+                }
+            }, 280);
+        }
+        // The haunting two-beat epilogue for the one-time story win — the whole point
+        // of the arc. You won; nobody of yours died; and that is exactly the cost.
+        function _pitsStoryWinScene(payout) {
+            _storyScene([
+                { accent:'#ff5252', title:'Fight Club', html:`Three down. The crowd is on its feet for your team. Your Pokémon stand over what they did — chests heaving, eyes bright and somewhere far away.<br><br><span style="color:#80cbc4;font-size:11px;">All six came back changed — the three who fought and the three who only watched. <strong>+1 to every stat.</strong> +${payout.toLocaleString()}G.</span>` },
+                { accent:'#90a4ae', title:'Later', html:`<span style="font-style:italic;">You walk home with all six. Nobody of yours died tonight. You won.</span><br><br><span style="font-style:italic;">It's the small hours when the sound wakes you — one of them, low and long, crying at nothing in the dark. You didn't know they could make that sound. You didn't know they could cry at all.</span><br><br><span style="color:#80cbc4;">They're stronger now. You did that.</span>` }
+            ], null, 'story-pits-win');
         }
         // Gold payout for a winning Pit bracket — 50% of the next Gym Leader's reward.
         // Falls back to the highest cleared gym (capped at 8) at HoF+ so the Crucible
@@ -37371,16 +37490,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ov.id = 'story-pits-defeat-overlay';
             ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:9995;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
             ov.innerHTML = `<div style="max-width:520px;width:100%;background:linear-gradient(180deg,rgba(40,8,8,0.98),rgba(15,2,2,0.98));border:1px solid #ff5252;padding:22px 24px;color:#ffcdd2;font-family:inherit;font-size:12px;line-height:1.6;box-shadow:0 14px 40px rgba(0,0,0,0.8);">
-                <div style="font-size:15px;color:#ff5252;font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px;">☠ Down in the Pit</div>
-                <div style="margin-bottom:14px;color:#ef9a9a;font-style:italic;">"They're hauling your fighter off the floor. The crowd hasn't even started thinning. You can step back in — or you can walk away. Walking away here costs more than gold."</div>
+                <div style="font-size:15px;color:#ff5252;font-weight:bold;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px;">☠ On the Floor</div>
+                <div style="margin-bottom:14px;color:#ef9a9a;font-style:italic;">"They're dragging your fighter off the mat. The crowd hasn't even thinned. You can step back in — or you can walk away. But you don't walk away from here whole."</div>
                 <div style="padding:11px 14px;background:rgba(0,0,0,0.5);border-left:3px solid #ff5252;margin-bottom:16px;font-size:11px;line-height:1.65;">
                     <div><strong style="color:#fff;">Fight ${Math.min(3, fightIdx + 1)}/3 — Lost.</strong></div>
-                    <div style="margin-top:6px;"><strong style="color:#ffd54f;">Retry</strong> is free. Same opponent, fresh full HP. The Pit doesn't care how many tries it takes.</div>
-                    <div style="margin-top:6px;"><strong style="color:#ff5252;">Forfeit</strong> ends the bracket. One of your three bracket Pokémon won't be walking out — the Underground doesn't release damaged goods. The other two… <em>barely</em> make it back to your PC.</div>
+                    <div style="margin-top:6px;"><strong style="color:#ffd54f;">Step back in</strong> is free. Same opponent, fresh full HP. The house doesn't care how many tries it takes.</div>
+                    <div style="margin-top:6px;"><strong style="color:#ff5252;">Crawl home</strong> ends it. One of your three doesn't get up off that floor — these fights go to the death. The other two… <em>barely</em> make it back to your PC.</div>
                 </div>
                 <div style="display:flex;gap:8px;">
-                    <button type="button" id="pits-defeat-retry" style="flex:1;padding:14px;background:#ffd54f;color:#1a0000;border:none;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;letter-spacing:0.05em;">↻ TRY AGAIN ▶▶</button>
-                    <button type="button" id="pits-defeat-forfeit" style="flex:1;padding:14px;background:transparent;color:#ff5252;border:2px solid #ff5252;font-family:inherit;font-size:12px;font-weight:bold;cursor:pointer;letter-spacing:0.05em;">⚰ FORFEIT</button>
+                    <button type="button" id="pits-defeat-retry" style="flex:1;padding:14px;background:#ffd54f;color:#1a0000;border:none;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;letter-spacing:0.05em;">↻ STEP BACK IN ▶▶</button>
+                    <button type="button" id="pits-defeat-forfeit" style="flex:1;padding:14px;background:transparent;color:#ff5252;border:2px solid #ff5252;font-family:inherit;font-size:12px;font-weight:bold;cursor:pointer;letter-spacing:0.05em;">⚰ CRAWL HOME</button>
                 </div>
             </div>`;
             document.body.appendChild(ov);
@@ -37388,7 +37507,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const forfeit = ov.querySelector('#pits-defeat-forfeit');
             if (retry) retry.onclick = () => { _pitsCloseDefeatOverlay(); _pitsRetryFight(); };
             if (forfeit) forfeit.onclick = () => {
-                if (!confirm('Forfeit the bracket? One of your three bracket Pokémon will die. This cannot be undone.')) return;
+                if (!confirm("Crawl home? One of your three fighters dies — these fights are to the death. This cannot be undone.")) return;
                 _pitsCloseDefeatOverlay();
                 _pitsForfeitBracket();
             };
@@ -37432,9 +37551,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const deadSlot = deadId ? findById(deadId) : null;
             const deadName = deadSlot ? (deadSlot.nickname || deadSlot.name) : 'A bracket Pokémon';
             const survivorNames = survivors.map(id => { const s = findById(id); return s ? (s.nickname || s.name) : 'one'; });
-            // Permadeath: remove the dead mon from team / pc entirely. Also clear it from
-            // bondedMonIds and the daycare parentMonId if it was sitting there for some
-            // reason (defensive — daycare-pinned mons aren't picklable anyway).
+            // Permadeath: remove the fallen fighter from team / pc entirely.
             if (deadId) {
                 let ti = team.findIndex(s => s && s.id === deadId);
                 if (ti >= 0) team.splice(ti, 1);
@@ -37449,9 +37566,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     box.push(moved);
                 }
             }
-            // Clear bonded list — those mons are gone (dead) or now in the PC (survivors),
-            // and the Underground has no further claim once the bracket forfeits.
-            sm.pits.bondedMonIds = [];
             sm.pcBox = box;
             // Iconic exit: heal + clear fatigue on the surviving team.
             _storyClearTirednessForIconic();
@@ -37460,7 +37574,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const survivorLine = survivorNames.length
                 ? `${survivorNames.join(' and ')} crawled out — barely. They're in the PC now, sleeping it off.`
                 : '';
-            const forfeitMsg = `☠ The Pit kept ${deadName}. ${survivorLine}`;
+            const forfeitMsg = `☠ The floor kept ${deadName}. ${survivorLine}`;
             // Battle screen was torn down — return to the city hub before alerting.
             try { enterCity(); } catch (_) { try { _storyRefreshCityHubInPlace(); } catch (_2) {} }
             setTimeout(() => { try { window.showGameAlert && window.showGameAlert(forfeitMsg); } catch (_) {} }, 250);
@@ -37468,31 +37582,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // City-return consequence: bonded mons auto-release when the player walks back
         // into a regular town (Underground is NOT a town — the release happens on the
         // NEXT city visit, not on Pit exit). Called from enterCity / showStoryCity hooks.
+        // Legacy hook name, kept because enterCity calls it. Bonding / auto-release was
+        // removed by design — you keep everything you win in the Fight Club; the cost is
+        // narrative, not mechanical. All this does now is reset the per-visit win counter
+        // (the "wins tonight" display) when the player surfaces back into a city, and
+        // hatch any egg that's come due.
         function _pitsReleaseBondedOnCityReturn() {
-            const pits = sm.pits || {};
-            const bonded = Array.isArray(pits.bondedMonIds) ? pits.bondedMonIds.slice() : [];
-            if (!bonded.length) return false;
-            const releasedNames = [];
-            const team = sm.team || [];
-            const box = sm.pcBox || [];
-            for (const id of bonded) {
-                const ti = team.findIndex(s => s && s.id === id);
-                if (ti >= 0) { releasedNames.push(team[ti].nickname || team[ti].name); team.splice(ti, 1); continue; }
-                const bi = box.findIndex(s => s && s.id === id);
-                if (bi >= 0) { releasedNames.push(box[bi].nickname || box[bi].name); box.splice(bi, 1); continue; }
-            }
-            sm.pits.bondedMonIds = [];
-            // Underground visit counter resets when the player returns to a clean city.
-            sm.pits.winsThisVisit = 0;
-            if (releasedNames.length) {
-                try {
-                    window.showGameAlert && window.showGameAlert(
-                        `⛓ The Underground claims its own. Walking back into clean streets, ${releasedNames.join(', ')} broke free and disappeared into the alleys.`
-                    );
-                } catch (_) {}
-            }
-            try { save(); } catch (_) {}
-            return releasedNames.length > 0;
+            if (sm.pits && (sm.pits.winsThisVisit | 0) !== 0) { sm.pits.winsThisVisit = 0; try { save(); } catch (_) {} }
+            try {
+                const hatched = _storyHatchEligibleEggs();
+                if (hatched.length) setTimeout(() => { try { _storyHatchRevealScene(hatched); } catch (_) {} }, 350);
+            } catch (e) { console.warn('[Egg] city hatch', e); }
+            return false;
         }
 
         // Shared mutation for "retreat to last city": pulls the in-battle party
@@ -37618,8 +37719,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             panel.innerHTML = sm.team.map((t,i) => {
-                const g = t.name ? getMonGrade(t.name, getBST(t.name)) : 4;
                 const n = sm.team.length;
+                if (t && t.isEgg) {
+                    return `<div class="story-team-slot draft-card" style="align-items:stretch;justify-content:space-between;gap:8px;width:100%;box-sizing:border-box;border:1px dashed #ffd54f;">
+                        <div class="story-party-card-hit" style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;" role="button" tabindex="0" data-party-idx="${i}" title="It's an egg" aria-label="Mystery Egg">
+                            <div class="draft-card-sprite">${_eggIconHTML(40)}</div>
+                            <div class="draft-card-body" style="min-width:0;flex:1;">
+                                <div class="draft-card-header"><span>🥚 Mystery Egg</span></div>
+                                <div class="draft-card-details" style="color:#ffd54f;">Something stirs inside…</div>
+                                <div class="draft-card-moves" style="color:#888;">Hatches after Gym ${STORY_EGG_HATCH_BADGE}</div>
+                            </div>
+                        </div>
+                        <div class="party-sort-col" style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;" onclick="event.stopPropagation()">
+                            <button type="button" class="party-sort-btn" title="Move up in party" ${i===0?'disabled':''} onclick="event.stopPropagation();window.StoryMode.moveInParty(${i},-1)">▲</button>
+                            <button type="button" class="party-sort-btn" title="Move down in party" ${i===n-1?'disabled':''} onclick="event.stopPropagation();window.StoryMode.moveInParty(${i},1)">▼</button>
+                        </div>
+                    </div>`;
+                }
+                const g = t.name ? getMonGrade(t.name, getBST(t.name)) : 4;
                 const rawBuild = (t && (t.build || t.buildData)) ? (t.build || t.buildData) : {};
                 const mon = buildPokemon(String(t.name || '').trim(), shallowCloneBuildForDisplay(rawBuild));
                 const moveNames = (rawBuild.m || []).slice(0, 4).map(m => (String(m || '').split('/')[0] || '—'));
@@ -37664,6 +37781,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         function openSummary(i) {
             const t = sm.team[i];
+            if (t && t.isEgg) { try { window.showGameAlert && window.showGameAlert("It's an egg. Something's moving around inside. It'll hatch once you've earned your seventh badge."); } catch (_) {} return; }
             if (!t || !String(t.name || '').trim()) return;
             const rawBuild = t.build || t.buildData;
             if (!rawBuild || typeof rawBuild !== 'object') {
@@ -37900,9 +38018,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const numChoices = _profMysteryMode ? 1 : 3;
                 const sg = storySettingsGens();
                 const choices = [];
-                const usedNames = new Set(sm.team.map(t => t.name));
+                const usedNames = new Set(sm.team.filter(t => t && !t.isEgg).map(t => t.name));
                 // Block all forms of families already on the team (e.g. having Arceus blocks Arceus-Fire)
-                const usedFamilies = new Set(sm.team.map(t => _storyBaseFamily(t.name)));
+                const usedFamilies = new Set(sm.team.filter(t => t && !t.isEgg).map(t => _storyBaseFamily(t.name)));
                 for (let i = 0; i < numChoices; i++) {
                     let name = null;
                     for (let t = 0; t < 15; t++) {
@@ -38104,6 +38222,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 cardEl.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:12px 0;';
                 cardEl.innerHTML = '';
                 sm.team.forEach((t, i) => {
+                    if (t && t.isEgg) {
+                        const eslot = document.createElement('div');
+                        eslot.className = 'story-team-slot';
+                        eslot.style.cssText = 'opacity:0.5;cursor:not-allowed;min-width:130px;padding:10px;';
+                        eslot.title = "An egg can't be swapped out here";
+                        eslot.innerHTML = `<div style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:40px;">🥚</div><div style="font-size:12px;"><b>Egg</b></div>`;
+                        cardEl.appendChild(eslot);
+                        return;
+                    }
                     const g = t.name ? getMonGrade(t.name, getBST(t.name)) : 4;
                     const bonded = !!t.unsellable;
                     const slot = document.createElement('div');
@@ -38991,10 +39118,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // finales (Champion / E1–E4 / Victory Road / post-HoF Mystery
             // Figure) always field 6. Intro rival is pure player-match for
             // the starter-duel feel. See `_storyEnemyPartySize`.
-            const partySize = _storyEnemyPartySize(event, sm.team.length | 0, idx);
+            const partySize = _storyEnemyPartySize(event, _storyCountFighters() | 0, idx);
 
             const startFight = (enemyTeam) => {
-                if (sm.team.length === 0) { window.showGameAlert('You have no Pokémon. Visit the Professor.'); enterCity(); return; }
+                if (_storyCountFighters() === 0) { window.showGameAlert('You have no Pokémon. Visit the Professor.'); enterCity(); return; }
                 launchBattle(enemyTeam);
             };
 
@@ -39090,8 +39217,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _evName = _ev && _ev[1] === 'Battle' ? String(_ev[2] || '') : '';
                 if (_storyEventIsIconicFight(_evName)) _storyClearTirednessForIconic();
             } catch (e) {}
-            // Build player p1Draft and enemy p2Draft for state
-            const p1Draft = sm.team.map(t => ({ name: t.name, build: t.build }));
+            // Build player p1Draft and enemy p2Draft for state. Eggs occupy a party
+            // slot but never fight — filter them out of the battle draft.
+            const p1Draft = sm.team.filter(t => t && !t.isEgg).map(t => ({ name: t.name, build: t.build }));
             const p2Draft = enemyTeam;
             // Reset state to story mode
             state.mode = 'story';
@@ -39192,31 +39320,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Each beat: a clean state mutation + a toast queued for the post-overlay
                 // city so the player sees the unlock when they're back in town.
                 try {
-                    if (!sm.daycare) sm.daycare = { unlocked:false, state:'idle', parentMonId:null, egg:null, endgame:false, parentSnapshot:null };
-                    if (!sm.pits) sm.pits = { gym6Snapshot:null, winsThisVisit:0, bestStreak:0, bondedMonIds:[], lastEnemyRoster:null, payoutGold:0 };
+                    if (!sm.daycare) sm.daycare = { unlocked:false, eggEventDone:false };
+                    if (!sm.pits) sm.pits = { gym6Snapshot:null, championSnapshot:null, winsThisVisit:0, bestStreak:0, payoutGold:0, fightClubUnlocked:false, secretRevealed:false, storyClubDone:false };
                     if (!sm.flags) sm.flags = {};
-                    // Gym 1 → Daycare unlocks. Players head to the next city's Daycare to
-                    // start the egg quest. No mandatory step; just a new facility chip.
+                    // Gym 1 → the Daycare Inn opens. The dark front for the one-time egg
+                    // event; just a new facility chip, no mandatory step.
                     if (en === 'Gym Leader 1' && !sm.daycare.unlocked) {
                         sm.daycare.unlocked = true;
                         sm.flags._daycareUnlockToastQueued = true;
                     }
-                    // Gym 6 → Pits unlock + snapshot the team. Snapshot is used by Pit
-                    // foes to read player strength tier and roll a matching roster.
+                    // Gym 6 → snapshot the team (Fight Club foe scaling reads this). The
+                    // club is NOT advertised — the daycare matron wires it via her secret —
+                    // so we only nudge the player back toward the Inn.
                     if (en === 'Gym Leader 6' && !sm.pits.gym6Snapshot) {
                         sm.pits.gym6Snapshot = _pitsCaptureTeamSnapshot(6);
                         sm.flags._pitsUnlockToastQueued = true;
                     }
-                    // Gym 7 → hatch the daycare egg (if one is incubating).
-                    if (en === 'Gym Leader 7' && sm.daycare.state === 'incubating' && sm.daycare.egg) {
-                        sm.flags._daycareHatchQueued = true;
-                    }
-                    // Champion → snapshot for Crucible Pits scaling + unlock the Crucible
-                    // Daycare endgame loop. Both gated on a fresh HoF clear so a recurring
-                    // visit doesn't re-arm the unlock.
+                    // Gym 7 → eggs come due. Hatching happens lazily on the next city
+                    // return (_pitsReleaseBondedOnCityReturn → _storyHatchEligibleEggs),
+                    // so no flag needed here.
+                    // Champion → snapshot for endgame scaling + open the repeatable,
+                    // money-only Fight Club loop (no daycare, no egg).
                     if (en === 'Champion' && (!sm.pits.championSnapshot)) {
                         sm.pits.championSnapshot = _pitsCaptureTeamSnapshot(8);
-                        sm.daycare.endgame = true;
                         sm.flags._crucibleDaycareToastQueued = true;
                     }
                 } catch (e) { console.warn('[Story] story-mid unlock hooks', e); }
@@ -39402,11 +39528,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             try {
                 if (typeof state !== 'undefined' && state.playerParty && state.playerParty.length && sm.team) {
+                    // Eggs never entered battle — preserve them across the rebuild.
+                    const _keepEggs = (sm.team || []).filter(s => s && s.isEgg);
                     sm.team = state.playerParty.map(m => ({
                         name: m._baseName || m.name,
                         build: m.buildData ? deepClone(m.buildData) : (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).build,
                         id: (sm.team.find(t => t.name === (m._baseName || m.name)) || {}).id
-                    })).filter(t => t.build);
+                    })).filter(t => t.build).concat(_keepEggs);
                     save();
                 }
             } catch (e) { console.warn('[Story] team sync', e); }
@@ -39616,8 +39744,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (inPc >= 0) return { where: 'pc', index: inPc, slot: sm.pcBox[inPc] };
             return null;
         }
+        // "Only one mon" guard now counts battle-eligible fighters (eggs don't
+        // count) — you can deposit/sell freely as long as one fighter remains.
         function _pcTeamHasOnlyOneMon() {
-            return Array.isArray(sm.team) && sm.team.filter(Boolean).length <= 1;
+            return Array.isArray(sm.team) && sm.team.filter(s => s && !s.isEgg).length <= 1;
         }
         function _pcEnsureBoxArray() {
             if (!Array.isArray(sm.pcBox)) sm.pcBox = [];
@@ -39701,7 +39831,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const box = sm.pcBox || [];
             const partyCap = _storyMaxPartySize();
             const partyFull = team.length >= partyCap;
-            const partyLastOne = team.length <= 1;
+            const partyLastOne = team.filter(s => s && !s.isEgg).length <= 1;
             const boxFull = box.length >= PC_BOX_CAP;
             const lowSlotWarn = box.length >= (PC_BOX_CAP - 3) && box.length < PC_BOX_CAP;
 
@@ -39741,6 +39871,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 html += `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">`;
                 team.forEach((slot, i) => {
                     if (!slot) return;
+                    if (slot.isEgg) {
+                        const eid = slot.id || '';
+                        const eggCanDep = !boxFull && !!eid;
+                        const eggReason = boxFull ? 'PC is full — release or sell to free a slot' : !eid ? 'Missing id (legacy save)' : '';
+                        html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(36,30,12,0.6);border:1px dashed #ffd54f;">
+                            ${_eggIconHTML(32)}
+                            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:#ffd54f;">🥚 Mystery Egg <span style="color:#888;font-size:10px;">· hatches after Gym ${STORY_EGG_HATCH_BADGE}</span></span>
+                            <button type="button" onclick="event.stopPropagation();window.StoryMode.pcDeposit('${_esc(eid)}')" ${eggCanDep ? '' : 'disabled'} title="${_esc(eggReason)}" style="font-size:10px;padding:3px 8px;${eggCanDep ? 'color:#4caf50;border-color:#4caf50;' : 'opacity:0.4;'}">Deposit</button>
+                        </div>`;
+                        return;
+                    }
                     const g = _pcMonGrade(slot);
                     const id = slot.id || '';
                     const canDeposit = !partyLastOne && !boxFull && !!id;
@@ -39767,6 +39908,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 html += `<div style="display:flex;flex-direction:column;gap:6px;">`;
                 box.forEach((slot, i) => {
                     if (!slot) return;
+                    if (slot.isEgg) {
+                        const eid = slot.id || '';
+                        const eggCanW = !partyFull && !!eid;
+                        const eggReason = partyFull ? `Party full (${partyCap}/${partyCap})` : !eid ? 'Missing id (legacy save)' : '';
+                        html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(36,30,12,0.6);border:1px dashed #ffd54f;">
+                            ${_eggIconHTML(32)}
+                            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:#ffd54f;">🥚 Mystery Egg <span style="color:#888;font-size:10px;">· hatches after Gym ${STORY_EGG_HATCH_BADGE}</span></span>
+                            <button type="button" onclick="event.stopPropagation();window.StoryMode.pcWithdraw('${_esc(eid)}')" ${eggCanW ? '' : 'disabled'} title="${_esc(eggReason)}" style="font-size:10px;padding:3px 8px;${eggCanW ? 'color:#ce93d8;border-color:#ce93d8;' : 'opacity:0.4;'}">Withdraw</button>
+                            <button type="button" onclick="event.stopPropagation();window.StoryMode.pcRelease('${_esc(eid)}')" style="font-size:10px;padding:3px 8px;color:#888;border-color:#888;">Release</button>
+                        </div>`;
+                        return;
+                    }
                     const g = _pcMonGrade(slot);
                     const id = slot.id || '';
                     const canWithdraw = !partyFull && !!id;
@@ -39831,7 +39984,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _pcEnsureBoxArray();
             const team = sm.team || [];
             const box = sm.pcBox || [];
-            const lastInParty = team.filter(Boolean).length <= 1;
+            const lastInParty = team.filter(s => s && !s.isEgg).length <= 1;
 
             let html = '';
             html += `<div style="padding:10px;margin-bottom:12px;background:linear-gradient(180deg,rgba(40,12,12,0.7) 0%,rgba(20,4,4,0.7) 100%);border:1px solid #5a1818;color:#bcaaa4;font-size:11px;line-height:1.5;">
@@ -39845,8 +39998,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             html += `</div>`;
 
             const rows = [];
-            team.forEach((s, i) => { if (s) rows.push({ slot: s, where: 'team', index: i }); });
-            box.forEach((s, i) => { if (s) rows.push({ slot: s, where: 'pc', index: i }); });
+            team.forEach((s, i) => { if (s && !s.isEgg) rows.push({ slot: s, where: 'team', index: i }); });
+            box.forEach((s, i) => { if (s && !s.isEgg) rows.push({ slot: s, where: 'pc', index: i }); });
 
             if (!rows.length) {
                 html += `<div style="color:#888;font-size:11px;padding:8px;">Nothing on the table tonight. Starters and bonded partners aren\'t for sale here.</div>`;
@@ -40292,13 +40445,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _handleCrucibleBattleEnd(won, source) {
             try {
                 if (typeof state !== 'undefined' && state.playerParty && state.playerParty.length && sm.team) {
+                    const _keepEggs = (sm.team || []).filter(function (s) { return s && s.isEgg; });
                     sm.team = state.playerParty.map(function (m) {
                         return {
                             name: m._baseName || m.name,
                             build: m.buildData ? deepClone(m.buildData) : (sm.team.find(function (t) { return t.name === (m._baseName || m.name); }) || {}).build,
                             id: (sm.team.find(function (t) { return t.name === (m._baseName || m.name); }) || {}).id
                         };
-                    }).filter(function (t) { return t.build; });
+                    }).filter(function (t) { return t.build; }).concat(_keepEggs);
                 }
             } catch (e) {}
             sm.crucibleBattleSource = null;
@@ -40584,7 +40738,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _pcEnsureBoxArray();
             const found = _pcFindSlotById(monId);
             if (!found || found.where !== 'team') return;
-            if (_pcTeamHasOnlyOneMon()) return;
+            if (!found.slot.isEgg && _pcTeamHasOnlyOneMon()) return;
             if (sm.pcBox.length >= PC_BOX_CAP) return;
             const [moved] = sm.team.splice(found.index, 1);
             sm.pcBox.push(moved);
@@ -40626,7 +40780,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const found = _pcFindSlotById(monId);
             if (!found) return;
             const slot = found.slot;
-            if (!slot || slot.unsellable === true) return;
+            if (!slot || slot.unsellable === true || slot.isEgg) return;
             if (found.where === 'team' && _pcTeamHasOnlyOneMon()) return;
             const price = _pcSellPriceForSlot(slot);
             const name = slot.name || 'this Pokémon';
@@ -43332,6 +43486,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const switcherHtml = _txMonSwitcherHtml(sm.team, _storyLinkOpenIdx, 'link');
 
             el.innerHTML = switcherHtml + sm.team.map((t,i) => {
+                if (t && t.isEgg) return '';
                 const expanded = i === _storyLinkOpenIdx;
                 const g      = getMonGrade(t.name, getBST(t.name));
                 const b      = t.build || {};
@@ -43683,6 +43838,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const switcherHtml = _txMonSwitcherHtml(sm.team, _storyEvoLabOpenIdx, 'evolab');
 
             el.innerHTML = switcherHtml + sm.team.map((t, i) => {
+                if (t && t.isEgg) return '';
                 const expanded = i === _storyEvoLabOpenIdx;
                 const g       = getMonGrade(t.name, getBST(t.name));
                 const evosAll = _getAllEvosWithStatus(t.name, sg);
@@ -47046,6 +47202,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _txMonSwitcherHtml(team, activeIdx, facility) {
             if (!team || team.length <= 1) return '';
             const pills = team.map((t, i) => {
+                if (t && t.isEgg) return ''; // eggs aren't operable in these facilities
                 const isActive = i === activeIdx;
                 const spriteUrl = getSprite(spriteDisplayName(t));
                 const ttl = isActive ? `${t.name} — tap to collapse` : t.name;
@@ -47554,6 +47711,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             })();
             const switcherHtml = _txMonSwitcherHtml(sm.team, _storyTutorOpenIdx, facility);
             el.innerHTML = switcherHtml + sm.team.map((t, idx) => {
+                if (t && t.isEgg) return '';
                 const expanded = idx === _storyTutorOpenIdx;
                 if (!expanded) return _txRenderCollapsedMonHtml(t, idx, mode);
                 if (showMoves) {
@@ -47944,6 +48102,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function _renderColressMonCard(t, idx) {
+            if (t && t.isEgg) return ''; // can't tinker with an egg's battle forms
             const b = t.build || {};
             const elig = _colressEligibleMechanics(t.name, b);
             const spriteUrl = getSprite(spriteDisplayName(t));
@@ -48914,6 +49073,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function _renderEVTrainerMonCard(t, idx) {
+            if (t && t.isEgg) return ''; // an egg has no EVs to train
             const b = (t && t.build) || {};
             const cur = b.evs || {};
             const cantAfford = sm.gold < EVTRAINER_COST;
@@ -49127,8 +49287,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _markDexCaught: _storyMarkDexCaught,
             showOneTimeTip: _storyShowOneTimeTip,
             playTutorial: playStoryTutorial,
-            // Daycare (egg quest) + Underground Pits (illegal arena)
+            // Daycare Inn (egg event) + Fight Club (one-time story arena / endgame loop)
             enterDaycare, enterPits,
+            _hatchEligibleEggs: _storyHatchEligibleEggs,
+            _makeEggSlot, _isEggSlot,
+            _countFighters: _storyCountFighters,
+            _pitsIsEndgame, _pitsStoryAvailable,
             // Story-mode event registry (read-only inspection surface)
             getStoryBeat: function(rowId) { return getStoryBeatForRow(rowId | 0); },
             getActiveStoryline: function() { return _storyActiveVariant(); },
