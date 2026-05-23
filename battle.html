@@ -29224,6 +29224,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (id === STORY_RIVAL_ROW_LEAGUE) return 4;
             return null;
         }
+        /** Short phase tagline for the pre-battle rival banner (B5). */
+        const RIVAL_PHASE_TAGLINES = { 0: 'Starter Duel', 2: 'First Rematch', 3: 'On the Way Up', 4: 'Title Match' };
+        function rivalPhaseTagline(phase) {
+            if (phase === null || phase === undefined) return 'Rematch';
+            return RIVAL_PHASE_TAGLINES[phase | 0] || 'Rivalry';
+        }
         /** First `Battle` row strictly after this `STORY_EVENTS_RAW` array index (for hub → next fight checks). */
         function storyFirstBattleIndexAfter(ei) {
             const cap = STORY_EVENTS_RAW.length;
@@ -29659,9 +29665,69 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (playerLossStreak === 2) copy.push('Twice now. You won\'t make a third.');
             if (playerWinStreak >= 3) copy.push('Three in a row for you. Whatever you\'re doing — I just figured it out.');
             else if (playerWinStreak === 2) copy.push('Two losses in a row. Round three — I bring everything.');
+            // Darker "shadow" branch: at the title match, if the player has been
+            // losing the rivalry, the league rival's tone turns cold and Silver-like.
+            // Pushed 3× so these dominate the pool when the condition holds.
+            if ((phase | 0) === 4 && playerLossStreak >= 2) {
+                copy.push('You\'ve handed me this rivalry. The Hall doesn\'t write reluctant names — make me earn the last one.');
+                copy.push('Every time we meet you\'re a step further back. Tonight I close the door.');
+                copy.push('I stopped seeing a rival in you a while ago. Prove me wrong, or don\'t.');
+            }
             copy.push(`${b} badge${b === 1 ? '' : 's'} on you. I\'m still going to win.`);
             const r = (sm && sm.active) ? _storySideRng((phase | 0) + 1, b + 1) : Math.random();
             return copy[Math.floor(r * copy.length)];
+        }
+        /** Post-battle rival voice. `won` = did the PLAYER win. Standing-aware:
+         *  reads the (already-updated) win/loss streak + Champion-claim state so the
+         *  line escalates with the rivalry. Surfaced by the victory overlay (win) and
+         *  the concede flow (loss). Deterministic per run when a story run is active. */
+        function getRivalAftermathLine(won, phase) {
+            const winStreak = (sm && sm.rivalConsecutiveWins) | 0;   // player's streak (post-update)
+            const lossStreak = (sm && sm.rivalConsecutiveLosses) | 0;
+            const rivalChamp = !!(sm && sm.rivalChampionClaimed);
+            let pool;
+            if (won) {
+                if ((phase | 0) === 4) {
+                    pool = [
+                        'The Hall takes your name. Mine stays in the hallway, where rivals wait.',
+                        'You took the crown. I\'ll be at the bottom of the stairs when you come back down.',
+                        'Champion. Fine. I made you earn every inch of it — don\'t forget that.',
+                        'Go sit in the chair. I\'ll be training for the day you have to defend it from me.',
+                    ];
+                } else if ((phase | 0) === 0) {
+                    pool = [
+                        'First one\'s yours. Don\'t get comfortable — I\'ve got a whole region to catch up in.',
+                        'Beginner\'s luck. The road is long, and I\'m walking it right behind you.',
+                    ];
+                } else {
+                    pool = [
+                        'You earned this one. The next one — I\'m earning.',
+                        'Better team today. I\'ll have fixed that before the next gate.',
+                        'Enjoy it. I\'m already rebuilding the bench around what you just showed me.',
+                        'You win the round. I keep the rivalry. We are not done.',
+                        'Take the win. Take the road. I\'ll be at the end of it.',
+                    ];
+                }
+                if (winStreak >= 3) pool = pool.concat(['Three straight. Whatever you cracked — I\'ll crack it back.']);
+            } else {
+                if ((phase | 0) === 4 && rivalChamp) {
+                    pool = [
+                        'I\'m the Champion now. You\'ll knock on this door again — I\'ll be on the other side of it.',
+                        'The crown was always going to be one of ours. It\'s mine. Come take it.',
+                    ];
+                } else {
+                    pool = [
+                        'You\'ll catch up. Or you won\'t.',
+                        'Don\'t bring that team again. Bring a real one.',
+                        'Predictable. I read you three moves out.',
+                        'Walk it off. Then go train like you actually mean it.',
+                    ];
+                }
+                if (lossStreak >= 3) pool = pool.concat(['Three. Are you still counting? I stopped.']);
+                else if (lossStreak === 2) pool = pool.concat(['Twice now. Starting to look like a pattern, isn\'t it.']);
+            }
+            const r = (sm && sm.active) ? _storySideRng((phase | 0) + 11, (won ? 1 : 0), winStreak + lossStreak + 1) : Math.random();
+            return pool[Math.floor(r * pool.length)];
         }
         function storyDisplayRoleLabel(eventType) {
             const e = String(eventType || '');
@@ -31702,6 +31768,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 getRivalEncounterPhase: (...a) => getRivalEncounterPhase(...a),
                 _rivalCounterPlan: (...a) => _rivalCounterPlan(...a),
                 _rivalIntroStarterCounterType: (...a) => _rivalIntroStarterCounterType(...a),
+                pickRivalSecondaryIntroLine: (...a) => pickRivalSecondaryIntroLine(...a),
+                getRivalAftermathLine: (...a) => getRivalAftermathLine(...a),
+                rivalPhaseTagline: (...a) => rivalPhaseTagline(...a),
                 getMonGrade: (...a) => getMonGrade(...a),
                 getBST: (...a) => getBST(...a),
                 STORY_RIVAL_ROW_INTRO, STORY_RIVAL_ROW_EARLY, STORY_RIVAL_ROW_MID, STORY_RIVAL_ROW_LEAGUE,
@@ -38177,12 +38246,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const extraLine = isRivalBattle && rivalPhase !== null && rivalPhase !== undefined
                     ? pickRivalSecondaryIntroLine(rivalPhase, badgesNow)
                     : '';
+                const rivalTagline = isRivalBattle ? rivalPhaseTagline(rivalPhase) : '';
                 const silentAttr = _storyQuoteIsSilent(quote)
                     ? ` aria-label="${_esc(String(trainer.name || 'They'))} is silent"`
                     : '';
                 overlay.innerHTML = `
                     <img src="${getTrainerSprite(trainer)}" onerror="this.style.display='none'" style="width:200px;height:200px;object-fit:contain;image-rendering:pixelated;border:none;">
                     <div style="color:var(--accent);font-size:20px;font-weight:bold;">${trainer.name}</div>
+                    ${isRivalBattle && rivalTagline ? `<div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#ffb74d;font-weight:bold;text-shadow:0 0 6px rgba(255,152,0,0.35);">⚔ Rival · ${rivalTagline}</div>` : ''}
                     <div class="story-dialog-host story-battle-intro-dialog" style="margin-top:4px;">
                         <div class="story-dialog-nameplate">${roleLabel}</div>
                         <div class="story-dialog-box">
@@ -38465,9 +38536,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.eventIndex = Math.min(STORY_EVENTS_RAW.length - 1, (sm.eventIndex | 0) + 1);
             try { save(); } catch (e) { console.warn('[Story] rival concede save', e); }
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
-            const msg = rowIdx === STORY_RIVAL_ROW_LEAGUE
+            const baseMsg = rowIdx === STORY_RIVAL_ROW_LEAGUE
                 ? 'You conceded the Champion claim to your rival. Hall of Fame still awaits.'
                 : 'You conceded this round. Your rival is the better trainer until you take it back.';
+            let rivalSay = '';
+            try { rivalSay = getRivalAftermathLine(false, getRivalEncounterPhase(rowIdx)); } catch (e) {}
+            const who = (sm && sm.currentTrainerData && sm.currentTrainerData.name) ? String(sm.currentTrainerData.name) : 'Rival';
+            const msg = rivalSay ? `${baseMsg}\n\n${who}: "${rivalSay}"` : baseMsg;
             try { window.showGameAlert && window.showGameAlert(msg); } catch (e) {}
             processNextEvent();
         }
@@ -38587,17 +38662,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 else if (evn === 'Rival') {
                     const rp = storyRowIdx != null ? getRivalEncounterPhase(storyRowIdx) : null;
-                    if (rp === 4) {
-                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">A duel settled on the Plateau floor — for tonight, the rivalry is yours.</div>`;
-                    } else if (rp === 3) {
-                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">Third round, third win. Two gyms left, and the wind is at your back.</div>`;
-                    } else if (rp === 2) {
-                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">A mid-journey win. The lead in your rivalry widens.</div>`;
-                    } else if (rp === 0) {
-                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">First fight, first win — and the only road out of Pallet runs north.</div>`;
-                    } else {
-                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">A clean upset. The next gym is already waiting.</div>`;
-                    }
+                    let narr;
+                    if (rp === 4) narr = 'A duel settled on the Plateau floor — for tonight, the rivalry is yours.';
+                    else if (rp === 3) narr = 'Third round, third win. Two gyms left, and the wind is at your back.';
+                    else if (rp === 2) narr = 'A mid-journey win. The lead in your rivalry widens.';
+                    else if (rp === 0) narr = 'First fight, first win — and the only road out of Pallet runs north.';
+                    else narr = 'A clean upset. The next gym is already waiting.';
+                    // Rival's spoken aftermath, standing-aware (grudging respect / concession).
+                    let rivalSay = '';
+                    try { rivalSay = getRivalAftermathLine(true, rp); } catch (e) {}
+                    const who = _trainerName || 'Rival';
+                    badgeFlavor = `<div style="font-size:14px;color:#81c784;">${narr}</div>` +
+                        (rivalSay ? `<div style="font-size:13px;color:#aed581;line-height:1.5;max-width:380px;margin-top:6px;font-style:italic;">${who}: "${rivalSay}"</div>` : '');
                 }
                 else if (evn === 'Mystery Figure') {
                     const face = (sm && sm.mysteryIdentity && MYSTERY_FIGURE_IDENTITIES[sm.mysteryIdentity]) || null;

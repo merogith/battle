@@ -209,3 +209,63 @@ test('trainer.sigs array is not mutated by a team roll', async () => {
   }
   assert.deepEqual(trainer.sigs, before, 'rollTrainerTeam must not splice/mutate the trainer.sigs source array');
 });
+
+// ---------------------------------------------------------------------------
+// Dialogue tests — pre-battle banner, darker league branch, aftermath voice.
+// ---------------------------------------------------------------------------
+
+test('B5: rival phase taglines map per phase', async () => {
+  const { window } = await setup();
+  const f = window.__rivalTest.rivalPhaseTagline;
+  assert.equal(f(0), 'Starter Duel');
+  assert.equal(f(2), 'First Rematch');
+  assert.equal(f(3), 'On the Way Up');
+  assert.equal(f(4), 'Title Match');
+  assert.equal(f(null), 'Rematch');
+});
+
+test('B7: league rival intro turns dark only when the player is losing the rivalry', async () => {
+  const eng = await setup();
+  const E = eng.window.__rivalTest;
+  const sm = E.sm;
+  sm.active = false;
+  const SHADOW = ['reluctant names', 'close the door', 'stopped seeing a rival'];
+  const hasShadow = (arr) => arr.some((l) => SHADOW.some((s) => l.includes(s)));
+  function gather(phase, lossStreak, N) {
+    sm.rivalConsecutiveLosses = lossStreak;
+    sm.rivalConsecutiveWins = 0;
+    sm.rivalLastWinner = lossStreak > 0 ? 'rival' : 'none';
+    sm.rivalChampionClaimed = false;
+    const out = new Set();
+    for (let s = 0; s < N; s++) { eng.seedRng(9000 + s); out.add(E.pickRivalSecondaryIntroLine(phase, 8)); }
+    return [...out];
+  }
+  assert.ok(hasShadow(gather(4, 2, 80)), 'phase-4 + 2 losses should be able to surface a shadow line');
+  assert.ok(!hasShadow(gather(4, 0, 80)), 'phase-4 with no losses must never surface a shadow line');
+  assert.ok(!hasShadow(gather(2, 3, 80)), 'shadow lines are league-only — phase 2 must never surface them');
+});
+
+test('B10: aftermath line is standing-aware (win, rival-champ loss, loss streak)', async () => {
+  const eng = await setup();
+  const E = eng.window.__rivalTest;
+  const sm = E.sm;
+  sm.active = false;
+  function gather(won, phase, configure, N) {
+    configure(sm);
+    const out = new Set();
+    for (let s = 0; s < N; s++) { eng.seedRng(9500 + s); out.add(E.getRivalAftermathLine(won, phase)); }
+    return [...out];
+  }
+  const winLeague = gather(true, 4, (s) => { s.rivalConsecutiveWins = 1; s.rivalConsecutiveLosses = 0; s.rivalChampionClaimed = false; }, 40);
+  assert.ok(winLeague.some((l) => /Hall|crown|Champion/i.test(l)), 'league win line should reference the Hall/crown/Champion');
+
+  const loseLeague = gather(false, 4, (s) => { s.rivalConsecutiveLosses = 1; s.rivalConsecutiveWins = 0; s.rivalChampionClaimed = true; }, 40);
+  assert.ok(loseLeague.some((l) => /Champion|crown|door/i.test(l)), 'league loss (rival champ) line should reference the claim');
+
+  const streak = gather(false, 3, (s) => { s.rivalConsecutiveLosses = 3; s.rivalConsecutiveWins = 0; s.rivalChampionClaimed = false; }, 60);
+  assert.ok(streak.some((l) => /Three/i.test(l)), '3-loss streak should be able to surface the escalated cold line');
+
+  for (const l of [...winLeague, ...loseLeague, ...streak]) {
+    assert.ok(typeof l === 'string' && l.length > 0, 'every aftermath line is a non-empty string');
+  }
+});
