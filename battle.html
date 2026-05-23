@@ -1287,6 +1287,52 @@
             border-radius: 999px; padding: 1px 6px;
             margin-left: 4px; flex-shrink: 0;
         }
+        /* Equipped move cards — the moves this Pokémon already knows stay in
+           the grid (so the player sees their usage % beside the alternatives)
+           but read as "already known": a green left stripe + ✓ badge, slightly
+           recessed background, and a Forget action in the footer. Not a
+           <button> — it's inert except for the Forget control inside it. */
+        .tx-card--equipped {
+            border-left: 3px solid #66bb6a;
+            background: linear-gradient(180deg, rgba(40,60,44,0.45), rgba(26,40,30,0.45));
+            cursor: default;
+        }
+        .tx-card--equipped:hover { transform: none; }
+        .tx-card-equipped {
+            display: inline-flex; align-items: center;
+            font-size: 9px; font-weight: 800; letter-spacing: 0.04em;
+            color: #c8f0cc; background: rgba(102,187,106,0.18);
+            border: 1px solid #66bb6a; border-radius: 999px;
+            padding: 1px 6px; margin-left: 4px; flex-shrink: 0;
+        }
+        .tx-card-foot-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+        .tx-unlearn-btn {
+            font-family: var(--battle-font); cursor: pointer;
+            font-size: 10px; font-weight: 700; letter-spacing: 0.03em;
+            color: #ffcdd2; background: rgba(229,115,115,0.14);
+            border: 1px solid #e57373; border-radius: 5px;
+            padding: 3px 8px; transition: background 0.12s, transform 0.12s;
+        }
+        .tx-unlearn-btn:hover { background: rgba(229,115,115,0.28); transform: translateY(-1px); }
+        .tx-unlearn-btn:active { transform: translateY(0); }
+        .tx-unlearn-locked {
+            font-size: 9px; font-weight: 600; color: #8a8f9c;
+            font-style: italic; opacity: 0.8;
+        }
+        /* "＋ Add" slot chip — appears when a mon has an open move slot (<4
+           moves). Dashed outline marks it as the "fill me" affordance distinct
+           from the solid equipped-move chips. */
+        .tx-slot-chip--add {
+            border-style: dashed !important;
+            border-color: #66bb6a !important;
+            color: #c8f0cc;
+            background: rgba(102,187,106,0.10) !important;
+        }
+        .tx-slot-chip--add::before { background: transparent !important; }
+        .tx-slot-chip--add[data-active="1"] {
+            border-style: solid !important;
+            background: rgba(102,187,106,0.22) !important;
+        }
         /* Ability tier — Hidden abilities get a 3px left stripe + a Hidden
            pill so the gold ★ recommended treatment can layer on top without
            hiding the tier signal. Future tiers (Special/OP/locked) reuse
@@ -13994,12 +14040,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Handle Farfetch'd name variants
             let lookupName = monName === "Farfetch'd" ? "Farfetchd" : monName;
             let base = baseStats[monName] || baseStats[lookupName] || {hp:50, atk:50, def:50, spa:50, spd:50, spe:50, t1:"Normal", t2:""};
-            // Ensure exactly 4 moves — pad with Tackle if short (data bug safety net)
+            // Moves: honor intentional 1-4 move sets (a player can forget moves
+            // in the Move Tutor down to a 1-3 move build). Only pad when the
+            // array is genuinely empty — a mon with zero moves can't battle, so
+            // that lone case still falls back to Tackle as a data-bug safety net.
             build.m = Array.isArray(build.m) ? build.m.filter(Boolean) : [];
-            if (build.m.length < 4) {
-                console.warn(`[Build] ${monName} has ${build.m.length} moves; padding with Tackle.`);
+            if (build.m.length === 0) {
+                console.warn(`[Build] ${monName} has no moves; falling back to Tackle.`);
                 ensureMoveData('Tackle');
-                while (build.m.length < 4) build.m.push('Tackle');
+                build.m.push('Tackle');
             } else if (build.m.length > 4) {
                 build.m = build.m.slice(0, 4);
             }
@@ -50538,9 +50587,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
 
-                // Option card pick — set pending
+                // Unlearn (Forget) — free move removal with confirmation. Must
+                // be checked before the card handler since the button lives
+                // inside the equipped card.
+                const unlearnBtn = t.closest('.tx-unlearn-btn[data-unlearn-move]');
+                if (unlearnBtn) {
+                    const monCard = unlearnBtn.closest('.story-tutor-mon');
+                    const toggle = monCard && monCard.querySelector('.story-tutor-mon-toggle[data-team]');
+                    const teamIdx = toggle ? parseInt(toggle.dataset.team, 10) : _storyTutorOpenIdx;
+                    const slotRaw = unlearnBtn.dataset.unlearnSlot;
+                    const slot = slotRaw === '' ? -1 : parseInt(slotRaw, 10);
+                    if (Number.isFinite(teamIdx)) {
+                        void window.StoryMode.tutorUnlearnMove(teamIdx, slot, unlearnBtn.dataset.unlearnMove);
+                    }
+                    return;
+                }
+
+                // Option card pick — set pending. Equipped move cards are
+                // informational only (you can't re-learn a move you have), so
+                // they never set a pending learn.
                 const card = t.closest('.tx-card[data-card-kind]');
-                if (card && card.dataset.disabled !== '1') {
+                if (card && card.dataset.disabled !== '1' && card.dataset.equipped !== '1') {
                     const kind = card.dataset.cardKind;
                     const value = card.dataset.cardValue;
                     if (kind && value) {
@@ -50549,6 +50616,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     return;
                 }
+                if (card && card.dataset.equipped === '1') return; // inert equipped card
 
                 // Confirm button
                 const confirmBtn = t.closest('.tx-confirm-bar-btn');
@@ -50771,6 +50839,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const isPending = ctx && ctx.pending === moveName;
             const isRec     = ctx && ctx.recommended && ctx.recommended.has(moveName);
             const stab      = ctx && ctx.stabTypes && ctx.stabTypes.has(typ);
+            // Equipped moves stay in the grid (so players can see their usage %
+            // alongside the alternatives) but switch from a "learn me" card to
+            // an "already known" card: a ✓ badge, a Forget button, and the body
+            // click is inert (you can't learn a move you already have).
+            const isEquipped = !!(ctx && ctx.equippedSet && ctx.equippedSet.has(moveName));
+            const equippedSlot = isEquipped && ctx.slotOf ? ctx.slotOf.get(moveName) : null;
+            const canUnlearn   = isEquipped && ctx.equippedSet.size > 1;
             const pills = [
                 `<span class="tx-pill tx-pill--cat-${cat}">${cat}</span>`,
                 stab ? `<span class="tx-pill" style="background:rgba(255,213,79,0.18);border-color:#ffd54f;color:#fff3cd;">STAB</span>` : '',
@@ -50779,9 +50854,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pctHtml = _txUsagePctHtml(ctx, moveName);
             const mechTags = ctx && ctx.mechanicTagsFor ? ctx.mechanicTagsFor(moveName) : null;
             const mechHtml = _txMechanicIconsHtml(mechTags);
-            return `<button type="button" class="tx-card" data-card-kind="move" data-card-value="${_esc(moveName)}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}">
+            const equippedBadge = isEquipped ? `<span class="tx-card-equipped" title="Already in this Pokémon's moveset">✓ Equipped</span>` : '';
+            const footExtra = isEquipped
+                ? `<div class="tx-card-foot-actions">${
+                    canUnlearn
+                        ? `<button type="button" class="tx-unlearn-btn" data-unlearn-slot="${equippedSlot != null ? equippedSlot : ''}" data-unlearn-move="${_esc(moveName)}" title="Forget ${_esc(moveName)} — free, opens a slot">✕ Forget</button>`
+                        : `<span class="tx-unlearn-locked" title="A Pokémon must keep at least one move">Last move</span>`
+                  }</div>`
+                : '';
+            // Equipped cards are non-interactive containers (a real Forget
+            // <button> lives inside, so the card itself can't be a <button> —
+            // no nested buttons). Learnable cards stay <button> for a11y.
+            const tag = isEquipped ? 'div' : 'button';
+            const btnAttr = isEquipped ? '' : ' type="button"';
+            const inner = `
                 <div class="tx-card-head">
-                    ${star}<span class="tx-card-title">${_esc(moveName)}</span>${pctHtml}${mechHtml}
+                    ${star}<span class="tx-card-title">${_esc(moveName)}</span>${pctHtml}${mechHtml}${equippedBadge}
                     <span class="type-badge type-${typ}">${typ}</span>
                 </div>
                 <div class="tx-card-stats">
@@ -50791,8 +50879,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <span>Pri <strong>${pri}</strong></span>
                 </div>
                 ${eff ? `<div class="tx-card-desc">${_esc(eff)}</div>` : ''}
-                <div class="tx-card-foot">${pills}</div>
-            </button>`;
+                <div class="tx-card-foot">${pills}${footExtra}</div>`;
+            return `<${tag}${btnAttr} class="tx-card${isEquipped ? ' tx-card--equipped' : ''}" data-card-kind="move" data-card-value="${_esc(moveName)}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-equipped="${isEquipped?1:0}">${inner}</${tag}>`;
         }
 
         // Build an Item card.
@@ -50883,7 +50971,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>`;
             }
             let current = '(none)';
-            if (kind === 'move')    current = ((build.m || [])[_txState.moveSlot] || '').split('/')[0] || '(empty)';
+            let isAppendMove = false;
+            if (kind === 'move') {
+                const raw = (build.m || [])[_txState.moveSlot];
+                isAppendMove = !raw; // append slot (beyond current moves) has no existing move
+                current = (raw || '').split('/')[0] || '(empty)';
+            }
             if (kind === 'item')    current = build.i || '(none)';
             if (kind === 'ability') current = build.a || (mon && mon.ability) || '(none)';
             if (kind === 'nature')  current = build.n || 'Hardy';
@@ -50895,8 +50988,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const voucherBtn = (vDef && vCount > 0)
                 ? `<button type="button" class="tx-confirm-bar-btn tx-confirm-bar-btn--voucher" data-action="${action}Voucher" data-team="${teamIdx}" title="Use 1 ${vDef.label} (you have ${vCount}) — free swap"><img src="sprites/pokesprite/items/${vDef.icon}" alt="" width="14" height="14" decoding="async" style="width:14px;height:14px;image-rendering:auto;vertical-align:-2px;margin-right:5px;">${vDef.label} (${vCount})</button>`
                 : '';
+            // Move append (filling an open slot) reads as "Learn X" rather than
+            // "Replace (empty) → X" — clearer for the player adding a 4th move.
+            const summaryHtml = (kind === 'move' && isAppendMove)
+                ? `Learn <strong>${_esc(pending.value)}</strong> · ${costStr}`
+                : `Replace <strong style="color:#ef9a9a;">${_esc(current)}</strong> → <strong>${_esc(pending.value)}</strong> · ${costStr}`;
             return `<div class="tx-confirm-bar">
-                <span class="tx-confirm-bar-text">Replace <strong style="color:#ef9a9a;">${_esc(current)}</strong> → <strong>${_esc(pending.value)}</strong> · ${costStr}</span>
+                <span class="tx-confirm-bar-text">${summaryHtml}</span>
                 <button type="button" class="tx-confirm-bar-btn tx-confirm-bar-btn--secondary">Cancel</button>
                 ${voucherBtn}
                 <button type="button" class="tx-confirm-bar-btn" data-action="${action}" data-team="${teamIdx}" ${canAfford?'':'disabled'}>${canAfford ? 'Confirm' : 'Locked'}</button>
@@ -50952,7 +51050,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return a.localeCompare(b);
             };
         }
-        function _txApplyMoveFilters(allMoves, mon, build, monName) {
+        function _txApplyMoveFilters(allMoves, mon, build, monName, extraInclude) {
             const q = (_txState.search.moves || '').toLowerCase();
             const types = _txState.filter.moveTypes;
             const cats  = _txState.filter.moveCats;
@@ -50960,7 +51058,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pool = _txStarredPool(monName);
             const recOnly = !pool.sparse && _txState.filter.recOnly.moves;
             const filt = allMoves.filter(m => {
-                if (recOnly && !pool.moves.inPool.has(m)) return false;
+                // Equipped moves (extraInclude) always pass the ★ filter so the
+                // player never loses sight of a move they currently run — they
+                // still obey the search box + type/category chips, though.
+                const forced = extraInclude && extraInclude.has(m);
+                if (recOnly && !pool.moves.inPool.has(m) && !forced) return false;
                 if (q && !m.toLowerCase().includes(q)) return false;
                 const md = movesDB[m];
                 if (!md) return true;
@@ -51090,70 +51192,59 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { if (b) mon = buildPokemon(t.name, shallowCloneBuildForDisplay(b)); } catch (e) {}
             const typeHtml = mon ? getTypeHTML(mon.type1, mon.type2 || '') : '';
             const spriteUrl = getSprite(spriteDisplayName(t));
-            const currentMoves = (b.m || []).map(m => m.split('/')[0]);
+            // Compact move list (1-4). Slashed CSV slots collapse to their
+            // first alternative for display/identity. No empty-string holes —
+            // unlearning compacts the array so the engine never sees gaps.
+            const currentMoves = (b.m || []).map(m => m.split('/')[0]).filter(Boolean);
+            const N = currentMoves.length;
+            const canAddMove = N < 4;
 
-            // Slot chips — compact single-row picker. Each chip shows the slot
-            // number + move name only; the type-color stripe along the left
-            // edge encodes the move type at a glance, freeing up horizontal
-            // room for the name on phones. The active slot's full meta (Cat /
-            // BP / Acc / PP) lives in a single detail line below the row.
+            // Slot chips — N move chips plus a single "＋ Add" chip when there's
+            // room. Tapping a move chip selects it for replace/forget; tapping
+            // Add selects the append slot. The type-color stripe encodes move
+            // type at a glance.
+            let activeSlot = _txState.moveSlot;
+            // Clamp: valid replace slots are 0..N-1; the append slot is N (only
+            // when canAddMove). Anything else snaps to slot 0.
+            if (!Number.isInteger(activeSlot) || activeSlot < 0 || activeSlot > N || (activeSlot === N && !canAddMove)) {
+                activeSlot = 0;
+                _txState.moveSlot = 0;
+            }
+            const isAppend = activeSlot === N && canAddMove;
+            const curMove = isAppend ? null : currentMoves[activeSlot];
+
             const slotCards = currentMoves.map((cm, i) => {
                 const md = cm ? (movesDB[cm] || ensureMoveData(cm)) : null;
-                const otherMoves = currentMoves.filter((_, oi) => oi !== i && currentMoves[oi]);
-                const available = mergedMoves.filter(m => m !== cm && !otherMoves.includes(m));
-                const isActive = i === _txState.moveSlot;
-                const locked = !available.length;
+                const isActive = i === activeSlot;
                 const typeClass = md ? `type-${md.type}` : '';
                 const inner = `<span class="tx-slot-num">${i+1}</span><span class="tx-slot-name">${_esc(cm || '—')}</span>`;
-                if (locked) {
-                    return `<div class="tx-slot-chip ${typeClass}" data-slot-idx="${i}" data-locked="1" data-active="0" aria-disabled="true" title="No swap options">${inner}</div>`;
-                }
                 return `<button type="button" class="tx-slot-chip ${typeClass}" data-slot-idx="${i}" data-active="${isActive?1:0}" aria-pressed="${isActive?'true':'false'}" title="Slot ${i+1}: ${_esc(cm)}${md ? ' (' + md.type + ')' : ''}${isActive ? ' — editing' : ' — tap to edit'}">${inner}</button>`;
-            }).join('');
+            }).join('') + (canAddMove
+                ? `<button type="button" class="tx-slot-chip tx-slot-chip--add" data-slot-idx="${N}" data-active="${isAppend?1:0}" aria-pressed="${isAppend?'true':'false'}" title="Add a move into the empty slot"><span class="tx-slot-num">+</span><span class="tx-slot-name">Add</span></button>`
+                : '');
 
-            // Determine active slot for editing — fall back to first slot that has swap options
-            let activeSlot = _txState.moveSlot;
-            const findUsable = () => {
-                for (let k = 0; k < currentMoves.length; k++) {
-                    const cm = currentMoves[k];
-                    if (!cm) continue;
-                    const others = currentMoves.filter((_, oi) => oi !== k && currentMoves[oi]);
-                    if (mergedMoves.some(m => m !== cm && !others.includes(m))) return k;
-                }
-                return -1;
-            };
-            if (activeSlot >= currentMoves.length || !currentMoves[activeSlot]) {
-                activeSlot = findUsable();
-                if (activeSlot < 0) activeSlot = 0;
-                _txState.moveSlot = activeSlot;
-            } else {
-                // Active slot has a move, but check it has swap options; if not fall back
-                const cm = currentMoves[activeSlot];
-                const others = currentMoves.filter((_, oi) => oi !== activeSlot && currentMoves[oi]);
-                if (!mergedMoves.some(m => m !== cm && !others.includes(m))) {
-                    const fallback = findUsable();
-                    if (fallback >= 0) { activeSlot = fallback; _txState.moveSlot = fallback; }
-                }
-            }
-            const curMove = currentMoves[activeSlot];
-            const otherMoves = currentMoves.filter((_, oi) => oi !== activeSlot && currentMoves[oi]);
-            const availForActive = curMove
-                ? mergedMoves.filter(m => m !== curMove && !otherMoves.includes(m))
-                : [];
-
-            // Filtered + sorted
-            const filtered = _txApplyMoveFilters(availForActive, mon, b, t.name);
             // ★ pool = Smogon-usable moves for this species; drives the recommended border + star.
             const sPool = _txStarredPool(t.name);
             const stabTypes = new Set([mon && mon.type1, mon && mon.type2].filter(Boolean));
             const pendingMove = (_txPending && _txPending.kind === 'move') ? _txPending.value : null;
+            const equippedSet = new Set(currentMoves);
+            const slotOf = new Map(currentMoves.map((m, i) => [m, i]));
             const ctx = {
                 pending: pendingMove,
                 recommended: sPool.moves.starred,
                 stabTypes,
                 pctOf: sPool.moves.pctOf,
                 mechanicTagsFor: (m) => _txMechanicTagsForMove(t.name, m),
+                equippedSet,
+                slotOf,
             };
+
+            // Grid source: every legal move PLUS the equipped ones, so the
+            // player always sees their current moves (with usage %) right
+            // alongside the alternatives. Equipped moves render as non-learnable
+            // "✓ Equipped" cards; everything else learns into the active slot.
+            const gridSource = [...new Set([...mergedMoves, ...currentMoves])];
+            const filtered = _txApplyMoveFilters(gridSource, mon, b, t.name, equippedSet);
 
             const emptyMsg = (!sPool.sparse && _txState.filter.recOnly.moves)
                 ? `No starred moves match these filters. <button type="button" class="tx-empty-cta" data-filter-kind="recOnly" data-filter-value="moves">★ Show all</button> to expand, or clear the search.`
@@ -51180,9 +51271,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             });
 
             const headerSummary = `<div class="story-tutor-mon-meta" style="margin-top:0;">${
-                curMove
-                    ? `Editing <strong style="color:var(--accent);">Slot ${activeSlot+1} — ${_esc(curMove)}</strong>`
-                    : `<em>No move equipped in any slot</em>`
+                isAppend
+                    ? `Adding a move to <strong style="color:var(--accent);">Slot ${N+1}</strong> · ${N}/4 moves`
+                    : `Editing <strong style="color:var(--accent);">Slot ${activeSlot+1} — ${_esc(curMove)}</strong>`
             }</div>`;
 
             // Detail line for the active slot — shows the meta (Cat / BP / Acc /
@@ -51191,7 +51282,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const activeMd = curMove ? (movesDB[curMove] || ensureMoveData(curMove)) : null;
             const slotDetail = activeMd
                 ? `<div class="tx-slot-detail"><span class="tx-pill tx-pill--cat-${activeMd.cat}">${activeMd.cat}</span><span>BP <strong>${activeMd.pow>0?activeMd.pow:'—'}</strong></span><span>Acc <strong>${activeMd.acc>0?activeMd.acc+'%':'—'}</strong></span><span>PP <strong>${activeMd.pp || '—'}</strong></span></div>`
-                : '';
+                : (isAppend ? `<div class="tx-slot-detail" style="opacity:0.75;"><em>Pick any move below to fill the open slot — equipped moves show ✓ and can be forgotten for free.</em></div>` : '');
 
             return `<div class="story-tutor-mon">
                 <button type="button" class="story-tutor-mon-toggle" data-team="${idx}" aria-expanded="true">
@@ -51207,7 +51298,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div class="story-tutor-mon-body">
                     <div class="tx-slot-row tx-slot-row--compact">${slotCards}</div>
                     ${slotDetail}
-                    ${curMove ? sparseBanner + toolbar + `<div class="tx-grid">${cardsHtml}</div>` + _txConfirmBarHtml(idx, 'move', mon, b) : '<div class="tx-grid-empty">Add a move first to swap moves.</div>'}
+                    ${sparseBanner + toolbar + `<div class="tx-grid">${cardsHtml}</div>` + _txConfirmBarHtml(idx, 'move', mon, b)}
                 </div>
             </div>`;
         }
@@ -51584,19 +51675,74 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
                 if (sm.gold < TUTOR_COST_MOVE) return;
-                const currentMoves = (mon.build.m || []).map(m => m.split('/')[0]);
+                const moves = mon.build.m || (mon.build.m = []);
+                const currentMoves = moves.map(m => m.split('/')[0]);
                 if (currentMoves.includes(newMove)) return;
-                const oldMove = (mon.build.m && mon.build.m[moveSlot]) ? mon.build.m[moveSlot].split('/')[0] : '(empty slot)';
-                const ok = await _storyConfirmTutorChange(`Teach ${newMove} to ${mon.name}? Replaces "${oldMove}".`, TUTOR_COST_MOVE);
+                // moveSlot at/over the current length means "fill an open slot"
+                // (append) rather than replace. Capped at 4 moves.
+                const isAppend = moveSlot >= moves.length;
+                if (isAppend && moves.length >= 4) return;
+                const oldMove = (!isAppend && moves[moveSlot]) ? moves[moveSlot].split('/')[0] : null;
+                const prompt = isAppend
+                    ? `Teach ${newMove} to ${mon.name}? Fills an open move slot.`
+                    : `Teach ${newMove} to ${mon.name}? Replaces "${oldMove}".`;
+                const ok = await _storyConfirmTutorChange(prompt, TUTOR_COST_MOVE);
                 if (!ok) return;
                 sm.gold -= TUTOR_COST_MOVE;
                 try { _storyTrackSpend(TUTOR_COST_MOVE); } catch (e) {}
-                mon.build.m[moveSlot] = newMove;
+                if (isAppend) moves.push(newMove);
+                else moves[moveSlot] = newMove;
+                mon.build.m = moves.filter(Boolean);
                 mon.currentHp = null;
                 mon.status = null;
                 mon.pp = null;
                 save();
                 try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
+                _txPending = null;
+                void renderTutorTeam(true);
+                renderTeamPanel();
+            } finally {
+                _storyEndInteraction();
+            }
+        }
+
+        // Forget a move — FREE, with confirmation. Removes the move and compacts
+        // the array so the engine never sees a gap. A Pokémon must keep at least
+        // one move (the last move can't be forgotten). Enables intentional 1-3
+        // move sets (e.g. a pure Trick Room setter or a one-move gimmick).
+        async function tutorUnlearnMove(teamIdx, moveSlot, moveName) {
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
+                const moves = (mon.build.m || []).filter(Boolean);
+                mon.build.m = moves;
+                // Resolve which slot to drop: trust the passed index when it
+                // matches the named move, else fall back to a name lookup.
+                let slot = moveSlot;
+                const slotName = (slot >= 0 && slot < moves.length) ? moves[slot].split('/')[0] : null;
+                if (moveName && slotName !== moveName) {
+                    slot = moves.findIndex(m => m && m.split('/')[0] === moveName);
+                }
+                if (slot < 0 || slot >= moves.length) return;
+                if (moves.length <= 1) {
+                    try { window.showGameAlert && window.showGameAlert(`${mon.name} must keep at least one move.`); } catch (e) {}
+                    return;
+                }
+                const forgetName = moves[slot].split('/')[0];
+                const remaining = moves.length - 1;
+                const ok = (typeof window !== 'undefined' && typeof window.showGameConfirm === 'function')
+                    ? await window.showGameConfirm(`Forget ${forgetName}? ${mon.name} will have ${remaining} move${remaining === 1 ? '' : 's'}. Forgetting is free — you can re-teach it later.`)
+                    : true;
+                if (!ok) return;
+                moves.splice(slot, 1);
+                mon.build.m = moves.filter(Boolean);
+                mon.currentHp = null;
+                mon.status = null;
+                mon.pp = null;
+                // Keep the active editing slot valid after removal.
+                if (_txState.moveSlot >= mon.build.m.length) _txState.moveSlot = Math.max(0, mon.build.m.length - 1);
+                save();
+                try { window.StoryFx && window.StoryFx.playSfx('select', 0.5); } catch (e) {}
                 _txPending = null;
                 void renderTutorTeam(true);
                 renderTeamPanel();
@@ -51727,11 +51873,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         async function tutorChangeMoveWithVoucher(teamIdx, moveSlot, newMove) {
             return _tutorApplyChangeWithVoucher(teamIdx, 'heartScale', 'Heart Scale', async (mon, remaining) => {
-                const cur = (mon.build.m || []).map(m => m.split('/')[0]);
+                const moves = mon.build.m || (mon.build.m = []);
+                const cur = moves.map(m => m.split('/')[0]);
                 if (cur.includes(newMove)) return false;
-                const oldMove = (mon.build.m && mon.build.m[moveSlot]) ? mon.build.m[moveSlot].split('/')[0] : '(empty slot)';
-                if (!await _storyConfirmTutorChange(`Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Replaces "${oldMove}". Saves ${TUTOR_COST_MOVE.toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`, 0)) return false;
-                mon.build.m[moveSlot] = newMove;
+                const isAppend = moveSlot >= moves.length;
+                if (isAppend && moves.length >= 4) return false;
+                const oldMove = (!isAppend && moves[moveSlot]) ? moves[moveSlot].split('/')[0] : null;
+                const prompt = isAppend
+                    ? `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Fills an open slot. Saves ${TUTOR_COST_MOVE.toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`
+                    : `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Replaces "${oldMove}". Saves ${TUTOR_COST_MOVE.toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`;
+                if (!await _storyConfirmTutorChange(prompt, 0)) return false;
+                if (isAppend) moves.push(newMove);
+                else moves[moveSlot] = newMove;
+                mon.build.m = moves.filter(Boolean);
                 mon.currentHp = null; mon.status = null; mon.pp = null;
                 return true;
             });
@@ -53280,7 +53434,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             confirmAbandon, abandonAndReturn, continuePostGame,
             openSummary, profOpenSummary, summaryMove, moveInParty, openPartyModal,
             enterArtifactHall, toggleArtifactDisabled,
-            enterTutor, tutorChangeMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
+            enterTutor, tutorChangeMove, tutorUnlearnMove, tutorChangeItem, tutorChangeAbility, tutorChangeNature,
             tutorChangeMoveWithVoucher, tutorChangeItemWithVoucher, tutorChangeAbilityWithVoucher, tutorChangeNatureWithVoucher,
             enterColress, colressApplyMega, colressApplyDmax, colressApplyZ, colressApplyZSig, colressApplyTera,
             enterEVTrainer, evTrainerApplyPreset, evTrainerApplyPresetWithVitamin,
