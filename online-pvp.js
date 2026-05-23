@@ -17,6 +17,11 @@
     let pushDataQueue = Promise.resolve();
     let remoteRowQueue = Promise.resolve();
     let hostResolving = false;
+    // Per-room caller token (ISSUE-020). Host receives this from
+    // try_create_pvp_room; guest receives a different one from
+    // try_join_pvp_room. All subsequent writes go through pvp_push_data
+    // which validates the token server-side. Cleared in dispose().
+    let roomToken = null;
 
     function configured() {
         const u = global.__PBS_SUPABASE_URL;
@@ -220,14 +225,36 @@
         }
     }
 
+    // Sanitize HTML coming off the wire before injecting into the local battle log.
+    // The server-side RLS lets any client with the room id update the `data` jsonb,
+    // and the legacy `battle_log_html` field was originally set to innerHTML raw —
+    // a peer that flips a single character of html could inject script into the
+    // host's DOM. We block the common script-injection vectors below; legitimate
+    // battle-log content is plain text + <br> + a small set of <span class="...">.
+    function sanitizeBattleLogHtml(raw) {
+        if (typeof raw !== 'string') return '';
+        let html = raw;
+        // Drop <script>, <style>, <iframe>, <object>, <embed>, <link>, <meta>,
+        // <form>, <input>, <textarea>, <button>, <svg> (script-bearing namespaces).
+        html = html.replace(/<\s*(script|style|iframe|object|embed|link|meta|form|input|textarea|button|svg)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '');
+        html = html.replace(/<\s*(script|style|iframe|object|embed|link|meta|form|input|textarea|button|svg)\b[^>]*\/?>/gi, '');
+        // Drop on*= event handlers in any tag.
+        html = html.replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+        // Drop javascript: / vbscript: / data: pseudo-URLs in href / src / xlink:href.
+        html = html.replace(/(href|src|xlink:href|action|formaction)\s*=\s*(?:"\s*(?:javascript|vbscript|data)\s*:[^"]*"|'\s*(?:javascript|vbscript|data)\s*:[^']*'|(?:javascript|vbscript|data)\s*:[^\s>]*)/gi, '$1=""');
+        // Drop style="" attributes — CSS can host expression() in old IE and url(javascript:) elsewhere.
+        html = html.replace(/\sstyle\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+        return html;
+    }
+
     function applyBattleLogHtml(html) {
         if (html === undefined || html === null) return;
         try {
             const el = global.document && global.document.getElementById('battle-log');
             if (!el) return;
-            el.innerHTML = typeof html === 'string' ? html : '';
+            el.innerHTML = sanitizeBattleLogHtml(typeof html === 'string' ? html : '');
             el.scrollTop = el.scrollHeight;
-        } catch (e) {}
+        } catch (e) { console.debug('[OnlinePvP] applyBattleLogHtml swallowed', e); }
     }
 
     async function reportWinIfConfigured(winnerIsP1) {
@@ -336,21 +363,25 @@
                     state_hash: null
                 }
             };
-            let row = null;
+            // Mint the room via try_create_pvp_room RPC. The RPC generates
+            // the host_token server-side and embeds it in `data` so the host
+            // can prove ownership for subsequent pvp_push_data calls. Pre-fix
+            // (migration 004 / direct INSERT) any anon client with the room
+            // id could clobber the row's `data` jsonb. Retry on duplicate_code
+            // matches the pre-fix collision behavior.
+            let rpcRes = null;
             let lastErr = null;
             for (let attempt = 0; attempt < 8; attempt++) {
                 roomCode = randomCode();
-                const ins = await sb.from('pvp_rooms').insert({ code: roomCode, data }).select('id').single();
-                if (!ins.error) {
-                    row = ins.data;
-                    break;
-                }
-                lastErr = ins.error;
-                const dup = ins.error && (ins.error.code === '23505' || String(ins.error.message || '').toLowerCase().includes('duplicate'));
-                if (!dup) throw ins.error;
+                const { data: r, error: rpcErr } = await sb.rpc('try_create_pvp_room', { p_code: roomCode, p_data: data });
+                if (rpcErr) { lastErr = rpcErr; throw rpcErr; }
+                if (r && r.ok) { rpcRes = r; break; }
+                if (r && r.error === 'duplicate_code') { lastErr = new Error('duplicate_code'); continue; }
+                throw new Error('try_create_pvp_room: ' + ((r && r.error) || 'unknown'));
             }
-            if (!row) throw lastErr || new Error('Could not create room (code collision).');
-            roomId = row.id;
+            if (!rpcRes) throw lastErr || new Error('Could not create room (code collision).');
+            roomId = rpcRes.id;
+            roomToken = rpcRes.host_token;
             role = 1;
             lastRemoteSeq = seq;
             this._subscribe();
@@ -377,6 +408,10 @@
                 if (code === 'not_found') throw new Error('Room not found.');
                 throw new Error('Could not join room.');
             }
+            // Capture the guest token (issued only to the joining client) for
+            // subsequent pvp_push_data calls. The token is the only secret
+            // bound to the guest's identity in this room.
+            roomToken = jr.guest_token || null;
             lastRemoteSeq = (jr.data && jr.data.seq) != null ? jr.data.seq : lastRemoteSeq;
             this._subscribe();
             const { data: rowFresh, error: freshErr } = await sb.from('pvp_rooms').select('*').eq('id', roomId).single();
@@ -414,7 +449,7 @@
             const sb = getClient();
             if (!sb || !roomId) return;
             if (channel) {
-                try { sb.removeChannel(channel); } catch (e) {}
+                try { sb.removeChannel(channel); } catch (e) { /* best-effort cleanup */ }
                 channel = null;
             }
             channel = sb.channel('room-' + roomId)
@@ -432,12 +467,13 @@
         dispose() {
             const sb = getClient();
             if (channel && sb) {
-                try { sb.removeChannel(channel); } catch (e) {}
+                try { sb.removeChannel(channel); } catch (e) { /* best-effort cleanup */ }
             }
             channel = null;
             roomId = null;
             roomCode = null;
             role = null;
+            roomToken = null;
             lastRemoteSeq = 0;
             pushDataQueue = Promise.resolve();
             remoteRowQueue = Promise.resolve();
@@ -457,7 +493,7 @@
                 global.__onlineHostName = null;
                 global.__onlineGuestName = null;
                 if (typeof global.clearOnlinePvPTimers === 'function') global.clearOnlinePvPTimers();
-            } catch (e) {}
+            } catch (e) { console.debug('[OnlinePvP] dispose reset swallowed', e); }
         },
 
         pushData(patch, existingData) {
@@ -470,27 +506,34 @@
             return op;
         },
 
-        async _pushDataImpl(patch, existingData) {
+        async _pushDataImpl(patch, _existingData) {
             const sb = getClient();
             if (!sb || !roomId) return;
-            let prev = existingData;
-            if (prev === undefined) {
-                const { data: row, error: selErr } = await sb.from('pvp_rooms').select('data').eq('id', roomId).single();
-                if (selErr) {
-                    console.warn('[OnlinePvP] pushData select failed — not overwriting room', selErr);
-                    throw selErr;
-                }
-                if (!row || row.data == null) {
-                    console.warn('[OnlinePvP] pushData missing row data — not overwriting room');
-                    throw new Error('pushData: no room data');
-                }
-                prev = row.data;
+            if (!roomToken) {
+                console.warn('[OnlinePvP] pushData: no roomToken — refusing to write');
+                throw new Error('pushData: no roomToken');
             }
-            const seq = (prev.seq || 0) + 1;
-            const data = mergeData(prev, patch);
-            data.seq = seq;
-            const { error: upErr } = await sb.from('pvp_rooms').update({ data, updated_at: new Date().toISOString() }).eq('id', roomId);
-            if (upErr) console.warn('[OnlinePvP] pushData update failed', upErr);
+            // Server-side merge + seq increment + token validation via the
+            // pvp_push_data RPC (migration 005). The `existingData` argument
+            // is no longer used — server reads cur state with `for update`
+            // lock so seq advances atomically even under concurrent writes.
+            // Surface the write failure upstream so callers .catch can show
+            // UI; pre-fix the queue advanced as if the write succeeded and
+            // local state diverged from Supabase.
+            const { data: result, error: rpcErr } = await sb.rpc('pvp_push_data', {
+                p_room_id: roomId,
+                p_token: roomToken,
+                p_patch: patch,
+            });
+            if (rpcErr) {
+                console.warn('[OnlinePvP] pushData RPC failed', rpcErr);
+                throw rpcErr;
+            }
+            if (!result || !result.ok) {
+                const err = (result && result.error) || 'unknown';
+                console.warn('[OnlinePvP] pushData RPC rejected:', err);
+                throw new Error('pvp_push_data: ' + err);
+            }
         },
 
         _onRemoteRow(newRow) {
@@ -498,11 +541,19 @@
             remoteRowQueue = remoteRowQueue
                 .then(async () => {
                     const d = newRow.data || {};
-                    if ((d.seq || 0) <= lastRemoteSeq) return;
-                    lastRemoteSeq = d.seq || lastRemoteSeq + 1;
+                    const incoming = d.seq || 0;
+                    if (incoming <= lastRemoteSeq) return;
                     if (typeof global.onOnlineRoomData === 'function') {
-                        await Promise.resolve(global.onOnlineRoomData(d, { role, roomCode }));
+                        // Race the handler against a 10s timeout so a hung
+                        // promise from the UI layer can't freeze every future
+                        // remote update. Also: do NOT bump lastRemoteSeq until
+                        // the handler succeeds; pre-fix a thrown handler
+                        // permanently skipped the sequence number.
+                        const handlerP = Promise.resolve(global.onOnlineRoomData(d, { role, roomCode }));
+                        const timeoutP = new Promise((_, rej) => setTimeout(() => rej(new Error('onOnlineRoomData timeout')), 10000));
+                        await Promise.race([handlerP, timeoutP]);
                     }
+                    lastRemoteSeq = incoming || lastRemoteSeq + 1;
                 })
                 .catch((e) => console.warn('[OnlinePvP] onOnlineRoomData', e));
         },
@@ -550,7 +601,7 @@
                 const cmdMenu = global.document && global.document.getElementById('command-menu');
                 if (moveMenu) moveMenu.classList.add('hidden');
                 if (cmdMenu) cmdMenu.classList.remove('hidden');
-                try { global.syncBattleActiveHighlight(); } catch (e) {}
+                try { global.syncBattleActiveHighlight(); } catch (e) { /* optional UI hook */ }
                 return;
             }
 
@@ -757,7 +808,7 @@
                 applyBattleLogHtml(roomData.battle_log_html);
             }
             if (global.AudioSystem && typeof global.AudioSystem.startNewBattle === 'function') {
-                try { global.AudioSystem.startNewBattle(); } catch (e) {}
+                try { global.AudioSystem.startNewBattle(); } catch (e) { /* optional audio hook */ }
             }
             const scrDraft = global.document && global.document.getElementById('screen-draft');
             const scrBattle = global.document && global.document.getElementById('screen-battle');
@@ -772,7 +823,7 @@
             if (cmdMenuG) cmdMenuG.classList.remove('hidden');
             if (typeof global.applyBattleLogDockClass === 'function') global.applyBattleLogDockClass();
             if (typeof global.updateOnlineBattleScoreOverlay === 'function') global.updateOnlineBattleScoreOverlay();
-            try { global.syncBattleActiveHighlight(); } catch (e) {}
+            try { global.syncBattleActiveHighlight(); } catch (e) { /* optional UI hook */ }
         },
 
         async guestApplyBattleBlob(state, d) {
@@ -794,7 +845,7 @@
                 else if (p1s && !p2s) global.showEndScreen('DEFEAT', `${p1Name} won this round.`, false);
                 else global.showEndScreen('DRAW', 'The round ended in a draw.', false);
             }
-            try { global.syncBattleActiveHighlight(); } catch (e) {}
+            try { global.syncBattleActiveHighlight(); } catch (e) { /* optional UI hook */ }
             const localH = simpleHash(b.state_blob);
             if (b.state_hash && localH !== b.state_hash && typeof global.logMsg === 'function') {
                 global.logMsg('[Online] State hash mismatch — applied host snapshot.', 'info');
@@ -810,7 +861,17 @@
             return (global.localStorage.getItem(STORAGE_KEY) || '').trim() || 'Trainer';
         },
         setDisplayName(n) {
-            global.localStorage.setItem(STORAGE_KEY, String(n || '').trim().slice(0, 24) || 'Trainer');
+            // Sanitize: strip HTML tags / control chars / leading-trailing
+            // whitespace, then cap at 24. Pre-fix this just trimmed + sliced;
+            // a craftedname like `<img src=x onerror=alert(1)>` survived and
+            // would have been a latent XSS if any callsite ever switched
+            // from innerText to innerHTML.
+            const clean = String(n || '')
+                .replace(/[<>]/g, '')             // strip angle brackets
+                .replace(/[\x00-\x1f\x7f]/g, '')       // strip control chars + DEL
+                .trim()
+                .slice(0, 24);
+            global.localStorage.setItem(STORAGE_KEY, clean || 'Trainer');
         }
     };
 
