@@ -171,7 +171,7 @@ test('Fight Club story win: +1 all stats on the whole team, gold, NO release, on
   assert.equal(SM._pitsStoryAvailable(), false, 'one-time: story club no longer available');
 });
 
-test('Fight Club forfeit kills exactly one fighter, two go to the PC', async () => {
+test('Fight Club forfeit kills all three fighters (you do not leave whole)', async () => {
   setupStory();
   const ids = [sm.team[0].id, sm.team[1].id, sm.team[2].id];
   SM.enterPits();
@@ -185,8 +185,9 @@ test('Fight Club forfeit kills exactly one fighter, two go to the PC', async () 
   const forfeit = dov.querySelector('#pits-defeat-forfeit');
   assert.ok(forfeit, 'crawl-home button present');
   forfeit.click();
-  assert.equal(sm.team.length + sm.pcBox.length, totalBefore - 1, 'exactly one mon died');
-  assert.ok(sm.pcBox.length >= 2, 'two survivors in PC');
+  assert.equal(sm.team.length + sm.pcBox.length, totalBefore - 3, 'all three fighters died');
+  const anyBracketLeft = [...sm.team, ...sm.pcBox].some(s => ids.includes(s.id));
+  assert.equal(anyBracketLeft, false, 'none of the three survive (team or PC)');
   assert.equal(sm.pits._inBattle, false, 'club state cleared after forfeit');
   assert.equal(sm.pits.storyClubDone, false, 'a loss does NOT consume the one-time club');
 });

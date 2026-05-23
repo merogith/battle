@@ -37286,7 +37286,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div style="padding:10px 12px;background:rgba(0,0,0,0.45);border-left:3px solid ${accent};margin-bottom:14px;font-size:11px;line-height:1.6;">
                     <div><strong style="color:${accent};">Bracket.</strong> Three fights, back to back. You start each at full HP; the house reads your team's strength and matches it.</div>
                     ${rewardLine}
-                    <div style="margin-top:5px;"><strong style="color:${accent};">The price of quitting.</strong> Lose a fight and you can step back in, free, all night. But <strong>walk away beaten</strong> and one of your three doesn't walk out with you. These fights go to the death.</div>
+                    <div style="margin-top:5px;"><strong style="color:${accent};">The price of quitting.</strong> Lose a fight and you can step back in, free, all night. But <strong>walk away beaten</strong> and none of your three walk out with you. These fights go to the death.</div>
                 </div>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:10px;color:#bcaaa4;">
                     <span>Wins tonight: <strong style="color:#fff;">${winsThis}</strong></span>
@@ -37414,18 +37414,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { enterCity(); } catch (_) { try { _storyRefreshCityHubInPlace(); } catch (_2) {} }
             setTimeout(() => {
                 if (endgame) {
-                    _storyScene([{ accent:'#ff5252', title:'Fight Club', html:`Three down. The house counts out your purse without a word.<br><br><span style="color:#80cbc4;font-size:11px;">+${payout.toLocaleString()}G. Come back when you need more.</span>` }], null, 'story-pits-result');
+                    _storyScene([{ accent:'#ff5252', title:'Fight Club', html:`Three down. The house counts out your purse without a word. <strong>+${payout.toLocaleString()}G.</strong><br><br><span style="color:#90a4ae;font-style:italic;">Your team is quieter on the walk home than it used to be. You stopped noticing a while ago.</span>` }], null, 'story-pits-result');
                 } else {
                     _pitsStoryWinScene(payout);
                 }
             }, 280);
         }
-        // The haunting two-beat epilogue for the one-time story win — the whole point
-        // of the arc. You won; nobody of yours died; and that is exactly the cost.
+        // One-time story win. The reward is the boost; the cost is a single dark line in
+        // the result — no separate scene, just enough to land.
         function _pitsStoryWinScene(payout) {
             _storyScene([
-                { accent:'#ff5252', title:'Fight Club', html:`Three down. The crowd is on its feet for your team. Your Pokémon stand over what they did — chests heaving, eyes bright and somewhere far away.<br><br><span style="color:#80cbc4;font-size:11px;">All six came back changed — the three who fought and the three who only watched. <strong>+1 to every stat.</strong> +${payout.toLocaleString()}G.</span>` },
-                { accent:'#90a4ae', title:'Later', html:`<span style="font-style:italic;">You walk home with all six. Nobody of yours died tonight. You won.</span><br><br><span style="font-style:italic;">It's the small hours when the sound wakes you — one of them, low and long, crying at nothing in the dark. You didn't know they could make that sound. You didn't know they could cry at all.</span><br><br><span style="color:#80cbc4;">They're stronger now. You did that.</span>` }
+                { accent:'#ff5252', title:'Fight Club', html:`Three down. All six of your Pokémon came back changed — the three who fought and the three who only watched. <strong>+1 to every stat.</strong> <strong>+${payout.toLocaleString()}G.</strong><br><br><span style="color:#90a4ae;font-style:italic;">You won. Nobody of yours died. That night you wake to one of them crying — low and long, at nothing in the dark. You didn't know they could.</span>` }
             ], null, 'story-pits-win');
         }
         // Gold payout for a winning Pit bracket — 50% of the next Gym Leader's reward.
@@ -37495,7 +37494,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div style="padding:11px 14px;background:rgba(0,0,0,0.5);border-left:3px solid #ff5252;margin-bottom:16px;font-size:11px;line-height:1.65;">
                     <div><strong style="color:#fff;">Fight ${Math.min(3, fightIdx + 1)}/3 — Lost.</strong></div>
                     <div style="margin-top:6px;"><strong style="color:#ffd54f;">Step back in</strong> is free. Same opponent, fresh full HP. The house doesn't care how many tries it takes.</div>
-                    <div style="margin-top:6px;"><strong style="color:#ff5252;">Crawl home</strong> ends it. One of your three doesn't get up off that floor — these fights go to the death. The other two… <em>barely</em> make it back to your PC.</div>
+                    <div style="margin-top:6px;"><strong style="color:#ff5252;">Crawl home</strong> ends it. <strong>None</strong> of your three get up off that floor — these fights go to the death. You don't leave the Fight Club whole.</div>
                 </div>
                 <div style="display:flex;gap:8px;">
                     <button type="button" id="pits-defeat-retry" style="flex:1;padding:14px;background:#ffd54f;color:#1a0000;border:none;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;letter-spacing:0.05em;">↻ STEP BACK IN ▶▶</button>
@@ -37507,7 +37506,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const forfeit = ov.querySelector('#pits-defeat-forfeit');
             if (retry) retry.onclick = () => { _pitsCloseDefeatOverlay(); _pitsRetryFight(); };
             if (forfeit) forfeit.onclick = () => {
-                if (!confirm("Crawl home? One of your three fighters dies — these fights are to the death. This cannot be undone.")) return;
+                if (!confirm("Crawl home? All three of your fighters die — you don't leave the Fight Club whole. This cannot be undone.")) return;
                 _pitsCloseDefeatOverlay();
                 _pitsForfeitBracket();
             };
@@ -37536,45 +37535,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.pits._fightsWon = 0;
             sm.pits._inBattle = false;
             sm.pits.winsThisVisit = 0;
-            // Roll the death — uniform random across the 3 bracket ids.
-            const survivors = [];
-            let deadId = null;
-            if (bracketIds.length) {
-                const rIdx = Math.floor(Math.random() * bracketIds.length);
-                deadId = bracketIds[rIdx];
-                for (let i = 0; i < bracketIds.length; i++) if (i !== rIdx) survivors.push(bracketIds[i]);
-            }
-            // Resolve names BEFORE the removal so the toast can reference them.
+            // You don't walk away from the Fight Club whole. Quitting a lost bracket
+            // costs ALL THREE fighters — permadeath. (Retry is free and unlimited, so
+            // the only way to lose a mon is to choose to leave the bracket beaten.)
             const team = sm.team || [];
             const box  = sm.pcBox || [];
             const findById = id => team.find(s => s && s.id === id) || box.find(s => s && s.id === id) || null;
-            const deadSlot = deadId ? findById(deadId) : null;
-            const deadName = deadSlot ? (deadSlot.nickname || deadSlot.name) : 'A bracket Pokémon';
-            const survivorNames = survivors.map(id => { const s = findById(id); return s ? (s.nickname || s.name) : 'one'; });
-            // Permadeath: remove the fallen fighter from team / pc entirely.
-            if (deadId) {
-                let ti = team.findIndex(s => s && s.id === deadId);
+            const deadNames = bracketIds.map(id => { const s = findById(id); return s ? (s.nickname || s.name) : null; }).filter(Boolean);
+            for (const id of bracketIds) {
+                let ti = team.findIndex(s => s && s.id === id);
                 if (ti >= 0) team.splice(ti, 1);
-                let bi = box.findIndex(s => s && s.id === deadId);
+                let bi = box.findIndex(s => s && s.id === id);
                 if (bi >= 0) box.splice(bi, 1);
             }
-            // Survivors: move team-residents into the PC. Already-in-PC stays put.
-            for (const id of survivors) {
-                const ti = team.findIndex(s => s && s.id === id);
-                if (ti >= 0) {
-                    const [moved] = team.splice(ti, 1);
-                    box.push(moved);
-                }
-            }
             sm.pcBox = box;
-            // Iconic exit: heal + clear fatigue on the surviving team.
+            // Iconic exit: heal + clear fatigue on whoever's left (the three who watched).
             _storyClearTirednessForIconic();
             _storyFullHealPartySlots();
             try { save(); } catch (_) {}
-            const survivorLine = survivorNames.length
-                ? `${survivorNames.join(' and ')} crawled out — barely. They're in the PC now, sleeping it off.`
-                : '';
-            const forfeitMsg = `☠ The floor kept ${deadName}. ${survivorLine}`;
+            const forfeitMsg = deadNames.length
+                ? `☠ None of them walked out. The floor kept ${deadNames.join(', ')}. You don't leave the Fight Club whole.`
+                : '☠ None of them walked out.';
             // Battle screen was torn down — return to the city hub before alerting.
             try { enterCity(); } catch (_) { try { _storyRefreshCityHubInPlace(); } catch (_2) {} }
             setTimeout(() => { try { window.showGameAlert && window.showGameAlert(forfeitMsg); } catch (_) {} }, 250);

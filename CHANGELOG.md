@@ -30,10 +30,11 @@ authored, one-time arc. The mechanics that changed:
 * **Win = nobody is released.** The old "bonded mons auto-release on city
   return" rental model is **removed**. Clear all three fights and **all six**
   (fighters and witnesses) keep a permanent **+1 to every stat** (capped;
-  buildPokemon hardcaps IV+bonus at 36) — plus gold. The cost is a haunting
-  epilogue, not a mechanical loss. The story club is **one-time**.
-* **Lose** → retry is free and unlimited; **crawl home beaten** and one of
-  your three fighters dies (to-the-death), the other two land in the PC.
+  buildPokemon hardcaps IV+bonus at 36) — plus gold. The cost is a single
+  dark line in the result, not a mechanical loss. The story club is **one-time**.
+* **Lose** → retry is free and unlimited; the only way to lose a mon is to
+  **crawl home beaten**, which kills **all three** of your fighters
+  (to-the-death) — you don't leave the Fight Club whole.
 * **Endgame Fight Club** (post-Champion): a repeatable, **money-only** loop —
   no Daycare, no egg, no permanent buff. The Daycare Inn is shuttered.
 
