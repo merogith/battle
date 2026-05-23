@@ -13066,21 +13066,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Grade system: G1 (best) → G4 (weakest)
         // G4 = basic cuties, G3 = stage-1 / mid-evo, G2 = fully-evolved strong, G1 = pseudo + legendary
         const PSEUDO_LEGEND = new Set(["Dragonite","Tyranitar","Salamence","Metagross","Garchomp","Hydreigon","Goodra","Kommo-o","Dragapult","Baxcalibur"]);
+        // Hoisted out of getMonGrade — these are constants, but the function is called
+        // for every species on every team roll (~1.4k calls), so reallocating both Sets
+        // per call was pure waste.
+        const _GRADE1_OVERRIDE = new Set(["Azumarill","Amoonguss","Chansey","Wishiwashi"]);
+        // G2: crippled-ability Pokémon with high BST, strong Eviolite users, and others that would
+        // otherwise appear in wrong story stages based purely on BST/stage detection
+        const _GRADE2_OVERRIDE = new Set([
+            "Slaking","Archeops",                              // high BST, crippling ability (Truant/Defeatist)
+            "Avalugg","Avalugg-Hisui",                         // stage1-final ≥500 BST, naturally G2
+            "Porygon2","Dusclops","Rhydon",                    // strong Eviolite users, naturally G3 as stage1-mid
+            "Smeargle","Shedinja","Ditto","Clefairy","Medicham","Diggersby","Pelipper","Torkoal",
+            "Murkrow","Pachirisu","Cosmog","Cosmoem","Kubfu","Poipole","Terapagos","Phione",
+            "Lapras","Snorlax","Kangaskhan","Tauros","Aerodactyl","Heracross"
+        ]);
         function getMonGrade(name, bst) {
             // Curated overrides first
-            const grade1Override = new Set(["Azumarill","Amoonguss","Chansey","Wishiwashi"]);
-            if (grade1Override.has(name)) return 1;
-            // G2: crippled-ability Pokémon with high BST, strong Eviolite users, and others that would
-            // otherwise appear in wrong story stages based purely on BST/stage detection
-            const grade2Override = new Set([
-                "Slaking","Archeops",                              // high BST, crippling ability (Truant/Defeatist)
-                "Avalugg","Avalugg-Hisui",                         // stage1-final ≥500 BST, naturally G2
-                "Porygon2","Dusclops","Rhydon",                    // strong Eviolite users, naturally G3 as stage1-mid
-                "Smeargle","Shedinja","Ditto","Clefairy","Medicham","Diggersby","Pelipper","Torkoal",
-                "Murkrow","Pachirisu","Cosmog","Cosmoem","Kubfu","Poipole","Terapagos","Phione",
-                "Lapras","Snorlax","Kangaskhan","Tauros","Aerodactyl","Heracross"
-            ]);
-            if (grade2Override.has(name)) return 2;
+            if (_GRADE1_OVERRIDE.has(name)) return 1;
+            if (_GRADE2_OVERRIDE.has(name)) return 2;
 
             if (PSEUDO_LEGEND.has(name)) return 1;
 
@@ -29730,6 +29733,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const r = (sm && sm.active) ? _storySideRng((phase | 0) + 11, (won ? 1 : 0), winStreak + lossStreak + 1) : Math.random();
             return pool[Math.floor(r * pool.length)];
         }
+        /** Ambient one-liner for the passive rival cameo that appears in a couple of
+         *  hub cities between rival fights (B11). Non-interactive flavor — sells that
+         *  the rival is out there walking the same world. Deterministic per run. */
+        const RIVAL_CAMEO_CITIES = [5, 8];
+        function _rivalAmbientCityLine(cityIdx) {
+            const lines = [
+                'This isn\'t the fight. The fight\'s at the gate. I\'m just passing through.',
+                'Don\'t look so surprised. We\'re walking the same road — I\'m just ahead of you.',
+                'Stocking up. Same as you. Don\'t read into it.',
+                'I caught your last battle. Sloppy in the back half. Fix it before we meet again.',
+                'Heal up. Train hard. I want you at your best when I take the next one.',
+                'Small region. We were always going to keep running into each other.',
+            ];
+            const r = (sm && sm.active)
+                ? _storySideRng((cityIdx | 0) + 41, (Array.isArray(sm.rivalEncounterLog) ? sm.rivalEncounterLog.length : 0) + 1)
+                : Math.random();
+            return lines[Math.floor(r * lines.length)];
+        }
         function storyDisplayRoleLabel(eventType) {
             const e = String(eventType || '');
             if (/^Gym Leader/i.test(e)) return 'Gym Leader';
@@ -36133,6 +36154,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             let speakerLabel = 'City Guide';
             let spriteTrainerArg = { spriteFile: CITY_GUIDE_SPRITES[(cityIdx + (sm.badges | 0)) % CITY_GUIDE_SPRITES.length] };
+            const _guideSlotFree = !(hasProf && !profUsedHere);
+            const _nextIsAnyRival = !!(_storyNextBat && _storyNextBat[1] === 'Battle' && _storyNextBat[2] === 'Rival');
+            // Passive rival cameo (B11): in a couple of mid/late hub cities, when only
+            // the flavor City Guide would show (Professor business never displaced) and
+            // we're between rival fights with the rivalry already established, the run's
+            // rival walks the same town. Pure flavor — no actions, no battle.
+            const _rivalCameoActive = _guideSlotFree
+                && RIVAL_CAMEO_CITIES.indexOf(cityIdx) !== -1
+                && !_nextIsAnyRival && !rivalGateActive
+                && !!sm.runRivalSpriteFile
+                && Array.isArray(sm.rivalEncounterLog) && sm.rivalEncounterLog.length >= 1
+                && !sm.rivalChampionClaimed;
             if (hasProf && !profUsedHere) {
                 if (hasTeamRoom) {
                     const hub = cityProfessorHubSlot(cityIdx);
@@ -36142,6 +36175,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     speakerLabel = '???';
                     spriteTrainerArg = 'Cyrus';
                 }
+            } else if (_rivalCameoActive) {
+                speakerLabel = _rivalDisplayName();
+                spriteTrainerArg = { spriteFile: sm.runRivalSpriteFile };
             } else if (hasProf && profUsedHere) {
                 speakerLabel = 'City Guide';
                 spriteTrainerArg = { spriteFile: CITY_GUIDE_SPRITES[(cityIdx + (sm.badges | 0)) % CITY_GUIDE_SPRITES.length] };
@@ -36158,9 +36194,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // the NPC's line follows. Everything that was previously stuffed in here (facility
             // barkers, milestone shout-outs, rival warnings) now lives in the tip rail or in a
             // one-shot toast — keeping the dialogue box quiet and on-character.
-            let quoteText = hasProf
-                ? _pickCityQuoteLine(CITY_PROFESSOR_QUOTES, cityIdx)
-                : _pickCityQuoteLine(CITY_GUIDE_QUOTES, cityIdx);
+            let quoteText = _rivalCameoActive
+                ? _rivalAmbientCityLine(cityIdx)
+                : (hasProf
+                    ? _pickCityQuoteLine(CITY_PROFESSOR_QUOTES, cityIdx)
+                    : _pickCityQuoteLine(CITY_GUIDE_QUOTES, cityIdx));
             // City specialty banner — the one-line identity for this city, shown above
             // the NPC quote so the player learns the hub's purpose at a glance.
             const _cityBlurb = _cityBlurbFor(cityIdx);
