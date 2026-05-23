@@ -6059,8 +6059,8 @@
             .story-shop-item .desc { font-size: 12px !important; }
             .story-shop-item .price { font-size: 13px !important; }
             .story-shop-buy-btn {
-                min-height: 42px !important;
-                padding: 8px 18px !important;
+                min-height: 44px !important;
+                padding: 10px 18px !important;
                 font-size: 13px !important;
             }
             /* Artifact shop: bigger taps + better spacing on phone */
@@ -6615,6 +6615,22 @@
             #game-stage.screen-trans-enter-slide, #game-stage.screen-trans-enter-fade,
             body.is-mobile .modal.modal--bottom-sheet .modal-content { animation: none !important; }
             .toast-item { transition: none !important; }
+            /* Long-running pulses + cascades — disable animation but keep
+               the static end-state so the visual hierarchy stays intact. */
+            .story-master-ball-glow, .story-master-ball-pulse, .badge-pulse,
+            .story-save-toast, .story-tutorial-enter-1, .story-tutorial-enter-2,
+            .story-tutorial-enter-3, .story-tutorial-enter-4 {
+                animation: none !important;
+                transition: none !important;
+            }
+            /* Catch-all guard: any element relying on a keyframe pulse / shake
+               loses its motion. Specific overrides above still win because
+               they're already at !important. */
+            *, *::before, *::after {
+                animation-iteration-count: 1 !important;
+                animation-duration: 1ms !important;
+                transition-duration: 1ms !important;
+            }
         }
         /* Story menu — shared layout classes (reduces inline styles) */
         .story-screen-outer {
@@ -7805,7 +7821,7 @@
     <div id="game-stage">
     <button class="icon-btn settings-btn" onclick="window.openSettings()">⚙</button>
 
-    <div id="screen-menu" class="screen active">
+    <div id="screen-menu" class="screen active" role="region" aria-label="menu">
         <div class="menu-hero">
             <div class="logo-container">
                 <h1 class="title-pokemon">POKéMON</h1>
@@ -7895,7 +7911,7 @@
         </div>
     </div>
 
-    <div id="screen-draft" class="screen hidden" style="display:flex; flex-direction:column; position:relative;">
+    <div id="screen-draft" class="screen hidden" role="region" aria-label="draft" style="display:flex; flex-direction:column; position:relative;">
         <div id="draft-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-shrink:0; padding-right:72px; gap: 10px; flex-wrap: wrap;">
             <h2 id="draft-title" style="color: var(--hp-yellow); margin: 0;">Player 1: Pick a Pokémon</h2>
             <span id="online-draft-timer" class="hidden" style="font-size:12px;font-weight:bold;color:#81d4fa;padding:4px 10px;border-radius:6px;background:rgba(0,0,0,0.45);"></span>
@@ -7924,7 +7940,7 @@
 
     <div id="move-tooltip" class="white-outline hidden"></div>
 
-    <div id="modal-settings" class="modal modal--bottom-sheet hidden" onclick="if (event.target === event.currentTarget) window.closeModal('modal-settings')">
+    <div id="modal-settings" class="modal modal--bottom-sheet hidden" role="dialog" aria-modal="true" onclick="if (event.target === event.currentTarget) window.closeModal('modal-settings')">
         <div class="modal-content white-outline" onclick="event.stopPropagation()">
             <div class="modal-header-row">
                 <h2 style="color:var(--hp-yellow); text-align:center;">Settings</h2>
@@ -8008,7 +8024,7 @@
         </div>
     </div>
 
-    <div id="modal-story-run-summary" class="modal hidden" onclick="if (event.target === event.currentTarget) window.closeModal('modal-story-run-summary')">
+    <div id="modal-story-run-summary" class="modal hidden" role="dialog" aria-modal="true" onclick="if (event.target === event.currentTarget) window.closeModal('modal-story-run-summary')">
         <div class="modal-content white-outline" style="max-width: 500px;" onclick="event.stopPropagation()">
             <h2 style="color: var(--accent); margin-top: 0; text-align: center; font-size: 15px;">Run Summary</h2>
             <p style="font-size: 11px; color: #888; margin: -4px 0 12px; line-height: 1.45; text-align: center;">Settings locked in when this run started.</p>
@@ -8017,7 +8033,7 @@
         </div>
     </div>
 
-    <div id="modal-story-abandon-confirm" class="modal hidden">
+    <div id="modal-story-abandon-confirm" class="modal hidden" role="dialog" aria-modal="true">
         <div class="modal-content white-outline" style="max-width: 380px;">
             <h2 style="color: var(--hp-red); margin-top: 0; text-align: center;">Abandon this run?</h2>
             <p style="font-size: 13px; color: #aaa; line-height: 1.5;">Walking away wipes the save — the road won\'t remember you walked it. Your Pokédex carries over, but everything else starts fresh.</p>
@@ -8027,13 +8043,13 @@
     </div>
 
     <!-- In-page messages instead of native alert()/confirm() so fullscreen is not dropped by the browser -->
-    <div id="modal-game-alert" class="modal hidden" onclick="if (event.target === event.currentTarget) window.closeModal('modal-game-alert')">
+    <div id="modal-game-alert" class="modal hidden" role="dialog" aria-modal="true" onclick="if (event.target === event.currentTarget) window.closeModal('modal-game-alert')">
         <div class="modal-content white-outline" style="max-width: 420px;" onclick="event.stopPropagation()">
             <p id="modal-game-alert-text" style="margin: 0 0 16px; font-size: 14px; line-height: 1.5; color: #ccc;"></p>
             <button type="button" onclick="window.closeModal('modal-game-alert')" style="width: 100%;">OK</button>
         </div>
     </div>
-    <div id="modal-game-confirm" class="modal hidden" onclick="if (event.target === event.currentTarget) window._gameConfirmResult(false)">
+    <div id="modal-game-confirm" class="modal hidden" role="dialog" aria-modal="true" onclick="if (event.target === event.currentTarget) window._gameConfirmResult(false)">
         <div class="modal-content white-outline" style="max-width: 420px;" onclick="event.stopPropagation()">
             <p id="modal-game-confirm-text" style="margin: 0 0 16px; font-size: 14px; line-height: 1.5; color: #ccc; white-space: pre-line;"></p>
             <button type="button" onclick="window._gameConfirmResult(false)" style="width: 100%; margin-bottom: 8px;">Cancel</button>
@@ -8041,19 +8057,19 @@
         </div>
     </div>
 
-    <div id="modal-online-host" class="modal hidden">
+    <div id="modal-online-host" class="modal hidden" role="dialog" aria-modal="true">
         <div class="modal-content white-outline" style="max-width: 420px;">
             <h2 style="color: var(--hp-yellow); margin-top: 0; text-align: center;">Host online battle</h2>
             <p style="font-size: 12px; color: #888;">Room rules follow your current draft settings. Share the code or link with your opponent.</p>
-            <label style="display:block;font-size:12px;margin:10px 0 4px;">Your display name</label>
+            <label for="online-host-name" style="display:block;font-size:12px;margin:10px 0 4px;">Your display name</label>
             <input id="online-host-name" maxlength="24" placeholder="Host" style="width:100%;box-sizing:border-box;padding:8px;background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;font-family:inherit;">
-            <label style="display:block;font-size:12px;margin:10px 0 4px;">Match format</label>
+            <label for="online-host-format" style="display:block;font-size:12px;margin:10px 0 4px;">Match format</label>
             <select id="online-host-format" style="width:100%;box-sizing:border-box;padding:8px;background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;font-family:inherit;">
                 <option value="1">Single battle (Bo1)</option>
                 <option value="3">Best of 3</option>
                 <option value="5">Best of 5</option>
             </select>
-            <label style="display:block;font-size:12px;margin:10px 0 4px;">Turn timers</label>
+            <label for="online-host-timer-preset" style="display:block;font-size:12px;margin:10px 0 4px;">Turn timers</label>
             <select id="online-host-timer-preset" style="width:100%;box-sizing:border-box;padding:8px;background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;font-family:inherit;">
                 <option value="none">No time limit</option>
                 <option value="fast">Fast — 30s draft pick, 30s per turn (AI if time runs out)</option>
@@ -8065,7 +8081,7 @@
         </div>
     </div>
 
-    <div id="modal-gauntlet-leaderboard" class="modal hidden">
+    <div id="modal-gauntlet-leaderboard" class="modal hidden" role="dialog" aria-modal="true">
         <div class="modal-content white-outline" style="max-width: 520px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;">
             <h2 style="color: #ffd700; margin-top: 0; text-align: center;">Gauntlet leaderboard</h2>
             <p style="font-size: 11px; color: #888; margin: 0 0 8px; text-align: center;">Top 100 runs (honor system). Requires Supabase in online-config.js.</p>
@@ -8076,13 +8092,13 @@
         </div>
     </div>
 
-    <div id="modal-online-pvp" class="modal hidden">
+    <div id="modal-online-pvp" class="modal hidden" role="dialog" aria-modal="true">
         <div class="modal-content white-outline" style="max-width: 420px;">
             <h2 style="color: var(--hp-yellow); margin-top: 0; text-align: center;">Join online battle</h2>
             <p style="font-size: 12px; color: #888;">Enter the 6-character room code the host shared.</p>
-            <label style="display:block;font-size:12px;margin:8px 0 4px;">Your name (leaderboard)</label>
+            <label for="online-join-name" style="display:block;font-size:12px;margin:8px 0 4px;">Your name (leaderboard)</label>
             <input id="online-join-name" maxlength="24" placeholder="Trainer" style="width:100%;box-sizing:border-box;padding:8px;background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;font-family:inherit;">
-            <label style="display:block;font-size:12px;margin:10px 0 4px;">Room code</label>
+            <label for="online-join-code" style="display:block;font-size:12px;margin:10px 0 4px;">Room code</label>
             <input id="online-join-code" maxlength="8" style="width:100%;box-sizing:border-box;padding:8px;background:var(--surface2);color:var(--text-color);border:1px solid #555;border-radius:4px;font-family:inherit;text-transform:uppercase;">
             <p id="online-join-err" style="color:#f44336;font-size:12px;min-height:18px;margin:8px 0 0;"></p>
             <button type="button" onclick="window.submitOnlineJoin && window.submitOnlineJoin()" style="width:100%;margin-top:12px;padding:10px;">Join</button>
@@ -8098,7 +8114,7 @@
         </div>
     </div>
 
-    <div id="modal-enemy-pool" class="modal hidden">
+    <div id="modal-enemy-pool" class="modal hidden" role="dialog" aria-modal="true">
         <div class="modal-content white-outline" style="max-width: 850px;">
             <h3 style="color: #ff4500; text-align: center; margin-top: 0;">Foe's Potential Draft Pool</h3>
             <p style="color:#888;font-size:11px;text-align:center;margin:-4px 0 10px;">All six possible builds (picks stay listed here so you never see only what they passed up).</p>
@@ -8107,7 +8123,7 @@
         </div>
     </div>
 
-    <div id="modal-gauntlet-swap" class="modal hidden">
+    <div id="modal-gauntlet-swap" class="modal hidden" role="dialog" aria-modal="true">
         <div class="modal-content white-outline" style="max-width: 700px; padding: 20px;">
             <h2 style="color: var(--hp-yellow); text-align: center; margin-top: 0;">Round Cleared! Loot a Pokémon</h2>
             <div id="gauntlet-reorder-section" style="margin-bottom: 15px; border: 1px solid #333; border-radius: 4px; padding: 10px;">
@@ -8125,7 +8141,7 @@
         </div>
     </div>
 
-    <div id="modal-end-screen" class="modal hidden">
+    <div id="modal-end-screen" class="modal hidden" role="dialog" aria-modal="true">
         <div class="modal-content white-outline" style="text-align: center;">
             <!-- Online PvP score panel -->
             <div id="online-round-score" class="hidden" style="background:rgba(255,255,255,0.05);border:1px solid #444;border-radius:6px;padding:10px 14px;margin:0 0 14px;display:flex;flex-direction:column;gap:6px;align-items:center;">
@@ -8158,7 +8174,7 @@
         </div>
     </div>
 
-    <div id="modal-party" class="modal modal--bottom-sheet hidden">
+    <div id="modal-party" class="modal modal--bottom-sheet hidden" role="dialog" aria-modal="true">
         <div class="modal-content white-outline">
             <h2 style="margin-top: 0; color: var(--hp-yellow);">Pokémon Party</h2>
             <p id="party-context-text" style="font-size: 12px; color: #ccc;"></p>
@@ -8193,7 +8209,7 @@
     </div>
 
     <!-- ===== STORY MODE SCREENS ===== -->
-    <div id="screen-story-menu" class="screen hidden story-screen-outer">
+    <div id="screen-story-menu" class="screen hidden story-screen-outer" role="region" aria-label="story menu">
         <h1 class="story-title-main">&#9670; STORY MODE</h1>
         <p class="story-tagline">A single-player road from Pallet Town to the Champion\'s seat — and whatever waits after the credits.</p>
         <div class="story-intro-stack">
@@ -8218,7 +8234,7 @@
         </div>
     </div>
 
-    <div id="screen-story-city" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-city" class="screen hidden story-screen-root" role="region" aria-label="story city" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-city-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-city-stack">
         <!-- Top HUD -->
@@ -8263,7 +8279,7 @@
         </div>
     </div>
 
-    <div id="screen-story-professor" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-professor" class="screen hidden story-screen-root" role="region" aria-label="story professor" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
@@ -8288,7 +8304,7 @@
         </div>
     </div>
 
-    <div id="screen-story-shop" class="screen hidden story-screen-root" data-shop-type="mart" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-shop" class="screen hidden story-screen-root" role="region" aria-label="story shop" data-shop-type="mart" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-shop-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
@@ -8303,7 +8319,7 @@
         </div>
     </div>
 
-    <div id="screen-story-artifact-shop" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-artifact-shop" class="screen hidden story-screen-root" role="region" aria-label="story artifact shop" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-artifact-shop-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
@@ -8319,7 +8335,7 @@
         </div>
     </div>
 
-    <div id="screen-story-stone-shop" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-stone-shop" class="screen hidden story-screen-root" role="region" aria-label="story stone shop" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-stone-shop-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
@@ -8335,7 +8351,7 @@
         </div>
     </div>
 
-    <div id="screen-story-tutor" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-tutor" class="screen hidden story-screen-root" role="region" aria-label="story tutor" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-tutor-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
@@ -8353,7 +8369,7 @@
         </div>
     </div>
 
-    <div id="screen-story-colress" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-colress" class="screen hidden story-screen-root" role="region" aria-label="story colress" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-colress-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;gap:10px;">
@@ -8377,7 +8393,7 @@
         </div>
     </div>
 
-    <div id="screen-story-evtrainer" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-evtrainer" class="screen hidden story-screen-root" role="region" aria-label="story evtrainer" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-evtrainer-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;gap:10px;">
@@ -8400,7 +8416,7 @@
         </div>
     </div>
 
-    <div id="screen-story-fanclub" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-fanclub" class="screen hidden story-screen-root" role="region" aria-label="story fanclub" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;gap:10px;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
@@ -8421,7 +8437,7 @@
         </div>
     </div>
 
-    <div id="screen-story-pokemoncenter" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-pokemoncenter" class="screen hidden story-screen-root" role="region" aria-label="story pokemoncenter" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-pokemoncenter-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
@@ -8444,7 +8460,7 @@
         </div>
     </div>
 
-    <div id="screen-story-crucible" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-crucible" class="screen hidden story-screen-root" role="region" aria-label="story crucible" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
                 <span style="width:32px;"></span>
@@ -8461,7 +8477,7 @@
         </div>
     </div>
 
-    <div id="screen-story-frontier" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-frontier" class="screen hidden story-screen-root" role="region" aria-label="story frontier" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCrucible()" title="Back to The Crucible" aria-label="Back to The Crucible">&#8592;</button>
@@ -8475,7 +8491,7 @@
         </div>
     </div>
 
-    <div id="screen-story-catch" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-catch" class="screen hidden story-screen-root" role="region" aria-label="story catch" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div class="story-shop-stack">
             <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
                 <span style="width:32px;"></span>
@@ -8489,7 +8505,7 @@
         </div>
     </div>
 
-    <div id="screen-story-link" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-link" class="screen hidden story-screen-root" role="region" aria-label="story link" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-link-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-link-stack">
         <div class="story-link-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
@@ -8507,7 +8523,7 @@
         </div>
     </div>
 
-    <div id="screen-story-evolab" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-evolab" class="screen hidden story-screen-root" role="region" aria-label="story evolab" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-evolab-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;gap:10px;">
@@ -8530,7 +8546,7 @@
         </div>
     </div>
 
-    <div id="screen-story-casino" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+    <div id="screen-story-casino" class="screen hidden story-screen-root" role="region" aria-label="story casino" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div id="story-casino-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
         <div class="story-shop-stack">
             <div class="story-shop-header-row casino-header-row">
@@ -8663,7 +8679,7 @@
         </div>
     </div>
 
-    <div id="screen-story-gameover" class="screen hidden" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:20px;font-family:var(--battle-font);">
+    <div id="screen-story-gameover" class="screen hidden" role="region" aria-label="story gameover" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:20px;font-family:var(--battle-font);">
         <h1 style="color:#f44336;font-size:32px;margin:0;letter-spacing:3px;">DEFEATED</h1>
         <p style="color:#888;font-size:12px;text-align:center;margin:0;max-width:400px;">You blacked out.</p>
         <p id="story-gameover-desc" style="color:#aaa;font-size:14px;text-align:center;margin:0;max-width:400px;"></p>
@@ -8678,7 +8694,7 @@
         </div>
     </div>
 
-<div id="screen-story-artifacts" class="screen hidden" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+<div id="screen-story-artifacts" class="screen hidden" role="region" aria-label="story artifacts" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div style="padding:10px 14px;background:#0d0d0d;border-bottom:1px solid #333;flex-shrink:0;">
             <div style="display:flex;align-items:center;gap:10px;">
                 <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
@@ -8692,7 +8708,7 @@
         </div>
     </div>
 
-    <div id="modal-story-bag" class="modal hidden">
+    <div id="modal-story-bag" class="modal hidden" role="dialog" aria-modal="true">
         <div class="modal-content white-outline story-bag-modal-content">
             <h3 class="story-bag-modal-title"><img class="story-screen-head-ico" src="icons/story/story_bag.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span>Battle Bag</span></h3>
             <p class="story-bag-hint">Select an item to use</p>
@@ -8705,7 +8721,7 @@
         </div>
     </div>
 
-    <div id="modal-story-party" class="modal hidden">
+    <div id="modal-story-party" class="modal hidden" role="dialog" aria-modal="true">
         <div class="modal-content white-outline story-party-modal-content">
             <h3 class="story-party-modal-title"><img class="story-screen-head-ico" src="icons/story/story_party.png?v=20260429b" alt="" width="22" height="22" decoding="async" style="image-rendering:auto;"><span>Party <span id="story-party-count" style="color:#9aa0aa;font-size:10px;letter-spacing:0;font-weight:normal;"></span></span></h3>
             <p class="story-party-modal-hint">Tap a Pokémon for the full summary. Use Move Up/Move Down to change lead order.</p>
@@ -8716,7 +8732,7 @@
         </div>
     </div>
 
-    <div id="modal-story-artifact" class="modal hidden">
+    <div id="modal-story-artifact" class="modal hidden" role="dialog" aria-modal="true">
         <div class="modal-content white-outline" style="max-width:550px;">
             <h3 class="story-screen-head-title" style="color:#9c27b0;margin-top:0;"><img class="story-screen-head-ico" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Run Artifacts</span></h3>
             <p style="font-size:12px;color:#aaa;">Most artifacts affect BOTH you and the enemy for your entire run. The Cursed Amulet Coin is the one exception — its bonus and its curse only touch your team.</p>
@@ -8725,7 +8741,7 @@
         </div>
     </div>
 
-    <div id="screen-story-tester" class="screen hidden" style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:#0a0a0c;">
+    <div id="screen-story-tester" class="screen hidden" role="region" aria-label="story tester" style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:#0a0a0c;">
         <div style="flex-shrink:0;padding:12px 16px;border-bottom:1px solid #333;background:#111;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
                 <h1 style="color:#ce93d8;font-size:18px;margin:0 0 6px;">Story team tester</h1>
@@ -8777,7 +8793,7 @@
     </div>
 
     <!-- Trainer creation + run setup (replaces seed + heavy settings panel) -->
-    <div id="screen-story-trainercreate" class="screen hidden story-screen-outer">
+    <div id="screen-story-trainercreate" class="screen hidden story-screen-outer" role="region" aria-label="story trainercreate">
         <div class="story-create-shell">
             <header class="story-create-head">
                 <button type="button" class="story-create-back" onclick="window.StoryMode.cancelTrainerCreate()" aria-label="Back to story menu">&#8592; Back</button>
@@ -8899,7 +8915,7 @@
     </div>
 
     <!-- Collection: Pokédex + Achievements + Hall of Fame (cross-run) -->
-    <div id="screen-collection" class="screen hidden story-screen-outer">
+    <div id="screen-collection" class="screen hidden story-screen-outer" role="region" aria-label="collection">
         <div class="story-collection-shell">
             <header class="story-collection-head">
                 <button type="button" class="story-create-back" onclick="window.StoryMode.closeCollection()" aria-label="Back">&#8592; Back</button>
@@ -8919,7 +8935,7 @@
 
     <!-- ===== END STORY MODE SCREENS ===== -->
 
-    <div id="screen-battle" class="screen hidden">
+    <div id="screen-battle" class="screen hidden" role="region" aria-label="battle">
         <button type="button" class="battle-settings-btn" onclick="window.openSettings()" title="Settings" aria-label="Settings">⚙</button>
         <div id="weather-indicator" class="hidden" style="display:none;"></div>
         <div id="terrain-overlay" class="terrain-overlay"></div>
@@ -9505,7 +9521,7 @@
                 } catch (e) {}
             }
             if (window.__DEBUG_SPRITE_SCALE) {
-                console.log('[SpriteScale] enrichBaseStatsHeightsFromDex: heightM added for ' + n + ' species');
+                if (window.__DEBUG_LOADS) console.log('[SpriteScale] enrichBaseStatsHeightsFromDex: heightM added for ' + n + ' species');
                 if (n === 0) {
                     try {
                         const probe = D.species.get('Pikachu');
@@ -9606,7 +9622,7 @@
                 }
                 invalidateTooltipKeysCache();
 
-                console.log(`[Data] Loaded ${Object.keys(baseStats).length} species, ${Object.keys(movesDB).length} moves, ${Object.keys(itemsJSON).length} items, ${Object.keys(abilitiesJSON).length} abilities, ${Object.keys(naturesJSON).length} natures`);
+                if (window.__DEBUG_LOADS) console.log(`[Data] Loaded ${Object.keys(baseStats).length} species, ${Object.keys(movesDB).length} moves, ${Object.keys(itemsJSON).length} items, ${Object.keys(abilitiesJSON).length} abilities, ${Object.keys(naturesJSON).length} natures`);
             } catch(e) {
                 console.error("Failed to load data files!", e);
             }
@@ -9870,7 +9886,7 @@
                     }
                     csvBuilds[name][tag].push(buildObj);
                 }
-                console.log(`[CSV] Loaded builds for ${Object.keys(csvBuilds).length} Pokémon (${illegalCount} flagged as illegal — reserved for end-game)`);
+                if (window.__DEBUG_LOADS) console.log(`[CSV] Loaded builds for ${Object.keys(csvBuilds).length} Pokémon (${illegalCount} flagged as illegal — reserved for end-game)`);
             } catch(e) {
                 console.warn('[CSV] builds.csv unavailable, fetching from pkmn.cc API...');
                 await populateCsvBuildsFromAPI();
@@ -9927,7 +9943,7 @@
                     }
                 }
             }
-            console.log(`[CSV] API fallback loaded builds for ${Object.keys(csvBuilds).length} Pokémon`);
+            if (window.__DEBUG_LOADS) console.log(`[CSV] API fallback loaded builds for ${Object.keys(csvBuilds).length} Pokémon`);
             // Invalidate the data-driven recommendation caches so per-species
             // popularity stats reflect the freshly-loaded sets.
             try { if (typeof _txMetaCache !== 'undefined') _txMetaCache.clear(); } catch (e) {}
@@ -10487,7 +10503,7 @@
             window.STAT_SCALE_MAX = Math.floor((Math.floor((2 * p95Stat + 31 + 63) * 50 / 100) + 5) * 1.1);
         }
 
-        const typeChart={"Normal":{"Rock":0.5,"Ghost":0,"Steel":0.5},"Fire":{"Fire":0.5,"Water":0.5,"Grass":2,"Ice":2,"Bug":2,"Rock":0.5,"Dragon":0.5,"Steel":2},"Water":{"Fire":2,"Water":0.5,"Grass":0.5,"Ground":2,"Rock":2,"Dragon":0.5},"Electric":{"Water":2,"Electric":0.5,"Grass":0.5,"Ground":0,"Flying":2,"Dragon":0.5},"Grass":{"Fire":0.5,"Water":2,"Grass":0.5,"Poison":0.5,"Ground":2,"Flying":0.5,"Bug":0.5,"Rock":2,"Dragon":0.5,"Steel":0.5},"Ice":{"Fire":0.5,"Water":0.5,"Grass":2,"Ice":0.5,"Ground":2,"Flying":2,"Dragon":2,"Steel":0.5},"Fighting":{"Normal":2,"Ice":2,"Poison":0.5,"Flying":0.5,"Psychic":0.5,"Bug":0.5,"Rock":2,"Ghost":0,"Dark":2,"Steel":2,"Fairy":0.5},"Poison":{"Grass":2,"Poison":0.5,"Ground":0.5,"Rock":0.5,"Ghost":0.5,"Steel":0,"Fairy":2},"Ground":{"Fire":2,"Electric":2,"Grass":0.5,"Poison":2,"Flying":0,"Bug":0.5,"Rock":2,"Steel":2},"Flying":{"Electric":0.5,"Grass":2,"Fighting":2,"Bug":2,"Rock":0.5,"Steel":0.5},"Psychic":{"Fighting":2,"Poison":2,"Psychic":0.5,"Dark":0,"Steel":0.5},"Bug":{"Fire":0.5,"Grass":2,"Fighting":0.5,"Poison":0.5,"Flying":0.5,"Psychic":2,"Ghost":0.5,"Dark":2,"Steel":0.5,"Fairy":0.5},"Rock":{"Fire":2,"Ice":2,"Fighting":0.5,"Ground":0.5,"Flying":2,"Bug":2,"Steel":0.5},"Ghost":{"Normal":0,"Psychic":2,"Ghost":2,"Dark":0.5},"Dragon":{"Dragon":2,"Steel":0.5,"Fairy":0},"Dark":{"Fighting":0.5,"Psychic":2,"Ghost":2,"Dark":0.5,"Fairy":0.5},"Steel":{"Fire":0.5,"Water":0.5,"Electric":0.5,"Ice":2,"Rock":2,"Steel":0.5,"Fairy":2},"Fairy":{"Fire":0.5,"Fighting":2,"Poison":0.5,"Dragon":2,"Dark":2,"Steel":0.5}};
+        const typeChart={"Normal":{"Rock":0.5,"Ghost":0,"Steel":0.5},"Fire":{"Fire":0.5,"Water":0.5,"Grass":2,"Ice":2,"Bug":2,"Rock":0.5,"Dragon":0.5,"Steel":2},"Water":{"Fire":2,"Water":0.5,"Grass":0.5,"Ground":2,"Rock":2,"Dragon":0.5},"Electric":{"Water":2,"Electric":0.5,"Grass":0.5,"Ground":0,"Flying":2,"Dragon":0.5},"Grass":{"Fire":0.5,"Water":2,"Grass":0.5,"Poison":0.5,"Ground":2,"Flying":0.5,"Bug":0.5,"Rock":2,"Dragon":0.5,"Steel":0.5},"Ice":{"Fire":0.5,"Water":0.5,"Grass":2,"Ice":0.5,"Ground":2,"Flying":2,"Dragon":2,"Steel":0.5},"Fighting":{"Normal":2,"Ice":2,"Poison":0.5,"Flying":0.5,"Psychic":0.5,"Bug":0.5,"Rock":2,"Ghost":0,"Dark":2,"Steel":2,"Fairy":0.5},"Poison":{"Grass":2,"Poison":0.5,"Ground":0.5,"Rock":0.5,"Ghost":0.5,"Steel":0,"Fairy":2},"Ground":{"Fire":2,"Electric":2,"Grass":0.5,"Poison":2,"Flying":0,"Bug":0.5,"Rock":2,"Steel":2},"Flying":{"Electric":0.5,"Grass":2,"Fighting":2,"Bug":2,"Rock":0.5,"Steel":0.5},"Psychic":{"Fighting":2,"Poison":2,"Psychic":0.5,"Dark":0,"Steel":0.5},"Bug":{"Fire":0.5,"Grass":2,"Fighting":0.5,"Poison":0.5,"Flying":0.5,"Psychic":2,"Ghost":0.5,"Dark":2,"Steel":0.5,"Fairy":0.5},"Rock":{"Fire":2,"Ice":2,"Fighting":0.5,"Ground":0.5,"Flying":2,"Bug":2,"Steel":0.5},"Ghost":{"Normal":0,"Psychic":2,"Ghost":2,"Dark":0.5},"Dragon":{"Dragon":2,"Steel":0.5,"Fairy":0},"Dark":{"Fighting":0.5,"Psychic":2,"Ghost":2,"Dark":0.5,"Fairy":0.5},"Steel":{"Fire":0.5,"Water":0.5,"Electric":0.5,"Ice":2,"Rock":2,"Steel":0.5,"Fairy":2},"Fairy":{"Fire":0.5,"Fighting":2,"Poison":0.5,"Dragon":2,"Dark":2,"Steel":0.5},"???":{}};
         const natureModifiers={"Adamant":{up:"atk",down:"spa"},"Brave":{up:"atk",down:"spe"},"Lonely":{up:"atk",down:"def"},"Naughty":{up:"atk",down:"spd"},"Bold":{up:"def",down:"atk"},"Impish":{up:"def",down:"spa"},"Lax":{up:"def",down:"spd"},"Relaxed":{up:"def",down:"spe"},"Modest":{up:"spa",down:"atk"},"Mild":{up:"spa",down:"def"},"Quiet":{up:"spa",down:"spe"},"Rash":{up:"spa",down:"spd"},"Calm":{up:"spd",down:"atk"},"Careful":{up:"spd",down:"spa"},"Gentle":{up:"spd",down:"def"},"Sassy":{up:"spd",down:"spe"},"Timid":{up:"spe",down:"atk"},"Jolly":{up:"spe",down:"spa"},"Hasty":{up:"spe",down:"def"},"Naive":{up:"spe",down:"spd"},"Hardy":null,"Docile":null,"Serious":null,"Bashful":null,"Quirky":null};
         // baseStats, movesDB, builds, tooltipDict are loaded from CSV files via loadGameData()
 
@@ -11347,9 +11363,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return settings.mechanics;
         }
         // Wraps a build factory call so any gimmick it rolls is constrained to
-        // the player's unlocked-mechanic list. Used by every player-side acquisition
-        // path EXCEPT Cable Link (the premium "another trainer's mon" path is allowed
-        // to surface pre-unlock gimmicks by design — see _makePlayerLinkBuild).
+        // the player's unlocked-mechanic list. Used by every player-side
+        // acquisition path INCLUDING Cable Link, per STORY_MODE_FLOW.md §15d
+        // ("Cable Link only rolls gimmicks the player has unlocked"). An
+        // older CHANGELOG entry (2026-05-21) described Cable Link as ungated;
+        // the spec and the code disagree with that earlier note — the gate
+        // applies uniformly to make pre-unlock leaks impossible across every
+        // player-side acquisition.
         function _withStoryPlayerGimmickGate(fn) {
             try {
                 window._pbsStoryUsePlayerGimmickGate = true;
@@ -11523,13 +11543,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let r = await fetch(`data/builds/gen${gen}.json`);
                 if (!r.ok) throw new Error('local not found');
                 _smogonCache[gen] = await r.json();
-                console.log(`[Smogon] Loaded gen${gen} sets from local file`);
+                if (window.__DEBUG_LOADS) console.log(`[Smogon] Loaded gen${gen} sets from local file`);
             } catch(e) {
                 try {
                     let r = await fetch(`https://data.pkmn.cc/sets/gen${gen}.json`);
                     if (!r.ok) throw new Error('api not found');
                     _smogonCache[gen] = await r.json();
-                    console.log(`[Smogon] Loaded gen${gen} sets from pkmn.cc API`);
+                    if (window.__DEBUG_LOADS) console.log(`[Smogon] Loaded gen${gen} sets from pkmn.cc API`);
                 } catch(e2) { _smogonCache[gen] = {}; }
             }
             return _smogonCache[gen];
@@ -12943,6 +12963,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (prev && typeof prev.focus === 'function') prev.focus();
                 window._modalFocusStack.delete(id);
             } catch (e) {}
+        }
+        // Global Escape handler — closes the topmost visible .modal element.
+        // Pre-fix only modal-summary handled Escape; every other modal trapped
+        // keyboard users until they tabbed to the close button. Modals that
+        // intentionally block Escape (mid-pick confirmations) set
+        // data-no-escape on the root to opt out.
+        if (!window.__pbsGlobalEscBound) {
+            window.__pbsGlobalEscBound = true;
+            document.addEventListener('keydown', function (e) {
+                if (e.key !== 'Escape') return;
+                // Find the LAST (visually topmost in source order) un-hidden modal.
+                const modals = document.querySelectorAll('.modal:not(.hidden)');
+                if (!modals.length) return;
+                const top = modals[modals.length - 1];
+                if (top.dataset && top.dataset.noEscape === 'true') return;
+                e.preventDefault();
+                if (top.id) {
+                    try { window.closeModal(top.id); } catch (err) { top.classList.add('hidden'); }
+                } else {
+                    top.classList.add('hidden');
+                }
+            });
         }
         window.showGameAlert = function(msg) {
             dismissTextTooltipForModal();
@@ -29708,7 +29750,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // wild-encounter beat). Mid-trip facilities (PC, Pokémart, tutors) stay
             // available so the post-gym town still serves as a real stop.
             if (_isPostGymHubAtEventIdx(sm.eventIndex | 0)) return false;
-            return sm.team.length < 6;
+            // Outer caller (renderCityActions) gates on `hasTeamRoom` (team
+            // length < badge-curve cap), which strictly implies `team.length
+            // < 6`, so the inner cap-6 check is dead. Returning true here
+            // lets the outer cap gate decide.
+            return true;
         }
         function isPreLeagueLegendaryMysteryGate(cityIdx) {
             const c = Math.max(0, cityIdx | 0);
@@ -30449,6 +30495,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           'Alder':    ['Welcome to my festival.','I left the chamber to walk the world. Now I\'m back.','Bug-type Champion. Yes, really. Find out why.'],
 
           // Elite Four — Kalos.
+          'Malva':    ['Fire burns the unworthy. Show me your spark.','I host the news AND the next gate. Lucky you.','Pyroar\'s mane is the warning. Tackle the heart.'],
           'Siebold':  ['Cooking is a martial art. So is battle.','My Pokémon are seasoned. Are you?','A perfect dish — a perfect victory. Same recipe.'],
           'Wikstrom': ['En garde! A knight greets you.','Steel does not bend. My honor likewise.','Spar with one who has earned the chamber.'],
           'Drasna':   ['Oh my, what a sweet face. Let\'s battle.','My dragons are old and wise. Don\'t underestimate kindness.','Grandma\'s dragons hit harder than they look.'],
@@ -30986,7 +31033,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Cross-run meta. Holds permanent achievements that survive abandon/clear.
         // Today: completedRuns + lastClearSeed. Future: Pokédex carryover, totals, marks.
         const SAVE_KEY_META = 'pbs_story_meta';
-        const SAVE_VER = 19;
+        const SAVE_VER = 20;
         function _emptyStoryMeta() {
             return {
                 completedRuns: 0,
@@ -31607,8 +31654,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.postHofMysteryClimaxDone = !!(sm.bossArc && sm.bossArc.available);
             }
             if (sm.storyDifficulty === 'hardcore') sm.storyDifficulty = 'normal';
-            if (Array.isArray(sm.team)) {
-                for (const slot of sm.team) {
+            // Stamp stable ids on every slot in team AND pcBox. The pre-v15
+            // version of this loop only iterated sm.team; pcBox didn't exist
+            // in pre-v15 schemas so it was effectively a no-op, but adding
+            // it explicitly keeps the migration symmetric with v17 and
+            // protects against forward-imported saves missing ids.
+            for (const arr of [sm.team, sm.pcBox]) {
+                if (!Array.isArray(arr)) continue;
+                for (const slot of arr) {
                     if (slot && typeof slot === 'object' && !slot.id) {
                         slot.id = 'm_' + Math.random().toString(36).slice(2, 10);
                     }
@@ -31792,27 +31845,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } else {
                 return;
             }
-            // Per-event boss boost. Crucible Hard Mode multiplier is applied
-            // separately by crucibleApplyHardModeToFoes so every Crucible-
-            // sourced fight (including gym rematches that fall outside this
-            // function's filter) gets the +30%.
-            const newMaxHp = Math.max(1, Math.floor(mon.maxHp * hpM));
-            mon.maxHp = newMaxHp;
-            mon.currentHp = newMaxHp;
-            if (mon.stats) {
-                mon.stats.atk = Math.max(1, Math.floor(mon.stats.atk * bulkM));
-                mon.stats.def = Math.max(1, Math.floor(mon.stats.def * bulkM));
-                mon.stats.spa = Math.max(1, Math.floor(mon.stats.spa * bulkM));
-                mon.stats.spd = Math.max(1, Math.floor(mon.stats.spd * bulkM));
-                mon.stats.spe = Math.max(1, Math.floor(mon.stats.spe * speM));
-            }
+            // Per-event boss boost. Store as an ADDITIVE delta on the mon so
+            // applyFoeDifficultyScaling can merge with the difficulty multiplier
+            // additively (e.g., Challenge 1.30 + Champion 0.40 = 1.70, not the
+            // multiplicative 1.30 × 1.40 = 1.82 cliff). startBattle calls this
+            // BEFORE applyFoeDifficultyScaling at lines 15318-15332. Difficulty
+            // scaling reads `mon._leagueStatBonus` and applies the merged
+            // multiplier to maxHp / stats once. Crucible Hard Mode multiplier
+            // is applied separately by crucibleApplyHardModeToFoes so every
+            // Crucible-sourced fight (including gym rematches that fall outside
+            // this function's filter) gets the +30%.
+            mon._leagueStatBonus = {
+                hp:   hpM   - 1,
+                bulk: bulkM - 1,
+                spe:  speM  - 1,
+            };
         };
 
         /** Deterministic RNG for story rolls (team picks, etc.). Sequence continues from saved _strngState. */
         function storyRngNext() {
             if (sm.runSeed == null || sm.runSeed === undefined) {
                 if (sm.active) console.warn('[Story] storyRngNext called with no seed during active run — using Math.random()');
-                return Math.random();
+                return _nativeMathRandom.call(Math);
             }
             if (sm._strngState == null) sm._strngState = ((sm.runSeed >>> 0) ^ 0x9E3779B9) >>> 0;
             sm._strngState = (Math.imul(sm._strngState, 1664525) + 1013904223) >>> 0;
@@ -31825,6 +31879,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // that triggers fatigue-confusion, thaw, Swagger/Flatter, secondary
         // confuse, Harvest, or a G-Max status branch). See BUG_REPORT.md.
         try { window.storyRngNext = storyRngNext; } catch (e) {}
+        // Story replay determinism: when sm.active && sm.runSeed != null, every
+        // Math.random() in the engine (262 sites across battle.html) routes
+        // through storyRngNext so that two replays at the same seed produce
+        // byte-identical battle transcripts. Outside an active story run,
+        // Math.random behaves natively (PvP, casual, draft mode unaffected).
+        // The fallback inside storyRngNext uses _nativeMathRandom to avoid
+        // recursion when sm.runSeed is null but sm.active is true. Combined
+        // with the BUG-002 expose above, this makes BOTH the in-IIFE bare
+        // Math.random sites and the out-of-IIFE direct storyRngNext sites
+        // resolve to the same seeded stream.
+        const _nativeMathRandom = Math.random;
+        Math.random = function () {
+            if (typeof sm !== 'undefined' && sm && sm.active === true && sm.runSeed != null) {
+                return storyRngNext();
+            }
+            return _nativeMathRandom.call(Math);
+        };
         let _selectedBagItem = null;
         let _storyBattleInventorySnapshot = null;
 
@@ -31863,6 +31934,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const el = document.createElement('div');
             el.className = 'story-save-toast';
+            el.setAttribute('role', 'status');
+            el.setAttribute('aria-live', 'polite');
             el.textContent = '💾 Saved';
             el.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);'
                 + 'background:rgba(20,30,40,0.92);color:#aed581;border:1px solid rgba(174,213,129,0.35);'
@@ -31870,7 +31943,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 + 'letter-spacing:0.06em;z-index:99999;pointer-events:none;'
                 + 'box-shadow:0 4px 14px rgba(0,0,0,0.45);'
                 + 'animation:storySaveToastIn 240ms ease-out;';
-            document.body.appendChild(el);
+            // Append inside the polite live region (#toast-host) so screen
+            // readers announce the save; pre-fix the toast went to body and
+            // was invisible to AT. Falls back to body if the host is missing.
+            const _toastHost = document.getElementById('toast-host');
+            (_toastHost || document.body).appendChild(el);
             _saveToastEl = el;
             el._dismissTimer = setTimeout(() => {
                 try {
@@ -31916,11 +31993,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.artifactTypeById || typeof sm.artifactTypeById !== 'object') sm.artifactTypeById = {};
                 if (!sm.deptItemOffersByCity || typeof sm.deptItemOffersByCity !== 'object') sm.deptItemOffersByCity = {};
                 if (!sm.deptShopPurchasedByCity || typeof sm.deptShopPurchasedByCity !== 'object') sm.deptShopPurchasedByCity = {};
-                // v20: casino runs on gold directly. Drop the legacy coin
-                // currency silently from old saves.
-                try { delete sm.casinoCoins; } catch (e) {}
+                // v20 migration cleanup (now gated by SAVE_VER bump): casino
+                // runs on gold directly; drop the legacy coin currency. Reads
+                // d.version directly because _loadedVer is declared further
+                // down in the load() body (temporal dead zone). The try/catch
+                // is kept for safety on weird saves with frozen sm shapes from
+                // older runtimes. casinoStats default + cashier drop remain
+                // idempotent so leaving them unconditional is fine.
+                if ((d.version | 0) < 20) {
+                    try { delete sm.casinoCoins; } catch (e) { /* old browser */ }
+                }
                 if (!sm.casinoStats || typeof sm.casinoStats !== 'object') sm.casinoStats = {};
-                try { delete sm.casinoStats.cashier; } catch (e) {}
+                try { delete sm.casinoStats.cashier; } catch (e) { /* old browser */ }
                 try { delete sm.profIntroThemePending; } catch (e) {}
                 if (!sm.storyDifficulty) sm.storyDifficulty = 'normal';
                 if (sm.settings && !('noItemRun' in sm.settings)) sm.settings.noItemRun = false;
@@ -31961,6 +32045,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (_loadedVer < 13) {
                     try { migrateStoryArtifactShopPreV13(); } catch (e) { console.warn('[Story] relic shop v13', e); }
+                }
+                if (_loadedVer < 14) {
                     try { migrateStoryTrainerAssignmentsPreV14(); } catch (e) { console.warn('[Story] trainer assignments v14', e); }
                 }
                 if (_loadedVer < 15) {
@@ -32395,11 +32481,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // rule so no mechanic appears anywhere before it becomes globally available.
             const k = [];
             const unlocked = new Set(Array.isArray(sm.unlockedGimmicks) ? sm.unlockedGimmicks : []);
-            if (sm.settings.dynaOn && unlocked.has('dmax')) k.push('gmax');
-            if (sm.settings.megaOn && unlocked.has('mega')) k.push('mega');
-            if (sm.settings.dynaOn && unlocked.has('dmax')) k.push('dmax');
-            if (sm.settings.zOn && unlocked.has('z')) k.push('z');
-            if (sm.settings.teraOn && unlocked.has('tera')) k.push('tera');
+            // Defensive: sm.settings can be undefined on a malformed/corrupt
+            // save reaching this path before load() finishes. Pre-fix this
+            // threw "Cannot read properties of undefined (reading 'dynaOn')"
+            // and dropped the player into a dead loading state.
+            const s = sm.settings || {};
+            if (s.dynaOn && unlocked.has('dmax')) k.push('gmax');
+            if (s.megaOn && unlocked.has('mega')) k.push('mega');
+            if (s.dynaOn && unlocked.has('dmax')) k.push('dmax');
+            if (s.zOn && unlocked.has('z')) k.push('z');
+            if (s.teraOn && unlocked.has('tera')) k.push('tera');
             return k;
         }
         function _kindToForcedTag(kind) {
@@ -36172,6 +36263,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const spriteFile = scene.sprite || 'Oak';
             const npcName = scene.name || '';
             const nameplate = scene.nameplate || npcName || '';
+            // a11y: announce as a labeled dialog. The nameplate becomes the
+            // accessible name; ESC dismisses. tabIndex=-1 lets us focus the
+            // overlay for screen-reader entry; the Continue button gets
+            // explicit focus after append so keyboard users press Enter to
+            // advance.
+            ov.setAttribute('role', 'dialog');
+            ov.setAttribute('aria-modal', 'true');
+            ov.setAttribute('aria-label', npcName || nameplate || 'Story Tutorial');
+            ov.tabIndex = -1;
             let lines = [];
             if (typeof scene.getLines === 'function') {
                 try { const dyn = scene.getLines(); if (Array.isArray(dyn)) lines = dyn; } catch (e) {}
@@ -36190,7 +36290,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>
                 <button type="button" class="story-tutorial-continue">Continue →</button>
             `;
+            const escListener = function (e) {
+                if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); dismiss(); }
+            };
             const dismiss = function () {
+                document.removeEventListener('keydown', escListener);
                 try { ov.remove(); } catch (e) {}
                 // Per docs/EVOLUTION_FLOW_REBUILD.md §3: scenes can grant a welcome
                 // voucher exactly once on Continue (after the player has actually seen
@@ -36199,9 +36303,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { if (typeof scene.onContinue === 'function') scene.onContinue(); } catch (e) { console.error('[StoryTutorial] onContinue threw:', e); }
                 try { onDone && onDone(); } catch (e) { console.error('[StoryTutorial] onDone threw:', e); }
             };
+            document.addEventListener('keydown', escListener);
             ov.querySelector('button').onclick = function (e) { e.stopPropagation(); dismiss(); };
             ov.onclick = function (e) { if (e.target === ov) dismiss(); };
             document.body.appendChild(ov);
+            try {
+                const _continueBtn = ov.querySelector('button.story-tutorial-continue');
+                setTimeout(() => { if (_continueBtn) _continueBtn.focus(); }, 0);
+            } catch (e) { /* focus best-effort */ }
         }
 
         /** Play a story tutorial scene by id. Cross-run-deduped via
@@ -37940,7 +38049,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     spriteTrainerArg = { spriteFile: hub.spriteFile };
                 } else {
                     speakerLabel = '???';
-                    spriteTrainerArg = 'Cyrus';
+                    // Use the active sm.mysteryIdentity sprite so the city-hub
+                    // tease matches the upcoming reveal (was: hardcoded 'Cyrus').
+                    const _mysteryFace = (sm && sm.mysteryIdentity && MYSTERY_FIGURE_IDENTITIES[sm.mysteryIdentity]) || null;
+                    spriteTrainerArg = _mysteryFace && _mysteryFace.sprite ? _mysteryFace.sprite : 'Cyrus';
                 }
             } else if (hasProf && profUsedHere) {
                 speakerLabel = 'City Guide';
@@ -38811,7 +38923,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 });
             }
             const countEl = document.getElementById('story-party-count');
-            if (countEl) countEl.textContent = sm.team.length ? `(${sm.team.length}/6)` : '';
+            // Use the badge-curve cap (matches _storyMaxPartySize) so the
+            // chip shows "1/2" at 0 badges, "5/6" at 4 badges — not always
+            // "/6". Falls back to 6 if the helper isn't defined yet (boot).
+            if (countEl) {
+                const _capForDisplay = (typeof _storyMaxPartySize === 'function') ? _storyMaxPartySize() : 6;
+                countEl.textContent = sm.team.length ? `(${sm.team.length}/${_capForDisplay})` : '';
+            }
             if (!sm.team.length) {
                 panel.innerHTML='<div style="font-size:11px;color:#555;padding:4px;">Empty — visit the Professor!</div>';
                 return;
@@ -38946,6 +39064,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         let _profSelectedIdx    = null; // which of the 3 the player picked
         let _pendingProfCityIdx = null; // city index that owns current choices
         let _pendingProfWasMystery = false; // whether cached choices were rolled in mystery mode
+        let _pendingProfBadges = null; // badge count when cached; invalidate when badges change so tier curve refreshes
         let _profLegendaryMysteryMode = false;
         // (legacy _pendingProfRoll kept for safety)
         let _pendingProfRoll    = null;
@@ -38957,6 +39076,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _profSelectedIdx = null;
             _pendingProfCityIdx = null;
             _pendingProfWasMystery = false;
+            _pendingProfBadges = null;
             _profLegendaryMysteryMode = false;
             _profMysteryMode = false;
             _pendingProfRoll = null;
@@ -39089,10 +39209,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const btnsEl   = document.getElementById('story-prof-buttons');
             const cardEl   = document.getElementById('story-prof-rolled-card');
 
+            // Reuse cached choices only when ALL of: same city, same mystery
+            // mode, same badge count. Pre-fix the choices stuck across long
+            // road trips even if badges rose — locking the player into stale
+            // tier-curve-appropriate picks. Now badges-changed = re-roll.
             const shouldReuseChoices = Array.isArray(_pendingProfChoices)
                 && _pendingProfChoices.length > 0
                 && _pendingProfCityIdx === cityIdx
-                && _pendingProfWasMystery === _profMysteryMode;
+                && _pendingProfWasMystery === _profMysteryMode
+                && _pendingProfBadges === (sm.badges | 0);
 
             if (!shouldReuseChoices) {
                 // Mystery mode: offer 1 Pokémon. Professor mode: offer 3 choices.
@@ -39121,15 +39246,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     usedFamilies.add(_storyBaseFamily(name));
                     let build;
                     try {
-                        window._pbsStoryUsePlayerGimmickGate = true;
-                        window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
-                        build = makeBuild(name);
+                        build = _withStoryPlayerGimmickGate(() => makeBuild(name));
                     } catch (e) {
                         console.warn('[Story prof] makeBuild threw for', name, e);
                         build = null;
-                    } finally {
-                        window._pbsStoryUsePlayerGimmickGate = false;
-                        delete window._pbsStoryUnlockedGimmicks;
                     }
                     // Skip species that failed to build — pushing a choice with a null/undefined
                     // build crashes the pick-card renderer (`buildPokemon(ch.name, ch.build)`).
@@ -39165,6 +39285,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _pendingProfChoices = choices;
                 _pendingProfCityIdx = cityIdx;
                 _pendingProfWasMystery = _profMysteryMode;
+                _pendingProfBadges = (sm.badges | 0);
                 // Auto-select the single mystery offer so Accept is ready immediately
                 _profSelectedIdx = _profMysteryMode ? 0 : null;
             }
@@ -39444,33 +39565,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 msg:'The Champion bows. "These are yours by right." +2 Ultra Balls, +1 Rare Candy, +2 Vitamin Packs, +1 Heart Scale, +1 Mint, +1 Ability Capsule, +1 Emblem of Honor — and one of each perm-boost vitamin (+2 each). The League stocks the strongest a final-leg trainer can carry.' }
         };
 
-        // Foe party size = player party size (1:1 match), with story-finale
-        // exceptions and a per-role floor so a 1-mon trainer still feels like
-        // a real fight. Because the player cap follows the badge curve, foe
-        // size effectively ramps with badges via the player, but a player
-        // who runs lean fights lean parties run-to-run.
-        //
-        // Exceptions to the match:
+        // Foe party size = badge curve `min(6, 2 + badges)` (STORY_MODE_FLOW
+        // canonical spec), with two exceptions:
         //   1. Story finales (Champion / Elite Four / Victory Road / post-HoF
         //      Mystery Figure) always field a full 6.
         //   2. Intro rival is pure player-match (1v1 starter duel) — the
         //      catch tutorial fires *after* the rival, so the player has
         //      only the starter at fight time.
         //
-        // Per-role floors (`role`, looked up from the event string):
-        //   Basic / Gym Trainer / Elite Trainer: 1
-        //   Rival:                                2
-        //   Gym Leader 1–2:                       2
-        //   Gym Leader 3–4:                       3
-        //   Gym Leader 5–6:                       4
-        //   Gym Leader 7:                         5
-        //   Gym Leader 8:                         6
+        // Pre-fix this function matched player team length with role floors,
+        // which under-sized non-finale fights for a "non-catcher" player who
+        // kept their party lean (GL2 at 1 badge with 2 mons came out 2v2
+        // instead of the spec'd 3v3). The role-floor table is preserved as
+        // a SAFETY NET below the badge curve so a Gym Leader 7 fight is never
+        // accidentally a 3v3 even if the badge value is somehow stale.
         function _storyEnemyPartySize(event, playerTeamLen, eventId) {
             const e = String(event || '');
             if (/Champion/i.test(e) || /Victory Road/i.test(e) || /^E[1-4]$/i.test(e) || /Mystery Figure/i.test(e)) return 6;
             if ((eventId | 0) === STORY_RIVAL_ROW_INTRO) {
                 return Math.max(1, Math.min(6, playerTeamLen | 0));
             }
+            const badges = (sm && (sm.badges | 0)) || 0;
+            const badgeCurve = Math.min(6, 2 + badges);
+            // Role-floor safety net (kept for resilience to stale badges).
             let floor = 1;
             if (/Rival/i.test(e)) floor = 2;
             else {
@@ -39484,8 +39601,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     else floor = 6;
                 }
             }
-            const matched = Math.max(1, Math.min(6, playerTeamLen | 0));
-            return Math.max(floor, matched);
+            return Math.max(floor, badgeCurve);
         }
         // Active party cap = badge curve. Starter slot is always available
         // (slot 1); the catch tutorial fills slot 2 right after the intro
@@ -40247,7 +40363,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     type: 'Mixed',
                     sigs: ['Mewtwo', 'Rayquaza', 'Dialga', 'Giratina', 'Kyogre', 'Groudon'],
                     spriteFile: (_mysteryFinalFace && _mysteryFinalFace.sprite) || 'Cyrus',
-                    introQuotes: (_mysteryFinalFace && _mysteryFinalFace.intros) || ['Your Hall of Fame crown means nothing here.', 'Show me your strongest six.']
+                    // Identity's intros field is always populated (all 9 shipped
+                    // identities define 4 lines each). If a future identity is
+                    // added without intros, log it once and fall back to a
+                    // 4-line generic pool so the rolled fight isn't visibly
+                    // shorter than the others.
+                    introQuotes: (() => {
+                        if (_mysteryFinalFace && Array.isArray(_mysteryFinalFace.intros) && _mysteryFinalFace.intros.length) {
+                            return _mysteryFinalFace.intros;
+                        }
+                        if (_mysteryFinalFace) {
+                            console.warn('[Mystery] identity missing intros field — using generic 4-line fallback:', _mysteryFinalFace);
+                        }
+                        return [
+                            'Your Hall of Fame crown means nothing here.',
+                            'I have waited a long time for this.',
+                            'Your team has carried you. Now carry yourself.',
+                            'Show me your strongest six.'
+                        ];
+                    })()
                 }
                 : (findTrainerDataByName(trainerName, event) || selectTrainerForRole(event, sg, null, prefType));
             if (!isMysteryFinal && event === 'Rival' && sm.runRivalSpriteFile) {
@@ -40660,6 +40794,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function showVictoryOverlay(title, coins, gotBadge, cb, battleEventName, storyRowIdx) {
             const ov = document.createElement('div');
             ov.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;';
+            // a11y: announce as a dialog with the title as label so SR users
+            // hear "VICTORY!" instead of a silent fullscreen layer. The
+            // role="dialog" + tabindex makes it focusable so the Escape
+            // handler below dismisses early without needing Tab to find
+            // the Continue button.
+            ov.setAttribute('role', 'dialog');
+            ov.setAttribute('aria-modal', 'true');
+            ov.setAttribute('aria-label', String(title || 'Victory'));
+            ov.tabIndex = -1;
             const contBtn = document.createElement('button');
             contBtn.textContent = 'Continue →';
             contBtn.style.cssText = 'margin-top:8px;padding:10px 24px;position:relative;z-index:3;';
@@ -40668,6 +40811,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (finished) return;
                 finished = true;
                 clearTimeout(autoClose);
+                document.removeEventListener('keydown', escListener);
                 if (ov.parentElement) ov.remove();
                 // Defensive: cb() advances story flow (processNextEvent → enterBattleEvent → startBattle).
                 // If anything throws, fall back to the city so we don't strand the player on the
@@ -40678,6 +40822,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { if (window.StoryMode && typeof window.StoryMode.afterBattleReturn === 'function') window.StoryMode.afterBattleReturn(); } catch (e2) {}
                 }
             };
+            const escListener = (e) => {
+                if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); dismiss(); }
+            };
+            document.addEventListener('keydown', escListener);
             const autoClose = setTimeout(dismiss, 6000);
             contBtn.onclick = (e) => { e.stopPropagation(); dismiss(); };
             let badgeFlavor = '';
@@ -40816,6 +40964,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ov.appendChild(contBtn);
             ov.onclick = () => dismiss();
             document.body.appendChild(ov);
+            // Focus the Continue button so Enter dismisses immediately and SR
+            // users hear "Continue → button, dialog 'VICTORY!'". Defer one tick
+            // so layout settles before the focus call (matters in jsdom + on
+            // some mobile browsers).
+            try { setTimeout(() => contBtn.focus(), 0); } catch (e) { /* focus best-effort */ }
         }
 
         // ── POKÉMON CENTER ────────────────────────────────────────────────
@@ -40940,7 +41093,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const partyFull = team.length >= partyCap;
             const partyLastOne = team.length <= 1;
             const boxFull = box.length >= PC_BOX_CAP;
-            const lowSlotWarn = box.length >= (PC_BOX_CAP - 3) && box.length < PC_BOX_CAP;
+            // Warn at 80% of the cap (spec: 8/10 = 80%, applies whatever cap is).
+            // Pre-fix this was a hardcoded PC_BOX_CAP - 3 (90% at the current
+            // cap of 30), shifting the warning relative to spec.
+            const _PC_LOW_SLOT_THRESHOLD = Math.max(1, Math.floor(PC_BOX_CAP * 0.8));
+            const lowSlotWarn = box.length >= _PC_LOW_SLOT_THRESHOLD && box.length < PC_BOX_CAP;
 
             let html = '';
             const badgesNow = (sm.badges | 0);
@@ -44909,15 +45066,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Returns the new build object; never null (falls back to makeBuild
         // raw on tier resolution failure).
         function _makePlayerLinkBuild(name, tierTag) {
-            let newBuild;
-            try {
-                window._pbsStoryUsePlayerGimmickGate = true;
-                window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
-                newBuild = makeBuild(name);
-            } finally {
-                window._pbsStoryUsePlayerGimmickGate = false;
-                delete window._pbsStoryUnlockedGimmicks;
-            }
+            const newBuild = _withStoryPlayerGimmickGate(() => makeBuild(name));
             if (!newBuild) return null;
             const tier = (typeof STORY_BUILD_TIER !== 'undefined' && STORY_BUILD_TIER[tierTag]) || STORY_BUILD_TIER.TOURNAMENT;
             if (tier < STORY_BUILD_TIER.TOURNAMENT && typeof _storyDowngradeBuildForTier === 'function') {
@@ -45411,14 +45560,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const mon = sm.team[idx];
             if (!mon) return false;
             let evoBuild;
-            try {
-                window._pbsStoryUsePlayerGimmickGate = true;
-                window._pbsStoryUnlockedGimmicks = sm.unlockedGimmicks || [];
-                evoBuild = makeBuild(evoName);
-            } finally {
-                window._pbsStoryUsePlayerGimmickGate = false;
-                delete window._pbsStoryUnlockedGimmicks;
-            }
+            evoBuild = _withStoryPlayerGimmickGate(() => makeBuild(evoName));
             const old = mon.build || {};
             if (old.n)        evoBuild.n        = old.n;
             if (old.evs)      evoBuild.evs      = { ...old.evs };
