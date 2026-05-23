@@ -83,6 +83,117 @@ of being available on the very first hub.
   `linkRebuild`, 24 thematic substitute sprite slugs for the new items.
 * `docs/EVOLUTION_FLOW_REBUILD.md` — full design doc and agent fan-out spec.
 
+## Unreleased — Storyline-variant prose density pass 2026-05-22 (`claude/bold-maxwell-KATFd`)
+
+A single multi-surface pass that takes the 8 narrative storylines from
+"cosmetic prose at 9 cold-open beats" to "ambient variant presence
+across the whole run". Pure additive — no engine changes, no
+timeline/structure changes, no save schema bump, no new mechanics.
+Every existing variant continues to fire its 9 cold-opens; this layer
+adds variant-tinted prose to the *gaps between* them.
+
+### Added
+
+* **Variant-aware City Guide and Professor quotes.** When the active
+  storyline has a line for the current city, the city's NPC pool draws
+  from the variant pool 50–65% of the time. Tables at
+  `_VARIANT_CITY_GUIDE` and `_VARIANT_CITY_PROFESSOR` in `battle.html`.
+* **Variant-aware city arrival scenes.** `_showCityArrivalScreen` now
+  consults `_VARIANT_CITY_ARRIVAL` for a per-variant pair of arrival
+  lines, falling through to the base `CITY_ARRIVAL_LINES` when absent.
+* **Variant-aware Pokémart greeter.** First mart entry per city per
+  variant fires a one-shot variant flavor toast via `showGameAlert`.
+  Sparse — classic stays silent; pasta-tier variants get the loudest
+  greeters.
+* **Variant-aware Gym Leader victory cards.** `showVictoryOverlay`
+  appends a third beat under the leader's line + reflection when the
+  variant has an entry for that gym index (1–8). Yellow-tinted,
+  italic, leader name substituted.
+* **Variant-aware Rival quote pool.** `getTrainerQuoteForBattle` draws
+  from the per-variant Rival pool 50% of the time when the active
+  variant has an entry for the current rival phase (0–4).
+* **Variant-aware generic trainer-class pool.** Same function, 35%
+  bias toward the per-variant pool for `Youngster`, `Lass`, `Hiker`,
+  `Bug Catcher`, `Fisherman` when the variant has an entry.
+* **Variant-aware wild-catch intro line.** Plain wild route catches
+  (not Safari / boss / tutorial / roaming) get a one-line
+  variant-tinted opener prepended to the standard "A wild X appeared!"
+  framing.
+* **Variant-aware retreat / game-over banner.** Both the standard
+  loss and the rival concede paths surface a single italic
+  variant-tinted line under the buttons. Silent on classic.
+* **Variant-aware Hall of Fame card.** First-clear HoF flow renders
+  a per-variant card (banner + 3 lines + tone class) before the grid
+  slides in. Once per variant per save (cross-run deduped).
+* **Per-variant post-HoF Mystery Figure pre-fight beat (row 67).** A
+  new `mystery67` cold-open dispatched through the standard cold-open
+  pipeline, with a per-variant scene table at `_MYSTERY67_BY_VARIANT`
+  (banner, tone class, nameplate, lines). Fires once per variant per
+  save before the climax mask reveal.
+* **Per-variant audio motif on cold-open dismiss.** New
+  `_VARIANT_SFX_MOTIF` map; `_renderNarrativeOverlay` defaults the
+  dismiss SFX to the active variant's motif when no scene-specific
+  SFX is set. `classic` / `second_sun` / `dead_raticate` stay silent;
+  `bone_keepers` rings a chime, `project_mewtwo` clicks, etc.
+
+### Added — Choice moments (mild player agency)
+
+* **`_renderNarrativeOverlay` now supports `choices: [{label, reply,
+  value, persistKey}]`.** When choices are present the Continue button
+  is replaced with a vertical stack of choice buttons; picking one
+  swaps the dialog body to the reply lines and exposes a single
+  Continue. Picks persist to `sm.storyChoices[persistKey]` so future
+  prose can optionally reference them.
+* **One multi-choice moment per pasta / mature variant** (row 33,
+  mid-late beat). `_VARIANT_CHOICE_R33` + new `choice_r33` cold-open
+  scene. Variants that had a base `<variant>_npc_r33` cold-open
+  re-point their row-33 beat to `choice_r33`; classic and second_sun
+  stay with their existing prose-only beat. Each variant's choice is
+  a 3-option prompt with 2-line replies. **No outcome change** — the
+  choice purely tints the scene and stamps `sm.storyChoices`.
+
+### Added — Save / RNG / NG+ hygiene
+
+* **Seeded variant roll.** `_pickRandomStorylineVariant` now uses the
+  active story RNG when called mid-run so shared seeds reproduce the
+  rolled variant; falls back to `Math.random` for the pre-run picker
+  (no active sm yet).
+* **NG+ smart default.** When `'Surprise Me'` rolls, the function
+  prefers variants the player hasn't yet cleared on this profile,
+  drawing from `meta.clearedVariants`. Falls back to uniform when
+  every variant is cleared.
+* **Variant clear tracking.** `recordStoryClearInMeta` (fires on
+  Hall of Fame entry) now stamps `meta.clearedVariants[sm.storyLine]
+  = true`. New field added to `_emptyStoryMeta` schema and the
+  `readStoryMeta` whitelist.
+* **`sm.storyChoices`** added to the `sm` defaults and to
+  `migrateStoryPreV17` so old saves get an empty object on load. No
+  `SAVE_VER` bump — defensive init in the v17 migration covers older
+  saves (the field is additive).
+
+### Changed
+
+* **Cold-open beat row table in `docs/STORY_NARRATIVE_VARIANTS.md`
+  rewritten** to match the shipped variant rows (7 / 20 / 26 / 33 /
+  48 / 53 / 56 / 64 / 67 / 68) — the earlier spec drafts referenced
+  5 / 24 / 53 / 64 / 68 against a pre-v18 `STORY_EVENTS_RAW` layout
+  and had drifted.
+
+### Why this matters
+
+Before this pass: a `static` run and a `classic` run played the same
+68-row timeline, fought the same trainers, traded with the same shop,
+and only differed at 9 cold-open scenes per variant (totalling ~5
+minutes of variant-tinted dialogue across a ~10-hour run). Between
+beats the storyline was invisible. After this pass: the variant
+texture leaks into city arrivals, City Guide / Professor patter, mart
+greeters, every rival fight, every gym victory card, every wild catch,
+every retreat. The structure of the run is unchanged — the player still
+walks the same path — but the road sounds and looks different the whole
+way through.
+
+---
+
 ## Unreleased — Mechanics unlock gate closed on every pre-unlock leak 2026-05-21 (`claude/funny-albattani-DNkt0`)
 
 ### Fixed — Wild catches, Professor-sized pre-unlock mechanic leaks

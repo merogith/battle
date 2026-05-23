@@ -23,11 +23,11 @@ writing — they will drift as work proceeds.
 | Safari Zone | Story-unlocked location. First visit free; subsequent visits cost gold. Continuous random encounters up to 6 per run. Mons can flee on missed throws. Better grade mix than wild routes. |
 | Catch | Pure minigame — no fight, no HP, no status. `chance = species.catchRate × ballMult`. Mons can flee. |
 | Balls | PokéBall 1.0×, Great 1.5×, Ultra 2.0×, Master ∞. Start the run with 5 PokéBalls. |
-| Ball sources | PokéMart sells PokéBalls (every city). Department Store sells Great Balls (existing City6/City8). Ultra Ball ×2 are static story rewards. Master Ball ×1 from the boss arc. |
+| Ball sources | PokéMart sells PokéBalls (every city). Department Store sells Great Balls (existing City6/City8). Ultra Balls scatter through gym/Elite/Champion victory bundles and Frontier milestones (substantially more than the original "×2 total" draft; the loosened economy hooks into Underground gold-sink balance). Master Ball ×1 from the boss arc. |
 | Caught state | Full HP / full PP / no status. |
 | HP between battles | **Full-heal between every battle.** Attrition is removed; mart consumables matter only within a single battle. |
 | Difficulty modes | Keep `veryeasy / easy / normal / hard / challenge`. **Remove `hardcore`.** |
-| PC | Pure storage. Flat array, **cap 10** (story is battle-focused, not a collection layer). Catch fails with an explicit message when party 6/6 and PC 10/10 — player must sell or release first. Stable `id` per mon. |
+| PC | Pure storage. Flat array, **cap 30** (raised from the original draft's 10 after playtest — active-catching runs hit 10 mid-game). Catch fails with an explicit message when party 6/6 and PC 30/30 — player must sell or release first. Stable `id` per mon. |
 | Underground | Built into every Pokémon Center hub button. Always visible. Sells your mons for gold (price scales with grade). Cannot sell your last party mon, the starter, or the boss-arc capture. |
 | Pokémon Center button | New city hub action. Contains PC + Underground. No heal function (battles auto-heal). |
 | Foe sizing | **Badge curve**: `min(6, 2 + badges)` for everyone except story finales (always 6) and the intro rival (pure player-match for a 1v1 starter duel). So foes = 2 pre-Gym-1, 3 post-Gym-1, …, 6 from post-Gym-4 on. |
@@ -137,7 +137,7 @@ Safari Ball is its own session-scoped multiplier (`SAFARI_BALL_MULT = 1.35×`, s
 |---|---|---|---|
 | PokéBall | 1.0× | PokéMart (300G ea, unlimited) + 5 at run start | — |
 | Great Ball | 1.5× | Department Store (existing City6/City8) (1000G ea) | — |
-| Ultra Ball | 2.0× | Static story events (×2 total: mid-game + late-game) | 2 per run |
+| Ultra Ball | 2.0× | Gym Leader / Elite Four / Champion victory bundles + Battle Frontier milestones (was: ×2 static drops in the original spec; widened after the Underground/Crucible economy landed and a tight ball supply stopped paying out) | unbounded |
 | Master Ball | ∞ | Boss arc reward (Underground broker) | 1 per run |
 
 Money flows already in the game:
@@ -165,7 +165,7 @@ Initial peg (G1 is the strongest tier per the existing `getMonGrade` convention 
 
 Every city gets a new hub action: **"Pokémon Center"**. Tapping it opens a screen with two tabs:
 
-- **PC Storage** — Deposit, withdraw, release. **Capacity 10** — intentionally tight, since the run is battle-focused and the Underground is meant to drive sell decisions, not a long-term collection. At ≥ 8/10 the screen shows a "PC nearly full" warning banner; at 10/10 a new wild catch fails outright with a clear modal telling the player to sell or release first.
+- **PC Storage** — Deposit, withdraw, release. **Capacity 30** — raised from the original draft's 10 after playtest (active wild-catching runs hit 10 by mid-game and the cap stopped being a meaningful decision lever; 30 keeps the Underground's "sell or store" choice live without forcing premature releases). At ≥ 27/30 the screen shows a "PC almost full" warning banner; at 30/30 a new wild catch fails outright with a clear modal telling the player to sell or release first.
 - **Underground** — Sell mons for gold. Dark visual theme. Per-grade price table above. Unsellable: starter, current last party mon, the boss-arc capture ("Subject Zero").
 
 Selling shows a confirmation modal (`"Sold to the Underground. Gone for good."`) with no take-back.
@@ -196,7 +196,9 @@ Note: `applyStoryLeagueFoeStatBoost` (E1–E4 / Champion / league Rival / post-H
 | 0 badges | **Gym Leader 1** | `EARLY_GL_FOE_STAT_MULT` = 0.95 (every slot, gentle so the gym still gates) |
 | 1 badge | route fights between GL1 and GL2 | `EARLY_GAME_FOE_STAT_MULT` = 0.92 |
 | 1 badge | **Gym Leader 2** | `EARLY_GL_FOE_STAT_MULT` = 0.95 |
-| ≥ 2 badges | every fight | 1.00 — softening ends |
+| 2 badges | route fights between GL2 and GL3 | `EARLY_GAME_FOE_STAT_MULT` = 0.92 |
+| 2 badges | **Gym Leader 3** | `STAGE2_GL_FOE_STAT_MULT` = 0.97 (Stage 2 entry — added after the original spec to smooth the GL2→GL3 difficulty cliff) |
+| ≥ 3 badges | every fight | 1.00 — softening ends |
 
 The "gym leader's signature ace stays the identity" guarantee is enforced through **composition**, not stat exemption: `rollTrainerTeam`'s `gwForFiller` shifts non-signature fillers one tier weaker on the grade roll while signature aces stay in the row's canonical grade. A flat 5% stat softening on top keeps GL1/GL2 winnable without changing who the leader fields. Set any constant to `1.0` to disable that tier's softening.
 
@@ -259,7 +261,7 @@ Caught: enters the player's roster as **"Subject Zero"** with a unique flag. Sta
 
 ```js
 // Add to sm defaults at battle.html:22191
-pcBox:        [],                                        // flat, cap 10
+pcBox:        [],                                        // flat, cap 30 (PC_BOX_CAP)
 balls:        { poke: 5, great: 0, ultra: 0, master: 0 }, // starting balls
 pokedex:      { seen: [], caught: [] },                   // per-run; cross-run lives in pbs_story_meta
 catchUnlocked: false,                                     // toggles wild-route prompts; flipped on after first wild route entry or starter
@@ -411,7 +413,7 @@ This spec overrides these prior recommendations:
 These remain valid from the prior docs:
 
 - **A1**: Stable `id` on every mon
-- **A2**: Flat-array PC, cap **10** (revised down from the prior audit's 60 — this is a battle-focused story mode, not a collection roguelike)
+- **A2**: Flat-array PC, cap **30** (revised down from the prior audit's 60, then raised from a 10-draft after playtest — this is a battle-focused story mode, but 10 forced too-frequent releases)
 - **A3**: Pokédex seen + caught, cross-run
 - **A4**: Rough wild builds (not full competitive)
 - **A5**: Extend slot in place with optional new fields
