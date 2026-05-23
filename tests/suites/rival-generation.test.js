@@ -1,0 +1,211 @@
+// Rival counter-team generation suite. Verifies the overhauled rival pipeline
+// (battle.html rollTrainerTeam 'Rival' path + _rivalCounterPlan + intro starter
+// mirror): the rival builds a team to COUNTER the player's live six, signatures
+// appear only as occasional flavor cameos, and the sig pool is never mutated.
+//
+// Determinism: with sm.active === false the engine's team roll uses the seeded
+// Math.random the harness installs, so seedRng(n) makes each roll reproducible.
+//
+// Run: npm run test:suites   (or: node --test tests/suites/rival-generation.test.js)
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { loadEngine } from '../helpers/load-engine.js';
+
+const GENS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+const LEAGUE_GW = { g1: 10, g2: 20, g3: 35, g4: 35 };
+
+// Sigs deliberately chosen to share NO type with the counter types we assert on
+// (Grass / Electric / Fire), so a "signature cameo" is always distinguishable
+// from a "counter pick" in the resulting team.
+const RIVAL_SIGS = ['Gengar', 'Alakazam', 'Crobat', 'Tyranitar', 'Gyarados', 'Snorlax'];
+
+function makeRivalTrainer(sigs = RIVAL_SIGS) {
+  return { name: 'TestRival', type: 'Mixed', sigs: sigs.slice(), pkmGens: GENS.slice() };
+}
+
+async function setup() {
+  const eng = await loadEngine();
+  const E = eng.window.__rivalTest;
+  assert.ok(E && typeof E.rollTrainerTeam === 'function', 'rollTrainerTeam must be exposed on __rivalTest');
+  assert.ok(typeof E.getRivalEncounterPhase === 'function', 'getRivalEncounterPhase must be exposed');
+  assert.ok(typeof E._rivalCounterPlan === 'function', '_rivalCounterPlan must be exposed');
+  return eng;
+}
+
+/** Configure sm as an inactive (deterministic-RNG) story run with the given player party. */
+function primeStory(E, partyNames) {
+  const sm = E.sm;
+  sm.active = false; // -> rollTrainerTeam uses seeded Math.random
+  sm.storyDifficulty = 'normal';
+  sm.badges = 8;
+  sm.eventIndex = 65;
+  if (!sm.settings) sm.settings = {};
+  sm.settings.enabledGens = GENS.slice();
+  sm.team = partyNames.map((name) => ({ name, build: {} }));
+  return sm;
+}
+
+function teamTypes(E, name) {
+  const b = E.baseStats[name] || {};
+  return [b.t1, b.t2].filter(Boolean);
+}
+function hasAnyType(E, name, types) {
+  const t = teamTypes(E, name);
+  return types.some((x) => t.includes(x));
+}
+
+// ---------------------------------------------------------------------------
+// Unit tests — the plan helpers in isolation (no RNG, no engine roll).
+// ---------------------------------------------------------------------------
+
+test('_rivalCounterPlan: per-phase forced-counter / flex / decay shape', async () => {
+  const { window } = await setup();
+  const P = window.__rivalTest._rivalCounterPlan;
+
+  const intro = P(0, 1);
+  assert.equal(intro.forcedCounter, 1, 'intro: lone slot is a forced counter');
+  assert.equal(intro.flexSlots, 0);
+  assert.equal(intro.sigP, 0, 'intro: no signature roll');
+
+  const early = P(2, 3);
+  assert.equal(early.forcedCounter, 1);
+  assert.equal(early.flexSlots, 2);
+  assert.equal(early.sigP, 0.45);
+
+  const mid = P(3, 5);
+  assert.equal(mid.forcedCounter, 2);
+  assert.equal(mid.flexSlots, 3);
+  assert.equal(mid.sigP, 0.40);
+
+  const league = P(4, 6);
+  assert.equal(league.forcedCounter, 3, 'league: 3 forced counter slots');
+  assert.equal(league.flexSlots, 3, 'league: 3 flex (sig-eligible) slots');
+  assert.equal(league.sigP, 0.35);
+  assert.equal(league.decay, 15, 'league: harder decay so a counter-type does not repeat across six');
+
+  const fallback = P(null, 6); // routed rematch / non-standard rival row
+  assert.equal(fallback.forcedCounter, 2);
+  assert.equal(fallback.decay, 10);
+
+  // forcedCounter never exceeds the actual party size.
+  assert.equal(P(4, 2).forcedCounter, 2);
+  assert.equal(P(3, 1).forcedCounter, 1);
+});
+
+test('_rivalIntroStarterCounterType: GB starter triangle, null for non-classical', async () => {
+  const { window } = await setup();
+  const f = window.__rivalTest._rivalIntroStarterCounterType;
+  assert.equal(f('Bulbasaur'), 'Fire', 'Grass starter -> rival answers with Fire');
+  assert.equal(f('Charmander'), 'Water', 'Fire starter -> Water');
+  assert.equal(f('Squirtle'), 'Grass', 'Water starter -> Grass');
+  assert.equal(f('Pikachu'), null, 'non-classical starter -> null (caller falls back to weighted type)');
+});
+
+// ---------------------------------------------------------------------------
+// Generation tests — full rollTrainerTeam 'Rival' path under seeded RNG.
+// ---------------------------------------------------------------------------
+
+// Measures the average fraction of the rival's league team carrying STAB in `types`,
+// plus how many teams carry at least one such mon, over `N` seeded rolls vs `party`.
+function measureCoverage(eng, E, party, types, N, seedBase) {
+  primeStory(E, party);
+  const trainer = makeRivalTrainer();
+  let totalFrac = 0;
+  let teamsWithCoverage = 0;
+  for (let s = 0; s < N; s++) {
+    eng.seedRng(seedBase + s);
+    const team = E.rollTrainerTeam(trainer, 6, LEAGUE_GW, GENS, 'Rival', E.STORY_RIVAL_ROW_LEAGUE);
+    assert.equal(team.length, 6, 'league rival fields 6 mons');
+    const hits = team.filter((m) => hasAnyType(E, m.name, types)).length;
+    totalFrac += hits / team.length;
+    if (hits >= 1) teamsWithCoverage++;
+  }
+  return { avgFrac: totalFrac / N, teamsWithCoverage, N };
+}
+
+test('counter dominance: the rival skews toward types that beat YOUR party (Water -> Grass/Electric)', async () => {
+  const eng = await setup();
+  const E = eng.window.__rivalTest;
+  const COUNTER = ['Grass', 'Electric']; // the only types super-effective vs pure Water
+
+  // vs a Water monotype party — Grass/Electric coverage should be elevated.
+  const water = measureCoverage(eng, E,
+    ['Squirtle', 'Lapras', 'Vaporeon', 'Gyarados', 'Wartortle', 'Blastoise'], COUNTER, 60, 1000);
+  // vs a Fire monotype party — Grass/Electric are NOT Fire counters, so coverage should drop.
+  const fire = measureCoverage(eng, E,
+    ['Charmander', 'Ninetales', 'Arcanine', 'Flareon', 'Magmar', 'Rapidash'], COUNTER, 60, 7000);
+
+  assert.equal(water.teamsWithCoverage, water.N, 'every league rival team vs a Water party should carry >=1 Grass/Electric counter');
+  assert.ok(water.avgFrac >= 0.4,
+    `vs Water: avg Grass/Electric coverage ${(water.avgFrac * 100).toFixed(0)}% should be >= 40%`);
+  assert.ok(water.avgFrac >= fire.avgFrac + 0.15,
+    `counter logic must respond to the player's typing: Water ${(water.avgFrac * 100).toFixed(0)}% should clearly exceed Fire ${(fire.avgFrac * 100).toFixed(0)}%`);
+});
+
+test('intro starter mirror: vs Bulbasaur the intro rival overwhelmingly leads Fire', async () => {
+  const eng = await setup();
+  const E = eng.window.__rivalTest;
+  primeStory(E, ['Bulbasaur']);
+  const trainer = makeRivalTrainer();
+
+  let fire = 0;
+  const N = 40;
+  for (let s = 0; s < N; s++) {
+    eng.seedRng(2000 + s);
+    const team = E.rollTrainerTeam(trainer, 1, { g1: 30, g2: 40, g3: 20, g4: 10 }, GENS, 'Rival', E.STORY_RIVAL_ROW_INTRO);
+    assert.equal(team.length, 1, 'intro rival fields a lone starter');
+    if (hasAnyType(E, team[0].name, ['Fire'])) fire++;
+  }
+  assert.ok(fire / N >= 0.85, `intro rival was Fire ${fire}/${N} times — expected >= 85% (Grass starter triangle)`);
+});
+
+test('no duplicate species in a generated rival team', async () => {
+  const eng = await setup();
+  const E = eng.window.__rivalTest;
+  primeStory(E, ['Charizard', 'Pikachu', 'Machamp', 'Lapras', 'Snorlax', 'Dragonite']);
+  const trainer = makeRivalTrainer();
+  for (let s = 0; s < 200; s++) {
+    eng.seedRng(3000 + s);
+    const team = E.rollTrainerTeam(trainer, 6, LEAGUE_GW, GENS, 'Rival', E.STORY_RIVAL_ROW_LEAGUE);
+    const names = team.map((m) => m.name);
+    assert.equal(new Set(names).size, names.length, `duplicate species in rival team (seed ${3000 + s}): ${names.join(', ')}`);
+  }
+});
+
+test('signatures are cameos, not the backbone: low average sig count at league', async () => {
+  const eng = await setup();
+  const E = eng.window.__rivalTest;
+  primeStory(E, ['Squirtle', 'Lapras', 'Vaporeon', 'Gyarados', 'Wartortle', 'Blastoise']);
+  const trainer = makeRivalTrainer();
+  const sigSet = new Set(RIVAL_SIGS);
+
+  let totalSigs = 0;
+  let teamsWithSomeSig = 0;
+  const N = 200;
+  for (let s = 0; s < N; s++) {
+    eng.seedRng(4000 + s);
+    const team = E.rollTrainerTeam(trainer, 6, LEAGUE_GW, GENS, 'Rival', E.STORY_RIVAL_ROW_LEAGUE);
+    const sigs = team.filter((m) => sigSet.has(m.name)).length;
+    totalSigs += sigs;
+    if (sigs > 0) teamsWithSomeSig++;
+  }
+  const avgSigs = totalSigs / N;
+  // 3 flex slots @ 0.35 -> ~1 sig expected; counters fill the other ~5 slots.
+  assert.ok(avgSigs < 3, `avg sig count ${avgSigs.toFixed(2)} should be < 3 (signatures are cameos)`);
+  assert.ok(avgSigs >= 0.2, `avg sig count ${avgSigs.toFixed(2)} should be >= 0.2 (cameos still appear)`);
+  assert.ok(teamsWithSomeSig < N, 'not every team should contain a signature');
+});
+
+test('trainer.sigs array is not mutated by a team roll', async () => {
+  const eng = await setup();
+  const E = eng.window.__rivalTest;
+  primeStory(E, ['Squirtle', 'Lapras', 'Vaporeon', 'Gyarados', 'Wartortle', 'Blastoise']);
+  const trainer = makeRivalTrainer();
+  const before = trainer.sigs.slice();
+  for (let s = 0; s < 50; s++) {
+    eng.seedRng(5000 + s);
+    E.rollTrainerTeam(trainer, 6, LEAGUE_GW, GENS, 'Rival', E.STORY_RIVAL_ROW_LEAGUE);
+  }
+  assert.deepEqual(trainer.sigs, before, 'rollTrainerTeam must not splice/mutate the trainer.sigs source array');
+});

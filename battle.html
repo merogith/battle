@@ -31622,8 +31622,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function _rivalInitMutableTypeWeights() {
             const w = {};
+            // Low base floor (0.10) keeps the roll honest: types that don't hit
+            // anything on the player's party barely register, so the rival's picks
+            // read as deliberate counters rather than scattered coverage. (Pre-overhaul
+            // this was 0.35, which let useless types nudge in and muddied the counter feel.)
             for (const atk of Object.keys(typeChart)) {
-                w[atk] = _rivalScoreAttackTypeVsParty(atk) + 0.35;
+                w[atk] = _rivalScoreAttackTypeVsParty(atk) + 0.10;
             }
             return w;
         }
@@ -31639,14 +31643,72 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return keys[keys.length - 1];
         }
-        function _rivalDecayAttackType(t, weights) {
-            if (t != null && weights && Object.prototype.hasOwnProperty.call(weights, t)) weights[t] /= RIVAL_ATTACK_TYPE_DECAY;
+        function _rivalDecayAttackType(t, weights, decayK) {
+            const k = decayK || RIVAL_ATTACK_TYPE_DECAY;
+            if (t != null && weights && Object.prototype.hasOwnProperty.call(weights, t)) weights[t] /= k;
         }
-        function _rivalDecaySpeciesStabTypes(speciesName, weights) {
+        function _rivalDecaySpeciesStabTypes(speciesName, weights, decayK) {
             const bs = baseStats[speciesName];
             if (!bs || !weights) return;
-            if (bs.t1) _rivalDecayAttackType(bs.t1, weights);
-            if (bs.t2 && bs.t2 !== bs.t1) _rivalDecayAttackType(bs.t2, weights);
+            if (bs.t1) _rivalDecayAttackType(bs.t1, weights, decayK);
+            if (bs.t2 && bs.t2 !== bs.t1) _rivalDecayAttackType(bs.t2, weights, decayK);
+        }
+        /** Per-phase counter-team shape. The rival's team is built to answer YOUR
+         *  six, not to parade fixed aces — so most slots are raw type-counter picks
+         *  and signatures only appear as occasional flavor cameos (the `sigP` roll on
+         *  flex slots). Forced-counter slots never roll a signature.
+         *    phase 0 (intro):  lone starter-triangle counter.
+         *    phase 2 (early):  1 forced counter, rest flex @ 0.45 sig.
+         *    phase 3 (mid):    2 forced counters, rest flex @ 0.40 sig.
+         *    phase 4 (league): 3 forced counters, 3 flex @ 0.35 sig, harder decay (15)
+         *                      so a dominant counter-type doesn't repeat across the six.
+         *  Non-standard rival rows (e.g. a Crucible rematch routed through the Rival
+         *  pipeline, phase === null) get a sensible mid-game default. */
+        function _rivalCounterPlan(phase, partySize) {
+            const n = Math.max(1, partySize | 0);
+            let forced, sigP, decay = RIVAL_ATTACK_TYPE_DECAY;
+            switch (phase) {
+                case 0:  forced = 1; sigP = 0;    break;
+                case 2:  forced = 1; sigP = 0.45; break;
+                case 3:  forced = 2; sigP = 0.40; break;
+                case 4:  forced = 3; sigP = 0.35; decay = 15; break;
+                default: forced = 2; sigP = 0.40; break;
+            }
+            forced = Math.min(forced, n);
+            return { forcedCounter: forced, flexSlots: Math.max(0, n - forced), sigP, decay };
+        }
+        /** GB starter-triangle counter type for the intro rival: Grass→Fire,
+         *  Fire→Water, Water→Grass. Returns null for non-classical starters so the
+         *  caller falls back to the highest-SE weighted type (existing behavior). */
+        function _rivalIntroStarterCounterType(starterName) {
+            const b = baseStats[starterName];
+            if (!b) return null;
+            const t1 = b.t1, t2 = b.t2;
+            if (t1 === 'Grass') return 'Fire';
+            if (t1 === 'Fire')  return 'Water';
+            if (t1 === 'Water') return 'Grass';
+            if (t2 === 'Grass') return 'Fire';
+            if (t2 === 'Fire')  return 'Water';
+            if (t2 === 'Water') return 'Grass';
+            return null;
+        }
+        // Test-only handle for the rival-generation suite (tests/suites/rival-generation.test.js).
+        // These symbols live in this inner script scope and are NOT visible from the
+        // bottom-of-file window.__engine export, so expose them here. Inert in normal play
+        // (only runs when the jsdom harness sets window.__testHarness before parse).
+        if (typeof window !== 'undefined' && window.__testHarness === true) {
+            window.__rivalTest = {
+                rollTrainerTeam: (...a) => rollTrainerTeam(...a),
+                getRivalEncounterPhase: (...a) => getRivalEncounterPhase(...a),
+                _rivalCounterPlan: (...a) => _rivalCounterPlan(...a),
+                _rivalIntroStarterCounterType: (...a) => _rivalIntroStarterCounterType(...a),
+                getMonGrade: (...a) => getMonGrade(...a),
+                getBST: (...a) => getBST(...a),
+                STORY_RIVAL_ROW_INTRO, STORY_RIVAL_ROW_EARLY, STORY_RIVAL_ROW_MID, STORY_RIVAL_ROW_LEAGUE,
+                get sm() { return sm; },
+                set sm(v) { sm = v; },
+                get baseStats() { return baseStats; },
+            };
         }
         function _rivalSpeciesHasType(name, t) {
             const b = baseStats[name];
@@ -32371,10 +32433,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 T[g].push(name);
             }
 
-            // Rival: score offensive typings vs your party, weighted-roll STAB types with heavy decay after each pick (÷70), then normal grade % for species.
+            // Rival: the team is built to COUNTER your live six — score offensive typings
+            // vs your party, weighted-roll STAB types, decay each picked type so coverage
+            // spreads. Signatures are demoted to occasional flavor cameos via the per-phase
+            // counter plan (_rivalCounterPlan): most slots are forced raw counter-picks,
+            // only flex slots roll a signature, and the intro rival mirrors the GB starter
+            // triangle against your lone starter.
             if (String(battleEventType) === 'Rival' && sm && Array.isArray(sm.team) && sm.team.length > 0) {
+                const _rivalPhase = getRivalEncounterPhase(storyRowIdx);
                 if ((storyRowIdx | 0) === STORY_RIVAL_ROW_INTRO) S = [];
                 const typeWeights = _rivalInitMutableTypeWeights();
+                const _plan = _rivalCounterPlan(_rivalPhase, partySize);
+                const _flexSigP = applyDifficultyToSigProbability(_plan.sigP);
+                const _decayK = _plan.decay;
+                const _introCounterType = (_rivalPhase === 0 && sm.team[0] && sm.team[0].name)
+                    ? _rivalIntroStarterCounterType(sm.team[0].name) : null;
                 function pickFromUnionPlain(usedNames) {
                     const all = [...T[1], ...T[2], ...T[3], ...T[4]].filter((n) => !usedNames.has(n));
                     return all.length ? all[Math.floor(rng() * all.length)] : null;
@@ -32393,19 +32466,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const usedR = new Set();
                 for (let i = 0; i < partySize; i++) {
                     let chosen = null;
-                    const R = rng();
-                    if (R <= sigP && S.length > 0) {
+                    const isForcedCounter = i < _plan.forcedCounter;
+                    // Flex slots may roll a signature cameo; forced-counter slots never do.
+                    if (!isForcedCounter && S.length > 0 && rng() <= _flexSigP) {
                         chosen = _rivalPickWeightedSignature(S, typeWeights, usedR, rng);
                         if (chosen) {
                             const si = S.indexOf(chosen);
                             if (si >= 0) S.splice(si, 1);
-                            _rivalDecaySpeciesStabTypes(chosen, typeWeights);
+                            _rivalDecaySpeciesStabTypes(chosen, typeWeights, _decayK);
                         }
                     }
                     if (!chosen) {
-                        const targetType = _rivalPickWeightedType(typeWeights, rng);
+                        // Raw counter-pick vs your live party. The intro rival's first slot
+                        // uses the GB starter-triangle type when your starter is classical.
+                        let targetType = (i === 0 && _introCounterType) ? _introCounterType : null;
+                        if (!targetType) targetType = _rivalPickWeightedType(typeWeights, rng);
                         chosen = _rivalPickSpeciesForAttackType(targetType, gwIn, T, usedR, rng);
-                        if (chosen) _rivalDecayAttackType(targetType, typeWeights);
+                        if (chosen) _rivalDecayAttackType(targetType, typeWeights, _decayK);
                     }
                     if (!chosen || usedR.has(chosen)) {
                         for (let t = 0; t < 10; t++) {
@@ -32413,7 +32490,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             const c = _rivalPickSpeciesForAttackType(tt, gwIn, T, usedR, rng);
                             if (c && !usedR.has(c)) {
                                 chosen = c;
-                                _rivalDecayAttackType(tt, typeWeights);
+                                _rivalDecayAttackType(tt, typeWeights, _decayK);
                                 break;
                             }
                         }
@@ -32421,19 +32498,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!chosen || usedR.has(chosen)) chosen = pickFromUnionPlain(usedR);
                     if (!chosen || usedR.has(chosen)) chosen = pickRandomInGenPlain(usedR);
                     if (!chosen) chosen = 'Rattata';
+                    // Anti-monotony cap: allow up to 3 mons sharing a primary type (was 2).
+                    // Against a monotype player party only one or two attack types are
+                    // super-effective, so letting the dominant counter land on a third mon
+                    // reads as a deliberate hard-counter rather than coincidence — while still
+                    // stopping the rival from fielding a full six-of-a-kind lineup.
                     if (isMixed && partySize >= 4 && chosen) {
                         const t1c = (baseStats[chosen] || {}).t1 || '';
                         const othersSame = teamR.filter((x) => x && baseStats[x.name] && (baseStats[x.name].t1 || '') === t1c).length;
-                        if (othersSame >= 2) {
+                        if (othersSame >= 3) {
                             for (let r = 0; r < 8; r++) {
                                 const tt = _rivalPickWeightedType(typeWeights, rng);
                                 const alt = _rivalPickSpeciesForAttackType(tt, gwIn, T, usedR, rng);
                                 if (!alt || usedR.has(alt)) continue;
                                 const t1a = (baseStats[alt] || {}).t1 || '';
                                 const oc = teamR.filter((x) => x && baseStats[x.name] && (baseStats[x.name].t1 || '') === t1a).length;
-                                if (oc < 2) {
+                                if (oc < 3) {
                                     chosen = alt;
-                                    _rivalDecayAttackType(tt, typeWeights);
+                                    _rivalDecayAttackType(tt, typeWeights, _decayK);
                                     break;
                                 }
                             }
@@ -48503,6 +48585,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ensureMoveData: ensureMoveData,
                     buildPokemon: buildPokemon,
                     getStageMult: typeof getStageMult === 'function' ? getStageMult : null,
+                    getMonGrade: typeof getMonGrade === 'function' ? getMonGrade : null,
+                    getBST: typeof getBST === 'function' ? getBST : null,
                     get state() { return state; },
                     set state(v) { state = v; },
                     get baseStats() { return baseStats; },

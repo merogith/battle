@@ -3,6 +3,49 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Rival overhaul: a counter-team that's built around YOU 2026-05-23 (`claude/keen-euler-lfmeB`)
+
+### Changed — The Rival now plays like a GB-era rival, not an Elite Trainer with themed aces
+
+The Rival's team is now fundamentally a **live counter** to your six, with
+signature Pokémon demoted to occasional flavor cameos rather than the team's
+backbone. A new per-phase counter plan (`_rivalCounterPlan`) drives the roll:
+
+* **Intro (starter duel):** the rival's lone Pokémon mirrors the GB starter
+  triangle — pick Bulbasaur and the rival leads Fire, pick Charmander and it
+  leads Water, pick Squirtle and it leads Grass. Non-classical starters fall
+  back to the highest super-effective type vs your starter.
+* **Early / Mid / League:** 1 / 2 / 3 slots are now *forced* raw counter-picks
+  that never roll a signature; the remaining slots roll a signature only on a
+  reduced probability (0.45 / 0.40 / 0.35), otherwise they too become
+  type-counter picks. So at the League rival you face ~3 hard counters, ~1–2
+  signature cameos, and ~1–2 type-weighted picks instead of five fixed aces.
+* **Punchier counters:** the per-pick type-weight floor dropped 0.35 → 0.10
+  (weak types stop nudging in), the League rival decays a used counter-type
+  harder (÷15 vs ÷10) so a single answer doesn't repeat across all six, and the
+  anti-monotony cap rose 2 → 3 so a dominant counter (vs a monotype party) can
+  land on three mons and read as deliberate rather than coincidence.
+
+Measured behavior: vs a Fire monotype party the League rival now fields ~63%
+Water/Ground/Rock mons; vs a Water party its Grass/Electric coverage jumps to
+~41% (and falls to ~12% vs a Fire party) — the picks track *your* typing.
+
+### Verified — Signature-Pokémon logic audited, no mutation bug
+
+Confirmed the signature pool (`S`) is a fresh `.slice()` copy, so the
+`S.splice()` consumption during a roll can never corrupt the source
+`trainer.sigs` array across rematches; sigs are de-duplicated within a team and
+never appear twice. Covered by the new test suite below.
+
+### Added — Headless rival-generation test suite
+
+`tests/suites/rival-generation.test.js` (7 tests) pins the new behavior:
+per-phase counter plan shape, starter-triangle mapping, counter dominance that
+responds to the player's typing, intra-team species dedup, signature cameo
+rate, and the `trainer.sigs`-not-mutated invariant. A test-only `__rivalTest`
+handle exposes the inner-scope rival functions to the jsdom harness (inert in
+normal play).
+
 ## Unreleased — Mechanics unlock gate closed on every pre-unlock leak 2026-05-21 (`claude/funny-albattani-DNkt0`)
 
 ### Fixed — Wild catches, Professor-sized pre-unlock mechanic leaks
