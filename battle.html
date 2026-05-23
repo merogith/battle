@@ -2594,6 +2594,13 @@
         .story-action-badge.info { color: #b3c2d6; border-color: #5a6478; background: rgba(179,194,214,0.06); }
         /* "New" — calm gold pill, no flashing. Tells the player "you haven't tried this" without screaming. */
         .story-action-badge.new { color: #1a1408; border-color: #c4942a; background: linear-gradient(180deg,#ffd76a 0%,#e0a932 100%); font-weight: bold; }
+        /* "Required" — red pulsing pill on the debut city for a facility the player hasn't introduced
+           themselves to yet. The Leave-City gate uses the same set. Per docs/EVOLUTION_FLOW_REBUILD.md §11.1. */
+        .story-action-badge.required { color: #fff; border-color: #ef5350; background: linear-gradient(180deg,#ef5350 0%,#b71c1c 100%); font-weight: bold; animation: storyRequiredPulse 1.6s ease-in-out infinite; }
+        @keyframes storyRequiredPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239,83,80,0.55); }
+            50%      { box-shadow: 0 0 0 4px rgba(239,83,80,0.0); }
+        }
         /* "Visited" — small checkmark badge, gently de-emphasized.
            Player can scan "what's left to try" at a glance, without losing the option.
            Muted slate so it doesn't read as "Free" (mint green). */
@@ -8304,6 +8311,22 @@
         </div>
         <p id="story-artifact-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#888;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;"></p>
         <div id="story-artifact-shop-grid" style="flex:1;overflow-y:auto;padding:12px;display:grid;grid-template-columns:1fr;gap:12px;min-height:0;"></div>
+        <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
+            <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
+        </div>
+        </div>
+    </div>
+
+    <div id="screen-story-stone-shop" class="screen hidden story-screen-root" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div id="story-stone-shop-bg-layer" class="story-screen-bg-layer" aria-hidden="true"></div>
+        <div class="story-shop-stack">
+        <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
+            <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
+            <h3 id="story-stone-shop-title" class="story-screen-head-title" style="color:#b39ddb;font-size:14px;flex:1;min-width:0;"><span style="font-size:18px;line-height:1;">&#128142;</span><span class="story-screen-head-text">Stone Emporium</span></h3>
+            <span id="story-stone-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
+        </div>
+        <p id="story-stone-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#aaa;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;">Stones and trade-method items for the Stone Sage next door. <strong style="color:#b39ddb;">500G each</strong>. The Sage consumes them on evolution. Hold a <strong style="color:#ce93d8;">Stonewise Token</strong>? Redeem at any stone (not trade items) for one free pick.</p>
+        <div id="story-stone-shop-grid" style="flex:1;overflow-y:auto;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;min-height:0;"></div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
             <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
         </div>
@@ -28795,65 +28818,65 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Gym Leader signature aces escalate one tier ahead of fillers — the ace defines the threat,
         // fillers stay in the era's baseline. GL6 signature pool = G2; GL8 signature pool = G1.
         const STORY_EVENTS_RAW = [
-          [0,'City','City0',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Move Tutor','Nature Rater','Leave City']],
+          [0,'City','City0',null,0,['Professor','Pokemart','Move Tutor','Nature Rater','Leave City']],
           [68,'Battle','Rival',{g1:0,g2:0,g3:0,g4:100},2000,null],
           [1,'Battle','Basic Trainer',{g1:0,g2:0,g3:0,g4:100},1400,null],
-          [3,'City','City1',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Gym Battle','Leave City']],
+          [3,'City','City1',null,0,['Professor','Pokemart','Gym Battle','Leave City']],
           [4,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:10,g4:90},1850,null],
           [5,'Battle','Gym Leader 1',{g1:0,g2:0,g3:25,g4:75},2350,null],
-          [6,'City','City1',null,0,['Link Station','Evolution Tutor','Pokemart','Leave City']],
+          [6,'City','City1',null,0,['Pokemart','Leave City']],
           [7,'Battle','Basic Trainer',{g1:0,g2:0,g3:25,g4:75},1200,null],
           [8,'Battle','Basic Trainer',{g1:0,g2:0,g3:35,g4:65},1200,null],
-          [9,'City','City2',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Move Tutor','Gym Battle','Leave City']],
+          [9,'City','City2',null,0,['Professor','Link Station','Evolution Tutor','Stone Shop','Pokemart','Move Tutor','Gym Battle','Leave City']],
           [10,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:45,g4:55},2100,null],
           [11,'Battle','Gym Leader 2',{g1:0,g2:0,g3:50,g4:50},2950,null],
-          [13,'City','City2',null,0,['Link Station','Evolution Tutor','Pokemart','Move Tutor','Leave City']],
+          [13,'City','City2',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Move Tutor','Leave City']],
           [14,'Battle','Basic Trainer',{g1:0,g2:0,g3:65,g4:35},1500,null],
           [15,'Battle','Basic Trainer',{g1:0,g2:0,g3:75,g4:25},1500,null],
-          [16,'City','City3',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Move Tutor','Nature Rater','Gym Battle']],
+          [16,'City','City3',null,0,['Professor','Link Station','Evolution Tutor','Stone Shop','Pokemart','Move Tutor','Nature Rater','Gym Battle']],
           [17,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:80,g4:20},2450,null],
           [18,'Battle','Gym Leader 3',{g1:0,g2:0,g3:75,g4:25},3550,null],
-          [19,'City','City3',null,0,['Link Station','Evolution Tutor','Pokemart','Move Tutor','Nature Rater','Leave City']],
+          [19,'City','City3',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Move Tutor','Nature Rater','Leave City']],
           [12,'Battle','Rival',{g1:0,g2:0,g3:80,g4:20},3500,null],
           [20,'Battle','Basic Trainer',{g1:0,g2:0,g3:90,g4:10},1700,null],
           [21,'Battle','Basic Trainer',{g1:0,g2:0,g3:95,g4:5},1700,null],
-          [22,'City','City4',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Safari Zone','Move Tutor','Battle Dojo','EV Trainer','Gym Battle','Leave City']],
+          [22,'City','City4',null,0,['Professor','Link Station','Evolution Tutor','Stone Shop','Pokemart','Safari Zone','Move Tutor','Battle Dojo','EV Trainer','Gym Battle','Leave City']],
           [23,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:100,g4:0},2800,null],
           [24,'Battle','Gym Leader 4',{g1:0,g2:0,g3:100,g4:0},3800,null],
-          [25,'City','City4',null,0,['Link Station','Evolution Tutor','Pokemart','Safari Zone','Move Tutor','Battle Dojo','EV Trainer','Leave City']],
+          [25,'City','City4',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Safari Zone','Move Tutor','Battle Dojo','EV Trainer','Leave City']],
           [26,'Battle','Basic Trainer',{g1:0,g2:0,g3:100,g4:0},2000,null],
           [27,'Battle','Basic Trainer',{g1:0,g2:0,g3:100,g4:0},2000,null],
-          [28,'City','City5',null,0,['Professor','Link Station','Evolution Tutor','Pokemart','Poké Casino','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Gym Battle','Leave City']],
+          [28,'City','City5',null,0,['Professor','Link Station','Evolution Tutor','Stone Shop','Pokemart','Poké Casino','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Gym Battle','Leave City']],
           [29,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:100,g4:0},3050,null],
           [30,'Battle','Gym Trainer 2',{g1:0,g2:5, g3:95,g4:0},3050,null],
           [31,'Battle','Gym Leader 5',{g1:0,g2:0,g3:100,g4:0},4150,null],
-          [32,'City','City5',null,0,['Link Station','Evolution Tutor','Pokemart','Poké Casino','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Leave City']],
+          [32,'City','City5',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Poké Casino','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Leave City']],
           [33,'Battle','Basic Trainer',{g1:0,g2:0, g3:100,g4:0},2200,null],
           [34,'Battle','Elite Trainer',{g1:0,g2:15,g3:85, g4:0},2700,null],
-          [35,'City','City6',null,0,['Link Station','Evolution Tutor','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
+          [35,'City','City6',null,0,['Link Station','Evolution Tutor','Stone Shop','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
           [36,'Battle','Gym Trainer 1',{g1:0,g2:10,g3:90,g4:0},3300,null],
           [37,'Battle','Gym Trainer 2',{g1:0,g2:15,g3:85,g4:0},3300,null],
           [38,'Battle','Gym Leader 6',{g1:0,g2:0, g3:100,g4:0},5550,null],
-          [40,'City','City6',null,0,['Link Station','Evolution Tutor','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
+          [40,'City','City6',null,0,['Link Station','Evolution Tutor','Stone Shop','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
           [39,'Battle','Rival',{g1:0,g2:50,g3:50,g4:0},5400,null],
           [41,'Battle','Basic Trainer',{g1:0,g2:20,g3:80,g4:0},2500,null],
           [42,'Battle','Elite Trainer',{g1:0,g2:40,g3:60,g4:0},2900,null],
-          [43,'City','City7',null,0,['Link Station','Evolution Tutor','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
+          [43,'City','City7',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
           [44,'Battle','Gym Trainer 1',{g1:0,g2:35,g3:65,g4:0},3550,null],
           [45,'Battle','Gym Trainer 2',{g1:0,g2:45,g3:55,g4:0},3550,null],
           [46,'Battle','Gym Leader 7',{g1:0,g2:50,g3:50,g4:0},5800,null],
-          [47,'City','City7',null,0,['Link Station','Evolution Tutor','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
+          [47,'City','City7',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
           [48,'Battle','Elite Trainer',{g1:0,g2:70,g3:30,g4:0},3000,null],
           [49,'Battle','Elite Trainer',{g1:0,g2:80,g3:20,g4:0},3000,null],
-          [50,'City','City8',null,0,['Link Station','Evolution Tutor','Pokemart','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
+          [50,'City','City8',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
           [51,'Battle','Gym Trainer 1',{g1:0,g2:85,g3:15,g4:0},3650,null],
           [52,'Battle','Gym Trainer 2',{g1:0,g2:95,g3:5, g4:0},3650,null],
           [53,'Battle','Gym Leader 8',{g1:0,g2:100,g3:0,g4:0},5950,null],
-          [55,'City','City8',null,0,['Link Station','Evolution Tutor','Pokemart','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
+          [55,'City','City8',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
           [56,'Battle','Elite Trainer',{g1:0,  g2:100,g3:0,g4:0},4200,null],
           [57,'Battle','Elite Trainer',{g1:10, g2:90, g3:0,g4:0},4800,null],
           [58,'Battle','Elite Trainer',{g1:20, g2:80, g3:0,g4:0},5200,null],
-          [59,'City','City9',null,0,['Link Station','Evolution Tutor','Pokemart','Department Store','Poké Casino','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Enter Pokemon League']],
+          [59,'City','City9',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Department Store','Poké Casino','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Enter Pokemon League']],
           [60,'Battle','E1',{g1:30,g2:70,g3:0,g4:0},5000,null],
           [61,'Battle','E2',{g1:40,g2:60,g3:0,g4:0},5000,null],
           [62,'Battle','E3',{g1:55,g2:45,g3:0,g4:0},5000,null],
@@ -28863,6 +28886,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [66,'Hall of Fame','Hall of Fame',null,0,null],
           [67,'Battle','Mystery Figure',{g1:100,g2:0,g3:0,g4:0},12000,null],
         ];
+        // Per docs/EVOLUTION_FLOW_REBUILD.md §8: the first city where each facility
+        // appears in the run. Drives the "introduce once, then unlocked" gate that
+        // blocks the Leave City button until the player has tapped the new facility
+        // for its one-shot intro tutorial. Once `sm.facilityIntros[key]` is set,
+        // the gate never fires again for that key.
+        const FACILITY_DEBUT_CITY = {
+            mart: 0, tutor: 0, nature: 0, center: 0, relic: 0,
+            link: 2, stoneShop: 2, evolab: 2,
+            dept: 6, casino: 5, dojo: 4, evtrainer: 4, safari: 4,
+            colress: 6,
+            // fanclub intentionally omitted — opt-in facility, no debut gate.
+        };
         // Pokémon Fan Club is a recurring facility — present in every city. Rather
         // than dirty every row of the literal above, we splice 'Pokemon Fan Club'
         // into each City row's actions array at module init. Idempotent: skips
@@ -29736,6 +29771,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { id:'mistyOrb',      name:'Misty Orb',     price:1000, desc:'Starts Misty Terrain for 5 turns on battle entry.', effect:'terrainMisty' },
           { id:'emergencyTeleporter', name:'Emergency Teleporter', price:800, desc:'Bypasses trapping effects once per battle.', effect:'teleport' },
         ];
+        // Stone Emporium catalog — new facility introduced at City 2 (see docs/EVOLUTION_FLOW_REBUILD.md §4).
+        // Stones and trade-method items the Stone Sage consumes to perform evolutions
+        // that previously absorbed the requirement into the gold fee. Flat 500G each
+        // so the early-game Sage flow stays cheap; the Stonewise Token voucher
+        // (granted at City 2 entry) lets the player redeem one stone for free.
+        // These items live in sm.inventory.<id> as integer counts; they are NOT
+        // held items and never enter the battle bag.
+        const STONE_SHOP_ITEMS = [
+          // Evolution stones (Stone Sage stone-evo requirements)
+          { id:'fireStone',     name:'Fire Stone',     price:500, kind:'stone', stone:'Fire Stone',     desc:'A stone that radiates heat. Used to evolve certain Pokémon.' },
+          { id:'waterStone',    name:'Water Stone',    price:500, kind:'stone', stone:'Water Stone',    desc:'A clear, cool stone. Used to evolve certain Pokémon.' },
+          { id:'thunderStone',  name:'Thunder Stone',  price:500, kind:'stone', stone:'Thunder Stone',  desc:'A stone that crackles with energy. Used to evolve certain Pokémon.' },
+          { id:'leafStone',     name:'Leaf Stone',     price:500, kind:'stone', stone:'Leaf Stone',     desc:'A stone with a leaf pattern. Used to evolve certain Pokémon.' },
+          { id:'moonStone',     name:'Moon Stone',     price:500, kind:'stone', stone:'Moon Stone',     desc:'A stone that glows under moonlight. Used to evolve certain Pokémon.' },
+          { id:'sunStone',      name:'Sun Stone',      price:500, kind:'stone', stone:'Sun Stone',      desc:'A stone shaped like the sun. Used to evolve certain Pokémon.' },
+          { id:'iceStone',      name:'Ice Stone',      price:500, kind:'stone', stone:'Ice Stone',      desc:'A stone with an icy aura. Used to evolve certain Pokémon.' },
+          { id:'shinyStone',    name:'Shiny Stone',    price:500, kind:'stone', stone:'Shiny Stone',    desc:'A radiant stone. Used to evolve certain Pokémon.' },
+          { id:'duskStone',     name:'Dusk Stone',     price:500, kind:'stone', stone:'Dusk Stone',     desc:'A stone full of dark night. Used to evolve certain Pokémon.' },
+          { id:'dawnStone',     name:'Dawn Stone',     price:500, kind:'stone', stone:'Dawn Stone',     desc:'A stone that sparkles like the dawn. Used to evolve certain Pokémon.' },
+          // Trade-item evolutions (Stone Sage trade-evo requirements)
+          { id:'metalCoat',     name:'Metal Coat',     price:500, kind:'tradeItem', tradeItem:'Metal Coat',       desc:'A metallic film. Held while traded, it triggers evolution.' },
+          { id:'dragonScale',   name:'Dragon Scale',   price:500, kind:'tradeItem', tradeItem:'Dragon Scale',     desc:'A tough scale. Held while traded, it triggers evolution.' },
+          { id:'kingsRock',     name:"King's Rock",    price:500, kind:'tradeItem', tradeItem:"King's Rock",      desc:'A regal stone. Held while traded, it triggers evolution.' },
+          { id:'upGrade',       name:'Up-Grade',       price:500, kind:'tradeItem', tradeItem:'Up-Grade',         desc:'A peculiar disc. Held while traded, it triggers evolution.' },
+          { id:'dubiousDisc',   name:'Dubious Disc',   price:500, kind:'tradeItem', tradeItem:'Dubious Disc',     desc:'A suspicious disc. Held while traded, it triggers evolution.' },
+          { id:'protector',     name:'Protector',      price:500, kind:'tradeItem', tradeItem:'Protector',        desc:'A heavy plate. Held while traded, it triggers evolution.' },
+          { id:'electirizer',   name:'Electirizer',    price:500, kind:'tradeItem', tradeItem:'Electirizer',      desc:'A boxed electric charge. Held while traded, it triggers evolution.' },
+          { id:'magmarizer',    name:'Magmarizer',     price:500, kind:'tradeItem', tradeItem:'Magmarizer',       desc:'A boxed magma core. Held while traded, it triggers evolution.' },
+          { id:'reaperCloth',   name:'Reaper Cloth',   price:500, kind:'tradeItem', tradeItem:'Reaper Cloth',     desc:'A torn cloth. Held while traded, it triggers evolution.' },
+          { id:'deepSeaTooth',  name:'Deep Sea Tooth', price:500, kind:'tradeItem', tradeItem:'Deep Sea Tooth',   desc:'A fang from the deep. Held while traded, it triggers evolution.' },
+          { id:'deepSeaScale',  name:'Deep Sea Scale', price:500, kind:'tradeItem', tradeItem:'Deep Sea Scale',   desc:'A scale from the deep. Held while traded, it triggers evolution.' },
+          { id:'prismScale',    name:'Prism Scale',    price:500, kind:'tradeItem', tradeItem:'Prism Scale',      desc:'A rainbow scale. Held while traded, it triggers evolution.' },
+          { id:'sachet',        name:'Sachet',         price:500, kind:'tradeItem', tradeItem:'Sachet',           desc:'A fragrant pouch. Held while traded, it triggers evolution.' },
+          { id:'whippedDream',  name:'Whipped Dream',  price:500, kind:'tradeItem', tradeItem:'Whipped Dream',    desc:'A sweet cream. Held while traded, it triggers evolution.' },
+        ];
+        const STONE_SHOP_ITEM_IDS = new Set(STONE_SHOP_ITEMS.map(r => r.id));
         const STORY_BATTLE_BAG_SHOP_IDS = new Set(
             [...POKEMART_ITEMS, ...DEPT_ITEMS].filter(row => row.battleBag !== false).map(row => row.id)
         );
@@ -30762,6 +30833,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const u = m.shopDept || m.shopMart;
             applyStoryBgLayer(document.getElementById('story-artifact-shop-bg-layer'), u || '');
         }
+        function syncStoryStoneShopBackground() {
+            const m = getStoryBgManifest();
+            const u = m.shopDept || m.shopMart;
+            applyStoryBgLayer(document.getElementById('story-stone-shop-bg-layer'), u || '');
+        }
         function syncStoryLinkBackground() {
             applyStoryBgLayer(document.getElementById('story-link-bg-layer'), getStoryBgManifest().linkStation || '');
         }
@@ -30808,7 +30884,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             typeMagnetizer:'wide-lens', eternalSunLens:'heat-rock', eternalRainDrum:'damp-rock',
             eternalHailCrown:'icy-rock', eternalSandTotem:'smooth-rock', thunderstoneEarrings:'electric-seed',
             verdantCore:'grassy-seed', astralAntenna:'psychic-seed', moonveilIncense:'misty-seed',
-            glassCannonPact:'life-orb', reapersToll:'spell-tag', cursedCoinPouch:'amulet-coin'
+            glassCannonPact:'life-orb', reapersToll:'spell-tag', cursedCoinPouch:'amulet-coin',
+            // Stone Emporium catalog — thematic substitutes from existing in-tree art
+            // (sprites/items/ has no dedicated stone icons). Each slug picks an icon
+            // that reads as the stone's element / item flavor at a glance.
+            fireStone:'flame-orb', waterStone:'mystic-water', thunderStone:'magnet',
+            leafStone:'miracle-seed', moonStone:'misty-seed', sunStone:'heat-rock',
+            iceStone:'never-melt-ice', shinyStone:'silver-powder',
+            duskStone:'spell-tag', dawnStone:'bright-powder',
+            metalCoat:'iron-ball', dragonScale:'dragon-fang', kingsRock:'hard-stone',
+            upGrade:'wide-lens', dubiousDisc:'scope-lens', protector:'expert-belt',
+            electirizer:'magnet', magmarizer:'charcoal', reaperCloth:'black-belt',
+            deepSeaTooth:'poison-barb', deepSeaScale:'silver-powder',
+            prismScale:'bright-powder', sachet:'silk-scarf', whippedDream:'soft-sand'
         };
         const STORY_SHOP_ICON_HTML = {
             _default: '<img class="story-shop-item-img" src="icons/story/story_artifacts.png?v=20260429b" alt="" width="30" height="30" loading="lazy" decoding="async">'
@@ -31542,7 +31630,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{}, currentEnemyLock:null,
                    artifactsDisabled:[], storyCityVisit:null, citiesArrived:{},
                    artifactShopOffersByCity:{}, artifactShopPurchasedByCity:{}, artifactFreeClaimUsed:false,
-                   deptShopPurchasedByCity:{},
+                   deptShopPurchasedByCity:{}, facilityIntros:{},
                    storyDifficulty:'normal', runSeed:null,
                    storyMilestoneTips:{ m4:false, m8:false },
                    storyRetryInventorySnapshot: null,
@@ -31774,6 +31862,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!sm.artifactShopOffersByCity || typeof sm.artifactShopOffersByCity !== 'object') sm.artifactShopOffersByCity = {};
                 if (!sm.artifactShopPurchasedByCity || typeof sm.artifactShopPurchasedByCity !== 'object') sm.artifactShopPurchasedByCity = {};
                 if (typeof sm.artifactFreeClaimUsed !== 'boolean') sm.artifactFreeClaimUsed = false;
+                // Per docs/EVOLUTION_FLOW_REBUILD.md §8: introduce-once gate state.
+                // sm.facilityIntros[key] flips true the first time the player enters
+                // that facility ANYWHERE in the run (intro tutorial shown). Once true,
+                // the Leave-City gate stops firing — players only ever get the welcome
+                // story once per facility per run.
+                if (!sm.facilityIntros || typeof sm.facilityIntros !== 'object') sm.facilityIntros = {};
                 if (!sm.deptArtifactTypesByCity || typeof sm.deptArtifactTypesByCity !== 'object') sm.deptArtifactTypesByCity = {};
                 if (!sm.artifactTypeById || typeof sm.artifactTypeById !== 'object') sm.artifactTypeById = {};
                 if (!sm.deptItemOffersByCity || typeof sm.deptItemOffersByCity !== 'object') sm.deptItemOffersByCity = {};
@@ -34552,6 +34646,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 currentEnemyLock:null, artifactsDisabled:[],
                 deptArtifactOffersByCity:{}, artifactShopOffersByCity:{}, artifactShopPurchasedByCity:{}, artifactFreeClaimUsed:false,
                 deptArtifactTypesByCity:{}, artifactTypeById:{}, deptItemOffersByCity:{}, deptShopPurchasedByCity:{},
+                facilityIntros:{},
                 settings:{ enabledGens, minGen, maxGen,
                     megaOn: document.getElementById('story-mech-mega')?.checked||false,
                     zOn:    document.getElementById('story-mech-z')?.checked||false,
@@ -35760,8 +35855,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lines: [
                     '"Welcome to the Pokémart. The basics, always in stock."',
                     '"Poké Balls (300G) for the road. Potions, Full Restore, Max Elixir for the long fights. X items push a stat two stages for one battle. Dire Hit for a crit edge. Guard Spec. locks your stats safe for five turns."',
-                    '"Cities heal you between fights as a matter of course — Potions only matter when you spend a turn on one mid-battle. Buy what fits your read."'
-                ]
+                    '"Cities heal you between fights as a matter of course — Potions only matter when you spend a turn on one mid-battle. Buy what fits your read. Here, take a complimentary Poké Ball — first one\'s on the house."'
+                ],
+                onContinue: function () {
+                    try { _storyGrantBundle({ pokeBall: 1 }); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('Received 1 Poké Ball — welcome to the Pokémart!'); } catch (e) {}
+                }
             },
             firstDept: {
                 metaKey: 'tutorial-first-dept',
@@ -35769,8 +35868,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lines: [
                     '"The big-city upgrade. Five floors, one elevator, and the goods aren\'t cheap."',
                     '"Great Balls (1,000G) — 1.5× catch rate. Revives and Max Revives for partners who go down mid-battle. Weather and Terrain Orbs tilt the field the moment a fight begins. The Emergency Teleporter pulls you out of any trapping move, once per battle."',
-                    '"Stock does not refresh between visits — every item is a single sale, per city. Buy what you need while it\'s on the shelf."'
-                ]
+                    '"Stock does not refresh between visits — every item is a single sale, per city. Buy what you need while it\'s on the shelf. Here — a Great Ball, on the house. First-visit gift, our usual policy."'
+                ],
+                onContinue: function () {
+                    try { _storyGrantBundle({ greatBall: 1 }); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('Received 1 Great Ball — welcome to the Department Store!'); } catch (e) {}
+                }
             },
             firstSafari: {
                 metaKey: 'tutorial-first-safari',
@@ -35788,8 +35891,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     '"Welcome to the Game Corner. Gold plays straight here — no cashier, no coin swap. Drop your bet on the table and pull the lever."',
                     '"But here\'s why trainers really come up. Win big enough and the floor pays in *Vitamins* — HP Up, Protein, Iron, the works. Every drop lifts a partner\'s IV by one. Hit a jackpot and the manager hands over Rare Candies or Ability Capsules."',
                     '"Three tables, three moods. Coin Flip for nerves of steel — even money, streaks of three boost your prize tier. Slots for the spectacle — three reels, big payouts, the 7-7-7 jackpot drops the rarest vouchers. Roulette for the math majors — 11× on a single cell."',
-                    '"Tap STATS up top to watch your numbers grow. The house has an edge — that\'s real. But the prizes don\'t care about luck the way coins do. Spin smart, walk out with vitamins."'
-                ]
+                    '"Tap STATS up top to watch your numbers grow. The house has an edge — that\'s real. But the prizes don\'t care about luck the way coins do. Spin smart, walk out with vitamins. Here — a Lucky Chip, 500G credit on your first bet. House rule."'
+                ],
+                onContinue: function () {
+                    try { _storyGrantBundle({ casinoChip500: 1 }); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('Received Lucky Chip — 500G credit on your first casino bet!'); } catch (e) {}
+                }
             },
             firstPokemonCenter: {
                 metaKey: 'tutorial-first-pokemon-center',
@@ -35797,8 +35904,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lines: [
                     '"Welcome to the Pokémon Center! Your team\'s already healed — the road takes care of that for me."',
                     '"Upstairs is the PC: ten slots of cold storage for every partner you\'ve caught but can\'t field today. Deposit, withdraw, release — the usual courtesies."',
-                    '"Downstairs is the Underground. Quieter, dimmer, very interested in buying any Pokémon you\'ll never use. The only mons off the table are your starter and your last party member — every center on the road draws those lines."'
-                ]
+                    '"Downstairs is the Underground. Quieter, dimmer, very interested in buying any Pokémon you\'ll never use. The only mons off the table are your starter and your last party member — every center on the road draws those lines. Take a Potion before you go — first-aid kit on the way out the door."'
+                ],
+                onContinue: function () {
+                    try {
+                        _storyEnsureInventory();
+                        sm.inventory.potion = (sm.inventory.potion | 0) + 1;
+                        save();
+                    } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('Received 1 Potion — keep them at full HP out there!'); } catch (e) {}
+                }
             },
             firstMoveTutor: {
                 metaKey: 'tutorial-first-move-tutor',
@@ -35806,8 +35921,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lines: [
                     '"Every move your Pokémon was meant to learn is in here somewhere — level-up, TM, egg moves, all of it."',
                     '"Tap a slot to see what\'s available; tap Teach to confirm. Costs scale with power and the mon\'s training tier, so polishing a weaker partner stays cheap."',
-                    '"Coverage matters more than raw base power. A single Fairy hit for the one Dragon you keep losing to. A status-clearing move. A way to plug a 4× Ice weakness. The new move is permanent — no second-thought penalty."'
-                ]
+                    '"Coverage matters more than raw base power. A single Fairy hit for the one Dragon you keep losing to. A status-clearing move. A way to plug a 4× Ice weakness. The new move is permanent — no second-thought penalty. Take a Heart Scale — first lesson\'s on me."'
+                ],
+                onContinue: function () {
+                    try { _storyGrantBundle({ heartScale: 1 }); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('Received 1 Heart Scale — waives the gold on one move tutor lesson.'); } catch (e) {}
+                }
             },
             firstNatureRater: {
                 metaKey: 'tutorial-first-nature-rater',
@@ -35815,8 +35934,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lines: [
                     '"A Pokémon\'s nature is +10% to one stat and -10% to another. Small numbers, big consequences."',
                     '"Adamant and Modest sharpen power. Jolly and Timid sharpen speed. Bold, Calm, Impish, and Careful build bulk. The neutral natures — Hardy, Docile, Serious, Bashful, Quirky — leave the spread untouched."',
-                    '"Flat fee per change. Re-pick freely as you learn what the team actually needs."'
-                ]
+                    '"Flat fee per change. Re-pick freely as you learn what the team actually needs. Take a Mint — first reading is free."'
+                ],
+                onContinue: function () {
+                    try { _storyGrantBundle({ mint: 1 }); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('Received 1 Mint — waives the gold on one nature change.'); } catch (e) {}
+                }
             },
             firstBattleDojo: {
                 metaKey: 'tutorial-first-battle-dojo',
@@ -35824,8 +35947,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lines: [
                     '"Items, abilities — the polish on the blade. Comes in here, walks out sharper."',
                     '"Most species carry two or three abilities. The Dojo lets you pick which one is active, Hidden Abilities included where the species learns them."',
-                    '"Defensive items — Leftovers, Eviolite. Offensive — Choice Band, Specs, Life Orb. Mega Stones and Z-Crystals are tied to Colress\'s battle forms; set the form there. Otherwise, swap freely and shape every mon for the role it\'ll actually play."'
-                ]
+                    '"Defensive items — Leftovers, Eviolite. Offensive — Choice Band, Specs, Life Orb. Mega Stones and Z-Crystals are tied to Colress\'s battle forms; set the form there. Otherwise, swap freely and shape every mon for the role it\'ll actually play. Take this Emblem of Honor — first swap is on the house."'
+                ],
+                onContinue: function () {
+                    try { _storyGrantBundle({ emblemHonor: 1 }); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('Received 1 Emblem of Honor — waives the gold on one Dojo item or ability swap.'); } catch (e) {}
+                }
             },
             firstEVTrainer: {
                 metaKey: 'tutorial-first-ev-trainer',
@@ -35833,8 +35960,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lines: [
                     '"Effort Values — the invisible reps your Pokémon never got from grinding wilds."',
                     '"252 in the two stats that matter, 4 in a third — that\'s the classic spread. I can lay it down in an afternoon for a fee. Defensive mons want HP plus a defense; sweepers want the offensive stat plus speed."',
-                    '"This is the difference between a partner that survives a hit and a partner that doesn\'t. Start with your team\'s leads."'
-                ]
+                    '"This is the difference between a partner that survives a hit and a partner that doesn\'t. Start with your team\'s leads. Take a Vitamin Pack — first preset is on me."'
+                ],
+                onContinue: function () {
+                    try { _storyGrantBundle({ vitamin: 1 }); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('Received 1 Vitamin Pack — waives the gold on one EV preset application.'); } catch (e) {}
+                }
             },
             firstFanClub: {
                 metaKey: 'tutorial-first-fan-club',
@@ -35866,6 +35997,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     '"You earn the right to use them gym by gym. The fifth gym opens the first door. I\'ll let you choose which form a given Pokémon carries into battle, and which signature move comes with it."',
                     '"One form per Pokémon — committing a mon means committing the held item slot too. A Mega Stone or Z-Crystal lives there. Dynamax and Tera leave the slot alone."',
                     '"The trade-off is always: spectacular swing, finite window. Read the fight before you spend the trick."'
+                ]
+            },
+            // ── Per docs/EVOLUTION_FLOW_REBUILD.md §6, §7 ────────────────────
+            // New onboarding scenes that fire on first arrival at City 2. Each
+            // grants a one-time themed voucher on Continue, so the player can
+            // immediately try the new mechanic with a tangible reward in hand.
+            firstCableLink: {
+                metaKey: 'tutorial-first-cable-link',
+                sprite: 'Engineer', name: 'Bill', nameplate: 'Cable Link Station',
+                lines: [
+                    '"Hey hey! Name\'s Bill. I rigged up these Cable Link Stations between every gym town — punch in the line and you\'re trading mons with another trainer halfway across the region. Anonymous on both ends. Pure magic and copper wire."',
+                    '"Some Pokémon only evolve through a trade. Old quirk of the species — they need the moment of handover. Visit a Cable Link in any city and the Stone Sage can lean on that signal to push your trade-evo through."',
+                    '"Since you\'re new to the line, take this — it\'s a half-price coupon for any one Cable Link transaction. Reroll, Upgrade, Rebuild, your pick. Welcome to the network."',
+                ],
+                onContinue: function () {
+                    try { _storyGrantBundle({ linkDiscount50: 1 }); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('Received Bill\'s Discount Card — 50% off one Cable Link action!'); } catch (e) {}
+                }
+            },
+            firstStoneSage: {
+                metaKey: 'tutorial-first-stone-sage',
+                sprite: 'Aroma_Lady', name: 'Stonewise Granny', nameplate: 'Stone Sage',
+                lines: [
+                    '"Easy there, child. Step into the warm. The old ones say every Pokémon carries a stone-memory in its bones — fire, water, leaf, the lot. My job\'s to remind them which one."',
+                    '"The shop next door sells the stones themselves — pebble of fire, drop of moon, that sort of thing. Bring me what your partner needs and we\'ll wake them up. For the shy ones who only evolve on a long road, you\'ll want a Cable Link first."',
+                    '"Here. A Stonewise Token. Take it to the Emporium, point at any stone, hand them the token. Free of charge — a welcome gift from the hearth. Now go on, the road north is colder."',
+                ],
+                onContinue: function () {
+                    try { _storyGrantBundle({ stoneToken: 1 }); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('Received Stonewise Token — redeem for 1 free stone at the Stone Emporium!'); } catch (e) {}
+                }
+            },
+            firstStoneShop: {
+                metaKey: 'tutorial-first-stone-shop',
+                sprite: 'Hex_Maniac', name: 'Emporium Keeper', nameplate: 'Stone Emporium',
+                lines: [
+                    '"Welcome to the Emporium. Stones for the soul, trinkets for the trade. Everything on the shelf is five hundred gold — pebble or pendant, the price stays honest."',
+                    '"The Stone Sage next door needs these to wake the old methods up. A Fire Stone for a Vulpix, a Metal Coat for an Onix on its way to becoming Steelix. Bring back whatever the partner asks for."',
+                    '"If the Granny gave you a token, slide it across the counter and pick any stone for free. Otherwise — gold up front, no haggling."',
                 ]
             }
         };
@@ -35902,6 +36072,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             `;
             const dismiss = function () {
                 try { ov.remove(); } catch (e) {}
+                // Per docs/EVOLUTION_FLOW_REBUILD.md §3: scenes can grant a welcome
+                // voucher exactly once on Continue (after the player has actually seen
+                // the mechanic taught). Cross-run dedupe already lives on metaKey;
+                // grants here only fire when the scene rendered.
+                try { if (typeof scene.onContinue === 'function') scene.onContinue(); } catch (e) { console.error('[StoryTutorial] onContinue threw:', e); }
                 try { onDone && onDone(); } catch (e) { console.error('[StoryTutorial] onDone threw:', e); }
             };
             ov.querySelector('button').onclick = function (e) { e.stopPropagation(); dismiss(); };
@@ -37541,6 +37716,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { _storyShowOneTimeTip('what-is-a-gym',
                     'A Gym Leader runs each of the eight towns on this road — type specialists who keep the league honest by handing out their badge only to trainers who can earn it.\n\nWin and the badge is yours. Your active party cap grows by one (2 + badges, capped at six after four badges), and the next Professor opens her bench for a new partner. Foes scale 1-for-1 with your party size — except the finals, who always field six.\n\nEvery leader builds around one type, and the city wears the color. Read the gym\'s palette on the way in, or let the City Guide tell you what they\'ve been training for.\n\nThe gym lobby holds one or two of the leader\'s deputies — Gym Trainers who warm up the floor. Beat them and the leader\'s chamber opens.\n\nWhen you\'re ready: ⚔ Enter the Gym.'); } catch (e) {}
             }
+            // Per docs/EVOLUTION_FLOW_REBUILD.md §10: City 2 is the unlock band for
+            // Cable Link, Stone Sage, and the Stone Emporium. Chain Bill → Granny
+            // on first arrival so the player meets both NPCs before they touch the
+            // city hub. The intros granted vouchers (linkDiscount50, stoneToken)
+            // so the player has a tangible reward in hand walking in.
+            if (cidx === 2) {
+                try {
+                    playStoryTutorial('firstCableLink', function () {
+                        try { playStoryTutorial('firstStoneSage'); } catch (e) {}
+                    });
+                } catch (e) {}
+            }
         }
 
         function updateHUD() {
@@ -37860,6 +38047,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // legendary-gate message above; everywhere else falls back to the generic
             // "Visit Professor first" hint.
             const routeBlockedByProfessor = gymBlocked && !routeBlockedByMysteryGate;
+            // Per docs/EVOLUTION_FLOW_REBUILD.md §8: pending facility intros block
+            // Leave City on the debut city for each facility. Once the player has
+            // visited that facility anywhere in the run, the gate stops firing.
+            const _pendingIntros = _pendingFacilityIntrosHere(cityIdx, actions);
+            const _pendingNames = _pendingIntros.map(k => _FACILITY_FRIENDLY_NAME[k] || k);
+            const routeBlockedByIntros = _pendingIntros.length > 0
+                && !routeBlockedByMysteryGate && !routeBlockedByProfessor && !gymRoutePending;
             if (actions.includes('Leave City')) {
                 if (gymRoutePending) {
                     _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Clear this area's challenge first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Complete challenge first)</span></span></button>`);
@@ -37867,6 +38061,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Talk to the Mystery Figure first" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Talk to Mystery Figure first)</span></span></button>`);
                 } else if (routeBlockedByProfessor) {
                     _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Visit the Professor before leaving" style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Visit Professor first)</span></span></button>`);
+                } else if (routeBlockedByIntros) {
+                    const _label = _friendlyJoin(_pendingNames);
+                    _push('quest', `<button type="button" class="story-action-btn primary" disabled title="Drop in on ${_esc(_label)} first — new in town." style="opacity:0.45;cursor:not-allowed;"><img class="story-action-ico" src="icons/story/story_route.png?v=20260429b" alt="" width="24" height="24" decoding="async"><span class="story-action-btn-text">Continue Route <span style="font-size:10px;color:#aaa;">(Visit ${_esc(_label)} first)</span></span></button>`);
                 } else if (rivalGateActive) {
                     // Two cities have a post-gym Rival route (City 3, City 6).
                     // Both fire 2 wild encounters before the rival fight — the
@@ -37925,11 +38122,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
             // Build the per-facility button props (meta + visited/suggested flags).
             // `_withNew` returns the meta array (adds "New" pill or "✓ visited" tag);
-            // `_facOpts` bundles meta + visited + suggested + any caller-passed extras
-            // so each call site stays a single readable line.
+            // Per docs/EVOLUTION_FLOW_REBUILD.md §11.1: the "Required" pill outranks "New"
+            // on the debut city for a facility the player hasn't yet introduced themselves
+            // to anywhere. It pulses to draw the eye and the Leave-City gate keys off the
+            // same _pendingFacilityIntrosHere set, so the badges and the disabled route
+            // button always agree.
             const _withNew = (facKey, baseMeta) => {
                 if (_isFacilitySeen(cityIdx, facKey)) {
                     return baseMeta.concat([{ label: '✓', tone: 'visited', title: 'Already visited this city' }]);
+                }
+                if (_isFacilityRequiredHere(cityIdx, facKey, actions)) {
+                    return [{ label: '🔴 Required', tone: 'required', title: "First visit — required before leaving this city." }].concat(baseMeta);
                 }
                 return [{ label: 'New', tone: 'new' }].concat(baseMeta);
             };
@@ -37956,6 +38159,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (actions.includes('Poké Casino')) {
                 _push('shop', makeActionBtn('🎰 Game Corner','casino','window.StoryMode.enterCasino()','casino', _facOpts('casino', [{label:'Win prizes',tone:'good'}], { soft:true })));
+            }
+            if (actions.includes('Stone Shop')) {
+                const _stoneTokenN = (sm.inventory && sm.inventory.stoneToken) | 0;
+                const stoneMeta = _stoneTokenN > 0
+                    ? [{label:`Token ×${_stoneTokenN}`,tone:'free'}, {label:'500G ea',tone:'cost'}]
+                    : [{label:'500G ea',tone:'cost'}];
+                _push('shop', makeActionBtn('💎 Stone Emporium','stoneShop','window.StoryMode.enterStoneShop()','dept', _facOpts('stoneShop', stoneMeta, { soft:true })));
             }
             const _tutorTeam = sm.team.length > 0;
             if (actions.includes('Move Tutor') && _tutorTeam) {
@@ -38107,10 +38317,64 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const bucket = sm.facilitiesSeen[cityIdx] || (sm.facilitiesSeen[cityIdx] = {});
             if (bucket[key]) return;
             bucket[key] = true;
+            // Per docs/EVOLUTION_FLOW_REBUILD.md §8: a facility seen anywhere flips
+            // the cross-city "introduced" flag too. The Leave-City gate keys off
+            // sm.facilityIntros so once the player has met a facility, the gate
+            // stops firing for that key across the rest of the run.
+            if (!sm.facilityIntros || typeof sm.facilityIntros !== 'object') sm.facilityIntros = {};
+            sm.facilityIntros[key] = true;
             try { save(); } catch (e) {}
         }
         function _isFacilitySeen(cityIdx, key) {
             return !!(sm.facilitiesSeen && sm.facilitiesSeen[cityIdx] && sm.facilitiesSeen[cityIdx][key]);
+        }
+        // Per docs/EVOLUTION_FLOW_REBUILD.md §8.3-§8.4: a facility is "required this
+        // city" if (a) its action button appears in this city AND (b) the player
+        // has not yet introduced themselves anywhere in the run AND (c) this city
+        // is the FACILITY_DEBUT_CITY for that key (the canonical debut location).
+        function _isFacilityRequiredHere(cityIdx, key, actionList) {
+            if (!sm || cityIdx < 0) return false;
+            if (sm.facilityIntros && sm.facilityIntros[key]) return false;
+            if (FACILITY_DEBUT_CITY[key] !== cityIdx) return false;
+            if (!Array.isArray(actionList)) return false;
+            // Map facility key → required action label so we only gate on actions
+            // that are actually present in this city's action list.
+            const _required = {
+                mart: 'Pokemart', tutor: 'Move Tutor', nature: 'Nature Rater',
+                center: null, // Pokemon Center is implicit on every hub
+                relic: null,  // Relic Annex hangs off the Department Store / City 0
+                link: 'Link Station', stoneShop: 'Stone Shop', evolab: 'Evolution Tutor',
+                dept: 'Department Store', casino: 'Poké Casino', dojo: 'Battle Dojo',
+                evtrainer: 'EV Trainer', safari: 'Safari Zone', colress: 'Power Up',
+            };
+            const label = _required[key];
+            if (label === undefined) return false;
+            if (label === null) return true; // implicit facility, requirement satisfied by being in the city
+            return actionList.indexOf(label) !== -1;
+        }
+        // Returns the list of facility-key strings that need introducing in the
+        // current city BEFORE Leave City unlocks. Empty array = no gate.
+        function _pendingFacilityIntrosHere(cityIdx, actionList) {
+            if (!sm || cityIdx < 0) return [];
+            const pending = [];
+            for (const key of Object.keys(FACILITY_DEBUT_CITY)) {
+                if (_isFacilityRequiredHere(cityIdx, key, actionList)) pending.push(key);
+            }
+            return pending;
+        }
+        // Friendly name lookup for the "Visit X first" tooltip.
+        const _FACILITY_FRIENDLY_NAME = {
+            mart: 'Pokémart', tutor: 'Move Tutor', nature: 'Nature Rater',
+            center: 'Pokémon Center', relic: 'Relic Annex',
+            link: "Bill's Cable Link", stoneShop: 'Stone Emporium', evolab: 'Stone Sage',
+            dept: 'Department Store', casino: 'Game Corner', dojo: 'Battle Dojo',
+            evtrainer: 'EV Trainer', safari: 'Safari Zone', colress: 'Power Up',
+        };
+        function _friendlyJoin(names) {
+            if (!names.length) return '';
+            if (names.length === 1) return names[0];
+            if (names.length === 2) return names[0] + ' and ' + names[1];
+            return names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
         }
 
         // Per-facility flavor lines — gives every silent NPC a voice without committing
@@ -39125,7 +39389,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Inventory keys treated as vouchers — earned-not-bought freebies that unlock
         // a tutor / facility action without spending gold. Adding a new id here is
         // all _storyGrantBundle needs to start accepting it from reward tables.
-        const VOUCHER_KEYS = ['rareCandy', 'vitamin', 'heartScale', 'mint', 'abilityCapsule', 'emblemHonor', 'wishingPiece'];
+        const VOUCHER_KEYS = ['rareCandy', 'vitamin', 'heartScale', 'mint', 'abilityCapsule', 'emblemHonor', 'wishingPiece',
+                              'linkDiscount50', 'stoneToken', 'casinoChip500'];
         function _storyGrantBundle(r) {
             if (!r) return;
             _storyEnsureBalls();
@@ -43019,6 +43284,112 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             save();
         }
 
+        // ── STONE EMPORIUM ────────────────────────────────────────────────
+        // New facility introduced at City 2 (see docs/EVOLUTION_FLOW_REBUILD.md §4).
+        // Sells the 10 evolution stones + 14 trade-method items the Stone Sage
+        // needs to perform evolutions previously baked into the gold fee.
+        // Flat 500G each, confirm-on-buy. The Stonewise Token voucher granted
+        // at City 2 entry redeems one free stone (not trade items).
+        const STONE_SHOP_PRICE = 500;
+        function enterStoneShop() {
+            if (!sm || !sm.active) return;
+            if (!_storyTryBeginInteraction()) return;
+            try {
+                _markFacilitySeen('stoneShop');
+                if (sm.facilityIntros) sm.facilityIntros.stoneShop = true;
+                _storyEnsureInventory();
+                renderStoneShop();
+                syncStoryStoneShopBackground();
+                showScreen('screen-story-stone-shop');
+                try { window.StoryFx && window.StoryFx.playSfx('sparkle', 0.45); } catch (e) {}
+                // Per docs/EVOLUTION_FLOW_REBUILD.md §6.3 / §9: first visit fires the
+                // Emporium Keeper intro. No voucher here — the Stonewise Token was
+                // already granted by Granny's earlier scene on City 2 entry.
+                try { playStoryTutorial('firstStoneShop'); } catch (e) {}
+                save();
+            } finally {
+                _storyEndInteraction();
+            }
+        }
+        function renderStoneShop() {
+            const goldEl = document.getElementById('story-stone-shop-gold');
+            const gridEl = document.getElementById('story-stone-shop-grid');
+            if (!gridEl) return;
+            _storyEnsureInventory();
+            if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
+            const tokenN = (sm.inventory.stoneToken | 0);
+            const parts = [];
+            for (const it of STONE_SHOP_ITEMS) {
+                const owned = (sm.inventory[it.id] | 0);
+                const canAfford = sm.gold >= STONE_SHOP_PRICE;
+                const isStone = it.kind === 'stone';
+                const tokenAvail = isStone && tokenN > 0;
+                const icon = storyShopIconCellHtml(it.id);
+                const kindBadge = isStone
+                    ? '<span class="story-action-badge info" style="font-size:9px;color:#ce93d8;border-color:#7e57c2;background:rgba(206,147,216,0.1);">STONE</span>'
+                    : '<span class="story-action-badge info" style="font-size:9px;color:#90caf9;border-color:#5c6bc0;background:rgba(144,202,249,0.1);">TRADE ITEM</span>';
+                const ownedBadge = owned > 0
+                    ? `<span class="story-action-badge" style="font-size:9px;color:#aed581;border-color:#558b2f;background:rgba(174,213,129,0.1);">Owned ×${owned}</span>`
+                    : '';
+                const buyBtn = `<button type="button" class="story-shop-buy-btn" onclick="window.StoryMode.buyStoneItem('${it.id}')" ${canAfford ? '' : 'disabled'} style="${canAfford ? 'color:#ffd54f;border-color:#ffb300;' : ''}">Buy ${storyGoldHtml(STONE_SHOP_PRICE.toLocaleString(), false)}</button>`;
+                const tokenBtn = tokenAvail
+                    ? `<button type="button" class="story-shop-buy-btn" onclick="window.StoryMode.redeemStoneToken('${it.id}')" style="color:#ce93d8;border-color:#9c27b0;margin-left:6px;">Redeem Token</button>`
+                    : '';
+                parts.push(`<div class="story-shop-card" style="background:rgba(20,16,30,0.45);border:1px solid #3a2f4a;border-radius:6px;padding:8px;">
+                    <div class="story-shop-item-row" style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                        ${icon}
+                        <h4 style="flex:1;margin:0;font-size:12px;color:#e1bee7;">${it.name}</h4>
+                        ${kindBadge}
+                    </div>
+                    <div class="desc" style="font-size:10px;color:#aaa;line-height:1.35;margin-bottom:6px;min-height:26px;">${it.desc}</div>
+                    <div class="story-shop-item-bottom" style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                        <div>${ownedBadge}</div>
+                        <div style="display:flex;align-items:center;">${buyBtn}${tokenBtn}</div>
+                    </div>
+                </div>`);
+            }
+            gridEl.innerHTML = parts.join('');
+        }
+        async function buyStoneItem(itemId) {
+            if (!sm || !sm.active) return;
+            const it = STONE_SHOP_ITEMS.find(r => r.id === itemId);
+            if (!it) return;
+            if (sm.gold < STONE_SHOP_PRICE) return;
+            const ok = await _storyConfirmTutorChange(`Buy ${it.name} for ${STONE_SHOP_PRICE}G? It will sit in your bag until the Stone Sage uses it.`, STONE_SHOP_PRICE);
+            if (!ok) return;
+            _storyEnsureInventory();
+            sm.gold -= STONE_SHOP_PRICE;
+            try { _storyTrackSpend(STONE_SHOP_PRICE); } catch (e) {}
+            sm.inventory[itemId] = (sm.inventory[itemId] | 0) + 1;
+            save();
+            try {
+                if (window.StoryFx) {
+                    window.StoryFx.playSfx('shing', 0.5);
+                }
+            } catch (e) {}
+            renderStoneShop();
+        }
+        async function redeemStoneToken(stoneId) {
+            if (!sm || !sm.active) return;
+            const it = STONE_SHOP_ITEMS.find(r => r.id === stoneId);
+            if (!it || it.kind !== 'stone') return;
+            _storyEnsureInventory();
+            const tokens = (sm.inventory.stoneToken | 0);
+            if (tokens <= 0) return;
+            const ok = await _storyConfirmTutorChange(`Redeem a Stonewise Token for one ${it.name}? (Free — the Granny's gift.)`, 0);
+            if (!ok) return;
+            sm.inventory.stoneToken = tokens - 1;
+            sm.inventory[stoneId] = (sm.inventory[stoneId] | 0) + 1;
+            save();
+            try {
+                if (window.StoryFx) {
+                    window.StoryFx.playSfx('sparkle', 0.5);
+                    setTimeout(function() { window.StoryFx.playSfx('shing', 0.5); }, 180);
+                }
+            } catch (e) {}
+            renderStoneShop();
+        }
+
         // ── LINK STATION ──────────────────────────────────────────────────
         // Cable Link is priced as a premium over the manual Tutor + Dojo + EV-Trainer
         // path (~17,000G for one full T4 build): the Link bundles every visit into a
@@ -43257,6 +43628,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             heartScale: 'Heart Scale', mint: 'Mint',
             rareCandy: 'Rare Candy', vitamin: 'Vitamin Pack',
             abilityCapsule: 'Ability Capsule', emblemHonor: 'Emblem of Honor',
+            // Intro-vouchers granted by the new onboarding scenes (see docs/EVOLUTION_FLOW_REBUILD.md §3).
+            // These never drop from the casino — registered here so the inventory/bag UI shares one label map.
+            linkDiscount50: "Bill's Discount Card", stoneToken: 'Stonewise Token', casinoChip500: 'Lucky Chip',
         };
         // Sprite paths for prize popup. Only the assets present in
         // sprites/pokesprite/items/ are mapped here — others fall back to
@@ -43275,6 +43649,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             vitamin:        'sprites/pokesprite/items/protein.png',
             abilityCapsule: 'sprites/pokesprite/items/ability-capsule.png',
             emblemHonor:    'sprites/pokesprite/items/emblem-of-honor.png',
+            // Intro-vouchers reuse existing in-tree sprites — link card borrows the
+            // heart-scale "tutor pass" graphic, stone token uses the hard-stone art,
+            // lucky chip uses the ability-capsule disc. These are NOT casino drops
+            // so the map entry is purely for inventory/bag display fallback.
+            linkDiscount50: 'sprites/pokesprite/items/heart-scale.png',
+            stoneToken:     'sprites/pokesprite/items/hard-stone.png',
+            casinoChip500:  'sprites/pokesprite/items/ability-capsule.png',
         };
         function _randPick(arr) { return arr[(Math.random() * arr.length) | 0]; }
 
@@ -44248,6 +44629,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                 ? `<button class="story-link-btn" onclick="window.StoryMode.linkUpgrade(${i})" ${canU?'':'disabled'} title="Trade up for a random Grade ${g-1} Pokémon — Tournament-tier build (full EVs, top item & ability). Priced above the manual Tutor+Dojo+EV ladder; random typing risk applies.">&#9650; Upgrade to G${g-1} (${storyGoldHtml(uCost, false)})</button>`
                                 : `<button class="story-link-btn" disabled title="Already top grade">&#9733; Top Grade — No Upgrade</button>`}
                             <button class="story-link-btn" onclick="window.StoryMode.linkRebuild(${i})" ${canBld?'':'disabled'} title="Reroll this species' build (moves, item, nature, EVs) — Competent-tier. Same species, no typing risk; cheapest Cable Link option.">&#8635; Rebuild Same Species (${storyGoldHtml(rebB, false)})</button>
+                            ${(sm.inventory && (sm.inventory.linkDiscount50 | 0) > 0) ? `
+                                <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #455a64;display:flex;flex-direction:column;gap:4px;">
+                                    <div style="font-size:10px;color:#ce93d8;letter-spacing:0.04em;">&#127879; Bill's Discount Card — 50% off, one-time</div>
+                                    <button class="story-link-btn" onclick="window.StoryMode.linkReroll(${i}, {useVoucher:true})" ${sm.gold >= Math.ceil(rCost/2) ? '' : 'disabled'} style="color:#ce93d8;border-color:#9c27b0;" title="Same as Same Tier Swap, half cost. Consumes the voucher.">&#127879; Half-Price Swap (${storyGoldHtml(Math.ceil(rCost/2), false)})</button>
+                                    ${uCost!==null ? `<button class="story-link-btn" onclick="window.StoryMode.linkUpgrade(${i}, {useVoucher:true})" ${sm.gold >= Math.ceil(uCost/2) ? '' : 'disabled'} style="color:#ce93d8;border-color:#9c27b0;" title="Same as Upgrade, half cost. Consumes the voucher.">&#127879; Half-Price Upgrade (${storyGoldHtml(Math.ceil(uCost/2), false)})</button>` : ''}
+                                    <button class="story-link-btn" onclick="window.StoryMode.linkRebuild(${i}, {useVoucher:true})" ${sm.gold >= Math.ceil(rebB/2) ? '' : 'disabled'} style="color:#ce93d8;border-color:#9c27b0;" title="Same as Rebuild, half cost. Consumes the voucher.">&#127879; Half-Price Rebuild (${storyGoldHtml(Math.ceil(rebB/2), false)})</button>
+                                </div>` : ''}
                         </div>
                     </div>
                 </div>`;
@@ -44294,19 +44682,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return newBuild;
         }
 
-        async function linkReroll(idx) {
+        // Per docs/EVOLUTION_FLOW_REBUILD.md §6.3: Bill's Discount Card halves the
+        // gold cost of one Cable Link action and consumes itself. The voucher path
+        // is a sibling button on the link card; the gold path stays untouched.
+        async function linkReroll(idx, opts) {
             if (!_storyTryBeginInteraction()) return;
             try {
+                const useVoucher = !!(opts && opts.useVoucher);
+                _storyEnsureInventory();
+                if (useVoucher && (sm.inventory.linkDiscount50 | 0) <= 0) {
+                    window.showGameAlert("Bill's Discount Card is already spent.");
+                    return;
+                }
                 const mon = sm.team[idx]; if (!mon) return;
                 const g   = getMonGrade(mon.name, getBST(mon.name));
                 const rk = `r_${idx}`;
                 const rn = (sm.cityRerollsUsed[rk] || 0) + 1;
                 let cost = REROLL_COSTS[g] || 100;
                 if (_storyDifficultyIsCasual() && rn === 1) cost = Math.ceil(cost * 0.78);
+                if (useVoucher) cost = Math.ceil(cost / 2);
                 if (sm.gold < cost) return;
                 const pool = buildGradePool(storySettingsGens(), g).filter(n=>n!==mon.name&&!sm.team.some((t,i)=>i!==idx&&t.name===n));
                 if (!pool.length) { window.showGameAlert('No other Pokémon available at this grade.'); return; }
-                const ok = await _storyConfirmTutorChange(`Trade ${mon.name} for a random Grade ${g} Pokémon? You will receive a new species with a Competent-tier build — polish at the Tutor / Dojo / EV Trainer for full power.`, cost);
+                const voucherNote = useVoucher ? "\n\nUsing Bill's Discount Card — 50% off this action." : '';
+                const ok = await _storyConfirmTutorChange(`Trade ${mon.name} for a random Grade ${g} Pokémon? You will receive a new species with a Competent-tier build — polish at the Tutor / Dojo / EV Trainer for full power.${voucherNote}`, cost);
                 if (!ok) return;
                 sm.cityRerollsUsed[rk] = rn;
                 const newName  = pool[Math.floor(storyRngNext() * pool.length)];
@@ -44314,6 +44713,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!newBuild) { window.showGameAlert('Build pipeline error — try again.'); return; }
                 sm.gold -= cost;
                 try { _storyTrackSpend(cost); } catch (e) {}
+                if (useVoucher) sm.inventory.linkDiscount50 = Math.max(0, (sm.inventory.linkDiscount50 | 0) - 1);
                 sm.team[idx] = { name:newName, build:newBuild, id:'m_'+Math.random().toString(36).slice(2,10) };
                 save();
                 try { window.StoryFx && window.StoryFx.playSfx('shing', 0.6); } catch (e) {}
@@ -44324,20 +44724,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        async function linkUpgrade(idx) {
+        async function linkUpgrade(idx, opts) {
             if (!_storyTryBeginInteraction()) return;
             try {
+                const useVoucher = !!(opts && opts.useVoucher);
+                _storyEnsureInventory();
+                if (useVoucher && (sm.inventory.linkDiscount50 | 0) <= 0) {
+                    window.showGameAlert("Bill's Discount Card is already spent.");
+                    return;
+                }
                 const mon = sm.team[idx]; if (!mon) return;
                 const g   = getMonGrade(mon.name, getBST(mon.name));
                 if (g <= 1) return;
                 const newG = g - 1;
                 const uk = `u_${idx}`;
                 const un = (sm.cityRerollsUsed[uk] || 0) + 1;
-                const cost = UPGRADE_COSTS[g] || 9999;
+                let cost = UPGRADE_COSTS[g] || 9999;
+                if (useVoucher) cost = Math.ceil(cost / 2);
                 if (sm.gold < cost) return;
                 const pool = buildGradePool(storySettingsGens(), newG).filter(n=>!sm.team.some((t,i)=>i!==idx&&t.name===n));
                 if (!pool.length) { window.showGameAlert('No Pokémon available at that grade.'); return; }
-                const ok = await _storyConfirmTutorChange(`Trade ${mon.name} (Grade ${g}) for a random Grade ${newG} Pokémon? Tournament-grade build included — no further polish needed.`, cost);
+                const voucherNote = useVoucher ? "\n\nUsing Bill's Discount Card — 50% off this action." : '';
+                const ok = await _storyConfirmTutorChange(`Trade ${mon.name} (Grade ${g}) for a random Grade ${newG} Pokémon? Tournament-grade build included — no further polish needed.${voucherNote}`, cost);
                 if (!ok) return;
                 sm.cityRerollsUsed[uk] = un;
                 const newName  = pool[Math.floor(storyRngNext() * pool.length)];
@@ -44345,6 +44753,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (!newBuild) { window.showGameAlert('Build pipeline error — try again.'); return; }
                 sm.gold -= cost;
                 try { _storyTrackSpend(cost); } catch (e) {}
+                if (useVoucher) sm.inventory.linkDiscount50 = Math.max(0, (sm.inventory.linkDiscount50 | 0) - 1);
                 sm.team[idx] = { name:newName, build:newBuild, id:'m_'+Math.random().toString(36).slice(2,10) };
                 save();
                 try {
@@ -44392,15 +44801,78 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             Trevenant:true, Gourgeist:true,
             Gigalith:true, Conkeldurr:true,
         };
+        // Reverse lookup: stone / trade-item display name → STONE_SHOP_ITEMS id.
+        // Stone Sage (Agent C) reads sm.inventory[stoneId] / sm.inventory[tradeId]
+        // to gate evolution buttons on the player owning the consumable.
+        // Keep in sync with STONE_SHOP_ITEMS in §4.1 and EVO_STONE_REQ / EVO_TRADE_REQ above.
+        const STONE_NAME_TO_ID = {
+            'Fire Stone':'fireStone', 'Water Stone':'waterStone', 'Thunder Stone':'thunderStone',
+            'Leaf Stone':'leafStone', 'Moon Stone':'moonStone', 'Sun Stone':'sunStone',
+            'Ice Stone':'iceStone', 'Shiny Stone':'shinyStone',
+            'Dusk Stone':'duskStone', 'Dawn Stone':'dawnStone',
+        };
+        const TRADE_ITEM_NAME_TO_ID = {
+            'Metal Coat':'metalCoat', 'Dragon Scale':'dragonScale', "King's Rock":'kingsRock',
+            'Up-Grade':'upGrade', 'Dubious Disc':'dubiousDisc', 'Protector':'protector',
+            'Electirizer':'electirizer', 'Magmarizer':'magmarizer', 'Reaper Cloth':'reaperCloth',
+            'Deep Sea Tooth':'deepSeaTooth', 'Deep Sea Scale':'deepSeaScale',
+            'Prism Scale':'prismScale', 'Sachet':'sachet', 'Whipped Dream':'whippedDream',
+        };
 
         // Short, hover-friendly requirement note for an evolution button.
+        // Per docs/EVOLUTION_FLOW_REBUILD.md §5: requirements are now consumed
+        // from the player's inventory and trade evos require an in-city Cable
+        // Link visit. The hint surfaces what's missing so the player knows
+        // where to go.
         function _evoReqHint(evoName) {
             const stone = EVO_STONE_REQ[evoName];
-            if (stone) return ` Lore: needs a ${stone} (Sage provides, baked into the fee).`;
+            if (stone) {
+                const sid = STONE_NAME_TO_ID[stone];
+                const have = (sm && sm.inventory && sid) ? (sm.inventory[sid] | 0) : 0;
+                return have > 0
+                    ? ` Needs ${stone} (you hold ×${have}).`
+                    : ` Needs ${stone} — pick one up at the Stone Emporium (500G).`;
+            }
             const trade = EVO_TRADE_REQ[evoName];
-            if (trade === true) return ` Lore: trade evolution (Sage arranges via the Cable Link).`;
-            if (typeof trade === 'string') return ` Lore: traded while holding ${trade} (Sage arranges via the Cable Link).`;
+            if (trade === true) return ` Trade evolution — visit the Cable Link in this city first.`;
+            if (typeof trade === 'string') {
+                const tid = TRADE_ITEM_NAME_TO_ID[trade];
+                const have = (sm && sm.inventory && tid) ? (sm.inventory[tid] | 0) : 0;
+                const itemPart = have > 0 ? `${trade} (×${have} held)` : `${trade} (Stone Emporium, 500G)`;
+                return ` Trade while holding ${itemPart} — visit the Cable Link in this city first.`;
+            }
             return '';
+        }
+        // Returns { ok, reason } for whether a stone/trade evo is currently performable.
+        // Used by both the render gate and the evolve action so they stay in sync.
+        // Rare Candy callers can pass {bypassConsumables:true} to skip the stone/trade-item
+        // ownership check (Cable Link visit is still required — that's the lore, not the wallet).
+        function _evoLabCheckRequirements(evoName, opts) {
+            opts = opts || {};
+            const stone = EVO_STONE_REQ[evoName];
+            const trade = EVO_TRADE_REQ[evoName];
+            let cityIdx = -1;
+            try { cityIdx = cityIndexFromEventIndex(sm.eventIndex); } catch (e) {}
+            if (stone) {
+                if (opts.bypassConsumables) return { ok: true };
+                const sid = STONE_NAME_TO_ID[stone];
+                const have = (sm && sm.inventory && sid) ? (sm.inventory[sid] | 0) : 0;
+                if (have <= 0) return { ok: false, reason: `${evoName} needs a ${stone}. Pick one up at the Stone Emporium (500G).`, missing: 'stone', stone: stone, stoneId: sid };
+                return { ok: true, stone: stone, stoneId: sid };
+            }
+            if (trade) {
+                const linkSeen = (cityIdx >= 0) && _isFacilitySeen(cityIdx, 'link');
+                if (!linkSeen) return { ok: false, reason: `${evoName} is a trade evolution — drop in on the Cable Link Station in this city first.`, missing: 'link' };
+                if (typeof trade === 'string') {
+                    if (opts.bypassConsumables) return { ok: true, trade: trade };
+                    const tid = TRADE_ITEM_NAME_TO_ID[trade];
+                    const have = (sm && sm.inventory && tid) ? (sm.inventory[tid] | 0) : 0;
+                    if (have <= 0) return { ok: false, reason: `${evoName} needs to be traded while holding a ${trade}. Pick one up at the Stone Emporium (500G).`, missing: 'tradeItem', trade: trade, tradeId: tid };
+                    return { ok: true, trade: trade, tradeId: tid };
+                }
+                return { ok: true };
+            }
+            return { ok: true };
         }
 
         // Multi-line dialogue for the confirmation modal: Stone Sage speaks about
@@ -44409,20 +44881,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _evoFlavorLine(evoName) {
             const stone = EVO_STONE_REQ[evoName];
             if (stone) {
-                return `Stone Sage: "Ah, ${evoName}. The old method asks for a ${stone} — I keep a tray of them by the hearth. Consider one part of the fee."`;
+                const sid = STONE_NAME_TO_ID[stone];
+                const have = (sm && sm.inventory && sid) ? (sm.inventory[sid] | 0) : 0;
+                return have > 0
+                    ? `Stone Sage: "Ah, ${evoName}. The ${stone} you carry will do nicely — set it on the altar."`
+                    : `Stone Sage: "For ${evoName}, the old method asks for a ${stone}. The Emporium next door keeps a tray of them — bring one back and we'll wake the partner up."`;
             }
             const trade = EVO_TRADE_REQ[evoName];
             if (trade) {
-                let line = (trade === true)
-                    ? `Stone Sage: "${evoName}? Old hands say a trade does the trick — I'll whisper through the Cable Link on your behalf."`
-                    : `Stone Sage: "For ${evoName}, the lore wants a ${trade} traded between trainers. I'll arrange it through the Cable Link."`;
-                try {
-                    const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
-                    if (!_isFacilitySeen(cityIdx, 'link')) {
-                        line += `\n(The Cable Link Station down the road is still unvisited — drop in before you leave town and the trade-memory will season nicely.)`;
-                    }
-                } catch (e) {}
-                return line;
+                let linkSeen = false;
+                try { linkSeen = _isFacilitySeen(cityIndexFromEventIndex(sm.eventIndex), 'link'); } catch (e) {}
+                if (trade === true) {
+                    return linkSeen
+                        ? `Stone Sage: "${evoName}? Old hands say a trade does the trick — the Cable Link signal is still warm in the air. I'll lean on that to push it through."`
+                        : `Stone Sage: "${evoName} only evolves through a trade. Walk to the Cable Link Station first, let the signal hum once. Come back and the evolution remembers."`;
+                }
+                // String trade — also needs the held item.
+                const tid = TRADE_ITEM_NAME_TO_ID[trade];
+                const have = (sm && sm.inventory && tid) ? (sm.inventory[tid] | 0) : 0;
+                if (!linkSeen) {
+                    return `Stone Sage: "For ${evoName}, the lore wants a ${trade} carried through a trade. Drop in on the Cable Link Station first, then come back with the ${trade} in hand."`;
+                }
+                return have > 0
+                    ? `Stone Sage: "${evoName}? Your ${trade} and the trade-memory the Cable Link gave you — bring both to the altar."`
+                    : `Stone Sage: "${evoName} wants a ${trade} on its person at the moment of trade. The Emporium has them — fetch one and we'll finish the rite."`;
             }
             // Default — level-up evolution. The Sage acknowledges the path so the screen
             // doesn't go silent on the most common evolution type.
@@ -44616,12 +45098,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const cost = _evoCostFor(eg, en);
                         const canAfford = sm.gold >= cost;
                         const reqHint = (_evoReqHint(e.name) || '').replace(/^\.\s*/, '');
-                        const goldBtn = canAfford
-                            ? `<button class="story-tutor-btn" onclick="event.stopPropagation();window.StoryMode.evoLabEvolve(${i}, '${e.name.replace(/'/g, "\\'")}')" style="color:#76ff03;border-color:#76ff03;font-size:11px;padding:5px 8px;">⬆ Evolve · ${storyGoldHtml(cost, false)}</button>`
-                            : `<button class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;">Locked · need ${(cost - sm.gold).toLocaleString()}G</button>`;
-                        const candyBtn = (_rareCandyCount > 0)
-                            ? `<button class="story-tutor-btn" onclick="event.stopPropagation();window.StoryMode.evoLabEvolveWithCandy(${i}, '${e.name.replace(/'/g, "\\'")}')" style="color:#f8bbd0;border-color:#f8bbd0;font-size:11px;padding:5px 8px;"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="12" height="12" style="width:12px;height:12px;image-rendering:auto;vertical-align:-2px;margin-right:2px;">Candy (${_rareCandyCount})</button>`
-                            : '';
+                        // Per docs/EVOLUTION_FLOW_REBUILD.md §5: gate the gold button on
+                        // requirement availability (stone in bag / Cable Link visited / trade
+                        // item in bag). Rare Candy still bypasses gold + consumable but
+                        // honors the Cable Link visit for trade evos.
+                        const goldReq = _evoLabCheckRequirements(e.name);
+                        const candyReq = _evoLabCheckRequirements(e.name, { bypassConsumables: true });
+                        let goldBtn;
+                        if (!goldReq.ok) {
+                            const _missLabel = goldReq.missing === 'link' ? 'Visit Cable Link'
+                                            : goldReq.missing === 'stone' ? `Need ${goldReq.stone}`
+                                            : goldReq.missing === 'tradeItem' ? `Need ${goldReq.trade}`
+                                            : 'Locked';
+                            goldBtn = `<button class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;" title="${_esc(goldReq.reason || '')}">${_missLabel}</button>`;
+                        } else if (canAfford) {
+                            goldBtn = `<button class="story-tutor-btn" onclick="event.stopPropagation();window.StoryMode.evoLabEvolve(${i}, '${e.name.replace(/'/g, "\\'")}')" style="color:#76ff03;border-color:#76ff03;font-size:11px;padding:5px 8px;">⬆ Evolve · ${storyGoldHtml(cost, false)}</button>`;
+                        } else {
+                            goldBtn = `<button class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;">Locked · need ${(cost - sm.gold).toLocaleString()}G</button>`;
+                        }
+                        let candyBtn = '';
+                        if (_rareCandyCount > 0) {
+                            if (!candyReq.ok) {
+                                // Candy bypasses consumables but not the Cable Link gate.
+                                candyBtn = `<button class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;" title="${_esc(candyReq.reason || '')}"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="12" height="12" style="width:12px;height:12px;image-rendering:auto;vertical-align:-2px;margin-right:2px;opacity:0.5;">Candy locked</button>`;
+                            } else {
+                                candyBtn = `<button class="story-tutor-btn" onclick="event.stopPropagation();window.StoryMode.evoLabEvolveWithCandy(${i}, '${e.name.replace(/'/g, "\\'")}')" style="color:#f8bbd0;border-color:#f8bbd0;font-size:11px;padding:5px 8px;"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="12" height="12" style="width:12px;height:12px;image-rendering:auto;vertical-align:-2px;margin-right:2px;">Candy (${_rareCandyCount})</button>`;
+                            }
+                        }
                         return `<div class="tx-card" data-recommended="${canAfford?1:0}" style="cursor:default;">
                             <div class="tx-card-head">
                                 <img src="${sprite}" alt="" style="width:40px;height:40px;image-rendering:pixelated;" onerror="this.style.visibility='hidden'">
@@ -44805,6 +45308,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     window.showGameAlert(`${evoName} isn't in your enabled generations.`);
                     return;
                 }
+                // Per docs/EVOLUTION_FLOW_REBUILD.md §5: stone evos consume a stone from
+                // inventory; trade evos require Cable Link visited this city; held-item
+                // trade evos also consume the item. The render path also gates the button,
+                // but we re-check here for the rare hand-built callsite (URL-triggered etc).
+                const req = _evoLabCheckRequirements(evoName);
+                if (!req.ok) { window.showGameAlert(req.reason || 'Evolution requirements not met.'); return; }
                 const ek = `e_${idx}`;
                 const en = (sm.cityRerollsUsed[ek] || 0) + 1;
                 const evoGrade = getMonGrade(evoName, getBST(evoName));
@@ -44812,12 +45321,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (sm.gold < cost) { window.showGameAlert(`Need ${cost.toLocaleString()}G to evolve! (You have ${sm.gold.toLocaleString()}G)`); return; }
                 const flavor = _evoFlavorLine(evoName);
                 const head = `Evolve ${mon.name} → ${evoName} (Grade ${evoGrade}) for ${cost.toLocaleString()}G?`;
-                const tail = `Nature, EVs, item, ability (if ${evoName} can have it), gimmick (if ${evoName} supports it), and any moves ${evoName} can still legally learn are kept; only illegal moves are replaced.`;
+                const consumeNote = req.stoneId ? `\nA ${req.stone} from your bag will be consumed.`
+                                  : req.tradeId ? `\nA ${req.trade} from your bag will be consumed.`
+                                  : '';
+                const tail = `Nature, EVs, item, ability (if ${evoName} can have it), gimmick (if ${evoName} supports it), and any moves ${evoName} can still legally learn are kept; only illegal moves are replaced.${consumeNote}`;
                 const msg  = flavor ? `${head}\n\n${flavor}\n\n${tail}` : `${head}\n\n${tail}`;
                 const ok = await window.showGameConfirm(msg);
                 if (!ok) return;
                 sm.cityRerollsUsed[ek] = en;
                 if (!await _evoLabApplyEvolutionWithAnim(idx, evoName)) return;
+                _storyEnsureInventory();
+                if (req.stoneId)  sm.inventory[req.stoneId]  = Math.max(0, (sm.inventory[req.stoneId]  | 0) - 1);
+                if (req.tradeId)  sm.inventory[req.tradeId]  = Math.max(0, (sm.inventory[req.tradeId]  | 0) - 1);
                 sm.gold -= cost;
                 try { _storyTrackSpend(cost); } catch (e) {}
                 save();
@@ -44847,6 +45362,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     window.showGameAlert(`${evoName} isn't in your enabled generations.`);
                     return;
                 }
+                // Per docs/EVOLUTION_FLOW_REBUILD.md §5.5: candy bypasses gold + stone/trade-item
+                // ownership but does NOT bypass the Cable Link visit for trade evos — the lore is
+                // the friction, the wallet is the override. Re-check with bypass on.
+                const candyReq = _evoLabCheckRequirements(evoName, { bypassConsumables: true });
+                if (!candyReq.ok) { window.showGameAlert(candyReq.reason || 'Trade evolution still needs the Cable Link visit.'); return; }
                 const ek = `e_${idx}`;
                 const en = (sm.cityRerollsUsed[ek] || 0) + 1;
                 const evoGrade = getMonGrade(evoName, getBST(evoName));
@@ -44869,15 +45389,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        async function linkRebuild(idx) {
+        async function linkRebuild(idx, opts) {
             if (!_storyTryBeginInteraction()) return;
             try {
+                const useVoucher = !!(opts && opts.useVoucher);
+                _storyEnsureInventory();
+                if (useVoucher && (sm.inventory.linkDiscount50 | 0) <= 0) {
+                    window.showGameAlert("Bill's Discount Card is already spent.");
+                    return;
+                }
                 const mon = sm.team[idx]; if (!mon) return;
                 const bk = `b_${idx}`;
                 const bn = (sm.cityRerollsUsed[bk] || 0) + 1;
-                const cost = REBUILD_COST;
+                let cost = REBUILD_COST;
+                if (useVoucher) cost = Math.ceil(cost / 2);
                 if (sm.gold < cost) return;
-                const ok = await _storyConfirmTutorChange(`Reroll ${mon.name}'s entire build (moves, item, nature, EVs)? Species stays. Competent-tier build — polish at Tutor/Dojo/EV Trainer to top it off.`, cost);
+                const voucherNote = useVoucher ? "\n\nUsing Bill's Discount Card — 50% off this action." : '';
+                const ok = await _storyConfirmTutorChange(`Reroll ${mon.name}'s entire build (moves, item, nature, EVs)? Species stays. Competent-tier build — polish at Tutor/Dojo/EV Trainer to top it off.${voucherNote}`, cost);
                 if (!ok) return;
                 sm.cityRerollsUsed[bk] = bn;
                 // Carry IVs through the rebuild — IVs are the mon's identity,
@@ -44896,6 +45424,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (carriedGender !== undefined) newBuild._gender  = carriedGender;
                 sm.gold -= cost;
                 try { _storyTrackSpend(cost); } catch (e) {}
+                if (useVoucher) sm.inventory.linkDiscount50 = Math.max(0, (sm.inventory.linkDiscount50 | 0) - 1);
                 // Rebuild just rerolls the moveset/nature/item — same species, same
                 // identity. Preserve starter/unsellable/nickname/id so a player who
                 // rebuilds their starter doesn't strip its star-starter badge.
@@ -50523,6 +51052,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             enterCity, enterProfessor, profRoll, profAccept, profDecline, profSelectChoice, _mysteryDoSwap,
             proceedToNextBattle, onBattleEnd, afterBattleReturn,
             enterShop, buyItem, buyArtifact, enterArtifactShop, enterPokemonCenter,
+            enterStoneShop, buyStoneItem, redeemStoneToken,
             pcSwitchTab, pcDeposit, pcWithdraw, pcRelease, pcSell,
             catchThrow, catchRun, catchContinue,
             catchResolveSendToPC, catchResolveSwap,
