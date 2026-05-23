@@ -9896,8 +9896,7 @@
             // Invalidate the data-driven recommendation caches — the tutor / dojo /
             // nature rater scoring tables read from csvBuilds and would otherwise
             // serve empty results if a screen rendered before this resolved.
-            try { if (typeof _txMetaCache !== 'undefined') _txMetaCache.clear(); } catch (e) {}
-            try { _txGlobalMetaCached = null; } catch (e) {}
+            try { if (typeof window._pbsInvalidateTxMeta === 'function') window._pbsInvalidateTxMeta(); } catch (e) {}
         }
 
         // Fallback: populate csvBuilds from pkmn.cc Smogon sets API (used when builds.csv can't be fetched,
@@ -9948,8 +9947,7 @@
             if (window.__DEBUG_LOADS) console.log(`[CSV] API fallback loaded builds for ${Object.keys(csvBuilds).length} Pokémon`);
             // Invalidate the data-driven recommendation caches so per-species
             // popularity stats reflect the freshly-loaded sets.
-            try { if (typeof _txMetaCache !== 'undefined') _txMetaCache.clear(); } catch (e) {}
-            try { _txGlobalMetaCached = null; } catch (e) {}
+            try { if (typeof window._pbsInvalidateTxMeta === 'function') window._pbsInvalidateTxMeta(); } catch (e) {}
         }
 
         // Returns a list of Pokémon names suitable for draft pool generation.
@@ -10481,7 +10479,7 @@
             if (!b._cosmeticForme && _cosmSkins && typeof _cosmSkins === 'object') {
                 const skins = _cosmSkins[name];
                 if (skins && skins.length) {
-                    const rng = (typeof sm === 'object' && sm && sm.active && typeof storyRngNext === 'function') ? storyRngNext : Math.random;
+                    const rng = storyAwareRng();
                     if (rng() < 0.015) b._cosmeticForme = skins[Math.floor(rng() * skins.length)];
                 }
             }
@@ -11375,7 +11373,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _withStoryPlayerGimmickGate(fn) {
             try {
                 window._pbsStoryUsePlayerGimmickGate = true;
-                window._pbsStoryUnlockedGimmicks = (typeof sm !== 'undefined' && sm && Array.isArray(sm.unlockedGimmicks)) ? sm.unlockedGimmicks : [];
+                const _smGate = (window.StoryMode && window.StoryMode.state) || null;
+                window._pbsStoryUnlockedGimmicks = (_smGate && Array.isArray(_smGate.unlockedGimmicks)) ? _smGate.unlockedGimmicks : [];
                 return fn();
             } finally {
                 window._pbsStoryUsePlayerGimmickGate = false;
@@ -13869,6 +13868,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window.EARLY_GAME_FOE_STAT_MULT   = EARLY_GAME_FOE_STAT_MULT;
         window.EARLY_GL_FOE_STAT_MULT     = EARLY_GL_FOE_STAT_MULT;
         window.STAGE2_GL_FOE_STAT_MULT    = STAGE2_GL_FOE_STAT_MULT;
+        // Story-aware RNG selector. `sm` (StoryMode state) is PRIVATE to the StoryMode
+        // IIFE; reading it bare at battle-engine scope throws "Can't find variable: sm"
+        // and skips the turn. Read via the public getter (window.StoryMode.state, which
+        // returns the live `sm`). Falls back to Math.random outside seeded story battles.
+        function storyAwareRng() {
+            const s = (window.StoryMode && window.StoryMode.state) || null;
+            return (s && s.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+        }
         function _earlyGameFoeStatMult() {
             const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
             if (!sm) return 1.0;
@@ -20516,7 +20523,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             if (attacker.ability === "Own Tempo") {
                                 logMsg(`${attacker.name}'s Own Tempo prevented confusion from fatigue!`, 'info');
                             } else {
-                                const _confFatigueRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                                const _confFatigueRng = storyAwareRng();
                                 attacker.volatile.confusion = Math.floor(_confFatigueRng() * 3) + 2;
                                 logMsg(`${attacker.name} became confused due to fatigue!`, 'status');
                             }
@@ -23870,7 +23877,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (defender.currentHp > 0) { changeStage(defender, 'spe', -2, true); logMsg(`${defender.name}'s Speed was harshly lowered!`, 'info'); }
                         break;
                     case "G-Max Smite":
-                        if (defender.currentHp > 0 && (defender.volatile.confusion|0) === 0) { const _gSmRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random; defender.volatile.confusion = 2 + Math.floor(_gSmRng()*3); logMsg(`${defender.name} became confused!`, 'status'); }
+                        if (defender.currentHp > 0 && (defender.volatile.confusion|0) === 0) { const _gSmRng = storyAwareRng(); defender.volatile.confusion = 2 + Math.floor(_gSmRng()*3); logMsg(`${defender.name} became confused!`, 'status'); }
                         break;
                     case "G-Max Snooze":
                         if (defender.currentHp > 0 && !defender.status && (defender.volatile.yawnTurns|0) === 0) { defender.volatile.yawnTurns = 2; logMsg(`${defender.name} grew drowsy!`, 'status'); }
@@ -23934,12 +23941,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         break;
                     }
                     case "G-Max Gold Rush":
-                        if (defender.currentHp > 0 && (defender.volatile.confusion|0) === 0) { const _gGrRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random; defender.volatile.confusion = 2 + Math.floor(_gGrRng()*3); logMsg(`${defender.name} became confused by the shower of coins!`, 'status'); }
+                        if (defender.currentHp > 0 && (defender.volatile.confusion|0) === 0) { const _gGrRng = storyAwareRng(); defender.volatile.confusion = 2 + Math.floor(_gGrRng()*3); logMsg(`${defender.name} became confused by the shower of coins!`, 'status'); }
                         break;
                     case "G-Max Sandblast":
                     case "G-Max Centiferno":
                         if (defender.currentHp > 0 && (defender.volatile.partialTrap|0) === 0) {
-                            const _gTrapRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                            const _gTrapRng = storyAwareRng();
                             defender.volatile.partialTrap = 4 + Math.floor(_gTrapRng()*2);
                             defender.volatile.partialTrapSrc = gName;
                             logMsg(`${defender.name} was trapped by ${gName}!`, 'status');
@@ -24108,7 +24115,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const foeSurvivors = state.foeParty.filter(m => m !== state.fActive && m.currentHp > 0);
                     if (foeSurvivors.length > 0) {
                         foeSurvivors.forEach(m => { m.currentHp = Math.min(m.maxHp, m.currentHp + Math.floor(m.maxHp * 0.10)); });
-                        const cursed = foeSurvivors[Math.floor((typeof storyRngNext !== 'undefined' ? storyRngNext() : Math.random()) * foeSurvivors.length)];
+                        const cursed = foeSurvivors[Math.floor((typeof window.storyRngNext === 'function' ? window.storyRngNext() : Math.random()) * foeSurvivors.length)];
                         cursed.stages.spd = Math.max(-6, (cursed.stages.spd||0) - 1);
                         logMsg("Reaper's Toll: Foe survivors rallied (+10% HP) but one is weakened (−1 SpD)!",'info');
                     }
@@ -24116,7 +24123,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const playerSurvivors = state.playerParty.filter(m => m.currentHp > 0);
                     if (playerSurvivors.length > 0) {
                         playerSurvivors.forEach(m => { m.currentHp = Math.min(m.maxHp, m.currentHp + Math.floor(m.maxHp * 0.10)); });
-                        const cursed = playerSurvivors[Math.floor((typeof storyRngNext !== 'undefined' ? storyRngNext() : Math.random()) * playerSurvivors.length)];
+                        const cursed = playerSurvivors[Math.floor((typeof window.storyRngNext === 'function' ? window.storyRngNext() : Math.random()) * playerSurvivors.length)];
                         cursed.stages.spd = Math.max(-6, (cursed.stages.spd||0) - 1);
                         logMsg("Reaper's Toll: Your survivors rallied (+10% HP) but one is weakened (−1 SpD)!",'info');
                     }
@@ -24166,7 +24173,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const playerSurvivors = state.playerParty.filter(m => m !== state.pActive && m.currentHp > 0);
                     if (playerSurvivors.length > 0) {
                         playerSurvivors.forEach(m => { m.currentHp = Math.min(m.maxHp, m.currentHp + Math.floor(m.maxHp * 0.10)); });
-                        const cursed = playerSurvivors[Math.floor((typeof storyRngNext !== 'undefined' ? storyRngNext() : Math.random()) * playerSurvivors.length)];
+                        const cursed = playerSurvivors[Math.floor((typeof window.storyRngNext === 'function' ? window.storyRngNext() : Math.random()) * playerSurvivors.length)];
                         cursed.stages.spd = Math.max(-6, (cursed.stages.spd||0) - 1);
                         logMsg("Reaper's Toll: Your survivors rallied (+10% HP) but one is weakened (−1 SpD)!",'info');
                     }
@@ -24174,7 +24181,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const foeSurvivors = state.foeParty.filter(m => m !== state.fActive && m.currentHp > 0);
                     if (foeSurvivors.length > 0) {
                         foeSurvivors.forEach(m => { m.currentHp = Math.min(m.maxHp, m.currentHp + Math.floor(m.maxHp * 0.10)); });
-                        const cursed = foeSurvivors[Math.floor((typeof storyRngNext !== 'undefined' ? storyRngNext() : Math.random()) * foeSurvivors.length)];
+                        const cursed = foeSurvivors[Math.floor((typeof window.storyRngNext === 'function' ? window.storyRngNext() : Math.random()) * foeSurvivors.length)];
                         cursed.stages.spd = Math.max(-6, (cursed.stages.spd||0) - 1);
                         logMsg("Reaper's Toll: Foe survivors rallied (+10% HP) but one is weakened (−1 SpD)!",'info');
                     }
@@ -25129,7 +25136,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${mon.name} is fast asleep.`, 'status'); return false;
             }
             if (mon.status === "FRZ") {
-                const _thawRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                const _thawRng = storyAwareRng();
                 if (_thawRng() < 0.2) { mon.status = null; logMsg(`${mon.name} thawed out!`, 'info'); return true; }
                 logMsg(`${mon.name} is frozen solid!`, 'status'); return false;
             }
@@ -25910,7 +25917,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (defender.volatile.confusion > 0) return;
                 if (defender.ability === "Own Tempo") { logMsg(`${defender.name}'s Own Tempo prevented confusion!`, 'info'); return; }
                 if (defender.volatile.safeguard > 0) return;
-                const _confRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                const _confRng = storyAwareRng();
                 defender.volatile.confusion = Math.floor(_confRng()*3)+2;
                 logMsg(`${defender.name} became confused!`, 'status');
             };
@@ -25930,7 +25937,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (Math.random() * 100 >= _sg(_secChance)) continue; // RNG failed
 
                     // Flinch (Inner Focus / Dynamax exemption checked in canMove)
-                    if (_sec.volatileStatus === 'flinch') defender.volatile.flinch = true;
+                    if (_sec.volatileStatus === 'flinch' && defender.volatile) defender.volatile.flinch = true;
                     // Confusion on defender
                     if (_sec.volatileStatus === 'confusion') _tryConfuse();
                     // Status condition on defender
@@ -25946,7 +25953,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             // Stench ability: adds 10% flinch chance to all damaging moves (any category, regardless of contact)
-            if (attacker.ability === "Stench" && move.cat !== "Status" && !defender.volatile.flinch && Math.random() < 0.1) {
+            if (attacker.ability === "Stench" && move.cat !== "Status" && defender.volatile && !defender.volatile.flinch && Math.random() < 0.1) {
                 defender.volatile.flinch = true;
             }
             // Locking moves (Outrage, Thrash, Petal Dance, etc.) confuse only the attacker after finishing — handled in locking move logic
@@ -25991,7 +25998,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Partial trapping moves (secondary effect after damage)
             const trapMoves = new Set(["Wrap","Bind","Clamp","Fire Spin","Whirlpool","Sand Tomb","Magma Storm","Infestation","Snap Trap","Thunder Cage","G-Max Sandblast","G-Max Centiferno"]);
             if (trapMoves.has(move.name) && !defender.volatile.partialTrap && defender.currentHp > 0) {
-                const _trapRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                const _trapRng = storyAwareRng();
                 defender.volatile.partialTrap = 4 + Math.floor(_trapRng() * 2); // 4-5 turns
                 defender.volatile.partialTrapSrc = move.name;
                 logMsg(`${defender.name} was trapped by ${move.name}!`, 'status');
@@ -26077,13 +26084,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (move.name === "Swagger") {
                 changeStage(defender, 'atk', 2, true);
                 if (defender.ability === "Own Tempo") { logMsg(`${defender.name}'s Own Tempo prevented confusion!`, 'info'); }
-                else if (!defender.volatile.confusion) { const _swagRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random; defender.volatile.confusion = Math.floor(_swagRng()*3)+2; logMsg(`${defender.name} became confused!`, 'status'); }
+                else if (!defender.volatile.confusion) { const _swagRng = storyAwareRng(); defender.volatile.confusion = Math.floor(_swagRng()*3)+2; logMsg(`${defender.name} became confused!`, 'status'); }
                 return;
             }
             if (move.name === "Flatter") {
                 changeStage(defender, 'spa', 1, true);
                 if (defender.ability === "Own Tempo") { logMsg(`${defender.name}'s Own Tempo prevented confusion!`, 'info'); }
-                else if (!defender.volatile.confusion) { const _flatRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random; defender.volatile.confusion = Math.floor(_flatRng()*3)+2; logMsg(`${defender.name} became confused!`, 'status'); }
+                else if (!defender.volatile.confusion) { const _flatRng = storyAwareRng(); defender.volatile.confusion = Math.floor(_flatRng()*3)+2; logMsg(`${defender.name} became confused!`, 'status'); }
                 return;
             }
             if (move.name === "Tickle") { changeStage(defender, 'atk', -1, true); changeStage(defender, 'def', -1, true); return; }
@@ -26461,7 +26468,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (defender.volatile.confusion > 0) { logMsg(`${defender.name} is already confused!`, 'info'); return; }
                 if (defender.ability === "Own Tempo") { logMsg(`${defender.name}'s Own Tempo prevents confusion!`, 'info'); return; }
                 if (defender.volatile.safeguard > 0) { logMsg(`${defender.name} is protected by Safeguard!`, 'info'); return; }
-                const _crRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                const _crRng = storyAwareRng();
                 defender.volatile.confusion = Math.floor(_crRng()*3)+2;
                 logMsg(`${defender.name} became confused!`, 'status');
                 return;
@@ -26801,7 +26808,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${mon.name}'s Leaf Guard prevents status in the sunlight!`, 'info'); return;
             }
             // Uproar prevents sleep for all mons on the field
-            if (status === "SLP" && (state.pActive.volatile.lockMove === "Uproar" || state.fActive.volatile.lockMove === "Uproar")) {
+            if (status === "SLP" && ((state.pActive && state.pActive.volatile && state.pActive.volatile.lockMove === "Uproar") || (state.fActive && state.fActive.volatile && state.fActive.volatile.lockMove === "Uproar"))) {
                 logMsg(`Uproar prevents sleep!`, 'info'); return;
             }
             if ((status === "PSN" || status === "TOX") && (mon.type1 === "Poison" || mon.type2 === "Poison" || mon.type1 === "Steel" || mon.type2 === "Steel")) { logMsg(`It doesn't affect ${mon.name}...`, 'info'); return; }
@@ -27435,7 +27442,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (mon.ability === "Harvest" && mon.itemConsumed && !mon.item && mon.currentHp > 0) {
                 let _w = getCurrentWeather();
                 let _harvestChance = (_w === "Sun" || _w === "HarshSun") ? 1.0 : 0.5;
-                const _harvestRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                const _harvestRng = storyAwareRng();
                 if (_harvestRng() < _harvestChance && mon.originalItem && /Berry$/.test(mon.originalItem)) {
                     mon.item = mon.originalItem;
                     mon.itemConsumed = false;
@@ -48037,6 +48044,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const _TX_META_MIN_BUILDS = 5;
         const _txMetaCache = new Map();   // monName → MetaStats
         let _txGlobalMetaCached = null;    // lazy global baseline
+        // Exported invalidator. These caches are IIFE-private, so the loadGameData /
+        // CSV-reload sites at script-top scope cannot clear them directly (the bare
+        // `_txGlobalMetaCached = null` there is a no-op / swallowed throw). Call this instead.
+        try { window._pbsInvalidateTxMeta = function () { try { _txMetaCache.clear(); } catch (e) {} _txGlobalMetaCached = null; }; } catch (e) {}
 
         function _txEmptyMeta() {
             return {
