@@ -22,11 +22,18 @@ test('storyRngNext is deterministic given a seeded state', async () => {
   if (typeof window.storyRngNext !== 'function') {
     return;
   }
-  if (window.sm) window.sm._strngState = 42;
+  // storyRngNext only takes its deterministic LCG branch when sm.runSeed is
+  // set; with runSeed null it falls back to native Math.random. Set both
+  // runSeed and _strngState so we exercise the pure-function path. (Before
+  // main's BUG-002 expose, window.storyRngNext was undefined and this test
+  // early-returned — the missing runSeed went unnoticed.)
+  if (!window.sm) return;
+  window.sm.runSeed = 777;
+  window.sm._strngState = 42;
   const a = window.storyRngNext();
-  if (window.sm) window.sm._strngState = 42;
+  window.sm._strngState = 42;
   const b = window.storyRngNext();
-  assert.equal(a, b, 'storyRngNext must be a pure function of its state');
+  assert.equal(a, b, 'storyRngNext must be a pure function of (runSeed, _strngState)');
 });
 
 test('localStorage round-trip for pbs_story_save (in-memory shim)', async () => {
