@@ -37120,10 +37120,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         //   • Gym 6 cleared → Pits unlock + a team snapshot is taken.
         //   • Player visits Pits, picks 3 mons → an off-grid 3v3 bracket fires
         //     (3 sequential fights against grade-tiered foes).
-        //   • WIN ALL THREE: every team member gets +1 permanent stat bonus (random stat),
-        //     gold payout, bonded mons get a "blood-witness" badge — and the bonded mons
-        //     auto-release when you return to a normal city.
-        //   • LOSE: same Game-Over flow as story battles.
+        //   • WIN ALL THREE (story, one-time): every (non-egg) party member gets +1 to
+        //     EVERY stat, permanent; gold payout; the story club then closes. You keep
+        //     everyone — the cost is narrative (a single dark line), not a release.
+        //   • LOSE: a defeat overlay offers Retry (free, unlimited) or Crawl Home
+        //     (forfeit) — forfeiting kills ALL THREE bracket fighters (permadeath).
         //   • Player-vs-Foe difficulty driven by the most recent snapshot
         //     (Champion snapshot if available, else Gym 6 snapshot).
         function _pitsCaptureTeamSnapshot(snapshotBadges) {
@@ -37160,10 +37161,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function _pitsIsUnlocked() {
             return _pitsIsEndgame() || _pitsStoryAvailable();
-        }
-        function _pitsIsBondedById(id) {
-            if (!id || !sm.pits || !Array.isArray(sm.pits.bondedMonIds)) return false;
-            return sm.pits.bondedMonIds.indexOf(id) >= 0;
         }
 
         // Roll a 3-fight enemy roster using the snapshot's grade distribution.
@@ -37348,6 +37345,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _pitsLaunchFight();
         }
         function _pitsLaunchFight() {
+            // Idempotency guard: once a bracket resolves it nulls _activePickIds. A
+            // stale/duplicate launch (e.g. a queued "next fight" timer that fires after
+            // the bracket already ended) must be a no-op, not a phantom re-resolve.
+            if (!sm.pits || !sm.pits._activePickIds) return;
             const i = sm.pits._fightIndex | 0;
             const roster = sm.pits._enemyRoster || [];
             if (i >= 3 || i >= roster.length) {
@@ -37368,7 +37369,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             launchBattle(enemyTeam);
         }
         // Fight Club win path. STORY (one-time): +1 every stat on ALL six, pay gold,
-        // mark the run done — NO release, you keep everyone; the cost is the epilogue.
+        // mark the run done — NO release, you keep everyone; the cost is one dark line.
         // ENDGAME (repeatable): gold only, no permanent buff.
         function _pitsResolveBracket(won) {
             const endgame = _pitsIsEndgame();
@@ -37444,8 +37445,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.pits) sm.pits = {};
             if (!won) {
                 // Don't tear down the bracket — surface the Pit Defeat overlay so the
-                // player can Retry (free, unlimited) or Forfeit (death roll: 1 random
-                // bracket mon dies, 2 others go to PC).
+                // player can Retry (free, unlimited) or Forfeit (which kills ALL THREE
+                // bracket fighters — you don't leave the Fight Club whole).
                 sm.pits._inBattle = false;
                 try { save(); } catch (_) {}
                 document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
@@ -37480,9 +37481,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         //   • RETRY — free, unlimited; restarts the same fight at full HP. The bracket
         //     index stays put so the player can grind through fight 2 ten times if they
         //     want before progressing.
-        //   • FORFEIT — exits the bracket; triggers _pitsForfeitBracket which rolls a
-        //     random one-of-three bracket mons to die permanently, releases the other two
-        //     to PC, and returns the player to the city. (No win bonus, no gold.)
+        //   • FORFEIT — exits the bracket; triggers _pitsForfeitBracket, which kills ALL
+        //     THREE bracket fighters (permadeath) and returns the player to the city.
+        //     (No win bonus, no gold.) Retry being free is what makes this fair: the
+        //     only way to lose mons is to choose to walk away beaten.
         function _pitsShowDefeatOverlay() {
             const fightIdx = (sm.pits && sm.pits._fightIndex) | 0;
             const ov = document.createElement('div');
@@ -37521,9 +37523,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { save(); } catch (_) {}
             try { _pitsLaunchFight(); } catch (e) { console.warn('[Pits] retry launch', e); }
         }
-        // Forfeit: roll the death — random 1-of-3 bracket mons dies (permadeath); the
-        // other 2 are released to the PC. Then restore the original team, reset Pit
-        // counters, and bail back to the city.
+        // Forfeit: all three bracket fighters die (permadeath) — you don't leave the
+        // Fight Club whole. Restore the original team, strip the three dead ids from
+        // team + PC, reset Pit counters, and bail back to the city.
         function _pitsForfeitBracket() {
             const bracketIds = (sm.pits._activePickIds || []).slice();
             const originalTeam = (sm.pits._teamBeforePit || []).slice();
