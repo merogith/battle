@@ -45246,12 +45246,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── STARRED POOL — usable options per Smogon for this species ──────
         // One source of truth for what the ★ Recommended filter exposes.
         // Per-attribute rules (Recs v2):
-        //   moves     — take every move used in ≥1 Smogon build, soft cap 18
-        //               (3×6 grid). Floor-fill from the evolution chain
-        //               (terminal evos first, branches union'd) when the
-        //               species' own pool is under cap. Ties at the cap
-        //               boundary cause a soft overshoot — all tied entries
-        //               make the list, up to an absolute ceiling of 24.
+        //   moves     — take every move used in ≥1 Smogon build, soft cap 30.
+        //               The wide cap is deliberate: at 18 a wall's status
+        //               moves (Toxic / Protect / Recover / Wisp …) crowded
+        //               out the niche attacking moves players know are run on
+        //               some sets. Slashed slots count each alternative
+        //               independently — "Ice Beam / Thunderbolt" credits both
+        //               Ice Beam and Thunderbolt — so coverage moves surface.
+        //               Floor-fill from the evolution chain (terminal evos
+        //               first, branches union'd) when the species' own pool is
+        //               under cap. Ties at the boundary cause a soft overshoot
+        //               — all tied entries make the list, up to ceiling 40.
         //   items     — same logic, cap 7, ceiling 11.
         //   abilities — ≥10% Smogon usage + always include the species'
         //               Pokédex regular & hidden abilities. Unchanged.
@@ -45262,7 +45267,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // hide the rec system and show a "Limited competitive data" banner.
         const _TX_SPARSE_BUILD_THRESHOLD = 10;
         const _TX_POOL_RULES = {
-            moves:     { mode: 'cap', cap: 18, ceiling: 24, fillFromEvo: true },
+            moves:     { mode: 'cap', cap: 30, ceiling: 40, fillFromEvo: true },
             items:     { mode: 'cap', cap:  7, ceiling: 11, fillFromEvo: true },
             abilities: { mode: 'threshold', threshold: 10, cap: 6, floor: 2 },
             natures:   { mode: 'all-star-top', starN: 3 },
@@ -46565,8 +46570,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _txUsagePctHtml(ctx, name) {
             if (!ctx || !ctx.pctOf) return '';
             const pct = ctx.pctOf.get ? ctx.pctOf.get(name) : ctx.pctOf[name];
-            if (!pct || pct < 1) return '';
-            return `<span class="tx-card-pct" title="${pct.toFixed(1)}% of Smogon builds use this option">${Math.round(pct)}%</span>`;
+            if (pct == null || pct <= 0) return '';
+            // Sub-1% moves (niche tech that still appears in ≥1 real build) get
+            // a "<1%" chip rather than nothing, so the wider 30-move pool never
+            // shows bare trailing cards with no usage signal.
+            const label = pct < 1 ? '<1%' : `${Math.round(pct)}%`;
+            return `<span class="tx-card-pct" title="${pct.toFixed(1)}% of Smogon builds use this option">${label}</span>`;
         }
 
         // Build a Move card. The ★ prefix on the title marks options in the
