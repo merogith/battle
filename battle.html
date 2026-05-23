@@ -9654,6 +9654,7 @@
             computeStatScales();
             try { if (new URLSearchParams(location.search).get('spritescaledebug') === '1') window.__DEBUG_SPRITE_SCALE = true; } catch (e) {}
             enrichBaseStatsHeightsFromDex();
+            try { if (typeof window._validateTrainerData === 'function') window._validateTrainerData(); } catch (e) {}
             if (Object.keys(baseStats).length === 0 || Object.keys(movesDB).length === 0) {
                 throw new Error('Critical game data missing (species or moves). Check data/ files and console.');
             }
@@ -13701,21 +13702,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Grade system: G1 (best) → G4 (weakest)
         // G4 = basic cuties, G3 = stage-1 / mid-evo, G2 = fully-evolved strong, G1 = pseudo + legendary
         const PSEUDO_LEGEND = new Set(["Dragonite","Tyranitar","Salamence","Metagross","Garchomp","Hydreigon","Goodra","Kommo-o","Dragapult","Baxcalibur"]);
+        // Grade is deterministic per species (stable once the dex has loaded), so memoize
+        // by name. The override sets are hoisted to module scope — they were previously
+        // rebuilt on every call, and getMonGrade is hit dozens of times per team roll and
+        // per draft-card render.
+        const _GRADE1_OVERRIDE = new Set(["Azumarill","Amoonguss","Chansey","Wishiwashi"]);
+        // G2: crippled-ability Pokémon with high BST, strong Eviolite users, and others that would
+        // otherwise appear in wrong story stages based purely on BST/stage detection
+        const _GRADE2_OVERRIDE = new Set([
+            "Slaking","Archeops",                              // high BST, crippling ability (Truant/Defeatist)
+            "Avalugg","Avalugg-Hisui",                         // stage1-final ≥500 BST, naturally G2
+            "Porygon2","Dusclops","Rhydon",                    // strong Eviolite users, naturally G3 as stage1-mid
+            "Smeargle","Shedinja","Ditto","Clefairy","Medicham","Diggersby","Pelipper","Torkoal",
+            "Murkrow","Pachirisu","Cosmog","Cosmoem","Kubfu","Poipole","Terapagos","Phione",
+            "Lapras","Snorlax","Kangaskhan","Tauros","Aerodactyl","Heracross"
+        ]);
+        const _gradeMemo = new Map();
         function getMonGrade(name, bst) {
+            const _cached = _gradeMemo.get(name);
+            if (_cached !== undefined) return _cached;
+            const _g = _computeMonGrade(name, bst);
+            // Only cache once the dex is available — the pre-dex BST-only fallback can
+            // differ from the stage-based grade, so we must not freeze a boot-time value.
+            if (getPssDex()) _gradeMemo.set(name, _g);
+            return _g;
+        }
+        function _computeMonGrade(name, bst) {
             // Curated overrides first
-            const grade1Override = new Set(["Azumarill","Amoonguss","Chansey","Wishiwashi"]);
-            if (grade1Override.has(name)) return 1;
-            // G2: crippled-ability Pokémon with high BST, strong Eviolite users, and others that would
-            // otherwise appear in wrong story stages based purely on BST/stage detection
-            const grade2Override = new Set([
-                "Slaking","Archeops",                              // high BST, crippling ability (Truant/Defeatist)
-                "Avalugg","Avalugg-Hisui",                         // stage1-final ≥500 BST, naturally G2
-                "Porygon2","Dusclops","Rhydon",                    // strong Eviolite users, naturally G3 as stage1-mid
-                "Smeargle","Shedinja","Ditto","Clefairy","Medicham","Diggersby","Pelipper","Torkoal",
-                "Murkrow","Pachirisu","Cosmog","Cosmoem","Kubfu","Poipole","Terapagos","Phione",
-                "Lapras","Snorlax","Kangaskhan","Tauros","Aerodactyl","Heracross"
-            ]);
-            if (grade2Override.has(name)) return 2;
+            if (_GRADE1_OVERRIDE.has(name)) return 1;
+            if (_GRADE2_OVERRIDE.has(name)) return 2;
 
             if (PSEUDO_LEGEND.has(name)) return 1;
 
@@ -13800,10 +13815,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // *composition* (rollTrainerTeam's gwForFiller shifts non-sig fillers one tier weaker
         // while signature aces stay in the canonical grade), not via per-mon stat exemptions.
         // Set any constant to 1.0 to disable that tier's softening.
-        window.PRE_GYM1_FOE_STAT_MULT     = 0.82;
-        window.EARLY_GAME_FOE_STAT_MULT   = 0.92;
-        window.EARLY_GL_FOE_STAT_MULT     = 0.95;
-        window.STAGE2_GL_FOE_STAT_MULT    = 0.97; // GL3 gentle softening — Stage 2 entry
+        // Module-level consts (read directly by _earlyGameFoeStatMult below). Also exported
+        // to window for any external/console reader. Previously these lived only on window,
+        // which made them silently `undefined` if a top-level read ran before assignment.
+        const PRE_GYM1_FOE_STAT_MULT     = 0.82;
+        const EARLY_GAME_FOE_STAT_MULT   = 0.92;
+        const EARLY_GL_FOE_STAT_MULT     = 0.95;
+        const STAGE2_GL_FOE_STAT_MULT    = 0.97; // GL3 gentle softening — Stage 2 entry
+        window.PRE_GYM1_FOE_STAT_MULT     = PRE_GYM1_FOE_STAT_MULT;
+        window.EARLY_GAME_FOE_STAT_MULT   = EARLY_GAME_FOE_STAT_MULT;
+        window.EARLY_GL_FOE_STAT_MULT     = EARLY_GL_FOE_STAT_MULT;
+        window.STAGE2_GL_FOE_STAT_MULT    = STAGE2_GL_FOE_STAT_MULT;
         function _earlyGameFoeStatMult() {
             const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
             if (!sm) return 1.0;
@@ -13816,16 +13838,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!row || row[1] !== 'Battle') return 1.0;
             const evt = String(row[2] || '');
             if (badges === 0) {
-                if (evt === 'Gym Leader 1') return window.EARLY_GL_FOE_STAT_MULT || 1.0;
-                return window.PRE_GYM1_FOE_STAT_MULT || 1.0;
+                if (evt === 'Gym Leader 1') return EARLY_GL_FOE_STAT_MULT;
+                return PRE_GYM1_FOE_STAT_MULT;
             }
             if (badges === 1) {
-                if (evt === 'Gym Leader 2') return window.EARLY_GL_FOE_STAT_MULT || 1.0;
-                return window.EARLY_GAME_FOE_STAT_MULT || 1.0;
+                if (evt === 'Gym Leader 2') return EARLY_GL_FOE_STAT_MULT;
+                return EARLY_GAME_FOE_STAT_MULT;
             }
             // badges === 2 (Stage 1→2 boundary, G3 era starting)
-            if (evt === 'Gym Leader 3') return window.STAGE2_GL_FOE_STAT_MULT || 1.0;
-            return window.EARLY_GAME_FOE_STAT_MULT || 1.0;
+            if (evt === 'Gym Leader 3') return STAGE2_GL_FOE_STAT_MULT;
+            return EARLY_GAME_FOE_STAT_MULT;
         }
         window._earlyGameFoeStatMult = _earlyGameFoeStatMult;
         // Stage-gated foe stat mult: the "slightly harder than Fire Red" ramp the design
@@ -14744,10 +14766,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Item clause: each held item appears at most once per side (VGC rule).
         // Empty/'NO_ITEM' is exempt (no held item is not a "shared item"). On conflict,
         // replace duplicates with Leftovers; if Leftovers is itself taken, fall back to ''.
-        function enforceItemClause(pool) {
+        function enforceItemClause(pool, lockedIndices) {
             if (!Array.isArray(pool) || pool.length < 2) return;
+            const locked = lockedIndices instanceof Set ? lockedIndices : new Set();
             const seen = new Set();
-            for (const entry of pool) {
+            // Pass 1: reserve every locked slot's item first, so a signature ace's item is
+            // never the one demoted when it collides with a filler's. (With no lock — the
+            // draft/foe-pool callers — this pass is a no-op and behaviour is unchanged.)
+            for (let i = 0; i < pool.length; i++) {
+                if (!locked.has(i)) continue;
+                const entry = pool[i];
+                if (!entry || !entry.build) continue;
+                const it = entry.build.i;
+                if (!it || it === 'NO_ITEM') continue;
+                seen.add(it);
+            }
+            // Pass 2: walk the remaining (non-locked) slots; demote duplicates here only.
+            for (let i = 0; i < pool.length; i++) {
+                if (locked.has(i)) continue;
+                const entry = pool[i];
                 if (!entry || !entry.build) continue;
                 const it = entry.build.i;
                 if (!it || it === 'NO_ITEM') continue;
@@ -28378,7 +28415,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           { role:'Elite Trainer', name:'Marnie',type:'Dark',         sigs:['Morpeko','Grimmsnarl','Scrafty','Toxicroak','Liepard'],                charGen:8, pkmGens:[5,8], isRival:true, spriteFile:'Gladion' },
           { role:'Elite Trainer', name:'Nemona',type:'Mixed',        sigs:['Pawmot','Lycanroc','Goodra','Orthworm','Dudunsparce'],                  charGen:9, pkmGens:[6,7,9], isRival:true, spriteFile:'May' },
           { role:'Elite Trainer', name:'Ethan', type:'Mixed', sigs:['Typhlosion','Feraligatr','Alakazam','Ampharos','Snorlax'], charGen:2, pkmGens:[1,2], isRival:true },
-          { role:'Elite Trainer', name:'Lyra', type:'Mixed', sigs:['Meganium','Ampharos','Red Gyarados','Noctowl','Clefable'], charGen:2, pkmGens:[1,2], isRival:true },
+          { role:'Elite Trainer', name:'Lyra', type:'Mixed', sigs:['Meganium','Ampharos','Gyarados','Noctowl','Clefable'], charGen:2, pkmGens:[1,2], isRival:true },
           { role:'Elite Trainer', name:'May', type:'Mixed', sigs:['Blaziken','Beautifly','Breloom','Swellow','Aggron'], charGen:3, pkmGens:[3], isRival:true },
           { role:'Elite Trainer', name:'Brendan', type:'Mixed', sigs:['Sceptile','Swellow','Sharpedo','Magcargo','Minun'], charGen:3, pkmGens:[3], isRival:true },
           // Elite Trainers (Villains)
@@ -28894,6 +28931,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [57,'Battle','Elite Trainer',{g1:10, g2:90, g3:0,g4:0},4800,null],
           [58,'Battle','Elite Trainer',{g1:20, g2:80, g3:0,g4:0},5200,null],
           [59,'City','City9',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Department Store','Poké Casino','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Enter Pokemon League']],
+          // E1–E4 are a fixed 5,000G league purse (flat by design — prestige fights, not a
+          // scaling route reward), intentionally below the late gyms' route payouts. Champion
+          // (7,500G) and the post-HoF Mystery (12,000G) are the curve's real peaks.
           [60,'Battle','E1',{g1:30,g2:70,g3:0,g4:0},5000,null],
           [61,'Battle','E2',{g1:40,g2:60,g3:0,g4:0},5000,null],
           [62,'Battle','E3',{g1:55,g2:45,g3:0,g4:0},5000,null],
@@ -29890,7 +29930,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Aces: top quartile of the tier's range, never below min.
             const lo = isAce ? Math.max(r.min, r.max - Math.ceil(span / 4)) : r.min;
             const hi = r.max;
-            const roll = () => lo + Math.floor(Math.random() * (hi - lo + 1));
+            // Seeded story RNG when a run is active so enemy IVs are replay-deterministic;
+            // falls back to Math.random outside story mode (e.g. quick-battle generators).
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            const roll = () => lo + Math.floor(rng() * (hi - lo + 1));
             return { hp:roll(), atk:roll(), def:roll(), spa:roll(), spd:roll(), spe:roll() };
         }
         // Stamp IVs onto a build only when none are set yet. Smogon / CSV builds
@@ -32296,9 +32339,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const STORY_GRADE_BIAS_ROW_GL4 = 24;
         const STORY_GRADE_BIAS_ROW_GL6 = 38;
         // After GL6, each further story battle adds a small amount to k (grade-1 pressure), capped.
+        // Effective max k = base 0.40 (GL6+) + ramp cap 0.14 = 0.54, so no further clamp is needed.
         const STORY_GRADE_POST_GL6_RAMP_PER_ROW = 0.0048;
         const STORY_GRADE_POST_GL6_RAMP_CAP = 0.14;
-        const STORY_GRADE_BIAS_K_CEILING = 0.62;
         /** @param {number|undefined} storyRowIdx first column of STORY_EVENTS_RAW for this battle */
         function applyStoryProgressToGradeWeights(gw, storyRowIdx) {
             if (!gw || storyRowIdx == null || !(sm && sm.active)) return gw;
@@ -32310,7 +32353,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (storyRowIdx > STORY_GRADE_BIAS_ROW_GL6) {
                 const steps = (storyRowIdx | 0) - STORY_GRADE_BIAS_ROW_GL6;
                 k += Math.min(STORY_GRADE_POST_GL6_RAMP_CAP, Math.max(0, steps) * STORY_GRADE_POST_GL6_RAMP_PER_ROW);
-                if (k > STORY_GRADE_BIAS_K_CEILING) k = STORY_GRADE_BIAS_K_CEILING;
             }
             return {
                 g1: (gw.g1 || 0) * (1 + k),
@@ -32355,19 +32397,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return typeStr.split(/\s*[\/,]\s*/).map(t => t.trim()).filter(Boolean);
         }
 
-        function _storyEnemyMechKeys() {
+        function _storyEnemyMechKeys(ctx) {
             // Enemy trainers are gated to the player's story-mode mechanic unlocks:
             // GL1-4 enemies are STANDARD only, GL5 boss (the unlock-reveal fight) is
             // also STANDARD, and from GL6 onwards each newly unlocked mechanic enters
             // the enemy candidate pool. Mirrors the player-side _withStoryPlayerGimmickGate
             // rule so no mechanic appears anywhere before it becomes globally available.
+            // An optional ctx.settings override lets a caller force the gimmick flags on
+            // (the post-HoF Mystery Figure rolls from every unlocked mechanic) without
+            // mutating the shared sm.settings; default reads the live story settings.
+            const S = (ctx && ctx.settings) || sm.settings;
             const k = [];
             const unlocked = new Set(Array.isArray(sm.unlockedGimmicks) ? sm.unlockedGimmicks : []);
-            if (sm.settings.dynaOn && unlocked.has('dmax')) k.push('gmax');
-            if (sm.settings.megaOn && unlocked.has('mega')) k.push('mega');
-            if (sm.settings.dynaOn && unlocked.has('dmax')) k.push('dmax');
-            if (sm.settings.zOn && unlocked.has('z')) k.push('z');
-            if (sm.settings.teraOn && unlocked.has('tera')) k.push('tera');
+            if (S.dynaOn && unlocked.has('dmax')) k.push('gmax');
+            if (S.megaOn && unlocked.has('mega')) k.push('mega');
+            if (S.dynaOn && unlocked.has('dmax')) k.push('dmax');
+            if (S.zOn && unlocked.has('z')) k.push('z');
+            if (S.teraOn && unlocked.has('tera')) k.push('tera');
             return k;
         }
         function _kindToForcedTag(kind) {
@@ -32495,11 +32541,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return 0;
         }
 
-        function _applyEnemyGimmickDistribution(team, eventType) {
-            const keys = _storyEnemyMechKeys();
+        function _applyEnemyGimmickDistribution(team, eventType, ctx) {
+            const keys = _storyEnemyMechKeys(ctx);
             if (!keys.length || !team || !team.length) return team;
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
-            const classic = !(sm && sm.settings && sm.settings.classicMode === false);
+            const _S = (ctx && ctx.settings) || (sm && sm.settings);
+            const classic = !(_S && _S.classicMode === false);
             const priority = ['gmax', 'mega', 'dmax', 'z', 'tera'].filter(k => keys.includes(k));
             const evt = eventType || (sm && STORY_EVENTS_RAW[sm.eventIndex] && STORY_EVENTS_RAW[sm.eventIndex][2]) || '';
             const pPerMon = _perMonMechChance(evt);
@@ -33058,8 +33105,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (t >= STORY_BUILD_TIER.TOURNAMENT) return build;
             const base = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
             const gimmickBound = (build.gimmick && build.gimmick !== 'STANDARD') || _isStoryGimmickItem(build.i);
-            const pickNeutralNature = () => _NEUTRAL_NATURES_LIST[Math.floor(Math.random() * _NEUTRAL_NATURES_LIST.length)];
-            const pickFlavorItem = pool => pool[Math.floor(Math.random() * pool.length)];
+            // Seeded story RNG so build degradation (nature/item/ability) is replay-deterministic.
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            const pickNeutralNature = () => _NEUTRAL_NATURES_LIST[Math.floor(rng() * _NEUTRAL_NATURES_LIST.length)];
+            const pickFlavorItem = pool => pool[Math.floor(rng() * pool.length)];
 
             if (t === STORY_BUILD_TIER.UNTRAINED) {
                 // EV: zeroed — raw species stats only.
@@ -33100,12 +33149,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                     build.evs = evs;
                 }
-                if (Math.random() < 0.35) build.n = pickNeutralNature();
+                if (rng() < 0.35) build.n = pickNeutralNature();
                 // Ability: 25% chance to drop a hidden ability back to slot 0.
                 // The CSV mixes regular and hidden ability builds; at Novice
                 // tier we want some mons running their base ability so the
                 // player sees the "trainer hasn't unlocked HA yet" feel.
-                if (base.abilities && base.abilities['0'] && Math.random() < 0.25) {
+                if (base.abilities && base.abilities['0'] && rng() < 0.25) {
                     build.a = base.abilities['0'];
                 }
                 // Item: elite-tier items get swapped for flavor type-boost gear.
@@ -33222,9 +33271,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const hasIllegal = allPools.some(bd => bd && bd._illegal);
                 if (hasIllegal) candidates.push(i);
             }
-            // Shuffle candidates so the same slots aren't always picked
+            // Shuffle candidates so the same slots aren't always picked. Seeded story RNG
+            // so the illegal-slot selection is replay-deterministic.
+            const _shuf = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             for (let i = candidates.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
+                const j = Math.floor(_shuf() * (i + 1));
                 [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
             }
             const target = Math.min(count, candidates.length);
@@ -33317,6 +33368,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return out;
         }
 
+        // Cache for the per-(type, gens) species partition built in rollTrainerTeam. The
+        // partition depends only on baseStats, grades and the (static) story-exclusion set —
+        // all frozen after boot — so it is safe to reuse across rolls. Keyed by type theme +
+        // sorted gen list. Avoids a full baseStats scan (+ getMonGrade per species) per roll.
+        const _trainerPoolCache = new Map();
         function rollTrainerTeam(trainer, partySize, gradeWeights, enabledGensIn, battleEventType, storyRowIdx) {
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             let gwIn = applyDifficultyToGradeWeights(gradeWeights || { g1: 0, g2: 0, g3: 50, g4: 50 });
@@ -33382,17 +33438,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_exemptFromSigCap && Array.isArray(S) && S.length) {
                 S = _filterSigsByGradeCeiling(S, _storySigGradeCeiling(gwIn));
             }
-            const T = {1:[],2:[],3:[],4:[]};
-            for (const name of Object.keys(baseStats)) {
-                if (isStoryRollExcluded(name)) continue;
-                const b = baseStats[name];
-                if (!b || !genSet.has(b.gen)) continue;
-                if (!isMixed) {
-                    const ok = types.some(type => b.t1 === type || (b.t2 && b.t2 === type));
-                    if (!ok) continue;
+            const _poolKey = (isMixed ? 'mixed' : types.slice().sort().join('+')) + '|' + Array.from(genSet).sort((a, b) => a - b).join(',');
+            let T = _trainerPoolCache.get(_poolKey);
+            if (!T) {
+                T = {1:[],2:[],3:[],4:[]};
+                for (const name of Object.keys(baseStats)) {
+                    if (isStoryRollExcluded(name)) continue;
+                    const b = baseStats[name];
+                    if (!b || !genSet.has(b.gen)) continue;
+                    if (!isMixed) {
+                        const ok = types.some(type => b.t1 === type || (b.t2 && b.t2 === type));
+                        if (!ok) continue;
+                    }
+                    const g = getMonGrade(name, getBST(name));
+                    T[g].push(name);
                 }
-                const g = getMonGrade(name, getBST(name));
-                T[g].push(name);
+                _trainerPoolCache.set(_poolKey, T);
             }
 
             // Rival: score offensive typings vs your party, weighted-roll STAB types with heavy decay after each pick (÷70), then normal grade % for species.
@@ -33445,7 +33506,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!chosen || usedR.has(chosen)) chosen = pickFromUnionPlain(usedR);
                     if (!chosen || usedR.has(chosen)) chosen = pickRandomInGenPlain(usedR);
                     if (!chosen) chosen = 'Rattata';
-                    if (isMixed && partySize >= 4 && chosen) {
+                    if (isMixed && partySize >= 3 && chosen) {
                         const t1c = (baseStats[chosen] || {}).t1 || '';
                         const othersSame = teamR.filter((x) => x && baseStats[x.name] && (baseStats[x.name].t1 || '') === t1c).length;
                         if (othersSame >= 2) {
@@ -33472,7 +33533,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const _candR = [...T[1], ...T[2], ...T[3], ...T[4]];
                 enforceRoleCoverage(teamR, _lockedR);
                 enforceTypeBalance(teamR, _candR, _lockedR);
-                enforceItemClause(teamR);
+                enforceItemClause(teamR, _lockedR);
                 // End-game illegal-build injection (Rival post-G8 → 2 slots).
                 const _illegalCountR = _storyIllegalCountForEvent(battleEventType, storyRowIdx);
                 if (_illegalCountR > 0) _storyInjectIllegalBuilds(teamR, _origSigsR, _illegalCountR);
@@ -33482,6 +33543,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Gym leaders already have signature Pokémon as their identity — the rest
             // of their team can roll slightly weaker. Shift a small fraction of g1/g2
             // mass to one tier weaker for the non-signature pickThematic call only.
+            // NOTE: this is deliberately gym-leader-only. E1–E4 / Champion / Mystery are
+            // uniformly high-tier by design (their row gradeWeights already authorize G1/G2
+            // for the whole team), so they intentionally skip the filler tier-down.
             const _isGymLeader = /^Gym Leader\s*\d$/.test(String(battleEventType || ''));
             const gwForFiller = (() => {
                 if (!_isGymLeader) return gwIn;
@@ -33502,9 +33566,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // That let Zapdos land on Lt. Surge at GL4 in a gen-1-only run via
             // the Electric-type spiral. Same exemption rule as the sig cap.
             const _fillerCeiling = _exemptFromSigCap ? 1 : _storySigGradeCeiling(gwIn);
+            // Per-species slot allowance: a species may fill as many slots as it appears in the
+            // (already gen/ceiling-filtered) signature pool S. This lets an intentional duplicate
+            // sig list — e.g. Lance's triple-Dragonite — actually field three Dragonites instead
+            // of one + thematic fillers. Every non-duplicated species resolves to a count of 1,
+            // exactly the old unique-name Set, so non-duplicate trainers roll identically.
+            const _sigMult = new Map();
+            for (const _n of S) _sigMult.set(_n, (_sigMult.get(_n) || 0) + 1);
+            const _used = new Map();
+            const _canUse = (n) => !!n && (_used.get(n) || 0) < Math.max(1, _sigMult.get(n) || 0);
+            const _markUsed = (n) => { if (n) _used.set(n, (_used.get(n) || 0) + 1); };
+            const _gw = gwForFiller;
+            const _gwTotal = (_gw.g1||0)+(_gw.g2||0)+(_gw.g3||0)+(_gw.g4||0);
             function pickThematic() {
-                const _gw = gwForFiller;
-                const total = (_gw.g1||0)+(_gw.g2||0)+(_gw.g3||0)+(_gw.g4||0);
+                const total = _gwTotal;
                 if (total === 0) {
                     const all = [];
                     for (let gg = _fillerCeiling; gg <= 4; gg++) all.push(...T[gg]);
@@ -33528,10 +33603,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 return pool.length ? pool[Math.floor(rng() * pool.length)] : null;
             }
-            function pickFromUnionExcluding(usedNames) {
+            function pickFromUnionExcluding() {
                 const all = [];
                 for (let g = _fillerCeiling; g <= 4; g++) {
-                    for (const n of T[g]) if (!usedNames.has(n)) all.push(n);
+                    for (const n of T[g]) if (_canUse(n)) all.push(n);
                 }
                 return all.length ? all[Math.floor(rng() * all.length)] : null;
             }
@@ -33548,7 +33623,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             const team = [];
-            const usedNames = new Set();
             for (let i = 0; i < partySize; i++) {
                 let chosen = null;
                 const R = rng();
@@ -33560,29 +33634,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } else {
                     chosen = pickThematic();
                 }
-                if (!chosen || usedNames.has(chosen)) {
+                if (!chosen || !_canUse(chosen)) {
                     for (let t = 0; t < 8; t++) {
                         const c = pickThematic();
-                        if (c && !usedNames.has(c)) { chosen = c; break; }
+                        if (c && _canUse(c)) { chosen = c; break; }
                     }
                 }
-                if (!chosen || usedNames.has(chosen)) chosen = pickFromUnionExcluding(usedNames);
-                if (!chosen || usedNames.has(chosen)) chosen = pickRandomInGenWindow();
+                if (!chosen || !_canUse(chosen)) chosen = pickFromUnionExcluding();
+                if (!chosen || !_canUse(chosen)) chosen = pickRandomInGenWindow();
                 if (!chosen) chosen = 'Rattata';
-                if (isMixed && partySize >= 4 && chosen) {
+                if (isMixed && partySize >= 3 && chosen) {
                     const t1c = (baseStats[chosen] || {}).t1 || '';
                     const othersSame = team.filter(t => t && baseStats[t.name] && (baseStats[t.name].t1 || '') === t1c).length;
                     if (othersSame >= 2) {
                         for (let r = 0; r < 6; r++) {
                             const alt = pickThematic();
-                            if (!alt || usedNames.has(alt)) continue;
+                            if (!alt || !_canUse(alt)) continue;
                             const t1a = (baseStats[alt] || {}).t1 || '';
                             const oc = team.filter(t => t && baseStats[t.name] && (baseStats[t.name].t1 || '') === t1a).length;
                             if (oc < 2) { chosen = alt; break; }
                         }
                     }
                 }
-                usedNames.add(chosen);
+                _markUsed(chosen);
                 const build = makeBuild(chosen, { forceGimmick: 'STANDARD' });
                 team.push({ name: chosen, build });
             }
@@ -33594,12 +33668,67 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             for (let g = _fillerCeiling; g <= 4; g++) _cand.push(...T[g]);
             enforceRoleCoverage(team, _locked);
             enforceTypeBalance(team, _cand, _locked);
-            enforceItemClause(team);
+            enforceItemClause(team, _locked);
             // End-game illegal-build injection (E1-E4 → 1; Champion → 2; Frontier → tiered).
             // Signature aces are protected so a leader's identity mon doesn't morph mid-run.
             const _illegalCount = _storyIllegalCountForEvent(battleEventType, storyRowIdx);
             if (_illegalCount > 0) _storyInjectIllegalBuilds(team, _origSigs, _illegalCount);
             return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(team, battleEventType), battleEventType, storyRowIdx, _origSigs);
+        }
+        // Boot-time data sanity check (warn-only; never throws). Surfaces TRAINER_DATA
+        // authoring mistakes — typo'd signature names, sigs whose gen falls outside the
+        // trainer's pkmGens window (silently filtered at roll time), and Champions with
+        // fewer than 6 signatures (their guaranteed 6th slot becomes a thematic wildcard).
+        // Duplicates are legitimate (Lance's three Dragonites fill three slots), so they
+        // are not flagged. Returns the issue list for tests/console.
+        function _validateTrainerData() {
+            try {
+                if (typeof TRAINER_DATA === 'undefined' || !Array.isArray(TRAINER_DATA)) return null;
+                if (typeof baseStats === 'undefined' || !Object.keys(baseStats).length) return null;
+                const issues = [];
+                for (const t of TRAINER_DATA) {
+                    if (!t || !Array.isArray(t.sigs)) continue;
+                    const label = `${t.role || '?'} ${t.name || '?'}`;
+                    const pg = Array.isArray(t.pkmGens) ? t.pkmGens : null;
+                    // Gen-window mismatches matter most for the named bosses (whose canonical
+                    // ace going missing is a visible regression); the ~400 flavour trainers
+                    // list cross-gen sigs by design, so we don't flood the log with those.
+                    const isBoss = /^(Gym Leader \d|E[1-4]|Champion)$/.test(String(t.role || ''));
+                    for (const s of t.sigs) {
+                        const b = baseStats[s];
+                        if (!b) { issues.push(`${label}: signature "${s}" is not a known species`); continue; }
+                        if (isBoss && pg && pg.length && !pg.includes(b.gen)) {
+                            issues.push(`${label}: signature "${s}" is gen ${b.gen}, outside pkmGens [${pg.join(',')}] — filtered out at roll time`);
+                        }
+                    }
+                    if (t.role === 'Champion' && t.sigs.length < 6) {
+                        issues.push(`${label}: only ${t.sigs.length} signatures for a 6-slot Champion fight — slot ${t.sigs.length + 1}+ falls back to a thematic roll`);
+                    }
+                }
+                const errs = issues.filter(m => /not a known species/.test(m));
+                if (errs.length) console.warn(`[TRAINER_DATA] ${errs.length} hard error(s) — unknown signature species:`);
+                else console.log('[TRAINER_DATA] validation: all signatures resolve to known species.');
+                for (const m of issues) (/not a known species/.test(m) ? console.warn : console.info)('  • ' + m);
+                return issues;
+            } catch (e) {
+                console.warn('[TRAINER_DATA] validation failed to run:', e);
+                return null;
+            }
+        }
+        window._validateTrainerData = _validateTrainerData;
+        // Test-only exposure (inert in normal play; gated on the jsdom harness flag set by
+        // tests/helpers/load-engine.js). Lets headless tests drive the private roll pipeline.
+        if (typeof window !== 'undefined' && window.__testHarness === true) {
+            try {
+                window.__storyTest = {
+                    rollTrainerTeam,
+                    rollMysteryFigure: rollMysteryFigureFinalBossTeam,
+                    findTrainerDataByName,
+                    validateTrainerData: _validateTrainerData,
+                    getTrainerData: () => TRAINER_DATA,
+                    get sm() { return sm; },
+                };
+            } catch (e) {}
         }
         function rollMysteryFigureFinalBossTeam(partySize, enabledGensIn) {
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
@@ -33635,32 +33764,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (t1) usedTypes.add(t1);
                 picks.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD' }) });
             }
-            const oldMech = {
-                megaOn: !!sm.settings.megaOn,
-                dynaOn: !!sm.settings.dynaOn,
-                teraOn: !!sm.settings.teraOn,
-                zOn: !!sm.settings.zOn
-            };
-            const oldBadges = sm.badges | 0;
-            try {
-                // Final boss: roll from all mechanics using existing priority system.
-                sm.settings.megaOn = true;
-                sm.settings.dynaOn = true;
-                sm.settings.teraOn = true;
-                sm.settings.zOn = true;
-                sm.badges = 8;
-                // Mystery Figure is the heaviest illegal injection (3 slots). No
-                // signature lock — the boss roster is freshly rolled and any slot
-                // is eligible for an illegal-build promotion if the species has one.
-                _storyInjectIllegalBuilds(picks, new Set(), 3);
-                return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(picks, 'Mystery Figure'), 'Mystery Figure', null);
-            } finally {
-                sm.settings.megaOn = oldMech.megaOn;
-                sm.settings.dynaOn = oldMech.dynaOn;
-                sm.settings.teraOn = oldMech.teraOn;
-                sm.settings.zOn = oldMech.zOn;
-                sm.badges = oldBadges;
-            }
+            // Final boss rolls from every unlocked mechanic. Pass the forced gimmick flags
+            // as a local override context instead of mutating (and restoring) the shared
+            // sm.settings/sm.badges — the old approach left global state transiently wrong
+            // and needed a try/finally. (badges was never read on the Mystery path: the
+            // chance/tier/guarantee helpers all return constants for 'Mystery Figure', and
+            // the build tier is TOURNAMENT by event, so no badge override is needed.)
+            const _mechCtx = { settings: { ...sm.settings, megaOn: true, dynaOn: true, teraOn: true, zOn: true } };
+            // Mystery Figure is the heaviest illegal injection (3 slots). No signature lock —
+            // the boss roster is freshly rolled and any slot is eligible for an illegal-build
+            // promotion if the species has one.
+            _storyInjectIllegalBuilds(picks, new Set(), 3);
+            return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(picks, 'Mystery Figure', _mechCtx), 'Mystery Figure', null);
         }
 
         // ── TRAINER SELECTION ─────────────────────────────────────────────
