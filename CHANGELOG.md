@@ -3,6 +3,168 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Fatigue, Daycare egg quest, Underground Pits, PC click-to-detail 2026-05-22 (`claude/dreamy-goodall-5A3lZ`)
+
+### Reworked — Daycare Inn + Fight Club: one dark one-time storyline 2026-05-23 (`claude/dreamy-goodall-5A3lZ`)
+
+The Daycare/Pits pair from the entry below is **superseded** by a single
+authored, one-time arc. The mechanics that changed:
+
+* **Renamed** "Underground Pits" → **"Fight Club"** (with a tasteful film
+  nod on first entry — *"first rule: you don't talk about it"*).
+* **Daycare Inn is now a front.** Drop a partner off and **they don't come
+  back** — you walk out with a **real, carryable Egg** (🥚 icon, sits in a
+  party or PC slot, deposit/withdraw like any mon, can't battle or be sold).
+  When you ask where your Pokémon went, the matron gets shaky and evasive —
+  a cruise, an island, a "different career," a bald man with a plane and a
+  Persian, *"making money."* A water-stained *"120 Days of Pika"* poster by
+  the staff door. Dark-comic, played as innuendo — nothing graphic. The
+  drop-off is **one-time**.
+* **Eggs hatch in place after Gym 7** (the slot becomes the typed, +1-grade
+  hatchling wherever it sits — party or PC). The parent is gone; the egg is
+  what you get.
+* **Fight Club unlock is narrative-gated.** At 6 badges the matron offers a
+  **secret** → a basement door → you choose to **go down** (one-time; "walk
+  away" leaves it re-offerable). Replaces the old auto-unlock toast.
+* **Entry requires a full stable of six fighters** (eggs don't count).
+* **Win = nobody is released.** The old "bonded mons auto-release on city
+  return" rental model is **removed**. Clear all three fights and **all six**
+  (fighters and witnesses) keep a permanent **+1 to every stat** (capped;
+  buildPokemon hardcaps IV+bonus at 36) — plus gold. The cost is a single
+  dark line in the result, not a mechanical loss. The story club is **one-time**.
+* **Lose** → retry is free and unlimited; the only way to lose a mon is to
+  **crawl home beaten**, which kills **all three** of your fighters
+  (to-the-death) — you don't leave the Fight Club whole.
+* **Endgame Fight Club** (post-Champion): a repeatable, **money-only** loop —
+  no Daycare, no egg, no permanent buff. The Daycare Inn is shuttered.
+
+Eggs are filtered out of the battle draft and preserved across the
+post-battle team rebuild; every party-rendering facility (PC, Cable Link,
+Evolution Lab, EV Trainer, Colress, tutors, Professor swap) skips eggs so a
+buildless egg slot can never crash a screen. Tests:
+`tests/suites/story-daycare-pits.test.js`.
+
+### Added — Pokémon Fatigue (1% stat / start-HP debuff, capped at 3 stacks)
+
+Every random / route trainer / wild fight now leaves the **whole team** with
++1 stack of Fatigue (capped at 3). Each stack docks **−1% to all combat
+stats** and **−1% to starting HP** when a mon enters its next battle. Max
+HP is unchanged, so a tired mon enters a fight at 97-99% but still heals to
+the normal full at the Pokémon Center.
+
+Fatigue **clears in three places**:
+
+* Visiting a **Pokémon Center** — wipes status, refills PP, AND clears
+  all fatigue stacks. Now the only "clean rest" you need to plan around.
+* Walking into **any iconic fight** — Gym Trainer, Gym Leader N, E1–E4,
+  Champion, Rival, Mystery Figure, Boss Arc, **Pit fights**, Crucible /
+  Frontier. The auto-clear is bilateral: cleared on entry, cleared on
+  exit. Iconic fights never feel "stale" or punish you for grinding up
+  to them.
+* The first time a stack lands, a one-shot **bulletin overlay** explains
+  the system (saved under `sm.flags.seenTirednessIntro`).
+
+Implementation: `build.tired` 0..3 on every persisted mon; `buildPokemon`
+applies a single multiplier after the standard stat formula; full IV/EV/
+Nature math is unaffected so move damage / Trick Room / IV reads all
+behave normally.
+
+### Added — Pokémon Daycare (egg quest, Gym 1 unlock / Gym 7 hatch)
+
+Beat **Gym 1** and the Daycare facility opens in every city's `Heal &
+Team` strip. Drop off **any Pokémon** (party or PC) and they board the
+"cruise." A postcard arrives by Gym 7 — and they come back with a freshly
+hatched partner that shares ≥1 of their typing and sits **one grade tier
+higher** than the parent.
+
+Both mons go back to your party (overflow to PC). The drop-off is the only
+"sacrifice" — the daycare matron has a knowing grin and the postcards are
+worded with deliberate dark-comic awkwardness ("Subject Zero is doing…
+*very* well, apparently") — but mechanically the parent always returns
+alongside their kid.
+
+After **Hall of Fame**, the Daycare flips into its **Crucible Daycare**
+variant — the loop repeats with the higher-grade tier curve, and the
+matron's flavor lines acknowledge that you're no longer a rookie.
+
+### Added — The Underground Pits (post-Gym-6 illegal bracket arena)
+
+Beat **Gym 6** and a new "off-grid" facility appears in the `Next Step`
+section: **The Underground Pits**. The Pit is a 3-fight bracket. You
+pick **3 mons** from your party; the engine rolls a foe roster keyed to
+your most recent **team snapshot** (Gym 6 snapshot for pre-League runs,
+post-Champion snapshot for the Crucible loop):
+
+* **Fight 1** — warm-up: foe tier ≈ player tier + 1 (weaker)
+* **Fight 2** — mid: foe tier = player tier
+* **Fight 3** — boss: foe tier ≈ player tier − 1 *and* every foe stat
+  carries a flat +2 bonus to represent the bracket's top dog.
+
+Foe builds run through the standard `_applyStoryBuildPowerTier` pass
+with a synthetic `Gym Leader N` event name (N = current badge count) —
+so Pit foes get the same tier polish, IV roll, and move/EV depth a
+same-stage Gym Leader fight would have. No special "Pit power curve"
+to balance, the bracket inherits the legitimate gym ladder directly.
+
+Auto-heal between fights; fatigue never accrues. Win all three and:
+
+* **Every team member** (witnesses) gains a permanent **+1 on EVERY
+  stat** (HP / Atk / Def / SpA / SpD / Spe), capped at **+5 per stat**.
+  The bonus stacks ON TOP of the 0–31 IV range, with a hardcap at
+  **effective IV 36** — `min(36, ivs[stat] + bonus[stat])` enforced
+  at the single `getIV` site in `buildPokemon`. Five winning brackets
+  bring every stat to the 36 ceiling and further wins can't push past.
+* Gold payout = **50% of the next Gym Leader's reward** (floor 1000G).
+  Pre-League: ~2,775G at 6 badges, ~2,900G at 7, ~2,975G at 8. The Pit
+  is a half-pay shadow of the legitimate ladder; the *risk*, not the
+  *purse*, is what makes the bracket worth running.
+* The 3 bracket Pokémon become **BONDED** — they're branded for the
+  Underground and auto-release the moment you walk back into a clean
+  city. (Streets are streets, the alleys claim their own.)
+
+### Added — Pit defeat: retry overlay + battle-to-death forfeit
+
+Losing any of the three bracket fights surfaces a dedicated **Pit
+Defeat overlay** with two paths:
+
+* **Try Again** — free, unlimited. Heals the team to full and relaunches
+  the same fight at the same bracket index. The Pit doesn't care how
+  many tries it takes.
+* **Forfeit** — exits the bracket and rolls the death. One random
+  Pokémon out of the three you picked **dies permanently** — removed
+  from the save outright. The other two "barely" make it out and are
+  released to your **PC** (they survive but they're not playing the
+  next fight). No win bonus, no gold, no bonded list.
+
+Forfeit gates behind a `confirm()` dialog so an accidental click can't
+delete a mon. The death roll is a uniform random pick across the 3
+bracket ids. Whoever it lands on disappears from team / PC entirely
+— there is no funeral screen, no Pokédex tombstone. The Pit doesn't
+keep records.
+
+### Added — Champion snapshot powers the endgame Pit ladder
+
+When you clear the **Champion**, the engine takes a second team snapshot
+that becomes the strength reference for **all Crucible Pit fights**. So
+the Pits stay interesting in the post-game loop without being trivially
+overscaled.
+
+### Added — Click any party / PC / Underground row to view its full build
+
+The PC's three lists (Party, PC Box, Underground sell-table) now treat
+the whole row as a clickable summary opener — same draft-pokemon modal
+the team panel and Professor flow use. The buttons (Deposit / Withdraw /
+Release / Sell) keep their original behavior via `event.stopPropagation`,
+and the row gets a subtle `ⓘ` cue + `cursor:pointer` so the affordance
+is obvious without changing the layout.
+
+### Schema
+
+Save version bumped to **20**. Per-mon fields added on every build:
+`bonus: { hp, atk, def, spa, spd, spe }` (0..5 per stat) and `tired: 0..3`.
+Top-level state additions: `sm.daycare`, `sm.pits`, `sm.flags`. All have
+in-place migration so v19 saves come forward without losing progress.
+
 ## Unreleased — Rival overhaul: a counter-team that's built around YOU 2026-05-23 (`claude/keen-euler-lfmeB`)
 
 ### Changed — The Rival now plays like a GB-era rival, not an Elite Trainer with themed aces

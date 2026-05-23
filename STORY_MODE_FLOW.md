@@ -1193,6 +1193,177 @@ Read-only — handy in DevTools when adding new beats / variants.
   — same section, immediately after the variant helpers.
 - `enterBattleEvent` (~line 27509) — three-line dispatch now: resolve beat
   → dispatch cold-open → dispatch interrupts → run the trainer fight setup
+
+## 15e. Pokémon Fatigue (v20+)
+
+Every random or route trainer / wild fight leaves the **whole party** with
++1 stack of Fatigue (capped at 3). Per stack: **−1% to all combat stats**
+(atk/def/spa/spd/spe) and **−1% to starting HP** at battle entry. Max HP
+stays normal, so a tired mon enters at 97-99% of full but still heals to
+the normal cap.
+
+### Apply / clear
+
+- **Apply** (post-battle, in `afterBattleReturn`): triggered when the just-
+  completed event is *not* iconic — Basic Trainer, Elite Trainer, wild
+  routes. Pushes `build.tired = min(3, tired+1)` on every party member.
+- **Clear** (auto):
+  - Visiting the Pokémon Center (`_storyFullHealPartySlots`).
+  - Entering any iconic battle (`launchBattle` calls
+    `_storyClearTirednessForIconic` before drafting).
+  - Exiting any iconic battle (post-battle apply also resets, per spec).
+- **Iconic** = Gym Trainer, Gym Leader N, E1–E4, Champion, Rival, Mystery
+  Figure, Boss arc, Pit fights, Crucible, Frontier. See
+  `_storyEventIsIconicFight`.
+
+### Schema
+
+- `build.tired: 0..3` on every persisted mon (team + PC). Migrated
+  in-place by `migrateStoryPreV20`.
+- One-shot intro modal gated by `sm.flags.seenTirednessIntro`.
+
+## 15f. Daycare (Gym 1 unlock / Gym 7 hatch / Crucible endgame loop)
+
+### Story arc
+
+* **Gym 1 clear** → `sm.daycare.unlocked = true`; a "Daycare" facility
+  chip appears in every city's `Heal & Team` section.
+* **Drop off any mon** (team or PC) → the parent is removed from the
+  player's reach, the egg's species is locked in (one grade tier higher
+  than the parent, ≥1 shared type), state flips to `incubating`.
+* **Gym 7 clear** → a one-shot toast queues. Visiting the Daycare with
+  ≥7 badges hatches the egg: both the parent and the hatchling re-enter
+  the player's party (overflow to PC).
+* **Champion clear** → `sm.daycare.endgame = true` flips the facility to
+  the "Crucible Daycare" variant. The loop repeats at the higher
+  grade-tier curve, gated on Gym 8.
+
+### Tone
+
+Drop-off and pickup flavor lines are written deliberately as **awkward
+dark-comic vacation postcards** — "Subject Zero is doing very well,
+apparently" / "they had a great time, brought you a souvenir." The
+sexual / weird-tone humor stays light: never creepy, never explicit, just
+the matron is *clearly winking about something*.
+
+### Schema
+
+```js
+sm.daycare = {
+  unlocked: false,
+  state: 'idle' | 'incubating',
+  parentMonId: null | string,
+  egg: null | { species: string, rolledAt: badges },
+  endgame: false,
+  parentSnapshot: null | { name, build, id, nickname, from: 'team'|'pc' }
+};
+```
+
+### Anchors
+
+- `enterDaycare` / `_daycareRenderHTML` / `_daycareDropOff` / `_daycareHatch`
+  / `_daycareRollHatchSpecies` — Story IIFE, just below the tiredness
+  intro modal.
+- Unlock hook — `onBattleEnd` win path, immediately after `sm.badges++`,
+  reads the `event` name and sets `sm.daycare.unlocked` / queues toast.
+
+## 15g. The Underground Pits (post-Gym-6 bracket arena)
+
+### Story arc
+
+* **Gym 6 clear** → snapshot `sm.pits.gym6Snapshot` of every team mon's
+  name + grade + BST. Snapshot drives Pit enemy strength for the rest
+  of the pre-League run.
+* **Pits facility** chip appears in every city's `Next Step` section
+  whenever `sm.pits.gym6Snapshot` exists.
+* **Pick 3 mons** from the active party → 3-fight bracket:
+  - Fight 1: foe at avg(team) tier + 1 (weaker side)
+  - Fight 2: foe at avg(team) tier (matched)
+  - Fight 3: foe at avg(team) tier − 1 *and* every foe stat carries
+    `bonus: +2` (the bracket's "boss")
+* Foe builds pass through `_applyStoryBuildPowerTier` with a synthetic
+  `Gym Leader N` event name (N = current badge count, clamped 1..8).
+  Pit foes share the gym-leader tier polish, IV roll, and move/EV
+  depth — no separate "Pit curve" to balance.
+* Auto-heal between fights. Fatigue never accrues during a Pit run.
+* **Win all three** →
+  - Every team member (witnesses) gets +1 on **EVERY stat** in
+    `build.bonus` (capped at +5 / stat). The bonus stacks on top of
+    the 0–31 IV range, with the total clamped to **36 effective IV**
+    via `min(36, ivs[s] + bonus[s])` in `buildPokemon::getIV`. Five
+    winning brackets bring every stat to the ceiling; further wins
+    can't push past.
+  - Gold payout = `_pitsCalcGoldPayout()` = `floor(0.5 *
+    nextGymLeaderCoins(badges))`, floor 1000G.
+  - The 3 bracket mons are added to `sm.pits.bondedMonIds`.
+* **Lose any fight** → no auto-resolve. The **Pit Defeat overlay**
+  appears (`_pitsShowDefeatOverlay`) with two options:
+  - **Try Again** (`_pitsRetryFight`) — free, unlimited; same fight
+    relaunched at full HP, bracket index unchanged.
+  - **Forfeit** (`_pitsForfeitBracket`) — death roll. One random of
+    the 3 bracket ids dies (permanent removal from team + PC + bonded
+    list). The other 2 are pushed into the PC as "barely made it"
+    survivors. Gated by a `confirm()` dialog. No win bonus.
+
+### Pit-bonded mons
+
+Mons in `sm.pits.bondedMonIds` **auto-release** the next time the player
+walks back into a regular city. Implemented as a single call to
+`_pitsReleaseBondedOnCityReturn()` from `renderCityActions` — idempotent,
+so re-rendering the same city doesn't double-release.
+
+### Champion snapshot → Crucible Pits
+
+After the Champion clear, a second snapshot lands in
+`sm.pits.championSnapshot`. The Pit enemy roll always reads the most
+recent valid snapshot first, so the Crucible Pit ladder scales off
+end-game team strength.
+
+### Schema
+
+```js
+sm.pits = {
+  gym6Snapshot:    null | { badges, teamSummary, capturedAt, seed },
+  championSnapshot:null | { badges, teamSummary, capturedAt, seed },
+  winsThisVisit: 0,
+  bestStreak: 0,
+  bondedMonIds: [],
+  lastEnemyRoster: null,
+  payoutGold: 0,
+  // transient: _pendingPicks / _activePickIds / _teamBeforePit / _enemyRoster
+  //            / _fightIndex / _fightsWon / _inBattle  — cleared on resolve.
+};
+```
+
+### Build stat bonus (universal)
+
+`build.bonus = { hp, atk, def, spa, spd, spe }` (each clamped 0..5).
+Applied in `buildPokemon` at the single `getIV` site so every downstream
+stat / damage read picks it up without extra plumbing. The bonus stacks
+**on top** of the standard IV range (max effective IV = 31 + 5 = 36).
+Migrated in-place by `migrateStoryPreV20`.
+
+### Anchors
+
+- `enterPits` / `_pitsRenderHTML` / `_pitsRollEnemyRoster` /
+  `_pitsLaunchFight` / `_pitsHandleBattleEnd` / `_pitsResolveBracket`
+  / `_pitsReleaseBondedOnCityReturn` — Story IIFE, immediately after the
+  Daycare functions.
+- `onBattleEnd` — early branch catches `sm.pits._inBattle` and routes
+  to `_pitsHandleBattleEnd` instead of the main timeline; no eventIndex
+  advance, no victory-overlay flow.
+
+## 15h. PC click-to-detail (v20+)
+
+The PC's three lists (`Party`, `PC Box`, `Underground` sell-table) now
+treat the whole row as the click target — same draft-pokemon summary the
+team panel and Professor flow use. The Deposit / Withdraw / Release /
+Sell buttons keep their original handlers via `event.stopPropagation`.
+
+Implemented via a single delegated handler `_pcInstallRowClickHandler`
+on `#story-pc-body`, bound once per render. Resolves the slot by
+`data-pc-id` (team or pcBox), then calls `openSummaryFromAnyPCRow` which
+defers to `showDraftPokemonSummary`.
   (unchanged).
 
 ---

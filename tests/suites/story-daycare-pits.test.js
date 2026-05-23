@@ -1,0 +1,265 @@
+// Integration test for the Daycare Inn (egg event) + Fight Club flows. Boots
+// battle.html via the shared jsdom engine helper, sets up a mid-game story
+// state, and drives the facilities through their real DOM (clicking rendered
+// buttons) plus the exposed onBattleEnd interceptor.
+//
+// Design under test (post-rewrite):
+//   • Daycare drop-off: parent is GONE for good; you receive a carryable EGG slot.
+//   • Egg: occupies a party/PC slot, never battles, hatches in place after Gym 7.
+//   • Fight Club (story, one-time): requires a full stable of 6 fighters; a win
+//     gives +1 ALL stats to the whole team, keeps everyone (NO release), and
+//     closes the club. Lose+forfeit kills one fighter, two go to the PC.
+//   • Fight Club (endgame, post-Champion): gold only, no +1, repeatable.
+//
+// Run: node --test tests/suites/story-daycare-pits.test.js
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { loadEngine } from '../helpers/load-engine.js';
+
+const eng = await loadEngine();
+const { window } = eng;
+const SM = window.StoryMode;
+const sm = SM.state;
+
+// jsdom doesn't implement confirm/alert — stub so the forfeit confirm() returns true.
+window.confirm = () => true;
+window.alert = () => {};
+window.showGameAlert = () => {};
+window.showToast = () => {};
+
+function freshTeam(names) {
+  return names.map((n, i) => ({
+    name: n,
+    id: 'mon_' + i + '_' + Math.random().toString(36).slice(2, 7),
+    build: {
+      m: ['Tackle', 'Tackle', 'Tackle', 'Tackle'],
+      i: null, a: null, n: 'Hardy',
+      ivs: { hp:31, atk:31, def:31, spa:31, spd:31, spe:31 },
+      evs: { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 },
+      bonus: { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 },
+      tired: 0,
+    },
+  }));
+}
+
+// The engine + DOM are shared across every test in this file, so strip any
+// overlay a prior test left behind before each scenario (getElementById would
+// otherwise return a stale overlay full of the previous test's mon ids).
+function clearOverlays() {
+  ['story-pits-overlay','story-pits-defeat-overlay','story-daycare-overlay',
+   'story-daycare-scene','story-daycare-secret','story-daycare-idle',
+   'story-hatch-scene','story-pits-win','story-pits-result','story-scene-overlay']
+    .forEach(id => { const e = window.document.getElementById(id); if (e) e.remove(); });
+}
+
+// Six fighters so the Fight Club's full-stable gate is satisfied.
+function setupStory() {
+  clearOverlays();
+  sm.active = true;
+  sm.badges = 6;
+  sm.gold = 10000;
+  sm.eventIndex = 38; // a mid-game City row
+  sm.team = freshTeam(['Garchomp', 'Gengar', 'Lapras', 'Snorlax', 'Gardevoir', 'Tyranitar']);
+  sm.pcBox = [];
+  sm.flags = sm.flags || {};
+  sm.daycare = { unlocked: true, eggEventDone: false };
+  sm.pits = {
+    gym6Snapshot: { badges: 6, teamSummary: sm.team.map(t => ({ name: t.name, grade: 2, bst: 600 })), seed: 1, capturedAt: 0 },
+    championSnapshot: null,
+    winsThisVisit: 0, bestStreak: 0, payoutGold: 0,
+    fightClubUnlocked: true, secretRevealed: true, storyClubDone: false,
+  };
+}
+
+const doc = window.document;
+const $ = (id) => doc.getElementById(id);
+const flushTimers = () => new Promise(r => setTimeout(r, 450));
+
+test('Daycare drop-off: parent is gone for good and you receive a carryable egg', () => {
+  setupStory();
+  const before = sm.team.length;
+  SM.enterDaycare();
+  const ov = $('story-daycare-overlay');
+  assert.ok(ov, 'daycare drop-off overlay renders');
+  const dropBtns = ov.querySelectorAll('[data-daycare-drop]');
+  assert.ok(dropBtns.length > 0, 'shows droppable mons');
+  const snorlaxId = sm.team[3].id;
+  const btn = Array.from(dropBtns).find(b => b.getAttribute('data-daycare-drop') === snorlaxId);
+  assert.ok(btn, 'a droppable mon has a drop button');
+  btn.click();
+  // Parent removed and NOT replaced by a returning partner — replaced by an egg.
+  assert.equal(sm.team.length, before, 'team size unchanged: parent out, egg in');
+  assert.equal(sm.daycare.eggEventDone, true, 'egg event marked done (one-time)');
+  const eggs = [...sm.team, ...sm.pcBox].filter(s => s && s.isEgg);
+  assert.equal(eggs.length, 1, 'exactly one egg slot exists');
+  assert.ok(eggs[0].eggSpecies, 'egg has a locked hatch species');
+  const snorlaxStillHere = [...sm.team, ...sm.pcBox].some(s => s && !s.isEgg && s.name === 'Snorlax');
+  assert.equal(snorlaxStillHere, false, 'the dropped-off Snorlax does NOT come back');
+});
+
+test('Daycare drop-off is one-time', () => {
+  // continues from previous test: eggEventDone is true
+  SM.enterDaycare();
+  // With the egg done and badges<6-secret already satisfied (fightClubUnlocked true),
+  // enterDaycare routes to the idle scene, not the drop-off picker.
+  assert.ok(!$('story-daycare-overlay'), 'no second drop-off picker once the egg event is done');
+});
+
+test('Egg does not hatch before Gym 7, hatches in place at Gym 7', () => {
+  setupStory();
+  // Put an egg directly in the party.
+  const egg = SM._makeEggSlot('Pikachu', 5);
+  sm.team.push(egg);
+  sm.badges = 6;
+  assert.equal(SM._hatchEligibleEggs().length, 0, 'no hatch before Gym 7');
+  assert.equal(sm.team[sm.team.length - 1].isEgg, true, 'still an egg at 6 badges');
+  sm.badges = 7;
+  const hatched = SM._hatchEligibleEggs();
+  assert.equal(hatched.length, 1, 'one egg hatched at Gym 7');
+  assert.equal(hatched[0], 'Pikachu', 'egg hatches into its locked species');
+  const slot = sm.team.find(s => s.id === egg.id);
+  assert.ok(slot && !slot.isEgg, 'the egg slot is now a real mon (isEgg cleared)');
+  assert.ok(slot.build, 'hatchling has a build');
+  assert.equal(slot.name, 'Pikachu', 'hatchling species matches');
+});
+
+test('Egg counts as a slot but not as a fighter; can be deposited to PC', () => {
+  setupStory();
+  const egg = SM._makeEggSlot('Eevee', 6);
+  sm.team.push(egg); // 6 fighters + 1 egg = 7 slots
+  assert.equal(SM._countFighters(), 6, 'egg is not counted as a fighter');
+  const before = sm.pcBox.length;
+  SM.pcDeposit(egg.id);
+  assert.equal(sm.pcBox.some(s => s.id === egg.id), true, 'egg can be sent to the PC');
+  assert.equal(sm.pcBox.length, before + 1, 'PC gained the egg');
+  assert.equal(sm.team.some(s => s.id === egg.id), false, 'egg left the party');
+});
+
+test('Fight Club requires a full stable of six fighters', () => {
+  setupStory();
+  sm.team = freshTeam(['Garchomp', 'Gengar', 'Lapras', 'Snorlax', 'Gardevoir']); // only 5
+  SM.enterPits();
+  assert.ok(!$('story-pits-overlay'), 'entry refused with fewer than six fighters');
+  setupStory(); // back to 6
+  SM.enterPits();
+  assert.ok($('story-pits-overlay'), 'entry allowed with six fighters');
+});
+
+test('Fight Club story win: +1 all stats on the whole team, gold, NO release, one-time', () => {
+  setupStory();
+  const goldBefore = sm.gold;
+  const teamSizeBefore = sm.team.length;
+  SM.enterPits();
+  const pov = $('story-pits-overlay');
+  assert.ok(pov, 'fight club overlay renders');
+  assert.equal(pov.querySelectorAll('[data-pits-pick]').length, 6, 'lists all six fighters');
+  const picks = [sm.team[0].id, sm.team[1].id, sm.team[2].id];
+  for (const id of picks) $('story-pits-overlay').querySelector(`[data-pits-pick="${id}"]`).click();
+  const start = $('story-pits-overlay').querySelector('#pits-start-btn');
+  assert.ok(start && !start.disabled, 'start enabled after 3 picks');
+  start.click();
+  assert.equal(sm.pits._inBattle, true, 'marked in-battle');
+  assert.equal(sm.pits._enemyRoster.length, 3, 'rolled 3 enemy fights');
+
+  for (let i = 0; i < 3; i++) SM.onBattleEnd(true, 'Fight Club win', '');
+  assert.equal(sm.pits._inBattle, false, 'in-battle cleared after 3 wins');
+  assert.ok(sm.gold > goldBefore, 'gold paid out');
+  assert.equal(sm.team.length, teamSizeBefore, 'NO mons released — you keep all six');
+  const allUp = sm.team.every(s => ['hp','atk','def','spa','spd','spe'].every(k => s.build.bonus[k] >= 1));
+  assert.ok(allUp, 'every team member +1 all stats');
+  assert.equal(sm.pits.storyClubDone, true, 'story club marked done');
+  assert.equal(SM._pitsStoryAvailable(), false, 'one-time: story club no longer available');
+});
+
+test('Fight Club forfeit kills all three fighters (you do not leave whole)', async () => {
+  setupStory();
+  const ids = [sm.team[0].id, sm.team[1].id, sm.team[2].id];
+  SM.enterPits();
+  for (const id of ids) $('story-pits-overlay').querySelector(`[data-pits-pick="${id}"]`).click();
+  const totalBefore = sm.team.length + sm.pcBox.length;
+  $('story-pits-overlay').querySelector('#pits-start-btn').click();
+  SM.onBattleEnd(false, 'Fight Club loss', '');
+  await flushTimers();
+  const dov = $('story-pits-defeat-overlay');
+  assert.ok(dov, 'defeat overlay renders');
+  const forfeit = dov.querySelector('#pits-defeat-forfeit');
+  assert.ok(forfeit, 'crawl-home button present');
+  forfeit.click();
+  assert.equal(sm.team.length + sm.pcBox.length, totalBefore - 3, 'all three fighters died');
+  const anyBracketLeft = [...sm.team, ...sm.pcBox].some(s => ids.includes(s.id));
+  assert.equal(anyBracketLeft, false, 'none of the three survive (team or PC)');
+  assert.equal(sm.pits._inBattle, false, 'club state cleared after forfeit');
+  assert.equal(sm.pits.storyClubDone, false, 'a loss does NOT consume the one-time club');
+});
+
+test('Fight Club retry relaunches the same fight without killing anyone', async () => {
+  setupStory();
+  const ids = [sm.team[0].id, sm.team[1].id, sm.team[2].id];
+  SM.enterPits();
+  for (const id of ids) $('story-pits-overlay').querySelector(`[data-pits-pick="${id}"]`).click();
+  $('story-pits-overlay').querySelector('#pits-start-btn').click();
+  SM.onBattleEnd(false, 'Fight Club loss', '');
+  await flushTimers();
+  const dov = $('story-pits-defeat-overlay');
+  const retry = dov.querySelector('#pits-defeat-retry');
+  assert.ok(retry, 'step-back-in button present');
+  retry.click();
+  assert.equal(sm.pits._inBattle, true, 'retry re-armed the in-battle flag');
+  assert.ok(sm.pits._activePickIds && sm.pits._activePickIds.length === 3, 'bracket picks preserved');
+  assert.equal(sm.pcBox.length, 0, 'no deaths on retry');
+});
+
+test('Endgame Fight Club: gold only, no +1, repeatable', () => {
+  setupStory();
+  // Post-Champion endgame: championSnapshot present, story club already done.
+  sm.pits.championSnapshot = { badges: 8, teamSummary: sm.team.map(t => ({ name: t.name, grade: 2, bst: 600 })), seed: 2, capturedAt: 0 };
+  sm.pits.storyClubDone = true;
+  assert.equal(SM._pitsIsEndgame(), true, 'endgame detected via championSnapshot');
+  const goldBefore = sm.gold;
+  // Capture the team's bonus baseline (should not change in endgame).
+  const bonusBefore = sm.team.map(s => ({ ...s.build.bonus }));
+  SM.enterPits();
+  assert.ok($('story-pits-overlay'), 'endgame club is open');
+  const picks = [sm.team[0].id, sm.team[1].id, sm.team[2].id];
+  for (const id of picks) $('story-pits-overlay').querySelector(`[data-pits-pick="${id}"]`).click();
+  $('story-pits-overlay').querySelector('#pits-start-btn').click();
+  for (let i = 0; i < 3; i++) SM.onBattleEnd(true, 'Fight Club win', '');
+  assert.ok(sm.gold > goldBefore, 'endgame win pays gold');
+  const noBuff = sm.team.every((s, i) => ['hp','atk','def','spa','spd','spe'].every(k => (s.build.bonus[k] | 0) === (bonusBefore[i][k] | 0)));
+  assert.ok(noBuff, 'endgame win grants NO permanent stat bonus');
+  assert.equal(SM._pitsIsEndgame(), true, 'endgame club stays open (repeatable)');
+});
+
+test('Daycare secret: going down the stairs unlocks the Fight Club', () => {
+  setupStory();
+  sm.daycare.eggEventDone = true;
+  sm.pits.fightClubUnlocked = false;
+  sm.pits.secretRevealed = false;
+  sm.badges = 6;
+  SM.enterDaycare();
+  let ov = $('story-daycare-secret');
+  assert.ok(ov, 'secret scene renders at 6 badges');
+  ov.querySelector('[data-scene-opt="0"]').click();        // "Tell me"
+  $('story-daycare-secret').querySelector('[data-scene-cont]').click(); // → That Night
+  $('story-daycare-secret').querySelector('[data-scene-opt="0"]').click(); // "Go down the stairs"
+  $('story-daycare-secret').querySelector('[data-scene-opt="0"]').click(); // "Step inside"
+  assert.equal(sm.pits.fightClubUnlocked, true, 'Fight Club unlocked after stepping inside');
+  assert.ok(!$('story-daycare-secret'), 'secret scene closed');
+});
+
+test('Daycare secret: walking away leaves it locked and re-offerable', () => {
+  setupStory();
+  sm.daycare.eggEventDone = true;
+  sm.pits.fightClubUnlocked = false;
+  sm.pits.secretRevealed = false;
+  sm.badges = 6;
+  SM.enterDaycare();
+  $('story-daycare-secret').querySelector('[data-scene-opt="0"]').click();        // "Tell me"
+  $('story-daycare-secret').querySelector('[data-scene-cont]').click();           // → That Night
+  $('story-daycare-secret').querySelector('[data-scene-opt="1"]').click();        // "Walk away"
+  assert.equal(sm.pits.fightClubUnlocked, false, 'walking away does NOT unlock');
+  assert.ok(!$('story-daycare-secret'), 'scene closed');
+  // Re-offerable: visiting again re-runs the secret.
+  SM.enterDaycare();
+  assert.ok($('story-daycare-secret'), 'secret is offered again on the next visit');
+});
