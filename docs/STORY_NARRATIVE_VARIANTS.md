@@ -1,5 +1,9 @@
 # Story Narrative Variants — Design Spec
 
+> **Anchor drift**: `battle.html:LINE` refs below were point-in-time. Resolve
+> via `node scripts/debug/symbol-index.mjs --lookup <symbol>` or browse
+> `agent-state/ANCHOR_INDEX.md`. Symbol names are the durable anchors.
+
 This is the canonical design for the **8-storyline system** layered over the existing
 68-row story timeline (`STORY_EVENTS_RAW`). Each new run rolls (or the player picks)
 one of 8 narrative variants. The variant doesn't change the battle pipeline — it

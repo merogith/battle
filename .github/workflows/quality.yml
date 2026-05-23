@@ -1,0 +1,56 @@
+name: Quality
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Refresh symbol index
+        run: node scripts/debug/symbol-index.mjs
+
+      - name: Data integrity validation
+        run: node scripts/debug/data-validator.mjs
+        continue-on-error: true
+
+      - name: Spec drift report
+        run: node scripts/debug/spec-drift.mjs
+        continue-on-error: true
+
+      - name: Run tests
+        run: npm test
+
+      - name: Move audit
+        run: npm run audit
+        continue-on-error: true
+
+      - name: Lint (in-scope files only — battle.html excluded)
+        run: npx eslint scripts/ tests/ online-pvp.js move-anim-map.js move-sfx-map.js online-config.example.js
+        continue-on-error: true
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-reports
+          path: |
+            tests/reports/
+            agent-state/ANCHOR_INDEX.md
+          retention-days: 14
