@@ -25899,7 +25899,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (Math.random() * 100 >= _sg(_secChance)) continue; // RNG failed
 
                     // Flinch (Inner Focus / Dynamax exemption checked in canMove)
-                    if (_sec.volatileStatus === 'flinch') defender.volatile.flinch = true;
+                    if (_sec.volatileStatus === 'flinch' && defender.volatile) defender.volatile.flinch = true;
                     // Confusion on defender
                     if (_sec.volatileStatus === 'confusion') _tryConfuse();
                     // Status condition on defender
@@ -25915,7 +25915,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             // Stench ability: adds 10% flinch chance to all damaging moves (any category, regardless of contact)
-            if (attacker.ability === "Stench" && move.cat !== "Status" && !defender.volatile.flinch && Math.random() < 0.1) {
+            if (attacker.ability === "Stench" && move.cat !== "Status" && defender.volatile && !defender.volatile.flinch && Math.random() < 0.1) {
                 defender.volatile.flinch = true;
             }
             // Locking moves (Outrage, Thrash, Petal Dance, etc.) confuse only the attacker after finishing — handled in locking move logic
@@ -26770,7 +26770,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 logMsg(`${mon.name}'s Leaf Guard prevents status in the sunlight!`, 'info'); return;
             }
             // Uproar prevents sleep for all mons on the field
-            if (status === "SLP" && (state.pActive.volatile.lockMove === "Uproar" || state.fActive.volatile.lockMove === "Uproar")) {
+            if (status === "SLP" && ((state.pActive && state.pActive.volatile && state.pActive.volatile.lockMove === "Uproar") || (state.fActive && state.fActive.volatile && state.fActive.volatile.lockMove === "Uproar"))) {
                 logMsg(`Uproar prevents sleep!`, 'info'); return;
             }
             if ((status === "PSN" || status === "TOX") && (mon.type1 === "Poison" || mon.type2 === "Poison" || mon.type1 === "Steel" || mon.type2 === "Steel")) { logMsg(`It doesn't affect ${mon.name}...`, 'info'); return; }
