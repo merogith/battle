@@ -7,12 +7,13 @@ All notable user-visible changes land here. Sessions append entries under
 
 ### Added — Battle EVs (training without the optimizer)
 
-Defeating a trainer's Pokémon now grants a small EV training reward to
-the player's team. The amount scales with how serious the foe was:
+Winning a trainer battle now grants a small, flat EV training reward to
+the player's team (per battle — not per defeated foe):
 
-* **Basic Trainer** mon defeated → **+1 EV**
-* **Gym Trainer / Elite Trainer** mon → **+2 EV**
-* **Gym Leader / Rival / Elite Four / Champion / Mystery Figure** mon → **+3 EV**
+* **Regular trainers** (Basic Trainer, Gym Trainer, Elite Trainer) →
+  **+4 EV** to each active mon, **+2** to each bench mon.
+* **Boss fights** (Gym Leader, Rival, Elite Four, Champion, Mystery
+  Figure) → **double**: **+8 EV** active, **+4** bench.
 * Wild Pokémon → unchanged (wild catches still get the existing 170 EV
   archetype head-start; defeated wilds don't drip into the team).
 * Crucible / Frontier / Mystery rerun battles → no EVs (the entry-point
@@ -20,24 +21,33 @@ the player's team. The amount scales with how serious the foe was:
   trivialize the cap).
 
 **Active vs bench:** mons that took a turn (lead + any switch-in) get
-the full pool. Bench mons get half. The tracking globals live on
-`window._battleActiveStoryIdxSet` and `window._battleDefeatedFoesCount`,
-populated by `startBattle`, the voluntary-switch path, and the
-forced-switch (faint-replacement) path.
+the full amount; everyone else gets half. The active-mon set lives on
+`window._battleActiveStoryIdxSet`, populated by `startBattle`, the
+voluntary-switch path, and the forced-switch (faint-replacement) path.
+(No per-foe faint counting — the flat-per-battle model dropped that
+fragile bookkeeping entirely.)
 
-**Stat distribution:** mirrors `_wildPickEVs` — the species' base-stat
-identity picks 2 stats (offensive: best-of-atk/spa + spe, defensive:
-hp + best-of-def/spd). 10% archetype-flip keeps surprises possible
-without trapping pure attackers into HP. Re-uses the existing
-`_pickBattleEVStats` helper so the same logic is used for player gain
-and the post-Gym-4 enemy nudge.
+**Stat distribution:** deterministic per species so an active mon's EVs
+*converge* on the same two stats every fight instead of scattering —
+the story RNG only breaks exact atk==spa / def==spd ties (seeded runs
+still reproduce). The two stats follow base-stat identity:
 
-**Caps:** each grant respects 252 per stat and 510 total. Once a mon
-is fully trained, further battles silently no-op.
+* Offensive mons → best of Atk/SpA + Speed (sweeper).
+* **Bulky high-attack mons → HP + their best attacking stat** — so a
+  Snorlax or Tyranitar trains offense, not pure walling. (This was the
+  one real hole in the first cut: bulky attackers were flagged
+  "defensive" and got HP/SpD with zero Attack.)
+* Pure walls → HP + best defense (Blissey → HP/SpD, Shuckle → HP/Def).
 
-By the time a player clears the league, an active lead would have
-~340 EVs (66% of cap) from natural battling — comparable to "polished
-but not perfect." The EV Trainer is now the icing, not the cake.
+The same `_pickBattleEVStats` helper drives both the player gain and the
+post-Gym-4 enemy nudge.
+
+**Caps:** each grant respects 252 per stat and 510 total. Once a mon is
+fully trained, further battles silently no-op.
+
+By the time a player clears the league, an always-active lead earns
+~200 EV (≈40% of cap) from natural battling — noticeable progress, but
+the EV Trainer still matters for the final polish.
 
 ### Changed — EV Trainer is now additive (fill-to-target)
 
@@ -76,15 +86,14 @@ is **not** touched — early game stays gentle.
 ### Files touched
 
 * `battle.html`:
-  * `_pickBattleEVStats` helper next to `_wildPickEVs`
-  * `EV_GAIN_TABLE`, `_classifyTrainerEvent`, `_grantBattleEVs` in
-    the StoryMode IIFE
+  * `_pickBattleEVStats` helper next to `_wildPickEVs` (deterministic
+    spread + bulky-attacker handling, seeded-RNG tiebreak only)
+  * `EV_GAIN_ACTIVE`, `_classifyTrainerEvent`, `_grantBattleEVs` in
+    the StoryMode IIFE (flat per-battle, REGULAR/BOSS tiers)
   * `onBattleEnd` hook (post-coin grant) — fires the EV grant and
     surfaces a `🏋️ Training: …` toast
   * `startBattle` / voluntary switch / `selectPartyMember` forced
     switch → populate `window._battleActiveStoryIdxSet`
-  * Foe-faint paths in `checkFaints` (simultaneous, single, chain-KO
-    loop) → increment `window._battleDefeatedFoesCount`
   * `_evTrainerFillToTarget` + `_evTrainerChargeScaled`
   * `evTrainerApplyPreset` / `evTrainerApplyPresetWithVitamin` rewritten
     to additive fill
@@ -99,14 +108,16 @@ is **not** touched — early game stays gentle.
 
 ### Tests
 
-* All 533 existing tests still pass.
+* All 546 existing tests still pass.
 * Story walkthrough (`tests/story-walkthrough.mjs`) clears through to
   the post-HoF Mystery Figure with the new EV grants firing on every
   trainer win.
-* In-process smoke test verified: +1 active / +0.5 bench from Basic
-  Trainer, +9 active per mon from a 3v3 Gym Leader fight, EV Reset
-  Charm wipes cleanly and decrements inventory, EV Trainer fill-to-
-  target preserves prior training.
+* In-process smoke test verified: +4 active / +2 bench from a regular
+  trainer, +8 active from a boss fight, Snorlax (bulky attacker) trains
+  HP+Atk while Blissey (pure wall) trains HP+SpD, an always-active
+  Garchomp converges on exactly Atk+Spe over 10 fights (no scatter),
+  EV Reset Charm wipes cleanly, EV Trainer fill-to-target preserves
+  prior training.
 
 ## Unreleased — Evolution flow rebuild: Stone Emporium, Bill/Granny intros, intro-once gates 2026-05-22 (`claude/gracious-mayer-H31zi`)
 

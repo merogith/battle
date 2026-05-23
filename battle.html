@@ -16022,13 +16022,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { state.foeParty.forEach(window.applyFoeDifficultyScaling); } catch (e) { console.warn('[startBattle] applyFoeDifficultyScaling failed:', e); }
             }
             state.pActive = state.playerParty[0];
-            // Reset story battle-EV tracking. The story IIFE reads these from
-            // window in onBattleEnd to credit the active mons and count the
-            // defeated foes. Always init even for non-story modes so a stale
-            // value from a previous story battle can't bleed into the next.
+            // Reset story battle-EV tracking. onBattleEnd reads this set from
+            // window to credit the mons that actually battled. Always init —
+            // even for non-story modes — so a stale set from a previous story
+            // battle can't bleed into the next.
             try {
                 window._battleActiveStoryIdxSet = new Set([0]);
-                window._battleDefeatedFoesCount = 0;
             } catch (e) {}
             // Field must match this battle before aiBestSwitch — aiEstimateDmg(getCurrentWeather) must not see the previous battle's weather.
             state.weather = null; state.weatherTurns = 0;
@@ -23942,7 +23941,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 clearAllGimmickIntent();
                 AudioSystem.playFaintCry(state.fActive.name);
                 logMsg(`${state.fActive.name} fainted!`, 'heal');
-                try { window._battleDefeatedFoesCount = (window._battleDefeatedFoesCount | 0) + 1; } catch (e) {}
                 logMsg(`${state.pActive.name} fainted!`, 'dmg');
                 if (state.fActive.dynamaxed) deactivateDynamax(state.fActive, false);
                 if (state.pActive.dynamaxed) deactivateDynamax(state.pActive, true);
@@ -24030,7 +24028,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     while (state.fActive.currentHp <= 0 && state.foeParty.some(m => m.currentHp > 0 && m !== state.fActive)) {
                         AudioSystem.playFaintCry(state.fActive.name);
                         logMsg(`${state.fActive.name} fainted!`, 'heal');
-                        try { window._battleDefeatedFoesCount = (window._battleDefeatedFoesCount | 0) + 1; } catch (e) {}
                         clearPermanentWeatherIfHolder(state.fActive);
                         if (state.fActive.dynamaxed) deactivateDynamax(state.fActive, false);
                         state.fActive.dynamaxed = false; state.fActive.dynamaxTurns = 0;
@@ -24067,7 +24064,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 clearGimmickIntent(false);
                 AudioSystem.playFaintCry(state.fActive.name);
                 logMsg(`${state.fActive.name} fainted!`, 'heal');
-                try { window._battleDefeatedFoesCount = (window._battleDefeatedFoesCount | 0) + 1; } catch (e) {}
                 if (state.fActive.megaEvolved && state.fActive._baseName) logMsg(`${state.fActive.name} reverted.`, 'info');
                 // Reaper's Toll: foe's survivors heal 10% maxHp, one random survivor loses -1 SpD
                 if (state._reapersTollActive) {
@@ -40555,17 +40551,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const coinsAwarded = Math.floor((coins || 0) * coinMult);
                 sm.gold += coinsAwarded;
                 const en = String(event || '');
-                // Battle EV training — small per-defeated-foe EV gain to the
-                // team (active mons get the full pool, bench gets half). The
-                // tracking globals are populated by startBattle / switch /
-                // foe-faint hooks in battle.html's script-top scope; if a
-                // path skipped them, fall back to "lead mon only, 1 foe".
+                // Battle EV training — flat per-battle EV gain to the team
+                // (active mons get the full amount, bench gets half; boss
+                // fights pay double). The active-mon set is populated by
+                // startBattle / switch / forced-switch hooks in battle.html's
+                // script-top scope; if a path skipped it, fall back to "lead
+                // mon only".
                 try {
                     const activeIdxSet = (window._battleActiveStoryIdxSet instanceof Set)
                         ? window._battleActiveStoryIdxSet
                         : new Set([0]);
-                    const defeatedCount = (window._battleDefeatedFoesCount | 0) || 1;
-                    const evReport = _grantBattleEVs(en, sm.team, activeIdxSet, defeatedCount);
+                    const evReport = _grantBattleEVs(en, sm.team, activeIdxSet);
                     if (evReport && evReport.length) {
                         const _STAT_SHORT = { hp:'HP', atk:'Atk', def:'Def', spa:'SpA', spd:'SpD', spe:'Spe' };
                         const lines = evReport.map(r => {
@@ -42296,59 +42292,72 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // the full yield, bench mons get half (Exp. Share flavor). The EV
         // Trainer in City 4+ still polishes spreads — pre-optimizer training
         // is now visible, additive progress instead of "zero until 5,000G".
-        const EV_GAIN_TABLE = Object.freeze({
-            BASIC:  1,   // Basic Trainer (route fodder)
-            GYM_TR: 2,   // Gym Trainer 1/2, Elite Trainer
-            LEADER: 3,   // Gym Leader, Rival, E1-E4, Champion, Mystery Figure
+        // EV granted to an ACTIVE mon per trainer win (flat per battle, not
+        // per foe — simpler and not dependent on faint-path bookkeeping).
+        // Bench mons get half (rounded down). Boss fights pay double.
+        const EV_GAIN_ACTIVE = Object.freeze({
+            REGULAR: 4,  // Basic Trainer, Gym Trainer 1/2, Elite Trainer
+            BOSS:    8,  // Gym Leader, Rival, E1-E4, Champion, Mystery Figure
         });
         function _classifyTrainerEvent(eventName) {
             const en = String(eventName || '');
-            if (/^Gym Leader\s*\d$/.test(en)) return 'LEADER';
-            if (/^(E[1-4]|Champion|Rival|Mystery Figure)$/.test(en)) return 'LEADER';
-            if (/^Gym Trainer\s*\d?$/.test(en)) return 'GYM_TR';
-            if (en === 'Elite Trainer') return 'GYM_TR';
-            if (en === 'Basic Trainer') return 'BASIC';
+            if (/^Gym Leader\s*\d$/.test(en)) return 'BOSS';
+            if (/^(E[1-4]|Champion|Rival|Mystery Figure)$/.test(en)) return 'BOSS';
+            if (/^Gym Trainer\s*\d?$/.test(en)) return 'REGULAR';
+            if (en === 'Elite Trainer') return 'REGULAR';
+            if (en === 'Basic Trainer') return 'REGULAR';
             return null;
         }
-        // Pick 2 stats to receive battle-EV training based on offensive vs
-        // defensive base-stat identity. Mirrors _wildPickEVs but returns the
-        // stat *keys* (not preset amounts) so the grant function can drip
-        // small EV amounts into them. 10% archetype-flip keeps surprises
-        // possible without trapping pure attackers into HP/Def.
+        // Pick the 2 stats to receive battle-EV training, based on the
+        // species' base-stat identity. Returns stat *keys* (not amounts).
+        //
+        //   Offensive mons          → [best of atk/spa, spe]   (sweeper)
+        //   Bulky high-attack mons  → [hp, best attacking stat] (bulky attacker —
+        //                              e.g. Snorlax trains Atk, not pure walling)
+        //   Pure walls              → [hp, best defense stat]   (Blissey, Shuckle)
+        //
+        // Deterministic for a given species (so an active mon's EVs converge
+        // on the same 2 stats every fight instead of scattering); the story
+        // RNG only breaks exact atk==spa / def==spd ties, so seeded runs
+        // still reproduce. No more random "archetype flip" — training the
+        // highest stats was always the intent.
         function _pickBattleEVStats(base) {
             if (!base) return ['atk', 'spe'];
             const atk = base.atk | 0, spa = base.spa | 0, spe = base.spe | 0;
             const hp  = base.hp  | 0, def = base.def | 0, spd = base.spd | 0;
             const offense = atk + spa + spe;
             const defense = hp + def + spd;
-            const archetypeDefensive = (defense > offense + 60 && atk + spa < 180);
-            const flipped = Math.random() < 0.10;
-            const goDefensive = archetypeDefensive !== flipped;
-            if (goDefensive) {
-                return ['hp', def >= spd ? 'def' : 'spd'];
+            const rngFn = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            const tie = rngFn() < 0.5;
+            const bestAtkStat = (atk > spa) ? 'atk' : (spa > atk) ? 'spa' : (tie ? 'atk' : 'spa');
+            const bestDefStat = (def > spd) ? 'def' : (spd > def) ? 'spd' : (tie ? 'def' : 'spd');
+            const bestAtkVal = Math.max(atk, spa);
+            if (defense > offense + 60 && atk + spa < 180) {
+                // Defensive shell. If it still hits hard, train HP + offense
+                // (bulky attacker); otherwise HP + best defense (pure wall).
+                return (bestAtkVal >= 100) ? ['hp', bestAtkStat] : ['hp', bestDefStat];
             }
-            return [atk >= spa ? 'atk' : 'spa', 'spe'];
+            return [bestAtkStat, 'spe'];
         }
         // Grant battle-training EVs to the player's team after a trainer win.
         // Returns a report array describing what each mon gained, or null if
         // no EVs were granted. Crucible / Frontier / Mystery battles bypass
         // (crucibleBattleSource is set). Wild Pokémon route through a
         // separate catch-EV system and never call this.
-        function _grantBattleEVs(eventName, team, activeIdxSet, defeatedCount) {
+        function _grantBattleEVs(eventName, team, activeIdxSet) {
             if (!sm || sm.crucibleBattleSource) return null;
             if (!Array.isArray(team) || team.length === 0) return null;
             const cls = _classifyTrainerEvent(eventName);
             if (!cls) return null;
-            const perFoe = EV_GAIN_TABLE[cls] | 0;
-            const foes = Math.max(1, defeatedCount | 0);
-            const fullPool = perFoe * foes;
-            if (fullPool <= 0) return null;
+            const activeAmt = EV_GAIN_ACTIVE[cls] | 0;
+            if (activeAmt <= 0) return null;
+            const benchAmt = Math.floor(activeAmt / 2);
             const report = [];
             for (let i = 0; i < team.length; i++) {
                 const mon = team[i];
                 if (!mon || !mon.build) continue;
                 const isActive = activeIdxSet && activeIdxSet.has(i);
-                const grant = isActive ? fullPool : Math.floor(fullPool / 2);
+                const grant = isActive ? activeAmt : benchAmt;
                 if (grant <= 0) continue;
                 if (!mon.build.evs || typeof mon.build.evs !== 'object') {
                     mon.build.evs = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
@@ -42356,7 +42365,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const evs = mon.build.evs;
                 let curTotal = (evs.hp|0)+(evs.atk|0)+(evs.def|0)+(evs.spa|0)+(evs.spd|0)+(evs.spe|0);
                 if (curTotal >= 510) continue;
-                const base = (typeof baseStats !== 'undefined') ? (baseStats[mon.name] || null) : null;
+                // Robust base lookup — mirror buildPokemon's Farfetch'd alias.
+                const lookupName = mon.name === "Farfetch'd" ? 'Farfetchd' : mon.name;
+                const base = (typeof baseStats !== 'undefined') ? (baseStats[mon.name] || baseStats[lookupName] || null) : null;
                 const targets = _pickBattleEVStats(base);
                 let remaining = Math.min(grant, 510 - curTotal);
                 const gained = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
