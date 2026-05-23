@@ -3,6 +3,104 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## Unreleased — Rival overhaul: a counter-team that's built around YOU 2026-05-23 (`claude/keen-euler-lfmeB`)
+
+### Changed — The Rival now plays like a GB-era rival, not an Elite Trainer with themed aces
+
+The Rival's team is now fundamentally a **live counter** to your six, with
+signature Pokémon demoted to occasional flavor cameos rather than the team's
+backbone. A new per-phase counter plan (`_rivalCounterPlan`) drives the roll:
+
+* **Intro (starter duel):** the rival's lone Pokémon mirrors the GB starter
+  triangle — pick Bulbasaur and the rival leads Fire, pick Charmander and it
+  leads Water, pick Squirtle and it leads Grass. Non-classical starters fall
+  back to the highest super-effective type vs your starter.
+* **Early / Mid / League:** 1 / 2 / 3 slots are now *forced* raw counter-picks
+  that never roll a signature; the remaining slots roll a signature only on a
+  reduced probability (0.45 / 0.40 / 0.35), otherwise they too become
+  type-counter picks. So at the League rival you face ~3 hard counters, ~1–2
+  signature cameos, and ~1–2 type-weighted picks instead of five fixed aces.
+* **Punchier counters:** the per-pick type-weight floor dropped 0.35 → 0.10
+  (weak types stop nudging in), the League rival decays a used counter-type
+  harder (÷15 vs ÷10) so a single answer doesn't repeat across all six, and the
+  anti-monotony cap rose 2 → 3 so a dominant counter (vs a monotype party) can
+  land on three mons and read as deliberate rather than coincidence.
+
+Measured behavior: vs a Fire monotype party the League rival now fields ~63%
+Water/Ground/Rock mons; vs a Water party its Grass/Electric coverage jumps to
+~41% (and falls to ~12% vs a Fire party) — the picks track *your* typing.
+
+### Verified — Signature-Pokémon logic audited, no mutation bug
+
+Confirmed the signature pool (`S`) is a fresh `.slice()` copy, so the
+`S.splice()` consumption during a roll can never corrupt the source
+`trainer.sigs` array across rematches; sigs are de-duplicated within a team and
+never appear twice. Covered by the new test suite below.
+
+### Added — Rival identity: pre-battle banner, darker league dialogue, aftermath voice
+
+* **Phase banner.** Rival battles now open with a phase tagline above the intro
+  quote — *Starter Duel · First Rematch · On the Way Up · Title Match*.
+* **Shadow dialogue.** At the title match, if you've lost ≥2 prior rival fights
+  the league rival's pre-battle line turns cold and Silver-toned.
+* **Aftermath voice.** A new standing-aware post-battle line
+  (`getRivalAftermathLine`) plays in the victory overlay when you win and in the
+  concede flow when you lose — grudging respect, escalating taunts on a loss
+  streak, and a Champion concession/claim at the league.
+
+### Added — Persistent rival journal (Pokémon Center → "Rivalry" tab)
+
+Every rival encounter is now recorded to `sm.rivalEncounterLog` (phase, win/loss,
+badge count, and a snapshot of the team the rival brought). A new third tab in
+the Pokémon Center shows your head-to-head standing and one card per past fight,
+the rival's team rendered as sprite chips — a GB-style pause-screen memory that
+makes the rivalry feel persistent and personal. Read-only; persists via `save()`.
+
+### Added — Phase-aware "Next: Rival" city chip + passive rival cameo
+
+* The city tip rail's "Next:" chip now flags an upcoming rival with 🏁 and a
+  phase tease (*starter duel at the gate / tracked you down / been training hard
+  / title rematch*).
+* Between rival fights, the run's rival makes a passive cameo in two hub cities
+  (5 and 8): when only the flavor City Guide would appear, the rival walks the
+  same town with an ambient line. Pure presence — no battle, no actions, and the
+  Professor's gameplay slot is never displaced.
+
+### Verified — Crucible rival rematch routes through the same pipeline
+
+The Crucible "Rival Rematch" sets the league rival row and goes through the same
+`rollTrainerTeam('Rival', …)` path, so the counter rework, banner, dialogue, and
+aftermath all apply to it automatically — no separate code path.
+
+### Changed — Faster team rolls: hoisted the per-call grade-override Sets
+
+`getMonGrade` allocated two override `Set`s on every call; since a single team
+roll calls it for all ~1,400 species, those Sets are now module constants
+(`_GRADE1_OVERRIDE` / `_GRADE2_OVERRIDE`) instead of per-call garbage.
+
+### Tests
+
+`tests/suites/rival-generation.test.js` grew to 11 tests covering the per-phase
+counter plan, starter-triangle mapping, party-responsive counter dominance,
+species dedup, signature cameo rate, the `trainer.sigs`-not-mutated invariant,
+phase taglines, the league shadow branch, the standing-aware aftermath voice,
+and journal logging + render. A test-only `__rivalTest` handle exposes the
+inner-scope rival functions to the jsdom harness (inert in normal play). Full
+suite (`npm test`, 544 active) and the headless story walkthrough stay green.
+
+### Scoped out (intentionally)
+
+* **Distinct rival BGM** — there is no per-event battle-music selection in the
+  engine today (battles share the field BGM), so there was no differentiation
+  point to hook; adding a dead track-id stub would be a half-feature.
+* **Text-only "rival was seen in town" mentions** — the passive cameo above
+  delivers the same off-screen-presence beat more vividly, so the redundant
+  text mentions were dropped.
+* **Grade-pool build cache** — the team-roll pool build was left uncached: a
+  keyed cache adds a stale-pool failure mode on the exact path this overhaul
+  reworked, and the Set hoist above already removes that loop's per-call
+  allocation churn.
+
 ## Unreleased — Per-battle EV training + EV Trainer fill-to-target 2026-05-22 (`claude/laughing-planck-9DK9U`)
 
 ### Added — Battle EVs (training without the optimizer)
