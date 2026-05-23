@@ -269,3 +269,42 @@ test('B10: aftermath line is standing-aware (win, rival-champ loss, loss streak)
     assert.ok(typeof l === 'string' && l.length > 0, 'every aftermath line is a non-empty string');
   }
 });
+
+test('D1: rival journal logs each encounter and renders without throwing', async () => {
+  const eng = await setup();
+  const E = eng.window.__rivalTest;
+  const sm = E.sm;
+  sm.active = false;
+  sm.rivalEncounterLog = [];
+  sm.rivalConsecutiveWins = 0;
+  sm.rivalConsecutiveLosses = 0;
+  sm.rivalChampionClaimed = false;
+  sm.badges = 2;
+
+  // Player wins the early rival (records the rival's team snapshot we pass in).
+  E.setRivalStanding('player', E.STORY_RIVAL_ROW_EARLY, ['Gengar', 'Alakazam', 'Crobat']);
+  // Player concedes the league rival (rival wins, claims Champion).
+  sm.badges = 8;
+  E.setRivalStanding('rival', E.STORY_RIVAL_ROW_LEAGUE, ['Tyranitar', 'Gyarados', 'Snorlax', 'Weavile', 'Magnezone', 'Feraligatr']);
+
+  assert.equal(sm.rivalEncounterLog.length, 2, 'two encounters logged');
+  const [first, second] = sm.rivalEncounterLog;
+  assert.equal(first.won, true);
+  assert.equal(first.phase, 2);
+  assert.deepEqual(first.team, ['Gengar', 'Alakazam', 'Crobat']);
+  assert.equal(first.badges, 2);
+  assert.equal(second.won, false);
+  assert.equal(second.phase, 4);
+  assert.equal(second.team.length, 6);
+  assert.equal(sm.rivalChampionClaimed, true, 'rival claimed the Champion title on the league concede');
+
+  // A 'none' result must not append a log entry.
+  E.setRivalStanding('none', E.STORY_RIVAL_ROW_MID, ['Pikachu']);
+  assert.equal(sm.rivalEncounterLog.length, 2, "a 'none' standing logs nothing");
+
+  // The journal renderer produces HTML referencing the record and a logged species.
+  const html = E._pcRenderRivalJournalTab();
+  assert.ok(typeof html === 'string' && html.length > 0, 'journal renders a non-empty string');
+  assert.ok(/Gengar/.test(html), 'journal HTML lists a logged rival species');
+  assert.ok(/WON|LOST/.test(html), 'journal HTML shows win/loss badges');
+});

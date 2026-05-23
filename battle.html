@@ -8015,6 +8015,7 @@
             <div style="display:flex;gap:0;background:rgba(10,10,14,0.85);border-bottom:1px solid #333;flex-shrink:0;">
                 <button type="button" id="story-pc-tab-storage-btn" onclick="window.StoryMode.pcSwitchTab('storage')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid #4caf50;color:#4caf50;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Deposit, withdraw, and release Pokémon"><img src="icons/story/story_party.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:auto;flex-shrink:0;"> PC Storage</button>
                 <button type="button" id="story-pc-tab-underground-btn" onclick="window.StoryMode.pcSwitchTab('underground')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid transparent;color:#888;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Sell Pokémon for gold"><img src="icons/story/story_mystery.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:auto;flex-shrink:0;filter:hue-rotate(-30deg) saturate(1.5) brightness(0.8);"> The Underground</button>
+                <button type="button" id="story-pc-tab-journal-btn" onclick="window.StoryMode.pcSwitchTab('journal')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid transparent;color:#888;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Your rivalry — past encounters, their teams, win/loss record"><img src="icons/story/story_route.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:auto;flex-shrink:0;"> Rivalry</button>
             </div>
             <div id="story-pc-body" style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);"></div>
             <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
@@ -30746,6 +30747,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    postHofMysteryClimaxDone: false,
                    rivalConsecutiveWins: 0,
                    rivalConsecutiveLosses: 0,
+                   rivalEncounterLog: [],
                    version:SAVE_VER };
 
         function normalizeRivalStandingState() {
@@ -30755,9 +30757,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.rivalChampionClaimed = sm.rivalChampionClaimed === true;
             sm.rivalConsecutiveWins = Math.max(0, sm.rivalConsecutiveWins | 0);
             sm.rivalConsecutiveLosses = Math.max(0, sm.rivalConsecutiveLosses | 0);
+            if (!Array.isArray(sm.rivalEncounterLog)) sm.rivalEncounterLog = [];
         }
 
-        function setRivalStanding(winner, storyRowIdx) {
+        // `rivalTeamNames` (optional): species names the rival fielded this fight,
+        // appended to the read-only rival journal (Pokémon Center → Rivalry tab).
+        function setRivalStanding(winner, storyRowIdx, rivalTeamNames) {
             const w = winner === 'rival' ? 'rival' : winner === 'player' ? 'player' : 'none';
             sm.rivalLastWinner = w;
             sm.rivalStanding = w === 'none' ? 'undecided' : w;
@@ -30770,6 +30775,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.rivalConsecutiveLosses = (sm.rivalConsecutiveLosses | 0) + 1;
                 sm.rivalConsecutiveWins = 0;
             }
+            if (w !== 'none') {
+                try {
+                    if (!Array.isArray(sm.rivalEncounterLog)) sm.rivalEncounterLog = [];
+                    const names = Array.isArray(rivalTeamNames) ? rivalTeamNames.filter(Boolean) : [];
+                    sm.rivalEncounterLog.push({
+                        rowIdx: storyRowIdx | 0,
+                        phase: getRivalEncounterPhase(storyRowIdx),
+                        won: w === 'player',
+                        team: names,
+                        badges: (sm.badges | 0),
+                        date: Date.now(),
+                    });
+                    // Defensive cap — 4 canonical rival rows + the odd Crucible rematch.
+                    if (sm.rivalEncounterLog.length > 30) sm.rivalEncounterLog = sm.rivalEncounterLog.slice(-30);
+                } catch (e) {}
+            }
+        }
+        /** Species names of the rival's team this fight, for the journal snapshot. */
+        function _rivalTeamSnapshotNames() {
+            try {
+                const fp = (typeof state !== 'undefined' && state.foeParty) ? state.foeParty : [];
+                return fp.map((m) => m && (m._baseName || m.name)).filter(Boolean);
+            } catch (e) { return []; }
         }
 
         function normalizeStoryRivalLock() {
@@ -31771,6 +31799,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 pickRivalSecondaryIntroLine: (...a) => pickRivalSecondaryIntroLine(...a),
                 getRivalAftermathLine: (...a) => getRivalAftermathLine(...a),
                 rivalPhaseTagline: (...a) => rivalPhaseTagline(...a),
+                setRivalStanding: (...a) => setRivalStanding(...a),
+                _pcRenderRivalJournalTab: (...a) => _pcRenderRivalJournalTab(...a),
                 getMonGrade: (...a) => getMonGrade(...a),
                 getBST: (...a) => getBST(...a),
                 STORY_RIVAL_ROW_INTRO, STORY_RIVAL_ROW_EARLY, STORY_RIVAL_ROW_MID, STORY_RIVAL_ROW_LEAGUE,
@@ -36176,7 +36206,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let nextLabel = nxEvent;
                 const gm = nxEvent.match(/^Gym Leader ([1-8])$/);
                 if (gm) nextLabel = `Gym ${gm[1]}` + (trAssign ? ` — ${trAssign}` : '');
-                else if (nxEvent === 'Rival') nextLabel = trAssign ? `Rival — ${trAssign}` : 'Rival';
+                else if (nxEvent === 'Rival') {
+                    const _rp = getRivalEncounterPhase(nxId);
+                    const _rivalTease = { 0: 'starter duel at the gate', 2: 'tracked you down', 3: 'been training hard', 4: 'title rematch — Hall of Fame' };
+                    const _tease = _rivalTease[_rp];
+                    nextLabel = `🏁 ${trAssign || 'Rival'}` + (_tease ? ` — ${_tease}` : ' — rival waits ahead');
+                }
                 else if (/^E[1-4]$/.test(nxEvent)) nextLabel = (trAssign ? `Elite ${nxEvent.slice(1)} — ${trAssign}` : `Elite ${nxEvent.slice(1)}`);
                 else if (nxEvent === 'Champion') nextLabel = trAssign ? `Champion — ${trAssign}` : 'Champion';
                 else if (nxEvent === 'Mystery Figure') nextLabel = 'Mystery Figure (???)';
@@ -38388,7 +38423,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Roaming sub-legendary trigger — queues a one-shot encounter on the
                 // route from City 8 to the League city after the Gym 8 victory (first clear only).
                 try { _storyQueueRoamingFromVictory(en); } catch (e) {}
-                if (en === 'Rival') setRivalStanding('player', idx);
+                if (en === 'Rival') setRivalStanding('player', idx, _rivalTeamSnapshotNames());
                 const isMilestoneVictory = isGymBadge || /^(E1|E2|E3|E4|Champion|Rival)$/.test(en);
                 // Unlock player gimmicks in fixed order — first unlock at
                 // Gym 5 (same gym that drops the Wishing Piece voucher) so
@@ -38527,7 +38562,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             const rowIdx = ev[0] | 0;
-            setRivalStanding('rival', rowIdx);
+            setRivalStanding('rival', rowIdx, _rivalTeamSnapshotNames());
             sm.gold = 0;
             sm.currentEnemyLock = null;
             sm.storyRetryInventorySnapshot = null;
@@ -38806,29 +38841,93 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                   + _ballChip('sprites/pokesprite/balls/ultra.png',  sm.balls.ultra|0,  'Ultra Ball')
                                   + _ballChip('sprites/pokesprite/balls/master.png', sm.balls.master|0, 'Master Ball');
             }
-            const storageBtn = document.getElementById('story-pc-tab-storage-btn');
-            const undergroundBtn = document.getElementById('story-pc-tab-underground-btn');
-            if (storageBtn && undergroundBtn) {
-                if (_pcCurrentTab === 'storage') {
-                    storageBtn.style.color = '#4caf50';
-                    storageBtn.style.borderBottomColor = '#4caf50';
-                    undergroundBtn.style.color = '#888';
-                    undergroundBtn.style.borderBottomColor = 'transparent';
-                } else {
-                    storageBtn.style.color = '#888';
-                    storageBtn.style.borderBottomColor = 'transparent';
-                    undergroundBtn.style.color = '#ff5252';
-                    undergroundBtn.style.borderBottomColor = '#ff5252';
-                }
+            const _tabBtns = {
+                storage:     { el: document.getElementById('story-pc-tab-storage-btn'),     active: '#4caf50' },
+                underground: { el: document.getElementById('story-pc-tab-underground-btn'), active: '#ff5252' },
+                journal:     { el: document.getElementById('story-pc-tab-journal-btn'),     active: '#ffb74d' },
+            };
+            for (const key of Object.keys(_tabBtns)) {
+                const { el, active } = _tabBtns[key];
+                if (!el) continue;
+                const on = _pcCurrentTab === key;
+                el.style.color = on ? active : '#888';
+                el.style.borderBottomColor = on ? active : 'transparent';
             }
             const body = document.getElementById('story-pc-body');
             if (!body) return;
             if (_pcCurrentTab === 'storage') body.innerHTML = _pcRenderStorageTab();
+            else if (_pcCurrentTab === 'journal') body.innerHTML = _pcRenderRivalJournalTab();
             else body.innerHTML = _pcRenderUndergroundTab();
         }
         function pcSwitchTab(tab) {
-            _pcCurrentTab = (tab === 'underground') ? 'underground' : 'storage';
+            _pcCurrentTab = (tab === 'underground' || tab === 'journal') ? tab : 'storage';
             _pcRefresh();
+        }
+        /** Display name of the run's rival, from the locked trainer assignment. */
+        function _rivalDisplayName() {
+            try {
+                for (const ev of STORY_EVENTS_RAW) {
+                    if (ev[1] === 'Battle' && ev[2] === 'Rival') {
+                        const nm = sm.trainerAssignments && sm.trainerAssignments[ev[0]];
+                        if (nm) return nm;
+                    }
+                }
+            } catch (e) {}
+            return 'your rival';
+        }
+        // Read-only rivalry log: one card per past rival encounter, most recent first.
+        // Each card shows the phase tagline, the player's badge count at the time, a
+        // WON/LOST badge, and the rival's team as sprite chips. Mirrors the GB
+        // pause-screen trainer memory — makes the rivalry feel persistent and personal.
+        function _pcRenderRivalJournalTab() {
+            const log = Array.isArray(sm.rivalEncounterLog) ? sm.rivalEncounterLog : [];
+            const rivalName = _rivalDisplayName();
+            if (!log.length) {
+                return `<div style="text-align:center;color:#888;padding:34px 16px;font-size:13px;line-height:1.7;">
+                    <div style="font-size:34px;margin-bottom:10px;">🏁</div>
+                    <strong style="color:#ffb74d;">No rivalry on record yet.</strong><br>
+                    Every time you face ${_esc(rivalName)} this page fills in — the team they brought, the stage of the journey, and who walked away on top.
+                </div>`;
+            }
+            const wins = log.filter((e) => e && e.won).length;
+            const losses = log.length - wins;
+            const standing = wins > losses ? `You lead ${wins}–${losses}`
+                : losses > wins ? `${_esc(rivalName)} leads ${losses}–${wins}`
+                : `Dead even, ${wins}–${losses}`;
+            const champ = sm.rivalChampionClaimed ? ` · <span style="color:#ff5252;">${_esc(rivalName)} holds the crown</span>` : '';
+            const _spr = (name) => {
+                try { return (typeof getSprite === 'function') ? (getSprite(name, false) || '') : ''; } catch (e) { return ''; }
+            };
+            let html = `<div style="margin-bottom:12px;padding:8px 10px;background:rgba(255,152,0,0.08);border:1px solid #5a4a2a;font-size:12px;color:#ffd9a0;line-height:1.5;">
+                🏁 <strong>${_esc(rivalName)}</strong> — ${standing}${champ}
+            </div>`;
+            for (const e of log.slice().reverse()) {
+                if (!e) continue;
+                const tagline = rivalPhaseTagline(e.phase);
+                const badge = e.won
+                    ? '<span style="font-size:10px;font-weight:bold;color:#111;background:#81c784;padding:2px 7px;letter-spacing:0.05em;">WON</span>'
+                    : '<span style="font-size:10px;font-weight:bold;color:#fff;background:#e57373;padding:2px 7px;letter-spacing:0.05em;">LOST</span>';
+                const team = Array.isArray(e.team) ? e.team : [];
+                const chips = team.length
+                    ? team.map((n) => {
+                        const s = _spr(n);
+                        return `<span title="${_esc(n)}" style="display:inline-flex;flex-direction:column;align-items:center;width:46px;">
+                            ${s ? `<img src="${s}" alt="${_esc(n)}" style="width:38px;height:38px;image-rendering:pixelated;" onerror="this.style.display='none'">` : ''}
+                            <span style="font-size:8px;color:#aaa;max-width:46px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(n)}</span>
+                        </span>`;
+                    }).join('')
+                    : '<span style="font-size:10px;color:#777;">(team not recorded)</span>';
+                const bn = e.badges | 0;
+                html += `<div style="margin-bottom:10px;padding:8px 10px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <span style="font-size:12px;color:#ffb74d;font-weight:bold;">${_esc(tagline)}</span>
+                        ${badge}
+                    </div>
+                    <div style="font-size:10px;color:#888;margin-bottom:6px;">${bn} badge${bn === 1 ? '' : 's'} · ${team.length} Pokémon</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;">${chips}</div>
+                </div>`;
+            }
+            return html;
         }
 
         function _pcRenderStorageTab() {
