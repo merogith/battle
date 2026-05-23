@@ -8452,6 +8452,7 @@
             <div style="display:flex;gap:0;background:rgba(10,10,14,0.85);border-bottom:1px solid #333;flex-shrink:0;">
                 <button type="button" id="story-pc-tab-storage-btn" onclick="window.StoryMode.pcSwitchTab('storage')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid #4caf50;color:#4caf50;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Deposit, withdraw, and release Pokémon"><img src="icons/story/story_party.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:auto;flex-shrink:0;"> PC Storage</button>
                 <button type="button" id="story-pc-tab-underground-btn" onclick="window.StoryMode.pcSwitchTab('underground')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid transparent;color:#888;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Sell Pokémon for gold"><img src="icons/story/story_mystery.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:auto;flex-shrink:0;filter:hue-rotate(-30deg) saturate(1.5) brightness(0.8);"> The Underground</button>
+                <button type="button" id="story-pc-tab-journal-btn" onclick="window.StoryMode.pcSwitchTab('journal')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid transparent;color:#888;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Your rivalry — past encounters, their teams, win/loss record"><img src="icons/story/story_route.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:auto;flex-shrink:0;"> Rivalry</button>
             </div>
             <div id="story-pc-body" style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);"></div>
             <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
@@ -30233,6 +30234,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (id === STORY_RIVAL_ROW_LEAGUE) return 4;
             return null;
         }
+        /** Short phase tagline for the pre-battle rival banner (B5). */
+        const RIVAL_PHASE_TAGLINES = { 0: 'Starter Duel', 2: 'First Rematch', 3: 'On the Way Up', 4: 'Title Match' };
+        function rivalPhaseTagline(phase) {
+            if (phase === null || phase === undefined) return 'Rematch';
+            return RIVAL_PHASE_TAGLINES[phase | 0] || 'Rivalry';
+        }
         /** First `Battle` row strictly after this `STORY_EVENTS_RAW` array index (for hub → next fight checks). */
         function storyFirstBattleIndexAfter(ei) {
             const cap = STORY_EVENTS_RAW.length;
@@ -30696,9 +30703,87 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else if (playerLossStreak === 2) copy.push('Twice now. You won\'t make a third.');
             if (playerWinStreak >= 3) copy.push('Three in a row for you. Whatever you\'re doing — I just figured it out.');
             else if (playerWinStreak === 2) copy.push('Two losses in a row. Round three — I bring everything.');
+            // Darker "shadow" branch: at the title match, if the player has been
+            // losing the rivalry, the league rival's tone turns cold and Silver-like.
+            // Pushed 3× so these dominate the pool when the condition holds.
+            if ((phase | 0) === 4 && playerLossStreak >= 2) {
+                copy.push('You\'ve handed me this rivalry. The Hall doesn\'t write reluctant names — make me earn the last one.');
+                copy.push('Every time we meet you\'re a step further back. Tonight I close the door.');
+                copy.push('I stopped seeing a rival in you a while ago. Prove me wrong, or don\'t.');
+            }
             copy.push(`${b} badge${b === 1 ? '' : 's'} on you. I\'m still going to win.`);
             const r = (sm && sm.active) ? _storySideRng((phase | 0) + 1, b + 1) : Math.random();
             return copy[Math.floor(r * copy.length)];
+        }
+        /** Post-battle rival voice. `won` = did the PLAYER win. Standing-aware:
+         *  reads the (already-updated) win/loss streak + Champion-claim state so the
+         *  line escalates with the rivalry. Surfaced by the victory overlay (win) and
+         *  the concede flow (loss). Deterministic per run when a story run is active. */
+        function getRivalAftermathLine(won, phase) {
+            const winStreak = (sm && sm.rivalConsecutiveWins) | 0;   // player's streak (post-update)
+            const lossStreak = (sm && sm.rivalConsecutiveLosses) | 0;
+            const rivalChamp = !!(sm && sm.rivalChampionClaimed);
+            let pool;
+            if (won) {
+                if ((phase | 0) === 4) {
+                    pool = [
+                        'The Hall takes your name. Mine stays in the hallway, where rivals wait.',
+                        'You took the crown. I\'ll be at the bottom of the stairs when you come back down.',
+                        'Champion. Fine. I made you earn every inch of it — don\'t forget that.',
+                        'Go sit in the chair. I\'ll be training for the day you have to defend it from me.',
+                    ];
+                } else if ((phase | 0) === 0) {
+                    pool = [
+                        'First one\'s yours. Don\'t get comfortable — I\'ve got a whole region to catch up in.',
+                        'Beginner\'s luck. The road is long, and I\'m walking it right behind you.',
+                    ];
+                } else {
+                    pool = [
+                        'You earned this one. The next one — I\'m earning.',
+                        'Better team today. I\'ll have fixed that before the next gate.',
+                        'Enjoy it. I\'m already rebuilding the bench around what you just showed me.',
+                        'You win the round. I keep the rivalry. We are not done.',
+                        'Take the win. Take the road. I\'ll be at the end of it.',
+                    ];
+                }
+                if (winStreak >= 3) pool = pool.concat(['Three straight. Whatever you cracked — I\'ll crack it back.']);
+            } else {
+                if ((phase | 0) === 4 && rivalChamp) {
+                    pool = [
+                        'I\'m the Champion now. You\'ll knock on this door again — I\'ll be on the other side of it.',
+                        'The crown was always going to be one of ours. It\'s mine. Come take it.',
+                    ];
+                } else {
+                    pool = [
+                        'You\'ll catch up. Or you won\'t.',
+                        'Don\'t bring that team again. Bring a real one.',
+                        'Predictable. I read you three moves out.',
+                        'Walk it off. Then go train like you actually mean it.',
+                    ];
+                }
+                if (lossStreak >= 3) pool = pool.concat(['Three. Are you still counting? I stopped.']);
+                else if (lossStreak === 2) pool = pool.concat(['Twice now. Starting to look like a pattern, isn\'t it.']);
+            }
+            const r = (sm && sm.active) ? _storySideRng((phase | 0) + 11, (won ? 1 : 0), winStreak + lossStreak + 1) : Math.random();
+            return pool[Math.floor(r * pool.length)];
+        }
+        /** Ambient one-liner for the passive rival cameo that appears in a couple of
+         *  hub cities between rival fights (B11). Non-interactive flavor — sells that
+         *  the rival is out there walking the same world. Deterministic per run. */
+        const RIVAL_CAMEO_CITIES = [5, 8];
+        function _rivalAmbientCityLine(cityIdx) {
+            const lines = [
+                'This isn\'t the fight. The fight\'s at the gate. I\'m just passing through.',
+                'Don\'t look so surprised. We\'re walking the same road — I\'m just ahead of you.',
+                'Stocking up. Same as you. Don\'t read into it.',
+                'I caught your last battle. Sloppy in the back half. Fix it before we meet again.',
+                'Heal up. Train hard. I want you at your best when I take the next one.',
+                'Small region. We were always going to keep running into each other.',
+            ];
+            const r = (sm && sm.active)
+                ? _storySideRng((cityIdx | 0) + 41, (Array.isArray(sm.rivalEncounterLog) ? sm.rivalEncounterLog.length : 0) + 1)
+                : Math.random();
+            return lines[Math.floor(r * lines.length)];
         }
         function storyDisplayRoleLabel(eventType) {
             const e = String(eventType || '');
@@ -31780,6 +31865,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    postHofMysteryClimaxDone: false,
                    rivalConsecutiveWins: 0,
                    rivalConsecutiveLosses: 0,
+                   rivalEncounterLog: [],
                    version:SAVE_VER };
 
         function normalizeRivalStandingState() {
@@ -31789,9 +31875,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.rivalChampionClaimed = sm.rivalChampionClaimed === true;
             sm.rivalConsecutiveWins = Math.max(0, sm.rivalConsecutiveWins | 0);
             sm.rivalConsecutiveLosses = Math.max(0, sm.rivalConsecutiveLosses | 0);
+            if (!Array.isArray(sm.rivalEncounterLog)) sm.rivalEncounterLog = [];
         }
 
-        function setRivalStanding(winner, storyRowIdx) {
+        // `rivalTeamNames` (optional): species names the rival fielded this fight,
+        // appended to the read-only rival journal (Pokémon Center → Rivalry tab).
+        function setRivalStanding(winner, storyRowIdx, rivalTeamNames) {
             const w = winner === 'rival' ? 'rival' : winner === 'player' ? 'player' : 'none';
             sm.rivalLastWinner = w;
             sm.rivalStanding = w === 'none' ? 'undecided' : w;
@@ -31804,6 +31893,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sm.rivalConsecutiveLosses = (sm.rivalConsecutiveLosses | 0) + 1;
                 sm.rivalConsecutiveWins = 0;
             }
+            if (w !== 'none') {
+                try {
+                    if (!Array.isArray(sm.rivalEncounterLog)) sm.rivalEncounterLog = [];
+                    const names = Array.isArray(rivalTeamNames) ? rivalTeamNames.filter(Boolean) : [];
+                    sm.rivalEncounterLog.push({
+                        rowIdx: storyRowIdx | 0,
+                        phase: getRivalEncounterPhase(storyRowIdx),
+                        won: w === 'player',
+                        team: names,
+                        badges: (sm.badges | 0),
+                        date: Date.now(),
+                    });
+                    // Defensive cap — 4 canonical rival rows + the odd Crucible rematch.
+                    if (sm.rivalEncounterLog.length > 30) sm.rivalEncounterLog = sm.rivalEncounterLog.slice(-30);
+                } catch (e) {}
+            }
+        }
+        /** Species names of the rival's team this fight, for the journal snapshot. */
+        function _rivalTeamSnapshotNames() {
+            try {
+                const fp = (typeof state !== 'undefined' && state.foeParty) ? state.foeParty : [];
+                return fp.map((m) => m && (m._baseName || m.name)).filter(Boolean);
+            } catch (e) { return []; }
         }
 
         function normalizeStoryRivalLock() {
@@ -32814,8 +32926,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function _rivalInitMutableTypeWeights() {
             const w = {};
+            // Low base floor (0.10) keeps the roll honest: types that don't hit
+            // anything on the player's party barely register, so the rival's picks
+            // read as deliberate counters rather than scattered coverage. (Pre-overhaul
+            // this was 0.35, which let useless types nudge in and muddied the counter feel.)
             for (const atk of Object.keys(typeChart)) {
-                w[atk] = _rivalScoreAttackTypeVsParty(atk) + 0.35;
+                w[atk] = _rivalScoreAttackTypeVsParty(atk) + 0.10;
             }
             return w;
         }
@@ -32831,14 +32947,77 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return keys[keys.length - 1];
         }
-        function _rivalDecayAttackType(t, weights) {
-            if (t != null && weights && Object.prototype.hasOwnProperty.call(weights, t)) weights[t] /= RIVAL_ATTACK_TYPE_DECAY;
+        function _rivalDecayAttackType(t, weights, decayK) {
+            const k = decayK || RIVAL_ATTACK_TYPE_DECAY;
+            if (t != null && weights && Object.prototype.hasOwnProperty.call(weights, t)) weights[t] /= k;
         }
-        function _rivalDecaySpeciesStabTypes(speciesName, weights) {
+        function _rivalDecaySpeciesStabTypes(speciesName, weights, decayK) {
             const bs = baseStats[speciesName];
             if (!bs || !weights) return;
-            if (bs.t1) _rivalDecayAttackType(bs.t1, weights);
-            if (bs.t2 && bs.t2 !== bs.t1) _rivalDecayAttackType(bs.t2, weights);
+            if (bs.t1) _rivalDecayAttackType(bs.t1, weights, decayK);
+            if (bs.t2 && bs.t2 !== bs.t1) _rivalDecayAttackType(bs.t2, weights, decayK);
+        }
+        /** Per-phase counter-team shape. The rival's team is built to answer YOUR
+         *  six, not to parade fixed aces — so most slots are raw type-counter picks
+         *  and signatures only appear as occasional flavor cameos (the `sigP` roll on
+         *  flex slots). Forced-counter slots never roll a signature.
+         *    phase 0 (intro):  lone starter-triangle counter.
+         *    phase 2 (early):  1 forced counter, rest flex @ 0.45 sig.
+         *    phase 3 (mid):    2 forced counters, rest flex @ 0.40 sig.
+         *    phase 4 (league): 3 forced counters, 3 flex @ 0.35 sig, harder decay (15)
+         *                      so a dominant counter-type doesn't repeat across the six.
+         *  Non-standard rival rows (e.g. a Crucible rematch routed through the Rival
+         *  pipeline, phase === null) get a sensible mid-game default. */
+        function _rivalCounterPlan(phase, partySize) {
+            const n = Math.max(1, partySize | 0);
+            let forced, sigP, decay = RIVAL_ATTACK_TYPE_DECAY;
+            switch (phase) {
+                case 0:  forced = 1; sigP = 0;    break;
+                case 2:  forced = 1; sigP = 0.45; break;
+                case 3:  forced = 2; sigP = 0.40; break;
+                case 4:  forced = 3; sigP = 0.35; decay = 15; break;
+                default: forced = 2; sigP = 0.40; break;
+            }
+            forced = Math.min(forced, n);
+            return { forcedCounter: forced, flexSlots: Math.max(0, n - forced), sigP, decay };
+        }
+        /** GB starter-triangle counter type for the intro rival: Grass→Fire,
+         *  Fire→Water, Water→Grass. Returns null for non-classical starters so the
+         *  caller falls back to the highest-SE weighted type (existing behavior). */
+        function _rivalIntroStarterCounterType(starterName) {
+            const b = baseStats[starterName];
+            if (!b) return null;
+            const t1 = b.t1, t2 = b.t2;
+            if (t1 === 'Grass') return 'Fire';
+            if (t1 === 'Fire')  return 'Water';
+            if (t1 === 'Water') return 'Grass';
+            if (t2 === 'Grass') return 'Fire';
+            if (t2 === 'Fire')  return 'Water';
+            if (t2 === 'Water') return 'Grass';
+            return null;
+        }
+        // Test-only handle for the rival-generation suite (tests/suites/rival-generation.test.js).
+        // These symbols live in this inner script scope and are NOT visible from the
+        // bottom-of-file window.__engine export, so expose them here. Inert in normal play
+        // (only runs when the jsdom harness sets window.__testHarness before parse).
+        if (typeof window !== 'undefined' && window.__testHarness === true) {
+            window.__rivalTest = {
+                rollTrainerTeam: (...a) => rollTrainerTeam(...a),
+                getRivalEncounterPhase: (...a) => getRivalEncounterPhase(...a),
+                _rivalCounterPlan: (...a) => _rivalCounterPlan(...a),
+                _rivalIntroStarterCounterType: (...a) => _rivalIntroStarterCounterType(...a),
+                pickRivalSecondaryIntroLine: (...a) => pickRivalSecondaryIntroLine(...a),
+                getRivalAftermathLine: (...a) => getRivalAftermathLine(...a),
+                rivalPhaseTagline: (...a) => rivalPhaseTagline(...a),
+                setRivalStanding: (...a) => setRivalStanding(...a),
+                _pcRenderRivalJournalTab: (...a) => _pcRenderRivalJournalTab(...a),
+                getMonGrade: (...a) => getMonGrade(...a),
+                getBST: (...a) => getBST(...a),
+                STORY_RIVAL_ROW_INTRO, STORY_RIVAL_ROW_EARLY, STORY_RIVAL_ROW_MID, STORY_RIVAL_ROW_LEAGUE,
+                get sm() { return sm; },
+                set sm(v) { sm = v; },
+                get baseStats() { return baseStats; },
+            };
         }
         function _rivalSpeciesHasType(name, t) {
             const b = baseStats[name];
@@ -33614,10 +33793,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _trainerPoolCache.set(_poolKey, T);
             }
 
-            // Rival: score offensive typings vs your party, weighted-roll STAB types with heavy decay after each pick (÷70), then normal grade % for species.
+            // Rival: the team is built to COUNTER your live six — score offensive typings
+            // vs your party, weighted-roll STAB types, decay each picked type so coverage
+            // spreads. Signatures are demoted to occasional flavor cameos via the per-phase
+            // counter plan (_rivalCounterPlan): most slots are forced raw counter-picks,
+            // only flex slots roll a signature, and the intro rival mirrors the GB starter
+            // triangle against your lone starter.
             if (String(battleEventType) === 'Rival' && sm && Array.isArray(sm.team) && sm.team.length > 0) {
+                const _rivalPhase = getRivalEncounterPhase(storyRowIdx);
                 if ((storyRowIdx | 0) === STORY_RIVAL_ROW_INTRO) S = [];
                 const typeWeights = _rivalInitMutableTypeWeights();
+                const _plan = _rivalCounterPlan(_rivalPhase, partySize);
+                const _flexSigP = applyDifficultyToSigProbability(_plan.sigP);
+                const _decayK = _plan.decay;
+                const _introCounterType = (_rivalPhase === 0 && sm.team[0] && sm.team[0].name)
+                    ? _rivalIntroStarterCounterType(sm.team[0].name) : null;
                 function pickFromUnionPlain(usedNames) {
                     const all = [...T[1], ...T[2], ...T[3], ...T[4]].filter((n) => !usedNames.has(n));
                     return all.length ? all[Math.floor(rng() * all.length)] : null;
@@ -33636,19 +33826,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const usedR = new Set();
                 for (let i = 0; i < partySize; i++) {
                     let chosen = null;
-                    const R = rng();
-                    if (R <= sigP && S.length > 0) {
+                    const isForcedCounter = i < _plan.forcedCounter;
+                    // Flex slots may roll a signature cameo; forced-counter slots never do.
+                    if (!isForcedCounter && S.length > 0 && rng() <= _flexSigP) {
                         chosen = _rivalPickWeightedSignature(S, typeWeights, usedR, rng);
                         if (chosen) {
                             const si = S.indexOf(chosen);
                             if (si >= 0) S.splice(si, 1);
-                            _rivalDecaySpeciesStabTypes(chosen, typeWeights);
+                            _rivalDecaySpeciesStabTypes(chosen, typeWeights, _decayK);
                         }
                     }
                     if (!chosen) {
-                        const targetType = _rivalPickWeightedType(typeWeights, rng);
+                        // Raw counter-pick vs your live party. The intro rival's first slot
+                        // uses the GB starter-triangle type when your starter is classical.
+                        let targetType = (i === 0 && _introCounterType) ? _introCounterType : null;
+                        if (!targetType) targetType = _rivalPickWeightedType(typeWeights, rng);
                         chosen = _rivalPickSpeciesForAttackType(targetType, gwIn, T, usedR, rng);
-                        if (chosen) _rivalDecayAttackType(targetType, typeWeights);
+                        if (chosen) _rivalDecayAttackType(targetType, typeWeights, _decayK);
                     }
                     if (!chosen || usedR.has(chosen)) {
                         for (let t = 0; t < 10; t++) {
@@ -33656,7 +33850,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             const c = _rivalPickSpeciesForAttackType(tt, gwIn, T, usedR, rng);
                             if (c && !usedR.has(c)) {
                                 chosen = c;
-                                _rivalDecayAttackType(tt, typeWeights);
+                                _rivalDecayAttackType(tt, typeWeights, _decayK);
                                 break;
                             }
                         }
@@ -33664,19 +33858,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!chosen || usedR.has(chosen)) chosen = pickFromUnionPlain(usedR);
                     if (!chosen || usedR.has(chosen)) chosen = pickRandomInGenPlain(usedR);
                     if (!chosen) chosen = 'Rattata';
-                    if (isMixed && partySize >= 3 && chosen) {
+                    // Anti-monotony cap: allow up to 3 mons sharing a primary type (was 2).
+                    // Against a monotype player party only one or two attack types are
+                    // super-effective, so letting the dominant counter land on a third mon
+                    // reads as a deliberate hard-counter rather than coincidence — while still
+                    // stopping the rival from fielding a full six-of-a-kind lineup.
+                    if (isMixed && partySize >= 4 && chosen) {
                         const t1c = (baseStats[chosen] || {}).t1 || '';
                         const othersSame = teamR.filter((x) => x && baseStats[x.name] && (baseStats[x.name].t1 || '') === t1c).length;
-                        if (othersSame >= 2) {
+                        if (othersSame >= 3) {
                             for (let r = 0; r < 8; r++) {
                                 const tt = _rivalPickWeightedType(typeWeights, rng);
                                 const alt = _rivalPickSpeciesForAttackType(tt, gwIn, T, usedR, rng);
                                 if (!alt || usedR.has(alt)) continue;
                                 const t1a = (baseStats[alt] || {}).t1 || '';
                                 const oc = teamR.filter((x) => x && baseStats[x.name] && (baseStats[x.name].t1 || '') === t1a).length;
-                                if (oc < 2) {
+                                if (oc < 3) {
                                     chosen = alt;
-                                    _rivalDecayAttackType(tt, typeWeights);
+                                    _rivalDecayAttackType(tt, typeWeights, _decayK);
                                     break;
                                 }
                             }
@@ -38155,6 +38354,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             let speakerLabel = 'City Guide';
             let spriteTrainerArg = { spriteFile: CITY_GUIDE_SPRITES[(cityIdx + (sm.badges | 0)) % CITY_GUIDE_SPRITES.length] };
+            const _guideSlotFree = !(hasProf && !profUsedHere);
+            const _nextIsAnyRival = !!(_storyNextBat && _storyNextBat[1] === 'Battle' && _storyNextBat[2] === 'Rival');
+            // Passive rival cameo (B11): in a couple of mid/late hub cities, when only
+            // the flavor City Guide would show (Professor business never displaced) and
+            // we're between rival fights with the rivalry already established, the run's
+            // rival walks the same town. Pure flavor — no actions, no battle.
+            const _rivalCameoActive = _guideSlotFree
+                && RIVAL_CAMEO_CITIES.indexOf(cityIdx) !== -1
+                && !_nextIsAnyRival && !rivalGateActive
+                && !!sm.runRivalSpriteFile
+                && Array.isArray(sm.rivalEncounterLog) && sm.rivalEncounterLog.length >= 1
+                && !sm.rivalChampionClaimed;
             if (hasProf && !profUsedHere) {
                 if (hasTeamRoom) {
                     const hub = cityProfessorHubSlot(cityIdx);
@@ -38167,6 +38378,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const _mysteryFace = (sm && sm.mysteryIdentity && MYSTERY_FIGURE_IDENTITIES[sm.mysteryIdentity]) || null;
                     spriteTrainerArg = _mysteryFace && _mysteryFace.sprite ? _mysteryFace.sprite : 'Cyrus';
                 }
+            } else if (_rivalCameoActive) {
+                speakerLabel = _rivalDisplayName();
+                spriteTrainerArg = { spriteFile: sm.runRivalSpriteFile };
             } else if (hasProf && profUsedHere) {
                 speakerLabel = 'City Guide';
                 spriteTrainerArg = { spriteFile: CITY_GUIDE_SPRITES[(cityIdx + (sm.badges | 0)) % CITY_GUIDE_SPRITES.length] };
@@ -38183,9 +38397,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // the NPC's line follows. Everything that was previously stuffed in here (facility
             // barkers, milestone shout-outs, rival warnings) now lives in the tip rail or in a
             // one-shot toast — keeping the dialogue box quiet and on-character.
-            let quoteText = hasProf
-                ? _pickCityQuoteLine(CITY_PROFESSOR_QUOTES, cityIdx)
-                : _pickCityQuoteLine(CITY_GUIDE_QUOTES, cityIdx);
+            let quoteText = _rivalCameoActive
+                ? _rivalAmbientCityLine(cityIdx)
+                : (hasProf
+                    ? _pickCityQuoteLine(CITY_PROFESSOR_QUOTES, cityIdx)
+                    : _pickCityQuoteLine(CITY_GUIDE_QUOTES, cityIdx));
             // City specialty banner — the one-line identity for this city, shown above
             // the NPC quote so the player learns the hub's purpose at a glance.
             const _cityBlurb = _cityBlurbFor(cityIdx);
@@ -38238,7 +38454,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let nextLabel = nxEvent;
                 const gm = nxEvent.match(/^Gym Leader ([1-8])$/);
                 if (gm) nextLabel = `Gym ${gm[1]}` + (trAssign ? ` — ${trAssign}` : '');
-                else if (nxEvent === 'Rival') nextLabel = trAssign ? `Rival — ${trAssign}` : 'Rival';
+                else if (nxEvent === 'Rival') {
+                    const _rp = getRivalEncounterPhase(nxId);
+                    const _rivalTease = { 0: 'starter duel at the gate', 2: 'tracked you down', 3: 'been training hard', 4: 'title rematch — Hall of Fame' };
+                    const _tease = _rivalTease[_rp];
+                    nextLabel = `🏁 ${trAssign || 'Rival'}` + (_tease ? ` — ${_tease}` : ' — rival waits ahead');
+                }
                 else if (/^E[1-4]$/.test(nxEvent)) nextLabel = (trAssign ? `Elite ${nxEvent.slice(1)} — ${trAssign}` : `Elite ${nxEvent.slice(1)}`);
                 else if (nxEvent === 'Champion') nextLabel = trAssign ? `Champion — ${trAssign}` : 'Champion';
                 else if (nxEvent === 'Mystery Figure') nextLabel = 'Mystery Figure (???)';
@@ -40563,12 +40784,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const extraLine = isRivalBattle && rivalPhase !== null && rivalPhase !== undefined
                     ? pickRivalSecondaryIntroLine(rivalPhase, badgesNow)
                     : '';
+                const rivalTagline = isRivalBattle ? rivalPhaseTagline(rivalPhase) : '';
                 const silentAttr = _storyQuoteIsSilent(quote)
                     ? ` aria-label="${_esc(String(trainer.name || 'They'))} is silent"`
                     : '';
                 overlay.innerHTML = `
                     <img src="${getTrainerSprite(trainer)}" onerror="this.style.display='none'" style="width:200px;height:200px;object-fit:contain;image-rendering:pixelated;border:none;">
                     <div style="color:var(--accent);font-size:20px;font-weight:bold;">${trainer.name}</div>
+                    ${isRivalBattle && rivalTagline ? `<div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#ffb74d;font-weight:bold;text-shadow:0 0 6px rgba(255,152,0,0.35);">⚔ Rival · ${rivalTagline}</div>` : ''}
                     <div class="story-dialog-host story-battle-intro-dialog" style="margin-top:4px;">
                         <div class="story-dialog-nameplate">${roleLabel}</div>
                         <div class="story-dialog-box">
@@ -40726,7 +40949,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Roaming sub-legendary trigger — queues a one-shot encounter on the
                 // route from City 8 to the League city after the Gym 8 victory (first clear only).
                 try { _storyQueueRoamingFromVictory(en); } catch (e) {}
-                if (en === 'Rival') setRivalStanding('player', idx);
+                if (en === 'Rival') setRivalStanding('player', idx, _rivalTeamSnapshotNames());
                 const isMilestoneVictory = isGymBadge || /^(E1|E2|E3|E4|Champion|Rival)$/.test(en);
                 // Unlock player gimmicks in fixed order — first unlock at
                 // Gym 5 (same gym that drops the Wishing Piece voucher) so
@@ -40865,7 +41088,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
             const rowIdx = ev[0] | 0;
-            setRivalStanding('rival', rowIdx);
+            setRivalStanding('rival', rowIdx, _rivalTeamSnapshotNames());
             sm.gold = 0;
             sm.currentEnemyLock = null;
             sm.storyRetryInventorySnapshot = null;
@@ -40874,9 +41097,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.eventIndex = Math.min(STORY_EVENTS_RAW.length - 1, (sm.eventIndex | 0) + 1);
             try { save(); } catch (e) { console.warn('[Story] rival concede save', e); }
             document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
-            const msg = rowIdx === STORY_RIVAL_ROW_LEAGUE
+            const baseMsg = rowIdx === STORY_RIVAL_ROW_LEAGUE
                 ? 'You conceded the Champion claim to your rival. Hall of Fame still awaits.'
                 : 'You conceded this round. Your rival is the better trainer until you take it back.';
+            let rivalSay = '';
+            try { rivalSay = getRivalAftermathLine(false, getRivalEncounterPhase(rowIdx)); } catch (e) {}
+            const who = (sm && sm.currentTrainerData && sm.currentTrainerData.name) ? String(sm.currentTrainerData.name) : 'Rival';
+            const msg = rivalSay ? `${baseMsg}\n\n${who}: "${rivalSay}"` : baseMsg;
             try { window.showGameAlert && window.showGameAlert(msg); } catch (e) {}
             processNextEvent();
         }
@@ -41025,17 +41252,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 else if (evn === 'Rival') {
                     const rp = storyRowIdx != null ? getRivalEncounterPhase(storyRowIdx) : null;
-                    if (rp === 4) {
-                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">A duel settled on the Plateau floor — for tonight, the rivalry is yours.</div>`;
-                    } else if (rp === 3) {
-                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">Third round, third win. Two gyms left, and the wind is at your back.</div>`;
-                    } else if (rp === 2) {
-                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">A mid-journey win. The lead in your rivalry widens.</div>`;
-                    } else if (rp === 0) {
-                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">First fight, first win — and the only road out of Pallet runs north.</div>`;
-                    } else {
-                        badgeFlavor = `<div style="font-size:14px;color:#81c784;">A clean upset. The next gym is already waiting.</div>`;
-                    }
+                    let narr;
+                    if (rp === 4) narr = 'A duel settled on the Plateau floor — for tonight, the rivalry is yours.';
+                    else if (rp === 3) narr = 'Third round, third win. Two gyms left, and the wind is at your back.';
+                    else if (rp === 2) narr = 'A mid-journey win. The lead in your rivalry widens.';
+                    else if (rp === 0) narr = 'First fight, first win — and the only road out of Pallet runs north.';
+                    else narr = 'A clean upset. The next gym is already waiting.';
+                    // Rival's spoken aftermath, standing-aware (grudging respect / concession).
+                    let rivalSay = '';
+                    try { rivalSay = getRivalAftermathLine(true, rp); } catch (e) {}
+                    const who = _trainerName || 'Rival';
+                    badgeFlavor = `<div style="font-size:14px;color:#81c784;">${narr}</div>` +
+                        (rivalSay ? `<div style="font-size:13px;color:#aed581;line-height:1.5;max-width:380px;margin-top:6px;font-style:italic;">${who}: "${rivalSay}"</div>` : '');
                 }
                 else if (evn === 'Mystery Figure') {
                     const face = (sm && sm.mysteryIdentity && MYSTERY_FIGURE_IDENTITIES[sm.mysteryIdentity]) || null;
@@ -41173,29 +41401,93 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                   + _ballChip('sprites/pokesprite/balls/ultra.png',  sm.balls.ultra|0,  'Ultra Ball')
                                   + _ballChip('sprites/pokesprite/balls/master.png', sm.balls.master|0, 'Master Ball');
             }
-            const storageBtn = document.getElementById('story-pc-tab-storage-btn');
-            const undergroundBtn = document.getElementById('story-pc-tab-underground-btn');
-            if (storageBtn && undergroundBtn) {
-                if (_pcCurrentTab === 'storage') {
-                    storageBtn.style.color = '#4caf50';
-                    storageBtn.style.borderBottomColor = '#4caf50';
-                    undergroundBtn.style.color = '#888';
-                    undergroundBtn.style.borderBottomColor = 'transparent';
-                } else {
-                    storageBtn.style.color = '#888';
-                    storageBtn.style.borderBottomColor = 'transparent';
-                    undergroundBtn.style.color = '#ff5252';
-                    undergroundBtn.style.borderBottomColor = '#ff5252';
-                }
+            const _tabBtns = {
+                storage:     { el: document.getElementById('story-pc-tab-storage-btn'),     active: '#4caf50' },
+                underground: { el: document.getElementById('story-pc-tab-underground-btn'), active: '#ff5252' },
+                journal:     { el: document.getElementById('story-pc-tab-journal-btn'),     active: '#ffb74d' },
+            };
+            for (const key of Object.keys(_tabBtns)) {
+                const { el, active } = _tabBtns[key];
+                if (!el) continue;
+                const on = _pcCurrentTab === key;
+                el.style.color = on ? active : '#888';
+                el.style.borderBottomColor = on ? active : 'transparent';
             }
             const body = document.getElementById('story-pc-body');
             if (!body) return;
             if (_pcCurrentTab === 'storage') body.innerHTML = _pcRenderStorageTab();
+            else if (_pcCurrentTab === 'journal') body.innerHTML = _pcRenderRivalJournalTab();
             else body.innerHTML = _pcRenderUndergroundTab();
         }
         function pcSwitchTab(tab) {
-            _pcCurrentTab = (tab === 'underground') ? 'underground' : 'storage';
+            _pcCurrentTab = (tab === 'underground' || tab === 'journal') ? tab : 'storage';
             _pcRefresh();
+        }
+        /** Display name of the run's rival, from the locked trainer assignment. */
+        function _rivalDisplayName() {
+            try {
+                for (const ev of STORY_EVENTS_RAW) {
+                    if (ev[1] === 'Battle' && ev[2] === 'Rival') {
+                        const nm = sm.trainerAssignments && sm.trainerAssignments[ev[0]];
+                        if (nm) return nm;
+                    }
+                }
+            } catch (e) {}
+            return 'your rival';
+        }
+        // Read-only rivalry log: one card per past rival encounter, most recent first.
+        // Each card shows the phase tagline, the player's badge count at the time, a
+        // WON/LOST badge, and the rival's team as sprite chips. Mirrors the GB
+        // pause-screen trainer memory — makes the rivalry feel persistent and personal.
+        function _pcRenderRivalJournalTab() {
+            const log = Array.isArray(sm.rivalEncounterLog) ? sm.rivalEncounterLog : [];
+            const rivalName = _rivalDisplayName();
+            if (!log.length) {
+                return `<div style="text-align:center;color:#888;padding:34px 16px;font-size:13px;line-height:1.7;">
+                    <div style="font-size:34px;margin-bottom:10px;">🏁</div>
+                    <strong style="color:#ffb74d;">No rivalry on record yet.</strong><br>
+                    Every time you face ${_esc(rivalName)} this page fills in — the team they brought, the stage of the journey, and who walked away on top.
+                </div>`;
+            }
+            const wins = log.filter((e) => e && e.won).length;
+            const losses = log.length - wins;
+            const standing = wins > losses ? `You lead ${wins}–${losses}`
+                : losses > wins ? `${_esc(rivalName)} leads ${losses}–${wins}`
+                : `Dead even, ${wins}–${losses}`;
+            const champ = sm.rivalChampionClaimed ? ` · <span style="color:#ff5252;">${_esc(rivalName)} holds the crown</span>` : '';
+            const _spr = (name) => {
+                try { return (typeof getSprite === 'function') ? (getSprite(name, false) || '') : ''; } catch (e) { return ''; }
+            };
+            let html = `<div style="margin-bottom:12px;padding:8px 10px;background:rgba(255,152,0,0.08);border:1px solid #5a4a2a;font-size:12px;color:#ffd9a0;line-height:1.5;">
+                🏁 <strong>${_esc(rivalName)}</strong> — ${standing}${champ}
+            </div>`;
+            for (const e of log.slice().reverse()) {
+                if (!e) continue;
+                const tagline = rivalPhaseTagline(e.phase);
+                const badge = e.won
+                    ? '<span style="font-size:10px;font-weight:bold;color:#111;background:#81c784;padding:2px 7px;letter-spacing:0.05em;">WON</span>'
+                    : '<span style="font-size:10px;font-weight:bold;color:#fff;background:#e57373;padding:2px 7px;letter-spacing:0.05em;">LOST</span>';
+                const team = Array.isArray(e.team) ? e.team : [];
+                const chips = team.length
+                    ? team.map((n) => {
+                        const s = _spr(n);
+                        return `<span title="${_esc(n)}" style="display:inline-flex;flex-direction:column;align-items:center;width:46px;">
+                            ${s ? `<img src="${s}" alt="${_esc(n)}" style="width:38px;height:38px;image-rendering:pixelated;" onerror="this.style.display='none'">` : ''}
+                            <span style="font-size:8px;color:#aaa;max-width:46px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(n)}</span>
+                        </span>`;
+                    }).join('')
+                    : '<span style="font-size:10px;color:#777;">(team not recorded)</span>';
+                const bn = e.badges | 0;
+                html += `<div style="margin-bottom:10px;padding:8px 10px;background:rgba(20,28,40,0.6);border:1px solid #2c3a52;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <span style="font-size:12px;color:#ffb74d;font-weight:bold;">${_esc(tagline)}</span>
+                        ${badge}
+                    </div>
+                    <div style="font-size:10px;color:#888;margin-bottom:6px;">${bn} badge${bn === 1 ? '' : 's'} · ${team.length} Pokémon</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;">${chips}</div>
+                </div>`;
+            }
+            return html;
         }
 
         function _pcRenderStorageTab() {
@@ -47901,12 +48193,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── STARRED POOL — usable options per Smogon for this species ──────
         // One source of truth for what the ★ Recommended filter exposes.
         // Per-attribute rules (Recs v2):
-        //   moves     — take every move used in ≥1 Smogon build, soft cap 18
-        //               (3×6 grid). Floor-fill from the evolution chain
-        //               (terminal evos first, branches union'd) when the
-        //               species' own pool is under cap. Ties at the cap
-        //               boundary cause a soft overshoot — all tied entries
-        //               make the list, up to an absolute ceiling of 24.
+        //   moves     — take every move used in ≥1 Smogon build, soft cap 30.
+        //               The wide cap is deliberate: at 18 a wall's status
+        //               moves (Toxic / Protect / Recover / Wisp …) crowded
+        //               out the niche attacking moves players know are run on
+        //               some sets. Slashed slots count each alternative
+        //               independently — "Ice Beam / Thunderbolt" credits both
+        //               Ice Beam and Thunderbolt — so coverage moves surface.
+        //               Floor-fill from the evolution chain (terminal evos
+        //               first, branches union'd) when the species' own pool is
+        //               under cap. Ties at the boundary cause a soft overshoot
+        //               — all tied entries make the list, up to ceiling 40.
         //   items     — same logic, cap 7, ceiling 11.
         //   abilities — ≥10% Smogon usage + always include the species'
         //               Pokédex regular & hidden abilities. Unchanged.
@@ -47917,7 +48214,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // hide the rec system and show a "Limited competitive data" banner.
         const _TX_SPARSE_BUILD_THRESHOLD = 10;
         const _TX_POOL_RULES = {
-            moves:     { mode: 'cap', cap: 18, ceiling: 24, fillFromEvo: true },
+            moves:     { mode: 'cap', cap: 30, ceiling: 40, fillFromEvo: true },
             items:     { mode: 'cap', cap:  7, ceiling: 11, fillFromEvo: true },
             abilities: { mode: 'threshold', threshold: 10, cap: 6, floor: 2 },
             natures:   { mode: 'all-star-top', starN: 3 },
@@ -49220,8 +49517,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _txUsagePctHtml(ctx, name) {
             if (!ctx || !ctx.pctOf) return '';
             const pct = ctx.pctOf.get ? ctx.pctOf.get(name) : ctx.pctOf[name];
-            if (!pct || pct < 1) return '';
-            return `<span class="tx-card-pct" title="${pct.toFixed(1)}% of Smogon builds use this option">${Math.round(pct)}%</span>`;
+            if (pct == null || pct <= 0) return '';
+            // Sub-1% moves (niche tech that still appears in ≥1 real build) get
+            // a "<1%" chip rather than nothing, so the wider 30-move pool never
+            // shows bare trailing cards with no usage signal.
+            const label = pct < 1 ? '<1%' : `${Math.round(pct)}%`;
+            return `<span class="tx-card-pct" title="${pct.toFixed(1)}% of Smogon builds use this option">${label}</span>`;
         }
 
         // Build a Move card. The ★ prefix on the title marks options in the
@@ -52263,6 +52564,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     ensureMoveData: ensureMoveData,
                     buildPokemon: buildPokemon,
                     getStageMult: typeof getStageMult === 'function' ? getStageMult : null,
+                    getMonGrade: typeof getMonGrade === 'function' ? getMonGrade : null,
+                    getBST: typeof getBST === 'function' ? getBST : null,
                     get state() { return state; },
                     set state(v) { state = v; },
                     get baseStats() { return baseStats; },
