@@ -70,16 +70,19 @@ function toMarkdown(rows, opts) {
   lines.push('|----:|-------|----:|------:|-----:|------:|-------:|------:|-----:|-------:|------|');
   for (const r of rows) {
     let flag = '';
-    if (r.ratioReal >= WALL_RATIO) flag = 'WALL';
+    if (r.error) flag = 'ERR';
+    else if (r.ratioReal >= WALL_RATIO) flag = 'WALL';
     else if (r.ratioReal && r.ratioReal <= STEAMROLL_RATIO) flag = 'easy';
     lines.push(`| ${fmt(r.row)} | ${fmt(r.event)} | ${fmt(r.badges)} | ${fmt(r.partySize)} | ${fmt(r.playerTier)} | ${fmt(r.enemyPower)} | ${fmt(r.playerEqual)} | ${fmt(r.playerReal)} | ${fmt(r.ratioEqual)} | ${fmt(r.ratioReal)} | ${flag} |`);
   }
   lines.push('');
-  const walls = rows.filter(r => r.ratioReal >= WALL_RATIO);
-  const easies = rows.filter(r => r.ratioReal && r.ratioReal <= STEAMROLL_RATIO);
+  const errs = rows.filter(r => r.error);
+  const walls = rows.filter(r => !r.error && r.ratioReal >= WALL_RATIO);
+  const easies = rows.filter(r => !r.error && r.ratioReal && r.ratioReal <= STEAMROLL_RATIO);
   lines.push('## Summary');
   lines.push('');
   lines.push(`- battle events scored: **${rows.length}**`);
+  lines.push(`- **roll ERRORS (enemy team failed to roll): ${errs.length}**${errs.length ? ' — rows ' + errs.map(r => r.row).join(', ') : ''}`);
   lines.push(`- flagged WALL (enemy/real >= ${WALL_RATIO}): **${walls.length}**${walls.length ? ' — rows ' + walls.map(r => r.row).join(', ') : ''}`);
   lines.push(`- flagged easy (enemy/real <= ${STEAMROLL_RATIO}): **${easies.length}**${easies.length ? ' — rows ' + easies.map(r => r.row).join(', ') : ''}`);
   lines.push('');
@@ -106,7 +109,7 @@ function toMarkdown(rows, opts) {
 
   console.log(`\n[power-curve] ${rows.length} events in ${((Date.now() - t0) / 1000).toFixed(1)}s -> ${OUT_MD}`);
   for (const r of rows) {
-    const flag = r.ratioReal >= WALL_RATIO ? '  <-- WALL' : (r.ratioReal && r.ratioReal <= STEAMROLL_RATIO ? '  <-- easy' : '');
+    const flag = r.error ? '  <-- ERR' : (r.ratioReal >= WALL_RATIO ? '  <-- WALL' : (r.ratioReal && r.ratioReal <= STEAMROLL_RATIO ? '  <-- easy' : ''));
     console.log(
       `  row ${String(r.row).padStart(2)} ${String(r.event).padEnd(16)} bdg${r.badges} ps${r.partySize} T${r.playerTier}  ` +
       `enemy=${String(r.enemyPower).padStart(6)}  pEq=${String(r.playerEqual).padStart(6)}  pReal=${String(r.playerReal).padStart(6)}  ` +

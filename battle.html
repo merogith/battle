@@ -10285,10 +10285,72 @@
         }
         window.makeDesignedBuild = makeDesignedBuild;
 
+        // ── Competitive-format strength band ─────────────────────────────────
+        // Each CSV build carries its source `_format` (ou/uu/ru/nu/pu/zu/…) —
+        // the Smogon usage tier the set was authored for, and a far better
+        // strength signal than raw BST. `makeBuild` historically picked
+        // uniformly across ALL of a species' sets, so the same Venusaur could
+        // roll its OU sun-sweeper set or its PU set with equal odds — a large,
+        // invisible swing. Story rolls now pass a `targetTier` (the event's
+        // STORY_BUILD_TIER) and the pool pick is *weighted* toward sets whose
+        // format viability matches that tier's band: untrained enemies favor
+        // weaker sets (PU/ZU), tournament enemies favor stronger sets (OU/Ubers).
+        // It's a soft weight, never a lock — a species with only one set still
+        // rolls it, and randomness is preserved. Lower rank = stronger.
+        const FORMAT_VIABILITY_RANK = Object.freeze({
+            anythinggoes: 0, nationaldexag: 0,
+            ubers: 1, nationaldexubers: 1,
+            ou: 2, nationaldex: 2,
+            uu: 3, nationaldexuu: 3,
+            ru: 4, nationaldexru: 4,
+            nu: 5,
+            pu: 6,
+            zu: 7,
+            // Little-cup / not-fully-evolved sets are low-power by construction.
+            lc: 6, nfe: 6,
+            // Alternate singles metagames sit around the mid of the ladder.
+            monotype: 4, nationaldexmonotype: 4, '1v1': 4,
+            battlespotsingles: 3, battlestadiumsingles: 3,
+        });
+        const FORMAT_RANK_DEFAULT = 4; // unknown / other singles -> mid (≈ RU)
+        // Per-tier preferred viability window [lo, hi] (inclusive). Bands overlap
+        // so there are always in-band candidates; they slide down with tier.
+        const POWER_TIER_FORMAT_BAND = Object.freeze({
+            1: { lo: 4, hi: 7 }, // Untrained — RU..ZU
+            2: { lo: 3, hi: 5 }, // Novice    — UU..NU
+            3: { lo: 2, hi: 4 }, // Competent — OU..RU
+            4: { lo: 0, hi: 3 }, // Tournament— AG..UU
+        });
+        const FORMAT_BAND_IN_WEIGHT = 4;  // in-band sets this much likelier than out-of-band
+        function _formatRankForBuild(b) {
+            const f = b && b._format ? String(b._format).toLowerCase() : '';
+            const r = FORMAT_VIABILITY_RANK[f];
+            return (r === undefined) ? FORMAT_RANK_DEFAULT : r;
+        }
+        // Weighted pool pick favoring sets whose format fits the tier's band.
+        // Falls back to uniform when no tier hint or a single-element pool.
+        function _pickBuildByTierBand(pool, targetTier) {
+            if (!Array.isArray(pool) || pool.length <= 1) return pool[0];
+            const band = POWER_TIER_FORMAT_BAND[targetTier | 0];
+            if (!band) return pool[Math.floor(Math.random() * pool.length)];
+            let total = 0;
+            const w = new Array(pool.length);
+            for (let i = 0; i < pool.length; i++) {
+                const rank = _formatRankForBuild(pool[i]);
+                w[i] = (rank >= band.lo && rank <= band.hi) ? FORMAT_BAND_IN_WEIGHT : 1;
+                total += w[i];
+            }
+            let r = Math.random() * total;
+            for (let i = 0; i < pool.length; i++) { r -= w[i]; if (r <= 0) return pool[i]; }
+            return pool[pool.length - 1];
+        }
+
         // Central build factory — used by draft, gauntlet rounds, and draw recovery.
         //   gimmickOpts.forceGimmick  — pin to MEGA / ZMOVE / TERA / STANDARD
         //   gimmickOpts.allowIllegal  — let illegal builds into the pool (default: false; story end-game opts in)
         //   gimmickOpts.forceIllegal  — only roll from illegal builds (falls back to legal if species has none)
+        //   gimmickOpts.targetTier    — STORY_BUILD_TIER (1-4); biases the CSV set pick toward
+        //                                that tier's competitive-format band (story rolls only)
         function makeBuild(name, gimmickOpts) {
             // Designed-build path: rolled BEFORE gimmick resolution so the mix knob
             // can't be skipped by a forced-STANDARD call. Skip when a non-standard
@@ -10296,6 +10358,7 @@
             const forced = gimmickOpts && gimmickOpts.forceGimmick;
             const allowIllegal = !!(gimmickOpts && gimmickOpts.allowIllegal);
             const forceIllegal = !!(gimmickOpts && gimmickOpts.forceIllegal);
+            const targetTier = gimmickOpts && gimmickOpts.targetTier;
             if (!forced || forced === 'STANDARD') {
                 const mix = (typeof settings.csvBuildMix === 'number')
                     ? Math.max(0, Math.min(1, settings.csvBuildMix))
@@ -10347,7 +10410,11 @@
             }
 
             if (pool.length) {
-                if (settings.smartDraftPool && pool.length > 1) {
+                if (targetTier && pool.length > 1) {
+                    // Story rolls: weight the set pick toward the event tier's
+                    // competitive-format band (see _pickBuildByTierBand).
+                    b = { ..._pickBuildByTierBand(pool, targetTier) };
+                } else if (settings.smartDraftPool && pool.length > 1) {
                     const groups = {};
                     for (const bd of pool) {
                         const a = bd.archetype || 'other';
@@ -33941,6 +34008,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const _trainerPoolCache = new Map();
         function rollTrainerTeam(trainer, partySize, gradeWeights, enabledGensIn, battleEventType, storyRowIdx) {
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            // Event training tier — drives the competitive-format band each
+            // makeBuild pull is weighted toward (see _pickBuildByTierBand). The
+            // post-roll _applyStoryBuildPowerTier still normalizes EV/IV/nature/
+            // item polish; this only steers *which* real set the species rolls.
+            const _eventTier = _storyBuildTierForEvent(battleEventType, storyRowIdx, (sm && sm.badges) | 0);
             let gwIn = applyDifficultyToGradeWeights(gradeWeights || { g1: 0, g2: 0, g3: 50, g4: 50 });
             gwIn = applyStoryProgressToGradeWeights(gwIn, storyRowIdx);
             gwIn = storyStripGrade4IfPartyMature(gwIn);
@@ -34111,7 +34183,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         }
                     }
                     usedR.add(chosen);
-                    teamR.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD' }) });
+                    teamR.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD', targetTier: _eventTier }) });
                 }
                 const _origSigsR = new Set((trainer.sigs || []));
                 const _lockedR = new Set();
@@ -34243,7 +34315,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
                 _markUsed(chosen);
-                const build = makeBuild(chosen, { forceGimmick: 'STANDARD' });
+                const build = makeBuild(chosen, { forceGimmick: 'STANDARD', targetTier: _eventTier });
                 team.push({ name: chosen, build });
             }
             const _origSigs = new Set((trainer.sigs || []));
@@ -34348,7 +34420,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 usedNames.add(chosen);
                 const t1 = (baseStats[chosen] && baseStats[chosen].t1) || '';
                 if (t1) usedTypes.add(t1);
-                picks.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD' }) });
+                picks.push({ name: chosen, build: makeBuild(chosen, { forceGimmick: 'STANDARD', targetTier: STORY_BUILD_TIER.TOURNAMENT }) });
             }
             // Final boss rolls from every unlocked mechanic. Pass the forced gimmick flags
             // as a local override context instead of mutating (and restoring) the shared
@@ -53809,6 +53881,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             enemyPower: r1(enemyPower), playerEqual: r1(playerEqual), playerReal: r1(playerReal),
                             ratioEqual: playerEqual ? r1(enemyPower / playerEqual) : 0,
                             ratioReal: playerReal ? r1(enemyPower / playerReal) : 0,
+                            error: !!(trainerData || isMystery) && enemyRuns === 0,
                             sampleTeam,
                         });
                         if (/^Gym Leader\s*\d$/.test(String(eventName || ''))) badgesAccum++;
