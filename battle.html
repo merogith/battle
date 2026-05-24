@@ -10,10 +10,18 @@
     <link rel="icon" href="icons/app-icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icons/app-icon.svg">
     <meta name="theme-color" content="#0a0a0a">
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="preload" href="fonts/press-start-2p.woff2" as="font" type="font/woff2" crossorigin>
     <link href="https://unpkg.com/nes.css@2.3.0/css/nes.min.css" rel="stylesheet">
     <title>Pokémon Arena</title>
     <style>
+        /* Self-hosted Press Start 2P (SIL OFL 1.1) — no external CDN so the retro font renders identically offline; see fonts/OFL.txt. */
+        @font-face {
+            font-family: 'Press Start 2P';
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+            src: url('fonts/press-start-2p.woff2') format('woff2');
+        }
         /*
          * === DISPLAY MODES ===
          * 1. DESKTOP (1920×1080 / 16:9) — 1280×720 design frame, scaled via transform to fill viewport.
@@ -2117,6 +2125,13 @@
             height: 24px;
             flex-shrink: 0;
             object-fit: contain;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        /* All story pixel-icons render crisp everywhere (overrides stray inline image-rendering:auto on PC tabs etc.),
+           so the same icon never looks smoothed on one screen and sharp on another. Scoped to icons/story/ so the
+           intentionally-smoothed Safari ball in sprites/ is untouched. */
+        img[src*="icons/story/"] {
             image-rendering: pixelated;
             image-rendering: crisp-edges;
         }
@@ -8616,7 +8631,7 @@
 
             <!-- Tab strip. -->
             <div class="casino-tabs" role="tablist" aria-label="Casino games">
-                <button type="button" id="story-casino-tab-flip"     class="casino-tab active" role="tab" aria-selected="true"  aria-controls="story-casino-panel-flip"     onclick="window.StoryMode.casinoSwitchTab('flip')"><span class="tab-ico">🪙</span>Coin Flip</button>
+                <button type="button" id="story-casino-tab-flip"     class="casino-tab active" role="tab" aria-selected="true"  aria-controls="story-casino-panel-flip"     onclick="window.StoryMode.casinoSwitchTab('flip')"><span class="tab-ico"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"></span>Coin Flip</button>
                 <button type="button" id="story-casino-tab-slots"    class="casino-tab"        role="tab" aria-selected="false" aria-controls="story-casino-panel-slots"    onclick="window.StoryMode.casinoSwitchTab('slots')"><span class="tab-ico">🎰</span>Slots</button>
                 <button type="button" id="story-casino-tab-roulette" class="casino-tab"        role="tab" aria-selected="false" aria-controls="story-casino-panel-roulette" onclick="window.StoryMode.casinoSwitchTab('roulette')"><span class="tab-ico">🎯</span>Roulette</button>
             </div>
@@ -9468,11 +9483,26 @@
             return 'Physical';
         }
 
-        /** Vendored Showdown-style category icons (icons/categories/*.png); sized like icons/story/*.png (22×22). */
+        /* Canonical move-category swirl badge — original Gen4-style art (rounded badge + white symbol).
+           Single source of truth: used identically on move tiles, tooltips, and chips so the category
+           never renders differently per screen. Replaces the old icons/categories/*.png + ⚔/✦/◎ glyph split. */
+        const MOVE_CAT_BADGE_BG = { Physical: '#ff6b6b', Special: '#6b9fff', Status: '#b4bbcc' };
+        const MOVE_CAT_BADGE_SYM = {
+            Physical: '<path d="M8 1.7l1.75 4.55 4.55 1.75-4.55 1.75L8 14.3 6.25 9.75 1.7 8l4.55-1.75z" fill="#fff"/>',
+            Special:  '<circle cx="10.4" cy="5.6" r="2.3" fill="#fff"/><path d="M9.1 7.2 Q5.2 9 4 13" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>',
+            Status:   '<circle cx="8" cy="8" r="4.1" fill="none" stroke="#fff" stroke-width="1.9"/><circle cx="8" cy="8" r="1.15" fill="#fff"/>'
+        };
+        window.moveCatBadgeHtml = function moveCatBadgeHtml(cat, px) {
+            const c = normalizeMoveCategory(cat);
+            const s = px || 14;
+            return '<svg class="move-cat-ico" width="' + s + '" height="' + s + '" viewBox="0 0 16 16" role="img" aria-label="' + c + ' category" style="display:inline-block;vertical-align:middle;flex-shrink:0;">' +
+                '<rect x="0.6" y="0.6" width="14.8" height="14.8" rx="3.6" fill="' + MOVE_CAT_BADGE_BG[c] + '" stroke="rgba(0,0,0,0.45)" stroke-width="1"/>' +
+                MOVE_CAT_BADGE_SYM[c] + '</svg>';
+        };
         function moveCategoryTooltipHtml(cat) {
             const c = normalizeMoveCategory(cat);
             return '<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle;">' +
-                '<img src="icons/categories/' + c + '.png" alt="' + c + ' move category" width="32" height="14" decoding="async" style="width:32px;height:14px;image-rendering:auto;flex-shrink:0;">' +
+                window.moveCatBadgeHtml(c, 16) +
                 '<strong class="cat-' + c + '">' + c + '</strong></span>';
         }
 
@@ -11758,16 +11788,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ─── Enhanced Move Animation Engine (anime.js) ───────────────────
         const MoveAnimEngine = (() => {
+            // Base stop (index 0) = canonical type palette from the CSS .type-* rules (single source of truth);
+            // secondary/tertiary stops are tuned lighter/darker glow shades for particle gradients.
             const TYPE_COLORS = {
-                Normal:   ['#c8c8c8','#a8a8a8'],  Fire:     ['#ff6b35','#ff4500','#ffcc00'],
-                Water:    ['#4a90d9','#1a5fb4','#88ddff'], Electric: ['#fff700','#ffcc00','#ffe066'],
-                Grass:    ['#5cb85c','#3d8b3d','#88ee88'], Ice:      ['#88ddff','#aaeeff','#ffffff'],
-                Fighting: ['#d05040','#ff6633','#ffaa88'], Poison:   ['#b055d0','#8833aa','#dd88ee'],
-                Ground:   ['#d4a037','#b8860b','#e8c869'], Flying:   ['#a890f0','#7766cc','#ccbbff'],
-                Psychic:  ['#ff5588','#ff3366','#ffaacc'], Bug:      ['#a8b820','#88a000','#ccdd44'],
-                Rock:     ['#b8a038','#917520','#d4c06a'], Ghost:    ['#7b62a8','#5a3d8a','#bb99dd'],
+                Normal:   ['#a8a878','#a8a8a8'],  Fire:     ['#f08030','#ff4500','#ffcc00'],
+                Water:    ['#6890f0','#1a5fb4','#88ddff'], Electric: ['#f8d030','#ffcc00','#ffe066'],
+                Grass:    ['#78c850','#3d8b3d','#88ee88'], Ice:      ['#98d8d8','#aaeeff','#ffffff'],
+                Fighting: ['#c03028','#ff6633','#ffaa88'], Poison:   ['#a040a0','#8833aa','#dd88ee'],
+                Ground:   ['#e0c068','#b8860b','#e8c869'], Flying:   ['#a890f0','#7766cc','#ccbbff'],
+                Psychic:  ['#f85888','#ff3366','#ffaacc'], Bug:      ['#a8b820','#88a000','#ccdd44'],
+                Rock:     ['#b8a038','#917520','#d4c06a'], Ghost:    ['#705898','#5a3d8a','#bb99dd'],
                 Dragon:   ['#7038f8','#5020c0','#aa77ff'], Dark:     ['#705848','#504030','#a09080'],
-                Steel:    ['#b8b8d0','#8888a0','#d8d8e8'], Fairy:    ['#f0a0c0','#ee7799','#ffccdd'],
+                Steel:    ['#b8b8d0','#8888a0','#d8d8e8'], Fairy:    ['#ee99ac','#ee7799','#ffccdd'],
             };
             function getColors(type) { return TYPE_COLORS[type] || TYPE_COLORS.Normal; }
 
@@ -18001,7 +18033,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let b = document.createElement('button');
                     b.disabled = true;
                     let typeShort = (mv.type||'Normal').length > 4 ? mv.type.slice(0,4) : (mv.type||'Normal');
-                    let catG = mv.cat === 'Physical' ? '⚔' : (mv.cat === 'Special' ? '✦' : '◎');
+                    let catG = window.moveCatBadgeHtml(mv.cat, 13);
                     let catColor = mv.cat === 'Physical' ? '#ff6b6b' : mv.cat === 'Special' ? '#6b9fff' : '#888';
                     if (isLocked) {
                         b.className = 'battle-btn-move locked-rampage';
@@ -18072,7 +18104,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let _ppStr = isDynaDisplay ? '∞' : `${rawMove.pp}/${rawMove.maxPp}`;
                 let _accStr = shownMove.isMaxMove ? '—' : ((shownMove.acc||0) <= 100 ? (shownMove.acc||100)+'%' : '—');
                 let _powStr = shownMove.pow > 0 ? shownMove.pow : '—';
-                let catG = shownMove.cat === 'Physical' ? '⚔' : (shownMove.cat === 'Special' ? '✦' : '◎');
+                let catG = window.moveCatBadgeHtml(shownMove.cat, 13);
                 let typeShort = shownMove.type.length > 4 ? shownMove.type.slice(0, 4) : shownMove.type;
                 let metaTail = effLabelShort ? `<span class="move-tile-sep">·</span>${effLabelShort}` : '';
                 let infoHit = isMobile ? '<span class="move-info-hit" title="Move details" role="button">i</span>' : '';
@@ -28369,7 +28401,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mascot.className = 'casino-jackpot-mascot';
                 // Pixel cluster: brass coins flanking a Clefairy heart — the Crystal
                 // Game Corner mascot pose.
-                mascot.innerHTML = '<span style="font-size:36px;">🪙</span><span style="font-size:56px;margin:0 8px;">✦</span><span style="font-size:36px;">🪙</span>';
+                mascot.innerHTML = '<img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="47" height="36" decoding="async" style="vertical-align:middle;"><span style="font-size:56px;margin:0 8px;vertical-align:middle;">✦</span><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="47" height="36" decoding="async" style="vertical-align:middle;">';
                 banner.appendChild(document.createElement('br'));
                 if (mult > 0) {
                     const sub = document.createElement('span');
@@ -31209,8 +31241,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function storyShopIconCellHtml(id) {
             return '<span class="story-shop-item-icon">' + storyShopIconInnerHtml(id) + '</span>';
         }
-        function storyGoldIconHtml() {
-            return '<img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async">';
+        function storyGoldIconHtml(w, h) {
+            const ww = w || 21, hh = h || 16;
+            return '<img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="' + ww + '" height="' + hh + '" decoding="async">';
         }
         function storyGoldHtml(amount, pad = true, prefix = '') {
             let raw = String(amount);
@@ -45647,7 +45680,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
             panel.innerHTML = `
                 <div class="casino-stats-col" data-game="flip">
-                    <h4>🪙 Coin Flip</h4>
+                    <h4><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> Coin Flip</h4>
                     <p class="stats-row">${wlRow(flip)}</p>
                     <p class="stats-row">Biggest win <strong>${fmt(flip.biggestWin)}G</strong></p>
                     <p class="stats-row">Longest streak <strong>${fmt(flip.longestStreak)}</strong></p>
