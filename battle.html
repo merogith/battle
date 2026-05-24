@@ -30196,6 +30196,30 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 spe: Math.floor(Math.random() * 32)
             };
         }
+        // Player-obtained mons (starter, catches, partner, Professor gifts) roll
+        // random IVs, but with a FLOOR that rises as the player earns badges —
+        // the player-side mirror of the enemy STORY_IV_TIER_RANGES below. Keeps
+        // the random factor (the ceiling stays 31; only the floor lifts) while
+        // removing the "unlucky 3-IV brick" that an unbounded 0-31 roll hands
+        // out late-game. Sits a notch BELOW the contemporary enemy tier min so
+        // vitamins (+3 IV/use) still have headroom to close the gap — the player
+        // grows into parity, they aren't handed it. Tunable in one place.
+        const STORY_PLAYER_IV_FLOOR_BY_BADGES = Object.freeze({
+            0: 0,  1: 0,            // Stage 1 — fully random ("you're starting out")
+            2: 6,  3: 6,  4: 6,     // Stage 2
+            5: 12, 6: 12, 7: 12,    // Stage 3
+            8: 18                   // Stage 4 / post-game
+        });
+        function _playerIVFloorForBadges(badges) {
+            const b = Math.max(0, Math.min(8, badges | 0));
+            return STORY_PLAYER_IV_FLOOR_BY_BADGES[b] | 0;
+        }
+        function _rollPlayerIVs() {
+            const floor = (sm && sm.active) ? _playerIVFloorForBadges(sm.badges) : 0;
+            const span = 32 - floor; // roll within [floor, 31]
+            const roll = () => floor + Math.floor(Math.random() * span);
+            return { hp: roll(), atk: roll(), def: roll(), spa: roll(), spd: roll(), spe: roll() };
+        }
         // Enemy IV scaling by training tier — matches the existing T1..T4 curve
         // (`_storyBuildTierForEvent`). Aces get the top quartile of their tier's
         // range so a leader's signature mon still feels surgical compared to its
@@ -40860,7 +40884,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Professor gifts are player-side mons — roll random IVs so
                     // the Fan Club has work to do. Legendary mystery offers stay
                     // random too (the gimmick is the species, not perfect stats).
-                    try { _ensureBuildIVs(build, _rollRandomIVs()); } catch (e) {}
+                    try { _ensureBuildIVs(build, _rollPlayerIVs()); } catch (e) {}
                     // Lock shiny on the *real* build object now, before the
                     // pick-card renderer hands a clone to buildPokemon. Without
                     // this, each declined Professor visit could quietly miss a
@@ -44236,7 +44260,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Random IVs for wild / starter / partner — vitamins are how the
             // player trains weak stats up. CSV builds that ship explicit IVs
             // (rare on the wild path) are preserved by _ensureBuildIVs.
-            try { _ensureBuildIVs(b, _rollRandomIVs()); } catch (e) {}
+            try { _ensureBuildIVs(b, _rollPlayerIVs()); } catch (e) {}
             return b;
         }
 
@@ -53795,7 +53819,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try { build = makeBuild(name, { forceGimmick: 'STANDARD' }); } catch (e) { return 0; }
                     if (!build) return 0;
                     try { if (tier < STORY_BUILD_TIER.TOURNAMENT) _storyDowngradeBuildForTier(name, build, tier); } catch (e) {}
-                    try { _ensureBuildIVs(build, _rollTieredIVs(tier, false)); } catch (e) {}
+                    try { _ensureBuildIVs(build, _rollPlayerIVs()); } catch (e) {}
                     let mon;
                     try { mon = buildPokemon(name, { ...build, m: (build.m || []).slice() }); } catch (e) { return 0; }
                     return estimateMonPower(mon);
