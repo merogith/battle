@@ -49080,7 +49080,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_opAbilitiesCache) return [];
             if ((sm && (sm.badges | 0)) < 6) return [];
             const list = _opAbilitiesCache[monName];
-            return Array.isArray(list) ? list.slice(0, 3) : [];
+            // Return the full Awaken set — the data is curated per species to
+            // bring base + Hidden + Awaken to at least 7 options (no fixed cap).
+            return Array.isArray(list) ? list.slice() : [];
         }
         // Bridge the IIFE-scoped loader to the top-level boot path. Without
         // this the await call at loadGameData() throws ReferenceError, the
@@ -49434,15 +49436,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return out;
         }
         // Sorted [{name, count, pct}] cached on the stats object. `count` is the
-        // recency-weighted sum; `pct` divides by the weighted total so it reads
-        // as "share of (recency-weighted) sets that run this option".
+        // recency-weighted occurrence count; `pct` is the RELATIVE FREQUENCY —
+        // this option's count over the summed count of all options of this
+        // kind. So the values for one attribute sum to ~100%: a mon's moves
+        // read as "share of its meta's move-slots" (Charizard's 18 builds →
+        // ~72 move-slots → each move = its count / 72), and items / abilities /
+        // natures (one per build) likewise sum to 100%. Sort order is unchanged
+        // since it keys on raw count.
         function _txMetaSorted(stats, kind) {
             if (!stats || !stats[kind]) return [];
             if (!stats._sorted) stats._sorted = {};
             if (stats._sorted[kind]) return stats._sorted[kind];
-            const total = stats.weightedTotal || stats.total || 1;
+            let freqTotal = 0;
+            for (const c of stats[kind].values()) freqTotal += c;
+            if (freqTotal <= 0) freqTotal = 1;
             const arr = [...stats[kind].entries()]
-                .map(([name, count]) => ({ name, count, pct: (count / total) * 100 }))
+                .map(([name, count]) => ({ name, count, pct: (count / freqTotal) * 100 }))
                 .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
             stats._sorted[kind] = arr;
             return arr;
@@ -49498,9 +49507,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // hide the rec system and show a "Limited competitive data" banner.
         const _TX_SPARSE_BUILD_THRESHOLD = 10;
         const _TX_POOL_RULES = {
-            moves:     { mode: 'cap', cap: 30, ceiling: 40, fillFromEvo: true },
+            // moves: show every move used in ≥1 build up to 45; floor-fill from
+            // the evolution chain so a mon always reaches at least 30 when its
+            // own + chain pool allows.
+            moves:     { mode: 'cap', cap: 45, ceiling: 45, floor: 30, fillFromEvo: true },
             items:     { mode: 'cap', cap:  7, ceiling: 11, fillFromEvo: true },
-            abilities: { mode: 'threshold', threshold: 10, cap: 6, floor: 2 },
+            // abilities: no real cap (99). The minimum-7 target is met by the
+            // Awaken merge in the loadout editor — base + Hidden + Awaken picks.
+            abilities: { mode: 'threshold', threshold: 1, cap: 99, floor: 7 },
             natures:   { mode: 'all-star-top', starN: 3 },
         };
         // EV spreads use their own resolver (_evTrainerTopSpreadInfo) but follow
@@ -49695,14 +49709,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // entries only, so no extra filter beyond memes.
                 let pool = _txCapWithOvershoot(sorted, rule.cap, rule.ceiling);
                 // Floor-fill from the evolution chain when the species' own
-                // pool is short. Pulls highest-stage first; meme moves stay
-                // blocked across chain too.
-                if (rule.fillFromEvo && pool.length < rule.cap) {
+                // pool is short of the floor target (e.g. moves want ≥30).
+                // Pulls highest-stage first; meme moves stay blocked across the
+                // chain too. The own pool may already exceed the floor (up to
+                // cap) — fill only tops up toward the floor.
+                const fillTarget = rule.floor || rule.cap;
+                if (rule.fillFromEvo && pool.length < fillTarget) {
                     let evoRows = evoChainSortedRows(kind);
                     if (kind === 'moves') evoRows = evoRows.filter(r => !_TX_MEME_MOVE_BLOCKLIST.has(r.name));
                     const have = new Set(pool.map(r => r.name));
                     for (const r of evoRows) {
-                        if (pool.length >= rule.cap) break;
+                        if (pool.length >= fillTarget) break;
                         if (have.has(r.name)) continue;
                         pool.push(r);
                         have.add(r.name);
