@@ -40070,6 +40070,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Pit battle end interceptor — call from onBattleEnd when sm.pits._inBattle is true.
         function _pitsHandleBattleEnd(won) {
             if (!sm.pits) sm.pits = {};
+            // A win burns the bag items spent here; a loss refunds them so the
+            // free Pit retry starts from the same bag (same policy as the main
+            // timeline). onBattleEnd short-circuits here before its own snapshot
+            // logic, so handle it directly.
+            if (won) { sm.storyRetryInventorySnapshot = null; _storyBattleInventorySnapshot = null; }
+            else { _storyRefundBattleBagItems(); }
             if (!won) {
                 // Don't tear down the bracket — surface the Pit Defeat overlay so the
                 // player can Retry (free, unlimited) or Forfeit (which kills ALL THREE
@@ -40206,14 +40212,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return false;
         }
 
+        // Undo any battle-bag items spent during a fight the player did NOT win
+        // (flee, defeat → retry / return-to-city / concede, or a mid-battle
+        // refresh). applyBagItem decrements sm.inventory and saves immediately,
+        // so without this a non-win exit would permanently burn the consumed
+        // items. The pre-fight snapshot is taken in launchBattle (in-memory) and
+        // copied to sm.storyRetryInventorySnapshot on defeat so it survives to
+        // the game-over screen; a genuine victory clears both, making this a
+        // no-op there. Items can only be spent (never gained) mid-battle, so
+        // restoring the whole snapshot is safe.
+        function _storyRefundBattleBagItems() {
+            const snap = _storyBattleInventorySnapshot || sm.storyRetryInventorySnapshot;
+            if (snap) {
+                try { sm.inventory = deepClone(snap); } catch (e) { /* keep current inventory */ }
+            }
+            sm.storyRetryInventorySnapshot = null;
+            _storyBattleInventorySnapshot = null;
+        }
+
         // Shared mutation for "retreat to last city": pulls the in-battle party
         // snapshot back into sm.team, heals everyone, deducts the gold fee (0
         // on normal / easy / very easy via `_storyCalcRetreatGoldFee`), warps
-        // `sm.eventIndex` to the last city row, and clears mid-battle locks
-        // and the retry inventory snapshot. Callers are responsible for
-        // saving and any UI navigation afterwards — this is just the state
-        // mutation shared by the manual "Return to Last City" button and the
-        // autosave-on-close handler.
+        // `sm.eventIndex` to the last city row, and clears mid-battle locks.
+        // Refunds any battle-bag items spent in the abandoned fight so the
+        // player walks back into the city with the same bag they entered with.
+        // Callers are responsible for saving and any UI navigation afterwards —
+        // this is just the state mutation shared by the manual "Return to Last
+        // City" button and the autosave-on-close handler.
         function _storyApplyRetreatToCity() {
             try {
                 if (typeof state !== 'undefined' && state && state.mode === 'story' && state.playerParty && state.playerParty.length && sm.team) {
@@ -40234,8 +40259,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!lock || lock.eventIdx !== failedBattleIdx || !Array.isArray(lock.team) || !lock.team.length) {
                 sm.currentEnemyLock = null;
             }
-            sm.storyRetryInventorySnapshot = null;
-            _storyBattleInventorySnapshot = null;
+            _storyRefundBattleBagItems();
         }
 
         function refreshStoryGameOverRetreatUI() {
@@ -42143,7 +42167,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     processNextEvent();
                 }, event, idx);
             } else {
-                // Defeat: keep consumed bag on save; stash pre-fight inventory for Retry only
+                // Defeat: stash the pre-fight inventory so every game-over choice
+                // (Retry, Return to Last City, Concede) refunds the battle-bag
+                // items spent in the lost fight — only a win burns them for good.
                 try {
                     if (_storyBattleInventorySnapshot) {
                         sm.storyRetryInventorySnapshot = deepClone(_storyBattleInventorySnapshot);
@@ -42257,8 +42283,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             setRivalStanding('rival', rowIdx, _rivalTeamSnapshotNames());
             sm.gold = 0;
             sm.currentEnemyLock = null;
-            sm.storyRetryInventorySnapshot = null;
-            _storyBattleInventorySnapshot = null;
+            _storyRefundBattleBagItems();
             _storyFullHealPartySlots();
             sm.eventIndex = Math.min(STORY_EVENTS_RAW.length - 1, (sm.eventIndex | 0) + 1);
             try { save(); } catch (e) { console.warn('[Story] rival concede save', e); }
@@ -43303,6 +43328,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Single battle-end interceptor for all Crucible-sourced fights. Bypasses the
         // normal victory overlay / game-over screen and routes back to the right hub.
         function _handleCrucibleBattleEnd(won, source) {
+            // A win burns the bag items spent here; a loss refunds them (same
+            // policy as the main timeline). onBattleEnd short-circuits to this
+            // handler before its own win/loss snapshot logic, so do it here.
+            if (won) { sm.storyRetryInventorySnapshot = null; _storyBattleInventorySnapshot = null; }
+            else { _storyRefundBattleBagItems(); }
             try {
                 if (typeof state !== 'undefined' && state.playerParty && state.playerParty.length && sm.team) {
                     const _keepEggs = (sm.team || []).filter(function (s) { return s && s.isEgg; });
