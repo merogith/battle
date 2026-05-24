@@ -14058,6 +14058,53 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         window.EARLY_GAME_FOE_STAT_MULT   = EARLY_GAME_FOE_STAT_MULT;
         window.EARLY_GL_FOE_STAT_MULT     = EARLY_GL_FOE_STAT_MULT;
         window.STAGE2_GL_FOE_STAT_MULT    = STAGE2_GL_FOE_STAT_MULT;
+        // ╔═══════════════════════════════════════════════════════════════════╗
+        // ║  STORY POWER CURVE — central control panel                         ║
+        // ╚═══════════════════════════════════════════════════════════════════╝
+        // Story-mode strength rides on three independent dials plus a difficulty
+        // layer. There are NO Pokémon levels — every mon fights at Lv50, so the
+        // curve is encoded entirely by (1) which species appear, (2) how well
+        // they're built, and (3) a flat post-build stat multiplier. This object
+        // centralizes the tunable SCALARS; the structural tables live beside the
+        // code that consumes them and are indexed here so the whole control
+        // surface is discoverable from one spot. Measure any change with
+        // `npm run report:power-curve` (writes tests/reports/power-curve.md).
+        //
+        //  DIAL 1 — Species grade (which species; g1 strongest .. g4 weakest)
+        //    per-event base weights ....... STORY_EVENTS_RAW row[3] {g1..g4}
+        //    difficulty shift ............. applyDifficultyToGradeWeights
+        //    progression ramp (k) ......... applyStoryProgressToGradeWeights (STORY_GRADE_* consts)
+        //    party-maturity g4 strip ...... storyStripGrade4IfPartyMature
+        //    grade definition ............. getMonGrade (BST + evolution stage)
+        //  DIAL 2 — Build quality (how well-built the chosen species is)
+        //    event -> training tier ....... _storyBuildTierForEvent (T1..T4)
+        //    competitive-format band ...... POWER_TIER_FORMAT_BAND (+ FORMAT_VIABILITY_RANK)
+        //    EV caps per tier ............. STORY_POWER_CURVE.evCapByTier (below)
+        //    enemy IV ranges per tier ..... STORY_IV_TIER_RANGES
+        //    player IV floor by badges .... STORY_PLAYER_IV_FLOOR_BY_BADGES
+        //    illegal-set injection count .. _storyIllegalCountForEvent
+        //  DIAL 3 — Flat foe stat multiplier (post-build HP + 5 stats)
+        //    early-game softening ......... STORY_POWER_CURVE.foeStatMult.{preGym1,earlyGame,earlyGL,stage2GL}
+        //    late-game ramp ............... STORY_POWER_CURVE.foeStatMult.{stage3,postG7,leagueE4,champion}
+        //    difficulty multiplier ........ applyFoeDifficultyScaling (veryeasy..challenge)
+        //    league/boss additive boost ... applyStoryLeagueFoeStatBoost
+        const STORY_POWER_CURVE = Object.freeze({
+            // Dial 3 — foe stat multipliers (consumed by _earlyGameFoeStatMult + _stageGatedFoeStatMult).
+            foeStatMult: Object.freeze({
+                preGym1:   PRE_GYM1_FOE_STAT_MULT,   // badges 0, non-GL fight
+                earlyGame: EARLY_GAME_FOE_STAT_MULT, // badges 1-2, non-GL fight
+                earlyGL:   EARLY_GL_FOE_STAT_MULT,   // GL1 / GL2
+                stage2GL:  STAGE2_GL_FOE_STAT_MULT,  // GL3 (Stage 2 entry)
+                stage3:    1.05,                     // GL6 / post-G5 route (Stage 3 entry)
+                postG7:    1.10,                     // GL8 / post-G7 route
+                leagueE4:  1.15,                     // E1-E4 / post-G8 route
+                champion:  1.20,                     // Champion / Mystery Figure
+            }),
+            // Dial 2 — total-EV cap applied by _storyDowngradeBuildForTier per training tier.
+            // (T1 zeroes EVs entirely; T4 is the full 510 competitive budget.)
+            evCapByTier: Object.freeze({ 1: 0, 2: 220, 3: 420, 4: 510 }),
+        });
+        window.STORY_POWER_CURVE = STORY_POWER_CURVE;
         // Story-aware RNG selector. `sm` (StoryMode state) is PRIVATE to the StoryMode
         // IIFE; reading it bare at battle-engine scope throws "Can't find variable: sm"
         // and skips the turn. Read via the public getter (window.StoryMode.state, which
@@ -14105,21 +14152,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const row = (SER && idx >= 0 && idx < SER.length) ? SER[idx] : null;
             if (!row || row[1] !== 'Battle') return 1.0;
             const evt = String(row[2] || '');
-            if (evt === 'Mystery Figure' || evt === 'Champion') return 1.20;
-            if (/^E[1-4]$/.test(evt)) return 1.15;
+            const SPC = STORY_POWER_CURVE.foeStatMult;
+            if (evt === 'Mystery Figure' || evt === 'Champion') return SPC.champion;
+            if (/^E[1-4]$/.test(evt)) return SPC.leagueE4;
             const gl = evt.match(/^Gym Leader\s*(\d)$/);
             if (gl) {
                 const n = +gl[1];
-                if (n >= 8) return 1.10;
-                if (n >= 6) return 1.05;
+                if (n >= 8) return SPC.postG7;
+                if (n >= 6) return SPC.stage3;
                 return 1.0;
             }
             // Non-leader fights inherit the contemporary stage's multiplier so route
             // trainers between Gyms 7 and 8 don't feel suddenly weaker than the leaders.
             const b = sm.badges | 0;
-            if (b >= 8) return 1.15;  // post-G8 league run
-            if (b >= 7) return 1.10;  // post-G7
-            if (b >= 5) return 1.05;  // post-G5 (Stage 3 entry)
+            if (b >= 8) return SPC.leagueE4;  // post-G8 league run
+            if (b >= 7) return SPC.postG7;    // post-G7
+            if (b >= 5) return SPC.stage3;    // post-G5 (Stage 3 entry)
             return 1.0;
         };
         // Back-compat shim — any external caller still asking "is this the pre-Gym-1 nerf?"
@@ -33762,8 +33810,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const evs = build.evs || { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
                 let total = 0;
                 for (const k of ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) total += (evs[k] | 0);
-                if (total > 220) {
-                    const scale = 220 / total;
+                const _capT2 = STORY_POWER_CURVE.evCapByTier[2];
+                if (total > _capT2) {
+                    const scale = _capT2 / total;
                     for (const k of ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) {
                         evs[k] = Math.max(0, Math.floor(((evs[k] | 0) * scale) / 4) * 4);
                     }
@@ -33796,8 +33845,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const evs = build.evs || { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
                 let total = 0;
                 for (const k of ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) total += (evs[k] | 0);
-                if (total > 420) {
-                    const scale = 420 / total;
+                const _capT3 = STORY_POWER_CURVE.evCapByTier[3];
+                if (total > _capT3) {
+                    const scale = _capT3 / total;
                     for (const k of ['hp', 'atk', 'def', 'spa', 'spd', 'spe']) {
                         evs[k] = Math.max(0, Math.floor(((evs[k] | 0) * scale) / 4) * 4);
                     }
