@@ -49297,6 +49297,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // `_txGlobalMetaCached = null` there is a no-op / swallowed throw). Call this instead.
         try { window._pbsInvalidateTxMeta = function () { try { _txMetaCache.clear(); } catch (e) {} _txGlobalMetaCached = null; }; } catch (e) {}
 
+        // Recency weight per generation. The builds.csv blends Gen 4–9 (Gen 4
+        // is the physical/special split, so every set since is mechanically
+        // comparable). Older sets are kept — they still represent viable
+        // options — but counted a little lighter so the percentages lean toward
+        // the current meta. Without this, a Gen-9 staple like Garchomp's Scale
+        // Shot reads ~25% (diluted by 8 older gens) when it's ~52% of Gen 9
+        // sets, while a retro pick like Outrage looks more meta than it is.
+        // Gentle curve (~0.8^(9-gen)) — a Gen 9 set counts ~3× a Gen 4 set, not
+        // so steep that it erases older options.
+        const _TX_GEN_WEIGHTS = { 4: 0.33, 5: 0.41, 6: 0.51, 7: 0.64, 8: 0.80, 9: 1.00 };
+        function _txGenWeight(gen) {
+            const g = gen | 0;
+            if (_TX_GEN_WEIGHTS[g] != null) return _TX_GEN_WEIGHTS[g];
+            if (g >= 9) return 1.0;       // future gens → full weight
+            if (g >= 4) return 0.5;       // in-range gap → neutral
+            return 0.6;                   // unknown/pre-split → mild default
+        }
         function _txEmptyMeta() {
             return {
                 items: new Map(), moves: new Map(), abilities: new Map(), natures: new Map(),
@@ -49305,8 +49322,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // tagsByMove: Map<moveName, Set<tag>>; same for items.
                 tagsByMove: new Map(), tagsByItem: new Map(),
                 // Per-tag build counts (how many tera builds, mega builds, etc.).
+                // Kept as raw counts — colress's "X% of meta" chip divides by
+                // `total`, not the weighted total.
                 tagCounts: { regular:0, weather:0, mega:0, 'z-attack':0, tera:0 },
-                total: 0, _sorted: null,
+                // total = raw build count (drives sparse detection + colress %).
+                // weightedTotal = Σ gen weights (denominator for usage %).
+                total: 0, weightedTotal: 0, _sorted: null,
             };
         }
         function _txAccumulateBuilds(out, builds, speciesName, tag) {
@@ -49326,10 +49347,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
             for (const b of builds) {
                 if (!b || b._illegal) continue;
+                const w = _txGenWeight(b._gen);
                 out.total++;
+                out.weightedTotal += w;
                 if (tag && out.tagCounts && out.tagCounts.hasOwnProperty(tag)) out.tagCounts[tag]++;
                 if (b.i && b.i !== 'NO_ITEM' && b.i !== '') {
-                    out.items.set(b.i, (out.items.get(b.i) || 0) + 1);
+                    out.items.set(b.i, (out.items.get(b.i) || 0) + w);
                     if (tag) {
                         if (!out.tagsByItem.has(b.i)) out.tagsByItem.set(b.i, new Set());
                         out.tagsByItem.get(b.i).add(tag);
@@ -49338,10 +49361,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const aRaw = b.a && String(b.a).trim();
                 const a = aRaw || defaultAbility;
                 if (a) {
-                    out.abilities.set(a, (out.abilities.get(a) || 0) + 1);
+                    out.abilities.set(a, (out.abilities.get(a) || 0) + w);
                 }
                 if (b.n && String(b.n).trim()) {
-                    out.natures.set(b.n, (out.natures.get(b.n) || 0) + 1);
+                    out.natures.set(b.n, (out.natures.get(b.n) || 0) + w);
                 }
                 if (Array.isArray(b.m)) {
                     // Count a move once per build even if it's slashed or in multiple slots —
@@ -49353,7 +49376,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             const mv = raw.trim();
                             if (!mv || seen.has(mv)) continue;
                             seen.add(mv);
-                            out.moves.set(mv, (out.moves.get(mv) || 0) + 1);
+                            out.moves.set(mv, (out.moves.get(mv) || 0) + w);
                             if (tag) {
                                 if (!out.tagsByMove.has(mv)) out.tagsByMove.set(mv, new Set());
                                 out.tagsByMove.get(mv).add(tag);
@@ -49410,12 +49433,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _txGlobalMetaCached = out;
             return out;
         }
-        // Sorted [{name, count, pct}] cached on the stats object.
+        // Sorted [{name, count, pct}] cached on the stats object. `count` is the
+        // recency-weighted sum; `pct` divides by the weighted total so it reads
+        // as "share of (recency-weighted) sets that run this option".
         function _txMetaSorted(stats, kind) {
             if (!stats || !stats[kind]) return [];
             if (!stats._sorted) stats._sorted = {};
             if (stats._sorted[kind]) return stats._sorted[kind];
-            const total = stats.total || 1;
+            const total = stats.weightedTotal || stats.total || 1;
             const arr = [...stats[kind].entries()]
                 .map(([name, count]) => ({ name, count, pct: (count / total) * 100 }))
                 .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
@@ -49431,7 +49456,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!stats || !stats.total) return { score:0, pct:0, rank:0, source:'none', haveSpecies:false };
             const count = (stats[kind] && stats[kind].get(name)) || 0;
             if (!count) return { score:0, pct:0, rank:0, source: haveSpecies?'species':'global', haveSpecies };
-            const pct = (count / stats.total) * 100;
+            const pct = (count / (stats.weightedTotal || stats.total || 1)) * 100;
             const score = Math.min(100, 22 * Math.log2(1 + pct) + pct * 0.5);
             const sorted = _txMetaSorted(stats, kind);
             const rank = sorted.findIndex(x => x.name === name) + 1;
