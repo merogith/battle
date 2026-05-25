@@ -341,6 +341,31 @@ Maintainer-approved direction for the enemy build curve (replaces the open quest
 
 ---
 
+## 5c. Player-power vs enemy-power — the matched curve
+
+**Maintainer balance target:** wilds are G4/G3; with full evolution the player "easily evolves into G2 (mostly), occasional G1"; the enemy fields G2 (mostly) with occasional G1 by stage (GL8 → G1). Player **estimated team power ≈ enemy power** at every stage. End-game (E4 / Champion / post-HoF) power is **liked as-is — no buff/nerf**, only consistency + "works as intended."
+
+**Why this already holds — grade is a function of evo-stage × BST** (`_computeMonGrade` `13818`): stage0 basic → G4 (G3 if BST≥350) · stage1-mid → G3 · stage1-final → G3 (G2 if BST≥500) · **stage2-final → G2 (G1 if BST≥570)** · basic-final → G4/G3/G2/G1 by BST. So evolution *is* a grade lift, and the evo-stage gate (§5b) is the throttle that keeps the player's lift in lockstep with the enemy grade era:
+
+| Stage | Wild catch (`_WILD_GRADE_CURVE_BY_BADGES`) | Evo gate reach | Player effective grade | Enemy (grade era · evo-stage) | Match |
+|---|---|---|---|---|---|
+| C0–1 · 0–1 badges | G4 100% → G3 15/G4 85 | none (Sage debuts C2) | **G4 basic** | G4 era · basic | ✓ |
+| C2–5 · 1–4 badges | G3 35→100 / G4 65→0 | first evos | **G3** (+ gold-limited G2) | G3 era · first-evo | ✓ |
+| C6–8 · 5–8 badges | G3 100 → G2 3–8% leak | all finals | **G2, occasional G1** | G2 era · all (G1 ace @GL8) | ✓ |
+
+- **Wilds never give G1** and only leak 3–8% G2 post-G6 — Safari (10,000G, debuts mid) is the deliberate G2/G1 *catch* path. The player's G1 comes from evolving a BST≥570 pseudo (Dragonite/Tyranitar/Salamence) at C6+, mirroring the enemy's GL8/boss G1 aces.
+- **Gold is the soft grade-cap on the player.** Stone Sage: G3 = 1,500 · G2 = 6,000 · G1 = 16,000. Early purses (~2.3–5k/leader) afford ~1 G2 evolution before C5 → at most one G2 powerhouse among G3s in the first-evo era. Healthy out-strategize headroom, not a curve break — and it is self-limiting without any extra gate.
+- **Tools ramp realization** (so the player can *build to* their grade, not just reach it): Stone Sage + Cable Link **C2** (evolve / trade-evo) → Move Tutor / Nature Rater → EV Trainer + Battle Dojo + Ability Capsule **C4** (EVs, ability, held item) → **Colress C6** (full EV optimization). Backed by the reward overhaul's per-trainer vitamin drops (~120–150/run) so EV access doesn't bottleneck on the 5,000G EV-Trainer alone.
+- **Caught-mon baseline** (`makeWildBuild`): ~170 EVs + curated nature + default ability + no item ≈ 70% built. The tool ladder above closes the last 30% — which is exactly the gap the enemy build-tier ramp (T1→T4) crosses on its side.
+
+**Implication for the pending EV ramp (Q2):** the enemy per-gym EV budget must **track the player's EV-tool acquisition**, not lead it — ~0–170 EV early (matches the wild head-start, pre-EV-Trainer), ramping to a full 510 by C6+ (Colress + accumulated vitamins). A hard 252/252 enemy spread before C4 would put the enemy ahead of what the player can EV; the smooth ramp must mirror C2/C4/C6 tool unlocks.
+
+**End-game consistency (verified):** at C6+ the evo cap is 2 → `_capGradePoolsByEvoStage` early-returns the pool unchanged, the S-cap and wild-cap are skipped, and the Stone Sage allows every evolution. Enemy/wild/player rolls from C6 onward are **bit-identical to pre-gate behavior** (the 113-test suite incl. `rollTrainerTeam` reproducibility stays green). E4/Champion/Mystery power is untouched by design.
+
+**Open balance decision — first-evo-era G2 powerhouses.** The evo gate is stage-based, so a 2-stage line's G2 final (Gyarados, BST 540, one evolution) is reachable at C2–5 while the enemy is grade-capped to G3. Today the 6,000G cost limits this to ~1 mon. Options: **(a) keep gold-gated** (recommended — preserves out-strategize room, self-limiting), or **(b) add a grade cap to player evolution at C2–5** (defer all G2 evolutions to C6) for a stricter "mostly G3 until full-evo" match.
+
+---
+
 ## 6. Stale-finding reconciliation
 
 | Finding | Claim | Reality (verified) |
