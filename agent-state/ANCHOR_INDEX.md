@@ -1,6 +1,6 @@
 # Anchor Index — battle.html and siblings
 
-> **Generated**: 2026-05-25T10:40:11.260Z
+> **Generated**: 2026-05-25T12:06:07.831Z
 > **Source**: `node scripts/debug/anchor-map.mjs`
 > **Companion**: `agent-state/CODEBASE_MAP.md` (human-authored prose, anchor table stale — use this file instead).
 
@@ -13,8 +13,8 @@ trusting these numbers verbatim.
 | Symbol | File | Line | Kind |
 |---|---|---|---|
 | `newStoryRun` | _not found_ | — | — |
-| `load` | battle.html | 32240 | function-decl |
-| `save` | battle.html | 32179 | function-decl |
+| `load` | battle.html | 32227 | function-decl |
+| `save` | battle.html | 32166 | function-decl |
 | `SAVE_KEY` | battle.html | 31238 | const-decl |
 | `SAVE_VER` | battle.html | 31243 | const-decl |
 
@@ -23,14 +23,14 @@ trusting these numbers verbatim.
 | Symbol | File | Line | Kind |
 |---|---|---|---|
 | `STORY_EVENTS_RAW` | battle.html | 29008 | const-decl |
-| `enterBattleEvent` | battle.html | 41789 | function-decl |
-| `proceedToNextBattle` | battle.html | 41296 | function-decl |
+| `enterBattleEvent` | battle.html | 41813 | function-decl |
+| `proceedToNextBattle` | battle.html | 41320 | function-decl |
 
 ## Migrations
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `migrateStoryPreV15` | battle.html | 31890 | function-decl |
+| `migrateStoryPreV15` | battle.html | 31877 | function-decl |
 
 ## Difficulty / coin
 
@@ -42,28 +42,28 @@ trusting these numbers verbatim.
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `storyRngNext` | battle.html | 32143 | function-decl |
+| `storyRngNext` | battle.html | 32130 | function-decl |
 | `storyRngState` | _not found_ | — | — |
 
 ## Trainer rolling
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `rollTrainerTeam` | battle.html | 33886 | function-decl |
-| `rollMysteryFigureFinalBossTeam` | battle.html | 34263 | function-decl |
+| `rollTrainerTeam` | battle.html | 33873 | function-decl |
+| `rollMysteryFigureFinalBossTeam` | battle.html | 34291 | function-decl |
 | `makeBuild` | battle.html | 10292 | function-decl |
-| `makeWildBuild` | battle.html | 44080 | function-decl |
+| `makeWildBuild` | battle.html | 44102 | function-decl |
 | `makeDesignedBuild` | battle.html | 10261 | function-decl |
 
 ## Story build tier
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `STORY_BUILD_TIER` | battle.html | 33319 | const-decl |
-| `_storyBuildTierForEvent` | battle.html | 33503 | function-decl |
-| `_storyDowngradeBuildForTier` | battle.html | 33575 | function-decl |
-| `_applyStoryBuildPowerTier` | battle.html | 33701 | function-decl |
-| `_storyBuildTierForProfessor` | battle.html | 33561 | function-decl |
+| `STORY_BUILD_TIER` | battle.html | 33306 | const-decl |
+| `_storyBuildTierForEvent` | battle.html | 33490 | function-decl |
+| `_storyDowngradeBuildForTier` | battle.html | 33562 | function-decl |
+| `_applyStoryBuildPowerTier` | battle.html | 33688 | function-decl |
+| `_storyBuildTierForProfessor` | battle.html | 33548 | function-decl |
 
 ## Mechanics unlock gate
 
@@ -71,31 +71,31 @@ trusting these numbers verbatim.
 |---|---|---|---|
 | `_withStoryPlayerGimmickGate` | battle.html | 11419 | function-decl |
 | `_pbsStoryUsePlayerGimmickGate` | _not found_ | — | — |
-| `_storyEnemyMechKeys` | battle.html | 32803 | function-decl |
-| `_minGuaranteedMechsForEvent` | battle.html | 32930 | function-decl |
+| `_storyEnemyMechKeys` | battle.html | 32790 | function-decl |
+| `_minGuaranteedMechsForEvent` | battle.html | 32917 | function-decl |
 | `_mechForGimmickRoll` | battle.html | 11399 | function-decl |
 
 ## Mystery Figure / Professor
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `enterProfessor` | battle.html | 40629 | function-decl |
+| `enterProfessor` | battle.html | 40653 | function-decl |
 | `isPreLeagueLegendaryMysteryGate` | battle.html | 29879 | function-decl |
 
 ## Rival
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `setRivalStanding` | battle.html | 32005 | function-decl |
+| `setRivalStanding` | battle.html | 31992 | function-decl |
 | `getRivalEncounterPhase` | battle.html | 30308 | function-decl |
-| `pickStoryRivalSpriteFile` | battle.html | 34456 | function-decl |
+| `pickStoryRivalSpriteFile` | battle.html | 34484 | function-decl |
 
 ## City hub
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `enterCity` | battle.html | 38357 | function-decl |
-| `renderCityActions` | battle.html | 38479 | function-decl |
+| `enterCity` | battle.html | 38381 | function-decl |
+| `renderCityActions` | battle.html | 38503 | function-decl |
 | `getCurrentCityDisplayName` | _not found_ | — | — |
 | `shouldForceCityProfessor` | battle.html | 29860 | function-decl |
 
@@ -103,8 +103,8 @@ trusting these numbers verbatim.
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `_pickStarterPartner` | battle.html | 40571 | function-decl |
-| `_bossArcRollLegendary` | battle.html | 43492 | function-decl |
+| `_pickStarterPartner` | battle.html | 40595 | function-decl |
+| `_bossArcRollLegendary` | battle.html | 43514 | function-decl |
 
 ## Damage formula
 
@@ -118,9 +118,9 @@ trusting these numbers verbatim.
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `STORY_TUTORIAL_SCENES` | battle.html | 36512 | const-decl |
-| `_showStoryTutorialScene` | battle.html | 36745 | function-decl |
-| `playStoryTutorial` | battle.html | 36806 | function-decl |
+| `STORY_TUTORIAL_SCENES` | battle.html | 36540 | const-decl |
+| `_showStoryTutorialScene` | battle.html | 36773 | function-decl |
+| `playStoryTutorial` | battle.html | 36834 | function-decl |
 
 ## Dialogue pools
 
@@ -136,16 +136,16 @@ trusting these numbers verbatim.
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `_storyCalcRetreatGoldFee` | battle.html | 39285 | function-decl |
-| `refreshStoryGameOverRetreatUI` | battle.html | 40273 | function-decl |
-| `acceptRivalLossAndContinue` | battle.html | 42271 | function-decl |
+| `_storyCalcRetreatGoldFee` | battle.html | 39309 | function-decl |
+| `refreshStoryGameOverRetreatUI` | battle.html | 40297 | function-decl |
+| `acceptRivalLossAndContinue` | battle.html | 42295 | function-decl |
 
 ## Tutor / EV trainer / Link / Colress
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `enterShop` | battle.html | 45074 | function-decl |
-| `enterArtifactShop` | battle.html | 45310 | function-decl |
+| `enterShop` | battle.html | 45096 | function-decl |
+| `enterArtifactShop` | battle.html | 45332 | function-decl |
 
 ## Test harness
 

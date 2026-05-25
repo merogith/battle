@@ -34190,48 +34190,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Signature aces are protected so a leader's identity mon doesn't morph mid-run.
             const _illegalCount = _storyIllegalCountForEvent(battleEventType, storyRowIdx);
             if (_illegalCount > 0) _storyInjectIllegalBuilds(team, _origSigs, _illegalCount);
-            // GL8 is the gym-track power peak — guarantee at least one Grade-1 on
-            // the board. No-op when the signature ace (or any rolled filler) is
-            // already G1; otherwise the weakest non-signature filler is swapped
-            // for a type-appropriate G1, leaving the leader's identity ace intact.
-            if (/^Gym Leader\s*8$/.test(String(battleEventType || ''))) {
-                _storyForceGrade1Presence(team, _origSigs, T, genSet, rng);
-            }
             return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(team, battleEventType), battleEventType, storyRowIdx, _origSigs);
-        }
-        /** Ensure a rolled team carries at least one Grade-1 species. No-op when a
-         *  G1 is already present (signature ace or filler), so it never double-
-         *  stacks. Otherwise swaps the weakest non-signature filler for a type-
-         *  appropriate G1 (preferring the leader's typed pool T[1], falling back
-         *  to any in-gen G1), keeping signature aces — the leader's identity — untouched. */
-        function _storyForceGrade1Presence(team, origSigs, T, genSet, rng) {
-            if (!Array.isArray(team) || !team.length) return;
-            for (const slot of team) {
-                if (slot && getMonGrade(slot.name, getBST(slot.name)) === 1) return; // already have a G1
-            }
-            const used = new Set(team.map(s => s && s.name).filter(Boolean));
-            let pool = (T && Array.isArray(T[1]) ? T[1] : []).filter(n => !used.has(n));
-            if (!pool.length) {
-                for (const name of Object.keys(baseStats)) {
-                    if (isStoryRollExcluded(name)) continue;
-                    const b = baseStats[name];
-                    if (!b || !genSet.has(b.gen) || used.has(name)) continue;
-                    if (getMonGrade(name, getBST(name)) !== 1) continue;
-                    pool.push(name);
-                }
-            }
-            if (!pool.length) return; // no G1 available in this gen window — leave as-is
-            const pick = pool[Math.floor(rng() * pool.length)];
-            // Replace the weakest (highest grade number) non-signature filler.
-            let targetIdx = -1, weakest = -1;
-            for (let i = 0; i < team.length; i++) {
-                const s = team[i];
-                if (!s || origSigs.has(s.name)) continue;
-                const g = getMonGrade(s.name, getBST(s.name));
-                if (g > weakest) { weakest = g; targetIdx = i; }
-            }
-            if (targetIdx < 0) return; // every slot is a signature — leave identity intact
-            team[targetIdx] = { name: pick, build: makeBuild(pick, { forceGimmick: 'STANDARD' }) };
         }
         // Boot-time data sanity check (warn-only; never throws). Surfaces TRAINER_DATA
         // authoring mistakes — typo'd signature names, sigs whose gen falls outside the
