@@ -331,8 +331,8 @@ Maintainer-approved direction for the enemy build curve (replaces the open quest
 | Full | C6+ | all (incl. finals) | G2 era opens at GL6 |
 
 - Keyed on `cityIndexFromEventIndex` (a route battle reports its **departing** city → the route *into* a city keeps the old cap, the city's gym + route *out* get the new one — exactly the requested route-timing rule).
-- Helpers: `_storyEvoStageOf` (0/1/2 from `baseStats.prevo`), `_storyEvoStageCapForCity` (C≤1→0, C2–5→1, C6+→2), `_storyEvoStageCapForRow`, `_capGradePoolsByEvoStage` (fail-open if a pool empties).
-- Touch points: `rollTrainerTeam` (local-copy cap on filler pool `T` + sig pool `S`, applied uniformly so the intro Rival is basic too — never mutates the shared `_trainerPoolCache`), `_pickWildSpeciesRandom` (route wilds via `sm.eventIndex`), `_getAllEvosWithStatus` (player Stone Sage: finals render `cityLocked` pre-C6; the existing `!allowed` guard in `evoLabEvolve` rejects them).
+- Helpers: `_storyEvoStageOf` (0/1/2 from `baseStats.prevo`), `_storyEvoStageCapForCity` (C≤1→0, C2–5→1, C6+→2), `_storyEvoStageCapForRow`, `_capGradePoolsByEvoStage` (fail-open if a pool empties), `_storyEvoGradeFloorForCity` (C≤5→G3 floor, C6+→none; player-only).
+- Touch points: `rollTrainerTeam` (local-copy cap on filler pool `T` + sig pool `S`, applied uniformly so the intro Rival is basic too — never mutates the shared `_trainerPoolCache`), `_pickWildSpeciesRandom` (route wilds via `sm.eventIndex`), `_getAllEvosWithStatus` (player Stone Sage: a target is `cityLocked` unless **both** its evo-stage ≤ cap **and** its grade ≥ the era floor — so 3-stage finals *and* one-step G2 powerhouses both wait for C6; the existing `!allowed` guard in `evoLabEvolve` rejects them).
 - Verified: jsdom probe — 1296 sampled enemy mons across all three eras + the Rival branch + route wilds = **0 cap violations**; player listing gates first-evo-allowed@C3, final-locked@C3/C5, both-unlocked@C6. Test handles added to the inert `__storyTest` harness block.
 
 **Early-build content — Q1 — ⏳ PENDING.** Early enemies keep nature + level-up moves + **default ability + a basic berry**, **0 EVs** (vanilla-ish before the steroids). Ramps with the build tier (T1 simple → T4 full competitive).
@@ -362,7 +362,7 @@ Maintainer-approved direction for the enemy build curve (replaces the open quest
 
 **End-game consistency (verified):** at C6+ the evo cap is 2 → `_capGradePoolsByEvoStage` early-returns the pool unchanged, the S-cap and wild-cap are skipped, and the Stone Sage allows every evolution. Enemy/wild/player rolls from C6 onward are **bit-identical to pre-gate behavior** (the 113-test suite incl. `rollTrainerTeam` reproducibility stays green). E4/Champion/Mystery power is untouched by design.
 
-**Open balance decision — first-evo-era G2 powerhouses.** The evo gate is stage-based, so a 2-stage line's G2 final (Gyarados, BST 540, one evolution) is reachable at C2–5 while the enemy is grade-capped to G3. Today the 6,000G cost limits this to ~1 mon. Options: **(a) keep gold-gated** (recommended — preserves out-strategize room, self-limiting), or **(b) add a grade cap to player evolution at C2–5** (defer all G2 evolutions to C6) for a stricter "mostly G3 until full-evo" match.
+**Resolved — first-evo-era G2 powerhouses → grade cap added (decision b).** The evo gate is stage-based, so a 2-stage line's G2 final (Gyarados, BST 540, one evolution) *was* reachable at C2–5 while the enemy stays grade-capped to G3. Per maintainer call, the player Stone Sage now also enforces `_storyEvoGradeFloorForCity` (G3 until C6), deferring all G2/G1 evolutions to the full-evo city so the player stays "mostly G3 until full evo" — a tight match to the enemy's G3-era gradeWeights. Enemy/wild need no change (already grade-capped upstream by `gradeWeights` / the wild curve). Covered by 3 added cases in `tests/suites/story-evo-stage-gate.test.js`.
 
 ---
 

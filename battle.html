@@ -32796,6 +32796,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (c <= 5) return 1;
             return 2;
         }
+        // Strongest grade a PLAYER evolution may reach this era (G1=1 strongest).
+        // C<=5 caps targets at G3 (value>=3); C6+ unrestricted (value>=1). Pairs
+        // with the stage cap so the player is "mostly G3 until full evo at C6" —
+        // a one-step G2 final (Gyarados) also waits for C6, matching the enemy's
+        // G3-era gradeWeights. Enemy/wild are already grade-capped upstream, so
+        // this floor is player-only.
+        function _storyEvoGradeFloorForCity(cityIdx) {
+            return (cityIdx | 0) <= 5 ? 3 : 1;
+        }
         function _storyEvoStageCapForRow(rowIdx) {
             if (rowIdx == null || !(sm && sm.active)) return 2;
             return _storyEvoStageCapForCity(cityIndexFromEventIndex(rowIdx));
@@ -47243,17 +47252,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (base && base.evos && base.evos.length) sp = base;
                 }
                 if (!sp || !sp.evos || !sp.evos.length) return [];
-                // Mirror the enemy evo-stage gate on the player's own Stone Sage:
-                // C2-5 offers first-stage evolutions only; final (2nd-stage)
-                // evolutions unlock at C6. cityLocked targets render with a city
-                // hint and are rejected by evoLabEvolve's !allowed guard.
-                const cap = _storyEvoStageCapForRow(sm && sm.eventIndex);
+                // Mirror the enemy curve on the player's own Stone Sage. Two caps,
+                // both keyed on the current city, both lifting at C6 (full evo):
+                //   • stage: C2-5 first evos only (finals of 3-stage lines wait).
+                //   • grade: C2-5 caps targets at G3, so a one-step G2 final
+                //     (Gyarados etc.) also waits for C6 — keeps the player "mostly
+                //     G3 until full evo", matching the enemy's G3-era gradeWeights.
+                // cityLocked targets render a hint and are rejected by evoLabEvolve.
+                const cityIdx = (sm && sm.active) ? cityIndexFromEventIndex(sm.eventIndex) : 9;
+                const stageCap = _storyEvoStageCapForCity(cityIdx);
+                const gradeFloor = _storyEvoGradeFloorForCity(cityIdx);
                 return sp.evos.map(evo => {
                     const b = baseStats[evo];
                     const exists = !!b;
                     const inGen = exists && genSet.has(b.gen);
-                    const stageOK = cap >= 2 || _storyEvoStageOf(evo) <= cap;
-                    return { name: evo, gen: exists ? b.gen : null, exists, allowed: inGen && stageOK, cityLocked: exists && inGen && !stageOK };
+                    const stageOK = stageCap >= 2 || _storyEvoStageOf(evo) <= stageCap;
+                    const gradeOK = (getMonGrade(evo, getBST(evo)) | 0) >= gradeFloor;
+                    const ok = stageOK && gradeOK;
+                    return { name: evo, gen: exists ? b.gen : null, exists, allowed: inGen && ok, cityLocked: exists && inGen && !ok };
                 });
             } catch (e) { return []; }
         }
@@ -47396,7 +47412,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                     <span>Gen <strong>${e.gen}</strong></span>
                                     <span style="color:#ef9a9a;">${e.cityLocked ? 'Locked' : 'Disabled'}</span>
                                 </div>
-                                <div class="tx-card-desc" style="color:#ef9a9a;">${e.cityLocked ? 'Final evolutions unlock at the sixth city.' : `Gen ${e.gen} disabled in run settings.`}</div>
+                                <div class="tx-card-desc" style="color:#ef9a9a;">${e.cityLocked ? 'Unlocks at the sixth city, when full evolution opens.' : `Gen ${e.gen} disabled in run settings.`}</div>
                             </div>`;
                         }
                         const cost = _evoCostFor(eg, en);

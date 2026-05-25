@@ -101,11 +101,16 @@ test('route wilds never exceed their era cap', () => {
 });
 
 test('player Stone Sage gates finals until C6, allows first-evos at C2-5', () => {
-  // Harness stubs @pkmn/dex to null; inject a minimal evo chain to drive the path.
-  W.pkmn.dex.Dex.species.get = (n) => {
-    const evos = { Bulbasaur: ['Ivysaur'], Ivysaur: ['Venusaur'], Venusaur: [] };
-    return (n in evos) ? { name: n, evos: evos[n], baseSpecies: n } : null;
+  // Harness stubs @pkmn/dex to null; inject minimal chains (with prevo so
+  // getMonGrade computes the stage-based grade for the grade-floor check).
+  const dex = {
+    Bulbasaur: { evos: ['Ivysaur'] },
+    Ivysaur: { evos: ['Venusaur'], prevo: 'Bulbasaur' },
+    Venusaur: { evos: [], prevo: 'Ivysaur' },
+    Magikarp: { evos: ['Gyarados'] },
+    Gyarados: { evos: [], prevo: 'Magikarp' },
   };
+  W.pkmn.dex.Dex.species.get = (n) => (n in dex) ? { name: n, baseSpecies: n, ...dex[n] } : null;
   const cityRowFor = c => { for (let i = 0; i < N; i++) if (ST.cityIndexFromEventIndex(i) === c) return i; return 0; };
   const status = (mon, evo, city) => {
     setSm({ eventIndex: cityRowFor(city) });
@@ -117,10 +122,15 @@ test('player Stone Sage gates finals until C6, allows first-evos at C2-5', () =>
     assert.equal(e.allowed, allowed, `${mon}->${evo}@C${city} allowed`);
     assert.equal(!!e.cityLocked, cityLocked, `${mon}->${evo}@C${city} cityLocked`);
   };
-  expect('Bulbasaur', 'Ivysaur', 3, true, false);   // first-evo allowed in first-evo era
-  expect('Ivysaur', 'Venusaur', 3, false, true);    // final locked at C3
+  expect('Bulbasaur', 'Ivysaur', 3, true, false);   // G3 first-evo allowed in first-evo era
+  expect('Ivysaur', 'Venusaur', 3, false, true);    // 3-stage final stage-locked at C3
   expect('Ivysaur', 'Venusaur', 5, false, true);    // still locked at C5
-  expect('Ivysaur', 'Venusaur', 6, true, false);    // final unlocks at C6
+  expect('Ivysaur', 'Venusaur', 6, true, false);    // unlocks at C6
   expect('Bulbasaur', 'Ivysaur', 6, true, false);
+  // Grade cap: a one-step G2 final (Magikarp->Gyarados) is stage-OK at C2-5 but
+  // grade-blocked until C6, so the player stays "mostly G3 until full evo".
+  expect('Magikarp', 'Gyarados', 3, false, true);   // grade-locked at C3 despite being a first-evo
+  expect('Magikarp', 'Gyarados', 5, false, true);   // still grade-locked at C5
+  expect('Magikarp', 'Gyarados', 6, true, false);   // unlocks at C6 (full evo)
   setSm();
 });
