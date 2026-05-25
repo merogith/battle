@@ -1,6 +1,6 @@
 # Anchor Index — battle.html and siblings
 
-> **Generated**: 2026-05-25T12:22:19.290Z
+> **Generated**: 2026-05-25T12:24:17.276Z
 > **Source**: `node scripts/debug/anchor-map.mjs`
 > **Companion**: `agent-state/CODEBASE_MAP.md` (human-authored prose, anchor table stale — use this file instead).
 
@@ -23,8 +23,8 @@ trusting these numbers verbatim.
 | Symbol | File | Line | Kind |
 |---|---|---|---|
 | `STORY_EVENTS_RAW` | battle.html | 29008 | const-decl |
-| `enterBattleEvent` | battle.html | 41772 | function-decl |
-| `proceedToNextBattle` | battle.html | 41279 | function-decl |
+| `enterBattleEvent` | battle.html | 41814 | function-decl |
+| `proceedToNextBattle` | battle.html | 41321 | function-decl |
 
 ## Migrations
 
@@ -52,7 +52,7 @@ trusting these numbers verbatim.
 | `rollTrainerTeam` | battle.html | 33873 | function-decl |
 | `rollMysteryFigureFinalBossTeam` | battle.html | 34250 | function-decl |
 | `makeBuild` | battle.html | 10292 | function-decl |
-| `makeWildBuild` | battle.html | 44061 | function-decl |
+| `makeWildBuild` | battle.html | 44103 | function-decl |
 | `makeDesignedBuild` | battle.html | 10261 | function-decl |
 
 ## Story build tier
@@ -104,7 +104,7 @@ trusting these numbers verbatim.
 | Symbol | File | Line | Kind |
 |---|---|---|---|
 | `_pickStarterPartner` | battle.html | 40554 | function-decl |
-| `_bossArcRollLegendary` | battle.html | 43473 | function-decl |
+| `_bossArcRollLegendary` | battle.html | 43515 | function-decl |
 
 ## Damage formula
 
@@ -138,14 +138,14 @@ trusting these numbers verbatim.
 |---|---|---|---|
 | `_storyCalcRetreatGoldFee` | battle.html | 39268 | function-decl |
 | `refreshStoryGameOverRetreatUI` | battle.html | 40256 | function-decl |
-| `acceptRivalLossAndContinue` | battle.html | 42254 | function-decl |
+| `acceptRivalLossAndContinue` | battle.html | 42296 | function-decl |
 
 ## Tutor / EV trainer / Link / Colress
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `enterShop` | battle.html | 45055 | function-decl |
-| `enterArtifactShop` | battle.html | 45291 | function-decl |
+| `enterShop` | battle.html | 45097 | function-decl |
+| `enterArtifactShop` | battle.html | 45333 | function-decl |
 
 ## Test harness
 
