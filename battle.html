@@ -40639,12 +40639,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     'Two ways to find a partner: Professors and the wild.\n\nProfessors keep curated benches — lab-raised, hand-picked, one slot per visit. You\'ll meet one in each of the first six cities. Wild routes and the Safari are the other path: a roll of the dice, but the species pool widens fast once you leave the starter town.\n\nFoes match your party size 1-for-1. The Champion, the Elite Four, and Victory Road are the exceptions — they always field six, no matter how lean you ran.\n\nThere\'s also a training tier on every Pokémon (the chip beside its name): Untrained, Novice, Competent, Tournament. Early route trainers run Untrained — no EVs, neutral nature, no held item. The Champion and the Elite Four run Tournament. Your starter begins Untrained too. The Move Tutor, EV Trainer, Nature Rater, and Battle Dojo are the four facilities that walk it up the ladder.'); } catch (e) {}
             }
             _profLegendaryMysteryMode = _profMysteryMode && isPreLeagueLegendaryMysteryGate(cityIdx);
-            // One-time framing for the City-8 legendary gate. The mechanic is a forced
-            // party swap with no graceful refusal — the player should know what they're
-            // walking into before committing. Cross-run-deduped via story meta.
+            // One-time framing for the City-8 legendary gate. Accepting the legendary
+            // either swaps a partner to the PC or parks the legendary in the PC; the
+            // player can also refuse. Spell the options out before they commit.
+            // Cross-run-deduped via story meta.
             if (_profLegendaryMysteryMode) {
                 try { _storyShowOneTimeTip('legendary-gate',
-                    'A Victory Road tradition older than the badges themselves: no challenger walks the final gate without a legendary at their side.\n\nThe figure beyond the door wears a mask, and won\'t answer the obvious question. What they will do is hand you one of the great ones — in exchange for a slot on your team. Accept, and your weakest member walks back to the PC. Refuse, and the gate stays shut.\n\nTake your time. This is one of the run\'s biggest commitments.'); } catch (e) {}
+                    'A Victory Road tradition older than the badges themselves: no challenger walks the final gate without a legendary in hand.\n\nThe figure beyond the door wears a mask, and won\'t answer the obvious question. What they will do is hand you one of the great ones. Field it in place of a partner — the teammate you bench walks safely back to the PC — or send the legendary straight to the PC and keep your team intact. Refuse it entirely, and the gate stays shut.\n\nTake your time. This is one of the run\'s biggest decisions.'); } catch (e) {}
             }
             // Mystery Figure framing only applies to the City-8 post-Gym-8 legendary
             // gate. Other "full party" Professor visits are framed as a normal lab-
@@ -40665,9 +40666,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (titleEl) titleEl.textContent = _profLegendaryMysteryMode ? 'Mystery Figure' : (isSwapWithoutMystery ? "Professor's Lab — Swap" : "Professor's Lab");
             document.getElementById('story-prof-name').textContent = profName;
             document.getElementById('story-prof-quote').textContent = _profLegendaryMysteryMode
-                ? '"This legendary is yours for the road ahead. Pick which partner returns to your PC — the cage will not open with the slot you have now."'
+                ? '"This legendary is yours for the road ahead. Field it in place of a partner, or send it to the PC for now — either way, the gate opens once it\'s in your hands."'
                 : (isSwapWithoutMystery
-                    ? '"Your party is full, but the bench still has one for you. Pick a teammate to send to the PC and the partner is yours."'
+                    ? '"Your party is full, but the bench still has one for you. Swap a teammate for it, or send the newcomer to the PC — your call."'
                     : PROF_QUOTES[Math.floor(Math.random() * PROF_QUOTES.length)]);
             const _mysteryFace = _profLegendaryMysteryMode ? _storyEnsureMysteryIdentity() : null;
             document.getElementById('story-prof-sprite').src = getTrainerSprite(_profLegendaryMysteryMode ? (_mysteryFace && _mysteryFace.sprite ? _mysteryFace.sprite : 'Cyrus') : { spriteFile: hub.spriteFile });
@@ -40887,7 +40888,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const cardEl  = document.getElementById('story-prof-rolled-card');
                 const btnsEl  = document.getElementById('story-prof-buttons');
                 const statusEl= document.getElementById('story-prof-status');
-                statusEl.textContent = `Who does ${ch.name} replace?`;
+                statusEl.textContent = `Who does ${ch.name} replace? Or send ${ch.name} straight to the PC and keep your team.`;
                 cardEl.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:12px 0;';
                 cardEl.innerHTML = '';
                 sm.team.forEach((t, i) => {
@@ -40915,6 +40916,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     cardEl.appendChild(slot);
                 });
                 btnsEl.innerHTML = '';
+                const toPcBtn = document.createElement('button');
+                toPcBtn.textContent = '📦 Send to PC Instead';
+                toPcBtn.style.color = '#ce93d8';
+                toPcBtn.onclick = () => window.StoryMode._mysterySendToPc();
+                btnsEl.appendChild(toPcBtn);
                 const cancelBtn = document.createElement('button');
                 cancelBtn.textContent = '← Keep Current Team';
                 cancelBtn.style.color = '#aaa';
@@ -40964,6 +40970,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             const cityIdx = getCityIndex(ev);
             const replaced = target.name;
+            // Displaced partner returns to the PC — never destroyed. Mirrors the
+            // catch-swap flow (catchResolveSwap). Pre-fix this slot was simply
+            // overwritten, silently deleting the mon despite the gate text's
+            // "walks back to the PC" promise.
+            _pcEnsureBoxArray();
+            sm.pcBox.push(target);
             sm.team[slotIdx] = { name: ch.name, build: ch.build, id: 'm_'+Math.random().toString(36).slice(2,10) };
             if (!sm.profUsed) sm.profUsed = {};
             sm.profUsed[cityIdx] = true;
@@ -40971,7 +40983,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Pokédex — Mystery Figure legendary now in your party = caught.
             try { _storyMarkDexCaught(ch.name, !!(ch.build && ch.build._isShiny)); } catch (e) {}
             save();
-            document.getElementById('story-prof-status').textContent = `✓ ${ch.name} replaced ${replaced}!`;
+            document.getElementById('story-prof-status').textContent = `✓ ${ch.name} replaced ${replaced} (sent to the PC)!`;
+            document.getElementById('story-prof-rolled-card').innerHTML = '';
+            const btnsEl = document.getElementById('story-prof-buttons');
+            btnsEl.innerHTML = '';
+            const backBtn = document.createElement('button');
+            backBtn.textContent = '← Back to City';
+            backBtn.style.color = 'var(--accent)';
+            backBtn.onclick = () => window.StoryMode.enterCity();
+            btnsEl.appendChild(backBtn);
+            renderTeamPanel();
+        }
+
+        // Mystery / legendary-gate alternative to swapping: take the offered mon
+        // straight to the PC, leaving the active party untouched. Mirrors the
+        // catch flow's catchResolveSendToPC. Still flips profUsed so the City-8
+        // legendary gate opens Victory Road on accept (the figure handed you a
+        // legendary; fielding it is your call).
+        function _mysterySendToPc() {
+            if (_profSelectedIdx === null || !_pendingProfChoices) return;
+            const ch = _pendingProfChoices[_profSelectedIdx];
+            if (!ch) return;
+            const ev = STORY_EVENTS_RAW[sm.eventIndex];
+            const cityIdx = getCityIndex(ev);
+            _pcEnsureBoxArray();
+            sm.pcBox.push({ name: ch.name, build: ch.build, id: 'm_'+Math.random().toString(36).slice(2,10) });
+            if (!sm.profUsed) sm.profUsed = {};
+            sm.profUsed[cityIdx] = true;
+            _pendingProfChoices = null; _profSelectedIdx = null; _profMysteryMode = false; _pendingProfCityIdx = null; _pendingProfWasMystery = false; _profLegendaryMysteryMode = false;
+            try { _storyMarkDexCaught(ch.name, !!(ch.build && ch.build._isShiny)); } catch (e) {}
+            save();
+            document.getElementById('story-prof-status').textContent = `✓ ${ch.name} is waiting for you at the PC.`;
             document.getElementById('story-prof-rolled-card').innerHTML = '';
             const btnsEl = document.getElementById('story-prof-buttons');
             btnsEl.innerHTML = '';
@@ -53406,7 +53448,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         return {
             get state() { return sm; },
             showMenu, startNewRun, continueRun, retryFromGameOver, acceptRivalLossAndContinue, retreatToLastPokemonCenter, isActive, hasSave,
-            enterCity, enterProfessor, profRoll, profAccept, profDecline, profSelectChoice, _mysteryDoSwap,
+            enterCity, enterProfessor, profRoll, profAccept, profDecline, profSelectChoice, _mysteryDoSwap, _mysterySendToPc,
             proceedToNextBattle, onBattleEnd, afterBattleReturn,
             enterShop, buyItem, buyArtifact, enterArtifactShop, enterPokemonCenter,
             enterStoneShop, buyStoneItem, redeemStoneToken,
