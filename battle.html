@@ -11410,12 +11410,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         // Wraps a build factory call so any gimmick it rolls is constrained to
         // the player's unlocked-mechanic list. Used by every player-side
-        // acquisition path INCLUDING Cable Link, per STORY_MODE_FLOW.md §15d
-        // ("Cable Link only rolls gimmicks the player has unlocked"). An
-        // older CHANGELOG entry (2026-05-21) described Cable Link as ungated;
-        // the spec and the code disagree with that earlier note — the gate
-        // applies uniformly to make pre-unlock leaks impossible across every
-        // player-side acquisition.
+        // acquisition path EXCEPT Cable Link, which is the sole pre-gate
+        // exception (maintainer decision 2026-05-25): _makePlayerLinkBuild
+        // calls makeBuild ungated so a paid Cable Link can surface a
+        // run-enabled gimmick before the Gym-5 badge gate. All other paths
+        // (starter, professor, wild catch, evolution, pending builds, the
+        // Caged God roll) stay gated so pre-unlock leaks remain impossible.
         function _withStoryPlayerGimmickGate(fn) {
             try {
                 window._pbsStoryUsePlayerGimmickGate = true;
@@ -40999,46 +40999,47 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── VICTORY REWARDS, POKÉDEX MILESTONES, ROAMING LEGENDARIES ─────
-        // Themed gifts dropped on first victory for each Gym Leader + select
-        // Elite/Champion. Mix of currency (balls, gold), tutor vouchers (Rare
-        // Candy / Vitamin Pack / Heart Scale / Mint / Ability Capsule / Emblem
-        // of Honor — each = one free use of its matching tutor facility), and
-        // perm-boost vitamins (HP Up / Protein / Iron / Calcium / Zinc /
-        // Carbos — each gives +1 to that stat, capped at +10 per stat per
-        // mon). The perm-boost drop schedule is tuned so a full run yields
-        // ~30-40 vitamins — enough to fully boost ~1 favorite mon or
-        // partially invest across 3-4 mons. Distribution skews to "matching
-        // stat" per leader specialty: physical-leaning gyms drop Protein /
-        // Iron / Carbos, special-leaning gyms drop Calcium / Zinc, etc. The
-        // voucher pool layers on top of that and surfaces in tutor screens
-        // as a pink alt button whenever the matching counter is > 0.
+        // Bundles dropped on first victory for each Gym Leader + Elite Four +
+        // Champion (vouchers are leader/elite/boss-only by design). Each bundle
+        // holds: currency (balls, gold — unchanged from the prior economy),
+        // perm-boost IV vitamins (HP Up / Protein / Iron / Calcium / Zinc /
+        // Carbos — each +3 IV, cap 31), an optional scarce Rare Candy, and
+        // `voucherRolls: N` — N uniform-random draws from the *currently
+        // unlocked* voucher pool (_storyRollVouchers), so a voucher can never
+        // arrive before its facility (fixes the EV-Trainer-voucher-at-City-1
+        // leak). IV-vitamin counts here + the per-trainer loot drop
+        // (_storyTrainerLootVitamins) + dex milestones total ~120-150
+        // vitamins/run — enough to max a 6-mon team's key stats with surplus.
+        // `flavor` is a one-line prefix; the item list is generated from the
+        // actual contents by _storyRewardItemSummary, so the message never
+        // promises an item it didn't grant.
         const GYM_VICTORY_REWARDS = {
-            'Gym Leader 1': { pokeBall:3, vitamin:1, heartScale:1, hpUp:1, protein:1, gold:500,
-                msg:'"You earned this." +3 Poké Balls, +1 Vitamin Pack, +1 Heart Scale, +1 HP Up, +1 Protein, and a 500G purse.' },
-            'Gym Leader 2': { rareCandy:1, vitamin:1, mint:1, iron:1, hpUp:1, gold:1000,
-                msg:'A glittering Rare Candy, a Vitamin Pack, and a fresh Mint. +1 Rare Candy, +1 Vitamin Pack, +1 Mint, +1 Iron, +1 HP Up, +1,000G.' },
-            'Gym Leader 3': { greatBall:2, vitamin:1, heartScale:1, emblemHonor:1, calcium:1, zinc:1,
-                msg:'+2 Great Balls, +1 Vitamin Pack, +1 Heart Scale, +1 Emblem of Honor, +1 Calcium, +1 Zinc — the gym apothecary keeps its researchers stocked.' },
-            'Gym Leader 4': { ultraBall:1, rareCandy:1, vitamin:1, abilityCapsule:1, carbos:2,
-                msg:'The Gym Leader nods. "Take these — they go far together." +1 Ultra Ball, +1 Rare Candy, +1 Vitamin Pack, +1 Ability Capsule, +2 Carbos.' },
-            'Gym Leader 5': { greatBall:2, vitamin:1, heartScale:1, protein:2, hpUp:1, gold:1000, wishingPiece:1,
-                msg:'+2 Great Balls, +1 Vitamin Pack, +1 Heart Scale, +2 Protein, +1 HP Up, a 1,000G honorarium — and a curiosity: one <strong style="color:#b39ddb;">Wishing Piece</strong>. "Colress in the next city collects these. Tell him to awaken something for you — on the house."' },
-            'Gym Leader 6': { ultraBall:2, rareCandy:1, vitamin:1, mint:1, emblemHonor:1, calcium:2, zinc:1, gold:1500,
-                msg:'+2 Ultra Balls, +1 Rare Candy, +1 Vitamin Pack, +1 Mint, +1 Emblem of Honor, +2 Calcium, +1 Zinc, and a 1,500G stipend.' },
-            'Gym Leader 7': { ultraBall:1, rareCandy:1, vitamin:1, abilityCapsule:1, iron:2, carbos:1,
-                msg:'A Rare Candy, a Vitamin Pack, and an Ability Capsule. "You\'ll need all three." +1 Ultra Ball, +1 Rare Candy, +1 Vitamin Pack, +1 Ability Capsule, +2 Iron, +1 Carbos.' },
-            'Gym Leader 8': { ultraBall:3, vitamin:2, heartScale:1, mint:1, hpUp:2, protein:1, calcium:1, carbos:1,
-                msg:'The eighth badge — three Ultra Balls, two Vitamin Packs, a Heart Scale, a Mint, and a hand-picked vitamin bundle: +2 HP Up, +1 Protein, +1 Calcium, +1 Carbos.' },
-            'E1': { greatBall:2, vitamin:1, heartScale:1, protein:2, iron:1,
-                msg:'The first Elite tips a hat. +2 Great Balls, +1 Vitamin Pack, +1 Heart Scale, +2 Protein, +1 Iron.' },
-            'E2': { ultraBall:1, rareCandy:1, emblemHonor:1, calcium:2, zinc:1,
-                msg:'"Top League issue." +1 Ultra Ball, +1 Rare Candy, +1 Emblem of Honor, +2 Calcium, +1 Zinc.' },
-            'E3': { ultraBall:1, vitamin:1, mint:1, carbos:2, hpUp:1,
-                msg:'The third Elite salutes the climb. +1 Ultra Ball, +1 Vitamin Pack, +1 Mint, +2 Carbos, +1 HP Up.' },
-            'E4': { ultraBall:2, rareCandy:1, abilityCapsule:1, emblemHonor:1, hpUp:2, protein:1, iron:1, zinc:1,
-                msg:'The fourth Elite bows. +2 Ultra Balls, +1 Rare Candy, +1 Ability Capsule, +1 Emblem of Honor, +2 HP Up, +1 Protein, +1 Iron, +1 Zinc.' },
-            'Champion': { ultraBall:2, rareCandy:1, vitamin:2, heartScale:1, mint:1, abilityCapsule:1, emblemHonor:1, hpUp:2, protein:2, iron:2, calcium:2, zinc:2, carbos:2,
-                msg:'The Champion bows. "These are yours by right." +2 Ultra Balls, +1 Rare Candy, +2 Vitamin Packs, +1 Heart Scale, +1 Mint, +1 Ability Capsule, +1 Emblem of Honor — and one of each perm-boost vitamin (+2 each). The League stocks the strongest a final-leg trainer can carry.' }
+            'Gym Leader 1': { pokeBall:3, hpUp:2, protein:2, carbos:1, gold:500, voucherRolls:1,
+                flavor:'"You earned this."' },
+            'Gym Leader 2': { rareCandy:1, hpUp:1, iron:2, calcium:1, zinc:1, gold:1000, voucherRolls:1,
+                flavor:'The second badge — the gym apothecary opens its shelves.' },
+            'Gym Leader 3': { greatBall:2, protein:2, calcium:2, carbos:2, voucherRolls:1,
+                flavor:'"Three down. The road steepens from here."' },
+            'Gym Leader 4': { ultraBall:1, rareCandy:1, hpUp:2, protein:2, iron:1, carbos:1, voucherRolls:1,
+                flavor:'The Gym Leader nods. "Take these — they go far together."' },
+            'Gym Leader 5': { greatBall:2, protein:2, calcium:2, zinc:1, carbos:1, gold:1000, wishingPiece:1, voucherRolls:1,
+                flavor:'Halfway to the League. Your battle forms awaken — carry this Wishing Piece to Colress in the next city for a free first awakening.' },
+            'Gym Leader 6': { ultraBall:2, rareCandy:1, hpUp:2, protein:1, iron:1, calcium:2, zinc:1, gold:1500, voucherRolls:1,
+                flavor:'The sixth badge, and a metropolitan stipend.' },
+            'Gym Leader 7': { ultraBall:1, rareCandy:1, hpUp:1, protein:2, iron:2, carbos:2, voucherRolls:1,
+                flavor:'"You\'ll need everything you\'ve got for the last gym."' },
+            'Gym Leader 8': { ultraBall:3, hpUp:2, protein:2, calcium:1, zinc:1, carbos:1, voucherRolls:1,
+                flavor:'The eighth badge. Victory Road is open.' },
+            'E1': { greatBall:2, hpUp:1, protein:2, iron:1, voucherRolls:1,
+                flavor:'The first Elite tips a hat.' },
+            'E2': { ultraBall:1, rareCandy:1, hpUp:1, calcium:2, zinc:1, voucherRolls:1,
+                flavor:'"Top League issue."' },
+            'E3': { ultraBall:1, hpUp:1, protein:1, carbos:2, voucherRolls:1,
+                flavor:'The third Elite salutes the climb.' },
+            'E4': { ultraBall:2, rareCandy:1, hpUp:2, protein:1, iron:1, zinc:1, voucherRolls:1,
+                flavor:'The fourth Elite bows.' },
+            'Champion': { ultraBall:2, rareCandy:1, hpUp:2, protein:2, iron:2, calcium:2, zinc:2, carbos:2, voucherRolls:2,
+                flavor:'The Champion bows. "These are yours by right."' }
         };
 
         // Foe party size = badge curve `min(6, 2 + badges)` (STORY_MODE_FLOW
@@ -41103,8 +41104,120 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // all _storyGrantBundle needs to start accepting it from reward tables.
         const VOUCHER_KEYS = ['rareCandy', 'vitamin', 'heartScale', 'mint', 'abilityCapsule', 'emblemHonor', 'wishingPiece',
                               'linkDiscount50', 'stoneToken', 'casinoChip500'];
+        // ── Voucher unlock-gating + uniform draw (2026-05-25 reward overhaul) ──
+        // A voucher may only be granted once the player has reached the city where
+        // its redeeming facility debuts. This is the structural fix for vouchers
+        // leaking before their facility (the EV Trainer's Vitamin Pack used to drop
+        // at Gym 1 / City 1 though the EV Trainer debuts at City 4). Mirrors
+        // FACILITY_DEBUT_CITY. rareCandy is gated like the rest AND kept out of the
+        // random draw pool below, so it stays a scarce, hand-placed reward.
+        const VOUCHER_DEBUT_CITY = {
+            heartScale: 0, mint: 0,
+            rareCandy: 2, linkDiscount50: 2, stoneToken: 2,
+            vitamin: 4, abilityCapsule: 4, emblemHonor: 4,
+            casinoChip500: 5, wishingPiece: 6
+        };
+        const VOUCHER_DRAW_EXCLUDE = new Set(['rareCandy']); // scarce — never in the uniform pool
+        const VOUCHER_LABEL = { rareCandy:'Rare Candy', vitamin:'Vitamin Pack', heartScale:'Heart Scale',
+            mint:'Mint', abilityCapsule:'Ability Capsule', emblemHonor:'Emblem of Honor', wishingPiece:'Wishing Piece',
+            linkDiscount50:"Bill's Discount Card", stoneToken:'Stonewise Token', casinoChip500:'Lucky Chip' };
+        const _IV_VITAMIN_KEYS = ['hpUp', 'protein', 'iron', 'calcium', 'zinc', 'carbos'];
+        const _IV_VITAMIN_LABEL = { hpUp:'HP Up', protein:'Protein', iron:'Iron', calcium:'Calcium', zinc:'Zinc', carbos:'Carbos' };
+        function _storyVoucherUnlocked(key) {
+            const debut = VOUCHER_DEBUT_CITY[key];
+            if (debut === undefined) return true; // unmapped key → no gate
+            let city = 99;
+            try { if (typeof cityIndexFromEventIndex === 'function') city = cityIndexFromEventIndex(sm.eventIndex | 0) | 0; } catch (e) {}
+            return city >= debut;
+        }
+        // Looser gate for guaranteed "static" gateway gifts (vs the strict random
+        // draw above): a gift may be handed at the gym ONE city before its facility
+        // so the player holds it on arrival and gets a free first use immediately
+        // (e.g. Wishing Piece at GL5 / City 5 → instant awakening on reaching Colress
+        // at City 6). Per maintainer rule 2026-05-25, this applies to every gateway
+        // gift; it still blocks the old "3 cities early" leaks (EV voucher at City 1).
+        function _storyVoucherGiftable(key) {
+            const debut = VOUCHER_DEBUT_CITY[key];
+            if (debut === undefined) return true;
+            let city = 99;
+            try { if (typeof cityIndexFromEventIndex === 'function') city = cityIndexFromEventIndex(sm.eventIndex | 0) | 0; } catch (e) {}
+            return city >= (debut - 1);
+        }
+        function _storyUnlockedVoucherPool() {
+            const out = [];
+            for (const k in VOUCHER_DEBUT_CITY) {
+                if (VOUCHER_DRAW_EXCLUDE.has(k)) continue;
+                if (_storyVoucherUnlocked(k)) out.push(k);
+            }
+            return out;
+        }
+        // Roll `n` vouchers — each is a uniform-random pick from the currently
+        // unlocked pool (every unlocked voucher has equal odds, per design).
+        // Returns the granted keys so callers can build an honest reward message.
+        function _storyRollVouchers(n) {
+            const pool = _storyUnlockedVoucherPool();
+            if (!pool.length) return [];
+            _storyEnsureInventory();
+            const granted = [];
+            for (let i = 0; i < (n | 0); i++) {
+                const _rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                const key = pool[Math.floor(_rng() * pool.length)];
+                sm.inventory[key] = (sm.inventory[key] | 0) + 1;
+                granted.push(key);
+            }
+            return granted;
+        }
+        // Grant `n` IV-boost vitamins (HP Up / Protein / …), each a uniform-random
+        // stat. This is the "every trainer loots" faucet for non-leader fights;
+        // leaders/elites/bosses carry their vitamins in GYM_VICTORY_REWARDS.
+        function _storyGrantRandomVitamins(n) {
+            _storyEnsureInventory();
+            const out = {};
+            for (let i = 0; i < (n | 0); i++) {
+                const _rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                const k = _IV_VITAMIN_KEYS[Math.floor(_rng() * _IV_VITAMIN_KEYS.length)];
+                sm.inventory[k] = (sm.inventory[k] | 0) + 1;
+                out[k] = (out[k] | 0) + 1;
+            }
+            return out;
+        }
+        // IV-vitamin loot count for non-bundle fights (leaders/elites/bosses return
+        // 0 — their vitamins live in GYM_VICTORY_REWARDS). Weak < strong. Tuned so a
+        // full run yields ~120-150 vitamins total (enough to max a 6-mon team's key
+        // stats with surplus) when combined with the bundle + milestone drops.
+        function _storyTrainerLootVitamins(eventName) {
+            const e = String(eventName || '');
+            if (/^Gym Leader \d$/i.test(e) || /^E[1-4]$/i.test(e) || /Champion/i.test(e) || /Mystery Figure/i.test(e)) return 0;
+            if (/Rival/i.test(e)) return (sm && (sm.badges | 0) === 0) ? 1 : 3;
+            if (/Elite Trainer/i.test(e)) return 2;
+            if (/Gym Trainer/i.test(e)) return 1;
+            if (/Basic Trainer/i.test(e)) return 1;
+            return 0;
+        }
+        function _storyRewardItemSummary(r, voucherKeys) {
+            const parts = [];
+            if (r.pokeBall)  parts.push('+' + r.pokeBall  + ' Poké Ball'  + (r.pokeBall  > 1 ? 's' : ''));
+            if (r.greatBall) parts.push('+' + r.greatBall + ' Great Ball' + (r.greatBall > 1 ? 's' : ''));
+            if (r.ultraBall) parts.push('+' + r.ultraBall + ' Ultra Ball' + (r.ultraBall > 1 ? 's' : ''));
+            if (r.rareCandy) parts.push('+' + r.rareCandy + ' Rare Candy');
+            const vit = [];
+            for (const k of _IV_VITAMIN_KEYS) if (r[k]) vit.push('+' + r[k] + ' ' + _IV_VITAMIN_LABEL[k]);
+            if (vit.length) parts.push(vit.join(', '));
+            // Direct (gateway) vouchers explicitly listed in the bundle, e.g. the
+            // GL5 Wishing Piece. rareCandy is already shown above as an item.
+            const directV = [];
+            for (const vk of VOUCHER_KEYS) { if (vk === 'rareCandy') continue; if (r[vk]) directV.push('+' + r[vk] + ' ' + (VOUCHER_LABEL[vk] || vk) + ' voucher'); }
+            if (directV.length) parts.push(directV.join(', '));
+            if (voucherKeys && voucherKeys.length) {
+                const counts = {};
+                voucherKeys.forEach(k => counts[k] = (counts[k] | 0) + 1);
+                parts.push(Object.keys(counts).map(k => '+' + counts[k] + ' ' + (VOUCHER_LABEL[k] || k) + ' voucher').join(', '));
+            }
+            if (r.gold) parts.push('+' + r.gold.toLocaleString() + 'G');
+            return parts.join(' · ');
+        }
         function _storyGrantBundle(r) {
-            if (!r) return;
+            if (!r) return [];
             _storyEnsureBalls();
             _storyEnsureInventory();
             if (r.pokeBall)   sm.balls.poke   = (sm.balls.poke   | 0) + r.pokeBall;
@@ -41114,8 +41227,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Tutor vouchers (Rare Candy / Vitamin Pack / Heart Scale / Mint /
             // Ability Capsule / Emblem of Honor) — see VOUCHER_KEYS above.
             for (const k of VOUCHER_KEYS) {
-                if (r[k]) sm.inventory[k] = (sm.inventory[k] | 0) + r[k];
+                if (r[k] && _storyVoucherGiftable(k)) sm.inventory[k] = (sm.inventory[k] | 0) + r[k];
             }
+            const _rolled = r.voucherRolls ? _storyRollVouchers(r.voucherRolls) : [];
             // Perm-boost vitamin drops (each = +1 to that stat, applied via city bag).
             // Distinct from the Vitamin Pack voucher (EV preset waiver) — both
             // coexist in inventory under their own ids.
@@ -41126,12 +41240,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (r.zinc)       sm.inventory.zinc     = (sm.inventory.zinc     | 0) + r.zinc;
             if (r.carbos)     sm.inventory.carbos   = (sm.inventory.carbos   | 0) + r.carbos;
             if (r.gold)       sm.gold = (sm.gold | 0) + r.gold;
+            return _rolled;
         }
         function _storyApplyVictoryReward(eventName) {
             const r = GYM_VICTORY_REWARDS[eventName];
             if (!r) return null;
-            _storyGrantBundle(r);
-            return r;
+            const rolled = _storyGrantBundle(r);
+            const flavor = r.flavor || r.msg || 'Victory spoils.';
+            return { msg: flavor + ' ' + _storyRewardItemSummary(r, rolled) };
         }
 
         // Pokédex caught-count milestones — cross-run safe (sm.pokedexMilestones is
@@ -42085,6 +42201,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             if (en === 'E2')           sm.staticDrops.ultraE2  = true;
                             try { window.showGameAlert && window.showGameAlert('🎁 ' + r.msg); } catch (e) {}
                         }
+                    }
+                }
+                // "Every trainer loots" — per-trainer IV-vitamin drop for non-bundle
+                // fights (leaders/elites/bosses carry vitamins in GYM_VICTORY_REWARDS,
+                // so _storyTrainerLootVitamins returns 0 for them). Main timeline only:
+                // Crucible/Frontier rematches opt out so vitamins can't be farmed.
+                if (!sm.atCrucible && !(sm.frontier && sm.frontier.active)) {
+                    const _lootN = _storyTrainerLootVitamins(en);
+                    if (_lootN > 0) {
+                        const _got = _storyGrantRandomVitamins(_lootN);
+                        try {
+                            const _ls = Object.keys(_got).map(k => '+' + _got[k] + ' ' + (_IV_VITAMIN_LABEL[k] || k)).join(', ');
+                            if (_ls) window.showGameAlert && window.showGameAlert('💊 Loot: ' + _ls + '.');
+                        } catch (e) {}
                     }
                 }
                 const isGymBadge = /^Gym Leader [1-8]$/.test(en);
@@ -46755,7 +46885,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Returns the new build object; never null (falls back to makeBuild
         // raw on tier resolution failure).
         function _makePlayerLinkBuild(name, tierTag) {
-            const newBuild = _withStoryPlayerGimmickGate(() => makeBuild(name));
+            // Cable Link is the SOLE pre-gate exception to the badge-based gimmick
+            // gate (maintainer decision 2026-05-25): it may surface any run-enabled
+            // gimmick regardless of badges, so this is the one player path that calls
+            // makeBuild WITHOUT _withStoryPlayerGimmickGate. Still bounded by the run's
+            // mechanic toggles (settings.mechanics) — a disabled mechanic never rolls.
+            const newBuild = makeBuild(name);
             if (!newBuild) return null;
             const tier = (typeof STORY_BUILD_TIER !== 'undefined' && STORY_BUILD_TIER[tierTag]) || STORY_BUILD_TIER.TOURNAMENT;
             if (tier < STORY_BUILD_TIER.TOURNAMENT && typeof _storyDowngradeBuildForTier === 'function') {
