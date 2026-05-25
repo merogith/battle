@@ -317,6 +317,30 @@ Each is brought as multiple-choice + recommendation. **No gameplay change happen
 
 ---
 
+## 5b. Per-city build-curve pass — resolved decisions + status
+
+Maintainer-approved direction for the enemy build curve (replaces the open questions in this section's preamble for the build-curve work specifically; D1–D3 above already shipped).
+
+**Evolution-stage gate — D-EVO-1 (eras) + D-EVO-2 (player mirror) — ✅ IMPLEMENTED.**
+"Replicate the FireRed curve, a bit on steroids": basic forms early, the first-evo jump right after Gym 1, finals mid-late behind some farming. Mapped onto the verified timeline with **no boundary invention** — the eras ride the existing facility + grade schedule:
+
+| Evo era | Arrived city | Enemy / wild / player stages | Rides |
+|---|---|---|---|
+| Basic | C0–1 (incl. Route 0/1) | basic only | G4 foundation; Stone Sage doesn't exist yet |
+| First-evo | C2–5 | basic + first evos | Stone Sage debuts C2; G3 era |
+| Full | C6+ | all (incl. finals) | G2 era opens at GL6 |
+
+- Keyed on `cityIndexFromEventIndex` (a route battle reports its **departing** city → the route *into* a city keeps the old cap, the city's gym + route *out* get the new one — exactly the requested route-timing rule).
+- Helpers: `_storyEvoStageOf` (0/1/2 from `baseStats.prevo`), `_storyEvoStageCapForCity` (C≤1→0, C2–5→1, C6+→2), `_storyEvoStageCapForRow`, `_capGradePoolsByEvoStage` (fail-open if a pool empties).
+- Touch points: `rollTrainerTeam` (local-copy cap on filler pool `T` + sig pool `S`, applied uniformly so the intro Rival is basic too — never mutates the shared `_trainerPoolCache`), `_pickWildSpeciesRandom` (route wilds via `sm.eventIndex`), `_getAllEvosWithStatus` (player Stone Sage: finals render `cityLocked` pre-C6; the existing `!allowed` guard in `evoLabEvolve` rejects them).
+- Verified: jsdom probe — 1296 sampled enemy mons across all three eras + the Rival branch + route wilds = **0 cap violations**; player listing gates first-evo-allowed@C3, final-locked@C3/C5, both-unlocked@C6. Test handles added to the inert `__storyTest` harness block.
+
+**Early-build content — Q1 — ⏳ PENDING.** Early enemies keep nature + level-up moves + **default ability + a basic berry**, **0 EVs** (vanilla-ish before the steroids). Ramps with the build tier (T1 simple → T4 full competitive).
+
+**EV / IV ramp — Q2 — ⏳ PENDING.** Smooth per-gym EV budget 0 → 510 (~10 steps) + parallel IV ramp, replacing any hard step.
+
+---
+
 ## 6. Stale-finding reconciliation
 
 | Finding | Claim | Reality (verified) |

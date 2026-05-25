@@ -32773,6 +32773,49 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return pool[Math.floor(rng()*pool.length)];
         }
 
+        // ── EVOLUTION-STAGE GATE (story mode) ──────────────────────────────
+        // Mirrors the player's evolution unlock onto enemies + wild encounters.
+        // Stage of a species: 0 = basic (no prevo), 1 = first evolution,
+        // 2 = second/final evolution (its prevo also evolved). Era is keyed on
+        // the ARRIVED city via cityIndexFromEventIndex, which returns a route
+        // battle's DEPARTING city — so the route INTO a city keeps the old cap
+        // and the city's gym + the route OUT get the new one:
+        //   C0-1 → basic only · C2-5 → + first evos · C6+ → all evolutions.
+        // The Stone Sage (player evolution) debuts C2 and honors the same caps,
+        // so the player's basic → first-evo (C2) → final-evo (C6) journey and
+        // the enemy/wild curve advance together.
+        function _storyEvoStageOf(name) {
+            const b = baseStats[name];
+            if (!b || !b.prevo) return 0;
+            const pb = baseStats[b.prevo];
+            return (pb && pb.prevo) ? 2 : 1;
+        }
+        function _storyEvoStageCapForCity(cityIdx) {
+            const c = cityIdx | 0;
+            if (c <= 1) return 0;
+            if (c <= 5) return 1;
+            return 2;
+        }
+        function _storyEvoStageCapForRow(rowIdx) {
+            if (rowIdx == null || !(sm && sm.active)) return 2;
+            return _storyEvoStageCapForCity(cityIndexFromEventIndex(rowIdx));
+        }
+        function _capGradePoolsByEvoStage(T, cap) {
+            if (cap >= 2 || !T) return T;
+            const out = { 1: [], 2: [], 3: [], 4: [] };
+            let total = 0;
+            for (let g = 1; g <= 4; g++) {
+                const src = T[g] || [];
+                const kept = [];
+                for (const n of src) if (_storyEvoStageOf(n) <= cap) kept.push(n);
+                out[g] = kept;
+                total += kept.length;
+            }
+            // Fail open only if the whole capped pool empties (pathological:
+            // a type with zero basics in the enabled gens) — never break a roll.
+            return total > 0 ? out : T;
+        }
+
         // ── TRAINER TEAM ROLLER ───────────────────────────────────────────
         function parseTrainerTypes(typeStr) {
             if (!typeStr) return ['Normal'];
@@ -33867,6 +33910,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let gwIn = applyDifficultyToGradeWeights(gradeWeights || { g1: 0, g2: 0, g3: 50, g4: 50 });
             gwIn = applyStoryProgressToGradeWeights(gwIn, storyRowIdx);
             gwIn = storyStripGrade4IfPartyMature(gwIn);
+            // Evolution-stage cap for this battle's arrived city (2 = no
+            // restriction: C6+, bosses at the League, or non-story callers).
+            // Applied uniformly below — even sig-cap-exempt trainers (Rival,
+            // E1-E4, Champion, Mystery) respect it, which only bites the early
+            // Rival since the League sits at C6+ where the cap is already 2.
+            const _evoStageCap = _storyEvoStageCapForRow(storyRowIdx);
             // Eldritch-tagged trainers (Shadow Blue, Cursed Lance, Eldritch N, etc.) bypass
             // the active-gens filter for their lineup — they're "out of this world"
             // encounters specifically meant to surface species the player chose not to
@@ -33927,6 +33976,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_exemptFromSigCap && Array.isArray(S) && S.length) {
                 S = _filterSigsByGradeCeiling(S, _storySigGradeCeiling(gwIn));
             }
+            // Evo-stage gate on the signature pool: pre-C2 even a leader's ace
+            // is a basic form; C2-5 allows first-evo aces; C6+ unrestricted. If
+            // this empties S the (capped) filler pool fills the slots.
+            if (_evoStageCap < 2 && Array.isArray(S) && S.length) {
+                S = S.filter(n => _storyEvoStageOf(n) <= _evoStageCap);
+            }
             const _poolKey = (isMixed ? 'mixed' : types.slice().sort().join('+')) + '|' + Array.from(genSet).sort((a, b) => a - b).join(',');
             let T = _trainerPoolCache.get(_poolKey);
             if (!T) {
@@ -33944,6 +33999,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 _trainerPoolCache.set(_poolKey, T);
             }
+            // Evo-stage gate on the filler pool. Local copy only — the shared
+            // _trainerPoolCache entry (keyed on type+gens, not city) is never
+            // mutated, so other cities still read the full pool. Feeds both the
+            // Rival counter-pick branch and the standard filler picks below.
+            if (_evoStageCap < 2) T = _capGradePoolsByEvoStage(T, _evoStageCap);
 
             // Rival: the team is built to COUNTER your live six — score offensive typings
             // vs your party, weighted-roll STAB types, decay each picked type so coverage
@@ -34236,6 +34296,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     validateTrainerData: _validateTrainerData,
                     getTrainerData: () => TRAINER_DATA,
                     get sm() { return sm; },
+                    set sm(v) { sm = v; },
+                    // Evolution-stage gate handles (story-mode).
+                    cityIndexFromEventIndex: (...a) => cityIndexFromEventIndex(...a),
+                    storyEvoStageOf: (...a) => _storyEvoStageOf(...a),
+                    storyEvoStageCapForCity: (...a) => _storyEvoStageCapForCity(...a),
+                    storyEvoStageCapForRow: (...a) => _storyEvoStageCapForRow(...a),
+                    rollWildEncounter: (...a) => rollWildEncounter(...a),
+                    getAllEvosWithStatus: (...a) => _getAllEvosWithStatus(...a),
+                    get STORY_EVENTS_RAW() { return STORY_EVENTS_RAW; },
                 };
             } catch (e) {}
         }
@@ -44266,10 +44335,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else { r -= (gradeWeights.g3||0); if (r <= 0) { chosenGrade = 3; }
             else { r -= (gradeWeights.g2||0); if (r <= 0) { chosenGrade = 2; }
             else { chosenGrade = 1; } } }
-            const pool = buildGradePool(enabledGens, chosenGrade);
+            // Evo-stage gate: a route wild reflects the player's current
+            // (departing) city, so Routes 0-1 surface basics only, etc.
+            const cap = _storyEvoStageCapForRow(sm && sm.eventIndex);
+            let pool = buildGradePool(enabledGens, chosenGrade);
+            if (cap < 2) { const c = pool.filter(n => _storyEvoStageOf(n) <= cap); if (c.length) pool = c; }
             if (pool.length) return pool[Math.floor(Math.random() * pool.length)];
-            const all = [];
+            let all = [];
             for (let g = 1; g <= 4; g++) all.push(...buildGradePool(enabledGens, g));
+            if (cap < 2) { const c = all.filter(n => _storyEvoStageOf(n) <= cap); if (c.length) all = c; }
             return all.length ? all[Math.floor(Math.random() * all.length)] : null;
         }
 
@@ -47169,11 +47243,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (base && base.evos && base.evos.length) sp = base;
                 }
                 if (!sp || !sp.evos || !sp.evos.length) return [];
+                // Mirror the enemy evo-stage gate on the player's own Stone Sage:
+                // C2-5 offers first-stage evolutions only; final (2nd-stage)
+                // evolutions unlock at C6. cityLocked targets render with a city
+                // hint and are rejected by evoLabEvolve's !allowed guard.
+                const cap = _storyEvoStageCapForRow(sm && sm.eventIndex);
                 return sp.evos.map(evo => {
                     const b = baseStats[evo];
                     const exists = !!b;
                     const inGen = exists && genSet.has(b.gen);
-                    return { name: evo, gen: exists ? b.gen : null, exists, allowed: inGen };
+                    const stageOK = cap >= 2 || _storyEvoStageOf(evo) <= cap;
+                    return { name: evo, gen: exists ? b.gen : null, exists, allowed: inGen && stageOK, cityLocked: exists && inGen && !stageOK };
                 });
             } catch (e) { return []; }
         }
@@ -47314,9 +47394,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                                     <span>Grade <strong>${eg}</strong></span>
                                     <span>BST <strong>${bst}</strong></span>
                                     <span>Gen <strong>${e.gen}</strong></span>
-                                    <span style="color:#ef9a9a;">Disabled</span>
+                                    <span style="color:#ef9a9a;">${e.cityLocked ? 'Locked' : 'Disabled'}</span>
                                 </div>
-                                <div class="tx-card-desc" style="color:#ef9a9a;">Gen ${e.gen} disabled in run settings.</div>
+                                <div class="tx-card-desc" style="color:#ef9a9a;">${e.cityLocked ? 'Final evolutions unlock at the sixth city.' : `Gen ${e.gen} disabled in run settings.`}</div>
                             </div>`;
                         }
                         const cost = _evoCostFor(eg, en);
