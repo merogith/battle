@@ -20,29 +20,29 @@ This doc is the single source of truth for the redesign decisions. Edit it / the
 | **Always-on** (RNG-negators) | Pokemart, Fan Club, PC/Center, **Move Tutor**, **Nature Rater**, **Artifact store + enable/disable** |
 | **Permanent after debut** | Link (C2), Stone Shop (C2), Stone Sage (C2), Safari (C4), Battle Dojo (C4), EV Trainer (C4), Colress (C6) |
 | **Cyclic (come & go)** | Casino (C5, C9), Department Store (C6, C8, C9) |
-| **One-time** | Daycare egg event (C2) |
-| **One-time → returns at League/endgame** | Fight Club (C2/C4/C6 one-time series → repeatable C9 pre-E4 + endgame) |
+| **One-time** | Daycare egg (facility at C2/C4/C6; one egg per run) |
+| **One-time → returns at League/endgame** | Fight Club (C6 one-time event → repeatable C9 pre-E4 + endgame) |
 
 **Charter fixes (clear — will apply):** Move Tutor currently skips C1; Nature Rater skips C1–C2; the Artifact store isn't in any city's action list. All three are "always-on RNG-negators" → add to every city. (See `story-service-availability.csv` for the current gaps.)
 
 ## 3. Egg / Daycare redesign
 
-- Daycare debuts **City 2** (early, not the starter town). Mandatory first-time intro.
-- Drop off any non-starter/non-bound mon → receive an **egg**; the **parent is permanently lost** (keep the existing dark beat).
+- Daycare **facility appears at C2, C4, and C6** (debut C2, early but not the starter town). Mandatory first-time intro at C2.
+- **One static egg per run** — grab it at any of those visits. Drop off any non-starter/non-bound mon → receive an **egg**; the **parent is permanently lost** (keep the existing dark beat).
 - Hatch species locked at drop-off: shares ≥1 parent type, **one grade stronger** (keep `_daycareRollHatchSpecies`).
-- **Hatch timing is relative: laidCity + 2** (so a C2 egg hatches at **C4**). Replaces the fixed badge-7 gate.
-- Static, **one-time** per run.
+- **Hatch timing is relative: pickup-city + 2** (a C2 egg hatches at **C4**, a C4 egg at C6, etc.). Replaces the fixed badge-7 gate.
+- The **C6 daycare visit also reveals the Fight Club** (the matron's secret).
 
 **Touch-points:** unlock gate `_daycareIsUnlocked()` / `sm.daycare.unlocked` (~39577, set at ~42313); egg slot stores `eggLaidAtCity`; hatch in `_storyHatchEligibleEggs` (39542) keyed on city delta not `STORY_EGG_HATCH_BADGE` (39513).
 
 ## 4. Fight Club redesign
 
-- **Instances:** one-time escalating at **C2, C4, C6**, then **repeatable** before the League (C9, pre-E4) and in the **endgame**. First encounter = the dramatic/traumatic intro (matron's secret beat).
+- **Instances:** **one-time event at C6** (the matron's secret reveal → the dramatic/traumatic first gauntlet), then **repeatable** before the League (C9, pre-E4) and in the **endgame**.
 - **Session:** **5 rounds**, a different trainer each round, all **3v3**, drafted:
   1. See the enemy trainer's **6**.
   2. Pick **your 3**.
   3. Enemy **counter-picks its best 3** vs your trio, by matchup score ("best scoring first").
-- **Reward:** a sweep grants IV toward the **36 cap** (31 + 5). Escalates: ~**+2** at the early instances, reaching **+5 by C6** (per-instance amounts are tunable; user floated 5 vs 10 rounds and a flat +2). The cap (36) bounds total power; repeatable instances exist to bring **newly caught/evolved/hatched** mons up.
+- **Reward:** **+1 IV per round won, clamp +5, cap 36** — sweeping all 5 takes the team to **+5 / IV 36**, the one-time dramatic payoff. The cap (36) bounds total power; the repeatable League/endgame instances exist to bring **newly caught/evolved/hatched** mons up to the cap + earn gold.
 - **Loss:** keep the existing free-Retry / Forfeit-permadeath tension.
 
 **Touch-points (reuse existing systems):**
@@ -76,7 +76,7 @@ Curve shape: **player-favorable early/mid, one sharp wall at GL8.** (Full number
 ## 7. Open knobs (not blockers — defaults chosen)
 
 - Fight Club rounds: **5** (you floated 10).
-- Repeatable Fight Club reward: bring under-36 mons toward the cap (+2/clear) + gold — vs gold-only.
-- C2 hosts both the egg event and the first Fight Club (via the matron's secret). Intended, or stagger the Fight Club to C4?
+- Repeatable Fight Club reward: bring under-36 mons toward the cap + gold — vs gold-only.
+- **C6 hosts both** the final daycare visit and the Fight Club reveal — a deliberate dark-content convergence.
 
-**Proposed implementation order (after sign-off):** (1) RNG-negator availability fixes → (2) egg C2/C4 + intro → (3) Fight Club gauntlet + draft → (4) balance tuning. Each step behind tests + the SAVE_VER bump.
+**Proposed implementation order (after sign-off):** (1) RNG-negator availability fixes → (2) daycare C2/C4/C6 + relative hatch + intro → (3) Fight Club gauntlet + draft (C6 + League + endgame) → (4) balance tuning. Each step behind tests + the SAVE_VER bump.
