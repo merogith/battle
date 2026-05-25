@@ -29711,13 +29711,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const entry = _POSTHOF_EPILOGUE_BY_VARIANT[variantId];
             if (!entry) { try { onDone && onDone(); } catch (e) {} return false; }
             const metaKey = 'posthof-epilogue-' + variantId;
-            try {
-                const meta = readStoryMeta();
-                if (meta && meta.tipsShown && meta.tipsShown[metaKey]) {
-                    try { onDone && onDone(); } catch (e) {}
-                    return false;
-                }
-            } catch (e) {}
+            if (_storyRunSceneSeen(metaKey)) {
+                try { onDone && onDone(); } catch (e) {}
+                return false;
+            }
             try {
                 _renderNarrativeOverlay({
                     metaKey,
@@ -31248,18 +31245,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return {
                 completedRuns: 0,
                 lastClearSeed: '',
-                firstClears: {},
                 tipsShown: {},
                 // Cross-run Pokédex: { [speciesName]: { seen, caught, shinySeen, shinyCaught, firstSeenAt, firstCaughtAt, firstShinySeenAt } }
                 pokedex: {},
                 // Achievements: { [id]: { progress, currentRank, lastUpdated } }
                 achievements: {},
+                // Lifetime Battle Frontier rounds cleared (drives r_frontier_vet).
+                frontierRoundsTotal: 0,
                 // Hall of Fame: last 10 cleared runs.
                 hofRecords: [],
                 // Last-used trainer profile, used to pre-fill the trainer creation screen.
                 trainerProfile: null,
                 // Storyline-variant clear log — keyed by variant id, value true.
-                // Powers NG+ smart default in _pickRandomStorylineVariant.
+                // Cosmetic record only (which storylines you've cleared); the
+                // storyline picker is pure-random and does not read this.
                 clearedVariants: {}
             };
         }
@@ -31273,31 +31272,46 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return {
                     completedRuns: Math.max(0, obj.completedRuns | 0),
                     lastClearSeed: typeof obj.lastClearSeed === 'string' ? obj.lastClearSeed : '',
-                    firstClears: (obj.firstClears && typeof obj.firstClears === 'object') ? obj.firstClears : {},
                     tipsShown: (obj.tipsShown && typeof obj.tipsShown === 'object') ? obj.tipsShown : {},
                     pokedex: (obj.pokedex && typeof obj.pokedex === 'object') ? obj.pokedex : base.pokedex,
                     achievements: (obj.achievements && typeof obj.achievements === 'object') ? obj.achievements : base.achievements,
+                    frontierRoundsTotal: Math.max(0, obj.frontierRoundsTotal | 0),
                     hofRecords: Array.isArray(obj.hofRecords) ? obj.hofRecords.slice(0, 10) : [],
                     trainerProfile: (obj.trainerProfile && typeof obj.trainerProfile === 'object') ? obj.trainerProfile : null,
                     clearedVariants: (obj.clearedVariants && typeof obj.clearedVariants === 'object') ? obj.clearedVariants : {}
                 };
             } catch (e) { return _emptyStoryMeta(); }
         }
-        /** Show a tutorial-style tip once per player across all runs. The shown-bit
-         * lives in pbs_story_meta so a tip the player saw in run 1 doesn't pop again
-         * in run 5. Returns true iff a tip was actually shown (caller can chain). */
+        /** Show a tutorial-style tip once per run. Every fresh run is a complete
+         * playthrough, so these easy guides / tutorials replay from scratch each
+         * run (per-run dedupe via sm.scenesShown). Returns true iff a tip was
+         * actually shown (caller can chain). */
         function _storyShowOneTimeTip(key, message) {
             if (!key) return false;
-            const meta = readStoryMeta();
-            if (!meta.tipsShown || typeof meta.tipsShown !== 'object') meta.tipsShown = {};
-            if (meta.tipsShown[key]) return false;
-            meta.tipsShown[key] = true;
-            writeStoryMeta(meta);
+            if (_storyRunSceneSeen(key)) return false;
+            _storyRunSceneMark(key);
             try { window.showGameAlert && window.showGameAlert(message); } catch (e) {}
             return true;
         }
         function writeStoryMeta(meta) {
             try { localStorage.setItem(SAVE_KEY_META, JSON.stringify(meta || {})); } catch (e) { console.warn('[Story] meta save', e); }
+        }
+        /** Per-run "scene seen" tracker. Narrative cold-opens, tutor / NPC intro
+         *  lessons, and first-sighting beats are part of the full first-time
+         *  experience that every fresh run is meant to re-deliver, so their
+         *  dedupe lives on the per-run save (`sm.scenesShown`) — NOT the
+         *  cross-run meta. Contrast `_storyShowOneTimeTip` above, which keeps
+         *  plain gameplay hint-tips to once-per-player so they don't nag across
+         *  runs. A new run starts with an empty `scenesShown`, so every intro,
+         *  tutor lesson, and welcome-gift voucher fires again from scratch. */
+        function _storyRunSceneSeen(key) {
+            return !!(sm && sm.scenesShown && sm.scenesShown[key]);
+        }
+        function _storyRunSceneMark(key) {
+            if (!sm || !key) return;
+            if (!sm.scenesShown || typeof sm.scenesShown !== 'object') sm.scenesShown = {};
+            sm.scenesShown[key] = true;
+            try { save(); } catch (e) {}
         }
         function recordStoryClearInMeta() {
             const meta = readStoryMeta();
@@ -31312,16 +31326,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             writeStoryMeta(meta);
             return meta;
-        }
-        /** Stamp this milestone as "ever cleared" in meta. Returns true iff this is the first time. */
-        function _storyMarkFirstClearMeta(key) {
-            if (!key) return false;
-            const meta = readStoryMeta();
-            if (!meta.firstClears || typeof meta.firstClears !== 'object') meta.firstClears = {};
-            if (meta.firstClears[key]) return false;
-            meta.firstClears[key] = true;
-            writeStoryMeta(meta);
-            return true;
         }
         /** Translate a battle event name into a stable cross-run milestone key. */
         function _storyMilestoneKeyForEvent(evname, rowIdx) {
@@ -31950,7 +31954,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{}, currentEnemyLock:null,
                    artifactsDisabled:[], storyCityVisit:null, citiesArrived:{},
                    artifactShopOffersByCity:{}, artifactShopPurchasedByCity:{}, artifactFreeClaimUsed:false,
-                   deptShopPurchasedByCity:{}, facilityIntros:{},
+                   deptShopPurchasedByCity:{}, facilityIntros:{}, scenesShown:{},
                    storyDifficulty:'normal', runSeed:null,
                    storyMilestoneTips:{ m4:false, m8:false },
                    storyRetryInventorySnapshot: null,
@@ -32249,6 +32253,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // the Leave-City gate stops firing — players only ever get the welcome
                 // story once per facility per run.
                 if (!sm.facilityIntros || typeof sm.facilityIntros !== 'object') sm.facilityIntros = {};
+                // Per-run narrative / tutor / first-sighting scene dedupe. Absent
+                // on saves predating the per-run scene split — default to empty so
+                // a mid-run load doesn't suppress beats it hasn't actually shown.
+                if (!sm.scenesShown || typeof sm.scenesShown !== 'object') sm.scenesShown = {};
                 if (!sm.deptArtifactTypesByCity || typeof sm.deptArtifactTypesByCity !== 'object') sm.deptArtifactTypesByCity = {};
                 if (!sm.artifactTypeById || typeof sm.artifactTypeById !== 'object') sm.artifactTypeById = {};
                 if (!sm.deptItemOffersByCity || typeof sm.deptItemOffersByCity !== 'object') sm.deptItemOffersByCity = {};
@@ -35321,7 +35329,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 currentEnemyLock:null, artifactsDisabled:[],
                 deptArtifactOffersByCity:{}, artifactShopOffersByCity:{}, artifactShopPurchasedByCity:{}, artifactFreeClaimUsed:false,
                 deptArtifactTypesByCity:{}, artifactTypeById:{}, deptItemOffersByCity:{}, deptShopPurchasedByCity:{},
-                facilityIntros:{},
+                facilityIntros:{}, scenesShown:{},
                 settings:{ enabledGens, minGen, maxGen,
                     megaOn: document.getElementById('story-mech-mega')?.checked||false,
                     zOn:    document.getElementById('story-mech-z')?.checked||false,
@@ -35462,15 +35470,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
 
         /** Cold-open scenes — one-shot narrative overlays that fire before a
-         *  specific beat. Tracked via story meta (`tipsShown[metaKey]`) so
-         *  they never re-fire on reload or NG+. Each scene's `run(ev, onDone)`
-         *  is responsible for showing the overlay and calling `onDone` on
-         *  dismiss; the bus handles the meta stamp. */
+         *  specific beat. Tracked per-run via the save (`sm.scenesShown[metaKey]`)
+         *  so they replay on every fresh run but not on reload mid-run. Each
+         *  scene's `run(ev, onDone)` is responsible for showing the overlay and
+         *  calling `onDone` on dismiss; the bus handles the per-run stamp. */
         const STORY_COLD_OPENS = {
             introRival: {
                 // Per-variant dedupe — each storyline replays its own intro
-                // exactly once per save. A player who clears classic and then
-                // starts a static run still gets the static intro fresh.
+                // once per run. Keyed by variant so a mid-run reload restores
+                // the correct stamp; a fresh run always starts unseen.
                 metaKey: (ev, beat) => 'intro-rival-coldopen-' + (
                     (beat && beat._variantId) ||
                     (sm && sm.storyLine) ||
@@ -35483,7 +35491,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             },
             // ── Per-variant beat scenes ─────────────────────────────────────
             // Each scene reuses _renderNarrativeOverlay so the layout matches the
-            // intro-rival cold-open and dedupe stays in the same tipsShown bucket.
+            // intro-rival cold-open and dedupe stays in the same per-run bucket.
             // Sprite choices lean on existing trainer roster: Oak / Veteran for
             // gym milestone scenes, named champions for finale beats.
             classic_gym1: {
@@ -36475,8 +36483,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         /** Story-embedded tutorial scenes — first-time mechanic introductions
          *  rendered as NPC-led cameos. Each scene is a one-shot overlay with a
          *  sprite slide-in, nameplate, multi-line dialogue box, and Continue
-         *  button. Cross-run-deduped via tipsShown[scene.metaKey] (same bucket
-         *  as _storyShowOneTimeTip).
+         *  button. Per-run-deduped via sm.scenesShown[scene.metaKey] so every
+         *  fresh run reintroduces its tutors and re-grants their welcome
+         *  vouchers (contrast _storyShowOneTimeTip, which is cross-run).
          *
          *  Adding a tutorial = one entry below + one call to
          *  `playStoryTutorial(sceneId, onDone)` at the entry point. The
@@ -36777,8 +36786,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) { /* focus best-effort */ }
         }
 
-        /** Play a story tutorial scene by id. Cross-run-deduped via
-         *  tipsShown[scene.metaKey]. `onDone` always fires — synchronously
+        /** Play a story tutorial scene by id. Per-run-deduped via
+         *  sm.scenesShown[scene.metaKey]. `onDone` always fires — synchronously
          *  on dedupe, or on Continue when the scene plays. Returns true iff
          *  the scene actually rendered. */
         function playStoryTutorial(sceneId, onDone) {
@@ -36788,19 +36797,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return false;
             }
             const key = scene.metaKey || ('tutorial-' + sceneId);
-            try {
-                const meta = readStoryMeta();
-                if (meta && meta.tipsShown && meta.tipsShown[key]) {
-                    try { onDone && onDone(); } catch (e) {}
-                    return false;
-                }
-                const m2 = readStoryMeta();
-                if (!m2.tipsShown) m2.tipsShown = {};
-                m2.tipsShown[key] = true;
-                writeStoryMeta(m2);
-            } catch (e) {
-                console.warn('[StoryTutorial] meta dedupe failed:', sceneId, e);
+            // Per-run dedupe: every fresh run reintroduces its tutors / NPC
+            // lessons (and re-grants their one-time welcome vouchers), so the
+            // shown-bit lives on the save, not the cross-run meta.
+            if (_storyRunSceneSeen(key)) {
+                try { onDone && onDone(); } catch (e) {}
+                return false;
             }
+            _storyRunSceneMark(key);
             _showStoryTutorialScene(scene, onDone);
             return true;
         }
@@ -37068,16 +37072,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return v && v.tier !== 'random';
             });
             if (!ids.length) return 'classic';
-            let pool = ids;
-            try {
-                const meta = readStoryMeta();
-                const cleared = (meta && meta.clearedVariants && typeof meta.clearedVariants === 'object') ? meta.clearedVariants : {};
-                const uncleared = ids.filter(id => !cleared[id]);
-                if (uncleared.length) pool = uncleared;
-            } catch (e) {}
+            // Pure random each run — the storyline a fresh run draws does not
+            // depend on which variants prior runs cleared. Every run is its own
+            // complete game; only RNG differs.
             const r = (typeof sm === 'object' && sm && sm.active && typeof storyRngNext === 'function')
                 ? storyRngNext() : Math.random();
-            return pool[Math.floor(r * pool.length)] || ids[0];
+            return ids[Math.floor(r * ids.length)] || ids[0];
         }
 
         // ═════════════════════════════════════════════════════════════════
@@ -38001,32 +38001,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return false;
         }
 
-        /** Dispatch a cold-open scene by beat tag. Cross-run-deduped via
-         *  story meta (each scene declares a `metaKey`). Returns `true` and
-         *  calls `onPlayed` when the scene actually plays; returns `false`
-         *  (without calling `onPlayed`) when the beat has no cold-open or
-         *  the scene already played this save. */
+        /** Dispatch a cold-open scene by beat tag. Per-run-deduped via the save
+         *  (`sm.scenesShown`, each scene declares a `metaKey`) so every fresh
+         *  run replays its full intro sequence. Returns `true` and calls
+         *  `onPlayed` when the scene actually plays; returns `false` (without
+         *  calling `onPlayed`) when the beat has no cold-open or the scene
+         *  already played this run. */
         function _runStoryColdOpen(beat, ev, onPlayed) {
             if (!beat || !beat.coldOpen) return false;
             const scene = STORY_COLD_OPENS[beat.coldOpen];
             if (!scene || typeof scene.run !== 'function') return false;
             try {
-                const meta = readStoryMeta();
                 // Scene.metaKey may be a function — used by intro-rival to key
                 // dedupe per-variant, so each storyline plays its own intro
-                // exactly once across the player's whole save history. Static
-                // metaKeys still work unchanged.
+                // once per run. Static metaKeys still work unchanged.
                 const tip = (typeof scene.metaKey === 'function')
                     ? scene.metaKey(ev, beat)
                     : scene.metaKey;
-                if (tip && meta && meta.tipsShown && meta.tipsShown[tip]) return false;
+                if (tip && _storyRunSceneSeen(tip)) return false;
                 scene.run(ev, () => {
-                    try {
-                        const m2 = readStoryMeta();
-                        if (!m2.tipsShown) m2.tipsShown = {};
-                        if (tip) m2.tipsShown[tip] = true;
-                        writeStoryMeta(m2);
-                    } catch (e) {}
+                    if (tip) _storyRunSceneMark(tip);
                     try { onPlayed && onPlayed(); }
                     catch (e) { console.error('[Story] cold-open onPlayed threw:', e); }
                 });
@@ -38350,17 +38344,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (sm.atCrucible) { enterCrucible(); return; }
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             const cidx = getCityIndex(ev);
-            // City0 cold open: 3-line narrator scene before the first hub render of any
-            // save. Cross-run-deduped; on dismiss, re-runs enterCity so the rest of the
+            // City0 cold open: 3-line narrator scene before the first hub render of a
+            // run. Per-run-deduped; on dismiss, re-runs enterCity so the rest of the
             // city setup (HUD, actions, welcome tip) flows normally.
             if (cidx === 0 && sm.eventIndex === 0) {
                 try {
-                    const _coldMeta = readStoryMeta();
-                    const _coldSeen = _coldMeta && _coldMeta.tipsShown && _coldMeta.tipsShown['city0-coldopen'];
+                    const _coldSeen = _storyRunSceneSeen('city0-coldopen');
                     if (!_coldSeen) {
-                        if (!_coldMeta.tipsShown) _coldMeta.tipsShown = {};
-                        _coldMeta.tipsShown['city0-coldopen'] = true;
-                        writeStoryMeta(_coldMeta);
+                        _storyRunSceneMark('city0-coldopen');
                         const _coldOv = document.createElement('div');
                         _coldOv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px;box-sizing:border-box;cursor:pointer;';
                         _coldOv.innerHTML = '<div style="color:#aaa;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;">— Story Mode —</div><div style="color:#fff;font-size:17px;font-style:italic;line-height:1.7;max-width:520px;text-align:center;">Salt-air morning. The boats are out, the lab is open, and the only road out of Pallet Town runs north.<br><br>The Professor\'s expecting you. The starter on her bench has your name on it.<br><br>Eight badges, an Elite Four, and a Champion stand between you and the Plateau.<br><br>Walk in.</div><button type="button" style="margin-top:14px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">Begin →</button>';
@@ -41364,9 +41355,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *  scenes can drop in without copy-pasting layout. The `toneClass`
          *  parameter applies one of the `.story-tone-*` CSS classes for the
          *  variant's visual signature; `sfx` plays through StoryFx on dismiss.
-         *  `metaKey` is the dedupe stamp — only set this on cold-opens that
-         *  must fire exactly once (left blank for repeatable broker / sighting
-         *  overlays). */
+         *  `metaKey` is the per-run dedupe stamp (`sm.scenesShown`) — only set
+         *  this on cold-opens that must fire once per run (left blank for
+         *  repeatable broker / sighting overlays). */
         function _renderNarrativeOverlay(opts) {
             const o = opts || {};
             const lines = Array.isArray(o.lines) ? o.lines : [];
@@ -41420,12 +41411,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (dismissed) return;
                 dismissed = true;
                 if (o.metaKey) {
-                    try {
-                        const _m = readStoryMeta();
-                        if (!_m.tipsShown) _m.tipsShown = {};
-                        _m.tipsShown[o.metaKey] = true;
-                        writeStoryMeta(_m);
-                    } catch (e) {}
+                    // Per-run dedupe (matches _runStoryColdOpen / playStoryTutorial)
+                    // so narrative overlays replay on a fresh run.
+                    _storyRunSceneMark(o.metaKey);
                 }
                 try {
                     // Per-variant SFX motif default — when the caller
@@ -41693,12 +41681,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const dismiss = function () {
                 if (dismissed) return;
                 dismissed = true;
-                try {
-                    const _m = readStoryMeta();
-                    if (!_m.tipsShown) _m.tipsShown = {};
-                    _m.tipsShown['firstsighting-' + speciesName] = true;
-                    writeStoryMeta(_m);
-                } catch (e) {}
+                _storyRunSceneMark('firstsighting-' + speciesName);
                 try { ov.remove(); } catch (e) {}
                 try { onDone && onDone(); } catch (e) { console.error('[Story] first-sighting callback', e); }
             };
@@ -41714,10 +41697,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const variant = _storyActiveVariant();
             const tier = variant && variant.tier;
             if (tier !== 'mature' && tier !== 'soft_pasta' && tier !== 'pasta') return false;
-            try {
-                const _m = readStoryMeta();
-                if (_m && _m.tipsShown && _m.tipsShown['firstsighting-' + speciesName]) return false;
-            } catch (e) {}
+            if (_storyRunSceneSeen('firstsighting-' + speciesName)) return false;
             // Skip on the very first wild — the catch tutorial is fragile and
             // the user has enough overlays in that beat already.
             if (typeof _catchState !== 'undefined' && _catchState && _catchState.tutorialMode) return false;
@@ -42438,11 +42418,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _variantChampVoice = ((storyRowIdx | 0) === 64) ? _variantChampionDialogue() : null;
             const _variantChampOutro = (_variantChampVoice && _variantChampVoice.outro) ? _variantChampVoice.outro : '';
             const _champLookup = _variantChampOutro || (CHAMPION_VICTORY_LINES[_trainerName] || CHAMPION_VICTORY_LINES[_baseTrainerName] || '');
-            // Cross-run first-clear: stamp a meta flag only the very first time
-            // a player ever cleared THIS milestone (across all runs). Used below
-            // to pulse extra confetti and surface a "FIRST EVER" line.
+            // Per-run first-clear: every fresh run replays the full first-time
+            // finale (extra confetti + the summit epilogue line). Within a run
+            // each milestone is cleared once, so a rematch won't re-trigger it.
             const _milestoneKey = gotBadge ? _storyMilestoneKeyForEvent(battleEventName, storyRowIdx) : '';
-            const _isCareerFirstClear = _milestoneKey ? _storyMarkFirstClearMeta(_milestoneKey) : false;
+            const _runFirstClearKey = _milestoneKey ? 'firstclear-' + _milestoneKey : '';
+            const _isCareerFirstClear = _runFirstClearKey ? !_storyRunSceneSeen(_runFirstClearKey) : false;
+            if (_runFirstClearKey) _storyRunSceneMark(_runFirstClearKey);
             if (gotBadge && battleEventName) {
                 const evn = String(battleEventName);
                 if (/^Gym Leader [1-8]$/i.test(evn)) {
@@ -42473,22 +42455,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     } catch (e) {}
                     badgeFlavor = `<div style="font-size:14px;color:#81c784;line-height:1.5;max-width:380px;">${line}</div>${reflectHtml}${_variantCardHtml}`;
                     // First-time cap teach. badges 1-4 expand the player's party (cap = 2 + badges,
-                    // capped at 6). The cap change happens silently in code; surface it here exactly
-                    // once per badge-tier across all saves. badges 5-8 don't grow the cap.
+                    // capped at 6). The cap change happens silently in code; surface it here once
+                    // per badge-tier per run (every fresh run replays the guide). badges 5-8 don't grow the cap.
                     const _badgesNow = (sm && sm.badges) | 0;
                     if (_badgesNow >= 1 && _badgesNow <= 4) {
                         const _capTeachKey = 'cap-unlock-' + _badgesNow;
-                        const _capMeta = readStoryMeta();
-                        const _capSeen = _capMeta && _capMeta.tipsShown && _capMeta.tipsShown[_capTeachKey];
-                        if (!_capSeen) {
+                        if (!_storyRunSceneSeen(_capTeachKey)) {
                             const _newCap = Math.min(6, 2 + _badgesNow);
                             const _capTeach = _badgesNow === 4
                                 ? `Your party rounds out — a full ${_newCap} on the bench. Any future Professor gift will swap a partner to the PC instead of overflowing.`
                                 : `Room for one more on the bench: party cap is now ${_newCap}. The next Professor on the road will open up.`;
                             badgeFlavor += `<div style="font-size:12px;color:#ffd54f;line-height:1.45;max-width:380px;margin-top:6px;">🎓 ${_capTeach}</div>`;
-                            if (!_capMeta.tipsShown) _capMeta.tipsShown = {};
-                            _capMeta.tipsShown[_capTeachKey] = true;
-                            writeStoryMeta(_capMeta);
+                            _storyRunSceneMark(_capTeachKey);
                         }
                     }
                 }
@@ -42536,7 +42514,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const isGymBadgeEvent = gotBadge && battleEventName && /^Gym Leader [1-8]$/i.test(String(battleEventName));
             const _firstClearBanner = _isCareerFirstClear
-                ? '<div style="font-size:13px;color:#ffd54f;letter-spacing:0.08em;text-transform:uppercase;text-shadow:0 0 6px rgba(255,213,79,0.4);">★ First time, any run ★</div>'
+                ? '<div style="font-size:13px;color:#ffd54f;letter-spacing:0.08em;text-transform:uppercase;text-shadow:0 0 6px rgba(255,213,79,0.4);">★ First clear ★</div>'
                 : '';
             // "Up next" pill — tells the player what they walk into when they
             // tap Continue. Bridges the abrupt overlay → next screen hop.
@@ -43010,9 +42988,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (isFree) {
                 sm.safari.freeEntryUsed = true;
                 // Story-embedded tutorial — Warden cameo. Replaces the prior
-                // free-entry alert. Dedupe is per-save (freeEntryUsed gates
-                // free entry to once anyway, but the cross-run tipsShown stamp
-                // also keeps NG+ players from re-seeing it).
+                // free-entry alert. Dedupe is per-run: freeEntryUsed gates free
+                // entry to once per run, and the scene routes through
+                // sm.scenesShown so a fresh run replays the Warden intro.
                 try { playStoryTutorial('firstSafari'); } catch (e) {}
             } else {
                 sm.gold = Math.max(0, (sm.gold | 0) - SAFARI_ENTRY_COST);
@@ -44335,8 +44313,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
             if (!_catchState.bossMode) {
                 // Story-embedded tutorial scenes — NPC cameo with sprite +
-                // dialogue + Continue. Each scene fires once per save (cross-
-                // run-deduped via tipsShown). The catch screen is already
+                // dialogue + Continue. Each scene fires once per run (per-run-
+                // deduped via sm.scenesShown). The catch screen is already
                 // rendered behind the overlay; on Continue the player drops
                 // into the live encounter. See STORY_TUTORIAL_SCENES.
                 if (_catchState.tutorialMode) {
@@ -44353,9 +44331,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         'A roaming Pokémon.\n\nThese turn up exactly once, on a single route after a gym victory, and they won\'t wait for the next attempt. Catch rate is a flat 30% × ball multiplier; a Master Ball is the only guaranteed throw. Miss, and it\'s gone for this run.'); } catch (e) {}
                 }
                 // First-sighting Pokédex lore — mature+ tier storylines only.
-                // Fires once per species; dedupe lives in tipsShown so a player
-                // who wakes up on a new variant gets the lore the first time
-                // they meet that species on the run.
+                // Fires once per species per run; dedupe lives in sm.scenesShown
+                // so every fresh run re-delivers the lore the first time the
+                // player meets that species on the run.
                 try {
                     if (_shouldFireFirstSightingLore(wildMon && wildMon.name)) {
                         _showFirstSightingLoreOverlay(wildMon.name, null);
@@ -45124,8 +45102,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 playStoryTutorial(type === 'dept' ? 'firstDept' : 'firstMart');
             } catch (e) {}
-            // Per-variant mart greeter — fires once per city per variant
-            // (city-keyed via tipsShown). Skipped for the department
+            // Per-variant mart greeter — fires once per city per run
+            // (city-keyed via sm.scenesShown). Skipped for the department
             // store (separate dept-store identity) and for variants
             // without an entry. The greeter sits in the top-left strip
             // of the shop screen as a single italic line under the title.
@@ -45135,11 +45113,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (greet) {
                         const cityIdx = (typeof cityIndexFromEventIndex === 'function') ? cityIndexFromEventIndex(sm.eventIndex) : 0;
                         const key = 'variant-mart-greet-' + (_storyActiveVariantId() || 'classic') + '-c' + (cityIdx | 0);
-                        const _m = readStoryMeta();
-                        if (!_m.tipsShown || !_m.tipsShown[key]) {
-                            if (!_m.tipsShown) _m.tipsShown = {};
-                            _m.tipsShown[key] = true;
-                            writeStoryMeta(_m);
+                        if (!_storyRunSceneSeen(key)) {
+                            _storyRunSceneMark(key);
                             try { window.showGameAlert && window.showGameAlert(greet); } catch (e) {}
                         }
                     }
@@ -48161,19 +48136,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { _storyAchievementUnlock('first_hof'); } catch (e) {}
                 try { _storyAchievementBumpCount('runs_cleared', 1); } catch (e) {}
             }
-            // Per-variant Hall-of-Fame card — fires once per variant per
-            // save profile, on a fresh clear, before the grid renders.
-            // Subsequent previews skip the card so the grid loads
-            // immediately.
+            // Per-variant Hall-of-Fame card — fires once per variant per run,
+            // on a fresh clear, before the grid renders. Subsequent previews
+            // skip the card so the grid loads immediately.
             if (_wasFreshHofClear) {
                 try {
                     const _vCard = _variantHallOfFameCard();
                     if (_vCard && Array.isArray(_vCard.lines) && _vCard.lines.length) {
                         const _vid = _storyActiveVariantId() || 'classic';
                         const _hofKey = 'variant-hof-card-' + _vid;
-                        const _hofMeta = readStoryMeta();
-                        const _seenHof = _hofMeta && _hofMeta.tipsShown && _hofMeta.tipsShown[_hofKey];
-                        if (!_seenHof) {
+                        if (!_storyRunSceneSeen(_hofKey)) {
                             _renderNarrativeOverlay({
                                 metaKey: _hofKey,
                                 banner: _vCard.banner || '— Hall of Fame —',
