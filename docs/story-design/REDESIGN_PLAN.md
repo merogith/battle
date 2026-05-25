@@ -56,7 +56,7 @@ This doc is the single source of truth for the redesign decisions. Edit it / the
 
 ## 5. Balance read & plan (verified numbers)
 
-Curve shape: **player-favorable early/mid, one sharp wall at GL8.** (Full numbers in `story-tunables.csv`.)
+Curve shape: **player-favorable early/mid, one sharp wall at GL8.** (Summary below; the full city-by-city curve + the *accelerating-ramp* retune now live in **§8a** + `story-power-curve.csv`. **No level grind** — see §8a reframe.)
 
 - Enemy tier→EV: T1=0, T2=220, T3=420, **T4=510**. IV bands T1 0–15 … **T4 26–31**.
 - Player reaches **510 EV at C4** (EV Trainer); enemies hit **T4 only at GL8** → player is EV-ahead ~4 gyms.
@@ -88,7 +88,23 @@ Curve shape: **player-favorable early/mid, one sharp wall at GL8.** (Full number
 ## 8. Next phases (captured, not yet specced)
 
 ### 8a. Power / enemy curve pass
-Goal: one coherent **easy → escalating** difficulty curve where **enemy power, wild encounters, professor gifts, and tool access all line up city-by-city**, ramping harder and harder toward the League. Data being gathered (curve agent): per-gym enemy ace **level / tier / EV / IV band**; **wild-encounter grade** per city; **professor gift**; **tool availability + cost** (Move Tutor, Nature Rater, Stone Shop, EV Trainer, vitamins, Artifacts, Colress, Safari). Builds on §5 (GL8 wall → slope; GL4–5 dead zone). Deliverable: a city-by-city curve table → retune in `story-tunables.csv`. Note from the audit: **Professor** is present only **C0–C5** and **Pokémart skips C6** (Dept Store covers it) — confirm both are intended for the curve.
+
+**Reframe (verified):** Story Mode has **no level grind** — every mon (player, wild, enemy) is a fixed **Lv50** (`buildPokemon` 14096; in-game: "the build matters more than the level"). Difficulty rides on four axes — **grade** (BST tier G4→G1), **EV tier** (T1=0 / T2=220 / T3=420 / T4=510), **IV band**, **tools/gold** — plus a hidden **foe-stat multiplier** that ramps **0.82→1.20**. The current curve is in `story-power-curve.csv`.
+
+**Current shape = lumpy, not accelerating:** soft–soft (GL1/2) → step (GL3) → **flat dead zone** (GL4/5) → double-step (GL6) → step (GL7) → **cliff** (GL8) → finale (E4). Confirmed problems:
+- **GL8 wall (worse than we wrote):** five escalators land in one city — EV **T3→T4**, IV floor **18→26** (ace 29–31), forced gimmicks **2→3**, sub-trainers jump to **pure G2**, and the **post-G8 legendary gate** — while the GL8 purse (5950 G) barely funds one Colress awaken (7500 G). Sharpest single jump in the game.
+- **GL4–5 dead zone:** GL4 and GL5 are **identical on every axis** (T2, IV 10–22) and the foe-stat mult **collapses to 1.0** (early softening expires at badge 3; stage-gate re-engages only at badge 5/GL6) — exactly when the player unlocks the **EV Trainer + Dojo + Safari at C4**. A 2-city power inversion.
+- **Flat start:** GL1≡GL2 (both T1, IV 0–15, mult 0.95).
+- **Wild ladder never escalates:** caps at **G3** (G2 only 3–8% post-G6, never G1). Safari (10 000 G) is the only G2/G1 path → wild catching is a dead tool by C6+, and wild power never tracks the enemy curve.
+
+**Proposed retune → a smooth, *accelerating* ramp (small steps early, bigger steps late):**
+1. **Un-flatten GL1→GL2** — small GL2 bump (IV floor +2 or mult 0.95→0.97).
+2. **Fill GL4–5** — don't let the foe mult drop to 1.0; ramp it 1.0→1.03 and give GL5 a partial bump (IV floor +2 / small EV) so GL5 > GL4 and meets the player's C4 spike.
+3. **Spread the GL8 wall across GL6–7–8** — ramp the IV floor **18→22→26** and make **GL7 partial-T4** (~465 EV) so neither jumps in one step; keep the gimmick ramp (1/2/3) and the legendary-gate flavor, but on pre-ramped stats it's a climax, not a cliff. Bump lategame gold or trim Colress/Dept cost so counters are affordable.
+4. **Escalate wild grades lategame** — post-G6 wilds include more **G2** (~25%), post-G8 include **G1** (~15%), so catching stays relevant and wild power tracks enemy power (directly serves "wild matching enemy power").
+5. **Professor:** gift tier already rises T1→T2→T3 and ends C6 — keep (confirm with you).
+
+Touch-points: EV tier `_storyBuildTierForEvent` 33534; IV bands `STORY_IV_TIER_RANGES` 30060; gimmicks `_minGuaranteedMechsForEvent` 32961; foe mult `_stageGatedFoeStatMult` 13909 / `_earlyGameFoeStatMult`; wild grades `_WILD_GRADE_CURVE_BY_BADGES` 44128; grade ramp `applyStoryProgressToGradeWeights` 32728. Encode chosen values in `story-tunables.csv` after sign-off. (Also confirmed: **Professor** present **C0–C5** only; **Pokémart skips C6** — Dept Store covers it.)
 
 ### 8b. Visuals & animation pass
 Aesthetic: **Game Boy-era Pokémon, slightly modernized — clean, crisp, minimal**; simple readable animations over flashy effects. First concrete items: the egg-hatch animation (§3), Fight Club draft transitions, and a sprite-set decision. Favor free/open assets:
