@@ -50880,59 +50880,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { _storyTrackSpend(EVTRAINER_COST); } catch (e) {}
             return true;
         }
-        // Charge for a partial fill — the player pays for the EVs the trainer
-        // actually adds, not a flat 5,000G. A fully-untrained mon paying for a
-        // 510-EV preset still costs EVTRAINER_COST; a mon already 70% trained
-        // pays ~30%. Floors at a tiny minimum so trivial top-ups still cost
-        // something. Returns the charged amount, or 0 on failure.
-        function _evTrainerChargeScaled(delta) {
-            const d = Math.max(0, delta | 0);
-            if (d <= 0) return 0;
-            const cost = Math.max(100, Math.ceil((d / 510) * EVTRAINER_COST));
-            if (sm.gold < cost) {
-                if (typeof window !== 'undefined' && typeof window.showGameAlert === 'function') {
-                    window.showGameAlert(`EV Trainer needs ${cost.toLocaleString()}G for this top-up. You have ${sm.gold.toLocaleString()}G.`);
-                }
-                return 0;
-            }
-            sm.gold -= cost;
-            try { _storyTrackSpend(cost); } catch (e) {}
-            return cost;
-        }
-        // Compute additive fill-to-target. Pre-battle training is never
-        // discarded — the trainer fills the gap between current EVs and the
-        // target preset, respecting the 252/stat and 510/total caps. Returns
-        // { next, delta }: the final EV object and the total EVs added.
-        function _evTrainerFillToTarget(cur, target) {
-            const out = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
-            const stats = ['hp','atk','def','spa','spd','spe'];
-            const c = cur || {};
-            const t = target || {};
-            for (const s of stats) out[s] = Math.max(0, Math.min(252, (c[s]|0)));
-            // Compute the additive gap per stat (positive only — never strips).
-            const gap = {};
-            let gapTotal = 0;
-            for (const s of stats) {
-                gap[s] = Math.max(0, Math.min(252, t[s]|0) - out[s]);
-                gapTotal += gap[s];
-            }
-            if (gapTotal <= 0) return { next: out, delta: 0 };
-            // 510 total cap — scale gap down if existing EVs already use the
-            // budget. Each stat's add is the proportional share of available
-            // headroom, then 252-clamped (in case scaling rounded a stat over).
-            const curTotal = stats.reduce((a, s) => a + out[s], 0);
-            const room = Math.max(0, 510 - curTotal);
-            const scale = (gapTotal > room) ? (room / gapTotal) : 1;
-            let delta = 0;
-            for (const s of stats) {
-                const add = Math.floor(gap[s] * scale);
-                if (add <= 0) continue;
-                const before = out[s];
-                out[s] = Math.min(252, out[s] + add);
-                delta += out[s] - before;
-            }
-            return { next: out, delta };
-        }
         function _evTrainerFinish() {
             try { save(); } catch (e) {}
             // Stat-up arrow chime — the rolled spread just landed on the mon.
@@ -51425,18 +51372,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <img src="sprites/pokesprite/items/protein.png" alt="" width="12" height="12" decoding="async" style="width:12px;height:12px;image-rendering:auto;vertical-align:-2px;margin-right:2px;">Vitamin (${vitaCount})
                 </button>`
                 : '';
-            // Fill-to-target preview: estimate the gap & gold cost so the
-            // button label reflects what THIS preset would actually charge
-            // (additive fill, not a flat 5,000G). Already-met or exceeded
-            // presets disable the button.
-            const _fillPreview = _evTrainerFillToTarget(currentEvs, p.evs);
-            const fillCost = _fillPreview.delta > 0 ? Math.max(100, Math.ceil((_fillPreview.delta / 510) * EVTRAINER_COST)) : 0;
-            const goldDisabledFill = fillCost === 0 || (sm.gold | 0) < fillCost;
+            const goldDisabled = cantAfford || isCurrent;
             const gButton = isCurrent
                 ? `<button type="button" class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;">Applied</button>`
-                : (_fillPreview.delta <= 0
-                    ? `<button type="button" class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;">Already trained</button>`
-                    : `<button type="button" class="story-tutor-btn" ${goldDisabledFill?'disabled':''} onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')" style="font-size:11px;padding:5px 8px;" title="+${_fillPreview.delta} EV training">${storyGoldHtml(fillCost, false)}</button>`);
+                : `<button type="button" class="story-tutor-btn" ${goldDisabled?'disabled':''} onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')" style="font-size:11px;padding:5px 8px;" title="Overwrites the current spread">${storyGoldHtml(EVTRAINER_COST, false)}</button>`;
             const star = (isRecommended && !isCurrent) ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
             const pctHtml = (pct != null && pct >= 1)
                 ? `<span class="tx-card-pct" title="${pct.toFixed(1)}% of Smogon builds use this spread">${Math.round(pct)}%</span>`
@@ -51466,7 +51405,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const meta = _evTrainerMetaSpreadsFor(t.name);
             _evTrainerMetaCache[idx] = meta;
 
-            const headerCostChip = `<span class="story-action-badge cost" title="Cost scales with the gap between current and preset EVs.">up to ${EVTRAINER_COST.toLocaleString()}G / preset</span>`;
+            const headerCostChip = `<span class="story-action-badge ${cantAfford ? 'cost cant-afford' : 'cost'}"${cantAfford ? ` title="You need ${(EVTRAINER_COST - sm.gold).toLocaleString()}G more"` : ''}>${EVTRAINER_COST.toLocaleString()}G / preset</span>`;
 
             const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${idx}" data-facility="evtrainer" aria-expanded="${expanded?'true':'false'}">
                 <div class="story-tutor-mon-main">
@@ -51547,31 +51486,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const all = [].concat(EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta);
                 const preset = all.find(p => p.id === presetId);
                 if (!preset) return;
-                const cur = mon.build.evs || {};
-                // Fill-to-target: trainer adds EVs from current to the preset's
-                // amounts (cap-respecting). Pre-battle training is preserved.
-                const fill = _evTrainerFillToTarget(cur, preset.evs);
-                if (fill.delta <= 0) {
-                    try { window.showGameAlert && window.showGameAlert(`${mon.name} already meets or exceeds the "${preset.label}" preset.`); } catch (e) {}
-                    return;
-                }
-                const cost = Math.max(100, Math.ceil((fill.delta / 510) * EVTRAINER_COST));
-                if ((sm.gold | 0) < cost) {
-                    try { window.showGameAlert && window.showGameAlert(`EV Trainer needs ${cost.toLocaleString()}G for this top-up. You have ${sm.gold.toLocaleString()}G.`); } catch (e) {}
-                    return;
-                }
-                const spreadLabel = (typeof _evSpreadCompact === 'function') ? _evSpreadCompact(fill.next) : 'new spread';
-                const ok = await _storyConfirmTutorChange(`Train ${mon.name} toward the "${preset.label}" preset?\n+${fill.delta} EV training (additive, preserves prior work).\n→ ${spreadLabel}`, cost);
+                // Overwrite: the EV Trainer commits the mon to exactly this
+                // spread, discarding any prior EVs (including battle training).
+                // Players use this to re-point a mon that drifted into the
+                // wrong stats — additive fill couldn't reach a clean preset
+                // once the 510 budget was spent on off-target battle EVs.
+                if (_evsEqual(mon.build.evs || {}, preset.evs)) return;
+                if ((sm.gold | 0) < EVTRAINER_COST) return;
+                const spreadLabel = (typeof _evSpreadCompact === 'function') ? _evSpreadCompact(preset.evs) : 'new spread';
+                const ok = await _storyConfirmTutorChange(`Apply "${preset.label}" EVs to ${mon.name}? Overwrites the current spread (including battle training).\n→ ${spreadLabel}`, EVTRAINER_COST);
                 if (!ok) return;
-                if (_evTrainerChargeScaled(fill.delta) <= 0) return;
-                mon.build.evs = fill.next;
+                if (!_evTrainerCharge()) return;
+                mon.build.evs = { ...preset.evs };
                 _evTrainerFinish();
             } finally {
                 _storyEndInteraction();
             }
         }
 
-        // Vitamin Pack alt path — free EV fill-to-target, consumes one Vitamin.
+        // Vitamin Pack alt path — free EV preset application, consumes one Vitamin.
         async function evTrainerApplyPresetWithVitamin(idx, presetId) {
             if (!_storyTryBeginInteraction()) return;
             try {
@@ -51586,20 +51519,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const all = [].concat(EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta);
                 const preset = all.find(p => p.id === presetId);
                 if (!preset) return;
-                const cur = mon.build.evs || {};
-                const fill = _evTrainerFillToTarget(cur, preset.evs);
-                if (fill.delta <= 0) {
-                    try { window.showGameAlert && window.showGameAlert(`${mon.name} already meets or exceeds the "${preset.label}" preset.`); } catch (e) {}
-                    return;
-                }
-                const spreadLabel = (typeof _evSpreadCompact === 'function') ? _evSpreadCompact(fill.next) : 'new spread';
-                const goldCost = Math.max(100, Math.ceil((fill.delta / 510) * EVTRAINER_COST));
+                if (_evsEqual(mon.build.evs || {}, preset.evs)) return;
+                const spreadLabel = (typeof _evSpreadCompact === 'function') ? _evSpreadCompact(preset.evs) : 'new spread';
                 const remaining = (sm.inventory.vitamin | 0) - 1;
-                const ok = await window.showGameConfirm(`💊 Use 1 Vitamin Pack to train ${mon.name} toward "${preset.label}"?\n+${fill.delta} EV training (additive) → ${spreadLabel}\nSaves ${goldCost.toLocaleString()}G. Vitamins left after use: ${remaining}.`);
+                const ok = await window.showGameConfirm(`💊 Use 1 Vitamin Pack to apply "${preset.label}" EVs to ${mon.name}?\nOverwrites the current spread → ${spreadLabel}\nSaves ${EVTRAINER_COST.toLocaleString()}G. Vitamins left after use: ${remaining}.`);
                 if (!ok) return;
                 sm.inventory.vitamin = Math.max(0, remaining);
                 if (sm.inventory.vitamin <= 0) delete sm.inventory.vitamin;
-                mon.build.evs = fill.next;
+                mon.build.evs = { ...preset.evs };
                 _evTrainerFinish();
             } finally {
                 _storyEndInteraction();
