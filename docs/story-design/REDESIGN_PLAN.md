@@ -12,6 +12,7 @@ This doc is the single source of truth for the redesign decisions. Edit it / the
 - **Run shape:** fixed city/gym/event skeleton, randomized contents (roguelike). Battle + training kept accessible ("modern FireRed").
 - **Training = an earned reward curve:** catch → battle → upgrade → evolve → upgrade → EV-train → IV-train (Fight Club) → Safari boosts. Player power spikes are *earned unlocks*; enemy difficulty steps up to meet each.
 - **Mandatory intros are universal:** every new facility/event gates "Leave City" until its one-time intro is seen.
+- **Visual language:** Game Boy-era Pokémon look, *slightly* modernized — clean, crisp, minimal; simple readable animations over flashy effects. Favor free/open assets (see §8b).
 
 ## 2. Service-availability taxonomy
 
@@ -23,7 +24,7 @@ This doc is the single source of truth for the redesign decisions. Edit it / the
 | **One-time** | Daycare egg (facility at C2/C4/C6; one egg per run) |
 | **One-time → returns at League/endgame** | Fight Club (C6 one-time event → repeatable C9 pre-E4 + endgame) |
 
-**Charter fixes (clear — will apply):** Move Tutor currently skips C1; Nature Rater skips C1–C2; the Artifact store isn't in any city's action list. All three are "always-on RNG-negators" → add to every city. (See `story-service-availability.csv` for the current gaps.)
+**Charter fixes:** Move Tutor skips **C1**; Nature Rater skips **C1, C2, C4** (present only at 0,3,5–9). The **artifact store is the deeper gap** — it isn't a top-level action at all: *buy* (**Relic Annex** → `enterArtifactShop`) and *enable/disable* (**Artifact Hall** → `enterArtifactHall`) are **nested under the Department Store**, which is cyclic at **C6/C8/C9 only**, and the enable/disable switch is additionally **Colress-gated (C6+)**. Making artifacts "always-on" therefore means surfacing both as **top-level actions in every city** + ungating the switch — a bigger change than the Tutor/Rater fixes. (NB: the **"Power Up"** action in the city lists is **Colress** — the mechanic/mega unlock, C6+ — *not* the artifact store.)
 
 ## 3. Egg / Daycare redesign
 
@@ -32,6 +33,7 @@ This doc is the single source of truth for the redesign decisions. Edit it / the
 - Hatch species locked at drop-off: shares ≥1 parent type, **one grade stronger** (keep `_daycareRollHatchSpecies`).
 - **Hatch timing is relative: pickup-city + 2** (a C2 egg hatches at **C4**, a C4 egg at C6, etc.). Replaces the fixed badge-7 gate.
 - The **C6 daycare visit also reveals the Fight Club** (the matron's secret).
+- **Hatch — verified working today:** drop-off → next city-hub render (`renderCityActions` 38553 → `_pitsReleaseBondedOnCityReturn` 40284 → `_storyHatchEligibleEggs` 39542) → in-place hatch (party *or* PC) → reveal scene. Rework adds: **(a)** swap the `badges>=7` gate (`STORY_EGG_HATCH_BADGE`) for `currentCity ≥ pickupCity+2` (store `eggLaidAtCity`); **(b)** a **hatch animation** (egg wiggle → crack → sprite pop) in place of the text-only reveal (`_storyHatchRevealScene` 39815); **(c)** wire the dead **`_daycareHatchQueued` "egg stirring…" foreshadow toast** to fire one city before hatch (consumed at 39596 but never set today).
 
 **Touch-points:** unlock gate `_daycareIsUnlocked()` / `sm.daycare.unlocked` (~39577, set at ~42313); egg slot stores `eggLaidAtCity`; hatch in `_storyHatchEligibleEggs` (39542) keyed on city delta not `STORY_EGG_HATCH_BADGE` (39513).
 
@@ -59,7 +61,7 @@ Curve shape: **player-favorable early/mid, one sharp wall at GL8.** (Full number
 - Enemy tier→EV: T1=0, T2=220, T3=420, **T4=510**. IV bands T1 0–15 … **T4 26–31**.
 - Player reaches **510 EV at C4** (EV Trainer); enemies hit **T4 only at GL8** → player is EV-ahead ~4 gyms.
 - **GL8 quad-spike** (the wall): tier T3→T4, IV floor 18→26, first G1 ace, new gimmick slot, *and* the legendary gate — all in one fight.
-- **IV is the lag axis:** catch IVs 0–31 (avg ~15.5); vitamins +3, cap 31, slow. **The C2/C4/C6 Fight Clubs are the intended IV catch-up** — a player who sweeps them reaches IV 36 before GL7/8/E4, clearing the T4 floor. Risk: they're hard + (early ones) one-time, so a player who loses/skips arrives under-IV'd.
+- **IV is the lag axis:** catch IVs 0–31 (avg ~15.5); vitamins +3, cap 31, slow. **The C6 Fight Club is the intended IV catch-up** — a sweep grants +5 (→ IV 36) two gyms before the GL8 wall (City N = Gym N), clearing the T4 floor; the **repeatable pre-League (C9) instance** tops up anyone who missed it or caught/evolved late. Risk: it's hard + one-time at C6, so a player who loses/skips arrives under-IV'd (mitigated by the C9 repeat).
 - **GL4–5 dead zone:** enemy static (T2 / g3:100 / 1.0×) exactly when the player unlocks the EV Trainer and spikes.
 
 **Proposed tuning** (apply in `story-tunables.csv`, then code):
@@ -80,3 +82,20 @@ Curve shape: **player-favorable early/mid, one sharp wall at GL8.** (Full number
 - **C6 hosts both** the final daycare visit and the Fight Club reveal — a deliberate dark-content convergence.
 
 **Proposed implementation order (after sign-off):** (1) RNG-negator availability fixes → (2) daycare C2/C4/C6 + relative hatch + intro → (3) Fight Club gauntlet + draft (C6 + League + endgame) → (4) balance tuning. Each step behind tests + the SAVE_VER bump.
+
+---
+
+## 8. Next phases (captured, not yet specced)
+
+### 8a. Power / enemy curve pass
+Goal: one coherent **easy → escalating** difficulty curve where **enemy power, wild encounters, professor gifts, and tool access all line up city-by-city**, ramping harder and harder toward the League. Data being gathered (curve agent): per-gym enemy ace **level / tier / EV / IV band**; **wild-encounter grade** per city; **professor gift**; **tool availability + cost** (Move Tutor, Nature Rater, Stone Shop, EV Trainer, vitamins, Artifacts, Colress, Safari). Builds on §5 (GL8 wall → slope; GL4–5 dead zone). Deliverable: a city-by-city curve table → retune in `story-tunables.csv`. Note from the audit: **Professor** is present only **C0–C5** and **Pokémart skips C6** (Dept Store covers it) — confirm both are intended for the curve.
+
+### 8b. Visuals & animation pass
+Aesthetic: **Game Boy-era Pokémon, slightly modernized — clean, crisp, minimal**; simple readable animations over flashy effects. First concrete items: the egg-hatch animation (§3), Fight Club draft transitions, and a sprite-set decision. Favor free/open assets:
+- **itch.io** — indie tilesets / monster + trainer sprites for monster-taming games.
+- **The Spriters Resource** — ripped 2D/3D sprites + UI from official games.
+- **PokéAPI sprites** (GitHub) — front/back/shiny sprites, all gens.
+- **Project Pokémon forums** — extracted 3DS/Switch models + hard-to-find assets.
+- **PokeMiners** (GitHub) — mined GO graphics/audio.
+
+(Licensing: official-game rips are fan-use; track provenance per asset before shipping.)
