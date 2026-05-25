@@ -309,21 +309,25 @@ By the time a player clears the league, an always-active lead earns
 ~200 EV (≈40% of cap) from natural battling — noticeable progress, but
 the EV Trainer still matters for the final polish.
 
-### Changed — EV Trainer is now additive (fill-to-target)
+### EV Trainer overwrites the spread (commit to a clean preset)
 
-Previously the EV Trainer **overwrote** a Pokémon's EVs with the chosen
-preset, which would have erased the new per-battle training. Now the
-trainer **adds toward** the preset target, respecting the 252/stat and
-510/total caps:
+The EV Trainer applies the chosen preset by **overwriting** the mon's
+EVs — discarding any prior spread, including battle training. This is
+deliberate: it's the "I know exactly what I want" path. A mon that
+drifted into the wrong stats from natural battling can be re-pointed to
+a clean competitive spread in one step.
 
-* Cost scales with the EVs actually added (`max(100G, ceil(delta/510 ·
-  5000G))`). A fully untrained mon paying for a 510-EV preset still
-  costs ~5,000G; a mon already 70% trained pays ~1,500G.
-* Already-met or exceeded presets disable the button with an "Already
-  trained" label.
-* Vitamin Pack still waives the gold cost entirely.
-* Header chip now reads **"up to 5,000G / preset"** instead of a flat
-  amount, to signal the dynamic pricing.
+(An earlier draft made the trainer *additively fill toward* the preset
+to preserve battle training, but that couldn't reach a clean spread
+once off-target battle EVs had eaten the 510 budget — the new EVs
+wouldn't "write". Overwrite is the correct, predictable behavior:
+pick "Special Sweeper" and you get exactly 252 SpA / 252 Spe / 4 HP.)
+
+* Flat **5,000G per preset** (or free with a Vitamin Pack).
+* Presets already matching the current spread show "Applied" and are
+  disabled.
+* To keep battle training and *also* commit a preset, use the EV Trainer
+  first, then re-battle — or wipe and restart with the EV Reset Charm.
 
 ### Added — EV Reset Charm (Department Store, 3,000G)
 
@@ -354,11 +358,9 @@ is **not** touched — early game stays gentle.
     surfaces a `🏋️ Training: …` toast
   * `startBattle` / voluntary switch / `selectPartyMember` forced
     switch → populate `window._battleActiveStoryIdxSet`
-  * `_evTrainerFillToTarget` + `_evTrainerChargeScaled`
-  * `evTrainerApplyPreset` / `evTrainerApplyPresetWithVitamin` rewritten
-    to additive fill
-  * EV Trainer preset card now shows the dynamic cost and an "Already
-    trained" state
+  * `evTrainerApplyPreset` / `evTrainerApplyPresetWithVitamin` overwrite
+    the spread with the chosen preset (flat 5,000G, or free with a
+    Vitamin Pack); preset cards show flat cost / "Applied"
   * `DEPT_ITEMS` → new `evResetCharm` entry, custom bag-render handler,
     `openEvResetPicker` + `applyEvReset` functions, public API export
   * `_storyMaybeNudgeFoeEVs` called from the trainer-team roll pipeline
