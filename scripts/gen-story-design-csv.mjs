@@ -124,4 +124,33 @@ write('story-iv-tiers.csv',
 write('story-facility-debut.csv',
   toCsv(['facility', 'debutCity'], Object.keys(DEBUT).map((k) => [k, DEBUT[k]])));
 
+// story-service-availability.csv — for each city action, which cities it appears
+// in and a pattern guess. Surfaces the availability taxonomy (always / permanent-
+// after-debut / cyclic) and reveals gaps (e.g. an RNG-negator that skips a city).
+const cityActions = new Map(); // cityIndex -> Set(action)
+EVENTS.forEach((r) => {
+  if (r[1] !== 'City' || !Array.isArray(r[5])) return;
+  const m = String(r[2]).match(/City(\d+)/);
+  if (!m) return;
+  const ci = +m[1];
+  if (!cityActions.has(ci)) cityActions.set(ci, new Set());
+  r[5].forEach((a) => cityActions.get(ci).add(a));
+});
+const allCities = [...cityActions.keys()].sort((a, b) => a - b);
+const maxCity = allCities[allCities.length - 1];
+const actionSet = new Set();
+cityActions.forEach((s) => s.forEach((a) => actionSet.add(a)));
+const availRows = [...actionSet].sort().map((a) => {
+  const present = allCities.filter((c) => cityActions.get(c).has(a));
+  const debut = present[0];
+  const last = present[present.length - 1];
+  let pattern;
+  if (present.length === allCities.length) pattern = 'always';
+  else if (last === maxCity && last - debut + 1 === present.length) pattern = 'permanent-after-debut';
+  else pattern = 'cyclic';
+  return [a, pattern, debut, present.join('|')];
+});
+write('story-service-availability.csv',
+  toCsv(['action', 'pattern', 'debutCity', 'citiesPresent'], availRows));
+
 console.log('Done.');
