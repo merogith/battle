@@ -39950,7 +39950,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? Math.max(1, Math.min(4, Math.round(snap.teamSummary.reduce((a,t)=>a+(t.grade|0),0) / snap.teamSummary.length)))
                 : 3;
             // Bracket grades: warm-up (avg + 1, weaker), mid (avg), boss (avg - 1, stronger; min 1)
-            const tiers = [Math.min(4, avgGrade + 1), avgGrade, Math.max(1, avgGrade - 1)];
+            // 5-round gauntlet: warm-up, two mid, two harder (last = boss).
+            const tiers = [Math.min(4, avgGrade + 1), avgGrade, avgGrade, Math.max(1, avgGrade - 1), Math.max(1, avgGrade - 1)];
             const badges = Math.max(1, Math.min(8, (sm.badges | 0) || 6));
             const tierEventName = `Gym Leader ${badges}`;
             const fights = tiers.map((tier, i) => {
@@ -39970,7 +39971,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (typeof build.tired !== 'number') build.tired = 0;
                 // Boss fight: +2 bonus on every stat. Stacks on top of the tier IV roll
                 // applied below, capped to the 36 effective-IV ceiling by buildPokemon.
-                if (i === 2) {
+                if (i === tiers.length - 1) {
                     for (const k of ['hp','atk','def','spa','spd','spe']) build.bonus[k] = 2;
                 }
                 return { name: monName, build: build, grade: tier };
@@ -39979,7 +39980,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // tagged as an ace via sigNames so its IV roll lands in the top quartile.
             try {
                 if (typeof _applyStoryBuildPowerTier === 'function' && fights.length) {
-                    const sigNames = fights.length >= 3 ? [fights[2].name] : [];
+                    const sigNames = fights.length ? [fights[fights.length - 1].name] : [];
                     _applyStoryBuildPowerTier(fights, tierEventName, -1, sigNames);
                 }
             } catch (e) { console.warn('[Pits] tier polish', e); }
@@ -40118,7 +40119,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.pits || !sm.pits._activePickIds) return;
             const i = sm.pits._fightIndex | 0;
             const roster = sm.pits._enemyRoster || [];
-            if (i >= 3 || i >= roster.length) {
+            if (i >= roster.length) {
                 _pitsResolveBracket(true);
                 return;
             }
@@ -40161,15 +40162,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.pits.winsThisVisit = (sm.pits.winsThisVisit | 0) + 1;
             sm.pits.bestStreak = Math.max(sm.pits.bestStreak | 0, sm.pits.winsThisVisit | 0);
             if (!endgame) {
-                // +1 to EVERY stat on every (non-egg) party member — the three who fought
-                // and the three who watched. Clamps at +5 per build; buildPokemon hardcaps
-                // IV+bonus at 36, so this is a one-time lift, not a farmable spiral. The
-                // story club closes after this win.
+                // +1 per round won, clamp +5 — a full 5-round sweep lifts the whole
+                // (non-egg) team by +5 on every stat: the intended one-time IV/power
+                // catch-up before the late gyms. buildPokemon hardcaps IV+bonus at 36,
+                // so it's bounded, not a farmable spiral. The club closes after this win;
+                // a loss ends in retry/forfeit, never a kept lift.
+                const lift = Math.min(5, sm.pits._fightsWon | 0);
                 for (const slot of (sm.team || [])) {
                     if (!slot || !slot.build || slot.isEgg) continue;
                     if (!slot.build.bonus) slot.build.bonus = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
                     for (const s of ['hp','atk','def','spa','spd','spe']) {
-                        slot.build.bonus[s] = Math.min(5, (slot.build.bonus[s] | 0) + 1);
+                        slot.build.bonus[s] = Math.min(5, (slot.build.bonus[s] | 0) + lift);
                     }
                 }
                 sm.pits.storyClubDone = true;
@@ -40238,7 +40241,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
             sm.pits._fightsWon = (sm.pits._fightsWon | 0) + 1;
             sm.pits._fightIndex = (sm.pits._fightIndex | 0) + 1;
-            if (sm.pits._fightIndex >= 3) {
+            if (sm.pits._fightIndex >= (sm.pits._enemyRoster || []).length) {
                 _pitsResolveBracket(true);
                 return;
             }
