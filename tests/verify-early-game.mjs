@@ -36,6 +36,7 @@ if (typeof window.__renderCityActionsForTest !== 'function') {
   const h1 = render(1);
   check('Move Tutor present in City 1 (was missing)', h1.includes('Move Tutor'));
   check('Nature Rater present in City 1 (was missing)', h1.includes('Nature Rater'));
+  check('Evolution Sage present in City 1 (evolution Layer 1)', h1.includes('Stone Sage') || h1.includes('Evolution'));
 
   // --- Facility NEW/visited three-tier (the "still all NEW" report) ---
   // At City 2 the Pokémart is NOT its debut city, so un-introduced it should read NEW;

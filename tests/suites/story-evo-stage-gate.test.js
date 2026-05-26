@@ -100,7 +100,7 @@ test('route wilds never exceed their era cap', () => {
   setSm();
 });
 
-test('player Stone Sage gates finals until C6, allows first-evos at C2-5', () => {
+test('player Stone Sage: first-evos from City 1, finals from City 4 (3-layer)', () => {
   // Harness stubs @pkmn/dex to null; inject minimal chains (with prevo so
   // getMonGrade computes the stage-based grade for the grade-floor check).
   const dex = {
@@ -122,15 +122,13 @@ test('player Stone Sage gates finals until C6, allows first-evos at C2-5', () =>
     assert.equal(e.allowed, allowed, `${mon}->${evo}@C${city} allowed`);
     assert.equal(!!e.cityLocked, cityLocked, `${mon}->${evo}@C${city} cityLocked`);
   };
-  expect('Bulbasaur', 'Ivysaur', 3, true, false);   // G3 first-evo allowed in first-evo era
-  expect('Ivysaur', 'Venusaur', 3, false, true);    // 3-stage final stage-locked at C3
-  expect('Ivysaur', 'Venusaur', 5, false, true);    // still locked at C5
-  expect('Ivysaur', 'Venusaur', 6, true, false);    // unlocks at C6
-  expect('Bulbasaur', 'Ivysaur', 6, true, false);
-  // Grade cap: a one-step G2 final (Magikarp->Gyarados) is stage-OK at C2-5 but
-  // grade-blocked until C6, so the player stays "mostly G3 until full evo".
-  expect('Magikarp', 'Gyarados', 3, false, true);   // grade-locked at C3 despite being a first-evo
-  expect('Magikarp', 'Gyarados', 5, false, true);   // still grade-locked at C5
-  expect('Magikarp', 'Gyarados', 6, true, false);   // unlocks at C6 (full evo)
+  expect('Bulbasaur', 'Ivysaur', 1, true, false);   // Stage-1 (first-evo) allowed from the first gym city (Layer 1)
+  expect('Bulbasaur', 'Ivysaur', 3, true, false);
+  expect('Ivysaur', 'Venusaur', 3, false, true);    // Stage-2 (final) stage-locked through C3
+  expect('Ivysaur', 'Venusaur', 4, true, false);    // unlocks at C4 (Stage-2 layer)
+  // Grade floor drops at C4 too: a one-step G2 final (Magikarp->Gyarados) is
+  // grade-blocked through C3, then allowed from C4.
+  expect('Magikarp', 'Gyarados', 3, false, true);   // grade-locked at C3
+  expect('Magikarp', 'Gyarados', 4, true, false);   // allowed at C4
   setSm();
 });

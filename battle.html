@@ -29300,13 +29300,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // RNG-negators (Move Tutor, Nature Rater) and the Fan Club are ALWAYS reachable
             // once the run is going — capability is staged, presence is not. Splice any that
             // a city's action list is missing (e.g. City 1 shipped without the tutors).
-            const ALWAYS_ON = ['Move Tutor', 'Nature Rater', 'Pokémon Fan Club'];
+            // {fac, minCity}: minCity gates where each first appears. The Evolution Sage
+            // debuts at the first gym city (Layer-1 evolutions); the RNG-negators + Fan
+            // Club are present from the start town.
+            const ALWAYS_ON = [
+                { fac: 'Move Tutor', minCity: 0 },
+                { fac: 'Nature Rater', minCity: 0 },
+                { fac: 'Pokémon Fan Club', minCity: 0 },
+                { fac: 'Evolution Tutor', minCity: 1 },
+            ];
             for (const row of STORY_EVENTS_RAW) {
                 if (!Array.isArray(row) || row[1] !== 'City') continue;
                 const actions = row[5];
                 if (!Array.isArray(actions)) continue;
-                for (const fac of ALWAYS_ON) {
-                    if (actions.includes(fac)) continue;
+                const cityN = parseInt(String(row[2] || '').replace(/^City/, ''), 10) || 0;
+                for (const { fac, minCity } of ALWAYS_ON) {
+                    if (cityN < minCity || actions.includes(fac)) continue;
                     let insertAt = actions.indexOf('Pokemart');
                     if (insertAt < 0) insertAt = actions.indexOf('Department Store');
                     if (insertAt < 0) insertAt = actions.indexOf('Link Station');
@@ -33044,6 +33053,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (c <= 5) return 1;
             return 2;
         }
+        // PLAYER evolution cap (Evolution Sage) — decoupled from the enemy curve so the
+        // player evolves a bit ahead of what they fight. 3-layer staging:
+        //   C0 basics only · C1-3 Stage-1 evolutions · C4+ Stage-2 (final) evolutions.
+        function _playerEvoStageCapForCity(cityIdx) {
+            const c = cityIdx | 0;
+            if (c <= 0) return 0;
+            if (c <= 3) return 1;
+            return 2;
+        }
         // Strongest grade a PLAYER evolution may reach this era (G1=1 strongest).
         // C<=5 caps targets at G3 (value>=3); C6+ unrestricted (value>=1). Pairs
         // with the stage cap so the player is "mostly G3 until full evo at C6" —
@@ -33051,7 +33069,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // G3-era gradeWeights. Enemy/wild are already grade-capped upstream, so
         // this floor is player-only.
         function _storyEvoGradeFloorForCity(cityIdx) {
-            return (cityIdx | 0) <= 5 ? 3 : 1;
+            return (cityIdx | 0) <= 3 ? 3 : 1; // G3/G4 through C3; C4+ allows G2/G1 finals (Stage-2 layer)
         }
         function _storyEvoStageCapForRow(rowIdx) {
             if (rowIdx == null || !(sm && sm.active)) return 2;
@@ -47571,7 +47589,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 //     G3 until full evo", matching the enemy's G3-era gradeWeights.
                 // cityLocked targets render a hint and are rejected by evoLabEvolve.
                 const cityIdx = (sm && sm.active) ? cityIndexFromEventIndex(sm.eventIndex) : 9;
-                const stageCap = _storyEvoStageCapForCity(cityIdx);
+                const stageCap = _playerEvoStageCapForCity(cityIdx);
                 const gradeFloor = _storyEvoGradeFloorForCity(cityIdx);
                 return sp.evos.map(evo => {
                     const b = baseStats[evo];
