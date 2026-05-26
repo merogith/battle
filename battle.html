@@ -15863,6 +15863,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let tempMon = buildPokemon(draftItem.name, draftItem.build); let tier = getMonGrade(draftItem.name, getBST(draftItem.name));
                 const draftBst = getBST(draftItem.name);
                 let btn = document.createElement('div'); btn.className = `draft-card tier-${tier}`;
+                btn.setAttribute('role', 'button'); btn.tabIndex = 0;
+                btn.setAttribute('aria-label', `${draftItem.name}, Grade ${tier}, BST ${draftBst} — select for your team`);
                 let movesHtml = tempMon.moves.map(m => `<div class="tip-move-cell" data-mn="${encodeURIComponent(m.name)}" style="cursor:pointer;touch-action:manipulation;" onclick="event.stopPropagation(); window.showMoveTooltipTap(decodeURIComponent(this.dataset.mn), event)" onmousemove="event.stopPropagation(); window.showMoveTooltip(decodeURIComponent(this.dataset.mn), event)" onmouseleave="window.hideTextTooltip()">${m.name}</div>`).join('');
                 const gimmickBadge = {MEGA:'<span style="font-size:10px;background:#7b1fa2;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">MEGA</span>',ZMOVE:'<span style="font-size:10px;background:#f9a825;color:#000;border-radius:3px;padding:1px 4px;margin-left:3px;">Z</span>',DYNAMAX:'<span style="font-size:10px;background:#b71c1c;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">DYNA</span>',GMAXDYNAMAX:'<span style="font-size:10px;background:#880e4f;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">G-MAX</span>',STANDARD:''};
                 const gb = (draftItem.build.gimmick && gimmickBadge[draftItem.build.gimmick]) || '';
@@ -15882,7 +15884,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </div>`;
                 let infoHit = btn.querySelector('.draft-card-info-btn');
                 if (infoHit) infoHit.addEventListener('click', (e) => { e.stopPropagation(); window.showDraftPokemonSummary({ name: draftItem.name, build: draftItem.build }); });
-                btn.onclick = () => { btn.onclick = null; selectDraft(draftItem); }; grid.appendChild(btn);
+                let _drafted = false;
+                const _pickThis = () => { if (_drafted) return; _drafted = true; selectDraft(draftItem); };
+                btn.onclick = _pickThis;
+                btn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _pickThis(); } });
+                grid.appendChild(btn);
             });
 
             renderDraftPartyBar();
@@ -48591,7 +48597,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function showScreen(id) {
             document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
             const el = document.getElementById(id);
-            if (el) el.classList.remove('hidden');
+            if (el) {
+                el.classList.remove('hidden');
+                // A11y: deliver focus into the newly shown (already aria-labelled)
+                // region so keyboard / screen-reader users aren't stranded on <body>
+                // after a transition. preventScroll avoids a jarring jump; any code
+                // that focuses a specific control after showScreen still wins.
+                try {
+                    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+                    el.focus({ preventScroll: true });
+                } catch (e) {}
+            }
         }
 
         function showMenu(fromMenu) {
