@@ -31270,7 +31270,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Cross-run meta. Holds permanent achievements that survive abandon/clear.
         // Today: completedRuns + lastClearSeed. Future: Pokédex carryover, totals, marks.
         const SAVE_KEY_META = 'pbs_story_meta';
-        const SAVE_VER = 20;
+        const SAVE_VER = 21;
         // Test hook: exposes the real save-load + migration entry so the
         // integration suite can exercise the safety-critical migration chain
         // (load() runs migrateStoryPreV8..PreV20 against a saved `version`).
@@ -31764,6 +31764,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *     stat. Player can re-spend on freshly-rolled wild catches whose
          *     vitamin gains are 3x bigger per point — generous on purpose. */
         /** v20: introduce Daycare/Pits/Tiredness/Bonus fields on the save. */
+        /** v21: egg hatch gate moved from badge>=7 to laidCity+2. Stamp legacy
+         *  eggs (which stored eggLaidAt = badge count) with eggLaidAtCity so they
+         *  hatch on the relative schedule. City N ≈ Gym N, so the stamp carries over. */
+        function migrateStoryPreV21() {
+            for (const arr of [sm.team, sm.pcBox]) {
+                if (!Array.isArray(arr)) continue;
+                for (const slot of arr) {
+                    if (!slot || !slot.isEgg) continue;
+                    if (slot.eggLaidAtCity == null) slot.eggLaidAtCity = (slot.eggLaidAt | 0);
+                }
+            }
+        }
         function migrateStoryPreV20() {
             if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
             if (!sm.daycare || typeof sm.daycare !== 'object') {
@@ -32358,6 +32370,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (_loadedVer < 20) {
                     try { migrateStoryPreV20(); } catch (e) { console.warn('[Story] v20 daycare/pits/tiredness migrate', e); }
+                }
+                if (_loadedVer < 21) {
+                    try { migrateStoryPreV21(); } catch (e) { console.warn('[Story] v21 relative egg-hatch migrate', e); }
                 }
                 // v20+ safety back-fills (also covers fresh saves that pre-date the field).
                 if (!sm.flags || typeof sm.flags !== 'object') sm.flags = {};
@@ -39549,18 +39564,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // An egg occupies a party or PC slot but cannot battle (filtered from the
         // battle draft) and cannot be sold. Its hatch species is locked the moment
         // it is laid; it hatches in place once the player clears Gym 7.
-        const STORY_EGG_HATCH_BADGE = 7;
+        const STORY_EGG_HATCH_BADGE = 7; // legacy fallback for eggs with no city stamp
+        const STORY_EGG_HATCH_CITY_DELTA = 2; // relative hatch: pickup-city + 2
         function _isEggSlot(s) { return !!(s && s.isEgg); }
         // Count battle-eligible (non-egg) party members — the real "do I have a
         // fightable team" number that the deposit / sell / Fight-Club guards use.
         function _storyCountFighters() { return (sm.team || []).filter(s => s && !s.isEgg).length; }
-        function _makeEggSlot(species, badges) {
+        function _makeEggSlot(species, laidCity) {
             return {
                 id: 'egg' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
                 isEgg: true,
                 name: species,            // real species kept so any unguarded path degrades gracefully
                 eggSpecies: species,      // the locked hatch species (UI hides it)
-                eggLaidAt: (badges | 0)
+                eggLaidAtCity: (laidCity | 0)  // hatches at eggLaidAtCity + STORY_EGG_HATCH_CITY_DELTA
             };
         }
         // Build the hatchling for an egg's locked species (mirrors the legacy hatch path).
@@ -39579,16 +39595,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // slot id/position so a party egg becomes a party mon (no slot juggling).
         // Returns the hatched species names (for the reveal scene).
         function _storyHatchEligibleEggs() {
-            if ((sm.badges | 0) < STORY_EGG_HATCH_BADGE) return [];
+            const curCity = cityIndexFromEventIndex(sm.eventIndex | 0);
             const hatched = [];
             const doList = (arr) => {
                 if (!Array.isArray(arr)) return;
                 for (const slot of arr) {
                     if (!slot || !slot.isEgg) continue;
+                    // Relative gate: hatch at laidCity + 2. Eggs with no city stamp
+                    // (shouldn't exist post-v21 migration) fall back to the badge gate.
+                    const laidCity = (slot.eggLaidAtCity != null) ? (slot.eggLaidAtCity | 0) : null;
+                    const ready = (laidCity != null)
+                        ? (curCity >= laidCity + STORY_EGG_HATCH_CITY_DELTA)
+                        : ((sm.badges | 0) >= STORY_EGG_HATCH_BADGE);
+                    if (!ready) continue;
                     const sp = slot.eggSpecies || slot.name;
                     slot.build = _eggBuildFor(sp);
                     slot.name = sp;
-                    delete slot.isEgg; delete slot.eggSpecies; delete slot.eggLaidAt;
+                    delete slot.isEgg; delete slot.eggSpecies; delete slot.eggLaidAt; delete slot.eggLaidAtCity;
                     hatched.push(sp);
                 }
             };
@@ -39784,7 +39807,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pname = slot.nickname || slot.name;
             // Lock the hatch species now (shares parent typing, one grade tier up).
             const eggSpecies = _daycareRollHatchSpecies(slot.name);
-            const eggSlot = _makeEggSlot(eggSpecies, sm.badges | 0);
+            const eggSlot = _makeEggSlot(eggSpecies, cityIndexFromEventIndex(sm.eventIndex | 0));
             // The parent does NOT come back. Remove them, drop the egg in the SAME
             // source (guarantees a free slot — we just vacated one).
             if (from === 'team') { team.splice(found, 1); team.push(eggSlot); }
@@ -39811,7 +39834,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 { id:'q3', accent:'#ff8a80', html:`For the first time she meets your eyes. The smile stays put. It just stops meaning anything.<br><br>"<strong>No.</strong>"<br><br>Somewhere under the floorboards a sound comes up — cheering, something heavy hitting something soft, and a long low cry that doesn't sound like winning. The matron reaches over and turns up the radio.`, options:[
                     { label:`(take the egg and go)`, goto:'end' }
                 ]},
-                { id:'end', accent:'#aed581', html:`"Take the egg, dearie. It'll hatch after your seventh badge. Off you pop now." <br><br><span style="color:#80cbc4;font-size:11px;">🥚 You received an Egg — it's in your ${placed === 'team' ? 'party' : 'PC'}. It will hatch once you clear Gym ${STORY_EGG_HATCH_BADGE}.</span>` }
+                { id:'end', accent:'#aed581', html:`"Take the egg, dearie. It'll hatch a couple of towns down the road. Off you pop now." <br><br><span style="color:#80cbc4;font-size:11px;">🥚 You received an Egg — it's in your ${placed === 'team' ? 'party' : 'PC'}. It will hatch a couple of towns from here.</span>` }
             ], () => { try { _storyRefreshCityHubInPlace(); } catch (_) {} }, 'story-daycare-scene');
         }
         // Idle daycare visit — egg already taken, no secret to give yet (or already
@@ -40322,6 +40345,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // hatch any egg that's come due.
         function _pitsReleaseBondedOnCityReturn() {
             if (sm.pits && (sm.pits.winsThisVisit | 0) !== 0) { sm.pits.winsThisVisit = 0; try { save(); } catch (_) {} }
+            // Foreshadow: an egg one city short of hatching "stirs" — queue the toast
+            // a city ahead of the reveal (consumed by _storyDispatchQueuedUnlockToasts).
+            try {
+                const curCity = cityIndexFromEventIndex(sm.eventIndex | 0);
+                const stirring = [...(sm.team || []), ...(sm.pcBox || [])].some(s =>
+                    s && s.isEgg && s.eggLaidAtCity != null &&
+                    curCity === (s.eggLaidAtCity | 0) + STORY_EGG_HATCH_CITY_DELTA - 1);
+                if (stirring) { if (!sm.flags) sm.flags = {}; sm.flags._daycareHatchQueued = true; }
+            } catch (_) {}
             try {
                 const hatched = _storyHatchEligibleEggs();
                 if (hatched.length) setTimeout(() => { try { _storyHatchRevealScene(hatched); } catch (_) {} }, 350);
@@ -40510,7 +40542,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             <div class="draft-card-body" style="min-width:0;flex:1;">
                                 <div class="draft-card-header"><span>🥚 Mystery Egg</span></div>
                                 <div class="draft-card-details" style="color:#ffd54f;">Something stirs inside…</div>
-                                <div class="draft-card-moves" style="color:#888;">Hatches after Gym ${STORY_EGG_HATCH_BADGE}</div>
+                                <div class="draft-card-moves" style="color:#888;">Hatches a couple of towns on</div>
                             </div>
                         </div>
                         <div class="party-sort-col" style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;" onclick="event.stopPropagation()">
@@ -43007,7 +43039,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const eggReason = boxFull ? 'PC is full — release or sell to free a slot' : !eid ? 'Missing id (legacy save)' : '';
                         html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(36,30,12,0.6);border:1px dashed #ffd54f;">
                             ${_eggIconHTML(32)}
-                            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:#ffd54f;">🥚 Mystery Egg <span style="color:#888;font-size:10px;">· hatches after Gym ${STORY_EGG_HATCH_BADGE}</span></span>
+                            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:#ffd54f;">🥚 Mystery Egg <span style="color:#888;font-size:10px;">· hatches a couple of towns on</span></span>
                             <button type="button" onclick="event.stopPropagation();window.StoryMode.pcDeposit('${_esc(eid)}')" ${eggCanDep ? '' : 'disabled'} title="${_esc(eggReason)}" style="font-size:10px;padding:3px 8px;${eggCanDep ? 'color:#4caf50;border-color:#4caf50;' : 'opacity:0.4;'}">Deposit</button>
                         </div>`;
                         return;
@@ -43044,7 +43076,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const eggReason = partyFull ? `Party full (${partyCap}/${partyCap})` : !eid ? 'Missing id (legacy save)' : '';
                         html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(36,30,12,0.6);border:1px dashed #ffd54f;">
                             ${_eggIconHTML(32)}
-                            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:#ffd54f;">🥚 Mystery Egg <span style="color:#888;font-size:10px;">· hatches after Gym ${STORY_EGG_HATCH_BADGE}</span></span>
+                            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:#ffd54f;">🥚 Mystery Egg <span style="color:#888;font-size:10px;">· hatches a couple of towns on</span></span>
                             <button type="button" onclick="event.stopPropagation();window.StoryMode.pcWithdraw('${_esc(eid)}')" ${eggCanW ? '' : 'disabled'} title="${_esc(eggReason)}" style="font-size:10px;padding:3px 8px;${eggCanW ? 'color:#ce93d8;border-color:#ce93d8;' : 'opacity:0.4;'}">Withdraw</button>
                             <button type="button" onclick="event.stopPropagation();window.StoryMode.pcRelease('${_esc(eid)}')" style="font-size:10px;padding:3px 8px;color:#888;border-color:#888;">Release</button>
                         </div>`;

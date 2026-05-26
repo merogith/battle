@@ -105,22 +105,23 @@ test('Daycare drop-off is one-time', () => {
   assert.ok(!$('story-daycare-overlay'), 'no second drop-off picker once the egg event is done');
 });
 
-test('Egg does not hatch before Gym 7, hatches in place at Gym 7', () => {
-  setupStory();
-  // Put an egg directly in the party.
-  const egg = SM._makeEggSlot('Pikachu', 5);
-  sm.team.push(egg);
-  sm.badges = 6;
-  assert.equal(SM._hatchEligibleEggs().length, 0, 'no hatch before Gym 7');
-  assert.equal(sm.team[sm.team.length - 1].isEgg, true, 'still an egg at 6 badges');
-  sm.badges = 7;
+test('Egg hatches at laid-city + 2, not before', () => {
+  setupStory(); // eventIndex=38 → a mid-game city (well past city 2)
+  // An egg "laid" in a far-future city is never due (curCity < laidCity + 2).
+  const future = SM._makeEggSlot('Pikachu', 999);
+  sm.team.push(future);
+  assert.equal(SM._hatchEligibleEggs().length, 0, 'egg laid in a far city does not hatch yet');
+  assert.equal(sm.team[sm.team.length - 1].isEgg, true, 'still an egg before laidCity+2');
+  // An egg "laid" back at city 0 is due mid-game (curCity >= 0 + 2).
+  const due = SM._makeEggSlot('Eevee', 0);
+  sm.team.push(due);
   const hatched = SM._hatchEligibleEggs();
-  assert.equal(hatched.length, 1, 'one egg hatched at Gym 7');
-  assert.equal(hatched[0], 'Pikachu', 'egg hatches into its locked species');
-  const slot = sm.team.find(s => s.id === egg.id);
-  assert.ok(slot && !slot.isEgg, 'the egg slot is now a real mon (isEgg cleared)');
+  assert.ok(hatched.includes('Eevee'), 'egg laid back at city 0 hatches mid-game');
+  assert.ok(!hatched.includes('Pikachu'), 'far-future egg has not hatched');
+  const slot = sm.team.find(s => s.id === due.id);
+  assert.ok(slot && !slot.isEgg, 'the due egg slot is now a real mon (isEgg cleared)');
   assert.ok(slot.build, 'hatchling has a build');
-  assert.equal(slot.name, 'Pikachu', 'hatchling species matches');
+  assert.equal(slot.name, 'Eevee', 'hatchling species matches');
 });
 
 test('Egg counts as a slot but not as a fighter; can be deposited to PC', () => {
