@@ -3,6 +3,25 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## 1.2.0 — Story balance pass, daycare & Fight Club rework 2026-05-26 (`claude/kind-goodall-NeTyO`)
+
+- **Smoother difficulty curve.** Enemy strength now rises every gym instead of
+  flat-lining: the old Gym 1≡Gym 2 start and the Gym 4≡Gym 5 "dead zone" are
+  gone (enemy stat multiplier ramps 0.95→1.10 across the eight gyms).
+- **Daycare eggs hatch on your schedule.** An egg now hatches about **two towns
+  after you pick it up** instead of waiting for the 7th badge, and the belt
+  gives an "egg is stirring…" nudge the town before it hatches.
+- **Fight Club is a 5-round gauntlet.** Sweeping all five now lifts your whole
+  team by **+5** to every stat (the intended one-time power catch-up).
+- **Rivalry journal moved** out of the Pokémon Center into **Collection**,
+  alongside the Pokédex / Achievements / Hall of Fame.
+- **Cries play from local files** (work offline; no third-party fetch).
+- **Fixes:** "Pokémon League" / "Pokémon Fan Club" buttons show the accent;
+  paralysis tooltip now correctly says Speed is *halved*; PC storage help reads
+  cap 30; the Colress price reads **5,000G** everywhere (matching the charge).
+- **Accessibility:** draft pick cards are keyboard/screen-reader operable, and
+  screen transitions move focus into the new screen.
+
 ## Unreleased — Fatigue, Daycare egg quest, Underground Pits, PC click-to-detail 2026-05-22 (`claude/dreamy-goodall-5A3lZ`)
 
 ### Reworked — Daycare Inn + Fight Club: one dark one-time storyline 2026-05-23 (`claude/dreamy-goodall-5A3lZ`)
