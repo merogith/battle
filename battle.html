@@ -40874,10 +40874,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function openPartyModal() {
+            // First open satisfies the one-time Leave-City "introduce Party" gate.
+            const _partyIntroWasPending = !(sm && sm.facilityIntros && sm.facilityIntros.party);
             try { _markFacilitySeen('party'); } catch (e) {}
             renderTeamPanel();
             const m = document.getElementById('modal-story-party');
             if (m) m.classList.remove('hidden');
+            // The panel is a modal overlay, so closing it never re-renders the city
+            // hub the way a screen-based facility (Center, shops) does. Repaint the
+            // action strip now so the cleared Leave-City gate + ✓ chip show live.
+            if (_partyIntroWasPending) {
+                try { renderCityActions(STORY_EVENTS_RAW[sm.eventIndex]); } catch (e) {}
+            }
         }
 
         function moveInParty(idx, dir) {
@@ -48385,6 +48393,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── CITY BAG — view inventory & sell items at 50% price ──────────────
         function openCityBag() {
+            // First open satisfies the one-time Leave-City "introduce Bag" gate.
+            const _bagIntroWasPending = !(sm && sm.facilityIntros && sm.facilityIntros.bag);
             try { _markFacilitySeen('bag'); } catch (e) {}
             const modal = document.getElementById('modal-story-bag');
             const bagEl  = document.getElementById('story-bag-grid');
@@ -48506,6 +48516,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 bagEl.innerHTML = '<div style="color:#555;font-size:12px;grid-column:1/-1;padding:12px;text-align:center;">Your bag is empty. Visit a Pokémart or Department Store to buy items.</div>';
             }
             modal.classList.remove('hidden');
+            // The bag is a modal overlay (closing it doesn't re-render the hub) and
+            // openCityBag re-runs on every sell — repaint the city action strip only
+            // on the first open, when the introduce-gate actually needs to clear.
+            if (_bagIntroWasPending) {
+                try { renderCityActions(STORY_EVENTS_RAW[sm.eventIndex]); } catch (e) {}
+            }
         }
 
         function sellItem(itemId, sellPrice) {

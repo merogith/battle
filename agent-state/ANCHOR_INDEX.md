@@ -1,6 +1,6 @@
 # Anchor Index — battle.html and siblings
 
-> **Generated**: 2026-05-26T23:34:19.931Z
+> **Generated**: 2026-05-26T23:56:48.361Z
 > **Source**: `node scripts/debug/anchor-map.mjs`
 > **Companion**: `agent-state/CODEBASE_MAP.md` (human-authored prose, anchor table stale — use this file instead).
 
@@ -23,8 +23,8 @@ trusting these numbers verbatim.
 | Symbol | File | Line | Kind |
 |---|---|---|---|
 | `STORY_EVENTS_RAW` | battle.html | 29240 | const-decl |
-| `enterBattleEvent` | battle.html | 42396 | function-decl |
-| `proceedToNextBattle` | battle.html | 41899 | function-decl |
+| `enterBattleEvent` | battle.html | 42404 | function-decl |
+| `proceedToNextBattle` | battle.html | 41907 | function-decl |
 
 ## Migrations
 
@@ -52,7 +52,7 @@ trusting these numbers verbatim.
 | `rollTrainerTeam` | battle.html | 34231 | function-decl |
 | `rollMysteryFigureFinalBossTeam` | battle.html | 34648 | function-decl |
 | `makeBuild` | battle.html | 10361 | function-decl |
-| `makeWildBuild` | battle.html | 44708 | function-decl |
+| `makeWildBuild` | battle.html | 44716 | function-decl |
 | `makeDesignedBuild` | battle.html | 10330 | function-decl |
 
 ## Story build tier
@@ -79,7 +79,7 @@ trusting these numbers verbatim.
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `enterProfessor` | battle.html | 41065 | function-decl |
+| `enterProfessor` | battle.html | 41073 | function-decl |
 | `isPreLeagueLegendaryMysteryGate` | battle.html | 30129 | function-decl |
 
 ## Rival
@@ -103,8 +103,8 @@ trusting these numbers verbatim.
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `_pickStarterPartner` | battle.html | 41007 | function-decl |
-| `_bossArcRollLegendary` | battle.html | 44120 | function-decl |
+| `_pickStarterPartner` | battle.html | 41015 | function-decl |
+| `_bossArcRollLegendary` | battle.html | 44128 | function-decl |
 
 ## Damage formula
 
@@ -138,14 +138,14 @@ trusting these numbers verbatim.
 |---|---|---|---|
 | `_storyCalcRetreatGoldFee` | battle.html | 39694 | function-decl |
 | `refreshStoryGameOverRetreatUI` | battle.html | 40707 | function-decl |
-| `acceptRivalLossAndContinue` | battle.html | 42894 | function-decl |
+| `acceptRivalLossAndContinue` | battle.html | 42902 | function-decl |
 
 ## Tutor / EV trainer / Link / Colress
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `enterShop` | battle.html | 45719 | function-decl |
-| `enterArtifactShop` | battle.html | 45970 | function-decl |
+| `enterShop` | battle.html | 45727 | function-decl |
+| `enterArtifactShop` | battle.html | 45978 | function-decl |
 
 ## Test harness
 
