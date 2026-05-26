@@ -34612,6 +34612,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     rollWildEncounter: (...a) => rollWildEncounter(...a),
                     getAllEvosWithStatus: (...a) => _getAllEvosWithStatus(...a),
                     get STORY_EVENTS_RAW() { return STORY_EVENTS_RAW; },
+                    // Staged-NPC capability ladder handles (city-anchored).
+                    npcStageForCity: (...a) => _npcStageForCity(...a),
+                    npcStageName: (...a) => _npcStageName(...a),
+                    npcStage: (...a) => _npcStage(...a),
+                    npcStageUpCheck: (...a) => _npcStageUpCheck(...a),
+                    dojoItemTier: (...a) => _dojoItemTier(...a),
+                    opAbilitiesForMon: (...a) => _opAbilitiesForMon(...a),
+                    tutorGetPoolForMon: (...a) => _tutorGetPoolForMon(...a),
+                    tutorGetStagedMovePool: (...a) => _tutorGetStagedMovePoolAsync(...a),
                 };
             } catch (e) {}
         }
@@ -39257,14 +39266,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _push('shop', makeActionBtn('💎 Stone Emporium','stoneShop','window.StoryMode.enterStoneShop()','dept', _facOpts('stoneShop', stoneMeta, { soft:true })));
             }
             const _tutorTeam = sm.team.length > 0;
+            // Staged-NPC chip tags — same base name, the tag advances by city as the
+            // facility's capability grows (see NPC_STAGE_CITY / NPC_STAGE_NAMES).
+            const _stageTag = (key) => { const t = _npcStageName(key); return t ? ' — ' + t : ''; };
             if (actions.includes('Move Tutor') && _tutorTeam) {
-                _push('train', makeActionBtn('📖 Move Tutor','tutor','window.StoryMode.enterTutor(\'moves\')','training', _facOpts('tutor', [_costBadge(1500, '+')])));
+                _push('train', makeActionBtn('📖 Move Tutor' + _stageTag('tutor'),'tutor','window.StoryMode.enterTutor(\'moves\')','training', _facOpts('tutor', [_costBadge(1500, '+')])));
             }
             if (actions.includes('Battle Dojo') && _tutorTeam) {
-                _push('train', makeActionBtn('🥋 Battle Dojo','dojo','window.StoryMode.enterTutor(\'loadout\')','training', _facOpts('dojo', [_costBadge(2000, '+')])));
+                _push('train', makeActionBtn('🥋 Battle Dojo' + _stageTag('dojo'),'dojo','window.StoryMode.enterTutor(\'loadout\')','training', _facOpts('dojo', [_costBadge(2000, '+')])));
             }
             if (actions.includes('Evolution Tutor') && _tutorTeam) {
-                _push('train', makeActionBtn('🧬 Stone Sage — Evolutions','evolab','window.StoryMode.enterEvolutionLab()','training', _facOpts('evolab', [_costBadge(1500, '+')])));
+                _push('train', makeActionBtn('🧬 Stone Sage' + _stageTag('evolab'),'evolab','window.StoryMode.enterEvolutionLab()','training', _facOpts('evolab', [_costBadge(1500, '+')])));
             }
             if (actions.includes('EV Trainer') && _tutorTeam) {
                 _push('train', makeActionBtn('🏋️ EV Trainer','evtrainer','window.StoryMode.enterEVTrainer()','training', _facOpts('evtrainer', [_costBadge(5000)], { soft:true })));
@@ -47667,6 +47679,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_storyTryBeginInteraction()) return;
             try {
                 _markFacilitySeen('evolab');
+                _npcStageUpCheck('evolab');
                 updateHUD();
                 // Lead with the first mon expanded; collapse via Close chip / header chev / pill.
                 _storyEvoLabOpenIdx = 0;
@@ -49515,6 +49528,113 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const TUTOR_COST_HIDDEN  = 3000;  // hidden ability (slot H) swap
         const TUTOR_COST_AWAKEN  = 5000;  // OP "Awaken" pick (City 6+)
         const TUTOR_COST_NATURE  = 2000;
+
+        // ── Staged-NPC capability ladders (city-anchored, tunable) ───────────
+        // Cities are the constant anchor — a facility's capability TIER is keyed
+        // on the ARRIVED city (the same basis as the evolution-stage gate, so a
+        // route battle uses its departing city's era). Each number below is the
+        // FIRST city index at which that stage unlocks; arrays may be any length
+        // (more entries = more tiers). Move a number to rebalance when an NPC
+        // levels up, or split a facility's tiers independently of its debut city.
+        const NPC_STAGE_CITY = {
+            // Battle Dojo:  White Belt (natural abilities · berry/basic items)
+            //             → Black Belt (+Hidden abilities · +decent items)
+            //             → Grandmaster (+Awakened abilities · +all items)
+            dojo:   [4, 6, 8],
+            // Move Tutor:  Heart Scale (egg + level-up + own competitive moves)
+            //            → TM Expert (+TMs / tutor / the full learnset)
+            tutor:  [0, 4],
+            // Stone Sage:  capability is enforced by the player evo-stage cap;
+            //              these thresholds drive only the chip name + intro beat.
+            //              Awakening (first evos) → Stones → Ascension (finals @ C4).
+            evolab: [2, 3, 4],
+        };
+        const NPC_STAGE_NAMES = {
+            dojo:   ['White Belt', 'Black Belt', 'Grandmaster'],
+            tutor:  ['Heart Scale', 'TM Expert'],
+            evolab: ['Awakening', 'Stones', 'Ascension'],
+        };
+        function _npcStageForCity(key, cityIdx) {
+            const ths = NPC_STAGE_CITY[key];
+            if (!Array.isArray(ths) || !ths.length) return 0;
+            let s = 0;
+            for (let i = 0; i < ths.length; i++) { if (cityIdx >= ths[i]) s = i; }
+            return s;
+        }
+        function _npcStage(key) {
+            let c = 0;
+            try { c = cityIndexFromEventIndex(sm ? sm.eventIndex : 0); } catch (e) { c = 0; }
+            return _npcStageForCity(key, c < 0 ? 0 : c);
+        }
+        function _npcStageName(key, stage) {
+            const names = NPC_STAGE_NAMES[key];
+            if (!Array.isArray(names) || !names.length) return '';
+            const s = (typeof stage === 'number') ? stage : _npcStage(key);
+            return names[Math.min(Math.max(s, 0), names.length - 1)] || '';
+        }
+        // Does the player hold a Heart Scale voucher? A Heart Scale lets the Move
+        // Tutor teach ANY move regardless of the tutor's current stage (the voucher
+        // overrides the tier gate), per the "vouchers can be used for anything" rule.
+        function _hasHeartScale() {
+            return !!(sm && sm.inventory && (sm.inventory.heartScale | 0) > 0);
+        }
+        // Battle Dojo held-item tiers (cumulative): 1 = berries, 2 = decent staples,
+        // 3 = the meta-defining power items. Unlisted items default to tier 2 so a
+        // stray item is never locked to the very top. Tunable by editing the sets.
+        const _DOJO_ITEM_BEST = new Set([
+            'Choice Band', 'Choice Specs', 'Choice Scarf', 'Life Orb', 'Assault Vest',
+            'Heavy-Duty Boots', 'Weakness Policy', 'Booster Energy', 'Loaded Dice',
+            'Light Ball', 'Thick Club', 'Covert Cloak', 'Clear Amulet',
+        ]);
+        function _dojoItemTier(name) {
+            if (!name || name === '(none)') return 1;
+            if (/Berry$/.test(name)) return 1;
+            if (_DOJO_ITEM_BEST.has(name)) return 3;
+            return 2;
+        }
+        // One-time "stage up" beat: the first time the player reaches a higher tier
+        // of a staged NPC, the NPC re-introduces itself and hands over one free use
+        // (a voucher for that facility). Tracked in sm.npcStageSeen so each beat
+        // fires once per run. Stage 0 (debut) has no gift — that intro is the
+        // facility's normal first-visit beat.
+        const _NPC_STAGE_GIFT = {
+            tutor:  { 1: { heartScale: 1 } },
+            dojo:   { 1: { abilityCapsule: 1 }, 2: { abilityCapsule: 1, emblemHonor: 1 } },
+            evolab: { 1: { stoneToken: 1 }, 2: { stoneToken: 1 } },
+        };
+        const _NPC_STAGE_INTRO = {
+            tutor:  { 1: 'Move Tutor: "You\'ve battled enough to earn the full lesson book — TMs, tutor moves, all of it. Here\'s a Heart Scale; the first advanced lesson is on me."' },
+            dojo:   {
+                1: 'Dojo Master: "Black Belt material. Hidden talents are on the table now — take this Ability Capsule and wake one up, no charge."',
+                2: 'Dojo Master: "Grandmaster. Nothing is off-limits in my dojo. An Ability Capsule and an Emblem of Honor — spend them however you like."',
+            },
+            evolab: {
+                1: 'Stone Sage: "The elemental stones answer to you now. Take this token — one stone, gratis."',
+                2: 'Stone Sage: "Your bond has deepened; the final forms will ascend at your word. One more token, on me."',
+            },
+        };
+        function _npcStageUpCheck(key) {
+            if (!sm || !key || !NPC_STAGE_CITY[key]) return;
+            if (!sm.npcStageSeen || typeof sm.npcStageSeen !== 'object') sm.npcStageSeen = {};
+            const cur = _npcStage(key);
+            const seen = (typeof sm.npcStageSeen[key] === 'number') ? sm.npcStageSeen[key] : -1;
+            if (cur <= seen) return;
+            sm.npcStageSeen[key] = cur;
+            // Grant every newly-crossed stage's free use (covers a skipped tier).
+            for (let s = seen + 1; s <= cur; s++) {
+                const gift = (_NPC_STAGE_GIFT[key] || {})[s];
+                if (!gift) continue;
+                if (gift.stoneToken) {
+                    try { _storyEnsureInventory(); sm.inventory.stoneToken = (sm.inventory.stoneToken | 0) + gift.stoneToken; } catch (e) {}
+                }
+                const rest = {}; for (const k of Object.keys(gift)) if (k !== 'stoneToken') rest[k] = gift[k];
+                if (Object.keys(rest).length) { try { _storyGrantBundle(rest); } catch (e) {} }
+            }
+            const line = (_NPC_STAGE_INTRO[key] || {})[cur];
+            if (line) { try { window.showGameAlert && window.showGameAlert(line); } catch (e) {} }
+            try { save(); } catch (e) {}
+        }
+
         function _abilityCostForMon(monName, abilityName) {
             if (!abilityName) return TUTOR_COST_ABILITY;
             const opSet = new Set(_opAbilitiesForMon(monName));
@@ -49748,7 +49868,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function _opAbilitiesForMon(monName) {
             if (!_opAbilitiesCache) return [];
-            if ((sm && (sm.badges | 0)) < 6) return [];
+            // Awakened abilities are the Battle Dojo's top tier (Grandmaster).
+            if (_npcStage('dojo') < 2) return [];
             const list = _opAbilitiesCache[monName];
             // Return the full Awaken set — the data is curated per species to
             // bring base + Hidden + Awaken to at least 7 options (no fixed cap).
@@ -49802,14 +49923,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return keys;
         }
 
+        // Returns { all: [...names], tier1: [...names] } for a species' learnset.
+        // tier1 = moves reachable by egg-breed or level-up (method codes 'E'/'L'),
+        // i.e. what a Heart-Scale-tier Move Tutor can teach. The full set is used
+        // for the TM-Expert tier and for evolution move-legality checks.
         async function _tutorFetchLearnsetMoveNames(monName) {
-            if (_tutorLearnsetCache.has(monName)) return _tutorLearnsetCache.get(monName);
+            const cached = _tutorLearnsetCache.get(monName);
+            if (cached) return cached;
             const D = getPssDex();
             if (!D || !D.learnsets || typeof D.learnsets.get !== 'function') {
-                _tutorLearnsetCache.set(monName, []);
-                return [];
+                const empty = { all: [], tier1: [] };
+                _tutorLearnsetCache.set(monName, empty);
+                return empty;
             }
-            const ids = new Set();
+            const idMethods = new Map(); // moveId → Set of method letters (L/E/M/T/…)
             const keys = _tutorSpeciesKeysForLearnset(monName);
             // Union across all gens 4-9: @pkmn/dex's default Dex is gen 9 and
             // hides moves flagged `isNonstandard: "Past"` (Pursuit, all 16
@@ -49825,28 +49952,57 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     try {
                         const ls = await Dg.learnsets.get(nm);
                         if (ls && ls.learnset && typeof ls.learnset === 'object') {
-                            Object.keys(ls.learnset).forEach(id => ids.add(id));
+                            for (const id of Object.keys(ls.learnset)) {
+                                let set = idMethods.get(id);
+                                if (!set) { set = new Set(); idMethods.set(id, set); }
+                                const codes = ls.learnset[id];
+                                // Each code is "<gen><method><level?>" → method letter at index 1.
+                                if (Array.isArray(codes)) for (const c of codes) {
+                                    if (typeof c === 'string' && c.length > 1) set.add(c[1]);
+                                }
+                            }
                         }
                     } catch (e) {}
                 }
             }
-            const names = new Set();
-            for (const id of ids) {
+            const all = new Set();
+            const tier1 = new Set();
+            for (const [id, methods] of idMethods) {
                 try {
                     const mv = D.moves.get(id);
-                    if (mv && mv.exists !== false && mv.name && _tutorMoveAllowedStrict(mv.name)) names.add(mv.name);
+                    if (mv && mv.exists !== false && mv.name && _tutorMoveAllowedStrict(mv.name)) {
+                        all.add(mv.name);
+                        if (methods.has('L') || methods.has('E')) tier1.add(mv.name);
+                    }
                 } catch (e2) {}
             }
-            const arr = [...names].sort();
-            _tutorLearnsetCache.set(monName, arr);
-            return arr;
+            const result = { all: [...all].sort(), tier1: [...tier1].sort() };
+            _tutorLearnsetCache.set(monName, result);
+            return result;
         }
 
         async function _tutorGetMergedMovePoolAsync(monName) {
             const syncMoves = _tutorGetPoolForMon(monName).moves;
-            let learnMoves = [];
-            try { learnMoves = await _tutorFetchLearnsetMoveNames(monName); } catch (e) { learnMoves = []; }
-            return [...new Set([...syncMoves, ...learnMoves])].sort();
+            let learn = { all: [], tier1: [] };
+            try { learn = await _tutorFetchLearnsetMoveNames(monName); } catch (e) { learn = { all: [], tier1: [] }; }
+            return [...new Set([...syncMoves, ...(learn.all || [])])].sort();
+        }
+
+        // Move Tutor view pool — gated by the tutor's city stage. At Heart Scale
+        // (stage 0) only the mon's own competitive moves + egg/level-up learnset
+        // are teachable; TM Expert (stage 1+) opens the full learnset. Holding a
+        // Heart Scale voucher overrides the gate ("learn any move"). The mon's
+        // currently-known moves are always kept selectable.
+        async function _tutorGetStagedMovePoolAsync(monName, currentMoves) {
+            const syncMoves = _tutorGetPoolForMon(monName).moves;
+            let learn = { all: [], tier1: [] };
+            try { learn = await _tutorFetchLearnsetMoveNames(monName); } catch (e) { learn = { all: [], tier1: [] }; }
+            const full = [...new Set([...syncMoves, ...(learn.all || [])])].sort();
+            if (_npcStage('tutor') >= 1 || _hasHeartScale()) return full;
+            const allow = new Set([...syncMoves, ...(learn.tier1 || [])]);
+            if (Array.isArray(currentMoves)) currentMoves.forEach(m => { if (m) allow.add(m); });
+            const gated = full.filter(m => allow.has(m));
+            return gated.length ? gated : full;
         }
 
         // ── REDESIGN HELPERS — categorization & recommendations ──────────
@@ -51091,6 +51247,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Cache of move pool per Pokémon (filled by renderTutorTeam, used by partial re-renders)
         const _txMovePoolCache = new Map();
+        // Per-team-slot set of "tier-1" moves (own competitive + egg/level-up +
+        // already-known) used to keep the gold path honest: below TM Expert a move
+        // outside this set is a TM-tier pick only reachable via a Heart Scale.
+        const _txMoveTier1Cache = new Map();
         // Pending selection (the card the user has "chosen" but not yet confirmed)
         // Shape: { kind: 'move'|'item'|'ability'|'nature', value: string, slot?: number }
         let _txPending = null;
@@ -52029,26 +52189,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sPool = _txStarredPool(t.name);
             const sparseBanner = _txSparseBannerHtml(t.name);
 
+            // Battle Dojo stage (city-anchored): 0 White Belt · 1 Black Belt · 2 Grandmaster.
+            // Items unlock by tier (berries → +decent → +all); abilities unlock
+            // natural → +Hidden → +Awakened. The currently-equipped pick always stays
+            // visible so a higher-tier loadout from a prior city reads correctly.
+            const _dojoStage = _npcStage('dojo');
+            const _haName = (() => { try { const bs = baseStats[t.name]; return (bs && bs.abilities && bs.abilities.H) || null; } catch (e) { return null; } })();
+
             // Items
             const curItem = b.i || '(none)';
-            const items = pool.items.slice();
+            const items = pool.items.filter(it => _dojoItemTier(it) <= _dojoStage + 1 || it === curItem);
             const filtItems = _txApplyItemFilters(items, mon, b, t.name);
             const pendingItem = (_txPending && _txPending.kind === 'item') ? _txPending.value : null;
             const itemCtx = { pending: pendingItem, current: curItem, recommended: sPool.items.starred, pctOf: sPool.items.pctOf };
 
             // Abilities — hidden tagged from baseStats.abilities slot 'H' for the
-            // tier badge. OP "Awaken" picks are merged in once sm.badges >= 6
-            // and tagged via awakenSet so _txAbilityCardHtml can flag them.
+            // tier badge. Awakened picks merge in only at Grandmaster (handled in
+            // _opAbilitiesForMon); the Hidden ability is held back until Black Belt.
             const curAbility = b.a || (mon && mon.ability) || '(none)';
             const opAbils = _opAbilitiesForMon(t.name);
             const awakenSet = new Set(opAbils);
-            const abils = [...new Set([...pool.abilities, ...opAbils])].sort();
+            let abils = [...new Set([...pool.abilities, ...opAbils])];
+            if (_dojoStage < 1 && _haName) abils = abils.filter(a => a !== _haName || a === curAbility);
+            abils = abils.sort();
             const filtAbils = _txApplyAbilityFilters(abils, mon, b, t.name, awakenSet);
             const haSet = new Set();
-            try {
-                const bs = baseStats[t.name];
-                if (bs && bs.abilities && bs.abilities.H) haSet.add(bs.abilities.H);
-            } catch (e) {}
+            if (_haName) haSet.add(_haName);
             const pendingAbility = (_txPending && _txPending.kind === 'ability') ? _txPending.value : null;
             const abilCtx = { pending: pendingAbility, current: curAbility, recommended: sPool.abilities.starred, hiddenAbilities: haSet, awakenAbilities: awakenSet, pctOf: sPool.abilities.pctOf };
 
@@ -52248,6 +52414,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
             const m = mode === 'nature' ? 'nature' : mode === 'loadout' ? 'loadout' : 'moves';
             _markFacilitySeen(m === 'nature' ? 'nature' : m === 'loadout' ? 'dojo' : 'tutor');
+            // Staged-NPC level-up beat (Move Tutor / Battle Dojo). Nature doesn't stage.
+            if (m !== 'nature') _npcStageUpCheck(m === 'loadout' ? 'dojo' : 'tutor');
             _storyTutorMode = m;
             // Lead with the first mon expanded so the rec panel is visible
             // immediately. Use the Close chip (or tap the active pill /
@@ -52320,9 +52488,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Partial re-renders (filter / sort changes) pass skipFetch=true and reuse the cache.
             if (showMoves && !skipFetch) {
                 _txMovePoolCache.clear();
+                _txMoveTier1Cache.clear();
                 for (let ti = 0; ti < sm.team.length; ti++) {
                     try {
-                        _txMovePoolCache.set(ti, await _tutorGetMergedMovePoolAsync(sm.team[ti].name));
+                        const _tm = sm.team[ti];
+                        const _cur = (_tm.build && _tm.build.m) || [];
+                        _txMovePoolCache.set(ti, await _tutorGetStagedMovePoolAsync(_tm.name, _cur));
+                        // _tutorGetStagedMovePoolAsync just warmed the learnset cache, so this is free.
+                        const _learn = _tutorLearnsetCache.get(_tm.name) || { tier1: [] };
+                        const _t1 = new Set([..._tutorGetPoolForMon(_tm.name).moves, ...(_learn.tier1 || [])]);
+                        _cur.forEach(m => { if (m) _t1.add(m.split('/')[0]); });
+                        _txMoveTier1Cache.set(ti, _t1);
                     } catch (e) {
                         _txMovePoolCache.set(ti, _tutorGetPoolForMon(sm.team[ti].name).moves);
                     }
@@ -52383,6 +52559,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         async function tutorChangeMove(teamIdx, moveSlot, newMove) {
+            // TM-tier guard: below TM Expert, a move outside this mon's tier-1 set
+            // (own competitive + egg/level-up + already-known) is a TM-tier pick the
+            // gold path must not teach — only a Heart Scale can, per the city gate.
+            if (_npcStage('tutor') < 1) {
+                const _t1 = _txMoveTier1Cache.get(teamIdx);
+                if (_t1 && !_t1.has(newMove)) {
+                    if (_hasHeartScale()) return tutorChangeMoveWithVoucher(teamIdx, moveSlot, newMove);
+                    try { window.showGameAlert && window.showGameAlert('That move needs a Heart Scale to teach right now — the Move Tutor opens its full lesson book (TMs and all) as it levels up.'); } catch (e) {}
+                    return;
+                }
+            }
             if (!_storyTryBeginInteraction()) return;
             try {
                 const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
