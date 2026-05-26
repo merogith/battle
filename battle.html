@@ -38563,15 +38563,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.gymCleared) sm.gymCleared = {};
             sm.gymCleared[6] = true;
             try { _storyBackfillCitiesArrived(); } catch (e) {}
-            // Seed unlocked gimmicks to match the new badges=6 unlock state
-            // (mega + dmax), plus a Wishing Piece for voucher-path testing.
+            // Seed unlocked gimmicks to match the Colress unlock state — all
+            // four enabled mechanics unlock together at badges >= 5. Plus a
+            // Wishing Piece for voucher-path testing.
             {
                 const order = [];
                 if (sm.settings.megaOn) order.push('mega');
                 if (sm.settings.dynaOn) order.push('dmax');
                 if (sm.settings.teraOn) order.push('tera');
                 if (sm.settings.zOn) order.push('z');
-                const slotsUnlocked = Math.min(4, Math.max(0, (sm.badges | 0) - 4));
+                const slotsUnlocked = (sm.badges | 0) < 5 ? 0 : 4;
                 sm.unlockedGimmicks = order.slice(0, Math.min(slotsUnlocked, order.length));
             }
             if (!sm.inventory) sm.inventory = {};
@@ -42731,12 +42732,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { _storyQueueRoamingFromVictory(en); } catch (e) {}
                 if (en === 'Rival') setRivalStanding('player', idx, _rivalTeamSnapshotNames());
                 const isMilestoneVictory = isGymBadge || /^(E1|E2|E3|E4|Champion|Rival)$/.test(en);
-                // Unlock player gimmicks in fixed order — first unlock at
-                // Gym 5 (same gym that drops the Wishing Piece voucher) so
-                // every unlocked mechanic is immediately equippable at the
-                // next-city Colress lab. Badges 1–4 stay clean — no
-                // "unlocked but useless" indicator. From Gym 5 on, every
-                // gym victory unlocks one more mechanic up to 4 at Gym 8.
+                // Unlock all four player battle mechanics together the moment
+                // the player reaches Colress's lab — the city after Gym 5
+                // (badges >= 5, same gym that drops the Wishing Piece voucher).
+                // Badges 1–4 stay clean (no "unlocked but useless" indicator);
+                // from Colress on, every enabled mechanic is immediately
+                // equippable. Previously these dripped one per gym (5→8), which
+                // left Tera/Z gated until the very end of the run.
                 {
                     const order = [];
                     if (sm.settings.megaOn) order.push('mega');
@@ -42744,7 +42746,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (sm.settings.teraOn) order.push('tera');
                     if (sm.settings.zOn) order.push('z');
                     const badges = sm.badges | 0;
-                    const slotsUnlocked = badges < 5 ? 0 : Math.min(4, badges - 4);
+                    const slotsUnlocked = badges < 5 ? 0 : 4;
                     sm.unlockedGimmicks = order.slice(0, Math.min(slotsUnlocked, order.length));
                 }
                 sm.currentEnemyLock = null;
