@@ -29,14 +29,21 @@ if (typeof window.__renderCityActionsForTest !== 'function') {
   if (h0.startsWith('ERR:')) out.push('ERROR C0: ' + h0);
   check('Artifact Hall present in City 0', h0.includes('Artifact Hall'));
   check('Move Tutor present in City 0', h0.includes('Move Tutor'));
-  check('Nature Rater present in City 0', h0.includes('Nature Rater'));
+  check('Nature Rater NOT in City 0 (moved to C1)', !h0.includes('Nature Rater'));
 
-  // --- City 1 (first gym city): tutors were missing in the action list ---
+  // --- City 1 (first gym city): Nature Rater now debuts here; Move Tutor present ---
   setup();
   const h1 = render(1);
-  check('Move Tutor present in City 1 (was missing)', h1.includes('Move Tutor'));
-  check('Nature Rater present in City 1 (was missing)', h1.includes('Nature Rater'));
-  check('Evolution Sage present in City 1 (evolution Layer 1)', h1.includes('Stone Sage') || h1.includes('Evolution'));
+  check('Move Tutor present in City 1', h1.includes('Move Tutor'));
+  check('Nature Rater present in City 1 (debut)', h1.includes('Nature Rater'));
+  check('Stone Sage NOT in City 1 (debuts C2)', !(h1.includes('Stone Sage') || h1.includes('Evolution Tutor')));
+
+  // --- City 2: Stone Sage + Battle Dojo debut here (the "systems open up" town) ---
+  setup();
+  const h2c = render(2);
+  check('Stone Sage present in City 2 (debut)', h2c.includes('Stone Sage'));
+  check('Battle Dojo present in City 2 (debut, moved earlier from C4)', h2c.includes('Battle Dojo'));
+  check('Stone Merchant NOT in City 2 (moved to C3)', !h2c.includes('Stone Emporium'));
 
   // --- Facility NEW/visited three-tier (the "still all NEW" report) ---
   // At City 2 the Pokémart is NOT its debut city, so un-introduced it should read NEW;
@@ -77,6 +84,17 @@ if (typeof window.__renderCityActionsForTest !== 'function') {
   SM.openCityBag();
   check('old-save openCityBag back-fills facilityIntros.bag', sm.facilityIntros.bag === true);
   check('old-save C0 gate clears after re-opening Bag', !gateNamesBag(render(0)));
+
+  // --- New-spread must-do intro gate: Battle Dojo debuts at C2; un-introduced it
+  // carries the 🔴 Required pill, which clears once the player has met it. ---
+  const reqCount = (h) => (h.match(/🔴 Required/g) || []).length;
+  setup();
+  const h2req = render(2);
+  check('C2 debut facilities carry 🔴 Required when un-introduced', reqCount(h2req) > 0, `count=${reqCount(h2req)}`);
+  check('Battle Dojo chip is flagged Required at its C2 debut', /Battle Dojo[\s\S]{0,260}?🔴 Required/.test(h2req));
+  sm.facilityIntros = { dojo:1, evolab:1, link:1, mart:1, tutor:1, nature:1, fanclub:1 };
+  const h2done = render(2);
+  check('C2 Required pills clear once those facilities are introduced', reqCount(h2done) === 0, `count=${reqCount(h2done)}`);
 }
 
 console.log('\n===== EARLY-GAME VERIFY =====\n' + out.join('\n'));

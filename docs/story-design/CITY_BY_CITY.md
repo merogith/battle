@@ -63,3 +63,21 @@ Professor basics-only · tutors always-on (every city) · wilds base-only + risi
 - **Voucher rule:** vouchers grant full capability regardless of stage (Heart Scale = any move) — per "vouchers can be used for anything."
 
 **Shop tiers — DECIDED: leave as-is.** The Poké Mart (everyday, all cities) + Department Store (premium, C6+) already form a two-tier item economy by facility; no mart-stock tiering is added (avoids an economy rebalance). **In-browser-only verification:** the real learnset method split, the rendered Dojo picker filtering, the stage-up alert, and the gold-path reroute (the headless harness stubs `@pkmn/dex` and has no DOM picker).
+
+## G. LOCKED facility spread — v1.2.3 (buy-bumps spaced; one headline per town)
+Cities are the anchor. **Everyday services** are present in every city from their debut onward (driven by `_seedAlwaysOnFacilitiesAcrossCities` ALWAYS_ON + the per-row action lists); **destination facilities** (Dept Store / Game Corner / Safari) appear only at specific cities. Verified per-city via `tests/verify-early-game.mjs` + `tests/suites/story-staged-npc.test.js`.
+
+| City | New this town | Buy-tier-up 🛒 |
+|---|---|---|
+| C0 | Mart · Move Tutor (Heart Scale) · Bag · Party · Center · Artifact Hall | — |
+| C1 | **Gym 1** · Nature Rater · Fan Club | — |
+| C2 | Cable Link · Stone Sage (Awakening) · **Battle Dojo (White Belt)** | 🛒 Dojo |
+| C3 | Stone Merchant | — |
+| C4 | **Department Store** · Move Tutor → TM Expert · Stone Sage → Ascension | 🛒 Tutor |
+| C5 | Safari Zone · Game Corner | — |
+| C6 | Colress · Department Store · **Dojo → Black Belt** | 🛒 Dojo |
+| C7 | EV Trainer · Game Corner | — |
+| C8 | **Dojo → Grandmaster** | 🛒 Dojo |
+| C9 | League · everything (Dept · Game Corner · Safari · Fight Club · best trainers) | — |
+
+Config: `NPC_STAGE_CITY = { dojo:[2,5,8], tutor:[0,4], evolab:[2,4] }`; `FACILITY_DEBUT_CITY` nature→1, dojo→2, stoneShop→3, dept→4, safari→5, evtrainer→7, party→0; ALWAYS_ON minCities Nature→1, Evolution Tutor→2. Daycare C2/C4/C6; Fight Club C6 (daycare secret) / C9 / post-game. Stone Sage stays a 2-tier ladder aligned to the evo cap (finals @ C4). Note: with dojo Black Belt @C5 right after the C4 Tutor bump, two buy-bumps land a city apart (per the player's explicit C2/C5/C8 choice).
