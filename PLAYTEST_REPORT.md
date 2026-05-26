@@ -12,13 +12,14 @@ This report combines hands-on play (what a tester clicks through and sees) with 
 
 | Track | Tooling | What it covers |
 |---|---|---|
-| **Live play-through** | `scripts/debug/autopilot.mjs` → Chromium 141 (`/opt/pw-browsers/chromium-1194`, launched via `executablePath`) against the dev server | Real UI: boot, menus, settings, trainer creation, starter pick, city, battle start, facilities, Pokédex. 20 screenshots/run. |
+| **Full-run autopilot** | `scripts/debug/autopilot-fullrun.mjs` → Chromium 141 | Plays Story Mode **start → end**: starter, all 8 gyms, every mechanic unlock, catches, Hall of Fame, Champion, Mystery Figure (auto-win + a generic "event pump"). |
+| **Early-game autopilot** | `scripts/debug/autopilot.mjs` → Chromium 141 (`/opt/pw-browsers/chromium-1194`, via `executablePath`) | Real UI detail pass: boot, menus, settings, trainer creation, starter, facilities, Pokédex. |
 | **Engine harness** | `tests/helpers/load-engine.js` (jsdom, seeded RNG) | Deterministic battle mechanics, story state, save migrations. |
 | **Specialist audit** | 4 sub-agents → `agent-state/findings/*.md`, `agent-state/ISSUE_LEDGER.md` | Damage formula, status, AI, story timeline, a11y, perf. |
 
-**Environment caveat (important for triage):** this sandbox blocks outbound HTTPS (TLS interception → `ERR_CERT_AUTHORITY_INVALID`). So everything the game pulls from a CDN — **anime.js, the Pokémon sprite fallback, @pkmn/dex, Supabase** — was unavailable, i.e. the run effectively tested the **offline / restricted-network** path. Most `ERR_CERT` console errors are *environment noise, not bugs*, but they also exposed real **offline-resilience** gaps (below). Pixel-level rendering was reviewed via screenshots, not pixel-diffing.
+**Environment caveat (important for triage):** this sandbox blocks outbound HTTPS (TLS interception → `ERR_CERT_AUTHORITY_INVALID`). So everything the game pulls from a CDN — **anime.js, the Pokémon sprite fallback, @pkmn/dex, Supabase** — was unavailable, i.e. the run effectively tested the **offline / restricted-network** path. Most `ERR_CERT` console errors are *environment noise, not bugs*, but they also exposed real **offline-resilience** gaps (below). The full-run injects a minimal `window.anime` stub so battles render under the block. Pixel-level rendering was reviewed via screenshots, not pixel-diffing.
 
-**Coverage reached:** Main menu → Settings → Story menu → New Adventure → trainer creation (name/difficulty/storyline/sprite) → cold-open intro → **Professor starter pick (got Wurmple)** → first battle (auto-resolved) → **Catch Tutorial (wild Gimmighoul)** → toured all 8 city facilities → Pokédex. Screenshots in `docs/playtest/`.
+**Coverage reached (full-run, god-mode auto-win allowed):** Main menu → trainer creation → starter (Wurmple) → Catch Tutorial → **8 gym badges in order** (Badge 8 = Winona) → **all 4 mechanic unlocks at the correct gates (mega @badge 5, dynamax @6, tera @7, z-move @8)** → repeated wild catches → **Hall of Fame ("Run #1 cleared on Normal")** → **Champion (Leon) battle** → **Mystery Figure post-HoF climax battle** → post-game. Screenshots in `docs/playtest/`.
 
 ---
 
@@ -27,6 +28,26 @@ This report combines hands-on play (what a tester clicks through and sees) with 
 The game is **in good shape and genuinely fun to navigate** — the retro UI is clean and readable, the early-game flow is coherent, and the **battle engine is mechanically correct** (damage, status %, turn order, AI targeting, RNG determinism all verified). Save migrations (v8→v21) round-trip cleanly. No crashes or hard soft-locks were hit in normal online play.
 
 The issues worth fixing cluster into three buckets: **(a) one real catch soft-lock**, **(b) a recurring "row-id vs array-index" bug** in the story timeline, and **(c) offline/PWA resilience** (CDN-only anime.js + incomplete local sprites) — which matters because the app actively promotes "Add to Home Screen for a full-app experience."
+
+---
+
+## 2b. Full start-to-end playthrough (autopilot)
+
+The full-run autopilot completed an entire Normal run (god-mode auto-win permitted, per request). Milestones, all reached and screenshotted:
+
+| Milestone | Result |
+|---|---|
+| Starter | Picked from a 3-card graded offer (Wurmple) |
+| Catch Tutorial | Wild Gimmighoul caught; team grew |
+| Gym Leaders 1–8 | All beaten in order; badge curve correct (Badge 8 = Winona, `07-badge8-winona.png`) |
+| Mechanic unlocks | **mega @badge 5, dynamax @badge 6, tera @badge 7, z-move @badge 8** — each fired at its gate |
+| Wild catches | Recurring catch encounters handled across the route arc |
+| Hall of Fame | Reached — "Run #1 cleared on Normal" (`09-hall-of-fame.png`) |
+| Champion | "Leon" — battle launched with full FIGHT/BAG/RUN controls (`08-champion-battle.png`) |
+| Mystery Figure | Post-HoF climax — "??? Mystery Figure: *Tell me — what do your Pokémon want?*" battle started (`10-mystery-figure.png`) |
+| Post-game | `CONTINUE (POST-GAME)` / `END RUN` offered |
+
+**Achievements fire correctly** (Gym Conqueror, Battle Veteran, per-badge milestones). **The badge → unlock gating is correct.** This is the strongest single signal that the core loop is sound end-to-end.
 
 ---
 
@@ -40,8 +61,8 @@ The issues worth fixing cluster into three buckets: **(a) one real catch soft-lo
 **P1-2 · Sleep wake-check off-by-one (mon can act the turn it's put to sleep)**
 *Source: battle-engine audit (confirmed, deterministic repro).* `applyStatus` rolls `sleepDuration ∈ {1,2,3}`, but `canMove` (`battle.html:25408`) pre-increments `statusTurns` then wakes on `>=`, so a roll of 1 (~⅓ of sleeps) = **0 turns asleep — the mon attacks the same turn**. Effective lost-actions {0,1,2} vs the intended {1,2,3}. Repro: seed a battle, sleep the foe, it wakes *and* attacks turn 1.
 
-**P1-3 (offline) · anime.js is CDN-only with no local fallback → battle controls may not appear offline**
-*Source: live play (verified fact) + observed symptom (confidence: medium).* `battle.html:7852` loads anime.js **only** from `cdn.jsdelivr.net`; offline → `window.anime` is `undefined`. In the restricted-network run a story battle **initialized** (log showed "Wurmple sent out / Delibird sent out") **but the player input controls — the FIGHT command and the move menu — never became visible** (`#move-menu` stayed `hidden`/empty, `[data-cmd="fight"]` not visible), leaving the battle un-drivable by hand (`__devAutoWinBattle` still resolved it). This is consistent with an anime-gated intro-reveal step failing when anime is absent, but I could not fully isolate anime as the sole cause. **Fix + verify:** bundle anime.js locally (and/or guard every `anime(...)` call) so offline/PWA play works, then confirm controls appear.
+**P1-3 (offline) · anime.js is CDN-only with no local fallback → battle controls don't render offline**
+*Source: live play — **now CONFIRMED by controlled A/B**.* `battle.html:7852` loads anime.js **only** from `cdn.jsdelivr.net`; offline → `window.anime` is `undefined`. **Without** a stub, a story battle initializes (log shows "X sent out") **but the FIGHT command + move menu never become visible** (`#move-menu` stays `hidden`/empty, `[data-cmd="fight"]` not visible) — the battle is un-drivable by hand (`__devAutoWinBattle` still resolves it). **With** a minimal `window.anime` stub injected at init, the very same fights render the full **FIGHT / POKéMON / BAG / RUN** controls (`08-champion-battle.png`). So a missing anime.js leaves the player unable to take a turn — a hard break for any offline/PWA session. **Fix:** bundle anime.js locally (or guard every `anime(...)` call + decouple the control reveal from animation completion).
 
 ### P2 — Medium
 
@@ -77,6 +98,8 @@ The issues worth fixing cluster into three buckets: **(a) one real catch soft-lo
 - **P3-7 · Non-deterministic story-start sequence.** *(live play.)* Across runs, the cold-open "Begin →" was sometimes absent and `StoryMode.state.active` sometimes read `false` even though events/gold advanced — the boot data-load race appears to bleed into the start flow.
 - **P3-8 · Keyboard/SR polish.** *(a11y audit.)* Mobile move-info "i" is a click-only `<span role=button>` with no `tabindex`/`keydown` (`:18146`); status pill sets `role=status`+`aria-label` on a `<div>` at mutation time (`:16809`); `#gauntlet-score` has no `aria-live` (`:9010`).
 - **P3-9 · `parseMoveEffects` re-allocates 19 `Set` literals per call.** *(perf audit — warm cost is fine ~0.01 ms; hoist to module scope.)* `:25463`.
+- **P3-10 · Post-Hall-of-Fame the event pointer regresses and battles replay.** *(full-run — observed.)* After reaching HoF (eventIndex 65), repeated "Continue / proceed" drove `eventIndex` *backwards* (65 → 59 → 60 …) and re-fought earlier battles, with gold ballooning (≈335k → 468k in one pass). May be intended post-game farming (Crucible/Frontier re-runs) but the **backwards `eventIndex`** is suspect — worth confirming it isn't an index-reset bug. Likely related to the §6 row-id/index theme.
+- **P3-11 · Boot logs `Failed to load data files! TypeError: Failed to fetch`.** *(full-run, every boot.)* `loadGameData` (`:9640`) attempts a remote-first data fetch that throws before the local fallback succeeds. Harmless (recovers) but pollutes the console and would alarm anyone reading logs.
 
 ---
 
@@ -102,6 +125,11 @@ The issues worth fixing cluster into three buckets: **(a) one real catch soft-lo
 | `04-catch-tutorial.png` | Catch tutorial | Wild Gimmighoul, ball odds (Poké 100%). Catch system reached. |
 | `05-safari-zone.png` | Safari warden | Bait/rock mechanics, 3× stacking — nicely written. |
 | `06-poke-center.png` | Pokémon Center | Party 1/2, PC 0/30 — **dialogue says "ten slots"** (P3-1). |
+| `07-badge8-winona.png` | 8th badge | "VICTORY! FIRST CLEAR · Badge 8 of 8" — all gyms beaten. |
+| `08-champion-battle.png` | Champion (Leon) | Full battle UI w/ FIGHT/BAG/RUN — **proves P1-3** (controls render once anime exists). |
+| `09-hall-of-fame.png` | Hall of Fame | "Run #1 cleared on Normal" — League beaten, post-game offered. |
+| `10-mystery-figure.png` | Mystery Figure | Post-HoF climax boss — battle starting. |
+| `11-badge5-mega-unlock.png` | Badge 5 | The point Mega is unlocked. |
 
 ---
 
@@ -113,9 +141,12 @@ Several story bugs (P2-1, P2-2, and latent ones) share one cause: **`STORY_EVENT
 
 ## 7. Not covered / next steps for the autopilot
 
-- **Hand-driven battle turns** were blocked by P1-3 (controls didn't appear offline). Re-test on a machine with internet (anime.js present) or after bundling it.
-- **Catch throw, gym battles, evolution, training application, PvP** not yet automated — `proceedToNextBattle` marches the *battle* path but the autopilot doesn't yet throw balls at catch events (where it stalled, at the Gimmighoul tutorial) or drive gym arcs.
-- Suggested autopilot v2: handle the catch tutorial (throw Poké Ball), drive a full gym, exercise a training facility end-to-end (EV trainer → verify EVs), and assert on-screen reward/badge deltas.
+The full-run now drives the whole main path (starter, catches, all gyms, unlocks, HoF, Champion, Mystery Figure) via auto-win. Still on the to-do list:
+
+- **Manual move selection in battle** (the autopilot uses dev auto-win, not turn-by-turn move choice). Worth a focused pass to exercise the move grid, mega/dynamax/tera/z buttons, switching, and bag items in a real fight.
+- **Training facilities end-to-end with assertions** — open EV Trainer / Move Tutor / Evolution Lab and verify the EV/move/evolution actually applied (they open cleanly; effects unverified).
+- **PvP / online** — untestable here (Supabase + matchmaking are CDN/network-gated).
+- **The §6 row-id/index audit and P3-10 post-game loop** deserve a dedicated reproduction with the index logged each step.
 
 ---
 
@@ -131,4 +162,4 @@ Several story bugs (P2-1, P2-2, and latent ones) share one cause: **`STORY_EVENT
 
 ---
 
-*Artifacts: live transcript & all 20 screenshots in `agent-state/playtest/` (gitignored, regenerable via `node scripts/debug/autopilot.mjs`); full finding files in `agent-state/findings/`; aggregated `agent-state/ISSUE_LEDGER.md`.*
+*Artifacts: full-run transcript + 73 screenshots in `agent-state/playtest/fullrun/` and the early-game set in `agent-state/playtest/` (gitignored, regenerable via `node scripts/debug/autopilot-fullrun.mjs` and `node scripts/debug/autopilot.mjs`); curated evidence in `docs/playtest/`; full finding files in `agent-state/findings/`; aggregated `agent-state/ISSUE_LEDGER.md`.*
