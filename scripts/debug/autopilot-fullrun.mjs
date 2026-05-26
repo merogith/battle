@@ -49,6 +49,21 @@ async function shot(page, label) { shotN++; const n = `${String(shotN).padStart(
 async function clickText(page, t, timeout = 900) { try { const l = page.locator(`button:has-text(${JSON.stringify(t)}), [role=button]:has-text(${JSON.stringify(t)})`).filter({ visible: true }).first(); if (await l.count()) { await l.click({ timeout }); await sleep(220); return true; } } catch (e) {} return false; }
 async function clickSel(page, sel, timeout = 1500) { try { const l = page.locator(sel).filter({ visible: true }).first(); if (await l.count()) { await l.click({ timeout }); await sleep(220); return true; } } catch (e) {} return false; }
 async function api(page, name, ...args) { return page.evaluate(({ n, a }) => { try { if (window.StoryMode && typeof window.StoryMode[n] === 'function') { window.StoryMode[n](...a); return 'ok'; } return 'nofn'; } catch (e) { return 'err:' + (e && e.message); } }, { n: name, a: args }); }
+// Click the first VISIBLE button whose text matches `reSrc`, calling .click() directly in the
+// DOM. Bypasses Playwright actionability checks, which silently time out on the animated
+// cold-open / narration overlays ("Continue →", "Step into the chamber →", "Got it ▶▶").
+async function forceClick(page, reSrc) {
+  const r = await page.evaluate((src) => {
+    const re = new RegExp(src, 'i');
+    const vis = el => { try { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden' && Number(s.opacity || 1) > 0.05; } catch (e) { return false; } };
+    const btns = [...document.querySelectorAll('button,[role=button]')].filter(vis);
+    const b = btns.find(x => re.test((x.textContent || '').replace(/\s+/g, ' ').trim()));
+    if (b) { b.click(); return (b.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 30); }
+    return null;
+  }, reSrc).catch(() => null);
+  if (r) await sleep(250);
+  return r;
+}
 
 async function classify(page) {
   return read(page, () => {
@@ -85,7 +100,7 @@ async function classify(page) {
 async function autoWin(page) {
   await page.evaluate(() => { try { window.__devAutoWinBattle && window.__devAutoWinBattle(); } catch (e) {} });
   await sleep(650);
-  if (!(await clickText(page, 'Continue'))) await api(page, 'afterBattleReturn');
+  if (!(await forceClick(page, '^Continue|→|Next'))) await api(page, 'afterBattleReturn');
   await sleep(600);
 }
 
@@ -119,22 +134,23 @@ async function pickStarter(page, tag) {
 // One action given the current classification. Returns a short tag of what it did.
 async function pumpStep(page, c, tag) {
   // One-time info/tutorial bulletins (Fatigue, mechanics-unlock) overlay everything — clear first.
-  if (c.infoModal) { (await clickText(page, 'Got it')) || await clickText(page, 'OK'); await sleep(300); return 'gotit'; }
+  if (c.infoModal) { (await forceClick(page, 'Got it')) || await forceClick(page, '^OK$'); await sleep(250); return 'gotit'; }
   if (c.professorCards) { await pickStarter(page, tag); return 'starter'; }
   if (c.battleActive) { await autoWin(page); return 'autowin'; }
-  if (c.hof) { await shot(page, 'hall-of-fame'); (await clickText(page, 'Continue')) || await api(page, 'continuePostGame'); await sleep(700); return 'hof'; }
-  if (c.endScreen) { (await clickText(page, 'Continue')) || await api(page, 'afterBattleReturn'); await sleep(400); return 'endscreen'; }
+  if (c.hof) { await shot(page, 'hall-of-fame'); (await forceClick(page, 'Continue|→')) || await api(page, 'continuePostGame'); await sleep(700); return 'hof'; }
+  if (c.endScreen) { (await forceClick(page, '^Continue|→|Next')) || await api(page, 'afterBattleReturn'); await sleep(400); return 'endscreen'; }
   if (c.catchScreen) { await handleCatch(page); return 'catch'; }
   if (c.cityScreen) {
-    if (c.teamLen === 0) { await clickText(page, 'OK'); (await clickText(page, 'Pick Your Starter')) || (await clickText(page, 'Professor')) || await api(page, 'enterProfessor'); await sleep(600); return 'enter-prof'; }
-    if (c.gymBattle) { (await clickText(page, 'Gym Battle')) || (await clickText(page, 'Enter the Gym')) || (await clickText(page, 'Enter the Pokémon League')) || (await clickText(page, 'Victory Road')) || (await clickText(page, 'Pre-League')) || await api(page, 'proceedToNextBattle'); await sleep(600); return 'gym'; }
-    (await clickText(page, 'Leave City')) || (await clickText(page, 'Continue Route')) || await api(page, 'proceedToNextBattle'); await sleep(600); return 'leave-city';
+    if (c.teamLen === 0) { await forceClick(page, '^OK$'); (await forceClick(page, 'Pick Your Starter|Professor')) || await api(page, 'enterProfessor'); await sleep(600); return 'enter-prof'; }
+    if (c.gymBattle) { (await forceClick(page, 'Gym Battle|Enter the Gym|Enter the Pokémon League|Victory Road|Pre-League')) || await api(page, 'proceedToNextBattle'); await sleep(600); return 'gym'; }
+    (await forceClick(page, 'Leave City|Continue Route|Enter the City|→')) || await api(page, 'proceedToNextBattle'); await sleep(600); return 'leave-city';
   }
-  if (c.coldOpen) { (await clickText(page, 'Begin →')) || await clickText(page, 'Walk in'); return 'coldopen'; }
-  if (c.advanceBtn) { await clickText(page, c.advanceBtn); return 'advance:' + c.advanceBtn.slice(0, 14); }
-  // unknown — escalate
+  if (c.coldOpen) { const r = await forceClick(page, 'Begin\\s*→|Walk in'); return 'coldopen:' + (r || ''); }
+  // narration / pre-battle / generic advance — click the primary advance/"→" button via the DOM
+  const adv = await forceClick(page, 'Step into|Enter the|Stride|Walk in|→|^Continue|^Onward|^Proceed|^Begin|^Claim|Confront|Face the|^Take|^Fight');
+  if (adv) return 'advance:' + adv.slice(0, 18);
   if (await api(page, 'proceedToNextBattle') === 'ok') return 'api-proceed';
-  await clickText(page, 'OK'); await page.mouse.click(215, 740).catch(() => {});
+  await page.mouse.click(215, 740).catch(() => {});
   return 'tap';
 }
 
