@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 /*
- * Full-run autopilot — plays Story Mode from start to END (League → Hall of Fame →
- * Mystery Figure) in real headless Chromium, using a generic "event pump" that classifies
- * each screen and takes the right action, plus dev auto-win (god-mode allowed).
+ * Full-run autopilot — plays Story Mode toward the END (League → Hall of Fame →
+ * Mystery Figure → post-game) in real headless Chromium via a generic "event pump"
+ * that classifies each screen and acts. Dev auto-win is used (god-mode allowed).
  *
- * It injects an anime.js stub at init so the offline/CDN-blocked sandbox can still render
- * battles (anime.js is CDN-only — see PLAYTEST_REPORT P1-3). After the main march it also
- * exercises the late-game debug seeders (Champion, Mystery legend gate, post-HoF climax).
+ * Two passes:
+ *   A) fresh run, pump the early/mid game as far as it reliably goes (tests events).
+ *   B) seed the end-game (seedDebugMysteryLegendGate → 8 badges / full party / Champion's
+ *      Hall) and pump to beat Champion → Rival → Hall of Fame → Mystery Figure → post-game.
  *
- * Screenshots + transcript + findings → agent-state/playtest/.
- * Usage: node scripts/debug/autopilot-fullrun.mjs
+ * Injects an anime.js stub at init so battles render under the CDN-blocked sandbox.
+ * Screenshots + transcript + findings → agent-state/playtest/fullrun*.
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
@@ -45,8 +46,8 @@ const ANIME_STUB = () => {
 
 const read = async (page, fn) => { try { return JSON.parse(await page.evaluate(fn)); } catch (e) { return null; } };
 async function shot(page, label) { shotN++; const n = `${String(shotN).padStart(3, '0')}-${label}.png`; await page.screenshot({ path: join(SHOTS, n) }).catch(() => {}); log(`   📸 ${n}`); return n; }
-async function clickText(page, t, timeout = 900) { try { const l = page.locator(`button:has-text(${JSON.stringify(t)}), [role=button]:has-text(${JSON.stringify(t)})`).first(); if (await l.count()) { await l.click({ timeout }); await sleep(250); return true; } } catch (e) {} return false; }
-async function clickSel(page, sel, timeout = 1500) { try { const l = page.locator(sel).first(); if (await l.count()) { await l.click({ timeout }); await sleep(250); return true; } } catch (e) {} return false; }
+async function clickText(page, t, timeout = 900) { try { const l = page.locator(`button:has-text(${JSON.stringify(t)}), [role=button]:has-text(${JSON.stringify(t)})`).first(); if (await l.count()) { await l.click({ timeout }); await sleep(220); return true; } } catch (e) {} return false; }
+async function clickSel(page, sel, timeout = 1500) { try { const l = page.locator(sel).first(); if (await l.count()) { await l.click({ timeout }); await sleep(220); return true; } } catch (e) {} return false; }
 async function api(page, name, ...args) { return page.evaluate(({ n, a }) => { try { if (window.StoryMode && typeof window.StoryMode[n] === 'function') { window.StoryMode[n](...a); return 'ok'; } return 'nofn'; } catch (e) { return 'err:' + (e && e.message); } }, { n: name, a: args }); }
 
 async function classify(page) {
@@ -58,56 +59,111 @@ async function classify(page) {
     const btns = [...document.querySelectorAll('button')].filter(vis).map(b => (b.textContent || '').replace(/\s+/g, ' ').trim());
     const has = re => btns.some(t => re.test(t));
     const endTitle = document.getElementById('end-title');
+    const fightBtn = document.querySelector('[data-cmd="fight"]');
     return JSON.stringify({
       eventIndex: sm.eventIndex ?? null, badges: sm.badges ?? null, gold: sm.gold ?? sm.money ?? null,
       teamLen: Array.isArray(sm.team) ? sm.team.length : null,
       unlocked: sm.unlockedGimmicks ? Array.from(sm.unlockedGimmicks) : [],
-      battleActive: !st.isOver && (!!st.fActive || has(/^FIGHT$/i) || !!document.querySelector('[data-cmd="fight"]') && vis(document.querySelector('[data-cmd="fight"]'))),
-      endScreen: vis(endTitle), endTitle: endTitle ? (endTitle.innerText || '').slice(0, 30) : '',
+      battleActive: !st.isOver && (!!st.fActive || (fightBtn && vis(fightBtn))),
+      endScreen: vis(endTitle), endTitle: endTitle ? (endTitle.innerText || '').slice(0, 28) : '',
       catchScreen: scr('screen-story-catch'),
       professorCards: document.querySelectorAll('.prof-pick-card').length,
       cityScreen: scr('screen-story-city'),
-      cityName: (document.querySelector('#screen-story-city .story-screen-head-text') || {}).textContent || '',
-      hof: scr('screen-end') && /hall of fame|champion/i.test((endTitle && endTitle.innerText || '') + (document.body.innerText || '').slice(0, 60)),
+      cityName: ((document.querySelector('#screen-story-city .story-screen-head-text') || {}).textContent || '').trim(),
+      hof: /hall of fame/i.test((document.body.innerText || '').slice(0, 120)) || /HALL OF FAME/.test(endTitle && endTitle.innerText || ''),
       coldOpen: has(/Begin\s*→|Walk in/),
-      advanceBtn: btns.find(t => /^(Continue|Got it|Okay|OK|Next|Begin\s*→|Claim|Proceed|Onward|To the)/i.test(t)) || null,
-      leaveCity: has(/Leave City/), gymBattle: has(/Gym Battle|Enter the Gym|Enter the Pokémon League|Victory Road|Pre-League|Enter Victory/),
-      mysteryReady: has(/Mystery|Confront|The Figure|Face/),
+      advanceBtn: btns.find(t => /^(Continue|Got it|Okay|OK|Next|Begin\s*→|Claim|Proceed|Onward|Take|Confront|Face|Confirm)/i.test(t)) || null,
+      hasProfessorAction: has(/Pick Your Starter|Professor/),
+      leaveCity: has(/Leave City|Continue Route/), gymBattle: has(/Gym Battle|Enter the Gym|Enter the Pokémon League|Victory Road|Pre-League|Enter Victory/),
+      swapPicker: document.querySelectorAll('[onclick*="profSwap"], .prof-swap-slot').length,
     });
   });
 }
 
-async function handleCatch(page) {
-  await shot(page, 'catch');
-  // throw the first enabled ball (top = Poké Ball); tutorial throw is guaranteed
-  const threw = await clickSel(page, '#story-catch-body button:not([disabled])', 1500);
-  if (!threw) { await api(page, 'catchThrow', 'poke'); }
-  await sleep(1200);
-  // resolve: continue / send-to-PC if party full / swap
-  for (let i = 0; i < 4; i++) {
-    if (await clickText(page, 'Continue')) break;
-    const r = await api(page, 'catchContinue');
-    if (r === 'ok') break;
-    if (await clickText(page, 'Send to PC') || await api(page, 'catchResolveSendToPC') === 'ok') break;
-    await sleep(400);
-  }
+async function autoWin(page) {
+  await page.evaluate(() => { try { window.__devAutoWinBattle && window.__devAutoWinBattle(); } catch (e) {} });
+  await sleep(650);
+  if (!(await clickText(page, 'Continue'))) await api(page, 'afterBattleReturn');
   await sleep(600);
 }
 
-async function pickStarter(page) {
-  await shot(page, 'professor');
-  await clickSel(page, '.prof-pick-card .draft-card-sprite', 1500) || await clickSel(page, '.prof-pick-card', 1200);
-  await sleep(400);
-  await clickSel(page, '#prof-accept-btn:not([disabled])', 1500) || await api(page, 'profAccept');
-  await sleep(800);
+async function handleCatch(page) {
+  await shot(page, 'catch');
+  const threw = await clickSel(page, '#story-catch-body button:not([disabled])', 1500);
+  if (!threw) await api(page, 'catchThrow', 'poke');
+  await sleep(1100);
+  for (let i = 0; i < 4; i++) {
+    if (await clickText(page, 'Continue')) break;
+    if (await api(page, 'catchContinue') === 'ok') break;
+    if (await clickText(page, 'Send to PC') || await api(page, 'catchResolveSendToPC') === 'ok') break;
+    await sleep(350);
+  }
+  await sleep(500);
 }
 
-async function autoWin(page) {
-  await page.evaluate(() => { try { window.__devAutoWinBattle && window.__devAutoWinBattle(); } catch (e) {} });
+async function pickStarter(page, tag) {
+  await shot(page, `professor-${tag}`);
+  await clickSel(page, '.prof-pick-card .draft-card-sprite', 1500) || await clickSel(page, '.prof-pick-card', 1200);
+  await sleep(350);
+  await clickSel(page, '#prof-accept-btn:not([disabled])', 1500) || await api(page, 'profAccept');
   await sleep(700);
-  // return from the VICTORY end screen into the story flow
-  if (!(await clickText(page, 'Continue'))) await api(page, 'afterBattleReturn');
-  await sleep(700);
+  // mystery-mode legendary offer → a swap picker may appear (replace a party slot / send to PC)
+  const c = await classify(page);
+  if (c && c.swapPicker) { await clickSel(page, '[onclick*="profSwap"], .prof-swap-slot', 1200); await sleep(400); }
+  await clickText(page, 'Continue');
+  await sleep(300);
+}
+
+// One action given the current classification. Returns a short tag of what it did.
+async function pumpStep(page, c, tag) {
+  if (c.professorCards) { await pickStarter(page, tag); return 'starter'; }
+  if (c.battleActive) { await autoWin(page); return 'autowin'; }
+  if (c.hof) { await shot(page, 'hall-of-fame'); (await clickText(page, 'Continue')) || await api(page, 'continuePostGame'); await sleep(700); return 'hof'; }
+  if (c.endScreen) { (await clickText(page, 'Continue')) || await api(page, 'afterBattleReturn'); await sleep(400); return 'endscreen'; }
+  if (c.catchScreen) { await handleCatch(page); return 'catch'; }
+  if (c.cityScreen) {
+    if (c.teamLen === 0) { await clickText(page, 'OK'); (await clickText(page, 'Pick Your Starter')) || (await clickText(page, 'Professor')) || await api(page, 'enterProfessor'); await sleep(600); return 'enter-prof'; }
+    if (c.gymBattle) { (await clickText(page, 'Gym Battle')) || (await clickText(page, 'Enter the Gym')) || (await clickText(page, 'Enter the Pokémon League')) || (await clickText(page, 'Victory Road')) || (await clickText(page, 'Pre-League')) || await api(page, 'proceedToNextBattle'); await sleep(600); return 'gym'; }
+    (await clickText(page, 'Leave City')) || (await clickText(page, 'Continue Route')) || await api(page, 'proceedToNextBattle'); await sleep(600); return 'leave-city';
+  }
+  if (c.coldOpen) { (await clickText(page, 'Begin →')) || await clickText(page, 'Walk in'); return 'coldopen'; }
+  if (c.advanceBtn) { await clickText(page, c.advanceBtn); return 'advance:' + c.advanceBtn.slice(0, 14); }
+  // unknown — escalate
+  if (await api(page, 'proceedToNextBattle') === 'ok') return 'api-proceed';
+  await clickText(page, 'OK'); await page.mouse.click(215, 740).catch(() => {});
+  return 'tap';
+}
+
+async function runPump(page, maxTicks, tag) {
+  let prevEvt = -99, stall = 0, lastCity = '', lastBadges = -1, lastUnlocked = '', battleShots = 0;
+  for (let tick = 0; tick < maxTicks; tick++) {
+    const c = await classify(page);
+    if (!c) { await sleep(500); continue; }
+    const errs = newErrors();
+    if (errs.length) finding('P2', 'runtime', `${errs.length} JS error(s) @evt ${c.eventIndex} (${tag})`, errs.slice(0, 3).map(e => e.text).join(' | '));
+    if (c.badges !== lastBadges && c.badges != null) { log(`🏅 badges ${lastBadges} → ${c.badges} @evt ${c.eventIndex}`); await shot(page, `${tag}-badge-${c.badges}`); lastBadges = c.badges; }
+    const us = (c.unlocked || []).join(',');
+    if (us !== lastUnlocked) { log(`🔓 unlocked: [${us}] @evt ${c.eventIndex}`); lastUnlocked = us; }
+    if (c.cityScreen && c.cityName && c.cityName !== lastCity) { log(`🏙  ${c.cityName} @evt ${c.eventIndex} (team ${c.teamLen}, ${c.gold}G)`); await shot(page, `${tag}-city-${c.eventIndex}`); lastCity = c.cityName; }
+    if (c.battleActive && battleShots < 8) { await shot(page, `${tag}-battle-evt${c.eventIndex}`); battleShots++; }
+    if (c.hof) { log('🏆 HALL OF FAME reached'); }
+
+    const did = await pumpStep(page, c, tag);
+    const c2 = await classify(page);
+    if (c2 && c2.eventIndex === prevEvt && c.eventIndex === prevEvt && did !== 'starter') stall++; else stall = 0;
+    prevEvt = c2 ? c2.eventIndex : prevEvt;
+    if ((tick % 12) === 0) log(`  …${tag} tick ${tick}: evt=${c.eventIndex} badges=${c.badges} team=${c.teamLen} gold=${c.gold} → ${did}`);
+    if (stall >= 12) {
+      finding('P2', 'progression', `${tag} pump stalled at eventIndex ${c.eventIndex}`, `last=${did} screen=${JSON.stringify({ city: c.cityScreen, end: c.endScreen, catch: c.catchScreen, battle: c.battleActive, adv: c.advanceBtn, gym: c.gymBattle })}`);
+      await shot(page, `${tag}-STALL-evt${c.eventIndex}`);
+      await api(page, 'afterBattleReturn'); await api(page, 'proceedToNextBattle'); await clickText(page, 'Continue'); await clickText(page, 'OK'); await sleep(700);
+      const c3 = await classify(page);
+      if (c3 && c3.eventIndex === c.eventIndex) { log(`  hard stall at evt ${c.eventIndex} (${tag}) — stopping this pump`); return c3; }
+      stall = 0;
+    }
+    await sleep(480);
+  }
+  return classify(page);
 }
 
 async function waitReady(page) {
@@ -118,7 +174,6 @@ async function waitReady(page) {
   }
   return false;
 }
-
 async function startNewRun(page) {
   await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
   await page.reload({ waitUntil: 'domcontentloaded' });
@@ -146,91 +201,38 @@ try {
   page.on('pageerror', e => errors.push({ t: stamp(), kind: 'pageerror', text: String(e && e.message || e).split('\n')[0] }));
   page.on('console', m => { if (m.type() === 'error') { const tx = m.text(); if (!/ERR_CERT_AUTHORITY_INVALID|Failed to load resource/.test(tx)) errors.push({ t: stamp(), kind: 'console', text: tx.slice(0, 200) }); } });
 
-  phase('BOOT + NEW RUN');
+  phase('PASS A — fresh run, play early/mid game');
   for (let i = 0; i < 25; i++) { try { await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 5000 }); break; } catch { await sleep(500); } }
   await startNewRun(page);
-  let c = await classify(page);
-  log(`start: ${JSON.stringify(c)}`);
+  const aEnd = await runPump(page, 150, 'A');
+  log(`PASS A end: ${JSON.stringify(aEnd)}`);
+  await shot(page, 'passA-end');
 
-  phase('EVENT PUMP → play to the end');
-  let prevEvt = -99, stall = 0, lastCity = '', lastBadges = -1, lastUnlocked = '', battleShots = 0;
-  for (let tick = 0; tick < 220; tick++) {
-    c = await classify(page);
-    if (!c) { log('classify failed; retry'); await sleep(600); continue; }
-    const errs = newErrors();
-    if (errs.length) finding('P2', 'runtime', `${errs.length} JS error(s) near eventIndex ${c.eventIndex}`, errs.slice(0, 3).map(e => e.text).join(' | '));
+  phase('PASS B — seed end-game, beat Champion → HoF → Mystery Figure');
+  // seed to 8 badges / full party / Champion's Hall
+  const seedR = await api(page, 'seedDebugMysteryLegendGate');
+  log(`seedDebugMysteryLegendGate → ${seedR}`);
+  await sleep(1600);
+  await shot(page, 'B-seeded-champions-hall');
+  const bEnd = await runPump(page, 80, 'B');
+  log(`PASS B end: ${JSON.stringify(bEnd)}`);
+  await shot(page, 'B-end');
 
-    if (c.badges !== lastBadges && c.badges != null) { log(`🏅 badges ${lastBadges} → ${c.badges} @evt ${c.eventIndex}`); await shot(page, `badge-${c.badges}`); lastBadges = c.badges; }
-    const unlockedStr = (c.unlocked || []).join(',');
-    if (unlockedStr !== lastUnlocked) { log(`🔓 mechanics unlocked: [${unlockedStr}] @evt ${c.eventIndex}`); lastUnlocked = unlockedStr; }
-    if (c.cityScreen && c.cityName && c.cityName !== lastCity) { log(`🏙  ${c.cityName} @evt ${c.eventIndex}`); await shot(page, `city-${c.eventIndex}-${c.cityName.replace(/\W+/g, '')}`); lastCity = c.cityName; }
-
-    let acted = true;
-    if (c.professorCards) { log(`  professor @evt ${c.eventIndex}`); await pickStarter(page); }
-    else if (c.battleActive) { if (battleShots < 6) { await shot(page, `battle-evt${c.eventIndex}`); battleShots++; } await autoWin(page); }
-    else if (c.hof) { log('  🏆 HALL OF FAME'); await shot(page, 'hall-of-fame'); await clickText(page, 'Continue') || await api(page, 'continuePostGame'); await sleep(800); }
-    else if (c.endScreen) { await clickText(page, 'Continue') || await api(page, 'afterBattleReturn'); await sleep(500); }
-    else if (c.catchScreen) { log(`  catch @evt ${c.eventIndex}`); await handleCatch(page); }
-    else if (c.cityScreen) { if (c.gymBattle) { await clickText(page, 'Gym Battle') || await clickText(page, 'Enter the Gym') || await clickText(page, 'Enter the Pokémon League') || await api(page, 'proceedToNextBattle'); } else { await clickText(page, 'Leave City') || await api(page, 'proceedToNextBattle'); } await sleep(700); }
-    else if (c.coldOpen) { await clickText(page, 'Begin →') || await clickText(page, 'Walk in'); }
-    else if (c.advanceBtn) { await clickText(page, c.advanceBtn); }
-    else { acted = await api(page, 'proceedToNextBattle') === 'ok'; if (!acted) { await page.mouse.click(215, 740).catch(() => {}); } }
-
-    const c2 = await classify(page);
-    if (c2 && c2.eventIndex === prevEvt && c.eventIndex === prevEvt) stall++; else stall = 0;
-    prevEvt = c2 ? c2.eventIndex : prevEvt;
-    if ((tick % 10) === 0) log(`  …tick ${tick}: evt=${c.eventIndex} badges=${c.badges} team=${c.teamLen} gold=${c.gold}`);
-
-    if (stall >= 10) {
-      finding('P2', 'progression', `Pump stalled at eventIndex ${c.eventIndex}`, `screen=${JSON.stringify({ city: c.cityScreen, end: c.endScreen, catch: c.catchScreen, battle: c.battleActive, adv: c.advanceBtn })}`);
-      await shot(page, `STALL-evt${c.eventIndex}`);
-      // escalate: try every advance path
-      await api(page, 'afterBattleReturn'); await api(page, 'proceedToNextBattle'); await clickText(page, 'Continue'); await clickText(page, 'Leave City'); await sleep(800);
-      const c3 = await classify(page);
-      if (c3 && c3.eventIndex === c.eventIndex) { log(`  hard stall — giving up the legit march at evt ${c.eventIndex}`); break; }
-      stall = 0;
-    }
-    // reached the final event (Mystery Figure is the last array index) and beat it
-    if (c.eventIndex != null && c.eventIndex >= 66 && !c.battleActive && !c.endScreen) { log('  reached final event region'); await shot(page, 'final-event'); }
-    await sleep(550);
-  }
-  const cEnd = await classify(page);
-  log(`MARCH END: ${JSON.stringify(cEnd)}`);
-  await shot(page, 'march-end');
-
-  // ===== Late-game set-pieces via debug seeders (god-mode test entry points) =====
-  phase('LATE-GAME SEEDERS (Champion / Mystery legend gate / post-HoF climax)');
-  const seeders = [
-    ['seedStoryChampionWeakTestFromUrl', 'champion'],
-    ['seedDebugMysteryLegendGate', 'mystery-legend-gate'],
-    ['seedDebugPostHofClimax', 'post-hof-climax'],
-    ['previewHallOfFame', 'hall-of-fame-preview'],
-  ];
-  for (const [fn, label] of seeders) {
-    const before = newErrors().length;
+  phase('EXTRA — other late-game seeders');
+  for (const [fn, label] of [['seedStoryChampionWeakTestFromUrl', 'champion-weak'], ['seedDebugPostHofClimax', 'post-hof-climax'], ['previewHallOfFame', 'hof-preview']]) {
     const r = await api(page, fn);
-    await sleep(1500);
-    if (r === 'ok') {
-      await shot(page, `seed-${label}`);
-      const errs = newErrors();
-      if (errs.length) finding('P2', 'late-game', `${label} seeder threw ${errs.length} error(s)`, errs.slice(0, 3).map(e => e.text).join(' | '));
-      else log(`   seeder ${fn} (${label}) ran clean`);
-      // if it dropped us into a battle, win it
-      const cc = await classify(page);
-      if (cc && cc.battleActive) { log(`   → ${label} battle, auto-winning`); await autoWin(page); await shot(page, `seed-${label}-won`); }
-      // tap through any resulting dialogue
-      for (let i = 0; i < 6; i++) { if (!(await clickText(page, 'Continue') || await clickText(page, 'Begin →') || await clickText(page, 'OK'))) break; await sleep(500); }
-    } else { log(`   seeder ${fn} → ${r}`); }
-    await sleep(600);
+    await sleep(1400);
+    if (r === 'ok') { await shot(page, `seed-${label}`); const c = await classify(page); if (c && c.battleActive) { await autoWin(page); await shot(page, `seed-${label}-won`); } const e = newErrors(); if (e.length) finding('P2', 'late-game', `${label} threw ${e.length} error(s)`, e.slice(0, 2).map(x => x.text).join(' | ')); else log(`   ${label} clean`); for (let i = 0; i < 5; i++) { if (!(await clickText(page, 'Continue') || await clickText(page, 'OK') || await clickText(page, 'Begin →'))) break; await sleep(400); } }
+    else log(`   ${fn} → ${r}`);
+    await sleep(500);
   }
 
   phase('WRAP-UP');
   const cFinal = await classify(page);
-  log(`FINAL STATE: ${JSON.stringify(cFinal)}`);
-  log(`real JS errors (excl. CDN cert noise): ${errors.length}`);
-  log(`findings: ${findings.length}`);
+  log(`FINAL: ${JSON.stringify(cFinal)}`);
+  log(`real JS errors (excl. CDN noise): ${errors.length} · findings: ${findings.length} · screenshots: ${shotN}`);
   await shot(page, 'final');
-  writeFileSync(join(OUT, 'fullrun-findings.json'), JSON.stringify({ generatedAt: new Date().toISOString(), screenshots: shotN, errorCount: errors.length, findings, finalState: cFinal, errors: errors.slice(0, 100) }, null, 2));
+  writeFileSync(join(OUT, 'fullrun-findings.json'), JSON.stringify({ generatedAt: new Date().toISOString(), screenshots: shotN, errorCount: errors.length, findings, passAEnd: aEnd, passBEnd: bEnd, finalState: cFinal, errors: errors.slice(0, 100) }, null, 2));
   writeFileSync(join(OUT, 'fullrun-transcript.txt'), transcript.join('\n'));
   log('wrote fullrun-findings.json + fullrun-transcript.txt');
   await browser.close();
