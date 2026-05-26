@@ -92,87 +92,64 @@ async function classify(page) {
 }
 
 // Read the live battle state for hand-play decisions.
-async function battleState(page) {
+// Offensive type chart (attacker → {defender: multiplier}), non-1 entries only.
+const TC = { normal: { rock: .5, ghost: 0, steel: .5 }, fire: { fire: .5, water: .5, grass: 2, ice: 2, bug: 2, rock: .5, dragon: .5, steel: 2 }, water: { fire: 2, water: .5, grass: .5, ground: 2, rock: 2, dragon: .5 }, electric: { water: 2, electric: .5, grass: .5, ground: 0, flying: 2, dragon: .5 }, grass: { fire: .5, water: 2, grass: .5, poison: .5, ground: 2, flying: .5, bug: .5, rock: 2, dragon: .5, steel: .5 }, ice: { fire: .5, water: .5, grass: 2, ice: .5, ground: 2, flying: 2, dragon: 2, steel: .5 }, fighting: { normal: 2, ice: 2, poison: .5, flying: .5, psychic: .5, bug: .5, rock: 2, ghost: 0, dark: 2, steel: 2, fairy: .5 }, poison: { grass: 2, poison: .5, ground: .5, rock: .5, ghost: .5, steel: 0, fairy: 2 }, ground: { fire: 2, electric: 2, grass: .5, poison: 2, flying: 0, bug: .5, rock: 2, steel: 2 }, flying: { electric: .5, grass: 2, fighting: 2, bug: 2, rock: .5, steel: .5 }, psychic: { fighting: 2, poison: 2, psychic: .5, dark: 0, steel: .5 }, bug: { fire: .5, grass: 2, fighting: .5, poison: .5, flying: .5, psychic: 2, ghost: .5, dark: 2, steel: .5, fairy: .5 }, rock: { fire: 2, ice: 2, fighting: .5, ground: .5, flying: 2, bug: 2, steel: .5 }, ghost: { normal: 0, psychic: 2, ghost: 2, dark: .5 }, dragon: { dragon: 2, steel: .5, fairy: 0 }, dark: { fighting: .5, psychic: 2, ghost: 2, dark: .5, fairy: .5 }, steel: { fire: .5, water: .5, electric: .5, ice: 2, rock: 2, steel: .5, fairy: 2 }, fairy: { fire: .5, fighting: 2, poison: .5, dragon: 2, dark: 2, steel: .5 } };
+
+// Pure-DOM battle snapshot (window.state is a closure in the live page — unreadable).
+async function battleSnap(page) {
   return read(page, () => {
-    const st = window.state || {};
-    const moninfo = m => m ? { name: m.species || m.name, hp: m.curHP, max: m.maxHP, lvl: m.level || m.lvl, t1: m.type1, t2: m.type2, fainted: (m.curHP <= 0) } : null;
-    const party = Array.isArray(st.playerParty) ? st.playerParty : [];
+    const vis = el => { if (!el) return false; try { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden'; } catch (e) { return false; } };
+    const scr = id => { const e = document.getElementById(id); return !!(e && !e.classList.contains('hidden') && vis(e)); };
+    const cmd = document.getElementById('command-menu');
+    const moves = [...document.querySelectorAll('#move-menu .battle-btn-move')].map(b => ({ name: ((b.querySelector('.move-tile-name') || {}).textContent || '').trim(), type: ((b.querySelector('.type-badge') || {}).className || '').replace(/.*type-/, '').split(' ')[0], cat: ((b.querySelector('.move-tile-cat') || {}).textContent || '').trim(), dis: !!b.disabled }));
+    const foeTypes = [...document.querySelectorAll('#battle-foe-head .type-badge')].map(t => (t.className || '').replace(/.*type-/, '').split(' ')[0]);
+    const log = document.getElementById('battle-log');
     return JSON.stringify({
-      isOver: !!st.isOver, turn: st.turnNumber ?? null,
-      p: moninfo(st.pActive), f: moninfo(st.fActive),
-      partyAlive: party.filter(m => m && m.curHP > 0).length, partyLen: party.length,
-      foeAlive: Array.isArray(st.foeParty) ? st.foeParty.filter(m => m && m.curHP > 0).length : null,
-      moveMenuOpen: !!(document.getElementById('move-menu') && getComputedStyle(document.getElementById('move-menu')).display !== 'none' && !document.getElementById('move-menu').classList.contains('hidden')),
+      onBattle: scr('screen-battle'), gameover: scr('screen-story-gameover'),
+      cmdVisible: vis(cmd), foeName: ((document.getElementById('foe-name') || {}).textContent || '').trim(), foeHp: ((document.getElementById('foe-hp-text') || {}).textContent || '').trim(), foeTypes,
+      moves, logLen: log ? (log.innerText || '').length : 0, logTail: log ? (log.innerText || '').replace(/\s+/g, ' ').slice(-90) : '',
+      switchBtn: [...document.querySelectorAll('button')].some(b => /Switch/i.test(b.textContent || '') && !b.disabled && vis(b)),
     });
   });
 }
 
-// Choose + commit the best move via the engine's own AI; returns a tag.
-async function chooseAndAttack(page) {
-  // open the FIGHT menu
-  await page.evaluate(() => { try { if (window.showMoves) window.showMoves(); } catch (e) {} });
-  await sleep(300);
-  // try to queue a battle form (mega/tera/dynamax/z) if a toggle is offered — exercises those buttons
-  await page.evaluate(() => {
-    try {
-      const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.display !== 'none'; };
-      const g = [...document.querySelectorAll('#move-menu button, #command-menu button, .gimmick-btn, [data-gimmick]')].filter(vis)
-        .find(b => /\b(MEGA|TERA|DYNAMAX|G-?MAX|Z-?MOVE|Z-)\b/i.test((b.textContent || '') + (b.getAttribute('data-gimmick') || '')) && !b.disabled);
-      if (g) g.click();
-    } catch (e) {}
-  });
-  // pick the best move slot with the real AI, click that move button
-  const r = await page.evaluate(() => {
-    const st = window.state; if (!st || st.isOver || !st.pActive || !st.fActive) return 'no-battle';
-    const mon = st.pActive, foe = st.fActive; let idx = -1;
-    try { const mv = window.getBestMove(mon, foe); if (mv && Array.isArray(mon.moves)) idx = mon.moves.indexOf(mv); } catch (e) {}
-    if (idx < 0 && Array.isArray(mon.moves)) idx = mon.moves.findIndex(m => m && (m.pp === undefined || m.pp > 0));
-    if (idx < 0) idx = 0;
-    const btns = document.querySelectorAll('#move-menu .battle-btn-move');
-    if (btns[idx]) { btns[idx].click(); return 'move:' + idx + ':' + ((mon.moves[idx] && mon.moves[idx].name) || '?'); }
-    if (btns[0]) { btns[0].click(); return 'move:0:fallback'; }
-    return 'no-move-btn';
-  });
-  return r;
+// Open FIGHT, optionally queue a battle form, pick the best move by type-effectiveness, click it.
+async function attackBestMove(page, useGimmick) {
+  await page.evaluate(() => { const f = document.querySelector('[data-cmd="fight"]'); if (f) f.click(); else if (window.showMoves) window.showMoves(); });
+  await sleep(380);
+  if (useGimmick) await page.evaluate(() => { try { const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.display !== 'none'; }; const g = [...document.querySelectorAll('#move-menu button, #command-menu button, [data-gimmick]')].filter(vis).find(b => /\b(MEGA|TERA|DYNAMAX|G-?MAX|Z-?MOVE)\b/i.test((b.textContent || '') + (b.getAttribute('data-gimmick') || '')) && !b.disabled); if (g) g.click(); } catch (e) {} });
+  return page.evaluate((tc) => {
+    const btns = [...document.querySelectorAll('#move-menu .battle-btn-move')].filter(b => !b.disabled);
+    if (!btns.length) return 'no-move-btns';
+    const foeTypes = [...document.querySelectorAll('#battle-foe-head .type-badge')].map(t => (t.className || '').replace(/.*type-/, '').split(' ')[0].toLowerCase()).filter(Boolean);
+    const eff = mt => { mt = (mt || '').toLowerCase(); let m = 1; for (const ft of foeTypes) { const row = tc[mt]; if (row && row[ft] !== undefined) m *= row[ft]; } return m; };
+    let best = null, bestScore = -1, bestName = '';
+    for (const b of btns) { const type = ((b.querySelector('.type-badge') || {}).className || '').replace(/.*type-/, '').split(' ')[0]; const cat = ((b.querySelector('.move-tile-cat') || {}).textContent || ''); const isStatus = /status/i.test(cat); const score = isStatus ? 0.25 : (1 + eff(type)); if (score > bestScore) { bestScore = score; best = b; bestName = ((b.querySelector('.move-tile-name') || {}).textContent || '').trim(); } }
+    (best || btns[0]).click();
+    return 'atk:' + bestName + '(x' + (bestScore - 1).toFixed(1) + ')';
+  }, TC);
 }
 
-async function forcedSwitch(page) {
-  // party modal up after a faint — send the first alive non-active mon
-  const r = await page.evaluate(() => {
-    const btns = [...document.querySelectorAll('button')].filter(b => /Switch/i.test(b.textContent || '') && !b.disabled);
-    if (btns[0]) { btns[0].click(); return 'switched'; }
-    return 'no-switch';
-  });
-  await sleep(400);
-  return r;
-}
-
-// Play one full battle by hand. Returns 'win' | 'loss' | 'timeout'.
-async function playBattleByHand(page, label) {
-  let lastTurn = -1, stall = 0, shots = 0;
-  for (let i = 0; i < 80; i++) {
-    const bs = await battleState(page);
-    if (!bs) { await sleep(400); continue; }
-    if (bs.isOver) {
-      const c = await classify(page);
-      const won = !c.gameOver;
-      battleLog.push({ label, result: won ? 'win' : 'loss', turns: bs.turn, p: bs.p, f: bs.f });
-      return won ? 'win' : 'loss';
-    }
-    if (shots < 3 && bs.p && bs.f) { await shot(page, `${label}-t${bs.turn}`); shots++; }
-    // forced switch (active fainted but battle not over)
-    if (bs.p && bs.p.fainted && bs.partyAlive > 0) { await page.evaluate(() => { try { window.openParty(true); } catch (e) {} }); await sleep(300); await forcedSwitch(page); continue; }
-    // our turn?
-    const did = await chooseAndAttack(page);
-    await sleep(700);
-    // advance through turn resolution / between-turn prompts
-    await forceClick(page, '^Continue|→|Next');
-    const after = await battleState(page);
-    if (after && after.turn === lastTurn) stall++; else { stall = 0; lastTurn = after && after.turn; }
-    if (stall >= 8) { battleLog.push({ label, result: 'timeout', turns: lastTurn }); return 'timeout'; }
-    await sleep(350);
+// Play one full battle by hand (pure DOM). Returns 'win' | 'loss' | 'timeout'.
+async function playBattleByHand(page, label, useGimmick) {
+  let prevLog = -1, prevFoe = '', stall = 0, shots = 0, turns = 0;
+  for (let i = 0; i < 90; i++) {
+    const b = await battleSnap(page);
+    if (!b) { await sleep(400); continue; }
+    if (!b.onBattle) { const won = !b.gameover; battleLog.push({ label, result: won ? 'win' : 'loss', turns, foe: b.foeName }); return won ? 'win' : 'loss'; }
+    if (b.gameover) { battleLog.push({ label, result: 'loss', turns, foe: b.foeName }); return 'loss'; }
+    if (shots < 2) { await shot(page, `${label}-t${turns}`); shots++; }
+    if (b.switchBtn) { await page.evaluate(() => { const s = [...document.querySelectorAll('button')].find(x => /Switch/i.test(x.textContent || '') && !x.disabled); if (s) s.click(); }); await sleep(450); continue; }
+    if (b.cmdVisible) { const did = await attackBestMove(page, useGimmick && turns === 0); turns++; await sleep(700); await forceClick(page, '^Continue|→|Next'); }
+    else { await forceClick(page, '^Continue|→|Next'); }
+    const a = await battleSnap(page);
+    const sig = a ? (a.logLen + '|' + a.foeHp) : '';
+    if (sig === (prevLog + '|' + prevFoe)) stall++; else stall = 0;
+    prevLog = a ? a.logLen : prevLog; prevFoe = a ? a.foeHp : prevFoe;
+    if (stall >= 10) { battleLog.push({ label, result: 'timeout', turns, foe: b.foeName }); return 'timeout'; }
+    await sleep(320);
   }
-  battleLog.push({ label, result: 'timeout', turns: lastTurn });
+  battleLog.push({ label, result: 'timeout', turns });
   return 'timeout';
 }
 
@@ -237,11 +214,22 @@ async function startNewRun(page) {
   await waitReady(page);
   await page.evaluate(() => { try { window.settings.animations = false; window.settings.moveSfx = false; window.settings.catchAnims = false; } catch (e) {} });
   await page.evaluate(() => { try { document.getElementById('pwa-hint-dismiss')?.click(); } catch (e) {} });
-  await api(page, 'showMenu'); await sleep(400);
-  await api(page, 'openTrainerCreate'); await sleep(400);
+  // Start the run: confirmTrainerAndStart is ASYNC and activates the run but doesn't always
+  // transition the screen — calling continueRun() forces the active run to render its first
+  // event (City0). Call confirm exactly ONCE (re-calling spawns the erase-save confirm dialog).
+  await api(page, 'showMenu'); await sleep(450);
+  await api(page, 'openTrainerCreate'); await sleep(550);
   await page.fill('#story-create-name', 'Ace').catch(() => {}); await sleep(150);
-  await api(page, 'confirmTrainerAndStart'); await sleep(1300);
-  await forceClick(page, 'Begin\\s*→|Walk in'); await sleep(800);
+  await api(page, 'confirmTrainerAndStart'); await sleep(1600);
+  for (let i = 0; i < 24; i++) {
+    const s = await read(page, () => JSON.stringify({ active: !!(window.StoryMode.isActive && window.StoryMode.isActive()), c: !!document.querySelector('#screen-story-trainercreate:not(.hidden)'), evt: (window.StoryMode.state || {}).eventIndex }));
+    if (s && s.active && !s.c) { log(`   run started: evt=${s.evt}`); return true; }
+    if (s && s.active && s.c) await api(page, 'continueRun');
+    await forceClick(page, 'Begin\\s*→|Walk in');
+    await sleep(600);
+  }
+  finding('P2', 'story-start', 'New run did not leave trainer-create after confirm + continueRun', 'run activated but the first-event transition never completed (~15s)');
+  return false;
 }
 
 // ===================================================================================
@@ -282,7 +270,7 @@ try {
     else if (c.battleActive) {
       const isGym = /Gym Leader|Champion|Mystery|E[1-4]|Elite/i.test(JSON.stringify(c));
       await shot(page, `battle-evt${c.eventIndex}`);
-      const res = await playBattleByHand(page, `evt${c.eventIndex}`);
+      const res = await playBattleByHand(page, `evt${c.eventIndex}`, (c.unlocked || []).length > 0);
       log(`   ⚔ battle @evt ${c.eventIndex}: ${res}`);
       if (res === 'loss') { losses++; finding('P1', 'balance', `Lost a hand-played battle @evt ${c.eventIndex} (badges ${c.badges})`, 'team underpowered or fight overtuned for this point'); await shot(page, `LOSS-evt${c.eventIndex}`); }
       await sleep(600); await forceClick(page, '^Continue|→|Next');
