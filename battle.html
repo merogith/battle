@@ -29285,7 +29285,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // for its one-shot intro tutorial. Once `sm.facilityIntros[key]` is set,
         // the gate never fires again for that key.
         const FACILITY_DEBUT_CITY = {
-            mart: 0, tutor: 0, nature: 0, center: 0, relic: 0,
+            mart: 0, tutor: 0, nature: 0, center: 0, relic: 0, artifacts: 0,
             link: 2, stoneShop: 2, evolab: 2,
             dept: 6, casino: 5, dojo: 4, evtrainer: 4, safari: 4,
             colress: 6,
@@ -29349,14 +29349,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Professor grade rolls per city (0-based city index)
         // With 3-choice system: weights determine what appears across 3 options
-        // Professor gifts: starter pool floors at G3 so the player never locks
-        // into a weak G4 starter for 5+ battles. G2 is reachable by City2.
+        // Professor gifts: the gift now honors the same evolution-stage cap as
+        // enemies/wilds (_storyEvoStageCapForCity) — C0-1 basics-only, C2-5 +first-evos,
+        // C6+ unrestricted — so the gift is a stage-appropriate partner you grow, not a
+        // pre-evolved mon that out-classes the basics you actually face early.
         // Stage 2 (G3 era): Cities 3–5 settle into G3.
         // Stage 3 (G2 era): City 6 transition, Cities 7–8 settle into G2.
         // Stage 4 (G1 era): City 9 league hub stays G1 legendary pool.
         const PROF_ROLLS = [
-          {g1:0,  g2:0,  g3:100, g4:0  }, // City0 — starter pool floored at G3 so the player never locks into a weak G4 starter
-          {g1:0,  g2:0,  g3:100, g4:0  }, // City1 — G3 floor
+          {g1:0,  g2:0,  g3:50,  g4:50 }, // City0 — basics-only (stage cap); G3/G4 so the gift matches the unevolved foes
+          {g1:0,  g2:0,  g3:50,  g4:50 }, // City1 — basics-only, G3/G4
           {g1:0,  g2:10, g3:60,  g4:30 }, // City2 — G2 reachable unconditionally, G3 majority, residual G4 tail
           {g1:0,  g2:0,  g3:80,  g4:20 }, // City3 — G3 settling in
           {g1:0,  g2:0,  g3:100, g4:0  }, // City4 — G3 era
@@ -39156,6 +39158,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_isFacilityRequiredHere(cityIdx, facKey, actions)) {
                     return [{ label: '🔴 Required', tone: 'required', title: "First visit — required before leaving this city." }].concat(baseMeta);
                 }
+                // Known facility-type from an earlier city, just not opened here yet → no
+                // badge (reserve the gold "New" pill for a genuine first-ever sighting).
+                if (sm.facilityIntros && sm.facilityIntros[facKey]) {
+                    return baseMeta;
+                }
                 return [{ label: 'New', tone: 'new' }].concat(baseMeta);
             };
             const _facOpts = (facKey, baseMeta, extra) => {
@@ -39214,8 +39221,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (actions.includes('Power Up') && _tutorTeam && _colressMechAny) {
                 _push('train', makeActionBtn('🧪 Colress — Battle Forms','colress','window.StoryMode.enterColress()','training', _facOpts('colress', [_costBadge(5000)], { soft:true })));
             }
-            if ((sm.artifacts || []).length > 0) {
-                _push('train', makeActionBtn('✨ Artifact Hall','artifacts','window.StoryMode.enterArtifactHall()','dept', _facOpts('artifacts', [{label:'Free',tone:'free'}], { soft:true })));
+            if (cityIdx === 0 || (sm.artifacts || []).length > 0) {
+                _push('train', makeActionBtn('✨ Artifact Hall','artifacts','window.StoryMode.enterArtifactHall()','dept', _facOpts('artifacts', [{label:'Relics',tone:'info'}], { soft:true })));
             }
             // Pokémon Center — full party heal, free, unlimited
             _push('recover', makeActionBtn('🏥 Pokémon Center','center','window.StoryMode.enterPokemonCenter()','center', _facOpts('center', [{label:'Free',tone:'free'}])));
@@ -39226,7 +39233,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const dcEggDone = !!(sm.daycare && sm.daycare.eggEventDone);
                 const dcSecretReady = dcEggDone && (sm.badges | 0) >= 6 && !(sm.pits && sm.pits.fightClubUnlocked);
                 const dcHasBusiness = !dcEggDone || dcSecretReady;
-                if (_daycareIsUnlocked() && !_pitsIsEndgame() && dcHasBusiness) {
+                if (_daycareIsUnlocked() && [2,4,6].includes(cityIdx) && !_pitsIsEndgame() && dcHasBusiness) {
                     const dcMeta = dcSecretReady ? [{label:'A word…',tone:'info'}] : [{label:'Egg Quest',tone:'free'}];
                     _push('recover', makeActionBtn('🥚 Daycare Inn', 'daycare', 'window.StoryMode.enterDaycare()', 'center', _facOpts('daycare', dcMeta, { soft: true })));
                 }
@@ -39264,7 +39271,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 : 'Party — Empty (Visit Professor)';
             _push('recover', makeActionBtn(_partyLabel, 'party', 'window.StoryMode.openPartyModal()', 'party'));
             if (actions.includes('Link Station')) {
-                _push('recover', makeActionBtn('📡 Cable Link Station','link','window.StoryMode.enterLink()','link', _facOpts('link', [{label:'Free',tone:'free'}])));
+                _push('recover', makeActionBtn('📡 Cable Link Station','link','window.StoryMode.enterLink()','link', _facOpts('link', [_costBadge(5000, '+')])));
             }
             // Bag — always accessible in city to view inventory and sell items
             const _invCount = Object.keys(sm.inventory || {}).filter(k => sm.inventory[k] > 0).length;
@@ -39282,8 +39289,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
             btn.innerHTML = _emit('quest',   'icons/story/story_gym.png?v=20260516',   'Next Step')
                           + _emit('recover', 'icons/story/story_center.png?v=20260516', 'Heal & Team')
-                          + _emit('shop',    'icons/story/story_mart.png?v=20260516',   'Shops')
-                          + _emit('train',   'icons/story/story_tutor.png?v=20260516',  'Train');
+                          + _emit('train',   'icons/story/story_tutor.png?v=20260516',  'Train')
+                          + _emit('shop',    'icons/story/story_mart.png?v=20260516',   'Shops');
         }
 
         /** FireRed/LeafGreen–style item & UI rips (pret/pokefirered, plus link strip from graphics/link). */
@@ -39389,6 +39396,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mart: 'Pokemart', tutor: 'Move Tutor', nature: 'Nature Rater',
                 center: null, // Pokemon Center is implicit on every hub
                 relic: null,  // Relic Annex hangs off the Department Store / City 0
+                artifacts: null, // Artifact Hall — mandatory C0 enable/disable tutorial
                 link: 'Link Station', stoneShop: 'Stone Shop', evolab: 'Evolution Tutor',
                 dept: 'Department Store', casino: 'Poké Casino', dojo: 'Battle Dojo',
                 evtrainer: 'EV Trainer', safari: 'Safari Zone', colress: 'Power Up',
@@ -39411,7 +39419,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Friendly name lookup for the "Visit X first" tooltip.
         const _FACILITY_FRIENDLY_NAME = {
             mart: 'Pokémart', tutor: 'Move Tutor', nature: 'Nature Rater',
-            center: 'Pokémon Center', relic: 'Relic Annex',
+            center: 'Pokémon Center', relic: 'Relic Annex', artifacts: 'Artifact Hall',
             link: "Bill's Cable Link", stoneShop: 'Stone Emporium', evolab: 'Stone Sage',
             dept: 'Department Store', casino: 'Game Corner', dojo: 'Battle Dojo',
             evtrainer: 'EV Trainer', safari: 'Safari Zone', colress: 'Power Up',
@@ -39820,7 +39828,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _storyDispatchQueuedUnlockToasts() {
             const f = sm.flags || {};
             const queue = [];
-            if (f._daycareUnlockToastQueued)    { queue.push('🥚 The Daycare Inn is open. Leave a partner, walk out with an egg — it hatches after Gym 7.'); f._daycareUnlockToastQueued = false; }
+            if (f._daycareUnlockToastQueued)    { queue.push('🥚 The Daycare Inn opens up the road ahead. Leave a partner, walk out with an egg — it hatches a couple of towns later.'); f._daycareUnlockToastQueued = false; }
             if (f._pitsUnlockToastQueued)       { queue.push('🥚 The Daycare matron has been asking after you. "Strong trainer like that… I might have something to tell them."'); f._pitsUnlockToastQueued = false; }
             if (f._daycareHatchQueued)          { queue.push('🐣 An egg on your belt is stirring…'); f._daycareHatchQueued = false; }
             if (f._crucibleDaycareToastQueued)  { queue.push('🥊 Word travels. The Fight Club door is open to a Champion — any night, no questions.'); f._crucibleDaycareToastQueued = false; }
@@ -40811,7 +40819,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (el) {
                 const _bothSidesBadgeHtml = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="This relic affects both you and your opponents while enabled">◆ Affects both sides</span>';
                 const _playerOnlyBadgeHtml = '<span class="story-action-badge info" style="color:#ffb74d;border-color:#a06d2a;background:rgba(255,183,77,0.1);" title="The coin reward and curse only affect your team">◆ Your team only</span>';
-                el.innerHTML = (sm.artifacts || []).map(id => {
+                const _hallGuidance = '<div style="border:1px solid #7b1fa2;border-radius:6px;padding:10px;margin-bottom:10px;background:rgba(123,31,162,0.12);font-size:11px;color:#d9c7e8;line-height:1.5;"><strong style="color:#ce93d8;">Relics rewrite the rules of every battle — for both sides.</strong> They arrive switched <strong>OFF</strong>. Flip one on here only when you want its effect; new trainers should leave them off until they\'ve found their footing. Toggle any relic on or off anytime.</div>';
+                el.innerHTML = _hallGuidance + ((sm.artifacts || []).map(id => {
                     const art = ARTIFACT_BY_ID[id];
                     const off = (sm.artifactsDisabled || []).includes(id);
                     const label = art ? art.name : id;
@@ -40831,7 +40840,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             ${off ? 'Enable Relic' : 'Disable Relic'}
                         </button>
                     </div>`;
-                }).join('') || '<div style="color:#555;font-size:12px;padding:12px;">No relics owned. Visit the Relic Annex to buy some.</div>';
+                }).join('') || '<div style="color:#555;font-size:12px;padding:12px;">No relics yet — the Relic Annex sells them (the first is free). They arrive switched off; come back here to enable one when you\'re ready.</div>');
             }
             showScreen('screen-story-artifacts');
         }
@@ -41020,7 +41029,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const c = _profLegendaryMysteryMode
                             ? pickStoryLegendaryFromGens(sg, usedNames)
                             : weightedPickFromGrades(rolls, sg);
-                        if (c && !usedNames.has(c) && !usedFamilies.has(_storyBaseFamily(c))) { name = c; break; }
+                        if (c && !usedNames.has(c) && !usedFamilies.has(_storyBaseFamily(c))
+                            && (_profLegendaryMysteryMode || _storyEvoStageOf(c) <= _storyEvoStageCapForCity(cityIdx))) { name = c; break; }
                     }
                     if (!name) {
                         // fallback: allow any (may duplicate)
@@ -45776,6 +45786,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (listPrice > 0) { sm.gold -= listPrice; try { _storyTrackSpend(listPrice); } catch (e) {} }
             else sm.artifactFreeClaimUsed = true;
             sm.artifacts.push(artId);
+            // Relics arrive switched OFF by default — the player opts in at the
+            // Artifact Hall (relics rewrite battle rules for both sides).
+            if (!Array.isArray(sm.artifactsDisabled)) sm.artifactsDisabled = [];
+            if (!sm.artifactsDisabled.includes(artId)) sm.artifactsDisabled.push(artId);
             sm.artifactShopPurchasedByCity[cKey] = artId;
             if (!sm.artifactTypeById || typeof sm.artifactTypeById !== 'object') sm.artifactTypeById = {};
             if (STORY_TYPE_ARTIFACT_IDS.has(artId) && !sm.artifactTypeById[artId]) {
