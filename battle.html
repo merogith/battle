@@ -19229,8 +19229,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Don't setup if opponent is low — just KO them
                     if (canKO) score *= 0.2;
 
-                    // Phazer / Haze / Unaware on the field or bench — setup will be undone or ignored.
-                    if (defHasPhazer || defHasUnaware) score *= 0.25;
+                    // Active phazer (Whirlwind/Roar/Dragon Tail/Circle Throw/Haze/Clear Smog/Topsy-
+                    // Turvy) removes the boost EVERY turn, so a soft multiplier still leaves setup as
+                    // the top score and the AI loops it forever (it never self-terminates because the
+                    // boost never accumulates). Hard-cap it instead so any real attack wins out.
+                    // Unaware only ignores the boost (boosts still accumulate, so setup self-limits
+                    // as currentBoost climbs) — it keeps the softer penalty. A bench phazer hasn't
+                    // come in yet, so it's only a mild discouragement.
+                    if (defHasPhazer) score = Math.min(score, 5);
+                    else if (defHasUnaware) score *= 0.25;
                     else if (benchHasPhazer) score *= 0.55;
                 }
             }
@@ -19430,8 +19437,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // AI decision: should we switch or attack?
         function aiDecision() {
     let attacker = state.fActive, defender = state.pActive;
-    // Don't switch if trapped or locked
-    if (attacker.volatile.choiceLock) return null;
+    // Mid-rampage (Outrage/Petal Dance) and recharge (Hyper Beam) genuinely lock the whole turn —
+    // can't switch. Choice lock does NOT prevent switching (it only restricts which MOVE we can
+    // use), so it is handled below by evaluating the matchup through the locked move and pivoting
+    // out if that move is useless — otherwise a Choice mon locked into an immune/walled move spams
+    // 0 damage forever (e.g. an Electric move into Lightning Rod).
     if (attacker.volatile.lockMove && attacker.volatile.lockTurns > 0) return null;
     if (attacker.volatile.recharge) return null;
     // Ghost types and Shed Shell ignore all trapping abilities
@@ -19448,8 +19458,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     let bench = state.foeParty.filter(m => m !== attacker && m.currentHp > 0);
     if (bench.length === 0) return null;
 
+    // When choice-locked we can only ever use ONE move, so score the matchup through that move
+    // alone. A mon locked into a 0-damage move (Electric vs Lightning Rod, or a resisted move into
+    // a hard wall) then reads as "walled" below and pivots out instead of being stranded on it.
+    const _lockedName = attacker.volatile.choiceLock;
+    const _evalMoves = _lockedName ? attacker.moves.filter(m => m && m.name === _lockedName) : attacker.moves;
+
     let myBestDmg = 0;
-    attacker.moves.forEach(m => { if (m.cat !== "Status" && m.pp > 0) { let d = aiEstimateDmg(attacker, defender, m); if (d > myBestDmg) myBestDmg = d; } });
+    _evalMoves.forEach(m => { if (m.cat !== "Status" && m.pp > 0) { let d = aiEstimateDmg(attacker, defender, m); if (d > myBestDmg) myBestDmg = d; } });
 
     let threat = aiThreatScore(defender, attacker);
     let hpPct = attacker.currentHp / attacker.maxHp;
@@ -19465,8 +19481,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     let walled = myBestDmg < defender.maxHp * 0.08 && myBestDmg < defender.currentHp * 0.12;
     // Can we KO?
     let canKO = myBestDmg >= defender.currentHp;
-    // Do we have priority that KOs?
-    let hasPriorityKO = attacker.moves.some(m => m.pri > 0 && m.pp > 0 && m.cat !== "Status" && aiEstimateDmg(attacker, defender, m) >= defender.currentHp);
+    // Do we have priority that KOs? (Restricted to the locked move when choice-locked.)
+    let hasPriorityKO = _evalMoves.some(m => m.pri > 0 && m.pp > 0 && m.cat !== "Status" && aiEstimateDmg(attacker, defender, m) >= defender.currentHp);
 
     // Never switch if we can KO (unless priority covers it)
     if (canKO && !willDieFirst) return null;

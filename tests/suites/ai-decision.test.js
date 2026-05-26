@@ -157,3 +157,48 @@ test('getBestMove: switch-in prediction breaks a KO tie toward the move that hit
   const pick = engine.getBestMove(mew, active);
   assert.equal(pick.name, 'Ice Beam', `Prediction should favor Ice Beam vs a Garchomp switch-in, got ${pick.name}`);
 });
+
+test('aiDecision: a Choice mon locked into an immune move switches out instead of spamming it', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  // Choice-Specs Tapu Koko locked into Thunderbolt, vs a Lightning Rod Rhydon (immune by type AND
+  // ability). Bench has a Garchomp that wrecks the wall. The AI must pivot, not loop Thunderbolt.
+  const koko = mkMon({ species: 'Tapu Koko', item: 'Choice Specs', moves: ['Thunderbolt', 'Dazzling Gleam', 'U-turn', 'Roost'] });
+  koko.volatile.choiceLock = 'Thunderbolt';
+  const wall = mkMon({ species: 'Rhydon', ability: 'Lightning Rod', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+  const chomp = mkMon({ species: 'Garchomp', moves: ['Earthquake', 'Stone Edge', 'Dragon Claw', 'Splash'] });
+  setState(eng, { fActive: koko, pActive: wall, foeParty: [koko, chomp], playerParty: [wall] });
+  const decision = engine.aiDecision();
+  assert.equal(decision, 1, `Locked-into-immune AI should switch to Garchomp (index 1), got ${decision}`);
+});
+
+test('aiDecision: a Choice mon locked into a useful move stays in (no over-switching)', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  // Same Koko locked into Thunderbolt, but now vs a neutral, bulky target it hits hard. Staying
+  // is correct — the locked move is doing its job, so it must NOT pivot away from a winning spot.
+  const koko = mkMon({ species: 'Tapu Koko', item: 'Choice Specs', moves: ['Thunderbolt', 'Dazzling Gleam', 'U-turn', 'Roost'] });
+  koko.volatile.choiceLock = 'Thunderbolt';
+  const target = mkMon({ species: 'Furret', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+  target.maxHp = 250; target.currentHp = 250; // bulky enough not to be a 1-shot, but Thunderbolt still bites
+  const chomp = mkMon({ species: 'Garchomp', moves: ['Earthquake', 'Stone Edge', 'Dragon Claw', 'Splash'] });
+  setState(eng, { fActive: koko, pActive: target, foeParty: [koko, chomp], playerParty: [target] });
+  const decision = engine.aiDecision();
+  assert.equal(decision, null, `Locked into a working move, the AI should stay, got switch index ${decision}`);
+});
+
+test('getBestMove: does not loop a setup move into an active phazer', async () => {
+  const eng = await loadEngine();
+  const { mkMon, engine } = eng;
+  pinRandom(eng);
+  // Dragonite vs a Skarmory holding Whirlwind: Earthquake is immune (Flying), but Dragon Dance
+  // gets phazed away every turn. The AI must take the (priority) attack rather than loop setup.
+  const dnite = mkMon({ species: 'Dragonite', moves: ['Dragon Dance', 'Earthquake', 'Extreme Speed', 'Roost'] });
+  const skarm = mkMon({ species: 'Skarmory', moves: ['Whirlwind', 'Splash', 'Splash', 'Splash'] });
+  setState(eng, { fActive: dnite, pActive: skarm, foeParty: [dnite], playerParty: [skarm, mkMon({ species: 'Furret', moves: ['Splash','Splash','Splash','Splash'] })] });
+  const pick = engine.getBestMove(dnite, skarm);
+  assert.notEqual(pick.name, 'Dragon Dance', 'AI should not loop Dragon Dance into a Whirlwind user');
+  assert.equal(pick.name, 'Extreme Speed', `Expected the priority attack vs a phazer, got ${pick.name}`);
+});
