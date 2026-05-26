@@ -10,10 +10,18 @@
     <link rel="icon" href="icons/app-icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icons/app-icon.svg">
     <meta name="theme-color" content="#0a0a0a">
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="preload" href="fonts/press-start-2p.woff2" as="font" type="font/woff2" crossorigin>
     <link href="https://unpkg.com/nes.css@2.3.0/css/nes.min.css" rel="stylesheet">
     <title>Pokémon Arena</title>
     <style>
+        /* Self-hosted Press Start 2P (SIL OFL 1.1) — no external CDN so the retro font renders identically offline; see fonts/OFL.txt. */
+        @font-face {
+            font-family: 'Press Start 2P';
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+            src: url('fonts/press-start-2p.woff2') format('woff2');
+        }
         /*
          * === DISPLAY MODES ===
          * 1. DESKTOP (1920×1080 / 16:9) — 1280×720 design frame, scaled via transform to fill viewport.
@@ -2120,6 +2128,13 @@
             image-rendering: pixelated;
             image-rendering: crisp-edges;
         }
+        /* All story pixel-icons render crisp everywhere (overrides stray inline image-rendering:auto on PC tabs etc.),
+           so the same icon never looks smoothed on one screen and sharp on another. Scoped to icons/story/ so the
+           intentionally-smoothed Safari ball in sprites/ is untouched. */
+        img[src*="icons/story/"] {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
         .story-hud-abandon {
             font-family: var(--battle-font);
             font-size: 10px;
@@ -3594,6 +3609,9 @@
         #screen-battle[data-battle-layout="desktop"] .battle-btn-move .move-tile-name,
         #screen-battle[data-battle-layout="ultrawide"] .battle-btn-move .move-tile-name { font-size: 13px; }
         .battle-btn-move .move-tile-cat { flex-shrink: 0; font-size: 12px; line-height: 1; width: 1.1em; text-align: center; }
+        /* Category swirl badge sizes with its container's font so it scales per layout (portrait/landscape/iPad)
+           and stays proportional to the adjacent type pill — instead of being hard-locked at a fixed px. */
+        .move-cat-ico { width: 1.1em; height: 1.1em; vertical-align: middle; flex-shrink: 0; }
         .battle-btn-move .move-tile-eff { flex-shrink: 0; font-size: 10px; line-height: 1; }
         .battle-btn-move .move-tile-meta { margin-top: 3px; font-size: 9px; color: #8a8a8a; opacity: 0.85; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
         .battle-btn-move .move-tile-meta strong { color: #ddd; font-weight: 600; }
@@ -5156,6 +5174,8 @@
             box-shadow: 0 -3px 0 0 var(--gc-brass) inset;
         }
         .casino-tab .tab-ico { font-size: 14px; margin-right: 4px; }
+        /* Coin/icon images in a casino tab match the emoji glyph height in sibling tabs (scales with tab font). */
+        .casino-tab .tab-ico img { height: 1.1em; width: auto; object-fit: contain; vertical-align: middle; }
 
         /* Game panels — cream felt table on every game. */
         .casino-panel {
@@ -6143,7 +6163,7 @@
             .story-tutor-choice { padding: 10px 12px !important; }
             .story-tutor-btn { min-height: 42px !important; padding: 8px 14px !important; font-size: 13px !important; }
             /* Pokémon Center: tab buttons get a real 44px tap height. */
-            #story-pc-tab-storage-btn, #story-pc-tab-underground-btn {
+            #story-pc-tab-storage-btn, #story-pc-tab-underground-btn, #story-pc-tab-journal-btn {
                 min-height: 44px !important;
                 font-size: 13px !important;
                 padding: 10px 8px !important;
@@ -8386,7 +8406,7 @@
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-            <h3 id="story-stone-shop-title" class="story-screen-head-title" style="color:#b39ddb;font-size:14px;flex:1;min-width:0;"><span style="font-size:18px;line-height:1;">&#128142;</span><span class="story-screen-head-text">Stone Emporium</span></h3>
+            <h3 id="story-stone-shop-title" class="story-screen-head-title" style="color:#b39ddb;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="sprites/pokesprite/items/hard-stone.png" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Stone Emporium</span></h3>
             <span id="story-stone-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <p id="story-stone-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#aaa;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;">Stones and trade-method items for the Stone Sage next door. <strong style="color:#b39ddb;">500G each</strong>. The Sage consumes them on evolution. Hold a <strong style="color:#ce93d8;">Stonewise Token</strong>? Redeem at any stone (not trade items) for one free pick.</p>
@@ -8616,7 +8636,7 @@
 
             <!-- Tab strip. -->
             <div class="casino-tabs" role="tablist" aria-label="Casino games">
-                <button type="button" id="story-casino-tab-flip"     class="casino-tab active" role="tab" aria-selected="true"  aria-controls="story-casino-panel-flip"     onclick="window.StoryMode.casinoSwitchTab('flip')"><span class="tab-ico">🪙</span>Coin Flip</button>
+                <button type="button" id="story-casino-tab-flip"     class="casino-tab active" role="tab" aria-selected="true"  aria-controls="story-casino-panel-flip"     onclick="window.StoryMode.casinoSwitchTab('flip')"><span class="tab-ico"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"></span>Coin Flip</button>
                 <button type="button" id="story-casino-tab-slots"    class="casino-tab"        role="tab" aria-selected="false" aria-controls="story-casino-panel-slots"    onclick="window.StoryMode.casinoSwitchTab('slots')"><span class="tab-ico">🎰</span>Slots</button>
                 <button type="button" id="story-casino-tab-roulette" class="casino-tab"        role="tab" aria-selected="false" aria-controls="story-casino-panel-roulette" onclick="window.StoryMode.casinoSwitchTab('roulette')"><span class="tab-ico">🎯</span>Roulette</button>
             </div>
@@ -9468,11 +9488,30 @@
             return 'Physical';
         }
 
-        /** Vendored Showdown-style category icons (icons/categories/*.png); sized like icons/story/*.png (22×22). */
+        /* Canonical move-category swirl badge — original Gen4-style art (rounded badge + white symbol).
+           Single source of truth: used identically on move tiles, tooltips, and chips so the category
+           never renders differently per screen. Replaces the old icons/categories/*.png + ⚔/✦/◎ glyph split. */
+        const MOVE_CAT_BADGE_BG = { Physical: '#ff6b6b', Special: '#6b9fff', Status: '#b4bbcc' };
+        const MOVE_CAT_BADGE_SYM = {
+            Physical: '<path d="M8 1.7l1.75 4.55 4.55 1.75-4.55 1.75L8 14.3 6.25 9.75 1.7 8l4.55-1.75z" fill="#fff"/>',
+            Special:  '<circle cx="10.4" cy="5.6" r="2.3" fill="#fff"/><path d="M9.1 7.2 Q5.2 9 4 13" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>',
+            Status:   '<circle cx="8" cy="8" r="4.1" fill="none" stroke="#fff" stroke-width="1.9"/><circle cx="8" cy="8" r="1.15" fill="#fff"/>'
+        };
+        window.moveCatBadgeHtml = function moveCatBadgeHtml(cat, px) {
+            const c = normalizeMoveCategory(cat);
+            const s = px || 14;
+            return '<svg class="move-cat-ico" width="' + s + '" height="' + s + '" viewBox="0 0 16 16" role="img" aria-label="' + c + ' category" style="display:inline-block;vertical-align:middle;flex-shrink:0;">' +
+                '<rect x="0.6" y="0.6" width="14.8" height="14.8" rx="3.6" fill="' + MOVE_CAT_BADGE_BG[c] + '" stroke="rgba(0,0,0,0.45)" stroke-width="1"/>' +
+                MOVE_CAT_BADGE_SYM[c] + '</svg>';
+        };
+        /* Tiny monochrome UI glyphs (inherit currentColor) — replace OS-font-dependent ✓/✗ dingbats
+           so check/decline markers render identically across screens and devices. */
+        window.uiSvgCheck = function(px){var s=px||12;return '<svg class="ui-glyph" width="'+s+'" height="'+s+'" viewBox="0 0 16 16" aria-hidden="true" style="display:inline-block;vertical-align:-0.12em;"><path d="M3 8.6l3.4 3.4L13 4.6" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';};
+        window.uiSvgX = function(px){var s=px||12;return '<svg class="ui-glyph" width="'+s+'" height="'+s+'" viewBox="0 0 16 16" aria-hidden="true" style="display:inline-block;vertical-align:-0.12em;"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/></svg>';};
         function moveCategoryTooltipHtml(cat) {
             const c = normalizeMoveCategory(cat);
             return '<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle;">' +
-                '<img src="icons/categories/' + c + '.png" alt="' + c + ' move category" width="32" height="14" decoding="async" style="width:32px;height:14px;image-rendering:auto;flex-shrink:0;">' +
+                window.moveCatBadgeHtml(c, 16) +
                 '<strong class="cat-' + c + '">' + c + '</strong></span>';
         }
 
@@ -11758,16 +11797,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ─── Enhanced Move Animation Engine (anime.js) ───────────────────
         const MoveAnimEngine = (() => {
+            // Base stop (index 0) = canonical type palette from the CSS .type-* rules (single source of truth);
+            // secondary/tertiary stops are tuned lighter/darker glow shades for particle gradients.
             const TYPE_COLORS = {
-                Normal:   ['#c8c8c8','#a8a8a8'],  Fire:     ['#ff6b35','#ff4500','#ffcc00'],
-                Water:    ['#4a90d9','#1a5fb4','#88ddff'], Electric: ['#fff700','#ffcc00','#ffe066'],
-                Grass:    ['#5cb85c','#3d8b3d','#88ee88'], Ice:      ['#88ddff','#aaeeff','#ffffff'],
-                Fighting: ['#d05040','#ff6633','#ffaa88'], Poison:   ['#b055d0','#8833aa','#dd88ee'],
-                Ground:   ['#d4a037','#b8860b','#e8c869'], Flying:   ['#a890f0','#7766cc','#ccbbff'],
-                Psychic:  ['#ff5588','#ff3366','#ffaacc'], Bug:      ['#a8b820','#88a000','#ccdd44'],
-                Rock:     ['#b8a038','#917520','#d4c06a'], Ghost:    ['#7b62a8','#5a3d8a','#bb99dd'],
+                Normal:   ['#a8a878','#a8a8a8'],  Fire:     ['#f08030','#ff4500','#ffcc00'],
+                Water:    ['#6890f0','#1a5fb4','#88ddff'], Electric: ['#f8d030','#ffcc00','#ffe066'],
+                Grass:    ['#78c850','#3d8b3d','#88ee88'], Ice:      ['#98d8d8','#aaeeff','#ffffff'],
+                Fighting: ['#c03028','#ff6633','#ffaa88'], Poison:   ['#a040a0','#8833aa','#dd88ee'],
+                Ground:   ['#e0c068','#b8860b','#e8c869'], Flying:   ['#a890f0','#7766cc','#ccbbff'],
+                Psychic:  ['#f85888','#ff3366','#ffaacc'], Bug:      ['#a8b820','#88a000','#ccdd44'],
+                Rock:     ['#b8a038','#917520','#d4c06a'], Ghost:    ['#705898','#5a3d8a','#bb99dd'],
                 Dragon:   ['#7038f8','#5020c0','#aa77ff'], Dark:     ['#705848','#504030','#a09080'],
-                Steel:    ['#b8b8d0','#8888a0','#d8d8e8'], Fairy:    ['#f0a0c0','#ee7799','#ffccdd'],
+                Steel:    ['#b8b8d0','#8888a0','#d8d8e8'], Fairy:    ['#ee99ac','#ee7799','#ffccdd'],
             };
             function getColors(type) { return TYPE_COLORS[type] || TYPE_COLORS.Normal; }
 
@@ -18001,7 +18042,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let b = document.createElement('button');
                     b.disabled = true;
                     let typeShort = (mv.type||'Normal').length > 4 ? mv.type.slice(0,4) : (mv.type||'Normal');
-                    let catG = mv.cat === 'Physical' ? '⚔' : (mv.cat === 'Special' ? '✦' : '◎');
+                    let catG = window.moveCatBadgeHtml(mv.cat, 13);
                     let catColor = mv.cat === 'Physical' ? '#ff6b6b' : mv.cat === 'Special' ? '#6b9fff' : '#888';
                     if (isLocked) {
                         b.className = 'battle-btn-move locked-rampage';
@@ -18072,7 +18113,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let _ppStr = isDynaDisplay ? '∞' : `${rawMove.pp}/${rawMove.maxPp}`;
                 let _accStr = shownMove.isMaxMove ? '—' : ((shownMove.acc||0) <= 100 ? (shownMove.acc||100)+'%' : '—');
                 let _powStr = shownMove.pow > 0 ? shownMove.pow : '—';
-                let catG = shownMove.cat === 'Physical' ? '⚔' : (shownMove.cat === 'Special' ? '✦' : '◎');
+                let catG = window.moveCatBadgeHtml(shownMove.cat, 13);
                 let typeShort = shownMove.type.length > 4 ? shownMove.type.slice(0, 4) : shownMove.type;
                 let metaTail = effLabelShort ? `<span class="move-tile-sep">·</span>${effLabelShort}` : '';
                 let infoHit = isMobile ? '<span class="move-info-hit" title="Move details" role="button">i</span>' : '';
@@ -28369,7 +28410,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mascot.className = 'casino-jackpot-mascot';
                 // Pixel cluster: brass coins flanking a Clefairy heart — the Crystal
                 // Game Corner mascot pose.
-                mascot.innerHTML = '<span style="font-size:36px;">🪙</span><span style="font-size:56px;margin:0 8px;">✦</span><span style="font-size:36px;">🪙</span>';
+                mascot.innerHTML = '<img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="47" height="36" decoding="async" style="vertical-align:middle;"><span style="font-size:56px;margin:0 8px;vertical-align:middle;">✦</span><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="47" height="36" decoding="async" style="vertical-align:middle;">';
                 banner.appendChild(document.createElement('br'));
                 if (mult > 0) {
                     const sub = document.createElement('span');
@@ -31206,8 +31247,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function storyShopIconCellHtml(id) {
             return '<span class="story-shop-item-icon">' + storyShopIconInnerHtml(id) + '</span>';
         }
-        function storyGoldIconHtml() {
-            return '<img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async">';
+        function storyGoldIconHtml(w, h) {
+            const ww = w || 21, hh = h || 16;
+            return '<img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="' + ww + '" height="' + hh + '" decoding="async">';
         }
         function storyGoldHtml(amount, pad = true, prefix = '') {
             let raw = String(amount);
@@ -40824,11 +40866,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const firstChoice = choices[0];
             if (_profMysteryMode && firstChoice) {
                 // Accept is pre-enabled for mystery mode (single auto-selected offer)
-                acceptBtn.textContent = `✓ Take ${firstChoice.name}`;
+                acceptBtn.innerHTML = window.uiSvgCheck() + ' Take ' + _esc(firstChoice.name);
                 acceptBtn.style.cssText = 'color:#4caf50;border-color:#4caf50;';
                 acceptBtn.disabled = false;
             } else {
-                acceptBtn.textContent = '✓ Choose This Pokémon';
+                acceptBtn.innerHTML = window.uiSvgCheck() + ' Choose This Pokémon';
                 acceptBtn.style.cssText = 'color:#4caf50;border-color:#4caf50;opacity:0.35;cursor:not-allowed;';
                 acceptBtn.disabled = true;
             }
@@ -40837,7 +40879,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             const backBtn = document.createElement('button');
             if (_profMysteryMode) {
-                backBtn.textContent = _profLegendaryMysteryMode ? '← Not Now' : '✗ Decline';
+                backBtn.innerHTML = _profLegendaryMysteryMode ? '← Not Now' : (window.uiSvgX() + ' Decline');
             } else {
                 backBtn.textContent = '← Back to City';
             }
@@ -40861,7 +40903,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const btn = document.getElementById('prof-accept-btn');
             if (btn) {
                 btn.disabled = false;
-                btn.textContent = `✓ Take ${ch.name}`;
+                btn.innerHTML = window.uiSvgCheck() + ' Take ' + _esc(ch.name);
                 btn.style.opacity = '1';
                 btn.style.cursor = 'pointer';
             }
@@ -40940,7 +40982,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // tab + milestone bundles) and cross-run meta (lifetime + shiny).
             try { _storyMarkDexCaught(ch.name, !!(ch.build && ch.build._isShiny)); } catch (e) {}
             save();
-            document.getElementById('story-prof-status').textContent = `✓ ${ch.name} joined your team!`;
+            document.getElementById('story-prof-status').innerHTML = window.uiSvgCheck() + ' ' + _esc(ch.name) + ' joined your team!';
             const btnsEl = document.getElementById('story-prof-buttons');
             btnsEl.innerHTML = '';
             document.getElementById('story-prof-rolled-card').innerHTML = '';
@@ -40974,7 +41016,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Pokédex — Mystery Figure legendary now in your party = caught.
             try { _storyMarkDexCaught(ch.name, !!(ch.build && ch.build._isShiny)); } catch (e) {}
             save();
-            document.getElementById('story-prof-status').textContent = `✓ ${ch.name} replaced ${replaced} (sent to the PC)!`;
+            document.getElementById('story-prof-status').innerHTML = window.uiSvgCheck() + ' ' + _esc(ch.name) + ' replaced ' + _esc(replaced) + ' (sent to the PC)!';
             document.getElementById('story-prof-rolled-card').innerHTML = '';
             const btnsEl = document.getElementById('story-prof-buttons');
             btnsEl.innerHTML = '';
@@ -41004,7 +41046,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _pendingProfChoices = null; _profSelectedIdx = null; _profMysteryMode = false; _pendingProfCityIdx = null; _pendingProfWasMystery = false; _profLegendaryMysteryMode = false;
             try { _storyMarkDexCaught(ch.name, !!(ch.build && ch.build._isShiny)); } catch (e) {}
             save();
-            document.getElementById('story-prof-status').textContent = `✓ ${ch.name} is waiting for you at the PC.`;
+            document.getElementById('story-prof-status').innerHTML = window.uiSvgCheck() + ' ' + _esc(ch.name) + ' is waiting for you at the PC.';
             document.getElementById('story-prof-rolled-card').innerHTML = '';
             const btnsEl = document.getElementById('story-prof-buttons');
             btnsEl.innerHTML = '';
@@ -43551,7 +43593,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div style="color:#bcaaa4;margin-bottom:10px;">The Underground is holding a specimen they don\'t want talked about. Three pieces of evidence — scattered through Pokémon Centers in three cities — open the Cage.</div>`;
 
             const collectedCount = (L.ledger?1:0) + (L.recording?1:0) + (L.key?1:0);
-            const leadStatus = (k) => L[k] ? '<span style="color:#aed581;">✓</span>' : '<span style="color:#666;">○</span>';
+            const leadStatus = (k) => L[k] ? '<span style="color:#aed581;">' + window.uiSvgCheck() + '</span>' : '<span style="color:#666;">○</span>';
             html += `<div style="margin-bottom:10px;padding:8px 10px;background:rgba(0,0,0,0.35);border:1px solid #3a1b4a;">
                 <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
                     <span style="font-size:10px;color:#bcaaa4;letter-spacing:0.06em;text-transform:uppercase;">Broker Leads</span>
@@ -45694,7 +45736,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
             panel.innerHTML = `
                 <div class="casino-stats-col" data-game="flip">
-                    <h4>🪙 Coin Flip</h4>
+                    <h4><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> Coin Flip</h4>
                     <p class="stats-row">${wlRow(flip)}</p>
                     <p class="stats-row">Biggest win <strong>${fmt(flip.biggestWin)}G</strong></p>
                     <p class="stats-row">Longest streak <strong>${fmt(flip.longestStreak)}</strong></p>
@@ -47247,7 +47289,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         </div>`;
                     }).join('');
                     const costHint = allowedAny
-                        ? `<div style="font-size:10px;color:#9aa3b8;margin-top:8px;">Prices by target grade — G3 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[3], false)} · G2 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[2], false)} · G1 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[1], false)}${en > 1 ? ` <span style="color:#888;">(× 1.5^${en-1} repeat use here)</span>` : ''}.${_rareCandyCount > 0 ? ` <span style="color:#f48fb1;">🍬 ${_rareCandyCount} Rare Cand${_rareCandyCount===1?'y':'ies'} in bag — free alternative.</span>` : ''}</div>`
+                        ? `<div style="font-size:10px;color:#9aa3b8;margin-top:8px;">Prices by target grade — G3 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[3], false)} · G2 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[2], false)} · G1 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[1], false)}${en > 1 ? ` <span style="color:#888;">(× 1.5^${en-1} repeat use here)</span>` : ''}.${_rareCandyCount > 0 ? ` <span style="color:#f48fb1;"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="16" height="16" decoding="async" style="vertical-align:middle;image-rendering:pixelated;"> ${_rareCandyCount} Rare Cand${_rareCandyCount===1?'y':'ies'} in bag — free alternative.</span>` : ''}</div>`
                         : `<div class="tx-grid-empty" style="margin-top:6px;">No evolutions available with current generation toggles (enabled: ${enabledGensLabel}).</div>`;
                     evoBlockHtml = `<div class="tx-grid" style="margin-top:10px;max-height:none;">${evoCards}</div>${costHint}`;
                 }
@@ -50792,7 +50834,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </button>`
                 : '';
             const clearBtn = hasActiveFilters
-                ? `<button type="button" class="tx-filter-clear" data-clear-filters="${kind}" title="Clear search and filters">✕ Clear</button>`
+                ? `<button type="button" class="tx-filter-clear" data-clear-filters="${kind}" title="Clear search and filters">${window.uiSvgX()} Clear</button>`
                 : '';
             const drawerHtml = hasChips
                 ? `<div class="tx-filter-panel" data-open="${drawerOpen}">${opts.chipsHtml}</div>`
@@ -50940,11 +50982,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pctHtml = _txUsagePctHtml(ctx, moveName);
             const mechTags = ctx && ctx.mechanicTagsFor ? ctx.mechanicTagsFor(moveName) : null;
             const mechHtml = _txMechanicIconsHtml(mechTags);
-            const equippedBadge = isEquipped ? `<span class="tx-card-equipped" title="Already in this Pokémon's moveset">✓ Equipped</span>` : '';
+            const equippedBadge = isEquipped ? `<span class="tx-card-equipped" title="Already in this Pokémon's moveset">${window.uiSvgCheck()} Equipped</span>` : '';
             const footExtra = isEquipped
                 ? `<div class="tx-card-foot-actions">${
                     canUnlearn
-                        ? `<button type="button" class="tx-unlearn-btn" data-unlearn-slot="${equippedSlot != null ? equippedSlot : ''}" data-unlearn-move="${_esc(moveName)}" title="Forget ${_esc(moveName)} — free, opens a slot">✕ Forget</button>`
+                        ? `<button type="button" class="tx-unlearn-btn" data-unlearn-slot="${equippedSlot != null ? equippedSlot : ''}" data-unlearn-move="${_esc(moveName)}" title="Forget ${_esc(moveName)} — free, opens a slot">${window.uiSvgX()} Forget</button>`
                         : `<span class="tx-unlearn-locked" title="A Pokémon must keep at least one move">Last move</span>`
                   }</div>`
                 : '';
@@ -51542,7 +51584,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const natPct = sPool.natures.pctOf.get(nat);
                     const pctChip = (isRec && natPct >= 1) ? `<span class="tx-nature-pct">${Math.round(natPct)}%</span>` : '';
                     cells.push(`<button type="button" class="tx-nature-cell" data-nature="${nat}" data-active="${(isCur||isPend)?1:0}" data-recommended="${isRec?1:0}" ${isCur?'disabled':''} title="${_esc(nat)}${isRec && natPct>=1 ? ` — ${natPct.toFixed(1)}% Smogon usage` : ''}">
-                        <span class="tx-nature-cell-name">${star}${nat}${isCur?' ✓':''}${pctChip}</span>
+                        <span class="tx-nature-cell-name">${star}${nat}${isCur?' '+window.uiSvgCheck():''}${pctChip}</span>
                     </button>`);
                 }
             }
@@ -51554,7 +51596,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const isRec = starredNats.has(n);
                 const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span> ' : '';
                 return `<button type="button" class="tx-nature-cell" data-nature="${n}" data-active="${(isCur||isPend)?1:0}" data-recommended="${isRec?1:0}" ${isCur?'disabled':''} style="background:rgba(180,187,204,0.05);">
-                    <span class="tx-nature-cell-name">${star}${n}${isCur?' ✓':''}</span>
+                    <span class="tx-nature-cell-name">${star}${n}${isCur?' '+window.uiSvgCheck():''}</span>
                 </button>`;
             }).join('');
 
@@ -52944,7 +52986,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _evTrainerHelpBannerHtml() {
             const vN = (sm.inventory && sm.inventory.vitamin) | 0;
             const vitaLine = vN > 0
-                ? `<span style="color:#f8bbd0;font-weight:bold;">💊 ${vN} Vitamin Pack${vN===1?'':'s'} ready</span> — tap the pink button on any preset to apply it free.`
+                ? `<span style="color:#f8bbd0;font-weight:bold;"><img src="sprites/pokesprite/items/protein.png" alt="" width="16" height="16" decoding="async" style="vertical-align:middle;image-rendering:pixelated;"> ${vN} Vitamin Pack${vN===1?'':'s'} ready</span> — tap the pink button on any preset to apply it free.`
                 : `<span style="color:#9aa3b0;">No Vitamin Packs yet.</span> Each preset costs ${EVTRAINER_COST.toLocaleString()}G; Vitamin Packs (from gym victories &amp; Pokédex milestones) apply one for free.`;
             // Collapsed by default on every entry — the explainer eats the
             // whole first screen on phones and pushes the preset cards below
