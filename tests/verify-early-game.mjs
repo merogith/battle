@@ -47,6 +47,36 @@ if (typeof window.__renderCityActionsForTest !== 'function') {
   sm.facilityIntros = { mart:1, tutor:1, nature:1, evolab:1, stoneShop:1, link:1, fanclub:1, dept:1, casino:1, dojo:1, evtrainer:1, colress:1, artifacts:1, safari:1, center:1, relic:1 };
   const h2b = render(2);
   check('after facilityIntros set, NO NEW badges remain (three-tier fix lands)', newCount(h2b) === 0, `count=${newCount(h2b)}`);
+
+  // --- Regression: stray "undefined" in the chip list (the CONNECT & BAG section
+  // seed bug — _sections lacked a 'utility' key, so the first _push('utility',…)
+  // concatenated onto `undefined`). Every city's rendered HTML must be clean. ---
+  setup();
+  for (const c of [0, 1, 2]) {
+    const h = render(c);
+    check(`no stray "undefined" in City ${c} chips`, !h.includes('undefined'));
+  }
+
+  // --- Regression: the Leave-City "Visit Bag first" gate must CLEAR once the Bag
+  // is opened — including on an old save where facilitiesSeen[0].bag is already set
+  // but the newer facilityIntros gate never recorded it (the early-return soft-lock). ---
+  const gateNamesBag = (h) => /Continue Route[^<]*<span[^>]*>\(Visit [^<]*Bag[^<]*first\)/.test(h);
+  // Isolate Bag: introduce every other C0 facility, satisfy the Professor gate.
+  const introAllButBag = () => { sm.facilityIntros = { mart:1, tutor:1, nature:1, artifacts:1, center:1, relic:1 }; sm.profUsed = { 0: true }; };
+
+  setup(); introAllButBag();
+  check('C0 gate names Bag while un-visited', gateNamesBag(render(0)));
+  SM.openCityBag();
+  check('openCityBag sets facilityIntros.bag', sm.facilityIntros.bag === true);
+  check('C0 gate clears after opening Bag', !gateNamesBag(render(0)));
+
+  // Old-save path: per-city seen flag present, cross-city intro flag absent.
+  setup(); introAllButBag();
+  sm.facilitiesSeen = { 0: { bag: true } };
+  check('old-save C0 gate still names Bag before re-open', gateNamesBag(render(0)));
+  SM.openCityBag();
+  check('old-save openCityBag back-fills facilityIntros.bag', sm.facilityIntros.bag === true);
+  check('old-save C0 gate clears after re-opening Bag', !gateNamesBag(render(0)));
 }
 
 console.log('\n===== EARLY-GAME VERIFY =====\n' + out.join('\n'));
