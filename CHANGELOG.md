@@ -3,6 +3,18 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## 1.2.2 — Evolution staging, required intros, bag polish & egg animation 2026-05-26 (`claude/early-game-pacing-finish`)
+
+- **Evolution staging** — Stage-1 evolutions from the first gym city, Stones from the
+  second, and **final (Stage-2) evolutions from City 4** — you evolve a bit ahead of
+  what you fight.
+- **One-time intros** for the Bag (start town) and Party + Fan Club (first gym city).
+- **Bag** now shows your **Poké Balls** and trims the voucher/vitamin text; the first
+  **Pokémart gifts 5 Poké Balls** and the first **Poké Center gives a Full Restore**.
+- **Egg-hatch animation** — the egg wiggles, cracks, and the hatchling pops in.
+- Verified the facility NEW / visited badges and the starter-city Artifact Hall work
+  as intended (regression test added).
+
 ## 1.2.1 — Early-game pacing, placement & clarity 2026-05-26 (`claude/early-game-pacing-patch`)
 
 - **Tutors are always available.** Move Tutor + Nature Rater (and the Fan Club) now

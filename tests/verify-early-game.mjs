@@ -29,14 +29,21 @@ if (typeof window.__renderCityActionsForTest !== 'function') {
   if (h0.startsWith('ERR:')) out.push('ERROR C0: ' + h0);
   check('Artifact Hall present in City 0', h0.includes('Artifact Hall'));
   check('Move Tutor present in City 0', h0.includes('Move Tutor'));
-  check('Nature Rater present in City 0', h0.includes('Nature Rater'));
+  check('Nature Rater NOT in City 0 (moved to C1)', !h0.includes('Nature Rater'));
 
-  // --- City 1 (first gym city): tutors were missing in the action list ---
+  // --- City 1 (first gym city): Nature Rater now debuts here; Move Tutor present ---
   setup();
   const h1 = render(1);
-  check('Move Tutor present in City 1 (was missing)', h1.includes('Move Tutor'));
-  check('Nature Rater present in City 1 (was missing)', h1.includes('Nature Rater'));
-  check('Evolution Sage present in City 1 (evolution Layer 1)', h1.includes('Stone Sage') || h1.includes('Evolution'));
+  check('Move Tutor present in City 1', h1.includes('Move Tutor'));
+  check('Nature Rater present in City 1 (debut)', h1.includes('Nature Rater'));
+  check('Stone Sage NOT in City 1 (debuts C2)', !(h1.includes('Stone Sage') || h1.includes('Evolution Tutor')));
+
+  // --- City 2: Stone Sage + Battle Dojo debut here (the "systems open up" town) ---
+  setup();
+  const h2c = render(2);
+  check('Stone Sage present in City 2 (debut)', h2c.includes('Stone Sage'));
+  check('Battle Dojo present in City 2 (debut, moved earlier from C4)', h2c.includes('Battle Dojo'));
+  check('Stone Merchant NOT in City 2 (moved to C3)', !h2c.includes('Stone Emporium'));
 
   // --- Facility NEW/visited three-tier (the "still all NEW" report) ---
   // At City 2 the Pokémart is NOT its debut city, so un-introduced it should read NEW;
@@ -47,6 +54,47 @@ if (typeof window.__renderCityActionsForTest !== 'function') {
   sm.facilityIntros = { mart:1, tutor:1, nature:1, evolab:1, stoneShop:1, link:1, fanclub:1, dept:1, casino:1, dojo:1, evtrainer:1, colress:1, artifacts:1, safari:1, center:1, relic:1 };
   const h2b = render(2);
   check('after facilityIntros set, NO NEW badges remain (three-tier fix lands)', newCount(h2b) === 0, `count=${newCount(h2b)}`);
+
+  // --- Regression: stray "undefined" in the chip list (the CONNECT & BAG section
+  // seed bug — _sections lacked a 'utility' key, so the first _push('utility',…)
+  // concatenated onto `undefined`). Every city's rendered HTML must be clean. ---
+  setup();
+  for (const c of [0, 1, 2]) {
+    const h = render(c);
+    check(`no stray "undefined" in City ${c} chips`, !h.includes('undefined'));
+  }
+
+  // --- Regression: the Leave-City "Visit Bag first" gate must CLEAR once the Bag
+  // is opened — including on an old save where facilitiesSeen[0].bag is already set
+  // but the newer facilityIntros gate never recorded it (the early-return soft-lock). ---
+  const gateNamesBag = (h) => /Continue Route[^<]*<span[^>]*>\(Visit [^<]*Bag[^<]*first\)/.test(h);
+  // Isolate Bag: introduce every other C0 facility, satisfy the Professor gate.
+  const introAllButBag = () => { sm.facilityIntros = { mart:1, tutor:1, nature:1, artifacts:1, center:1, relic:1 }; sm.profUsed = { 0: true }; };
+
+  setup(); introAllButBag();
+  check('C0 gate names Bag while un-visited', gateNamesBag(render(0)));
+  SM.openCityBag();
+  check('openCityBag sets facilityIntros.bag', sm.facilityIntros.bag === true);
+  check('C0 gate clears after opening Bag', !gateNamesBag(render(0)));
+
+  // Old-save path: per-city seen flag present, cross-city intro flag absent.
+  setup(); introAllButBag();
+  sm.facilitiesSeen = { 0: { bag: true } };
+  check('old-save C0 gate still names Bag before re-open', gateNamesBag(render(0)));
+  SM.openCityBag();
+  check('old-save openCityBag back-fills facilityIntros.bag', sm.facilityIntros.bag === true);
+  check('old-save C0 gate clears after re-opening Bag', !gateNamesBag(render(0)));
+
+  // --- New-spread must-do intro gate: Battle Dojo debuts at C2; un-introduced it
+  // carries the 🔴 Required pill, which clears once the player has met it. ---
+  const reqCount = (h) => (h.match(/🔴 Required/g) || []).length;
+  setup();
+  const h2req = render(2);
+  check('C2 debut facilities carry 🔴 Required when un-introduced', reqCount(h2req) > 0, `count=${reqCount(h2req)}`);
+  check('Battle Dojo chip is flagged Required at its C2 debut', /Battle Dojo[\s\S]{0,260}?🔴 Required/.test(h2req));
+  sm.facilityIntros = { dojo:1, evolab:1, link:1, mart:1, tutor:1, nature:1, fanclub:1 };
+  const h2done = render(2);
+  check('C2 Required pills clear once those facilities are introduced', reqCount(h2done) === 0, `count=${reqCount(h2done)}`);
 }
 
 console.log('\n===== EARLY-GAME VERIFY =====\n' + out.join('\n'));
