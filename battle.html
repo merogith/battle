@@ -39075,7 +39075,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!btn) return;
             btn.innerHTML = '';
 
-            const _sections = { quest: '', recover: '', shop: '', train: '' };
+            const _sections = { quest: '', recover: '', shop: '', train: '', utility: '' };
             const _push = (key, html) => { _sections[key] += html; };
 
             // Professor / Mystery Figure (one visit per city).
@@ -39436,14 +39436,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const cityIdx = cityIndexFromEventIndex(sm.eventIndex);
             if (cityIdx < 0) return;
             if (!sm.facilitiesSeen || typeof sm.facilitiesSeen !== 'object') sm.facilitiesSeen = {};
-            const bucket = sm.facilitiesSeen[cityIdx] || (sm.facilitiesSeen[cityIdx] = {});
-            if (bucket[key]) return;
-            bucket[key] = true;
             // Per docs/EVOLUTION_FLOW_REBUILD.md §8: a facility seen anywhere flips
             // the cross-city "introduced" flag too. The Leave-City gate keys off
             // sm.facilityIntros so once the player has met a facility, the gate
             // stops firing for that key across the rest of the run.
             if (!sm.facilityIntros || typeof sm.facilityIntros !== 'object') sm.facilityIntros = {};
+            const bucket = sm.facilitiesSeen[cityIdx] || (sm.facilitiesSeen[cityIdx] = {});
+            // Already fully recorded (per-city ✓ AND cross-city intro)? Nothing to do.
+            // NB: must set BOTH even when the per-city flag is already set — a save from
+            // before the facilityIntros gate existed has facilitiesSeen but no intro flag,
+            // and an early-return here would soft-lock the Leave-City gate forever.
+            if (bucket[key] && sm.facilityIntros[key]) return;
+            bucket[key] = true;
             sm.facilityIntros[key] = true;
             try { save(); } catch (e) {}
         }
@@ -48371,7 +48375,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 div.innerHTML = `<div class="story-bag-item-text">
                     <div class="name">${item.name}</div>
                     <div class="qty">×${qty}</div>
-                    <div class="eff">${String(item.desc).split('. ')[0]}.</div>
+                    <div class="eff">${String(item.desc).split(/\.\s|\s+—\s*same effect/i)[0]}.</div>
                 </div>
                 <span style="font-size:10px;color:#888;align-self:center;padding:4px 8px;border:1px solid #444;">Voucher</span>`;
                 bagEl.appendChild(div);
@@ -48393,7 +48397,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 div.innerHTML = icon + `<div class="story-bag-item-text">
                     <div class="name">${v.name} <span style="color:#9ab;font-size:10px;">(+${IV_VITAMIN_STEP} ${statLabel} IV, cap ${IV_MAX})</span></div>
                     <div class="qty">×${qty}</div>
-                    <div class="eff">${String(v.desc).split('. ')[0]}.</div>
+                    <div class="eff">${String(v.desc).split(/\.\s|\s+—\s*same effect/i)[0]}.</div>
                 </div>
                 <button onclick="event.stopPropagation();window.StoryMode.openPermBoostPicker('${v.id}')"
                     style="font-size:11px;padding:4px 10px;color:#9bf;border-color:#9bf;flex-shrink:0;align-self:center;">
