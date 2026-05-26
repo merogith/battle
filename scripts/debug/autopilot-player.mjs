@@ -29,7 +29,7 @@ const CHROME = ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome', '/opt/pw-b
 mkdirSync(SHOTS, { recursive: true });
 const { chromium } = await import('playwright');
 
-const transcript = [], findings = [], errors = [], battleLog = [];
+const transcript = [], findings = [], errors = [], battleLog = [], handPlayFails = [];
 let errMark = 0, shotN = 0;
 const stamp = () => new Date().toISOString().slice(11, 19);
 const log = s => { const l = `[${stamp()}] ${s}`; transcript.push(l); console.log(l); };
@@ -153,6 +153,23 @@ async function playBattleByHand(page, label, useGimmick) {
   return 'timeout';
 }
 
+// Hand-AI lost/stalled — get back into the fight and auto-win so the run continues.
+async function recoverAndAutoWin(page) {
+  const go = await read(page, () => JSON.stringify({ go: !!document.querySelector('#screen-story-gameover:not(.hidden)') }));
+  if (go && go.go) {
+    await api(page, 'retryFromGameOver'); await sleep(700);
+    for (let i = 0; i < 20; i++) { const b = await battleSnap(page); if (b && b.onBattle) break; await forceClick(page, 'Begin\\s*→|Step into|→|^Continue'); await sleep(450); }
+  }
+  let won = false;
+  for (let i = 0; i < 8 && !won; i++) {
+    won = await page.evaluate(() => { try { return typeof window.__devAutoWinBattle === 'function' ? !!window.__devAutoWinBattle() : false; } catch (e) { return false; } });
+    if (!won) await sleep(450);
+  }
+  await sleep(700);
+  for (let i = 0; i < 6; i++) { const adv = await forceClick(page, '^Continue|→|Next|Onward'); const r = adv ? null : await api(page, 'afterBattleReturn'); await sleep(400); const b = await battleSnap(page); if (b && !b.onBattle && !b.gameover) break; }
+  log(`   ↳ auto-won to continue (devAutoWin=${won})`);
+}
+
 async function handleCatch(page) {
   await page.evaluate(() => { const b = document.querySelector('#story-catch-body button:not([disabled])'); if (b) b.click(); });
   await sleep(1000);
@@ -268,11 +285,18 @@ try {
     if (c.infoModal) { await forceClick(page, 'Got it') || await forceClick(page, '^OK$'); await sleep(200); }
     else if (c.professorCards) { await pickStarter(page); }
     else if (c.battleActive) {
-      const isGym = /Gym Leader|Champion|Mystery|E[1-4]|Elite/i.test(JSON.stringify(c));
       await shot(page, `battle-evt${c.eventIndex}`);
       const res = await playBattleByHand(page, `evt${c.eventIndex}`, (c.unlocked || []).length > 0);
       log(`   ⚔ battle @evt ${c.eventIndex}: ${res}`);
-      if (res === 'loss') { losses++; finding('P1', 'balance', `Lost a hand-played battle @evt ${c.eventIndex} (badges ${c.badges})`, 'team underpowered or fight overtuned for this point'); await shot(page, `LOSS-evt${c.eventIndex}`); }
+      if (res !== 'win') {
+        // Hand-AI couldn't win — flag it (NOT a confident "overtuned" verdict; my battle AI is
+        // weak) then auto-win so the playthrough continues, per the user's instruction.
+        losses++;
+        handPlayFails.push({ evt: c.eventIndex, badges: c.badges, result: res });
+        finding('P3', 'balance', `Hand-AI could not win @evt ${c.eventIndex} (${res}, badges ${c.badges}) — auto-won to continue`, 'autopilot battle AI is weak; flag for a manual balance check, not a confirmed difficulty problem');
+        await shot(page, `${res.toUpperCase()}-evt${c.eventIndex}`);
+        await recoverAndAutoWin(page);
+      }
       await sleep(600); await forceClick(page, '^Continue|→|Next');
     }
     else if (c.transition) { await sleep(1100); /* "Battle starting…" / arrival — auto-advances; just wait */ }
@@ -292,7 +316,7 @@ try {
     prevSig = sig; prevEvt = c2 ? c2.eventIndex : prevEvt;
     if ((tick % 15) === 0) log(`  …tick ${tick}: evt=${c.eventIndex} badges=${c.badges} team=${c.teamLen} gold=${c.gold} losses=${losses}`);
     if (c.hof) { log('reached HoF — main goal met'); break; }
-    if (losses >= 5) { finding('P1', 'balance', 'Aborted: 5+ hand-played losses', 'difficulty likely overtuned for a no-grind competent player, or team-build/training loop insufficient'); break; }
+    // No abort on losses anymore — we auto-win to continue. Bail only if truly wedged.
     if (stall >= 16) { finding('P2', 'progression', `Real-player pump stalled at eventIndex ${c.eventIndex}`, JSON.stringify({ city: c.cityScreen, battle: c.battleActive, end: c.endScreen, catch: c.catchScreen, body: c.bodyHash })); await shot(page, `STALL-evt${c.eventIndex}`); await forceClick(page, 'Continue|Leave City|Got it|→|Step into|Begin'); if (c.cityScreen) await api(page, 'proceedToNextBattle'); await sleep(800); const c3 = await classify(page); if (c3 && `${c3.eventIndex}|${c3.battleActive}|${c3.bodyHash}` === sig) { log(`hard stall @evt ${c.eventIndex}`); break; } stall = 0; }
     await sleep(450);
   }
@@ -302,6 +326,7 @@ try {
   log(`FINAL: ${JSON.stringify(cFinal)}`);
   const wins = battleLog.filter(b => b.result === 'win').length, losses2 = battleLog.filter(b => b.result === 'loss').length, to = battleLog.filter(b => b.result === 'timeout').length;
   log(`battles: ${battleLog.length} (win ${wins} / loss ${losses2} / timeout ${to})`);
+  log(`hand-AI could-not-win (auto-won to continue): ${handPlayFails.length}${handPlayFails.length ? ' → ' + handPlayFails.map(f => `evt${f.evt}(b${f.badges},${f.result})`).join(', ') : ''}`);
   log(`real JS errors (excl. CDN noise): ${errors.length} · findings: ${findings.length}`);
   await shot(page, 'final');
   writeFileSync(join(OUT, 'player-findings.json'), JSON.stringify({ generatedAt: new Date().toISOString(), screenshots: shotN, errorCount: errors.length, findings, finalState: cFinal, battleLog, errors: errors.slice(0, 80) }, null, 2));
