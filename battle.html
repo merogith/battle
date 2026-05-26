@@ -10,10 +10,18 @@
     <link rel="icon" href="icons/app-icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icons/app-icon.svg">
     <meta name="theme-color" content="#0a0a0a">
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="preload" href="fonts/press-start-2p.woff2" as="font" type="font/woff2" crossorigin>
     <link href="https://unpkg.com/nes.css@2.3.0/css/nes.min.css" rel="stylesheet">
     <title>Pokémon Arena</title>
     <style>
+        /* Self-hosted Press Start 2P (SIL OFL 1.1) — no external CDN so the retro font renders identically offline; see fonts/OFL.txt. */
+        @font-face {
+            font-family: 'Press Start 2P';
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+            src: url('fonts/press-start-2p.woff2') format('woff2');
+        }
         /*
          * === DISPLAY MODES ===
          * 1. DESKTOP (1920×1080 / 16:9) — 1280×720 design frame, scaled via transform to fill viewport.
@@ -2120,6 +2128,13 @@
             image-rendering: pixelated;
             image-rendering: crisp-edges;
         }
+        /* All story pixel-icons render crisp everywhere (overrides stray inline image-rendering:auto on PC tabs etc.),
+           so the same icon never looks smoothed on one screen and sharp on another. Scoped to icons/story/ so the
+           intentionally-smoothed Safari ball in sprites/ is untouched. */
+        img[src*="icons/story/"] {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
         .story-hud-abandon {
             font-family: var(--battle-font);
             font-size: 10px;
@@ -3594,6 +3609,9 @@
         #screen-battle[data-battle-layout="desktop"] .battle-btn-move .move-tile-name,
         #screen-battle[data-battle-layout="ultrawide"] .battle-btn-move .move-tile-name { font-size: 13px; }
         .battle-btn-move .move-tile-cat { flex-shrink: 0; font-size: 12px; line-height: 1; width: 1.1em; text-align: center; }
+        /* Category swirl badge sizes with its container's font so it scales per layout (portrait/landscape/iPad)
+           and stays proportional to the adjacent type pill — instead of being hard-locked at a fixed px. */
+        .move-cat-ico { width: 1.1em; height: 1.1em; vertical-align: middle; flex-shrink: 0; }
         .battle-btn-move .move-tile-eff { flex-shrink: 0; font-size: 10px; line-height: 1; }
         .battle-btn-move .move-tile-meta { margin-top: 3px; font-size: 9px; color: #8a8a8a; opacity: 0.85; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
         .battle-btn-move .move-tile-meta strong { color: #ddd; font-weight: 600; }
@@ -5156,6 +5174,8 @@
             box-shadow: 0 -3px 0 0 var(--gc-brass) inset;
         }
         .casino-tab .tab-ico { font-size: 14px; margin-right: 4px; }
+        /* Coin/icon images in a casino tab match the emoji glyph height in sibling tabs (scales with tab font). */
+        .casino-tab .tab-ico img { height: 1.1em; width: auto; object-fit: contain; vertical-align: middle; }
 
         /* Game panels — cream felt table on every game. */
         .casino-panel {
@@ -6143,7 +6163,7 @@
             .story-tutor-choice { padding: 10px 12px !important; }
             .story-tutor-btn { min-height: 42px !important; padding: 8px 14px !important; font-size: 13px !important; }
             /* Pokémon Center: tab buttons get a real 44px tap height. */
-            #story-pc-tab-storage-btn, #story-pc-tab-underground-btn {
+            #story-pc-tab-storage-btn, #story-pc-tab-underground-btn, #story-pc-tab-journal-btn {
                 min-height: 44px !important;
                 font-size: 13px !important;
                 padding: 10px 8px !important;
@@ -8386,7 +8406,7 @@
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-            <h3 id="story-stone-shop-title" class="story-screen-head-title" style="color:#b39ddb;font-size:14px;flex:1;min-width:0;"><span style="font-size:18px;line-height:1;">&#128142;</span><span class="story-screen-head-text">Stone Emporium</span></h3>
+            <h3 id="story-stone-shop-title" class="story-screen-head-title" style="color:#b39ddb;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="sprites/pokesprite/items/hard-stone.png" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Stone Emporium</span></h3>
             <span id="story-stone-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <p id="story-stone-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#aaa;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;">Stones and trade-method items for the Stone Sage next door. <strong style="color:#b39ddb;">500G each</strong>. The Sage consumes them on evolution. Hold a <strong style="color:#ce93d8;">Stonewise Token</strong>? Redeem at any stone (not trade items) for one free pick.</p>
@@ -8615,7 +8635,7 @@
 
             <!-- Tab strip. -->
             <div class="casino-tabs" role="tablist" aria-label="Casino games">
-                <button type="button" id="story-casino-tab-flip"     class="casino-tab active" role="tab" aria-selected="true"  aria-controls="story-casino-panel-flip"     onclick="window.StoryMode.casinoSwitchTab('flip')"><span class="tab-ico">🪙</span>Coin Flip</button>
+                <button type="button" id="story-casino-tab-flip"     class="casino-tab active" role="tab" aria-selected="true"  aria-controls="story-casino-panel-flip"     onclick="window.StoryMode.casinoSwitchTab('flip')"><span class="tab-ico"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"></span>Coin Flip</button>
                 <button type="button" id="story-casino-tab-slots"    class="casino-tab"        role="tab" aria-selected="false" aria-controls="story-casino-panel-slots"    onclick="window.StoryMode.casinoSwitchTab('slots')"><span class="tab-ico">🎰</span>Slots</button>
                 <button type="button" id="story-casino-tab-roulette" class="casino-tab"        role="tab" aria-selected="false" aria-controls="story-casino-panel-roulette" onclick="window.StoryMode.casinoSwitchTab('roulette')"><span class="tab-ico">🎯</span>Roulette</button>
             </div>
@@ -9468,11 +9488,30 @@
             return 'Physical';
         }
 
-        /** Vendored Showdown-style category icons (icons/categories/*.png); sized like icons/story/*.png (22×22). */
+        /* Canonical move-category swirl badge — original Gen4-style art (rounded badge + white symbol).
+           Single source of truth: used identically on move tiles, tooltips, and chips so the category
+           never renders differently per screen. Replaces the old icons/categories/*.png + ⚔/✦/◎ glyph split. */
+        const MOVE_CAT_BADGE_BG = { Physical: '#ff6b6b', Special: '#6b9fff', Status: '#b4bbcc' };
+        const MOVE_CAT_BADGE_SYM = {
+            Physical: '<path d="M8 1.7l1.75 4.55 4.55 1.75-4.55 1.75L8 14.3 6.25 9.75 1.7 8l4.55-1.75z" fill="#fff"/>',
+            Special:  '<circle cx="10.4" cy="5.6" r="2.3" fill="#fff"/><path d="M9.1 7.2 Q5.2 9 4 13" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>',
+            Status:   '<circle cx="8" cy="8" r="4.1" fill="none" stroke="#fff" stroke-width="1.9"/><circle cx="8" cy="8" r="1.15" fill="#fff"/>'
+        };
+        window.moveCatBadgeHtml = function moveCatBadgeHtml(cat, px) {
+            const c = normalizeMoveCategory(cat);
+            const s = px || 14;
+            return '<svg class="move-cat-ico" width="' + s + '" height="' + s + '" viewBox="0 0 16 16" role="img" aria-label="' + c + ' category" style="display:inline-block;vertical-align:middle;flex-shrink:0;">' +
+                '<rect x="0.6" y="0.6" width="14.8" height="14.8" rx="3.6" fill="' + MOVE_CAT_BADGE_BG[c] + '" stroke="rgba(0,0,0,0.45)" stroke-width="1"/>' +
+                MOVE_CAT_BADGE_SYM[c] + '</svg>';
+        };
+        /* Tiny monochrome UI glyphs (inherit currentColor) — replace OS-font-dependent ✓/✗ dingbats
+           so check/decline markers render identically across screens and devices. */
+        window.uiSvgCheck = function(px){var s=px||12;return '<svg class="ui-glyph" width="'+s+'" height="'+s+'" viewBox="0 0 16 16" aria-hidden="true" style="display:inline-block;vertical-align:-0.12em;"><path d="M3 8.6l3.4 3.4L13 4.6" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';};
+        window.uiSvgX = function(px){var s=px||12;return '<svg class="ui-glyph" width="'+s+'" height="'+s+'" viewBox="0 0 16 16" aria-hidden="true" style="display:inline-block;vertical-align:-0.12em;"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/></svg>';};
         function moveCategoryTooltipHtml(cat) {
             const c = normalizeMoveCategory(cat);
             return '<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle;">' +
-                '<img src="icons/categories/' + c + '.png" alt="' + c + ' move category" width="32" height="14" decoding="async" style="width:32px;height:14px;image-rendering:auto;flex-shrink:0;">' +
+                window.moveCatBadgeHtml(c, 16) +
                 '<strong class="cat-' + c + '">' + c + '</strong></span>';
         }
 
@@ -11765,16 +11804,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ─── Enhanced Move Animation Engine (anime.js) ───────────────────
         const MoveAnimEngine = (() => {
+            // Base stop (index 0) = canonical type palette from the CSS .type-* rules (single source of truth);
+            // secondary/tertiary stops are tuned lighter/darker glow shades for particle gradients.
             const TYPE_COLORS = {
-                Normal:   ['#c8c8c8','#a8a8a8'],  Fire:     ['#ff6b35','#ff4500','#ffcc00'],
-                Water:    ['#4a90d9','#1a5fb4','#88ddff'], Electric: ['#fff700','#ffcc00','#ffe066'],
-                Grass:    ['#5cb85c','#3d8b3d','#88ee88'], Ice:      ['#88ddff','#aaeeff','#ffffff'],
-                Fighting: ['#d05040','#ff6633','#ffaa88'], Poison:   ['#b055d0','#8833aa','#dd88ee'],
-                Ground:   ['#d4a037','#b8860b','#e8c869'], Flying:   ['#a890f0','#7766cc','#ccbbff'],
-                Psychic:  ['#ff5588','#ff3366','#ffaacc'], Bug:      ['#a8b820','#88a000','#ccdd44'],
-                Rock:     ['#b8a038','#917520','#d4c06a'], Ghost:    ['#7b62a8','#5a3d8a','#bb99dd'],
+                Normal:   ['#a8a878','#a8a8a8'],  Fire:     ['#f08030','#ff4500','#ffcc00'],
+                Water:    ['#6890f0','#1a5fb4','#88ddff'], Electric: ['#f8d030','#ffcc00','#ffe066'],
+                Grass:    ['#78c850','#3d8b3d','#88ee88'], Ice:      ['#98d8d8','#aaeeff','#ffffff'],
+                Fighting: ['#c03028','#ff6633','#ffaa88'], Poison:   ['#a040a0','#8833aa','#dd88ee'],
+                Ground:   ['#e0c068','#b8860b','#e8c869'], Flying:   ['#a890f0','#7766cc','#ccbbff'],
+                Psychic:  ['#f85888','#ff3366','#ffaacc'], Bug:      ['#a8b820','#88a000','#ccdd44'],
+                Rock:     ['#b8a038','#917520','#d4c06a'], Ghost:    ['#705898','#5a3d8a','#bb99dd'],
                 Dragon:   ['#7038f8','#5020c0','#aa77ff'], Dark:     ['#705848','#504030','#a09080'],
-                Steel:    ['#b8b8d0','#8888a0','#d8d8e8'], Fairy:    ['#f0a0c0','#ee7799','#ffccdd'],
+                Steel:    ['#b8b8d0','#8888a0','#d8d8e8'], Fairy:    ['#ee99ac','#ee7799','#ffccdd'],
             };
             function getColors(type) { return TYPE_COLORS[type] || TYPE_COLORS.Normal; }
 
@@ -18028,7 +18069,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     let b = document.createElement('button');
                     b.disabled = true;
                     let typeShort = (mv.type||'Normal').length > 4 ? mv.type.slice(0,4) : (mv.type||'Normal');
-                    let catG = mv.cat === 'Physical' ? '⚔' : (mv.cat === 'Special' ? '✦' : '◎');
+                    let catG = window.moveCatBadgeHtml(mv.cat, 13);
                     let catColor = mv.cat === 'Physical' ? '#ff6b6b' : mv.cat === 'Special' ? '#6b9fff' : '#888';
                     if (isLocked) {
                         b.className = 'battle-btn-move locked-rampage';
@@ -18099,7 +18140,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let _ppStr = isDynaDisplay ? '∞' : `${rawMove.pp}/${rawMove.maxPp}`;
                 let _accStr = shownMove.isMaxMove ? '—' : ((shownMove.acc||0) <= 100 ? (shownMove.acc||100)+'%' : '—');
                 let _powStr = shownMove.pow > 0 ? shownMove.pow : '—';
-                let catG = shownMove.cat === 'Physical' ? '⚔' : (shownMove.cat === 'Special' ? '✦' : '◎');
+                let catG = window.moveCatBadgeHtml(shownMove.cat, 13);
                 let typeShort = shownMove.type.length > 4 ? shownMove.type.slice(0, 4) : shownMove.type;
                 let metaTail = effLabelShort ? `<span class="move-tile-sep">·</span>${effLabelShort}` : '';
                 let infoHit = isMobile ? '<span class="move-info-hit" title="Move details" role="button">i</span>' : '';
@@ -18463,9 +18504,66 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return dmg;
         }
 
+        // AI: resolve damage for moves the standard formula can't model — fixed-damage,
+        // OHKO, and percent-HP moves. Mirrors the engine's special-case paths (Seismic Toss
+        // ~21799, OHKO ~21938, Super Fang ~21900). Returns the predicted HP loss, or null if
+        // `move` is an ordinary formula-based move. Without this the AI estimates 0 for every
+        // Seismic Toss / Night Shade / Fissure and never recognises the KO it can land.
+        function aiResolveFixedDamage(attacker, defender, move) {
+            const n = move.name;
+            if (n === "Fissure" || n === "Horn Drill" || n === "Guillotine" || n === "Sheer Cold") {
+                if (getMoveEffectiveness(move.type, defender.type1, defender.type2) === 0) return 0;
+                const _mb = attacker.ability === "Mold Breaker" || attacker.ability === "Teravolt" || attacker.ability === "Turboblaze";
+                const _atFull = defender.currentHp === defender.maxHp;
+                if (_atFull && ((defender.ability === "Sturdy" && !_mb) || defender.item === "Focus Sash")) return Math.max(0, defender.currentHp - 1);
+                return defender.currentHp;
+            }
+            if (n === "Seismic Toss") return getMoveEffectiveness("Fighting", defender.type1, defender.type2) === 0 ? 0 : 50;
+            if (n === "Night Shade") return getMoveEffectiveness("Ghost", defender.type1, defender.type2) === 0 ? 0 : 50;
+            if (n === "Dragon Rage") return 40;
+            if (n === "Sonic Boom" || n === "SonicBoom") return getMoveEffectiveness("Normal", defender.type1, defender.type2) === 0 ? 0 : 20;
+            if (n === "Super Fang" || n === "Nature's Madness") {
+                return getMoveEffectiveness(move.type, defender.type1, defender.type2) === 0 ? 0 : Math.max(1, Math.floor(defender.currentHp / 2));
+            }
+            if (n === "Final Gambit") return getMoveEffectiveness("Fighting", defender.type1, defender.type2) === 0 ? 0 : attacker.currentHp;
+            if (n === "Endeavor") {
+                if (getMoveEffectiveness(move.type, defender.type1, defender.type2) === 0) return 0;
+                return defender.currentHp > attacker.currentHp ? (defender.currentHp - attacker.currentHp) : 0;
+            }
+            return null;
+        }
+
+        // AI: expected number of hits for a multi-hit move (mirrors engine ~22301).
+        function aiExpectedHits(attacker, move) {
+            const mh = move.multihit;
+            if (mh != null) {
+                if (typeof mh === "number") return Math.max(1, Math.min(25, mh));
+                if (Array.isArray(mh) && mh.length >= 2) {
+                    const mn = mh[0], mx = mh[1];
+                    if (mn === mx) return mn;
+                    if (attacker.ability === "Skill Link") return mx;
+                    if (attacker.item === "Loaded Dice") return (Math.max(mn, 4) + mx) / 2;
+                    return (mn === 2 && mx === 5) ? 3.2 : (mn + mx) / 2; // 2-5 weighted avg ≈ 3.17
+                }
+            }
+            // Parental Bond grants a second 0.25× hit on single-strike damaging moves.
+            if (attacker.ability === "Parental Bond" && move.cat !== "Status") return 1.25;
+            return 1;
+        }
+
         // AI: estimate damage a move deals (simplified)
         function aiEstimateDmg(attacker, defender, move) {
-            if (move.cat === "Status" || move.pow <= 0) return 0;
+            if (move.cat === "Status") return 0;
+            // Fixed-damage / OHKO / percent-HP moves bypass the formula entirely.
+            const _fixed = aiResolveFixedDamage(attacker, defender, move);
+            if (_fixed !== null) return _fixed;
+            // Resolve base power: fall back to the assumed power table for variable-power moves
+            // (Gyro Ball, Grass Knot, Eruption…) so they aren't scored as zero-damage.
+            let _basePow = move.pow;
+            if (_basePow <= 0) {
+                const _vp = (typeof _varPowerMoveBP !== "undefined" && _varPowerMoveBP) ? _varPowerMoveBP[move.name] : 0;
+                if (_vp > 0) _basePow = _vp; else return 0;
+            }
             if (abilityImmunity(move, defender, attacker)) return 0;
             let eff = getMoveEffectiveness(move.type, defender.type1, defender.type2);
             let stab = calcSTAB(attacker, move);
@@ -18508,7 +18606,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let accFactor = (!move.acc || move.acc <= 0) ? 1 : (move.acc / 100);
             let abMod = abilityDamageMod(move, defender, attacker);
             // Base power boosts from abilities
-            let _aiPow = move.pow || 0;
+            let _aiPow = _basePow;
             const _aiJaw = ["Bite","Crunch","Fire Fang","Fishious Rend","Hyper Fang","Ice Fang","Jaw Lock","Poison Fang","Psychic Fangs","Thunder Fang"];
             const _aiPulse = ["Aura Sphere","Dark Pulse","Dragon Pulse","Water Pulse","Origin Pulse","Heal Pulse","Terrain Pulse"];
             const _aiSlice = ["Aerial Ace","Air Cutter","Air Slash","Aqua Cutter","Behemoth Blade","Bitter Blade","Ceaseless Edge","Cross Poison","Cut","Fury Cutter","Kowtow Cleave","Leaf Blade","Mighty Cleave","Night Slash","Population Bomb","Psyblade","Psycho Cut","Razor Leaf","Razor Shell","Sacred Sword","Secret Sword","Slash","Solar Blade","Stone Axe","Tachyon Cutter","X-Scissor"];
@@ -18530,6 +18628,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (attacker.ability === "Sheer Force" && move.cat !== "Status" && window._aiSheerForceMoves && window._aiSheerForceMoves.has(move.name)) {
                 _aiPow = Math.floor(_aiPow * 1.3);
             }
+            // Common conditional power changes the engine applies at attack time (mirror ~22327-22354)
+            // so KO/threat math accounts for the move's real power against this defender right now.
+            if (move.name === "Knock Off" && defender.item && !defender.knockedOff && typeof isKnockOffImmuneHeldItem === "function" && !isKnockOffImmuneHeldItem(defender, defender.item)) _aiPow = Math.floor(_aiPow * 1.5);
+            if ((move.name === "Hex" || move.name === "Infernal Parade") && defender.status) _aiPow *= 2;
+            if (move.name === "Venoshock" && (defender.status === "PSN" || defender.status === "TOX")) _aiPow *= 2;
+            if (move.name === "Barb Barrage" && (defender.status === "PSN" || defender.status === "TOX")) _aiPow *= 2;
+            if (move.name === "Brine" && defender.currentHp * 2 <= defender.maxHp) _aiPow *= 2;
+            if (move.name === "Facade" && (attacker.status === "BRN" || attacker.status === "PSN" || attacker.status === "TOX" || attacker.status === "PAR")) _aiPow *= 2;
+            if (move.name === "Acrobatics" && !attacker.item) _aiPow *= 2;
+            if ((move.name === "Bolt Beak" || move.name === "Fishious Rend") && !(defender.volatile && defender.volatile.movedThisTurn)) _aiPow *= 2;
             // Marvel Scale: reduce physical damage vs statused defender (MB-bypassed via aiDefAbilityActive)
             if (aiDefAbilityActive(attacker, defender) && defender.ability === "Marvel Scale" && defender.status && move.cat === "Physical") abMod *= (2/3);
             // Screens: Reflect halves physical, Light Screen halves special, Aurora Veil halves both.
@@ -18551,13 +18659,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             let dmg = ((22 * _aiPow * A / D) / 50 + 2) * stab * eff * lifeOrb * accFactor * abMod * screenMod;
+            // Multi-hit / Parental Bond: scale by expected number of strikes (engine ~22301).
+            const _hits = aiExpectedHits(attacker, move);
+            if (_hits > 1) dmg *= _hits;
             // Sturdy + Focus Sash: at full HP, the engine survives an OHKO with 1 HP (engine ~16727,
             // ~17699). Mirror both ceilings so the AI doesn't score a one-shot as a guaranteed KO and
-            // miss the real follow-up turn. Sturdy is MB/Gastro-Acid-bypassed; Focus Sash is an item
-            // (rare suppression via Magic Room/Embargo/Klutz is left to the engine's live path).
+            // miss the real follow-up turn. A multi-hit move breaks through (each strike is separate),
+            // so the 1-HP floor only applies to single-strike moves. Sturdy is MB/Gastro-Acid-bypassed;
+            // Focus Sash is an item (rare suppression via Magic Room/Embargo/Klutz left to the engine).
             const _sashActive = defender.item === "Focus Sash" && defender.currentHp === defender.maxHp;
             const _sturdyActive = aiDefAbilityActive(attacker, defender) && defender.ability === "Sturdy" && defender.currentHp === defender.maxHp;
-            if ((_sturdyActive || _sashActive) && dmg >= defender.currentHp) {
+            if (_hits <= 1 && (_sturdyActive || _sashActive) && dmg >= defender.currentHp) {
                 dmg = Math.max(0, defender.currentHp - 1);
             }
             // Disguise (Mimikyu): the first hit only deals 1/8 maxHp chip; full damage is blocked.
@@ -18746,6 +18858,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return best;
         }
 
+        // AI: predict which bench mon the player is most likely to bring in. Used only when the
+        // player is clearly losing the current matchup (we threaten a KO), so the AI can pick the
+        // move that also pressures the incoming counter — the single-step "double" read a strong
+        // human makes. Bounded: one pass over the player's live bench, no recursion.
+        function aiPredictPlayerSwitchIn(ourActive) {
+            if (!state || !state.playerParty || !state.pActive || !ourActive) return null;
+            const bench = state.playerParty.filter(m => m && m !== state.pActive && m.currentHp > 0);
+            if (!bench.length) return null;
+            const w = getCurrentWeather();
+            const isTR = state.trickRoom > 0;
+            const ourSpe = getEffectiveSpeed(ourActive, w);
+            let best = null, bestScore = -Infinity;
+            bench.forEach(mon => {
+                let theirDmg = 0;
+                (mon.moves || []).forEach(m => { if (m && m.cat !== "Status" && m.pp > 0) { const d = aiEstimateDmg(mon, ourActive, m); if (d > theirDmg) theirDmg = d; } });
+                let ourDmg = 0;
+                (ourActive.moves || []).forEach(m => { if (m && m.cat !== "Status") { const d = aiEstimateDmg(ourActive, mon, m); if (d > ourDmg) ourDmg = d; } });
+                const monSpe = getEffectiveSpeed(mon, w);
+                const outspeedsUs = isTR ? (monSpe < ourSpe) : (monSpe > ourSpe);
+                const score = theirDmg - ourDmg * 0.6 + (mon.currentHp / mon.maxHp) * 20 + (outspeedsUs ? 10 : 0);
+                if (score > bestScore) { bestScore = score; best = mon; }
+            });
+            return best;
+        }
+
         // AI chooses which gimmick to activate this turn (returns string key or null)
         function aiChooseGimmick(attacker, defender) {
             let bd = attacker.buildData;
@@ -18920,6 +19057,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     let foeBench = state.foeParty.filter(m => m !== attacker && m.currentHp > 0).length;
     let playerBench = state.playerParty.filter(m => m !== defender && m.currentHp > 0).length;
     let isEndgame = foeBench === 0 || playerBench === 0;
+
+    // Switch-in prediction: only when the player is clearly losing this matchup (we can KO it, or
+    // 2HKO it while it can't meaningfully hurt us) AND has a bench to bring in. Computed once per
+    // turn; feeds a small per-move nudge below so the AI loads the move that punishes the likely
+    // counter. Skipped against substitutes (no clean read) and in PvP (mirror match, no edge).
+    let predictedSwitchIn = null;
+    if (playerBench > 0 && state.mode !== 'pvp' && !defHasSub) {
+        const _playerLosing = canKO || (can2HKO && threat < attacker.currentHp * 0.5);
+        if (_playerLosing) { try { predictedSwitchIn = aiPredictPlayerSwitchIn(attacker); } catch (e) { predictedSwitchIn = null; } }
+    }
 
     let bestMove = validMoves[0]; let maxScore = -Infinity;
     validMoves.forEach(move => {
@@ -19150,8 +19297,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Don't setup if opponent is low — just KO them
                     if (canKO) score *= 0.2;
 
-                    // Phazer / Haze / Unaware on the field or bench — setup will be undone or ignored.
-                    if (defHasPhazer || defHasUnaware) score *= 0.25;
+                    // Active phazer (Whirlwind/Roar/Dragon Tail/Circle Throw/Haze/Clear Smog/Topsy-
+                    // Turvy) removes the boost EVERY turn, so a soft multiplier still leaves setup as
+                    // the top score and the AI loops it forever (it never self-terminates because the
+                    // boost never accumulates). Hard-cap it instead so any real attack wins out.
+                    // Unaware only ignores the boost (boosts still accumulate, so setup self-limits
+                    // as currentBoost climbs) — it keeps the softer penalty. A bench phazer hasn't
+                    // come in yet, so it's only a mild discouragement.
+                    if (defHasPhazer) score = Math.min(score, 5);
+                    else if (defHasUnaware) score *= 0.25;
                     else if (benchHasPhazer) score *= 0.55;
                 }
             }
@@ -19180,7 +19334,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         let isSteel = defender.type1 === "Steel" || defender.type2 === "Steel";
                         if (isPoison || isSteel) score = 0;
                     }
-                    if (defHpPct >= 0.9) score += 12;
+                    // Only reward the "status now while they're healthy" timing when the status can
+                    // actually land — otherwise the AI clicks Toxic into a Steel / T-Wave into a
+                    // Ground / Will-O into a Fire just because the target is at full HP.
+                    if (score > 0 && defHpPct >= 0.9) score += 12;
                 }
             }
             // Taunt
@@ -19327,6 +19484,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Speed-drop moves on a faster foe = future outspeed
             if (!outsped && (move.name === "Icy Wind" || move.name === "Bulldoze" || move.name === "Electroweb" || move.name === "Rock Tomb" || move.name === "Glaciate" || move.name === "Drum Beating")) score += 4;
             // Contact + Static / Flame Body / Poison Point on opponent — handled by engine; no AI bonus
+            // Switch-in prediction nudge: prefer coverage that also pressures the counter the player
+            // is likely to bring in. Small magnitude (±8) so it only breaks ties between comparable
+            // moves — it never overrides a KO or a clear damage lead.
+            if (predictedSwitchIn) {
+                const siEff = getMoveEffectiveness(move.type, predictedSwitchIn.type1, predictedSwitchIn.type2);
+                if (siEff === 0 || abilityImmunity(move, predictedSwitchIn, attacker)) score -= 8;
+                else if (siEff >= 2) score += 8;
+                else if (siEff < 1) score -= 4;
+            }
         }
 
         // Small random factor (kept tiny so the scoring system dominates)
@@ -19339,8 +19505,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // AI decision: should we switch or attack?
         function aiDecision() {
     let attacker = state.fActive, defender = state.pActive;
-    // Don't switch if trapped or locked
-    if (attacker.volatile.choiceLock) return null;
+    // Mid-rampage (Outrage/Petal Dance) and recharge (Hyper Beam) genuinely lock the whole turn —
+    // can't switch. Choice lock does NOT prevent switching (it only restricts which MOVE we can
+    // use), so it is handled below by evaluating the matchup through the locked move and pivoting
+    // out if that move is useless — otherwise a Choice mon locked into an immune/walled move spams
+    // 0 damage forever (e.g. an Electric move into Lightning Rod).
     if (attacker.volatile.lockMove && attacker.volatile.lockTurns > 0) return null;
     if (attacker.volatile.recharge) return null;
     // Ghost types and Shed Shell ignore all trapping abilities
@@ -19357,8 +19526,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     let bench = state.foeParty.filter(m => m !== attacker && m.currentHp > 0);
     if (bench.length === 0) return null;
 
+    // When choice-locked we can only ever use ONE move, so score the matchup through that move
+    // alone. A mon locked into a 0-damage move (Electric vs Lightning Rod, or a resisted move into
+    // a hard wall) then reads as "walled" below and pivots out instead of being stranded on it.
+    const _lockedName = attacker.volatile.choiceLock;
+    const _evalMoves = _lockedName ? attacker.moves.filter(m => m && m.name === _lockedName) : attacker.moves;
+
     let myBestDmg = 0;
-    attacker.moves.forEach(m => { if (m.cat !== "Status" && m.pp > 0) { let d = aiEstimateDmg(attacker, defender, m); if (d > myBestDmg) myBestDmg = d; } });
+    _evalMoves.forEach(m => { if (m.cat !== "Status" && m.pp > 0) { let d = aiEstimateDmg(attacker, defender, m); if (d > myBestDmg) myBestDmg = d; } });
 
     let threat = aiThreatScore(defender, attacker);
     let hpPct = attacker.currentHp / attacker.maxHp;
@@ -19374,8 +19549,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     let walled = myBestDmg < defender.maxHp * 0.08 && myBestDmg < defender.currentHp * 0.12;
     // Can we KO?
     let canKO = myBestDmg >= defender.currentHp;
-    // Do we have priority that KOs?
-    let hasPriorityKO = attacker.moves.some(m => m.pri > 0 && m.pp > 0 && m.cat !== "Status" && aiEstimateDmg(attacker, defender, m) >= defender.currentHp);
+    // Do we have priority that KOs? (Restricted to the locked move when choice-locked.)
+    let hasPriorityKO = _evalMoves.some(m => m.pri > 0 && m.pp > 0 && m.cat !== "Status" && aiEstimateDmg(attacker, defender, m) >= defender.currentHp);
 
     // Never switch if we can KO (unless priority covers it)
     if (canKO && !willDieFirst) return null;
@@ -28396,7 +28571,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mascot.className = 'casino-jackpot-mascot';
                 // Pixel cluster: brass coins flanking a Clefairy heart — the Crystal
                 // Game Corner mascot pose.
-                mascot.innerHTML = '<span style="font-size:36px;">🪙</span><span style="font-size:56px;margin:0 8px;">✦</span><span style="font-size:36px;">🪙</span>';
+                mascot.innerHTML = '<img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="47" height="36" decoding="async" style="vertical-align:middle;"><span style="font-size:56px;margin:0 8px;vertical-align:middle;">✦</span><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="47" height="36" decoding="async" style="vertical-align:middle;">';
                 banner.appendChild(document.createElement('br'));
                 if (mult > 0) {
                     const sub = document.createElement('span');
@@ -29738,13 +29913,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const entry = _POSTHOF_EPILOGUE_BY_VARIANT[variantId];
             if (!entry) { try { onDone && onDone(); } catch (e) {} return false; }
             const metaKey = 'posthof-epilogue-' + variantId;
-            try {
-                const meta = readStoryMeta();
-                if (meta && meta.tipsShown && meta.tipsShown[metaKey]) {
-                    try { onDone && onDone(); } catch (e) {}
-                    return false;
-                }
-            } catch (e) {}
+            if (_storyRunSceneSeen(metaKey)) {
+                try { onDone && onDone(); } catch (e) {}
+                return false;
+            }
             try {
                 _renderNarrativeOverlay({
                     metaKey,
@@ -31236,8 +31408,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function storyShopIconCellHtml(id) {
             return '<span class="story-shop-item-icon">' + storyShopIconInnerHtml(id) + '</span>';
         }
-        function storyGoldIconHtml() {
-            return '<img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async">';
+        function storyGoldIconHtml(w, h) {
+            const ww = w || 21, hh = h || 16;
+            return '<img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="' + ww + '" height="' + hh + '" decoding="async">';
         }
         function storyGoldHtml(amount, pad = true, prefix = '') {
             let raw = String(amount);
@@ -31280,18 +31453,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return {
                 completedRuns: 0,
                 lastClearSeed: '',
-                firstClears: {},
                 tipsShown: {},
                 // Cross-run Pokédex: { [speciesName]: { seen, caught, shinySeen, shinyCaught, firstSeenAt, firstCaughtAt, firstShinySeenAt } }
                 pokedex: {},
                 // Achievements: { [id]: { progress, currentRank, lastUpdated } }
                 achievements: {},
+                // Lifetime Battle Frontier rounds cleared (drives r_frontier_vet).
+                frontierRoundsTotal: 0,
                 // Hall of Fame: last 10 cleared runs.
                 hofRecords: [],
                 // Last-used trainer profile, used to pre-fill the trainer creation screen.
                 trainerProfile: null,
                 // Storyline-variant clear log — keyed by variant id, value true.
-                // Powers NG+ smart default in _pickRandomStorylineVariant.
+                // Cosmetic record only (which storylines you've cleared); the
+                // storyline picker is pure-random and does not read this.
                 clearedVariants: {}
             };
         }
@@ -31305,31 +31480,46 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return {
                     completedRuns: Math.max(0, obj.completedRuns | 0),
                     lastClearSeed: typeof obj.lastClearSeed === 'string' ? obj.lastClearSeed : '',
-                    firstClears: (obj.firstClears && typeof obj.firstClears === 'object') ? obj.firstClears : {},
                     tipsShown: (obj.tipsShown && typeof obj.tipsShown === 'object') ? obj.tipsShown : {},
                     pokedex: (obj.pokedex && typeof obj.pokedex === 'object') ? obj.pokedex : base.pokedex,
                     achievements: (obj.achievements && typeof obj.achievements === 'object') ? obj.achievements : base.achievements,
+                    frontierRoundsTotal: Math.max(0, obj.frontierRoundsTotal | 0),
                     hofRecords: Array.isArray(obj.hofRecords) ? obj.hofRecords.slice(0, 10) : [],
                     trainerProfile: (obj.trainerProfile && typeof obj.trainerProfile === 'object') ? obj.trainerProfile : null,
                     clearedVariants: (obj.clearedVariants && typeof obj.clearedVariants === 'object') ? obj.clearedVariants : {}
                 };
             } catch (e) { return _emptyStoryMeta(); }
         }
-        /** Show a tutorial-style tip once per player across all runs. The shown-bit
-         * lives in pbs_story_meta so a tip the player saw in run 1 doesn't pop again
-         * in run 5. Returns true iff a tip was actually shown (caller can chain). */
+        /** Show a tutorial-style tip once per run. Every fresh run is a complete
+         * playthrough, so these easy guides / tutorials replay from scratch each
+         * run (per-run dedupe via sm.scenesShown). Returns true iff a tip was
+         * actually shown (caller can chain). */
         function _storyShowOneTimeTip(key, message) {
             if (!key) return false;
-            const meta = readStoryMeta();
-            if (!meta.tipsShown || typeof meta.tipsShown !== 'object') meta.tipsShown = {};
-            if (meta.tipsShown[key]) return false;
-            meta.tipsShown[key] = true;
-            writeStoryMeta(meta);
+            if (_storyRunSceneSeen(key)) return false;
+            _storyRunSceneMark(key);
             try { window.showGameAlert && window.showGameAlert(message); } catch (e) {}
             return true;
         }
         function writeStoryMeta(meta) {
             try { localStorage.setItem(SAVE_KEY_META, JSON.stringify(meta || {})); } catch (e) { console.warn('[Story] meta save', e); }
+        }
+        /** Per-run "scene seen" tracker. Narrative cold-opens, tutor / NPC intro
+         *  lessons, and first-sighting beats are part of the full first-time
+         *  experience that every fresh run is meant to re-deliver, so their
+         *  dedupe lives on the per-run save (`sm.scenesShown`) — NOT the
+         *  cross-run meta. Contrast `_storyShowOneTimeTip` above, which keeps
+         *  plain gameplay hint-tips to once-per-player so they don't nag across
+         *  runs. A new run starts with an empty `scenesShown`, so every intro,
+         *  tutor lesson, and welcome-gift voucher fires again from scratch. */
+        function _storyRunSceneSeen(key) {
+            return !!(sm && sm.scenesShown && sm.scenesShown[key]);
+        }
+        function _storyRunSceneMark(key) {
+            if (!sm || !key) return;
+            if (!sm.scenesShown || typeof sm.scenesShown !== 'object') sm.scenesShown = {};
+            sm.scenesShown[key] = true;
+            try { save(); } catch (e) {}
         }
         function recordStoryClearInMeta() {
             const meta = readStoryMeta();
@@ -31344,16 +31534,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             writeStoryMeta(meta);
             return meta;
-        }
-        /** Stamp this milestone as "ever cleared" in meta. Returns true iff this is the first time. */
-        function _storyMarkFirstClearMeta(key) {
-            if (!key) return false;
-            const meta = readStoryMeta();
-            if (!meta.firstClears || typeof meta.firstClears !== 'object') meta.firstClears = {};
-            if (meta.firstClears[key]) return false;
-            meta.firstClears[key] = true;
-            writeStoryMeta(meta);
-            return true;
         }
         /** Translate a battle event name into a stable cross-run milestone key. */
         function _storyMilestoneKeyForEvent(evname, rowIdx) {
@@ -31994,7 +32174,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    gymCleared:{}, unlockedGimmicks:[], cityRerollsUsed:{}, currentEnemyLock:null,
                    artifactsDisabled:[], storyCityVisit:null, citiesArrived:{},
                    artifactShopOffersByCity:{}, artifactShopPurchasedByCity:{}, artifactFreeClaimUsed:false,
-                   deptShopPurchasedByCity:{}, facilityIntros:{},
+                   deptShopPurchasedByCity:{}, facilityIntros:{}, scenesShown:{},
                    storyDifficulty:'normal', runSeed:null,
                    storyMilestoneTips:{ m4:false, m8:false },
                    storyRetryInventorySnapshot: null,
@@ -32293,6 +32473,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // the Leave-City gate stops firing — players only ever get the welcome
                 // story once per facility per run.
                 if (!sm.facilityIntros || typeof sm.facilityIntros !== 'object') sm.facilityIntros = {};
+                // Per-run narrative / tutor / first-sighting scene dedupe. Absent
+                // on saves predating the per-run scene split — default to empty so
+                // a mid-run load doesn't suppress beats it hasn't actually shown.
+                if (!sm.scenesShown || typeof sm.scenesShown !== 'object') sm.scenesShown = {};
                 if (!sm.deptArtifactTypesByCity || typeof sm.deptArtifactTypesByCity !== 'object') sm.deptArtifactTypesByCity = {};
                 if (!sm.artifactTypeById || typeof sm.artifactTypeById !== 'object') sm.artifactTypeById = {};
                 if (!sm.deptItemOffersByCity || typeof sm.deptItemOffersByCity !== 'object') sm.deptItemOffersByCity = {};
@@ -35453,7 +35637,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 currentEnemyLock:null, artifactsDisabled:[],
                 deptArtifactOffersByCity:{}, artifactShopOffersByCity:{}, artifactShopPurchasedByCity:{}, artifactFreeClaimUsed:false,
                 deptArtifactTypesByCity:{}, artifactTypeById:{}, deptItemOffersByCity:{}, deptShopPurchasedByCity:{},
-                facilityIntros:{},
+                facilityIntros:{}, scenesShown:{},
                 settings:{ enabledGens, minGen, maxGen,
                     megaOn: document.getElementById('story-mech-mega')?.checked||false,
                     zOn:    document.getElementById('story-mech-z')?.checked||false,
@@ -35594,15 +35778,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
 
         /** Cold-open scenes — one-shot narrative overlays that fire before a
-         *  specific beat. Tracked via story meta (`tipsShown[metaKey]`) so
-         *  they never re-fire on reload or NG+. Each scene's `run(ev, onDone)`
-         *  is responsible for showing the overlay and calling `onDone` on
-         *  dismiss; the bus handles the meta stamp. */
+         *  specific beat. Tracked per-run via the save (`sm.scenesShown[metaKey]`)
+         *  so they replay on every fresh run but not on reload mid-run. Each
+         *  scene's `run(ev, onDone)` is responsible for showing the overlay and
+         *  calling `onDone` on dismiss; the bus handles the per-run stamp. */
         const STORY_COLD_OPENS = {
             introRival: {
                 // Per-variant dedupe — each storyline replays its own intro
-                // exactly once per save. A player who clears classic and then
-                // starts a static run still gets the static intro fresh.
+                // once per run. Keyed by variant so a mid-run reload restores
+                // the correct stamp; a fresh run always starts unseen.
                 metaKey: (ev, beat) => 'intro-rival-coldopen-' + (
                     (beat && beat._variantId) ||
                     (sm && sm.storyLine) ||
@@ -35615,7 +35799,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             },
             // ── Per-variant beat scenes ─────────────────────────────────────
             // Each scene reuses _renderNarrativeOverlay so the layout matches the
-            // intro-rival cold-open and dedupe stays in the same tipsShown bucket.
+            // intro-rival cold-open and dedupe stays in the same per-run bucket.
             // Sprite choices lean on existing trainer roster: Oak / Veteran for
             // gym milestone scenes, named champions for finale beats.
             classic_gym1: {
@@ -36607,8 +36791,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         /** Story-embedded tutorial scenes — first-time mechanic introductions
          *  rendered as NPC-led cameos. Each scene is a one-shot overlay with a
          *  sprite slide-in, nameplate, multi-line dialogue box, and Continue
-         *  button. Cross-run-deduped via tipsShown[scene.metaKey] (same bucket
-         *  as _storyShowOneTimeTip).
+         *  button. Per-run-deduped via sm.scenesShown[scene.metaKey] so every
+         *  fresh run reintroduces its tutors and re-grants their welcome
+         *  vouchers (contrast _storyShowOneTimeTip, which is cross-run).
          *
          *  Adding a tutorial = one entry below + one call to
          *  `playStoryTutorial(sceneId, onDone)` at the entry point. The
@@ -36909,8 +37094,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) { /* focus best-effort */ }
         }
 
-        /** Play a story tutorial scene by id. Cross-run-deduped via
-         *  tipsShown[scene.metaKey]. `onDone` always fires — synchronously
+        /** Play a story tutorial scene by id. Per-run-deduped via
+         *  sm.scenesShown[scene.metaKey]. `onDone` always fires — synchronously
          *  on dedupe, or on Continue when the scene plays. Returns true iff
          *  the scene actually rendered. */
         function playStoryTutorial(sceneId, onDone) {
@@ -36920,19 +37105,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return false;
             }
             const key = scene.metaKey || ('tutorial-' + sceneId);
-            try {
-                const meta = readStoryMeta();
-                if (meta && meta.tipsShown && meta.tipsShown[key]) {
-                    try { onDone && onDone(); } catch (e) {}
-                    return false;
-                }
-                const m2 = readStoryMeta();
-                if (!m2.tipsShown) m2.tipsShown = {};
-                m2.tipsShown[key] = true;
-                writeStoryMeta(m2);
-            } catch (e) {
-                console.warn('[StoryTutorial] meta dedupe failed:', sceneId, e);
+            // Per-run dedupe: every fresh run reintroduces its tutors / NPC
+            // lessons (and re-grants their one-time welcome vouchers), so the
+            // shown-bit lives on the save, not the cross-run meta.
+            if (_storyRunSceneSeen(key)) {
+                try { onDone && onDone(); } catch (e) {}
+                return false;
             }
+            _storyRunSceneMark(key);
             _showStoryTutorialScene(scene, onDone);
             return true;
         }
@@ -37200,16 +37380,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return v && v.tier !== 'random';
             });
             if (!ids.length) return 'classic';
-            let pool = ids;
-            try {
-                const meta = readStoryMeta();
-                const cleared = (meta && meta.clearedVariants && typeof meta.clearedVariants === 'object') ? meta.clearedVariants : {};
-                const uncleared = ids.filter(id => !cleared[id]);
-                if (uncleared.length) pool = uncleared;
-            } catch (e) {}
+            // Pure random each run — the storyline a fresh run draws does not
+            // depend on which variants prior runs cleared. Every run is its own
+            // complete game; only RNG differs.
             const r = (typeof sm === 'object' && sm && sm.active && typeof storyRngNext === 'function')
                 ? storyRngNext() : Math.random();
-            return pool[Math.floor(r * pool.length)] || ids[0];
+            return ids[Math.floor(r * ids.length)] || ids[0];
         }
 
         // ═════════════════════════════════════════════════════════════════
@@ -38133,32 +38309,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return false;
         }
 
-        /** Dispatch a cold-open scene by beat tag. Cross-run-deduped via
-         *  story meta (each scene declares a `metaKey`). Returns `true` and
-         *  calls `onPlayed` when the scene actually plays; returns `false`
-         *  (without calling `onPlayed`) when the beat has no cold-open or
-         *  the scene already played this save. */
+        /** Dispatch a cold-open scene by beat tag. Per-run-deduped via the save
+         *  (`sm.scenesShown`, each scene declares a `metaKey`) so every fresh
+         *  run replays its full intro sequence. Returns `true` and calls
+         *  `onPlayed` when the scene actually plays; returns `false` (without
+         *  calling `onPlayed`) when the beat has no cold-open or the scene
+         *  already played this run. */
         function _runStoryColdOpen(beat, ev, onPlayed) {
             if (!beat || !beat.coldOpen) return false;
             const scene = STORY_COLD_OPENS[beat.coldOpen];
             if (!scene || typeof scene.run !== 'function') return false;
             try {
-                const meta = readStoryMeta();
                 // Scene.metaKey may be a function — used by intro-rival to key
                 // dedupe per-variant, so each storyline plays its own intro
-                // exactly once across the player's whole save history. Static
-                // metaKeys still work unchanged.
+                // once per run. Static metaKeys still work unchanged.
                 const tip = (typeof scene.metaKey === 'function')
                     ? scene.metaKey(ev, beat)
                     : scene.metaKey;
-                if (tip && meta && meta.tipsShown && meta.tipsShown[tip]) return false;
+                if (tip && _storyRunSceneSeen(tip)) return false;
                 scene.run(ev, () => {
-                    try {
-                        const m2 = readStoryMeta();
-                        if (!m2.tipsShown) m2.tipsShown = {};
-                        if (tip) m2.tipsShown[tip] = true;
-                        writeStoryMeta(m2);
-                    } catch (e) {}
+                    if (tip) _storyRunSceneMark(tip);
                     try { onPlayed && onPlayed(); }
                     catch (e) { console.error('[Story] cold-open onPlayed threw:', e); }
                 });
@@ -38482,17 +38652,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (sm.atCrucible) { enterCrucible(); return; }
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             const cidx = getCityIndex(ev);
-            // City0 cold open: 3-line narrator scene before the first hub render of any
-            // save. Cross-run-deduped; on dismiss, re-runs enterCity so the rest of the
+            // City0 cold open: 3-line narrator scene before the first hub render of a
+            // run. Per-run-deduped; on dismiss, re-runs enterCity so the rest of the
             // city setup (HUD, actions, welcome tip) flows normally.
             if (cidx === 0 && sm.eventIndex === 0) {
                 try {
-                    const _coldMeta = readStoryMeta();
-                    const _coldSeen = _coldMeta && _coldMeta.tipsShown && _coldMeta.tipsShown['city0-coldopen'];
+                    const _coldSeen = _storyRunSceneSeen('city0-coldopen');
                     if (!_coldSeen) {
-                        if (!_coldMeta.tipsShown) _coldMeta.tipsShown = {};
-                        _coldMeta.tipsShown['city0-coldopen'] = true;
-                        writeStoryMeta(_coldMeta);
+                        _storyRunSceneMark('city0-coldopen');
                         const _coldOv = document.createElement('div');
                         _coldOv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px;box-sizing:border-box;cursor:pointer;';
                         _coldOv.innerHTML = '<div style="color:#aaa;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;">— Story Mode —</div><div style="color:#fff;font-size:17px;font-style:italic;line-height:1.7;max-width:520px;text-align:center;">Salt-air morning. The boats are out, the lab is open, and the only road out of Pallet Town runs north.<br><br>The Professor\'s expecting you. The starter on her bench has your name on it.<br><br>Eight badges, an Elite Four, and a Champion stand between you and the Plateau.<br><br>Walk in.</div><button type="button" style="margin-top:14px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">Begin →</button>';
@@ -40791,12 +40958,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     'Two ways to find a partner: Professors and the wild.\n\nProfessors keep curated benches — lab-raised, hand-picked, one slot per visit. You\'ll meet one in each of the first six cities. Wild routes and the Safari are the other path: a roll of the dice, but the species pool widens fast once you leave the starter town.\n\nFoes match your party size 1-for-1. The Champion, the Elite Four, and Victory Road are the exceptions — they always field six, no matter how lean you ran.\n\nThere\'s also a training tier on every Pokémon (the chip beside its name): Untrained, Novice, Competent, Tournament. Early route trainers run Untrained — no EVs, neutral nature, no held item. The Champion and the Elite Four run Tournament. Your starter begins Untrained too. The Move Tutor, EV Trainer, Nature Rater, and Battle Dojo are the four facilities that walk it up the ladder.'); } catch (e) {}
             }
             _profLegendaryMysteryMode = _profMysteryMode && isPreLeagueLegendaryMysteryGate(cityIdx);
-            // One-time framing for the City-8 legendary gate. The mechanic is a forced
-            // party swap with no graceful refusal — the player should know what they're
-            // walking into before committing. Cross-run-deduped via story meta.
+            // One-time framing for the City-8 legendary gate. Accepting the legendary
+            // either swaps a partner to the PC or parks the legendary in the PC; the
+            // player can also refuse. Spell the options out before they commit.
+            // Cross-run-deduped via story meta.
             if (_profLegendaryMysteryMode) {
                 try { _storyShowOneTimeTip('legendary-gate',
-                    'A Victory Road tradition older than the badges themselves: no challenger walks the final gate without a legendary at their side.\n\nThe figure beyond the door wears a mask, and won\'t answer the obvious question. What they will do is hand you one of the great ones — in exchange for a slot on your team. Accept, and your weakest member walks back to the PC. Refuse, and the gate stays shut.\n\nTake your time. This is one of the run\'s biggest commitments.'); } catch (e) {}
+                    'A Victory Road tradition older than the badges themselves: no challenger walks the final gate without a legendary in hand.\n\nThe figure beyond the door wears a mask, and won\'t answer the obvious question. What they will do is hand you one of the great ones. Field it in place of a partner — the teammate you bench walks safely back to the PC — or send the legendary straight to the PC and keep your team intact. Refuse it entirely, and the gate stays shut.\n\nTake your time. This is one of the run\'s biggest decisions.'); } catch (e) {}
             }
             // Mystery Figure framing only applies to the City-8 post-Gym-8 legendary
             // gate. Other "full party" Professor visits are framed as a normal lab-
@@ -40817,9 +40985,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (titleEl) titleEl.textContent = _profLegendaryMysteryMode ? 'Mystery Figure' : (isSwapWithoutMystery ? "Professor's Lab — Swap" : "Professor's Lab");
             document.getElementById('story-prof-name').textContent = profName;
             document.getElementById('story-prof-quote').textContent = _profLegendaryMysteryMode
-                ? '"This legendary is yours for the road ahead. Pick which partner returns to your PC — the cage will not open with the slot you have now."'
+                ? '"This legendary is yours for the road ahead. Field it in place of a partner, or send it to the PC for now — either way, the gate opens once it\'s in your hands."'
                 : (isSwapWithoutMystery
-                    ? '"Your party is full, but the bench still has one for you. Pick a teammate to send to the PC and the partner is yours."'
+                    ? '"Your party is full, but the bench still has one for you. Swap a teammate for it, or send the newcomer to the PC — your call."'
                     : PROF_QUOTES[Math.floor(Math.random() * PROF_QUOTES.length)]);
             const _mysteryFace = _profLegendaryMysteryMode ? _storyEnsureMysteryIdentity() : null;
             document.getElementById('story-prof-sprite').src = getTrainerSprite(_profLegendaryMysteryMode ? (_mysteryFace && _mysteryFace.sprite ? _mysteryFace.sprite : 'Cyrus') : { spriteFile: hub.spriteFile });
@@ -40984,11 +41152,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const firstChoice = choices[0];
             if (_profMysteryMode && firstChoice) {
                 // Accept is pre-enabled for mystery mode (single auto-selected offer)
-                acceptBtn.textContent = `✓ Take ${firstChoice.name}`;
+                acceptBtn.innerHTML = window.uiSvgCheck() + ' Take ' + _esc(firstChoice.name);
                 acceptBtn.style.cssText = 'color:#4caf50;border-color:#4caf50;';
                 acceptBtn.disabled = false;
             } else {
-                acceptBtn.textContent = '✓ Choose This Pokémon';
+                acceptBtn.innerHTML = window.uiSvgCheck() + ' Choose This Pokémon';
                 acceptBtn.style.cssText = 'color:#4caf50;border-color:#4caf50;opacity:0.35;cursor:not-allowed;';
                 acceptBtn.disabled = true;
             }
@@ -40997,7 +41165,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             const backBtn = document.createElement('button');
             if (_profMysteryMode) {
-                backBtn.textContent = _profLegendaryMysteryMode ? '← Not Now' : '✗ Decline';
+                backBtn.innerHTML = _profLegendaryMysteryMode ? '← Not Now' : (window.uiSvgX() + ' Decline');
             } else {
                 backBtn.textContent = '← Back to City';
             }
@@ -41021,7 +41189,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const btn = document.getElementById('prof-accept-btn');
             if (btn) {
                 btn.disabled = false;
-                btn.textContent = `✓ Take ${ch.name}`;
+                btn.innerHTML = window.uiSvgCheck() + ' Take ' + _esc(ch.name);
                 btn.style.opacity = '1';
                 btn.style.cursor = 'pointer';
             }
@@ -41039,7 +41207,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const cardEl  = document.getElementById('story-prof-rolled-card');
                 const btnsEl  = document.getElementById('story-prof-buttons');
                 const statusEl= document.getElementById('story-prof-status');
-                statusEl.textContent = `Who does ${ch.name} replace?`;
+                statusEl.textContent = `Who does ${ch.name} replace? Or send ${ch.name} straight to the PC and keep your team.`;
                 cardEl.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:12px 0;';
                 cardEl.innerHTML = '';
                 sm.team.forEach((t, i) => {
@@ -41067,6 +41235,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     cardEl.appendChild(slot);
                 });
                 btnsEl.innerHTML = '';
+                const toPcBtn = document.createElement('button');
+                toPcBtn.textContent = '📦 Send to PC Instead';
+                toPcBtn.style.color = '#ce93d8';
+                toPcBtn.onclick = () => window.StoryMode._mysterySendToPc();
+                btnsEl.appendChild(toPcBtn);
                 const cancelBtn = document.createElement('button');
                 cancelBtn.textContent = '← Keep Current Team';
                 cancelBtn.style.color = '#aaa';
@@ -41095,7 +41268,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // tab + milestone bundles) and cross-run meta (lifetime + shiny).
             try { _storyMarkDexCaught(ch.name, !!(ch.build && ch.build._isShiny)); } catch (e) {}
             save();
-            document.getElementById('story-prof-status').textContent = `✓ ${ch.name} joined your team!`;
+            document.getElementById('story-prof-status').innerHTML = window.uiSvgCheck() + ' ' + _esc(ch.name) + ' joined your team!';
             const btnsEl = document.getElementById('story-prof-buttons');
             btnsEl.innerHTML = '';
             document.getElementById('story-prof-rolled-card').innerHTML = '';
@@ -41116,6 +41289,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const ev = STORY_EVENTS_RAW[sm.eventIndex];
             const cityIdx = getCityIndex(ev);
             const replaced = target.name;
+            // Displaced partner returns to the PC — never destroyed. Mirrors the
+            // catch-swap flow (catchResolveSwap). Pre-fix this slot was simply
+            // overwritten, silently deleting the mon despite the gate text's
+            // "walks back to the PC" promise.
+            _pcEnsureBoxArray();
+            sm.pcBox.push(target);
             sm.team[slotIdx] = { name: ch.name, build: ch.build, id: 'm_'+Math.random().toString(36).slice(2,10) };
             if (!sm.profUsed) sm.profUsed = {};
             sm.profUsed[cityIdx] = true;
@@ -41123,7 +41302,37 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Pokédex — Mystery Figure legendary now in your party = caught.
             try { _storyMarkDexCaught(ch.name, !!(ch.build && ch.build._isShiny)); } catch (e) {}
             save();
-            document.getElementById('story-prof-status').textContent = `✓ ${ch.name} replaced ${replaced}!`;
+            document.getElementById('story-prof-status').innerHTML = window.uiSvgCheck() + ' ' + _esc(ch.name) + ' replaced ' + _esc(replaced) + ' (sent to the PC)!';
+            document.getElementById('story-prof-rolled-card').innerHTML = '';
+            const btnsEl = document.getElementById('story-prof-buttons');
+            btnsEl.innerHTML = '';
+            const backBtn = document.createElement('button');
+            backBtn.textContent = '← Back to City';
+            backBtn.style.color = 'var(--accent)';
+            backBtn.onclick = () => window.StoryMode.enterCity();
+            btnsEl.appendChild(backBtn);
+            renderTeamPanel();
+        }
+
+        // Mystery / legendary-gate alternative to swapping: take the offered mon
+        // straight to the PC, leaving the active party untouched. Mirrors the
+        // catch flow's catchResolveSendToPC. Still flips profUsed so the City-8
+        // legendary gate opens Victory Road on accept (the figure handed you a
+        // legendary; fielding it is your call).
+        function _mysterySendToPc() {
+            if (_profSelectedIdx === null || !_pendingProfChoices) return;
+            const ch = _pendingProfChoices[_profSelectedIdx];
+            if (!ch) return;
+            const ev = STORY_EVENTS_RAW[sm.eventIndex];
+            const cityIdx = getCityIndex(ev);
+            _pcEnsureBoxArray();
+            sm.pcBox.push({ name: ch.name, build: ch.build, id: 'm_'+Math.random().toString(36).slice(2,10) });
+            if (!sm.profUsed) sm.profUsed = {};
+            sm.profUsed[cityIdx] = true;
+            _pendingProfChoices = null; _profSelectedIdx = null; _profMysteryMode = false; _pendingProfCityIdx = null; _pendingProfWasMystery = false; _profLegendaryMysteryMode = false;
+            try { _storyMarkDexCaught(ch.name, !!(ch.build && ch.build._isShiny)); } catch (e) {}
+            save();
+            document.getElementById('story-prof-status').innerHTML = window.uiSvgCheck() + ' ' + _esc(ch.name) + ' is waiting for you at the PC.';
             document.getElementById('story-prof-rolled-card').innerHTML = '';
             const btnsEl = document.getElementById('story-prof-buttons');
             btnsEl.innerHTML = '';
@@ -41590,9 +41799,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
          *  scenes can drop in without copy-pasting layout. The `toneClass`
          *  parameter applies one of the `.story-tone-*` CSS classes for the
          *  variant's visual signature; `sfx` plays through StoryFx on dismiss.
-         *  `metaKey` is the dedupe stamp — only set this on cold-opens that
-         *  must fire exactly once (left blank for repeatable broker / sighting
-         *  overlays). */
+         *  `metaKey` is the per-run dedupe stamp (`sm.scenesShown`) — only set
+         *  this on cold-opens that must fire once per run (left blank for
+         *  repeatable broker / sighting overlays). */
         function _renderNarrativeOverlay(opts) {
             const o = opts || {};
             const lines = Array.isArray(o.lines) ? o.lines : [];
@@ -41646,12 +41855,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (dismissed) return;
                 dismissed = true;
                 if (o.metaKey) {
-                    try {
-                        const _m = readStoryMeta();
-                        if (!_m.tipsShown) _m.tipsShown = {};
-                        _m.tipsShown[o.metaKey] = true;
-                        writeStoryMeta(_m);
-                    } catch (e) {}
+                    // Per-run dedupe (matches _runStoryColdOpen / playStoryTutorial)
+                    // so narrative overlays replay on a fresh run.
+                    _storyRunSceneMark(o.metaKey);
                 }
                 try {
                     // Per-variant SFX motif default — when the caller
@@ -41919,12 +42125,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const dismiss = function () {
                 if (dismissed) return;
                 dismissed = true;
-                try {
-                    const _m = readStoryMeta();
-                    if (!_m.tipsShown) _m.tipsShown = {};
-                    _m.tipsShown['firstsighting-' + speciesName] = true;
-                    writeStoryMeta(_m);
-                } catch (e) {}
+                _storyRunSceneMark('firstsighting-' + speciesName);
                 try { ov.remove(); } catch (e) {}
                 try { onDone && onDone(); } catch (e) { console.error('[Story] first-sighting callback', e); }
             };
@@ -41940,10 +42141,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const variant = _storyActiveVariant();
             const tier = variant && variant.tier;
             if (tier !== 'mature' && tier !== 'soft_pasta' && tier !== 'pasta') return false;
-            try {
-                const _m = readStoryMeta();
-                if (_m && _m.tipsShown && _m.tipsShown['firstsighting-' + speciesName]) return false;
-            } catch (e) {}
+            if (_storyRunSceneSeen('firstsighting-' + speciesName)) return false;
             // Skip on the very first wild — the catch tutorial is fragile and
             // the user has enough overlays in that beat already.
             if (typeof _catchState !== 'undefined' && _catchState && _catchState.tutorialMode) return false;
@@ -42678,11 +42876,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _variantChampVoice = ((storyRowIdx | 0) === 64) ? _variantChampionDialogue() : null;
             const _variantChampOutro = (_variantChampVoice && _variantChampVoice.outro) ? _variantChampVoice.outro : '';
             const _champLookup = _variantChampOutro || (CHAMPION_VICTORY_LINES[_trainerName] || CHAMPION_VICTORY_LINES[_baseTrainerName] || '');
-            // Cross-run first-clear: stamp a meta flag only the very first time
-            // a player ever cleared THIS milestone (across all runs). Used below
-            // to pulse extra confetti and surface a "FIRST EVER" line.
+            // Per-run first-clear: every fresh run replays the full first-time
+            // finale (extra confetti + the summit epilogue line). Within a run
+            // each milestone is cleared once, so a rematch won't re-trigger it.
             const _milestoneKey = gotBadge ? _storyMilestoneKeyForEvent(battleEventName, storyRowIdx) : '';
-            const _isCareerFirstClear = _milestoneKey ? _storyMarkFirstClearMeta(_milestoneKey) : false;
+            const _runFirstClearKey = _milestoneKey ? 'firstclear-' + _milestoneKey : '';
+            const _isCareerFirstClear = _runFirstClearKey ? !_storyRunSceneSeen(_runFirstClearKey) : false;
+            if (_runFirstClearKey) _storyRunSceneMark(_runFirstClearKey);
             if (gotBadge && battleEventName) {
                 const evn = String(battleEventName);
                 if (/^Gym Leader [1-8]$/i.test(evn)) {
@@ -42713,22 +42913,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     } catch (e) {}
                     badgeFlavor = `<div style="font-size:14px;color:#81c784;line-height:1.5;max-width:380px;">${line}</div>${reflectHtml}${_variantCardHtml}`;
                     // First-time cap teach. badges 1-4 expand the player's party (cap = 2 + badges,
-                    // capped at 6). The cap change happens silently in code; surface it here exactly
-                    // once per badge-tier across all saves. badges 5-8 don't grow the cap.
+                    // capped at 6). The cap change happens silently in code; surface it here once
+                    // per badge-tier per run (every fresh run replays the guide). badges 5-8 don't grow the cap.
                     const _badgesNow = (sm && sm.badges) | 0;
                     if (_badgesNow >= 1 && _badgesNow <= 4) {
                         const _capTeachKey = 'cap-unlock-' + _badgesNow;
-                        const _capMeta = readStoryMeta();
-                        const _capSeen = _capMeta && _capMeta.tipsShown && _capMeta.tipsShown[_capTeachKey];
-                        if (!_capSeen) {
+                        if (!_storyRunSceneSeen(_capTeachKey)) {
                             const _newCap = Math.min(6, 2 + _badgesNow);
                             const _capTeach = _badgesNow === 4
                                 ? `Your party rounds out — a full ${_newCap} on the bench. Any future Professor gift will swap a partner to the PC instead of overflowing.`
                                 : `Room for one more on the bench: party cap is now ${_newCap}. The next Professor on the road will open up.`;
                             badgeFlavor += `<div style="font-size:12px;color:#ffd54f;line-height:1.45;max-width:380px;margin-top:6px;">🎓 ${_capTeach}</div>`;
-                            if (!_capMeta.tipsShown) _capMeta.tipsShown = {};
-                            _capMeta.tipsShown[_capTeachKey] = true;
-                            writeStoryMeta(_capMeta);
+                            _storyRunSceneMark(_capTeachKey);
                         }
                     }
                 }
@@ -42776,7 +42972,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const isGymBadgeEvent = gotBadge && battleEventName && /^Gym Leader [1-8]$/i.test(String(battleEventName));
             const _firstClearBanner = _isCareerFirstClear
-                ? '<div style="font-size:13px;color:#ffd54f;letter-spacing:0.08em;text-transform:uppercase;text-shadow:0 0 6px rgba(255,213,79,0.4);">★ First time, any run ★</div>'
+                ? '<div style="font-size:13px;color:#ffd54f;letter-spacing:0.08em;text-transform:uppercase;text-shadow:0 0 6px rgba(255,213,79,0.4);">★ First clear ★</div>'
                 : '';
             // "Up next" pill — tells the player what they walk into when they
             // tap Continue. Bridges the abrupt overlay → next screen hop.
@@ -43248,9 +43444,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (isFree) {
                 sm.safari.freeEntryUsed = true;
                 // Story-embedded tutorial — Warden cameo. Replaces the prior
-                // free-entry alert. Dedupe is per-save (freeEntryUsed gates
-                // free entry to once anyway, but the cross-run tipsShown stamp
-                // also keeps NG+ players from re-seeing it).
+                // free-entry alert. Dedupe is per-run: freeEntryUsed gates free
+                // entry to once per run, and the scene routes through
+                // sm.scenesShown so a fresh run replays the Warden intro.
                 try { playStoryTutorial('firstSafari'); } catch (e) {}
             } else {
                 sm.gold = Math.max(0, (sm.gold | 0) - SAFARI_ENTRY_COST);
@@ -43811,7 +44007,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div style="color:#bcaaa4;margin-bottom:10px;">The Underground is holding a specimen they don\'t want talked about. Three pieces of evidence — scattered through Pokémon Centers in three cities — open the Cage.</div>`;
 
             const collectedCount = (L.ledger?1:0) + (L.recording?1:0) + (L.key?1:0);
-            const leadStatus = (k) => L[k] ? '<span style="color:#aed581;">✓</span>' : '<span style="color:#666;">○</span>';
+            const leadStatus = (k) => L[k] ? '<span style="color:#aed581;">' + window.uiSvgCheck() + '</span>' : '<span style="color:#666;">○</span>';
             html += `<div style="margin-bottom:10px;padding:8px 10px;background:rgba(0,0,0,0.35);border:1px solid #3a1b4a;">
                 <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
                     <span style="font-size:10px;color:#bcaaa4;letter-spacing:0.06em;text-transform:uppercase;">Broker Leads</span>
@@ -44578,8 +44774,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
             if (!_catchState.bossMode) {
                 // Story-embedded tutorial scenes — NPC cameo with sprite +
-                // dialogue + Continue. Each scene fires once per save (cross-
-                // run-deduped via tipsShown). The catch screen is already
+                // dialogue + Continue. Each scene fires once per run (per-run-
+                // deduped via sm.scenesShown). The catch screen is already
                 // rendered behind the overlay; on Continue the player drops
                 // into the live encounter. See STORY_TUTORIAL_SCENES.
                 if (_catchState.tutorialMode) {
@@ -44596,9 +44792,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         'A roaming Pokémon.\n\nThese turn up exactly once, on a single route after a gym victory, and they won\'t wait for the next attempt. Catch rate is a flat 30% × ball multiplier; a Master Ball is the only guaranteed throw. Miss, and it\'s gone for this run.'); } catch (e) {}
                 }
                 // First-sighting Pokédex lore — mature+ tier storylines only.
-                // Fires once per species; dedupe lives in tipsShown so a player
-                // who wakes up on a new variant gets the lore the first time
-                // they meet that species on the run.
+                // Fires once per species per run; dedupe lives in sm.scenesShown
+                // so every fresh run re-delivers the lore the first time the
+                // player meets that species on the run.
                 try {
                     if (_shouldFireFirstSightingLore(wildMon && wildMon.name)) {
                         _showFirstSightingLoreOverlay(wildMon.name, null);
@@ -45367,8 +45563,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 playStoryTutorial(type === 'dept' ? 'firstDept' : 'firstMart');
             } catch (e) {}
-            // Per-variant mart greeter — fires once per city per variant
-            // (city-keyed via tipsShown). Skipped for the department
+            // Per-variant mart greeter — fires once per city per run
+            // (city-keyed via sm.scenesShown). Skipped for the department
             // store (separate dept-store identity) and for variants
             // without an entry. The greeter sits in the top-left strip
             // of the shop screen as a single italic line under the title.
@@ -45378,11 +45574,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (greet) {
                         const cityIdx = (typeof cityIndexFromEventIndex === 'function') ? cityIndexFromEventIndex(sm.eventIndex) : 0;
                         const key = 'variant-mart-greet-' + (_storyActiveVariantId() || 'classic') + '-c' + (cityIdx | 0);
-                        const _m = readStoryMeta();
-                        if (!_m.tipsShown || !_m.tipsShown[key]) {
-                            if (!_m.tipsShown) _m.tipsShown = {};
-                            _m.tipsShown[key] = true;
-                            writeStoryMeta(_m);
+                        if (!_storyRunSceneSeen(key)) {
+                            _storyRunSceneMark(key);
                             try { window.showGameAlert && window.showGameAlert(greet); } catch (e) {}
                         }
                     }
@@ -45962,7 +46155,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
             panel.innerHTML = `
                 <div class="casino-stats-col" data-game="flip">
-                    <h4>🪙 Coin Flip</h4>
+                    <h4><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> Coin Flip</h4>
                     <p class="stats-row">${wlRow(flip)}</p>
                     <p class="stats-row">Biggest win <strong>${fmt(flip.biggestWin)}G</strong></p>
                     <p class="stats-row">Longest streak <strong>${fmt(flip.longestStreak)}</strong></p>
@@ -47533,7 +47726,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         </div>`;
                     }).join('');
                     const costHint = allowedAny
-                        ? `<div style="font-size:10px;color:#9aa3b8;margin-top:8px;">Prices by target grade — G3 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[3], false)} · G2 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[2], false)} · G1 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[1], false)}${en > 1 ? ` <span style="color:#888;">(× 1.5^${en-1} repeat use here)</span>` : ''}.${_rareCandyCount > 0 ? ` <span style="color:#f48fb1;">🍬 ${_rareCandyCount} Rare Cand${_rareCandyCount===1?'y':'ies'} in bag — free alternative.</span>` : ''}</div>`
+                        ? `<div style="font-size:10px;color:#9aa3b8;margin-top:8px;">Prices by target grade — G3 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[3], false)} · G2 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[2], false)} · G1 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[1], false)}${en > 1 ? ` <span style="color:#888;">(× 1.5^${en-1} repeat use here)</span>` : ''}.${_rareCandyCount > 0 ? ` <span style="color:#f48fb1;"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="16" height="16" decoding="async" style="vertical-align:middle;image-rendering:pixelated;"> ${_rareCandyCount} Rare Cand${_rareCandyCount===1?'y':'ies'} in bag — free alternative.</span>` : ''}</div>`
                         : `<div class="tx-grid-empty" style="margin-top:6px;">No evolutions available with current generation toggles (enabled: ${enabledGensLabel}).</div>`;
                     evoBlockHtml = `<div class="tx-grid" style="margin-top:10px;max-height:none;">${evoCards}</div>${costHint}`;
                 }
@@ -48422,19 +48615,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { _storyAchievementUnlock('first_hof'); } catch (e) {}
                 try { _storyAchievementBumpCount('runs_cleared', 1); } catch (e) {}
             }
-            // Per-variant Hall-of-Fame card — fires once per variant per
-            // save profile, on a fresh clear, before the grid renders.
-            // Subsequent previews skip the card so the grid loads
-            // immediately.
+            // Per-variant Hall-of-Fame card — fires once per variant per run,
+            // on a fresh clear, before the grid renders. Subsequent previews
+            // skip the card so the grid loads immediately.
             if (_wasFreshHofClear) {
                 try {
                     const _vCard = _variantHallOfFameCard();
                     if (_vCard && Array.isArray(_vCard.lines) && _vCard.lines.length) {
                         const _vid = _storyActiveVariantId() || 'classic';
                         const _hofKey = 'variant-hof-card-' + _vid;
-                        const _hofMeta = readStoryMeta();
-                        const _seenHof = _hofMeta && _hofMeta.tipsShown && _hofMeta.tipsShown[_hofKey];
-                        if (!_seenHof) {
+                        if (!_storyRunSceneSeen(_hofKey)) {
                             _renderNarrativeOverlay({
                                 metaKey: _hofKey,
                                 banner: _vCard.banner || '— Hall of Fame —',
@@ -51091,7 +51281,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </button>`
                 : '';
             const clearBtn = hasActiveFilters
-                ? `<button type="button" class="tx-filter-clear" data-clear-filters="${kind}" title="Clear search and filters">✕ Clear</button>`
+                ? `<button type="button" class="tx-filter-clear" data-clear-filters="${kind}" title="Clear search and filters">${window.uiSvgX()} Clear</button>`
                 : '';
             const drawerHtml = hasChips
                 ? `<div class="tx-filter-panel" data-open="${drawerOpen}">${opts.chipsHtml}</div>`
@@ -51239,11 +51429,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pctHtml = _txUsagePctHtml(ctx, moveName);
             const mechTags = ctx && ctx.mechanicTagsFor ? ctx.mechanicTagsFor(moveName) : null;
             const mechHtml = _txMechanicIconsHtml(mechTags);
-            const equippedBadge = isEquipped ? `<span class="tx-card-equipped" title="Already in this Pokémon's moveset">✓ Equipped</span>` : '';
+            const equippedBadge = isEquipped ? `<span class="tx-card-equipped" title="Already in this Pokémon's moveset">${window.uiSvgCheck()} Equipped</span>` : '';
             const footExtra = isEquipped
                 ? `<div class="tx-card-foot-actions">${
                     canUnlearn
-                        ? `<button type="button" class="tx-unlearn-btn" data-unlearn-slot="${equippedSlot != null ? equippedSlot : ''}" data-unlearn-move="${_esc(moveName)}" title="Forget ${_esc(moveName)} — free, opens a slot">✕ Forget</button>`
+                        ? `<button type="button" class="tx-unlearn-btn" data-unlearn-slot="${equippedSlot != null ? equippedSlot : ''}" data-unlearn-move="${_esc(moveName)}" title="Forget ${_esc(moveName)} — free, opens a slot">${window.uiSvgX()} Forget</button>`
                         : `<span class="tx-unlearn-locked" title="A Pokémon must keep at least one move">Last move</span>`
                   }</div>`
                 : '';
@@ -51841,7 +52031,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const natPct = sPool.natures.pctOf.get(nat);
                     const pctChip = (isRec && natPct >= 1) ? `<span class="tx-nature-pct">${Math.round(natPct)}%</span>` : '';
                     cells.push(`<button type="button" class="tx-nature-cell" data-nature="${nat}" data-active="${(isCur||isPend)?1:0}" data-recommended="${isRec?1:0}" ${isCur?'disabled':''} title="${_esc(nat)}${isRec && natPct>=1 ? ` — ${natPct.toFixed(1)}% Smogon usage` : ''}">
-                        <span class="tx-nature-cell-name">${star}${nat}${isCur?' ✓':''}${pctChip}</span>
+                        <span class="tx-nature-cell-name">${star}${nat}${isCur?' '+window.uiSvgCheck():''}${pctChip}</span>
                     </button>`);
                 }
             }
@@ -51853,7 +52043,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const isRec = starredNats.has(n);
                 const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span> ' : '';
                 return `<button type="button" class="tx-nature-cell" data-nature="${n}" data-active="${(isCur||isPend)?1:0}" data-recommended="${isRec?1:0}" ${isCur?'disabled':''} style="background:rgba(180,187,204,0.05);">
-                    <span class="tx-nature-cell-name">${star}${n}${isCur?' ✓':''}</span>
+                    <span class="tx-nature-cell-name">${star}${n}${isCur?' '+window.uiSvgCheck():''}</span>
                 </button>`;
             }).join('');
 
@@ -52324,11 +52514,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── COLRESS — POWER AWAKENING NPC ────────────────────────────────
-        // Colress (gimmick swap) — 10000 → 7500. Enemy gimmick density rose
-        // with the Frontier per-round bands and Crucible Hard Mode (+20%
+        // Colress (gimmick swap) — 10000 → 7500 → 5000. Enemy gimmick density
+        // rose with the Frontier per-round bands and Crucible Hard Mode (+20%
         // absolute). The player needs to keep up without spending a small
         // fortune per change.
-        const COLRESS_COST = 7500;
+        const COLRESS_COST = 5000;
         const COLRESS_ALL_TYPES = ["Normal","Fire","Water","Electric","Grass","Ice","Fighting","Poison","Ground","Flying","Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel","Fairy"];
 
         function _colressMechAvailable(kind) {
@@ -53046,59 +53236,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { _storyTrackSpend(EVTRAINER_COST); } catch (e) {}
             return true;
         }
-        // Charge for a partial fill — the player pays for the EVs the trainer
-        // actually adds, not a flat 5,000G. A fully-untrained mon paying for a
-        // 510-EV preset still costs EVTRAINER_COST; a mon already 70% trained
-        // pays ~30%. Floors at a tiny minimum so trivial top-ups still cost
-        // something. Returns the charged amount, or 0 on failure.
-        function _evTrainerChargeScaled(delta) {
-            const d = Math.max(0, delta | 0);
-            if (d <= 0) return 0;
-            const cost = Math.max(100, Math.ceil((d / 510) * EVTRAINER_COST));
-            if (sm.gold < cost) {
-                if (typeof window !== 'undefined' && typeof window.showGameAlert === 'function') {
-                    window.showGameAlert(`EV Trainer needs ${cost.toLocaleString()}G for this top-up. You have ${sm.gold.toLocaleString()}G.`);
-                }
-                return 0;
-            }
-            sm.gold -= cost;
-            try { _storyTrackSpend(cost); } catch (e) {}
-            return cost;
-        }
-        // Compute additive fill-to-target. Pre-battle training is never
-        // discarded — the trainer fills the gap between current EVs and the
-        // target preset, respecting the 252/stat and 510/total caps. Returns
-        // { next, delta }: the final EV object and the total EVs added.
-        function _evTrainerFillToTarget(cur, target) {
-            const out = { hp:0, atk:0, def:0, spa:0, spd:0, spe:0 };
-            const stats = ['hp','atk','def','spa','spd','spe'];
-            const c = cur || {};
-            const t = target || {};
-            for (const s of stats) out[s] = Math.max(0, Math.min(252, (c[s]|0)));
-            // Compute the additive gap per stat (positive only — never strips).
-            const gap = {};
-            let gapTotal = 0;
-            for (const s of stats) {
-                gap[s] = Math.max(0, Math.min(252, t[s]|0) - out[s]);
-                gapTotal += gap[s];
-            }
-            if (gapTotal <= 0) return { next: out, delta: 0 };
-            // 510 total cap — scale gap down if existing EVs already use the
-            // budget. Each stat's add is the proportional share of available
-            // headroom, then 252-clamped (in case scaling rounded a stat over).
-            const curTotal = stats.reduce((a, s) => a + out[s], 0);
-            const room = Math.max(0, 510 - curTotal);
-            const scale = (gapTotal > room) ? (room / gapTotal) : 1;
-            let delta = 0;
-            for (const s of stats) {
-                const add = Math.floor(gap[s] * scale);
-                if (add <= 0) continue;
-                const before = out[s];
-                out[s] = Math.min(252, out[s] + add);
-                delta += out[s] - before;
-            }
-            return { next: out, delta };
-        }
         function _evTrainerFinish() {
             try { save(); } catch (e) {}
             // Stat-up arrow chime — the rolled spread just landed on the mon.
@@ -53296,7 +53433,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _evTrainerHelpBannerHtml() {
             const vN = (sm.inventory && sm.inventory.vitamin) | 0;
             const vitaLine = vN > 0
-                ? `<span style="color:#f8bbd0;font-weight:bold;">💊 ${vN} Vitamin Pack${vN===1?'':'s'} ready</span> — tap the pink button on any preset to apply it free.`
+                ? `<span style="color:#f8bbd0;font-weight:bold;"><img src="sprites/pokesprite/items/protein.png" alt="" width="16" height="16" decoding="async" style="vertical-align:middle;image-rendering:pixelated;"> ${vN} Vitamin Pack${vN===1?'':'s'} ready</span> — tap the pink button on any preset to apply it free.`
                 : `<span style="color:#9aa3b0;">No Vitamin Packs yet.</span> Each preset costs ${EVTRAINER_COST.toLocaleString()}G; Vitamin Packs (from gym victories &amp; Pokédex milestones) apply one for free.`;
             // Collapsed by default on every entry — the explainer eats the
             // whole first screen on phones and pushes the preset cards below
@@ -53591,18 +53728,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     <img src="sprites/pokesprite/items/protein.png" alt="" width="12" height="12" decoding="async" style="width:12px;height:12px;image-rendering:auto;vertical-align:-2px;margin-right:2px;">Vitamin (${vitaCount})
                 </button>`
                 : '';
-            // Fill-to-target preview: estimate the gap & gold cost so the
-            // button label reflects what THIS preset would actually charge
-            // (additive fill, not a flat 5,000G). Already-met or exceeded
-            // presets disable the button.
-            const _fillPreview = _evTrainerFillToTarget(currentEvs, p.evs);
-            const fillCost = _fillPreview.delta > 0 ? Math.max(100, Math.ceil((_fillPreview.delta / 510) * EVTRAINER_COST)) : 0;
-            const goldDisabledFill = fillCost === 0 || (sm.gold | 0) < fillCost;
+            const goldDisabled = cantAfford || isCurrent;
             const gButton = isCurrent
                 ? `<button type="button" class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;">Applied</button>`
-                : (_fillPreview.delta <= 0
-                    ? `<button type="button" class="story-tutor-btn" disabled style="font-size:11px;padding:5px 8px;">Already trained</button>`
-                    : `<button type="button" class="story-tutor-btn" ${goldDisabledFill?'disabled':''} onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')" style="font-size:11px;padding:5px 8px;" title="+${_fillPreview.delta} EV training">${storyGoldHtml(fillCost, false)}</button>`);
+                : `<button type="button" class="story-tutor-btn" ${goldDisabled?'disabled':''} onclick="event.stopPropagation();window.StoryMode.evTrainerApplyPreset(${idx},'${safeId}')" style="font-size:11px;padding:5px 8px;" title="Overwrites the current spread">${storyGoldHtml(EVTRAINER_COST, false)}</button>`;
             const star = (isRecommended && !isCurrent) ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
             const pctHtml = (pct != null && pct >= 1)
                 ? `<span class="tx-card-pct" title="${pct.toFixed(1)}% of Smogon builds use this spread">${Math.round(pct)}%</span>`
@@ -53633,7 +53762,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const meta = _evTrainerMetaSpreadsFor(t.name);
             _evTrainerMetaCache[idx] = meta;
 
-            const headerCostChip = `<span class="story-action-badge cost" title="Cost scales with the gap between current and preset EVs.">up to ${EVTRAINER_COST.toLocaleString()}G / preset</span>`;
+            const headerCostChip = `<span class="story-action-badge ${cantAfford ? 'cost cant-afford' : 'cost'}"${cantAfford ? ` title="You need ${(EVTRAINER_COST - sm.gold).toLocaleString()}G more"` : ''}>${EVTRAINER_COST.toLocaleString()}G / preset</span>`;
 
             const header = `<button type="button" class="story-tutor-mon-toggle" data-team="${idx}" data-facility="evtrainer" aria-expanded="${expanded?'true':'false'}">
                 <div class="story-tutor-mon-main">
@@ -53714,31 +53843,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const all = [].concat(EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta);
                 const preset = all.find(p => p.id === presetId);
                 if (!preset) return;
-                const cur = mon.build.evs || {};
-                // Fill-to-target: trainer adds EVs from current to the preset's
-                // amounts (cap-respecting). Pre-battle training is preserved.
-                const fill = _evTrainerFillToTarget(cur, preset.evs);
-                if (fill.delta <= 0) {
-                    try { window.showGameAlert && window.showGameAlert(`${mon.name} already meets or exceeds the "${preset.label}" preset.`); } catch (e) {}
-                    return;
-                }
-                const cost = Math.max(100, Math.ceil((fill.delta / 510) * EVTRAINER_COST));
-                if ((sm.gold | 0) < cost) {
-                    try { window.showGameAlert && window.showGameAlert(`EV Trainer needs ${cost.toLocaleString()}G for this top-up. You have ${sm.gold.toLocaleString()}G.`); } catch (e) {}
-                    return;
-                }
-                const spreadLabel = (typeof _evSpreadCompact === 'function') ? _evSpreadCompact(fill.next) : 'new spread';
-                const ok = await _storyConfirmTutorChange(`Train ${mon.name} toward the "${preset.label}" preset?\n+${fill.delta} EV training (additive, preserves prior work).\n→ ${spreadLabel}`, cost);
+                // Overwrite: the EV Trainer commits the mon to exactly this
+                // spread, discarding any prior EVs (including battle training).
+                // Players use this to re-point a mon that drifted into the
+                // wrong stats — additive fill couldn't reach a clean preset
+                // once the 510 budget was spent on off-target battle EVs.
+                if (_evsEqual(mon.build.evs || {}, preset.evs)) return;
+                if ((sm.gold | 0) < EVTRAINER_COST) return;
+                const spreadLabel = (typeof _evSpreadCompact === 'function') ? _evSpreadCompact(preset.evs) : 'new spread';
+                const ok = await _storyConfirmTutorChange(`Apply "${preset.label}" EVs to ${mon.name}? Overwrites the current spread (including battle training).\n→ ${spreadLabel}`, EVTRAINER_COST);
                 if (!ok) return;
-                if (_evTrainerChargeScaled(fill.delta) <= 0) return;
-                mon.build.evs = fill.next;
+                if (!_evTrainerCharge()) return;
+                mon.build.evs = { ...preset.evs };
                 _evTrainerFinish();
             } finally {
                 _storyEndInteraction();
             }
         }
 
-        // Vitamin Pack alt path — free EV fill-to-target, consumes one Vitamin.
+        // Vitamin Pack alt path — free EV preset application, consumes one Vitamin.
         async function evTrainerApplyPresetWithVitamin(idx, presetId) {
             if (!_storyTryBeginInteraction()) return;
             try {
@@ -53753,20 +53876,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const all = [].concat(EV_PRESETS_UNIVERSAL, EV_PRESETS_ROLE, meta);
                 const preset = all.find(p => p.id === presetId);
                 if (!preset) return;
-                const cur = mon.build.evs || {};
-                const fill = _evTrainerFillToTarget(cur, preset.evs);
-                if (fill.delta <= 0) {
-                    try { window.showGameAlert && window.showGameAlert(`${mon.name} already meets or exceeds the "${preset.label}" preset.`); } catch (e) {}
-                    return;
-                }
-                const spreadLabel = (typeof _evSpreadCompact === 'function') ? _evSpreadCompact(fill.next) : 'new spread';
-                const goldCost = Math.max(100, Math.ceil((fill.delta / 510) * EVTRAINER_COST));
+                if (_evsEqual(mon.build.evs || {}, preset.evs)) return;
+                const spreadLabel = (typeof _evSpreadCompact === 'function') ? _evSpreadCompact(preset.evs) : 'new spread';
                 const remaining = (sm.inventory.vitamin | 0) - 1;
-                const ok = await window.showGameConfirm(`💊 Use 1 Vitamin Pack to train ${mon.name} toward "${preset.label}"?\n+${fill.delta} EV training (additive) → ${spreadLabel}\nSaves ${goldCost.toLocaleString()}G. Vitamins left after use: ${remaining}.`);
+                const ok = await window.showGameConfirm(`💊 Use 1 Vitamin Pack to apply "${preset.label}" EVs to ${mon.name}?\nOverwrites the current spread → ${spreadLabel}\nSaves ${EVTRAINER_COST.toLocaleString()}G. Vitamins left after use: ${remaining}.`);
                 if (!ok) return;
                 sm.inventory.vitamin = Math.max(0, remaining);
                 if (sm.inventory.vitamin <= 0) delete sm.inventory.vitamin;
-                mon.build.evs = fill.next;
+                mon.build.evs = { ...preset.evs };
                 _evTrainerFinish();
             } finally {
                 _storyEndInteraction();
@@ -53792,7 +53909,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         return {
             get state() { return sm; },
             showMenu, startNewRun, continueRun, retryFromGameOver, acceptRivalLossAndContinue, retreatToLastPokemonCenter, isActive, hasSave,
-            enterCity, enterProfessor, profRoll, profAccept, profDecline, profSelectChoice, _mysteryDoSwap,
+            enterCity, enterProfessor, profRoll, profAccept, profDecline, profSelectChoice, _mysteryDoSwap, _mysterySendToPc,
             proceedToNextBattle, onBattleEnd, afterBattleReturn,
             enterShop, buyItem, buyArtifact, enterArtifactShop, enterPokemonCenter,
             enterStoneShop, buyStoneItem, redeemStoneToken,
@@ -54325,8 +54442,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     getStageMult: typeof getStageMult === 'function' ? getStageMult : null,
                     getMonGrade: typeof getMonGrade === 'function' ? getMonGrade : null,
                     getBST: typeof getBST === 'function' ? getBST : null,
+                    // AI internals — captured here at definition time so tests reach the REAL
+                    // functions even after load-engine.js stubs the window globals for playTurn.
+                    getBestMove: getBestMove,
+                    aiDecision: typeof aiDecision === 'function' ? aiDecision : null,
+                    aiChooseGimmick: typeof aiChooseGimmick === 'function' ? aiChooseGimmick : null,
+                    aiEstimateDmg: typeof aiEstimateDmg === 'function' ? aiEstimateDmg : null,
+                    aiThreatScore: typeof aiThreatScore === 'function' ? aiThreatScore : null,
+                    aiBestSwitch: typeof aiBestSwitch === 'function' ? aiBestSwitch : null,
+                    aiPredictPlayerSwitchIn: typeof aiPredictPlayerSwitchIn === 'function' ? aiPredictPlayerSwitchIn : null,
+                    getMoveEffectiveness: typeof getMoveEffectiveness === 'function' ? getMoveEffectiveness : null,
                     get state() { return state; },
                     set state(v) { state = v; },
+                    get settings() { return settings; },
                     get baseStats() { return baseStats; },
                     get movesDB() { return movesDB; },
                 };

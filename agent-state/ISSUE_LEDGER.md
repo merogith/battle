@@ -1,7 +1,7 @@
 # Issue Ledger — Pokemon Battle Arena
 
-> **Generated**: 2026-05-26T07:15:33.778Z
-> **Source**: `agent-state/findings/*.md` (150 unique findings after dedup)
+> **Generated**: 2026-05-26T09:19:48.313Z
+> **Source**: `agent-state/findings/*.md` (154 unique findings after dedup)
 > **Regenerate**: `node scripts/debug/issue-ledger.mjs`
 > **Schema**: see `agent-state/LEDGER_SCHEMA.md`
 
@@ -14,19 +14,19 @@ status, edit the corresponding finding file and re-run.
 | Severity | Count |
 |---|---|
 | P0 | 2 |
-| P1 | 34 |
-| P2 | 49 |
+| P1 | 37 |
+| P2 | 50 |
 | P3 | 65 |
-| **Total** | **150** |
+| **Total** | **154** |
 
 | Category | Count |
 |---|---|
 | a11y | 20 |
 | balance | 7 |
-| bug | 32 |
+| bug | 35 |
 | data | 10 |
 | dx | 22 |
-| inconsistency | 34 |
+| inconsistency | 35 |
 | perf | 11 |
 | refactor | 9 |
 | security | 4 |
@@ -37,153 +37,157 @@ status, edit the corresponding finding file and re-run.
 - [ISSUE-001] [P0] `applyBattleLogHtml` injects raw `battle_log_html` from the room row into the DOM — XSS sink fed by world-writable Supabase row — `applyBattleLogHtml` (security)
 - [ISSUE-002] [P0] Permissive RLS (`using (true)` for UPDATE/DELETE/INSERT) lets any anon client clobber/wipe any PvP room — `pvp_rooms_update` (security)
 - [ISSUE-003] [P1] Player gimmick gate reads bare IIFE-private `sm` — always sees zero unlocked gimmicks — `_withStoryPlayerGimmickGate` (inconsistency)
-- [ISSUE-004] [P1] Difficulty tiers scale only enemy stats; AI policy is byte-identical at every tier — no rising *challenge*, just a rising stat-wall — `applyFoeDifficultyScaling` (balance)
-- [ISSUE-005] [P1] Sleep duration roll uses bare `Math.random()` (RNG drift on every sleep proc) — `applyStatus` (bug)
-- [ISSUE-006] [P1] League foe stat boost stacks multiplicatively despite comment claiming additive merge — `applyStoryLeagueFoeStatBoost` (bug)
-- [ISSUE-007] [P1] Black Market shop from STORY_FEATURES_INTEGRATION.md §3 is still entirely unimplemented — `BLACK_MARKET_ITEMS` (inconsistency)
-- [ISSUE-008] [P1] `canMove` paralysis + confusion self-hit checks use bare `Math.random()` (RNG drift in story replays) — `canMove` (bug)
-- [ISSUE-009] [P1] `canMove` paralysis fizzle uses bare `Math.random()` while sibling freeze thaw uses `storyRngNext` — `canMove` (bug)
-- [ISSUE-010] [P1] Ball inventory + `catchMode` flag in STORY_FEATURES_INTEGRATION §1/§2/§5 do not match shipped code — `catchMode` (inconsistency)
-- [ISSUE-011] [P1] Retune risk: `data/builds/gen*.json` is a fallback mirror, not the live build source (`data/builds.csv` is authoritative) — `fetchSmogonSetsForGen` (data)
-- [ISSUE-012] [P1] Illegal Dealer NPC encounter (STORY_FEATURES_INTEGRATION.md §3.5) still missing — `illegalDealer` (inconsistency)
-- [ISSUE-013] [P1] Full Itinerary scaffolding (STORY_FEATURES_INTEGRATION.md §10) still entirely unimplemented — `itineraryProgress` (inconsistency)
-- [ISSUE-014] [P1] `lastRemoteSeq` is updated *before* the remote handler runs — a thrown handler still bumps the watermark, so the failed update is permanently skipped — `lastRemoteSeq` (bug)
-- [ISSUE-015] [P1] Save-migration integration test never exercises the migrate chain (vacuous pass) — `migrateStoryPreV15` (dx)
-- [ISSUE-016] [P1] v14 trainer-assignment migration is bundled under `_loadedVer < 13`, so v13 saves skip it — `migrateStoryTrainerAssignmentsPreV14` (bug)
-- [ISSUE-017] [P1] Secondary flinch/Stench write `defender.volatile.flinch` unguarded — throws if volatile missing (sibling _tryConfuse guards it) — `parseMoveEffects` (bug)
-- [ISSUE-018] [P1] Many `parseMoveEffects` branches still use bare `Math.random()` — seeded story replays drift — `parseMoveEffects` (bug)
-- [ISSUE-019] [P1] Core damage roll, crit, and accuracy use bare `Math.random()` — the highest-impact drift sites — `parseMoveEffects-damage-core` (bug)
-- [ISSUE-020] [P1] Eight contact-triggered defender ability procs (Static / Poison Point / Flame Body / Cute Charm / Effect Spore / Toxic Chain / Cursed Body / Poison Touch) all use bare `Math.random()` — `parseMoveEffects-on-contact-abilities` (bug)
-- [ISSUE-021] [P1] Contact-ability procs (Static / Poison Point / Flame Body / Cute Charm / Poison Touch / Toxic Chain / Cursed Body) all bare `Math.random()` — `parseMoveEffects-onhit-abilities` (bug)
-- [ISSUE-022] [P1] PC_BOX_CAP is 30 in code but the canonical spec says 10 — `PC_BOX_CAP` (inconsistency)
-- [ISSUE-023] [P1] Battle for Pokémon wager system (STORY_FEATURES_INTEGRATION.md §6) still missing — `pendingWager` (inconsistency)
-- [ISSUE-024] [P1] Turn-order priority breakers (Quick Claw, speed-tie, rampage duration) use bare `Math.random()` — `playTurn` (bug)
-- [ISSUE-025] [P1] End-of-turn residual block is not try-wrapped — any throw masks as "Turn skipped" + skips residuals — `playTurn` (bug)
-- [ISSUE-026] [P1] `pushData` queue keeps advancing after a write fails — `_pushDataImpl` errors are swallowed to `console.warn`, leaving local state diverged from Supabase — `pushDataQueue` (bug)
-- [ISSUE-027] [P1] `pvp_rooms` SELECT policy is `using (true)` — anyone with the public key can scrape every live match's full draft + battle state — `pvp_rooms_select` (security)
-- [ISSUE-028] [P1] `remoteRowQueue` has no timeout — a hung `onOnlineRoomData` (e.g., a UI promise that never resolves) freezes ALL future remote updates — `remoteRowQueue` (bug)
-- [ISSUE-029] [P1] Player-facing city actions read "Pokemon League" / "Pokemon Fan Club" (no diacritic) — `renderCityActions` (inconsistency)
-- [ISSUE-030] [P1] Draft pick cards are click-only <div>s — keyboard/SR users cannot select a Pokémon — `renderDraft` (a11y)
-- [ISSUE-031] [P1] `No Item` sentinel string used in 11 build slots is absent from `data/items.json` — `resolveCsvBuildEntry` (data)
-- [ISSUE-032] [P1] showScreen() does no focus management on story-screen transitions — focus is orphaned — `showScreen` (a11y)
-- [ISSUE-033] [P1] Reaper's Toll uses bare IIFE-private `storyRngNext` — guard always false, breaks seeded replays — `storyRngNext` (inconsistency)
-- [ISSUE-034] [P1] Pokémon Trader (STORY_FEATURES_INTEGRATION.md §7) at City4 still missing — `traderOfferByCity` (inconsistency)
-- [ISSUE-035] [P1] Speed-tie resolution + Quick Claw + lock-turn duration all use bare `Math.random()` in the turn loop — `turn-resolution` (bug)
-- [ISSUE-036] [P1] `???` type used by gen1 `bide` and gen4 `curse` is not defined in `typeChart` — `typeChart` (data)
-- [ISSUE-037] [P2] 7 duplicated `select('data').eq('id', roomId).single()` fetch+error blocks in online-pvp.js — `_hostRunResolution` (refactor)
-- [ISSUE-038] [P2] Build "illegal-ability" pairs (672) are intended (hackmons/AAA + mega-form abilities); a naive legality check false-positives — `_isBuildAbilityIllegal` (inconsistency)
-- [ISSUE-039] [P2] Cable Link gimmick gate contradicts CHANGELOG promise that Cable Link surfaces pre-unlock mechanics — `_makePlayerLinkBuild` (inconsistency)
-- [ISSUE-040] [P2] Story autosave "💾 Saved" toast bypasses the polite live region — screen readers miss it — `_maybeShowSaveToast` (a11y)
-- [ISSUE-041] [P2] "PC nearly full" warning threshold is `PC_BOX_CAP - 3` (27/30) but the spec calls for 80% (8/10) — `_pcRefresh` (inconsistency)
-- [ISSUE-042] [P2] Rivalry tab is mis-homed in the Pokémon Center — belongs in a progression/journal surface — `_pcRenderRivalJournalTab` (refactor)
-- [ISSUE-043] [P2] Story tutorial overlay (STORY_TUTORIAL_SCENES) is not a dialog — no role, focus trap, or ESC — `_showStoryTutorialScene` (a11y)
-- [ISSUE-044] [P2] Current enemy curve is lumpy, not rising — GL4=GL5 dead zone (foe mult 1.0) and a GL8 quad-cliff (T3->T4 + IV 18->26 + gimmicks 2->3) — `_stageGatedFoeStatMult` (inconsistency)
-- [ISSUE-045] [P2] Foe party size matches `team.length` with per-role floors instead of the spec'd `min(6, 2+badges)` badge curve — `_storyEnemyPartySize` (balance)
-- [ISSUE-046] [P2] Planned hatch animation + Fight Club transitions need reduced-motion + live-region design up front — `_storyHatchRevealScene` (a11y)
-- [ISSUE-047] [P2] `_storyPickMysteryIdentity` uses bare `Math.random()` — Mystery Figure roll diverges across seeded replays — `_storyPickMysteryIdentity` (bug)
-- [ISSUE-048] [P2] CSV-load cache invalidation pokes IIFE-private `_txMetaCache`/`_txGlobalMetaCached` — invalidation is dead — `_txMetaCache` (inconsistency)
-- [ISSUE-049] [P2] applyStatus dereferences `state.pActive.volatile.lockMove` / `state.fActive.volatile.lockMove` unconditionally (Uproar check) — throws if an active is null — `applyStatus` (bug)
-- [ISSUE-050] [P2] Memory growth is benign (linear, ~25 KB/turn, R² = 0.712 — noise-dominated) and **does not indicate a leak**; the mandate's "60 turn / quadratic = P1" threshold is not hit — `benchMemoryGrowth` (perf)
-- [ISSUE-051] [P2] `perf-bench.mjs` calls `parseMoveEffects(move)` with the wrong arg-count; the reported 1.4 ms "median" is the cost of a thrown `TypeError`, not real per-move parsing — `benchParseMove` (perf)
-- [ISSUE-052] [P2] Turn-loop max latency is **78–84 ms** with IQR 12 ms — within the harness target (50 ms median is OK) but max is 5× the median, indicating a per-turn outlier path — `benchTurn` (perf)
-- [ISSUE-053] [P2] `deepClone` falls back to `JSON.parse(JSON.stringify(...))` — silently drops Set/Map/Date/undefined/circular refs across the entire snapshot pipeline — `deepClone` (refactor)
-- [ISSUE-054] [P2] Design checklist's load-bearing "CSS block = battle.html lines 16-4156" guardrail is wrong by ~3700 lines — `DESIGN_CONSISTENCY_CHECKLIST.md` (dx)
-- [ISSUE-055] [P2] Malva (Kalos E1) has a victory line but no intro pool in `TRAINER_QUOTES_BY_NAME` — `ELITE_VICTORY_LINES` (inconsistency)
-- [ISSUE-056] [P2] PLAN COLLISION — Daycare unlock is keyed on the "Gym Leader 1" event name, not a city; redesign wants C2/C4/C6 — `enterDaycare` (refactor)
-- [ISSUE-057] [P2] Validator reports 6925 "CSV alternative" occurrences but every build file uses arrays — false positive — `expandCommaAlternatives` (dx)
-- [ISSUE-058] [P2] No sleep clause in story + AI scores Spore at 100 → up to 3-turn lock loops, amplified by high-tier stat bloat (fairness risk) — `getBestMove` (balance)
-- [ISSUE-059] [P2] 36 references to 18 distinct `global.__*` variables across `online-pvp.js` — the PvP module mutates host-side state through ad-hoc globals instead of a single observable — `global_state_coupling` (refactor)
-- [ISSUE-060] [P2] `_loadedVer < 14` block missing — v14 trainer-name migration never runs for saves stamped at exactly v13 — `load` (bug)
-- [ISSUE-061] [P2] Migration chain is sound but unobservable — no boot-time shadow validation — `load` (dx)
-- [ISSUE-062] [P2] 6 builds in the gen*.json mirror omit `nature`; the CSV source has natures for all 17,398 rows (mirror drift) — `loadBuildsCSV` (inconsistency)
-- [ISSUE-063] [P2] 10 of 12 `.modal` overlays lack `role="dialog"` / `aria-modal` / labelledby — `modal-dialog-roles` (a11y)
-- [ISSUE-064] [P2] Only `modal-summary` handles Escape — settings, abandon, alert, confirm modals trap keyboard users — `modal-escape-key` (a11y)
-- [ISSUE-065] [P2] Modals restore focus on close but never move focus INTO the dialog on open — `openModal` (a11y)
-- [ISSUE-066] [P2] In-game help text still says "PC Storage (cap 10)" — actual PC_BOX_CAP is 30 — `PC_BOX_CAP` (inconsistency)
-- [ISSUE-067] [P2] 29 of 31 mart/dept catalog items (potion, superPotion, X items, orbs, etc.) have no entry in `data/items.json` — `POKEMART_ITEMS` (data)
-- [ISSUE-068] [P2] Mart/Dept consumables (30 ids: potion, xAttack, sunOrb, evResetCharm…) are a self-contained namespace, NOT entries in items.json — `POKEMART_ITEMS` (data)
-- [ISSUE-069] [P2] City-hub Mystery Figure NPC sprite is hard-coded to Cyrus, ignoring `sm.mysteryIdentity` rotation — `renderCityActions` (bug)
-- [ISSUE-070] [P2] Pokémon Center copy promises a "Heal" that no longer exists (full-heal is automatic) — `renderCityActions` (bug)
-- [ISSUE-071] [P2] `_trainerPoolCache` is an unbounded Map (keyed on type+gens) with no eviction — Fight Club draft / story-pool variety will grow it without limit — `rollTrainerTeam` (perf)
-- [ISSUE-072] [P2] Safari unlock spec'd "after badge 3 OR City3" but code (and REDESIGN) fix it firmly at City4 — `SAFARI_ENTRY_COST` (inconsistency)
-- [ISSUE-073] [P2] SAVE_VER stays at 19 despite an implicit v20 schema cleanup that runs on every load — `SAVE_VER` (dx)
-- [ISSUE-074] [P2] 6 silent `catch (e) {}` blocks in online-pvp.js swallow all errors without logging — `setBattleLogHtml` (dx)
-- [ISSUE-075] [P2] Display names accepted up to 24 chars with zero sanitization — flow into innerText today, but one careless innerHTML downstream becomes XSS — `setDisplayName` (security)
-- [ISSUE-076] [P2] Victory overlay is a plain `<div>` — no dialog role, no focus on Continue, ESC ignored — `showVictoryOverlay` (a11y)
-- [ISSUE-077] [P2] Story spine is a hardcoded linear array; narrative layer is data-driven but no structural side-story/random-pool slots — `STORY_EVENTS_RAW` (refactor)
-- [ISSUE-078] [P2] Recurring facility-flavor pool covers 8 services; Safari / Stone Sage / Stone Shop / Dept Store have none — `STORY_FACILITY_QUOTES` (inconsistency)
-- [ISSUE-079] [P2] Story tone variants recolor nameplate text but not its yellow background — fails WCAG AA contrast — `story-dialog-nameplate` (a11y)
-- [ISSUE-080] [P2] Story dialogue/NPC quote text is not in a live region — narration is silent to screen readers — `story-dialog-text` (a11y)
-- [ISSUE-081] [P2] Cosmetic-skin roll references bare `sm` AND bare `storyRngNext` — double scope leak, never seeded — `storyRngNext` (inconsistency)
-- [ISSUE-082] [P2] 351 it.todo() stubs across 3 move-category test files — cluster enumeration — `tests/moves/by-category` (test-gap)
-- [ISSUE-083] [P2] 56 Gym Leaders have no entry in `TRAINER_QUOTES_BY_NAME` — fall through to generic 6-line `Gym Leader` pool — `TRAINER_QUOTES_BY_NAME` (inconsistency)
-- [ISSUE-084] [P2] Tooltip-only data (type chart, move info, status terms) is `onmousemove`-gated — keyboard & touch get nothing — `type-badge` (a11y)
-- [ISSUE-085] [P2] Long story replay shows steady, non-plateauing heap growth (~22–67 KB/turn, R²=0.99 over 250 battles) driven by per-turn / per-distinct-foe DOM scaffolding that GC + reset() do not reclaim — `updateBattleUI` (perf)
-- [ISSUE-086] [P3] Modals have aria-modal + Escape but no Tab focus trap — keyboard focus can leave the dialog — `__pbsGlobalEscBound` (a11y)
-- [ISSUE-087] [P3] CONFIRMED CLEAN — PC overflow at party-cap + 30/30 shows explicit message; sell/release path exists — `_catchHandleSuccess` (bug)
-- [ISSUE-088] [P3] `_pickCityQuoteLine` deliberately uses bare `Math.random` — drift across save reloads — `_pickCityQuoteLine` (inconsistency)
-- [ISSUE-089] [P3] Sprite preloading is unbounded — each `getSprite()` call adds a `new Image()` to a global cache with no eviction; a long story run can preload 1000+ images — `_preloadedImages` (perf)
-- [ISSUE-090] [P3] Safari grade weights are now badge-keyed — spec/CODEBASE_MAP still cite the old static g1:3/g2:22/g3:50/g4:25 — `_safariGradeWeightsForBadges` (inconsistency)
-- [ISSUE-091] [P3] CONFIRMED CLEAN — catch tutorial fires exactly once; mid-tutorial reload cannot refire or lock — `_shouldFireCatchTutorialBeforeBattle` (bug)
-- [ISSUE-092] [P3] `_storyEnemyMechKeys` doesn't guard against missing `sm.settings` — could throw on a malformed save — `_storyEnemyMechKeys` (dx)
-- [ISSUE-093] [P3] CONFIRMED CLEAN — party-cap curve = min(6, 2+badges) with no off-by-one; foe sizing matches — `_storyMaxPartySize` (bug)
-- [ISSUE-094] [P3] Variant rival quote pools are uneven — several phases have a single line; many phases absent — `_VARIANT_RIVAL_QUOTES` (refactor)
-- [ISSUE-095] [P3] CONFIRMED CLEAN — mechanics unlock gate has no leak on any player or enemy path — `_withStoryPlayerGimmickGate` (bug)
-- [ISSUE-096] [P3] `applyFoeDifficultyScaling`'s "additive league boost" comment narrates a fix that was never implemented — `applyFoeDifficultyScaling` (dx)
-- [ISSUE-097] [P3] Spec §8 says league boost stacks MULTIPLICATIVELY with difficulty; code now stacks ADDITIVELY — `applyStoryLeagueFoeStatBoost` (inconsistency)
-- [ISSUE-098] [P3] `sm.catchUnlocked` is written by migration + newStoryRun but never read anywhere — `catchUnlocked` (dx)
-- [ISSUE-099] [P3] CHANGELOG 2026-05-21 entry claims Cable Link is ungated but the implementation in v18 explicitly gates it — `CHANGELOG` (inconsistency)
-- [ISSUE-100] [P3] `createRoom` hardcodes Postgres SQLSTATE `23505` for unique-violation detection — defensive `.includes('duplicate')` fallback exists but the magic number is undocumented — `createRoom_23505` (refactor)
-- [ISSUE-101] [P3] Relic Annex intro uses plain-text `_storyShowOneTimeTip`; every other facility uses a sprite-backed scene — `enterArtifactShop` (inconsistency)
-- [ISSUE-102] [P3] `enterProfessor` duplicates gimmick-gate logic inline instead of using `_withStoryPlayerGimmickGate` — `enterProfessor` (dx)
-- [ISSUE-103] [P3] `enterProfessor` reuses `_pendingProfChoices` across city visits at the same cityIdx — stale picks may persist past spec'd one-shot pool — `enterProfessor` (bug)
-- [ISSUE-104] [P3] Service-availability timeline reference (Task 1 deliverable) — first-appearance / reappear / unlock map — `FACILITY_DEBUT_CITY` (data)
-- [ISSUE-105] [P3] Paralysis tooltip says "Speed quartered" but engine halves speed (0.5) — stale Gen 1-6 text vs Gen 7+ behavior — `getDownStatusLabel` (inconsistency)
-- [ISSUE-106] [P3] Sprite preload cache `_preloadedImages` is still an unbounded Object with no eviction — every distinct (name, shiny, back) pins an Image() for the session — `getSprite` (perf)
-- [ISSUE-107] [P3] CONFIRMED FIXED — GYM_CITY_LEADER_EVENT is now derived from STORY_EVENTS_RAW at boot (prior audit 1.3) — `GYM_CITY_LEADER_EVENT` (bug)
-- [ISSUE-108] [P3] `isPokeball` flag set on 28 items but never read by the engine — dead metadata — `isPokeball` (data)
-- [ISSUE-109] [P3] 9 legacy gen2 berries (Bitter, Burnt, Gold, Ice, Mint, Miracle, Mystery, PRZ Cure, PSN Cure) have no engine handler — `items.json` (data)
-- [ISSUE-110] [P3] `delete sm.casinoCoins` cleanup runs on every load, not gated by `_loadedVer` — `load` (bug)
-- [ISSUE-111] [P3] Engine cold-boot is 2.88 s in jsdom — within the harness target (5 s) but **14× the mandate's 200 ms target** — `loadEngine` (perf)
-- [ISSUE-112] [P3] `console.log` cluster in battle.html — debug noise in shipped code — `loadGameData` (dx)
-- [ISSUE-113] [P3] Cold boot is ~3.0 s in jsdom (5-process median 3009 ms) — within the harness's relaxed 5 s self-target but 15× the mandate's 200 ms; a target-mismatch to resolve, not a regression — `loadGameData` (perf)
-- [ISSUE-114] [P3] v15 stable-ID migration only iterates `sm.team`, not `sm.pcBox` (harmless today but inconsistent with v17) — `migrateStoryPreV15` (dx)
-- [ISSUE-115] [P3] Online Host/Join form labels are not programmatically associated with their inputs — `modal-online-host` (a11y)
-- [ISSUE-116] [P3] CONFIRMED FIXED — Mystery Figure is now a rotating 10-identity cast (prior audit: hardcoded Cyrus) — `MYSTERY_FIGURE_IDENTITIES` (inconsistency)
-- [ISSUE-117] [P3] A cluster of form controls lack accessible names (online host/join, casino bet, gauntlet opt-in) — `online-host-format` (a11y)
-- [ISSUE-118] [P3] `parseMoveEffects` per-move latency varies by ~315× between fastest and slowest moves; outliers are 25–250× the median — `parseMoveEffects` (perf)
-- [ISSUE-119] [P3] `parseMoveEffects` per-move latency varies ~257× (median 0.012 ms, slowest 3.19 ms) — multi-stat-boost / "dance" moves are the outliers — `parseMoveEffects` (perf)
-- [ISSUE-120] [P3] Burn applied as final-damage multiplier (`modifier *= 0.5`) instead of halving the attack stat pre-floor — `parseMoveEffects-burn-modifier` (inconsistency)
-- [ISSUE-121] [P3] 129 `@keyframes` definitions but only 5 `prefers-reduced-motion` overrides — sprite-in, dialog-in, master-pulse, badge-pulse all unguarded — `prefers-reduced-motion` (a11y)
-- [ISSUE-122] [P3] Room codes use `Math.random()` over 32 chars × 6 positions — 30 bits, birthday collision at ~30K concurrent rooms, retry-on-23505 saves correctness but not enumeration cost — `randomCode` (bug)
-- [ISSUE-123] [P3] README calls shipped catch / PC / Underground / Safari / boss-arc systems "upcoming" — `README.md` (dx)
-- [ISSUE-124] [P3] Nature Rater availability is gappy (C0, C3, C5–C9) — absent C1/C2/C4 with no unlock rationale — `renderCityActions` (balance)
-- [ISSUE-125] [P3] Party count chip shows "(N/6)" regardless of the actual badge-driven cap — `renderTeamPanel` (bug)
-- [ISSUE-126] [P3] CONFIRMED FIXED — RIVAL_ATTACK_TYPE_DECAY is now 10 (prior audit 1.2 had ÷30 too-aggressive) — `RIVAL_ATTACK_TYPE_DECAY` (balance)
-- [ISSUE-127] [P3] Mystery Figure intro pool fallback uses 2 lines but the identity's `intros` field has 4 — falls back silently if the identity object lacks `intros` — `rollMysteryFigureFinalBossTeam` (bug)
-- [ISSUE-128] [P3] All 24 `#screen-*` containers are plain `<div>` — no `<main>` or `role="region"` — `screen-landmarks` (a11y)
-- [ISSUE-129] [P3] Several story-mode dev seeds use `Math.random` for build / sprite picks, breaking seeded replays when debug seeds are in play — `seedDebugMysteryLegendGate` (bug)
-- [ISSUE-130] [P3] End-of-turn residual logic is duplicated verbatim in forced-switch path and main loop — divergence risk — `selectPartyMember` (inconsistency)
-- [ISSUE-131] [P3] Player gimmick-unlock order shifts when a mechanic is disabled in settings — DMax unlocks at Gym 5 instead of Gym 6 if Mega is off — `settings.megaOn` (dx)
-- [ISSUE-132] [P3] `shouldForceCityProfessor` uses dead `sm.team.length < 6` floor that's shadowed by outer `hasTeamRoom` gate — `shouldForceCityProfessor` (refactor)
-- [ISSUE-133] [P3] `shouldForceCityProfessor`'s `sm.team.length < 6` floor is dead-coded once the outer `hasTeamRoom` gate clamps to `_storyMaxPartySize()` — `shouldForceCityProfessor` (dx)
-- [ISSUE-134] [P3] Stale comment claims rival secondary intro "Uses Math.random" — it now uses seeded _storySideRng — `showBattleIntro` (inconsistency)
-- [ISSUE-135] [P3] Internal action keys use `Pokemon` (no diacritic) while UI labels use `Pokémon` — `STORY_EVENTS_RAW` (inconsistency)
-- [ISSUE-136] [P3] Service-timeline pacing — City1 post-gym hub is a dead zone (no new "thing to do") — `STORY_EVENTS_RAW` (balance)
-- [ISSUE-137] [P3] STORY_EVENTS_RAW has 67 array rows (incl. 2 'Hall of Fame' string matches) — mandate/spec cite "68 rows" — `STORY_EVENTS_RAW` (data)
-- [ISSUE-138] [P3] 6+ stale `battle.html:LINE` refs in STORY_MODE_CATCH_INTEGRATION_RISK.md (avg drift ~9000 lines) — `STORY_MODE_CATCH_INTEGRATION_RISK.md` (dx)
-- [ISSUE-139] [P3] Doc `battle.html:LINE` anchors still stale (50 refs, 18 drifted) despite PR #140 "fix" — `STORY_MODE_CATCH_INTEGRATION_RISK.md` (dx)
-- [ISSUE-140] [P3] 9 of 10 `battle.html:LINE` refs in STORY_MODE_FLOW.md are stale (avg drift ~7000 lines) — `STORY_MODE_FLOW.md` (dx)
-- [ISSUE-141] [P3] STORY_MODE_FLOW.md PC cap of 10 contradicts shipped PC_BOX_CAP=30 — `STORY_MODE_FLOW.md` (data)
-- [ISSUE-142] [P3] 5+ stale `battle.html:LINE` refs in STORY_NARRATIVE_VARIANTS.md (variant-system anchors moved 3-5k lines) — `STORY_NARRATIVE_VARIANTS.md` (dx)
-- [ISSUE-143] [P3] Tutorial scenes are text-only walls of 60-120 words — no audio, no progressive reveal, no skip-to-end affordance — `STORY_TUTORIAL_SCENES` (dx)
-- [ISSUE-144] [P3] Mobile touch targets in story shops top out at 42px — under the WCAG 44×44 baseline — `story-shop-buy-btn` (a11y)
-- [ISSUE-145] [P3] Tutorial overlay's four-stage entrance animation has no reduced-motion fallback — `story-tutorial-overlay` (a11y)
-- [ISSUE-146] [P3] Scope-leak audit (same class as fixed `sm` bug) — NEGATIVE: no other IIFE-internal symbol referenced bare from turn-loop scope — `storyAwareRng` (inconsistency)
-- [ISSUE-147] [P3] `storyAwareRng()` helper exists but the combat engine still calls bare `Math.random()` at ~250 sites — `storyAwareRng` (dx)
-- [ISSUE-148] [P3] Master Ball purple pulse runs forever with no reduced-motion override; surrounding text/glow stays readable but the loop is hostile — `storyCatchMasterPulse` (a11y)
-- [ISSUE-149] [P3] CONFIRMED FIXED — Hard coin mult floored to 1.00 (prior audit 2.1); Challenge 1.10 — `storyDifficultyCoinMult` (balance)
-- [ISSUE-150] [P3] `sm.wildSeenByEventIdx` and `sm.staticDrops` are lazily initialized instead of declared in the `sm` defaults block — `wildSeenByEventIdx` (dx)
+- [ISSUE-004] [P1] aiDecision early-returns null on any choiceLock — AI cannot switch out of an immune/walled lock — `aiDecision` (bug)
+- [ISSUE-005] [P1] Difficulty tiers scale only enemy stats; AI policy is byte-identical at every tier — no rising *challenge*, just a rising stat-wall — `applyFoeDifficultyScaling` (balance)
+- [ISSUE-006] [P1] Sleep duration roll uses bare `Math.random()` (RNG drift on every sleep proc) — `applyStatus` (bug)
+- [ISSUE-007] [P1] League foe stat boost stacks multiplicatively despite comment claiming additive merge — `applyStoryLeagueFoeStatBoost` (bug)
+- [ISSUE-008] [P1] Black Market shop from STORY_FEATURES_INTEGRATION.md §3 is still entirely unimplemented — `BLACK_MARKET_ITEMS` (inconsistency)
+- [ISSUE-009] [P1] `canMove` paralysis + confusion self-hit checks use bare `Math.random()` (RNG drift in story replays) — `canMove` (bug)
+- [ISSUE-010] [P1] `canMove` paralysis fizzle uses bare `Math.random()` while sibling freeze thaw uses `storyRngNext` — `canMove` (bug)
+- [ISSUE-011] [P1] Ball inventory + `catchMode` flag in STORY_FEATURES_INTEGRATION §1/§2/§5 do not match shipped code — `catchMode` (inconsistency)
+- [ISSUE-012] [P1] Retune risk: `data/builds/gen*.json` is a fallback mirror, not the live build source (`data/builds.csv` is authoritative) — `fetchSmogonSetsForGen` (data)
+- [ISSUE-013] [P1] Choice-locked AI re-returns the locked move with zero immunity/wall check — spams 0-dmg moves forever — `getBestMove` (bug)
+- [ISSUE-014] [P1] AI spams setup move into an active phazer — `score *= 0.25` penalty loses to near-zero attack scores — `getBestMove` (bug)
+- [ISSUE-015] [P1] Illegal Dealer NPC encounter (STORY_FEATURES_INTEGRATION.md §3.5) still missing — `illegalDealer` (inconsistency)
+- [ISSUE-016] [P1] Full Itinerary scaffolding (STORY_FEATURES_INTEGRATION.md §10) still entirely unimplemented — `itineraryProgress` (inconsistency)
+- [ISSUE-017] [P1] `lastRemoteSeq` is updated *before* the remote handler runs — a thrown handler still bumps the watermark, so the failed update is permanently skipped — `lastRemoteSeq` (bug)
+- [ISSUE-018] [P1] Save-migration integration test never exercises the migrate chain (vacuous pass) — `migrateStoryPreV15` (dx)
+- [ISSUE-019] [P1] v14 trainer-assignment migration is bundled under `_loadedVer < 13`, so v13 saves skip it — `migrateStoryTrainerAssignmentsPreV14` (bug)
+- [ISSUE-020] [P1] Secondary flinch/Stench write `defender.volatile.flinch` unguarded — throws if volatile missing (sibling _tryConfuse guards it) — `parseMoveEffects` (bug)
+- [ISSUE-021] [P1] Many `parseMoveEffects` branches still use bare `Math.random()` — seeded story replays drift — `parseMoveEffects` (bug)
+- [ISSUE-022] [P1] Core damage roll, crit, and accuracy use bare `Math.random()` — the highest-impact drift sites — `parseMoveEffects-damage-core` (bug)
+- [ISSUE-023] [P1] Eight contact-triggered defender ability procs (Static / Poison Point / Flame Body / Cute Charm / Effect Spore / Toxic Chain / Cursed Body / Poison Touch) all use bare `Math.random()` — `parseMoveEffects-on-contact-abilities` (bug)
+- [ISSUE-024] [P1] Contact-ability procs (Static / Poison Point / Flame Body / Cute Charm / Poison Touch / Toxic Chain / Cursed Body) all bare `Math.random()` — `parseMoveEffects-onhit-abilities` (bug)
+- [ISSUE-025] [P1] PC_BOX_CAP is 30 in code but the canonical spec says 10 — `PC_BOX_CAP` (inconsistency)
+- [ISSUE-026] [P1] Battle for Pokémon wager system (STORY_FEATURES_INTEGRATION.md §6) still missing — `pendingWager` (inconsistency)
+- [ISSUE-027] [P1] Turn-order priority breakers (Quick Claw, speed-tie, rampage duration) use bare `Math.random()` — `playTurn` (bug)
+- [ISSUE-028] [P1] End-of-turn residual block is not try-wrapped — any throw masks as "Turn skipped" + skips residuals — `playTurn` (bug)
+- [ISSUE-029] [P1] `pushData` queue keeps advancing after a write fails — `_pushDataImpl` errors are swallowed to `console.warn`, leaving local state diverged from Supabase — `pushDataQueue` (bug)
+- [ISSUE-030] [P1] `pvp_rooms` SELECT policy is `using (true)` — anyone with the public key can scrape every live match's full draft + battle state — `pvp_rooms_select` (security)
+- [ISSUE-031] [P1] `remoteRowQueue` has no timeout — a hung `onOnlineRoomData` (e.g., a UI promise that never resolves) freezes ALL future remote updates — `remoteRowQueue` (bug)
+- [ISSUE-032] [P1] Player-facing city actions read "Pokemon League" / "Pokemon Fan Club" (no diacritic) — `renderCityActions` (inconsistency)
+- [ISSUE-033] [P1] Draft pick cards are click-only <div>s — keyboard/SR users cannot select a Pokémon — `renderDraft` (a11y)
+- [ISSUE-034] [P1] `No Item` sentinel string used in 11 build slots is absent from `data/items.json` — `resolveCsvBuildEntry` (data)
+- [ISSUE-035] [P1] showScreen() does no focus management on story-screen transitions — focus is orphaned — `showScreen` (a11y)
+- [ISSUE-036] [P1] Reaper's Toll uses bare IIFE-private `storyRngNext` — guard always false, breaks seeded replays — `storyRngNext` (inconsistency)
+- [ISSUE-037] [P1] Pokémon Trader (STORY_FEATURES_INTEGRATION.md §7) at City4 still missing — `traderOfferByCity` (inconsistency)
+- [ISSUE-038] [P1] Speed-tie resolution + Quick Claw + lock-turn duration all use bare `Math.random()` in the turn loop — `turn-resolution` (bug)
+- [ISSUE-039] [P1] `???` type used by gen1 `bide` and gen4 `curse` is not defined in `typeChart` — `typeChart` (data)
+- [ISSUE-040] [P2] 7 duplicated `select('data').eq('id', roomId).single()` fetch+error blocks in online-pvp.js — `_hostRunResolution` (refactor)
+- [ISSUE-041] [P2] Build "illegal-ability" pairs (672) are intended (hackmons/AAA + mega-form abilities); a naive legality check false-positives — `_isBuildAbilityIllegal` (inconsistency)
+- [ISSUE-042] [P2] Cable Link gimmick gate contradicts CHANGELOG promise that Cable Link surfaces pre-unlock mechanics — `_makePlayerLinkBuild` (inconsistency)
+- [ISSUE-043] [P2] Story autosave "💾 Saved" toast bypasses the polite live region — screen readers miss it — `_maybeShowSaveToast` (a11y)
+- [ISSUE-044] [P2] "PC nearly full" warning threshold is `PC_BOX_CAP - 3` (27/30) but the spec calls for 80% (8/10) — `_pcRefresh` (inconsistency)
+- [ISSUE-045] [P2] Rivalry tab is mis-homed in the Pokémon Center — belongs in a progression/journal surface — `_pcRenderRivalJournalTab` (refactor)
+- [ISSUE-046] [P2] Story tutorial overlay (STORY_TUTORIAL_SCENES) is not a dialog — no role, focus trap, or ESC — `_showStoryTutorialScene` (a11y)
+- [ISSUE-047] [P2] Current enemy curve is lumpy, not rising — GL4=GL5 dead zone (foe mult 1.0) and a GL8 quad-cliff (T3->T4 + IV 18->26 + gimmicks 2->3) — `_stageGatedFoeStatMult` (inconsistency)
+- [ISSUE-048] [P2] Foe party size matches `team.length` with per-role floors instead of the spec'd `min(6, 2+badges)` badge curve — `_storyEnemyPartySize` (balance)
+- [ISSUE-049] [P2] Planned hatch animation + Fight Club transitions need reduced-motion + live-region design up front — `_storyHatchRevealScene` (a11y)
+- [ISSUE-050] [P2] `_storyPickMysteryIdentity` uses bare `Math.random()` — Mystery Figure roll diverges across seeded replays — `_storyPickMysteryIdentity` (bug)
+- [ISSUE-051] [P2] CSV-load cache invalidation pokes IIFE-private `_txMetaCache`/`_txGlobalMetaCached` — invalidation is dead — `_txMetaCache` (inconsistency)
+- [ISSUE-052] [P2] applyStatus dereferences `state.pActive.volatile.lockMove` / `state.fActive.volatile.lockMove` unconditionally (Uproar check) — throws if an active is null — `applyStatus` (bug)
+- [ISSUE-053] [P2] Memory growth is benign (linear, ~25 KB/turn, R² = 0.712 — noise-dominated) and **does not indicate a leak**; the mandate's "60 turn / quadratic = P1" threshold is not hit — `benchMemoryGrowth` (perf)
+- [ISSUE-054] [P2] `perf-bench.mjs` calls `parseMoveEffects(move)` with the wrong arg-count; the reported 1.4 ms "median" is the cost of a thrown `TypeError`, not real per-move parsing — `benchParseMove` (perf)
+- [ISSUE-055] [P2] Turn-loop max latency is **78–84 ms** with IQR 12 ms — within the harness target (50 ms median is OK) but max is 5× the median, indicating a per-turn outlier path — `benchTurn` (perf)
+- [ISSUE-056] [P2] `deepClone` falls back to `JSON.parse(JSON.stringify(...))` — silently drops Set/Map/Date/undefined/circular refs across the entire snapshot pipeline — `deepClone` (refactor)
+- [ISSUE-057] [P2] Design checklist's load-bearing "CSS block = battle.html lines 16-4156" guardrail is wrong by ~3700 lines — `DESIGN_CONSISTENCY_CHECKLIST.md` (dx)
+- [ISSUE-058] [P2] Malva (Kalos E1) has a victory line but no intro pool in `TRAINER_QUOTES_BY_NAME` — `ELITE_VICTORY_LINES` (inconsistency)
+- [ISSUE-059] [P2] PLAN COLLISION — Daycare unlock is keyed on the "Gym Leader 1" event name, not a city; redesign wants C2/C4/C6 — `enterDaycare` (refactor)
+- [ISSUE-060] [P2] Validator reports 6925 "CSV alternative" occurrences but every build file uses arrays — false positive — `expandCommaAlternatives` (dx)
+- [ISSUE-061] [P2] No sleep clause in story + AI scores Spore at 100 → up to 3-turn lock loops, amplified by high-tier stat bloat (fairness risk) — `getBestMove` (balance)
+- [ISSUE-062] [P2] When every damaging move is immune (score 0), AI throws a 0-dmg attack instead of switching/using status — `getBestMove` (inconsistency)
+- [ISSUE-063] [P2] 36 references to 18 distinct `global.__*` variables across `online-pvp.js` — the PvP module mutates host-side state through ad-hoc globals instead of a single observable — `global_state_coupling` (refactor)
+- [ISSUE-064] [P2] `_loadedVer < 14` block missing — v14 trainer-name migration never runs for saves stamped at exactly v13 — `load` (bug)
+- [ISSUE-065] [P2] Migration chain is sound but unobservable — no boot-time shadow validation — `load` (dx)
+- [ISSUE-066] [P2] 6 builds in the gen*.json mirror omit `nature`; the CSV source has natures for all 17,398 rows (mirror drift) — `loadBuildsCSV` (inconsistency)
+- [ISSUE-067] [P2] 10 of 12 `.modal` overlays lack `role="dialog"` / `aria-modal` / labelledby — `modal-dialog-roles` (a11y)
+- [ISSUE-068] [P2] Only `modal-summary` handles Escape — settings, abandon, alert, confirm modals trap keyboard users — `modal-escape-key` (a11y)
+- [ISSUE-069] [P2] Modals restore focus on close but never move focus INTO the dialog on open — `openModal` (a11y)
+- [ISSUE-070] [P2] In-game help text still says "PC Storage (cap 10)" — actual PC_BOX_CAP is 30 — `PC_BOX_CAP` (inconsistency)
+- [ISSUE-071] [P2] 29 of 31 mart/dept catalog items (potion, superPotion, X items, orbs, etc.) have no entry in `data/items.json` — `POKEMART_ITEMS` (data)
+- [ISSUE-072] [P2] Mart/Dept consumables (30 ids: potion, xAttack, sunOrb, evResetCharm…) are a self-contained namespace, NOT entries in items.json — `POKEMART_ITEMS` (data)
+- [ISSUE-073] [P2] City-hub Mystery Figure NPC sprite is hard-coded to Cyrus, ignoring `sm.mysteryIdentity` rotation — `renderCityActions` (bug)
+- [ISSUE-074] [P2] Pokémon Center copy promises a "Heal" that no longer exists (full-heal is automatic) — `renderCityActions` (bug)
+- [ISSUE-075] [P2] `_trainerPoolCache` is an unbounded Map (keyed on type+gens) with no eviction — Fight Club draft / story-pool variety will grow it without limit — `rollTrainerTeam` (perf)
+- [ISSUE-076] [P2] Safari unlock spec'd "after badge 3 OR City3" but code (and REDESIGN) fix it firmly at City4 — `SAFARI_ENTRY_COST` (inconsistency)
+- [ISSUE-077] [P2] SAVE_VER stays at 19 despite an implicit v20 schema cleanup that runs on every load — `SAVE_VER` (dx)
+- [ISSUE-078] [P2] 6 silent `catch (e) {}` blocks in online-pvp.js swallow all errors without logging — `setBattleLogHtml` (dx)
+- [ISSUE-079] [P2] Display names accepted up to 24 chars with zero sanitization — flow into innerText today, but one careless innerHTML downstream becomes XSS — `setDisplayName` (security)
+- [ISSUE-080] [P2] Victory overlay is a plain `<div>` — no dialog role, no focus on Continue, ESC ignored — `showVictoryOverlay` (a11y)
+- [ISSUE-081] [P2] Story spine is a hardcoded linear array; narrative layer is data-driven but no structural side-story/random-pool slots — `STORY_EVENTS_RAW` (refactor)
+- [ISSUE-082] [P2] Recurring facility-flavor pool covers 8 services; Safari / Stone Sage / Stone Shop / Dept Store have none — `STORY_FACILITY_QUOTES` (inconsistency)
+- [ISSUE-083] [P2] Story tone variants recolor nameplate text but not its yellow background — fails WCAG AA contrast — `story-dialog-nameplate` (a11y)
+- [ISSUE-084] [P2] Story dialogue/NPC quote text is not in a live region — narration is silent to screen readers — `story-dialog-text` (a11y)
+- [ISSUE-085] [P2] Cosmetic-skin roll references bare `sm` AND bare `storyRngNext` — double scope leak, never seeded — `storyRngNext` (inconsistency)
+- [ISSUE-086] [P2] 351 it.todo() stubs across 3 move-category test files — cluster enumeration — `tests/moves/by-category` (test-gap)
+- [ISSUE-087] [P2] 56 Gym Leaders have no entry in `TRAINER_QUOTES_BY_NAME` — fall through to generic 6-line `Gym Leader` pool — `TRAINER_QUOTES_BY_NAME` (inconsistency)
+- [ISSUE-088] [P2] Tooltip-only data (type chart, move info, status terms) is `onmousemove`-gated — keyboard & touch get nothing — `type-badge` (a11y)
+- [ISSUE-089] [P2] Long story replay shows steady, non-plateauing heap growth (~22–67 KB/turn, R²=0.99 over 250 battles) driven by per-turn / per-distinct-foe DOM scaffolding that GC + reset() do not reclaim — `updateBattleUI` (perf)
+- [ISSUE-090] [P3] Modals have aria-modal + Escape but no Tab focus trap — keyboard focus can leave the dialog — `__pbsGlobalEscBound` (a11y)
+- [ISSUE-091] [P3] CONFIRMED CLEAN — PC overflow at party-cap + 30/30 shows explicit message; sell/release path exists — `_catchHandleSuccess` (bug)
+- [ISSUE-092] [P3] `_pickCityQuoteLine` deliberately uses bare `Math.random` — drift across save reloads — `_pickCityQuoteLine` (inconsistency)
+- [ISSUE-093] [P3] Sprite preloading is unbounded — each `getSprite()` call adds a `new Image()` to a global cache with no eviction; a long story run can preload 1000+ images — `_preloadedImages` (perf)
+- [ISSUE-094] [P3] Safari grade weights are now badge-keyed — spec/CODEBASE_MAP still cite the old static g1:3/g2:22/g3:50/g4:25 — `_safariGradeWeightsForBadges` (inconsistency)
+- [ISSUE-095] [P3] CONFIRMED CLEAN — catch tutorial fires exactly once; mid-tutorial reload cannot refire or lock — `_shouldFireCatchTutorialBeforeBattle` (bug)
+- [ISSUE-096] [P3] `_storyEnemyMechKeys` doesn't guard against missing `sm.settings` — could throw on a malformed save — `_storyEnemyMechKeys` (dx)
+- [ISSUE-097] [P3] CONFIRMED CLEAN — party-cap curve = min(6, 2+badges) with no off-by-one; foe sizing matches — `_storyMaxPartySize` (bug)
+- [ISSUE-098] [P3] Variant rival quote pools are uneven — several phases have a single line; many phases absent — `_VARIANT_RIVAL_QUOTES` (refactor)
+- [ISSUE-099] [P3] CONFIRMED CLEAN — mechanics unlock gate has no leak on any player or enemy path — `_withStoryPlayerGimmickGate` (bug)
+- [ISSUE-100] [P3] `applyFoeDifficultyScaling`'s "additive league boost" comment narrates a fix that was never implemented — `applyFoeDifficultyScaling` (dx)
+- [ISSUE-101] [P3] Spec §8 says league boost stacks MULTIPLICATIVELY with difficulty; code now stacks ADDITIVELY — `applyStoryLeagueFoeStatBoost` (inconsistency)
+- [ISSUE-102] [P3] `sm.catchUnlocked` is written by migration + newStoryRun but never read anywhere — `catchUnlocked` (dx)
+- [ISSUE-103] [P3] CHANGELOG 2026-05-21 entry claims Cable Link is ungated but the implementation in v18 explicitly gates it — `CHANGELOG` (inconsistency)
+- [ISSUE-104] [P3] `createRoom` hardcodes Postgres SQLSTATE `23505` for unique-violation detection — defensive `.includes('duplicate')` fallback exists but the magic number is undocumented — `createRoom_23505` (refactor)
+- [ISSUE-105] [P3] Relic Annex intro uses plain-text `_storyShowOneTimeTip`; every other facility uses a sprite-backed scene — `enterArtifactShop` (inconsistency)
+- [ISSUE-106] [P3] `enterProfessor` duplicates gimmick-gate logic inline instead of using `_withStoryPlayerGimmickGate` — `enterProfessor` (dx)
+- [ISSUE-107] [P3] `enterProfessor` reuses `_pendingProfChoices` across city visits at the same cityIdx — stale picks may persist past spec'd one-shot pool — `enterProfessor` (bug)
+- [ISSUE-108] [P3] Service-availability timeline reference (Task 1 deliverable) — first-appearance / reappear / unlock map — `FACILITY_DEBUT_CITY` (data)
+- [ISSUE-109] [P3] Paralysis tooltip says "Speed quartered" but engine halves speed (0.5) — stale Gen 1-6 text vs Gen 7+ behavior — `getDownStatusLabel` (inconsistency)
+- [ISSUE-110] [P3] Sprite preload cache `_preloadedImages` is still an unbounded Object with no eviction — every distinct (name, shiny, back) pins an Image() for the session — `getSprite` (perf)
+- [ISSUE-111] [P3] CONFIRMED FIXED — GYM_CITY_LEADER_EVENT is now derived from STORY_EVENTS_RAW at boot (prior audit 1.3) — `GYM_CITY_LEADER_EVENT` (bug)
+- [ISSUE-112] [P3] `isPokeball` flag set on 28 items but never read by the engine — dead metadata — `isPokeball` (data)
+- [ISSUE-113] [P3] 9 legacy gen2 berries (Bitter, Burnt, Gold, Ice, Mint, Miracle, Mystery, PRZ Cure, PSN Cure) have no engine handler — `items.json` (data)
+- [ISSUE-114] [P3] `delete sm.casinoCoins` cleanup runs on every load, not gated by `_loadedVer` — `load` (bug)
+- [ISSUE-115] [P3] Engine cold-boot is 2.88 s in jsdom — within the harness target (5 s) but **14× the mandate's 200 ms target** — `loadEngine` (perf)
+- [ISSUE-116] [P3] `console.log` cluster in battle.html — debug noise in shipped code — `loadGameData` (dx)
+- [ISSUE-117] [P3] Cold boot is ~3.0 s in jsdom (5-process median 3009 ms) — within the harness's relaxed 5 s self-target but 15× the mandate's 200 ms; a target-mismatch to resolve, not a regression — `loadGameData` (perf)
+- [ISSUE-118] [P3] v15 stable-ID migration only iterates `sm.team`, not `sm.pcBox` (harmless today but inconsistent with v17) — `migrateStoryPreV15` (dx)
+- [ISSUE-119] [P3] Online Host/Join form labels are not programmatically associated with their inputs — `modal-online-host` (a11y)
+- [ISSUE-120] [P3] CONFIRMED FIXED — Mystery Figure is now a rotating 10-identity cast (prior audit: hardcoded Cyrus) — `MYSTERY_FIGURE_IDENTITIES` (inconsistency)
+- [ISSUE-121] [P3] A cluster of form controls lack accessible names (online host/join, casino bet, gauntlet opt-in) — `online-host-format` (a11y)
+- [ISSUE-122] [P3] `parseMoveEffects` per-move latency varies by ~315× between fastest and slowest moves; outliers are 25–250× the median — `parseMoveEffects` (perf)
+- [ISSUE-123] [P3] `parseMoveEffects` per-move latency varies ~257× (median 0.012 ms, slowest 3.19 ms) — multi-stat-boost / "dance" moves are the outliers — `parseMoveEffects` (perf)
+- [ISSUE-124] [P3] Burn applied as final-damage multiplier (`modifier *= 0.5`) instead of halving the attack stat pre-floor — `parseMoveEffects-burn-modifier` (inconsistency)
+- [ISSUE-125] [P3] 129 `@keyframes` definitions but only 5 `prefers-reduced-motion` overrides — sprite-in, dialog-in, master-pulse, badge-pulse all unguarded — `prefers-reduced-motion` (a11y)
+- [ISSUE-126] [P3] Room codes use `Math.random()` over 32 chars × 6 positions — 30 bits, birthday collision at ~30K concurrent rooms, retry-on-23505 saves correctness but not enumeration cost — `randomCode` (bug)
+- [ISSUE-127] [P3] README calls shipped catch / PC / Underground / Safari / boss-arc systems "upcoming" — `README.md` (dx)
+- [ISSUE-128] [P3] Nature Rater availability is gappy (C0, C3, C5–C9) — absent C1/C2/C4 with no unlock rationale — `renderCityActions` (balance)
+- [ISSUE-129] [P3] Party count chip shows "(N/6)" regardless of the actual badge-driven cap — `renderTeamPanel` (bug)
+- [ISSUE-130] [P3] CONFIRMED FIXED — RIVAL_ATTACK_TYPE_DECAY is now 10 (prior audit 1.2 had ÷30 too-aggressive) — `RIVAL_ATTACK_TYPE_DECAY` (balance)
+- [ISSUE-131] [P3] Mystery Figure intro pool fallback uses 2 lines but the identity's `intros` field has 4 — falls back silently if the identity object lacks `intros` — `rollMysteryFigureFinalBossTeam` (bug)
+- [ISSUE-132] [P3] All 24 `#screen-*` containers are plain `<div>` — no `<main>` or `role="region"` — `screen-landmarks` (a11y)
+- [ISSUE-133] [P3] Several story-mode dev seeds use `Math.random` for build / sprite picks, breaking seeded replays when debug seeds are in play — `seedDebugMysteryLegendGate` (bug)
+- [ISSUE-134] [P3] End-of-turn residual logic is duplicated verbatim in forced-switch path and main loop — divergence risk — `selectPartyMember` (inconsistency)
+- [ISSUE-135] [P3] Player gimmick-unlock order shifts when a mechanic is disabled in settings — DMax unlocks at Gym 5 instead of Gym 6 if Mega is off — `settings.megaOn` (dx)
+- [ISSUE-136] [P3] `shouldForceCityProfessor` uses dead `sm.team.length < 6` floor that's shadowed by outer `hasTeamRoom` gate — `shouldForceCityProfessor` (refactor)
+- [ISSUE-137] [P3] `shouldForceCityProfessor`'s `sm.team.length < 6` floor is dead-coded once the outer `hasTeamRoom` gate clamps to `_storyMaxPartySize()` — `shouldForceCityProfessor` (dx)
+- [ISSUE-138] [P3] Stale comment claims rival secondary intro "Uses Math.random" — it now uses seeded _storySideRng — `showBattleIntro` (inconsistency)
+- [ISSUE-139] [P3] Internal action keys use `Pokemon` (no diacritic) while UI labels use `Pokémon` — `STORY_EVENTS_RAW` (inconsistency)
+- [ISSUE-140] [P3] Service-timeline pacing — City1 post-gym hub is a dead zone (no new "thing to do") — `STORY_EVENTS_RAW` (balance)
+- [ISSUE-141] [P3] STORY_EVENTS_RAW has 67 array rows (incl. 2 'Hall of Fame' string matches) — mandate/spec cite "68 rows" — `STORY_EVENTS_RAW` (data)
+- [ISSUE-142] [P3] 6+ stale `battle.html:LINE` refs in STORY_MODE_CATCH_INTEGRATION_RISK.md (avg drift ~9000 lines) — `STORY_MODE_CATCH_INTEGRATION_RISK.md` (dx)
+- [ISSUE-143] [P3] Doc `battle.html:LINE` anchors still stale (50 refs, 18 drifted) despite PR #140 "fix" — `STORY_MODE_CATCH_INTEGRATION_RISK.md` (dx)
+- [ISSUE-144] [P3] 9 of 10 `battle.html:LINE` refs in STORY_MODE_FLOW.md are stale (avg drift ~7000 lines) — `STORY_MODE_FLOW.md` (dx)
+- [ISSUE-145] [P3] STORY_MODE_FLOW.md PC cap of 10 contradicts shipped PC_BOX_CAP=30 — `STORY_MODE_FLOW.md` (data)
+- [ISSUE-146] [P3] 5+ stale `battle.html:LINE` refs in STORY_NARRATIVE_VARIANTS.md (variant-system anchors moved 3-5k lines) — `STORY_NARRATIVE_VARIANTS.md` (dx)
+- [ISSUE-147] [P3] Tutorial scenes are text-only walls of 60-120 words — no audio, no progressive reveal, no skip-to-end affordance — `STORY_TUTORIAL_SCENES` (dx)
+- [ISSUE-148] [P3] Mobile touch targets in story shops top out at 42px — under the WCAG 44×44 baseline — `story-shop-buy-btn` (a11y)
+- [ISSUE-149] [P3] Tutorial overlay's four-stage entrance animation has no reduced-motion fallback — `story-tutorial-overlay` (a11y)
+- [ISSUE-150] [P3] Scope-leak audit (same class as fixed `sm` bug) — NEGATIVE: no other IIFE-internal symbol referenced bare from turn-loop scope — `storyAwareRng` (inconsistency)
+- [ISSUE-151] [P3] `storyAwareRng()` helper exists but the combat engine still calls bare `Math.random()` at ~250 sites — `storyAwareRng` (dx)
+- [ISSUE-152] [P3] Master Ball purple pulse runs forever with no reduced-motion override; surrounding text/glow stays readable but the loop is hostile — `storyCatchMasterPulse` (a11y)
+- [ISSUE-153] [P3] CONFIRMED FIXED — Hard coin mult floored to 1.00 (prior audit 2.1); Challenge 1.10 — `storyDifficultyCoinMult` (balance)
+- [ISSUE-154] [P3] `sm.wildSeenByEventIdx` and `sm.staticDrops` are lazily initialized instead of declared in the `sm` defaults block — `wildSeenByEventIdx` (dx)
 
 ---
 
@@ -303,10 +307,46 @@ window._pbsStoryUnlockedGimmicks = (typeof sm !== 'undefined' && sm && Array.isA
 
 ---
 
-## <a id="ISSUE-004"></a> ISSUE-004: Difficulty tiers scale only enemy stats; AI policy is byte-identical at every tier — no rising *challenge*, just a rising stat-wall
+## <a id="ISSUE-004"></a> ISSUE-004: aiDecision early-returns null on any choiceLock — AI cannot switch out of an immune/walled lock
 
 ---
 id: ISSUE-004
+severity: P1
+category: bug
+anchor_symbol: aiDecision
+current_line_hint: ~19434
+file: battle.html
+agents: [battle-engine-debugger]
+fingerprint: 7413698eff37
+confidence: high
+status: fixed-claude/ecstatic-gauss-RY5hA
+---
+
+**Title**: aiDecision early-returns null on any choiceLock — AI cannot switch out of an immune/walled lock
+
+**Evidence**:
+```js
+function aiDecision() {
+    let attacker = state.fActive, defender = state.pActive;
+    if (attacker.volatile.choiceLock) return null;   // <-- blocks ALL switches while choice-locked
+    ...
+```
+Choice lock prevents changing *moves*, not switching Pokémon. This conflates the two: a choice-locked mon CAN legally switch, but the AI refuses to, so it is stranded re-using the locked move (paired with the getBestMove finding above).
+
+**Repro**: `node scripts/debug/_repro/issue1-immune-spam.mjs` case (c): Choice-Specs Manectric locked into Thunderbolt vs Lightning Rod, with a Garchomp on the bench that would dominate the matchup. `aiDecision()` returns `null` (refuses to switch). `issue1-robust.mjs` confirms `aiDecision: null` while trapped.
+
+**Blast radius**: Combines with finding 844cf5ce029b into a hard, inescapable loop the player triggers at will: switch an immunity/hard-wall into a choice-locked foe and it never threatens again. Whole-team-feed potential if the player keeps the wall healthy.
+
+**Fix sketch**: Remove the blanket `choiceLock` early-return (or gate it): a choice-locked attacker should still be allowed to switch when its locked move is immune/zeroed or it is `willDieFirst`/hard-walled. Only true trapping (partialTrap, Arena Trap/Shadow Tag/Magnet Pull, ingrain — already handled just below) should force `null`.
+
+**Verification**: Re-run case (c); with a strong bench it should return a switch index. Confirm `tests/property/priority-order` and existing ai-decision suites still pass (no regression in legitimate "don't switch, just attack" cases).
+
+---
+
+## <a id="ISSUE-005"></a> ISSUE-005: Difficulty tiers scale only enemy stats; AI policy is byte-identical at every tier — no rising *challenge*, just a rising stat-wall
+
+---
+id: ISSUE-005
 severity: P1
 category: balance
 anchor_symbol: applyFoeDifficultyScaling
@@ -340,10 +380,10 @@ mult *= _earlyGameFoeStatMult(); mult *= window._stageGatedFoeStatMult();
 
 ---
 
-## <a id="ISSUE-005"></a> ISSUE-005: Sleep duration roll uses bare `Math.random()` (RNG drift on every sleep proc)
+## <a id="ISSUE-006"></a> ISSUE-006: Sleep duration roll uses bare `Math.random()` (RNG drift on every sleep proc)
 
 ---
-id: ISSUE-005
+id: ISSUE-006
 severity: P1
 category: bug
 anchor_symbol: applyStatus
@@ -375,10 +415,10 @@ Duration determines wake-up turn count, checked every turn in `canMove` (line 24
 
 ---
 
-## <a id="ISSUE-006"></a> ISSUE-006: League foe stat boost stacks multiplicatively despite comment claiming additive merge
+## <a id="ISSUE-007"></a> ISSUE-007: League foe stat boost stacks multiplicatively despite comment claiming additive merge
 
 ---
-id: ISSUE-006
+id: ISSUE-007
 severity: P1
 category: bug
 anchor_symbol: applyStoryLeagueFoeStatBoost
@@ -419,10 +459,10 @@ const newMaxHp = Math.max(1, Math.floor(mon.maxHp * hpMult));  // hpM already ap
 
 ---
 
-## <a id="ISSUE-007"></a> ISSUE-007: Black Market shop from STORY_FEATURES_INTEGRATION.md §3 is still entirely unimplemented
+## <a id="ISSUE-008"></a> ISSUE-008: Black Market shop from STORY_FEATURES_INTEGRATION.md §3 is still entirely unimplemented
 
 ---
-id: ISSUE-007
+id: ISSUE-008
 severity: P1
 category: inconsistency
 anchor_symbol: BLACK_MARKET_ITEMS
@@ -451,10 +491,10 @@ $ grep -nE 'BLACK_MARKET|blackMarket|BlackMarket|black_market' battle.html
 
 ---
 
-## <a id="ISSUE-008"></a> ISSUE-008: `canMove` paralysis + confusion self-hit checks use bare `Math.random()` (RNG drift in story replays)
+## <a id="ISSUE-009"></a> ISSUE-009: `canMove` paralysis + confusion self-hit checks use bare `Math.random()` (RNG drift in story replays)
 
 ---
-id: ISSUE-008
+id: ISSUE-009
 severity: P1
 category: bug
 anchor_symbol: canMove
@@ -488,10 +528,10 @@ The sibling ice-thaw site at 24228 was already fixed (`const _thawRng = (sm && s
 
 ---
 
-## <a id="ISSUE-009"></a> ISSUE-009: `canMove` paralysis fizzle uses bare `Math.random()` while sibling freeze thaw uses `storyRngNext`
+## <a id="ISSUE-010"></a> ISSUE-010: `canMove` paralysis fizzle uses bare `Math.random()` while sibling freeze thaw uses `storyRngNext`
 
 ---
-id: ISSUE-009
+id: ISSUE-010
 severity: P1
 category: bug
 anchor_symbol: canMove
@@ -530,10 +570,10 @@ else if (Math.random() < 0.3333) {
 
 ---
 
-## <a id="ISSUE-010"></a> ISSUE-010: Ball inventory + `catchMode` flag in STORY_FEATURES_INTEGRATION §1/§2/§5 do not match shipped code
+## <a id="ISSUE-011"></a> ISSUE-011: Ball inventory + `catchMode` flag in STORY_FEATURES_INTEGRATION §1/§2/§5 do not match shipped code
 
 ---
-id: ISSUE-010
+id: ISSUE-011
 severity: P1
 category: inconsistency
 anchor_symbol: catchMode
@@ -569,10 +609,10 @@ ballRows = ['poke','great','ultra','master'].map(k => {
 
 ---
 
-## <a id="ISSUE-011"></a> ISSUE-011: Retune risk: `data/builds/gen*.json` is a fallback mirror, not the live build source (`data/builds.csv` is authoritative)
+## <a id="ISSUE-012"></a> ISSUE-012: Retune risk: `data/builds/gen*.json` is a fallback mirror, not the live build source (`data/builds.csv` is authoritative)
 
 ---
-id: ISSUE-011
+id: ISSUE-012
 severity: P1
 category: data
 anchor_symbol: fetchSmogonSetsForGen
@@ -606,10 +646,82 @@ async function populateCsvBuildsFromAPI() { ...
 
 ---
 
-## <a id="ISSUE-012"></a> ISSUE-012: Illegal Dealer NPC encounter (STORY_FEATURES_INTEGRATION.md §3.5) still missing
+## <a id="ISSUE-013"></a> ISSUE-013: Choice-locked AI re-returns the locked move with zero immunity/wall check — spams 0-dmg moves forever
 
 ---
-id: ISSUE-012
+id: ISSUE-013
+severity: P1
+category: bug
+anchor_symbol: getBestMove
+current_line_hint: ~18952
+file: battle.html
+agents: [battle-engine-debugger]
+fingerprint: 844cf5ce029b
+confidence: high
+status: fixed-claude/ecstatic-gauss-RY5hA
+---
+
+**Title**: Choice-locked AI re-returns the locked move with zero immunity/wall check — spams 0-dmg moves forever
+
+**Evidence**:
+```js
+if (attacker.volatile.choiceLock) {
+    let lockedMove = validMoves.find(m => m.name === attacker.volatile.choiceLock);
+    if (lockedMove) return lockedMove;          // <-- no abilityImmunity / eff===0 / "can't dent" check
+    return { name: "Struggle", ... };
+}
+```
+This branch sits ABOVE all scoring. The non-locked path correctly zeroes immune moves (`if (eff === 0 || abilityImmunity(...)) score = 0;` ~L19064), but a choice-locked mon never reaches scoring.
+
+**Repro**: `node scripts/debug/_repro/issue1-immune-spam.mjs` — Choice-Specs Manectric locked into Thunderbolt vs a Lightning Rod holder. `getBestMove` returns Thunderbolt every turn (est dmg = 0). Robust under real `Math.random` (`issue1-robust.mjs`: distinct moves chosen = {Thunderbolt}). Also fires for a merely *resisted* locked move that can't break a wall (`issue1d-allzero.mjs`: Choice-Band Aqua Jet locked vs Ferrothorn, 19.9 dmg).
+
+**Blast radius**: Every choice-item foe in story/PvE. Player exploit: bait the AI into clicking a Choice move, then switch in an immunity/wall — the AI is then locked into a useless move AND (see paired finding) cannot switch out. This is the most exploitable loop found.
+
+**Fix sketch**: In the choice-lock branch, before returning `lockedMove`, check `abilityImmunity(lockedMove, defender, attacker) || getMoveEffectiveness(...) === 0`; if the locked move is immune/zeroed, prefer surrendering the matchup (allow `aiDecision` to switch — see paired finding) or fall through to Struggle only when truly stuck. At minimum, do not treat a 0-damage locked move as a valid attack.
+
+**Verification**: Re-run `issue1-immune-spam.mjs`; case (b) must no longer report "keeps returning same immune move: true". Add an `ai-decision.test.js` case asserting a choice-locked-into-immune foe does not return the immune move.
+
+---
+
+## <a id="ISSUE-014"></a> ISSUE-014: AI spams setup move into an active phazer — `score *= 0.25` penalty loses to near-zero attack scores
+
+---
+id: ISSUE-014
+severity: P1
+category: bug
+anchor_symbol: getBestMove
+current_line_hint: ~19233
+file: battle.html
+agents: [battle-engine-debugger]
+fingerprint: c9f77d3582aa
+confidence: high
+status: fixed-claude/ecstatic-gauss-RY5hA
+---
+
+**Title**: AI spams setup move into an active phazer — `score *= 0.25` penalty loses to near-zero attack scores
+
+**Evidence**:
+```js
+// Phazer / Haze / Unaware on the field or bench — setup will be undone or ignored.
+if (defHasPhazer || defHasUnaware) score *= 0.25;   // multiplicative only
+else if (benchHasPhazer) score *= 0.55;
+```
+When the AI's attacking moves do ~0 into the wall, 0.25 × (setup base ~80) still beats them. The Unaware case is saved elsewhere (it picks an attack), but the *phazer* case is not: the boost is real (so setup scores high) yet gets immediately Whirlwind/Roar'd away.
+
+**Repro**: `node scripts/debug/_repro/issue3-trollfamily.mjs` (3b) and `issue3-deep.mjs`: Dragonite (Dragon Dance/Earthquake/Extreme Speed/Roost) vs Skarmory with Whirlwind. EQ est = 0 (Steel/Flying immune to Ground), Extreme Speed est = 10. AI clicks Dragon Dance for 4 straight turns (until +4 atk makes E-Speed win), robust across all RNG seeds incl. real `Math.random`. Each turn Skarmory phazes the boost away → net-zero loop.
+
+**Blast radius**: Any setup sweeper the AI brings against a Whirlwind/Roar/Dragon Tail/Circle Throw user it can't dent. Player exploit: park a phazing wall; the AI burns turns boosting into the wind. Lower exploit ceiling than the choice-lock loop (needs a wall the AI can't hurt + an active phazer) but very reliable when it occurs.
+
+**Fix sketch**: When `defHasPhazer` (active, not just bench) AND the AI cannot OHKO/2HKO, treat setup as near-worthless (hard cap, e.g. `score = Math.min(score, 5)`), not a 0.25 multiplier. Better: don't repeat-setup if the active foe carries a phazer and we already have ≥1 relevant boost.
+
+**Verification**: Re-run 3b; Dragonite should pick its best available action (or switch) rather than Dragon Dance ≥3 turns running. The control case (Skarmory without Whirlwind) should still permit a DD when setup is genuinely safe.
+
+---
+
+## <a id="ISSUE-015"></a> ISSUE-015: Illegal Dealer NPC encounter (STORY_FEATURES_INTEGRATION.md §3.5) still missing
+
+---
+id: ISSUE-015
 severity: P1
 category: inconsistency
 anchor_symbol: illegalDealer
@@ -638,10 +750,10 @@ $ grep -nE 'illegalDealer|illegal_dealer|enterDealer|dealerOffer' battle.html
 
 ---
 
-## <a id="ISSUE-013"></a> ISSUE-013: Full Itinerary scaffolding (STORY_FEATURES_INTEGRATION.md §10) still entirely unimplemented
+## <a id="ISSUE-016"></a> ISSUE-016: Full Itinerary scaffolding (STORY_FEATURES_INTEGRATION.md §10) still entirely unimplemented
 
 ---
-id: ISSUE-013
+id: ISSUE-016
 severity: P1
 category: inconsistency
 anchor_symbol: itineraryProgress
@@ -670,10 +782,10 @@ $ grep -niE 'itineraryProgress|itineraryBeat|runItinerary|enterItinerary|sm\.iti
 
 ---
 
-## <a id="ISSUE-014"></a> ISSUE-014: `lastRemoteSeq` is updated *before* the remote handler runs — a thrown handler still bumps the watermark, so the failed update is permanently skipped
+## <a id="ISSUE-017"></a> ISSUE-017: `lastRemoteSeq` is updated *before* the remote handler runs — a thrown handler still bumps the watermark, so the failed update is permanently skipped
 
 ---
-id: ISSUE-014
+id: ISSUE-017
 severity: P1
 category: bug
 anchor_symbol: lastRemoteSeq
@@ -724,10 +836,10 @@ Combined with the timeout from the previous finding, this stays robust against h
 
 ---
 
-## <a id="ISSUE-015"></a> ISSUE-015: Save-migration integration test never exercises the migrate chain (vacuous pass)
+## <a id="ISSUE-018"></a> ISSUE-018: Save-migration integration test never exercises the migrate chain (vacuous pass)
 
 ---
-id: ISSUE-015
+id: ISSUE-018
 severity: P1
 category: dx
 anchor_symbol: migrateStoryPreV15
@@ -763,10 +875,10 @@ const preV15 = { saveVer: 14, ... };  // load() reads d.version, not d.saveVer
 
 ---
 
-## <a id="ISSUE-016"></a> ISSUE-016: v14 trainer-assignment migration is bundled under `_loadedVer < 13`, so v13 saves skip it
+## <a id="ISSUE-019"></a> ISSUE-019: v14 trainer-assignment migration is bundled under `_loadedVer < 13`, so v13 saves skip it
 
 ---
-id: ISSUE-016
+id: ISSUE-019
 severity: P1
 category: bug
 anchor_symbol: migrateStoryTrainerAssignmentsPreV14
@@ -807,10 +919,10 @@ if (_loadedVer < 14) { try { migrateStoryTrainerAssignmentsPreV14(); } catch (e)
 
 ---
 
-## <a id="ISSUE-017"></a> ISSUE-017: Secondary flinch/Stench write `defender.volatile.flinch` unguarded — throws if volatile missing (sibling _tryConfuse guards it)
+## <a id="ISSUE-020"></a> ISSUE-020: Secondary flinch/Stench write `defender.volatile.flinch` unguarded — throws if volatile missing (sibling _tryConfuse guards it)
 
 ---
-id: ISSUE-017
+id: ISSUE-020
 severity: P1
 category: bug
 anchor_symbol: parseMoveEffects
@@ -844,10 +956,10 @@ if (attacker.ability === "Stench" && ... && !defender.volatile.flinch && Math.ra
 
 ---
 
-## <a id="ISSUE-018"></a> ISSUE-018: Many `parseMoveEffects` branches still use bare `Math.random()` — seeded story replays drift
+## <a id="ISSUE-021"></a> ISSUE-021: Many `parseMoveEffects` branches still use bare `Math.random()` — seeded story replays drift
 
 ---
-id: ISSUE-018
+id: ISSUE-021
 severity: P1
 category: bug
 anchor_symbol: parseMoveEffects
@@ -884,10 +996,10 @@ status: fixed-claude/sharp-keller-eZEDN
 
 ---
 
-## <a id="ISSUE-019"></a> ISSUE-019: Core damage roll, crit, and accuracy use bare `Math.random()` — the highest-impact drift sites
+## <a id="ISSUE-022"></a> ISSUE-022: Core damage roll, crit, and accuracy use bare `Math.random()` — the highest-impact drift sites
 
 ---
-id: ISSUE-019
+id: ISSUE-022
 severity: P1
 category: bug
 anchor_symbol: parseMoveEffects-damage-core
@@ -923,10 +1035,10 @@ These three fire on **every damaging move**. Sibling sites: 22094 (multi-hit per
 
 ---
 
-## <a id="ISSUE-020"></a> ISSUE-020: Eight contact-triggered defender ability procs (Static / Poison Point / Flame Body / Cute Charm / Effect Spore / Toxic Chain / Cursed Body / Poison Touch) all use bare `Math.random()`
+## <a id="ISSUE-023"></a> ISSUE-023: Eight contact-triggered defender ability procs (Static / Poison Point / Flame Body / Cute Charm / Effect Spore / Toxic Chain / Cursed Body / Poison Touch) all use bare `Math.random()`
 
 ---
-id: ISSUE-020
+id: ISSUE-023
 severity: P1
 category: bug
 anchor_symbol: parseMoveEffects-on-contact-abilities
@@ -964,10 +1076,10 @@ Eight sites clustered under `if (isContactMove(move) && !hitSub && ...)`. Note: 
 
 ---
 
-## <a id="ISSUE-021"></a> ISSUE-021: Contact-ability procs (Static / Poison Point / Flame Body / Cute Charm / Poison Touch / Toxic Chain / Cursed Body) all bare `Math.random()`
+## <a id="ISSUE-024"></a> ISSUE-024: Contact-ability procs (Static / Poison Point / Flame Body / Cute Charm / Poison Touch / Toxic Chain / Cursed Body) all bare `Math.random()`
 
 ---
-id: ISSUE-021
+id: ISSUE-024
 severity: P1
 category: bug
 anchor_symbol: parseMoveEffects-onhit-abilities
@@ -1006,10 +1118,10 @@ if (defender.ability === "Cursed Body" && Math.random() < 0.3 && move.name) { ..
 
 ---
 
-## <a id="ISSUE-022"></a> ISSUE-022: PC_BOX_CAP is 30 in code but the canonical spec says 10
+## <a id="ISSUE-025"></a> ISSUE-025: PC_BOX_CAP is 30 in code but the canonical spec says 10
 
 ---
-id: ISSUE-022
+id: ISSUE-025
 severity: P1
 category: inconsistency
 anchor_symbol: PC_BOX_CAP
@@ -1049,10 +1161,10 @@ const PC_BOX_CAP = 30;
 
 ---
 
-## <a id="ISSUE-023"></a> ISSUE-023: Battle for Pokémon wager system (STORY_FEATURES_INTEGRATION.md §6) still missing
+## <a id="ISSUE-026"></a> ISSUE-026: Battle for Pokémon wager system (STORY_FEATURES_INTEGRATION.md §6) still missing
 
 ---
-id: ISSUE-023
+id: ISSUE-026
 severity: P1
 category: inconsistency
 anchor_symbol: pendingWager
@@ -1082,10 +1194,10 @@ The only `wager` hits in battle.html (lines 36440, 41797, 42065) belong to the *
 
 ---
 
-## <a id="ISSUE-024"></a> ISSUE-024: Turn-order priority breakers (Quick Claw, speed-tie, rampage duration) use bare `Math.random()`
+## <a id="ISSUE-027"></a> ISSUE-027: Turn-order priority breakers (Quick Claw, speed-tie, rampage duration) use bare `Math.random()`
 
 ---
-id: ISSUE-024
+id: ISSUE-027
 severity: P1
 category: bug
 anchor_symbol: playTurn
@@ -1122,10 +1234,10 @@ Quick Claw + speed tie alone can flip an entire turn's order. Rampage duration a
 
 ---
 
-## <a id="ISSUE-025"></a> ISSUE-025: End-of-turn residual block is not try-wrapped — any throw masks as "Turn skipped" + skips residuals
+## <a id="ISSUE-028"></a> ISSUE-028: End-of-turn residual block is not try-wrapped — any throw masks as "Turn skipped" + skips residuals
 
 ---
-id: ISSUE-025
+id: ISSUE-028
 severity: P1
 category: bug
 anchor_symbol: playTurn
@@ -1161,10 +1273,10 @@ state.residualPhaseComplete = true;          // never reached on throw
 
 ---
 
-## <a id="ISSUE-026"></a> ISSUE-026: `pushData` queue keeps advancing after a write fails — `_pushDataImpl` errors are swallowed to `console.warn`, leaving local state diverged from Supabase
+## <a id="ISSUE-029"></a> ISSUE-029: `pushData` queue keeps advancing after a write fails — `_pushDataImpl` errors are swallowed to `console.warn`, leaving local state diverged from Supabase
 
 ---
-id: ISSUE-026
+id: ISSUE-029
 severity: P1
 category: bug
 anchor_symbol: pushDataQueue
@@ -1209,10 +1321,10 @@ async _pushDataImpl(patch, existingData) {
 
 ---
 
-## <a id="ISSUE-027"></a> ISSUE-027: `pvp_rooms` SELECT policy is `using (true)` — anyone with the public key can scrape every live match's full draft + battle state
+## <a id="ISSUE-030"></a> ISSUE-030: `pvp_rooms` SELECT policy is `using (true)` — anyone with the public key can scrape every live match's full draft + battle state
 
 ---
-id: ISSUE-027
+id: ISSUE-030
 severity: P1
 category: security
 anchor_symbol: pvp_rooms_select
@@ -1246,10 +1358,10 @@ create policy "pvp_rooms_select"
 
 ---
 
-## <a id="ISSUE-028"></a> ISSUE-028: `remoteRowQueue` has no timeout — a hung `onOnlineRoomData` (e.g., a UI promise that never resolves) freezes ALL future remote updates
+## <a id="ISSUE-031"></a> ISSUE-031: `remoteRowQueue` has no timeout — a hung `onOnlineRoomData` (e.g., a UI promise that never resolves) freezes ALL future remote updates
 
 ---
-id: ISSUE-028
+id: ISSUE-031
 severity: P1
 category: bug
 anchor_symbol: remoteRowQueue
@@ -1296,10 +1408,10 @@ _onRemoteRow(newRow) {
 
 ---
 
-## <a id="ISSUE-029"></a> ISSUE-029: Player-facing city actions read "Pokemon League" / "Pokemon Fan Club" (no diacritic)
+## <a id="ISSUE-032"></a> ISSUE-032: Player-facing city actions read "Pokemon League" / "Pokemon Fan Club" (no diacritic)
 
 ---
-id: ISSUE-029
+id: ISSUE-032
 severity: P1
 category: inconsistency
 anchor_symbol: renderCityActions
@@ -1335,10 +1447,10 @@ if (actions.includes('Pokemon Fan Club') && _tutorTeam) { … }
 
 ---
 
-## <a id="ISSUE-030"></a> ISSUE-030: Draft pick cards are click-only <div>s — keyboard/SR users cannot select a Pokémon
+## <a id="ISSUE-033"></a> ISSUE-033: Draft pick cards are click-only <div>s — keyboard/SR users cannot select a Pokémon
 
 ---
-id: ISSUE-030
+id: ISSUE-033
 severity: P1
 category: a11y
 anchor_symbol: renderDraft
@@ -1369,10 +1481,10 @@ btn.onclick = () => { btn.onclick = null; selectDraft(draftItem); }; grid.append
 
 ---
 
-## <a id="ISSUE-031"></a> ISSUE-031: `No Item` sentinel string used in 11 build slots is absent from `data/items.json`
+## <a id="ISSUE-034"></a> ISSUE-034: `No Item` sentinel string used in 11 build slots is absent from `data/items.json`
 
 ---
-id: ISSUE-031
+id: ISSUE-034
 severity: P1
 category: data
 anchor_symbol: resolveCsvBuildEntry
@@ -1402,10 +1514,10 @@ status: fixed-claude/sharp-keller-eZEDN
 
 ---
 
-## <a id="ISSUE-032"></a> ISSUE-032: showScreen() does no focus management on story-screen transitions — focus is orphaned
+## <a id="ISSUE-035"></a> ISSUE-035: showScreen() does no focus management on story-screen transitions — focus is orphaned
 
 ---
-id: ISSUE-032
+id: ISSUE-035
 severity: P1
 category: a11y
 anchor_symbol: showScreen
@@ -1438,10 +1550,10 @@ function showScreen(id) {
 
 ---
 
-## <a id="ISSUE-033"></a> ISSUE-033: Reaper's Toll uses bare IIFE-private `storyRngNext` — guard always false, breaks seeded replays
+## <a id="ISSUE-036"></a> ISSUE-036: Reaper's Toll uses bare IIFE-private `storyRngNext` — guard always false, breaks seeded replays
 
 ---
-id: ISSUE-033
+id: ISSUE-036
 severity: P1
 category: inconsistency
 anchor_symbol: storyRngNext
@@ -1471,10 +1583,10 @@ const cursed = foeSurvivors[Math.floor((typeof storyRngNext !== 'undefined' ? st
 
 ---
 
-## <a id="ISSUE-034"></a> ISSUE-034: Pokémon Trader (STORY_FEATURES_INTEGRATION.md §7) at City4 still missing
+## <a id="ISSUE-037"></a> ISSUE-037: Pokémon Trader (STORY_FEATURES_INTEGRATION.md §7) at City4 still missing
 
 ---
-id: ISSUE-034
+id: ISSUE-037
 severity: P1
 category: inconsistency
 anchor_symbol: traderOfferByCity
@@ -1503,10 +1615,10 @@ $ grep -niE 'traderOffer|enterTrader|tradeMon|fixedTrade|cityTrader|traderHouse'
 
 ---
 
-## <a id="ISSUE-035"></a> ISSUE-035: Speed-tie resolution + Quick Claw + lock-turn duration all use bare `Math.random()` in the turn loop
+## <a id="ISSUE-038"></a> ISSUE-038: Speed-tie resolution + Quick Claw + lock-turn duration all use bare `Math.random()` in the turn loop
 
 ---
-id: ISSUE-035
+id: ISSUE-038
 severity: P1
 category: bug
 anchor_symbol: turn-resolution
@@ -1543,10 +1655,10 @@ let sleepTalkPick = validMoves[Math.floor(Math.random() * validMoves.length)];
 
 ---
 
-## <a id="ISSUE-036"></a> ISSUE-036: `???` type used by gen1 `bide` and gen4 `curse` is not defined in `typeChart`
+## <a id="ISSUE-039"></a> ISSUE-039: `???` type used by gen1 `bide` and gen4 `curse` is not defined in `typeChart`
 
 ---
-id: ISSUE-036
+id: ISSUE-039
 severity: P1
 category: data
 anchor_symbol: typeChart
@@ -1579,10 +1691,10 @@ const typeChart={"Normal":{...},"Fire":{...}, ... /* 18 entries, no "???" */};
 
 ---
 
-## <a id="ISSUE-037"></a> ISSUE-037: 7 duplicated `select('data').eq('id', roomId).single()` fetch+error blocks in online-pvp.js
+## <a id="ISSUE-040"></a> ISSUE-040: 7 duplicated `select('data').eq('id', roomId).single()` fetch+error blocks in online-pvp.js
 
 ---
-id: ISSUE-037
+id: ISSUE-040
 severity: P2
 category: refactor
 anchor_symbol: _hostRunResolution
@@ -1617,10 +1729,10 @@ const prev = row.data;
 
 ---
 
-## <a id="ISSUE-038"></a> ISSUE-038: Build "illegal-ability" pairs (672) are intended (hackmons/AAA + mega-form abilities); a naive legality check false-positives
+## <a id="ISSUE-041"></a> ISSUE-041: Build "illegal-ability" pairs (672) are intended (hackmons/AAA + mega-form abilities); a naive legality check false-positives
 
 ---
-id: ISSUE-038
+id: ISSUE-041
 severity: P2
 category: inconsistency
 anchor_symbol: _isBuildAbilityIllegal
@@ -1656,10 +1768,10 @@ if (Array.isArray(buildObj._abilityOptions)) {
 
 ---
 
-## <a id="ISSUE-039"></a> ISSUE-039: Cable Link gimmick gate contradicts CHANGELOG promise that Cable Link surfaces pre-unlock mechanics
+## <a id="ISSUE-042"></a> ISSUE-042: Cable Link gimmick gate contradicts CHANGELOG promise that Cable Link surfaces pre-unlock mechanics
 
 ---
-id: ISSUE-039
+id: ISSUE-042
 severity: P2
 category: inconsistency
 anchor_symbol: _makePlayerLinkBuild
@@ -1706,10 +1818,10 @@ The Cable Link builder applies the EXACT same gate that the CHANGELOG and the he
 
 ---
 
-## <a id="ISSUE-040"></a> ISSUE-040: Story autosave "💾 Saved" toast bypasses the polite live region — screen readers miss it
+## <a id="ISSUE-043"></a> ISSUE-043: Story autosave "💾 Saved" toast bypasses the polite live region — screen readers miss it
 
 ---
-id: ISSUE-040
+id: ISSUE-043
 severity: P2
 category: a11y
 anchor_symbol: _maybeShowSaveToast
@@ -1745,10 +1857,10 @@ The toast helper that the rest of the game uses (`window.showToast`, ~8722) appe
 
 ---
 
-## <a id="ISSUE-041"></a> ISSUE-041: "PC nearly full" warning threshold is `PC_BOX_CAP - 3` (27/30) but the spec calls for 80% (8/10)
+## <a id="ISSUE-044"></a> ISSUE-044: "PC nearly full" warning threshold is `PC_BOX_CAP - 3` (27/30) but the spec calls for 80% (8/10)
 
 ---
-id: ISSUE-041
+id: ISSUE-044
 severity: P2
 category: inconsistency
 anchor_symbol: _pcRefresh
@@ -1785,10 +1897,10 @@ const lowSlotWarn = box.length >= (PC_BOX_CAP - 3) && box.length < PC_BOX_CAP;
 
 ---
 
-## <a id="ISSUE-042"></a> ISSUE-042: Rivalry tab is mis-homed in the Pokémon Center — belongs in a progression/journal surface
+## <a id="ISSUE-045"></a> ISSUE-045: Rivalry tab is mis-homed in the Pokémon Center — belongs in a progression/journal surface
 
 ---
-id: ISSUE-042
+id: ISSUE-045
 severity: P2
 category: refactor
 anchor_symbol: _pcRenderRivalJournalTab
@@ -1819,10 +1931,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-043"></a> ISSUE-043: Story tutorial overlay (STORY_TUTORIAL_SCENES) is not a dialog — no role, focus trap, or ESC
+## <a id="ISSUE-046"></a> ISSUE-046: Story tutorial overlay (STORY_TUTORIAL_SCENES) is not a dialog — no role, focus trap, or ESC
 
 ---
-id: ISSUE-043
+id: ISSUE-046
 severity: P2
 category: a11y
 anchor_symbol: _showStoryTutorialScene
@@ -1859,10 +1971,10 @@ The full-screen tutorial overlay (Prof. Oak intros for first-trainer-battle, fir
 
 ---
 
-## <a id="ISSUE-044"></a> ISSUE-044: Current enemy curve is lumpy, not rising — GL4=GL5 dead zone (foe mult 1.0) and a GL8 quad-cliff (T3->T4 + IV 18->26 + gimmicks 2->3)
+## <a id="ISSUE-047"></a> ISSUE-047: Current enemy curve is lumpy, not rising — GL4=GL5 dead zone (foe mult 1.0) and a GL8 quad-cliff (T3->T4 + IV 18->26 + gimmicks 2->3)
 
 ---
-id: ISSUE-044
+id: ISSUE-047
 severity: P2
 category: inconsistency
 anchor_symbol: _stageGatedFoeStatMult
@@ -1894,10 +2006,10 @@ const n = +gl[1]; if (n >= 8) return 1.10; if (n >= 6) return 1.05; return 1.0;
 
 ---
 
-## <a id="ISSUE-045"></a> ISSUE-045: Foe party size matches `team.length` with per-role floors instead of the spec'd `min(6, 2+badges)` badge curve
+## <a id="ISSUE-048"></a> ISSUE-048: Foe party size matches `team.length` with per-role floors instead of the spec'd `min(6, 2+badges)` badge curve
 
 ---
-id: ISSUE-045
+id: ISSUE-048
 severity: P2
 category: balance
 anchor_symbol: _storyEnemyPartySize
@@ -1955,10 +2067,10 @@ This matches the audit helper at line 48055 exactly. Or update `STORY_MODE_FLOW.
 
 ---
 
-## <a id="ISSUE-046"></a> ISSUE-046: Planned hatch animation + Fight Club transitions need reduced-motion + live-region design up front
+## <a id="ISSUE-049"></a> ISSUE-049: Planned hatch animation + Fight Club transitions need reduced-motion + live-region design up front
 
 ---
-id: ISSUE-046
+id: ISSUE-049
 severity: P2
 category: a11y
 anchor_symbol: _storyHatchRevealScene
@@ -1990,10 +2102,10 @@ function _storyHatchRevealScene(names) {
 
 ---
 
-## <a id="ISSUE-047"></a> ISSUE-047: `_storyPickMysteryIdentity` uses bare `Math.random()` — Mystery Figure roll diverges across seeded replays
+## <a id="ISSUE-050"></a> ISSUE-050: `_storyPickMysteryIdentity` uses bare `Math.random()` — Mystery Figure roll diverges across seeded replays
 
 ---
-id: ISSUE-047
+id: ISSUE-050
 severity: P2
 category: bug
 anchor_symbol: _storyPickMysteryIdentity
@@ -2031,10 +2143,10 @@ The mystery identity is pinned to `sm.mysteryIdentity` after first roll — so a
 
 ---
 
-## <a id="ISSUE-048"></a> ISSUE-048: CSV-load cache invalidation pokes IIFE-private `_txMetaCache`/`_txGlobalMetaCached` — invalidation is dead
+## <a id="ISSUE-051"></a> ISSUE-051: CSV-load cache invalidation pokes IIFE-private `_txMetaCache`/`_txGlobalMetaCached` — invalidation is dead
 
 ---
-id: ISSUE-048
+id: ISSUE-051
 severity: P2
 category: inconsistency
 anchor_symbol: _txMetaCache
@@ -2065,10 +2177,10 @@ try { _txGlobalMetaCached = null; } catch (e) {}
 
 ---
 
-## <a id="ISSUE-049"></a> ISSUE-049: applyStatus dereferences `state.pActive.volatile.lockMove` / `state.fActive.volatile.lockMove` unconditionally (Uproar check) — throws if an active is null
+## <a id="ISSUE-052"></a> ISSUE-052: applyStatus dereferences `state.pActive.volatile.lockMove` / `state.fActive.volatile.lockMove` unconditionally (Uproar check) — throws if an active is null
 
 ---
-id: ISSUE-049
+id: ISSUE-052
 severity: P2
 category: bug
 anchor_symbol: applyStatus
@@ -2100,10 +2212,10 @@ if (status === "SLP" && (state.pActive.volatile.lockMove === "Uproar" || state.f
 
 ---
 
-## <a id="ISSUE-050"></a> ISSUE-050: Memory growth is benign (linear, ~25 KB/turn, R² = 0.712 — noise-dominated) and **does not indicate a leak**; the mandate's "60 turn / quadratic = P1" threshold is not hit
+## <a id="ISSUE-053"></a> ISSUE-053: Memory growth is benign (linear, ~25 KB/turn, R² = 0.712 — noise-dominated) and **does not indicate a leak**; the mandate's "60 turn / quadratic = P1" threshold is not hit
 
 ---
-id: ISSUE-050
+id: ISSUE-053
 severity: P2
 category: perf
 anchor_symbol: benchMemoryGrowth
@@ -2141,10 +2253,10 @@ This finding documents the result so future runs have a baseline. Logged as P2 w
 
 ---
 
-## <a id="ISSUE-051"></a> ISSUE-051: `perf-bench.mjs` calls `parseMoveEffects(move)` with the wrong arg-count; the reported 1.4 ms "median" is the cost of a thrown `TypeError`, not real per-move parsing
+## <a id="ISSUE-054"></a> ISSUE-054: `perf-bench.mjs` calls `parseMoveEffects(move)` with the wrong arg-count; the reported 1.4 ms "median" is the cost of a thrown `TypeError`, not real per-move parsing
 
 ---
-id: ISSUE-051
+id: ISSUE-054
 severity: P2
 category: perf
 anchor_symbol: benchParseMove
@@ -2175,10 +2287,10 @@ The real signature is `parseMoveEffects(attacker, defender, move, isPlayer, _bou
 
 ---
 
-## <a id="ISSUE-052"></a> ISSUE-052: Turn-loop max latency is **78–84 ms** with IQR 12 ms — within the harness target (50 ms median is OK) but max is 5× the median, indicating a per-turn outlier path
+## <a id="ISSUE-055"></a> ISSUE-055: Turn-loop max latency is **78–84 ms** with IQR 12 ms — within the harness target (50 ms median is OK) but max is 5× the median, indicating a per-turn outlier path
 
 ---
-id: ISSUE-052
+id: ISSUE-055
 severity: P2
 category: perf
 anchor_symbol: benchTurn
@@ -2211,10 +2323,10 @@ Original `perf-bench.mjs` reports the same shape: median 14.15 ms, max 83.62 ms.
 
 ---
 
-## <a id="ISSUE-053"></a> ISSUE-053: `deepClone` falls back to `JSON.parse(JSON.stringify(...))` — silently drops Set/Map/Date/undefined/circular refs across the entire snapshot pipeline
+## <a id="ISSUE-056"></a> ISSUE-056: `deepClone` falls back to `JSON.parse(JSON.stringify(...))` — silently drops Set/Map/Date/undefined/circular refs across the entire snapshot pipeline
 
 ---
-id: ISSUE-053
+id: ISSUE-056
 severity: P2
 category: refactor
 anchor_symbol: deepClone
@@ -2250,10 +2362,10 @@ function deepClone(o) {
 
 ---
 
-## <a id="ISSUE-054"></a> ISSUE-054: Design checklist's load-bearing "CSS block = battle.html lines 16-4156" guardrail is wrong by ~3700 lines
+## <a id="ISSUE-057"></a> ISSUE-057: Design checklist's load-bearing "CSS block = battle.html lines 16-4156" guardrail is wrong by ~3700 lines
 
 ---
-id: ISSUE-054
+id: ISSUE-057
 severity: P2
 category: dx
 anchor_symbol: DESIGN_CONSISTENCY_CHECKLIST.md
@@ -2286,10 +2398,10 @@ ACTUAL: grep -nE "<style|</style>" battle.html
 
 ---
 
-## <a id="ISSUE-055"></a> ISSUE-055: Malva (Kalos E1) has a victory line but no intro pool in `TRAINER_QUOTES_BY_NAME`
+## <a id="ISSUE-058"></a> ISSUE-058: Malva (Kalos E1) has a victory line but no intro pool in `TRAINER_QUOTES_BY_NAME`
 
 ---
-id: ISSUE-055
+id: ISSUE-058
 severity: P2
 category: inconsistency
 anchor_symbol: ELITE_VICTORY_LINES
@@ -2321,10 +2433,10 @@ status: fixed-claude/sharp-keller-eZEDN
 
 ---
 
-## <a id="ISSUE-056"></a> ISSUE-056: PLAN COLLISION — Daycare unlock is keyed on the "Gym Leader 1" event name, not a city; redesign wants C2/C4/C6
+## <a id="ISSUE-059"></a> ISSUE-059: PLAN COLLISION — Daycare unlock is keyed on the "Gym Leader 1" event name, not a city; redesign wants C2/C4/C6
 
 ---
-id: ISSUE-056
+id: ISSUE-059
 severity: P2
 category: refactor
 anchor_symbol: enterDaycare
@@ -2359,10 +2471,10 @@ const STORY_EGG_HATCH_BADGE = 7;   // hatch gate is badge-based
 
 ---
 
-## <a id="ISSUE-057"></a> ISSUE-057: Validator reports 6925 "CSV alternative" occurrences but every build file uses arrays — false positive
+## <a id="ISSUE-060"></a> ISSUE-060: Validator reports 6925 "CSV alternative" occurrences but every build file uses arrays — false positive
 
 ---
-id: ISSUE-057
+id: ISSUE-060
 severity: P2
 category: dx
 anchor_symbol: expandCommaAlternatives
@@ -2398,10 +2510,10 @@ if (alternatives.length > 1) commaAlternativeFields++;  // ← counts array len 
 
 ---
 
-## <a id="ISSUE-058"></a> ISSUE-058: No sleep clause in story + AI scores Spore at 100 → up to 3-turn lock loops, amplified by high-tier stat bloat (fairness risk)
+## <a id="ISSUE-061"></a> ISSUE-061: No sleep clause in story + AI scores Spore at 100 → up to 3-turn lock loops, amplified by high-tier stat bloat (fairness risk)
 
 ---
-id: ISSUE-058
+id: ISSUE-061
 severity: P2
 category: balance
 anchor_symbol: getBestMove
@@ -2435,10 +2547,46 @@ else if (["Spore","Sleep Powder","Hypnosis","Lovely Kiss","Sing","Dark Void","Ya
 
 ---
 
-## <a id="ISSUE-059"></a> ISSUE-059: 36 references to 18 distinct `global.__*` variables across `online-pvp.js` — the PvP module mutates host-side state through ad-hoc globals instead of a single observable
+## <a id="ISSUE-062"></a> ISSUE-062: When every damaging move is immune (score 0), AI throws a 0-dmg attack instead of switching/using status
 
 ---
-id: ISSUE-059
+id: ISSUE-062
+severity: P2
+category: inconsistency
+anchor_symbol: getBestMove
+current_line_hint: ~19064
+file: battle.html
+agents: [battle-engine-debugger]
+fingerprint: 607fa56cad8d
+confidence: medium
+status: open
+---
+
+**Title**: When every damaging move is immune (score 0), AI throws a 0-dmg attack instead of switching/using status
+
+**Evidence**:
+```js
+if (eff === 0 || abilityImmunity(move, defender, attacker)) score = 0;   // all dmg moves -> 0
+...
+score += Math.random() * 6;                       // tiny tiebreak now decides among equal-0 moves
+if (score > maxScore) { maxScore = score; bestMove = move; }
+```
+With a pure-attacking moveset where every move is type/ability-immune to the defender, all scores collapse to `0 + rand*6`. The AI returns whichever zero-damage move the tiebreak favors rather than recognizing the dead matchup.
+
+**Repro**: `node scripts/debug/_repro/issue1d-allzero.mjs`: all-Fighting/Normal Hitmonchan vs Gengar (Ghost) — all four moves estimate 0, AI still returns a damaging move. (Distinct from finding 844cf… which is the choice-lock variant; this is the no-status, all-immune case.)
+
+**Blast radius**: Narrow — requires a moveset with no status move and zero coverage against the active defender (uncommon outside contrived/mono builds). Mostly a quality issue: the AI "looks dumb" rather than getting exploited into a hard loop. Not reproducible as an infinite loop because the normal matchup usually has SOME nonzero move or a status move (which scores 12 and wins).
+
+**Fix sketch**: When `maxOwnDmg === 0` (no move can damage the defender) and a bench exists, let `aiDecision` consider switching even outside the `willDieFirst || walled` triggers; or have `getBestMove` prefer the highest-utility status move over a guaranteed-0 attack.
+
+**Verification**: Re-run `issue1d-allzero.mjs`; confirm the AI prefers a status move (if any) or that `aiDecision` switches when `maxOwnDmg === 0` and a viable bench mon exists.
+
+---
+
+## <a id="ISSUE-063"></a> ISSUE-063: 36 references to 18 distinct `global.__*` variables across `online-pvp.js` — the PvP module mutates host-side state through ad-hoc globals instead of a single observable
+
+---
+id: ISSUE-063
 severity: P2
 category: refactor
 anchor_symbol: global_state_coupling
@@ -2479,10 +2627,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-060"></a> ISSUE-060: `_loadedVer < 14` block missing — v14 trainer-name migration never runs for saves stamped at exactly v13
+## <a id="ISSUE-064"></a> ISSUE-064: `_loadedVer < 14` block missing — v14 trainer-name migration never runs for saves stamped at exactly v13
 
 ---
-id: ISSUE-060
+id: ISSUE-064
 severity: P2
 category: bug
 anchor_symbol: load
@@ -2529,10 +2677,10 @@ if (_loadedVer < 14) { try { migrateStoryTrainerAssignmentsPreV14(); } catch (e)
 
 ---
 
-## <a id="ISSUE-061"></a> ISSUE-061: Migration chain is sound but unobservable — no boot-time shadow validation
+## <a id="ISSUE-065"></a> ISSUE-065: Migration chain is sound but unobservable — no boot-time shadow validation
 
 ---
-id: ISSUE-061
+id: ISSUE-065
 severity: P2
 category: dx
 anchor_symbol: load
@@ -2565,10 +2713,10 @@ if (_loadedVer < 16) { try { migrateStoryPreV16(); } catch (e) { ... } }
 
 ---
 
-## <a id="ISSUE-062"></a> ISSUE-062: 6 builds in the gen*.json mirror omit `nature`; the CSV source has natures for all 17,398 rows (mirror drift)
+## <a id="ISSUE-066"></a> ISSUE-066: 6 builds in the gen*.json mirror omit `nature`; the CSV source has natures for all 17,398 rows (mirror drift)
 
 ---
-id: ISSUE-062
+id: ISSUE-066
 severity: P2
 category: inconsistency
 anchor_symbol: loadBuildsCSV
@@ -2603,10 +2751,10 @@ const naturePicked = _csvPickOption(natureRaw, 'Hardy');    // 9876
 
 ---
 
-## <a id="ISSUE-063"></a> ISSUE-063: 10 of 12 `.modal` overlays lack `role="dialog"` / `aria-modal` / labelledby
+## <a id="ISSUE-067"></a> ISSUE-067: 10 of 12 `.modal` overlays lack `role="dialog"` / `aria-modal` / labelledby
 
 ---
-id: ISSUE-063
+id: ISSUE-067
 severity: P2
 category: a11y
 anchor_symbol: modal-dialog-roles
@@ -2642,10 +2790,10 @@ Only `modal-help` and `modal-summary` declare themselves as dialogs. The remaini
 
 ---
 
-## <a id="ISSUE-064"></a> ISSUE-064: Only `modal-summary` handles Escape — settings, abandon, alert, confirm modals trap keyboard users
+## <a id="ISSUE-068"></a> ISSUE-068: Only `modal-summary` handles Escape — settings, abandon, alert, confirm modals trap keyboard users
 
 ---
-id: ISSUE-064
+id: ISSUE-068
 severity: P2
 category: a11y
 anchor_symbol: modal-escape-key
@@ -2680,10 +2828,10 @@ $ grep -nE "e.key === 'Escape'" battle.html
 
 ---
 
-## <a id="ISSUE-065"></a> ISSUE-065: Modals restore focus on close but never move focus INTO the dialog on open
+## <a id="ISSUE-069"></a> ISSUE-069: Modals restore focus on close but never move focus INTO the dialog on open
 
 ---
-id: ISSUE-065
+id: ISSUE-069
 severity: P2
 category: a11y
 anchor_symbol: openModal
@@ -2718,10 +2866,10 @@ window.openModal = function(id) {
 
 ---
 
-## <a id="ISSUE-066"></a> ISSUE-066: In-game help text still says "PC Storage (cap 10)" — actual PC_BOX_CAP is 30
+## <a id="ISSUE-070"></a> ISSUE-070: In-game help text still says "PC Storage (cap 10)" — actual PC_BOX_CAP is 30
 
 ---
-id: ISSUE-066
+id: ISSUE-070
 severity: P2
 category: inconsistency
 anchor_symbol: PC_BOX_CAP
@@ -2753,10 +2901,10 @@ const PC_BOX_CAP = 30;  // battle.html:42740
 
 ---
 
-## <a id="ISSUE-067"></a> ISSUE-067: 29 of 31 mart/dept catalog items (potion, superPotion, X items, orbs, etc.) have no entry in `data/items.json`
+## <a id="ISSUE-071"></a> ISSUE-071: 29 of 31 mart/dept catalog items (potion, superPotion, X items, orbs, etc.) have no entry in `data/items.json`
 
 ---
-id: ISSUE-067
+id: ISSUE-071
 severity: P2
 category: data
 anchor_symbol: POKEMART_ITEMS
@@ -2792,10 +2940,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-068"></a> ISSUE-068: Mart/Dept consumables (30 ids: potion, xAttack, sunOrb, evResetCharm…) are a self-contained namespace, NOT entries in items.json
+## <a id="ISSUE-072"></a> ISSUE-072: Mart/Dept consumables (30 ids: potion, xAttack, sunOrb, evResetCharm…) are a self-contained namespace, NOT entries in items.json
 
 ---
-id: ISSUE-068
+id: ISSUE-072
 severity: P2
 category: data
 anchor_symbol: POKEMART_ITEMS
@@ -2830,10 +2978,10 @@ const POKEMART_ITEMS = [
 
 ---
 
-## <a id="ISSUE-069"></a> ISSUE-069: City-hub Mystery Figure NPC sprite is hard-coded to Cyrus, ignoring `sm.mysteryIdentity` rotation
+## <a id="ISSUE-073"></a> ISSUE-073: City-hub Mystery Figure NPC sprite is hard-coded to Cyrus, ignoring `sm.mysteryIdentity` rotation
 
 ---
-id: ISSUE-069
+id: ISSUE-073
 severity: P2
 category: bug
 anchor_symbol: renderCityActions
@@ -2874,10 +3022,10 @@ The Professor screen (battle.html ~36929) correctly uses `_storyEnsureMysteryIde
 
 ---
 
-## <a id="ISSUE-070"></a> ISSUE-070: Pokémon Center copy promises a "Heal" that no longer exists (full-heal is automatic)
+## <a id="ISSUE-074"></a> ISSUE-074: Pokémon Center copy promises a "Heal" that no longer exists (full-heal is automatic)
 
 ---
-id: ISSUE-070
+id: ISSUE-074
 severity: P2
 category: bug
 anchor_symbol: renderCityActions
@@ -2910,10 +3058,10 @@ const _healTipLabel = _willFireWildNext ? 'Heal — your rival waits at the end 
 
 ---
 
-## <a id="ISSUE-071"></a> ISSUE-071: `_trainerPoolCache` is an unbounded Map (keyed on type+gens) with no eviction — Fight Club draft / story-pool variety will grow it without limit
+## <a id="ISSUE-075"></a> ISSUE-075: `_trainerPoolCache` is an unbounded Map (keyed on type+gens) with no eviction — Fight Club draft / story-pool variety will grow it without limit
 
 ---
-id: ISSUE-071
+id: ISSUE-075
 severity: P2
 category: perf
 anchor_symbol: rollTrainerTeam
@@ -2947,10 +3095,10 @@ Measured (jsdom, `--expose-gc`): rolling 30 trainer types × 511 distinct gen-su
 
 ---
 
-## <a id="ISSUE-072"></a> ISSUE-072: Safari unlock spec'd "after badge 3 OR City3" but code (and REDESIGN) fix it firmly at City4
+## <a id="ISSUE-076"></a> ISSUE-076: Safari unlock spec'd "after badge 3 OR City3" but code (and REDESIGN) fix it firmly at City4
 
 ---
-id: ISSUE-072
+id: ISSUE-076
 severity: P2
 category: inconsistency
 anchor_symbol: SAFARI_ENTRY_COST
@@ -2982,10 +3130,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-073"></a> ISSUE-073: SAVE_VER stays at 19 despite an implicit v20 schema cleanup that runs on every load
+## <a id="ISSUE-077"></a> ISSUE-077: SAVE_VER stays at 19 despite an implicit v20 schema cleanup that runs on every load
 
 ---
-id: ISSUE-073
+id: ISSUE-077
 severity: P2
 category: dx
 anchor_symbol: SAVE_VER
@@ -3031,10 +3179,10 @@ The "v20" cleanup runs unconditionally on every load — it's not gated by `_loa
 
 ---
 
-## <a id="ISSUE-074"></a> ISSUE-074: 6 silent `catch (e) {}` blocks in online-pvp.js swallow all errors without logging
+## <a id="ISSUE-078"></a> ISSUE-078: 6 silent `catch (e) {}` blocks in online-pvp.js swallow all errors without logging
 
 ---
-id: ISSUE-074
+id: ISSUE-078
 severity: P2
 category: dx
 anchor_symbol: setBattleLogHtml
@@ -3069,10 +3217,10 @@ status: fixed-claude/sharp-keller-eZEDN
 
 ---
 
-## <a id="ISSUE-075"></a> ISSUE-075: Display names accepted up to 24 chars with zero sanitization — flow into innerText today, but one careless innerHTML downstream becomes XSS
+## <a id="ISSUE-079"></a> ISSUE-079: Display names accepted up to 24 chars with zero sanitization — flow into innerText today, but one careless innerHTML downstream becomes XSS
 
 ---
-id: ISSUE-075
+id: ISSUE-079
 severity: P2
 category: security
 anchor_symbol: setDisplayName
@@ -3111,10 +3259,10 @@ if (title.includes('VICTORY')) document.getElementById('end-desc').innerText = `
 
 ---
 
-## <a id="ISSUE-076"></a> ISSUE-076: Victory overlay is a plain `<div>` — no dialog role, no focus on Continue, ESC ignored
+## <a id="ISSUE-080"></a> ISSUE-080: Victory overlay is a plain `<div>` — no dialog role, no focus on Continue, ESC ignored
 
 ---
-id: ISSUE-076
+id: ISSUE-080
 severity: P2
 category: a11y
 anchor_symbol: showVictoryOverlay
@@ -3155,10 +3303,10 @@ The post-battle victory overlay is the highest-pomp moment of the run (badges, g
 
 ---
 
-## <a id="ISSUE-077"></a> ISSUE-077: Story spine is a hardcoded linear array; narrative layer is data-driven but no structural side-story/random-pool slots
+## <a id="ISSUE-081"></a> ISSUE-081: Story spine is a hardcoded linear array; narrative layer is data-driven but no structural side-story/random-pool slots
 
 ---
-id: ISSUE-077
+id: ISSUE-081
 severity: P2
 category: refactor
 anchor_symbol: STORY_EVENTS_RAW
@@ -3195,10 +3343,10 @@ const STORY_EVENTS_RAW = [   // battle.html:29008 — fixed literal, 67 rows
 
 ---
 
-## <a id="ISSUE-078"></a> ISSUE-078: Recurring facility-flavor pool covers 8 services; Safari / Stone Sage / Stone Shop / Dept Store have none
+## <a id="ISSUE-082"></a> ISSUE-082: Recurring facility-flavor pool covers 8 services; Safari / Stone Sage / Stone Shop / Dept Store have none
 
 ---
-id: ISSUE-078
+id: ISSUE-082
 severity: P2
 category: inconsistency
 anchor_symbol: STORY_FACILITY_QUOTES
@@ -3234,10 +3382,10 @@ const STORY_FACILITY_QUOTES = {
 
 ---
 
-## <a id="ISSUE-079"></a> ISSUE-079: Story tone variants recolor nameplate text but not its yellow background — fails WCAG AA contrast
+## <a id="ISSUE-083"></a> ISSUE-083: Story tone variants recolor nameplate text but not its yellow background — fails WCAG AA contrast
 
 ---
-id: ISSUE-079
+id: ISSUE-083
 severity: P2
 category: a11y
 anchor_symbol: story-dialog-nameplate
@@ -3270,10 +3418,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-080"></a> ISSUE-080: Story dialogue/NPC quote text is not in a live region — narration is silent to screen readers
+## <a id="ISSUE-084"></a> ISSUE-084: Story dialogue/NPC quote text is not in a live region — narration is silent to screen readers
 
 ---
-id: ISSUE-080
+id: ISSUE-084
 severity: P2
 category: a11y
 anchor_symbol: story-dialog-text
@@ -3305,10 +3453,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-081"></a> ISSUE-081: Cosmetic-skin roll references bare `sm` AND bare `storyRngNext` — double scope leak, never seeded
+## <a id="ISSUE-085"></a> ISSUE-085: Cosmetic-skin roll references bare `sm` AND bare `storyRngNext` — double scope leak, never seeded
 
 ---
-id: ISSUE-081
+id: ISSUE-085
 severity: P2
 category: inconsistency
 anchor_symbol: storyRngNext
@@ -3338,10 +3486,10 @@ const rng = (typeof sm === 'object' && sm && sm.active && typeof storyRngNext ==
 
 ---
 
-## <a id="ISSUE-082"></a> ISSUE-082: 351 it.todo() stubs across 3 move-category test files — cluster enumeration
+## <a id="ISSUE-086"></a> ISSUE-086: 351 it.todo() stubs across 3 move-category test files — cluster enumeration
 
 ---
-id: ISSUE-082
+id: ISSUE-086
 severity: P2
 category: test-gap
 anchor_symbol: tests/moves/by-category
@@ -3450,10 +3598,10 @@ Batch limit per invocation: 25–40 TODOs. Split larger buckets (`ally-or-spread
 
 ---
 
-## <a id="ISSUE-083"></a> ISSUE-083: 56 Gym Leaders have no entry in `TRAINER_QUOTES_BY_NAME` — fall through to generic 6-line `Gym Leader` pool
+## <a id="ISSUE-087"></a> ISSUE-087: 56 Gym Leaders have no entry in `TRAINER_QUOTES_BY_NAME` — fall through to generic 6-line `Gym Leader` pool
 
 ---
-id: ISSUE-083
+id: ISSUE-087
 severity: P2
 category: inconsistency
 anchor_symbol: TRAINER_QUOTES_BY_NAME
@@ -3491,10 +3639,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-084"></a> ISSUE-084: Tooltip-only data (type chart, move info, status terms) is `onmousemove`-gated — keyboard & touch get nothing
+## <a id="ISSUE-088"></a> ISSUE-088: Tooltip-only data (type chart, move info, status terms) is `onmousemove`-gated — keyboard & touch get nothing
 
 ---
-id: ISSUE-084
+id: ISSUE-088
 severity: P2
 category: a11y
 anchor_symbol: type-badge
@@ -3529,10 +3677,10 @@ The defensive/offensive type chart, raw move stats (BP/Acc/PP/effect), and inlin
 
 ---
 
-## <a id="ISSUE-085"></a> ISSUE-085: Long story replay shows steady, non-plateauing heap growth (~22–67 KB/turn, R²=0.99 over 250 battles) driven by per-turn / per-distinct-foe DOM scaffolding that GC + reset() do not reclaim
+## <a id="ISSUE-089"></a> ISSUE-089: Long story replay shows steady, non-plateauing heap growth (~22–67 KB/turn, R²=0.99 over 250 battles) driven by per-turn / per-distinct-foe DOM scaffolding that GC + reset() do not reclaim
 
 ---
-id: ISSUE-085
+id: ISSUE-089
 severity: P2
 category: perf
 anchor_symbol: updateBattleUI
@@ -3566,10 +3714,10 @@ Same-mon turn loop in isolation grows only ~22 KB/turn (matches the prior baseli
 
 ---
 
-## <a id="ISSUE-086"></a> ISSUE-086: Modals have aria-modal + Escape but no Tab focus trap — keyboard focus can leave the dialog
+## <a id="ISSUE-090"></a> ISSUE-090: Modals have aria-modal + Escape but no Tab focus trap — keyboard focus can leave the dialog
 
 ---
-id: ISSUE-086
+id: ISSUE-090
 severity: P3
 category: a11y
 anchor_symbol: __pbsGlobalEscBound
@@ -3602,10 +3750,10 @@ document.addEventListener('keydown', function (e) {
 
 ---
 
-## <a id="ISSUE-087"></a> ISSUE-087: CONFIRMED CLEAN — PC overflow at party-cap + 30/30 shows explicit message; sell/release path exists
+## <a id="ISSUE-091"></a> ISSUE-091: CONFIRMED CLEAN — PC overflow at party-cap + 30/30 shows explicit message; sell/release path exists
 
 ---
-id: ISSUE-087
+id: ISSUE-091
 severity: P3
 category: bug
 anchor_symbol: _catchHandleSuccess
@@ -3640,10 +3788,10 @@ if (partyFull && pcFull) {
 
 ---
 
-## <a id="ISSUE-088"></a> ISSUE-088: `_pickCityQuoteLine` deliberately uses bare `Math.random` — drift across save reloads
+## <a id="ISSUE-092"></a> ISSUE-092: `_pickCityQuoteLine` deliberately uses bare `Math.random` — drift across save reloads
 
 ---
-id: ISSUE-088
+id: ISSUE-092
 severity: P3
 category: inconsistency
 anchor_symbol: _pickCityQuoteLine
@@ -3680,10 +3828,10 @@ function _pickCityQuoteLine(poolArr, cityIdx) {
 
 ---
 
-## <a id="ISSUE-089"></a> ISSUE-089: Sprite preloading is unbounded — each `getSprite()` call adds a `new Image()` to a global cache with no eviction; a long story run can preload 1000+ images
+## <a id="ISSUE-093"></a> ISSUE-093: Sprite preloading is unbounded — each `getSprite()` call adds a `new Image()` to a global cache with no eviction; a long story run can preload 1000+ images
 
 ---
-id: ISSUE-089
+id: ISSUE-093
 severity: P3
 category: perf
 anchor_symbol: _preloadedImages
@@ -3719,10 +3867,10 @@ if (!_preloadedImages[url]) {
 
 ---
 
-## <a id="ISSUE-090"></a> ISSUE-090: Safari grade weights are now badge-keyed — spec/CODEBASE_MAP still cite the old static g1:3/g2:22/g3:50/g4:25
+## <a id="ISSUE-094"></a> ISSUE-094: Safari grade weights are now badge-keyed — spec/CODEBASE_MAP still cite the old static g1:3/g2:22/g3:50/g4:25
 
 ---
-id: ISSUE-090
+id: ISSUE-094
 severity: P3
 category: inconsistency
 anchor_symbol: _safariGradeWeightsForBadges
@@ -3756,10 +3904,10 @@ const _SAFARI_GRADE_CURVE_BY_BADGES = {
 
 ---
 
-## <a id="ISSUE-091"></a> ISSUE-091: CONFIRMED CLEAN — catch tutorial fires exactly once; mid-tutorial reload cannot refire or lock
+## <a id="ISSUE-095"></a> ISSUE-095: CONFIRMED CLEAN — catch tutorial fires exactly once; mid-tutorial reload cannot refire or lock
 
 ---
-id: ISSUE-091
+id: ISSUE-095
 severity: P3
 category: bug
 anchor_symbol: _shouldFireCatchTutorialBeforeBattle
@@ -3791,10 +3939,10 @@ if (_catchState && _catchState.tutorialMode) { _markCatchTutorialDone(); }
 
 ---
 
-## <a id="ISSUE-092"></a> ISSUE-092: `_storyEnemyMechKeys` doesn't guard against missing `sm.settings` — could throw on a malformed save
+## <a id="ISSUE-096"></a> ISSUE-096: `_storyEnemyMechKeys` doesn't guard against missing `sm.settings` — could throw on a malformed save
 
 ---
-id: ISSUE-092
+id: ISSUE-096
 severity: P3
 category: dx
 anchor_symbol: _storyEnemyMechKeys
@@ -3839,10 +3987,10 @@ function _storyEnemyMechKeys() {
 
 ---
 
-## <a id="ISSUE-093"></a> ISSUE-093: CONFIRMED CLEAN — party-cap curve = min(6, 2+badges) with no off-by-one; foe sizing matches
+## <a id="ISSUE-097"></a> ISSUE-097: CONFIRMED CLEAN — party-cap curve = min(6, 2+badges) with no off-by-one; foe sizing matches
 
 ---
-id: ISSUE-093
+id: ISSUE-097
 severity: P3
 category: bug
 anchor_symbol: _storyMaxPartySize
@@ -3875,10 +4023,10 @@ function _storyMaxPartySize() {
 
 ---
 
-## <a id="ISSUE-094"></a> ISSUE-094: Variant rival quote pools are uneven — several phases have a single line; many phases absent
+## <a id="ISSUE-098"></a> ISSUE-098: Variant rival quote pools are uneven — several phases have a single line; many phases absent
 
 ---
-id: ISSUE-094
+id: ISSUE-098
 severity: P3
 category: refactor
 anchor_symbol: _VARIANT_RIVAL_QUOTES
@@ -3910,10 +4058,10 @@ lavender_frequency:{ 0:[1 line], 3:[1 line], 4:[1 line] },// no phase 1, 2
 
 ---
 
-## <a id="ISSUE-095"></a> ISSUE-095: CONFIRMED CLEAN — mechanics unlock gate has no leak on any player or enemy path
+## <a id="ISSUE-099"></a> ISSUE-099: CONFIRMED CLEAN — mechanics unlock gate has no leak on any player or enemy path
 
 ---
-id: ISSUE-095
+id: ISSUE-099
 severity: P3
 category: bug
 anchor_symbol: _withStoryPlayerGimmickGate
@@ -3947,10 +4095,10 @@ if (S.megaOn && unlocked.has('mega')) k.push('mega');  // etc.
 
 ---
 
-## <a id="ISSUE-096"></a> ISSUE-096: `applyFoeDifficultyScaling`'s "additive league boost" comment narrates a fix that was never implemented
+## <a id="ISSUE-100"></a> ISSUE-100: `applyFoeDifficultyScaling`'s "additive league boost" comment narrates a fix that was never implemented
 
 ---
-id: ISSUE-096
+id: ISSUE-100
 severity: P3
 category: dx
 anchor_symbol: applyFoeDifficultyScaling
@@ -3990,10 +4138,10 @@ The code matches line 30766. The line 13244 comment is a description of an inten
 
 ---
 
-## <a id="ISSUE-097"></a> ISSUE-097: Spec §8 says league boost stacks MULTIPLICATIVELY with difficulty; code now stacks ADDITIVELY
+## <a id="ISSUE-101"></a> ISSUE-101: Spec §8 says league boost stacks MULTIPLICATIVELY with difficulty; code now stacks ADDITIVELY
 
 ---
-id: ISSUE-097
+id: ISSUE-101
 severity: P3
 category: inconsistency
 anchor_symbol: applyStoryLeagueFoeStatBoost
@@ -4026,10 +4174,10 @@ mon._leagueStatBonus = { hp: hpM-1, bulk: bulkM-1, spe: speM-1 };
 
 ---
 
-## <a id="ISSUE-098"></a> ISSUE-098: `sm.catchUnlocked` is written by migration + newStoryRun but never read anywhere
+## <a id="ISSUE-102"></a> ISSUE-102: `sm.catchUnlocked` is written by migration + newStoryRun but never read anywhere
 
 ---
-id: ISSUE-098
+id: ISSUE-102
 severity: P3
 category: dx
 anchor_symbol: catchUnlocked
@@ -4067,10 +4215,10 @@ So the spec promised the field would gate something. The implementation never wi
 
 ---
 
-## <a id="ISSUE-099"></a> ISSUE-099: CHANGELOG 2026-05-21 entry claims Cable Link is ungated but the implementation in v18 explicitly gates it
+## <a id="ISSUE-103"></a> ISSUE-103: CHANGELOG 2026-05-21 entry claims Cable Link is ungated but the implementation in v18 explicitly gates it
 
 ---
-id: ISSUE-099
+id: ISSUE-103
 severity: P3
 category: inconsistency
 anchor_symbol: CHANGELOG
@@ -4115,10 +4263,10 @@ Three sources, two stories. CHANGELOG says ungated, spec says gated, code matche
 
 ---
 
-## <a id="ISSUE-100"></a> ISSUE-100: `createRoom` hardcodes Postgres SQLSTATE `23505` for unique-violation detection — defensive `.includes('duplicate')` fallback exists but the magic number is undocumented
+## <a id="ISSUE-104"></a> ISSUE-104: `createRoom` hardcodes Postgres SQLSTATE `23505` for unique-violation detection — defensive `.includes('duplicate')` fallback exists but the magic number is undocumented
 
 ---
-id: ISSUE-100
+id: ISSUE-104
 severity: P3
 category: refactor
 anchor_symbol: createRoom_23505
@@ -4156,10 +4304,10 @@ for (let attempt = 0; attempt < 8; attempt++) {
 
 ---
 
-## <a id="ISSUE-101"></a> ISSUE-101: Relic Annex intro uses plain-text `_storyShowOneTimeTip`; every other facility uses a sprite-backed scene
+## <a id="ISSUE-105"></a> ISSUE-105: Relic Annex intro uses plain-text `_storyShowOneTimeTip`; every other facility uses a sprite-backed scene
 
 ---
-id: ISSUE-101
+id: ISSUE-105
 severity: P3
 category: inconsistency
 anchor_symbol: enterArtifactShop
@@ -4192,10 +4340,10 @@ try { _storyShowOneTimeTip('relic',
 
 ---
 
-## <a id="ISSUE-102"></a> ISSUE-102: `enterProfessor` duplicates gimmick-gate logic inline instead of using `_withStoryPlayerGimmickGate`
+## <a id="ISSUE-106"></a> ISSUE-106: `enterProfessor` duplicates gimmick-gate logic inline instead of using `_withStoryPlayerGimmickGate`
 
 ---
-id: ISSUE-102
+id: ISSUE-106
 severity: P3
 category: dx
 anchor_symbol: enterProfessor
@@ -4242,10 +4390,10 @@ Same idiom also duplicated in `_makePlayerLinkBuild` (line 42374). Three identic
 
 ---
 
-## <a id="ISSUE-103"></a> ISSUE-103: `enterProfessor` reuses `_pendingProfChoices` across city visits at the same cityIdx — stale picks may persist past spec'd one-shot pool
+## <a id="ISSUE-107"></a> ISSUE-107: `enterProfessor` reuses `_pendingProfChoices` across city visits at the same cityIdx — stale picks may persist past spec'd one-shot pool
 
 ---
-id: ISSUE-103
+id: ISSUE-107
 severity: P3
 category: bug
 anchor_symbol: enterProfessor
@@ -4279,10 +4427,10 @@ The reuse predicate keys only on cityIdx + mystery mode. If the player visits Ci
 
 ---
 
-## <a id="ISSUE-104"></a> ISSUE-104: Service-availability timeline reference (Task 1 deliverable) — first-appearance / reappear / unlock map
+## <a id="ISSUE-108"></a> ISSUE-108: Service-availability timeline reference (Task 1 deliverable) — first-appearance / reappear / unlock map
 
 ---
-id: ISSUE-104
+id: ISSUE-108
 severity: P3
 category: data
 anchor_symbol: FACILITY_DEBUT_CITY
@@ -4333,10 +4481,10 @@ const FACILITY_DEBUT_CITY = {
 
 ---
 
-## <a id="ISSUE-105"></a> ISSUE-105: Paralysis tooltip says "Speed quartered" but engine halves speed (0.5) — stale Gen 1-6 text vs Gen 7+ behavior
+## <a id="ISSUE-109"></a> ISSUE-109: Paralysis tooltip says "Speed quartered" but engine halves speed (0.5) — stale Gen 1-6 text vs Gen 7+ behavior
 
 ---
-id: ISSUE-105
+id: ISSUE-109
 severity: P3
 category: inconsistency
 anchor_symbol: getDownStatusLabel
@@ -4367,10 +4515,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-106"></a> ISSUE-106: Sprite preload cache `_preloadedImages` is still an unbounded Object with no eviction — every distinct (name, shiny, back) pins an Image() for the session
+## <a id="ISSUE-110"></a> ISSUE-110: Sprite preload cache `_preloadedImages` is still an unbounded Object with no eviction — every distinct (name, shiny, back) pins an Image() for the session
 
 ---
-id: ISSUE-106
+id: ISSUE-110
 severity: P3
 category: perf
 anchor_symbol: getSprite
@@ -4405,10 +4553,10 @@ if (!_preloadedImages[url]) {
 
 ---
 
-## <a id="ISSUE-107"></a> ISSUE-107: CONFIRMED FIXED — GYM_CITY_LEADER_EVENT is now derived from STORY_EVENTS_RAW at boot (prior audit 1.3)
+## <a id="ISSUE-111"></a> ISSUE-111: CONFIRMED FIXED — GYM_CITY_LEADER_EVENT is now derived from STORY_EVENTS_RAW at boot (prior audit 1.3)
 
 ---
-id: ISSUE-107
+id: ISSUE-111
 severity: P3
 category: bug
 anchor_symbol: GYM_CITY_LEADER_EVENT
@@ -4446,10 +4594,10 @@ const GYM_CITY_LEADER_EVENT = (function buildGymCityLeaderMap() {
 
 ---
 
-## <a id="ISSUE-108"></a> ISSUE-108: `isPokeball` flag set on 28 items but never read by the engine — dead metadata
+## <a id="ISSUE-112"></a> ISSUE-112: `isPokeball` flag set on 28 items but never read by the engine — dead metadata
 
 ---
-id: ISSUE-108
+id: ISSUE-112
 severity: P3
 category: data
 anchor_symbol: isPokeball
@@ -4480,10 +4628,10 @@ $ grep -c "isPokeball" data/items.json
 
 ---
 
-## <a id="ISSUE-109"></a> ISSUE-109: 9 legacy gen2 berries (Bitter, Burnt, Gold, Ice, Mint, Miracle, Mystery, PRZ Cure, PSN Cure) have no engine handler
+## <a id="ISSUE-113"></a> ISSUE-113: 9 legacy gen2 berries (Bitter, Burnt, Gold, Ice, Mint, Miracle, Mystery, PRZ Cure, PSN Cure) have no engine handler
 
 ---
-id: ISSUE-109
+id: ISSUE-113
 severity: P3
 category: data
 anchor_symbol: items.json
@@ -4515,10 +4663,10 @@ $ grep -E "Bitter Berry|Burnt Berry|Gold Berry|Ice Berry|Mint Berry|Miracle Berr
 
 ---
 
-## <a id="ISSUE-110"></a> ISSUE-110: `delete sm.casinoCoins` cleanup runs on every load, not gated by `_loadedVer`
+## <a id="ISSUE-114"></a> ISSUE-114: `delete sm.casinoCoins` cleanup runs on every load, not gated by `_loadedVer`
 
 ---
-id: ISSUE-110
+id: ISSUE-114
 severity: P3
 category: bug
 anchor_symbol: load
@@ -4554,10 +4702,10 @@ The pattern is "delete on every load whether or not the field exists". Works cor
 
 ---
 
-## <a id="ISSUE-111"></a> ISSUE-111: Engine cold-boot is 2.88 s in jsdom — within the harness target (5 s) but **14× the mandate's 200 ms target**
+## <a id="ISSUE-115"></a> ISSUE-115: Engine cold-boot is 2.88 s in jsdom — within the harness target (5 s) but **14× the mandate's 200 ms target**
 
 ---
-id: ISSUE-111
+id: ISSUE-115
 severity: P3
 category: perf
 anchor_symbol: loadEngine
@@ -4583,10 +4731,10 @@ status: fixed-claude/sharp-keller-eZEDN
 
 ---
 
-## <a id="ISSUE-112"></a> ISSUE-112: `console.log` cluster in battle.html — debug noise in shipped code
+## <a id="ISSUE-116"></a> ISSUE-116: `console.log` cluster in battle.html — debug noise in shipped code
 
 ---
-id: ISSUE-112
+id: ISSUE-116
 severity: P3
 category: dx
 anchor_symbol: loadGameData
@@ -4622,10 +4770,10 @@ status: fixed-claude/sharp-keller-eZEDN
 
 ---
 
-## <a id="ISSUE-113"></a> ISSUE-113: Cold boot is ~3.0 s in jsdom (5-process median 3009 ms) — within the harness's relaxed 5 s self-target but 15× the mandate's 200 ms; a target-mismatch to resolve, not a regression
+## <a id="ISSUE-117"></a> ISSUE-117: Cold boot is ~3.0 s in jsdom (5-process median 3009 ms) — within the harness's relaxed 5 s self-target but 15× the mandate's 200 ms; a target-mismatch to resolve, not a regression
 
 ---
-id: ISSUE-113
+id: ISSUE-117
 severity: P3
 category: perf
 anchor_symbol: loadGameData
@@ -4651,10 +4799,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-114"></a> ISSUE-114: v15 stable-ID migration only iterates `sm.team`, not `sm.pcBox` (harmless today but inconsistent with v17)
+## <a id="ISSUE-118"></a> ISSUE-118: v15 stable-ID migration only iterates `sm.team`, not `sm.pcBox` (harmless today but inconsistent with v17)
 
 ---
-id: ISSUE-114
+id: ISSUE-118
 severity: P3
 category: dx
 anchor_symbol: migrateStoryPreV15
@@ -4702,10 +4850,10 @@ The v15 migration was authored when `sm.pcBox` didn't yet exist (PC was introduc
 
 ---
 
-## <a id="ISSUE-115"></a> ISSUE-115: Online Host/Join form labels are not programmatically associated with their inputs
+## <a id="ISSUE-119"></a> ISSUE-119: Online Host/Join form labels are not programmatically associated with their inputs
 
 ---
-id: ISSUE-115
+id: ISSUE-119
 severity: P3
 category: a11y
 anchor_symbol: modal-online-host
@@ -4744,10 +4892,10 @@ The `<label>` elements are visually adjacent to the inputs but missing `for="onl
 
 ---
 
-## <a id="ISSUE-116"></a> ISSUE-116: CONFIRMED FIXED — Mystery Figure is now a rotating 10-identity cast (prior audit: hardcoded Cyrus)
+## <a id="ISSUE-120"></a> ISSUE-120: CONFIRMED FIXED — Mystery Figure is now a rotating 10-identity cast (prior audit: hardcoded Cyrus)
 
 ---
-id: ISSUE-116
+id: ISSUE-120
 severity: P3
 category: inconsistency
 anchor_symbol: MYSTERY_FIGURE_IDENTITIES
@@ -4780,10 +4928,10 @@ function _storyEnsureMysteryIdentity() { if (!sm.mysteryIdentity || ...) sm.myst
 
 ---
 
-## <a id="ISSUE-117"></a> ISSUE-117: A cluster of form controls lack accessible names (online host/join, casino bet, gauntlet opt-in)
+## <a id="ISSUE-121"></a> ISSUE-121: A cluster of form controls lack accessible names (online host/join, casino bet, gauntlet opt-in)
 
 ---
-id: ISSUE-117
+id: ISSUE-121
 severity: P3
 category: a11y
 anchor_symbol: online-host-format
@@ -4814,10 +4962,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-118"></a> ISSUE-118: `parseMoveEffects` per-move latency varies by ~315× between fastest and slowest moves; outliers are 25–250× the median
+## <a id="ISSUE-122"></a> ISSUE-122: `parseMoveEffects` per-move latency varies by ~315× between fastest and slowest moves; outliers are 25–250× the median
 
 ---
-id: ISSUE-118
+id: ISSUE-122
 severity: P3
 category: perf
 anchor_symbol: parseMoveEffects
@@ -4866,10 +5014,10 @@ Fastest:slowest ratio ≈ 0.011 → 3.46 = **315×**. The mandate's threshold is
 
 ---
 
-## <a id="ISSUE-119"></a> ISSUE-119: `parseMoveEffects` per-move latency varies ~257× (median 0.012 ms, slowest 3.19 ms) — multi-stat-boost / "dance" moves are the outliers
+## <a id="ISSUE-123"></a> ISSUE-123: `parseMoveEffects` per-move latency varies ~257× (median 0.012 ms, slowest 3.19 ms) — multi-stat-boost / "dance" moves are the outliers
 
 ---
-id: ISSUE-119
+id: ISSUE-123
 severity: P3
 category: perf
 anchor_symbol: parseMoveEffects
@@ -4903,10 +5051,10 @@ The mandate's >10× variance threshold is exceeded. Every outlier is a stat-stag
 
 ---
 
-## <a id="ISSUE-120"></a> ISSUE-120: Burn applied as final-damage multiplier (`modifier *= 0.5`) instead of halving the attack stat pre-floor
+## <a id="ISSUE-124"></a> ISSUE-124: Burn applied as final-damage multiplier (`modifier *= 0.5`) instead of halving the attack stat pre-floor
 
 ---
-id: ISSUE-120
+id: ISSUE-124
 severity: P3
 category: inconsistency
 anchor_symbol: parseMoveEffects-burn-modifier
@@ -4938,10 +5086,10 @@ Showdown halves the *attack stat* before the damage formula's `floor()`. The eng
 
 ---
 
-## <a id="ISSUE-121"></a> ISSUE-121: 129 `@keyframes` definitions but only 5 `prefers-reduced-motion` overrides — sprite-in, dialog-in, master-pulse, badge-pulse all unguarded
+## <a id="ISSUE-125"></a> ISSUE-125: 129 `@keyframes` definitions but only 5 `prefers-reduced-motion` overrides — sprite-in, dialog-in, master-pulse, badge-pulse all unguarded
 
 ---
-id: ISSUE-121
+id: ISSUE-125
 severity: P3
 category: a11y
 anchor_symbol: prefers-reduced-motion
@@ -4981,10 +5129,10 @@ Storage of the StoryFx flag (line 26796) covers JS-driven sequences nicely, but 
 
 ---
 
-## <a id="ISSUE-122"></a> ISSUE-122: Room codes use `Math.random()` over 32 chars × 6 positions — 30 bits, birthday collision at ~30K concurrent rooms, retry-on-23505 saves correctness but not enumeration cost
+## <a id="ISSUE-126"></a> ISSUE-126: Room codes use `Math.random()` over 32 chars × 6 positions — 30 bits, birthday collision at ~30K concurrent rooms, retry-on-23505 saves correctness but not enumeration cost
 
 ---
-id: ISSUE-122
+id: ISSUE-126
 severity: P3
 category: bug
 anchor_symbol: randomCode
@@ -5020,10 +5168,10 @@ function randomCode() {
 
 ---
 
-## <a id="ISSUE-123"></a> ISSUE-123: README calls shipped catch / PC / Underground / Safari / boss-arc systems "upcoming"
+## <a id="ISSUE-127"></a> ISSUE-127: README calls shipped catch / PC / Underground / Safari / boss-arc systems "upcoming"
 
 ---
-id: ISSUE-123
+id: ISSUE-127
 severity: P3
 category: dx
 anchor_symbol: README.md
@@ -5058,10 +5206,10 @@ Reality (all shipped & reachable):
 
 ---
 
-## <a id="ISSUE-124"></a> ISSUE-124: Nature Rater availability is gappy (C0, C3, C5–C9) — absent C1/C2/C4 with no unlock rationale
+## <a id="ISSUE-128"></a> ISSUE-128: Nature Rater availability is gappy (C0, C3, C5–C9) — absent C1/C2/C4 with no unlock rationale
 
 ---
-id: ISSUE-124
+id: ISSUE-128
 severity: P3
 category: balance
 anchor_symbol: renderCityActions
@@ -5091,10 +5239,10 @@ Nature Rater present at: C0,     C3,     C5, C6, C7, C8, C9   (skips C1, C2, C4)
 
 ---
 
-## <a id="ISSUE-125"></a> ISSUE-125: Party count chip shows "(N/6)" regardless of the actual badge-driven cap
+## <a id="ISSUE-129"></a> ISSUE-129: Party count chip shows "(N/6)" regardless of the actual badge-driven cap
 
 ---
-id: ISSUE-125
+id: ISSUE-129
 severity: P3
 category: bug
 anchor_symbol: renderTeamPanel
@@ -5130,10 +5278,10 @@ The PC overflow error message at line 40487 already does this correctly (`${maxP
 
 ---
 
-## <a id="ISSUE-126"></a> ISSUE-126: CONFIRMED FIXED — RIVAL_ATTACK_TYPE_DECAY is now 10 (prior audit 1.2 had ÷30 too-aggressive)
+## <a id="ISSUE-130"></a> ISSUE-130: CONFIRMED FIXED — RIVAL_ATTACK_TYPE_DECAY is now 10 (prior audit 1.2 had ÷30 too-aggressive)
 
 ---
-id: ISSUE-126
+id: ISSUE-130
 severity: P3
 category: balance
 anchor_symbol: RIVAL_ATTACK_TYPE_DECAY
@@ -5162,10 +5310,10 @@ const RIVAL_ATTACK_TYPE_DECAY = 10;   // battle.html:33108 (was 30)
 
 ---
 
-## <a id="ISSUE-127"></a> ISSUE-127: Mystery Figure intro pool fallback uses 2 lines but the identity's `intros` field has 4 — falls back silently if the identity object lacks `intros`
+## <a id="ISSUE-131"></a> ISSUE-131: Mystery Figure intro pool fallback uses 2 lines but the identity's `intros` field has 4 — falls back silently if the identity object lacks `intros`
 
 ---
-id: ISSUE-127
+id: ISSUE-131
 severity: P3
 category: bug
 anchor_symbol: rollMysteryFigureFinalBossTeam
@@ -5204,10 +5352,10 @@ The 2-line fallback would be used if the rolled `mysteryIdentity` somehow doesn'
 
 ---
 
-## <a id="ISSUE-128"></a> ISSUE-128: All 24 `#screen-*` containers are plain `<div>` — no `<main>` or `role="region"`
+## <a id="ISSUE-132"></a> ISSUE-132: All 24 `#screen-*` containers are plain `<div>` — no `<main>` or `role="region"`
 
 ---
-id: ISSUE-128
+id: ISSUE-132
 severity: P3
 category: a11y
 anchor_symbol: screen-landmarks
@@ -5245,10 +5393,10 @@ $ grep -nE 'id="screen-[a-z-]+"' battle.html | head -5
 
 ---
 
-## <a id="ISSUE-129"></a> ISSUE-129: Several story-mode dev seeds use `Math.random` for build / sprite picks, breaking seeded replays when debug seeds are in play
+## <a id="ISSUE-133"></a> ISSUE-133: Several story-mode dev seeds use `Math.random` for build / sprite picks, breaking seeded replays when debug seeds are in play
 
 ---
-id: ISSUE-129
+id: ISSUE-133
 severity: P3
 category: bug
 anchor_symbol: seedDebugMysteryLegendGate
@@ -5282,10 +5430,10 @@ Dev seeds are not exercised in shipped runs (they're gated by `?debugMystery=1` 
 
 ---
 
-## <a id="ISSUE-130"></a> ISSUE-130: End-of-turn residual logic is duplicated verbatim in forced-switch path and main loop — divergence risk
+## <a id="ISSUE-134"></a> ISSUE-134: End-of-turn residual logic is duplicated verbatim in forced-switch path and main loop — divergence risk
 
 ---
-id: ISSUE-130
+id: ISSUE-134
 severity: P3
 category: inconsistency
 anchor_symbol: selectPartyMember
@@ -5318,10 +5466,10 @@ if (state.pActive.dynamaxed) { state.pActive.dynamaxTurns--; ... }
 
 ---
 
-## <a id="ISSUE-131"></a> ISSUE-131: Player gimmick-unlock order shifts when a mechanic is disabled in settings — DMax unlocks at Gym 5 instead of Gym 6 if Mega is off
+## <a id="ISSUE-135"></a> ISSUE-135: Player gimmick-unlock order shifts when a mechanic is disabled in settings — DMax unlocks at Gym 5 instead of Gym 6 if Mega is off
 
 ---
-id: ISSUE-131
+id: ISSUE-135
 severity: P3
 category: dx
 anchor_symbol: settings.megaOn
@@ -5366,10 +5514,10 @@ So at badges=5 with only Dyna on, `unlockedGimmicks` is `[]` until GL6 (dmax's n
 
 ---
 
-## <a id="ISSUE-132"></a> ISSUE-132: `shouldForceCityProfessor` uses dead `sm.team.length < 6` floor that's shadowed by outer `hasTeamRoom` gate
+## <a id="ISSUE-136"></a> ISSUE-136: `shouldForceCityProfessor` uses dead `sm.team.length < 6` floor that's shadowed by outer `hasTeamRoom` gate
 
 ---
-id: ISSUE-132
+id: ISSUE-136
 severity: P3
 category: refactor
 anchor_symbol: shouldForceCityProfessor
@@ -5412,10 +5560,10 @@ The `< 6` floor in `shouldForceCityProfessor` is functionally dead: any time it 
 
 ---
 
-## <a id="ISSUE-133"></a> ISSUE-133: `shouldForceCityProfessor`'s `sm.team.length < 6` floor is dead-coded once the outer `hasTeamRoom` gate clamps to `_storyMaxPartySize()`
+## <a id="ISSUE-137"></a> ISSUE-137: `shouldForceCityProfessor`'s `sm.team.length < 6` floor is dead-coded once the outer `hasTeamRoom` gate clamps to `_storyMaxPartySize()`
 
 ---
-id: ISSUE-133
+id: ISSUE-137
 severity: P3
 category: dx
 anchor_symbol: shouldForceCityProfessor
@@ -5459,10 +5607,10 @@ Two cap formulas in the same flow: `< 6` (inner) and `< _partyCap` (outer). The 
 
 ---
 
-## <a id="ISSUE-134"></a> ISSUE-134: Stale comment claims rival secondary intro "Uses Math.random" — it now uses seeded _storySideRng
+## <a id="ISSUE-138"></a> ISSUE-138: Stale comment claims rival secondary intro "Uses Math.random" — it now uses seeded _storySideRng
 
 ---
-id: ISSUE-134
+id: ISSUE-138
 severity: P3
 category: inconsistency
 anchor_symbol: showBattleIntro
@@ -5495,10 +5643,10 @@ const extraLine = ... pickRivalSecondaryIntroLine(rivalPhase, badgesNow);
 
 ---
 
-## <a id="ISSUE-135"></a> ISSUE-135: Internal action keys use `Pokemon` (no diacritic) while UI labels use `Pokémon`
+## <a id="ISSUE-139"></a> ISSUE-139: Internal action keys use `Pokemon` (no diacritic) while UI labels use `Pokémon`
 
 ---
-id: ISSUE-135
+id: ISSUE-139
 severity: P3
 category: inconsistency
 anchor_symbol: STORY_EVENTS_RAW
@@ -5530,10 +5678,10 @@ status: wontfix-internal-keys-stable-not-user-facing
 
 ---
 
-## <a id="ISSUE-136"></a> ISSUE-136: Service-timeline pacing — City1 post-gym hub is a dead zone (no new "thing to do")
+## <a id="ISSUE-140"></a> ISSUE-140: Service-timeline pacing — City1 post-gym hub is a dead zone (no new "thing to do")
 
 ---
-id: ISSUE-136
+id: ISSUE-140
 severity: P3
 category: balance
 anchor_symbol: STORY_EVENTS_RAW
@@ -5565,10 +5713,10 @@ City2 pre-gym : Link Station, Stone Sage, Stone Shop, Move Tutor  (3 NEW facilit
 
 ---
 
-## <a id="ISSUE-137"></a> ISSUE-137: STORY_EVENTS_RAW has 67 array rows (incl. 2 'Hall of Fame' string matches) — mandate/spec cite "68 rows"
+## <a id="ISSUE-141"></a> ISSUE-141: STORY_EVENTS_RAW has 67 array rows (incl. 2 'Hall of Fame' string matches) — mandate/spec cite "68 rows"
 
 ---
-id: ISSUE-137
+id: ISSUE-141
 severity: P3
 category: data
 anchor_symbol: STORY_EVENTS_RAW
@@ -5599,10 +5747,10 @@ Row IDs (col 0) range 0..68 but are NON-contiguous and out of order:
 
 ---
 
-## <a id="ISSUE-138"></a> ISSUE-138: 6+ stale `battle.html:LINE` refs in STORY_MODE_CATCH_INTEGRATION_RISK.md (avg drift ~9000 lines)
+## <a id="ISSUE-142"></a> ISSUE-142: 6+ stale `battle.html:LINE` refs in STORY_MODE_CATCH_INTEGRATION_RISK.md (avg drift ~9000 lines)
 
 ---
-id: ISSUE-138
+id: ISSUE-142
 severity: P3
 category: dx
 anchor_symbol: STORY_MODE_CATCH_INTEGRATION_RISK.md
@@ -5637,10 +5785,10 @@ This doc is the largest single source of drifted refs in the report (24 of 50 to
 
 ---
 
-## <a id="ISSUE-139"></a> ISSUE-139: Doc `battle.html:LINE` anchors still stale (50 refs, 18 drifted) despite PR #140 "fix"
+## <a id="ISSUE-143"></a> ISSUE-143: Doc `battle.html:LINE` anchors still stale (50 refs, 18 drifted) despite PR #140 "fix"
 
 ---
-id: ISSUE-139
+id: ISSUE-143
 severity: P3
 category: dx
 anchor_symbol: STORY_MODE_CATCH_INTEGRATION_RISK.md
@@ -5676,10 +5824,10 @@ ref counts today: STORY_MODE_FLOW=10, CATCH_INTEGRATION_RISK=30, NARRATIVE_VARIA
 
 ---
 
-## <a id="ISSUE-140"></a> ISSUE-140: 9 of 10 `battle.html:LINE` refs in STORY_MODE_FLOW.md are stale (avg drift ~7000 lines)
+## <a id="ISSUE-144"></a> ISSUE-144: 9 of 10 `battle.html:LINE` refs in STORY_MODE_FLOW.md are stale (avg drift ~7000 lines)
 
 ---
-id: ISSUE-140
+id: ISSUE-144
 severity: P3
 category: dx
 anchor_symbol: STORY_MODE_FLOW.md
@@ -5712,10 +5860,10 @@ Full report at `tests/reports/spec-drift.md`. Only 1/10 refs in this doc still r
 
 ---
 
-## <a id="ISSUE-141"></a> ISSUE-141: STORY_MODE_FLOW.md PC cap of 10 contradicts shipped PC_BOX_CAP=30
+## <a id="ISSUE-145"></a> ISSUE-145: STORY_MODE_FLOW.md PC cap of 10 contradicts shipped PC_BOX_CAP=30
 
 ---
-id: ISSUE-141
+id: ISSUE-145
 severity: P3
 category: data
 anchor_symbol: STORY_MODE_FLOW.md
@@ -5749,10 +5897,10 @@ Three separate spec mentions all say 10. Code says 30. Sibling fingerprint `fad9
 
 ---
 
-## <a id="ISSUE-142"></a> ISSUE-142: 5+ stale `battle.html:LINE` refs in STORY_NARRATIVE_VARIANTS.md (variant-system anchors moved 3-5k lines)
+## <a id="ISSUE-146"></a> ISSUE-146: 5+ stale `battle.html:LINE` refs in STORY_NARRATIVE_VARIANTS.md (variant-system anchors moved 3-5k lines)
 
 ---
-id: ISSUE-142
+id: ISSUE-146
 severity: P3
 category: dx
 anchor_symbol: STORY_NARRATIVE_VARIANTS.md
@@ -5787,10 +5935,10 @@ The variant system is the most actively edited area of battle.html (CHANGELOG 20
 
 ---
 
-## <a id="ISSUE-143"></a> ISSUE-143: Tutorial scenes are text-only walls of 60-120 words — no audio, no progressive reveal, no skip-to-end affordance
+## <a id="ISSUE-147"></a> ISSUE-147: Tutorial scenes are text-only walls of 60-120 words — no audio, no progressive reveal, no skip-to-end affordance
 
 ---
-id: ISSUE-143
+id: ISSUE-147
 severity: P3
 category: dx
 anchor_symbol: STORY_TUTORIAL_SCENES
@@ -5830,10 +5978,10 @@ Each tutorial dumps three multi-clause sentences in one frame with no per-line "
 
 ---
 
-## <a id="ISSUE-144"></a> ISSUE-144: Mobile touch targets in story shops top out at 42px — under the WCAG 44×44 baseline
+## <a id="ISSUE-148"></a> ISSUE-148: Mobile touch targets in story shops top out at 42px — under the WCAG 44×44 baseline
 
 ---
-id: ISSUE-144
+id: ISSUE-148
 severity: P3
 category: a11y
 anchor_symbol: story-shop-buy-btn
@@ -5870,10 +6018,10 @@ The Mart, Department Store, Artifact Shop, Tutor, Colress, Event Trainer, Fanclu
 
 ---
 
-## <a id="ISSUE-145"></a> ISSUE-145: Tutorial overlay's four-stage entrance animation has no reduced-motion fallback
+## <a id="ISSUE-149"></a> ISSUE-149: Tutorial overlay's four-stage entrance animation has no reduced-motion fallback
 
 ---
-id: ISSUE-145
+id: ISSUE-149
 severity: P3
 category: a11y
 anchor_symbol: story-tutorial-overlay
@@ -5908,10 +6056,10 @@ The tutorial cascade plays four staggered animations totaling ~1.1s before the C
 
 ---
 
-## <a id="ISSUE-146"></a> ISSUE-146: Scope-leak audit (same class as fixed `sm` bug) — NEGATIVE: no other IIFE-internal symbol referenced bare from turn-loop scope
+## <a id="ISSUE-150"></a> ISSUE-150: Scope-leak audit (same class as fixed `sm` bug) — NEGATIVE: no other IIFE-internal symbol referenced bare from turn-loop scope
 
 ---
-id: ISSUE-146
+id: ISSUE-150
 severity: P3
 category: inconsistency
 anchor_symbol: storyAwareRng
@@ -5946,10 +6094,10 @@ status: open
 
 ---
 
-## <a id="ISSUE-147"></a> ISSUE-147: `storyAwareRng()` helper exists but the combat engine still calls bare `Math.random()` at ~250 sites
+## <a id="ISSUE-151"></a> ISSUE-151: `storyAwareRng()` helper exists but the combat engine still calls bare `Math.random()` at ~250 sites
 
 ---
-id: ISSUE-147
+id: ISSUE-151
 severity: P3
 category: dx
 anchor_symbol: storyAwareRng
@@ -5987,10 +6135,10 @@ if (defender.ability === "Static" && Math.random() < 0.3) applyStatus(…); // s
 
 ---
 
-## <a id="ISSUE-148"></a> ISSUE-148: Master Ball purple pulse runs forever with no reduced-motion override; surrounding text/glow stays readable but the loop is hostile
+## <a id="ISSUE-152"></a> ISSUE-152: Master Ball purple pulse runs forever with no reduced-motion override; surrounding text/glow stays readable but the loop is hostile
 
 ---
-id: ISSUE-148
+id: ISSUE-152
 severity: P3
 category: a11y
 anchor_symbol: storyCatchMasterPulse
@@ -6028,10 +6176,10 @@ Contrast itself is fine: `#ce93d8` text on `rgba(20,28,40,0.6)` over a dark batt
 
 ---
 
-## <a id="ISSUE-149"></a> ISSUE-149: CONFIRMED FIXED — Hard coin mult floored to 1.00 (prior audit 2.1); Challenge 1.10
+## <a id="ISSUE-153"></a> ISSUE-153: CONFIRMED FIXED — Hard coin mult floored to 1.00 (prior audit 2.1); Challenge 1.10
 
 ---
-id: ISSUE-149
+id: ISSUE-153
 severity: P3
 category: balance
 anchor_symbol: storyDifficultyCoinMult
@@ -6061,10 +6209,10 @@ if (diff === 'challenge') return 1.10;
 
 ---
 
-## <a id="ISSUE-150"></a> ISSUE-150: `sm.wildSeenByEventIdx` and `sm.staticDrops` are lazily initialized instead of declared in the `sm` defaults block
+## <a id="ISSUE-154"></a> ISSUE-154: `sm.wildSeenByEventIdx` and `sm.staticDrops` are lazily initialized instead of declared in the `sm` defaults block
 
 ---
-id: ISSUE-150
+id: ISSUE-154
 severity: P3
 category: dx
 anchor_symbol: wildSeenByEventIdx
