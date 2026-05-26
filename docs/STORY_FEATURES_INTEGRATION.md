@@ -2,6 +2,17 @@
 
 This doc ties **new systems** to the existing timeline in [`STORY_MODE_FLOW.md`](../STORY_MODE_FLOW.md) and [`battle.html`](../battle.html) (`STORY_EVENTS_RAW`, `POKEMART_ITEMS`, `DEPT_ITEMS`).
 
+> ## ⚠️ STATUS — DE-SCOPED SECTIONS (as of v1.2.3, 2026-05)
+>
+> The sections below marked **DE-SCOPED** are **cut — not shipped and not currently planned**;
+> they are kept for historical/design context only. Verified absent from `battle.html`
+> (zero code references): **§3 Black Market**, **§3.5 Illegal Dealer NPC**,
+> **§6 Battle for Pokémon (wager)**, **§7 Pokémon Trader**, and the **full Itinerary /
+> `runItinerary` scaffolding** woven through §§3–10 and the §9 readiness table.
+>
+> **Shipped and live:** §1 Poké Balls, §2 PC Box, §4 Safari Zone, and the §9 dialogue work.
+> If a cut system is ever revived, move it out of this de-scoped list and into the live spec.
+
 ---
 
 ## 1. Poké Balls (cheap, catch-mode only)
@@ -30,7 +41,7 @@ This doc ties **new systems** to the existing timeline in [`STORY_MODE_FLOW.md`]
 
 ---
 
-## 3. Black Market — where, unlock, uniqueness
+## 3. Black Market — where, unlock, uniqueness  ·  ⚠️ DE-SCOPED (not shipped)
 
 ### Placement (recommended)
 
@@ -54,7 +65,7 @@ If an item exists in `POKEMART_ITEMS` / `DEPT_ITEMS`, **do not** resell it in Bl
 
 ---
 
-## 3.5 Illegal Dealer NPC (unique from Black Market)
+## 3.5 Illegal Dealer NPC (unique from Black Market)  ·  ⚠️ DE-SCOPED (not shipped)
 
 This is a **single NPC encounter system**, not a full shop. It gives high-risk one-off deals and story flavor.
 
@@ -107,7 +118,7 @@ Runs **before** trainer fight on that `proceedToNextBattle` hop; itinerary beat 
 
 ---
 
-## 6. Battle for Pokémon (wager)
+## 6. Battle for Pokémon (wager)  ·  ⚠️ DE-SCOPED (not shipped)
 
 | Player | Needs **≥2** party members to accept |
 |--------|----------------------------------------|
@@ -120,7 +131,7 @@ Runs **before** trainer fight on that `proceedToNextBattle` hop; itinerary beat 
 
 ---
 
-## 7. Pokémon Trader (same grade, fixed offer)
+## 7. Pokémon Trader (same grade, fixed offer)  ·  ⚠️ DE-SCOPED (not shipped)
 
 | City | **City4** first visit (event idx **26**), or **29** post-gym — pick **one** index for `traderOfferByCity[4]` |
 |------|----------------------------------|
@@ -161,10 +172,10 @@ Runs **before** trainer fight on that `proceedToNextBattle` hop; itinerary beat 
 
 ## 10. Implementation order (reminder)
 
-1. Balls + inventory + mart + wild encounter + PC modal.  
-2. `runItinerary` + one arc stub + script screen.  
-3. Black Market unique SKUs + UI + unlock flag.  
-4. Safari (type pool) + fee.  
-5. Wager flag + worst/best helpers + route %.  
-6. Trader City4.  
-7. Full dialogue fill per arc.
+1. ✅ **SHIPPED** — Balls + inventory + mart + wild encounter + PC modal.  
+2. ⚠️ **DE-SCOPED** — `runItinerary` + one arc stub + script screen.  
+3. ⚠️ **DE-SCOPED** — Black Market unique SKUs + UI + unlock flag.  
+4. ✅ **SHIPPED** — Safari (type pool) + fee.  
+5. ⚠️ **DE-SCOPED** — Wager flag + worst/best helpers + route %.  
+6. ⚠️ **DE-SCOPED** — Trader City4.  
+7. ✅ **SHIPPED** — Full dialogue fill per arc.

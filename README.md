@@ -41,7 +41,7 @@ Story runs are stored in **one** browser `localStorage` key: `pbs_story_save`. T
 - **Bag and money** are part of that save. Using a story battle item writes the updated inventory to storage immediately (so the save always reflects the last persisted state).
 - **Party HP, status, PP, and consumed held items** are fully restored between battles on every difficulty. Mart consumables (potions, X-items, orbs) matter only within a single battle.
 - **General settings** (for example toggles under the main Settings screen) live in separate storage from the story run and are not the same object as `pbs_story_save`.
-- See `STORY_MODE_FLOW.md` for the working spec of the upcoming catch / PC / Underground / Safari / boss-arc systems.
+- See `STORY_MODE_FLOW.md` for the spec of the catch / PC / Underground / Safari / boss-arc systems (shipped).
 
 ## Alternative (no server)
 
