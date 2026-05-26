@@ -46,8 +46,8 @@ const ANIME_STUB = () => {
 
 const read = async (page, fn) => { try { return JSON.parse(await page.evaluate(fn)); } catch (e) { return null; } };
 async function shot(page, label) { shotN++; const n = `${String(shotN).padStart(3, '0')}-${label}.png`; await page.screenshot({ path: join(SHOTS, n) }).catch(() => {}); log(`   📸 ${n}`); return n; }
-async function clickText(page, t, timeout = 900) { try { const l = page.locator(`button:has-text(${JSON.stringify(t)}), [role=button]:has-text(${JSON.stringify(t)})`).first(); if (await l.count()) { await l.click({ timeout }); await sleep(220); return true; } } catch (e) {} return false; }
-async function clickSel(page, sel, timeout = 1500) { try { const l = page.locator(sel).first(); if (await l.count()) { await l.click({ timeout }); await sleep(220); return true; } } catch (e) {} return false; }
+async function clickText(page, t, timeout = 900) { try { const l = page.locator(`button:has-text(${JSON.stringify(t)}), [role=button]:has-text(${JSON.stringify(t)})`).filter({ visible: true }).first(); if (await l.count()) { await l.click({ timeout }); await sleep(220); return true; } } catch (e) {} return false; }
+async function clickSel(page, sel, timeout = 1500) { try { const l = page.locator(sel).filter({ visible: true }).first(); if (await l.count()) { await l.click({ timeout }); await sleep(220); return true; } } catch (e) {} return false; }
 async function api(page, name, ...args) { return page.evaluate(({ n, a }) => { try { if (window.StoryMode && typeof window.StoryMode[n] === 'function') { window.StoryMode[n](...a); return 'ok'; } return 'nofn'; } catch (e) { return 'err:' + (e && e.message); } }, { n: name, a: args }); }
 
 async function classify(page) {
@@ -66,7 +66,7 @@ async function classify(page) {
       unlocked: sm.unlockedGimmicks ? Array.from(sm.unlockedGimmicks) : [],
       battleActive: !st.isOver && (!!st.fActive || (fightBtn && vis(fightBtn))),
       endScreen: vis(endTitle), endTitle: endTitle ? (endTitle.innerText || '').slice(0, 28) : '',
-      catchScreen: scr('screen-story-catch'),
+      catchScreen: scr('screen-story-catch') && document.querySelectorAll('#story-catch-body button:not([disabled])').length > 0,
       professorCards: document.querySelectorAll('.prof-pick-card').length,
       cityScreen: scr('screen-story-city'),
       cityName: ((document.querySelector('#screen-story-city .story-screen-head-text') || {}).textContent || '').trim(),
