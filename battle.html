@@ -39237,7 +39237,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _push('train', makeActionBtn('🧪 Colress — Battle Forms','colress','window.StoryMode.enterColress()','training', _facOpts('colress', [_costBadge(5000)], { soft:true })));
             }
             if (cityIdx === 0 || (sm.artifacts || []).length > 0) {
-                _push('train', makeActionBtn('✨ Artifact Hall','artifacts','window.StoryMode.enterArtifactHall()','dept', _facOpts('artifacts', [{label:'Relics',tone:'info'}], { soft:true })));
+                _push('utility', makeActionBtn('✨ Artifact Hall','artifacts','window.StoryMode.enterArtifactHall()','dept', _facOpts('artifacts', [{label:'Relics',tone:'info'}], { soft:true })));
             }
             // Pokémon Center — full party heal, free, unlimited
             _push('recover', makeActionBtn('🏥 Pokémon Center','center','window.StoryMode.enterPokemonCenter()','center', _facOpts('center', [{label:'Free',tone:'free'}])));
@@ -39286,14 +39286,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 : 'Party — Empty (Visit Professor)';
             _push('recover', makeActionBtn(_partyLabel, 'party', 'window.StoryMode.openPartyModal()', 'party'));
             if (actions.includes('Link Station')) {
-                _push('recover', makeActionBtn('📡 Cable Link Station','link','window.StoryMode.enterLink()','link', _facOpts('link', [_costBadge(5000, '+')])));
+                _push('utility', makeActionBtn('📡 Cable Link Station','link','window.StoryMode.enterLink()','link', _facOpts('link', [_costBadge(5000, '+')])));
             }
             // Bag — always accessible in city to view inventory and sell items
             const _invCount = Object.keys(sm.inventory || {}).filter(k => sm.inventory[k] > 0).length;
             const _bagLabel = _invCount > 0
                 ? `🎒 Bag (${_invCount} type${_invCount !== 1 ? 's' : ''})`
                 : '🎒 Bag — Empty';
-            _push('recover', makeActionBtn(_bagLabel, 'bag', 'window.StoryMode.openCityBag()', 'shop',{ soft:true }));
+            _push('utility', makeActionBtn(_bagLabel, 'bag', 'window.StoryMode.openCityBag()', 'shop',{ soft:true }));
 
             const _sectionCount = (html) => (html.match(/<button[^>]*class="story-action-btn/g) || []).length;
             const _emit = (key, iconPath, title) => {
@@ -39305,7 +39305,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             btn.innerHTML = _emit('quest',   'icons/story/story_gym.png?v=20260516',   'Next Step')
                           + _emit('recover', 'icons/story/story_center.png?v=20260516', 'Heal & Team')
                           + _emit('train',   'icons/story/story_tutor.png?v=20260516',  'Train')
-                          + _emit('shop',    'icons/story/story_mart.png?v=20260516',   'Shops');
+                          + _emit('shop',    'icons/story/story_mart.png?v=20260516',   'Shops')
+                          + _emit('utility', 'icons/story/story_route.png?v=20260516', 'Connect &amp; Bag');
         }
 
         /** FireRed/LeafGreen–style item & UI rips (pret/pokefirered, plus link strip from graphics/link). */
