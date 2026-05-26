@@ -308,7 +308,7 @@ async function exerciseCityActions(window, ctx) {
     try { window.StoryMode.enterCity(); } catch (e) {}
     await tick(window);
   }
-  if (actions.includes('Pokemon Fan Club')) {
+  if (actions.includes('Pokémon Fan Club')) {
     try { window.StoryMode.enterFanClub && window.StoryMode.enterFanClub(); } catch (e) { record('error', 'city.fanClub', e.message, ctx); }
     await tick(window);
     try { window.StoryMode.enterCity(); } catch (e) {}
@@ -581,7 +581,7 @@ async function exerciseSubsystems(window) {
 async function exerciseEdgeCases(window) {
   // Probe boundary conditions:
   // 1. Buying items past gold (negative balance check)
-  // 2. PC overflow (cap 10)
+  // 2. PC overflow (cap 30)
   // 3. Selling last team mon (should be blocked)
   // 4. Catch fail with full party + full PC
   const sm = window.StoryMode.state;

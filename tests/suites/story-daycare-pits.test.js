@@ -105,22 +105,23 @@ test('Daycare drop-off is one-time', () => {
   assert.ok(!$('story-daycare-overlay'), 'no second drop-off picker once the egg event is done');
 });
 
-test('Egg does not hatch before Gym 7, hatches in place at Gym 7', () => {
-  setupStory();
-  // Put an egg directly in the party.
-  const egg = SM._makeEggSlot('Pikachu', 5);
-  sm.team.push(egg);
-  sm.badges = 6;
-  assert.equal(SM._hatchEligibleEggs().length, 0, 'no hatch before Gym 7');
-  assert.equal(sm.team[sm.team.length - 1].isEgg, true, 'still an egg at 6 badges');
-  sm.badges = 7;
+test('Egg hatches at laid-city + 2, not before', () => {
+  setupStory(); // eventIndex=38 → a mid-game city (well past city 2)
+  // An egg "laid" in a far-future city is never due (curCity < laidCity + 2).
+  const future = SM._makeEggSlot('Pikachu', 999);
+  sm.team.push(future);
+  assert.equal(SM._hatchEligibleEggs().length, 0, 'egg laid in a far city does not hatch yet');
+  assert.equal(sm.team[sm.team.length - 1].isEgg, true, 'still an egg before laidCity+2');
+  // An egg "laid" back at city 0 is due mid-game (curCity >= 0 + 2).
+  const due = SM._makeEggSlot('Eevee', 0);
+  sm.team.push(due);
   const hatched = SM._hatchEligibleEggs();
-  assert.equal(hatched.length, 1, 'one egg hatched at Gym 7');
-  assert.equal(hatched[0], 'Pikachu', 'egg hatches into its locked species');
-  const slot = sm.team.find(s => s.id === egg.id);
-  assert.ok(slot && !slot.isEgg, 'the egg slot is now a real mon (isEgg cleared)');
+  assert.ok(hatched.includes('Eevee'), 'egg laid back at city 0 hatches mid-game');
+  assert.ok(!hatched.includes('Pikachu'), 'far-future egg has not hatched');
+  const slot = sm.team.find(s => s.id === due.id);
+  assert.ok(slot && !slot.isEgg, 'the due egg slot is now a real mon (isEgg cleared)');
   assert.ok(slot.build, 'hatchling has a build');
-  assert.equal(slot.name, 'Pikachu', 'hatchling species matches');
+  assert.equal(slot.name, 'Eevee', 'hatchling species matches');
 });
 
 test('Egg counts as a slot but not as a fighter; can be deposited to PC', () => {
@@ -145,7 +146,7 @@ test('Fight Club requires a full stable of six fighters', () => {
   assert.ok($('story-pits-overlay'), 'entry allowed with six fighters');
 });
 
-test('Fight Club story win: +1 all stats on the whole team, gold, NO release, one-time', () => {
+test('Fight Club story win: 5-round sweep grants +5 all stats, gold, NO release, one-time', () => {
   setupStory();
   const goldBefore = sm.gold;
   const teamSizeBefore = sm.team.length;
@@ -159,14 +160,14 @@ test('Fight Club story win: +1 all stats on the whole team, gold, NO release, on
   assert.ok(start && !start.disabled, 'start enabled after 3 picks');
   start.click();
   assert.equal(sm.pits._inBattle, true, 'marked in-battle');
-  assert.equal(sm.pits._enemyRoster.length, 3, 'rolled 3 enemy fights');
+  assert.equal(sm.pits._enemyRoster.length, 5, 'rolled a 5-fight gauntlet');
 
-  for (let i = 0; i < 3; i++) SM.onBattleEnd(true, 'Fight Club win', '');
-  assert.equal(sm.pits._inBattle, false, 'in-battle cleared after 3 wins');
+  for (let i = 0; i < 5; i++) SM.onBattleEnd(true, 'Fight Club win', '');
+  assert.equal(sm.pits._inBattle, false, 'in-battle cleared after 5 wins');
   assert.ok(sm.gold > goldBefore, 'gold paid out');
   assert.equal(sm.team.length, teamSizeBefore, 'NO mons released — you keep all six');
-  const allUp = sm.team.every(s => ['hp','atk','def','spa','spd','spe'].every(k => s.build.bonus[k] >= 1));
-  assert.ok(allUp, 'every team member +1 all stats');
+  const allUp = sm.team.every(s => ['hp','atk','def','spa','spd','spe'].every(k => s.build.bonus[k] >= 5));
+  assert.ok(allUp, 'a full sweep grants +5 to every stat (one per round won)');
   assert.equal(sm.pits.storyClubDone, true, 'story club marked done');
   assert.equal(SM._pitsStoryAvailable(), false, 'one-time: story club no longer available');
 });
@@ -223,7 +224,7 @@ test('Endgame Fight Club: gold only, no +1, repeatable', () => {
   const picks = [sm.team[0].id, sm.team[1].id, sm.team[2].id];
   for (const id of picks) $('story-pits-overlay').querySelector(`[data-pits-pick="${id}"]`).click();
   $('story-pits-overlay').querySelector('#pits-start-btn').click();
-  for (let i = 0; i < 3; i++) SM.onBattleEnd(true, 'Fight Club win', '');
+  for (let i = 0; i < 5; i++) SM.onBattleEnd(true, 'Fight Club win', '');
   assert.ok(sm.gold > goldBefore, 'endgame win pays gold');
   const noBuff = sm.team.every((s, i) => ['hp','atk','def','spa','spd','spe'].every(k => (s.build.bonus[k] | 0) === (bonusBefore[i][k] | 0)));
   assert.ok(noBuff, 'endgame win grants NO permanent stat bonus');
