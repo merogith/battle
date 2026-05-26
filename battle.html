@@ -8430,7 +8430,7 @@
             <span id="story-colress-gold" style="color:#ffd700;font-size:13px;font-weight:bold;flex-shrink:0;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <div style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);">
-            <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Set a battle form for each Pokémon. Each activation costs <strong style="color:#ffd700;">10,000G</strong>. Mega Stones and Z-Crystals will replace the current held item.</p>
+            <p style="font-size:12px;color:#aaa;margin:0 0 12px;">Set a battle form for each Pokémon. Each activation costs <strong style="color:#ffd700;">7,500G</strong>. Mega Stones and Z-Crystals will replace the current held item.</p>
             <div id="story-colress-team" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
@@ -10585,7 +10585,7 @@ Every Pokémon carries a training tier, separate from its species grade:<br>
 <b>Battle Dojo</b> — Swap held item and/or ability.<br>
 <b>EV Trainer (Buck)</b> — Apply EV spreads (510 cap, 252 per stat). A Vitamin Pack waives the gold cost.<br>
 <b>Stone Sage</b> — Every region\'s evolution methods, one shop. Rare Candy waives the gold cost on a Pokémon\'s first evolution.<br>
-<b>Colress</b> — Sets a battle form (Mega / Z / Dynamax / Tera) on one Pokémon for 10,000G. Permanent for that mon.<br>
+<b>Colress</b> — Sets a battle form (Mega / Z / Dynamax / Tera) on one Pokémon for 7,500G. Permanent for that mon.<br>
 <b>Link Station</b> — Reroll a slot, upgrade to T4, or rebuild from scratch.<br>
 <b>Relic Annex</b> — Pick one permanent rule that lives in every battle for the rest of the run, both sides.<br>
 <b>Poké Casino</b> — Three tables: Coin Flip, Slots, Roulette. Bet gold directly (50G minimum). Big wins drop random Vitamins (+1 IV) and tutor Vouchers — the casino is a luck-based IV-boost path. House edge ~6-8% lives in the games' RTP.<br>
@@ -12621,6 +12621,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         const _spriteCache = {};
         const _preloadedImages = {};
+        const _preloadedImageOrder = [];
         const SPRITE_ID_ALIASES = {
             // Mega X/Y forms (explicit fallback — normalization already handles these)
             'charizard-mega-x': 'charizard-megax',
@@ -12732,6 +12733,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _spriteCache[cacheKey] = url;
             if (!_preloadedImages[url]) {
                 let img = new Image(); img.src = url; _preloadedImages[url] = img;
+                _preloadedImageOrder.push(url);
+                if (_preloadedImageOrder.length > 300) {
+                    const _old = _preloadedImageOrder.shift();
+                    if (_old && _old !== url) delete _preloadedImages[_old];
+                }
             }
             return url;
         };
@@ -39011,7 +39017,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             const _colressMechAny = !!(sm.settings && (sm.settings.megaOn || sm.settings.zOn || sm.settings.dynaOn || sm.settings.teraOn));
             if (actions.includes('Power Up') && _tutorTeam && _colressMechAny) {
-                _push('train', makeActionBtn('🧪 Colress — Battle Forms','colress','window.StoryMode.enterColress()','training', _facOpts('colress', [_costBadge(10000)], { soft:true })));
+                _push('train', makeActionBtn('🧪 Colress — Battle Forms','colress','window.StoryMode.enterColress()','training', _facOpts('colress', [_costBadge(7500)], { soft:true })));
             }
             if ((sm.artifacts || []).length > 0) {
                 _push('train', makeActionBtn('✨ Artifact Hall','artifacts','window.StoryMode.enterArtifactHall()','dept', _facOpts('artifacts', [{label:'Free',tone:'free'}], { soft:true })));
@@ -39265,7 +39271,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 'Colress: "Welcome. The lab is open. Which of your partners would you like to wake the rest of the way up?"',
                 'Colress: "Mega, Z, Dynamax, Tera — four different sleeping powers. Each Pokémon takes only one."',
                 'Colress: "A Mega or a Z-Crystal lives in the held-item slot. That\'s the cost — your Leftovers, for a transformation."',
-                'Colress: "I\'ve heard players call this expensive. Ten thousand gold to redraw a mon\'s ceiling sounds fair to me."',
+                'Colress: "I\'ve heard players call this expensive. Seventy-five hundred gold to redraw a mon\'s ceiling sounds fair to me."',
                 'Colress: "The science is settled. What\'s left to test is the bond. Show me yours."',
                 'Colress: "If you\'re running Standard mode and never set a form, that\'s a perfectly valid trainer. Some of the best are."',
             ],
@@ -52088,7 +52094,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (swappingAwayMegaStone || swappingAwayZCrystal) {
                     const which = swappingAwayMegaStone ? 'Mega Evolution' : 'Z-Move';
                     const ok = (typeof window !== 'undefined' && typeof window.showGameConfirm === 'function')
-                        ? await window.showGameConfirm(`Replacing the ${curItem} will disable ${which} on ${mon.name}. Visit Colress again (10,000G) to restore it. Continue?`)
+                        ? await window.showGameConfirm(`Replacing the ${curItem} will disable ${which} on ${mon.name}. Visit Colress again (7,500G) to restore it. Continue?`)
                         : true;
                     if (!ok) return;
                     mon.build.gimmick = 'STANDARD';
@@ -52225,7 +52231,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (swapMega || swapZ) {
                     const which = swapMega ? 'Mega Evolution' : 'Z-Move';
                     const ok = (typeof window !== 'undefined' && typeof window.showGameConfirm === 'function')
-                        ? await window.showGameConfirm(`Replacing the ${curItem} will disable ${which} on ${mon.name}. Visit Colress again (10,000G) to restore it. Use 1 Emblem of Honor anyway? (${remaining} left after.)`)
+                        ? await window.showGameConfirm(`Replacing the ${curItem} will disable ${which} on ${mon.name}. Visit Colress again (7,500G) to restore it. Use 1 Emblem of Honor anyway? (${remaining} left after.)`)
                         : true;
                     if (!ok) return false;
                     mon.build.gimmick = 'STANDARD';
