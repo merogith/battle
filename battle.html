@@ -29296,16 +29296,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // into each City row's actions array at module init. Idempotent: skips
         // rows that already include it. Positioned just after Pokemart / Link
         // Station so it reads as a "talk to townsfolk" facility, ahead of training.
-        (function _seedFanClubAcrossCities() {
+        (function _seedAlwaysOnFacilitiesAcrossCities() {
+            // RNG-negators (Move Tutor, Nature Rater) and the Fan Club are ALWAYS reachable
+            // once the run is going — capability is staged, presence is not. Splice any that
+            // a city's action list is missing (e.g. City 1 shipped without the tutors).
+            const ALWAYS_ON = ['Move Tutor', 'Nature Rater', 'Pokémon Fan Club'];
             for (const row of STORY_EVENTS_RAW) {
                 if (!Array.isArray(row) || row[1] !== 'City') continue;
                 const actions = row[5];
-                if (!Array.isArray(actions) || actions.includes('Pokémon Fan Club')) continue;
-                let insertAt = actions.indexOf('Pokemart');
-                if (insertAt < 0) insertAt = actions.indexOf('Department Store');
-                if (insertAt < 0) insertAt = actions.indexOf('Link Station');
-                if (insertAt < 0) insertAt = actions.length - 1;
-                actions.splice(insertAt + 1, 0, 'Pokémon Fan Club');
+                if (!Array.isArray(actions)) continue;
+                for (const fac of ALWAYS_ON) {
+                    if (actions.includes(fac)) continue;
+                    let insertAt = actions.indexOf('Pokemart');
+                    if (insertAt < 0) insertAt = actions.indexOf('Department Store');
+                    if (insertAt < 0) insertAt = actions.indexOf('Link Station');
+                    if (insertAt < 0) insertAt = actions.length - 1;
+                    actions.splice(insertAt + 1, 0, fac);
+                }
             }
         })();
         // Expose to script-top scope (this module is wrapped in `window.StoryMode = (function(){…})()`).
@@ -41023,18 +41030,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const usedNames = new Set(sm.team.filter(t => t && !t.isEgg).map(t => t.name));
                 // Block all forms of families already on the team (e.g. having Arceus blocks Arceus-Fire)
                 const usedFamilies = new Set(sm.team.filter(t => t && !t.isEgg).map(t => _storyBaseFamily(t.name)));
+                const profCap = _profLegendaryMysteryMode ? 99 : Math.min(_storyEvoStageCapForCity(cityIdx), 1); // professor never gifts a fully-evolved (Stage-2) mon
                 for (let i = 0; i < numChoices; i++) {
                     let name = null;
-                    for (let t = 0; t < 15; t++) {
+                    for (let t = 0; t < 24; t++) {
                         const c = _profLegendaryMysteryMode
                             ? pickStoryLegendaryFromGens(sg, usedNames)
                             : weightedPickFromGrades(rolls, sg);
                         if (c && !usedNames.has(c) && !usedFamilies.has(_storyBaseFamily(c))
-                            && (_profLegendaryMysteryMode || _storyEvoStageOf(c) <= _storyEvoStageCapForCity(cityIdx))) { name = c; break; }
+                            && (_profLegendaryMysteryMode || _storyEvoStageOf(c) <= profCap)) { name = c; break; }
                     }
                     if (!name) {
-                        // fallback: allow any (may duplicate)
-                        name = _profLegendaryMysteryMode
+                        // Fallback still respects the stage cap (never leak a too-evolved gift);
+                        // fail open only if the capped pool is genuinely empty for these gens.
+                        for (let t = 0; t < 40 && !name; t++) {
+                            const c = _profLegendaryMysteryMode
+                                ? pickStoryLegendaryFromGens(sg, new Set())
+                                : weightedPickFromGrades(rolls, sg);
+                            if (c && (_profLegendaryMysteryMode || _storyEvoStageOf(c) <= profCap)) name = c;
+                        }
+                        if (!name) name = _profLegendaryMysteryMode
                             ? pickStoryLegendaryFromGens(sg, new Set())
                             : weightedPickFromGrades(rolls, sg);
                     }
@@ -41065,7 +41080,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Professor gifts are player-side mons — roll random IVs so
                     // the Fan Club has work to do. Legendary mystery offers stay
                     // random too (the gimmick is the species, not perfect stats).
-                    try { _ensureBuildIVs(build, _rollRandomIVs()); } catch (e) {}
+                    try { _ensureBuildIVs(build, _profLegendaryMysteryMode ? {hp:31,atk:31,def:31,spa:31,spd:31,spe:31} : _rollRandomIVs()); } catch (e) {}
                     // Lock shiny on the *real* build object now, before the
                     // pick-card renderer hands a clone to buildPokemon. Without
                     // this, each declined Professor visit could quietly miss a
