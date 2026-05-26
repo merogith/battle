@@ -70,19 +70,20 @@ async function classify(page) {
     const btns = [...document.querySelectorAll('button')].filter(vis).map(b => (b.textContent || '').replace(/\s+/g, ' ').trim());
     const has = re => btns.some(t => re.test(t));
     const endTitle = document.getElementById('end-title');
+    const onBattle = scr('screen-battle');
     return JSON.stringify({
       eventIndex: sm.eventIndex ?? null, badges: sm.badges ?? null, gold: sm.gold ?? null,
       teamLen: Array.isArray(sm.team) ? sm.team.length : null,
       unlocked: sm.unlockedGimmicks ? Array.from(sm.unlockedGimmicks) : [],
-      battleActive: !st.isOver && !!st.fActive,
+      battleActive: onBattle && !st.isOver,
       endScreen: vis(endTitle), endTitle: endTitle ? (endTitle.innerText || '').slice(0, 24) : '',
-      gameOver: /GAME OVER|DEFEAT|FORFEIT/i.test(endTitle && endTitle.innerText || ''),
+      gameOver: scr('screen-story-gameover') || /GAME OVER|DEFEAT|FORFEIT|whited out|blacked out/i.test((endTitle && endTitle.innerText || '') + (document.body.innerText || '').slice(0, 80)),
       catchScreen: scr('screen-story-catch') && document.querySelectorAll('#story-catch-body button:not([disabled])').length > 0,
       professorCards: document.querySelectorAll('.prof-pick-card').length,
       cityScreen: scr('screen-story-city'),
       cityName: ((document.querySelector('#screen-story-city .story-screen-head-text') || {}).textContent || '').trim(),
       hof: /hall of fame/i.test((document.body.innerText || '').slice(0, 120)),
-      transition: /Battle starting|Now arriving|stepped out of the grass|sent out|VS\b/i.test((document.body.innerText || '').slice(0, 240)),
+      transition: !onBattle && /Battle starting|Now arriving|stepped out of the grass/i.test((document.body.innerText || '').slice(0, 240)),
       bodyHash: (document.body.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 90),
       infoModal: has(/Got it/),
       gymBattle: has(/Gym Battle|Enter the Gym|Enter the Pokémon League|Victory Road|Pre-League/),
