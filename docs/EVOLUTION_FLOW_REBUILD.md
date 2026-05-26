@@ -21,10 +21,10 @@ work doesn't collide.
 | Cable Link Station | Every city from City 0. Premium reroll/upgrade/rebuild. | Unlocks at **City 2** onward. Same premium options. Doubles as the "trade arrangement room" for Sage trade evos. |
 | Stone Shop ("Stone Emporium") | Does not exist. | New facility. **Always available from City 2 onward.** Sells 8 stones + 11 trade items at **500G each** with a buy-confirm modal. |
 | Trade-evo flow | One-click at Sage, gold-only. | Sage gates the button if Cable Link hasn't been visited this city. Player walks over, opens Link Station (auto-marks), walks back. Sage unlocks the trade evo. |
-| Pre-City 2 NPCs | None. | Two cold-open tutorial scenes: **Bill** (Cable Link intro + 50% discount voucher) and **Stonewise Granny** (Stone Sage intro + free-stone voucher). Both fire on first arrival at City 2. |
+| Pre-City 2 NPCs | None. | Two cold-open tutorial scenes: **Bill** (Cable Link intro + 50% discount voucher) and **Stonewise Granny** (Stone Sage intro + free evolution-item voucher). Both fire on first arrival at City 2. |
 | Per-facility first-use rewards | Spot rewards exist for Artifact (City 0 free relic) and Fan Club (welcome vitamin pack). | Every facility intro grants a single themed voucher: "first free X" or "1-time 50% discount." See §3 voucher table. |
 | Force-visit gates | "Visit Professor first" blocks Leave City. | New: "Visit Cable Link + Move Tutor" (and Stone Shop the first time it unlocks) blocks Leave City **once**, per facility, on the city where it first appears. After the one-time intro, no further gating — players are introduced exactly once. |
-| Free-first-of-its-kind | Artifact = first free in City 0. | Pokémart (City 0): one free Poké Ball. Pokémon Center (City 0): one free Potion. Artifact (City 0): first free relic (unchanged). Cable Link (City 2): 50% discount voucher one-time. Stone Shop (City 2): 1 free stone voucher. Move Tutor (City 2): 1 free TM. Same for every other facility on its debut city. |
+| Free-first-of-its-kind | Artifact = first free in City 0. | Pokémart (City 0): one free Poké Ball. Pokémon Center (City 0): one free Potion. Artifact (City 0): first free relic (unchanged). Cable Link (City 2): 50% discount voucher one-time. Stone Shop (City 2): 1 free evolution-item voucher (stone or trade item). Move Tutor (City 2): 1 free TM. Same for every other facility on its debut city. |
 
 ---
 
@@ -68,7 +68,7 @@ free use of the facility**. Naming leans on Pokémon canon for flavor.
 | `potion` (×1) (battle bag) | Welcome Potion | First visit, Pokémon Center City 0 | Adds 1 Potion to battle bag. | Pokémon Center intro |
 | (existing) Artifact free | Pallet Relic | First Artifact purchase, City 0 | Free relic claim. | Unchanged (`artifactFreeClaimUsed`). |
 | **`linkDiscount50` (new)** | **"Bill's Discount Card"** | Bill's cold-open at City 2 entry | Halves the gold cost of **one** Cable Link action (Reroll / Upgrade / Rebuild). Consumed on use. | Cable Link intro |
-| **`stoneToken` (new)** | **"Stonewise Token"** | Granny's cold-open at City 2 entry | Redeem at Stone Shop for **1 free evolution stone of choice** (any of 8). Consumed on redemption. | Stone Shop intro |
+| **`stoneToken` (new)** | **"Stonewise Token"** | Granny's cold-open at City 2 entry | Redeem at Stone Shop for **1 free evolution item of choice** (any stone or trade item). Consumed on redemption. | Stone Shop intro |
 | **`tutorVoucherTM` (rename of existing flow)** | "Move Tutor Pass" | First visit, Move Tutor City 2 | Free single Move Tutor lesson. *(Already covered by `heartScale` semantics; we just gift one on first visit instead of via gym-drop.)* | Move Tutor intro |
 | (existing) `mint` | Nature Mint | First visit, Nature Rater City 3 | Waives one Nature change. (Already exists in inventory; just gift one on first visit.) | Nature Rater intro |
 | (existing) `emblemHonor` | Dojo Emblem | First visit, Battle Dojo City 4 | Waives one item/ability swap. (Already exists; gift one on first visit.) | Battle Dojo intro |
@@ -152,7 +152,7 @@ items, each with:
 - **Always shows confirm dialog** via `_storyConfirmTutorChange('Buy Fire Stone for 500G?', 500)` — no silent buys.
 
 If player has `stoneToken` voucher, render a **"Redeem Token"** button on each
-stone (not trade items) — opens the same confirm dialog with the voucher
+item — stone or trade item — opens the same confirm dialog with the voucher
 consumed instead of gold. Token cost = 0, cost text reads `Free — Stonewise
 Token` in purple.
 
@@ -355,8 +355,8 @@ Chained after Bill's scene in `enterCity()` for `cidx === 2`. See §6.2.
 
 ### 7.3 Token redemption
 
-At the Stone Shop, each stone card renders a "Redeem Token (Free)" button when
-`sm.inventory.stoneToken > 0` AND the item is a stone (not trade item).
+At the Stone Shop, each item card renders a "Redeem Token (Free)" button when
+`sm.inventory.stoneToken > 0` (any evolution item — stone or trade item).
 Confirm dialog: "Redeem Stonewise Token for 1 Fire Stone? (free)". On Yes:
 `sm.inventory.stoneToken--`, `sm.inventory.fireStone++`, save, refresh.
 
