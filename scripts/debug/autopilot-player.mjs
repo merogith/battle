@@ -82,6 +82,8 @@ async function classify(page) {
       cityScreen: scr('screen-story-city'),
       cityName: ((document.querySelector('#screen-story-city .story-screen-head-text') || {}).textContent || '').trim(),
       hof: /hall of fame/i.test((document.body.innerText || '').slice(0, 120)),
+      transition: /Battle starting|Now arriving|stepped out of the grass|sent out|VS\b/i.test((document.body.innerText || '').slice(0, 240)),
+      bodyHash: (document.body.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 90),
       infoModal: has(/Got it/),
       gymBattle: has(/Gym Battle|Enter the Gym|Enter the Pokémon League|Victory Road|Pre-League/),
     });
@@ -259,7 +261,7 @@ try {
   for (let i = 0; i < 25; i++) { try { await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 5000 }); break; } catch { await sleep(500); } }
   await startNewRun(page);
 
-  let prevEvt = -99, stall = 0, lastCity = '', lastBadges = -1, lastUnlocked = '', losses = 0, trainedCities = {};
+  let prevEvt = -99, prevSig = '', stall = 0, lastCity = '', lastBadges = -1, lastUnlocked = '', losses = 0, trainedCities = {};
   for (let tick = 0; tick < 320; tick++) {
     const c = await classify(page);
     if (!c) { await sleep(400); continue; }
@@ -284,6 +286,7 @@ try {
       if (res === 'loss') { losses++; finding('P1', 'balance', `Lost a hand-played battle @evt ${c.eventIndex} (badges ${c.badges})`, 'team underpowered or fight overtuned for this point'); await shot(page, `LOSS-evt${c.eventIndex}`); }
       await sleep(600); await forceClick(page, '^Continue|→|Next');
     }
+    else if (c.transition) { await sleep(1100); /* "Battle starting…" / arrival — auto-advances; just wait */ }
     else if (c.endScreen) { await forceClick(page, '^Continue|→|Next') || await api(page, 'afterBattleReturn'); }
     else if (c.catchScreen) { await handleCatch(page); }
     else if (c.hof) { log('🏆 HALL OF FAME — beat the League by hand'); await shot(page, 'hall-of-fame'); await forceClick(page, 'Continue|→') || await api(page, 'continuePostGame'); await sleep(600); }
@@ -295,12 +298,13 @@ try {
     else { await forceClick(page, 'Step into|Enter the|→|^Continue|^Begin|Onward|Proceed|Claim|Confront') || (await api(page, 'proceedToNextBattle') === 'ok') || await page.mouse.click(215, 740).catch(() => {}); }
 
     const c2 = await classify(page);
-    if (c2 && c2.eventIndex === prevEvt && c.eventIndex === prevEvt) stall++; else stall = 0;
-    prevEvt = c2 ? c2.eventIndex : prevEvt;
+    const sig = c2 ? `${c2.eventIndex}|${c2.battleActive}|${c2.bodyHash}` : '';
+    if (sig && sig === prevSig && !(c2 && (c2.battleActive || c2.transition))) stall++; else stall = 0;
+    prevSig = sig; prevEvt = c2 ? c2.eventIndex : prevEvt;
     if ((tick % 15) === 0) log(`  …tick ${tick}: evt=${c.eventIndex} badges=${c.badges} team=${c.teamLen} gold=${c.gold} losses=${losses}`);
     if (c.hof) { log('reached HoF — main goal met'); break; }
     if (losses >= 5) { finding('P1', 'balance', 'Aborted: 5+ hand-played losses', 'difficulty likely overtuned for a no-grind competent player, or team-build/training loop insufficient'); break; }
-    if (stall >= 14) { finding('P2', 'progression', `Real-player pump stalled at eventIndex ${c.eventIndex}`, JSON.stringify({ city: c.cityScreen, battle: c.battleActive, end: c.endScreen, catch: c.catchScreen })); await shot(page, `STALL-evt${c.eventIndex}`); await api(page, 'afterBattleReturn'); await api(page, 'proceedToNextBattle'); await forceClick(page, 'Continue|Leave City|→'); const c3 = await classify(page); if (c3 && c3.eventIndex === c.eventIndex) { log(`hard stall @evt ${c.eventIndex}`); break; } stall = 0; }
+    if (stall >= 16) { finding('P2', 'progression', `Real-player pump stalled at eventIndex ${c.eventIndex}`, JSON.stringify({ city: c.cityScreen, battle: c.battleActive, end: c.endScreen, catch: c.catchScreen, body: c.bodyHash })); await shot(page, `STALL-evt${c.eventIndex}`); await forceClick(page, 'Continue|Leave City|Got it|→|Step into|Begin'); if (c.cityScreen) await api(page, 'proceedToNextBattle'); await sleep(800); const c3 = await classify(page); if (c3 && `${c3.eventIndex}|${c3.battleActive}|${c3.bodyHash}` === sig) { log(`hard stall @evt ${c.eventIndex}`); break; } stall = 0; }
     await sleep(450);
   }
 
