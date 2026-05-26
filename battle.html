@@ -8406,7 +8406,7 @@
         <div class="story-shop-stack">
         <div class="story-shop-header-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:rgba(13,13,13,0.92);border-bottom:1px solid #333;flex-shrink:0;">
             <button type="button" class="story-shop-back-btn" onclick="window.StoryMode.enterCity()" title="Back to City" aria-label="Back to City">&#8592;</button>
-            <h3 id="story-stone-shop-title" class="story-screen-head-title" style="color:#b39ddb;font-size:14px;flex:1;min-width:0;"><span style="font-size:18px;line-height:1;">&#128142;</span><span class="story-screen-head-text">Stone Emporium</span></h3>
+            <h3 id="story-stone-shop-title" class="story-screen-head-title" style="color:#b39ddb;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="sprites/pokesprite/items/hard-stone.png" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Stone Emporium</span></h3>
             <span id="story-stone-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
         <p id="story-stone-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#aaa;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;">Stones and trade-method items for the Stone Sage next door. <strong style="color:#b39ddb;">500G each</strong>. The Sage consumes them on evolution. Hold a <strong style="color:#ce93d8;">Stonewise Token</strong>? Redeem at any stone (not trade items) for one free pick.</p>
@@ -9504,6 +9504,10 @@
                 '<rect x="0.6" y="0.6" width="14.8" height="14.8" rx="3.6" fill="' + MOVE_CAT_BADGE_BG[c] + '" stroke="rgba(0,0,0,0.45)" stroke-width="1"/>' +
                 MOVE_CAT_BADGE_SYM[c] + '</svg>';
         };
+        /* Tiny monochrome UI glyphs (inherit currentColor) — replace OS-font-dependent ✓/✗ dingbats
+           so check/decline markers render identically across screens and devices. */
+        window.uiSvgCheck = function(px){var s=px||12;return '<svg class="ui-glyph" width="'+s+'" height="'+s+'" viewBox="0 0 16 16" aria-hidden="true" style="display:inline-block;vertical-align:-0.12em;"><path d="M3 8.6l3.4 3.4L13 4.6" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';};
+        window.uiSvgX = function(px){var s=px||12;return '<svg class="ui-glyph" width="'+s+'" height="'+s+'" viewBox="0 0 16 16" aria-hidden="true" style="display:inline-block;vertical-align:-0.12em;"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/></svg>';};
         function moveCategoryTooltipHtml(cat) {
             const c = normalizeMoveCategory(cat);
             return '<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle;">' +
@@ -40870,11 +40874,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const firstChoice = choices[0];
             if (_profMysteryMode && firstChoice) {
                 // Accept is pre-enabled for mystery mode (single auto-selected offer)
-                acceptBtn.textContent = `✓ Take ${firstChoice.name}`;
+                acceptBtn.innerHTML = window.uiSvgCheck() + ' Take ' + _esc(firstChoice.name);
                 acceptBtn.style.cssText = 'color:#4caf50;border-color:#4caf50;';
                 acceptBtn.disabled = false;
             } else {
-                acceptBtn.textContent = '✓ Choose This Pokémon';
+                acceptBtn.innerHTML = window.uiSvgCheck() + ' Choose This Pokémon';
                 acceptBtn.style.cssText = 'color:#4caf50;border-color:#4caf50;opacity:0.35;cursor:not-allowed;';
                 acceptBtn.disabled = true;
             }
@@ -40883,7 +40887,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             const backBtn = document.createElement('button');
             if (_profMysteryMode) {
-                backBtn.textContent = _profLegendaryMysteryMode ? '← Not Now' : '✗ Decline';
+                backBtn.innerHTML = _profLegendaryMysteryMode ? '← Not Now' : (window.uiSvgX() + ' Decline');
             } else {
                 backBtn.textContent = '← Back to City';
             }
@@ -40907,7 +40911,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const btn = document.getElementById('prof-accept-btn');
             if (btn) {
                 btn.disabled = false;
-                btn.textContent = `✓ Take ${ch.name}`;
+                btn.innerHTML = window.uiSvgCheck() + ' Take ' + _esc(ch.name);
                 btn.style.opacity = '1';
                 btn.style.cursor = 'pointer';
             }
@@ -40981,7 +40985,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // tab + milestone bundles) and cross-run meta (lifetime + shiny).
             try { _storyMarkDexCaught(ch.name, !!(ch.build && ch.build._isShiny)); } catch (e) {}
             save();
-            document.getElementById('story-prof-status').textContent = `✓ ${ch.name} joined your team!`;
+            document.getElementById('story-prof-status').innerHTML = window.uiSvgCheck() + ' ' + _esc(ch.name) + ' joined your team!';
             const btnsEl = document.getElementById('story-prof-buttons');
             btnsEl.innerHTML = '';
             document.getElementById('story-prof-rolled-card').innerHTML = '';
@@ -41009,7 +41013,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Pokédex — Mystery Figure legendary now in your party = caught.
             try { _storyMarkDexCaught(ch.name, !!(ch.build && ch.build._isShiny)); } catch (e) {}
             save();
-            document.getElementById('story-prof-status').textContent = `✓ ${ch.name} replaced ${replaced}!`;
+            document.getElementById('story-prof-status').innerHTML = window.uiSvgCheck() + ' ' + _esc(ch.name) + ' replaced ' + _esc(replaced) + '!';
             document.getElementById('story-prof-rolled-card').innerHTML = '';
             const btnsEl = document.getElementById('story-prof-buttons');
             btnsEl.innerHTML = '';
@@ -43569,7 +43573,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div style="color:#bcaaa4;margin-bottom:10px;">The Underground is holding a specimen they don\'t want talked about. Three pieces of evidence — scattered through Pokémon Centers in three cities — open the Cage.</div>`;
 
             const collectedCount = (L.ledger?1:0) + (L.recording?1:0) + (L.key?1:0);
-            const leadStatus = (k) => L[k] ? '<span style="color:#aed581;">✓</span>' : '<span style="color:#666;">○</span>';
+            const leadStatus = (k) => L[k] ? '<span style="color:#aed581;">' + window.uiSvgCheck() + '</span>' : '<span style="color:#666;">○</span>';
             html += `<div style="margin-bottom:10px;padding:8px 10px;background:rgba(0,0,0,0.35);border:1px solid #3a1b4a;">
                 <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
                     <span style="font-size:10px;color:#bcaaa4;letter-spacing:0.06em;text-transform:uppercase;">Broker Leads</span>
@@ -47268,7 +47272,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         </div>`;
                     }).join('');
                     const costHint = allowedAny
-                        ? `<div style="font-size:10px;color:#9aa3b8;margin-top:8px;">Prices by target grade — G3 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[3], false)} · G2 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[2], false)} · G1 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[1], false)}${en > 1 ? ` <span style="color:#888;">(× 1.5^${en-1} repeat use here)</span>` : ''}.${_rareCandyCount > 0 ? ` <span style="color:#f48fb1;">🍬 ${_rareCandyCount} Rare Cand${_rareCandyCount===1?'y':'ies'} in bag — free alternative.</span>` : ''}</div>`
+                        ? `<div style="font-size:10px;color:#9aa3b8;margin-top:8px;">Prices by target grade — G3 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[3], false)} · G2 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[2], false)} · G1 ${storyGoldHtml(EVOLVE_COST_BY_TARGET[1], false)}${en > 1 ? ` <span style="color:#888;">(× 1.5^${en-1} repeat use here)</span>` : ''}.${_rareCandyCount > 0 ? ` <span style="color:#f48fb1;"><img src="sprites/pokesprite/items/rare-candy.png" alt="" width="16" height="16" decoding="async" style="vertical-align:middle;image-rendering:pixelated;"> ${_rareCandyCount} Rare Cand${_rareCandyCount===1?'y':'ies'} in bag — free alternative.</span>` : ''}</div>`
                         : `<div class="tx-grid-empty" style="margin-top:6px;">No evolutions available with current generation toggles (enabled: ${enabledGensLabel}).</div>`;
                     evoBlockHtml = `<div class="tx-grid" style="margin-top:10px;max-height:none;">${evoCards}</div>${costHint}`;
                 }
@@ -50774,7 +50778,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     </button>`
                 : '';
             const clearBtn = hasActiveFilters
-                ? `<button type="button" class="tx-filter-clear" data-clear-filters="${kind}" title="Clear search and filters">✕ Clear</button>`
+                ? `<button type="button" class="tx-filter-clear" data-clear-filters="${kind}" title="Clear search and filters">${window.uiSvgX()} Clear</button>`
                 : '';
             const drawerHtml = hasChips
                 ? `<div class="tx-filter-panel" data-open="${drawerOpen}">${opts.chipsHtml}</div>`
@@ -50922,11 +50926,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pctHtml = _txUsagePctHtml(ctx, moveName);
             const mechTags = ctx && ctx.mechanicTagsFor ? ctx.mechanicTagsFor(moveName) : null;
             const mechHtml = _txMechanicIconsHtml(mechTags);
-            const equippedBadge = isEquipped ? `<span class="tx-card-equipped" title="Already in this Pokémon's moveset">✓ Equipped</span>` : '';
+            const equippedBadge = isEquipped ? `<span class="tx-card-equipped" title="Already in this Pokémon's moveset">${window.uiSvgCheck()} Equipped</span>` : '';
             const footExtra = isEquipped
                 ? `<div class="tx-card-foot-actions">${
                     canUnlearn
-                        ? `<button type="button" class="tx-unlearn-btn" data-unlearn-slot="${equippedSlot != null ? equippedSlot : ''}" data-unlearn-move="${_esc(moveName)}" title="Forget ${_esc(moveName)} — free, opens a slot">✕ Forget</button>`
+                        ? `<button type="button" class="tx-unlearn-btn" data-unlearn-slot="${equippedSlot != null ? equippedSlot : ''}" data-unlearn-move="${_esc(moveName)}" title="Forget ${_esc(moveName)} — free, opens a slot">${window.uiSvgX()} Forget</button>`
                         : `<span class="tx-unlearn-locked" title="A Pokémon must keep at least one move">Last move</span>`
                   }</div>`
                 : '';
@@ -51524,7 +51528,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const natPct = sPool.natures.pctOf.get(nat);
                     const pctChip = (isRec && natPct >= 1) ? `<span class="tx-nature-pct">${Math.round(natPct)}%</span>` : '';
                     cells.push(`<button type="button" class="tx-nature-cell" data-nature="${nat}" data-active="${(isCur||isPend)?1:0}" data-recommended="${isRec?1:0}" ${isCur?'disabled':''} title="${_esc(nat)}${isRec && natPct>=1 ? ` — ${natPct.toFixed(1)}% Smogon usage` : ''}">
-                        <span class="tx-nature-cell-name">${star}${nat}${isCur?' ✓':''}${pctChip}</span>
+                        <span class="tx-nature-cell-name">${star}${nat}${isCur?' '+window.uiSvgCheck():''}${pctChip}</span>
                     </button>`);
                 }
             }
@@ -51536,7 +51540,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const isRec = starredNats.has(n);
                 const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span> ' : '';
                 return `<button type="button" class="tx-nature-cell" data-nature="${n}" data-active="${(isCur||isPend)?1:0}" data-recommended="${isRec?1:0}" ${isCur?'disabled':''} style="background:rgba(180,187,204,0.05);">
-                    <span class="tx-nature-cell-name">${star}${n}${isCur?' ✓':''}</span>
+                    <span class="tx-nature-cell-name">${star}${n}${isCur?' '+window.uiSvgCheck():''}</span>
                 </button>`;
             }).join('');
 
@@ -52979,7 +52983,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _evTrainerHelpBannerHtml() {
             const vN = (sm.inventory && sm.inventory.vitamin) | 0;
             const vitaLine = vN > 0
-                ? `<span style="color:#f8bbd0;font-weight:bold;">💊 ${vN} Vitamin Pack${vN===1?'':'s'} ready</span> — tap the pink button on any preset to apply it free.`
+                ? `<span style="color:#f8bbd0;font-weight:bold;"><img src="sprites/pokesprite/items/protein.png" alt="" width="16" height="16" decoding="async" style="vertical-align:middle;image-rendering:pixelated;"> ${vN} Vitamin Pack${vN===1?'':'s'} ready</span> — tap the pink button on any preset to apply it free.`
                 : `<span style="color:#9aa3b0;">No Vitamin Packs yet.</span> Each preset costs ${EVTRAINER_COST.toLocaleString()}G; Vitamin Packs (from gym victories &amp; Pokédex milestones) apply one for free.`;
             // Collapsed by default on every entry — the explainer eats the
             // whole first screen on phones and pushes the preset cards below
