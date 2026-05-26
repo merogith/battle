@@ -3,6 +3,18 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## 1.2.1 — Early-game pacing, placement & clarity 2026-05-26 (`claude/early-game-pacing-patch`)
+
+- **Tutors are always available.** Move Tutor + Nature Rater (and the Fan Club) now
+  appear in every city — the first gym city no longer ships without them.
+- **The Professor gives a basic.** Your gift is always an unevolved Pokémon (never a
+  fully-evolved one), so you raise and evolve it yourself.
+- **Wilds are base forms only**, with IVs that climb as the run goes on; legendary /
+  special offers are always perfect (31), and enemy IVs cluster around a rising
+  average instead of swinging wildly.
+- **Cleaner city menu** — required steps and your team up top; Cable Link, Bag, and
+  Artifacts tucked to the bottom.
+
 ## 1.2.0 — Story balance pass, daycare & Fight Club rework 2026-05-26 (`claude/kind-goodall-NeTyO`)
 
 - **Smoother difficulty curve.** Enemy strength now rises every gym instead of

@@ -45,16 +45,19 @@ test('getMonGrade: memoized result is stable, and known grades hold', () => {
   assert.equal(window.getMonGrade('Caterpie', window.getBST('Caterpie')), 4, 'weak basic Caterpie is grade 4');
 });
 
-test('_rollTieredIVs: ace gets the top quartile; tier ranges respected', () => {
+test('_rollTieredIVs: rising mean with small ±3 jitter; ace runs hotter', () => {
   activeSeed(7);
   for (let i = 0; i < 60; i++) {
-    const ace = window._rollTieredIVs(4, true); // T4 range 26-31, ace lo = 29
-    for (const k of IV_KEYS) assert.ok(ace[k] >= 29 && ace[k] <= 31, `ace T4 ${k}=${ace[k]} in [29,31]`);
-    const filler = window._rollTieredIVs(4, false);
-    for (const k of IV_KEYS) assert.ok(filler[k] >= 26 && filler[k] <= 31, `filler T4 ${k}=${filler[k]} in [26,31]`);
+    const ace = window._rollTieredIVs(4, true);    // T4 center 28 + ace 3 = 31, ±3 clamped → [28,31]
+    for (const k of IV_KEYS) assert.ok(ace[k] >= 28 && ace[k] <= 31, `ace T4 ${k}=${ace[k]} in [28,31]`);
+    const filler = window._rollTieredIVs(4, false); // T4 center 28, ±3 → [25,31]
+    for (const k of IV_KEYS) assert.ok(filler[k] >= 25 && filler[k] <= 31, `filler T4 ${k}=${filler[k]} in [25,31]`);
   }
-  const aceT1 = window._rollTieredIVs(1, true); // T1 range 0-15, ace lo = 11
-  for (const k of IV_KEYS) assert.ok(aceT1[k] >= 11 && aceT1[k] <= 15, `ace T1 ${k}=${aceT1[k]} in [11,15]`);
+  const aceT1 = window._rollTieredIVs(1, true);     // T1 center 8 + ace 3 = 11, ±3 → [8,14]
+  for (const k of IV_KEYS) assert.ok(aceT1[k] >= 8 && aceT1[k] <= 14, `ace T1 ${k}=${aceT1[k]} in [8,14]`);
+  // The point of the rework: mean IV rises across tiers (no wide bands, not identical).
+  const mean = (t) => { let s = 0, n = 0; for (let i = 0; i < 200; i++) { const v = window._rollTieredIVs(t, false); for (const k of IV_KEYS) { s += v[k]; n++; } } return s / n; };
+  assert.ok(mean(1) < mean(2) && mean(2) < mean(3) && mean(3) < mean(4), 'tier mean IV rises T1<T2<T3<T4');
 });
 
 test('_rollTieredIVs: deterministic on the seeded story stream (proves it is not Math.random)', () => {
