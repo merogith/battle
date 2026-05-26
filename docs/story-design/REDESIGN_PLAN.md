@@ -102,7 +102,7 @@ Curve shape: **player-favorable early/mid, one sharp wall at GL8.** (Summary bel
 1. **Un-flatten GL1→GL2** — small GL2 bump (IV floor +2 or mult 0.95→0.97).
 2. **Fill GL4–5** — don't let the foe mult drop to 1.0; ramp it 1.0→1.03 and give GL5 a partial bump (IV floor +2 / small EV) so GL5 > GL4 and meets the player's C4 spike.
 3. **[LOCKED — smooth into a climax]** Spread the GL8 wall across GL6–7–8: ramp the IV floor **18→22→26** and make **GL7 partial-T4** (~465 EV) so neither jumps in one step; keep the gimmick ramp (1/2/3) and the legendary-gate flavor — on pre-ramped stats GL8 is the *hardest* gym but a climax, not a cliff. **Fix affordability:** bump lategame gold and/or trim Colress (7500) / Dept costs so the player can actually buy the counters by GL8.
-4. **[LOCKED — modest bump]** Escalate wild grades lategame: post-G6 wilds include more **G2** (~25%), but **G1 stays Safari/special-only** (not in normal grass). Keeps lategame catching relevant without making top-grade mons farmable.
+4. **[LOCKED — keep wilds low-grade]** Wilds stay deliberately low-grade: the current curve (`_WILD_GRADE_CURVE_BY_BADGES` — G2 only **3–8%** from badge 6, **never G1**) already matches the *train-don't-catch* philosophy (§9). **No bump** — *supersedes the earlier "~25% G2" idea* per the maintainer's "very low G2 in wild." Wild *power* still rises via the evo-stage cap (stage0→1→2), not via grade.
 5. **Professor:** gift tier already rises T1→T2→T3 and ends C6 — keep (confirm with you).
 
 Touch-points: EV tier `_storyBuildTierForEvent` 33534; IV bands `STORY_IV_TIER_RANGES` 30060; gimmicks `_minGuaranteedMechsForEvent` 32961; foe mult `_stageGatedFoeStatMult` 13909 / `_earlyGameFoeStatMult`; wild grades `_WILD_GRADE_CURVE_BY_BADGES` 44128; grade ramp `applyStoryProgressToGradeWeights` 32728. Encode chosen values in `story-tunables.csv` after sign-off. (Also confirmed: **Professor** present **C0–C5** only; **Pokémart skips C6** — Dept Store covers it.)
@@ -188,4 +188,60 @@ Touch-points: grade weights `applyStoryProgressToGradeWeights` 32728 · grade↔
 - **P1 — integration spec mis-describes the ball system:** spec says `sm.inventory.*` gated by `catchMode`; code uses `sm.balls.{poke,great,ultra,master}` thrown via `catchThrow`, gated by `STORY_BATTLE_INTERRUPTS` (no `catchMode` exists). Fix the *spec*, not the code.
 - P2: Safari spec offers "badge 3 or City3" — code+plan = **C4**; strike the City3 clause. Design-checklist CSS boundary stale (`16–4156` → actually `16–7831`). P3: 50 doc line-anchors (18 drifted); README calls shipped systems "upcoming."
 
-**Pending:** Systems & Progression · Combat & Balance · Data/Content · Narrative & Style · Perf. The **rivalry-tab call** and the **service-timing matrix** finalize on the Systems report.
+**Combat & Balance:**
+- **P1 — difficulty is a pure stat multiplier; the AI never plays smarter.** `applyFoeDifficultyScaling` (:~13993) scales stats 0.70×→1.30×; `getBestMove`/`aiDecision` read **zero** difficulty/tier/badge signal. Same seed, VeryEasy vs VeryHard → *identical moves*, only stats differ. The AI is already maximally competent at GL1. → Kit ladder (§9) still raises real difficulty; a smarter-at-high / dumber-at-low **AI-competence axis is an optional follow-up** (mainly to make easy tiers *easier*).
+- P2 — status-lock fairness: no story sleep-clause; at 1.30× foe stats a turn-1 Spore (38% 3-turn) can hand a fast foe 3 free turns. P2 — curve lumpy (GL4≡GL5 dead zone, GL8 5-escalator cliff) — confirms §8a. P3 — paralysis tooltip says "quartered"; engine halves (0.5).
+- Verified correct: RNG determinism, damage formula, status handlers, turn order. (Prior "AI picks immune move" was a **harness stub artifact**, `load-engine.js:229` — real AI is correct.)
+
+**Systems & Progression:**
+- Story mode is **far healthier than `STORY_MODE_AUDIT.md` claims** (predates M0–M6 + v15–v20). 8 prior findings confirmed fixed; all Tier-1 critical paths clean (gimmick gate, party-cap, catch tutorial, PC overflow, migration ordering).
+- **P1 — save-migration integration test is vacuous:** migration fns aren't exported (`window.migrateStoryPreV15` always undefined → test early-returns) and the fixture uses `saveVer` vs `version`. **The most safety-critical path has zero real coverage — fix before any SAVE_VER bump.**
+- P2 — **rivalry tab mis-homed in the Center → move to Collection** (low-risk). Daycare unlock keys on the "Gym Leader 1" event name (collides with the C2/C4/C6 move). PC Center copy promises a "Heal" that no longer exists; PC help says "cap 10" (actual 30). **Story spine is a hardcoded literal, but STORY_BEATS/COLD_OPENS/INTERRUPTS/VARIANTS is genuinely pluggable — attach side-stories/random-pool via the INTERRUPTS bus, never by array index** (resolves §10's mechanism).
+- P3 — service-timeline pacing: C1 dead zone, C2/C4 debut clumping, gappy Nature Rater.
+
+**Perf:** No P1 — turn loop 17 ms, `rollTrainerTeam` 0.34 ms, memory linear (+85 MB/250 battles, no quadratic). P2 — **`_trainerPoolCache` (:33916) and `_preloadedImages` (:12726) are unbounded** — both balloon with the Fight Club draft / story-pool / daycare-egg variety the redesign adds → bound them (small LRU). P3 — boot 3 s (cold), `parseMoveEffects` 257× variance on multi-boost moves.
+
+---
+
+## 12. Implementation checklist — what's there vs what's not
+
+Status from the 7-agent pass + lead reads. **Implemented (✓)** = working today; **Partial (~)** = exists but needs rework; **Gap (✗)** = not built.
+
+| # | Item | Status | Action for the push |
+|---|---|---|---|
+| **Balance / grade rolls / encounters** | | | |
+| D1 | Evolution-stage cap (basics→first-evo→final) | ✓ `_storyEvoStageOf`/`CapForCity` 32787 | keep; it already delivers "Ivysaur not Venusaur" |
+| D2 | Grade-weight ramp (k=0.20/0.30/0.40 + post-GL6) | ✓ `applyStoryProgressToGradeWeights` 32728 | keep; bias early pools harder to stage0 |
+| D3 | Un-flatten GL1→GL2 | ✗ (GL1≡GL2) | GL2 mult 0.95→0.97 / IV floor +2 |
+| D4 | Fill GL4–5 dead zone | ✗ (mult 1.0, identical axes) | ramp mult 1.0→1.03; GL5 IV +2 / small EV |
+| D5 | Smooth GL8 into a climax | ◑ foe-mult ramp **shipped** | IV/EV partial-tier **deferred** (discrete-tier refactor); GL8 stays the intended climax |
+| D6 | GL8 affordability | ✗ (5950 G < 7500 Colress) | lategame gold bump / trim Colress cost |
+| D7 | Keep wilds low-grade (very low G2, no G1) | ✓ (3–8% G2, 0 G1) | **no change** — already matches "very low G2"; doc corrected |
+| **Bug fixes** | | | |
+| H1 | "Pokemon League"/"Pokemon Fan Club" diacritic | ✗ (29067/29101/29106) | fix label **+** string-equality dispatch together |
+| H2 | Cries use remote CDN, ignore 14 MB local | ✗ (`playCry` 11262) | local-first + CDN fallback |
+| H3 | Paralysis tooltip "quartered" | ✗ | → "halved" (0.5) |
+| H4 | PC help "cap 10" | ✗ (actual 30) | fix copy |
+| H5 | Center promises non-existent "Heal" | ✗ | remove/repoint copy |
+| **UX / perf** | | | |
+| F1 | Rivalry tab placement | ~ (in Center) | move to Collection |
+| J1 | `_trainerPoolCache` unbounded | ✗ | bound (LRU ~32) |
+| J2 | `_preloadedImages` unbounded | ✗ | bound (LRU) |
+| K1 | Safari/Dept/Stone revisit flavor lines | ✗ (`STORY_FACILITY_QUOTES` 39208) | add pools |
+| **Larger features (next tranche — need SAVE_VER bump + L1 first)** | | | |
+| L1 | Save-migration test is vacuous | ✗ (P1) | **export migration fns + fix fixture — gate for any bump** |
+| B1 | Daycare facility C2/C4/C6 (one egg/run) | ~ (keys "Gym Leader 1") | re-gate + relative hatch (laidCity+2) + intro |
+| B2 | Hatch animation + "stirring" foreshadow toast | ✗ | egg wiggle→crack→pop; wire dead `_daycareHatchQueued` |
+| C1 | Fight Club: C6 one-time + League(C9) + endgame | ~ (6-badge secret) | rebuild instances |
+| C2 | Fight Club: 5-round 3v3 draft + counter-pick | ~ (3 rounds) | draft pipeline + matchup scorer |
+| C3 | Fight Club IV reward +1/round cap 36 | ~ (+1 all on clear) | per-round + clamp |
+| I1 | Draft cards keyboard/SR operable | ✗ (`renderDraft` 15848) | real buttons — **unblocks Fight Club a11y** |
+| I2 | `showScreen` focus management | ✗ (:48565) | focus delivery + live announce |
+| G1 | Side-story / random-pool expansion | ~ (INTERRUPTS bus exists) | author content on the bus; bound positional array access |
+| E1 | AI-competence axis (smarter-high/dumber-low) | ✗ (flat) | **optional** — your call |
+| **Data discipline** | | | |
+| N1 | Retune edits land in `data/builds.csv` | — | JSON `gen*.json` is a fallback mirror — editing it does nothing |
+
+**✅ Shipped this push (migration-free, testable):** D3 + D4 (foe-mult monotonic ramp 0.95→0.97→0.99→1.01→1.03→1.05→1.08→1.10, un-flattens GL1≡GL2 + fills the GL4≡GL5 dead zone), D7 (doc corrected — wilds already low-grade), H1 (League/Fan Club diacritic + dispatch), H2 (cries local-first + CDN fallback), H3 (paralysis tooltip), H4 (PC cap 30), J1 (`_trainerPoolCache` bound).
+**Deferred (still migration-free, needs more care):** D5 IV/EV partial-tier (discrete-tier refactor — GL8 stays the intended climax), D6 affordability (economy tuning + Colress 7.5k/10k discrepancy), H5 (Center "Heal" copy — exact string unconfirmed), F1 rivalry→Collection (UI relocation), J2 `_preloadedImages`, K1 facility quotes.
+**Next tranche (needs SAVE_VER bump + L1 first):** B daycare C2/C4/C6 + relative hatch, C Fight Club gauntlet/draft, I1/I2 a11y (draft-card buttons + `showScreen` focus), G expansion-pool content on the INTERRUPTS bus. **Your call:** E1 AI-competence axis.

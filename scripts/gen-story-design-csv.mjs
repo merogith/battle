@@ -74,12 +74,12 @@ const IVT = extractLiteral(html, 'STORY_IV_TIER_RANGES');
 for (const row of EVENTS) {
   if (!Array.isArray(row) || row[1] !== 'City') continue;
   const a = row[5];
-  if (!Array.isArray(a) || a.includes('Pokemon Fan Club')) continue;
+  if (!Array.isArray(a) || a.includes('Pokémon Fan Club')) continue;
   let at = a.indexOf('Pokemart');
   if (at < 0) at = a.indexOf('Department Store');
   if (at < 0) at = a.indexOf('Link Station');
   if (at < 0) at = a.length - 1;
-  a.splice(at + 1, 0, 'Pokemon Fan Club');
+  a.splice(at + 1, 0, 'Pokémon Fan Club');
 }
 
 console.log('Writing docs/story-design/ ...');

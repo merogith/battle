@@ -10579,7 +10579,7 @@ Every Pokémon carries a training tier, separate from its species grade:<br>
 <div style="margin-bottom:12px;"><h3 style="color:var(--accent);margin:0 0 6px;">Cities &amp; Facilities</h3>
 <b>Pokémart</b> — Poké Balls (300G), potions, X items.<br>
 <b>Department Store</b> — Great Balls (1,000G), revives, weather and terrain orbs.<br>
-<b>Pokémon Center</b> — <b>PC Storage</b> (cap 10) for the partners you can\'t carry, plus the <b>Underground</b> that buys unwanted mons for gold. Your last party member, your starter, and Subject Zero are not for sale.<br>
+<b>Pokémon Center</b> — <b>PC Storage</b> (cap 30) for the partners you can\'t carry, plus the <b>Underground</b> that buys unwanted mons for gold. Your last party member, your starter, and Subject Zero are not for sale.<br>
 <b>Move Tutor</b> — Swap any move slot for any move the species can legally learn.<br>
 <b>Nature Rater</b> — Re-pick a nature for the +10%/-10% spread you actually want.<br>
 <b>Battle Dojo</b> — Swap held item and/or ability.<br>
@@ -11259,9 +11259,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const sid = (typeof toShowdownSpriteId === 'function')
                         ? toShowdownSpriteId(pokemonName.replace(/-Mega(-[XY])?$/i, '').replace(/-Gmax$/i, '').replace(/-Primal$/i, ''))
                         : pokemonName.toLowerCase().replace(/[^a-z0-9-]/g, '');
-                    const url = `https://play.pokemonshowdown.com/audio/cries/${sid}.mp3`;
-                    const cry = new Audio(url);
+                    // Local-first: ~1200 cries ship in music/cries/ (works offline, no
+                    // third-party dependency). Fall back to the Showdown CDN only if a
+                    // species' local file is missing.
+                    const cry = new Audio(`music/cries/${sid}.mp3`);
                     cry.volume = _soundVol * (volume || 0.5);
+                    cry.onerror = () => {
+                        const fb = new Audio(`https://play.pokemonshowdown.com/audio/cries/${sid}.mp3`);
+                        fb.volume = _soundVol * (volume || 0.5);
+                        fb.play().catch(() => {});
+                    };
                     cry.play().catch(() => {});
                     return cry;
                 },
@@ -13909,10 +13916,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const PRE_GYM1_FOE_STAT_MULT     = 0.82;
         const EARLY_GAME_FOE_STAT_MULT   = 0.92;
         const EARLY_GL_FOE_STAT_MULT     = 0.95;
-        const STAGE2_GL_FOE_STAT_MULT    = 0.97; // GL3 gentle softening — Stage 2 entry
+        const EARLY_GL2_FOE_STAT_MULT    = 0.97; // GL2 — un-flatten the GL1≡GL2 start
+        const STAGE2_GL_FOE_STAT_MULT    = 0.99; // GL3 gentle softening — Stage 2 entry
         window.PRE_GYM1_FOE_STAT_MULT     = PRE_GYM1_FOE_STAT_MULT;
         window.EARLY_GAME_FOE_STAT_MULT   = EARLY_GAME_FOE_STAT_MULT;
         window.EARLY_GL_FOE_STAT_MULT     = EARLY_GL_FOE_STAT_MULT;
+        window.EARLY_GL2_FOE_STAT_MULT    = EARLY_GL2_FOE_STAT_MULT;
         window.STAGE2_GL_FOE_STAT_MULT    = STAGE2_GL_FOE_STAT_MULT;
         // Story-aware RNG selector. `sm` (StoryMode state) is PRIVATE to the StoryMode
         // IIFE; reading it bare at battle-engine scope throws "Can't find variable: sm"
@@ -13938,7 +13947,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return PRE_GYM1_FOE_STAT_MULT;
             }
             if (badges === 1) {
-                if (evt === 'Gym Leader 2') return EARLY_GL_FOE_STAT_MULT;
+                if (evt === 'Gym Leader 2') return EARLY_GL2_FOE_STAT_MULT;
                 return EARLY_GAME_FOE_STAT_MULT;
             }
             // badges === 2 (Stage 1→2 boundary, G3 era starting)
@@ -13967,15 +13976,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (gl) {
                 const n = +gl[1];
                 if (n >= 8) return 1.10;
+                if (n >= 7) return 1.08;
                 if (n >= 6) return 1.05;
+                if (n >= 5) return 1.03;
+                if (n >= 4) return 1.01;
                 return 1.0;
             }
             // Non-leader fights inherit the contemporary stage's multiplier so route
             // trainers between Gyms 7 and 8 don't feel suddenly weaker than the leaders.
             const b = sm.badges | 0;
             if (b >= 8) return 1.15;  // post-G8 league run
-            if (b >= 7) return 1.10;  // post-G7
-            if (b >= 5) return 1.05;  // post-G5 (Stage 3 entry)
+            if (b >= 7) return 1.10;  // post-G7 (GL8 era)
+            if (b >= 6) return 1.08;  // post-G6 (GL7 era)
+            if (b >= 5) return 1.05;  // post-G5 (GL6 era)
+            if (b >= 4) return 1.03;  // post-G4 (GL5 era) — fills the GL4–5 dead zone
+            if (b >= 3) return 1.01;  // post-G3 (GL4 era) — fills the GL4–5 dead zone
             return 1.0;
         };
         // Back-compat shim — any external caller still asking "is this the pre-Gym-1 nerf?"
@@ -17610,7 +17625,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 BRN: 'Burn — loses 1/16 HP each turn · Physical attack halved',
                 PSN: 'Poisoned — loses 1/8 HP each turn',
                 TOX: 'Badly Poisoned — escalating HP loss each turn',
-                PAR: 'Paralyzed — Speed quartered · 25% chance to skip turn',
+                PAR: 'Paralyzed — Speed halved · 25% chance to skip turn',
                 SLP: 'Asleep — cannot move (Sleep Talk / Snore excepted)',
                 FRZ: 'Frozen — cannot move (Fire moves thaw)'
             };
@@ -29064,7 +29079,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           [56,'Battle','Elite Trainer',{g1:0,  g2:100,g3:0,g4:0},4200,null],
           [57,'Battle','Elite Trainer',{g1:10, g2:90, g3:0,g4:0},4800,null],
           [58,'Battle','Elite Trainer',{g1:20, g2:80, g3:0,g4:0},5200,null],
-          [59,'City','City9',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Department Store','Poké Casino','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Enter Pokemon League']],
+          [59,'City','City9',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Department Store','Poké Casino','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Enter Pokémon League']],
           // E1–E4 are a fixed 5,000G league purse (flat by design — prestige fights, not a
           // scaling route reward), intentionally below the late gyms' route payouts. Champion
           // (7,500G) and the post-HoF Mystery (12,000G) are the curve's real peaks.
@@ -29090,7 +29105,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // fanclub intentionally omitted — opt-in facility, no debut gate.
         };
         // Pokémon Fan Club is a recurring facility — present in every city. Rather
-        // than dirty every row of the literal above, we splice 'Pokemon Fan Club'
+        // than dirty every row of the literal above, we splice 'Pokémon Fan Club'
         // into each City row's actions array at module init. Idempotent: skips
         // rows that already include it. Positioned just after Pokemart / Link
         // Station so it reads as a "talk to townsfolk" facility, ahead of training.
@@ -29098,12 +29113,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             for (const row of STORY_EVENTS_RAW) {
                 if (!Array.isArray(row) || row[1] !== 'City') continue;
                 const actions = row[5];
-                if (!Array.isArray(actions) || actions.includes('Pokemon Fan Club')) continue;
+                if (!Array.isArray(actions) || actions.includes('Pokémon Fan Club')) continue;
                 let insertAt = actions.indexOf('Pokemart');
                 if (insertAt < 0) insertAt = actions.indexOf('Department Store');
                 if (insertAt < 0) insertAt = actions.indexOf('Link Station');
                 if (insertAt < 0) insertAt = actions.length - 1;
-                actions.splice(insertAt + 1, 0, 'Pokemon Fan Club');
+                actions.splice(insertAt + 1, 0, 'Pokémon Fan Club');
             }
         })();
         // Expose to script-top scope (this module is wrapped in `window.StoryMode = (function(){…})()`).
@@ -34007,6 +34022,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     T[g].push(name);
                 }
                 _trainerPoolCache.set(_poolKey, T);
+                // Bound the cache: keys multiply with gen-filter / type-combo variety
+                // (Fight Club draft, story-pool), so evict the oldest past a small cap.
+                if (_trainerPoolCache.size > 48) {
+                    _trainerPoolCache.delete(_trainerPoolCache.keys().next().value);
+                }
             }
             // Evo-stage gate on the filler pool. Local copy only — the shared
             // _trainerPoolCache entry (keyed on type+gens, not city) is never
@@ -38821,7 +38841,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const hasGym = actions.includes('Gym Battle');
             const hasVR = actions.includes('Victory Road');
             const hasTrainerRoad = actions.includes('Trainer Road');
-            const hasLeague = actions.includes('Enter Pokemon League');
+            const hasLeague = actions.includes('Enter Pokémon League');
             if (!sm.gymCleared) sm.gymCleared = {};
             const gymBeat = !!(sm.gymCleared[cityIdx]);
             const gymRoutePending = (hasGym || hasVR || hasTrainerRoad) && !gymBeat;
@@ -38981,7 +39001,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (actions.includes('EV Trainer') && _tutorTeam) {
                 _push('train', makeActionBtn('🏋️ EV Trainer','evtrainer','window.StoryMode.enterEVTrainer()','training', _facOpts('evtrainer', [_costBadge(5000)], { soft:true })));
             }
-            if (actions.includes('Pokemon Fan Club') && _tutorTeam) {
+            if (actions.includes('Pokémon Fan Club') && _tutorTeam) {
                 const _fcGifted = !!sm.fanClubGiftClaimed;
                 const _fcMeta = _fcGifted ? [{label:'Free',tone:'free'}] : [{label:'Gift',tone:'free'}];
                 _push('train', makeActionBtn('💖 Pokémon Fan Club','fanclub','window.StoryMode.enterFanClub()','training', _facOpts('fanclub', _fcMeta, { soft:true })));
