@@ -11,6 +11,7 @@ This doc is the single source of truth for the redesign decisions. Edit it / the
 - **Tone:** clean, kid-safe Pokémon surface; dark dystopian-satire iceberg underneath (technocrat autocracy, elite impunity, Sade's transgressive energy, creepypasta/leaker texture). Satire aimed at systems & archetypes, not libel of living private individuals.
 - **Run shape:** fixed city/gym/event skeleton, randomized contents (roguelike). Battle + training kept accessible ("modern FireRed").
 - **Training = an earned reward curve:** catch → battle → upgrade → evolve → upgrade → EV-train → IV-train (Fight Club) → Safari boosts. Player power spikes are *earned unlocks*; enemy difficulty steps up to meet each.
+- **Power comes from training, not acquisition (locked):** the player starts at the **bottom** and climbs by **evolving + training** their catches — you meet **Ivysaur and evolve it**, you don't find a wild Venusaur. The wild pool is deliberately low-stage (no G1, sparse G2 — §8a/§9) to protect this loop, *even lategame*. Tools arrive **one layer at a time** (stage → items → abilities → EVs → mechanics, §9), so the player always has exactly one new thing to master.
 - **Mandatory intros are universal:** every new facility/event gates "Leave City" until its one-time intro is seen.
 - **Visual language:** Game Boy-era Pokémon look, *slightly* modernized — clean, crisp, minimal; simple readable animations over flashy effects. Favor free/open assets (see §8b).
 
@@ -115,3 +116,76 @@ Aesthetic: **Game Boy-era Pokémon, slightly modernized — clean, crisp, minima
 - **PokeMiners** (GitHub) — mined GO graphics/audio.
 
 (Licensing: official-game rips are fan-use; track provenance per asset before shipping.)
+
+---
+
+## 9. Difficulty ladder & evolution-stage curve (locked philosophy)
+
+**Core philosophy (locked):** the player starts at the **bottom** and climbs by **training, not by catching finished products** — catch an unevolved mon → evolve → train, *not* find a wild Venusaur. The low-stage wild pool (no G1, sparse G2 — §8a.4) protects this loop even lategame.
+
+**No new axis needed — grade already encodes evolution stage.** `_computeMonGrade` (battle.html:13818–13857) derives grade from stage: `stage0`→G3/G4, `stage1-mid`→G3, `stage1-final`→G2/G3, `stage2-final`→G1/G2, legendaries/pseudos→G1 (+ curated `_GRADE1/2_OVERRIDE` for off-curve mons, 13797–13807). So the existing **grade-weight curve** (`applyStoryProgressToGradeWeights` 32728) *is* an evolution-stage curve — we steer stage exposure by steering grade weights, and tighten early pools toward **stage0/stage1-mid** specifically (not just "low grade").
+
+**Threat-vector introduction order — one new thing per band ("layer cake"):** the player never hits a wall of simultaneous new mechanics; each band adds at most one vector to adapt to.
+1. **Evolution stage** — ramps the whole game: stage0 → stage1 → stage2.
+2. **Held items** (~GL3): enemies begin holding berries/items.
+3. **Abilities** (~GL3–4): abilities begin to swing fights.
+4. **EVs** (GL4→GL8): T1→T2→T3→T4.
+5. **Mechanics/gimmicks** (~GL5–6, ramp to 3 by GL8): the last layer.
+6. **Grade** rides the stage curve; G2 mid–late, G1 only GL8+/bosses.
+
+**The 5-tier ladder (very easy → very hard) — target shape:**
+
+| Tier | Gyms | Enemy stage | Grade | EV | Items | Abilities | Gimmicks | IV floor | Foe-mult |
+|---|---|---|---|---|---|---|---|---|---|
+| Very Easy | GL1–2 | stage0 (unevolved) | G4/G3 | T1 (0) | none | vanilla | 0 | 0–15 | 0.82→0.95 |
+| Easy | GL3–4 | stage0 / stage1-mid | G3 | T1→T2 | begin | begin | 0 | +2 | ~1.0 |
+| Medium | GL5–6 | stage1-final | G3→G2 | T2→T3 | standard | matter | 1 | 18 | 1.0→1.05 |
+| Hard | GL7 | stage1/stage2-final | G2 | partial-T4 (~465) | full | full | 2 | 22 | ~1.1 |
+| Very Hard | GL8 + E4 | stage2-final + 1st G1 ace | G2 (+G1 ace) | T4 (510) | full | full | 3 | 26 | →1.20 |
+
+Reconciles with the locked calls: GL8 = a *fair climax*, not a cliff (IV 18→22→26, GL7 partial-T4, §8a.3); wild stays low-stage (§8a.4); professor gift ramps T1→T3, ends C6. Player-side service unlocks are sequenced to **match each band** — shop/items early → EV Trainer C4 → IV catch-up Fight Club C6 → mechanics/Colress C6+ — so the player's new tool lands just as the enemy starts using it.
+
+Touch-points: grade weights `applyStoryProgressToGradeWeights` 32728 · grade↔stage `_computeMonGrade` 13818 · EV tier `_storyBuildTierForEvent` 33534 · IV bands `STORY_IV_TIER_RANGES` 30060 · gimmicks `_minGuaranteedMechsForEvent` 32961 · foe-mult `_stageGatedFoeStatMult` 13909 · wild grades `_WILD_GRADE_CURVE_BY_BADGES` 44128. **Held-item / ability introduction touch-point: pending the Combat agent's read** (where enemy items/abilities are assigned today). Exact per-gym values → `story-tunables.csv` after sign-off.
+
+---
+
+## 10. Story architecture — spine + side-stories + random pool + expansion slots
+
+**Goal (maintainer):** a **main story spine** (upgradeable) + a few **static constant side-stories** + a **random story-pool**, with clean **expansion slots** so new stories "bind and attach" without surgery on the spine.
+
+**Model:**
+- **Spine** — the fixed city/gym/event skeleton (the current `STORY_EVENTS_RAW` timeline: intro → Rival → 8 gyms → E4 → Champion → Rival → Mystery). Always runs in order; upgradeable by editing the spine.
+- **Static side-stories** — authored arcs that always fire when their gate is met (rival arc, Mystery Figure, daycare matron → Fight Club reveal). Constant across runs.
+- **Pool stories** — a library of self-contained mini-arcs; **N drawn per run** by weight, no-repeat, seeded by the run RNG (roguelike variety — matches the charter's "fixed skeleton, randomized contents").
+
+**Mechanism:**
+- **Story registry:** each story = `{ storyId, type: spine|side|pool, slot(s), gate (prereqs), weight, oneTime|repeatable }`.
+- **Slots** — named hooks along the spine: `post-gymN`, `city-hub:idle`, `pre-league`, etc. Stories register against slot + gate.
+- **Resolver** at each slot: run spine items in order; fire eligible static side-stories; draw `N` pool stories by weight (no-repeat per run, RNG-seeded → reproducible).
+- **Save-keyed by `storyId`** — extends the existing "use `eventId` as durable key, never array index" rule (§6), so adding/removing pool stories never corrupts saves.
+
+**Feasibility (confirmed by the Spec-Drift pass):** the timeline is already partly data-driven — `GYM_CITY_LEADER_EVENT` is now *derived* from `STORY_EVENTS_RAW` rather than hand-maintained, and timeline integrity checks pass. So the slot+registry layer can sit **alongside** the existing array (the spine *is* the array, indexed by `eventId`); add the pool resolver at hub/post-gym slots and migrate incrementally — **don't rewrite the spine.** Expansion then = *author a story object + register it to a slot + set its gate.* (Caveat from §6: ~49 positional accesses into the array exist — they must move to `eventId` lookups before slots can safely insert/reorder.)
+
+---
+
+## 11. Final pre-implementation review (in progress)
+
+7-specialist pass + the lead's own audio scan. Findings consolidated here; full per-finding detail in `agent-state/findings/` and the regenerated `ISSUE_LEDGER`.
+
+**Audio (lead's pass — no dedicated agent):**
+- **P1 — cries stream from a remote CDN, ignoring 14 MB of shipped local cries.** `AudioSystem.playCry` (battle.html:11262) builds `https://play.pokemonshowdown.com/audio/cries/<id>.mp3`; the 1192 files in `music/cries/` (14 MB) are **never referenced**. Effect: cries break offline / under strict CSP, add latency + a third-party network+privacy dependency, fail silently (`.catch(()=>{})`). Fix: point `playCry` at the local files (named by species) with the CDN as fallback — or delete the dead 14 MB. *(Recommend local-first.)*
+- Music + SFX otherwise solid: `musicEnabled`/`soundEnabled` toggles + volumes, user-gesture autoplay handling, 3-track rotation w/ preload + resume-from-position, move/hit/miss/UI/faint SFX with type fallback.
+
+**UX / Visual / A11y:**
+- **P1 — draft pick cards are click-only `<div>`s** (`renderDraft` :15848): no `tabindex`/`role`/keydown → keyboard/SR users can't draft. **The Fight Club gauntlet reuses this pipeline** — fix once here and both inherit it.
+- **P1 — `showScreen()` (:48565) does no focus management:** every story-screen transition orphans focus to `<body>` (15+ service menus + the new daycare/Fight Club screens). Regions are labeled; only focus delivery + an announcement are missing.
+- P2: modals don't move focus *in* on open / no Tab focus-trap (`openModal` :12995); story dialogue (`#story-city-quote`) isn't a live region; tone-variant nameplate contrast ≈1.3–1.6:1 (fails AA, :2216).
+- Forward: gate the hatch animation on `prefers-reduced-motion` (keep the :39815 text reveal as fallback); gauntlet needs a `role="status"` for round results; ship the draft picker as real buttons.
+- Baseline is good: global `:focus-visible`, a reduced-motion catch-all, `role="dialog"`/Escape/focus-return, `role="log"` battle log.
+
+**Spec-Drift:**
+- Timeline integrity **passed**; `GYM_CITY_LEADER_EVENT` derived (prior audit 1.3 fixed). REDESIGN_PLAN is factually grounded (SAVE_VER=20, hatch-badge gate, derived gym map) — **no contradictions needing pre-build resolution.**
+- **P1 — integration spec mis-describes the ball system:** spec says `sm.inventory.*` gated by `catchMode`; code uses `sm.balls.{poke,great,ultra,master}` thrown via `catchThrow`, gated by `STORY_BATTLE_INTERRUPTS` (no `catchMode` exists). Fix the *spec*, not the code.
+- P2: Safari spec offers "badge 3 or City3" — code+plan = **C4**; strike the City3 clause. Design-checklist CSS boundary stale (`16–4156` → actually `16–7831`). P3: 50 doc line-anchors (18 drifted); README calls shipped systems "upcoming."
+
+**Pending:** Systems & Progression · Combat & Balance · Data/Content · Narrative & Style · Perf. The **rivalry-tab call** and the **service-timing matrix** finalize on the Systems report.
