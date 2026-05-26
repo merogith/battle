@@ -72,6 +72,8 @@ async function classify(page) {
       cityName: ((document.querySelector('#screen-story-city .story-screen-head-text') || {}).textContent || '').trim(),
       hof: /hall of fame/i.test((document.body.innerText || '').slice(0, 120)) || /HALL OF FAME/.test(endTitle && endTitle.innerText || ''),
       coldOpen: has(/Begin\s*→|Walk in/),
+      infoModal: has(/Got it/),
+      mysteryFight: has(/Mystery|Confront|Face the|The Figure|Begin the/),
       advanceBtn: btns.find(t => /^(Continue|Got it|Okay|OK|Next|Begin\s*→|Claim|Proceed|Onward|Take|Confront|Face|Confirm)/i.test(t)) || null,
       hasProfessorAction: has(/Pick Your Starter|Professor/),
       leaveCity: has(/Leave City|Continue Route/), gymBattle: has(/Gym Battle|Enter the Gym|Enter the Pokémon League|Victory Road|Pre-League|Enter Victory/),
@@ -116,6 +118,8 @@ async function pickStarter(page, tag) {
 
 // One action given the current classification. Returns a short tag of what it did.
 async function pumpStep(page, c, tag) {
+  // One-time info/tutorial bulletins (Fatigue, mechanics-unlock) overlay everything — clear first.
+  if (c.infoModal) { (await clickText(page, 'Got it')) || await clickText(page, 'OK'); await sleep(300); return 'gotit'; }
   if (c.professorCards) { await pickStarter(page, tag); return 'starter'; }
   if (c.battleActive) { await autoWin(page); return 'autowin'; }
   if (c.hof) { await shot(page, 'hall-of-fame'); (await clickText(page, 'Continue')) || await api(page, 'continuePostGame'); await sleep(700); return 'hof'; }
@@ -204,25 +208,28 @@ try {
   phase('PASS A — fresh run, play early/mid game');
   for (let i = 0; i < 25; i++) { try { await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 5000 }); break; } catch { await sleep(500); } }
   await startNewRun(page);
-  const aEnd = await runPump(page, 150, 'A');
+  const aEnd = await runPump(page, 210, 'A');
   log(`PASS A end: ${JSON.stringify(aEnd)}`);
   await shot(page, 'passA-end');
 
-  phase('PASS B — seed end-game, beat Champion → HoF → Mystery Figure');
-  // seed to 8 badges / full party / Champion's Hall
-  const seedR = await api(page, 'seedDebugMysteryLegendGate');
-  log(`seedDebugMysteryLegendGate → ${seedR}`);
-  await sleep(1600);
-  await shot(page, 'B-seeded-champions-hall');
-  const bEnd = await runPump(page, 80, 'B');
-  log(`PASS B end: ${JSON.stringify(bEnd)}`);
-  await shot(page, 'B-end');
+  phase('PASS B — beat the Champion (seedStoryChampionWeakTestFromUrl)');
+  log(`seed champion → ${await api(page, 'seedStoryChampionWeakTestFromUrl')}`);
+  await sleep(1600); await shot(page, 'B-champion-seeded');
+  const bEnd = await runPump(page, 55, 'B');
+  log(`PASS B end (champion): ${JSON.stringify(bEnd)}`);
+  await shot(page, 'B-champion-end');
 
-  phase('EXTRA — other late-game seeders');
-  for (const [fn, label] of [['seedStoryChampionWeakTestFromUrl', 'champion-weak'], ['seedDebugPostHofClimax', 'post-hof-climax'], ['previewHallOfFame', 'hof-preview']]) {
-    const r = await api(page, fn);
-    await sleep(1400);
-    if (r === 'ok') { await shot(page, `seed-${label}`); const c = await classify(page); if (c && c.battleActive) { await autoWin(page); await shot(page, `seed-${label}-won`); } const e = newErrors(); if (e.length) finding('P2', 'late-game', `${label} threw ${e.length} error(s)`, e.slice(0, 2).map(x => x.text).join(' | ')); else log(`   ${label} clean`); for (let i = 0; i < 5; i++) { if (!(await clickText(page, 'Continue') || await clickText(page, 'OK') || await clickText(page, 'Begin →'))) break; await sleep(400); } }
+  phase('PASS C — Hall of Fame → Mystery Figure → post-game (seedDebugPostHofClimax)');
+  log(`seed post-HoF climax → ${await api(page, 'seedDebugPostHofClimax')}`);
+  await sleep(1600); await shot(page, 'C-posthof-seeded');
+  const cEndPass = await runPump(page, 80, 'C');
+  log(`PASS C end (mystery/post-game): ${JSON.stringify(cEndPass)}`);
+  await shot(page, 'C-end');
+
+  phase('EXTRA — Mystery legend gate + HoF preview');
+  for (const [fn, label] of [['seedDebugMysteryLegendGate', 'mystery-legend-gate'], ['previewHallOfFame', 'hof-preview']]) {
+    const r = await api(page, fn); await sleep(1400);
+    if (r === 'ok') { await shot(page, `seed-${label}`); const cc = await classify(page); if (cc && cc.battleActive) { await autoWin(page); await shot(page, `seed-${label}-won`); } const e = newErrors(); if (e.length) finding('P2', 'late-game', `${label} threw ${e.length} error(s)`, e.slice(0, 2).map(x => x.text).join(' | ')); else log(`   ${label} clean`); for (let i = 0; i < 5; i++) { if (!(await clickText(page, 'Got it') || await clickText(page, 'Continue') || await clickText(page, 'OK'))) break; await sleep(400); } }
     else log(`   ${fn} → ${r}`);
     await sleep(500);
   }
@@ -232,7 +239,7 @@ try {
   log(`FINAL: ${JSON.stringify(cFinal)}`);
   log(`real JS errors (excl. CDN noise): ${errors.length} · findings: ${findings.length} · screenshots: ${shotN}`);
   await shot(page, 'final');
-  writeFileSync(join(OUT, 'fullrun-findings.json'), JSON.stringify({ generatedAt: new Date().toISOString(), screenshots: shotN, errorCount: errors.length, findings, passAEnd: aEnd, passBEnd: bEnd, finalState: cFinal, errors: errors.slice(0, 100) }, null, 2));
+  writeFileSync(join(OUT, 'fullrun-findings.json'), JSON.stringify({ generatedAt: new Date().toISOString(), screenshots: shotN, errorCount: errors.length, findings, passAEnd: aEnd, passBEnd: bEnd, passCEnd: cEndPass, finalState: cFinal, errors: errors.slice(0, 100) }, null, 2));
   writeFileSync(join(OUT, 'fullrun-transcript.txt'), transcript.join('\n'));
   log('wrote fullrun-findings.json + fullrun-transcript.txt');
   await browser.close();
