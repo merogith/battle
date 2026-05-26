@@ -1,6 +1,6 @@
 # Anchor Index — battle.html and siblings
 
-> **Generated**: 2026-05-25T12:47:19.100Z
+> **Generated**: 2026-05-26T07:40:15.817Z
 > **Source**: `node scripts/debug/anchor-map.mjs`
 > **Companion**: `agent-state/CODEBASE_MAP.md` (human-authored prose, anchor table stale — use this file instead).
 
@@ -13,139 +13,139 @@ trusting these numbers verbatim.
 | Symbol | File | Line | Kind |
 |---|---|---|---|
 | `newStoryRun` | _not found_ | — | — |
-| `load` | battle.html | 32223 | function-decl |
-| `save` | battle.html | 32162 | function-decl |
-| `SAVE_KEY` | battle.html | 31241 | const-decl |
-| `SAVE_VER` | battle.html | 31246 | const-decl |
+| `load` | battle.html | 32238 | function-decl |
+| `save` | battle.html | 32177 | function-decl |
+| `SAVE_KEY` | battle.html | 31256 | const-decl |
+| `SAVE_VER` | battle.html | 31261 | const-decl |
 
 ## Timeline
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `STORY_EVENTS_RAW` | battle.html | 29008 | const-decl |
-| `enterBattleEvent` | battle.html | 41986 | function-decl |
-| `proceedToNextBattle` | battle.html | 41482 | function-decl |
+| `STORY_EVENTS_RAW` | battle.html | 29023 | const-decl |
+| `enterBattleEvent` | battle.html | 42006 | function-decl |
+| `proceedToNextBattle` | battle.html | 41502 | function-decl |
 
 ## Migrations
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `migrateStoryPreV15` | battle.html | 31873 | function-decl |
+| `migrateStoryPreV15` | battle.html | 31888 | function-decl |
 
 ## Difficulty / coin
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `GYM_CITY_LEADER_EVENT` | battle.html | 29743 | const-decl |
+| `GYM_CITY_LEADER_EVENT` | battle.html | 29758 | const-decl |
 
 ## RNG
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `storyRngNext` | battle.html | 32126 | function-decl |
+| `storyRngNext` | battle.html | 32141 | function-decl |
 | `storyRngState` | _not found_ | — | — |
 
 ## Trainer rolling
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `rollTrainerTeam` | battle.html | 33917 | function-decl |
-| `rollMysteryFigureFinalBossTeam` | battle.html | 34320 | function-decl |
+| `rollTrainerTeam` | battle.html | 33932 | function-decl |
+| `rollMysteryFigureFinalBossTeam` | battle.html | 34340 | function-decl |
 | `makeBuild` | battle.html | 10292 | function-decl |
-| `makeWildBuild` | battle.html | 44291 | function-decl |
+| `makeWildBuild` | battle.html | 44311 | function-decl |
 | `makeDesignedBuild` | battle.html | 10261 | function-decl |
 
 ## Story build tier
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `STORY_BUILD_TIER` | battle.html | 33350 | const-decl |
-| `_storyBuildTierForEvent` | battle.html | 33534 | function-decl |
-| `_storyDowngradeBuildForTier` | battle.html | 33606 | function-decl |
-| `_applyStoryBuildPowerTier` | battle.html | 33732 | function-decl |
-| `_storyBuildTierForProfessor` | battle.html | 33592 | function-decl |
+| `STORY_BUILD_TIER` | battle.html | 33365 | const-decl |
+| `_storyBuildTierForEvent` | battle.html | 33549 | function-decl |
+| `_storyDowngradeBuildForTier` | battle.html | 33621 | function-decl |
+| `_applyStoryBuildPowerTier` | battle.html | 33747 | function-decl |
+| `_storyBuildTierForProfessor` | battle.html | 33607 | function-decl |
 
 ## Mechanics unlock gate
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `_withStoryPlayerGimmickGate` | battle.html | 11419 | function-decl |
+| `_withStoryPlayerGimmickGate` | battle.html | 11426 | function-decl |
 | `_pbsStoryUsePlayerGimmickGate` | _not found_ | — | — |
-| `_storyEnemyMechKeys` | battle.html | 32834 | function-decl |
-| `_minGuaranteedMechsForEvent` | battle.html | 32961 | function-decl |
-| `_mechForGimmickRoll` | battle.html | 11399 | function-decl |
+| `_storyEnemyMechKeys` | battle.html | 32849 | function-decl |
+| `_minGuaranteedMechsForEvent` | battle.html | 32976 | function-decl |
+| `_mechForGimmickRoll` | battle.html | 11406 | function-decl |
 
 ## Mystery Figure / Professor
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `enterProfessor` | battle.html | 40699 | function-decl |
-| `isPreLeagueLegendaryMysteryGate` | battle.html | 29882 | function-decl |
+| `enterProfessor` | battle.html | 40719 | function-decl |
+| `isPreLeagueLegendaryMysteryGate` | battle.html | 29897 | function-decl |
 
 ## Rival
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `setRivalStanding` | battle.html | 31988 | function-decl |
-| `getRivalEncounterPhase` | battle.html | 30311 | function-decl |
-| `pickStoryRivalSpriteFile` | battle.html | 34513 | function-decl |
+| `setRivalStanding` | battle.html | 32003 | function-decl |
+| `getRivalEncounterPhase` | battle.html | 30326 | function-decl |
+| `pickStoryRivalSpriteFile` | battle.html | 34533 | function-decl |
 
 ## City hub
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `enterCity` | battle.html | 38424 | function-decl |
-| `renderCityActions` | battle.html | 38549 | function-decl |
+| `enterCity` | battle.html | 38444 | function-decl |
+| `renderCityActions` | battle.html | 38569 | function-decl |
 | `getCurrentCityDisplayName` | _not found_ | — | — |
-| `shouldForceCityProfessor` | battle.html | 29863 | function-decl |
+| `shouldForceCityProfessor` | battle.html | 29878 | function-decl |
 
 ## Catch / PC / Safari / Boss
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `_pickStarterPartner` | battle.html | 40641 | function-decl |
-| `_bossArcRollLegendary` | battle.html | 43703 | function-decl |
+| `_pickStarterPartner` | battle.html | 40661 | function-decl |
+| `_bossArcRollLegendary` | battle.html | 43723 | function-decl |
 
 ## Damage formula
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `parseMoveEffects` | battle.html | 25255 | function-decl |
-| `buildPokemon` | battle.html | 14038 | function-decl |
+| `parseMoveEffects` | battle.html | 25270 | function-decl |
+| `buildPokemon` | battle.html | 14053 | function-decl |
 | `ensureMoveData` | battle.html | 9479 | function-decl |
 
 ## Tutorial scenes
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `STORY_TUTORIAL_SCENES` | battle.html | 36568 | const-decl |
-| `_showStoryTutorialScene` | battle.html | 36801 | function-decl |
-| `playStoryTutorial` | battle.html | 36862 | function-decl |
+| `STORY_TUTORIAL_SCENES` | battle.html | 36588 | const-decl |
+| `_showStoryTutorialScene` | battle.html | 36821 | function-decl |
+| `playStoryTutorial` | battle.html | 36882 | function-decl |
 
 ## Dialogue pools
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `TRAINER_QUOTES` | battle.html | 30550 | const-decl |
-| `TRAINER_QUOTES_BY_NAME` | battle.html | 30564 | const-decl |
-| `CITY_PROFESSOR_QUOTES` | battle.html | 30884 | const-decl |
-| `CITY_GUIDE_QUOTES` | battle.html | 30898 | const-decl |
-| `getTrainerQuoteForBattle` | battle.html | 30707 | function-decl |
+| `TRAINER_QUOTES` | battle.html | 30565 | const-decl |
+| `TRAINER_QUOTES_BY_NAME` | battle.html | 30579 | const-decl |
+| `CITY_PROFESSOR_QUOTES` | battle.html | 30899 | const-decl |
+| `CITY_GUIDE_QUOTES` | battle.html | 30913 | const-decl |
+| `getTrainerQuoteForBattle` | battle.html | 30722 | function-decl |
 
 ## Retreat / game-over
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `_storyCalcRetreatGoldFee` | battle.html | 39355 | function-decl |
-| `refreshStoryGameOverRetreatUI` | battle.html | 40343 | function-decl |
-| `acceptRivalLossAndContinue` | battle.html | 42482 | function-decl |
+| `_storyCalcRetreatGoldFee` | battle.html | 39375 | function-decl |
+| `refreshStoryGameOverRetreatUI` | battle.html | 40363 | function-decl |
+| `acceptRivalLossAndContinue` | battle.html | 42502 | function-decl |
 
 ## Tutor / EV trainer / Link / Colress
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `enterShop` | battle.html | 45290 | function-decl |
-| `enterArtifactShop` | battle.html | 45529 | function-decl |
+| `enterShop` | battle.html | 45310 | function-decl |
+| `enterArtifactShop` | battle.html | 45549 | function-decl |
 
 ## Test harness
 
@@ -154,7 +154,7 @@ trusting these numbers verbatim.
 | `__testHarness` | _not found_ | — | — |
 | `__engine` | _not found_ | — | — |
 | `__testReady` | _not found_ | — | — |
-| `sleep` | battle.html | 11744 | const-decl |
+| `sleep` | battle.html | 11751 | const-decl |
 
 ---
 
