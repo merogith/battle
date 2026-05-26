@@ -28,19 +28,19 @@ setSm();
 const cityRow = (c) => { for (let i = 0; i < SER.length; i++) { const r = SER[i]; if (Array.isArray(r) && r[1] === 'City' && r[2] === 'City' + c) return i; } return -1; };
 const renderCity = (c) => { setSm(); return W.__renderCityActionsForTest(cityRow(c)); };
 
-test('npcStageForCity: city-anchored thresholds (dojo 4/6/8, tutor 0/4, evolab 2/3/4)', () => {
-  assert.equal(ST.npcStageForCity('dojo', 3), 0, 'pre-debut clamps to stage 0');
+test('npcStageForCity: city-anchored thresholds (dojo 2/5/8, tutor 0/4, evolab 2/4)', () => {
+  assert.equal(ST.npcStageForCity('dojo', 1), 0, 'pre-debut clamps to stage 0');
+  assert.equal(ST.npcStageForCity('dojo', 2), 0);
   assert.equal(ST.npcStageForCity('dojo', 4), 0);
-  assert.equal(ST.npcStageForCity('dojo', 5), 0);
-  assert.equal(ST.npcStageForCity('dojo', 6), 1);
+  assert.equal(ST.npcStageForCity('dojo', 5), 1);
   assert.equal(ST.npcStageForCity('dojo', 7), 1);
   assert.equal(ST.npcStageForCity('dojo', 8), 2);
   assert.equal(ST.npcStageForCity('tutor', 0), 0);
   assert.equal(ST.npcStageForCity('tutor', 3), 0);
   assert.equal(ST.npcStageForCity('tutor', 4), 1);
   assert.equal(ST.npcStageForCity('evolab', 2), 0);
-  assert.equal(ST.npcStageForCity('evolab', 3), 1);
-  assert.equal(ST.npcStageForCity('evolab', 4), 2);
+  assert.equal(ST.npcStageForCity('evolab', 3), 0);
+  assert.equal(ST.npcStageForCity('evolab', 4), 1);
 });
 
 test('npcStageName: locked labels per stage', () => {
@@ -50,8 +50,7 @@ test('npcStageName: locked labels per stage', () => {
   assert.equal(ST.npcStageName('tutor', 0), 'Heart Scale');
   assert.equal(ST.npcStageName('tutor', 1), 'TM Expert');
   assert.equal(ST.npcStageName('evolab', 0), 'Awakening');
-  assert.equal(ST.npcStageName('evolab', 1), 'Stones');
-  assert.equal(ST.npcStageName('evolab', 2), 'Ascension');
+  assert.equal(ST.npcStageName('evolab', 1), 'Ascension');
   assert.equal(ST.npcStageName('dojo', 9), 'Grandmaster', 'over-cap stage clamps to last label');
 });
 
@@ -114,10 +113,9 @@ test('stage-up gifts: dojo (Black Belt / Grandmaster) and Stone Sage (Ascension)
   assert.equal(sm.inventory.emblemHonor | 0, 1, 'Grandmaster grants an Emblem of Honor');
 
   const sm2 = setSm({ eventIndex: cityRow(4), inventory: {}, npcStageSeen: {} });
-  ST.npcStageUpCheck('evolab');                  // first lab visit at C4 = Ascension (stage 2)
-  assert.equal(sm2.npcStageSeen.evolab, 2);
-  // Crosses both Stones (s1) and Ascension (s2) in one go → two free tokens.
-  assert.equal(sm2.inventory.stoneToken | 0, 2, 'crossing to Ascension grants both skipped tokens');
+  ST.npcStageUpCheck('evolab');                  // C4 = Ascension (stage 1; evolab is [2,4])
+  assert.equal(sm2.npcStageSeen.evolab, 1);
+  assert.equal(sm2.inventory.stoneToken | 0, 1, 'Ascension grants a Stonewise Token');
 });
 
 test('city-screen chip tags advance with the arrived city', () => {

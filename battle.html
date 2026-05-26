@@ -1388,6 +1388,9 @@
         .tx-pill--rec { background: rgba(102,187,106,0.25); border-color: #66bb6a; color: #c8e6c9; }
         .tx-pill--cur { background: rgba(255,213,79,0.18); border-color: #ffd54f; color: #fff3cd; }
         .tx-pill--ha  { background: rgba(206,147,216,0.18); border-color: #ce93d8; color: #f3e5f5; }
+        .tx-pill--locked { background: rgba(120,144,156,0.18); border-color: #78909c; color: #cfd8dc; }
+        .tx-card[data-locked="1"] { opacity: 0.5; cursor: not-allowed; }
+        .tx-card[data-locked="1"] .tx-card-star { opacity: 0.8; }
         .tx-pill--awaken {
             background: linear-gradient(135deg, rgba(255,193,7,0.28), rgba(255,87,34,0.22));
             border-color: #ffb300; color: #fff8e1;
@@ -7894,7 +7897,7 @@
     </script>
 </head>
 <body>
-    <div id="deploy-version-patch" class="deploy-version-patch" aria-hidden="true">v1.2.2</div>
+    <div id="deploy-version-patch" class="deploy-version-patch" aria-hidden="true">v1.2.3</div>
     <!-- Rotate overlay (portrait phones only) -->
     <div id="rotate-overlay">
         <div class="rotate-icon">▒</div>
@@ -29235,65 +29238,65 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Gym Leader signature aces escalate one tier ahead of fillers — the ace defines the threat,
         // fillers stay in the era's baseline. GL6 signature pool = G2; GL8 signature pool = G1.
         const STORY_EVENTS_RAW = [
-          [0,'City','City0',null,0,['Professor','Pokemart','Move Tutor','Nature Rater','Leave City']],
+          [0,'City','City0',null,0,['Professor','Pokemart','Move Tutor','Leave City']],
           [68,'Battle','Rival',{g1:0,g2:0,g3:0,g4:100},2000,null],
           [1,'Battle','Basic Trainer',{g1:0,g2:0,g3:0,g4:100},1400,null],
-          [3,'City','City1',null,0,['Professor','Pokemart','Gym Battle','Leave City']],
+          [3,'City','City1',null,0,['Professor','Pokemart','Move Tutor','Nature Rater','Gym Battle','Leave City']],
           [4,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:10,g4:90},1850,null],
           [5,'Battle','Gym Leader 1',{g1:0,g2:0,g3:25,g4:75},2350,null],
-          [6,'City','City1',null,0,['Pokemart','Leave City']],
+          [6,'City','City1',null,0,['Pokemart','Move Tutor','Nature Rater','Leave City']],
           [7,'Battle','Basic Trainer',{g1:0,g2:0,g3:25,g4:75},1200,null],
           [8,'Battle','Basic Trainer',{g1:0,g2:0,g3:35,g4:65},1200,null],
-          [9,'City','City2',null,0,['Professor','Link Station','Evolution Tutor','Stone Shop','Pokemart','Move Tutor','Gym Battle','Leave City']],
+          [9,'City','City2',null,0,['Professor','Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Battle Dojo','Gym Battle','Leave City']],
           [10,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:45,g4:55},2100,null],
           [11,'Battle','Gym Leader 2',{g1:0,g2:0,g3:50,g4:50},2950,null],
-          [13,'City','City2',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Move Tutor','Leave City']],
+          [13,'City','City2',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Battle Dojo','Leave City']],
           [14,'Battle','Basic Trainer',{g1:0,g2:0,g3:65,g4:35},1500,null],
           [15,'Battle','Basic Trainer',{g1:0,g2:0,g3:75,g4:25},1500,null],
-          [16,'City','City3',null,0,['Professor','Link Station','Evolution Tutor','Stone Shop','Pokemart','Move Tutor','Nature Rater','Gym Battle']],
+          [16,'City','City3',null,0,['Professor','Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','Gym Battle']],
           [17,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:80,g4:20},2450,null],
           [18,'Battle','Gym Leader 3',{g1:0,g2:0,g3:75,g4:25},3550,null],
-          [19,'City','City3',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Move Tutor','Nature Rater','Leave City']],
+          [19,'City','City3',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','Leave City']],
           [12,'Battle','Rival',{g1:0,g2:0,g3:80,g4:20},3500,null],
           [20,'Battle','Basic Trainer',{g1:0,g2:0,g3:90,g4:10},1700,null],
           [21,'Battle','Basic Trainer',{g1:0,g2:0,g3:95,g4:5},1700,null],
-          [22,'City','City4',null,0,['Professor','Link Station','Evolution Tutor','Stone Shop','Pokemart','Safari Zone','Move Tutor','Battle Dojo','EV Trainer','Gym Battle','Leave City']],
+          [22,'City','City4',null,0,['Professor','Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','Department Store','Gym Battle','Leave City']],
           [23,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:100,g4:0},2800,null],
           [24,'Battle','Gym Leader 4',{g1:0,g2:0,g3:100,g4:0},3800,null],
-          [25,'City','City4',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Safari Zone','Move Tutor','Battle Dojo','EV Trainer','Leave City']],
+          [25,'City','City4',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','Department Store','Leave City']],
           [26,'Battle','Basic Trainer',{g1:0,g2:0,g3:100,g4:0},2000,null],
           [27,'Battle','Basic Trainer',{g1:0,g2:0,g3:100,g4:0},2000,null],
-          [28,'City','City5',null,0,['Professor','Link Station','Evolution Tutor','Stone Shop','Pokemart','Poké Casino','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Gym Battle','Leave City']],
+          [28,'City','City5',null,0,['Professor','Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','Safari Zone','Poké Casino','Gym Battle','Leave City']],
           [29,'Battle','Gym Trainer 1',{g1:0,g2:0,g3:100,g4:0},3050,null],
           [30,'Battle','Gym Trainer 2',{g1:0,g2:5, g3:95,g4:0},3050,null],
           [31,'Battle','Gym Leader 5',{g1:0,g2:0,g3:100,g4:0},4150,null],
-          [32,'City','City5',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Poké Casino','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Leave City']],
+          [32,'City','City5',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','Safari Zone','Poké Casino','Leave City']],
           [33,'Battle','Basic Trainer',{g1:0,g2:0, g3:100,g4:0},2200,null],
           [34,'Battle','Elite Trainer',{g1:0,g2:15,g3:85, g4:0},2700,null],
-          [35,'City','City6',null,0,['Link Station','Evolution Tutor','Stone Shop','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
+          [35,'City','City6',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','Power Up','Department Store','Gym Battle','Leave City']],
           [36,'Battle','Gym Trainer 1',{g1:0,g2:10,g3:90,g4:0},3300,null],
           [37,'Battle','Gym Trainer 2',{g1:0,g2:15,g3:85,g4:0},3300,null],
           [38,'Battle','Gym Leader 6',{g1:0,g2:0, g3:100,g4:0},5550,null],
-          [40,'City','City6',null,0,['Link Station','Evolution Tutor','Stone Shop','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
+          [40,'City','City6',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','Power Up','Department Store','Leave City']],
           [39,'Battle','Rival',{g1:0,g2:50,g3:50,g4:0},5400,null],
           [41,'Battle','Basic Trainer',{g1:0,g2:20,g3:80,g4:0},2500,null],
           [42,'Battle','Elite Trainer',{g1:0,g2:40,g3:60,g4:0},2900,null],
-          [43,'City','City7',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
+          [43,'City','City7',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','EV Trainer','Power Up','Poké Casino','Gym Battle','Leave City']],
           [44,'Battle','Gym Trainer 1',{g1:0,g2:35,g3:65,g4:0},3550,null],
           [45,'Battle','Gym Trainer 2',{g1:0,g2:45,g3:55,g4:0},3550,null],
           [46,'Battle','Gym Leader 7',{g1:0,g2:50,g3:50,g4:0},5800,null],
-          [47,'City','City7',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
+          [47,'City','City7',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','EV Trainer','Power Up','Poké Casino','Leave City']],
           [48,'Battle','Elite Trainer',{g1:0,g2:70,g3:30,g4:0},3000,null],
           [49,'Battle','Elite Trainer',{g1:0,g2:80,g3:20,g4:0},3000,null],
-          [50,'City','City8',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
+          [50,'City','City8',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','EV Trainer','Power Up','Gym Battle','Leave City']],
           [51,'Battle','Gym Trainer 1',{g1:0,g2:85,g3:15,g4:0},3650,null],
           [52,'Battle','Gym Trainer 2',{g1:0,g2:95,g3:5, g4:0},3650,null],
           [53,'Battle','Gym Leader 8',{g1:0,g2:100,g3:0,g4:0},5950,null],
-          [55,'City','City8',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Department Store','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Leave City']],
+          [55,'City','City8',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','EV Trainer','Power Up','Leave City']],
           [56,'Battle','Elite Trainer',{g1:0,  g2:100,g3:0,g4:0},4200,null],
           [57,'Battle','Elite Trainer',{g1:10, g2:90, g3:0,g4:0},4800,null],
           [58,'Battle','Elite Trainer',{g1:20, g2:80, g3:0,g4:0},5200,null],
-          [59,'City','City9',null,0,['Link Station','Evolution Tutor','Stone Shop','Pokemart','Department Store','Poké Casino','Move Tutor','Nature Rater','Battle Dojo','EV Trainer','Power Up','Enter Pokémon League']],
+          [59,'City','City9',null,0,['Pokemart','Move Tutor','Nature Rater','Link Station','Evolution Tutor','Stone Shop','Battle Dojo','EV Trainer','Power Up','Department Store','Poké Casino','Safari Zone','Enter Pokémon League']],
           // E1–E4 are a fixed 5,000G league purse (flat by design — prestige fights, not a
           // scaling route reward), intentionally below the late gyms' route payouts. Champion
           // (7,500G) and the post-HoF Mystery (12,000G) are the curve's real peaks.
@@ -29312,11 +29315,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // for its one-shot intro tutorial. Once `sm.facilityIntros[key]` is set,
         // the gate never fires again for that key.
         const FACILITY_DEBUT_CITY = {
-            mart: 0, tutor: 0, nature: 0, center: 0, relic: 0, artifacts: 0,
-            link: 2, stoneShop: 2, evolab: 2,
-            dept: 6, casino: 5, dojo: 4, evtrainer: 4, safari: 4,
+            mart: 0, tutor: 0, nature: 1, center: 0, relic: 0, artifacts: 0,
+            link: 2, stoneShop: 3, evolab: 2,
+            dept: 4, casino: 5, dojo: 2, evtrainer: 7, safari: 5,
             colress: 6,
-            bag: 0, party: 1, fanclub: 1, // one-time intros: Bag at the start town; Party + Fan Club at the first gym city
+            bag: 0, party: 0, fanclub: 1, // one-time intros: Bag + Party at the start town; Fan Club at the first gym city
         };
         // Pokémon Fan Club is a recurring facility — present in every city. Rather
         // than dirty every row of the literal above, we splice 'Pokémon Fan Club'
@@ -29332,9 +29335,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Club are present from the start town.
             const ALWAYS_ON = [
                 { fac: 'Move Tutor', minCity: 0 },
-                { fac: 'Nature Rater', minCity: 0 },
+                { fac: 'Nature Rater', minCity: 1 },     // Nature Rater debuts at the first gym city
                 { fac: 'Pokémon Fan Club', minCity: 1 },
-                { fac: 'Evolution Tutor', minCity: 1 },
+                { fac: 'Evolution Tutor', minCity: 2 },   // Stone Sage debuts at City 2
             ];
             for (const row of STORY_EVENTS_RAW) {
                 if (!Array.isArray(row) || row[1] !== 'City') continue;
@@ -49540,19 +49543,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Battle Dojo:  White Belt (natural abilities · berry/basic items)
             //             → Black Belt (+Hidden abilities · +decent items)
             //             → Grandmaster (+Awakened abilities · +all items)
-            dojo:   [4, 6, 8],
+            dojo:   [2, 5, 8],
             // Move Tutor:  Heart Scale (egg + level-up + own competitive moves)
             //            → TM Expert (+TMs / tutor / the full learnset)
             tutor:  [0, 4],
             // Stone Sage:  capability is enforced by the player evo-stage cap;
             //              these thresholds drive only the chip name + intro beat.
-            //              Awakening (first evos) → Stones → Ascension (finals @ C4).
-            evolab: [2, 3, 4],
+            //              Awakening (first evos) → Ascension (finals @ C4).
+            evolab: [2, 4],
         };
         const NPC_STAGE_NAMES = {
             dojo:   ['White Belt', 'Black Belt', 'Grandmaster'],
             tutor:  ['Heart Scale', 'TM Expert'],
-            evolab: ['Awakening', 'Stones', 'Ascension'],
+            evolab: ['Awakening', 'Ascension'],
         };
         function _npcStageForCity(key, cityIdx) {
             const ths = NPC_STAGE_CITY[key];
@@ -49600,7 +49603,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const _NPC_STAGE_GIFT = {
             tutor:  { 1: { heartScale: 1 } },
             dojo:   { 1: { abilityCapsule: 1 }, 2: { abilityCapsule: 1, emblemHonor: 1 } },
-            evolab: { 1: { stoneToken: 1 }, 2: { stoneToken: 1 } },
+            evolab: { 1: { stoneToken: 1 } },
         };
         const _NPC_STAGE_INTRO = {
             tutor:  { 1: 'Move Tutor: "You\'ve battled enough to earn the full lesson book — TMs, tutor moves, all of it. Here\'s a Heart Scale; the first advanced lesson is on me."' },
@@ -49609,8 +49612,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 2: 'Dojo Master: "Grandmaster. Nothing is off-limits in my dojo. An Ability Capsule and an Emblem of Honor — spend them however you like."',
             },
             evolab: {
-                1: 'Stone Sage: "The elemental stones answer to you now. Take this token — one stone, gratis."',
-                2: 'Stone Sage: "Your bond has deepened; the final forms will ascend at your word. One more token, on me."',
+                1: 'Stone Sage: "Your bond has deepened; the final forms will ascend at your word. Take this token — one evolution stone, gratis."',
             },
         };
         function _npcStageUpCheck(key) {
@@ -51762,14 +51764,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const isPending = ctx && ctx.pending === itemName;
             const isCurrent = ctx && ctx.current === itemName;
             const isRec     = ctx && ctx.recommended && ctx.recommended.has(itemName);
+            // Staged Battle Dojo: an item above the current tier shows but is locked,
+            // so a ★-recommended power item still appears with its unlock target.
+            const lockStage = (ctx && typeof ctx.dojoStage === 'number' && !isCurrent)
+                ? (_dojoItemTier(itemName) - 1) : -1;
+            const locked = lockStage > (ctx ? ctx.dojoStage : 99);
             const pills = [
                 `<span class="tx-pill">${_esc(_TX_ITEM_CAT_LABEL[cat] || cat)}</span>`,
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
+                locked ? `<span class="tx-pill tx-pill--locked" title="Unlocks when the Dojo reaches ${_esc(_npcStageName('dojo', lockStage))}">🔒 ${_esc(_npcStageName('dojo', lockStage))}</span>` : '',
             ].filter(Boolean).join('');
             const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
             const pctHtml = _txUsagePctHtml(ctx, itemName);
             return `<button type="button" class="tx-card" data-card-kind="item" data-card-value="${_esc(itemName)}"
-                data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-disabled="${isCurrent?1:0}" ${isCurrent?'disabled':''}>
+                data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-disabled="${(isCurrent||locked)?1:0}" data-locked="${locked?1:0}" ${(isCurrent||locked)?'disabled':''}>
                 <div class="tx-card-head">
                     ${star}<span class="tx-card-title">${_esc(itemName)}</span>${pctHtml}
                 </div>
@@ -51790,15 +51798,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const isAwaken  = ctx && ctx.awakenAbilities && ctx.awakenAbilities.has(abilityName);
             const isRec     = ctx && ctx.recommended && ctx.recommended.has(abilityName);
             const tier      = isHA ? 'hidden' : 'regular';
+            // Staged Battle Dojo: the Hidden ability stays visible but is locked
+            // until Black Belt, so a ★-recommended Hidden ability still shows.
+            const locked = !!(ctx && typeof ctx.dojoStage === 'number' && abilityName === ctx.haName && ctx.dojoStage < 1 && !isCurrent);
             const pills = [
                 isAwaken ? `<span class="tx-pill tx-pill--awaken">★ Awaken</span>` : '',
                 isHA && !isAwaken ? `<span class="tx-pill tx-pill--ha">Hidden</span>` : '',
+                locked ? `<span class="tx-pill tx-pill--locked" title="Unlocks when the Dojo reaches Black Belt">🔒 ${_esc(_npcStageName('dojo', 1))}</span>` : '',
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
             ].filter(Boolean).join('');
             const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
             const pctHtml = _txUsagePctHtml(ctx, abilityName);
             return `<button type="button" class="tx-card tx-card--ability" data-card-kind="ability" data-card-value="${_esc(abilityName)}"
-                data-tier="${tier}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-disabled="${isCurrent?1:0}" ${isCurrent?'disabled':''}>
+                data-tier="${tier}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-disabled="${(isCurrent||locked)?1:0}" data-locked="${locked?1:0}" ${(isCurrent||locked)?'disabled':''}>
                 <div class="tx-card-head">
                     ${star}<span class="tx-card-title">${_esc(abilityName)}</span>${pctHtml}
                 </div>
@@ -52196,27 +52208,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _dojoStage = _npcStage('dojo');
             const _haName = (() => { try { const bs = baseStats[t.name]; return (bs && bs.abilities && bs.abilities.H) || null; } catch (e) { return null; } })();
 
-            // Items
+            // Items — shown in full so the ★ recommendation stays visible even
+            // when it's a higher-tier pick; the card marks anything above the
+            // current Dojo tier as locked (see _txItemCardHtml + itemCtx.dojoStage).
             const curItem = b.i || '(none)';
-            const items = pool.items.filter(it => _dojoItemTier(it) <= _dojoStage + 1 || it === curItem);
+            const items = pool.items.slice();
             const filtItems = _txApplyItemFilters(items, mon, b, t.name);
             const pendingItem = (_txPending && _txPending.kind === 'item') ? _txPending.value : null;
-            const itemCtx = { pending: pendingItem, current: curItem, recommended: sPool.items.starred, pctOf: sPool.items.pctOf };
+            const itemCtx = { pending: pendingItem, current: curItem, recommended: sPool.items.starred, pctOf: sPool.items.pctOf, dojoStage: _dojoStage };
 
-            // Abilities — hidden tagged from baseStats.abilities slot 'H' for the
-            // tier badge. Awakened picks merge in only at Grandmaster (handled in
-            // _opAbilitiesForMon); the Hidden ability is held back until Black Belt.
+            // Abilities — hidden tagged from baseStats.abilities slot 'H'. The Hidden
+            // ability stays visible (so the rec shows) but is locked until Black Belt;
+            // Awakened picks merge in only at Grandmaster (gated in _opAbilitiesForMon).
             const curAbility = b.a || (mon && mon.ability) || '(none)';
             const opAbils = _opAbilitiesForMon(t.name);
             const awakenSet = new Set(opAbils);
-            let abils = [...new Set([...pool.abilities, ...opAbils])];
-            if (_dojoStage < 1 && _haName) abils = abils.filter(a => a !== _haName || a === curAbility);
-            abils = abils.sort();
-            const filtAbils = _txApplyAbilityFilters(abils, mon, b, t.name, awakenSet);
+            const abils = [...new Set([...pool.abilities, ...opAbils])].sort();
             const haSet = new Set();
             if (_haName) haSet.add(_haName);
+            const filtAbils = _txApplyAbilityFilters(abils, mon, b, t.name, awakenSet);
             const pendingAbility = (_txPending && _txPending.kind === 'ability') ? _txPending.value : null;
-            const abilCtx = { pending: pendingAbility, current: curAbility, recommended: sPool.abilities.starred, hiddenAbilities: haSet, awakenAbilities: awakenSet, pctOf: sPool.abilities.pctOf };
+            const abilCtx = { pending: pendingAbility, current: curAbility, recommended: sPool.abilities.starred, hiddenAbilities: haSet, awakenAbilities: awakenSet, pctOf: sPool.abilities.pctOf, dojoStage: _dojoStage, haName: _haName };
 
             // Item tab content
             const itemTabHtml = (() => {
@@ -52651,6 +52663,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         async function tutorChangeItem(teamIdx, newItem) {
+            // Staged Dojo gate (the card is disabled when locked; guard the API too).
+            if (_dojoItemTier(newItem) > _npcStage('dojo') + 1) {
+                try { window.showGameAlert && window.showGameAlert(`The Battle Dojo unlocks ${newItem} at ${_npcStageName('dojo', _dojoItemTier(newItem) - 1)} — keep earning badges.`); } catch (e) {}
+                return;
+            }
             if (!_storyTryBeginInteraction()) return;
             try {
                 const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
@@ -52687,6 +52704,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         async function tutorChangeAbility(teamIdx, newAbility) {
+            // Staged Dojo gate: the Hidden ability is locked until Black Belt
+            // (Awakened picks aren't even fetched below Grandmaster).
+            {
+                const _m = sm.team[teamIdx];
+                let _ha = null;
+                try { const bs = baseStats[_m && _m.name]; _ha = (bs && bs.abilities && bs.abilities.H) || null; } catch (e) {}
+                if (_ha && newAbility === _ha && _npcStage('dojo') < 1) {
+                    try { window.showGameAlert && window.showGameAlert('Hidden abilities unlock when the Battle Dojo reaches Black Belt — keep earning badges.'); } catch (e) {}
+                    return;
+                }
+            }
             if (!_storyTryBeginInteraction()) return;
             try {
                 const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
