@@ -8498,7 +8498,6 @@
             <div style="display:flex;gap:0;background:rgba(10,10,14,0.85);border-bottom:1px solid #333;flex-shrink:0;">
                 <button type="button" id="story-pc-tab-storage-btn" onclick="window.StoryMode.pcSwitchTab('storage')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid #4caf50;color:#4caf50;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Deposit, withdraw, and release Pokémon"><img src="icons/story/story_party.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:auto;flex-shrink:0;"> PC Storage</button>
                 <button type="button" id="story-pc-tab-underground-btn" onclick="window.StoryMode.pcSwitchTab('underground')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid transparent;color:#888;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Sell Pokémon for gold"><img src="icons/story/story_mystery.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:auto;flex-shrink:0;filter:hue-rotate(-30deg) saturate(1.5) brightness(0.8);"> The Underground</button>
-                <button type="button" id="story-pc-tab-journal-btn" onclick="window.StoryMode.pcSwitchTab('journal')" style="flex:1;padding:10px;background:transparent;border:none;border-bottom:3px solid transparent;color:#888;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;" title="Your rivalry — past encounters, their teams, win/loss record"><img src="icons/story/story_route.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:auto;flex-shrink:0;"> Rivalry</button>
             </div>
             <div id="story-pc-body" style="flex:1;overflow-y:auto;padding:12px;min-height:0;background:rgba(6,10,18,0.2);"></div>
             <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
@@ -8973,6 +8972,7 @@
                 <button type="button" class="story-collection-tab story-collection-tab--active" id="collection-tab-pokedex" role="tab" aria-selected="true" onclick="window.StoryMode.openCollection('pokedex')">&#128218; Pokédex</button>
                 <button type="button" class="story-collection-tab" id="collection-tab-ach" role="tab" aria-selected="false" onclick="window.StoryMode.openCollection('achievements')">&#127941; Achievements</button>
                 <button type="button" class="story-collection-tab" id="collection-tab-hof" role="tab" aria-selected="false" onclick="window.StoryMode.openCollection('hof')">&#127942; Hall of Fame</button>
+                <button type="button" class="story-collection-tab" id="collection-tab-rival" role="tab" aria-selected="false" onclick="window.StoryMode.openCollection('rival')">&#9876;&#65039; Rivalry</button>
             </div>
             <div class="story-collection-body" id="collection-body" role="tabpanel">
                 Loading&hellip;
@@ -32005,7 +32005,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // `rivalTeamNames` (optional): species names the rival fielded this fight,
-        // appended to the read-only rival journal (Pokémon Center → Rivalry tab).
+        // appended to the read-only rival journal (Collection → Rivalry tab).
         function setRivalStanding(winner, storyRowIdx, rivalTeamNames) {
             const w = winner === 'rival' ? 'rival' : winner === 'player' ? 'player' : 'none';
             sm.rivalLastWinner = w;
@@ -35077,7 +35077,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         let _collectionDexShiny = false; // false = Regular view, true = Shiny Dex view
         let _collectionPrevScreen = null;
         function openCollection(tab) {
-            const okTab = (tab === 'achievements' || tab === 'hof') ? tab : 'pokedex';
+            const okTab = (tab === 'achievements' || tab === 'hof' || tab === 'rival') ? tab : 'pokedex';
             _collectionTab = okTab;
             // Remember which screen we came from so closeCollection can return there.
             const visible = document.querySelector('.screen:not(.hidden)');
@@ -35085,7 +35085,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const tabs = {
                 pokedex: 'collection-tab-pokedex',
                 achievements: 'collection-tab-ach',
-                hof: 'collection-tab-hof'
+                hof: 'collection-tab-hof',
+                rival: 'collection-tab-rival'
             };
             for (const k in tabs) {
                 const t = document.getElementById(tabs[k]);
@@ -35114,6 +35115,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!body) return;
             if (_collectionTab === 'achievements') body.innerHTML = _renderAchievementsTab();
             else if (_collectionTab === 'hof') body.innerHTML = _renderHofRecordsTab();
+            else if (_collectionTab === 'rival') body.innerHTML = _pcRenderRivalJournalTab();
             else body.innerHTML = _renderPokedexTab(_collectionDexGen);
         }
 
@@ -42853,7 +42855,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _tabBtns = {
                 storage:     { el: document.getElementById('story-pc-tab-storage-btn'),     active: '#4caf50' },
                 underground: { el: document.getElementById('story-pc-tab-underground-btn'), active: '#ff5252' },
-                journal:     { el: document.getElementById('story-pc-tab-journal-btn'),     active: '#ffb74d' },
             };
             for (const key of Object.keys(_tabBtns)) {
                 const { el, active } = _tabBtns[key];
@@ -42865,12 +42866,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const body = document.getElementById('story-pc-body');
             if (!body) return;
             if (_pcCurrentTab === 'storage') body.innerHTML = _pcRenderStorageTab();
-            else if (_pcCurrentTab === 'journal') body.innerHTML = _pcRenderRivalJournalTab();
             else body.innerHTML = _pcRenderUndergroundTab();
             _pcInstallRowClickHandler();
         }
         function pcSwitchTab(tab) {
-            _pcCurrentTab = (tab === 'underground' || tab === 'journal') ? tab : 'storage';
+            _pcCurrentTab = (tab === 'underground') ? tab : 'storage';
             _pcRefresh();
         }
         /** Display name of the run's rival, from the locked trainer assignment. */
