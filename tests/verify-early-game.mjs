@@ -85,6 +85,32 @@ if (typeof window.__renderCityActionsForTest !== 'function') {
   check('old-save openCityBag back-fills facilityIntros.bag', sm.facilityIntros.bag === true);
   check('old-save C0 gate clears after re-opening Bag', !gateNamesBag(render(0)));
 
+  // --- Regression: opening the Bag / Party panel must repaint the hub IN PLACE.
+  // Both are modal overlays — closing them does NOT re-render the action strip, so
+  // if open* doesn't repaint the hub, the disabled "Continue Route (Visit Bag and
+  // Party first)" button stays stuck even after the player visits both. The checks
+  // above pass either way because they call render() manually after open*; these
+  // read #story-action-buttons directly to prove the live UI updated on its own. ---
+  const stripHtml = () => { const el = window.document.getElementById('story-action-buttons'); return el ? el.innerHTML : ''; };
+  const gateNamesIntro = (h) => /Continue Route[^<]*<span[^>]*>\(Visit [^<]*first\)/.test(h);
+  const introAllButBagParty = () => { sm.facilityIntros = { mart:1, tutor:1, nature:1, artifacts:1, center:1, relic:1 }; sm.profUsed = { 0: true }; };
+
+  setup(); introAllButBagParty();
+  render(0); // initial hub paint — gate names Bag + Party
+  check('live: C0 gate present on first paint', gateNamesIntro(stripHtml()));
+  SM.openCityBag();    // first open → marks Bag seen AND repaints hub in place
+  check('live: gate still present after Bag only (Party pending)', gateNamesIntro(stripHtml()));
+  SM.openPartyModal(); // first open → marks Party seen AND repaints hub in place
+  check('live: gate CLEARS after visiting Bag + Party (no manual re-render)', !gateNamesIntro(stripHtml()));
+
+  // Order-independent: visiting Party first then Bag must also clear the live gate.
+  setup(); introAllButBagParty();
+  render(0);
+  SM.openPartyModal();
+  check('live: gate still present after Party only (Bag pending)', gateNamesIntro(stripHtml()));
+  SM.openCityBag();
+  check('live: gate CLEARS after Party + Bag (reverse order)', !gateNamesIntro(stripHtml()));
+
   // --- New-spread must-do intro gate: Battle Dojo debuts at C2; un-introduced it
   // carries the 🔴 Required pill, which clears once the player has met it. ---
   const reqCount = (h) => (h.match(/🔴 Required/g) || []).length;
