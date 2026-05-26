@@ -48,3 +48,18 @@ Enemy power curve is fine; do **not** touch enemy stats here.
 3. **Intro scope for utility items** (Bag/Party) — blocking required intro vs lightweight one-time tooltip.
 
 (Implementation order after sign-off: §A1–A6 fixes → §C placements → staged ladders → egg anim → reliable verify harness + auto-win playthrough.)
+
+---
+
+## E. SHIPPED (PR #165, branch `…-finish`, v1.2.1, full suite 1012/0-fail)
+Professor basics-only · tutors always-on (every city) · wilds base-only + rising IV cap · enemy rising-mean IVs · special=31 · evolution 3-layer (Stage-1 C1 / Stones C2 / Stage-2 C4) · menu order · required intros (Bag C0, Party+Fan Club C1) · bag shows Poké Balls + trimmed voucher/vitamin text · Pokémart 5-ball gift + Center Full Restore · egg-hatch animation · **disputed items (Artifact Hall, NEW/visited) proven working via `tests/verify-early-game.mjs`.**
+
+## F. Staged-NPC capability ladders — implementation plan (the remaining build)
+**Shared mechanic:** add `sm.npcStage[key]` (0/1/2), bumped at badge milestones; on a bump, the chip **renames** (per the §B tags), a **one-time intro** fires, and the player gets **1 free use**. Gate each NPC's offered options by `npcStage`.
+
+- **Battle Dojo** (cumulative): **abilities** natural (L1) → +Hidden (L2) → +Awakened/illegal (L3); **items** berries (L1) → +mediocre (L2) → +all (L3). Touch-points: the Dojo ability picker pool (filter by legality tier — `_isBuildAbilityIllegal` / Hidden-ability flag) and the item picker pool (`_TX_ITEM_CATS` tiers, ~49894). Cleanest of the three — both are already category-classified.
+- **Move Tutor** (2 stages): egg + own-learnable (L1) → +TMs/HMs/all (L2). **Needs groundwork:** the pool (`_tutorGetMergedMovePoolAsync`, 49841) is a flat merged name-list with **no learn-method split**; gating egg/level vs TM requires wiring learnset-method data (the gitignored `data/learnsets.json`) or a per-move method tag. Until then, a simpler proxy (e.g., L1 = STAB/level-ish curated, L2 = full) is the fallback.
+- **Item shop tiers** (Mart L1 → Super Mart → Dept L2): gate `POKEMART_ITEMS`/`DEPT_ITEMS` visibility by `npcStage`/badges; Mart & Dept cycle (Dept anchors C6/C8/League — already roughly placed).
+- **Evolution Sage** capability is effectively done via the player-evo cap (Awakening C1 / Stones C2 / Ascension C4); the remaining piece is the per-stage **rename + intro beat**.
+
+Recommend building this as a focused pass (per-NPC, tested) rather than rushing — the Dojo ladder first (most tractable), then Move Tutor (after the learnset-method wiring), then shop tiers.
