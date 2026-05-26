@@ -29289,7 +29289,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             link: 2, stoneShop: 2, evolab: 2,
             dept: 6, casino: 5, dojo: 4, evtrainer: 4, safari: 4,
             colress: 6,
-            // fanclub intentionally omitted — opt-in facility, no debut gate.
+            bag: 0, party: 1, fanclub: 1, // one-time intros: Bag at the start town; Party + Fan Club at the first gym city
         };
         // Pokémon Fan Club is a recurring facility — present in every city. Rather
         // than dirty every row of the literal above, we splice 'Pokémon Fan Club'
@@ -29306,7 +29306,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const ALWAYS_ON = [
                 { fac: 'Move Tutor', minCity: 0 },
                 { fac: 'Nature Rater', minCity: 0 },
-                { fac: 'Pokémon Fan Club', minCity: 0 },
+                { fac: 'Pokémon Fan Club', minCity: 1 },
                 { fac: 'Evolution Tutor', minCity: 1 },
             ];
             for (const row of STORY_EVENTS_RAW) {
@@ -39442,6 +39442,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 link: 'Link Station', stoneShop: 'Stone Shop', evolab: 'Evolution Tutor',
                 dept: 'Department Store', casino: 'Poké Casino', dojo: 'Battle Dojo',
                 evtrainer: 'EV Trainer', safari: 'Safari Zone', colress: 'Power Up',
+                bag: null, party: null, fanclub: null, // one-time intros (implicit — satisfied by opening them once)
             };
             const label = _required[key];
             if (label === undefined) return false;
@@ -39465,6 +39466,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             link: "Bill's Cable Link", stoneShop: 'Stone Emporium', evolab: 'Stone Sage',
             dept: 'Department Store', casino: 'Game Corner', dojo: 'Battle Dojo',
             evtrainer: 'EV Trainer', safari: 'Safari Zone', colress: 'Power Up',
+            bag: 'Bag', party: 'Party', fanclub: 'Pokémon Fan Club',
         };
         function _friendlyJoin(names) {
             if (!names.length) return '';
@@ -40801,6 +40803,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function openPartyModal() {
+            try { _markFacilitySeen('party'); } catch (e) {}
             renderTeamPanel();
             const m = document.getElementById('modal-story-party');
             if (m) m.classList.remove('hidden');
@@ -48265,6 +48268,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // ── CITY BAG — view inventory & sell items at 50% price ──────────────
         function openCityBag() {
+            try { _markFacilitySeen('bag'); } catch (e) {}
             const modal = document.getElementById('modal-story-bag');
             const bagEl  = document.getElementById('story-bag-grid');
             const tarEl  = document.getElementById('story-bag-target');
