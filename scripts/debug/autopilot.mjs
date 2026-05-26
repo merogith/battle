@@ -378,37 +378,46 @@ try {
   await page.waitForTimeout(1200);
   await shot(page, 'after-begin');
 
-  // ===== PHASE 4: First city =====
-  phase('PHASE 4 — Arrive in first city');
+  // ===== PHASE 4: Cold-open intro → first city =====
+  phase('PHASE 4 — Cold-open intro & first city');
   let st = await story(page);
+  if (!st || !st.active) finding('P1', 'story-start', 'Story run not active after Begin Adventure', JSON.stringify(st));
   log(`Story state: ${JSON.stringify(st)}`);
-  if (!st || !st.active) {
-    finding('P1', 'story-start', 'Story run not active after Begin Adventure — start flow may need extra steps');
-    // try to push through any intro dialogue
-    for (let i = 0; i < 6; i++) { await page.mouse.click(215, 700); await page.waitForTimeout(400); }
-    await dismissModal(page);
-    st = await story(page);
-    log(`Story state (retry): ${JSON.stringify(st)}`);
+  // The run opens on a narration overlay with a single "Begin →" button — click it to walk in.
+  let introDone = false;
+  for (let k = 0; k < 5; k++) {
+    if (await clickText(page, 'Begin →', { timeout: 900 }) || await clickText(page, 'Walk in', { timeout: 500 })) { introDone = true; log('   advanced cold-open intro'); break; }
+    await page.waitForTimeout(500);
   }
+  if (!introDone) log('   (no cold-open "Begin →" found — may already be past it)');
+  await page.waitForTimeout(1000);
   await shot(page, 'city-0');
   const cityUI = await snapshotUI(page);
   log(`City facilities/buttons: ${cityUI.buttons.join(' | ')}`);
 
   // ===== PHASE 5: Professor / starter =====
   phase('PHASE 5 — Professor & starter');
-  const profOpened = await clickText(page, 'Professor') || await clickSel(page, '[onclick*="enterProfessor"]', { timeout: 2000 });
-  log(`Professor opened: ${profOpened}`);
-  await page.waitForTimeout(700); await shot(page, 'professor');
+  // The cold-open usually lands directly at the Professor's starter pick; otherwise open it.
+  let profUp = (await page.locator('.prof-pick-card').count()) > 0;
+  if (!profUp) { await nav(page, { text: 'Professor', sel: '[onclick*="enterProfessor"]', api: 'enterProfessor' }); await page.waitForTimeout(700); profUp = (await page.locator('.prof-pick-card').count()) > 0; }
+  log(`Professor starter cards present: ${profUp}`);
+  await shot(page, 'professor');
   const teamBefore = (await story(page))?.teamLen ?? 0;
-  // pick a starter option then accept
-  await clickSel(page, '.prof-choice, [onclick*="profSelect"], [onclick*="profChoose"], [onclick*="selectStarter"]', { timeout: 2000 });
-  const accepted = await clickText(page, 'Accept') || await clickSel(page, '[onclick*="profAccept"]', { timeout: 2000 });
-  log(`Starter accepted: ${accepted}`);
-  await page.waitForTimeout(900); await dismissModal(page); await page.waitForTimeout(500);
+  if (profUp) {
+    await clickSel(page, '.prof-pick-card .draft-card-sprite', { timeout: 2000 }) || await clickSel(page, '.prof-pick-card', { timeout: 1500 });
+    await page.waitForTimeout(400);
+    const acc = await clickSel(page, '#prof-accept-btn:not([disabled])', { timeout: 2000 })
+      || await page.evaluate(() => { try { window.StoryMode.profAccept(); return true; } catch (e) { return false; } });
+    log(`Starter accepted: ${acc}`);
+  } else {
+    finding('P1', 'professor', 'Professor starter selection did not appear after the cold-open intro');
+  }
+  await page.waitForTimeout(1000); await dismissModal(page); await page.waitForTimeout(600);
   await shot(page, 'after-starter');
   const teamAfter = (await story(page))?.teamLen ?? 0;
-  log(`Team size ${teamBefore} → ${teamAfter}`);
-  if (teamAfter <= teamBefore && profOpened) finding('P1', 'professor', 'Team did not grow after professor/starter flow', `before=${teamBefore} after=${teamAfter}`);
+  const starterSpecies = (await story(page))?.team ?? [];
+  log(`Team size ${teamBefore} → ${teamAfter} ${JSON.stringify(starterSpecies)}`);
+  if (teamAfter <= teamBefore) finding('P1', 'professor', 'Team did not grow after starter selection', `before=${teamBefore} after=${teamAfter}`);
 
   // back to city if we're in a sub-screen
   await clickText(page, 'Back to City', { timeout: 1500 });
