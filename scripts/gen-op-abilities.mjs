@@ -399,9 +399,18 @@ for (const speciesKey of sortedKeys) {
 
   const displayName = entry.name;
   const currentPool = currentAbilityPool(displayName, entry);
+  // legalSlots = the species' own legal abilities (slots 0/1/H). The loadout
+  // editor shows these PLUS the Awaken picks — it does NOT show the off-format
+  // abilities that appear only in CSV builds — so the Awaken target must be
+  // sized against the legal slot count, not the (CSV-inflated) currentPool, or
+  // a mon like Garchomp (2 legal slots, several CSV abilities) lands at 6.
+  const legalSlots = new Set(Object.values(entry.abilities || {}).filter(Boolean));
 
-  // Skip-if-varied rule: > 5 distinct current abilities → leave as-is
-  if (currentPool.size > 5) { skippedVaried++; continue; }
+  // Awaken now applies to EVERY species (no >5-ability skip) — illegal-but-
+  // fitting abilities, unlocked in the Dojo at City 6+. Give enough picks to
+  // bring legal slots + Awaken to at least 7 options, with a floor of 4 so
+  // ability-rich mons still receive a meaningful, diverse Awaken selection.
+  const TARGET = Math.max(4, 7 - Math.min(legalSlots.size, 3));
 
   const movePool = speciesMovePool(displayName, entry);
 
@@ -436,20 +445,23 @@ for (const speciesKey of sortedKeys) {
     'Mega Launcher': 'amp', 'Punk Rock': 'amp',
     'Beast Boost': 'utility', 'Regenerator': 'utility',
   };
+  // First pass: one per role for thematic spread (offense / defense / speed /
+  // weather / terrain / amp / utility) — keeps a mon's Awaken set diverse
+  // rather than three flavours of the same boost.
   const usedRoles = new Set();
   let picks = [];
   for (const x of scored) {
-    if (picks.length >= 3) break;
+    if (picks.length >= TARGET) break;
     const role = ROLE[x.ab];
     if (usedRoles.has(role)) continue;
     picks.push(x.ab);
     usedRoles.add(role);
   }
-  // If bucket gating left us with < 3, fill from highest remaining scores
-  // ignoring bucket — better to have 3 picks than 2 stylish ones.
-  if (picks.length < 3) {
+  // Second pass: once every role is represented, fill toward TARGET from the
+  // remaining positive-fit picks (allows a second pick from a role).
+  if (picks.length < TARGET) {
     for (const x of scored) {
-      if (picks.length >= 3) break;
+      if (picks.length >= TARGET) break;
       if (!picks.includes(x.ab)) picks.push(x.ab);
     }
   }
@@ -457,26 +469,33 @@ for (const speciesKey of sortedKeys) {
   // Apply hand-curated override (drops any picks already in current pool / off-list)
   if (HAND_OVERRIDES[displayName]) {
     const filtered = HAND_OVERRIDES[displayName].filter(a => !currentPool.has(a) && OP_30.includes(a));
-    // Top up with the bucket-picked list if override has < 3 valid entries
+    // Top up with the bucket-picked list if override has < TARGET valid entries
     for (const ab of picks) {
-      if (filtered.length >= 3) break;
+      if (filtered.length >= TARGET) break;
       if (!filtered.includes(ab)) filtered.push(ab);
     }
-    picks = filtered.slice(0, 3);
+    picks = filtered.slice(0, TARGET);
   }
 
-  // Final fill — if still < 3 (rare: a fully off-type frail mon),
-  // pad with universal picks.
-  if (picks.length < 3) {
-    const universals = ['Regenerator', 'Magic Guard', 'Adaptability', 'Sheer Force', 'Magic Bounce', 'Beast Boost'];
-    for (const u of universals) {
-      if (picks.length >= 3) break;
+  // Final fill — pad toward TARGET from the curated 30 (universals first,
+  // then anything left) so every mon reaches its target Awaken count even if
+  // few abilities scored a positive thematic fit.
+  if (picks.length < TARGET) {
+    const fillOrder = ['Regenerator', 'Magic Guard', 'Adaptability', 'Sheer Force',
+                       'Magic Bounce', 'Beast Boost', 'Multiscale', 'Protean',
+                       'Speed Boost', 'Tough Claws', 'Sand Rush', 'Drought', 'Drizzle'];
+    for (const u of fillOrder) {
+      if (picks.length >= TARGET) break;
+      if (!picks.includes(u) && !currentPool.has(u)) picks.push(u);
+    }
+    for (const u of OP_30) {
+      if (picks.length >= TARGET) break;
       if (!picks.includes(u) && !currentPool.has(u)) picks.push(u);
     }
     underfilled++;
   }
 
-  if (picks.length === 3) {
+  if (picks.length) {
     output[displayName] = picks;
     fullyAssigned++;
   }
@@ -487,6 +506,6 @@ fs.writeFileSync(OUT_PATH, JSON.stringify(output, null, 2) + '\n');
 console.log(`[gen-op-abilities] processed ${processed} species`);
 console.log(`  skipped (Mega/Gmax/Primal/Eternamax/Ultra forme): ${skippedForme}`);
 console.log(`  skipped (already has >5 current abilities):      ${skippedVaried}`);
-console.log(`  fully assigned (3 OP picks):                     ${fullyAssigned}`);
+console.log(`  assigned (4-6 Awaken picks → 7+ total):          ${fullyAssigned}`);
 console.log(`  underfilled (filled with universals):            ${underfilled}`);
 console.log(`  output:  ${OUT_PATH}`);
