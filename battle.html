@@ -43120,6 +43120,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_storyTryBeginInteraction()) return;
             try {
                 _markFacilitySeen('center');
+                // First Poké Center visit: a one-time Full Restore for the bag.
+                if (!sm.flags) sm.flags = {};
+                if (!sm.flags._centerRestoreGift) {
+                    sm.flags._centerRestoreGift = true;
+                    if (!sm.inventory) sm.inventory = {};
+                    sm.inventory.fullRestore = (sm.inventory.fullRestore | 0) + 1;
+                    try { save(); } catch (e) {}
+                    try { window.showToast && window.showToast('🏥 Nurse Joy tucks a Full Restore into your bag — for the road.', 4500); } catch (e) {}
+                }
                 _pcEnsureBoxArray();
                 _pcCurrentTab = 'storage';
                 document.querySelectorAll('.screen,.modal').forEach(el => el.classList.add('hidden'));
@@ -45620,6 +45629,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function enterShop(type) {
             _markFacilitySeen(type === 'dept' ? 'dept' : 'mart');
+            // First Pokémart visit: a one-time welcome gift of 5 Poké Balls.
+            if (type !== 'dept') {
+                if (!sm.flags) sm.flags = {};
+                if (!sm.flags._martBallGift) {
+                    sm.flags._martBallGift = true;
+                    if (!sm.balls) sm.balls = { poke:0, great:0, ultra:0, master:0 };
+                    sm.balls.poke = (sm.balls.poke | 0) + 5;
+                    try { save(); } catch (e) {}
+                    try { window.showToast && window.showToast('🛒 The clerk slides you 5 Poké Balls — on the house.', 4500); } catch (e) {}
+                }
+            }
             // Story-embedded tutorial — Clerk cameo. Replaces the prior plain
             // alert tips ('first-mart', 'first-dept'). The shop screen is
             // rendered below the overlay; on Continue the player drops into it.
@@ -48283,6 +48303,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             const allItems = [...POKEMART_ITEMS, ...DEPT_ITEMS, ...getStoryFeaturedItems()];
             let hasAny = false;
+            // Poké Balls live in sm.balls (separate from inventory) — surface them first.
+            [{k:'poke',n:'Poké Ball'},{k:'great',n:'Great Ball'},{k:'ultra',n:'Ultra Ball'},{k:'master',n:'Master Ball'}].forEach(b => {
+                const qty = (sm.balls && sm.balls[b.k]) | 0;
+                if (qty === 0) return;
+                hasAny = true;
+                const div = document.createElement('div');
+                div.className = 'story-bag-item';
+                div.style.cursor = 'default';
+                div.innerHTML = `<img src="sprites/pokesprite/balls/${b.k}.png" alt="" width="22" height="22" decoding="async" style="width:22px;height:22px;image-rendering:pixelated;flex-shrink:0;align-self:center;">
+                    <div class="story-bag-item-text"><div class="name">${b.n}</div><div class="qty">×${qty}</div></div>
+                    <span style="font-size:10px;color:#888;align-self:center;padding:4px 8px;">catch</span>`;
+                bagEl.appendChild(div);
+            });
             // Voucher items — earned, not bought, and not sellable. Surface them at
             // the top so players see the bundle they earned from gym victories and
             // Pokédex milestones. Each voucher = one free use of its matching tutor
@@ -48306,7 +48339,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 div.innerHTML = `<div class="story-bag-item-text">
                     <div class="name">${item.name}</div>
                     <div class="qty">×${qty}</div>
-                    <div class="eff">${item.desc}</div>
+                    <div class="eff">${String(item.desc).split('. ')[0]}.</div>
                 </div>
                 <span style="font-size:10px;color:#888;align-self:center;padding:4px 8px;border:1px solid #444;">Voucher</span>`;
                 bagEl.appendChild(div);
@@ -48328,7 +48361,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 div.innerHTML = icon + `<div class="story-bag-item-text">
                     <div class="name">${v.name} <span style="color:#9ab;font-size:10px;">(+${IV_VITAMIN_STEP} ${statLabel} IV, cap ${IV_MAX})</span></div>
                     <div class="qty">×${qty}</div>
-                    <div class="eff">${v.desc}</div>
+                    <div class="eff">${String(v.desc).split('. ')[0]}.</div>
                 </div>
                 <button onclick="event.stopPropagation();window.StoryMode.openPermBoostPicker('${v.id}')"
                     style="font-size:11px;padding:4px 10px;color:#9bf;border-color:#9bf;flex-shrink:0;align-self:center;">
