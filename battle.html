@@ -18477,9 +18477,66 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return dmg;
         }
 
+        // AI: resolve damage for moves the standard formula can't model — fixed-damage,
+        // OHKO, and percent-HP moves. Mirrors the engine's special-case paths (Seismic Toss
+        // ~21799, OHKO ~21938, Super Fang ~21900). Returns the predicted HP loss, or null if
+        // `move` is an ordinary formula-based move. Without this the AI estimates 0 for every
+        // Seismic Toss / Night Shade / Fissure and never recognises the KO it can land.
+        function aiResolveFixedDamage(attacker, defender, move) {
+            const n = move.name;
+            if (n === "Fissure" || n === "Horn Drill" || n === "Guillotine" || n === "Sheer Cold") {
+                if (getMoveEffectiveness(move.type, defender.type1, defender.type2) === 0) return 0;
+                const _mb = attacker.ability === "Mold Breaker" || attacker.ability === "Teravolt" || attacker.ability === "Turboblaze";
+                const _atFull = defender.currentHp === defender.maxHp;
+                if (_atFull && ((defender.ability === "Sturdy" && !_mb) || defender.item === "Focus Sash")) return Math.max(0, defender.currentHp - 1);
+                return defender.currentHp;
+            }
+            if (n === "Seismic Toss") return getMoveEffectiveness("Fighting", defender.type1, defender.type2) === 0 ? 0 : 50;
+            if (n === "Night Shade") return getMoveEffectiveness("Ghost", defender.type1, defender.type2) === 0 ? 0 : 50;
+            if (n === "Dragon Rage") return 40;
+            if (n === "Sonic Boom" || n === "SonicBoom") return getMoveEffectiveness("Normal", defender.type1, defender.type2) === 0 ? 0 : 20;
+            if (n === "Super Fang" || n === "Nature's Madness") {
+                return getMoveEffectiveness(move.type, defender.type1, defender.type2) === 0 ? 0 : Math.max(1, Math.floor(defender.currentHp / 2));
+            }
+            if (n === "Final Gambit") return getMoveEffectiveness("Fighting", defender.type1, defender.type2) === 0 ? 0 : attacker.currentHp;
+            if (n === "Endeavor") {
+                if (getMoveEffectiveness(move.type, defender.type1, defender.type2) === 0) return 0;
+                return defender.currentHp > attacker.currentHp ? (defender.currentHp - attacker.currentHp) : 0;
+            }
+            return null;
+        }
+
+        // AI: expected number of hits for a multi-hit move (mirrors engine ~22301).
+        function aiExpectedHits(attacker, move) {
+            const mh = move.multihit;
+            if (mh != null) {
+                if (typeof mh === "number") return Math.max(1, Math.min(25, mh));
+                if (Array.isArray(mh) && mh.length >= 2) {
+                    const mn = mh[0], mx = mh[1];
+                    if (mn === mx) return mn;
+                    if (attacker.ability === "Skill Link") return mx;
+                    if (attacker.item === "Loaded Dice") return (Math.max(mn, 4) + mx) / 2;
+                    return (mn === 2 && mx === 5) ? 3.2 : (mn + mx) / 2; // 2-5 weighted avg ≈ 3.17
+                }
+            }
+            // Parental Bond grants a second 0.25× hit on single-strike damaging moves.
+            if (attacker.ability === "Parental Bond" && move.cat !== "Status") return 1.25;
+            return 1;
+        }
+
         // AI: estimate damage a move deals (simplified)
         function aiEstimateDmg(attacker, defender, move) {
-            if (move.cat === "Status" || move.pow <= 0) return 0;
+            if (move.cat === "Status") return 0;
+            // Fixed-damage / OHKO / percent-HP moves bypass the formula entirely.
+            const _fixed = aiResolveFixedDamage(attacker, defender, move);
+            if (_fixed !== null) return _fixed;
+            // Resolve base power: fall back to the assumed power table for variable-power moves
+            // (Gyro Ball, Grass Knot, Eruption…) so they aren't scored as zero-damage.
+            let _basePow = move.pow;
+            if (_basePow <= 0) {
+                const _vp = (typeof _varPowerMoveBP !== "undefined" && _varPowerMoveBP) ? _varPowerMoveBP[move.name] : 0;
+                if (_vp > 0) _basePow = _vp; else return 0;
+            }
             if (abilityImmunity(move, defender, attacker)) return 0;
             let eff = getMoveEffectiveness(move.type, defender.type1, defender.type2);
             let stab = calcSTAB(attacker, move);
@@ -18522,7 +18579,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let accFactor = (!move.acc || move.acc <= 0) ? 1 : (move.acc / 100);
             let abMod = abilityDamageMod(move, defender, attacker);
             // Base power boosts from abilities
-            let _aiPow = move.pow || 0;
+            let _aiPow = _basePow;
             const _aiJaw = ["Bite","Crunch","Fire Fang","Fishious Rend","Hyper Fang","Ice Fang","Jaw Lock","Poison Fang","Psychic Fangs","Thunder Fang"];
             const _aiPulse = ["Aura Sphere","Dark Pulse","Dragon Pulse","Water Pulse","Origin Pulse","Heal Pulse","Terrain Pulse"];
             const _aiSlice = ["Aerial Ace","Air Cutter","Air Slash","Aqua Cutter","Behemoth Blade","Bitter Blade","Ceaseless Edge","Cross Poison","Cut","Fury Cutter","Kowtow Cleave","Leaf Blade","Mighty Cleave","Night Slash","Population Bomb","Psyblade","Psycho Cut","Razor Leaf","Razor Shell","Sacred Sword","Secret Sword","Slash","Solar Blade","Stone Axe","Tachyon Cutter","X-Scissor"];
@@ -18544,6 +18601,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (attacker.ability === "Sheer Force" && move.cat !== "Status" && window._aiSheerForceMoves && window._aiSheerForceMoves.has(move.name)) {
                 _aiPow = Math.floor(_aiPow * 1.3);
             }
+            // Common conditional power changes the engine applies at attack time (mirror ~22327-22354)
+            // so KO/threat math accounts for the move's real power against this defender right now.
+            if (move.name === "Knock Off" && defender.item && !defender.knockedOff && typeof isKnockOffImmuneHeldItem === "function" && !isKnockOffImmuneHeldItem(defender, defender.item)) _aiPow = Math.floor(_aiPow * 1.5);
+            if ((move.name === "Hex" || move.name === "Infernal Parade") && defender.status) _aiPow *= 2;
+            if (move.name === "Venoshock" && (defender.status === "PSN" || defender.status === "TOX")) _aiPow *= 2;
+            if (move.name === "Barb Barrage" && (defender.status === "PSN" || defender.status === "TOX")) _aiPow *= 2;
+            if (move.name === "Brine" && defender.currentHp * 2 <= defender.maxHp) _aiPow *= 2;
+            if (move.name === "Facade" && (attacker.status === "BRN" || attacker.status === "PSN" || attacker.status === "TOX" || attacker.status === "PAR")) _aiPow *= 2;
+            if (move.name === "Acrobatics" && !attacker.item) _aiPow *= 2;
+            if ((move.name === "Bolt Beak" || move.name === "Fishious Rend") && !(defender.volatile && defender.volatile.movedThisTurn)) _aiPow *= 2;
             // Marvel Scale: reduce physical damage vs statused defender (MB-bypassed via aiDefAbilityActive)
             if (aiDefAbilityActive(attacker, defender) && defender.ability === "Marvel Scale" && defender.status && move.cat === "Physical") abMod *= (2/3);
             // Screens: Reflect halves physical, Light Screen halves special, Aurora Veil halves both.
@@ -18565,13 +18632,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
             let dmg = ((22 * _aiPow * A / D) / 50 + 2) * stab * eff * lifeOrb * accFactor * abMod * screenMod;
+            // Multi-hit / Parental Bond: scale by expected number of strikes (engine ~22301).
+            const _hits = aiExpectedHits(attacker, move);
+            if (_hits > 1) dmg *= _hits;
             // Sturdy + Focus Sash: at full HP, the engine survives an OHKO with 1 HP (engine ~16727,
             // ~17699). Mirror both ceilings so the AI doesn't score a one-shot as a guaranteed KO and
-            // miss the real follow-up turn. Sturdy is MB/Gastro-Acid-bypassed; Focus Sash is an item
-            // (rare suppression via Magic Room/Embargo/Klutz is left to the engine's live path).
+            // miss the real follow-up turn. A multi-hit move breaks through (each strike is separate),
+            // so the 1-HP floor only applies to single-strike moves. Sturdy is MB/Gastro-Acid-bypassed;
+            // Focus Sash is an item (rare suppression via Magic Room/Embargo/Klutz left to the engine).
             const _sashActive = defender.item === "Focus Sash" && defender.currentHp === defender.maxHp;
             const _sturdyActive = aiDefAbilityActive(attacker, defender) && defender.ability === "Sturdy" && defender.currentHp === defender.maxHp;
-            if ((_sturdyActive || _sashActive) && dmg >= defender.currentHp) {
+            if (_hits <= 1 && (_sturdyActive || _sashActive) && dmg >= defender.currentHp) {
                 dmg = Math.max(0, defender.currentHp - 1);
             }
             // Disguise (Mimikyu): the first hit only deals 1/8 maxHp chip; full damage is blocked.
@@ -18760,6 +18831,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return best;
         }
 
+        // AI: predict which bench mon the player is most likely to bring in. Used only when the
+        // player is clearly losing the current matchup (we threaten a KO), so the AI can pick the
+        // move that also pressures the incoming counter — the single-step "double" read a strong
+        // human makes. Bounded: one pass over the player's live bench, no recursion.
+        function aiPredictPlayerSwitchIn(ourActive) {
+            if (!state || !state.playerParty || !state.pActive || !ourActive) return null;
+            const bench = state.playerParty.filter(m => m && m !== state.pActive && m.currentHp > 0);
+            if (!bench.length) return null;
+            const w = getCurrentWeather();
+            const isTR = state.trickRoom > 0;
+            const ourSpe = getEffectiveSpeed(ourActive, w);
+            let best = null, bestScore = -Infinity;
+            bench.forEach(mon => {
+                let theirDmg = 0;
+                (mon.moves || []).forEach(m => { if (m && m.cat !== "Status" && m.pp > 0) { const d = aiEstimateDmg(mon, ourActive, m); if (d > theirDmg) theirDmg = d; } });
+                let ourDmg = 0;
+                (ourActive.moves || []).forEach(m => { if (m && m.cat !== "Status") { const d = aiEstimateDmg(ourActive, mon, m); if (d > ourDmg) ourDmg = d; } });
+                const monSpe = getEffectiveSpeed(mon, w);
+                const outspeedsUs = isTR ? (monSpe < ourSpe) : (monSpe > ourSpe);
+                const score = theirDmg - ourDmg * 0.6 + (mon.currentHp / mon.maxHp) * 20 + (outspeedsUs ? 10 : 0);
+                if (score > bestScore) { bestScore = score; best = mon; }
+            });
+            return best;
+        }
+
         // AI chooses which gimmick to activate this turn (returns string key or null)
         function aiChooseGimmick(attacker, defender) {
             let bd = attacker.buildData;
@@ -18934,6 +19030,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     let foeBench = state.foeParty.filter(m => m !== attacker && m.currentHp > 0).length;
     let playerBench = state.playerParty.filter(m => m !== defender && m.currentHp > 0).length;
     let isEndgame = foeBench === 0 || playerBench === 0;
+
+    // Switch-in prediction: only when the player is clearly losing this matchup (we can KO it, or
+    // 2HKO it while it can't meaningfully hurt us) AND has a bench to bring in. Computed once per
+    // turn; feeds a small per-move nudge below so the AI loads the move that punishes the likely
+    // counter. Skipped against substitutes (no clean read) and in PvP (mirror match, no edge).
+    let predictedSwitchIn = null;
+    if (playerBench > 0 && state.mode !== 'pvp' && !defHasSub) {
+        const _playerLosing = canKO || (can2HKO && threat < attacker.currentHp * 0.5);
+        if (_playerLosing) { try { predictedSwitchIn = aiPredictPlayerSwitchIn(attacker); } catch (e) { predictedSwitchIn = null; } }
+    }
 
     let bestMove = validMoves[0]; let maxScore = -Infinity;
     validMoves.forEach(move => {
@@ -19164,8 +19270,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Don't setup if opponent is low — just KO them
                     if (canKO) score *= 0.2;
 
-                    // Phazer / Haze / Unaware on the field or bench — setup will be undone or ignored.
-                    if (defHasPhazer || defHasUnaware) score *= 0.25;
+                    // Active phazer (Whirlwind/Roar/Dragon Tail/Circle Throw/Haze/Clear Smog/Topsy-
+                    // Turvy) removes the boost EVERY turn, so a soft multiplier still leaves setup as
+                    // the top score and the AI loops it forever (it never self-terminates because the
+                    // boost never accumulates). Hard-cap it instead so any real attack wins out.
+                    // Unaware only ignores the boost (boosts still accumulate, so setup self-limits
+                    // as currentBoost climbs) — it keeps the softer penalty. A bench phazer hasn't
+                    // come in yet, so it's only a mild discouragement.
+                    if (defHasPhazer) score = Math.min(score, 5);
+                    else if (defHasUnaware) score *= 0.25;
                     else if (benchHasPhazer) score *= 0.55;
                 }
             }
@@ -19194,7 +19307,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         let isSteel = defender.type1 === "Steel" || defender.type2 === "Steel";
                         if (isPoison || isSteel) score = 0;
                     }
-                    if (defHpPct >= 0.9) score += 12;
+                    // Only reward the "status now while they're healthy" timing when the status can
+                    // actually land — otherwise the AI clicks Toxic into a Steel / T-Wave into a
+                    // Ground / Will-O into a Fire just because the target is at full HP.
+                    if (score > 0 && defHpPct >= 0.9) score += 12;
                 }
             }
             // Taunt
@@ -19341,6 +19457,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Speed-drop moves on a faster foe = future outspeed
             if (!outsped && (move.name === "Icy Wind" || move.name === "Bulldoze" || move.name === "Electroweb" || move.name === "Rock Tomb" || move.name === "Glaciate" || move.name === "Drum Beating")) score += 4;
             // Contact + Static / Flame Body / Poison Point on opponent — handled by engine; no AI bonus
+            // Switch-in prediction nudge: prefer coverage that also pressures the counter the player
+            // is likely to bring in. Small magnitude (±8) so it only breaks ties between comparable
+            // moves — it never overrides a KO or a clear damage lead.
+            if (predictedSwitchIn) {
+                const siEff = getMoveEffectiveness(move.type, predictedSwitchIn.type1, predictedSwitchIn.type2);
+                if (siEff === 0 || abilityImmunity(move, predictedSwitchIn, attacker)) score -= 8;
+                else if (siEff >= 2) score += 8;
+                else if (siEff < 1) score -= 4;
+            }
         }
 
         // Small random factor (kept tiny so the scoring system dominates)
@@ -19353,8 +19478,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // AI decision: should we switch or attack?
         function aiDecision() {
     let attacker = state.fActive, defender = state.pActive;
-    // Don't switch if trapped or locked
-    if (attacker.volatile.choiceLock) return null;
+    // Mid-rampage (Outrage/Petal Dance) and recharge (Hyper Beam) genuinely lock the whole turn —
+    // can't switch. Choice lock does NOT prevent switching (it only restricts which MOVE we can
+    // use), so it is handled below by evaluating the matchup through the locked move and pivoting
+    // out if that move is useless — otherwise a Choice mon locked into an immune/walled move spams
+    // 0 damage forever (e.g. an Electric move into Lightning Rod).
     if (attacker.volatile.lockMove && attacker.volatile.lockTurns > 0) return null;
     if (attacker.volatile.recharge) return null;
     // Ghost types and Shed Shell ignore all trapping abilities
@@ -19371,8 +19499,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     let bench = state.foeParty.filter(m => m !== attacker && m.currentHp > 0);
     if (bench.length === 0) return null;
 
+    // When choice-locked we can only ever use ONE move, so score the matchup through that move
+    // alone. A mon locked into a 0-damage move (Electric vs Lightning Rod, or a resisted move into
+    // a hard wall) then reads as "walled" below and pivots out instead of being stranded on it.
+    const _lockedName = attacker.volatile.choiceLock;
+    const _evalMoves = _lockedName ? attacker.moves.filter(m => m && m.name === _lockedName) : attacker.moves;
+
     let myBestDmg = 0;
-    attacker.moves.forEach(m => { if (m.cat !== "Status" && m.pp > 0) { let d = aiEstimateDmg(attacker, defender, m); if (d > myBestDmg) myBestDmg = d; } });
+    _evalMoves.forEach(m => { if (m.cat !== "Status" && m.pp > 0) { let d = aiEstimateDmg(attacker, defender, m); if (d > myBestDmg) myBestDmg = d; } });
 
     let threat = aiThreatScore(defender, attacker);
     let hpPct = attacker.currentHp / attacker.maxHp;
@@ -19388,8 +19522,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
     let walled = myBestDmg < defender.maxHp * 0.08 && myBestDmg < defender.currentHp * 0.12;
     // Can we KO?
     let canKO = myBestDmg >= defender.currentHp;
-    // Do we have priority that KOs?
-    let hasPriorityKO = attacker.moves.some(m => m.pri > 0 && m.pp > 0 && m.cat !== "Status" && aiEstimateDmg(attacker, defender, m) >= defender.currentHp);
+    // Do we have priority that KOs? (Restricted to the locked move when choice-locked.)
+    let hasPriorityKO = _evalMoves.some(m => m.pri > 0 && m.pp > 0 && m.cat !== "Status" && aiEstimateDmg(attacker, defender, m) >= defender.currentHp);
 
     // Never switch if we can KO (unless priority covers it)
     if (canKO && !willDieFirst) return null;
@@ -53995,8 +54129,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     getStageMult: typeof getStageMult === 'function' ? getStageMult : null,
                     getMonGrade: typeof getMonGrade === 'function' ? getMonGrade : null,
                     getBST: typeof getBST === 'function' ? getBST : null,
+                    // AI internals — captured here at definition time so tests reach the REAL
+                    // functions even after load-engine.js stubs the window globals for playTurn.
+                    getBestMove: getBestMove,
+                    aiDecision: typeof aiDecision === 'function' ? aiDecision : null,
+                    aiChooseGimmick: typeof aiChooseGimmick === 'function' ? aiChooseGimmick : null,
+                    aiEstimateDmg: typeof aiEstimateDmg === 'function' ? aiEstimateDmg : null,
+                    aiThreatScore: typeof aiThreatScore === 'function' ? aiThreatScore : null,
+                    aiBestSwitch: typeof aiBestSwitch === 'function' ? aiBestSwitch : null,
+                    aiPredictPlayerSwitchIn: typeof aiPredictPlayerSwitchIn === 'function' ? aiPredictPlayerSwitchIn : null,
+                    getMoveEffectiveness: typeof getMoveEffectiveness === 'function' ? getMoveEffectiveness : null,
                     get state() { return state; },
                     set state(v) { state = v; },
+                    get settings() { return settings; },
                     get baseStats() { return baseStats; },
                     get movesDB() { return movesDB; },
                 };
