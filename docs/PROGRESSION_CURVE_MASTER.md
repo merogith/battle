@@ -55,7 +55,9 @@ Array order = play order (rowIds are NOT sequential — rivals are spliced in).
 Columns: **idx** = array index · **rowId** = internal id · **B** = badges *before* this fight ·
 **gradeWeights** = `{g1/g2/g3/g4}` % · **Tier** = build tier from `_storyBuildTierForEvent` ·
 **Foe×** = early-soft / stage-gated stat mult (BEFORE difficulty mode & league boost) ·
-**Cap** = party cap (both sides; finales force 6) · **Gmk** = gimmick slots unlocked ·
+**Cap** = party cap (both sides; finales force 6) · **Gmk** = gimmick slots unlocked
+(⚠️ the per-row 1/2/3 values below are the **legacy per-gym drip**; the **current rule is all
+four at badge 5** — Colress/City 6, see §2e — so every row with B ≥ 5 is effectively 4) ·
 **Coins** = base payout (× difficulty × progress taper).
 
 | idx | rowId | Type / name | City | B | gradeWeights | Tier | Foe× | Cap | Gmk | Coins | Unlock triggers fired here · reward→mechanic notes |
@@ -91,14 +93,14 @@ Columns: **idx** = array index · **rowId** = internal id · **B** = badges *bef
 | 28 | 28 | **City5** Resort | C5 | 4 | — | — | — | 6 | 0 | — | Facility debut: **Poké Casino**. |
 | 29 | 29 | Battle · Gym Trainer 1 | C5 | 4 | 0/0/100/0 | T2 | 1.00 | 6 | 0 | 3050 | |
 | 30 | 30 | Battle · Gym Trainer 2 | C5 | 4 | 0/5/95/0 | T2 | 1.00 | 6 | 0 | 3050 | |
-| 31 | 31 | Battle · **Gym Leader 5** | C5 | 4 | 0/0/100/0 | **T2** | **1.00** | 6 | 0 | 4150 | **→ Badge 5 → FIRST GIMMICK SLOT.** Bundle: **Wishing Piece** ↔ Colress (next city). |
+| 31 | 31 | Battle · **Gym Leader 5** | C5 | 4 | 0/0/100/0 | **T2** | **1.00** | 6 | 0 | 4150 | **→ Badge 5 → ALL FOUR GIMMICKS UNLOCK** (equippable at Colress, next city). Bundle: **Wishing Piece**. |
 | 32 | 32 | City5 (post-gym) | C5 | 5 | — | — | — | 6 | 1 | — | |
 | 33 | 33 | Battle · Basic Trainer | — | 5 | 0/0/100/0 | T2 | 1.05 | 6 | 1 | 2200 | THEMED: villain. **Stage 3 stat-mult begins (1.05).** |
 | 34 | 34 | Battle · Elite Trainer | — | 5 | 0/15/85/0 | T3 | 1.05 | 6 | 1 | 2700 | THEMED: cursed. **G2 first appears (filler).** |
 | 35 | 35 | **City6** Metropolis | C6 | 5 | — | — | — | 6 | 1 | — | Facilities debut: **Department Store** (Great Balls), **Colress** (equip gimmicks). |
 | 36 | 36 | Battle · Gym Trainer 1 | C6 | 5 | 0/10/90/0 | T3 | 1.05 | 6 | 1 | 3300 | |
 | 37 | 37 | Battle · Gym Trainer 2 | C6 | 5 | 0/15/85/0 | T3 | 1.05 | 6 | 1 | 3300 | |
-| 38 | 38 | Battle · **Gym Leader 6** | C6 | 5 | 0/0/100/0¹ | T3 | 1.05 | 6 | 1 | 5550 | **→ Badge 6** (2 gimmick slots). **Enemy gimmicks first appear (GL6).** Gym6 snapshot→Fight Club. |
+| 38 | 38 | Battle · **Gym Leader 6** | C6 | 5 | 0/0/100/0¹ | T3 | 1.05 | 6 | 4 | 5550 | **→ Badge 6.** (All four unlocked since badge 5.) **Enemy gimmicks first appear (GL6)** — pool can roll any of the four. Gym6 snapshot→Fight Club. |
 | 39 | 40 | City6 (post-gym) | C6 | 6 | — | — | — | 6 | 2 | — | |
 | 40 | 39 | Battle · **Rival** (phase 3) | — | 6 | 0/50/50/0 | T3 | ~1.05 | 6 | 2 | 5400 | "On the Way Up." |
 | 41 | 41 | Battle · Basic Trainer | — | 6 | 0/20/80/0 | T2 | ~1.05 | 6 | 2 | 2500 | THEMED: multitype. (Basic stays T2 — never T3.) |
@@ -113,7 +115,7 @@ Columns: **idx** = array index · **rowId** = internal id · **B** = badges *bef
 | 50 | 50 | **City8** Final-gym | C8 | 7 | — | — | — | 6 | 3 | — | Dept Store, Dojo, EV Trainer (last polish before league). |
 | 51 | 51 | Battle · Gym Trainer 1 | C8 | 7 | 0/85/15/0 | T3 | 1.10 | 6 | 3 | 3650 | |
 | 52 | 52 | Battle · Gym Trainer 2 | C8 | 7 | 0/95/5/0 | T3 | 1.10 | 6 | 3 | 3650 | |
-| 53 | 53 | Battle · **Gym Leader 8** | C8 | 7 | 0/100/0/0² | **T4** | 1.10 | 6 | 3 | 5950 | **→ Badge 8 → 4 gimmick slots.** GL8 tier spike (T4, G1 ace). **Mystery Figure legendary gate** (forced legendary swap-in @C8). Bundle: 3 Ultra Balls. |
+| 53 | 53 | Battle · **Gym Leader 8** | C8 | 7 | 0/100/0/0² | **T4** | 1.10 | 6 | 4 | 5950 | **→ Badge 8.** GL8 tier spike (T4, G1 ace). **Mystery Figure legendary gate** (forced legendary swap-in @C8). Bundle: 3 Ultra Balls. |
 | 54 | 55 | City8 (post-gym) | C8 | 8 | — | — | — | 6 | 4 | — | Legendary swap forced here before Victory Road. |
 | 55 | 56 | Battle · Elite Trainer | — | 8 | 0/100/0/0 | T4 | ~1.12 | 6 | 4 | 4200 | THEMED: villain. **All trainers T4 from 8 badges.** |
 | 56 | 57 | Battle · Elite Trainer | — | 8 | 10/90/0/0 | T4 | ~1.12 | 6 | 4 | 4800 | **G1 first appears.** |
@@ -178,13 +180,14 @@ Extra knob: post-Gym-4 EV nudge (`_storyMaybeNudgeFoeEVs` `33650`) — from `bad
 | Difficulty mode | `applyFoeDifficultyScaling` | VE 0.70 / E 0.85 / N 1.00 / H 1.15 / C 1.30 |
 | League boost | `applyStoryLeagueFoeStatBoost` | E1–4 ×1.22, Champ/Rival ×1.40, Mystery ×1.50 |
 
-### 2e. Gimmick gate — single shared, badge-keyed (`battle.html:42146`) ✅ verified live
-`slotsUnlocked = badges < 5 ? 0 : min(4, badges−4)`; order **mega → dmax → tera → z**.
-- Badges 1–4 = 0 · GL5→1 · GL6→2 · GL7→3 · GL8→4.
+### 2e. Gimmick gate — single shared, badge-keyed (`onBattleEnd`, battle.html ~42749) ✅ verified live
+`slotsUnlocked = badges < 5 ? 0 : 4`; order **mega → dmax → tera → z**.
+- Badges 1–4 = 0 · **from badges ≥ 5 (Colress / City 6) all four enabled mechanics unlock together.** (Was a per-gym drip GL5→1 · GL6→2 · GL7→3 · GL8→4; changed so Tera/Z are no longer gated to the very end of the run.)
+- Re-derived from the badge gate on every `load()`, so saves made under the old drip (or any save at badges≥5) heal immediately rather than waiting for the next victory.
 - **Shared** by player **and** enemy/wild/professor (all read `sm.unlockedGimmicks`); NOT player-only.
-- Enemy gimmicks first appear at **GL6** (unlock lands after the GL5 win).
-- **Cable Link IS gated** (`_withStoryPlayerGimmickGate` `11419`, wraps the makeBuild at `43513`). Trade-evolution (Stone Sage + Metal Coat etc.) is a **separate gold-gate**, not a battle gimmick.
-- Mystery Figure boss forces **all** on (`34282`). Colress (where you *equip*) debuts C6 — one gym after the first unlock.
+- Enemy gimmicks first appear at **GL6** (the fight after the badges≥5 unlock); from then the enemy pool can roll **any** of the four (previously each entered the pool one gym at a time).
+- **Cable Link IS gated** (`_withStoryPlayerGimmickGate`, wraps the makeBuild). Trade-evolution (Stone Sage + Metal Coat etc.) is a **separate gold-gate**, not a battle gimmick.
+- Mystery Figure boss forces **all** on. Colress (where you *equip*) debuts C6 — the same gate as the unlock.
 
 ### 2f. Party / foe size
 - Player cap `_storyMaxPartySize` (`41091`): `clamp(2+badges, 2, 6)`.
@@ -201,7 +204,7 @@ Extra knob: post-Gym-4 EV nudge (`_storyMaybeNudgeFoeEVs` `33650`) — from `bad
 | Reward | First drop | Redeemer / mechanic | Aligned? |
 |---|---|---|---|
 | Ability Capsule | GL4 (badge 3→4) | Battle Dojo debuts **C4** | ✅ |
-| Wishing Piece | GL5 (badge 4→5) | First gimmick slot @badge5; Colress @**C6** | ✅ |
+| Wishing Piece | GL5 (badge 4→5) | All four gimmicks unlock @badge5; Colress @**C6** | ✅ |
 | Ultra Ball | GL4 | catching live since C1 | ✅ |
 | Master Ball | Caged God arc (post-HoF) | the one fight that needs it | ✅ |
 | Vitamins (+3 IV) | drop-only, any time | applied anywhere | n/a |

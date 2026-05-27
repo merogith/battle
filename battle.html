@@ -32152,17 +32152,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         /** v15: catch / PC / balls / pokedex schema + hardcore difficulty removal. Adds new save fields, migrates hardcore→normal, assigns stable ids to existing team mons. */
         function migrateStoryPreV15() {
             if (!Array.isArray(sm.pcBox)) sm.pcBox = [];
-            if (!sm.balls || typeof sm.balls !== 'object') sm.balls = { poke: 5, great: 0, ultra: 0, master: 0 };
+            // The `sm` defaults block pre-populates balls:{poke:0}, so a `!sm.balls` guard would
+            // never fire here and a migrated player would start with 0 balls. This runs only for
+            // _loadedVer < 15 (which predate the ball inventory entirely), so grant the v15 starter
+            // stock unconditionally.
+            sm.balls = { poke: 5, great: 0, ultra: 0, master: 0 };
             if (!sm.pokedex || typeof sm.pokedex !== 'object' || !Array.isArray(sm.pokedex.seen) || !Array.isArray(sm.pokedex.caught)) {
                 sm.pokedex = { seen: [], caught: [] };
             }
             if (typeof sm.catchUnlocked !== 'boolean') sm.catchUnlocked = false;
             // Post-HoF Mystery Figure climax flag (introduced after Caged God arc shipped).
             // Existing post-HoF saves (boss arc already available) should not be forced
-            // back through the climax — flip the flag if they're already past HoF.
-            if (typeof sm.postHofMysteryClimaxDone !== 'boolean') {
-                sm.postHofMysteryClimaxDone = !!(sm.bossArc && sm.bossArc.available);
-            }
+            // back through the climax. Same shadowing trap as balls above — the defaults block
+            // sets this to false, so a `typeof !== 'boolean'` guard never fires and a player past
+            // HoF gets dragged back through the climax. Derive unconditionally (pre-v15 only).
+            sm.postHofMysteryClimaxDone = !!(sm.bossArc && sm.bossArc.available);
             if (sm.storyDifficulty === 'hardcore') sm.storyDifficulty = 'normal';
             // Stamp stable ids on every slot in team AND pcBox. The pre-v15
             // version of this loop only iterated sm.team; pcBox didn't exist
@@ -32509,7 +32513,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 Object.assign(sm, d);
                 sm.version = SAVE_VER;
                 if (!sm.gymCleared) sm.gymCleared = {};
-                if (!sm.unlockedGimmicks) sm.unlockedGimmicks = [];
+                // Re-derive unlocked gimmicks from the badge gate on every load. The runtime
+                // unlock only fires on battle victory, so a save made under the old per-gym drip
+                // (or any save sitting at badges>=5) would otherwise keep a stale partial unlock
+                // until the next milestone win. Mirrors the canonical rule in onBattleEnd:
+                // all four enabled mechanics unlock together at badges>=5 (Colress / City 6).
+                {
+                    const s = sm.settings || {};
+                    const order = [];
+                    if (s.megaOn) order.push('mega');
+                    if (s.dynaOn) order.push('dmax');
+                    if (s.teraOn) order.push('tera');
+                    if (s.zOn) order.push('z');
+                    const slots = (sm.badges | 0) < 5 ? 0 : 4;
+                    sm.unlockedGimmicks = order.slice(0, Math.min(slots, order.length));
+                }
                 if (!sm.cityRerollsUsed) sm.cityRerollsUsed = {};
                 if (!sm.artifactsDisabled) sm.artifactsDisabled = [];
                 if (!('currentEnemyLock' in sm)) sm.currentEnemyLock = null;
@@ -36969,7 +36987,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 sprite: 'Nurse', name: 'Nurse Joy', nameplate: 'Pokémon Center',
                 lines: [
                     '"Welcome to the Pokémon Center! Your team\'s already healed — the road takes care of that for me."',
-                    '"Upstairs is the PC: ten slots of cold storage for every partner you\'ve caught but can\'t field today. Deposit, withdraw, release — the usual courtesies."',
+                    '"Upstairs is the PC: thirty slots of cold storage for every partner you\'ve caught but can\'t field today. Deposit, withdraw, release — the usual courtesies."',
                     '"Downstairs is the Underground. Quieter, dimmer, very interested in buying any Pokémon you\'ll never use. The only mons off the table are your starter and your last party member — every center on the road draws those lines. Take a Potion before you go — first-aid kit on the way out the door."'
                 ],
                 onContinue: function () {
@@ -38563,15 +38581,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.gymCleared) sm.gymCleared = {};
             sm.gymCleared[6] = true;
             try { _storyBackfillCitiesArrived(); } catch (e) {}
-            // Seed unlocked gimmicks to match the new badges=6 unlock state
-            // (mega + dmax), plus a Wishing Piece for voucher-path testing.
+            // Seed unlocked gimmicks to match the Colress unlock state — all
+            // four enabled mechanics unlock together at badges >= 5. Plus a
+            // Wishing Piece for voucher-path testing.
             {
                 const order = [];
                 if (sm.settings.megaOn) order.push('mega');
                 if (sm.settings.dynaOn) order.push('dmax');
                 if (sm.settings.teraOn) order.push('tera');
                 if (sm.settings.zOn) order.push('z');
-                const slotsUnlocked = Math.min(4, Math.max(0, (sm.badges | 0) - 4));
+                const slotsUnlocked = (sm.badges | 0) < 5 ? 0 : 4;
                 sm.unlockedGimmicks = order.slice(0, Math.min(slotsUnlocked, order.length));
             }
             if (!sm.inventory) sm.inventory = {};
@@ -38720,6 +38739,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function enterCity() {
+            _storyBattleEntryBusy = false; // released: any return/bail to a city ends battle-entry
             // Route to The Crucible if the player is currently visiting it. Any "Back
             // to City" button from a facility re-enters this function, so this preserves
             // the Crucible context across sub-screens.
@@ -41886,6 +41906,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // ── PROCEED TO BATTLE ─────────────────────────────────────────────
         function proceedToNextBattle() {
             if (sm.team.length === 0) { window.showGameAlert('You have no Pokémon. Visit the Professor first.'); return; }
+            // Re-entry guard — see _storyBattleEntryBusy. Blocks a second entry while a cold-open /
+            // interrupt from the first is still on screen (which would stack duplicate overlays).
+            if (_storyBattleEntryBusy) { _storyWarnInteractionBusy(); return; }
+            _storyBattleEntryBusy = true;
             let nextBattleIdx = -1;
             for (let i = sm.eventIndex; i < STORY_EVENTS_RAW.length; i++) {
                 if (STORY_EVENTS_RAW[i][1] === 'Battle') { nextBattleIdx = i; break; }
@@ -42551,6 +42575,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         function launchBattle(enemyTeam) {
+            _storyBattleEntryBusy = false; // released: the battle screen is opening, entry is complete
             applyMechanicsToSettings();
             // Iconic fights start every mon fresh — wipe fatigue *before* the draft is
             // built so the in-battle stat snapshot reads zero stacks.
@@ -42739,12 +42764,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { _storyQueueRoamingFromVictory(en); } catch (e) {}
                 if (en === 'Rival') setRivalStanding('player', idx, _rivalTeamSnapshotNames());
                 const isMilestoneVictory = isGymBadge || /^(E1|E2|E3|E4|Champion|Rival)$/.test(en);
-                // Unlock player gimmicks in fixed order — first unlock at
-                // Gym 5 (same gym that drops the Wishing Piece voucher) so
-                // every unlocked mechanic is immediately equippable at the
-                // next-city Colress lab. Badges 1–4 stay clean — no
-                // "unlocked but useless" indicator. From Gym 5 on, every
-                // gym victory unlocks one more mechanic up to 4 at Gym 8.
+                // Unlock all four player battle mechanics together the moment
+                // the player reaches Colress's lab — the city after Gym 5
+                // (badges >= 5, same gym that drops the Wishing Piece voucher).
+                // Badges 1–4 stay clean (no "unlocked but useless" indicator);
+                // from Colress on, every enabled mechanic is immediately
+                // equippable. Previously these dripped one per gym (5→8), which
+                // left Tera/Z gated until the very end of the run.
                 {
                     const order = [];
                     if (sm.settings.megaOn) order.push('mega');
@@ -42752,7 +42778,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (sm.settings.teraOn) order.push('tera');
                     if (sm.settings.zOn) order.push('z');
                     const badges = sm.badges | 0;
-                    const slotsUnlocked = badges < 5 ? 0 : Math.min(4, badges - 4);
+                    const slotsUnlocked = badges < 5 ? 0 : 4;
                     sm.unlockedGimmicks = order.slice(0, Math.min(slotsUnlocked, order.length));
                 }
                 sm.currentEnemyLock = null;
@@ -45082,7 +45108,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const display = _BALL_DISPLAY[k];
                     const chance = mult === Infinity ? 1 : Math.min(1, baseRate * mult);
                     const pct = Math.round(chance * 100);
-                    const canThrow = have > 0;
+                    // The unique Master Ball is reserved for the Caged God boss fight; outside
+                    // boss mode it renders locked so it can't be wasted on a route/Crucible wild
+                    // (which would soft-lock that 1%-rate capture).
+                    const masterLocked = (k === 'master' && !_catchState.bossMode);
+                    const canThrow = have > 0 && !masterLocked;
                     const multLabel = mult === Infinity ? '∞ (guaranteed)' : `${mult}×`;
                     // Master Ball gets a dedicated CSS class so the button
                     // glows purple and carries a ✨ marker — its guaranteed-
@@ -45090,9 +45120,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // resolution. Other balls render exactly as before.
                     const masterCls = (k === 'master' && canThrow) ? ' story-catch-ball--master' : '';
                     const masterMark = (k === 'master' && canThrow) ? '<span style="margin-left:6px;color:#ce93d8;text-shadow:0 0 6px rgba(206,147,216,0.85);">✨</span>' : '';
+                    const rightLabel = masterLocked ? '<span style="color:#ce93d8;font-size:10px;" title="Saved for the Caged God">🔒 boss</span>' : `<span style="color:#fff;">${pct}%</span>`;
                     return `<button type="button" onclick="window.StoryMode.catchThrow('${k}')" ${canThrow ? '' : 'disabled'} data-ball-type="${k}" class="story-catch-ball${masterCls}" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:rgba(20,28,40,0.6);border:1px solid ${display.color};color:${display.color};font-family:inherit;font-size:12px;${canThrow ? 'cursor:pointer;' : 'opacity:0.4;cursor:not-allowed;'}">
                         <span style="display:flex;align-items:center;gap:8px;"><img src="${display.icon}" alt="" width="22" height="22" decoding="async" style="width:22px;height:22px;image-rendering:pixelated;flex-shrink:0;"><span><strong>${display.name}</strong>${masterMark} <span style="color:#aaa;font-size:10px;">(${multLabel})</span> ×${have}</span></span>
-                        <span style="color:#fff;">${pct}%</span>
+                        ${rightLabel}
                     </button>`;
                 }).join('');
             }
@@ -45225,6 +45256,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _safariSession.ballsLeft = Math.max(0, (_safariSession.ballsLeft | 0) - 1);
             } else {
                 if (_catchState.safariMode) return;
+                // Safety net behind the locked button: never spend the unique Master Ball on
+                // anything but the Caged God boss — otherwise that 1%-rate capture soft-locks.
+                if (ballKey === 'master' && !_catchState.bossMode) {
+                    try { window.showToast('Save the Master Ball for the Caged God.'); }
+                    catch (e) { try { window.showGameAlert('Save the Master Ball for the Caged God.'); } catch (_) {} }
+                    return;
+                }
                 if (!sm.balls || (sm.balls[ballKey] | 0) <= 0) return;
                 sm.balls[ballKey] = (sm.balls[ballKey] | 0) - 1;
             }
@@ -46133,6 +46171,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const STORY_INTERACTION_WARN_COOLDOWN_MS = 1200;
         let _storyInteractionBusy = false;
         let _storyInteractionWarnLastAt = 0;
+        // Re-entry guard for the battle-entry path. proceedToNextBattle is reachable from a
+        // user-clickable city button; re-triggering it (double-tap / queued click) while a
+        // cold-open or pre-battle interrupt overlay is mid-flight re-fires the scene and stacks
+        // duplicate full-screen overlays (the scene's per-run dedupe is only stamped on dismiss).
+        // Set in proceedToNextBattle, released when the battle screen opens (launchBattle) or we
+        // return/bail to a city (enterCity).
+        let _storyBattleEntryBusy = false;
 
         function _storyWarnInteractionBusy() {
             const now = Date.now();
