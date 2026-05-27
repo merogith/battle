@@ -1,0 +1,22 @@
+Section;Detail
+TITLE;Story Mode — Enemy Formation & Difficulty Master Data (verified against battle.html)
+GENERATED;2026-05-27 — reflects ACTUAL implementation after Phase 1-3 (audited)
+DELIMITER;Semicolon (;) to match the source workbook
+FILES;00_overview / 01_city_facilities / 02_wild_curve / 03_professor_curve / 04_enemy_trainer_curve / 05_trainer_types_and_pools / 06_grade_profiles_by_type / 07_signature_ace_rules / 08_rival_counter / 09_tutor_dojo / 10_audit_findings
+;
+PIPELINE — HOW AN ENEMY TRAINER TEAM IS FORMED;
+Step 1;assignTrainers() runs ONCE at run start: picks a trainer NAME per Battle event row and stores it in sm.trainerAssignments (persisted in save). 4 passes: gym leaders -> gym trainers (type-matched) -> Elite-Four canon pins -> rivals + remaining.
+Step 2;On entering a battle event, the trainer is resolved. Basic/Gym-Trainer events are GENERATED on the fly (dynamic type + generic sprite + no sigs). Named events look up the stored name.
+Step 3;Build tier for the event is chosen by _storyBuildTierForEvent (UNTRAINED/NOVICE/COMPETENT/TOURNAMENT) from event type + badges.
+Step 4;rollTrainerTeam() builds the 6-mon team: roll signatures (if any) under the gen filter + grade ceiling + evo-stage cap, then fill remaining slots from a type/grade pool.
+Step 5;Per-mon build: species -> makeBuild -> tier downgrade -> city-curve EVs/IVs -> nature/ability/move optimization gradient -> item tier -> mechanic (Mega/Tera/Z/Dynamax) roll.
+Step 6;Non-rival rolls are SEEDED by (runSeed, eventIdx) so they are STATIC across refresh/flee/revisit. The Rival is UNSEEDED — it re-rolls a fresh counter to the player's LIVE party.
+Step 7;Result is frozen into sm.currentEnemyLock for the current fight (mid-fight reload resumes the same team).
+;
+GLOSSARY;
+Grade (G1-G4);Power tier of a species by BST. G1 = strongest, G4 = weakest. Grade rolls skew toward G1/G2 as city + trainer quality rise.
+Build tier;UNTRAINED -> NOVICE -> COMPETENT -> TOURNAMENT. Controls how optimized EV/IV/nature/ability/moves are.
+City (C0-C9);Story progression node. C0 = pre-first-gym ... C8 = legendary/mystery ... C9 = League.
+Evolution-stage cap;Basic / Stage1+Basic / ALL — limits how evolved an enemy/gift/wild species can be by city.
+Signature (ace);A trainer's identity Pokemon (TRAINER_DATA.sigs). Scales by grade-devolution + gen-fallback. Multiset allowed.
+Static vs dynamic;Static = same result every time (seeded). Dynamic = re-rolls (only the Rival).

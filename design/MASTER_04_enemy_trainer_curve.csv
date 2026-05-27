@@ -1,0 +1,22 @@
+ENEMY TRAINER shared build curve (all trainer types share this to match player training; harder via GRADE rolls + trainer quality). Values = ACTUAL code.;;;;;;;;;;;
+Attribute;C0;C1;C2;C3;C4;C5;C6;C7;C8;C9;vs Spec;Code anchor
+Evolution stage;Basic;Basic;Stage1+Basic;Stage1+Basic;ALL;ALL;ALL;ALL;ALL;ALL;MATCH;_storyEvoStageCapForCity
+EV total;0-50;50-100;100-150;150-200;200-250;300-350;350-400;508;508;508;MATCH;STORY_EV_CITY_TOTAL
+IV (per stat);0;0-5;5-10;10-15;15-20;20-25;25-31;31;31;31;MATCH;STORY_IV_CITY_TRAINER
+Nature opt;None;None;Some;Some;Some;AllBest;AllBest;AllBest;AllBest;AllBest;MATCH;_storyNatureOptChance (ramps C2-4, full C5+)
+Ability opt;None;None;None;Some;Some;Some;Opt;Opt;Opt;Opt;MATCH;_storyAbilityOptChance (ramps C3-5, full C6+)
+Move opt;L1-raw;L1-semi;L1-opt;L1-opt;+someL2;+someL2;Full;Full;Full;Full;MATCH;_storyMoveOptChance (ramps C4-5, full C6+)
+Item tier;None;Berry;Berries;Berries;+basic;basic;basic;+best;Best;Best;MINOR;code uses flat 4-tier none/berry/staple/best at C0/C1-3/C4-6/C7+; sheet has finer per-city sub-steps
+Mechanic roll %;0;0;0;0;0;0;0;Some;Some;Full;MATCH;hard wall <C7 (_applyEnemyGimmickDistribution); C7-8 partial via progress factor; C9 full
+;;;;;;;;;;;;
+DIFFICULTY MODIFIER;Higher difficulty + higher trainer quality add +0.12 per diff-step to opt chances (leaders/rivals ramp ~2 cities earlier). Grade rolls also skew toward G1/G2.;;;;;;;;;;;
+;;;;;;;;;;;;
+BUILD TIER BY EVENT TYPE (_storyBuildTierForEvent);;;;;;;;;;;;
+Event;Tier rule;;;;;;;;;;;
+Basic Trainer / Gym Trainer 1;UNTRAINED (b<2) -> NOVICE (b>=2). Weakest.;;;;;;;;;;;
+Gym Trainer 2 / Elite Trainer;UNTRAINED (b<2) -> NOVICE (b>=2) -> COMPETENT (b>=5). Mid.;;;;;;;;;;;
+Gym Leader;UNTRAINED -> NOVICE (b>=3) -> COMPETENT (b>=6) -> TOURNAMENT (GL8 / b>=8). Strong.;;;;;;;;;;;
+Rival;UNTRAINED -> NOVICE (b>=2) -> COMPETENT (b>=5) -> TOURNAMENT (b>=8). Strong (= Gym Leader).;;;;;;;;;;;
+E1-E4 / Champion / Mystery / Victory Road;TOURNAMENT always.;;;;;;;;;;;
+Post-HoF (b>=8);Everything TOURNAMENT.;;;;;;;;;;;
+QUALITY ORDERING (verified);Gym Trainer 1  <  Elite Trainer = Gym Trainer 2  <  Gym Leader = Rival  <  E4/Champion;;;;;;;;;;;

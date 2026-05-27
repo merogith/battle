@@ -1,0 +1,13 @@
+CONTROL-CHECK FINDINGS - code vs the 4 design sheets. Most rows MATCH; these are the divergences ("what needs to be done").;;;;
+#;Area;Spec says;Code actually does;Severity;Recommendation
+1;Wild EV at C7;140-160;508 (max);MEDIUM;The sheet's C7 dip BELOW C6 (350-400) looks like a typo. CONFIRM intended value - if real, clamp C7 wild EV to 140-160; if typo, code is fine
+2;Wild item by city;None C0-3 / Level1 C4-6 / Level2 C7;Always None;MEDIUM;Add a city-keyed wild item tier (held berries/items from C4) if wilds should carry items
+3;Wild moves by city;Level1 C0-4 / Level2 C5-7;Always Level1;MEDIUM;Gate wild move tier by city so late-route wilds use Level2 movesets
+4;Professor nature at C1;Random;Neutral (opt chance 0);LOW;Bump C1 professor nature to random (currently same as C0)
+5;Professor item mapping;None C0 / L1 C1-3 / L2 C4-6;Build-tier driven (+badge dependent), breakpoints C0-2/C3-5/C6;LOW;Verify item tiers land on the intended cities, or accept the tier-driven model
+6;Mechanic roll % (wild + prof);Wild 10% @C7, Prof 30% @C6;No per-city % - gated by player unlockedGimmicks + flat ~20%/mechanic;DESIGN;Current unlock-progression model is arguably better (mechanics appear only once the player can use them). Decide: keep, or add explicit per-city % gates to match the sheet
+7;Enemy trainer item granularity;Fine per-city sub-steps (someBerry / berries+someBasic / basic+someBest);Flat 4-tier (none / berry / staple / best) at C0 / C1-3 / C4-6 / C7+;MINOR;Optionally refine to per-city sub-steps; structurally close already
+8;Stone Sage Stage 1 cities;C2 only;C2-C3;MINOR;Trim S1 to C2 only, or accept the 1-city overlap (facility itself is correct)
+9;Fight Club cities;C6, C9;State machine (unlock at 6+ badges via daycare secret, then endgame loop);MINOR/OK;First appears ~C6 and loops post-game/C9 - effectively matches. No change needed
+;;;;;
+EVERYTHING ELSE;MATCH;Facility schedule, all tutor/dojo prices+pools+ability tiers, grade % tables (wild+prof), enemy EV/IV/nature/ability/move gradients, evo-stage caps, mechanic C7 hard-wall, trainer quality ordering, per-type grade profiles.;;;
