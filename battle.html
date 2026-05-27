@@ -34638,6 +34638,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     opAbilitiesForMon: (...a) => _opAbilitiesForMon(...a),
                     tutorGetPoolForMon: (...a) => _tutorGetPoolForMon(...a),
                     tutorGetStagedMovePool: (...a) => _tutorGetStagedMovePoolAsync(...a),
+                    txStarredPool: (...a) => _txStarredPool(...a),
+                    txStageCountRule: (...a) => _txStageCountRule(...a),
                 };
             } catch (e) {}
         }
@@ -50501,9 +50503,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 moves: empty(), items: empty(), abilities: empty(), natures: empty(),
             };
         }
+        // #47 staged recommendation counts. Early Move Tutor (Heart Scale) surfaces
+        // 18 recommended moves; the TM Expert tier opens up to 30. Battle Dojo item
+        // recs grow 3 (White Belt — berries) → 5 (Black Belt — +mediocre staples) →
+        // 7 (Grandmaster — +best meta items), and the candidate item tier widens in
+        // lockstep. Outside an active story run (e.g. quick-play loadout editor) the
+        // full, unstaged counts apply.
+        function _txStageCountRule() {
+            let tutorStage = 1, dojoStage = 2; // default: full pools when not in a staged run
+            try {
+                if (typeof sm !== 'undefined' && sm && sm.active && typeof _npcStage === 'function') {
+                    tutorStage = _npcStage('tutor');
+                    dojoStage = _npcStage('dojo');
+                }
+            } catch (e) {}
+            return {
+                moves: tutorStage >= 1 ? 30 : 18,
+                items: dojoStage >= 2 ? 7 : (dojoStage >= 1 ? 5 : 3),
+                itemTierCap: dojoStage >= 2 ? 3 : (dojoStage >= 1 ? 2 : 1),
+                tutorStage, dojoStage,
+                sig: tutorStage + ':' + dojoStage,
+            };
+        }
         function _txStarredPool(monName) {
             if (!monName) return _txStarredPoolEmpty(0);
             const meta = _txMetaStatsFor(monName);
+            const stageRule = _txStageCountRule();
             // Sparse only kicks in when BOTH the species' own builds AND the
             // entire evolution chain combined are below the threshold. This
             // lets Bulbasaur (8 own builds) borrow from Venusaur (~50) instead
@@ -50521,7 +50546,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return _txStarredPoolEmpty(ownTotal);
                 }
             }
-            if (meta && meta._starredPool) return meta._starredPool;
+            if (meta) {
+                if (!meta._starredPoolCache) meta._starredPoolCache = {};
+                if (meta._starredPoolCache[stageRule.sig]) return meta._starredPoolCache[stageRule.sig];
+            }
 
             // Pre-compute the evo-chain sorted-rows source per kind, only on
             // demand. For most species this is identical to the species' own
@@ -50543,18 +50571,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const buildBucketCap = (kind, rule) => {
                 let sorted = _txMetaSorted(meta, kind);
                 if (kind === 'moves') sorted = sorted.filter(r => !_TX_MEME_MOVE_BLOCKLIST.has(r.name));
-                // Strict ≥1 build use; the Smogon-sorted list already has count>0
-                // entries only, so no extra filter beyond memes.
-                let pool = _txCapWithOvershoot(sorted, rule.cap, rule.ceiling);
-                // Floor-fill from the evolution chain when the species' own
-                // pool is short of the floor target (e.g. moves want ≥30).
-                // Pulls highest-stage first; meme moves stay blocked across the
-                // chain too. The own pool may already exceed the floor (up to
-                // cap) — fill only tops up toward the floor.
-                const fillTarget = rule.floor || rule.cap;
+                // #47 stage-gated rec counts: moves 18 (Heart Scale) → 30 (TM Expert);
+                // items 3 → 5 → 7 by Dojo tier, with the candidate item tier widening
+                // (berries → +mediocre staples → +best meta). `sorted` stays full so the
+                // usage-% tag still shows for every entry in "show all"; only the rec
+                // candidate set is narrowed.
+                let effCap = rule.cap, effCeiling = rule.ceiling, effFloor = rule.floor || rule.cap;
+                let candidates = sorted;
+                if (kind === 'moves') {
+                    effCap = effCeiling = effFloor = stageRule.moves;
+                } else if (kind === 'items') {
+                    effCap = effCeiling = effFloor = stageRule.items;
+                    candidates = sorted.filter(r => (typeof _dojoItemTier === 'function' ? _dojoItemTier(r.name) : 1) <= stageRule.itemTierCap);
+                }
+                let pool = _txCapWithOvershoot(candidates, effCap, effCeiling);
+                // Floor-fill from the evolution chain when the species' own pool is
+                // short of the target. Pulls highest-stage first; the meme / item-tier
+                // filters apply across the chain too.
+                const fillTarget = effFloor;
                 if (rule.fillFromEvo && pool.length < fillTarget) {
                     let evoRows = evoChainSortedRows(kind);
                     if (kind === 'moves') evoRows = evoRows.filter(r => !_TX_MEME_MOVE_BLOCKLIST.has(r.name));
+                    else if (kind === 'items') evoRows = evoRows.filter(r => (typeof _dojoItemTier === 'function' ? _dojoItemTier(r.name) : 1) <= stageRule.itemTierCap);
                     const have = new Set(pool.map(r => r.name));
                     for (const r of evoRows) {
                         if (pool.length >= fillTarget) break;
@@ -50610,23 +50648,39 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 natures: buildBucket('natures'),
             };
 
-            // Always include Pokédex regular + hidden abilities so the
-            // species' canonical choices are reachable from the ★ pool even
-            // when Smogon data is sparse on that slot. CSV-empty-ability
-            // rows already roll into slot 0 via _txAccumulateBuilds, so this
-            // only adds anything when the regular ability has truly never
-            // been recorded — kept as a belt-and-braces guarantee.
+            // #47 ability recommendations: rank the species' LEGAL ability pool by
+            // Smogon usage and ★ only the single best (the recommended one — no
+            // top-N). Regular abilities (slots 0/1) are always rankable; the Hidden
+            // ability joins the ranked pool only once the Battle Dojo has unlocked it
+            // (Black Belt, dojo stage ≥ 1). Awakened / extra abilities are never
+            // recommended here — they're added manually in the loadout editor. inPool
+            // keeps every legal slot so the picker can show (and lock) them; only
+            // `starred` carries the recommendation.
             try {
                 const bs = (typeof baseStats === 'object') ? baseStats[monName] : null;
+                const ab = result.abilities;
+                ab.starred = new Set();
                 if (bs && bs.abilities) {
+                    const hiddenUnlocked = stageRule.dojoStage >= 1;
+                    const legal = [];
                     for (const slot of ['0', '1', 'H']) {
                         const a = bs.abilities[slot];
-                        if (a) { result.abilities.starred.add(a); result.abilities.inPool.add(a); }
+                        if (!a) continue;
+                        ab.inPool.add(a);
+                        if (!ab.pctOf.has(a)) ab.pctOf.set(a, 0);
+                        if (slot !== 'H' || hiddenUnlocked) legal.push(a);
                     }
+                    let best = null, bestPct = -1;
+                    for (const a of legal) {
+                        const p = ab.pctOf.get(a) || 0;
+                        if (p > bestPct) { bestPct = p; best = a; }
+                    }
+                    if (best) ab.starred.add(best);
                 }
             } catch (e) {}
 
-            meta._starredPool = result;
+            if (!meta._starredPoolCache) meta._starredPoolCache = {};
+            meta._starredPoolCache[stageRule.sig] = result;
             return result;
         }
         // Blend a 0..150 heuristic score with the 0..100 popularity score.
@@ -51812,7 +51866,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // until Black Belt, so a ★-recommended Hidden ability still shows.
             const locked = !!(ctx && typeof ctx.dojoStage === 'number' && abilityName === ctx.haName && ctx.dojoStage < 1 && !isCurrent);
             const pills = [
-                isAwaken ? `<span class="tx-pill tx-pill--awaken">★ Awaken</span>` : '',
+                isAwaken ? `<span class="tx-pill tx-pill--awaken">Awaken</span>` : '',
                 isHA && !isAwaken ? `<span class="tx-pill tx-pill--ha">Hidden</span>` : '',
                 locked ? `<span class="tx-pill tx-pill--locked" title="Unlocks when the Dojo reaches Black Belt">🔒 ${_esc(_npcStageName('dojo', 1))}</span>` : '',
                 isCurrent ? `<span class="tx-pill tx-pill--cur">Equipped</span>` : '',
@@ -52236,7 +52290,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const abils = [...new Set([...pool.abilities, ...opAbils])].sort();
             const haSet = new Set();
             if (_haName) haSet.add(_haName);
-            const filtAbils = _txApplyAbilityFilters(abils, mon, b, t.name, awakenSet);
+            // #47: Awakened picks are NOT recommendations — pass no extra-starred set so
+            // they drop out of the ★ Recommended view (still selectable under "show all"
+            // once unlocked at Grandmaster; "they appear when they appear").
+            const filtAbils = _txApplyAbilityFilters(abils, mon, b, t.name, null);
             const pendingAbility = (_txPending && _txPending.kind === 'ability') ? _txPending.value : null;
             const abilCtx = { pending: pendingAbility, current: curAbility, recommended: sPool.abilities.starred, hiddenAbilities: haSet, awakenAbilities: awakenSet, pctOf: sPool.abilities.pctOf, dojoStage: _dojoStage, haName: _haName };
 

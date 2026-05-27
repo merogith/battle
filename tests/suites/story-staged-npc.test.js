@@ -129,3 +129,30 @@ test('city-screen chip tags advance with the arrived city', () => {
   assert.ok(renderCity(2).includes('Stone Sage — Awakening'), 'C2 Stone Sage = Awakening');
   assert.ok(renderCity(4).includes('Stone Sage — Ascension'), 'C4 Stone Sage = Ascension');
 });
+
+test('#47 staged recommendation counts (moves 18→30, items 3→5→7, ability top-1)', () => {
+  const MON = 'Garchomp'; // deep Smogon pool + Hidden (Rough Skin) so the gating is observable
+  setSm({ eventIndex: cityRow(2) });
+  let p = ST.txStarredPool(MON);
+  if (!p || p.sparse) { assert.ok(true, 'no Smogon data in harness — skipped'); return; }
+  // City 2: Move Tutor = Heart Scale (18), Dojo = White Belt (3 item recs, berries only).
+  assert.ok(p.moves.starred.size <= 18, `C2 moves rec ≤18 (got ${p.moves.starred.size})`);
+  assert.ok(p.items.starred.size <= 3, `C2 items rec ≤3 (got ${p.items.starred.size})`);
+  assert.ok([...p.items.starred].every(n => ST.dojoItemTier(n) <= 1), 'C2 item recs are tier ≤1 (berries)');
+  assert.equal(p.abilities.starred.size, 1, 'exactly one ability ★-recommended (top of legal pool)');
+
+  // City 4: Move Tutor = TM Expert (up to 30), Dojo = Black Belt (≤5 items, tier ≤2).
+  setSm({ eventIndex: cityRow(4) });
+  p = ST.txStarredPool(MON);
+  assert.ok(p.moves.starred.size > 18 && p.moves.starred.size <= 30, `C4 moves rec 18<n≤30 (got ${p.moves.starred.size})`);
+  assert.ok(p.items.starred.size <= 5, `C4 items rec ≤5 (got ${p.items.starred.size})`);
+  assert.ok([...p.items.starred].every(n => ST.dojoItemTier(n) <= 2), 'C4 item recs are tier ≤2');
+
+  // City 7: Dojo = Grandmaster (≤7 items, all tiers). Awakened picks are never ★.
+  setSm({ eventIndex: cityRow(7) });
+  p = ST.txStarredPool(MON);
+  assert.ok(p.items.starred.size <= 7, `C7 items rec ≤7 (got ${p.items.starred.size})`);
+  assert.equal(p.abilities.starred.size, 1, 'still exactly one ability ★ at Grandmaster');
+  const awaken = new Set(ST.opAbilitiesForMon(MON));
+  assert.ok(![...p.abilities.starred].some(a => awaken.has(a)), 'no awakened ability is ★-recommended');
+});
