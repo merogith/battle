@@ -44365,13 +44365,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // In the real Safari Zone, the wild may flee at the end of ANY turn —
         // Bait/Rock turns included, not just after a missed throw. Without
         // this, Bait/Rock are "safe" actions that just stack modifiers and
-        // the bait/rock dilemma loses its bite. We re-use the existing flee
-        // formula (baseFlee × baitFleeMult × rockFleeMult) with an
-        // action-specific softener so Bait stays gentle ("calming") and Rock
-        // becomes the real gamble ("aggression"). Hard-capped so no single
-        // action ever auto-flees — the player always has a >55% chance to
-        // keep the wild around for one more move.
-        const SAFARI_BAIT_TURN_FLEE_MULT = 0.20;
+        // the bait/rock dilemma loses its bite. The per-turn flee scales with
+        // how *riled* the wild is — baseFlee × rockFleeMult × an action-specific
+        // multiplier. Food's calming is deliberately NOT in this formula: Bait
+        // soothes only the wild's persistent flee-on-miss and catch odds (its
+        // state), so baiting never lowers the per-turn flee shown on the Rock
+        // or Bait buttons. Bait now carries a moderate per-turn risk of its own
+        // (no longer a free stall); Rock stays the bigger gamble. Hard-capped so
+        // no single action ever auto-flees — the player always has a >55% chance
+        // to keep the wild around for one more move.
+        const SAFARI_BAIT_TURN_FLEE_MULT = 0.45;
         const SAFARI_ROCK_TURN_FLEE_MULT = 0.55;
         const SAFARI_TURN_FLEE_CAP       = 0.45;
         let _catchState = null;
@@ -45050,7 +45053,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return Math.min(1, baseRate * mult);
                 };
                 const _projFlee = (baitCount, rockCount, actionMult) => {
-                    const m = Math.pow(SAFARI_BAIT_FLEE_MULT, baitCount) * Math.pow(SAFARI_ROCK_FLEE_MULT, rockCount);
+                    // Mirrors _safariActionFleeThreshold: rock-anger only, no bait
+                    // factor — food never changes the per-turn flee shown on a
+                    // button. baitCount kept for call-site symmetry with _projChance.
+                    const m = Math.pow(SAFARI_ROCK_FLEE_MULT, rockCount);
                     const base = _CATCH_FLEE_BY_GRADE[grade] || _CATCH_DEFAULT_FLEE_RATE;
                     return Math.max(0, Math.min(SAFARI_TURN_FLEE_CAP, base * m * actionMult));
                 };
@@ -45574,10 +45580,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
         // Per-turn flee chance after a Bait/Rock action. Returns the
-        // threshold the next roll is compared against. Bait stays gentle
-        // (rarely loses the wild); Rock is a real gamble that grows with each
-        // stack. Hard-capped at SAFARI_TURN_FLEE_CAP so no single action ever
-        // auto-flees — there's always >55% room to keep going.
+        // threshold the next roll is compared against. Scales with rock-anger
+        // (and the action taken) but NOT with bait — food calms only the wild's
+        // persistent flee-on-miss, never the per-turn flee. Bait carries a
+        // moderate risk of its own; Rock is the bigger gamble that grows with
+        // each stack. Hard-capped at SAFARI_TURN_FLEE_CAP so no single action
+        // ever auto-flees — there's always >55% room to keep going.
         function _safariActionFleeThreshold(action) {
             if (!_safariSession || !_catchState || !_catchState.safariMode) return 0;
             const enc = _catchState.encounter;
@@ -45586,10 +45594,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { grade = getMonGrade(enc.name, getBST(enc.name)); } catch (e) {}
             const baseFlee = _CATCH_FLEE_BY_GRADE[grade] || _CATCH_DEFAULT_FLEE_RATE;
             const sess = _safariSession;
-            const baitMult = Math.pow(SAFARI_BAIT_FLEE_MULT, sess.baitCount | 0);
+            // Rock-anger only — no bait factor. Food's calming is intentionally
+            // absent so baiting never lowers the per-turn flee on the Rock or
+            // Bait buttons; it only soothes the wild's persistent flee-on-miss.
             const rockMult = Math.pow(SAFARI_ROCK_FLEE_MULT, sess.rockCount | 0);
             const actionMult = action === 'bait' ? SAFARI_BAIT_TURN_FLEE_MULT : SAFARI_ROCK_TURN_FLEE_MULT;
-            return Math.max(0, Math.min(SAFARI_TURN_FLEE_CAP, baseFlee * baitMult * rockMult * actionMult));
+            return Math.max(0, Math.min(SAFARI_TURN_FLEE_CAP, baseFlee * rockMult * actionMult));
         }
         // Roll the per-turn flee. If the wild flees, ends the encounter with
         // an action-flavored message and returns true. Caller should bail out
@@ -45617,10 +45627,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _catchFinishWithMessage(fleeMsgs[Math.floor(Math.random() * fleeMsgs.length)]);
             return true;
         }
-        // Safari Bait — calms the wild Pokémon. Decreases catch chance, also
-        // decreases flee chance. Doesn't consume a ball. Can stack up to 3.
-        // The per-turn flee check rolls after applying the bait stack so the
-        // new state drives the flee threshold. If the wild flees, the flee
+        // Safari Bait — calms the wild Pokémon. Decreases catch chance and the
+        // wild's persistent flee-on-miss, but baiting itself carries a moderate
+        // per-turn flee risk (it's no longer a free stall). Doesn't consume a
+        // ball. Can stack up to 3. The per-turn flee check rolls right after the
+        // bait — rock-anger and the bait action drive the threshold, the bait
+        // stack does not. If the wild flees, the flee
         // message replaces this turn's text entirely (no flash of the
         // "calmer now" copy). Hard guard at 3× prevents a stale click on a
         // disabled button (or a fast double-click) from triggering an extra
