@@ -30402,6 +30402,45 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             out[pair[1]] = Math.max(0, Math.min(252, Math.round((t - first) / 4) * 4));
             build.evs = out;
         }
+        // ── OPTIMIZATION GRADIENTS (Sheet opt curves) ──────────────────────
+        // City sets the PARITY CEILING — an optimization is only available once the
+        // player could unlock it — and difficulty sets how OFTEN a trainer actually
+        // applies the available optimization. Each returns a probability 0..1 of the
+        // build keeping its OPTIMIZED form vs the tier downgrade's baseline; the caller
+        // snapshots the original nature/ability/moves and restores on a winning roll.
+        // Nature: neutral C0-1 · ramps C2-4 · all-best C5+.
+        function _storyNatureOptChance(city, diffStep) {
+            const c = city | 0;
+            let base;
+            if (c <= 1) base = 0; else if (c >= 5) base = 1; else base = (c - 1) * 0.25;
+            return Math.max(0, Math.min(1, base + (diffStep | 0) * 0.12));
+        }
+        // Ability (optimal ability over slot-0): no-opt C0-2 · ramps C3-5 · optimized
+        // C6+. Hidden-ability AVAILABILITY is gated separately (parity, Dojo C4).
+        function _storyAbilityOptChance(city, diffStep) {
+            const c = city | 0;
+            let base;
+            if (c <= 2) base = 0; else if (c >= 6) base = 1; else base = (c - 2) / 3;
+            return Math.max(0, Math.min(1, base + (diffStep | 0) * 0.12));
+        }
+        // Moves: basic STAB (L1) C0-3 · some full sets (L2) C4-5 · full sets C6+.
+        function _storyMoveOptChance(city, diffStep) {
+            const c = city | 0;
+            let base;
+            if (c <= 3) base = 0; else if (c >= 6) base = 1; else base = (c - 3) / 3;
+            return Math.max(0, Math.min(1, base + (diffStep | 0) * 0.12));
+        }
+        // Foe item tier by city (parity with the Dojo unlock clock): C0 none · C1-3
+        // berries (1) · C4-6 staples (2) · C7+ best/meta (3). No difficulty shift — a
+        // foe can never field an item the player couldn't yet hold. Frontier → full.
+        function _storyFoeItemTier(city) {
+            if ((city | 0) < 0) return 3;
+            const c = city | 0;
+            if (c <= 0) return 0;
+            if (c <= 3) return 1;
+            if (c <= 6) return 2;
+            return 3;
+        }
         // Stamp IVs onto a build only when none are set yet. Smogon / CSV builds
         // that ship explicit ivs (e.g. 0 Atk for Trick Room) are left alone.
         function _ensureBuildIVs(build, ivs) {
@@ -34192,10 +34231,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try {
                 if (storyRowIdx != null && storyRowIdx >= 0 && sm && sm.active) _foeCity = cityIndexFromEventIndex(storyRowIdx);
             } catch (e) {}
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             const _hiddenAllowedForFoes = _foeCity < 0 || _foeCity >= 4;
-            const _foeItemTierCap = _foeCity < 0 ? 3 : (_foeCity >= 7 ? 3 : (_foeCity >= 4 ? 2 : 1));
+            const _foeItemTierCap = _storyFoeItemTier(_foeCity); // C0 none · C1-3 berries · C4-6 staples · C7+ best
+            const _diffStep = _trainerDifficultyStep(eventType);
             for (const slot of team) {
                 if (!slot || !slot.build) continue;
+                // Snapshot the optimized build BEFORE the tier downgrade so the
+                // city/difficulty optimization gradient can selectively restore it.
+                const _optN = slot.build.n;
+                const _optA = slot.build.a;
+                const _optM = Array.isArray(slot.build.m) ? slot.build.m.slice() : null;
                 if (tier < STORY_BUILD_TIER.TOURNAMENT) {
                     _storyDowngradeBuildForTier(slot.name, slot.build, tier);
                 }
@@ -34239,8 +34285,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try {
                     slot.build.ivs = (_foeCity < 0)
                         ? _rollTieredIVs(tier, sigSet.has(slot.name))
-                        : _rollCityIVs('trainer', _foeCity, _trainerDifficultyStep(eventType), sigSet.has(slot.name));
+                        : _rollCityIVs('trainer', _foeCity, _diffStep, sigSet.has(slot.name));
                 } catch (e) {}
+                // City/difficulty optimization gradient: restore the optimized nature /
+                // ability / moves with a probability that rises with city (the parity
+                // ceiling on what's available) and trainer difficulty. Frontier /
+                // generator (_foeCity < 0) keeps the pure tier-downgrade result.
+                if (_foeCity >= 0) {
+                    if (_optN) {
+                        slot.build.n = (rng() < _storyNatureOptChance(_foeCity, _diffStep))
+                            ? _optN
+                            : _NEUTRAL_NATURES_LIST[Math.floor(rng() * _NEUTRAL_NATURES_LIST.length)];
+                    }
+                    if (_optA && rng() < _storyAbilityOptChance(_foeCity, _diffStep)) {
+                        const _bs = (typeof baseStats === 'object') ? baseStats[slot.name] : null;
+                        const _isHidden = !!(_bs && _bs.abilities && _bs.abilities.H && _optA === _bs.abilities.H);
+                        if (!_isHidden || _hiddenAllowedForFoes) slot.build.a = _optA;
+                    }
+                    if (_optM && _optM.length && rng() < _storyMoveOptChance(_foeCity, _diffStep)) {
+                        slot.build.m = _optM.slice();
+                    }
+                }
             }
             return team;
         }
@@ -34830,6 +34895,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     get PROF_ROLLS() { return PROF_ROLLS; },
                     trainerGradeProfile: (...a) => _trainerGradeProfile(...a),
                     applyTrainerGradeMatrix: (...a) => _applyTrainerGradeMatrix(...a),
+                    storyNatureOptChance: (...a) => _storyNatureOptChance(...a),
+                    storyAbilityOptChance: (...a) => _storyAbilityOptChance(...a),
+                    storyMoveOptChance: (...a) => _storyMoveOptChance(...a),
+                    storyFoeItemTier: (...a) => _storyFoeItemTier(...a),
                     rollWildEncounter: (...a) => rollWildEncounter(...a),
                     getAllEvosWithStatus: (...a) => _getAllEvosWithStatus(...a),
                     get STORY_EVENTS_RAW() { return STORY_EVENTS_RAW; },
