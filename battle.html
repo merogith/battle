@@ -30354,6 +30354,49 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const roll = () => Math.max(0, Math.min(31, lo + Math.floor(rng() * (hi - lo + 1))));
             return { hp: roll(), atk: roll(), def: roll(), spa: roll(), spd: roll(), spe: roll() };
         }
+        // ── CITY-CURVE EVs (story build sheets) ────────────────────────────
+        // In this game EVs are the BATTLE-trained axis (IVs are the vitamin-trained
+        // axis), so a build's EV TOTAL tracks how far through the run its trainer has
+        // "battled". Per-city band of total EVs; difficulty shifts the band UP by whole
+        // city-steps for trainers (basic +0 · gym/elite +1 · leader/rival/E4 +2). Wild
+        // catches & professor gifts match the trainer curve at difficulty 0.
+        const STORY_EV_CITY_TOTAL = Object.freeze([
+            [0, 50], [50, 100], [100, 150], [150, 200], [200, 250], [300, 350], [350, 400], [508, 508],
+        ]);
+        function _storyEvTotalForCity(city, diffStep) {
+            let idx = (city | 0) + (diffStep | 0);
+            if (idx < 0) idx = 0;
+            if (idx >= STORY_EV_CITY_TOTAL.length) idx = STORY_EV_CITY_TOTAL.length - 1;
+            const lo = STORY_EV_CITY_TOTAL[idx][0], hi = STORY_EV_CITY_TOTAL[idx][1];
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            // Raw total within the band — per-stat 4-rounding happens in the distributor.
+            return lo + Math.floor(rng() * (hi - lo + 1));
+        }
+        // Reshape a build's EV spread to hit a target total. A build that already has a
+        // spread is scaled proportionally (shape preserved); an empty spread invests the
+        // target into the species' best two battle stats. 252-per-stat / 508-total safe.
+        function _distributeEVsToTotal(build, base, target) {
+            if (!build) return;
+            const keys = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'];
+            const t = Math.max(0, Math.min(508, target | 0));
+            const src = (build.evs && typeof build.evs === 'object') ? build.evs : null;
+            let cur = 0;
+            if (src) for (const k of keys) cur += (src[k] | 0);
+            if (t <= 0) { build.evs = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 }; return; }
+            if (cur > 0) {
+                const scale = t / cur;
+                const out = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+                for (const k of keys) out[k] = Math.max(0, Math.min(252, Math.round(((src[k] | 0) * scale) / 4) * 4));
+                build.evs = out;
+                return;
+            }
+            const pair = _pickBattleEVStats(base);
+            const out = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+            const first = Math.min(252, Math.round((t / 2) / 4) * 4);
+            out[pair[0]] = first;
+            out[pair[1]] = Math.max(0, Math.min(252, Math.round((t - first) / 4) * 4));
+            build.evs = out;
+        }
         // Stamp IVs onto a build only when none are set yet. Smogon / CSV builds
         // that ship explicit ivs (e.g. 0 Atk for Trick Room) are left alone.
         function _ensureBuildIVs(build, ivs) {
@@ -34138,11 +34181,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         slot.build.i = '';
                     }
                 }
-                // Post-Gym-4 enemy nudge — small EV bump on T2/T3 trainers to
-                // keep pace with the per-battle EV training the player picks
-                // up. No-op on T1 (route fodder stays at 0 EV) and T4 (already
-                // capped). Skipped pre-Gym-4 so the early softening holds.
-                try { _storyMaybeNudgeFoeEVs(slot.name, slot.build, tier); } catch (e) {}
+                // City-curve EVs (Sheet 4): assign a target total from the city band
+                // (difficulty-shifted) and reshape the spread to hit it — EVs are the
+                // battle-trained axis, so the total tracks how far the trainer has
+                // progressed. Replaces the tier EV caps. Frontier / generator runs
+                // (_foeCity < 0) keep the legacy tier caps + post-Gym-4 nudge.
+                if (_foeCity < 0) {
+                    try { _storyMaybeNudgeFoeEVs(slot.name, slot.build, tier); } catch (e) {}
+                } else {
+                    try {
+                        const _evBase = (typeof baseStats === 'object') ? baseStats[slot.name] : null;
+                        _distributeEVsToTotal(slot.build, _evBase, _storyEvTotalForCity(_foeCity, _trainerDifficultyStep(eventType)));
+                    } catch (e) {}
+                }
                 slot.build.powerTier = tier;
                 // City-curve IVs (Sheet 4): band climbs with the arrived city and
                 // shifts up with trainer difficulty (basic +0 · gym/elite +1 ·
@@ -34733,6 +34784,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     storyEvoStageCapForRow: (...a) => _storyEvoStageCapForRow(...a),
                     rollCityIVs: (...a) => _rollCityIVs(...a),
                     trainerDifficultyStep: (...a) => _trainerDifficultyStep(...a),
+                    storyEvTotalForCity: (...a) => _storyEvTotalForCity(...a),
+                    distributeEVsToTotal: (...a) => _distributeEVsToTotal(...a),
                     rollWildEncounter: (...a) => rollWildEncounter(...a),
                     getAllEvosWithStatus: (...a) => _getAllEvosWithStatus(...a),
                     get STORY_EVENTS_RAW() { return STORY_EVENTS_RAW; },
@@ -41306,6 +41359,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         _storyDowngradeBuildForTier(name, build, _profTier);
                     }
                     build.powerTier = _profTier;
+                    // City-curve EVs (match trainer curve) — except legendary mystery
+                    // offers, which keep their full preset spread.
+                    if (!_profLegendaryMysteryMode) {
+                        try {
+                            const _pEvBase = (typeof baseStats === 'object') ? baseStats[name] : null;
+                            _distributeEVsToTotal(build, _pEvBase, _storyEvTotalForCity(cityIdx, 0));
+                        } catch (e) {}
+                    }
                     // Professor gifts are player-side mons on the wild/prof city curve
                     // (Sheet 5): a "0..cap" band whose floor rises with the city, so the
                     // Fan Club / vitamins still have work to do. Legendary mystery offers
@@ -44868,6 +44929,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (base && base.abilities && base.abilities['0']) b.a = base.abilities['0'];
             b.n = _wildPickNature(base);
             b.evs = _wildPickEVs(base);
+            // City-curve EV total (Sheet 5, "match trainer curve"): scale the archetype
+            // shape to the city's battle-trained EV level. IVs (the vitamin-trained axis)
+            // use the separate "0..cap" band rolled below.
+            try {
+                let _wEvCity = 0;
+                try { _wEvCity = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
+                _distributeEVsToTotal(b, base, _storyEvTotalForCity(_wEvCity, 0));
+            } catch (e) {}
             // Wild catches sit at the bottom of the training-tier curve. The 170-EV /
             // curated-positive-nature head-start (see _wildPickNature/_wildPickEVs)
             // makes them comparable to a T1 trainer mon's structural moves but with
