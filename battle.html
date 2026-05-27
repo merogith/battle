@@ -9032,6 +9032,7 @@
                 <button type="button" class="story-collection-tab" id="collection-tab-ach" role="tab" aria-selected="false" onclick="window.StoryMode.openCollection('achievements')">&#127941; Achievements</button>
                 <button type="button" class="story-collection-tab" id="collection-tab-hof" role="tab" aria-selected="false" onclick="window.StoryMode.openCollection('hof')">&#127942; Hall of Fame</button>
                 <button type="button" class="story-collection-tab" id="collection-tab-rival" role="tab" aria-selected="false" onclick="window.StoryMode.openCollection('rival')">&#9876;&#65039; Rivalry</button>
+                <button type="button" class="story-collection-tab" id="collection-tab-sig" role="tab" aria-selected="false" onclick="window.StoryMode.openCollection('signatures')">&#11088; Signatures</button>
             </div>
             <div class="story-collection-body" id="collection-body" role="tabpanel">
                 Loading&hellip;
@@ -31636,7 +31637,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Storyline-variant clear log — keyed by variant id, value true.
                 // Cosmetic record only (which storylines you've cleared); the
                 // storyline picker is pure-random and does not read this.
-                clearedVariants: {}
+                clearedVariants: {},
+                // Signature journal: { [trainerBaseName]: { seen, mons: { [species]: true } } }
+                // — which Elite/Leader/E4/Champion trainers you've faced and which of
+                // their signature aces actually appeared (devolved/fallback forms don't
+                // count, so high-tier sigs read as "locked" until a run reaches them).
+                sigJournal: {}
             };
         }
         function readStoryMeta() {
@@ -31655,7 +31661,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     frontierRoundsTotal: Math.max(0, obj.frontierRoundsTotal | 0),
                     hofRecords: Array.isArray(obj.hofRecords) ? obj.hofRecords.slice(0, 10) : [],
                     trainerProfile: (obj.trainerProfile && typeof obj.trainerProfile === 'object') ? obj.trainerProfile : null,
-                    clearedVariants: (obj.clearedVariants && typeof obj.clearedVariants === 'object') ? obj.clearedVariants : {}
+                    clearedVariants: (obj.clearedVariants && typeof obj.clearedVariants === 'object') ? obj.clearedVariants : {},
+                    sigJournal: (obj.sigJournal && typeof obj.sigJournal === 'object') ? obj.sigJournal : {}
                 };
             } catch (e) { return _emptyStoryMeta(); }
         }
@@ -33699,6 +33706,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 generateBasicTrainer: (...a) => _generateBasicTrainer(...a),
                 storyEventSeed: (...a) => _storyEventSeed(...a),
                 withEventSeededRng: (...a) => _withEventSeededRng(...a),
+                storyIsSignatureTrainerRole: (...a) => _storyIsSignatureTrainerRole(...a),
+                storyRecordSignatureEncounter: (...a) => _storyRecordSignatureEncounter(...a),
+                storyApplySigEncounter: (...a) => _storyApplySigEncounter(...a),
+                storyBuildSignatureRegistry: (...a) => _storyBuildSignatureRegistry(...a),
                 get TRAINER_DATA() { return TRAINER_DATA; },
                 _rivalIntroStarterCounterType: (...a) => _rivalIntroStarterCounterType(...a),
                 getTrainerQuoteForBattle: (...a) => getTrainerQuoteForBattle(...a),
@@ -35663,7 +35674,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         let _collectionDexShiny = false; // false = Regular view, true = Shiny Dex view
         let _collectionPrevScreen = null;
         function openCollection(tab) {
-            const okTab = (tab === 'achievements' || tab === 'hof' || tab === 'rival') ? tab : 'pokedex';
+            const okTab = (tab === 'achievements' || tab === 'hof' || tab === 'rival' || tab === 'signatures') ? tab : 'pokedex';
             _collectionTab = okTab;
             // Remember which screen we came from so closeCollection can return there.
             const visible = document.querySelector('.screen:not(.hidden)');
@@ -35672,7 +35683,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 pokedex: 'collection-tab-pokedex',
                 achievements: 'collection-tab-ach',
                 hof: 'collection-tab-hof',
-                rival: 'collection-tab-rival'
+                rival: 'collection-tab-rival',
+                signatures: 'collection-tab-sig'
             };
             for (const k in tabs) {
                 const t = document.getElementById(tabs[k]);
@@ -35702,6 +35714,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (_collectionTab === 'achievements') body.innerHTML = _renderAchievementsTab();
             else if (_collectionTab === 'hof') body.innerHTML = _renderHofRecordsTab();
             else if (_collectionTab === 'rival') body.innerHTML = _pcRenderRivalJournalTab();
+            else if (_collectionTab === 'signatures') body.innerHTML = _renderSignaturesTab();
             else body.innerHTML = _renderPokedexTab(_collectionDexGen);
         }
 
@@ -35723,6 +35736,97 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
             items.sort((a, b) => (a.dex - b.dex) || a.name.localeCompare(b.name));
             return items;
+        }
+
+        // ── Signature journal (story spec 3.6) ────────────────────────────────
+        // Roles whose signature aces are tracked in the journal: gym leaders, the
+        // Elite Four, the Champion, and named Elite Trainers.
+        function _storyIsSignatureTrainerRole(role) {
+            const r = String(role || '');
+            return /^Gym Leader\s*\d$/.test(r) || /^E[1-4]$/.test(r) || r === 'Champion' || r === 'Elite Trainer';
+        }
+        // Pure journal update (no I/O — testable): mark the trainer faced and flag every
+        // listed signature that actually appeared in the rolled team (devolved / fallback
+        // forms that don't match a listed sig stay "locked", which surfaces the gen/tier
+        // gates). Returns the (mutated) journal object.
+        function _storyApplySigEncounter(journal, trainer, enemyTeam) {
+            const j = (journal && typeof journal === 'object') ? journal : {};
+            if (!trainer || !_storyIsSignatureTrainerRole(trainer.role)) return j;
+            if (!Array.isArray(trainer.sigs) || !trainer.sigs.length) return j;
+            const base = _baseTrainerName(trainer.name);
+            if (!base) return j;
+            const entry = j[base] || { seen: false, mons: {} };
+            if (!entry.mons) entry.mons = {};
+            entry.seen = true;
+            const teamSpecies = new Set((enemyTeam || []).map(m => m && m.name).filter(Boolean));
+            for (const sig of trainer.sigs) if (teamSpecies.has(sig)) entry.mons[sig] = true;
+            j[base] = entry;
+            return j;
+        }
+        // I/O wrapper: read meta, apply the encounter, persist.
+        function _storyRecordSignatureEncounter(trainer, enemyTeam) {
+            if (!trainer || !_storyIsSignatureTrainerRole(trainer.role)) return;
+            if (!Array.isArray(trainer.sigs) || !trainer.sigs.length) return;
+            const meta = readStoryMeta();
+            meta.sigJournal = _storyApplySigEncounter(
+                (meta.sigJournal && typeof meta.sigJournal === 'object') ? meta.sigJournal : {}, trainer, enemyTeam);
+            writeStoryMeta(meta);
+        }
+        // Merge every signature-trainer in TRAINER_DATA (by base name, unioning sigs
+        // across role variants) with the saved journal into a render-ready registry.
+        function _storyBuildSignatureRegistry(journalOverride) {
+            const journal = (journalOverride && typeof journalOverride === 'object')
+                ? journalOverride
+                : (((readStoryMeta() || {}).sigJournal) || {});
+            const byBase = new Map();
+            for (const t of TRAINER_DATA) {
+                if (!_storyIsSignatureTrainerRole(t.role)) continue;
+                if (!Array.isArray(t.sigs) || !t.sigs.length) continue;
+                const base = _baseTrainerName(t.name);
+                if (!byBase.has(base)) byBase.set(base, { base, role: t.role, charGen: t.charGen | 0, sigs: new Set() });
+                const rec = byBase.get(base);
+                for (const s of t.sigs) if (baseStats[s]) rec.sigs.add(s);
+            }
+            const roleRank = (r) => /^Gym Leader/.test(r) ? 0 : /^E[1-4]$/.test(r) ? 1 : r === 'Champion' ? 2 : 3;
+            const out = [];
+            for (const rec of byBase.values()) {
+                const seenEntry = journal[rec.base] || null;
+                const sigs = Array.from(rec.sigs).map(species => ({
+                    species,
+                    gen: (baseStats[species] || {}).gen | 0,
+                    seen: !!(seenEntry && seenEntry.mons && seenEntry.mons[species]),
+                }));
+                sigs.sort((a, b) => (a.gen - b.gen) || a.species.localeCompare(b.species));
+                out.push({
+                    name: rec.base, role: rec.role, charGen: rec.charGen,
+                    seen: !!(seenEntry && seenEntry.seen),
+                    sigs, sigCount: sigs.length, seenCount: sigs.filter(s => s.seen).length,
+                });
+            }
+            out.sort((a, b) => roleRank(a.role) - roleRank(b.role) || a.name.localeCompare(b.name));
+            return out;
+        }
+        function _renderSignaturesTab() {
+            const reg = _storyBuildSignatureRegistry();
+            const totalSigs = reg.reduce((a, t) => a + t.sigCount, 0);
+            const seenSigs = reg.reduce((a, t) => a + t.seenCount, 0);
+            const seenTrainers = reg.filter(t => t.seen).length;
+            const summary = `<div class="pdex-summary"><span class="pdex-chip">${seenTrainers}/${reg.length} trainers faced</span><span class="pdex-chip">${seenSigs}/${totalSigs} signatures encountered</span></div>`;
+            if (!reg.length) return summary + '<p class="ach-empty">No signature trainers available.</p>';
+            const blocks = reg.map(t => {
+                const head = `<div class="sig-trainer-head"><span class="sig-name">${t.seen ? _esc(t.name) : '???'}</span> <span class="sig-role">${_esc(storyDisplayRoleLabel(t.role))}</span> <span class="sig-count">${t.seenCount}/${t.sigCount}</span></div>`;
+                const cells = t.sigs.map(s => {
+                    const spr = (typeof getSprite === 'function') ? _esc(getSprite(s.species, false)) : '';
+                    if (s.seen) {
+                        const img = spr ? `<img src="${spr}" alt="${_esc(s.species)}" class="pdex-cell-img" loading="lazy" decoding="async" onerror="handleSpriteError(this)">` : '';
+                        return `<div class="pdex-cell pdex-cell--caught" title="${_esc(s.species)} — encountered">${img}<div class="pdex-cell-name">${_esc(s.species)}</div></div>`;
+                    }
+                    const img = spr ? `<img src="${spr}" alt="" class="pdex-cell-img pdex-cell-img--unknown" loading="lazy" decoding="async" onerror="handleSpriteError(this)">` : '';
+                    return `<div class="pdex-cell pdex-cell--unknown" title="Not yet encountered — needs Gen ${s.gen}">${img}<div class="pdex-cell-name">??? <small>Gen ${s.gen}</small></div></div>`;
+                }).join('');
+                return `<div class="sig-trainer">${head}<div class="pdex-grid">${cells}</div></div>`;
+            }).join('');
+            return summary + blocks;
         }
 
         function _renderPokedexTab(genFilter) {
@@ -42865,6 +42969,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         sm.currentEnemyLock = { eventIdx: battleIdx, team: deepClone(team) };
                         save();
                     } catch (e) { console.warn('[Story] enemy lock refresh save', e); }
+                    try { _storyRecordSignatureEncounter(trainer, team); } catch (e) {}
                     startFight(team);
                 }, idx);
                 return;
@@ -42884,6 +42989,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sm.currentEnemyLock = { eventIdx: battleIdx, team: deepClone(frozenTeam) };
                     save();
                 } catch (e) { console.warn('[Story] enemy lock save', e); }
+                try { _storyRecordSignatureEncounter(trainer, frozenTeam); } catch (e) {}
                 startFight(frozenTeam);
             }, idx);
         }
