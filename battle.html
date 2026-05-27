@@ -38728,7 +38728,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Wild grade is keyed on the arrived city (see STORY_WILD_GRADE_BY_CITY),
                     // independent of the upcoming trainer's gradeWeights — wilds reflect
                     // the route's biology, not the next fight's lineup.
-                    const enc = rollWildEncounter(storySettingsGens());
+                    // Static-roll spec: seed each route wild by (runSeed, battleIdx, which
+                    // wild in the node) so refresh/flee/revisit reproduces the same encounter.
+                    // The wildSeen counter is persisted in sm, so the key is stable. (Safari /
+                    // Crucible wilds stay deliberately random — not seeded.)
+                    const _wildSeedKey = 800000 + (battleIdx | 0) * 10 + _wildSeenCount(battleIdx);
+                    const enc = _withEventSeededRng(_wildSeedKey, () => rollWildEncounter(storySettingsGens()));
                     if (!enc) return null;
                     return {
                         encounter: enc,
@@ -41091,9 +41096,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sm.gold = Math.max(0, (sm.gold | 0) - fee);
             const failedBattleIdx = sm.eventIndex;
             sm.eventIndex = lastStoryCityEventIndexAtOrBefore(sm.eventIndex);
-            // Keep the frozen foe team for the battle the player left so Leave City → rematch uses the same party (RNG is not re-rolled).
+            // Keep the frozen foe team for the battle the player left so Leave City → rematch
+            // uses the same party (static, RNG not re-rolled) — EXCEPT the Rival, which is a
+            // dynamic matchup: fleeing and re-entering after a team swap must re-roll a fresh
+            // counter to the new party. (A mid-fight reload doesn't go through retreat, so the
+            // lock survives there and the rival fight resumes intact.)
             const lock = sm.currentEnemyLock;
-            if (!lock || lock.eventIdx !== failedBattleIdx || !Array.isArray(lock.team) || !lock.team.length) {
+            const _fledWasRival = failedBattleIdx === STORY_RIVAL_ROW_INTRO || failedBattleIdx === STORY_RIVAL_ROW_EARLY
+                || failedBattleIdx === STORY_RIVAL_ROW_MID || failedBattleIdx === STORY_RIVAL_ROW_LEAGUE;
+            if (_fledWasRival || !lock || lock.eventIdx !== failedBattleIdx || !Array.isArray(lock.team) || !lock.team.length) {
                 sm.currentEnemyLock = null;
             }
             _storyRefundBattleBagItems();
@@ -41546,6 +41557,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 && _pendingProfBadges === (sm.badges | 0);
 
             if (!shouldReuseChoices) {
+                // Static-roll spec: seed the gift roll by (runSeed, city, badges, mode) so the
+                // same lab visit reproduces the same choices after a refresh (the in-memory
+                // _pendingProfChoices cache only covers within-session reuse). try/finally so
+                // the early "no choices" return below still restores the shared RNG stream.
+                const _profSeedKey = 900000 + (cityIdx | 0) * 1000 + ((sm.badges | 0) * 4) + (_profMysteryMode ? 1 : 0) + (_profLegendaryMysteryMode ? 2 : 0);
+                const _savedProfNext = window.storyRngNext;
+                if (sm && sm.active && sm.runSeed != null) {
+                    let _ps = _storyEventSeed(_profSeedKey);
+                    window.storyRngNext = function () { _ps = (Math.imul(_ps, 1664525) + 1013904223) >>> 0; return _ps / 4294967296; };
+                }
+                try {
                 // Mystery mode: offer 1 Pokémon. Professor mode: offer 3 choices.
                 const numChoices = _profMysteryMode ? 1 : 3;
                 const sg = storySettingsGens();
@@ -41647,6 +41669,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _pendingProfBadges = (sm.badges | 0);
                 // Auto-select the single mystery offer so Accept is ready immediately
                 _profSelectedIdx = _profMysteryMode ? 0 : null;
+                } finally { window.storyRngNext = _savedProfNext; }
             }
             _renderProfChoices();
             showScreen('screen-story-professor');
