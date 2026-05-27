@@ -33696,6 +33696,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 _rivalBuildCounterTypePool: (...a) => _rivalBuildCounterTypePool(...a),
                 selectTrainerForRole: (...a) => selectTrainerForRole(...a),
                 baseTrainerName: (...a) => _baseTrainerName(...a),
+                generateBasicTrainer: (...a) => _generateBasicTrainer(...a),
+                storyEventSeed: (...a) => _storyEventSeed(...a),
+                withEventSeededRng: (...a) => _withEventSeededRng(...a),
                 get TRAINER_DATA() { return TRAINER_DATA; },
                 _rivalIntroStarterCounterType: (...a) => _rivalIntroStarterCounterType(...a),
                 getTrainerQuoteForBattle: (...a) => getTrainerQuoteForBattle(...a),
@@ -35112,6 +35115,59 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             E3: [],
             E4: ['Lance', 'Karen'],
         };
+
+        // ── Per-event deterministic RNG (static-roll spec) ─────────────────────
+        // A non-rival event's roll must be reproducible across refresh / flee / revisit.
+        // Derive a per-event seed from (runSeed, eventIdx) and run the roll through a
+        // private LCG so the result is a pure function of those two — no stored team
+        // needed. The shared storyRngNext stream is swapped out for the duration and
+        // restored in finally. No-op outside an active seeded run.
+        function _storyEventSeed(eventIdx) {
+            const base = (sm && sm.runSeed != null) ? (sm.runSeed >>> 0) : 0x12345678;
+            let h = (base ^ Math.imul(((eventIdx | 0) + 1), 0x9E3779B9)) >>> 0;
+            h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) >>> 0;
+            h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35) >>> 0;
+            return (h ^ (h >>> 16)) >>> 0;
+        }
+        function _withEventSeededRng(eventIdx, fn) {
+            if (!(sm && sm.active) || sm.runSeed == null) return fn();
+            const saved = window.storyRngNext;
+            let s = _storyEventSeed(eventIdx);
+            window.storyRngNext = function () {
+                s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+                return s / 4294967296;
+            };
+            try { return fn(); }
+            finally { window.storyRngNext = saved; }
+        }
+        // Dynamic Basic-Trainer generator (story spec): route / gym-trainer fodder is no
+        // longer a fixed roster entry — it's generated with a rolled type (single, or a
+        // dual combo ~1/3 of the time), a generic class name + sprite reused from the
+        // existing Basic-Trainer art (so sprites always resolve), and NO signatures. Gym
+        // Trainers pass the gym's type as preferredType so their lineup stays on-type.
+        // Seeded per event so the generated identity is static across revisits.
+        function _generateBasicTrainer(eventIdx, preferredType) {
+            return _withEventSeededRng(eventIdx, () => {
+                const rng = (typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                const types = Object.keys(typeChart).filter(t => t !== '???');
+                const basics = TRAINER_DATA.filter(t => t.role === 'Basic Trainer' && !t.tag);
+                const flavor = basics.length ? basics[Math.floor(rng() * basics.length)] : { name: 'Trainer', spriteFile: 'Youngster' };
+                const primary = preferredType || types[Math.floor(rng() * types.length)];
+                let type = primary;
+                if (rng() < 0.33) {
+                    const t2 = types[Math.floor(rng() * types.length)];
+                    if (t2 !== primary) type = primary + '/' + t2;
+                }
+                return {
+                    role: 'Basic Trainer',
+                    name: flavor.name || 'Trainer',
+                    type,
+                    sigs: [],
+                    spriteFile: flavor.spriteFile || flavor.name,
+                    pkmGens: normalizeEnabledGens(sm.settings && sm.settings.enabledGens),
+                };
+            });
+        }
 
         function assignTrainers(enabledGens) {
             const eg = normalizeEnabledGens(enabledGens);
@@ -42740,6 +42796,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const trainerName = sm.trainerAssignments[idx];
             const prefType = preferredTypeBeforeGymBattle(battleIdx);
             const isMysteryFinal = String(event || '') === 'Mystery Figure';
+            // Generic Basic / Gym-Trainer events are GENERATED (rolled type + generic
+            // sprite, no signatures) rather than pulled from a fixed roster (Phase 3.5d).
+            // Gym Trainers take the gym's type; route basics roll their own. Seeded per
+            // event so the generated identity is static across flee / revisit / reload.
+            const _genericBasicEvent = (String(event) === 'Basic Trainer' || /^Gym Trainer/.test(String(event)));
             const _mysteryFinalFace = isMysteryFinal ? _storyEnsureMysteryIdentity() : null;
             let trainer = isMysteryFinal
                 ? {
@@ -42768,7 +42829,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         ];
                     })()
                 }
-                : (findTrainerDataByName(trainerName, event) || selectTrainerForRole(event, sg, null, prefType));
+                : _genericBasicEvent
+                    ? _generateBasicTrainer(idx, /^Gym Trainer/.test(String(event)) ? prefType : null)
+                    : (findTrainerDataByName(trainerName, event) || selectTrainerForRole(event, sg, null, prefType));
             if (!isMysteryFinal && event === 'Rival') {
                 // The rival taunts you to your face: their nameplate reads "<your name>
                 // Sucks", keeping their assigned sprite. canonName preserves the real
@@ -42808,9 +42871,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
 
             showBattleIntro(trainer, event, async () => {
-                const enemyTeam = isMysteryFinal
+                const _rollEnemy = () => isMysteryFinal
                     ? rollMysteryFigureFinalBossTeam(6, sg)
                     : rollTrainerTeam(trainer, partySize, gradeWeights || {g1:0,g2:0,g3:50,g4:50}, sg, event, idx);
+                // Static-roll spec: every non-rival fight is a pure function of
+                // (runSeed, eventIdx), so flee / revisit / reload reproduce the same team.
+                // The rival stays dynamic — it re-rolls off the LIVE party to counter it.
+                const enemyTeam = (String(event) === 'Rival') ? _rollEnemy() : _withEventSeededRng(idx, _rollEnemy);
                 try { await _storyGateFoeMovesByCity(enemyTeam, idx); } catch (e) { console.warn('[Story] foe move gate', e); }
                 const frozenTeam = storyFreezeFoeTeamForPersistence(enemyTeam);
                 try {
