@@ -28,13 +28,14 @@ setSm();
 const cityRow = (c) => { for (let i = 0; i < SER.length; i++) { const r = SER[i]; if (Array.isArray(r) && r[1] === 'City' && r[2] === 'City' + c) return i; } return -1; };
 const renderCity = (c) => { setSm(); return W.__renderCityActionsForTest(cityRow(c)); };
 
-test('npcStageForCity: city-anchored thresholds (dojo 2/5/8, tutor 0/4, evolab 2/4)', () => {
-  assert.equal(ST.npcStageForCity('dojo', 1), 0, 'pre-debut clamps to stage 0');
-  assert.equal(ST.npcStageForCity('dojo', 2), 0);
-  assert.equal(ST.npcStageForCity('dojo', 4), 0);
-  assert.equal(ST.npcStageForCity('dojo', 5), 1);
-  assert.equal(ST.npcStageForCity('dojo', 7), 1);
-  assert.equal(ST.npcStageForCity('dojo', 8), 2);
+test('npcStageForCity: city-anchored thresholds (dojo 1/4/7, tutor 0/4, evolab 2/4)', () => {
+  assert.equal(ST.npcStageForCity('dojo', 0), 0, 'pre-debut clamps to stage 0');
+  assert.equal(ST.npcStageForCity('dojo', 1), 0, 'C1 = White Belt (debut)');
+  assert.equal(ST.npcStageForCity('dojo', 3), 0);
+  assert.equal(ST.npcStageForCity('dojo', 4), 1, 'C4 = Black Belt');
+  assert.equal(ST.npcStageForCity('dojo', 6), 1);
+  assert.equal(ST.npcStageForCity('dojo', 7), 2, 'C7 = Grandmaster');
+  assert.equal(ST.npcStageForCity('dojo', 9), 2);
   assert.equal(ST.npcStageForCity('tutor', 0), 0);
   assert.equal(ST.npcStageForCity('tutor', 3), 0);
   assert.equal(ST.npcStageForCity('tutor', 4), 1);
@@ -65,16 +66,16 @@ test('dojoItemTier: berries=1, decent staples=2, meta power items=3', () => {
   assert.equal(ST.dojoItemTier('Assault Vest'), 3);
 });
 
-test('Awakened abilities are gated below Grandmaster (city < 8)', () => {
+test('Awakened abilities are gated below Grandmaster (city < 7)', () => {
   // NB: arrays returned from the jsdom realm fail deepStrictEqual's prototype
   // check, so assert on length (realm-safe) rather than deepEqual to [].
-  setSm({ eventIndex: cityRow(4) });   // White Belt city
-  assert.equal(ST.npcStage('dojo'), 0, 'C4 is dojo stage 0');
+  setSm({ eventIndex: cityRow(2) });   // White Belt city (C1–C3)
+  assert.equal(ST.npcStage('dojo'), 0, 'C2 is dojo stage 0 (White Belt)');
   assert.equal(ST.opAbilitiesForMon('Garchomp').length, 0, 'no Awaken picks at White Belt');
-  setSm({ eventIndex: cityRow(6) });   // Black Belt city
-  assert.equal(ST.npcStage('dojo'), 1, 'C6 is dojo stage 1');
+  setSm({ eventIndex: cityRow(6) });   // Black Belt city (C4–C6)
+  assert.equal(ST.npcStage('dojo'), 1, 'C6 is dojo stage 1 (Black Belt)');
   assert.equal(ST.opAbilitiesForMon('Garchomp').length, 0, 'no Awaken picks at Black Belt');
-  // city 8 is Grandmaster — the positive case depends on data/op-abilities.json
+  // city 7+ is Grandmaster — the positive case depends on data/op-abilities.json
   // loading under jsdom fetch, so we don't assert non-empty here.
 });
 
@@ -121,7 +122,8 @@ test('stage-up gifts: dojo (Black Belt / Grandmaster) and Stone Sage (Ascension)
 test('city-screen chip tags advance with the arrived city', () => {
   assert.ok(renderCity(0).includes('Move Tutor — Heart Scale'), 'C0 Move Tutor = Heart Scale');
   assert.ok(renderCity(4).includes('Move Tutor — TM Expert'), 'C4 Move Tutor = TM Expert');
-  assert.ok(renderCity(4).includes('Battle Dojo — White Belt'), 'C4 Dojo = White Belt');
+  assert.ok(renderCity(2).includes('Battle Dojo — White Belt'), 'C2 Dojo = White Belt');
+  assert.ok(renderCity(4).includes('Battle Dojo — Black Belt'), 'C4 Dojo = Black Belt');
   assert.ok(renderCity(6).includes('Battle Dojo — Black Belt'), 'C6 Dojo = Black Belt');
   assert.ok(renderCity(8).includes('Battle Dojo — Grandmaster'), 'C8 Dojo = Grandmaster');
   assert.ok(renderCity(2).includes('Stone Sage — Awakening'), 'C2 Stone Sage = Awakening');
