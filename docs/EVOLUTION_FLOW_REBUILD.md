@@ -68,7 +68,7 @@ free use of the facility**. Naming leans on Pokémon canon for flavor.
 | `potion` (×1) (battle bag) | Welcome Potion | First visit, Pokémon Center City 0 | Adds 1 Potion to battle bag. | Pokémon Center intro |
 | (existing) Artifact free | Pallet Relic | First Artifact purchase, City 0 | Free relic claim. | Unchanged (`artifactFreeClaimUsed`). |
 | **`linkDiscount50` (new)** | **"Bill's Discount Card"** | Bill's cold-open at City 2 entry | Halves the gold cost of **one** Cable Link action (Reroll / Upgrade / Rebuild). Consumed on use. | Cable Link intro |
-| **`stoneToken` (new)** | **"Stonewise Token"** | Granny's cold-open at City 2 entry | Redeem at Stone Shop for **1 free evolution stone of choice** (any of 8). Consumed on redemption. | Stone Shop intro |
+| **`stoneToken` (new)** | **"Stonewise Token"** | Granny's cold-open at City 2 entry | Redeem at Stone Shop for **1 free item of choice** (any stone or trade item). Consumed on redemption. | Stone Shop intro |
 | **`tutorVoucherTM` (rename of existing flow)** | "Move Tutor Pass" | First visit, Move Tutor City 2 | Free single Move Tutor lesson. *(Already covered by `heartScale` semantics; we just gift one on first visit instead of via gym-drop.)* | Move Tutor intro |
 | (existing) `mint` | Nature Mint | First visit, Nature Rater City 3 | Waives one Nature change. (Already exists in inventory; just gift one on first visit.) | Nature Rater intro |
 | (existing) `emblemHonor` | Dojo Emblem | First visit, Battle Dojo City 4 | Waives one item/ability swap. (Already exists; gift one on first visit.) | Battle Dojo intro |
@@ -152,7 +152,7 @@ items, each with:
 - **Always shows confirm dialog** via `_storyConfirmTutorChange('Buy Fire Stone for 500G?', 500)` — no silent buys.
 
 If player has `stoneToken` voucher, render a **"Redeem Token"** button on each
-stone (not trade items) — opens the same confirm dialog with the voucher
+item (stones and trade items) — opens the same confirm dialog with the voucher
 consumed instead of gold. Token cost = 0, cost text reads `Free — Stonewise
 Token` in purple.
 
@@ -355,8 +355,8 @@ Chained after Bill's scene in `enterCity()` for `cidx === 2`. See §6.2.
 
 ### 7.3 Token redemption
 
-At the Stone Shop, each stone card renders a "Redeem Token (Free)" button when
-`sm.inventory.stoneToken > 0` AND the item is a stone (not trade item).
+At the Stone Shop, each item card renders a "Redeem Token (Free)" button when
+`sm.inventory.stoneToken > 0`.
 Confirm dialog: "Redeem Stonewise Token for 1 Fire Stone? (free)". On Yes:
 `sm.inventory.stoneToken--`, `sm.inventory.fireStone++`, save, refresh.
 

@@ -8439,7 +8439,7 @@
             <h3 id="story-stone-shop-title" class="story-screen-head-title" style="color:#b39ddb;font-size:14px;flex:1;min-width:0;"><img class="story-screen-head-ico" src="sprites/pokesprite/items/hard-stone.png" alt="" width="22" height="22" decoding="async"><span class="story-screen-head-text">Stone Emporium</span></h3>
             <span id="story-stone-shop-gold" style="color:#ffd700;font-size:13px;font-weight:bold;"><span class="story-gold-inline"><img class="story-gold-icon" src="icons/story-gold-coin.svg" alt="" width="21" height="16" decoding="async"> 0G</span></span>
         </div>
-        <p id="story-stone-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#aaa;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;">Stones and trade-method items for the Stone Sage next door. <strong style="color:#b39ddb;">500G each</strong>. The Sage consumes them on evolution. Hold a <strong style="color:#ce93d8;">Stonewise Token</strong>? Redeem at any stone (not trade items) for one free pick.</p>
+        <p id="story-stone-shop-blurb" style="margin:0;padding:10px 14px;font-size:11px;color:#aaa;line-height:1.45;background:rgba(6,8,14,0.35);border-bottom:1px solid #222;flex-shrink:0;">Stones and trade-method items for the Stone Sage next door. <strong style="color:#b39ddb;">500G each</strong>. The Sage consumes them on evolution. Hold a <strong style="color:#ce93d8;">Stonewise Token</strong>? Redeem on any item for one free pick.</p>
         <div id="story-stone-shop-grid" style="flex:1;overflow-y:auto;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;min-height:0;"></div>
         <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
             <button type="button" class="story-footer-back-btn" onclick="window.StoryMode.enterCity()">&#8592; Back to City</button>
@@ -30218,7 +30218,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Stones and trade-method items the Stone Sage consumes to perform evolutions
         // that previously absorbed the requirement into the gold fee. Flat 500G each
         // so the early-game Sage flow stays cheap; the Stonewise Token voucher
-        // (granted at City 2 entry) lets the player redeem one stone for free.
+        // (granted at City 2 entry) lets the player redeem any one item for free.
         // These items live in sm.inventory.<id> as integer counts; they are NOT
         // held items and never enter the battle bag.
         const STONE_SHOP_ITEMS = [
@@ -37106,11 +37106,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lines: [
                     '"Easy there, child. Step into the warm. The old ones say every Pokémon carries a stone-memory in its bones — fire, water, leaf, the lot. My job\'s to remind them which one."',
                     '"The shop next door sells the stones themselves — pebble of fire, drop of moon, that sort of thing. Bring me what your partner needs and we\'ll wake them up. For the shy ones who only evolve on a long road, you\'ll want a Cable Link first."',
-                    '"Here. A Stonewise Token. Take it to the Emporium, point at any stone, hand them the token. Free of charge — a welcome gift from the hearth. Now go on, the road north is colder."',
+                    '"Here. A Stonewise Token. Take it to the Emporium, point at anything on the shelves — stone or trinket — and hand them the token. Free of charge — a welcome gift from the hearth. Now go on, the road north is colder."',
                 ],
                 onContinue: function () {
                     try { _storyGrantBundle({ stoneToken: 1 }); } catch (e) {}
-                    try { window.showGameAlert && window.showGameAlert('Received Stonewise Token — redeem for 1 free stone at the Stone Emporium!'); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('Received Stonewise Token — redeem for 1 free item at the Stone Emporium!'); } catch (e) {}
                 }
             },
             firstStoneShop: {
@@ -46046,7 +46046,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Sells the 10 evolution stones + 14 trade-method items the Stone Sage
         // needs to perform evolutions previously baked into the gold fee.
         // Flat 500G each, confirm-on-buy. The Stonewise Token voucher granted
-        // at City 2 entry redeems one free stone (not trade items).
+        // at City 2 entry redeems one free item (stone or trade item).
         const STONE_SHOP_PRICE = 500;
         function enterStoneShop() {
             if (!sm || !sm.active) return;
@@ -46080,7 +46080,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const owned = (sm.inventory[it.id] | 0);
                 const canAfford = sm.gold >= STONE_SHOP_PRICE;
                 const isStone = it.kind === 'stone';
-                const tokenAvail = isStone && tokenN > 0;
+                const tokenAvail = tokenN > 0;
                 const icon = storyShopIconCellHtml(it.id);
                 const kindBadge = isStone
                     ? '<span class="story-action-badge info" style="font-size:9px;color:#ce93d8;border-color:#7e57c2;background:rgba(206,147,216,0.1);">STONE</span>'
@@ -46126,17 +46126,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
             renderStoneShop();
         }
-        async function redeemStoneToken(stoneId) {
+        async function redeemStoneToken(itemId) {
             if (!sm || !sm.active) return;
-            const it = STONE_SHOP_ITEMS.find(r => r.id === stoneId);
-            if (!it || it.kind !== 'stone') return;
+            const it = STONE_SHOP_ITEMS.find(r => r.id === itemId);
+            if (!it) return;
             _storyEnsureInventory();
             const tokens = (sm.inventory.stoneToken | 0);
             if (tokens <= 0) return;
             const ok = await _storyConfirmTutorChange(`Redeem a Stonewise Token for one ${it.name}? (Free — the Granny's gift.)`, 0);
             if (!ok) return;
             sm.inventory.stoneToken = tokens - 1;
-            sm.inventory[stoneId] = (sm.inventory[stoneId] | 0) + 1;
+            sm.inventory[itemId] = (sm.inventory[itemId] | 0) + 1;
             save();
             try {
                 if (window.StoryFx) {
