@@ -36946,7 +36946,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lines: [
                     '"Welcome to the Pokémart. The basics, always in stock."',
                     '"Poké Balls (300G) for the road. Potions, Full Restore, Max Elixir for the long fights. X items push a stat two stages for one battle. Dire Hit for a crit edge. Guard Spec. locks your stats safe for five turns."',
-                    '"Cities heal you between fights as a matter of course — Potions only matter when you spend a turn on one mid-battle. Buy what fits your read. Here, take a complimentary Poké Ball — first one\'s on the house."'
+                    '"Cities heal you between fights as a matter of course — Potions only matter when you spend a turn on one mid-battle. Buy what fits your read. Here, take five Poké Balls to start you off — on the house. And word is some shops out there stock revives and special battle items… but you didn\'t hear that from me."'
                 ],
                 onContinue: function () {
                     try { _storyGrantBundle({ pokeBall: 1 }); } catch (e) {}
@@ -41129,11 +41129,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const titleEl = document.getElementById('story-prof-screen-title');
             if (titleEl) titleEl.textContent = _profLegendaryMysteryMode ? 'Mystery Figure' : (isSwapWithoutMystery ? "Professor's Lab — Swap" : "Professor's Lab");
             document.getElementById('story-prof-name').textContent = profName;
-            document.getElementById('story-prof-quote').textContent = _profLegendaryMysteryMode
-                ? '"This legendary is yours for the road ahead. Field it in place of a partner, or send it to the PC for now — either way, the gate opens once it\'s in your hands."'
-                : (isSwapWithoutMystery
-                    ? '"Your party is full, but the bench still has one for you. Swap a teammate for it, or send the newcomer to the PC — your call."'
-                    : PROF_QUOTES[Math.floor(Math.random() * PROF_QUOTES.length)]);
+            // City 6 is the Professor's last appearance (matrix: Professor C0–C6).
+            // They send the player off with a goodbye here; no Professor after C6.
+            const _isFinalProfCity = !_profLegendaryMysteryMode && cityIdx === 6;
+            let _profQuote;
+            if (_profLegendaryMysteryMode) {
+                _profQuote = '"This legendary is yours for the road ahead. Field it in place of a partner, or send it to the PC for now — either way, the gate opens once it\'s in your hands."';
+            } else if (_isFinalProfCity) {
+                _profQuote = isSwapWithoutMystery
+                    ? '"Last stop for the lab — your party\'s full, so swap a teammate for this one or send it to the PC. After this, you walk the rest of the road alone. Go take the League."'
+                    : '"This is the last partner the lab can hand you before the League — from here you\'re on your own. Make it count, and good luck out there."';
+            } else if (isSwapWithoutMystery) {
+                _profQuote = '"Your party is full, but the bench still has one for you. Swap a teammate for it, or send the newcomer to the PC — your call."';
+            } else {
+                _profQuote = PROF_QUOTES[Math.floor(Math.random() * PROF_QUOTES.length)];
+            }
+            document.getElementById('story-prof-quote').textContent = _profQuote;
             const _mysteryFace = _profLegendaryMysteryMode ? _storyEnsureMysteryIdentity() : null;
             document.getElementById('story-prof-sprite').src = getTrainerSprite(_profLegendaryMysteryMode ? (_mysteryFace && _mysteryFace.sprite ? _mysteryFace.sprite : 'Cyrus') : { spriteFile: hub.spriteFile });
 
