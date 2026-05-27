@@ -33252,6 +33252,35 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return _storyEvoStageOf(cur) <= cap ? cur : null;
         }
+        // Gen-illegal signature fallback (story spec, chain step 1): if a signature is
+        // outside the run's enabled gens, walk DOWN its evo line for the nearest gen-legal
+        // form — Magnezone (gen 4) → Magneton (gen 1) in a gen-1 run. Returns a gen-legal
+        // form or null (caller then falls back to another signature / the signature's type
+        // / the trainer's theme type / random, all handled downstream).
+        function _genLegalEvoLineForm(name, genSet) {
+            let cur = name, guard = 0;
+            while (cur && guard++ < 6) {
+                const b = baseStats[cur];
+                if (!b) return null;
+                if (genSet.has(b.gen)) return cur;
+                cur = b.prevo;
+            }
+            return null;
+        }
+        // Signature grade-scaling (story spec): a signature stronger than the row's grade
+        // ceiling devolves to the strongest form that fits — Venusaur (G2) → Ivysaur (ceil
+        // G3) → Bulbasaur (ceil G4) — instead of being dropped. `ceiling` is the strongest
+        // grade NUMBER allowed (1 = G1 ok … 4 = only G4); a lower mon grade number is a
+        // stronger mon, so we devolve while grade < ceiling.
+        function _devolveSigToGradeCeiling(name, ceiling) {
+            let cur = name, guard = 0;
+            while (cur && getMonGrade(cur, getBST(cur)) < ceiling && guard++ < 5) {
+                const b = baseStats[cur];
+                if (!b || !b.prevo || !baseStats[b.prevo]) break;
+                cur = b.prevo;
+            }
+            return cur;
+        }
         function _storyEvoStageCapForCity(cityIdx) {
             // Enemy trainers (Sheet 4): Basic C0-1 · Stage-1 C2-3 · ALL (final) C4+.
             const c = cityIdx | 0;
@@ -34367,12 +34396,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _filterSigsByGradeCeiling(sigs, minGradeNumber) {
             if (!Array.isArray(sigs) || sigs.length === 0) return [];
             const ceiling = minGradeNumber | 0;
-            return sigs.filter(name => {
+            // Scale rather than drop: a signature stronger than the ceiling devolves to the
+            // strongest form that fits (keeps the trainer's identity). Forms already at/under
+            // the ceiling pass through unchanged.
+            return sigs.map(name => {
                 const b = baseStats[name];
-                if (!b) return false;
-                const g = getMonGrade(name, getBST(name));
-                return g >= ceiling;
-            });
+                if (!b) return null;
+                if (getMonGrade(name, getBST(name)) >= ceiling) return name;
+                return _devolveSigToGradeCeiling(name, ceiling);
+            }).filter(Boolean);
         }
         // Gym Leader union pool support: if a leader's post-cap sig pool falls
         // below a useful size (e.g. Misty-as-GL8 keeps only Lapras after the
@@ -34463,10 +34495,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const _trainerIsPlaceholder = isPlaceholderSignatureList(trainer.sigs || []);
             const isMixed = types.some(t => t === 'Mixed' || t === 'All-Rounder') || _trainerIsPlaceholder;
             const sigP = applyDifficultyToSigProbability(_signatureProbabilityForEvent(battleEventType));
-            let S = (trainer.sigs || []).filter(name => {
-                const b = baseStats[name];
-                return b && genSet.has(b.gen);
-            }).slice();
+            // Gen filter with evo-line fallback (story spec): a gen-illegal signature first
+            // tries the nearest gen-legal form in its own line (Magnezone → Magneton) before
+            // being dropped. Duplicates are preserved — sigs are a multiset (Lance ×3
+            // Dragonite), and _sigMult/_canUse below allow each instance one slot.
+            let S = (trainer.sigs || []).map(name => {
+                if (!baseStats[name]) return null;
+                return _genLegalEvoLineForm(name, genSet);
+            }).filter(Boolean);
             // v19 sig-grade cap: drop any sig whose tier exceeds the row's
             // gradeWeights ceiling. Boss events (Rival/E1-E4/Champion/Mystery)
             // already roll into top tiers via their own gradeWeights, so they
@@ -34814,6 +34850,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     storyMoveOptChance: (...a) => _storyMoveOptChance(...a),
                     storyFoeItemTier: (...a) => _storyFoeItemTier(...a),
                     applyEnemyGimmickDistribution: (...a) => _applyEnemyGimmickDistribution(...a),
+                    genLegalEvoLineForm: (...a) => _genLegalEvoLineForm(...a),
+                    devolveSigToGradeCeiling: (...a) => _devolveSigToGradeCeiling(...a),
+                    filterSigsByGradeCeiling: (...a) => _filterSigsByGradeCeiling(...a),
+                    storySigGradeCeiling: (...a) => _storySigGradeCeiling(...a),
                     rollWildEncounter: (...a) => rollWildEncounter(...a),
                     getAllEvosWithStatus: (...a) => _getAllEvosWithStatus(...a),
                     get STORY_EVENTS_RAW() { return STORY_EVENTS_RAW; },
