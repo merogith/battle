@@ -7672,6 +7672,23 @@
             color: #b3c2d6;
             box-shadow: inset -3px -3px 0px 0px #181a22, inset 3px 3px 0px 0px #3a3e4d;
         }
+        /* Collection: header (back/title) + tabs stay pinned; only the body scrolls.
+           Scoped to #screen-collection so other .story-screen-outer screens are unaffected. */
+        #screen-collection { overflow: hidden; }
+        #screen-collection .story-collection-shell {
+            flex: 1 1 auto;
+            min-height: 0;
+            width: 100%;
+            padding-bottom: 0;
+        }
+        #screen-collection .story-collection-head,
+        #screen-collection .story-collection-tabs { flex-shrink: 0; }
+        #screen-collection .story-collection-body {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            min-height: 0;
+        }
 
         /* Pokédex tab content */
         .pdex-summary {
@@ -7925,14 +7942,10 @@
             </div>
 
             <button type="button" class="menu-btn-quickplay menu-btn-quickplay--story" onclick="window.StoryMode && window.StoryMode.showMenu()">&#9670; Story Mode</button>
-            <div class="menu-collection-row">
-                <button type="button" class="menu-collection-btn" onclick="window.StoryMode && window.StoryMode.openCollection && window.StoryMode.openCollection('pokedex')" aria-label="Open Pokédex, Achievements, and Hall of Fame">
-                    <span class="menu-collection-icon" aria-hidden="true">📖</span>
-                    <span class="menu-collection-text">Collection</span>
-                    <span class="menu-collection-sub" aria-hidden="true">Pokédex · Trophies · Hall of Fame</span>
-                </button>
-            </div>
-            <button type="button" class="menu-customize-toggle" id="menu-customize-toggle" aria-expanded="false" aria-controls="menu-customize-panel" onclick="window.menuToggleCustomize && window.menuToggleCustomize()">
+            <!-- Collection moved into the Story Mode page (removed from the home screen per spec). -->
+            <!-- Other play modes (vs AI / Local PvP / Online / Gauntlet) are paused for development.
+                 The reveal toggle below is hidden but kept in the DOM — un-hide it to bring them back. -->
+            <button type="button" class="menu-customize-toggle" id="menu-customize-toggle" aria-expanded="false" aria-controls="menu-customize-panel" onclick="window.menuToggleCustomize && window.menuToggleCustomize()" hidden style="display:none;">
                 <span>Other play modes &amp; draft rules</span><span class="chev" aria-hidden="true">▼</span>
             </button>
         </div>
@@ -8323,8 +8336,7 @@
             <button class="story-menu-btn story-menu-btn--continue" id="story-continue-btn" onclick="window.StoryMode.continueRun()" style="display:none;">&#9654; Continue Run</button>
             <button class="story-menu-btn story-menu-btn--new" onclick="window.StoryMode.openTrainerCreate()">&#9670; New Adventure</button>
             <button class="story-menu-btn story-menu-btn--abandon" id="story-abandon-btn" onclick="window.StoryMode.confirmAbandon()" style="display:none;">&#10006; Abandon Run</button>
-            <button class="story-menu-btn story-menu-btn--collection" onclick="window.StoryMode.openCollection('pokedex')">&#128218; Pokédex &amp; Collection</button>
-            <button class="story-menu-btn story-menu-btn--collection" onclick="window.StoryMode.openCollection('achievements')">&#127942; Achievements</button>
+            <button class="story-menu-btn story-menu-btn--collection" onclick="window.StoryMode.openCollection('pokedex')">&#128218; Collection</button>
             <button class="story-menu-btn story-menu-btn--back" onclick="window.StoryMode.showMenu(false)">&#8592; Back to Main Menu</button>
             <p style="font-size:9px;color:#555;text-align:center;margin:2px 0 0;text-shadow:1px 1px 0 rgba(0,0,0,0.5);">Stuck? Open Settings (⚙) → Unstick. More tools in the Developer section.</p>
         </div>
