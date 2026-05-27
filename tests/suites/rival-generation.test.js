@@ -190,6 +190,42 @@ test('pure counter: signatures are never injected (only coincidental at most)', 
   assert.ok(avgSigs < 0.5, `avg sig count ${avgSigs.toFixed(2)} should be < 0.5 (pure counter never injects signatures)`);
 });
 
+test('rival taunt name is "<player> Sucks", canonical fallback when unnamed', async () => {
+  const eng = await setup();
+  const E = eng.window.__rivalTest;
+  const prevProfile = E.sm.trainerProfile;
+  E.sm.trainerProfile = { name: 'Red' };
+  assert.equal(E._storyRivalTauntName('Blue'), 'Red Sucks');
+  E.sm.trainerProfile = null;
+  assert.equal(E._storyRivalTauntName('Blue'), 'Blue', 'no player name -> keep canonical identity');
+  E.sm.trainerProfile = { name: '   ' };
+  assert.equal(E._storyRivalTauntName('Silver'), 'Silver', 'blank/whitespace name -> keep canonical');
+  E.sm.trainerProfile = prevProfile;
+});
+
+test('rival taunt-name swap preserves the canonical dialogue pool', async () => {
+  const eng = await setup();
+  const E = eng.window.__rivalTest;
+  assert.equal(typeof E.getTrainerQuoteForBattle, 'function', 'getTrainerQuoteForBattle exposed');
+  E.sm.active = false;
+  E.sm.badges = 2;
+  const row = E.STORY_RIVAL_ROW_EARLY;
+  const BLUE_LINES = ['Smell ya later… if you can win!', 'Gramps was right—you\'re not half bad!', 'I\'m the real deal!'];
+  const collect = (trainer, n) => {
+    const out = new Set();
+    for (let s = 0; s < n; s++) { eng.seedRng(11000 + s); out.add(E.getTrainerQuoteForBattle(trainer, 'Rival', row)); }
+    return out;
+  };
+  const canonical = collect({ name: 'Blue', role: 'Rival' }, 400);
+  const swapped = collect({ name: 'Red Sucks', canonName: 'Blue', role: 'Rival' }, 400);
+  // Swapping the displayed name to "<player> Sucks" must not change what the rival can say.
+  assert.deepEqual([...swapped].sort(), [...canonical].sort(), 'swapped rival draws the identical quote pool');
+  assert.ok(BLUE_LINES.some((l) => swapped.has(l)), 'Blue\'s canonical per-name lines survive the swap (via canonName)');
+  // Control: without canonName the lookup would key on "Red Sucks" and drop the per-name lines.
+  const broken = collect({ name: 'Red Sucks', role: 'Rival' }, 400);
+  assert.ok(!BLUE_LINES.some((l) => broken.has(l)), 'without canonName the per-name lines are lost (proves canonName matters)');
+});
+
 test('trainer.sigs array is not mutated by a team roll', async () => {
   const eng = await setup();
   const E = eng.window.__rivalTest;

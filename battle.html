@@ -31072,7 +31072,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function getTrainerQuoteForBattle(trainer, quoteRole, storyBattleRowIdx) {
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
-            const nm = trainer && trainer.name ? String(trainer.name) : '';
+            // canonName holds the real rival identity when the display name was taunt-swapped
+            // to "<player> Sucks"; per-name quote lookups must key on the canonical name.
+            const nm = trainer && (trainer.canonName || trainer.name) ? String(trainer.canonName || trainer.name) : '';
             if (quoteRole === 'Rival' && storyBattleRowIdx != null && storyBattleRowIdx !== undefined) {
                 const phase = getRivalEncounterPhase(storyBattleRowIdx);
                 if (phase !== null && phase !== undefined) {
@@ -33670,6 +33672,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 getRivalEncounterPhase: (...a) => getRivalEncounterPhase(...a),
                 _rivalBuildCounterTypePool: (...a) => _rivalBuildCounterTypePool(...a),
                 _rivalIntroStarterCounterType: (...a) => _rivalIntroStarterCounterType(...a),
+                getTrainerQuoteForBattle: (...a) => getTrainerQuoteForBattle(...a),
+                _storyRivalTauntName: (...a) => _storyRivalTauntName(...a),
                 pickRivalSecondaryIntroLine: (...a) => pickRivalSecondaryIntroLine(...a),
                 getRivalAftermathLine: (...a) => getRivalAftermathLine(...a),
                 rivalPhaseTagline: (...a) => rivalPhaseTagline(...a),
@@ -42496,6 +42500,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return true;
         }
 
+        /** The rival's taunt display name — "<your name> Sucks". Falls back to the
+         *  canonical identity (Blue/Silver/…) when the player hasn't set a name. */
+        function _storyRivalTauntName(canonName) {
+            const pn = ((sm && sm.trainerProfile && sm.trainerProfile.name) || '').trim();
+            return pn ? `${pn} Sucks` : (canonName || 'your rival');
+        }
         function _showIntroRivalColdOpen(rivalName, onDone) {
             const variant = _storyActiveVariant();
             // Per-variant intro framing — the introRival cold-open is the
@@ -42506,7 +42516,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const hub = (typeof cityProfessorHubSlot === 'function') ? (cityProfessorHubSlot(0) || {}) : {};
             const profName = hub.label || 'Prof. Oak';
             const profSpriteFile = hub.spriteFile || 'OakProfessor';
-            const displayRival = (rivalName && String(rivalName).trim()) || 'someone you know';
+            const displayRival = _storyRivalTauntName((rivalName && String(rivalName).trim()) || '');
             const intro = _STORY_INTRO_SCENES[variant.id] || _STORY_INTRO_SCENES.classic;
             // metaKey is left blank here — the outer dispatcher
             // (_runStoryColdOpen) already stamps a variant-keyed dedupe entry,
@@ -42709,8 +42719,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     })()
                 }
                 : (findTrainerDataByName(trainerName, event) || selectTrainerForRole(event, sg, null, prefType));
-            if (!isMysteryFinal && event === 'Rival' && sm.runRivalSpriteFile) {
-                trainer = { ...trainer, spriteFile: sm.runRivalSpriteFile };
+            if (!isMysteryFinal && event === 'Rival') {
+                // The rival taunts you to your face: their nameplate reads "<your name>
+                // Sucks", keeping their assigned sprite. canonName preserves the real
+                // identity (Blue/Silver/…) for the per-name dialogue + quote lookups.
+                trainer = {
+                    ...trainer,
+                    canonName: trainer.name,
+                    name: _storyRivalTauntName(trainer.name),
+                    ...(sm.runRivalSpriteFile ? { spriteFile: sm.runRivalSpriteFile } : {}),
+                };
             }
             sm.currentTrainerData = trainer;
 
@@ -42782,7 +42800,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     : '';
                 overlay.innerHTML = `
                     <img src="${getTrainerSprite(trainer)}" onerror="this.style.display='none'" style="width:200px;height:200px;object-fit:contain;image-rendering:pixelated;border:none;">
-                    <div style="color:var(--accent);font-size:20px;font-weight:bold;">${trainer.name}</div>
+                    <div style="color:var(--accent);font-size:20px;font-weight:bold;">${_esc(String(trainer.name || ''))}</div>
                     ${isRivalBattle && rivalTagline ? `<div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#ffb74d;font-weight:bold;text-shadow:0 0 6px rgba(255,152,0,0.35);">⚔ Rival · ${rivalTagline}</div>` : ''}
                     <div class="story-dialog-host story-battle-intro-dialog" style="margin-top:4px;">
                         <div class="story-dialog-nameplate">${roleLabel}</div>
