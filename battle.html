@@ -8914,7 +8914,6 @@
                 <div class="story-create-trainer-row">
                     <div class="story-create-portrait">
                         <img id="story-create-sprite" alt="Trainer sprite" decoding="async">
-                        <div class="story-create-portrait-name" id="story-create-portrait-name">Red</div>
                     </div>
                     <div class="story-create-trainer-controls">
                         <label class="story-create-field">
@@ -8961,9 +8960,7 @@
 
             <section class="story-create-section">
                 <h2 class="story-create-sec-title">3 &mdash; Storyline</h2>
-                <p style="color:#888;font-size:11px;margin:0 0 6px;">The road north is the same. Who walks it with you, what waits at the cage, and what the radio says when no one&rsquo;s listening &mdash; that&rsquo;s the storyline.</p>
-                <div class="story-create-storyline-grid" id="story-create-storyline-grid" role="radiogroup" aria-label="Storyline"></div>
-                <p id="story-create-storyline-warn" class="story-create-storyline-warn" aria-live="polite" style="margin-top:6px;"></p>
+                <p style="color:#888;font-size:11px;margin:0 0 6px;">Your storyline is rolled at random when you begin &mdash; you&rsquo;ll see which one you got before you set out. The road north is the same; who walks it with you and what waits at the cage is the surprise.</p>
             </section>
 
             <section class="story-create-section">
@@ -35102,7 +35099,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             sprite: TRAINER_DEFAULT,
             difficulty: 'normal',
             genPreset: 'all',
-            storyline: 'classic'
+            storyline: 'surprise_me' // always random per spec — resolved at run start
         };
         function _trainerSpritePath(filename) {
             return 'sprites/trainers/' + String(filename || '');
@@ -35117,7 +35114,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function _tcSyncPortrait() {
             const img = document.getElementById('story-create-sprite');
-            const cap = document.getElementById('story-create-portrait-name');
             if (img) {
                 img.src = _trainerSpritePath(_tcState.sprite);
                 img.onerror = function() {
@@ -35127,7 +35123,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 };
             }
-            if (cap) cap.textContent = _trainerPrettyName(_tcState.sprite);
         }
         function _tcSyncDifficultyCards() {
             const cards = document.querySelectorAll('#screen-story-trainercreate .story-create-diff-card');
@@ -35212,22 +35207,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             })();
             _tcState.genPreset = allChecked ? 'all' : (onlyG1 ? 'kanto' : 'custom');
             _tcSyncGenPresetButtons();
-            // Render the storyline picker grid + restore the last-used pick if
-            // any. Defaults to 'classic' for a fresh first-time install.
-            if (typeof STORYLINE_VARIANTS !== 'undefined' && !STORYLINE_VARIANTS[_tcState.storyline]) {
-                _tcState.storyline = 'classic';
-            }
-            try {
-                const raw = localStorage.getItem(STORY_MENU_DEFAULTS_KEY);
-                if (raw) {
-                    const d = JSON.parse(raw);
-                    if (d && typeof d.storyLine === 'string' && STORYLINE_VARIANTS[d.storyLine]) {
-                        _tcState.storyline = d.storyLine;
-                    }
-                }
-            } catch (e) {}
-            _tcRenderStorylineGrid();
-            _tcSyncStorylineCards();
+            // Storyline is ALWAYS rolled at random on Begin Adventure (per spec) — the
+            // player no longer picks one. Force the 'surprise_me' sentinel; it resolves
+            // to one of the real variants in _readStorylineFromUI() at run construction.
+            _tcState.storyline = 'surprise_me';
             const warn = document.getElementById('story-create-warning');
             if (warn) warn.textContent = '';
             setTimeout(() => { try { if (nameInput) nameInput.focus(); } catch (e) {} }, 80);
