@@ -33121,6 +33121,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             };
         }
 
+        // Trainer-type grade availability (Sheet 4 −/o/+ matrix): per grade
+        // [G1,G2,G3,G4], 0 = forbidden · 1 = some · 2 = high. The ladder makes
+        // higher-difficulty trainers favour stronger grades at the same city.
+        function _trainerGradeProfile(eventType) {
+            const e = String(eventType || '');
+            if (/^(E[1-4]|Champion|Mystery Figure|Victory Road)$/.test(e)) return [1, 2, 1, 0]; // G1 some, G2 high
+            if (/^Gym Leader/.test(e) || e === 'Rival') return [0, 2, 1, 0];                      // G2 high, G3 some
+            if (/Gym Trainer/.test(e) || e === 'Elite Trainer') return [0, 1, 2, 1];              // G3 high, G2/G4 some
+            if (e === 'Basic Trainer') return [0, 0, 1, 2];                                       // G4 high, G3 some
+            return [0, 1, 2, 1];
+        }
+        // Merge the −/o/+ availability matrix onto the already-ramped grade weights:
+        // forbidden grades drop to 0, "high" grades are favoured 2.5× over "some", then
+        // renormalize. The ramp supplies the per-city base %, so the o/+ shares rise with
+        // city automatically; the profile adds the per-trainer-type difficulty skew. If
+        // the mask would zero everything (e.g. an Intro Rival's pure-G4 base vs a G4-
+        // forbidden profile), the ramped base is kept unchanged.
+        function _applyTrainerGradeMatrix(gw, eventType) {
+            if (!gw) return gw;
+            const prof = _trainerGradeProfile(eventType);
+            const FACTOR = [0, 1, 2.5];
+            const keys = ['g1', 'g2', 'g3', 'g4'];
+            const out = { g1: 0, g2: 0, g3: 0, g4: 0 };
+            let sum = 0;
+            for (let i = 0; i < 4; i++) { const w = (gw[keys[i]] || 0) * FACTOR[prof[i]]; out[keys[i]] = w; sum += w; }
+            if (sum <= 0) return gw;
+            for (const k of keys) out[k] = (out[k] / sum) * 100;
+            return out;
+        }
+
         function applyDifficultyToSigProbability(p) {
             const d = sm.storyDifficulty || 'normal';
             let x = Math.max(0, Math.min(1, +p || 0));
@@ -34376,6 +34406,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             let gwIn = applyDifficultyToGradeWeights(gradeWeights || { g1: 0, g2: 0, g3: 50, g4: 50 });
             gwIn = applyStoryProgressToGradeWeights(gwIn, storyRowIdx);
             gwIn = storyStripGrade4IfPartyMature(gwIn);
+            // Sheet 4 grade-availability matrix: shape the ramped weights by trainer-type
+            // difficulty (basic → G3/G4 · gym/elite → G3 · leader/rival → G2/G3 ·
+            // E4/Champion → G1/G2). Only inside an active story run — frontier / generator
+            // callers keep the raw ramp.
+            if (sm && sm.active && battleEventType) gwIn = _applyTrainerGradeMatrix(gwIn, battleEventType);
             // Evolution-stage cap for this battle's arrived city (2 = no
             // restriction: C6+, bosses at the League, or non-story callers).
             // Applied uniformly below — even sig-cap-exempt trainers (Rival,
@@ -34793,6 +34828,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     distributeEVsToTotal: (...a) => _distributeEVsToTotal(...a),
                     wildGradeWeightsForCity: (...a) => _wildGradeWeightsForCity(...a),
                     get PROF_ROLLS() { return PROF_ROLLS; },
+                    trainerGradeProfile: (...a) => _trainerGradeProfile(...a),
+                    applyTrainerGradeMatrix: (...a) => _applyTrainerGradeMatrix(...a),
                     rollWildEncounter: (...a) => rollWildEncounter(...a),
                     getAllEvosWithStatus: (...a) => _getAllEvosWithStatus(...a),
                     get STORY_EVENTS_RAW() { return STORY_EVENTS_RAW; },
