@@ -29,7 +29,7 @@ async function setup() {
   const E = eng.window.__rivalTest;
   assert.ok(E && typeof E.rollTrainerTeam === 'function', 'rollTrainerTeam must be exposed on __rivalTest');
   assert.ok(typeof E.getRivalEncounterPhase === 'function', 'getRivalEncounterPhase must be exposed');
-  assert.ok(typeof E._rivalCounterPlan === 'function', '_rivalCounterPlan must be exposed');
+  assert.ok(typeof E._rivalBuildCounterTypePool === 'function', '_rivalBuildCounterTypePool must be exposed');
   return eng;
 }
 
@@ -59,38 +59,31 @@ function hasAnyType(E, name, types) {
 // Unit tests — the plan helpers in isolation (no RNG, no engine roll).
 // ---------------------------------------------------------------------------
 
-test('_rivalCounterPlan: per-phase forced-counter / flex / decay shape', async () => {
-  const { window } = await setup();
-  const P = window.__rivalTest._rivalCounterPlan;
+test('_rivalBuildCounterTypePool: distinct counters, one best per mon, dual pick-one', async () => {
+  const eng = await setup();
+  const E = eng.window.__rivalTest;
+  const build = E._rivalBuildCounterTypePool;
 
-  const intro = P(0, 1);
-  assert.equal(intro.forcedCounter, 1, 'intro: lone slot is a forced counter');
-  assert.equal(intro.flexSlots, 0);
-  assert.equal(intro.sigP, 0, 'intro: no signature roll');
+  // A true monotype-Water party: only Grass / Electric are SE vs pure Water, so the
+  // distinct pool is at most those two — the remaining slots random-fill downstream.
+  E.sm.team = ['Squirtle', 'Wartortle', 'Blastoise', 'Vaporeon', 'Psyduck', 'Goldeen'].map((n) => ({ name: n, build: {} }));
+  const water = build();
+  assert.ok(water.length <= 2, `pure-Water party -> <=2 distinct counters, got [${water.join(', ')}]`);
+  assert.ok(water.every((t) => ['Grass', 'Electric'].includes(t)), `Water counters are Grass/Electric: [${water.join(', ')}]`);
+  assert.equal(new Set(water).size, water.length, 'pool types are distinct');
 
-  const early = P(2, 3);
-  assert.equal(early.forcedCounter, 1);
-  assert.equal(early.flexSlots, 2);
-  assert.equal(early.sigP, 0.45);
+  // A type-diverse party yields several distinct counters, never repeating a type.
+  E.sm.team = ['Charizard', 'Venusaur', 'Blastoise', 'Pikachu', 'Machamp', 'Gengar'].map((n) => ({ name: n, build: {} }));
+  const diverse = build();
+  assert.ok(diverse.length >= 3, `diverse party -> multiple distinct counters, got [${diverse.join(', ')}]`);
+  assert.equal(new Set(diverse).size, diverse.length, 'all distinct (a type leaves the pool after use)');
 
-  const mid = P(3, 5);
-  assert.equal(mid.forcedCounter, 2);
-  assert.equal(mid.flexSlots, 3);
-  assert.equal(mid.sigP, 0.40);
-
-  const league = P(4, 6);
-  assert.equal(league.forcedCounter, 3, 'league: 3 forced counter slots');
-  assert.equal(league.flexSlots, 3, 'league: 3 flex (sig-eligible) slots');
-  assert.equal(league.sigP, 0.35);
-  assert.equal(league.decay, 15, 'league: harder decay so a counter-type does not repeat across six');
-
-  const fallback = P(null, 6); // routed rematch / non-standard rival row
-  assert.equal(fallback.forcedCounter, 2);
-  assert.equal(fallback.decay, 10);
-
-  // forcedCounter never exceeds the actual party size.
-  assert.equal(P(4, 2).forcedCounter, 2);
-  assert.equal(P(3, 1).forcedCounter, 1);
+  // dual-OK pick-one: a lone Gyarados (Water/Flying) is countered by Electric (4x) or
+  // Rock (2x) — one distinct counter for the one mon.
+  E.sm.team = [{ name: 'Gyarados', build: {} }];
+  const gy = build();
+  assert.equal(gy.length, 1, 'one mon -> one counter');
+  assert.ok(['Electric', 'Rock'].includes(gy[0]), `Gyarados counter is Electric/Rock, got ${gy[0]}`);
 });
 
 test('_rivalIntroStarterCounterType: GB starter triangle, null for non-classical', async () => {
@@ -137,9 +130,12 @@ test('counter dominance: the rival skews toward types that beat YOUR party (Wate
     ['Charmander', 'Ninetales', 'Arcanine', 'Flareon', 'Magmar', 'Rapidash'], COUNTER, 60, 7000);
 
   assert.equal(water.teamsWithCoverage, water.N, 'every league rival team vs a Water party should carry >=1 Grass/Electric counter');
-  assert.ok(water.avgFrac >= 0.4,
-    `vs Water: avg Grass/Electric coverage ${(water.avgFrac * 100).toFixed(0)}% should be >= 40%`);
-  assert.ok(water.avgFrac >= fire.avgFrac + 0.15,
+  // Pure-distinct: a Water party exposes ~2 distinct counters (Grass, Electric); the
+  // remaining slots random-fill, so coverage sits lower than the old stack-the-counter
+  // model but is still clearly elevated vs a party those types do not counter.
+  assert.ok(water.avgFrac >= 0.28,
+    `vs Water: avg Grass/Electric coverage ${(water.avgFrac * 100).toFixed(0)}% should be >= 28%`);
+  assert.ok(water.avgFrac >= fire.avgFrac + 0.12,
     `counter logic must respond to the player's typing: Water ${(water.avgFrac * 100).toFixed(0)}% should clearly exceed Fire ${(fire.avgFrac * 100).toFixed(0)}%`);
 });
 
@@ -173,28 +169,25 @@ test('no duplicate species in a generated rival team', async () => {
   }
 });
 
-test('signatures are cameos, not the backbone: low average sig count at league', async () => {
+test('pure counter: signatures are never injected (only coincidental at most)', async () => {
   const eng = await setup();
   const E = eng.window.__rivalTest;
+  // The RIVAL_SIGS carry no Grass/Electric STAB, so vs a Water party none of them is a
+  // valid counter pick — they can only appear as a rare random fallback, never as a
+  // deliberate cameo. Expect ~zero across many rolls.
   primeStory(E, ['Squirtle', 'Lapras', 'Vaporeon', 'Gyarados', 'Wartortle', 'Blastoise']);
   const trainer = makeRivalTrainer();
   const sigSet = new Set(RIVAL_SIGS);
 
   let totalSigs = 0;
-  let teamsWithSomeSig = 0;
   const N = 200;
   for (let s = 0; s < N; s++) {
     eng.seedRng(4000 + s);
     const team = E.rollTrainerTeam(trainer, 6, LEAGUE_GW, GENS, 'Rival', E.STORY_RIVAL_ROW_LEAGUE);
-    const sigs = team.filter((m) => sigSet.has(m.name)).length;
-    totalSigs += sigs;
-    if (sigs > 0) teamsWithSomeSig++;
+    totalSigs += team.filter((m) => sigSet.has(m.name)).length;
   }
   const avgSigs = totalSigs / N;
-  // 3 flex slots @ 0.35 -> ~1 sig expected; counters fill the other ~5 slots.
-  assert.ok(avgSigs < 3, `avg sig count ${avgSigs.toFixed(2)} should be < 3 (signatures are cameos)`);
-  assert.ok(avgSigs >= 0.2, `avg sig count ${avgSigs.toFixed(2)} should be >= 0.2 (cameos still appear)`);
-  assert.ok(teamsWithSomeSig < N, 'not every team should contain a signature');
+  assert.ok(avgSigs < 0.5, `avg sig count ${avgSigs.toFixed(2)} should be < 0.5 (pure counter never injects signatures)`);
 });
 
 test('trainer.sigs array is not mutated by a team roll', async () => {
