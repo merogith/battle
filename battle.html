@@ -30294,14 +30294,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 spe: Math.floor(Math.random() * 32)
             };
         }
-        // Wild IVs rise with the run: early catches roll under a low cap, late catches
-        // can approach perfect. Keeps early wild catches honestly weaker than late ones.
-        function _rollCappedIVs(cap) {
-            const c = Math.max(3, Math.min(31, cap | 0));
-            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
-            const roll = () => Math.floor(rng() * (c + 1));
-            return { hp:roll(), atk:roll(), def:roll(), spa:roll(), spd:roll(), spe:roll() };
-        }
         // Enemy IV scaling by training tier — matches the existing T1..T4 curve
         // (`_storyBuildTierForEvent`). Aces get the top quartile of their tier's
         // range so a leader's signature mon still feels surgical compared to its
@@ -30324,6 +30316,43 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             const roll = () => Math.max(0, Math.min(31, (center - 3) + Math.floor(rng() * 7)));
             return { hp:roll(), atk:roll(), def:roll(), spa:roll(), spd:roll(), spe:roll() };
+        }
+        // ── CITY-CURVE IVs (story build sheets) ────────────────────────────
+        // Per-stat IV [min,max] indexed by ARRIVED city. Two source shapes:
+        //   trainers  : tight band that climbs with city (route fodder is genuinely
+        //               weak early); difficulty shifts the band UP by whole city-steps
+        //               (basic +0 · gym/elite +1 · leader/rival/E4 +2).
+        //   wild/prof : wider "0..cap" band whose FLOOR rises with city — a late catch
+        //               can be near-perfect but is never guaranteed (improves with
+        //               stage only, no difficulty axis).
+        const STORY_IV_CITY_TRAINER = Object.freeze([
+            [0, 0], [0, 5], [5, 10], [10, 15], [15, 20], [20, 25], [25, 31], [31, 31],
+        ]);
+        const STORY_IV_CITY_WILDPROF = Object.freeze([
+            [0, 10], [0, 20], [0, 31], [5, 31], [10, 31], [15, 31], [20, 31], [25, 31],
+        ]);
+        // Difficulty → city-step shift for the trainer IV band (Sheet 4: rolls improve
+        // with BOTH stage and trainer-type difficulty).
+        function _trainerDifficultyStep(eventType) {
+            const e = String(eventType || '');
+            if (e === 'Champion' || e === 'Mystery Figure' || e === 'Victory Road' || /^E[1-4]$/.test(e)) return 2;
+            if (/^Gym Leader/.test(e) || e === 'Rival') return 2;
+            if (/Gym Trainer/.test(e) || e === 'Elite Trainer') return 1;
+            if (e === 'Basic Trainer') return 0;
+            return 1;
+        }
+        function _rollCityIVs(kind, city, diffStep, isAce) {
+            const tbl = (kind === 'wildprof') ? STORY_IV_CITY_WILDPROF : STORY_IV_CITY_TRAINER;
+            let idx = (city | 0) + (diffStep | 0);
+            if (idx < 0) idx = 0;
+            if (idx >= tbl.length) idx = tbl.length - 1;
+            let lo = tbl[idx][0], hi = tbl[idx][1];
+            // Signature aces floor at the band midpoint so a leader's identity mon
+            // stays surgical relative to its fillers.
+            if (isAce && hi > lo) lo = Math.round(lo + (hi - lo) * 0.5);
+            const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            const roll = () => Math.max(0, Math.min(31, lo + Math.floor(rng() * (hi - lo + 1))));
+            return { hp: roll(), atk: roll(), def: roll(), spa: roll(), spd: roll(), spe: roll() };
         }
         // Stamp IVs onto a build only when none are set yet. Smogon / CSV builds
         // that ship explicit ivs (e.g. 0 Atk for Trick Room) are left alone.
@@ -34115,13 +34144,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // capped). Skipped pre-Gym-4 so the early softening holds.
                 try { _storyMaybeNudgeFoeEVs(slot.name, slot.build, tier); } catch (e) {}
                 slot.build.powerTier = tier;
-                // Tier-scaled IVs: T1 0-15, T2 10-22, T3 18-28, T4 26-31.
-                // Aces shift to the top quartile of their tier's range. Always
-                // overwrites — enemy IVs track tier, not whatever the CSV preset
-                // happened to ship with (the IV bake for fast/Trick-Room sets is
-                // applied at engine level via getIV defaults, not by enemy roll).
-                try { slot.build.ivs = _rollTieredIVs(tier, sigSet.has(slot.name)); }
-                catch (e) {}
+                // City-curve IVs (Sheet 4): band climbs with the arrived city and
+                // shifts up with trainer difficulty (basic +0 · gym/elite +1 ·
+                // leader/rival/E4 +2). Aces floor at the band midpoint. Always
+                // overwrites — enemy IVs track the city/difficulty curve, not whatever
+                // the CSV preset shipped. Frontier / generator runs (_foeCity < 0) keep
+                // the legacy tier-center roll so post-HoF rematches stay sharp.
+                try {
+                    slot.build.ivs = (_foeCity < 0)
+                        ? _rollTieredIVs(tier, sigSet.has(slot.name))
+                        : _rollCityIVs('trainer', _foeCity, _trainerDifficultyStep(eventType), sigSet.has(slot.name));
+                } catch (e) {}
             }
             return team;
         }
@@ -34698,6 +34731,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     professorEvoStageCapForCity: (...a) => _professorEvoStageCapForCity(...a),
                     playerEvoStageCapForCity: (...a) => _playerEvoStageCapForCity(...a),
                     storyEvoStageCapForRow: (...a) => _storyEvoStageCapForRow(...a),
+                    rollCityIVs: (...a) => _rollCityIVs(...a),
+                    trainerDifficultyStep: (...a) => _trainerDifficultyStep(...a),
                     rollWildEncounter: (...a) => rollWildEncounter(...a),
                     getAllEvosWithStatus: (...a) => _getAllEvosWithStatus(...a),
                     get STORY_EVENTS_RAW() { return STORY_EVENTS_RAW; },
@@ -41271,10 +41306,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         _storyDowngradeBuildForTier(name, build, _profTier);
                     }
                     build.powerTier = _profTier;
-                    // Professor gifts are player-side mons — roll random IVs so
-                    // the Fan Club has work to do. Legendary mystery offers stay
-                    // random too (the gimmick is the species, not perfect stats).
-                    try { _ensureBuildIVs(build, _profLegendaryMysteryMode ? {hp:31,atk:31,def:31,spa:31,spd:31,spe:31} : _rollRandomIVs()); } catch (e) {}
+                    // Professor gifts are player-side mons on the wild/prof city curve
+                    // (Sheet 5): a "0..cap" band whose floor rises with the city, so the
+                    // Fan Club / vitamins still have work to do. Legendary mystery offers
+                    // stay perfect (the gimmick is the species, not the stat grind).
+                    try { _ensureBuildIVs(build, _profLegendaryMysteryMode ? {hp:31,atk:31,def:31,spa:31,spd:31,spe:31} : _rollCityIVs('wildprof', cityIdx, 0, false)); } catch (e) {}
                     // Lock shiny on the *real* build object now, before the
                     // pick-card renderer hands a clone to buildPokemon. Without
                     // this, each declined Professor visit could quietly miss a
@@ -44848,10 +44884,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             } catch (e) {}
             if (typeof STORY_BUILD_TIER !== 'undefined') b.powerTier = STORY_BUILD_TIER.UNTRAINED;
-            // Random IVs for wild / starter / partner — vitamins are how the
-            // player trains weak stats up. CSV builds that ship explicit IVs
-            // (rare on the wild path) are preserved by _ensureBuildIVs.
-            try { _ensureBuildIVs(b, _rollCappedIVs(15 + (sm && sm.badges ? (sm.badges | 0) * 2 : 0))); } catch (e) {}
+            // City-curve IVs for wild catches (Sheet 5): a "0..cap" band whose floor
+            // rises with the arrived city — early catches roll low, late catches can be
+            // near-perfect but never guaranteed. Vitamins remain how the player trains
+            // weak stats up. CSV builds that ship explicit IVs (rare on the wild path)
+            // are preserved by _ensureBuildIVs.
+            let _wIvCity = 0;
+            try { _wIvCity = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
+            try { _ensureBuildIVs(b, _rollCityIVs('wildprof', _wIvCity, 0, false)); } catch (e) {}
             return b;
         }
 
