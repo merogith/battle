@@ -144,3 +144,28 @@ test('signature override: too-evolved aces devolve to fit the cap (Venusaur -> B
   // Stage matches the engine's own classifier after devolve.
   assert.ok(evoStage(ST.devolveToStage('Venusaur', 0)) === 0, 'devolved form is stage 0 at cap 0');
 });
+
+test('parity: enemies get no Hidden ability before City 4 (Dojo Black Belt)', () => {
+  const SER = ST.STORY_EVENTS_RAW;
+  // First Battle row whose arrived city is 2 or 3 — there tiers reach T2 (where the
+  // CSV would otherwise ship Hidden abilities) but the player has not unlocked Hidden,
+  // so the parity gate must force basic abilities.
+  let earlyRow = -1;
+  for (let i = 0; i < SER.length; i++) {
+    const r = SER[i];
+    if (Array.isArray(r) && r[1] === 'Battle') { const c = ST.cityIndexFromEventIndex(i); if (c === 2 || c === 3) { earlyRow = i; break; } }
+  }
+  assert.ok(earlyRow >= 0, 'found an early (City 2-3) battle row');
+  setSm({ eventIndex: earlyRow, badges: 2 }); // badges 2 → Elite Trainer rolls at tier T2
+  const tr = { name: 'Probe', type: 'Mixed', sigs: [] };
+  let checked = 0;
+  for (let s = 0; s < 10; s++) {
+    const team = ST.rollTrainerTeam(tr, 6, { g1: 0, g2: 30, g3: 50, g4: 20 }, GENS, 'Elite Trainer', earlyRow);
+    for (const slot of team) {
+      const bs = baseStats[slot.name];
+      const H = bs && bs.abilities && bs.abilities.H;
+      if (H && slot.build) { checked++; assert.notEqual(slot.build.a, H, `${slot.name} ran Hidden ${H} before City 4 (should be gated to slot 0)`); }
+    }
+  }
+  assert.ok(checked > 0, 'exercised at least one species that has a Hidden ability');
+});

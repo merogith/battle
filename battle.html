@@ -34041,10 +34041,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sigSet = new Set();
             if (sigNames && typeof sigNames.forEach === 'function') sigNames.forEach(n => sigSet.add(n));
             else if (Array.isArray(sigNames)) sigNames.forEach(n => sigSet.add(n));
+            // City-clock ability gate (parity): enemies run only basic (non-hidden)
+            // abilities until the player unlocks Hidden at the Battle Dojo's Black Belt
+            // (City 4). Before then a slot carrying its species' Hidden ability is forced
+            // back to slot 0. Off outside an active story roll (frontier / generator),
+            // which use full Smogon builds; T4 events sit at City 6+ so they're unaffected.
+            let _hiddenAllowedForFoes = true;
+            try {
+                if (storyRowIdx != null && storyRowIdx >= 0 && sm && sm.active) {
+                    _hiddenAllowedForFoes = cityIndexFromEventIndex(storyRowIdx) >= 4;
+                }
+            } catch (e) {}
             for (const slot of team) {
                 if (!slot || !slot.build) continue;
                 if (tier < STORY_BUILD_TIER.TOURNAMENT) {
                     _storyDowngradeBuildForTier(slot.name, slot.build, tier);
+                }
+                if (!_hiddenAllowedForFoes) {
+                    const _bs = (typeof baseStats === 'object') ? baseStats[slot.name] : null;
+                    if (_bs && _bs.abilities && _bs.abilities.H && _bs.abilities['0'] && slot.build.a === _bs.abilities.H) {
+                        slot.build.a = _bs.abilities['0'];
+                    }
                 }
                 // Post-Gym-4 enemy nudge — small EV bump on T2/T3 trainers to
                 // keep pace with the per-battle EV training the player picks
