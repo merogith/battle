@@ -43537,13 +43537,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const canSell = !!id && !unsellable && !isLastParty;
                 const isSubjectZero = unsellable && slot.nickname === 'Subject Zero';
                 const reason = isStarter ? 'Starter — bonded for life' : isSubjectZero ? 'Subject Zero — this bond cannot be broken' : unsellable ? 'Story-locked — cannot be sold' : isLastParty ? 'Party needs at least one Pokémon' : !id ? 'Missing id (legacy save)' : '';
-                const whereLabel = where === 'team' ? 'Party' : 'PC';
                 // Underground rows also flag shiny so the player doesn't
                 // accidentally hand a shiny to the broker for pocket gold.
                 const _ugShiny = !!(slot.build && slot.build._isShiny);
                 const _ugShinyMark = _ugShiny ? '<span style="color:#ffd54f;margin-right:3px;" title="Shiny — careful!">&#10024;</span>' : '';
+                const _srcPill = where === 'team'
+                    ? '<span style="font-size:9px;font-weight:bold;padding:2px 6px;border-radius:3px;flex-shrink:0;white-space:nowrap;pointer-events:none;background:rgba(76,175,80,0.22);color:#a5d6a7;border:1px solid #4caf50;">&#128101; Party</span>'
+                    : '<span style="font-size:9px;font-weight:bold;padding:2px 6px;border-radius:3px;flex-shrink:0;white-space:nowrap;pointer-events:none;background:rgba(79,195,247,0.16);color:#81d4fa;border:1px solid #4fc3f7;">&#128230; PC Box</span>';
                 html += `<div data-pc-row="${where}" data-pc-id="${_esc(id)}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(28,12,12,0.55);border:1px solid ${_ugShiny ? '#a47800' : '#5a1818'};cursor:pointer;" title="Click to view full build">
-                    <span style="font-size:9px;color:#888;width:30px;pointer-events:none;">${whereLabel}</span>
+                    ${_srcPill}
                     <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;${_ugShiny ? 'color:#ffd54f;' : ''}">${_ugShinyMark}${_esc(slot.name)} ${_pcGradeChipHtml(g)} <span style="color:#4dd0e1;font-size:10px;opacity:0.7;margin-left:4px;">ⓘ</span></span>
                     <span style="color:#ffd700;font-size:11px;font-weight:bold;pointer-events:none;">+${price.toLocaleString()}G</span>
                     <button type="button" onclick="event.stopPropagation();window.StoryMode.pcSell('${_esc(id)}')" ${canSell ? '' : 'disabled'} title="${_esc(reason)}" style="font-size:10px;padding:3px 8px;${canSell ? 'color:#ff5252;border-color:#ff5252;' : 'opacity:0.4;'}">Sell</button>
