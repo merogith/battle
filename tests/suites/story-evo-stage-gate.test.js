@@ -1,6 +1,8 @@
 // Verifies the story-mode evolution-stage gate: enemies, route wilds, and the
-// player's Stone Sage are capped by the ARRIVED city's era —
-//   C0-1 → basic only · C2-5 → + first evos · C6+ → all evolutions.
+// player's Stone Sage are capped by the ARRIVED city's era. Per-source curves:
+//   Player & enemy : C0-1 basic · C2-3 first-evo · C4+ all
+//   Wild           : C0-4 basic · C5-6 first-evo · C7 all
+//   Professor      : C0-2 basic · C3-5 first-evo · C6 all
 // The cap is keyed on cityIndexFromEventIndex (a route battle reports its
 // departing city, giving the route-into-a-city its old cap, the city's gym +
 // route-out the new one). See battle.html _storyEvoStageOf / _capGradePoolsByEvoStage.
@@ -52,11 +54,11 @@ test('evo-stage helper classifies basic / first / final', () => {
   }
 });
 
-test('city eras bucket correctly (C0-1 basic, C2-5 first-evo, C6+ all)', () => {
+test('city eras bucket correctly (enemy: C0-1 basic, C2-3 first-evo, C4+ all)', () => {
   const c = cap => [...new Set(rowsByCap[cap].map(r => r.city))].sort((a, b) => a - b);
   assert.deepEqual(c(0), [0, 1]);
-  assert.deepEqual(c(1), [2, 3, 4, 5]);
-  assert.deepEqual(c(2), [6, 7, 8, 9]);
+  assert.deepEqual(c(1), [2, 3]);
+  assert.deepEqual(c(2), [4, 5, 6, 7, 8, 9]);
 });
 
 test('trainer teams never exceed their era cap', () => {
@@ -86,21 +88,22 @@ test('Rival counter-team respects the early basic cap', () => {
   assert.equal(viol.length, 0, `rival leaked: ${[...new Set(viol)].slice(0, 6).join(', ')}`);
 });
 
-test('route wilds never exceed their era cap', () => {
-  for (const cap of [0, 1]) {
-    const row = rowsByCap[cap][Math.floor(rowsByCap[cap].length / 2)];
-    setSm({ eventIndex: row.idx, badges: cap === 0 ? 0 : 3 });
+test('route wilds never exceed their wild-era cap (C0-4 basic, C5-6 first-evo, C7 all)', () => {
+  const cityRowFor = c => { for (let i = 0; i < N; i++) if (ST.cityIndexFromEventIndex(i) === c) return i; return 0; };
+  for (const city of [0, 2, 4, 5, 6, 7]) {
+    const cap = ST.wildEvoStageCapForCity(city);
+    setSm({ eventIndex: cityRowFor(city), badges: Math.min(8, city) });
     const viol = [];
     for (let i = 0; i < 300; i++) {
       const enc = ST.rollWildEncounter(GENS);
       if (enc && evoStage(enc.name) > cap) viol.push(`${enc.name}(s${evoStage(enc.name)})`);
     }
-    assert.equal(viol.length, 0, `wild cap${cap} leaked: ${[...new Set(viol)].slice(0, 6).join(', ')}`);
+    assert.equal(viol.length, 0, `wild C${city} (cap${cap}) leaked: ${[...new Set(viol)].slice(0, 6).join(', ')}`);
   }
   setSm();
 });
 
-test('player Stone Sage: first-evos from City 1, finals from City 4 (3-layer)', () => {
+test('player Stone Sage: first-evos from City 2, finals from City 4 (3-layer)', () => {
   // Harness stubs @pkmn/dex to null; inject minimal chains (with prevo so
   // getMonGrade computes the stage-based grade for the grade-floor check).
   const dex = {
@@ -122,7 +125,8 @@ test('player Stone Sage: first-evos from City 1, finals from City 4 (3-layer)', 
     assert.equal(e.allowed, allowed, `${mon}->${evo}@C${city} allowed`);
     assert.equal(!!e.cityLocked, cityLocked, `${mon}->${evo}@C${city} cityLocked`);
   };
-  expect('Bulbasaur', 'Ivysaur', 1, true, false);   // Stage-1 (first-evo) allowed from the first gym city (Layer 1)
+  expect('Bulbasaur', 'Ivysaur', 1, false, true);   // C0-1 basic-only: first-evo still city-locked
+  expect('Bulbasaur', 'Ivysaur', 2, true, false);   // Stage-1 (first-evo) unlocks at C2 (Stone Sage debut, Layer 1)
   expect('Bulbasaur', 'Ivysaur', 3, true, false);
   expect('Ivysaur', 'Venusaur', 3, false, true);    // Stage-2 (final) stage-locked through C3
   expect('Ivysaur', 'Venusaur', 4, true, false);    // unlocks at C4 (Stage-2 layer)
@@ -137,7 +141,7 @@ test('signature override: too-evolved aces devolve to fit the cap (Venusaur -> B
   // Cap 0 (C0-1): a final-stage signature collapses to its basic form.
   assert.equal(ST.devolveToStage('Venusaur', 0), 'Bulbasaur', 'Venusaur devolves to Bulbasaur at cap 0');
   assert.equal(ST.devolveToStage('Charizard', 0), 'Charmander', 'Charizard -> Charmander at cap 0');
-  // Cap 1 (C2-5): collapse a final to its first-evo, basics stay put.
+  // Cap 1 (C2-3): collapse a final to its first-evo, basics stay put.
   assert.equal(ST.devolveToStage('Venusaur', 1), 'Ivysaur', 'Venusaur -> Ivysaur at cap 1');
   assert.equal(ST.devolveToStage('Bulbasaur', 0), 'Bulbasaur', 'a basic stays at cap 0');
   assert.equal(ST.devolveToStage('Ivysaur', 1), 'Ivysaur', 'a first-evo stays at cap 1');

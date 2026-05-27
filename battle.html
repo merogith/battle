@@ -29386,10 +29386,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Professor grade rolls per city (0-based city index)
         // With 3-choice system: weights determine what appears across 3 options
-        // Professor gifts: the gift now honors the same evolution-stage cap as
-        // enemies/wilds (_storyEvoStageCapForCity) — C0-1 basics-only, C2-5 +first-evos,
-        // C6+ unrestricted — so the gift is a stage-appropriate partner you grow, not a
-        // pre-evolved mon that out-classes the basics you actually face early.
+        // Professor gifts honor their own evolution-stage cap
+        // (_professorEvoStageCapForCity) — Basic C0-2 · Stage-1 C3-5 · ALL C6 — so the
+        // gift is a stage-appropriate partner you grow, not a pre-evolved mon that
+        // out-classes the basics you actually face early.
         // Stage 2 (G3 era): Cities 3–5 settle into G3.
         // Stage 3 (G2 era): City 6 transition, Cities 7–8 settle into G2.
         // Stage 4 (G1 era): City 9 league hub stays G1 legendary pool.
@@ -33074,16 +33074,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // ── EVOLUTION-STAGE GATE (story mode) ──────────────────────────────
-        // Mirrors the player's evolution unlock onto enemies + wild encounters.
+        // Per-source evolution caps (Sheet 4/5), all keyed on the ARRIVED city via
+        // cityIndexFromEventIndex (a route battle's DEPARTING city — so the route INTO
+        // a city keeps the old cap; the city's gym + route OUT get the new one).
         // Stage of a species: 0 = basic (no prevo), 1 = first evolution,
-        // 2 = second/final evolution (its prevo also evolved). Era is keyed on
-        // the ARRIVED city via cityIndexFromEventIndex, which returns a route
-        // battle's DEPARTING city — so the route INTO a city keeps the old cap
-        // and the city's gym + the route OUT get the new one:
-        //   C0-1 → basic only · C2-5 → + first evos · C6+ → all evolutions.
-        // The Stone Sage (player evolution) debuts C2 and honors the same caps,
-        // so the player's basic → first-evo (C2) → final-evo (C6) journey and
-        // the enemy/wild curve advance together.
+        // 2 = second/final evolution (its prevo also evolved). Each source has its own
+        // curve so the player's roster outpaces what routes hand them:
+        //   Player & enemy trainers : Basic C0-1 · Stage-1 C2-3 · ALL C4+
+        //   Wild encounters         : Basic C0-4 · Stage-1 C5-6 · ALL C7
+        //   Professor gifts         : Basic C0-2 · Stage-1 C3-5 · ALL C6
+        // The Stone Sage (player evolution) debuts C2 and honors the player cap.
         function _storyEvoStageOf(name) {
             const b = baseStats[name];
             if (!b || !b.prevo) return 0;
@@ -33105,17 +33105,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return _storyEvoStageOf(cur) <= cap ? cur : null;
         }
         function _storyEvoStageCapForCity(cityIdx) {
+            // Enemy trainers (Sheet 4): Basic C0-1 · Stage-1 C2-3 · ALL (final) C4+.
             const c = cityIdx | 0;
             if (c <= 1) return 0;
+            if (c <= 3) return 1;
+            return 2;
+        }
+        // Wild encounters (Sheet 5): Basic C0-4 · Stage-1 C5-6 · ALL C7. Wilds lag the
+        // player so routes stay catch-and-train, not pre-evolved threats.
+        function _wildEvoStageCapForCity(cityIdx) {
+            const c = cityIdx | 0;
+            if (c <= 4) return 0;
+            if (c <= 6) return 1;
+            return 2;
+        }
+        // Professor gifts (Sheet 5): Basic C0-2 · Stage-1 C3-5 · ALL C6. The C8 Mystery
+        // Figure is a full legendary handled separately (profCap bypass).
+        function _professorEvoStageCapForCity(cityIdx) {
+            const c = cityIdx | 0;
+            if (c <= 2) return 0;
             if (c <= 5) return 1;
             return 2;
         }
-        // PLAYER evolution cap (Evolution Sage) — decoupled from the enemy curve so the
-        // player evolves a bit ahead of what they fight. 3-layer staging:
-        //   C0 basics only · C1-3 Stage-1 evolutions · C4+ Stage-2 (final) evolutions.
+        // PLAYER evolution cap (Evolution Sage) — Sheet 4 player row: Basic C0-1 ·
+        //   Stage-1 C2-3 (Stone Sage debuts C2) · ALL (final) C4+.
         function _playerEvoStageCapForCity(cityIdx) {
             const c = cityIdx | 0;
-            if (c <= 0) return 0;
+            if (c <= 1) return 0;
             if (c <= 3) return 1;
             return 2;
         }
@@ -34678,6 +34694,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     storyEvoStageOf: (...a) => _storyEvoStageOf(...a),
                     devolveToStage: (...a) => _devolveToStage(...a),
                     storyEvoStageCapForCity: (...a) => _storyEvoStageCapForCity(...a),
+                    wildEvoStageCapForCity: (...a) => _wildEvoStageCapForCity(...a),
+                    professorEvoStageCapForCity: (...a) => _professorEvoStageCapForCity(...a),
+                    playerEvoStageCapForCity: (...a) => _playerEvoStageCapForCity(...a),
                     storyEvoStageCapForRow: (...a) => _storyEvoStageCapForRow(...a),
                     rollWildEncounter: (...a) => rollWildEncounter(...a),
                     getAllEvosWithStatus: (...a) => _getAllEvosWithStatus(...a),
@@ -41205,7 +41224,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const usedNames = new Set(sm.team.filter(t => t && !t.isEgg).map(t => t.name));
                 // Block all forms of families already on the team (e.g. having Arceus blocks Arceus-Fire)
                 const usedFamilies = new Set(sm.team.filter(t => t && !t.isEgg).map(t => _storyBaseFamily(t.name)));
-                const profCap = _profLegendaryMysteryMode ? 99 : Math.min(_storyEvoStageCapForCity(cityIdx), 1); // professor never gifts a fully-evolved (Stage-2) mon
+                const profCap = _profLegendaryMysteryMode ? 99 : _professorEvoStageCapForCity(cityIdx); // Sheet 5: Basic C0-2 · Stage-1 C3-5 · ALL C6 (Mystery Figure bypasses via mystery mode)
                 for (let i = 0; i < numChoices; i++) {
                     let name = null;
                     for (let t = 0; t < 24; t++) {
@@ -44851,9 +44870,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             else { r -= (gradeWeights.g3||0); if (r <= 0) { chosenGrade = 3; }
             else { r -= (gradeWeights.g2||0); if (r <= 0) { chosenGrade = 2; }
             else { chosenGrade = 1; } } }
-            // No-stage wild rule: wilds are ALWAYS base/unevolved forms — evolution is
-            // the mechanic, so the route never hands you a pre-evolved shortcut.
-            const cap = 0;
+            // Wild evo cap rises with city (Sheet 5): Basic C0-4 · Stage-1 C5-6 · ALL C7.
+            // Earlier than the player so routes stay catch-and-train, but routes near the
+            // end of the run can surface mid/final evolutions.
+            let _wildCity = 0;
+            try { _wildCity = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
+            const cap = _wildEvoStageCapForCity(_wildCity);
             let pool = buildGradePool(enabledGens, chosenGrade);
             if (cap < 2) { const c = pool.filter(n => _storyEvoStageOf(n) <= cap); if (c.length) pool = c; }
             if (pool.length) return pool[Math.floor(Math.random() * pool.length)];
