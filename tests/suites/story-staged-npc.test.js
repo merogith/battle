@@ -156,3 +156,20 @@ test('#47 staged recommendation counts (moves 18→30, items 3→5→7, ability 
   const awaken = new Set(ST.opAbilitiesForMon(MON));
   assert.ok(![...p.abilities.starred].some(a => awaken.has(a)), 'no awakened ability is ★-recommended');
 });
+
+test('#47 item recs never come up sparse — curated tier fill for meta (tier-3-heavy) mons', () => {
+  // Dragapult's Smogon builds skew to Choice / Heavy-Duty Boots (tier 3), so its own
+  // tier-1/tier-2 item pool is thin. The curated fill must still produce a full set of
+  // good berries (White Belt) then staples (Black Belt).
+  const MON = 'Dragapult';
+  setSm({ eventIndex: cityRow(2) });
+  let p = ST.txStarredPool(MON);
+  if (!p || p.sparse) { assert.ok(true, 'no Smogon data in harness — skipped'); return; }
+  let recs = [...p.items.starred];
+  assert.ok(recs.length >= 3, `C2 White Belt fills to >=3 berry recs (got ${recs.length}: ${recs.join(',')})`);
+  assert.ok(recs.every(n => ST.dojoItemTier(n) <= 1), `C2 recs are tier <=1 berries (${recs.join(',')})`);
+  setSm({ eventIndex: cityRow(4) });
+  recs = [...ST.txStarredPool(MON).items.starred];
+  assert.ok(recs.length >= 5, `C4 Black Belt fills to >=5 recs (got ${recs.length})`);
+  assert.ok(recs.every(n => ST.dojoItemTier(n) <= 2), `C4 recs are tier <=2 (${recs.join(',')})`);
+});

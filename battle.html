@@ -50441,6 +50441,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // EV spreads use their own resolver (_evTrainerTopSpreadInfo) but follow
         // the same shape: top 7, soft overshoot, evo fill.
         const _TX_EV_RULES = { cap: 7, ceiling: 11, fillFromEvo: true };
+        // #47 curated tier-appropriate item fill. Many species' Smogon builds skew to
+        // tier-3 power items, so the early/mid Dojo tiers (which only surface tier ≤1 /
+        // ≤2 items) can come up short on real meta picks. When that happens we top the
+        // rec list up with broadly-good options of the right tier — nice berries at
+        // White Belt, solid staples at Black Belt — so the player always gets a full,
+        // sensible suggestion set. Keyed by Dojo item-tier cap; tier 3 (Grandmaster)
+        // already fills from the full meta so it needs no curated list. Every entry must
+        // satisfy _dojoItemTier(name) <= its key.
+        const _TX_ITEM_REC_FILL = {
+            1: ['Sitrus Berry', 'Lum Berry', 'Salac Berry', 'Liechi Berry', 'Petaya Berry', 'Chesto Berry', 'Aguav Berry'],
+            2: ['Leftovers', 'Eviolite', 'Rocky Helmet', 'Focus Sash', 'Black Sludge', 'Sitrus Berry', 'Lum Berry', 'Salac Berry'],
+            3: [],
+        };
         // Meme / non-competitive moves that occasionally appear in joke builds
         // and clear the threshold by accident (e.g. Kartana Giga Impact at
         // ~17% from one-off troll sets). Filtering them out at the pool layer
@@ -50680,6 +50693,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (have.has(r.name)) continue;
                         pool.push(r);
                         have.add(r.name);
+                    }
+                }
+                // Curated tier fill (#47): early/mid Dojo stages must never come up sparse.
+                // Keep the species' own usage-ranked picks first, then top up to the count
+                // with broadly-good tier-≤cap items (berries at White Belt → staples at Black
+                // Belt). Eviolite only for not-fully-evolved mons; Grandmaster (tier 3) needs
+                // no fill since it already draws the full meta.
+                if (kind === 'items' && pool.length < effFloor) {
+                    const fillList = _TX_ITEM_REC_FILL[stageRule.itemTierCap] || [];
+                    const monEvolves = !!(((typeof baseStats === 'object' && baseStats[monName]) || {}).evos || []).length;
+                    const have2 = new Set(pool.map(r => r.name));
+                    for (const nm of fillList) {
+                        if (pool.length >= effFloor) break;
+                        if (have2.has(nm)) continue;
+                        if ((typeof _dojoItemTier === 'function' ? _dojoItemTier(nm) : 1) > stageRule.itemTierCap) continue;
+                        if (nm === 'Eviolite' && !monEvolves) continue;
+                        const srcPct = (candidates.find(r => r.name === nm) || sorted.find(r => r.name === nm) || {}).pct || 0;
+                        pool.push({ name: nm, count: 0, pct: srcPct });
+                        have2.add(nm);
                     }
                 }
                 const starred = new Set(); const inPool = new Set(); const pctOf = new Map();
