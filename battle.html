@@ -6340,7 +6340,10 @@
                 position: fixed; left: 8px; right: 8px; bottom: calc(12px + env(safe-area-inset-bottom));
                 background: #111; border: 1px solid var(--accent, #64c8ff);
                 color: #eee; font-size: 12px; padding: 10px 14px; border-radius: 10px;
-                z-index: 9999; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+                /* Below modals (1200) and story tutorial/narrative overlays (9998) so
+                   the tip never covers their content or intercepts the "Continue →"
+                   tap target; still above base menu/city content. */
+                z-index: 1100; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.6);
             }
             #pwa-install-hint button { margin-left: 8px; font-size: 12px; padding: 4px 8px; }
             /* Scale small inline icons up for phone legibility */
@@ -6414,6 +6417,10 @@
             background: rgba(0, 0, 0, 0.82);
             color: #e8e8e8;
             font-size: 15px;
+        }
+        #app-loading-text {
+            text-align: center;
+            max-width: 88%;
         }
         #app-loading-overlay .pbs-spinner {
             width: 40px;
@@ -9069,14 +9076,14 @@
         <!-- Foe sprite: upper-back (CSS positions per layout) -->
         <div id="foe-sprite-container">
             <div class="foe-platform"></div>
-            <img id="foe-sprite" class="sprite opponent-sprite" src="" alt="Foe" onerror="handleSpriteError(this)">
+            <img id="foe-sprite" class="sprite opponent-sprite" src="" alt="Foe" onerror="if(typeof handleSpriteError==='function')handleSpriteError(this)">
             <span id="foe-status-icon" class="status-icon" style="display:none; z-index:5;"></span>
         </div>
 
         <!-- PLAYER: lower-front (left); bottom tracks --battle-ui-h + player HUD strip -->
         <div id="player-sprite-container">
             <div class="player-platform"></div>
-            <img id="player-sprite" class="sprite player-sprite" src="" alt="Player" data-back="true" onerror="handleSpriteError(this)">
+            <img id="player-sprite" class="sprite player-sprite" src="" alt="Player" data-back="true" onerror="if(typeof handleSpriteError==='function')handleSpriteError(this)">
             <span id="player-status-icon" class="status-icon" style="display:none;"></span>
         </div>
 
