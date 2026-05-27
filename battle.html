@@ -34059,17 +34059,18 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sigSet = new Set();
             if (sigNames && typeof sigNames.forEach === 'function') sigNames.forEach(n => sigSet.add(n));
             else if (Array.isArray(sigNames)) sigNames.forEach(n => sigSet.add(n));
-            // City-clock ability gate (parity): enemies run only basic (non-hidden)
-            // abilities until the player unlocks Hidden at the Battle Dojo's Black Belt
-            // (City 4). Before then a slot carrying its species' Hidden ability is forced
-            // back to slot 0. Off outside an active story roll (frontier / generator),
-            // which use full Smogon builds; T4 events sit at City 6+ so they're unaffected.
-            let _hiddenAllowedForFoes = true;
+            // City-clock parity: unlocks are bound to the city number and apply to foes
+            // the same way they do to the player. Hidden abilities open at the Dojo's
+            // Black Belt (C4); item tiers open with the Dojo too (tier-2 staples at C4,
+            // tier-3 meta items at C7) — so before a tier unlocks for the player, foes
+            // can't carry it either. Off outside an active story roll (frontier /
+            // generator), which use full Smogon builds.
+            let _foeCity = -1;
             try {
-                if (storyRowIdx != null && storyRowIdx >= 0 && sm && sm.active) {
-                    _hiddenAllowedForFoes = cityIndexFromEventIndex(storyRowIdx) >= 4;
-                }
+                if (storyRowIdx != null && storyRowIdx >= 0 && sm && sm.active) _foeCity = cityIndexFromEventIndex(storyRowIdx);
             } catch (e) {}
+            const _hiddenAllowedForFoes = _foeCity < 0 || _foeCity >= 4;
+            const _foeItemTierCap = _foeCity < 0 ? 3 : (_foeCity >= 7 ? 3 : (_foeCity >= 4 ? 2 : 1));
             for (const slot of team) {
                 if (!slot || !slot.build) continue;
                 if (tier < STORY_BUILD_TIER.TOURNAMENT) {
@@ -34079,6 +34080,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const _bs = (typeof baseStats === 'object') ? baseStats[slot.name] : null;
                     if (_bs && _bs.abilities && _bs.abilities.H && _bs.abilities['0'] && slot.build.a === _bs.abilities.H) {
                         slot.build.a = _bs.abilities['0'];
+                    }
+                }
+                // Item-tier city gate: strip any item above the tier the player can field
+                // at this city (matches "no item early"). Gimmick-bound items (mega stones,
+                // Z-crystals) are left to the gimmick system, which is itself city-gated.
+                if (_foeItemTierCap < 3 && slot.build.i) {
+                    const _it = slot.build.i;
+                    const _gimmickBound = (slot.build.gimmick && slot.build.gimmick !== 'STANDARD')
+                        || isMegaStone(_it) || (Z_TYPE_MAP_VALUES && Z_TYPE_MAP_VALUES.has(_it));
+                    if (!_gimmickBound && _dojoItemTier(_it) > _foeItemTierCap) {
+                        slot.build.i = '';
                     }
                 }
                 // Post-Gym-4 enemy nudge — small EV bump on T2/T3 trainers to
@@ -42433,6 +42445,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         };
 
+        // Parity move gate (#1): before the player's Move Tutor reaches TM Expert (City 4)
+        // the player only has egg + level-up moves, so foes are held to the same access.
+        // Pre-warm the egg/level-up learnset for the rolled foe species (reusing the Move
+        // Tutor's loader + cache), strip any TM/tutor move from each build, and backfill
+        // with the species' best egg/level-up moves (Smogon-usage ranked) so the set stays
+        // full. From City 4 on both sides have full move access → no-op. Deterministic.
+        async function _storyGateFoeMovesByCity(team, storyRowIdx) {
+            if (!Array.isArray(team) || !team.length || storyRowIdx == null || storyRowIdx < 0 || !sm || !sm.active) return;
+            let city = -1;
+            try { city = cityIndexFromEventIndex(storyRowIdx); } catch (e) { return; }
+            if (city < 0 || city >= 4) return;
+            const species = [...new Set(team.map(s => s && s.name).filter(Boolean))];
+            // Warm all species' learnsets in parallel so the pre-fight delay stays small.
+            try { await Promise.all(species.map(sp => _tutorFetchLearnsetMoveNames(sp).catch(() => null))); } catch (e) {}
+            for (const slot of team) {
+                if (!slot || !slot.build || !Array.isArray(slot.build.m) || !slot.build.m.length) continue;
+                const learn = _tutorLearnsetCache.get(slot.name);
+                if (!learn || !Array.isArray(learn.tier1) || !learn.tier1.length) continue; // no data → leave moves as-is
+                const allowed = new Set(learn.tier1);
+                const orig = slot.build.m.slice();
+                const kept = orig.filter(mv => allowed.has(String(mv).split('/')[0]));
+                if (kept.length === orig.length) continue; // already all egg/level-up
+                const targetLen = Math.min(4, orig.length);
+                if (kept.length < targetLen) {
+                    let pctOf = null;
+                    try { pctOf = _txStarredPool(slot.name).moves.pctOf; } catch (e) {}
+                    const have = new Set(kept.map(m => String(m).split('/')[0]));
+                    const fill = learn.tier1.filter(mn => !have.has(mn));
+                    if (pctOf) fill.sort((a, b) => (pctOf.get(b) || 0) - (pctOf.get(a) || 0));
+                    while (kept.length < targetLen && fill.length) kept.push(fill.shift());
+                }
+                if (!kept.length) kept.push(learn.tier1[0]);
+                slot.build.m = kept;
+            }
+        }
         function enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked) {
             if (!ev) return;
             if (ev[1] !== 'Battle') {
@@ -42534,10 +42581,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
 
-            showBattleIntro(trainer, event, () => {
+            showBattleIntro(trainer, event, async () => {
                 const enemyTeam = isMysteryFinal
                     ? rollMysteryFigureFinalBossTeam(6, sg)
                     : rollTrainerTeam(trainer, partySize, gradeWeights || {g1:0,g2:0,g3:50,g4:50}, sg, event, idx);
+                try { await _storyGateFoeMovesByCity(enemyTeam, idx); } catch (e) { console.warn('[Story] foe move gate', e); }
                 const frozenTeam = storyFreezeFoeTeamForPersistence(enemyTeam);
                 try {
                     sm.currentEnemyLock = { eventIdx: battleIdx, team: deepClone(frozenTeam) };
@@ -50637,6 +50685,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!monName) return _txStarredPoolEmpty(0);
             const meta = _txMetaStatsFor(monName);
             const stageRule = _txStageCountRule();
+            // At Heart Scale (tutor stage 0) the player can only teach egg + level-up moves,
+            // so the early move recs are restricted to that set (ranked by Smogon usage).
+            // The set comes from the Move Tutor's learnset cache once it's warm; the cache key
+            // carries a warm flag so a cold-cache pool and the warm (egg/level-up-filtered)
+            // pool don't collide.
+            const _eggLvlSet = (stageRule.tutorStage === 0 && typeof _tutorLearnsetCache !== 'undefined' && _tutorLearnsetCache.has(monName))
+                ? new Set((_tutorLearnsetCache.get(monName).tier1) || [])
+                : null;
+            const _cacheSig = stageRule.sig + ':' + ((_eggLvlSet && _eggLvlSet.size) ? 1 : 0);
             // Sparse only kicks in when BOTH the species' own builds AND the
             // entire evolution chain combined are below the threshold. This
             // lets Bulbasaur (8 own builds) borrow from Venusaur (~50) instead
@@ -50656,7 +50713,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             if (meta) {
                 if (!meta._starredPoolCache) meta._starredPoolCache = {};
-                if (meta._starredPoolCache[stageRule.sig]) return meta._starredPoolCache[stageRule.sig];
+                if (meta._starredPoolCache[_cacheSig]) return meta._starredPoolCache[_cacheSig];
             }
 
             // Pre-compute the evo-chain sorted-rows source per kind, only on
@@ -50688,6 +50745,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 let candidates = sorted;
                 if (kind === 'moves') {
                     effCap = effCeiling = effFloor = stageRule.moves;
+                    // Heart Scale (tutor stage 0): recommend only egg + level-up moves — the
+                    // moves the player can actually teach now — ranked by Smogon usage. If that
+                    // usage-ranked subset is short of the count, top up with the rest of the
+                    // egg/level-up pool so the early list stays full and on-tier.
+                    if (_eggLvlSet && _eggLvlSet.size) {
+                        candidates = sorted.filter(r => _eggLvlSet.has(r.name));
+                        if (candidates.length < effFloor) {
+                            const have = new Set(candidates.map(r => r.name));
+                            for (const mn of _eggLvlSet) {
+                                if (candidates.length >= effFloor) break;
+                                if (have.has(mn) || _TX_MEME_MOVE_BLOCKLIST.has(mn)) continue;
+                                candidates.push({ name: mn, count: 0, pct: 0 });
+                                have.add(mn);
+                            }
+                        }
+                    }
                 } else if (kind === 'items') {
                     effCap = effCeiling = effFloor = stageRule.items;
                     candidates = sorted.filter(r => (typeof _dojoItemTier === 'function' ? _dojoItemTier(r.name) : 1) <= stageRule.itemTierCap);
@@ -50699,7 +50772,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const fillTarget = effFloor;
                 if (rule.fillFromEvo && pool.length < fillTarget) {
                     let evoRows = evoChainSortedRows(kind);
-                    if (kind === 'moves') evoRows = evoRows.filter(r => !_TX_MEME_MOVE_BLOCKLIST.has(r.name));
+                    if (kind === 'moves') {
+                        evoRows = evoRows.filter(r => !_TX_MEME_MOVE_BLOCKLIST.has(r.name));
+                        // At Heart Scale, never borrow a move the current mon can't learn now.
+                        if (_eggLvlSet && _eggLvlSet.size) evoRows = evoRows.filter(r => _eggLvlSet.has(r.name));
+                    }
                     else if (kind === 'items') evoRows = evoRows.filter(r => (typeof _dojoItemTier === 'function' ? _dojoItemTier(r.name) : 1) <= stageRule.itemTierCap);
                     const have = new Set(pool.map(r => r.name));
                     for (const r of evoRows) {
@@ -50807,7 +50884,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
 
             if (!meta._starredPoolCache) meta._starredPoolCache = {};
-            meta._starredPoolCache[stageRule.sig] = result;
+            meta._starredPoolCache[_cacheSig] = result;
             return result;
         }
         // Blend a 0..150 heuristic score with the 0..100 popularity score.
