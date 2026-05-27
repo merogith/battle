@@ -41216,30 +41216,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const gimmickBadge = { MEGA: '<span style="font-size:10px;background:#7b1fa2;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">MEGA</span>', ZMOVE: '<span style="font-size:10px;background:#f9a825;color:#000;border-radius:3px;padding:1px 4px;margin-left:3px;">Z</span>', DYNAMAX: '<span style="font-size:10px;background:#b71c1c;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">DYNA</span>', GMAXDYNAMAX: '<span style="font-size:10px;background:#880e4f;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;">G-MAX</span>', STANDARD: '' };
             const gb = (ch.build.gimmick && gimmickBadge[ch.build.gimmick]) || '';
             const tera = ch.build.teraType ? `<span class="tera-tip-hover" style="font-size:10px;background:#0277bd;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:pointer;touch-action:manipulation;" data-tera="${encodeURIComponent(ch.build.teraType)}" data-o1="${encodeURIComponent(tempMon.type1)}" data-o2="${encodeURIComponent(tempMon.type2||'')}" onclick="event.stopPropagation();window.showTeraFromEl(event)" onmousemove="event.stopPropagation();window.showTeraTooltip('${ch.build.teraType}','${tempMon.type1}','${tempMon.type2||''}',event)" onmouseleave="window.hideTextTooltip()">&#11045; TERA ${ch.build.teraType}</span>` : '';
-            // Training tier chip — labels the build's current polish so the player
-            // knows whether to expect raw potential ("Untrained") or a tournament-
-            // grade gift. The chip carries a tooltip explaining the system on first
-            // hover so the meaning isn't a mystery.
-            const _ptN = ch.build.powerTier | 0;
-            const _ptLabel = (typeof _storyBuildTierLabel === 'function') ? _storyBuildTierLabel(_ptN) : '';
-            const _ptColor = (_ptN >= 1 && _ptN <= 4 && typeof STORY_BUILD_TIER_COLOR !== 'undefined') ? STORY_BUILD_TIER_COLOR[_ptN] : '#9e9e9e';
-            const _ptTip = _ptN === 4
-                ? 'Tournament: fully optimized. No training needed.'
-                : _ptN === 3
-                    ? 'Competent: solid build. Some polish at tutors helps.'
-                    : _ptN === 2
-                        ? 'Novice: partial training. Tutors will sharpen EVs, nature, and gear.'
-                        : 'Untrained: raw potential. Move Tutor, EV Trainer, Nature Rater, and Battle Dojo bring it up to fighting shape.';
-            const ptBadge = _ptLabel
-                ? `<span class="hover-text" data-tip-key="${encodeURIComponent(_ptTip)}" style="font-size:10px;background:${_ptColor};color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;cursor:help;" onclick="event.stopPropagation(); window.showTextTooltipFromData(this, event)" onmousemove="event.stopPropagation(); window.showTextTooltipHoverFromData(this, event)" onmouseleave="window.hideTextTooltip()">${_ptLabel}</span>`
-                : '';
+            // No training-tier chip on the choice card — the tier ("Untrained" etc.)
+            // is internal build info surfaced nowhere else in the game, so it stayed
+            // confusing on the pick screen. Removed per the opening-flow spec.
             const card = document.createElement('div');
             card.className = `draft-card prof-pick-card tier-${tier}`;
             card.innerHTML = `
                 <div class="draft-card-sprite"><img src="${getSprite(spriteDisplayName(tempMon), tempMon.isShiny)}" alt="${ch.name}" data-shiny="${tempMon.isShiny ? 'true' : 'false'}" onerror="handleSpriteError(this)" class="mini-sprite" style="${tempMon.isShiny ? 'filter:drop-shadow(0 0 4px gold);' : ''}"><span class="tier-badge bg-tier-${tier}">G${tier}</span></div>
                 <div class="draft-card-body">
                     <div class="draft-card-header">
-                        <span>${tempMon.isShiny ? '&#10024; ' : ''}${ch.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}${ptBadge}</span>
+                        <span>${tempMon.isShiny ? '&#10024; ' : ''}${ch.name} ${getTypeHTML(tempMon.type1, tempMon.type2)}${gb}${tera}</span>
                         <button type="button" class="draft-card-info-btn" title="Full summary" aria-label="Full summary" onclick="event.stopPropagation();window.StoryMode.profOpenSummary(${idx})">&#8505;</button>
                     </div>
                     <div class="draft-card-details">
