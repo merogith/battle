@@ -41477,16 +41477,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const _profTier = _profLegendaryMysteryMode
                         ? STORY_BUILD_TIER.TOURNAMENT
                         : _storyBuildTierForProfessor(cityIdx, sm.badges);
+                    // Snapshot the optimized gift before the tier downgrade so the
+                    // city opt-gradient can selectively restore it (professor has no
+                    // difficulty axis → diff 0).
+                    const _pOptN = build.n, _pOptA = build.a;
+                    const _pOptM = Array.isArray(build.m) ? build.m.slice() : null;
                     if (_profTier < STORY_BUILD_TIER.TOURNAMENT) {
                         _storyDowngradeBuildForTier(name, build, _profTier);
                     }
                     build.powerTier = _profTier;
-                    // City-curve EVs (match trainer curve) — except legendary mystery
-                    // offers, which keep their full preset spread.
+                    // City-curve EVs + opt gradient (match trainer curve at diff 0) —
+                    // except legendary mystery offers, which keep their full preset.
                     if (!_profLegendaryMysteryMode) {
                         try {
                             const _pEvBase = (typeof baseStats === 'object') ? baseStats[name] : null;
                             _distributeEVsToTotal(build, _pEvBase, _storyEvTotalForCity(cityIdx, 0));
+                        } catch (e) {}
+                        try {
+                            const _pr = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+                            if (_pOptN) build.n = (_pr() < _storyNatureOptChance(cityIdx, 0)) ? _pOptN : _NEUTRAL_NATURES_LIST[Math.floor(_pr() * _NEUTRAL_NATURES_LIST.length)];
+                            if (_pOptA && _pr() < _storyAbilityOptChance(cityIdx, 0)) {
+                                const _pbs = (typeof baseStats === 'object') ? baseStats[name] : null;
+                                const _pHidden = !!(_pbs && _pbs.abilities && _pbs.abilities.H && _pOptA === _pbs.abilities.H);
+                                if (!_pHidden || cityIdx >= 4) build.a = _pOptA; // prof hidden opens at Dojo C4
+                            }
+                            if (_pOptM && _pOptM.length && _pr() < _storyMoveOptChance(cityIdx, 0)) build.m = _pOptM.slice();
                         } catch (e) {}
                     }
                     // Professor gifts are player-side mons on the wild/prof city curve
@@ -45049,17 +45064,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ensureShinyRolled(b);
             b.i = 'None';
             const base = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
-            if (base && base.abilities && base.abilities['0']) b.a = base.abilities['0'];
-            b.n = _wildPickNature(base);
+            let _wCity = 0;
+            try { _wCity = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
+            const _wRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
+            // Ability (Sheet 5 wild opt): slot-0 by default; a hidden ability only surfaces
+            // on late-route catches (C6+), and even then only sometimes — the wild "you
+            // grow it" philosophy applies to the ability slot too.
+            if (base && base.abilities) {
+                if (_wCity >= 6 && base.abilities.H && _wRng() < 0.35) b.a = base.abilities.H;
+                else if (base.abilities['0']) b.a = base.abilities['0'];
+            }
+            // Nature: neutral on the very first routes (C0), curated-positive from C1.
+            b.n = (_wCity <= 0)
+                ? _NEUTRAL_NATURES_LIST[Math.floor(_wRng() * _NEUTRAL_NATURES_LIST.length)]
+                : _wildPickNature(base);
             b.evs = _wildPickEVs(base);
             // City-curve EV total (Sheet 5, "match trainer curve"): scale the archetype
             // shape to the city's battle-trained EV level. IVs (the vitamin-trained axis)
             // use the separate "0..cap" band rolled below.
-            try {
-                let _wEvCity = 0;
-                try { _wEvCity = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
-                _distributeEVsToTotal(b, base, _storyEvTotalForCity(_wEvCity, 0));
-            } catch (e) {}
+            try { _distributeEVsToTotal(b, base, _storyEvTotalForCity(_wCity, 0)); } catch (e) {}
             // Wild catches sit at the bottom of the training-tier curve. The 170-EV /
             // curated-positive-nature head-start (see _wildPickNature/_wildPickEVs)
             // makes them comparable to a T1 trainer mon's structural moves but with
@@ -45081,9 +45104,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // near-perfect but never guaranteed. Vitamins remain how the player trains
             // weak stats up. CSV builds that ship explicit IVs (rare on the wild path)
             // are preserved by _ensureBuildIVs.
-            let _wIvCity = 0;
-            try { _wIvCity = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
-            try { _ensureBuildIVs(b, _rollCityIVs('wildprof', _wIvCity, 0, false)); } catch (e) {}
+            try { _ensureBuildIVs(b, _rollCityIVs('wildprof', _wCity, 0, false)); } catch (e) {}
             return b;
         }
 
