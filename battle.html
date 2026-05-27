@@ -52226,7 +52226,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return true;
             });
             if (recOnly && sortKey === 'recommended') {
-                filt.sort(_txSortByUsageDesc(pool.moves.pctOf, m => _txMoveHeuristic(m, mon, build, monName)));
+                // "Really good" ordering: blend Smogon usage (65%) with the per-pokemon
+                // heuristic (STAB / power / accuracy / coverage fit, 35%) so the best pick
+                // for THIS mon leads — not merely the most-used move. Usage% breaks ties.
+                filt.sort((a, b) => _txScoreMove(b, mon, build, monName) - _txScoreMove(a, mon, build, monName)
+                    || (pool.moves.pctOf.get(b) || 0) - (pool.moves.pctOf.get(a) || 0)
+                    || a.localeCompare(b));
             } else filt.sort(_txMoveCmp(sortKey, mon, build, monName));
             return filt;
         }
@@ -52243,7 +52248,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return true;
             });
             if (recOnly && sortKey === 'recommended') {
-                filt.sort(_txSortByUsageDesc(pool.items.pctOf, it => _txItemHeuristic(it, mon, build, monName)));
+                // Blend usage (65%) with the per-pokemon item heuristic (35%) so the
+                // best-fit item for THIS mon leads (e.g. Eviolite on an NFE, Choice Band
+                // on a physical attacker), with usage% as the tie-breaker.
+                filt.sort((a, b) => _txScoreItem(b, mon, build, monName) - _txScoreItem(a, mon, build, monName)
+                    || (pool.items.pctOf.get(b) || 0) - (pool.items.pctOf.get(a) || 0)
+                    || a.localeCompare(b));
             } else filt.sort(_txItemCmp(sortKey, mon, build, monName));
             return filt;
         }
