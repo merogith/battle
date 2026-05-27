@@ -33694,6 +33694,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 rollTrainerTeam: (...a) => rollTrainerTeam(...a),
                 getRivalEncounterPhase: (...a) => getRivalEncounterPhase(...a),
                 _rivalBuildCounterTypePool: (...a) => _rivalBuildCounterTypePool(...a),
+                selectTrainerForRole: (...a) => selectTrainerForRole(...a),
+                baseTrainerName: (...a) => _baseTrainerName(...a),
+                get TRAINER_DATA() { return TRAINER_DATA; },
                 _rivalIntroStarterCounterType: (...a) => _rivalIntroStarterCounterType(...a),
                 getTrainerQuoteForBattle: (...a) => getTrainerQuoteForBattle(...a),
                 _storyRivalTauntName: (...a) => _storyRivalTauntName(...a),
@@ -35003,7 +35006,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
                 if (isGymLeaderSlot) return /^gym leader\s*\d$/.test(tr);
                 if (rk === 'rival') return t.isRival;
-                if (rk === 'elite trainer') return tr === 'elite trainer' && !t.isRival;
+                // Elite pool (story spec) = all named Elite Trainers PLUS every gym leader,
+                // so a leader can recur as an Elite Trainer (with their signature roster).
+                if (rk === 'elite trainer') return (tr === 'elite trainer' && !t.isRival) || /^gym leader\s*\d$/.test(tr);
                 return tr === rk;
             });
             let candidates = roleAll.slice();
@@ -35045,8 +35050,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (biased.length) candidates = biased;
             }
             // Exclude any whose base name is already used this run (allow Basic/Gym Trainers to repeat).
+            // Exception: gym leaders filling an ELITE TRAINER slot may recur (the spec lets a
+            // leader reappear "multiple times as elite trainer"); in their own Gym-Leader-N slot
+            // they still dedup, so there's never a duplicate *leader* fight.
             if (usedBaseNames && !isBasicLike) {
-                const fresh = candidates.filter(t => !usedBaseNames.has(_baseTrainerName(t.name)));
+                const fresh = candidates.filter(t => {
+                    if (rk === 'elite trainer' && /^gym leader\s*\d$/.test(String(t.role).toLowerCase())) return true;
+                    return !usedBaseNames.has(_baseTrainerName(t.name));
+                });
                 if (fresh.length) candidates = fresh;
             }
             if (!candidates.length) candidates = TRAINER_DATA;
