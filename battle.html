@@ -13978,14 +13978,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Story-mode foe stat multiplier (difficulty knob).
         // Multiplies HP and the five non-HP stats post-build. Damage formula stays Showdown-correct.
         // Two stacking layers:
-        //   1. Early-game softening (extended through Gym 3): protects fresh saves from RNG bricks.
-        //        - badges 0, non-GL fight   → PRE_GYM1_FOE_STAT_MULT     0.82 (deepest)
-        //        - badges 0, Gym Leader 1   → EARLY_GL_FOE_STAT_MULT     0.95
-        //        - badges 1, non-GL fight   → EARLY_GAME_FOE_STAT_MULT   0.92
-        //        - badges 1, Gym Leader 2   → EARLY_GL_FOE_STAT_MULT     0.95
-        //        - badges 2, non-GL fight   → EARLY_GAME_FOE_STAT_MULT   0.92
-        //        - badges 2, Gym Leader 3   → STAGE2_GL_FOE_STAT_MULT    0.97 (gentlest — Stage 2 entry)
-        //        - badges >= 3 (Gym 4+)     → 1.00, softening ends
+        //   1. Early-game nerf (story spec): a starting stat penalty that fades over the
+        //      first three CITIES and applies symmetrically to every foe in them —
+        //      ~20% at the start (City 0), 15% at City 1, 10% at City 2, 0% from City 3 on.
+        //      Keyed on the city clock (not badges) so City 0 and City 1 — both before the
+        //      first badge — get different softening. See FOE_STAT_NERF_BY_CITY.
         //   2. Stage-gated late-game ramp ("slightly harder than Fire Red" past G2 unlock):
         //        - Stages 1–2 (badges 0–4) → 1.00 (true FR feel)
         //        - Stage 3 start (G6, badge 5) → 1.05
@@ -13995,20 +13992,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // The "gym leaders keep their signature ace identity" guarantee is enforced through
         // *composition* (rollTrainerTeam's gwForFiller shifts non-sig fillers one tier weaker
         // while signature aces stay in the canonical grade), not via per-mon stat exemptions.
-        // Set any constant to 1.0 to disable that tier's softening.
-        // Module-level consts (read directly by _earlyGameFoeStatMult below). Also exported
-        // to window for any external/console reader. Previously these lived only on window,
-        // which made them silently `undefined` if a top-level read ran before assignment.
-        const PRE_GYM1_FOE_STAT_MULT     = 0.82;
-        const EARLY_GAME_FOE_STAT_MULT   = 0.92;
-        const EARLY_GL_FOE_STAT_MULT     = 0.95;
-        const EARLY_GL2_FOE_STAT_MULT    = 0.97; // GL2 — un-flatten the GL1≡GL2 start
-        const STAGE2_GL_FOE_STAT_MULT    = 0.99; // GL3 gentle softening — Stage 2 entry
-        window.PRE_GYM1_FOE_STAT_MULT     = PRE_GYM1_FOE_STAT_MULT;
-        window.EARLY_GAME_FOE_STAT_MULT   = EARLY_GAME_FOE_STAT_MULT;
-        window.EARLY_GL_FOE_STAT_MULT     = EARLY_GL_FOE_STAT_MULT;
-        window.EARLY_GL2_FOE_STAT_MULT    = EARLY_GL2_FOE_STAT_MULT;
-        window.STAGE2_GL_FOE_STAT_MULT    = STAGE2_GL_FOE_STAT_MULT;
+        const FOE_STAT_NERF_BY_CITY = [0.80, 0.85, 0.90]; // index = city; City ≥3 → 1.0
+        window.FOE_STAT_NERF_BY_CITY = FOE_STAT_NERF_BY_CITY;
         // Story-aware RNG selector. `sm` (StoryMode state) is PRIVATE to the StoryMode
         // IIFE; reading it bare at battle-engine scope throws "Can't find variable: sm"
         // and skips the turn. Read via the public getter (window.StoryMode.state, which
@@ -14020,25 +14005,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _earlyGameFoeStatMult() {
             const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
             if (!sm) return 1.0;
-            const badges = sm.badges | 0;
-            if (badges >= 3) return 1.0;
             const idx = sm.eventIndex | 0;
             // STORY_EVENTS_RAW lives inside the StoryMode IIFE — reach it via window.
             const SER = window.STORY_EVENTS_RAW;
-            const row = (SER && idx >= 0 && idx < SER.length) ? SER[idx] : null;
+            if (!SER) return 1.0;
+            const row = (idx >= 0 && idx < SER.length) ? SER[idx] : null;
+            // Only soften actual battles; city/hub rows pass through at 1.0.
             if (!row || row[1] !== 'Battle') return 1.0;
-            const evt = String(row[2] || '');
-            if (badges === 0) {
-                if (evt === 'Gym Leader 1') return EARLY_GL_FOE_STAT_MULT;
-                return PRE_GYM1_FOE_STAT_MULT;
+            // Current city = the nearest preceding City row's index.
+            let city = -1;
+            for (let i = Math.min(idx, SER.length - 1); i >= 0; i--) {
+                const r = SER[i];
+                if (r && r[1] === 'City') { const m = String(r[2] || '').match(/City\s*(\d+)/); city = m ? (+m[1]) : -1; break; }
             }
-            if (badges === 1) {
-                if (evt === 'Gym Leader 2') return EARLY_GL2_FOE_STAT_MULT;
-                return EARLY_GAME_FOE_STAT_MULT;
-            }
-            // badges === 2 (Stage 1→2 boundary, G3 era starting)
-            if (evt === 'Gym Leader 3') return STAGE2_GL_FOE_STAT_MULT;
-            return EARLY_GAME_FOE_STAT_MULT;
+            if (city < 0 || city >= FOE_STAT_NERF_BY_CITY.length) return 1.0;
+            return FOE_STAT_NERF_BY_CITY[city];
         }
         window._earlyGameFoeStatMult = _earlyGameFoeStatMult;
         // Stage-gated foe stat mult: the "slightly harder than Fire Red" ramp the design
@@ -33091,6 +33072,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const pb = baseStats[b.prevo];
             return (pb && pb.prevo) ? 2 : 1;
         }
+        // Signature override (story spec): a signature ace that's too evolved for the
+        // current city devolves to fit the cap by walking its prevo chain —
+        // Venusaur → Ivysaur (cap 1) → Bulbasaur (cap 0) — instead of vanishing.
+        // Returns the name at/below the cap, or null if the chain can't reach it
+        // (then the caller rerolls / drops the slot).
+        function _devolveToStage(name, cap) {
+            let cur = name, guard = 0;
+            while (_storyEvoStageOf(cur) > cap && guard++ < 4) {
+                const b = baseStats[cur];
+                if (!b || !b.prevo || !baseStats[b.prevo]) return null;
+                cur = b.prevo;
+            }
+            return _storyEvoStageOf(cur) <= cap ? cur : null;
+        }
         function _storyEvoStageCapForCity(cityIdx) {
             const c = cityIdx | 0;
             if (c <= 1) return 0;
@@ -34299,7 +34294,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // is a basic form; C2-5 allows first-evo aces; C6+ unrestricted. If
             // this empties S the (capped) filler pool fills the slots.
             if (_evoStageCap < 2 && Array.isArray(S) && S.length) {
-                S = S.filter(n => _storyEvoStageOf(n) <= _evoStageCap);
+                // Devolve each over-evolved signature to fit the cap (Venusaur →
+                // Bulbasaur at C0-1) rather than dropping it, so a leader keeps their
+                // identity. Drop only if the chain can't reach the cap; dedupe so two
+                // sigs collapsing onto the same basic don't both occupy a slot.
+                const seen = new Set();
+                const fitted = [];
+                for (const n of S) {
+                    const d = _storyEvoStageOf(n) <= _evoStageCap ? n : _devolveToStage(n, _evoStageCap);
+                    if (d && genSet.has((baseStats[d] || {}).gen) && !seen.has(d)) { seen.add(d); fitted.push(d); }
+                }
+                S = fitted;
             }
             const _poolKey = (isMixed ? 'mixed' : types.slice().sort().join('+')) + '|' + Array.from(genSet).sort((a, b) => a - b).join(',');
             let T = _trainerPoolCache.get(_poolKey);
@@ -34624,6 +34629,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Evolution-stage gate handles (story-mode).
                     cityIndexFromEventIndex: (...a) => cityIndexFromEventIndex(...a),
                     storyEvoStageOf: (...a) => _storyEvoStageOf(...a),
+                    devolveToStage: (...a) => _devolveToStage(...a),
                     storyEvoStageCapForCity: (...a) => _storyEvoStageCapForCity(...a),
                     storyEvoStageCapForRow: (...a) => _storyEvoStageCapForRow(...a),
                     rollWildEncounter: (...a) => rollWildEncounter(...a),

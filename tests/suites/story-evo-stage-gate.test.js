@@ -132,3 +132,15 @@ test('player Stone Sage: first-evos from City 1, finals from City 4 (3-layer)', 
   expect('Magikarp', 'Gyarados', 4, true, false);   // allowed at C4
   setSm();
 });
+
+test('signature override: too-evolved aces devolve to fit the cap (Venusaur -> Bulbasaur)', () => {
+  // Cap 0 (C0-1): a final-stage signature collapses to its basic form.
+  assert.equal(ST.devolveToStage('Venusaur', 0), 'Bulbasaur', 'Venusaur devolves to Bulbasaur at cap 0');
+  assert.equal(ST.devolveToStage('Charizard', 0), 'Charmander', 'Charizard -> Charmander at cap 0');
+  // Cap 1 (C2-5): collapse a final to its first-evo, basics stay put.
+  assert.equal(ST.devolveToStage('Venusaur', 1), 'Ivysaur', 'Venusaur -> Ivysaur at cap 1');
+  assert.equal(ST.devolveToStage('Bulbasaur', 0), 'Bulbasaur', 'a basic stays at cap 0');
+  assert.equal(ST.devolveToStage('Ivysaur', 1), 'Ivysaur', 'a first-evo stays at cap 1');
+  // Stage matches the engine's own classifier after devolve.
+  assert.ok(evoStage(ST.devolveToStage('Venusaur', 0)) === 0, 'devolved form is stage 0 at cap 0');
+});
