@@ -33463,9 +33463,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return 0;
         }
 
-        function _applyEnemyGimmickDistribution(team, eventType, ctx) {
+        function _applyEnemyGimmickDistribution(team, eventType, ctx, storyRowIdx) {
             const keys = _storyEnemyMechKeys(ctx);
             if (!keys.length || !team || !team.length) return team;
+            // Spec 1f: enemy battle mechanics stay off until City 7 — the player unlocks
+            // and uses them first; foes pick them up a city later. Bosses that pass an
+            // explicit mech ctx (Mystery Figure) and frontier/generator rolls bypass.
+            if (storyRowIdx != null && sm && sm.active && !(ctx && ctx.settings)) {
+                let _mechCity = -1;
+                try { _mechCity = cityIndexFromEventIndex(storyRowIdx); } catch (e) {}
+                if (_mechCity >= 0 && _mechCity < 7) return team;
+            }
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             const _S = (ctx && ctx.settings) || (sm && sm.settings);
             const classic = !(_S && _S.classicMode === false);
@@ -34687,7 +34695,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // End-game illegal-build injection (Rival post-G8 → 2 slots).
                 const _illegalCountR = _storyIllegalCountForEvent(battleEventType, storyRowIdx);
                 if (_illegalCountR > 0) _storyInjectIllegalBuilds(teamR, _origSigsR, _illegalCountR);
-                return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(teamR, battleEventType), battleEventType, storyRowIdx, _origSigsR);
+                return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(teamR, battleEventType, null, storyRowIdx), battleEventType, storyRowIdx, _origSigsR);
             }
 
             // Gym leaders already have signature Pokémon as their identity — the rest
@@ -34823,7 +34831,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Signature aces are protected so a leader's identity mon doesn't morph mid-run.
             const _illegalCount = _storyIllegalCountForEvent(battleEventType, storyRowIdx);
             if (_illegalCount > 0) _storyInjectIllegalBuilds(team, _origSigs, _illegalCount);
-            return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(team, battleEventType), battleEventType, storyRowIdx, _origSigs);
+            return _applyStoryBuildPowerTier(_applyEnemyGimmickDistribution(team, battleEventType, null, storyRowIdx), battleEventType, storyRowIdx, _origSigs);
         }
         // Boot-time data sanity check (warn-only; never throws). Surfaces TRAINER_DATA
         // authoring mistakes — typo'd signature names, sigs whose gen falls outside the
@@ -34899,6 +34907,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     storyAbilityOptChance: (...a) => _storyAbilityOptChance(...a),
                     storyMoveOptChance: (...a) => _storyMoveOptChance(...a),
                     storyFoeItemTier: (...a) => _storyFoeItemTier(...a),
+                    applyEnemyGimmickDistribution: (...a) => _applyEnemyGimmickDistribution(...a),
                     rollWildEncounter: (...a) => rollWildEncounter(...a),
                     getAllEvosWithStatus: (...a) => _getAllEvosWithStatus(...a),
                     get STORY_EVENTS_RAW() { return STORY_EVENTS_RAW; },
