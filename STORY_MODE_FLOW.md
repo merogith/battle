@@ -24,7 +24,7 @@ writing — they will drift as work proceeds.
 
 | System | Decision |
 |---|---|
-| Map | Linear city pipeline (existing `STORY_EVENTS_RAW`, 68 rows, unchanged). **Route nodes** appear as virtual interrupts between cities (strategy A — no new timeline rows). |
+| Map | Linear city pipeline (existing `STORY_EVENTS_RAW`, 67 rows / idx 0–66, unchanged). **Route nodes** appear as virtual interrupts between cities (strategy A — no new timeline rows). |
 | Wild | Forced encounter per route node. Single mon, weaker grade pool than adjacent battles. |
 | Safari Zone | Story-unlocked location. First visit free; subsequent visits cost gold. Continuous random encounters up to 6 per run. Mons can flee on missed throws. Better grade mix than wild routes. |
 | Catch | Pure minigame — no fight, no HP, no status. `chance = species.catchRate × ballMult`. Mons can flee. |
@@ -270,7 +270,7 @@ Caught: enters the player's roster as **"Subject Zero"** with a unique flag. Sta
 pcBox:        [],                                        // flat, cap 30 (PC_BOX_CAP)
 balls:        { poke: 5, great: 0, ultra: 0, master: 0 }, // starting balls
 pokedex:      { seen: [], caught: [] },                   // per-run; cross-run lives in pbs_story_meta
-catchUnlocked: false,                                     // toggles wild-route prompts; flipped on after first wild route entry or starter
+catchUnlocked: false,                                     // ⚠️ RESERVED/LEGACY — written but never read in shipped code. The live gate for catch/route prompts is `sm.catchTutorialDone` (set after the intro rival). Do not branch new logic on catchUnlocked.
 postHofMysteryClimaxDone: false,                          // post-HoF row-67 climax fire-once flag
 ```
 
