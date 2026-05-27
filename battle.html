@@ -44283,7 +44283,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { window.StoryFx && window.StoryFx.playSfx('pbRel', 0.7); } catch (e) {}
             _pcRefresh();
         }
-        function pcRelease(monId) {
+        async function pcRelease(monId) {
             _pcEnsureBoxArray();
             const found = _pcFindSlotById(monId);
             if (!found || found.where !== 'pc') return;
@@ -44294,14 +44294,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const shinyNote = (found.slot && found.slot.build && found.slot.build._isShiny)
                 ? ' ✨ This is a SHINY Pokémon.'
                 : '';
-            const ok = window.confirm('Release ' + name + '?' + shinyNote + ' This cannot be undone.' + evNote);
+            const ok = await window.showGameConfirm('Release ' + name + '?' + shinyNote + ' This cannot be undone.' + evNote);
             if (!ok) return;
             sm.pcBox.splice(found.index, 1);
             save();
             try { window.StoryFx && window.StoryFx.playSfx('pbTrayEmpty', 0.6); } catch (e) {}
             _pcRefresh();
         }
-        function pcSell(monId) {
+        async function pcSell(monId) {
             _pcEnsureBoxArray();
             const found = _pcFindSlotById(monId);
             if (!found) return;
@@ -44312,7 +44312,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const name = slot.name || 'this Pokémon';
             const evNote = _slotHasTrainedEVs(slot) ? ' Its EV training will be lost too.' : '';
             const shinyNote = (slot.build && slot.build._isShiny) ? ' ✨ This is a SHINY Pokémon.' : '';
-            const ok = window.confirm('Sell ' + name + ' for ' + price.toLocaleString() + 'G?' + shinyNote + ' This cannot be undone.' + evNote);
+            const ok = await window.showGameConfirm('Sell ' + name + ' for ' + price.toLocaleString() + 'G?' + shinyNote + ' This cannot be undone.' + evNote);
             if (!ok) return;
             if (found.where === 'team') sm.team.splice(found.index, 1);
             else sm.pcBox.splice(found.index, 1);
