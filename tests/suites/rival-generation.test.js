@@ -59,31 +59,48 @@ function hasAnyType(E, name, types) {
 // Unit tests — the plan helpers in isolation (no RNG, no engine roll).
 // ---------------------------------------------------------------------------
 
-test('_rivalBuildCounterTypePool: distinct counters, one best per mon, dual pick-one', async () => {
+test('_rivalBuildCounterTypePool: scored list of every counter type, distinct, score-sorted', async () => {
   const eng = await setup();
   const E = eng.window.__rivalTest;
   const build = E._rivalBuildCounterTypePool;
 
-  // A true monotype-Water party: only Grass / Electric are SE vs pure Water, so the
-  // distinct pool is at most those two — the remaining slots random-fill downstream.
+  // A true monotype-Water party: only Grass / Electric are super-effective vs pure Water.
   E.sm.team = ['Squirtle', 'Wartortle', 'Blastoise', 'Vaporeon', 'Psyduck', 'Goldeen'].map((n) => ({ name: n, build: {} }));
   const water = build();
-  assert.ok(water.length <= 2, `pure-Water party -> <=2 distinct counters, got [${water.join(', ')}]`);
+  assert.ok(water.length >= 1 && water.length <= 2, `pure-Water -> {Grass,Electric}, got [${water.join(', ')}]`);
   assert.ok(water.every((t) => ['Grass', 'Electric'].includes(t)), `Water counters are Grass/Electric: [${water.join(', ')}]`);
-  assert.equal(new Set(water).size, water.length, 'pool types are distinct');
+  assert.equal(new Set(water).size, water.length, 'list is distinct');
 
-  // A type-diverse party yields several distinct counters, never repeating a type.
+  // A type-diverse party yields several distinct counters, sorted by punish-score.
   E.sm.team = ['Charizard', 'Venusaur', 'Blastoise', 'Pikachu', 'Machamp', 'Gengar'].map((n) => ({ name: n, build: {} }));
   const diverse = build();
-  assert.ok(diverse.length >= 3, `diverse party -> multiple distinct counters, got [${diverse.join(', ')}]`);
-  assert.equal(new Set(diverse).size, diverse.length, 'all distinct (a type leaves the pool after use)');
+  assert.ok(diverse.length >= 3, `diverse party -> >=3 distinct counters, got [${diverse.join(', ')}]`);
+  assert.equal(new Set(diverse).size, diverse.length, 'all distinct');
 
-  // dual-OK pick-one: a lone Gyarados (Water/Flying) is countered by Electric (4x) or
-  // Rock (2x) — one distinct counter for the one mon.
+  // dual-OK scoring: a lone Gyarados (Water/Flying) is hit 4x by Electric, so Electric
+  // ranks first; the second type isn't separately tracked, just the net effectiveness.
   E.sm.team = [{ name: 'Gyarados', build: {} }];
   const gy = build();
-  assert.equal(gy.length, 1, 'one mon -> one counter');
-  assert.ok(['Electric', 'Rock'].includes(gy[0]), `Gyarados counter is Electric/Rock, got ${gy[0]}`);
+  assert.equal(gy[0], 'Electric', `Gyarados -> Electric leads (4x), got [${gy.join(', ')}]`);
+});
+
+test('cycle-back: vs a monotype party the rival repeats its few counters across all slots', async () => {
+  const eng = await setup();
+  const E = eng.window.__rivalTest;
+  primeStory(E, ['Squirtle', 'Wartortle', 'Blastoise', 'Vaporeon', 'Psyduck', 'Goldeen']); // pure Water
+  const trainer = makeRivalTrainer();
+  const COUNTER = ['Grass', 'Electric'];
+  let totalFrac = 0;
+  const N = 40;
+  for (let s = 0; s < N; s++) {
+    eng.seedRng(13000 + s);
+    const team = E.rollTrainerTeam(trainer, 6, LEAGUE_GW, GENS, 'Rival', E.STORY_RIVAL_ROW_LEAGUE);
+    totalFrac += team.filter((m) => hasAnyType(E, m.name, COUNTER)).length / 6;
+  }
+  const avg = totalFrac / N;
+  // Only Grass/Electric counter pure Water; cycling repeats them across all 6 slots
+  // (the old distinct+random model capped near 2/6).
+  assert.ok(avg >= 0.7, `pure-Water rival is Grass/Electric ${(avg * 100).toFixed(0)}% — cycling should fill most slots (>=70%)`);
 });
 
 test('_rivalIntroStarterCounterType: GB starter triangle, null for non-classical', async () => {

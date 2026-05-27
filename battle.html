@@ -33617,35 +33617,29 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
             return s;
         }
-        /** Pure counter pool (Phase 2): one DISTINCT counter type per player mon.
-         *  For each of your six, take the single best attack type that is
-         *  super-effective (>=2x) vs its combined typing and isn't already claimed,
-         *  so a type "leaves the pool" after one use and the rival's six spread
-         *  across distinct counters. Dual-typed mons contribute whichever of their
-         *  counters is still free (pick-one). Ties break toward the type that
-         *  punishes the most of your party. The caller random-fills any slots left
-         *  over when your party has fewer distinct weaknesses than the rival has
-         *  slots (e.g. a monotype team yields only two counter types). */
+        /** Scored counter-type list (Phase 3): every attack type that is
+         *  super-effective (>=2x) against AT LEAST ONE of your live party, sorted by
+         *  how hard it punishes the whole team (sum of m² over SE matchups). The caller
+         *  fields one mon per type top-down, distinct first, then CYCLES back through the
+         *  same list when it has more slots than counter types (fire steel rock dark →
+         *  fire steel …), so the rival never goes mono-type while it still has answers. */
         function _rivalBuildCounterTypePool() {
             if (!sm || !Array.isArray(sm.team)) return [];
-            const used = new Set();
-            const pool = [];
-            for (const slot of sm.team) {
-                if (!slot || !slot.name || slot.isEgg) continue;
-                const pb = baseStats[slot.name];
-                if (!pb || !pb.t1) continue;
-                const d2 = pb.t2 || null;
-                const cands = [];
-                for (const atk of Object.keys(typeChart)) {
-                    if (atk === '???') continue;
-                    if (_rivalCombinedEffVsMon(atk, pb.t1, d2) >= 2) cands.push(atk);
+            const scored = [];
+            for (const atk of Object.keys(typeChart)) {
+                if (atk === '???') continue;
+                let seHits = 0, score = 0;
+                for (const slot of sm.team) {
+                    if (!slot || !slot.name || slot.isEgg) continue;
+                    const pb = baseStats[slot.name];
+                    if (!pb || !pb.t1) continue;
+                    const m = _rivalCombinedEffVsMon(atk, pb.t1, pb.t2 || null);
+                    if (m >= 2) { seHits++; score += m * m; }
                 }
-                cands.sort((a, b) =>
-                    _rivalCombinedEffVsMon(b, pb.t1, d2) - _rivalCombinedEffVsMon(a, pb.t1, d2)
-                    || _rivalScoreAttackTypeVsParty(b) - _rivalScoreAttackTypeVsParty(a));
-                for (const c of cands) { if (!used.has(c)) { used.add(c); pool.push(c); break; } }
+                if (seHits > 0) scored.push({ atk, score });
             }
-            return pool;
+            scored.sort((a, b) => b.score - a.score);
+            return scored.map((x) => x.atk);
         }
         /** GB starter-triangle counter type for the intro rival: Grass→Fire,
          *  Fire→Water, Water→Grass. Returns null for non-classical starters so the
@@ -34546,12 +34540,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Rival counter-pick branch and the standard filler picks below.
             if (_evoStageCap < 2) T = _capGradePoolsByEvoStage(T, _evoStageCap);
 
-            // Rival (Phase 2): a PURE counter-type team — no signatures. Build a pool of
-            // DISTINCT counter types from your live six (one best counter per mon, each type
-            // used once), field one mon per type, and random-fill any leftover slots when
-            // your party has fewer distinct weaknesses than the rival has slots (a monotype
-            // party yields only two counter types). The intro rival mirrors the GB starter
-            // triangle against your lone starter.
+            // Rival (Phase 3): a PURE counter-type team — no signatures, gym-leader power,
+            // built fresh against your LIVE six (dynamic, never cached). Score every
+            // super-effective attack type vs your party, field one mon per type top-down,
+            // distinct first, then CYCLE back through the scored list when there are more
+            // slots than counter types (fire steel rock dark → fire steel). Each mon only
+            // needs the counter type as ONE of its types (dual is fine, the second type is
+            // ignored). The intro rival leads with the GB starter-triangle answer.
             if (String(battleEventType) === 'Rival' && sm && Array.isArray(sm.team) && sm.team.length > 0) {
                 const _rivalPhase = getRivalEncounterPhase(storyRowIdx);
                 if ((storyRowIdx | 0) === STORY_RIVAL_ROW_INTRO) S = [];
@@ -34571,23 +34566,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const avail = pool.filter((n) => !usedNames.has(n));
                     return avail.length ? avail[Math.floor(rng() * avail.length)] : null;
                 }
+                // Per-slot counter types: intro type leads, then the scored list cycled to
+                // fill every slot (distinct first; repeats only once the list is exhausted).
+                const _scored = _rivalBuildCounterTypePool();
+                const _cycle = _introCounterType ? _scored.filter((t) => t !== _introCounterType) : _scored;
+                const _slotTypes = [];
+                if (_introCounterType) _slotTypes.push(_introCounterType);
+                for (let k = 0; _slotTypes.length < partySize && _cycle.length; k++) _slotTypes.push(_cycle[k % _cycle.length]);
                 const teamR = [];
                 const usedR = new Set();
                 const _counterLock = new Set();
-                // Distinct counter-type pool vs your party. The intro starter-triangle type
-                // leads when present and is filtered out of the scored pool so it can't repeat.
-                const _counterPool = _rivalBuildCounterTypePool().filter((t) => t !== _introCounterType);
-                let _poolIdx = 0;
                 for (let i = 0; i < partySize; i++) {
                     let chosen = null;
-                    let targetType = (i === 0 && _introCounterType) ? _introCounterType : null;
-                    if (!targetType && _poolIdx < _counterPool.length) targetType = _counterPool[_poolIdx++];
+                    const targetType = _slotTypes[i] || null;
                     if (targetType) {
                         chosen = _rivalPickSpeciesForAttackType(targetType, gwIn, T, usedR, rng);
                         if (chosen && !usedR.has(chosen)) _counterLock.add(i); // protect counters from rebalancing
                     }
-                    // Random fallback once the distinct-counter pool is spent (or the type had
-                    // no available species at this grade / gen window).
+                    // Fallback only when the party has no super-effective answer at all, or the
+                    // chosen type ran out of available species at this grade / gen window.
                     if (!chosen || usedR.has(chosen)) chosen = pickFromUnionPlain(usedR);
                     if (!chosen || usedR.has(chosen)) chosen = pickRandomInGenPlain(usedR);
                     if (!chosen) chosen = 'Rattata';
