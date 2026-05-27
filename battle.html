@@ -34676,6 +34676,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     npcStage: (...a) => _npcStage(...a),
                     npcStageUpCheck: (...a) => _npcStageUpCheck(...a),
                     dojoItemTier: (...a) => _dojoItemTier(...a),
+                    moveCostForStage: (...a) => _moveCostForStage(...a),
+                    itemCostForTier: (...a) => _itemCostForTier(...a),
+                    abilityCostForMon: (...a) => _abilityCostForMon(...a),
                     opAbilitiesForMon: (...a) => _opAbilitiesForMon(...a),
                     tutorGetPoolForMon: (...a) => _tutorGetPoolForMon(...a),
                     tutorGetStagedMovePool: (...a) => _tutorGetStagedMovePoolAsync(...a),
@@ -39319,10 +39322,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // facility's capability grows (see NPC_STAGE_CITY / NPC_STAGE_NAMES).
             const _stageTag = (key) => { const t = _npcStageName(key); return t ? ' — ' + t : ''; };
             if (actions.includes('Move Tutor') && _tutorTeam) {
-                _push('train', makeActionBtn('📖 Move Tutor' + _stageTag('tutor'),'tutor','window.StoryMode.enterTutor(\'moves\')','training', _facOpts('tutor', [_costBadge(1500, '+')])));
+                _push('train', makeActionBtn('📖 Move Tutor' + _stageTag('tutor'),'tutor','window.StoryMode.enterTutor(\'moves\')','training', _facOpts('tutor', [_costBadge(_moveCostForStage(), '+')])));
             }
             if (actions.includes('Battle Dojo') && _tutorTeam) {
-                _push('train', makeActionBtn('🥋 Battle Dojo' + _stageTag('dojo'),'dojo','window.StoryMode.enterTutor(\'loadout\')','training', _facOpts('dojo', [_costBadge(2000, '+')])));
+                _push('train', makeActionBtn('🥋 Battle Dojo' + _stageTag('dojo'),'dojo','window.StoryMode.enterTutor(\'loadout\')','training', _facOpts('dojo', [_costBadge(500, '+')])));
             }
             if (actions.includes('Evolution Tutor') && _tutorTeam) {
                 _push('train', makeActionBtn('🧬 Stone Sage' + _stageTag('evolab'),'evolab','window.StoryMode.enterEvolutionLab()','training', _facOpts('evolab', [_costBadge(1500, '+')])));
@@ -49617,12 +49620,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // so it matches Item cost. Hidden abilities are now gated and
         // gimmick-enemy density rose with the Frontier/Hard Mode changes;
         // the +500G ability premium wasn't earning its keep.
-        const TUTOR_COST_MOVE    = 1500;
-        const TUTOR_COST_ITEM    = 2000;
+        const TUTOR_COST_MOVE    = 1500;  // fallback only — see _moveCostForStage (staged 1000/2500)
+        const TUTOR_COST_ITEM    = 2000;  // fallback only — see _itemCostForTier (tiered 500/1000/2500)
         const TUTOR_COST_ABILITY = 2000;  // regular ability swap
         const TUTOR_COST_HIDDEN  = 3000;  // hidden ability (slot H) swap
         const TUTOR_COST_AWAKEN  = 5000;  // OP "Awaken" pick (City 6+)
         const TUTOR_COST_NATURE  = 2000;
+        // Move Tutor charge is staged by tutor tier: Heart Scale (L1) 1,000G per move,
+        // TM Expert (L2) 2,500G.
+        function _moveCostForStage() {
+            return (typeof _npcStage === 'function' && _npcStage('tutor') >= 1) ? 2500 : 1000;
+        }
+        // Battle Dojo item charge is tiered by item tier: tier-1 berries 500G,
+        // tier-2 staples 1,000G, tier-3 best/meta items 2,500G.
+        function _itemCostForTier(itemName) {
+            const t = (typeof _dojoItemTier === 'function') ? _dojoItemTier(itemName) : 2;
+            return t >= 3 ? 2500 : (t === 2 ? 1000 : 500);
+        }
 
         // ── Staged-NPC capability ladders (city-anchored, tunable) ───────────
         // Cities are the constant anchor — a facility's capability TIER is keyed
@@ -52014,8 +52028,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Ability cost is tiered by ability tier: regular 2000G, hidden 3000G, awaken 5000G.
             // Use the pending pick's tier when present so the bar shows the actual charge.
             let cost;
-            if (kind === 'move') cost = TUTOR_COST_MOVE;
-            else if (kind === 'item') cost = TUTOR_COST_ITEM;
+            if (kind === 'move') cost = _moveCostForStage();
+            else if (kind === 'item') {
+                const pendingItem = (pending && pending.kind === 'item') ? pending.value : null;
+                cost = pendingItem ? _itemCostForTier(pendingItem) : TUTOR_COST_ITEM;
+            }
             else if (kind === 'nature') cost = TUTOR_COST_NATURE;
             else if (kind === 'ability') {
                 const pendingAbil = (pending && pending.kind === 'ability') ? pending.value : null;
@@ -52765,7 +52782,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_storyTryBeginInteraction()) return;
             try {
                 const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
-                if (sm.gold < TUTOR_COST_MOVE) return;
+                const moveCost = _moveCostForStage();
+                if (sm.gold < moveCost) return;
                 const moves = mon.build.m || (mon.build.m = []);
                 const currentMoves = moves.map(m => m.split('/')[0]);
                 if (currentMoves.includes(newMove)) return;
@@ -52777,10 +52795,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const prompt = isAppend
                     ? `Teach ${newMove} to ${mon.name}? Fills an open move slot.`
                     : `Teach ${newMove} to ${mon.name}? Replaces "${oldMove}".`;
-                const ok = await _storyConfirmTutorChange(prompt, TUTOR_COST_MOVE);
+                const ok = await _storyConfirmTutorChange(prompt, moveCost);
                 if (!ok) return;
-                sm.gold -= TUTOR_COST_MOVE;
-                try { _storyTrackSpend(TUTOR_COST_MOVE); } catch (e) {}
+                sm.gold -= moveCost;
+                try { _storyTrackSpend(moveCost); } catch (e) {}
                 if (isAppend) moves.push(newMove);
                 else moves[moveSlot] = newMove;
                 mon.build.m = moves.filter(Boolean);
@@ -52851,7 +52869,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!_storyTryBeginInteraction()) return;
             try {
                 const mon = sm.team[teamIdx]; if (!mon || !mon.build) return;
-                if (sm.gold < TUTOR_COST_ITEM) return;
+                const itemCost = _itemCostForTier(newItem);
+                if (sm.gold < itemCost) return;
                 if (isMegaStone(newItem) || Z_TYPE_MAP_VALUES.has(newItem) || BANNED_ITEMS.has(newItem)) return;
                 const curItem = mon.build.i;
                 if (curItem === newItem) return;
@@ -52867,11 +52886,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     mon.build.gimmick = 'STANDARD';
                 } else {
                     const oldItemLabel = curItem && curItem !== '(none)' ? `"${curItem}"` : 'no item';
-                    const ok = await _storyConfirmTutorChange(`Give ${newItem} to ${mon.name}? Replaces ${oldItemLabel}.`, TUTOR_COST_ITEM);
+                    const ok = await _storyConfirmTutorChange(`Give ${newItem} to ${mon.name}? Replaces ${oldItemLabel}.`, itemCost);
                     if (!ok) return;
                 }
-                sm.gold -= TUTOR_COST_ITEM;
-                try { _storyTrackSpend(TUTOR_COST_ITEM); } catch (e) {}
+                sm.gold -= itemCost;
+                try { _storyTrackSpend(itemCost); } catch (e) {}
                 mon.build.i = newItem;
                 save();
                 try { window.StoryFx && window.StoryFx.playSfx('upgrade', 0.65); } catch (e) {}
@@ -52987,8 +53006,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (isAppend && moves.length >= 4) return false;
                 const oldMove = (!isAppend && moves[moveSlot]) ? moves[moveSlot].split('/')[0] : null;
                 const prompt = isAppend
-                    ? `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Fills an open slot. Saves ${TUTOR_COST_MOVE.toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`
-                    : `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Replaces "${oldMove}". Saves ${TUTOR_COST_MOVE.toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`;
+                    ? `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Fills an open slot. Saves ${_moveCostForStage().toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`
+                    : `Use 1 Heart Scale to teach ${newMove} to ${mon.name}? Replaces "${oldMove}". Saves ${_moveCostForStage().toLocaleString()}G. ${remaining} Heart Scale${remaining===1?'':'s'} left after.`;
                 if (!await _storyConfirmTutorChange(prompt, 0)) return false;
                 if (isAppend) moves.push(newMove);
                 else moves[moveSlot] = newMove;
@@ -53015,7 +53034,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     mon.build.gimmick = 'STANDARD';
                 } else {
                     const oldLabel = curItem && curItem !== '(none)' ? `"${curItem}"` : 'no item';
-                    if (!await _storyConfirmTutorChange(`Use 1 Emblem of Honor to give ${newItem} to ${mon.name}? Replaces ${oldLabel}. Saves ${TUTOR_COST_ITEM.toLocaleString()}G. ${remaining} Emblem${remaining===1?'':'s'} left after.`, 0)) return false;
+                    if (!await _storyConfirmTutorChange(`Use 1 Emblem of Honor to give ${newItem} to ${mon.name}? Replaces ${oldLabel}. Saves ${_itemCostForTier(newItem).toLocaleString()}G. ${remaining} Emblem${remaining===1?'':'s'} left after.`, 0)) return false;
                 }
                 mon.build.i = newItem;
                 return true;
