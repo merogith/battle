@@ -21441,6 +21441,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
+            // BELCH: requires the user to have eaten a berry this battle. Gate before damage application.
+            if (move.name === "Belch" && !attacker.volatile.belchReady) {
+                if (move.pp > 0) move.pp--;
+                logMsg(`${attacker.name} used Belch!`);
+                logMsg(`But it failed! ${attacker.name} hasn't eaten a Berry.`, 'info');
+                attacker.volatile.lastMoveUsed = move.name;
+                abortPostCanMoveBlock(attacker); await sleep(1000); return;
+            }
+
             // No Consecutive moves: Gigaton Hammer, Blood Moon fail if used back-to-back
             if ((move.name === "Gigaton Hammer" || move.name === "Blood Moon") && attacker.volatile.lastMoveUsed === move.name) {
                 if (move.pp > 0) move.pp--;
@@ -27245,12 +27254,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 state.fairyLock = 2; // ticks down to 0 at end of next turn
                 logMsg(`No one can run from the battle!`, 'info');
                 return;
-            }
-
-            // === BELCH: requires the user to have eaten a berry this battle ===
-            if (move.name === "Belch") {
-                if (!attacker.volatile.belchReady) { logMsg(`But it failed! (${attacker.name} hasn't eaten a Berry.)`, 'info'); return; }
-                // Damage path is the standard one; nothing to add here besides the gate above.
             }
 
             // === BESTOW: give the user's held item to the target ===
