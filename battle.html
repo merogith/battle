@@ -1673,35 +1673,12 @@
             .tx-rec-reason { font-size: 10px; -webkit-line-clamp: 2; }
         }
 
-        /* Mobile filter drawer — collapses the chip rows (which can pile up to
-           3+ rows on phones) behind a single toggle. Always-open on desktop. */
-        .tx-filter-row {
-            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-        }
-        .tx-filter-toggle {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 7px 12px; font-size: 11px; font-weight: 700;
-            font-family: inherit; cursor: pointer;
-            background: rgba(40,46,60,0.65); border: 1px solid #4a5168;
-            color: #d4d9e4; border-radius: 6px;
-            letter-spacing: 0.04em; text-transform: uppercase;
-            transition: all 0.12s;
-            white-space: nowrap;
-        }
-        .tx-filter-toggle:hover { border-color: var(--accent); color: var(--accent); }
-        .tx-filter-toggle[data-open="1"] {
-            background: rgba(206,147,216,0.16); border-color: var(--accent); color: var(--accent);
-        }
-        .tx-filter-toggle .tx-filter-badge {
-            display: inline-flex; align-items: center; justify-content: center;
-            min-width: 18px; height: 18px; padding: 0 5px;
-            font-size: 10px; font-weight: 800;
-            background: var(--accent); color: #1a0d22;
-            border-radius: 999px;
-        }
-        /* Clear-all-filters button — appears in the toolbar only when a search or
-           filter is active. One-tap reset so phone users don't toggle chips one
-           by one. */
+        /* Clear-all-filters button — appears in the toolbar when a search or
+           filter is active. One-tap reset so phone users don't toggle chips
+           one by one. The mobile filter drawer that lived here previously
+           (.tx-filter-toggle / .tx-filter-panel) was retired in Phase 3 —
+           the new always-visible .tx-chip-strip provides the same access
+           with one fewer tap. */
         .tx-filter-clear {
             display: inline-flex; align-items: center; gap: 4px;
             padding: 7px 10px; font-size: 11px; font-weight: 600;
@@ -1712,36 +1689,6 @@
             white-space: nowrap;
         }
         .tx-filter-clear:hover { background: rgba(244,67,54,0.22); color: #fff; }
-        .tx-filter-panel {
-            display: flex; flex-direction: column; gap: 6px;
-            padding: 0;
-        }
-        @media (max-width: 540px) {
-            .tx-filter-panel[data-open="0"] { display: none; }
-        }
-        @media (min-width: 541px) {
-            .tx-filter-toggle { display: none; }
-            .tx-filter-panel { display: flex !important; }
-        }
-        .tx-chip-row {
-            scroll-snap-type: x proximity;
-        }
-        @media (max-width: 540px) {
-            /* On phones, single-row horizontal scroll instead of vertical wrap.
-               Saves 1-2 rows of vertical space per filter section. */
-            .tx-filter-panel .tx-chip-row {
-                flex-wrap: nowrap;
-                overflow-x: auto;
-                overflow-y: hidden;
-                -webkit-overflow-scrolling: touch;
-                touch-action: pan-x;
-                padding-bottom: 2px;
-                scrollbar-width: thin;
-            }
-            .tx-filter-panel .tx-chip-row > .tx-chip { scroll-snap-align: start; }
-            .tx-filter-panel .tx-chip-row::-webkit-scrollbar { height: 4px; }
-            .tx-filter-panel .tx-chip-row::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 4px; }
-        }
 
         /* ── Phase 3 toolbar layout ─────────────────────────────────────
            Two-row toolbar replacing the old "search row + drawer toggle +
@@ -51938,9 +51885,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 abilities: 'recommended',
                 natures: 'recommended',
             },
-            // Mobile-only: whether the chip-filter drawer is expanded for this kind.
-            // Always-visible on desktop via CSS — this just gates the mobile collapse.
-            filterPanelOpen: { moves: false, items: false, abilities: false, natures: false },
         };
         function _txResetFilters(kind) {
             _txState.search[kind] = '';
