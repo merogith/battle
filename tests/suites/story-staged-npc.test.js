@@ -47,8 +47,10 @@ test('npcStageName: locked labels per stage', () => {
   assert.equal(ST.npcStageName('dojo', 0), 'White Belt');
   assert.equal(ST.npcStageName('dojo', 1), 'Black Belt');
   assert.equal(ST.npcStageName('dojo', 2), 'Grandmaster');
-  assert.equal(ST.npcStageName('tutor', 0), 'Heart Scale');
-  assert.equal(ST.npcStageName('tutor', 1), 'TM Expert');
+  // Phase 4.2: Move Tutor is now 3-stage with renamed labels.
+  assert.equal(ST.npcStageName('tutor', 0), 'Inner Strength');
+  assert.equal(ST.npcStageName('tutor', 1), 'Expert');
+  assert.equal(ST.npcStageName('tutor', 2), 'Guru');
   assert.equal(ST.npcStageName('evolab', 0), 'Awakening');
   assert.equal(ST.npcStageName('evolab', 1), 'Ascension');
   assert.equal(ST.npcStageName('dojo', 9), 'Grandmaster', 'over-cap stage clamps to last label');
@@ -142,8 +144,10 @@ test('stage-up gifts: dojo (Black Belt / Grandmaster) and Stone Sage (Ascension)
 });
 
 test('city-screen chip tags advance with the arrived city', () => {
-  assert.ok(renderCity(0).includes('Move Tutor — Heart Scale'), 'C0 Move Tutor = Heart Scale');
-  assert.ok(renderCity(4).includes('Move Tutor — TM Expert'), 'C4 Move Tutor = TM Expert');
+  // Phase 4.2: Move Tutor is 3-stage — Inner Strength (C0-C3) → Expert (C4-C6) → Guru (C7+).
+  assert.ok(renderCity(0).includes('Move Tutor — Inner Strength'), 'C0 Move Tutor = Inner Strength');
+  assert.ok(renderCity(4).includes('Move Tutor — Expert'), 'C4 Move Tutor = Expert');
+  assert.ok(renderCity(7).includes('Move Tutor — Guru'), 'C7 Move Tutor = Guru');
   assert.ok(renderCity(4).includes('Battle Dojo — White Belt'), 'C4 Dojo = White Belt');
   assert.ok(renderCity(6).includes('Battle Dojo — Black Belt'), 'C6 Dojo = Black Belt');
   assert.ok(renderCity(8).includes('Battle Dojo — Grandmaster'), 'C8 Dojo = Grandmaster');

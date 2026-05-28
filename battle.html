@@ -50915,10 +50915,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const TUTOR_COST_HIDDEN  = 3000;  // hidden ability (slot H) swap
         const TUTOR_COST_AWAKEN  = 5000;  // Awakened pick (Grandmaster · City 8+)
         const TUTOR_COST_NATURE  = 2000;
-        // Move Tutor charge is staged by tutor tier: Heart Scale (L1) 1,000G per move,
-        // TM Expert (L2) 2,500G.
-        function _moveCostForStage() {
-            return (typeof _npcStage === 'function' && _npcStage('tutor') >= 1) ? 2500 : 1000;
+        // Move Tutor charge is staged by tutor tier (Phase 4.2):
+        //   L1 Inner Strength: 1,000 G per move (Natural pool only — egg / level-up / transfer).
+        //   L2 Expert:         2,500 G per move (+ Learnt: TM / HM / Tutor / TR / event).
+        //   L3 Guru:           5,000 G per move (+ Awakened: off-legal Smogon picks).
+        function _moveCostForStage(moveTag) {
+            // If a specific move's tag is supplied, price by the move's TIER (a Natural
+            // move at L3 Guru still costs 1000 — the player pays for what the move IS,
+            // not what stage the tutor is at). Otherwise return the tutor's stage cost
+            // (used as the "starting from" button label on the city action).
+            if (moveTag === 'awakened') return 5000;
+            if (moveTag === 'learnt')   return 2500;
+            if (moveTag === 'natural')  return 1000;
+            const s = (typeof _npcStage === 'function') ? _npcStage('tutor') : 0;
+            return s >= 2 ? 5000 : (s >= 1 ? 2500 : 1000);
         }
         // Battle Dojo item charge is tiered by item tier: tier-1 berries 500G,
         // tier-2 staples 1,000G, tier-3 best/meta items 2,500G.
@@ -50940,9 +50950,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             //             → Grandmaster (+Awakened abilities · +all items)
             // Matrix (post-merge from main): White Belt C2–C4, Black Belt C5–C7, Grandmaster C8+.
             dojo:   [2, 5, 8],
-            // Move Tutor:  Heart Scale (egg + level-up + own competitive moves)
-            //            → TM Expert (+TMs / tutor / the full learnset)
-            tutor:  [0, 4],
+            // Move Tutor (Phase 4.2): three stages keyed on the move-tag system —
+            //   Inner Strength (L1) — Natural moves (egg + level-up + transfer + evolution-learned). C0-C3.
+            //   Expert         (L2) — + Learnt moves (TM / HM / TR / Tutor / event). C4-C6.
+            //   Guru           (L3) — + Awakened moves (off-legal Smogon picks). C7+.
+            tutor:  [0, 4, 7],
             // Stone Sage:  capability is enforced by the player evo-stage cap;
             //              these thresholds drive only the chip name + intro beat.
             //              Awakening (first evos) → Ascension (finals @ C4).
@@ -50950,7 +50962,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         };
         const NPC_STAGE_NAMES = {
             dojo:   ['White Belt', 'Black Belt', 'Grandmaster'],
-            tutor:  ['Heart Scale', 'TM Expert'],
+            tutor:  ['Inner Strength', 'Expert', 'Guru'],
             evolab: ['Awakening', 'Ascension'],
         };
         function _npcStageForCity(key, cityIdx) {
@@ -50997,12 +51009,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // fires once per run. Stage 0 (debut) has no gift — that intro is the
         // facility's normal first-visit beat.
         const _NPC_STAGE_GIFT = {
-            tutor:  { 1: { heartScale: 1 } },
+            tutor:  { 1: { heartScale: 1 }, 2: { heartScale: 2 } },
             dojo:   { 1: { abilityCapsule: 1 }, 2: { abilityCapsule: 1, emblemHonor: 1 } },
             evolab: { 1: { stoneToken: 1 } },
         };
         const _NPC_STAGE_INTRO = {
-            tutor:  { 1: 'Move Tutor: "You\'ve battled enough to earn the full lesson book — TMs, tutor moves, all of it. Here\'s a Heart Scale; the first advanced lesson is on me."' },
+            tutor:  {
+                1: 'Move Tutor — Expert: "You\'ve trained enough that the technical book opens up — TMs, HMs, tutor moves, the rest of the legal pool. Here\'s a Heart Scale; the first advanced lesson is on me."',
+                2: 'Move Tutor — Guru: "You\'ve come this far — the Awakened lessons are yours to take. Moves no trainer is supposed to teach. Take two Heart Scales; experiment freely."',
+            },
             dojo:   {
                 1: 'Dojo Master: "Black Belt material. Hidden talents are on the table now — take this Ability Capsule and wake one up, no charge."',
                 2: 'Dojo Master: "Grandmaster. Nothing is off-limits in my dojo. An Ability Capsule and an Emblem of Honor — spend them however you like."',
@@ -51453,18 +51468,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return [...new Set([...syncMoves, ...(learn.all || [])])].sort();
         }
 
-        // Move Tutor view pool — gated by the tutor's city stage. At Heart Scale
-        // (stage 0) only the mon's own competitive moves + egg/level-up learnset
-        // are teachable; TM Expert (stage 1+) opens the full learnset. Holding a
-        // Heart Scale voucher overrides the gate ("learn any move"). The mon's
-        // currently-known moves are always kept selectable.
+        // Move Tutor view pool — gated by the tutor's city stage via the move-tag
+        // index (Phase 4.2):
+        //   L1 Inner Strength: Natural only (egg + level-up + transfer + evolution).
+        //   L2 Expert:         + Learnt (TM / HM / Tutor / TR / event).
+        //   L3 Guru:           + Awakened (off-legal Smogon picks).
+        // The mon's CURRENTLY-known moves are always kept selectable so an existing
+        // tagged-above-stage move doesn't disappear from the editor. A Heart Scale
+        // voucher overrides the gate entirely ("learn any move").
         async function _tutorGetStagedMovePoolAsync(monName, currentMoves) {
             const syncMoves = _tutorGetPoolForMon(monName).moves;
-            let learn = { all: [], tier1: [] };
-            try { learn = await _tutorFetchLearnsetMoveNames(monName); } catch (e) { learn = { all: [], tier1: [] }; }
-            const full = [...new Set([...syncMoves, ...(learn.all || [])])].sort();
-            if (_npcStage('tutor') >= 1 || _hasHeartScale()) return full;
-            const allow = new Set([...syncMoves, ...(learn.tier1 || [])]);
+            let learn = { all: [], tier1: [], natural: [], learnt: [], awakened: [] };
+            try { learn = await _tutorFetchLearnsetMoveNames(monName); } catch (e) {}
+            // `full` = the COMPLETE view (Natural ∪ Learnt ∪ Awakened + syncMoves), sorted.
+            // Show-All in the UI renders from this with tag chips so the player can see what
+            // unlocks where.
+            const full = [...new Set([
+                ...syncMoves,
+                ...(learn.natural || []), ...(learn.learnt || []), ...(learn.awakened || []),
+                ...(learn.all || []),
+            ])].sort();
+            const stage = (typeof _npcStage === 'function') ? _npcStage('tutor') : 0;
+            if (_hasHeartScale()) return full; // voucher unlocks any move at any stage
+            // Build the stage-allowed set: Natural (L1) + Learnt (L2) + Awakened (L3).
+            const allow = new Set();
+            (learn.natural || []).forEach(m => allow.add(m));
+            if (stage >= 1) (learn.learnt   || []).forEach(m => allow.add(m));
+            if (stage >= 2) (learn.awakened || []).forEach(m => allow.add(m));
+            // Until the L1 tutor opens, also allow the mon's current Smogon competitive
+            // moves (the syncMoves union) so untagged engine moves stay visible — they
+            // get tagged Natural / Learnt / Awakened by the cache later anyway.
+            syncMoves.forEach(m => { if ((learn.awakened || []).indexOf(m) < 0) allow.add(m); });
+            // Always keep already-equipped moves selectable.
             if (Array.isArray(currentMoves)) currentMoves.forEach(m => { if (m) allow.add(m); });
             const gated = full.filter(m => allow.has(m));
             return gated.length ? gated : full;
@@ -53420,7 +53455,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Ability cost is tiered by ability tier: regular 2000G, hidden 3000G, awaken 5000G.
             // Use the pending pick's tier when present so the bar shows the actual charge.
             let cost;
-            if (kind === 'move') cost = _moveCostForStage();
+            if (kind === 'move') {
+                // Phase 4.2: per-move pricing — Natural 1000G, Learnt 2500G, Awakened 5000G.
+                // Read the move's tag from the cache populated by the tutor open path.
+                const pendingMove = (pending && pending.kind === 'move') ? pending.value : null;
+                const monName = sm.team[teamIdx] && sm.team[teamIdx].name;
+                const tag = (pendingMove && monName) ? _moveTagForSpecies(monName, pendingMove) : null;
+                cost = _moveCostForStage(tag === 'unknown' ? null : tag);
+            }
             else if (kind === 'item') {
                 const pendingItem = (pending && pending.kind === 'item') ? pending.value : null;
                 cost = pendingItem ? _itemCostForTier(pendingItem) : TUTOR_COST_ITEM;
