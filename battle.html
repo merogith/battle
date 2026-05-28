@@ -16803,14 +16803,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // immunity-round mechanics are tracked per-turn via
                 // _storyBossMechanicsTurnTick.
                 try {
-                    const _beatKey = sm && sm._activeBeatBattleKey;
-                    const _cfg = _beatKey && typeof BOSS_CONFIGS === 'object' && BOSS_CONFIGS[_beatKey];
+                    // startBattle lives in the engine scope — the StoryMode IIFE's
+                    // `sm` / `BOSS_CONFIGS` / `_storyBossMechanicsBattleInit` are not
+                    // visible here (the sibling story calls above route through
+                    // `window.`). Reaching them by bare name threw ReferenceError on
+                    // every battle, so boss-beat mechanics never attached. Go through
+                    // the public window.StoryMode surface instead.
+                    const _SM = (typeof window !== 'undefined' && window.StoryMode) || null;
+                    const _smState = _SM && _SM.state;
+                    const _bossCfgs = _SM && _SM.BOSS_CONFIGS;
+                    const _beatKey = _smState && _smState._activeBeatBattleKey;
+                    const _cfg = _beatKey && _bossCfgs && typeof _bossCfgs === 'object' && _bossCfgs[_beatKey];
                     if (_cfg && Array.isArray(_cfg.mechanics) && _cfg.mechanics.length) {
                         state._activeStoryBeatKey = _beatKey;
                         state._bossMechanics = _cfg.mechanics.slice();
                         state._bossMechanicsFired = {};
                         state._bossPendingTelegraph = null;
-                        _storyBossMechanicsBattleInit(state);
+                        if (typeof _SM.bossMechanicsBattleInit === 'function') _SM.bossMechanicsBattleInit(state);
                     }
                 } catch (e) { console.warn('[Story] BOSS_CONFIGS init failed:', e); }
             } else {
@@ -20741,7 +20750,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // count. No-op if state._bossMechanics isn't set.
                 try {
                     if (Array.isArray(state._bossMechanics) && state._bossMechanics.length && state.fActive) {
-                        _storyBossMechanicsTurnTick(state, state.fActive);
+                        // Same engine-scope reroute as the BOSS_CONFIGS init in startBattle.
+                        const _SM = (typeof window !== 'undefined' && window.StoryMode) || null;
+                        if (_SM && typeof _SM.bossMechanicsTurnTick === 'function') _SM.bossMechanicsTurnTick(state, state.fActive);
                     }
                 } catch (e) { console.warn('[Story] boss turn tick failed:', e); }
                 state.residualPhaseComplete = false;
@@ -42594,7 +42605,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         _storyRunSceneMark('city0-coldopen');
                         const _coldOv = document.createElement('div');
                         _coldOv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px;box-sizing:border-box;cursor:pointer;';
-                        _coldOv.innerHTML = '<div style="color:#aaa;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;">— Story Mode —</div><div style="color:#fff;font-size:17px;font-style:italic;line-height:1.7;max-width:520px;text-align:center;">Salt-air morning. The boats are out, the lab is open, and the only road out of Pallet Town runs north.<br><br>The Professor\'s expecting you. The starter on her bench has your name on it.<br><br>Eight badges, an Elite Four, and a Champion stand between you and the Plateau.<br><br>Walk in.</div><button type="button" style="margin-top:14px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">Begin →</button>';
+                        _coldOv.innerHTML = '<div style="color:#aaa;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;">— Story Mode —</div><div style="color:#fff;font-size:17px;font-style:italic;line-height:1.7;max-width:520px;text-align:center;">Salt-air morning. The boats are out, the lab is open, and the only road out of Pallet Town runs north.<br><br>The Professor\'s expecting you. The starter on the bench has your name on it.<br><br>Eight badges, an Elite Four, and a Champion stand between you and the Plateau.<br><br>Walk in.</div><button type="button" style="margin-top:14px;padding:8px 22px;background:#1a2a4a;color:#fff;border:1px solid #4a6a9a;border-radius:4px;cursor:pointer;">Begin →</button>';
                         const _coldDismiss = function () { try { _coldOv.remove(); } catch (e) {} enterCity(); };
                         _coldOv.querySelector('button').onclick = function (e) { e.stopPropagation(); _coldDismiss(); };
                         _coldOv.onclick = function (e) { if (e.target === _coldOv) _coldDismiss(); };
@@ -42638,7 +42649,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // pre-Gym-1 is the canonical first encounter; cross-run-deduped.
             if (cidx === 1 && (sm.badges | 0) === 0 && Array.isArray(ev) && Array.isArray(ev[5]) && ev[5].indexOf('Gym Battle') !== -1) {
                 try { _storyShowOneTimeTip('what-is-a-gym',
-                    'A Gym Leader runs each of the eight towns on this road — type specialists who keep the league honest by handing out their badge only to trainers who can earn it.\n\nWin and the badge is yours. Your active party cap grows by one (2 + badges, capped at six after four badges), and the next Professor opens her bench for a new partner. Foes scale 1-for-1 with your party size — except the finals, who always field six.\n\nEvery leader builds around one type, and the city wears the color. Read the gym\'s palette on the way in, or let the City Guide tell you what they\'ve been training for.\n\nThe gym lobby holds one or two of the leader\'s deputies — Gym Trainers who warm up the floor. Beat them and the leader\'s chamber opens.\n\nWhen you\'re ready: ⚔ Enter the Gym.'); } catch (e) {}
+                    'A Gym Leader runs each of the eight towns on this road — type specialists who keep the league honest by handing out their badge only to trainers who can earn it.\n\nWin and the badge is yours. Your active party cap grows by one (2 + badges, capped at six after four badges), and the next Professor opens the bench for a new partner. Foes scale 1-for-1 with your party size — except the finals, who always field six.\n\nEvery leader builds around one type, and the city wears the color. Read the gym\'s palette on the way in, or let the City Guide tell you what they\'ve been training for.\n\nThe gym lobby holds one or two of the leader\'s deputies — Gym Trainers who warm up the floor. Beat them and the leader\'s chamber opens.\n\nWhen you\'re ready: ⚔ Enter the Gym.'); } catch (e) {}
             }
             // Per docs/EVOLUTION_FLOW_REBUILD.md §10: City 2 is the unlock band for
             // Cable Link, Stone Sage, and the Stone Emporium. Chain Bill → Granny
