@@ -62,6 +62,7 @@ The repo has three AI session lines working in parallel:
 - **Sustainable**: every refactor leaves behind a deterministic test (jsdom harness via `tests/helpers/load-engine.js`), so the next AI session can't silently regress it.
 - **Helpers over duplicated logic**: the "vibecode" pattern of re-inlining a 3-line block 25 times is what we are trying to undo.
 - **Use seeded RNG (`storyRngNext`) everywhere user-visible**, never bare `Math.random()`. Deterministic replays are part of the product.
+- **Sloppy-mode hazard**: `battle.html` has no `'use strict'`. Bare reassignment to an undeclared identifier silently creates a window global — it does NOT update an already-declared `let`/`const` in scope. When loader code populates a module-level placeholder, always: (a) declare the `let`/`const` with `{}`/`[]` defaults near the consumer's enclosing scope, (b) mutate via `Object.assign(X, fetched)` or `X.push(...fetched)`, NEVER `X = fetched`, (c) optionally mirror to `window.X = X` at declaration for cross-script readers. The early-let block above `loadGameData()` is the canonical pattern.
 
 ## Audit infrastructure
 

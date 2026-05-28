@@ -10042,6 +10042,21 @@
         let TRAINER_QUOTES_BY_NAME = {};
         let CITY_GUIDE_QUOTES = [];
         let typeChart = {};
+        // Catch-math tunables — loaded from data/story/ball-math.json. Pre-populated
+        // with the shipped defaults so any code that runs BEFORE loadGameData completes
+        // (or that runs in a context without the fetch stub) still gets the right math.
+        // The loader overwrites these from the JSON; same values today, but the file is
+        // the user-facing editing surface going forward.
+        let _CATCH_BALL_MULT       = { poke: 1.0, great: 1.5, ultra: 2.0, master: Infinity };
+        let _CATCH_RATE_BY_GRADE   = { 1: 0.12, 2: 0.22, 3: 0.35, 4: 0.50 };
+        let _CATCH_FLEE_BY_GRADE   = { 1: 0.40, 2: 0.28, 3: 0.20, 4: 0.12 };
+        let _CATCH_DEFAULT_FLEE_RATE = 0.30;
+        let SAFARI_BALL_MULT       = 1.35;
+        let SAFARI_BALLS_PER_SESSION = 15;
+        let SAFARI_BAIT_CATCH_MULT = 0.70;
+        let SAFARI_BAIT_FLEE_MULT  = 0.55;
+        let SAFARI_ROCK_CATCH_MULT = 1.65;
+        let SAFARI_ROCK_FLEE_MULT  = 1.70;
         // Mirror to window so test harnesses + other scripts can inspect the
         // populated objects without re-declaring. Stable reference: loadGameData
         // uses Object.assign / .push to mutate in place, so window.X stays valid.
@@ -10054,6 +10069,9 @@
             window.TRAINER_QUOTES_BY_NAME = TRAINER_QUOTES_BY_NAME;
             window.CITY_GUIDE_QUOTES = CITY_GUIDE_QUOTES;
             // window.typeChart is also set later (line ~14730) for backwards compat.
+            window._CATCH_BALL_MULT = _CATCH_BALL_MULT;
+            window._CATCH_RATE_BY_GRADE = _CATCH_RATE_BY_GRADE;
+            window._CATCH_FLEE_BY_GRADE = _CATCH_FLEE_BY_GRADE;
         }
 
         async function loadGameData() {
@@ -10077,10 +10095,10 @@
                     fetch('data/items.json').then(r => r.json()),
                     fetch('data/abilities.json').then(r => r.json())
                 ]);
-            // === DIALOGUE + TYPE-CHART LOAD ===
-                _setLoadingText('Loading dialogue & type chart (5/5)…');
+            // === DIALOGUE + TYPE-CHART + BALL-MATH LOAD ===
+                _setLoadingText('Loading dialogue, type chart & ball math (5/5)…');
                 try {
-                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _tc] = await Promise.all([
+                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _tc, _bm] = await Promise.all([
                         fetch('data/dialogue/leader-victory-lines.json').then(r => r.json()),
                         fetch('data/dialogue/leader-badge-reflections.json').then(r => r.json()),
                         fetch('data/dialogue/elite-victory-lines.json').then(r => r.json()),
@@ -10088,7 +10106,8 @@
                         fetch('data/dialogue/trainer-quotes.json').then(r => r.json()),
                         fetch('data/dialogue/trainer-quotes-by-name.json').then(r => r.json()),
                         fetch('data/dialogue/city-guide-quotes.json').then(r => r.json()),
-                        fetch('data/type-chart.json').then(r => r.json())
+                        fetch('data/type-chart.json').then(r => r.json()),
+                        fetch('data/story/ball-math.json').then(r => r.json())
                     ]);
                     // Use Object.assign / push so any code that captured an
                     // earlier reference (e.g. window.typeChart at line 14720)
@@ -10102,8 +10121,32 @@
                     Object.assign(TRAINER_QUOTES_BY_NAME,   _tqbn || {});
                     if (Array.isArray(_cgq)) CITY_GUIDE_QUOTES.push(..._cgq);
                     Object.assign(typeChart,                _tc   || {});
+                    // Ball math: object-container fields mutated in place; primitives
+                    // reassigned through the lexically-scoped lets. "guaranteed" →
+                    // Infinity for the Master Ball multiplier.
+                    if (_bm && typeof _bm === 'object') {
+                        const _ballMults = _bm.ballMultipliers || {};
+                        for (const k in _CATCH_BALL_MULT) delete _CATCH_BALL_MULT[k];
+                        for (const k in _ballMults) {
+                            _CATCH_BALL_MULT[k] = _ballMults[k] === 'guaranteed' ? Infinity : Number(_ballMults[k]);
+                        }
+                        const _byGrade = _bm.catchRateByGrade || {};
+                        for (const k in _CATCH_RATE_BY_GRADE) delete _CATCH_RATE_BY_GRADE[k];
+                        for (const k in _byGrade) _CATCH_RATE_BY_GRADE[k] = Number(_byGrade[k]);
+                        const _flee = _bm.fleeRateByGrade || {};
+                        for (const k in _CATCH_FLEE_BY_GRADE) delete _CATCH_FLEE_BY_GRADE[k];
+                        for (const k in _flee) _CATCH_FLEE_BY_GRADE[k] = Number(_flee[k]);
+                        if (typeof _bm.defaultFleeRate === 'number') _CATCH_DEFAULT_FLEE_RATE = _bm.defaultFleeRate;
+                        const _saf = _bm.safari || {};
+                        if (typeof _saf.ballMultiplier  === 'number') SAFARI_BALL_MULT          = _saf.ballMultiplier;
+                        if (typeof _saf.ballsPerSession === 'number') SAFARI_BALLS_PER_SESSION  = _saf.ballsPerSession;
+                        if (typeof _saf.baitCatchMult   === 'number') SAFARI_BAIT_CATCH_MULT    = _saf.baitCatchMult;
+                        if (typeof _saf.baitFleeMult    === 'number') SAFARI_BAIT_FLEE_MULT     = _saf.baitFleeMult;
+                        if (typeof _saf.rockCatchMult   === 'number') SAFARI_ROCK_CATCH_MULT    = _saf.rockCatchMult;
+                        if (typeof _saf.rockFleeMult    === 'number') SAFARI_ROCK_FLEE_MULT     = _saf.rockFleeMult;
+                    }
                 } catch (e) {
-                    console.error('[dialogue/type-chart] load failed:', e && (e.message || e));
+                    console.error('[dialogue/type-chart/ball-math] load failed:', e && (e.message || e));
                 }
             // === END DIALOGUE + TYPE-CHART LOAD ===
                 const speciesJSON = speciesJSONOrig['9'] || {};
@@ -48241,11 +48284,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // A unified, no-fight catch screen used by route nodes and the Safari Zone.
         // Catch math: chance = baseRate(grade) × ballMult. G1 is strongest tier and
         // therefore hardest to catch; G4 is the weakest tier and easiest.
-        //
-        const _CATCH_BALL_MULT = { poke: 1.0, great: 1.5, ultra: 2.0, master: Infinity };
-        const _CATCH_RATE_BY_GRADE = { 1: 0.12, 2: 0.22, 3: 0.35, 4: 0.50 };
-        const _CATCH_FLEE_BY_GRADE = { 1: 0.40, 2: 0.28, 3: 0.20, 4: 0.12 };
-        const _CATCH_DEFAULT_FLEE_RATE = 0.30;
+        // _CATCH_BALL_MULT / _CATCH_RATE_BY_GRADE / _CATCH_FLEE_BY_GRADE /
+        // _CATCH_DEFAULT_FLEE_RATE are declared near loadGameData (see early `let`
+        // block) and populated at boot from data/story/ball-math.json. Defaults
+        // match the values shipped here originally.
         const _BALL_DISPLAY = {
             poke:   { name: 'Poké Ball',   color: '#e57373', icon: 'sprites/pokesprite/balls/poke.png' },
             great:  { name: 'Great Ball',  color: '#64b5f6', icon: 'sprites/pokesprite/balls/great.png' },
@@ -48256,22 +48298,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Safari Ball is a session-scoped resource that lives ONLY inside the
         // Safari Zone. It is granted on entry, consumed on each throw, and
         // forfeited on exit — it never enters sm.balls (cannot be used on wild
-        // routes). 1.35× — sits between Poké (1.0×) and Great (1.5×). Bumped
-        // from 1.25 when per-turn flee on Bait/Rock landed: the new tension
-        // adds real session risk, so the baseline (no bait/rock) throw needs
-        // to feel playable. Bait/Rock are still what rewards skilled play —
-        // raw ball quality just isn't quite the floor it used to be.
-        const SAFARI_BALL_MULT = 1.35;
-        const SAFARI_BALLS_PER_SESSION = 15;
-        // Bait calms the Pokémon (lower flee chance, lower catch chance).
-        // Rock angers it (higher catch chance, higher flee chance).
-        // Modifiers stack within an encounter and reset between encounters.
-        // Rock catch mult bumped 1.45→1.65 so stacking rocks is genuinely
-        // rewarding — pairs with the new per-turn flee on rock turns.
-        const SAFARI_BAIT_CATCH_MULT = 0.70;
-        const SAFARI_BAIT_FLEE_MULT  = 0.55;
-        const SAFARI_ROCK_CATCH_MULT = 1.65;
-        const SAFARI_ROCK_FLEE_MULT  = 1.70;
+        // routes). SAFARI_BALL_MULT, SAFARI_BALLS_PER_SESSION and the Bait/Rock
+        // multipliers all live in data/story/ball-math.json (loaded at boot via
+        // the early `let` block near loadGameData). Defaults shipped here:
+        //   SAFARI_BALL_MULT      = 1.35  (between Poké 1.0× and Great 1.5×)
+        //   SAFARI_BALLS_PER_SESSION = 15
+        //   SAFARI_BAIT_CATCH_MULT = 0.70 · SAFARI_BAIT_FLEE_MULT = 0.55
+        //   SAFARI_ROCK_CATCH_MULT = 1.65 · SAFARI_ROCK_FLEE_MULT = 1.70
         // ── Per-turn flee (canonical Safari Zone tension) ─────────────────
         // In the real Safari Zone, the wild may flee at the end of ANY turn —
         // Bait/Rock turns included, not just after a missed throw. Without

@@ -66,10 +66,34 @@ try {
   fails.push(`TRAINER_QUOTES eval probe threw: ${e.message}`);
 }
 
+// Ball-math probes — covers Wave 5C extraction.
+const ballChecks = {
+  '_CATCH_BALL_MULT.poke':            ['(_CATCH_BALL_MULT.poke)', 1.0],
+  '_CATCH_BALL_MULT.great':           ['(_CATCH_BALL_MULT.great)', 1.5],
+  '_CATCH_BALL_MULT.ultra':           ['(_CATCH_BALL_MULT.ultra)', 2.0],
+  '_CATCH_BALL_MULT.master=Infinity': ['(_CATCH_BALL_MULT.master === Infinity)', true],
+  '_CATCH_RATE_BY_GRADE.1':           ['(_CATCH_RATE_BY_GRADE[1])', 0.12],
+  '_CATCH_RATE_BY_GRADE.4':           ['(_CATCH_RATE_BY_GRADE[4])', 0.50],
+  '_CATCH_DEFAULT_FLEE_RATE':         ['(_CATCH_DEFAULT_FLEE_RATE)', 0.30],
+  'SAFARI_BALL_MULT':                 ['(SAFARI_BALL_MULT)', 1.35],
+  'SAFARI_BALLS_PER_SESSION':         ['(SAFARI_BALLS_PER_SESSION)', 15],
+  'SAFARI_BAIT_CATCH_MULT':           ['(SAFARI_BAIT_CATCH_MULT)', 0.70],
+  'SAFARI_ROCK_CATCH_MULT':           ['(SAFARI_ROCK_CATCH_MULT)', 1.65],
+};
+for (const [label, [expr, expected]] of Object.entries(ballChecks)) {
+  let got;
+  try { got = w.eval(expr); } catch (e) { fails.push(`${label}: eval threw ${e.message}`); continue; }
+  if (got !== expected) {
+    fails.push(`${label}: expected ${expected}, got ${got}`);
+  } else {
+    console.log(`✓ ${label} = ${got}`);
+  }
+}
+
 if (fails.length) {
   console.error('\n❌ FAILURES:');
   for (const f of fails) console.error('  - ' + f);
   process.exit(1);
 }
-console.log('\n✓ Wave 5A dialogue extraction smoke test passed');
+console.log('\n✓ Wave 5A/5C/5D extraction smoke test passed');
 process.exit(0);
