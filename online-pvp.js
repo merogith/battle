@@ -70,7 +70,14 @@
     }
 
     function deepClone(o) {
-        return typeof structuredClone === 'function' ? structuredClone(o) : JSON.parse(JSON.stringify(o));
+        if (typeof structuredClone === 'function') return structuredClone(o);
+        // ISSUE-066: JSON round-trip silently drops Set/Map/Date/undefined and
+        // throws on circular refs. Log when we hit this so an unsupported host
+        // surfaces visibly instead of corrupting the snapshot in silence. The
+        // current callers (settings primitives, hostState plain objects) all
+        // round-trip cleanly — this just catches future regressions.
+        try { console.warn('[OnlinePvP] deepClone: structuredClone unavailable, falling back to JSON round-trip'); } catch (e) {}
+        return JSON.parse(JSON.stringify(o));
     }
 
     /** Keys copied from host settings into match contract (guest must not use local settings). */

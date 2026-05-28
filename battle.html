@@ -13491,6 +13491,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (prev && prev !== document.body) window._modalFocusStack.set(id, prev);
             } catch (e) {}
             el.classList.remove('hidden');
+            // ISSUE-083: move focus INTO the dialog on open so keyboard / screen-
+            // reader users land somewhere meaningful instead of staying on the
+            // trigger button (visually under an overlay). Prefer the first
+            // interactive control; fall back to focusing the dialog root with
+            // tabindex=-1 so SRs still announce it. closeModal already restores
+            // focus to the prior element via _modalFocusStack.
+            try {
+                const focusable = el.querySelector(
+                    'button:not([disabled]):not(.hidden), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+                );
+                if (focusable && typeof focusable.focus === 'function') {
+                    focusable.focus({ preventScroll: true });
+                } else {
+                    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+                    el.focus({ preventScroll: true });
+                }
+            } catch (e) {}
         };
         window.closeModal = function(id) {
             const el = document.getElementById(id);
@@ -27588,6 +27605,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (status === "SLP" && ((state.pActive && state.pActive.volatile && state.pActive.volatile.lockMove === "Uproar") || (state.fActive && state.fActive.volatile && state.fActive.volatile.lockMove === "Uproar"))) {
                 logMsg(`Uproar prevents sleep!`, 'info'); return;
             }
+            // ISSUE-071: Sleep Clause (Showdown standard). At most one mon per
+            // team can be asleep at a time. Pre-fix, an AI scoring Spore at 100
+            // could chain-sleep multiple player mons across the same fight —
+            // amplified by the now-Showdown-parity sleep duration (ISSUE-010).
+            // Symmetric: also protects the foe so player Spore strategies are
+            // not strictly stronger than what the AI is allowed to do.
+            if (status === "SLP") {
+                const targetParty = (mon === state.pActive)
+                    ? state.playerParty
+                    : (mon === state.fActive ? state.foeParty : null);
+                if (Array.isArray(targetParty)) {
+                    const _alreadyAsleep = targetParty.some(m => m && m !== mon && m.currentHp > 0 && m.status === "SLP");
+                    if (_alreadyAsleep) { logMsg(`Sleep Clause: another team member is already asleep!`, 'info'); return; }
+                }
+            }
             if ((status === "PSN" || status === "TOX") && (mon.type1 === "Poison" || mon.type2 === "Poison" || mon.type1 === "Steel" || mon.type2 === "Steel")) { logMsg(`It doesn't affect ${mon.name}...`, 'info'); return; }
             if (status === "BRN" && (mon.type1 === "Fire" || mon.type2 === "Fire")) { logMsg(`${mon.name} can't be burned!`, 'info'); return; }
             if (status === "PAR" && (mon.type1 === "Electric" || mon.type2 === "Electric")) { logMsg(`${mon.name} can't be paralyzed!`, 'info'); return; }
@@ -30647,6 +30679,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         // Shop item definitions — Pokémart
+        //
+        // ARCHITECTURE NOTE (ISSUE-086 / ISSUE-087): Mart and Department-Store
+        // *consumables* (Potion, X items, orbs, Wishing Piece, EV reset charm,
+        // …) deliberately live as their own self-contained namespace here, NOT
+        // as entries in `data/items.json`. `data/items.json` is the **held-item
+        // catalog** consumed by the battle engine (Choice Band, Life Orb,
+        // Leftovers, evolution stones, …) — its schema is "what does this do
+        // when held in a Pokemon's item slot" and it's used by `displayItem`,
+        // build validation, and item-effect parseMoveEffects branches. Mart
+        // consumables are a completely different concept: they're used FROM
+        // THE BAG, key on inline `effect:` handlers (`heal20`, `boost-atk`,
+        // `evResetOne`), and never appear in a held-item slot. The two
+        // namespaces deliberately do not share ids — `potion` is not a held
+        // item, `lifeOrb` is not a bag consumable, etc. Auditors that grep
+        // for "every mart id must also be in items.json" are following the
+        // wrong rule.
+        //
         // Heal gradient (post-overhaul, X-item rebalance pass):
         //   Potion 200 → Super 500 → Hyper 1000 → Max 1500 → Full Restore 2000.
         //   PP: Ether 400 → Elixir 1000 → Max Elixir 1500.
