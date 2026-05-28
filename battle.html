@@ -33697,6 +33697,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             { id: 'r_monotype',       cat: 'replay', name: 'Monotype Master',    desc: 'Clear the Champion with a 6-mon party that all share one type.',    icon: '🎨' },
             { id: 'r_challenge_clr',  cat: 'replay', name: 'Veryeasy No More',   desc: 'Clear the Champion on Very Hard (Challenge) difficulty.',           icon: '🔥' },
             { id: 'r_no_item',        cat: 'replay', name: 'No-Item Run',        desc: 'Clear the Champion without using any mid-battle bag item.',         icon: '🚫' },
+            { id: 'r_no_death',       cat: 'replay', name: 'No Death Run',       desc: 'Clear the Hall of Fame without losing a single story battle.',      icon: '🛡' },
             { id: 'r_solo',           cat: 'replay', name: 'Solo Run',           desc: 'Clear the Champion with only one Pokémon in your party.',           icon: '☝' },
             { id: 'r_perfect_rival',  cat: 'replay', name: 'Perfect Rival',      desc: 'Beat your rival in every story rival encounter in a single run.',   icon: '⚔' },
             { id: 'r_catch_some',     cat: 'replay', name: 'Catch \'Em (Some)',  desc: 'Catch 10 distinct species across all runs.',                        icon: '🪺' },
@@ -44953,6 +44954,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     processNextEvent();
                 }, event, idx);
             } else {
+                // No Death Run tracking — counted once per lost main-path story
+                // battle (forfeit + normal loss both fire this branch). Crucible-
+                // sourced losses (Frontier / Pits) bypass this hook; they're off
+                // the main run and don't gate the achievement. PR-4a v22.
+                try {
+                    if (!sm.stats || typeof sm.stats !== 'object') sm.stats = { battlesLost: 0 };
+                    sm.stats.battlesLost = ((sm.stats.battlesLost | 0) + 1);
+                } catch (e) {}
                 // Defeat: stash the pre-fight inventory so every game-over choice
                 // (Retry, Return to Last City, Concede) refunds the battle-bag
                 // items spent in the lost fight — only a win burns them for good.
@@ -50991,6 +51000,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { _storyRecordHallOfFame(); } catch (e) {}
                 try { _storyAchievementUnlock('first_hof'); } catch (e) {}
                 try { _storyAchievementBumpCount('runs_cleared', 1); } catch (e) {}
+                // No Death Run — flips iff the player reached HoF with zero lost
+                // battles on the main path. The counter lives in sm.stats and is
+                // reset on each new run via the v22 schema defaults.
+                try {
+                    if (sm.stats && (sm.stats.battlesLost | 0) === 0) {
+                        _storyAchievementUnlock('r_no_death');
+                    }
+                } catch (e) {}
             }
             // Per-variant Hall-of-Fame card — fires once per variant per run,
             // on a fresh clear, before the grid renders. Subsequent previews
