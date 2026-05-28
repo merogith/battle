@@ -50780,15 +50780,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     const ev = STORY_EVENTS_RAW[sm.eventIndex];
                     if (ev && ev[1] === 'Battle') {
                         const label = String(ev[2] || '');
-                        if (label === 'Champion') {
+                        // Phase 4.6 — heavier boss bags so iconic fights feel item-rich.
+                        // E1–E4: bench Revive + an extra Full Restore so the chamber
+                        // gauntlet doesn't read as item-thin compared to Hard difficulty.
+                        if (/^E[1-4]$/.test(label)) {
                             revive += 1;
-                            maxPotion = Math.max(0, maxPotion - 1);
+                            fullRestore += 1;
+                        } else if (label === 'Champion') {
+                            // Champion: previously +1 revive at the cost of a Max Potion.
+                            // Now +1 revive + +1 fullRestore for a real "boss-tier" bag.
+                            revive += 1;
+                            fullRestore += 1;
                         } else if (label === 'Rival' && badges >= 7) {
                             revive += 1;
                             maxPotion = Math.max(0, maxPotion - 1);
                         } else if (label === 'Mystery Figure') {
+                            // Mystery Figure: the endgame spike. +1 Max Revive +1 Full
+                            // Restore + keeps both Max Potions (no trade-down).
                             maxRevive += 1;
-                            maxPotion = Math.max(0, maxPotion - 1);
+                            fullRestore += 1;
                         }
                     }
                 } catch (e) {}
