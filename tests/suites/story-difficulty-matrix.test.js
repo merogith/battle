@@ -137,16 +137,24 @@ for (const stage of STAGES) {
     ].filter(Boolean);
 
     // ── Report (console.log, visible in `node --test` diagnostic output) ──
+    const fmtMon = (m) => {
+      const nm = (m.name || '?').padEnd(13).slice(0, 13);
+      const it = ('@' + ((m.build && m.build.i) || 'None')).padEnd(16).slice(0, 16);
+      const mv = (m.build && Array.isArray(m.build.m) && m.build.m.length)
+        ? m.build.m.join(' / ')
+        : '(no moves)';
+      return `${nm} ${it} ${mv}`;
+    };
     console.log(`\n┌─── ${stage.name} — badges=${stage.badges}, event=${stage.event}, player tier=${TIER_LABEL[stage.pTier]} ───`);
     playerTeams.forEach((t, i) => {
       const s = summarize(t, stage.pTier);
-      console.log(`│ Player ${i+1}: BST=${s.bstAvg} EV=${s.evAvg}${s.ivAvg!=null?` IV=${s.ivAvg}`:''} items[${s.itemUniq}u]=[${s.items.join(', ')}]`);
-      console.log(`│            species=[${s.species.join(', ')}]`);
+      console.log(`│ Player ${i+1} [BST=${s.bstAvg} EV=${s.evAvg}${s.ivAvg!=null?` IV=${s.ivAvg}`:''}]`);
+      for (const m of t) console.log(`│   ${fmtMon(m)}`);
     });
     enemyTeams.forEach((t, i) => {
       const s = summarize(t, stage.pTier);
-      console.log(`│ Enemy  ${i+1}: BST=${s.bstAvg} EV=${s.evAvg}${s.ivAvg!=null?` IV=${s.ivAvg}`:''} items[${s.itemUniq}u]=[${s.items.join(', ')}]`);
-      console.log(`│            species=[${s.species.join(', ')}]`);
+      console.log(`│ Enemy  ${i+1} [BST=${s.bstAvg} EV=${s.evAvg}${s.ivAvg!=null?` IV=${s.ivAvg}`:''}]`);
+      for (const m of t) console.log(`│   ${fmtMon(m)}`);
     });
     // Quick difficulty delta.
     const avg = (xs) => Math.round(xs.reduce((a,b)=>a+b,0)/Math.max(1,xs.length));
