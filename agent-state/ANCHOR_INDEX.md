@@ -1,6 +1,6 @@
 # Anchor Index — battle.html and siblings
 
-> **Generated**: 2026-05-27T15:02:18.485Z
+> **Generated**: 2026-05-28T06:59:21.859Z
 > **Source**: `node scripts/debug/anchor-map.mjs`
 > **Companion**: `agent-state/CODEBASE_MAP.md` (human-authored prose, anchor table stale — use this file instead).
 
@@ -52,7 +52,7 @@ trusting these numbers verbatim.
 | `rollTrainerTeam` | battle.html | 34238 | function-decl |
 | `rollMysteryFigureFinalBossTeam` | battle.html | 34655 | function-decl |
 | `makeBuild` | battle.html | 10368 | function-decl |
-| `makeWildBuild` | battle.html | 44723 | function-decl |
+| `makeWildBuild` | battle.html | 44726 | function-decl |
 | `makeDesignedBuild` | battle.html | 10337 | function-decl |
 
 ## Story build tier
@@ -144,8 +144,8 @@ trusting these numbers verbatim.
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `enterShop` | battle.html | 45734 | function-decl |
-| `enterArtifactShop` | battle.html | 45985 | function-decl |
+| `enterShop` | battle.html | 45746 | function-decl |
+| `enterArtifactShop` | battle.html | 45997 | function-decl |
 
 ## Test harness
 
