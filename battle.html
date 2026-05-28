@@ -14566,6 +14566,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.currentHp = Math.max(1, Math.floor(mon.maxHp * _mul));
                 mon._tiredAtBattleStart = _tiredStacks;
             }
+            // Phase 4.4 — per-event enemy stat multiplier (set by enterBattleEvent's
+            // roll path). Applied LAST so it stacks cleanly on top of nature + fatigue:
+            // a -20% C0 route enemy with 1 fatigue stack reads 0.99 * 0.80 = 79% of base
+            // (rounded). Shedinja's 1-HP gimmick is preserved.
+            if (build && typeof build._storyStatMult === 'number' && build._storyStatMult > 0 && build._storyStatMult !== 1) {
+                const m = build._storyStatMult;
+                if (monName !== 'Shedinja') {
+                    mon.maxHp = Math.max(1, Math.floor(mon.maxHp * m));
+                    mon.currentHp = Math.max(1, Math.min(mon.maxHp, Math.floor(mon.currentHp * m)));
+                }
+                for (const k of ['atk','def','spa','spd','spe']) {
+                    mon.stats[k] = Math.max(1, Math.floor(mon.stats[k] * m));
+                }
+                mon._storyStatMult = m; // exposed for the battle summary UI (Phase 4.5).
+            }
 
             mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0;
             mon.volatile = { choiceLock: null, flinch: false, confusion: 0, sub: 0, protectCount: 0, protect: false, endure: false, maxGuard: false, spikyShield: false, kingShield: false, banefulBunker: false, silkTrap: false, obstruct: false, burningBulwark: false, quickGuard: false, wideGuard: false, leechSeed: false, taunt: 0, wishHp: 0, wishTurns: 0, encore: 0, encoreMove: null, lastMoveUsed: null, perishCount: -1, disabled: null, disabledTurns: 0, torment: false, healBlock: 0, throatChop: 0, imprisoned: false, yawnTurns: 0, lastPhysicalDmg: 0, lastSpecialDmg: 0, charging: null, recharge: false, invulnerable: false, focusEnergy: false, destinyBond: false, cursed: false, partialTrap: 0, partialTrapSrc: '', aquaRing: false, ingrain: false, stockpile: 0, futureSightTurns: 0, futureSightDmg: 0, futureSightName: '', lockMove: null, lockTurns: 0, rolloutCount: 0, defenseCurled: false, bideActive: false, bideDamage: 0, bideTurns: 0, proteanUsed: false, boostedByBoosterEnergy: false, disguiseBroken: false, lockOn: false, moveHistory: [], abilityGastroAcid: false, minimized: false, truanting: false, micleBerry: false, grudge: false, embargo: 0, roosting: false, roostType1: null, roostType2: null, timesHit: 0, statLoweredThisTurn: false, lastMoveFailed: false, hasMoved: false, identified: null, identifiedDark: false, supersweetUsed: false, charged: false, cudChewBerry: null, cudChewTurns: 0 };
@@ -30979,6 +30994,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         const STORY_RIVAL_ROW_EARLY = 12;
         const STORY_RIVAL_ROW_MID = 39;
         const STORY_RIVAL_ROW_LEAGUE = 65;
+        // Phase 4.4 — per-event enemy stat multiplier. Trainer mons read this
+        // multiplier on top of their (already city-scaled) IV/EV/nature stats: at
+        // C0 the band is -20%, smoothly climbing per city to +20% at C9, with three
+        // narrative overrides (intro rival -25%, Champion +25%, Mystery Figure +30%).
+        // Wilds + Professor gifts are EXEMPT — they use their natural city curve.
+        const _STORY_FOE_STAT_BAND = Object.freeze([-20,-17,-13,-10,-7,-3,0,7,13,20]);
+        function _storyEnemyStatMult(eventType, city, storyRowIdx) {
+            const e = String(eventType || '');
+            if (e === 'Mystery Figure') return 1.30;
+            if (e === 'Champion') return 1.25;
+            // Intro rival is the explicit narrative debuff floor (-25%).
+            if (e === 'Rival' && (storyRowIdx | 0) === STORY_RIVAL_ROW_INTRO) return 0.75;
+            // City band — clamp to the table's bounds.
+            const c = Math.max(0, Math.min(_STORY_FOE_STAT_BAND.length - 1, city | 0));
+            return 1 + (_STORY_FOE_STAT_BAND[c] || 0) / 100;
+        }
         /** Hand-picked mid-run battle eventIds that become THEMED on every run. The
          * theme biases the trainer pool toward tagged variants; eldritch-tagged
          * trainers also reach outside enabled gens so a single-G1 run can still get
@@ -35288,6 +35319,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     tutorFetchLearnsetMoveNames: (...a) => _tutorFetchLearnsetMoveNames(...a),
                     moveTagForSpecies: (...a) => _moveTagForSpecies(...a),
                     storyGateFoeMovesByCity: (...a) => _storyGateFoeMovesByCity(...a),
+                    storyEnemyStatMult: (...a) => _storyEnemyStatMult(...a),
+                    buildPokemon: (...a) => buildPokemon(...a),
                     findTrainerDataByName,
                     validateTrainerData: _validateTrainerData,
                     getTrainerData: () => TRAINER_DATA,
@@ -43755,6 +43788,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // (runSeed, eventIdx), so flee / revisit / reload reproduce the same team.
                 // The rival stays dynamic — it re-rolls off the LIVE party to counter it.
                 const enemyTeam = (String(event) === 'Rival') ? _rollEnemy() : _withEventSeededRng(idx, _rollEnemy);
+                // Phase 4.4: stamp the per-event stat multiplier onto each build so
+                // buildPokemon applies it when computing maxHp + stats. The mult is
+                // a pure function of (event, city, row): trainers band C0:-20% →
+                // C9:+20%, with intro rival -25%, Champion +25%, Mystery Figure +30%.
+                try {
+                    let _enemyCity = -1;
+                    try { _enemyCity = cityIndexFromEventIndex(idx); } catch (_e) {}
+                    const _enemyMult = _storyEnemyStatMult(event, _enemyCity, idx);
+                    for (const s of enemyTeam) if (s && s.build) s.build._storyStatMult = _enemyMult;
+                } catch (_e) {}
                 try { await _storyGateFoeMovesByCity(enemyTeam, idx); } catch (e) { console.warn('[Story] foe move gate', e); }
                 const frozenTeam = storyFreezeFoeTeamForPersistence(enemyTeam);
                 try {
