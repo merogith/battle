@@ -41,11 +41,29 @@ for (const [name, spec] of Object.entries(POOLS)) {
   console.log(`✓ ${name.padEnd(30)} ${size} entries`);
 }
 
-// Also exercise a public getter if exposed
+// Exercise a real gameplay function that reads the pools via lexical scope.
+// This catches the case where window-level reassignment masks an empty let.
 if (typeof w.getTrainerQuote === 'function') {
   const q = w.getTrainerQuote('Basic Trainer');
   if (!q || typeof q !== 'string') fails.push(`getTrainerQuote returned ${q}`);
   else console.log(`✓ getTrainerQuote('Basic Trainer') = ${q.slice(0, 60)}…`);
+} else {
+  // Probe via __engine if available
+  const eng = w.__engine;
+  if (eng && eng.getTrainerQuote) {
+    const q = eng.getTrainerQuote('Basic Trainer');
+    if (!q || typeof q !== 'string') fails.push(`__engine.getTrainerQuote returned ${q}`);
+    else console.log(`✓ __engine.getTrainerQuote('Basic Trainer') = ${q.slice(0, 60)}…`);
+  }
+}
+// Read TRAINER_QUOTES via a function that closes over the lexical-scope binding,
+// not via window directly — guarantees the in-game read path is exercised.
+try {
+  const probe = w.eval('(function(){ return (TRAINER_QUOTES["Basic Trainer"] || []).length; })()');
+  if (!probe || probe < 6) fails.push(`TRAINER_QUOTES["Basic Trainer"] read via eval got ${probe} entries`);
+  else console.log(`✓ TRAINER_QUOTES["Basic Trainer"] via eval = ${probe} entries`);
+} catch (e) {
+  fails.push(`TRAINER_QUOTES eval probe threw: ${e.message}`);
 }
 
 if (fails.length) {

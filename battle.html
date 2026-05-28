@@ -10029,6 +10029,33 @@
             }
         }
 
+        // Dialogue + type-chart placeholders, populated by loadGameData() below from
+        // data/dialogue/*.json + data/type-chart.json. Declared early so the bindings
+        // exist by the time loadGameData runs (closures see their declaration order,
+        // and loadGameData fires inside Promise.then before the rest of the script
+        // body finishes evaluating in jsdom's test harness — verified empirically).
+        let LEADER_VICTORY_LINES = {};
+        let LEADER_BADGE_REFLECTIONS = {};
+        let ELITE_VICTORY_LINES = {};
+        let CHAMPION_VICTORY_LINES = {};
+        let TRAINER_QUOTES = {};
+        let TRAINER_QUOTES_BY_NAME = {};
+        let CITY_GUIDE_QUOTES = [];
+        let typeChart = {};
+        // Mirror to window so test harnesses + other scripts can inspect the
+        // populated objects without re-declaring. Stable reference: loadGameData
+        // uses Object.assign / .push to mutate in place, so window.X stays valid.
+        if (typeof window !== 'undefined') {
+            window.LEADER_VICTORY_LINES = LEADER_VICTORY_LINES;
+            window.LEADER_BADGE_REFLECTIONS = LEADER_BADGE_REFLECTIONS;
+            window.ELITE_VICTORY_LINES = ELITE_VICTORY_LINES;
+            window.CHAMPION_VICTORY_LINES = CHAMPION_VICTORY_LINES;
+            window.TRAINER_QUOTES = TRAINER_QUOTES;
+            window.TRAINER_QUOTES_BY_NAME = TRAINER_QUOTES_BY_NAME;
+            window.CITY_GUIDE_QUOTES = CITY_GUIDE_QUOTES;
+            // window.typeChart is also set later (line ~14730) for backwards compat.
+        }
+
         async function loadGameData() {
             // BUG-015 fix: stage the boot loading text so the player has a sense
             // of progress instead of staring at "Loading Pokédex & moves…" for
@@ -10050,29 +10077,35 @@
                     fetch('data/items.json').then(r => r.json()),
                     fetch('data/abilities.json').then(r => r.json())
                 ]);
-            // === DIALOGUE POOLS LOAD ===
-                _setLoadingText('Loading dialogue (5/5)…');
+            // === DIALOGUE + TYPE-CHART LOAD ===
+                _setLoadingText('Loading dialogue & type chart (5/5)…');
                 try {
-                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq] = await Promise.all([
+                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _tc] = await Promise.all([
                         fetch('data/dialogue/leader-victory-lines.json').then(r => r.json()),
                         fetch('data/dialogue/leader-badge-reflections.json').then(r => r.json()),
                         fetch('data/dialogue/elite-victory-lines.json').then(r => r.json()),
                         fetch('data/dialogue/champion-victory-lines.json').then(r => r.json()),
                         fetch('data/dialogue/trainer-quotes.json').then(r => r.json()),
                         fetch('data/dialogue/trainer-quotes-by-name.json').then(r => r.json()),
-                        fetch('data/dialogue/city-guide-quotes.json').then(r => r.json())
+                        fetch('data/dialogue/city-guide-quotes.json').then(r => r.json()),
+                        fetch('data/type-chart.json').then(r => r.json())
                     ]);
-                    LEADER_VICTORY_LINES     = _lvl  || {};
-                    LEADER_BADGE_REFLECTIONS = _lbr  || {};
-                    ELITE_VICTORY_LINES      = _eel  || {};
-                    CHAMPION_VICTORY_LINES   = _cvl  || {};
-                    TRAINER_QUOTES           = _tq   || {};
-                    TRAINER_QUOTES_BY_NAME   = _tqbn || {};
-                    CITY_GUIDE_QUOTES        = _cgq  || [];
+                    // Use Object.assign / push so any code that captured an
+                    // earlier reference (e.g. window.typeChart at line 14720)
+                    // sees the populated data without needing to know about
+                    // this load step.
+                    Object.assign(LEADER_VICTORY_LINES,     _lvl  || {});
+                    Object.assign(LEADER_BADGE_REFLECTIONS, _lbr  || {});
+                    Object.assign(ELITE_VICTORY_LINES,      _eel  || {});
+                    Object.assign(CHAMPION_VICTORY_LINES,   _cvl  || {});
+                    Object.assign(TRAINER_QUOTES,           _tq   || {});
+                    Object.assign(TRAINER_QUOTES_BY_NAME,   _tqbn || {});
+                    if (Array.isArray(_cgq)) CITY_GUIDE_QUOTES.push(..._cgq);
+                    Object.assign(typeChart,                _tc   || {});
                 } catch (e) {
-                    console.error('[dialogue] load failed:', e);
+                    console.error('[dialogue/type-chart] load failed:', e && (e.message || e));
                 }
-            // === END DIALOGUE POOLS LOAD ===
+            // === END DIALOGUE + TYPE-CHART LOAD ===
                 const speciesJSON = speciesJSONOrig['9'] || {};
                 for (let k in speciesJSON) {
                     let s = speciesJSON[k];
@@ -11021,7 +11054,6 @@
             window.STAT_SCALE_MAX = Math.floor((Math.floor((2 * p95Stat + 31 + 63) * 50 / 100) + 5) * 1.1);
         }
 
-        const typeChart={"Normal":{"Rock":0.5,"Ghost":0,"Steel":0.5},"Fire":{"Fire":0.5,"Water":0.5,"Grass":2,"Ice":2,"Bug":2,"Rock":0.5,"Dragon":0.5,"Steel":2},"Water":{"Fire":2,"Water":0.5,"Grass":0.5,"Ground":2,"Rock":2,"Dragon":0.5},"Electric":{"Water":2,"Electric":0.5,"Grass":0.5,"Ground":0,"Flying":2,"Dragon":0.5},"Grass":{"Fire":0.5,"Water":2,"Grass":0.5,"Poison":0.5,"Ground":2,"Flying":0.5,"Bug":0.5,"Rock":2,"Dragon":0.5,"Steel":0.5},"Ice":{"Fire":0.5,"Water":0.5,"Grass":2,"Ice":0.5,"Ground":2,"Flying":2,"Dragon":2,"Steel":0.5},"Fighting":{"Normal":2,"Ice":2,"Poison":0.5,"Flying":0.5,"Psychic":0.5,"Bug":0.5,"Rock":2,"Ghost":0,"Dark":2,"Steel":2,"Fairy":0.5},"Poison":{"Grass":2,"Poison":0.5,"Ground":0.5,"Rock":0.5,"Ghost":0.5,"Steel":0,"Fairy":2},"Ground":{"Fire":2,"Electric":2,"Grass":0.5,"Poison":2,"Flying":0,"Bug":0.5,"Rock":2,"Steel":2},"Flying":{"Electric":0.5,"Grass":2,"Fighting":2,"Bug":2,"Rock":0.5,"Steel":0.5},"Psychic":{"Fighting":2,"Poison":2,"Psychic":0.5,"Dark":0,"Steel":0.5},"Bug":{"Fire":0.5,"Grass":2,"Fighting":0.5,"Poison":0.5,"Flying":0.5,"Psychic":2,"Ghost":0.5,"Dark":2,"Steel":0.5,"Fairy":0.5},"Rock":{"Fire":2,"Ice":2,"Fighting":0.5,"Ground":0.5,"Flying":2,"Bug":2,"Steel":0.5},"Ghost":{"Normal":0,"Psychic":2,"Ghost":2,"Dark":0.5},"Dragon":{"Dragon":2,"Steel":0.5,"Fairy":0},"Dark":{"Fighting":0.5,"Psychic":2,"Ghost":2,"Dark":0.5,"Fairy":0.5},"Steel":{"Fire":0.5,"Water":0.5,"Electric":0.5,"Ice":2,"Rock":2,"Steel":0.5,"Fairy":2},"Fairy":{"Fire":0.5,"Fighting":2,"Poison":0.5,"Dragon":2,"Dark":2,"Steel":0.5},"???":{}};
         const natureModifiers={"Adamant":{up:"atk",down:"spa"},"Brave":{up:"atk",down:"spe"},"Lonely":{up:"atk",down:"def"},"Naughty":{up:"atk",down:"spd"},"Bold":{up:"def",down:"atk"},"Impish":{up:"def",down:"spa"},"Lax":{up:"def",down:"spd"},"Relaxed":{up:"def",down:"spe"},"Modest":{up:"spa",down:"atk"},"Mild":{up:"spa",down:"def"},"Quiet":{up:"spa",down:"spe"},"Rash":{up:"spa",down:"spd"},"Calm":{up:"spd",down:"atk"},"Careful":{up:"spd",down:"spa"},"Gentle":{up:"spd",down:"def"},"Sassy":{up:"spd",down:"spe"},"Timid":{up:"spe",down:"atk"},"Jolly":{up:"spe",down:"spa"},"Hasty":{up:"spe",down:"def"},"Naive":{up:"spe",down:"spd"},"Hardy":null,"Docile":null,"Serious":null,"Bashful":null,"Quirky":null};
         // baseStats, movesDB, builds, tooltipDict are loaded from CSV files via loadGameData()
 
@@ -31938,21 +31970,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
         // Per-leader victory flavor. Strings include the trainer's own voice; the engine
         // prepends "{Name}:" so the line reads as direct speech. One short line each.
-        let LEADER_VICTORY_LINES = {};
+        // (Storage moved to data/dialogue/leader-victory-lines.json — see early `let`
+        // declarations near loadGameData and the loader hook inside it.)
 
         // Companion to LEADER_VICTORY_LINES — a second, quieter beat the leader speaks
         // after handing over the badge. Each reflection ties the trainer's type / region
         // back to the player's victory, so the moment lands as personal flavor instead of
         // a stock "next gym is waiting" footer. Falls through silently when missing.
-        let LEADER_BADGE_REFLECTIONS = {};
 
         // Per-Elite Four post-battle line. Used when the matched trainer name is canonical;
         // otherwise we fall through to the role-only "Elite N passed—one step closer!" line.
-        let ELITE_VICTORY_LINES = {};
 
         // Per-champion victory line. If the matched champion has no entry we still emit
         // the generic "You defeated the Champion!" line as before.
-        let CHAMPION_VICTORY_LINES = {};
 
         /** Per-storyline-variant Champion fight dialogue. Each variant gets
          *  three intro options (rolled randomly per fight) and a single
@@ -33136,9 +33166,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return merged.length ? merged : generic;
         }
 
-        let TRAINER_QUOTES = {};
         // Optional per-name lines (Game Boy–style). Key = trainer.name (see TRAINER_DATA).
-        let TRAINER_QUOTES_BY_NAME = {};
         function getTrainerQuote(role) {
             const pool = TRAINER_QUOTES[role] || TRAINER_QUOTES['Basic Trainer'];
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
@@ -33344,7 +33372,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
           ['"Same lab. Same bench. Different trainer."','"They say new horizons. I say same passion, sharper teeth."','"Drop in whenever the road bends back this way."'],
           ['"You\'re still training? Good. Most don\'t."','"There\'s always one more partner waiting for the right hand."','"The lab keeps the lights on for you."'],
         ];
-        let CITY_GUIDE_QUOTES = [];
         function _pickCityQuoteLine(poolArr, cityIdx) {
             const idx = Math.min(Math.max(0, cityIdx|0), poolArr.length - 1);
             const lines = poolArr[idx] || poolArr[0];
