@@ -133,8 +133,8 @@ $('story-daycare-secret').querySelector('[data-scene-opt="0"]').click();  // "St
 check('Fight Club unlocked after Step inside', sm.pits.fightClubUnlocked === true);
 check('secret scene closed', !$('story-daycare-secret'));
 
-// ════ ACT 4 — the Fight Club bracket, win all three (one-time payoff) ════
-act('ACT 4 — Step into the ring: pick 3, win the bracket (one-time)');
+// ════ ACT 4 — the Fight Club gauntlet: lock a trio, sweep all five (one-time payoff) ════
+act('ACT 4 — Step into the ring: lock 3, 3v3 each round, sweep all five (one-time)');
 fresh(6, { eggDone:true, fightClub:true });
 const goldBefore = sm.gold;
 SM.enterPits();
@@ -146,12 +146,17 @@ for (const id of picks) $('story-pits-overlay').querySelector(`[data-pits-pick="
 const startBtn = $('story-pits-overlay').querySelector('#pits-start-btn');
 check('START enabled once exactly 3 are picked', !!startBtn && !startBtn.disabled);
 startBtn.click();
-check('marked in-battle', sm.pits._inBattle === true);
-check('rolled a 3-fight enemy bracket', sm.pits._enemyRoster && sm.pits._enemyRoster.length === 3);
-for (let i = 0; i < 3; i++) SM.onBattleEnd(true, 'Fight Club win', '');   // resolve fires synchronously on the 3rd
-check('in-battle cleared after 3 wins', sm.pits._inBattle === false);
+check('rolled a 5-round enemy gauntlet', sm.pits._enemyRoster && sm.pits._enemyRoster.length === 5);
+check('round 1 opens with the draft reveal', !!$('story-pits-draft-overlay'));
+check('the house fields six', sm.pits._enemyRoster[0].six.length === 6);
+check('the house counter-picks exactly three', sm.pits._enemyRoster[0].picked.length === 3);
+beat('Round-1 draft reveal — the house\'s six + its counter-picked three', '#story-pits-draft-overlay');
+$('story-pits-draft-overlay').querySelector('#pits-draft-go').click();   // send the trio in
+check('marked in-battle after sending them in', sm.pits._inBattle === true);
+for (let i = 0; i < 5; i++) SM.onBattleEnd(true, 'Fight Club win', '');   // resolve fires synchronously on the 5th
+check('in-battle cleared after 5 wins', sm.pits._inBattle === false);
 check('gold paid out', sm.gold > goldBefore);
-check('every team member got +1 to every stat', sm.team.every(s => ['hp','atk','def','spa','spd','spe'].every(k => s.build.bonus[k] >= 1)));
+check('every team member got +10 to every stat', sm.team.every(s => ['hp','atk','def','spa','spd','spe'].every(k => s.build.bonus[k] === 10)));
 check('NO mons released — you keep all six', sm.team.length === 6);
 check('story club marked done', sm.pits.storyClubDone === true);
 check('one-time: story club no longer available', SM._pitsStoryAvailable() === false);
@@ -166,6 +171,7 @@ const ids5 = [sm.team[0].id, sm.team[1].id, sm.team[2].id];
 for (const id of ids5) $('story-pits-overlay').querySelector(`[data-pits-pick="${id}"]`).click();
 const totalBefore5 = sm.team.length + sm.pcBox.length;
 $('story-pits-overlay').querySelector('#pits-start-btn').click();
+$('story-pits-draft-overlay').querySelector('#pits-draft-go').click();   // send the trio in
 SM.onBattleEnd(false, 'Fight Club loss', '');
 await flush(360);
 check('defeat overlay renders on a loss', !!$('story-pits-defeat-overlay'));
@@ -183,6 +189,7 @@ SM.enterPits();
 const ids6 = [sm.team[0].id, sm.team[1].id, sm.team[2].id];
 for (const id of ids6) $('story-pits-overlay').querySelector(`[data-pits-pick="${id}"]`).click();
 $('story-pits-overlay').querySelector('#pits-start-btn').click();
+$('story-pits-draft-overlay').querySelector('#pits-draft-go').click();   // send the trio in
 SM.onBattleEnd(false, 'Fight Club loss', '');
 await flush(360);
 $('story-pits-defeat-overlay').querySelector('#pits-defeat-retry').click();
@@ -206,7 +213,8 @@ beat('Endgame selection — money-only flavor', '#story-pits-overlay');
 const picks7 = [sm.team[0].id, sm.team[1].id, sm.team[2].id];
 for (const id of picks7) $('story-pits-overlay').querySelector(`[data-pits-pick="${id}"]`).click();
 $('story-pits-overlay').querySelector('#pits-start-btn').click();
-for (let i = 0; i < 3; i++) SM.onBattleEnd(true, 'Fight Club win', '');
+$('story-pits-draft-overlay').querySelector('#pits-draft-go').click();   // send the trio in
+for (let i = 0; i < 5; i++) SM.onBattleEnd(true, 'Fight Club win', '');
 check('endgame win pays gold', sm.gold > goldBefore7);
 check('endgame win grants NO permanent +1', sm.team.every((s, i) => ['hp','atk','def','spa','spd','spe'].every(k => (s.build.bonus[k]|0) === (bonusBefore7[i][k]|0))));
 check('endgame club stays open (repeatable)', SM._pitsIsEndgame() === true);
