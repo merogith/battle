@@ -1,6 +1,6 @@
 # Anchor Index — battle.html and siblings
 
-> **Generated**: 2026-05-28T14:33:07.140Z
+> **Generated**: 2026-05-28T16:48:33.749Z
 > **Source**: `node scripts/debug/anchor-map.mjs`
 > **Companion**: `agent-state/CODEBASE_MAP.md` (human-authored prose, anchor table stale — use this file instead).
 
@@ -23,8 +23,8 @@ trusting these numbers verbatim.
 | Symbol | File | Line | Kind |
 |---|---|---|---|
 | `STORY_EVENTS_RAW` | battle.html | 29252 | const-decl |
-| `enterBattleEvent` | battle.html | 44821 | function-decl |
-| `proceedToNextBattle` | battle.html | 44324 | function-decl |
+| `enterBattleEvent` | battle.html | 44867 | function-decl |
+| `proceedToNextBattle` | battle.html | 44370 | function-decl |
 
 ## Migrations
 
@@ -52,7 +52,7 @@ trusting these numbers verbatim.
 | `rollTrainerTeam` | battle.html | 36170 | function-decl |
 | `rollMysteryFigureFinalBossTeam` | battle.html | 36625 | function-decl |
 | `makeBuild` | battle.html | 10373 | function-decl |
-| `makeWildBuild` | battle.html | 47186 | function-decl |
+| `makeWildBuild` | battle.html | 47232 | function-decl |
 | `makeDesignedBuild` | battle.html | 10342 | function-decl |
 
 ## Story build tier
@@ -79,7 +79,7 @@ trusting these numbers verbatim.
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `enterProfessor` | battle.html | 43490 | function-decl |
+| `enterProfessor` | battle.html | 43536 | function-decl |
 | `isPreLeagueLegendaryMysteryGate` | battle.html | 32031 | function-decl |
 
 ## Rival
@@ -88,14 +88,14 @@ trusting these numbers verbatim.
 |---|---|---|---|
 | `setRivalStanding` | battle.html | 34196 | function-decl |
 | `getRivalEncounterPhase` | battle.html | 32468 | function-decl |
-| `pickStoryRivalSpriteFile` | battle.html | 36818 | function-decl |
+| `pickStoryRivalSpriteFile` | battle.html | 36846 | function-decl |
 
 ## City hub
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `enterCity` | battle.html | 41159 | function-decl |
-| `renderCityActions` | battle.html | 41281 | function-decl |
+| `enterCity` | battle.html | 41205 | function-decl |
+| `renderCityActions` | battle.html | 41327 | function-decl |
 | `getCurrentCityDisplayName` | _not found_ | — | — |
 | `shouldForceCityProfessor` | battle.html | 32012 | function-decl |
 
@@ -103,8 +103,8 @@ trusting these numbers verbatim.
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `_pickStarterPartner` | battle.html | 43432 | function-decl |
-| `_bossArcRollLegendary` | battle.html | 46598 | function-decl |
+| `_pickStarterPartner` | battle.html | 43478 | function-decl |
+| `_bossArcRollLegendary` | battle.html | 46644 | function-decl |
 
 ## Damage formula
 
@@ -118,9 +118,9 @@ trusting these numbers verbatim.
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `STORY_TUTORIAL_SCENES` | battle.html | 38883 | const-decl |
-| `_showStoryTutorialScene` | battle.html | 39116 | function-decl |
-| `playStoryTutorial` | battle.html | 39177 | function-decl |
+| `STORY_TUTORIAL_SCENES` | battle.html | 38911 | const-decl |
+| `_showStoryTutorialScene` | battle.html | 39144 | function-decl |
+| `playStoryTutorial` | battle.html | 39205 | function-decl |
 
 ## Dialogue pools
 
@@ -136,16 +136,16 @@ trusting these numbers verbatim.
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `_storyCalcRetreatGoldFee` | battle.html | 42111 | function-decl |
-| `refreshStoryGameOverRetreatUI` | battle.html | 43124 | function-decl |
-| `acceptRivalLossAndContinue` | battle.html | 45372 | function-decl |
+| `_storyCalcRetreatGoldFee` | battle.html | 42157 | function-decl |
+| `refreshStoryGameOverRetreatUI` | battle.html | 43170 | function-decl |
+| `acceptRivalLossAndContinue` | battle.html | 45418 | function-decl |
 
 ## Tutor / EV trainer / Link / Colress
 
 | Symbol | File | Line | Kind |
 |---|---|---|---|
-| `enterShop` | battle.html | 48197 | function-decl |
-| `enterArtifactShop` | battle.html | 48453 | function-decl |
+| `enterShop` | battle.html | 48243 | function-decl |
+| `enterArtifactShop` | battle.html | 48499 | function-decl |
 
 ## Test harness
 
