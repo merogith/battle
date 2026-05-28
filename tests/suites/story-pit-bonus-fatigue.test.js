@@ -1,5 +1,5 @@
 // Verifies v20 per-build mechanics resolve correctly through buildPokemon:
-//   • build.bonus stacks on top of IVs, hardcapped at effective IV 36
+//   • build.bonus stacks on top of IVs, hardcapped at effective IV 41
 //   • build.tired docks 1% per stack from combat stats AND starting HP
 // Run: node --test tests/suites/story-pit-bonus-fatigue.test.js
 import { test } from 'node:test';
@@ -36,26 +36,25 @@ test('bonus raises stats vs baseline', () => {
   assert.ok(boosted.stats.spe > base.stats.spe, 'spe bonus raises spe');
 });
 
-test('effective IV hardcaps at 36 (IV31 + bonus5 == IV31 + bonus99-clamped)', () => {
-  // A mon at IV 31 + bonus 5 = effective 36. Bonus is clamped to 5 internally,
-  // so a build claiming bonus 99 must resolve identically (no double-stack past 36).
-  const at36 = build('Garchomp', { bonus: { hp:5, atk:5, def:5, spa:5, spd:5, spe:5 } });
+test('effective IV hardcaps at 41 (IV31 + bonus10 == IV31 + bonus99-clamped)', () => {
+  // A mon at IV 31 + bonus 10 = effective 41. Bonus is clamped to 10 internally,
+  // so a build claiming bonus 99 must resolve identically (no double-stack past 41).
+  const at41 = build('Garchomp', { bonus: { hp:10, atk:10, def:10, spa:10, spd:10, spe:10 } });
   const over = build('Garchomp', { bonus: { hp:99, atk:99, def:99, spa:99, spd:99, spe:99 } });
-  assert.equal(over.stats.atk, at36.stats.atk, 'bonus clamps at +5 — no stat past the 36 ceiling');
-  assert.equal(over.maxHp, at36.maxHp, 'HP also clamps at the ceiling');
+  assert.equal(over.stats.atk, at41.stats.atk, 'bonus clamps at +10 — no stat past the 41 ceiling');
+  assert.equal(over.maxHp, at41.maxHp, 'HP also clamps at the ceiling');
 });
 
-test('low-IV mon + bonus never exceeds the IV36 cap either', () => {
-  // IV 28 + bonus 5 = 33 (under cap). IV 33 is impossible normally, but verify the
-  // min(36, iv+bonus) holds: IV 31 (max) + 5 = exactly 36, and that is the highest
-  // any stat can reach.
-  const ceil = build('Garchomp', { ivs: { hp:31, atk:31, def:31, spa:31, spd:31, spe:31 }, bonus: { hp:5, atk:5, def:5, spa:5, spd:5, spe:5 } });
-  // Compare against a synthetic build whose IVs are already 36-equivalent is not
+test('low-IV mon + bonus never exceeds the IV41 cap either', () => {
+  // The min(41, iv+bonus) ceiling holds: IV 31 (max) + bonus 10 = exactly 41, the
+  // highest any stat can reach.
+  const ceil = build('Garchomp', { ivs: { hp:31, atk:31, def:31, spa:31, spd:31, spe:31 }, bonus: { hp:10, atk:10, def:10, spa:10, spd:10, spe:10 } });
+  // Compare against a synthetic build whose IVs are already 41-equivalent is not
   // possible (engine clamps IV input), so assert the ceiling build's atk equals the
-  // formula's expectation for effective IV 36.
-  // floor((floor((2*130 + 36 + 0)*50/100)+5) * 1.0) for Garchomp atk base 130:
-  const expectedAtk = Math.floor((Math.floor((2 * 130 + 36 + 0) * 50 / 100) + 5) * 1.0);
-  assert.equal(ceil.stats.atk, expectedAtk, 'effective IV 36 produces the expected atk');
+  // formula's expectation for effective IV 41.
+  // floor((floor((2*130 + 41 + 0)*50/100)+5) * 1.0) for Garchomp atk base 130:
+  const expectedAtk = Math.floor((Math.floor((2 * 130 + 41 + 0) * 50 / 100) + 5) * 1.0);
+  assert.equal(ceil.stats.atk, expectedAtk, 'effective IV 41 produces the expected atk');
 });
 
 test('tired stacks dock stats and starting HP by 1% each', () => {

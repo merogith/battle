@@ -6,10 +6,12 @@
 // Design under test (post-rewrite):
 //   • Daycare drop-off: parent is GONE for good; you receive a carryable EGG slot.
 //   • Egg: occupies a party/PC slot, never battles, hatches in place after Gym 7.
-//   • Fight Club (story, one-time): requires a full stable of 6 fighters; a win
-//     gives +1 ALL stats to the whole team, keeps everyone (NO release), and
-//     closes the club. Lose+forfeit kills one fighter, two go to the PC.
-//   • Fight Club (endgame, post-Champion): gold only, no +1, repeatable.
+//   • Fight Club (story, one-time): requires a full stable of 6 fighters; lock a
+//     trio of 3, then a 5-round 3v3 gauntlet — each round the house fields six and
+//     counter-picks its best three vs your trio. A full sweep gives +2 ALL stats
+//     per round won (clamp +10) to the whole team, keeps everyone (NO release),
+//     and closes the club. Lose+forfeit kills all three bracket fighters.
+//   • Fight Club (endgame, post-Champion): gold only, no stat bonus, repeatable.
 //
 // Run: node --test tests/suites/story-daycare-pits.test.js
 import { test } from 'node:test';
@@ -46,8 +48,8 @@ function freshTeam(names) {
 // overlay a prior test left behind before each scenario (getElementById would
 // otherwise return a stale overlay full of the previous test's mon ids).
 function clearOverlays() {
-  ['story-pits-overlay','story-pits-defeat-overlay','story-daycare-overlay',
-   'story-daycare-scene','story-daycare-secret','story-daycare-idle',
+  ['story-pits-overlay','story-pits-draft-overlay','story-pits-defeat-overlay',
+   'story-daycare-overlay','story-daycare-scene','story-daycare-secret','story-daycare-idle',
    'story-hatch-scene','story-pits-win','story-pits-result','story-scene-overlay']
     .forEach(id => { const e = window.document.getElementById(id); if (e) e.remove(); });
 }
@@ -74,6 +76,15 @@ function setupStory() {
 const doc = window.document;
 const $ = (id) => doc.getElementById(id);
 const flushTimers = () => new Promise(r => setTimeout(r, 450));
+
+// Each round opens with a draft reveal (the house's six + its counter-picked
+// three vs your locked trio). Click "send them in" to actually launch the fight.
+function sendInTrio() {
+  const draft = $('story-pits-draft-overlay');
+  assert.ok(draft, 'round draft reveal renders before the fight');
+  draft.querySelector('#pits-draft-go').click();
+  return draft;
+}
 
 test('Daycare drop-off: parent is gone for good and you receive a carryable egg', () => {
   setupStory();
@@ -146,7 +157,7 @@ test('Fight Club requires a full stable of six fighters', () => {
   assert.ok($('story-pits-overlay'), 'entry allowed with six fighters');
 });
 
-test('Fight Club story win: 5-round sweep grants +5 all stats, gold, NO release, one-time', () => {
+test('Fight Club story win: 5-round 3v3 sweep grants +10 all stats, gold, NO release, one-time', () => {
   setupStory();
   const goldBefore = sm.gold;
   const teamSizeBefore = sm.team.length;
@@ -159,15 +170,21 @@ test('Fight Club story win: 5-round sweep grants +5 all stats, gold, NO release,
   const start = $('story-pits-overlay').querySelector('#pits-start-btn');
   assert.ok(start && !start.disabled, 'start enabled after 3 picks');
   start.click();
-  assert.equal(sm.pits._inBattle, true, 'marked in-battle');
-  assert.equal(sm.pits._enemyRoster.length, 5, 'rolled a 5-fight gauntlet');
+  assert.equal(sm.pits._enemyRoster.length, 5, 'rolled a 5-round gauntlet');
+  // Round 1 opens with the draft reveal: the house's six + its counter-picked three.
+  const draft = $('story-pits-draft-overlay');
+  assert.ok(draft, 'round-1 draft reveal renders');
+  assert.equal(draft.querySelectorAll('[role="list"]')[0].children.length, 6, 'house fields six');
+  assert.equal(sm.pits._enemyRoster[0].picked.length, 3, 'house counter-picks exactly three');
+  draft.querySelector('#pits-draft-go').click(); // send the trio in
+  assert.equal(sm.pits._inBattle, true, 'marked in-battle after sending them in');
 
   for (let i = 0; i < 5; i++) SM.onBattleEnd(true, 'Fight Club win', '');
   assert.equal(sm.pits._inBattle, false, 'in-battle cleared after 5 wins');
   assert.ok(sm.gold > goldBefore, 'gold paid out');
   assert.equal(sm.team.length, teamSizeBefore, 'NO mons released — you keep all six');
-  const allUp = sm.team.every(s => ['hp','atk','def','spa','spd','spe'].every(k => s.build.bonus[k] >= 5));
-  assert.ok(allUp, 'a full sweep grants +5 to every stat (one per round won)');
+  const allUp = sm.team.every(s => ['hp','atk','def','spa','spd','spe'].every(k => s.build.bonus[k] === 10));
+  assert.ok(allUp, 'a full 5-round sweep grants +10 to every stat (+2 per round won)');
   assert.equal(sm.pits.storyClubDone, true, 'story club marked done');
   assert.equal(SM._pitsStoryAvailable(), false, 'one-time: story club no longer available');
 });
@@ -179,6 +196,7 @@ test('Fight Club forfeit kills all three fighters (you do not leave whole)', asy
   for (const id of ids) $('story-pits-overlay').querySelector(`[data-pits-pick="${id}"]`).click();
   const totalBefore = sm.team.length + sm.pcBox.length;
   $('story-pits-overlay').querySelector('#pits-start-btn').click();
+  sendInTrio();
   SM.onBattleEnd(false, 'Fight Club loss', '');
   await flushTimers();
   const dov = $('story-pits-defeat-overlay');
@@ -199,6 +217,7 @@ test('Fight Club retry relaunches the same fight without killing anyone', async 
   SM.enterPits();
   for (const id of ids) $('story-pits-overlay').querySelector(`[data-pits-pick="${id}"]`).click();
   $('story-pits-overlay').querySelector('#pits-start-btn').click();
+  sendInTrio();
   SM.onBattleEnd(false, 'Fight Club loss', '');
   await flushTimers();
   const dov = $('story-pits-defeat-overlay');
@@ -224,6 +243,7 @@ test('Endgame Fight Club: gold only, no +1, repeatable', () => {
   const picks = [sm.team[0].id, sm.team[1].id, sm.team[2].id];
   for (const id of picks) $('story-pits-overlay').querySelector(`[data-pits-pick="${id}"]`).click();
   $('story-pits-overlay').querySelector('#pits-start-btn').click();
+  sendInTrio();
   for (let i = 0; i < 5; i++) SM.onBattleEnd(true, 'Fight Club win', '');
   assert.ok(sm.gold > goldBefore, 'endgame win pays gold');
   const noBuff = sm.team.every((s, i) => ['hp','atk','def','spa','spd','spe'].every(k => (s.build.bonus[k] | 0) === (bonusBefore[i][k] | 0)));
