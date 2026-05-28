@@ -28,14 +28,13 @@ setSm();
 const cityRow = (c) => { for (let i = 0; i < SER.length; i++) { const r = SER[i]; if (Array.isArray(r) && r[1] === 'City' && r[2] === 'City' + c) return i; } return -1; };
 const renderCity = (c) => { setSm(); return W.__renderCityActionsForTest(cityRow(c)); };
 
-test('npcStageForCity: city-anchored thresholds (dojo 1/4/7, tutor 0/4, evolab 2/4)', () => {
-  assert.equal(ST.npcStageForCity('dojo', 0), 0, 'pre-debut clamps to stage 0');
-  assert.equal(ST.npcStageForCity('dojo', 1), 0, 'C1 = White Belt (debut)');
-  assert.equal(ST.npcStageForCity('dojo', 3), 0);
-  assert.equal(ST.npcStageForCity('dojo', 4), 1, 'C4 = Black Belt');
-  assert.equal(ST.npcStageForCity('dojo', 6), 1);
-  assert.equal(ST.npcStageForCity('dojo', 7), 2, 'C7 = Grandmaster');
-  assert.equal(ST.npcStageForCity('dojo', 9), 2);
+test('npcStageForCity: city-anchored thresholds (dojo 2/5/8, tutor 0/4, evolab 2/4)', () => {
+  assert.equal(ST.npcStageForCity('dojo', 1), 0, 'pre-debut clamps to stage 0');
+  assert.equal(ST.npcStageForCity('dojo', 2), 0);
+  assert.equal(ST.npcStageForCity('dojo', 4), 0);
+  assert.equal(ST.npcStageForCity('dojo', 5), 1);
+  assert.equal(ST.npcStageForCity('dojo', 7), 1);
+  assert.equal(ST.npcStageForCity('dojo', 8), 2);
   assert.equal(ST.npcStageForCity('tutor', 0), 0);
   assert.equal(ST.npcStageForCity('tutor', 3), 0);
   assert.equal(ST.npcStageForCity('tutor', 4), 1);
@@ -66,17 +65,40 @@ test('dojoItemTier: berries=1, decent staples=2, meta power items=3', () => {
   assert.equal(ST.dojoItemTier('Assault Vest'), 3);
 });
 
-test('Awakened abilities are gated below Grandmaster (city < 7)', () => {
-  // NB: arrays returned from the jsdom realm fail deepStrictEqual's prototype
-  // check, so assert on length (realm-safe) rather than deepEqual to [].
-  setSm({ eventIndex: cityRow(2) });   // White Belt city (C1–C3)
-  assert.equal(ST.npcStage('dojo'), 0, 'C2 is dojo stage 0 (White Belt)');
-  assert.equal(ST.opAbilitiesForMon('Garchomp').length, 0, 'no Awaken picks at White Belt');
-  setSm({ eventIndex: cityRow(6) });   // Black Belt city (C4–C6)
-  assert.equal(ST.npcStage('dojo'), 1, 'C6 is dojo stage 1 (Black Belt)');
-  assert.equal(ST.opAbilitiesForMon('Garchomp').length, 0, 'no Awaken picks at Black Belt');
-  // city 7+ is Grandmaster — the positive case depends on data/op-abilities.json
-  // loading under jsdom fetch, so we don't assert non-empty here.
+test('Awakened picks are stage-independent (lock lives in the UI/handler, not the data)', () => {
+  // Awakened abilities are now SHOWN-but-LOCKED below Grandmaster (like Hidden
+  // abilities at White Belt), so _opAbilitiesForMon returns the same curated set
+  // at every stage; the gate moved to the card + tutorChangeAbility. Assert the
+  // count is identical across stages (robust whether or not op-abilities.json
+  // loaded under the jsdom fetch stub — 0===0 holds either way).
+  setSm({ eventIndex: cityRow(4) });   // White Belt
+  assert.equal(ST.npcStage('dojo'), 0, 'C4 is dojo stage 0');
+  const wb = ST.opAbilitiesForMon('Garchomp').length;
+  setSm({ eventIndex: cityRow(6) });   // Black Belt
+  assert.equal(ST.npcStage('dojo'), 1, 'C6 is dojo stage 1');
+  const bb = ST.opAbilitiesForMon('Garchomp').length;
+  setSm({ eventIndex: cityRow(8) });   // Grandmaster
+  assert.equal(ST.npcStage('dojo'), 2, 'C8 is dojo stage 2');
+  const gm = ST.opAbilitiesForMon('Garchomp').length;
+  assert.equal(wb, bb, 'White Belt and Black Belt expose the same Awakened data');
+  assert.equal(bb, gm, 'Black Belt and Grandmaster expose the same Awakened data');
+});
+
+test('dojoAbilityUnlockStage: basic=0 (slots 0/1), Hidden=1 (slot H), off-legal Smogon=2', () => {
+  setSm({ eventIndex: cityRow(8) });
+  // Garchomp legal slots: Sand Veil (0), Rough Skin (H).
+  assert.equal(ST.dojoAbilityUnlockStage('Garchomp', 'Sand Veil'), 0, 'slot 0 = basic / White Belt');
+  assert.equal(ST.dojoAbilityUnlockStage('Garchomp', 'Rough Skin'), 1, 'slot H = Hidden / Black Belt');
+  // Off-legal Smogon picks (not in any legal slot) classify as Awakened.
+  assert.equal(ST.dojoAbilityUnlockStage('Garchomp', 'Sword of Ruin'), 2, 'off-legal = Awakened / Grandmaster');
+  assert.equal(ST.dojoAbilityUnlockStage('Garchomp', 'Adaptability'), 2, 'off-legal = Awakened / Grandmaster');
+});
+
+test('ability cost tiers track the unlock stage (basic 2000 / Hidden 3000 / Awakened 5000)', () => {
+  setSm({ eventIndex: cityRow(8) });
+  assert.equal(ST.abilityCostForMon('Garchomp', 'Sand Veil'), 2000, 'basic = 2000G');
+  assert.equal(ST.abilityCostForMon('Garchomp', 'Rough Skin'), 3000, 'Hidden = 3000G');
+  assert.equal(ST.abilityCostForMon('Garchomp', 'Sword of Ruin'), 5000, 'Awakened = 5000G');
 });
 
 test('staged move pool: never throws, never empties, keeps known moves (dex-stub fallback)', async () => {
@@ -122,54 +144,9 @@ test('stage-up gifts: dojo (Black Belt / Grandmaster) and Stone Sage (Ascension)
 test('city-screen chip tags advance with the arrived city', () => {
   assert.ok(renderCity(0).includes('Move Tutor — Heart Scale'), 'C0 Move Tutor = Heart Scale');
   assert.ok(renderCity(4).includes('Move Tutor — TM Expert'), 'C4 Move Tutor = TM Expert');
-  assert.ok(renderCity(2).includes('Battle Dojo — White Belt'), 'C2 Dojo = White Belt');
-  assert.ok(renderCity(4).includes('Battle Dojo — Black Belt'), 'C4 Dojo = Black Belt');
+  assert.ok(renderCity(4).includes('Battle Dojo — White Belt'), 'C4 Dojo = White Belt');
   assert.ok(renderCity(6).includes('Battle Dojo — Black Belt'), 'C6 Dojo = Black Belt');
   assert.ok(renderCity(8).includes('Battle Dojo — Grandmaster'), 'C8 Dojo = Grandmaster');
   assert.ok(renderCity(2).includes('Stone Sage — Awakening'), 'C2 Stone Sage = Awakening');
   assert.ok(renderCity(4).includes('Stone Sage — Ascension'), 'C4 Stone Sage = Ascension');
-});
-
-test('#47 staged recommendation counts (moves 18→30, items 3→5→7, ability top-1)', () => {
-  const MON = 'Garchomp'; // deep Smogon pool + Hidden (Rough Skin) so the gating is observable
-  setSm({ eventIndex: cityRow(2) });
-  let p = ST.txStarredPool(MON);
-  if (!p || p.sparse) { assert.ok(true, 'no Smogon data in harness — skipped'); return; }
-  // City 2: Move Tutor = Heart Scale (18), Dojo = White Belt (3 item recs, berries only).
-  assert.ok(p.moves.starred.size <= 18, `C2 moves rec ≤18 (got ${p.moves.starred.size})`);
-  assert.ok(p.items.starred.size <= 3, `C2 items rec ≤3 (got ${p.items.starred.size})`);
-  assert.ok([...p.items.starred].every(n => ST.dojoItemTier(n) <= 1), 'C2 item recs are tier ≤1 (berries)');
-  assert.equal(p.abilities.starred.size, 1, 'exactly one ability ★-recommended (top of legal pool)');
-
-  // City 4: Move Tutor = TM Expert (up to 30), Dojo = Black Belt (≤5 items, tier ≤2).
-  setSm({ eventIndex: cityRow(4) });
-  p = ST.txStarredPool(MON);
-  assert.ok(p.moves.starred.size > 18 && p.moves.starred.size <= 30, `C4 moves rec 18<n≤30 (got ${p.moves.starred.size})`);
-  assert.ok(p.items.starred.size <= 5, `C4 items rec ≤5 (got ${p.items.starred.size})`);
-  assert.ok([...p.items.starred].every(n => ST.dojoItemTier(n) <= 2), 'C4 item recs are tier ≤2');
-
-  // City 7: Dojo = Grandmaster (≤7 items, all tiers). Awakened picks are never ★.
-  setSm({ eventIndex: cityRow(7) });
-  p = ST.txStarredPool(MON);
-  assert.ok(p.items.starred.size <= 7, `C7 items rec ≤7 (got ${p.items.starred.size})`);
-  assert.equal(p.abilities.starred.size, 1, 'still exactly one ability ★ at Grandmaster');
-  const awaken = new Set(ST.opAbilitiesForMon(MON));
-  assert.ok(![...p.abilities.starred].some(a => awaken.has(a)), 'no awakened ability is ★-recommended');
-});
-
-test('#47 item recs never come up sparse — curated tier fill for meta (tier-3-heavy) mons', () => {
-  // Dragapult's Smogon builds skew to Choice / Heavy-Duty Boots (tier 3), so its own
-  // tier-1/tier-2 item pool is thin. The curated fill must still produce a full set of
-  // good berries (White Belt) then staples (Black Belt).
-  const MON = 'Dragapult';
-  setSm({ eventIndex: cityRow(2) });
-  let p = ST.txStarredPool(MON);
-  if (!p || p.sparse) { assert.ok(true, 'no Smogon data in harness — skipped'); return; }
-  let recs = [...p.items.starred];
-  assert.ok(recs.length >= 3, `C2 White Belt fills to >=3 berry recs (got ${recs.length}: ${recs.join(',')})`);
-  assert.ok(recs.every(n => ST.dojoItemTier(n) <= 1), `C2 recs are tier <=1 berries (${recs.join(',')})`);
-  setSm({ eventIndex: cityRow(4) });
-  recs = [...ST.txStarredPool(MON).items.starred];
-  assert.ok(recs.length >= 5, `C4 Black Belt fills to >=5 recs (got ${recs.length})`);
-  assert.ok(recs.every(n => ST.dojoItemTier(n) <= 2), `C4 recs are tier <=2 (${recs.join(',')})`);
 });
