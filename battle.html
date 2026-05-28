@@ -36600,6 +36600,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     get BOSS_MECHANICS() { return BOSS_MECHANICS; },
                     get BOSS_CONFIGS() { return BOSS_CONFIGS; },
                     bossHpScaleForKind: (k, p) => _bossHpScaleForKind(k, p),
+                    // Battle-beat injection (PR-4c).
+                    findBeatBySceneKey: (k) => _findBeatBySceneKey(k),
+                    activeBattleBeatForCurrentRow: () => _activeBattleBeatForCurrentRow(),
                     // Mystery Figure single-voice (PR-6).
                     get MYSTERY_FIGURE_IDENTITIES() { return MYSTERY_FIGURE_IDENTITIES; },
                     pickMysteryIdentity: () => _storyPickMysteryIdentity(),
@@ -40497,12 +40500,56 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Track-end reward check — boss / raid sceneKeys grant Master
                 // Ball / Exp Share Vouchers when their beat fires. Event-kind
                 // beats won't match the boss / raid regexes so the check is a
-                // safe no-op here; the hook is shared with the future battle-
-                // injection victory path so a single source of truth grants.
+                // safe no-op here. The hook is shared with the battle-injection
+                // victory path (onBattleEnd) so there's one source of truth.
                 try { _storyGrantTrackEndReward(beat); } catch (e) {}
                 try { save(); } catch (e) {}
                 _playStoryBeatQueue(queue, i + 1, onDone);
             });
+        }
+        // Look up a beat slot by its sceneKey, searching all 3 tables. Returns
+        // null if the key doesn't resolve. Used by the battle-injection
+        // victory hook in onBattleEnd to find the just-finished beat.
+        function _findBeatBySceneKey(sceneKey) {
+            if (!sceneKey) return null;
+            for (const slot of Object.values(MAIN_STORY_BEATS)) {
+                if (slot && slot.sceneKey === sceneKey) return slot;
+            }
+            if (sm && sm.tracks && sm.tracks.villain) {
+                const t = VILLAIN_STORY_BEATS[sm.tracks.villain] || {};
+                for (const slot of Object.values(t)) {
+                    if (slot && slot.sceneKey === sceneKey) return slot;
+                }
+            }
+            if (sm && sm.tracks && sm.tracks.extra) {
+                const t = EXTRA_STORY_BEATS[sm.tracks.extra] || {};
+                for (const slot of Object.values(t)) {
+                    if (slot && slot.sceneKey === sceneKey) return slot;
+                }
+            }
+            return null;
+        }
+        // Returns the next unfired battle-kind beat for the current road, or
+        // null. Used by enterBattleEvent's pre-battle scene hook. Excludes
+        // `mysteryBoss` (the post-HoF Mystery Figure has its own existing
+        // dispatch path and shouldn't be double-handled).
+        function _activeBattleBeatForCurrentRow() {
+            if (!sm || !sm.tracks) return null;
+            if (!sm.storyEventsFired) sm.storyEventsFired = {};
+            const road = _roadForArrayIdx(sm.eventIndex);
+            if (!road) return null;
+            const isInjectKind = (k) => k === 'battle' || k === 'miniBoss' || k === 'boss' || k === 'miniRaid' || k === 'raid';
+            const buckets = [Object.values(MAIN_STORY_BEATS)];
+            if (sm.tracks.villain) buckets.push(Object.values(VILLAIN_STORY_BEATS[sm.tracks.villain] || {}));
+            if (sm.tracks.extra)   buckets.push(Object.values(EXTRA_STORY_BEATS[sm.tracks.extra] || {}));
+            for (const bucket of buckets) {
+                for (const s of bucket) {
+                    if (s && isInjectKind(s.kind) && s.roadAnchor === road && !sm.storyEventsFired[s.sceneKey]) {
+                        return s;
+                    }
+                }
+            }
+            return null;
         }
         // ── Anomaly seeds (PR-7) — subtle one-liners pinned to specific row
         // IDs on the main timeline. Cross-run-deduped (via meta.tipsShown) so
@@ -44806,6 +44853,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     () => enterBattleEvent(ev, true));
                 if (_firedInterrupt) return;
             }
+            // 3-track battle beat attachment (PR-4c): if there's an unfired
+            // battle/miniBoss/boss/miniRaid/raid beat for the current road,
+            // fire its prose as a pre-battle scene and stamp the in-flight
+            // battle key on sm. onBattleEnd reads the stamp on win to mark
+            // fired + grant tier + track-end rewards. The recursion guard
+            // (`sm._activeBeatBattleKey === beat.sceneKey`) prevents the
+            // scene from re-firing when this function re-enters itself.
+            const _beatBattle = _activeBattleBeatForCurrentRow();
+            if (_beatBattle && sm._activeBeatBattleKey !== _beatBattle.sceneKey) {
+                sm._activeBeatBattleKey = _beatBattle.sceneKey;
+                _playStoryBeatScene(_beatBattle.sceneKey, () => {
+                    try { enterBattleEvent(ev, _wildAlreadyChecked, _coldOpenChecked); }
+                    catch (e) { console.warn('[Story] beat-battle scene continuation failed:', e); }
+                });
+                return;
+            }
             const [idx, type, event, gradeWeights, coins] = ev;
             const sg = storySettingsGens();
             const battleIdx = sm.eventIndex;
@@ -45156,6 +45219,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     sm.unlockedGimmicks = order.slice(0, Math.min(slotsUnlocked, order.length));
                 }
                 sm.currentEnemyLock = null;
+                // 3-track battle-beat victory hook (PR-4c): if a story-beat
+                // scene attached to this battle (enterBattleEvent stamped
+                // sm._activeBeatBattleKey on the way in), mark the beat fired
+                // + grant its tier reward + grant any track-end reward (Master
+                // Ball / Exp Share x6 for villain boss / extra raid). Clear
+                // the stamp so retries don't re-grant.
+                try {
+                    if (sm._activeBeatBattleKey) {
+                        const _beatKey = sm._activeBeatBattleKey;
+                        delete sm._activeBeatBattleKey;
+                        const _beat = _findBeatBySceneKey(_beatKey);
+                        if (_beat) {
+                            if (!sm.storyEventsFired) sm.storyEventsFired = {};
+                            sm.storyEventsFired[_beatKey] = true;
+                            try { _storyAwardStoryBeatReward(_beat); } catch (e) {}
+                            try { _storyGrantTrackEndReward(_beat); } catch (e) {}
+                        }
+                    }
+                } catch (e) { console.warn('[Story] beat-battle victory hook failed:', e); }
                 // Fatigue: stash the just-completed event name so afterBattleReturn() can
                 // apply (or clear) tiredness *after* the team resync from state.playerParty
                 // — applying it here would be clobbered when the sync rewrites sm.team.
@@ -45177,6 +45259,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     if (!sm.stats || typeof sm.stats !== 'object') sm.stats = { battlesLost: 0 };
                     sm.stats.battlesLost = ((sm.stats.battlesLost | 0) + 1);
                 } catch (e) {}
+                // 3-track battle-beat retry hook (PR-4c): clear the in-flight
+                // beat key so the pre-battle scene re-fires on retry. The
+                // beat itself isn't marked fired (player didn't win it), so
+                // _activeBattleBeatForCurrentRow still resolves to the same
+                // slot on the next enterBattleEvent.
+                try { delete sm._activeBeatBattleKey; } catch (e) {}
                 // Defeat: stash the pre-fight inventory so every game-over choice
                 // (Retry, Return to Last City, Concede) refunds the battle-bag
                 // items spent in the lost fight — only a win burns them for good.
