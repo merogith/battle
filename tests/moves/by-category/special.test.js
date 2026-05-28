@@ -120,11 +120,21 @@ describe('Special moves', () => {
   });
 
   it('Belch' + ' [120 BP Poison Special]', async () => {
+    // Without a berry eaten, Belch must fail (no damage).
     const attacker = mkMon({ species: 'Mew', ability: 'None', moves: ['Belch', 'Splash', 'Splash', 'Splash'] });
     const defender = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
     const beforeHp = defender.currentHp;
     await runTurn({ playerMon: attacker, foeMon: defender });
-    assert.ok(defender.currentHp < beforeHp, 'Belch should reduce defender HP');
+    assert.equal(defender.currentHp, beforeHp, 'Belch should fail when the user has not eaten a Berry');
+
+    // After belchReady is set (berry eaten earlier), Belch lands and deals damage.
+    const attacker2 = mkMon({ species: 'Mew', ability: 'None', moves: ['Belch', 'Splash', 'Splash', 'Splash'] });
+    const defender2 = mkMon({ species: 'Sceptile', ability: 'None', moves: ['Splash', 'Splash', 'Splash', 'Splash'] });
+    attacker2.volatile = attacker2.volatile || {};
+    attacker2.volatile.belchReady = true;
+    const beforeHp2 = defender2.currentHp;
+    await runTurn({ playerMon: attacker2, foeMon: defender2 });
+    assert.ok(defender2.currentHp < beforeHp2, 'Belch should reduce defender HP after a Berry has been eaten');
   });
 
   it('Bitter Malice' + ' [75 BP Ghost Special]', async () => {

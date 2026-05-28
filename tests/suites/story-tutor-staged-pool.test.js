@@ -55,35 +55,43 @@ test('_moveCostForStage no-arg returns the tutor stage ceiling for that city', (
   assert.equal(ST.moveCostForStage(), 5000, 'C7: Guru ceiling = 5000');
 });
 
-test('staged pool: a Natural move is teachable at L1; an Awakened move only at L3', async () => {
-  // Warm the cache for Garchomp.
+test('staged pool: L1 Inner Strength rejects Learnt + Awakened moves end-to-end', async () => {
+  // Warm the cache for Garchomp + verify the ACTUAL gating function (not a helper).
   const ls = await ST.tutorFetchLearnsetMoveNames('Garchomp');
-  if (!ls.natural.length || !ls.awakened.length) {
+  if (!ls.natural.length || !ls.learnt.length || !ls.awakened.length) {
     // jsdom thin-dex case — nothing to assert.
     return;
   }
   const nat = ls.natural[0];
+  const lrn = ls.learnt[0];
   const awk = ls.awakened[0];
-  // L1 Inner Strength (C0) — Natural is in the pool, Awakened is NOT.
+  // L1 Inner Strength (C0): only Natural in the pool. Pre-fix bug: syncMoves was
+  // unioned unconditionally, so any Smogon Learnt move slipped through. The
+  // regression test pins the actual function — if syncMoves leaks again, this fails.
   primeAtCity(0);
-  // We can't call _tutorGetStagedMovePoolAsync directly (not exposed), but we CAN
-  // check the tag-classifier — at C0 stage 0, only Natural is allowed. The pool
-  // builder reads exactly that tag bucket plus the heart-scale override.
-  assert.equal(ST.moveTagForSpecies('Garchomp', nat), 'natural', 'Natural move correctly tagged');
-  assert.equal(ST.moveTagForSpecies('Garchomp', awk), 'awakened', 'Awakened move correctly tagged');
-  // The expected gate logic for the test:
-  //   L1 (stage 0): natural allowed; learnt + awakened blocked.
-  //   L2 (stage 1): natural + learnt allowed; awakened blocked.
-  //   L3 (stage 2): everything.
-  const allowedAtStage = (tag, stage) => tag === 'natural'
-    ? true
-    : tag === 'learnt'
-      ? stage >= 1
-      : stage >= 2;
-  assert.equal(allowedAtStage('natural',  0), true,  'natural at L1');
-  assert.equal(allowedAtStage('learnt',   0), false, 'learnt blocked at L1');
-  assert.equal(allowedAtStage('awakened', 0), false, 'awakened blocked at L1');
-  assert.equal(allowedAtStage('learnt',   1), true,  'learnt unlocked at L2');
-  assert.equal(allowedAtStage('awakened', 1), false, 'awakened still blocked at L2');
-  assert.equal(allowedAtStage('awakened', 2), true,  'awakened unlocked at L3');
+  const poolL1 = new Set(await ST.tutorGetStagedMovePoolAsync('Garchomp', []));
+  assert.ok(poolL1.has(nat), `L1 pool includes Natural "${nat}"`);
+  assert.ok(!poolL1.has(lrn), `L1 pool must NOT include Learnt "${lrn}"`);
+  assert.ok(!poolL1.has(awk), `L1 pool must NOT include Awakened "${awk}"`);
+  // L2 Expert (C4): Natural + Learnt; Awakened still blocked.
+  primeAtCity(4);
+  const poolL2 = new Set(await ST.tutorGetStagedMovePoolAsync('Garchomp', []));
+  assert.ok(poolL2.has(nat), 'L2 includes Natural');
+  assert.ok(poolL2.has(lrn), 'L2 includes Learnt');
+  assert.ok(!poolL2.has(awk), 'L2 still blocks Awakened');
+  // L3 Guru (C7): everything.
+  primeAtCity(7);
+  const poolL3 = new Set(await ST.tutorGetStagedMovePoolAsync('Garchomp', []));
+  assert.ok(poolL3.has(nat) && poolL3.has(lrn) && poolL3.has(awk), 'L3 unlocks all three tags');
+});
+
+test('staged pool: currentMoves stay teachable even when tagged above the current stage', async () => {
+  const ls = await ST.tutorFetchLearnsetMoveNames('Garchomp');
+  if (!ls.awakened.length) return;
+  const awk = ls.awakened[0];
+  // At L1 the awakened move is NORMALLY blocked, but it must remain selectable when
+  // it's already equipped (the player can't have a move stripped at a tutor visit).
+  primeAtCity(0);
+  const poolL1WithEquipped = new Set(await ST.tutorGetStagedMovePoolAsync('Garchomp', [awk]));
+  assert.ok(poolL1WithEquipped.has(awk), 'equipped Awakened move stays selectable at L1');
 });

@@ -21493,6 +21493,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
             }
 
+            // BELCH: requires the user to have eaten a berry this battle. Gate before damage application.
+            if (move.name === "Belch" && !attacker.volatile.belchReady) {
+                if (move.pp > 0) move.pp--;
+                logMsg(`${attacker.name} used Belch!`);
+                logMsg(`But it failed! ${attacker.name} hasn't eaten a Berry.`, 'info');
+                attacker.volatile.lastMoveUsed = move.name;
+                abortPostCanMoveBlock(attacker); await sleep(1000); return;
+            }
+
             // No Consecutive moves: Gigaton Hammer, Blood Moon fail if used back-to-back
             if ((move.name === "Gigaton Hammer" || move.name === "Blood Moon") && attacker.volatile.lastMoveUsed === move.name) {
                 if (move.pp > 0) move.pp--;
@@ -27299,12 +27308,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return;
             }
 
-            // === BELCH: requires the user to have eaten a berry this battle ===
-            if (move.name === "Belch") {
-                if (!attacker.volatile.belchReady) { logMsg(`But it failed! (${attacker.name} hasn't eaten a Berry.)`, 'info'); return; }
-                // Damage path is the standard one; nothing to add here besides the gate above.
-            }
-
             // === BESTOW: give the user's held item to the target ===
             if (move.name === "Bestow") {
                 if (!attacker.item || defender.item || state.magicRoom > 0 || (attacker.volatile && attacker.volatile.embargo > 0)
@@ -31048,8 +31051,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (e === 'Champion') return 1.25;
             // Intro rival is the explicit narrative debuff floor (-25%).
             if (e === 'Rival' && (storyRowIdx | 0) === STORY_RIVAL_ROW_INTRO) return 0.75;
-            // City band — clamp to the table's bounds.
-            const c = Math.max(0, Math.min(_STORY_FOE_STAT_BAND.length - 1, city | 0));
+            // Out-of-story context (city < 0 from an invalid storyRowIdx): no scaling.
+            // Without this, Math.max(0, ...) would clamp -1 to 0 and apply the C0 -20%
+            // band to non-story callers (Pits / Crucible / Frontier forwarding city=-1).
+            const ci = city | 0;
+            if (ci < 0) return 1;
+            const c = Math.min(_STORY_FOE_STAT_BAND.length - 1, ci);
             return 1 + (_STORY_FOE_STAT_BAND[c] || 0) / 100;
         }
         /** Hand-picked mid-run battle eventIds that become THEMED on every run. The
@@ -35398,6 +35405,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     rollMysteryFigure: rollMysteryFigureFinalBossTeam,
                     storyFreezeFoeTeamForPersistence,
                     tutorFetchLearnsetMoveNames: (...a) => _tutorFetchLearnsetMoveNames(...a),
+                    tutorGetStagedMovePoolAsync: (...a) => _tutorGetStagedMovePoolAsync(...a),
                     moveTagForSpecies: (...a) => _moveTagForSpecies(...a),
                     storyGateFoeMovesByCity: (...a) => _storyGateFoeMovesByCity(...a),
                     storyEnemyStatMult: (...a) => _storyEnemyStatMult(...a),
@@ -50773,32 +50781,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     maxPotion = Math.max(0, maxPotion - 1);
                 }
             }
-            // Normal / Easy / Very Easy: boss battle extras (do not stack on Hard+ — they use badge-based revives only)
+            // Normal / Easy / Very Easy: boss bag deltas (data-driven; do not stack on
+            // Hard+ which uses its own badge-keyed Revive ladder). Each entry adds the
+            // listed fields and optionally trades a Max Potion off (for early-game rival
+            // who'd otherwise stockpile a heal AND a revive).
             const isNormalLike = diff === 'normal' || diff === 'easy' || diff === 'veryeasy';
+            // Phase 4.6 — heavier boss bags so iconic fights feel item-rich:
+            //   E1–E4:          +1 Revive + +1 Full Restore
+            //   Champion:       +1 Revive + +1 Full Restore
+            //   Mystery Figure: +1 Max Revive + +1 Full Restore (no trade-down)
+            //   Late-rival:     +1 Revive at the cost of one Max Potion
+            const _BOSS_BAG_DELTA = {
+                'E1':             { revive: 1, fullRestore: 1 },
+                'E2':             { revive: 1, fullRestore: 1 },
+                'E3':             { revive: 1, fullRestore: 1 },
+                'E4':             { revive: 1, fullRestore: 1 },
+                'Champion':       { revive: 1, fullRestore: 1 },
+                'Mystery Figure': { maxRevive: 1, fullRestore: 1 },
+            };
             if (isNormalLike && typeof STORY_EVENTS_RAW !== 'undefined') {
                 try {
                     const ev = STORY_EVENTS_RAW[sm.eventIndex];
                     if (ev && ev[1] === 'Battle') {
                         const label = String(ev[2] || '');
-                        // Phase 4.6 — heavier boss bags so iconic fights feel item-rich.
-                        // E1–E4: bench Revive + an extra Full Restore so the chamber
-                        // gauntlet doesn't read as item-thin compared to Hard difficulty.
-                        if (/^E[1-4]$/.test(label)) {
-                            revive += 1;
-                            fullRestore += 1;
-                        } else if (label === 'Champion') {
-                            // Champion: previously +1 revive at the cost of a Max Potion.
-                            // Now +1 revive + +1 fullRestore for a real "boss-tier" bag.
-                            revive += 1;
-                            fullRestore += 1;
+                        const delta = _BOSS_BAG_DELTA[label];
+                        if (delta) {
+                            maxPotion   += delta.maxPotion   || 0;
+                            fullRestore += delta.fullRestore || 0;
+                            fullHeal    += delta.fullHeal    || 0;
+                            revive      += delta.revive      || 0;
+                            maxRevive   += delta.maxRevive   || 0;
                         } else if (label === 'Rival' && badges >= 7) {
+                            // Late-rival keeps its trade-down (Revive in, Max Potion out)
+                            // — it's not a "boss" tier so it lives outside the table.
                             revive += 1;
                             maxPotion = Math.max(0, maxPotion - 1);
-                        } else if (label === 'Mystery Figure') {
-                            // Mystery Figure: the endgame spike. +1 Max Revive +1 Full
-                            // Restore + keeps both Max Potions (no trade-down).
-                            maxRevive += 1;
-                            fullRestore += 1;
                         }
                     }
                 } catch (e) {}
@@ -51635,13 +51652,28 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!monName || !moveName) return 'unknown';
             const cached = _tutorLearnsetCache.get(monName);
             if (!cached) return 'unknown';
-            if (cached.natural && cached.natural.indexOf(moveName) >= 0) return 'natural';
-            if (cached.learnt  && cached.learnt.indexOf(moveName)  >= 0) return 'learnt';
-            if (cached.awakened && cached.awakened.indexOf(moveName) >= 0) return 'awakened';
-            // In legacy cache shape (only `all`/`tier1`), fall back: tier1 ≈ natural;
-            // everything else in `all` ≈ learnt; anything outside `all` ≈ awakened.
-            if (cached.tier1 && cached.tier1.indexOf(moveName) >= 0) return 'natural';
-            if (cached.all && cached.all.indexOf(moveName) >= 0) return 'learnt';
+            // O(1) lookup via the tagOf Map (lazily built on first read so existing
+            // legacy cache entries from the old {all, tier1} shape still work). Without
+            // this, every tutor card re-render did ~3 linear .indexOf scans across
+            // ~150-250-entry arrays — quadratic on filter keystrokes.
+            if (!cached._tagOf) {
+                const tagOf = new Map();
+                if (Array.isArray(cached.natural))  for (const m of cached.natural)  tagOf.set(m, 'natural');
+                if (Array.isArray(cached.learnt))   for (const m of cached.learnt)   if (!tagOf.has(m)) tagOf.set(m, 'learnt');
+                if (Array.isArray(cached.awakened)) for (const m of cached.awakened) if (!tagOf.has(m)) tagOf.set(m, 'awakened');
+                // Legacy fallback: tier1 ≈ natural; everything else in `all` ≈ learnt.
+                if (!tagOf.size && Array.isArray(cached.tier1)) {
+                    for (const m of cached.tier1) tagOf.set(m, 'natural');
+                    if (Array.isArray(cached.all)) for (const m of cached.all) if (!tagOf.has(m)) tagOf.set(m, 'learnt');
+                }
+                cached._tagOf = tagOf;
+            }
+            const t = cached._tagOf.get(moveName);
+            if (t) return t;
+            // Not in any cached bucket — if `all` exists and doesn't contain the move,
+            // it's an off-legal Smogon pick (Awakened). Otherwise, cache is too thin to
+            // judge.
+            if (Array.isArray(cached.all) && cached.all.length && cached.all.indexOf(moveName) < 0) return 'awakened';
             return 'awakened';
         }
 
@@ -51674,16 +51706,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ])].sort();
             const stage = (typeof _npcStage === 'function') ? _npcStage('tutor') : 0;
             if (_hasHeartScale()) return full; // voucher unlocks any move at any stage
+            // Cold-cache fallback: if the learnset cache hasn't populated any tag bucket
+            // yet (jsdom thin dex / async race), the gate would over-restrict — fall
+            // through to the full pool. The tutor UI re-renders once warm.
+            const coldCache = !(learn.natural || []).length && !(learn.learnt || []).length && !(learn.awakened || []).length;
+            if (coldCache) return full;
             // Build the stage-allowed set: Natural (L1) + Learnt (L2) + Awakened (L3).
+            // NB: syncMoves (Smogon competitive moves) are NOT unconditionally unioned —
+            // doing so would silently bypass the tag gate at L1 (any Smogon Stone Edge
+            // / Choice item move bypasses Natural-only). They're already merged into
+            // `full` for the Show-All view; gating reads ONLY the cache buckets here.
             const allow = new Set();
             (learn.natural || []).forEach(m => allow.add(m));
             if (stage >= 1) (learn.learnt   || []).forEach(m => allow.add(m));
             if (stage >= 2) (learn.awakened || []).forEach(m => allow.add(m));
-            // Until the L1 tutor opens, also allow the mon's current Smogon competitive
-            // moves (the syncMoves union) so untagged engine moves stay visible — they
-            // get tagged Natural / Learnt / Awakened by the cache later anyway.
-            syncMoves.forEach(m => { if ((learn.awakened || []).indexOf(m) < 0) allow.add(m); });
-            // Always keep already-equipped moves selectable.
+            // Always keep already-equipped moves selectable — never strip the mon's
+            // current loadout out from under the player at a tutor visit.
             if (Array.isArray(currentMoves)) currentMoves.forEach(m => { if (m) allow.add(m); });
             const gated = full.filter(m => allow.has(m));
             return gated.length ? gated : full;
