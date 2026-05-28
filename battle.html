@@ -36634,6 +36634,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Reward delivery (PR-4b).
                     awardStoryBeatReward: (beat) => _storyAwardStoryBeatReward(beat),
                     rollIntInRange: (v) => _rollIntInRange(v),
+                    // Track-end rewards + boss mechanics (PR-5).
+                    grantTrackEndReward: (beat) => _storyGrantTrackEndReward(beat),
+                    get BOSS_MECHANICS() { return BOSS_MECHANICS; },
+                    get BOSS_CONFIGS() { return BOSS_CONFIGS; },
+                    bossHpScaleForKind: (k, p) => _bossHpScaleForKind(k, p),
                     // Staged-NPC capability ladder handles (city-anchored).
                     npcStageForCity: (...a) => _npcStageForCity(...a),
                     npcStageName: (...a) => _npcStageName(...a),
@@ -37722,6 +37727,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     xAttack:0,xDefense:0,xSpAtk:0,xSpDef:0,xSpeed:0,xAccuracy:0,
                     direHit:0,guardSpec:0,revivalHerb:0,revive:0,maxRevive:0,
                     sunOrb:0,rainOrb:0,hailOrb:0,sandOrb:0,electricOrb:0,grassyOrb:0,psychicOrb:0,mistyOrb:0,emergencyTeleporter:0,
+                    expShareVoucher:0,
                     // Perm stat-boost vitamins (earned-only)
                     hpUp:0,protein:0,iron:0,calcium:0,zinc:0,carbos:0,
                 },
@@ -40520,6 +40526,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const beat = queue[i];
             _playStoryBeatScene(beat.sceneKey, () => {
                 sm.storyEventsFired[beat.sceneKey] = true;
+                // Track-end reward check — boss / raid sceneKeys grant Master
+                // Ball / Exp Share Vouchers when their beat fires. Event-kind
+                // beats won't match the boss / raid regexes so the check is a
+                // safe no-op here; the hook is shared with the future battle-
+                // injection victory path so a single source of truth grants.
+                try { _storyGrantTrackEndReward(beat); } catch (e) {}
                 try { save(); } catch (e) {}
                 _playStoryBeatQueue(queue, i + 1, onDone);
             });
@@ -40536,6 +40548,100 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!queue.length) return false;
             _playStoryBeatQueue(queue, 0, () => processNextEvent());
             return true;
+        }
+
+        // ── Track-end reward grants (PR-5) — Master Ball on villain boss
+        // victory; Exp Share Voucher ×6 on extra raid victory. Called from the
+        // beat-fired hook (currently piggy-backs on _playStoryBeatQueue's mark
+        // step; will fire from PR-5b's battle-injection victory hook once it
+        // lands). The two flagship rewards land at Road 7 / end-of-arc per
+        // design decisions 6 + 7.
+        function _storyGrantTrackEndReward(beat) {
+            if (!beat || !beat.sceneKey) return null;
+            const sk = beat.sceneKey;
+            // Villain track boss → Master Ball.
+            if (/^villain\.[a-zA-Z]+\.boss$/.test(sk)) {
+                if (!sm.balls) sm.balls = { poke:0, great:0, ultra:0, master:0 };
+                sm.balls.master = (sm.balls.master | 0) + 1;
+                try { save(); } catch (e) {}
+                try { window.showGameAlert && window.showGameAlert('🎯 You found a MASTER BALL among the spoils.'); } catch (e) {}
+                return { kind: 'masterball', count: 1 };
+            }
+            // Extra track raid → Exp Share Voucher x6 (6 distributable level-units).
+            if (/^extra\.[a-zA-Z]+\.raid$/.test(sk)) {
+                if (!sm.inventory || typeof sm.inventory !== 'object') sm.inventory = {};
+                sm.inventory.expShareVoucher = (sm.inventory.expShareVoucher | 0) + 6;
+                try { save(); } catch (e) {}
+                try { window.showGameAlert && window.showGameAlert('🎓 You earned 6 EXP SHARE VOUCHERS — apply to any party / PC mon for +1 level each.'); } catch (e) {}
+                return { kind: 'expShareVoucher', count: 6 };
+            }
+            return null;
+        }
+
+        // ── Boss mechanic registry stub (PR-5 data layer) ─────────────────
+        // Function signatures defined so the data table BOSS_CONFIGS below has
+        // somewhere to point. Engine wiring (onTurnStart / onDamageTaken hooks
+        // into the live battle loop) lives in a polish PR. For now, each
+        // mechanic is a no-op that records its activation — the data is
+        // authoritative + ready to consume.
+        const BOSS_MECHANICS = {
+            hpThresholdPhase(battle, thresholdPct, effectFn, bannerText) {
+                if (!battle) return null;
+                battle._mechanics = battle._mechanics || [];
+                battle._mechanics.push({ type: 'hpThresholdPhase', thresholdPct, effectFn, bannerText });
+                return battle._mechanics[battle._mechanics.length - 1];
+            },
+            immunityRound(battle, everyN, durationTurns, bannerText) {
+                if (!battle) return null;
+                battle._mechanics = battle._mechanics || [];
+                battle._mechanics.push({ type: 'immunityRound', everyN, durationTurns, bannerText });
+                return battle._mechanics[battle._mechanics.length - 1];
+            },
+            fieldLock(battle, kind, value, turns, bannerText) {
+                if (!battle) return null;
+                battle._mechanics = battle._mechanics || [];
+                battle._mechanics.push({ type: 'fieldLock', kind, value, turns, bannerText });
+                return battle._mechanics[battle._mechanics.length - 1];
+            },
+        };
+
+        // BOSS_CONFIGS — per-boss mechanic specs derived from the CSV's
+        // boss/raid prose ("Phase 3 at 25%", "PRIMAL HEAT", "PRIMORDIAL RAIN",
+        // etc.). Each entry lists `mechanics` the battle engine should attach
+        // when the player triggers that battle. SceneKey-indexed so PR-5b
+        // battle injection can look it up directly.
+        const BOSS_CONFIGS = {
+            // Villain track bosses (10) — Road 7 climax. Phase 3 at 25% HP.
+            'villain.rocket.boss':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'CALLED IN' }] },
+            'villain.magma.boss':     { mechanics: [{ type: 'fieldLock', kind: 'weather', value: 'Sun', turns: 99, banner: 'PRIMAL HEAT' }, { type: 'hpThresholdPhase', at: 0.25, banner: 'PRIMAL HEAT' }] },
+            'villain.aqua.boss':      { mechanics: [{ type: 'fieldLock', kind: 'weather', value: 'Rain', turns: 99, banner: 'PRIMORDIAL RAIN' }, { type: 'hpThresholdPhase', at: 0.25, banner: 'PRIMORDIAL RAIN' }] },
+            'villain.galactic.boss':  { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'DISTORTION' }] },
+            'villain.plasma.boss':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'PRIORITY LOCK' }] },
+            'villain.flare.boss':     { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE WEAPON' }] },
+            'villain.skull.boss':     { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'DEAL' }] },
+            'villain.yell.boss':      { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'SPOTLIGHT' }] },
+            'villain.macroCosmos.boss': { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'CALL THE BRAND' }] },
+            'villain.star.boss':      { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'CALL THE TEAM' }] },
+            // Extra track raids (8) — Road 6 climax. Phase 3 mechanics from CSV.
+            'extra.cubone.raid':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'A REMEMBERED PLACE' }] },
+            'extra.yamask.raid':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE WAKE' }] },
+            'extra.hypno.raid':     { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE LULLABY' }] },
+            'extra.phantump.raid':  { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE GROVE' }] },
+            'extra.mimikyu.raid':   { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE AUDIENCE' }] },
+            'extra.drifloon.raid':  { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE CLIMB' }] },
+            'extra.parasect.raid':  { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE SOIL' }] },
+            'extra.mewtwo.raid':    { mechanics: [{ type: 'hpThresholdPhase', at: 0.25, banner: 'THE LAB REMEMBERED' }] },
+            // Mystery Figure (apex) — HP threshold + immunity round + field lock.
+            'main.mfBattle':        { mechanics: [{ type: 'hpThresholdPhase', at: 0.50, banner: 'THE FIRST' }, { type: 'immunityRound', everyN: 5, turns: 1, banner: 'PAUSE' }] },
+        };
+
+        // Mini-raid / raid HP scaling — extra arcs only. Mini = (partySize - 1) ×
+        // base HP; full raid = partySize × base HP. Wired by PR-5b battle setup.
+        function _bossHpScaleForKind(kind, partySize) {
+            const p = Math.max(1, partySize | 0);
+            if (kind === 'miniRaid') return Math.max(1, p - 1);
+            if (kind === 'raid') return p;
+            return 1; // bosses + battles use single-target scaling
         }
 
         // ── Story-beat reward delivery (PR-4b) — translates a beat slot into
