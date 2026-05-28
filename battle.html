@@ -925,6 +925,26 @@
             border-color: #ffd54f; color: #1a0d22;
             box-shadow: 0 0 0 1px rgba(255,255,255,0.15) inset;
         }
+        /* Phase 6 — Dojo tier-cap badge at the start of the item-category
+           strip, and locked-abilities count badge on the Ability tab label.
+           Both communicate "what's hidden until the next dojo stage" without
+           the player having to scroll to find a locked card. */
+        .tx-tier-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 4px 9px; font-size: 10px; font-weight: 700;
+            background: rgba(120,144,156,0.18); border: 1px solid #78909c;
+            color: #cfd8dc; border-radius: 6px;
+            letter-spacing: 0.04em; text-transform: uppercase;
+            margin-right: 2px; flex-shrink: 0;
+            cursor: help;
+        }
+        .tx-tab-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 22px; padding: 1px 6px; margin-left: 6px;
+            font-size: 10px; font-weight: 800;
+            background: rgba(120,144,156,0.20); border: 1px solid #78909c;
+            color: #cfd8dc; border-radius: 999px;
+        }
         /* Replaces the sort <select> when ★ Recommended is ON — communicates
            "the order is locked to Smogon usage" without offering a control
            that would be ignored. Tooltip explains how to unlock. */
@@ -53865,6 +53885,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return `<div class="tx-sparse-banner">${_esc(note)}</div>`;
         }
 
+        // Phase 6 — Dojo tab badge: surfaces how many abilities are still
+        // locked behind a higher dojo stage on the "Ability" tab label.
+        // Reads the pre-computed haSet (slot H) and awakenSet (off-legal +
+        // curated OP) sets from the loadout editor and counts how many would
+        // be locked at the player's current stage. Renders empty when nothing
+        // is locked (e.g. already Grandmaster).
+        function _txDojoAbilLockedCountBadge(monName, abils, awakenSet, haSet, dojoStage) {
+            try {
+                let locked = 0;
+                if (dojoStage < 1 && haSet && haSet.size) locked += haSet.size;
+                if (dojoStage < 2 && awakenSet && awakenSet.size) locked += awakenSet.size;
+                if (!locked) return '';
+                const nextStage = dojoStage < 1 ? 'Black Belt' : 'Grandmaster';
+                const title = `${locked} abilit${locked === 1 ? 'y' : 'ies'} unlock at ${nextStage}.`;
+                return ` <span class="tx-tab-badge" title="${_esc(title)}">🔒 ${locked}</span>`;
+            } catch (e) { return ''; }
+        }
+
         // Phase 5 — compound quick-filter chips for the Move Tutor. Each chip
         // is a single-tap preset that swaps the type/cat state to a useful
         // combination the player would otherwise build manually:
@@ -53917,7 +53955,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function _txItemCatChipsHtml() {
             const cur = _txState.filter.itemCat || 'all';
-            return `<div class="tx-chip-row" role="tablist" aria-label="Filter items by category">${
+            // Phase 6 — surface the current Dojo's item-tier cap at the start
+            // of the category strip so the player understands why higher-tier
+            // items might not be in the recommended set ("Up to T1" at White
+            // Belt = berries only; "All tiers" at Grandmaster).
+            let tierBadge = '';
+            try {
+                if (typeof sm !== 'undefined' && sm && sm.active && typeof _npcStage === 'function') {
+                    const stage = _npcStage('dojo');
+                    const cap = stage >= 2 ? 3 : (stage >= 1 ? 2 : 1);
+                    const label = cap === 3 ? 'All tiers' : cap === 2 ? 'T1 + T2' : 'T1 only';
+                    const title = cap === 3
+                        ? 'Grandmaster — every item tier is unlocked.'
+                        : cap === 2
+                        ? 'Black Belt — berries (T1) and staples (T2) unlocked. Choice/AV/Boots unlock at Grandmaster.'
+                        : 'White Belt — berry tier unlocked. Higher tiers reveal as the Dojo levels up.';
+                    tierBadge = `<span class="tx-tier-badge" title="${_esc(title)}">🔒 ${label}</span>`;
+                }
+            } catch (e) {}
+            return `<div class="tx-chip-row" role="tablist" aria-label="Filter items by category">${tierBadge}${
                 _TX_ITEM_CAT_ORDER.map(k =>
                     `<button type="button" class="tx-chip" data-filter-kind="itemCat" data-filter-value="${k}" data-active="${cur===k?1:0}">${_TX_ITEM_CAT_LABEL[k]}</button>`
                 ).join('')
@@ -54664,7 +54720,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div class="story-tutor-mon-body">
                     <div class="tx-tabs" role="tablist" aria-label="Battle Dojo">
                         <button type="button" class="tx-tab" data-tab="item" data-active="${tab==='item'?1:0}" role="tab" aria-selected="${tab==='item'?'true':'false'}">Held Item</button>
-                        <button type="button" class="tx-tab" data-tab="ability" data-active="${tab==='ability'?1:0}" role="tab" aria-selected="${tab==='ability'?'true':'false'}">Ability</button>
+                        <button type="button" class="tx-tab" data-tab="ability" data-active="${tab==='ability'?1:0}" role="tab" aria-selected="${tab==='ability'?'true':'false'}">Ability${_txDojoAbilLockedCountBadge(t.name, abils, awakenSet, haSet, _dojoStage)}</button>
                     </div>
                     ${tab === 'item' ? itemTabHtml : abilTabHtml}
                 </div>
