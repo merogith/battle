@@ -2,16 +2,19 @@
 
 This doc ties **new systems** to the existing timeline in [`STORY_MODE_FLOW.md`](../STORY_MODE_FLOW.md) and [`battle.html`](../battle.html) (`STORY_EVENTS_RAW`, `POKEMART_ITEMS`, `DEPT_ITEMS`).
 
-> ## ⚠️ STATUS — DE-SCOPED SECTIONS (as of v1.2.3, 2026-05)
+> ## ⚠️ STATUS — PERMANENTLY DE-SCOPED (as of v1.2.3, 2026-05; reaffirmed 2026-05-28)
 >
-> The sections below marked **DE-SCOPED** are **cut — not shipped and not currently planned**;
-> they are kept for historical/design context only. Verified absent from `battle.html`
-> (zero code references): **§3 Black Market**, **§3.5 Illegal Dealer NPC**,
-> **§6 Battle for Pokémon (wager)**, **§7 Pokémon Trader**, and the **full Itinerary /
-> `runItinerary` scaffolding** woven through §§3–10 and the §9 readiness table.
+> The sections below marked **DE-SCOPED** are **cut — not shipped and the project
+> will not implement them.** They are kept here for historical / design context only.
+> Owner directive: these are not on any roadmap, near or far; do not re-open without
+> an explicit roadmap reversal. The corresponding ledger entries (ISSUE-008,
+> ISSUE-019, ISSUE-020, ISSUE-030, ISSUE-042) are pinned `wontfix` for the same
+> reason. Verified absent from `battle.html` (zero code references): **§3 Black
+> Market**, **§3.5 Illegal Dealer NPC**, **§6 Battle for Pokémon (wager)**,
+> **§7 Pokémon Trader**, and the **full Itinerary / `runItinerary` scaffolding**
+> woven through §§3–10 and the §9 readiness table.
 >
 > **Shipped and live:** §1 Poké Balls, §2 PC Box, §4 Safari Zone, and the §9 dialogue work.
-> If a cut system is ever revived, move it out of this de-scoped list and into the live spec.
 
 ---
 
@@ -24,9 +27,9 @@ This doc ties **new systems** to the existing timeline in [`STORY_MODE_FLOW.md`]
 | Ultra Ball | **500** | Best standard ball; keep farming affordable |
 | Master Ball | **~2000–3000** (tune) | Guaranteed; still cheap vs old 50k — limit **1 per run** or **2** if too easy |
 
-**Sold at:** Poké Mart **only when** `catchMode` is on (new rows beside legal items). **Not** in Department Store (keeps mart = consumables + balls).
+**Sold at:** Poké Mart (every hub). The shipped catch system is **interrupt-driven** (see `STORY_BATTLE_INTERRUPTS` + `_shouldFireWildBeforeBattle`) — there is no `catchMode` global toggle; route slots roll wild encounters whenever the interrupt rule fires. Department Store does **not** stock balls (keeps mart = consumables + balls).
 
-**Inventory:** `sm.inventory.pokeball / greatBall / ultraBall / masterBall`; teach `enterShop('mart')` + bag + wild encounter UI to consume on throw.
+**Inventory:** `sm.balls.{poke,great,ultra,master}` (NOT `sm.inventory.pokeball / greatBall / …`). `bag` UI + `catchThrow(ballKey)` already consume from `sm.balls`.
 
 ---
 
@@ -34,7 +37,7 @@ This doc ties **new systems** to the existing timeline in [`STORY_MODE_FLOW.md`]
 
 | Access | Rule |
 |--------|------|
-| **Every city hub** | Button: `PC Box` when `catchMode` **or** `sm.pcBox.length > 0` (so late toggles still work). |
+| **Every city hub** | Button: `PC Box` is always available in city actions (catching is interrupt-driven, not gated by a `catchMode` flag). |
 | **Not** on route / in battle | Same pattern as Mart — city `renderCityActions` only. |
 
 **Flow fit:** After any catch, if party is 6 and PC has space → auto-deposit; if **PC full + party full** → catch **fails** (already decided).
@@ -110,11 +113,13 @@ Resolves **before** the next `STORY_EVENTS_RAW` battle on that segment.
 
 ## 5. Wild encounters
 
-| Roll | **50% per route battle slot** (indices like 1–3, 8–10, …) when `catchMode` on |
+Shipped model is **interrupt-driven**, not gated by a global toggle. `STORY_BATTLE_INTERRUPTS` + `_shouldFireWildBeforeBattle` (in `proceedToNextBattle`) roll a wild on eligible route slots; see `enterCatchEncounter` for the resulting `#screen-story-catch` flow.
+
+| Roll | Per-route configured probability (per `STORY_BATTLE_INTERRUPTS`) — typically 50% on the route slots listed in `STORY_EVENTS_RAW` |
 |------|----------------------------------|
 | Species | Grade from current event weights ∩ **enabled gens** |
 
-Runs **before** trainer fight on that `proceedToNextBattle` hop; itinerary beat can run **first** if both scheduled (define order: **itinerary → wild → wager? → trainer**).
+Runs **before** trainer fight on that `proceedToNextBattle` hop; itinerary beat can run **first** if both scheduled (define order: **itinerary → wild → trainer**).
 
 ---
 
@@ -143,12 +148,11 @@ Runs **before** trainer fight on that `proceedToNextBattle` hop; itinerary beat 
 
 | Issue | Mitigation |
 |-------|------------|
-| `proceedToNextBattle` order | Queue: **itinerary beat** → **wild** → **wager prompt** → set `eventIndex` to route battle → `enterBattleEvent`. |
-| Save mid-beat | Persist `sm.itineraryProgress`, `sm.storyScriptState`, `sm.pendingWager`, `sm.traderOfferByCity`. |
-| Full PC + party | Wild catch fails; **do not show wager** if winning transfer has nowhere to go. |
-| `eventsOn` off | No itinerary, no wager, no safari, no black market unlock; **catch + PC + balls** still work if `catchMode` on. |
+| `proceedToNextBattle` order | Queue: **wild interrupt** → set `eventIndex` to route battle → `enterBattleEvent`. (Itinerary / wager queued items are de-scoped — see §3/§6/§10.) |
+| Save mid-beat | Persist whatever the live flow actually uses (`sm.currentEnemyLock`, `sm.scenesShown`, …). The de-scoped `itineraryProgress` / `pendingWager` / `traderOfferByCity` fields are NOT in the live save. |
+| Full PC + party | Wild catch fails (the live behavior). |
 | Mystery Figure / Rival | Unchanged vanilla flow; new buttons only add **parallel** actions on city screen. |
-| Professor forced in City6–8 | Black Market / PC do not replace Mystery gate; **legendary gate** still blocks route until visited. |
+| Professor forced in City6–8 | PC does not replace Mystery gate; **legendary gate** still blocks route until visited. |
 
 ---
 
