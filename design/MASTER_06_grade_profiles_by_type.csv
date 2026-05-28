@@ -1,0 +1,17 @@
+GRADE-ROLL PROFILES BY TRAINER TYPE. Final per-city % is EMERGENT: base profile mask x city progress ramp x G4-strip. Not a fixed per-city table.;;;;;
+Trainer type;G1 weight;G2 weight;G3 weight;G4 weight;Meaning
+Basic Trainer;0 (none);0 (none);1 (some);2 (favored);Weakest - leans G4, some G3
+Gym Trainer / Elite Trainer;0 (none);1 (some);2 (favored);1 (some);Mid - G3 core, G2/G4 spread, no G1
+Gym Leader / Rival;0 (none);2 (favored);1 (some);0 (none);Strong - G2 core, some G3, NO G1/G4
+E4 / Champion / Mystery / Victory Road;1 (some);2 (favored);1 (some);0 (none);Top - G2 core, G1 appears, no G4
+LEGEND;weight 0 = forbidden / 1 = some (x1) / 2 = favored (x2.5 via FACTOR);;;;
+;;;;;
+HOW THE FINAL % IS BUILT;;;;;
+Step A;Start from the city's base grade weights (the wild/prof/event gradeWeights for that row).;;;;
+Step B;applyStoryProgressToGradeWeights ramps weights upward with badges (k = 0.20 early / 0.30 mid / 0.40 late, plus an extra post-Gym-6 ramp). Higher city = stronger skew toward G1/G2.;;;;
+Step C;Multiply by the trainer-type profile mask above (FACTOR [none=0, some=1, favored=2.5]).;;;;
+Step D;storyStripGrade4IfPartyMature zeroes G4 once the player's party has >=2 mons (so late enemies stop fielding fodder).;;;;
+Step E;Signature grade ceiling: non-exempt trainers (leaders, elite trainers, gym trainers) cap sig grade to the row's available grades; too-strong sigs DEVOLVE to fit (see 07).;;;;
+;;;;;
+PRINCIPLE;As trainer quality rises (Basic -> Gym Trainer/Elite -> Leader/Rival -> E4/Champion) the profile shifts the whole distribution toward stronger grades; both the floor AND ceiling of grade rolls rise with the city so the enemy keeps pace with the player's evolving team.;;;;
+ANCHORS;_trainerGradeProfile, _applyTrainerGradeMatrix (FACTOR [0,1,2.5]), applyStoryProgressToGradeWeights, storyStripGrade4IfPartyMature;;;;
