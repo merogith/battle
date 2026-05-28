@@ -36631,6 +36631,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // IntroQueue (PR-3b).
                     get IntroQueue() { return IntroQueue; },
                     get INTRO_PRIORITY() { return INTRO_PRIORITY; },
+                    // Reward delivery (PR-4b).
+                    awardStoryBeatReward: (beat) => _storyAwardStoryBeatReward(beat),
+                    rollIntInRange: (v) => _rollIntInRange(v),
                     // Staged-NPC capability ladder handles (city-anchored).
                     npcStageForCity: (...a) => _npcStageForCity(...a),
                     npcStageName: (...a) => _npcStageName(...a),
@@ -40533,6 +40536,44 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!queue.length) return false;
             _playStoryBeatQueue(queue, 0, () => processNextEvent());
             return true;
+        }
+
+        // ── Story-beat reward delivery (PR-4b) — translates a beat slot into
+        // a reward bundle via STORY_REWARD_TIERS (PR-2). PR-5 calls this after
+        // a story battle wins; the function grants the rolled gold + voucher +
+        // vitamin spread via the existing _storyGrantBundle entry point.
+        // Returns the array of rolled voucher ids (or empty array) so callers
+        // can build a victory-toast summary.
+        function _rollIntInRange(v) {
+            if (Array.isArray(v)) {
+                const lo = v[0] | 0, hi = v[1] | 0;
+                if (hi <= lo) return lo;
+                return lo + Math.floor(Math.random() * (hi - lo + 1));
+            }
+            return v | 0;
+        }
+        function _storyAwardStoryBeatReward(beat) {
+            if (!beat || !beat.kind) return null;
+            const tierKey = STORY_KIND_TO_TIER[beat.kind];
+            if (!tierKey) return null;
+            const tier = STORY_REWARD_TIERS[tierKey];
+            if (!tier) return null;
+            const reward = {};
+            // Gold: tier.goldFrac × a city-aware Gym-leader baseline. PR-4b uses
+            // a flat 500G baseline; PR-5 can scale by current city if needed.
+            if (tier.goldFrac > 0) {
+                reward.gold = Math.floor(500 * tier.goldFrac);
+            }
+            if (tier.vouchers) reward.voucherRolls = _rollIntInRange(tier.vouchers);
+            if (tier.vitamins) {
+                const VITAMIN_KEYS = ['hpUp','protein','iron','calcium','zinc','carbos'];
+                const n = _rollIntInRange(tier.vitamins);
+                for (let i = 0; i < n; i++) {
+                    const v = VITAMIN_KEYS[(Math.random() * VITAMIN_KEYS.length) | 0];
+                    reward[v] = (reward[v] | 0) + 1;
+                }
+            }
+            return _storyGrantBundle(reward);
         }
 
         // ── IntroQueue (PR-3b) — sequences facility intros / market giveaways /
@@ -44812,6 +44853,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Cursed Coin Pouch: ×2 coin gain (applied after difficulty mult)
                 if ((sm.artifacts||[]).includes('cursedCoinPouch') && !(sm.artifactsDisabled||[]).includes('cursedCoinPouch')) coinMult *= 2;
                 coinMult *= storyProgressCoinMultForEventIndex(sm.eventIndex);
+                // v22 gold rebalance — basic trainers nerfed by STORY_BASE_TRAINER_GOLD_MULT
+                // (0.82, -18%) to compensate for the new event-battle gold flowing in
+                // from villain / extra story tracks. Total run gold stays near baseline
+                // while the new vouchers + vitamins net-up.
+                if (event === 'Basic Trainer') coinMult *= STORY_BASE_TRAINER_GOLD_MULT;
                 const coinsAwarded = Math.floor((coins || 0) * coinMult);
                 sm.gold += coinsAwarded;
                 const en = String(event || '');
