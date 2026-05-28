@@ -2240,17 +2240,42 @@
         .story-dialog-host { margin-bottom: 10px; width: 100%; max-width: 640px; }
         /* Narrative tone classes — applied to cold-open overlays so each storyline
            variant reads slightly differently without changing the base layout. */
-        .story-tone-amber .story-dialog-nameplate { color: #ffcc80; border-color: #ffb74d; }
-        .story-tone-ash   .story-dialog-nameplate { color: #b0bec5; border-color: #78909c; }
+        /* ISSUE-105: tone variants now repaint the nameplate BACKGROUND too —
+           the base rule pins a yellow gradient with !important, so leaving the
+           text-only override would put pale tone text on a yellow bg (contrast
+           1.3–1.6:1, well below WCAG AA 4.5:1). Each tone gets a dark gradient
+           tuned to its hue so light text reads cleanly. */
+        .story-tone-amber .story-dialog-nameplate {
+            color: #ffcc80; border-color: #ffb74d;
+            background: linear-gradient(180deg, #3e2a0a 0%, #1f1503 100%) !important;
+            box-shadow: inset -1px -1px 0 0 #5a3d0e, inset 1px 1px 0 0 #6b4a14 !important;
+        }
+        .story-tone-ash   .story-dialog-nameplate {
+            color: #b0bec5; border-color: #78909c;
+            background: linear-gradient(180deg, #2a323a 0%, #161b21 100%) !important;
+            box-shadow: inset -1px -1px 0 0 #3a464e, inset 1px 1px 0 0 #4a575f !important;
+        }
         .story-tone-ash   .story-dialog-box      { filter: saturate(0.65); }
-        .story-tone-cold  .story-dialog-nameplate { color: #80deea; border-color: #4dd0e1; }
+        .story-tone-cold  .story-dialog-nameplate {
+            color: #80deea; border-color: #4dd0e1;
+            background: linear-gradient(180deg, #0e2a30 0%, #061418 100%) !important;
+            box-shadow: inset -1px -1px 0 0 #154148, inset 1px 1px 0 0 #1d535a !important;
+        }
         .story-tone-cold::after {
             content: ''; position: absolute; inset: 0; pointer-events: none;
             background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 4px);
         }
-        .story-tone-purple .story-dialog-nameplate { color: #ce93d8; border-color: #ba68c8; }
+        .story-tone-purple .story-dialog-nameplate {
+            color: #ce93d8; border-color: #ba68c8;
+            background: linear-gradient(180deg, #2c1230 0%, #160818 100%) !important;
+            box-shadow: inset -1px -1px 0 0 #3e1d44, inset 1px 1px 0 0 #4e2456 !important;
+        }
         .story-tone-purple .story-dialog-box       { box-shadow: 0 0 18px rgba(186,104,200,0.18); }
-        .story-tone-mourning .story-dialog-nameplate { color: #bcaaa4; border-color: #8d6e63; }
+        .story-tone-mourning .story-dialog-nameplate {
+            color: #bcaaa4; border-color: #8d6e63;
+            background: linear-gradient(180deg, #2a221e 0%, #150f0c 100%) !important;
+            box-shadow: inset -1px -1px 0 0 #3a302a, inset 1px 1px 0 0 #483b34 !important;
+        }
         .story-tone-mourning .story-dialog-box       { filter: grayscale(0.35); }
         .story-tone-frequency { filter: hue-rotate(-12deg) saturate(0.85); }
         .story-tone-frequency .story-dialog-box {
@@ -2272,7 +2297,11 @@
             86% { transform: translate(0, -1px); }
             87% { transform: translate(0, 0); }
         }
-        .story-tone-static .story-dialog-nameplate { color: #e57373; }
+        .story-tone-static .story-dialog-nameplate {
+            color: #e57373;
+            background: linear-gradient(180deg, #3a1414 0%, #1d0808 100%) !important;
+            box-shadow: inset -1px -1px 0 0 #521e1e, inset 1px 1px 0 0 #602424 !important;
+        }
         /* Roaming legendary sighting cinematic */
         .story-legend-sighting {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -11211,7 +11240,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { window.showToast('Could not load all game data'); } catch (e) {}
         });
 
-        let settings = { animations: true, musicEnabled: true, soundEnabled: true, weatherAnimation: true, terrainBackground: true, draftGrades: [1,2,3,4], mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, csvBuildMix: 0.7, partySize: 3,
+        // ISSUE-098: seed `animations` (and weather FX) from the OS
+        // prefers-reduced-motion media query so users who request reduced motion
+        // don't have to manually toggle Settings → "Battle animations" on every
+        // boot. Stored prefs (loaded from localStorage shortly after) still
+        // override this default if the player has explicitly chosen otherwise.
+        const _prefersReducedMotion = (() => {
+            try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+            catch (e) { return false; }
+        })();
+        let settings = { animations: !_prefersReducedMotion, musicEnabled: true, soundEnabled: true, weatherAnimation: !_prefersReducedMotion, terrainBackground: true, draftGrades: [1,2,3,4], mechanics: { mega: true, zmove: true, dynamax: true, tera: true }, classicMode: true, randomWeather: false, smartDraftPool: true, gauntletProgressiveDifficulty: true, csvBuildMix: 0.7, partySize: 3,
             aiProfile: 'balanced', /* aggro | balanced | stall — vs AI only */
             storyBattleItems: true, /* story in-battle bag */
             pvpBattleItems: false,  /* reserved: symmetric items in PvP */
@@ -12987,6 +13025,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
 
             function showMoveEffect(moveName, type, cat, isPlayerTarget) {
                 if (!settings.animations) return;
+                // ISSUE-099: anime.js drives inline-style RAF interpolation that the
+                // global CSS `*{animation-duration:1ms}` guard can't touch. Respect
+                // OS prefers-reduced-motion as the final word — even players who
+                // explicitly toggled animations on get the OS-level preference
+                // honored (mirrors the pattern runScreenTransition already uses).
+                try {
+                    if (typeof window !== 'undefined' && window.matchMedia
+                        && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+                } catch (e) {}
                 const containerId = isPlayerTarget ? 'player-sprite-container' : 'foe-sprite-container';
                 const container = document.getElementById(containerId);
                 if (!container) return;
@@ -30358,15 +30405,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        // Maps city index (1–8) to the STORY_EVENTS_RAW event index of its Gym Leader battle.
+        // Maps city index (1–8) to the STORY_EVENTS_RAW ROW ID of its Gym Leader battle.
         // Derived at boot so future timeline shuffles or migrations don't silently desync.
+        // ISSUE-074: stores `row[0]` (the row's stable ID) — earlier this stored the
+        // *array index* `i`, which silently desynced for cities where the array index
+        // and the row ID disagree (e.g. Gym Leader 3 sits at array index 17 / row ID 18
+        // after a Rival-reorder push). Consumers index `sm.trainerAssignments[ev[0]]`,
+        // so the value MUST be the row ID for the City-3 hub label, HUD lookup, and
+        // every `getStoryDisplayTownNameForCityRow` caller to resolve correctly.
         const GYM_CITY_LEADER_EVENT = (function buildGymCityLeaderMap() {
             const out = {};
             for (let i = 0; i < STORY_EVENTS_RAW.length; i++) {
                 const row = STORY_EVENTS_RAW[i];
                 if (!row || row[1] !== 'Battle') continue;
                 const m = String(row[2] || '').match(/^Gym Leader (\d+)$/);
-                if (m) out[parseInt(m[1], 10)] = i;
+                if (m) out[parseInt(m[1], 10)] = row[0];
             }
             return out;
         })();
@@ -32533,7 +32586,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!sm.pokedex || typeof sm.pokedex !== 'object' || !Array.isArray(sm.pokedex.seen) || !Array.isArray(sm.pokedex.caught)) {
                 sm.pokedex = { seen: [], caught: [] };
             }
-            if (typeof sm.catchUnlocked !== 'boolean') sm.catchUnlocked = false;
+            // (ISSUE-064: sm.catchUnlocked default removed — the field had three
+            // writes and zero reads. Catching is interrupt-driven, not gated by a
+            // flag; any legacy save still carries the field as harmless dead data.)
             // Post-HoF Mystery Figure climax flag (introduced after Caged God arc shipped).
             // Existing post-HoF saves (boss arc already available) should not be forced
             // back through the climax. Same shadowing trap as balls above — the defaults block
@@ -32618,7 +32673,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                    pcBox: [],
                    balls: { poke: 0, great: 0, ultra: 0, master: 0 },
                    pokedex: { seen: [], caught: [] },
-                   catchUnlocked: false,
                    storyLine: 'classic',
                    storyChoices: {},
                    postHofMysteryClimaxDone: false,
@@ -33506,7 +33560,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function _storyEvoStageCapForRow(rowIdx) {
             if (rowIdx == null || !(sm && sm.active)) return 2;
-            return _storyEvoStageCapForCity(cityIndexFromEventIndex(rowIdx));
+            // ISSUE-055: `rowIdx` is the row's stored ID (ev[0]), not the
+            // STORY_EVENTS_RAW array index. cityIndexFromEventIndex walks the
+            // array by *array index*, so we must translate. Without this,
+            // GL3 (row id 18 / array index 17) and any other row where the two
+            // disagree are read one slot off — intro Rival in particular ended
+            // up with cap 2 (fully evolved) instead of 0 (basics-only).
+            let arrayIdx = -1;
+            for (let i = 0; i < STORY_EVENTS_RAW.length; i++) {
+                const r = STORY_EVENTS_RAW[i];
+                if (r && (r[0] | 0) === (rowIdx | 0)) { arrayIdx = i; break; }
+            }
+            if (arrayIdx < 0) return 2;
+            return _storyEvoStageCapForCity(cityIndexFromEventIndex(arrayIdx));
         }
         function _capGradePoolsByEvoStage(T, cap) {
             if (cap >= 2 || !T) return T;
@@ -36207,7 +36273,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 pcBox: [],
                 balls: { poke: 0, great: 0, ultra: 0, master: 0 },
                 pokedex: { seen: [], caught: [] },
-                catchUnlocked: false,
                 storyLine: _readStorylineFromUI(),
                 storyChoices: {},
                 postHofMysteryClimaxDone: false,

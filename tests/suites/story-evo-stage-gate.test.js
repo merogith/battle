@@ -60,14 +60,19 @@ test('city eras bucket correctly (C0-1 basic, C2-5 first-evo, C6+ all)', () => {
 });
 
 test('trainer teams never exceed their era cap', () => {
+  // ISSUE-055: rollTrainerTeam's final arg is the row's stored ID (ev[0]),
+  // NOT the STORY_EVENTS_RAW array index — the production caller destructures
+  // `const [idx, type, event, ...] = ev` and forwards `idx` (= ev[0]). Pass
+  // `RAW[arrayIdx][0]` to match what `enterBattleEvent` actually hands in.
   for (const cap of [0, 1, 2]) {
     const rows = rowsByCap[cap];
     for (const evt of ['Basic Trainer', 'Gym Leader 1', 'Gym Leader 6']) {
       const viol = [];
       for (let trial = 0; trial < 24; trial++) {
         const { idx } = rows[trial % rows.length];
-        const team = ST.rollTrainerTeam({ name: 'Probe', type: 'Mixed', sigs: [] }, 6, { g1: 15, g2: 25, g3: 30, g4: 30 }, GENS, evt, idx);
-        for (const m of team) if (evoStage(m.name) > cap) viol.push(`row${idx} ${m.name}(s${evoStage(m.name)})`);
+        const rowId = RAW[idx][0];
+        const team = ST.rollTrainerTeam({ name: 'Probe', type: 'Mixed', sigs: [] }, 6, { g1: 15, g2: 25, g3: 30, g4: 30 }, GENS, evt, rowId);
+        for (const m of team) if (evoStage(m.name) > cap) viol.push(`row${rowId} ${m.name}(s${evoStage(m.name)})`);
       }
       assert.equal(viol.length, 0, `cap${cap} [${evt}] leaked: ${[...new Set(viol)].slice(0, 6).join(', ')}`);
     }
@@ -77,9 +82,10 @@ test('trainer teams never exceed their era cap', () => {
 test('Rival counter-team respects the early basic cap', () => {
   setSm({ team: [{ name: 'Bulbasaur' }], badges: 0 });
   const row = rowsByCap[0][0].idx;
+  const rowId = RAW[row][0];
   const viol = [];
   for (let t = 0; t < 24; t++) {
-    const team = ST.rollTrainerTeam({ name: 'Rival', type: 'Mixed', sigs: [] }, 6, { g1: 15, g2: 25, g3: 30, g4: 30 }, GENS, 'Rival', row);
+    const team = ST.rollTrainerTeam({ name: 'Rival', type: 'Mixed', sigs: [] }, 6, { g1: 15, g2: 25, g3: 30, g4: 30 }, GENS, 'Rival', rowId);
     for (const m of team) if (evoStage(m.name) > 0) viol.push(`${m.name}(s${evoStage(m.name)})`);
   }
   setSm();
