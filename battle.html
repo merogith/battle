@@ -19731,16 +19731,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         // If this faint happened *after* residual already ran (burn/poison/orb at end of turn), do not
                         // run residual again: Flame/Toxic Orb would re-trigger and burn newly switched Pokémon early.
                         if (!state.residualPhaseComplete) {
-                            runVolatileTimers();
-                            runWishHealing();
-                            endOfTurnEffects(state.pActive, state.fActive); endOfTurnEffects(state.fActive, state.pActive);
-                            tickWeather();
-                            // Dynamax turn countdown
-                            if (state.pActive.dynamaxed) { state.pActive.dynamaxTurns--; if (state.pActive.dynamaxTurns <= 0) deactivateDynamax(state.pActive, true); }
-                            if (state.fActive.dynamaxed) { state.fActive.dynamaxTurns--; if (state.fActive.dynamaxTurns <= 0) deactivateDynamax(state.fActive, false); }
-                            // Increment turn counts
-                            state.pActive.turnCount++;
-                            state.fActive.turnCount++;
+                            // Guard every residual (see ISSUE-032 — same pattern as the
+                            // normal-turn path). residualPhaseComplete + turnCount must
+                            // advance regardless of any handler throwing.
+                            const _eot = (fn, label) => { try { fn(); } catch (e) { console.error('[EoT]', label, e); } };
+                            _eot(() => runVolatileTimers(),                          'volatileTimers');
+                            _eot(() => runWishHealing(),                             'wishHealing');
+                            _eot(() => endOfTurnEffects(state.pActive, state.fActive), 'eot-p');
+                            _eot(() => endOfTurnEffects(state.fActive, state.pActive), 'eot-f');
+                            _eot(() => tickWeather(),                                'weather');
+                            _eot(() => { if (state.pActive && state.pActive.dynamaxed) { state.pActive.dynamaxTurns--; if (state.pActive.dynamaxTurns <= 0) deactivateDynamax(state.pActive, true); } },  'dynamax-p');
+                            _eot(() => { if (state.fActive && state.fActive.dynamaxed) { state.fActive.dynamaxTurns--; if (state.fActive.dynamaxTurns <= 0) deactivateDynamax(state.fActive, false); } }, 'dynamax-f');
+                            if (state.pActive) state.pActive.turnCount++;
+                            if (state.fActive) state.fActive.turnCount++;
                             state.residualPhaseComplete = true;
                             updateUI(); await sleep(1000);
                             let eotFaint = await checkFaints();
@@ -20484,17 +20487,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     }
                 }
 
-                // End of turn
-                runVolatileTimers();
-                runWishHealing();
-                endOfTurnEffects(state.pActive, state.fActive); endOfTurnEffects(state.fActive, state.pActive);
-                tickWeather();
-                // Dynamax turn countdown
-                if (state.pActive.dynamaxed) { state.pActive.dynamaxTurns--; if (state.pActive.dynamaxTurns <= 0) deactivateDynamax(state.pActive, true); }
-                if (state.fActive.dynamaxed) { state.fActive.dynamaxTurns--; if (state.fActive.dynamaxTurns <= 0) deactivateDynamax(state.fActive, false); }
-                // Increment turn counts for active mons
-                state.pActive.turnCount++;
-                state.fActive.turnCount++;
+                // End of turn — guard every residual so one throwing handler
+                // doesn't masquerade as "Turn skipped" and bury the rest.
+                // residualPhaseComplete + turnCount must advance regardless.
+                const _eot = (fn, label) => { try { fn(); } catch (e) { console.error('[EoT]', label, e); } };
+                _eot(() => runVolatileTimers(),                          'volatileTimers');
+                _eot(() => runWishHealing(),                             'wishHealing');
+                _eot(() => endOfTurnEffects(state.pActive, state.fActive), 'eot-p');
+                _eot(() => endOfTurnEffects(state.fActive, state.pActive), 'eot-f');
+                _eot(() => tickWeather(),                                'weather');
+                _eot(() => { if (state.pActive && state.pActive.dynamaxed) { state.pActive.dynamaxTurns--; if (state.pActive.dynamaxTurns <= 0) deactivateDynamax(state.pActive, true); } },  'dynamax-p');
+                _eot(() => { if (state.fActive && state.fActive.dynamaxed) { state.fActive.dynamaxTurns--; if (state.fActive.dynamaxTurns <= 0) deactivateDynamax(state.fActive, false); } }, 'dynamax-f');
+                if (state.pActive) state.pActive.turnCount++;
+                if (state.fActive) state.fActive.turnCount++;
                 state.residualPhaseComplete = true;
                 updateUI(); await sleep(1000);
                 
@@ -23651,7 +23656,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         && defender.ability !== "Shield Dust" && defender.ability !== "Inner Focus"
                         && defender.item !== "Covert Cloak"
                         && Math.random() < 0.1) {
-                        defender.volatile.flinch = true;
+                        if (defender.volatile) defender.volatile.flinch = true;
                     }
                     // Justified (defender): Dark-type hit raises Atk +1
                     if (defender.ability === "Justified" && move.type === "Dark" && defender.currentHp > 0) {
@@ -25454,7 +25459,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mon.statusTurns++;
                 let wakeThreshold = mon.sleepDuration || 2;
                 if (mon.ability === "Early Bird") wakeThreshold = Math.ceil(wakeThreshold / 2);
-                if (mon.statusTurns >= wakeThreshold) { mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0; logMsg(`${mon.name} woke up!`, 'info'); return true; }
+                // Strict `>`: a duration-N roll costs N actions (Showdown parity).
+                // The prior `>=` woke + acted in the same turn, making 1-roll sleeps free.
+                if (mon.statusTurns > wakeThreshold) { mon.status = null; mon.statusTurns = 0; mon.sleepDuration = 0; logMsg(`${mon.name} woke up!`, 'info'); return true; }
                 if (moveName === "Snore" || moveName === "Sleep Talk") return true; // Can use these while asleep
                 logMsg(`${mon.name} is fast asleep.`, 'status'); return false;
             }
