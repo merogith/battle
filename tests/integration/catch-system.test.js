@@ -30,8 +30,18 @@ test('catch-system: catch math is monotonic — higher ball mult never reduces s
   }
 });
 
-test('catch-system: PC cap of 10 is documented in STORY_MODE_FLOW.md', async () => {
+test('catch-system: PC box cap is exposed and matches what STORY_MODE_FLOW.md says', async () => {
+  // ISSUE-063: pre-fix this asserted "PC cap of 10" via an incidental substring
+  // match in the doc — never read the engine. The shipped cap is 30 (ratified
+  // in ISSUE-029 / `wontfix-ratified-pc-box-cap-30`). Pull the live value off
+  // the engine and assert the doc reflects it, so a future cap change goes red.
+  const { window } = await loadEngine();
+  const cap = window.PC_BOX_CAP;
+  assert.equal(typeof cap, 'number', 'window.PC_BOX_CAP must be a number');
+  assert.ok(cap >= 10 && cap <= 100, `PC_BOX_CAP=${cap} should be a sensible roster-management size`);
+
   const fs = await import('node:fs');
   const flow = fs.readFileSync('STORY_MODE_FLOW.md', 'utf8');
-  assert.match(flow, /cap\s+10|10\s+(slots|max|cap|mons)/i, 'spec must mention PC cap of 10');
+  const docHasCap = new RegExp(`\\bPC\\b[^\\n]{0,40}\\b${cap}\\b|\\b${cap}\\b[^\\n]{0,40}\\bPC\\b|\\bcap[^\\n]{0,12}\\b${cap}\\b`, 'i');
+  assert.match(flow, docHasCap, `STORY_MODE_FLOW.md must reference the live PC cap (${cap})`);
 });

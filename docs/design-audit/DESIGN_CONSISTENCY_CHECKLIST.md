@@ -11,7 +11,7 @@ Each step is **self-contained, reversible, and verifiable**. Run them one at a t
 These are non-negotiable. Any step that violates them must be aborted.
 
 1. **Touch only design surface.** Allowed edits:
-   - Inside the `<style> … </style>` block in `battle.html` (lines 16–4156).
+   - Inside the `<style> … </style>` block in `battle.html` (currently lines 16–8253; the closing `</style>` has drifted as the CSS grew — `grep -n "</style>" battle.html` for the live number rather than trusting the literal here).
    - HTML class names, `aria-*`, `role`, `tabindex` attributes on existing elements.
    - New files only inside `docs/design-audit/`.
 2. **Never touch:**
@@ -49,7 +49,7 @@ These are non-negotiable. Any step that violates them must be aborted.
 ### Step 1 — Token & one-off inventory
 - **Goal:** Produce a frozen baseline of every design value in use so later steps have measurable targets.
 - **Touch:** Read-only. Output a new file only.
-- **Scope:** `battle.html` lines 16–4156 (CSS block).
+- **Scope:** `battle.html` lines 16 to the closing `</style>` (CSS block — currently ~8253; resolve with `grep -n "</style>" battle.html`).
 - **Forbidden zones:** Everything outside the CSS block.
 - **Do:**
   1. Grep and tally every `font-family`, `font-size`, `border-radius`, `border-width`, `padding`, `min-height`, `height`, `z-index`, and `@media` value inside `<style>`.

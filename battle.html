@@ -43959,6 +43959,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // and the Underground (sell mons for gold). Battles auto-restore HP/PP between
         // fights, so the Center does not heal — it manages your roster instead.
         const PC_BOX_CAP = 30;
+        try { window.PC_BOX_CAP = PC_BOX_CAP; } catch (e) {} // test bridge (ISSUE-063)
         // Underground sell prices were tuned to make catch-and-sell a losing
         // strategy: a Pokémon you train is worth more than its sale, so the
         // Underground is for roster management (clearing PC slots), not for
@@ -44634,7 +44635,21 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Battle-prep horn — Frontier is a 6v6 stamina test.
             try { window.StoryFx && window.StoryFx.playSfx('danger', 0.4); } catch (e) {}
             try { _storyShowOneTimeTip('frontier',
-                'The Battle Frontier is an endless six-on-six ladder. Every round the foes get sharper — stats climb from a +35% HP edge at the start to +150% deep in the run, with bulk and speed scaling in step.\n\nOne loss ends the streak, and your final round is the one that goes on the Top 10. Surrender any time to lock in what you\'ve banked.'); } catch (e) {}
+                'The Battle Frontier is an endless six-on-six ladder. Every round the foes get sharper — stats climb from a +50% HP edge at the start to +200% deep in the run, with bulk and speed scaling in step.\n\nOne loss ends the streak, and your final round is the one that goes on the Top 10. Surrender any time to lock in what you\'ve banked.'); } catch (e) {}
+        }
+        // ISSUE-051: single source for Frontier per-round foe multipliers.
+        // Pre-fix the hub displayed an older, weaker formula (caps 2.50 / 1.80)
+        // while applyStoryLeagueFoeStatBoost actually scaled by 1.50→3.00 /
+        // 1.25→2.00. The hub now reads through this helper so a future tweak
+        // can't drift the display vs the engine again. Mirror the formula in
+        // applyStoryLeagueFoeStatBoost above (~32876).
+        function _frontierFoeMult(round) {
+            const r = Math.max(1, round | 0);
+            return {
+                hp:   Math.min(3.00, 1.50 + (r - 1) * 0.075),
+                bulk: Math.min(2.00, 1.25 + (r - 1) * 0.045),
+                spe:  Math.min(2.00, 1.25 + (r - 1) * 0.045),
+            };
         }
         function _renderFrontierHub() {
             _ensureFrontierState();
@@ -44643,8 +44658,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!body) return;
             const isActive = !!f.active;
             const round = (f.currentRound | 0) || ((f.currentStreak | 0) + 1);
-            const hpMult = Math.min(2.50, 1.35 + (round - 1) * 0.05);
-            const bulkMult = Math.min(1.80, 1.20 + (round - 1) * 0.03);
+            const _fm = _frontierFoeMult(round);
+            const hpMult = _fm.hp;
+            const bulkMult = _fm.bulk;
+            const speMult = _fm.spe;
             const topHs = (f.highscores || []).slice(0, 10);
             let html = '';
             html += `<div style="padding:12px;background:linear-gradient(180deg,rgba(40,16,4,0.85) 0%,rgba(16,8,4,0.85) 100%);border:1px solid #8d3a1a;color:#ffab40;font-size:11px;line-height:1.6;margin-bottom:14px;">
@@ -44655,7 +44672,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div><div style="font-size:9px;color:#888;letter-spacing:0.06em;text-transform:uppercase;">Wins this run</div><div style="font-size:22px;color:#fff;font-weight:bold;">${f.currentStreak | 0}</div></div>
                 <div style="text-align:right;"><div style="font-size:9px;color:#888;letter-spacing:0.06em;text-transform:uppercase;">Next fight</div><div style="font-size:18px;color:#ff7043;font-weight:bold;">Round ${round}</div></div>
             </div>`;
-            html += `<div style="font-size:10px;color:#888;margin-bottom:14px;line-height:1.5;">Round ${round} foe stats: HP ×${hpMult.toFixed(2)}, bulk/speed ×${bulkMult.toFixed(2)}. Caps at HP ×2.50 / bulk ×1.80.</div>`;
+            html += `<div style="font-size:10px;color:#888;margin-bottom:14px;line-height:1.5;">Round ${round} foe stats: HP ×${hpMult.toFixed(2)}, bulk ×${bulkMult.toFixed(2)}, speed ×${speMult.toFixed(2)}. Caps at HP ×3.00 / bulk ×2.00 / speed ×2.00.</div>`;
             if (isActive) {
                 html += `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;">
                     <button type="button" onclick="window.StoryMode.frontierStartNext()" style="padding:12px;background:linear-gradient(180deg,#ff5722 0%,#bf360c 100%);border:1px solid #ff8a65;color:#fff;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><img src="icons/story/story_gym.png?v=20260516" alt="" width="18" height="18" decoding="async" style="width:18px;height:18px;image-rendering:pixelated;">Begin Round ${round}</button>
@@ -45147,6 +45164,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // raw ball quality just isn't quite the floor it used to be.
         const SAFARI_BALL_MULT = 1.35;
         const SAFARI_BALLS_PER_SESSION = 15;
+        try { window.SAFARI_BALL_MULT = SAFARI_BALL_MULT; window.SAFARI_BALLS_PER_SESSION = SAFARI_BALLS_PER_SESSION; } catch (e) {} // test bridge (ISSUE-093)
         // Bait calms the Pokémon (lower flee chance, lower catch chance).
         // Rock angers it (higher catch chance, higher flee chance).
         // Modifiers stack within an encounter and reset between encounters.
