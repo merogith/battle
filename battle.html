@@ -33706,6 +33706,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 generateBasicTrainer: (...a) => _generateBasicTrainer(...a),
                 storyDowngradeBuildForTier: (...a) => _storyDowngradeBuildForTier(...a),
                 pickT2FlavorItemForSpecies: (...a) => _pickT2FlavorItemForSpecies(...a),
+                makeBuild: (...a) => makeBuild(...a),
+                get baseStats() { return baseStats; },
                 get STORY_BUILD_TIER() { return STORY_BUILD_TIER; },
                 get T2_TYPE_BOOST_ITEM() { return _T2_TYPE_BOOST_ITEM; },
                 get T2_UNIVERSAL_FLAVOR_ITEMS() { return _T2_UNIVERSAL_FLAVOR_ITEMS; },
@@ -34128,7 +34130,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const t = tier | 0;
             if (t >= STORY_BUILD_TIER.TOURNAMENT) return build;
             const base = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
-            const gimmickBound = (build.gimmick && build.gimmick !== 'STANDARD') || _isStoryGimmickItem(build.i);
+            // Only MEGA / Z-Move builds truly NEED their specific item — Mega Stones and
+            // Z-Crystals are mechanically tied to the build. TERA / DYNAMAX / GMAXDYNAMAX
+            // / STANDARD use a competitive item (Choice / Life Orb / etc.) that the low-tier
+            // downgrade SHOULD swap to flavor (a Novice trainer can't field Choice Specs).
+            // Without this narrowing, an Untrained route trainer whose CSV roll happened to
+            // tag the build as TERA could still hold Life Orb / Choice Band on a C0 fight.
+            const gimmickBound = (build.gimmick === 'MEGA' || build.gimmick === 'ZMOVE') || _isStoryGimmickItem(build.i);
             // Seeded story RNG so build degradation (nature/item/ability) is replay-deterministic.
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             const pickNeutralNature = () => _NEUTRAL_NATURES_LIST[Math.floor(rng() * _NEUTRAL_NATURES_LIST.length)];
