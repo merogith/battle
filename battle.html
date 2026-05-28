@@ -33704,6 +33704,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 selectTrainerForRole: (...a) => selectTrainerForRole(...a),
                 baseTrainerName: (...a) => _baseTrainerName(...a),
                 generateBasicTrainer: (...a) => _generateBasicTrainer(...a),
+                storyDowngradeBuildForTier: (...a) => _storyDowngradeBuildForTier(...a),
+                pickT2FlavorItemForSpecies: (...a) => _pickT2FlavorItemForSpecies(...a),
+                get STORY_BUILD_TIER() { return STORY_BUILD_TIER; },
+                get T2_TYPE_BOOST_ITEM() { return _T2_TYPE_BOOST_ITEM; },
+                get T2_UNIVERSAL_FLAVOR_ITEMS() { return _T2_UNIVERSAL_FLAVOR_ITEMS; },
+                get ELITE_ITEMS_SET() { return _ELITE_ITEMS_SET; },
                 storyEventSeed: (...a) => _storyEventSeed(...a),
                 withEventSeededRng: (...a) => _withEventSeededRng(...a),
                 storyIsSignatureTrainerRole: (...a) => _storyIsSignatureTrainerRole(...a),
@@ -33842,14 +33848,41 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             '', '', '', 'Oran Berry', 'Sitrus Berry', 'Pecha Berry', 'Cheri Berry',
             'Chesto Berry', 'Lum Berry', 'Rawst Berry', 'Aspear Berry'
         ];
-        const _T2_FLAVOR_ITEMS = [
-            'Leftovers', 'Sitrus Berry', 'Lum Berry', 'Eviolite',
-            'Black Belt', 'Charcoal', 'Mystic Water', 'Magnet', 'Soft Sand',
-            'Silk Scarf', 'Miracle Seed', 'Sharp Beak', 'Black Glasses',
-            'Spell Tag', 'Twisted Spoon', 'Hard Stone', 'Poison Barb',
-            'Dragon Fang', 'NeverMeltIce', 'Metal Coat', 'Silver Powder',
-            'Wise Glasses', 'Muscle Band'
-        ];
+        // Type-coherent picker: a T2 mon's flavor item should match its STAB, not be
+        // random from the global flavor pool (a Charizard with Mystic Water reads as
+        // a broken roll). Universal items (Leftovers / Eviolite / berries / Muscle Band /
+        // Wise Glasses) are always eligible so variety stays.
+        const _T2_TYPE_BOOST_ITEM = {
+            'Normal':   'Silk Scarf',
+            'Fire':     'Charcoal',
+            'Water':    'Mystic Water',
+            'Electric': 'Magnet',
+            'Grass':    'Miracle Seed',
+            'Ice':      'NeverMeltIce',
+            'Fighting': 'Black Belt',
+            'Poison':   'Poison Barb',
+            'Ground':   'Soft Sand',
+            'Flying':   'Sharp Beak',
+            'Psychic':  'Twisted Spoon',
+            'Bug':      'Silver Powder',
+            'Rock':     'Hard Stone',
+            'Ghost':    'Spell Tag',
+            'Dragon':   'Dragon Fang',
+            'Dark':     'Black Glasses',
+            'Steel':    'Metal Coat',
+            // 'Fairy' — no T2 fairy-boost flavor item; falls through to universal.
+        };
+        const _T2_UNIVERSAL_FLAVOR_ITEMS = ['Leftovers', 'Sitrus Berry', 'Lum Berry', 'Eviolite', 'Muscle Band', 'Wise Glasses'];
+        function _pickT2FlavorItemForSpecies(name, rng) {
+            const b = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
+            const boosts = [];
+            if (_T2_TYPE_BOOST_ITEM[b.t1]) boosts.push(_T2_TYPE_BOOST_ITEM[b.t1]);
+            if (b.t2 && b.t2 !== b.t1 && _T2_TYPE_BOOST_ITEM[b.t2]) boosts.push(_T2_TYPE_BOOST_ITEM[b.t2]);
+            // 50/50 between matching type-boost (when available) and a universal staple,
+            // so the same species across multiple Novice trainers still shows variety.
+            if (boosts.length && rng() < 0.5) return boosts[Math.floor(rng() * boosts.length)];
+            return _T2_UNIVERSAL_FLAVOR_ITEMS[Math.floor(rng() * _T2_UNIVERSAL_FLAVOR_ITEMS.length)];
+        }
         // Tournament-grade items: stripped at T1 entirely, swapped for flavor at T2,
         // kept at T3/T4. Includes Choice / Orb / pinch-berry families that drive
         // competitive damage math; flavor type-boost items at T2 fill the slot.
@@ -34148,9 +34181,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (base.abilities && base.abilities['0'] && rng() < 0.25) {
                     build.a = base.abilities['0'];
                 }
-                // Item: elite-tier items get swapped for flavor type-boost gear.
+                // Item: elite-tier items get swapped for a TYPE-MATCHED flavor item
+                // (Charizard -> Charcoal, not Mystic Water) with a universal staple as
+                // the alternative so the same species varies across trainers.
                 if (!gimmickBound && _ELITE_ITEMS_SET.has(build.i)) {
-                    build.i = _storyBuildPrefersNoItem(build) ? '' : pickFlavorItem(_T2_FLAVOR_ITEMS);
+                    build.i = _storyBuildPrefersNoItem(build) ? '' : _pickT2FlavorItemForSpecies(name, rng);
                 }
                 // Moves: trim screens / room / pivot family only. Hazards,
                 // setup, and status stay — Novice trainers are showing off
@@ -45231,10 +45266,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // silently inherit a shiny they were never told about, and
             // _storyMarkDexCaught would always record shiny=false.
             ensureShinyRolled(b);
-            b.i = 'None';
             const base = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
             let _wCity = 0;
             try { _wCity = cityIndexFromEventIndex(sm.eventIndex) | 0; } catch (e) {}
+            // Wild held item by city (sheet: None C0-3, Level-1 items C4-6, Level-2 C7).
+            // Keep the build's item but gate it by the city tier, mirroring the enemy-trainer
+            // item cap: below C4 wilds carry nothing; C4-6 keep up to a staple; C7 keep best.
+            const _wildItemCap = (_wCity <= 3) ? 0 : (_wCity <= 6 ? 2 : 3);
+            if (!b.i || _wildItemCap === 0 || (typeof _dojoItemTier === 'function' && _dojoItemTier(b.i) > _wildItemCap)) {
+                b.i = 'None';
+            }
             const _wRng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             // Ability (Sheet 5 wild opt): slot-0 by default; a hidden ability only surfaces
             // on late-route catches (C6+), and even then only sometimes — the wild "you
