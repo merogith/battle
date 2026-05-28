@@ -53188,6 +53188,76 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _txRender.tagCache.set(key, v);
             return v;
         }
+        // Phase 2 — search-only fast path. When the player types in the search
+        // box, the only filter input that changed is the search string. We
+        // can update the DOM in-place by toggling [hidden] on each existing
+        // card (chip filters / sort were already applied at last render).
+        // Returns true on success; the caller skips the full re-render then.
+        // Falls back to false (→ full render) when:
+        //   • The open mon's grid doesn't exist (first paint pending).
+        //   • The picker is in the nature-grid mode (no .tx-card grid).
+        //   • The pending selection bar needs to be re-rendered for some other reason.
+        function _txSearchFastUpdate(kind) {
+            try {
+                const root = document.getElementById('story-tutor-team');
+                if (!root) return false;
+                // The kind's grid is anchored on a search input whose data-kind matches.
+                // Cards in that grid live in the nearest preceding .tx-grid sibling.
+                const inputs = root.querySelectorAll(`.tx-search-input[data-kind="${kind}"]`);
+                if (!inputs.length) return false;
+                const q = (_txState.search[kind] || '').toLowerCase();
+                let totalUpdated = 0;
+                for (const inp of inputs) {
+                    // Find the nearest sibling grid by walking up to the editor body,
+                    // then down to its grid. Stops at the mon's body — no cross-mon leakage.
+                    const body = inp.closest('.story-tutor-mon-body');
+                    if (!body) continue;
+                    const grid = body.querySelector('.tx-grid');
+                    if (!grid) continue;
+                    const cards = grid.querySelectorAll('.tx-card[data-search-value]');
+                    if (!cards.length) return false; // first render; let full render warm up
+                    let shown = 0;
+                    for (const c of cards) {
+                        const v = c.dataset.searchValue || '';
+                        const match = !q || v.indexOf(q) !== -1;
+                        if (match) {
+                            if (c.hidden) c.hidden = false;
+                            shown++;
+                        } else if (!c.hidden) {
+                            c.hidden = true;
+                        }
+                    }
+                    // Update the toolbar's count pill to reflect what's visible.
+                    const countPill = body.querySelector('.tx-count-pill');
+                    if (countPill) {
+                        const label = (countPill.textContent.match(/[a-zA-Z]+$/) || [''])[0];
+                        countPill.textContent = `${shown} ${label || 'options'}`;
+                    }
+                    // Empty-state placeholder swap. If no card matches, show a
+                    // lightweight "no matches" hint inside the grid; the next
+                    // full render will replace it with the proper Empty card.
+                    let emptyEl = grid.querySelector(':scope > .tx-grid-empty[data-fast-empty="1"]');
+                    if (!shown && !emptyEl) {
+                        emptyEl = document.createElement('div');
+                        emptyEl.className = 'tx-grid-empty';
+                        emptyEl.dataset.fastEmpty = '1';
+                        emptyEl.textContent = q
+                            ? `No matches for "${q}". Try a shorter term or clear the search.`
+                            : 'No options match the active filters.';
+                        grid.appendChild(emptyEl);
+                    } else if (shown && emptyEl) {
+                        emptyEl.remove();
+                    } else if (!shown && emptyEl && q) {
+                        // Keep the message live as the player types.
+                        emptyEl.textContent = `No matches for "${q}". Try a shorter term or clear the search.`;
+                    }
+                    totalUpdated++;
+                }
+                return totalUpdated > 0;
+            } catch (e) {
+                return false;
+            }
+        }
 
         function _initTutorMovePickerDelegationOnce() {
             const el = document.getElementById('story-tutor-team');
@@ -53207,7 +53277,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (t.classList.contains('tx-search-input')) {
                     const kind = t.dataset.kind || 'moves';
                     _txState.search[kind] = (t.value || '').trim();
-                    // Preserve focus and cursor — partial re-render via _scheduleSearchRender
+                    // Phase 2 fast path: when the only change is the search
+                    // string, toggle [hidden] on existing cards instead of
+                    // rebuilding the DOM. Falls back to the full re-render
+                    // when the fast update isn't possible (e.g. card grid
+                    // not yet rendered for this kind / mon).
+                    if (_txSearchFastUpdate(kind)) return;
                     _scheduleSearchRender();
                     return;
                 }
@@ -53715,7 +53790,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>
                 ${eff ? `<div class="tx-card-desc">${_esc(eff)}</div>` : ''}
                 <div class="tx-card-foot">${pills}${footExtra}</div>`;
-            return `<${tag}${btnAttr} class="tx-card${isEquipped ? ' tx-card--equipped' : ''}" data-card-kind="move" data-card-value="${_esc(moveName)}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-equipped="${isEquipped?1:0}">${inner}</${tag}>`;
+            // data-search-value carries the lowercased card name so the
+            // Phase 2 search-fast-update can match without re-reading text.
+            return `<${tag}${btnAttr} class="tx-card${isEquipped ? ' tx-card--equipped' : ''}" data-card-kind="move" data-card-value="${_esc(moveName)}" data-search-value="${_esc(moveName.toLowerCase())}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-equipped="${isEquipped?1:0}">${inner}</${tag}>`;
         }
 
         // Build an Item card.
@@ -53737,7 +53814,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ].filter(Boolean).join('');
             const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
             const pctHtml = _txUsagePctHtml(ctx, itemName);
-            return `<button type="button" class="tx-card" data-card-kind="item" data-card-value="${_esc(itemName)}"
+            return `<button type="button" class="tx-card" data-card-kind="item" data-card-value="${_esc(itemName)}" data-search-value="${_esc(itemName.toLowerCase())}"
                 data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-disabled="${(isCurrent||locked)?1:0}" data-locked="${locked?1:0}" ${(isCurrent||locked)?'disabled':''}>
                 <div class="tx-card-head">
                     ${star}<span class="tx-card-title">${_esc(itemName)}</span>${pctHtml}
@@ -53777,7 +53854,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ].filter(Boolean).join('');
             const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
             const pctHtml = _txUsagePctHtml(ctx, abilityName);
-            return `<button type="button" class="tx-card tx-card--ability" data-card-kind="ability" data-card-value="${_esc(abilityName)}"
+            return `<button type="button" class="tx-card tx-card--ability" data-card-kind="ability" data-card-value="${_esc(abilityName)}" data-search-value="${_esc(abilityName.toLowerCase())}"
                 data-tier="${tier}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-disabled="${(isCurrent||locked)?1:0}" data-locked="${locked?1:0}" ${(isCurrent||locked)?'disabled':''}>
                 <div class="tx-card-head">
                     ${star}<span class="tx-card-title">${_esc(abilityName)}</span>${pctHtml}
