@@ -36627,6 +36627,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     roadForArrayIdx: (i) => _roadForArrayIdx(i),
                     resolveActiveRoadBeats: (road) => _resolveActiveRoadBeats(road),
                     splitBeatBodyIntoPages: (s) => _splitBeatBodyIntoPages(s),
+                    // IntroQueue (PR-3b).
+                    get IntroQueue() { return IntroQueue; },
+                    get INTRO_PRIORITY() { return INTRO_PRIORITY; },
                     // Staged-NPC capability ladder handles (city-anchored).
                     npcStageForCity: (...a) => _npcStageForCity(...a),
                     npcStageName: (...a) => _npcStageName(...a),
@@ -38939,11 +38942,11 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 lines: [
                     '"Welcome to the Pokémart. The basics, always in stock."',
                     '"Poké Balls (300G) for the road. Potions, Full Restore, Max Elixir for the long fights. X items push a stat two stages for one battle. Dire Hit for a crit edge. Guard Spec. locks your stats safe for five turns."',
-                    '"Cities heal you between fights as a matter of course — Potions only matter when you spend a turn on one mid-battle. Buy what fits your read. Here, take a complimentary Poké Ball — first one\'s on the house."'
+                    '"Cities heal you between fights as a matter of course — Potions only matter when you spend a turn on one mid-battle. Buy what fits your read. Here — five Poké Balls on the house. Welcome gift, our usual policy."'
                 ],
                 onContinue: function () {
-                    try { _storyGrantBundle({ pokeBall: 1 }); } catch (e) {}
-                    try { window.showGameAlert && window.showGameAlert('Received 1 Poké Ball — welcome to the Pokémart!'); } catch (e) {}
+                    try { _storyGrantBundle({ pokeBall: 5 }); } catch (e) {}
+                    try { window.showGameAlert && window.showGameAlert('Received 5 Poké Balls — welcome to the Pokémart!'); } catch (e) {}
                 }
             },
             firstDept: {
@@ -40530,6 +40533,60 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             _playStoryBeatQueue(queue, 0, () => processNextEvent());
             return true;
         }
+
+        // ── IntroQueue (PR-3b) — sequences facility intros / market giveaways /
+        // tutorial scenes / variant greeters so they play one-at-a-time instead
+        // of stacking. Replaces the historical pattern where multiple
+        // showGameAlert / showToast / playStoryTutorial calls fired in the same
+        // tick and overlapped (e.g. "5 Poké Balls" toast + "Received 1 Poké
+        // Ball" alert + variant greeter all firing from enterShop simultaneously).
+        //
+        // Each item is `{ priority, run(done) }`. `run` MUST invoke `done()`
+        // when its overlay dismisses — the queue waits before playing the next
+        // item. Items are sorted by priority (desc) on flush; same-priority
+        // items keep enqueue order. Sync items can call done() synchronously.
+        const INTRO_PRIORITY = {
+            facility_first_time:  100,
+            market_giveaway:       60,
+            variant_greeter:       50,
+            npc_tip:               30,
+            one_time_lesson:       10,
+        };
+        const IntroQueue = {
+            pending: [],
+            running: false,
+            enqueue(item) {
+                if (!item || typeof item.run !== 'function') return;
+                this.pending.push(item);
+                if (!this.running) {
+                    // Defer flush to next tick so a caller can enqueue several
+                    // items in a row before the queue starts draining.
+                    setTimeout(() => this.flush(), 0);
+                }
+            },
+            flush() {
+                if (this.running) return;
+                if (!this.pending.length) return;
+                this.running = true;
+                this.pending.sort((a, b) => (b.priority | 0) - (a.priority | 0));
+                const step = () => {
+                    const item = this.pending.shift();
+                    if (!item) { this.running = false; return; }
+                    let advanced = false;
+                    const done = () => {
+                        if (advanced) return;
+                        advanced = true;
+                        step();
+                    };
+                    try { item.run(done); }
+                    catch (e) { console.warn('[IntroQueue] item run failed:', e); done(); }
+                };
+                step();
+            },
+            // Test handle — drops queued items without running them. Real builds
+            // never call this; tests use it between cases.
+            _reset() { this.pending.length = 0; this.running = false; },
+        };
 
         // ── MAIN EVENT LOOP ───────────────────────────────────────────────
         function processNextEvent() {
@@ -47827,28 +47884,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function enterShop(type) {
             _markFacilitySeen(type === 'dept' ? 'dept' : 'mart');
-            // First Pokémart visit: a one-time welcome gift of 5 Poké Balls.
-            if (type !== 'dept') {
-                if (!sm.flags) sm.flags = {};
-                if (!sm.flags._martBallGift) {
-                    sm.flags._martBallGift = true;
-                    if (!sm.balls) sm.balls = { poke:0, great:0, ultra:0, master:0 };
-                    sm.balls.poke = (sm.balls.poke | 0) + 5;
-                    try { save(); } catch (e) {}
-                    try { window.showToast && window.showToast('🛒 The clerk slides you 5 Poké Balls — on the house.', 4500); } catch (e) {}
+            // First-visit tutorial + variant greeter route through IntroQueue so
+            // they sequence instead of stacking. The historical bug: toast
+            // ("5 Poké Balls"), tutorial overlay ("Received 1 Poké Ball"), and
+            // variant greeter alert all fired in the same tick — the player got
+            // contradictory ball counts and three overlapping overlays. The
+            // tutorial scene now owns the welcome gift (5 Poké Balls, single
+            // message); the standalone toast / inline balls grant are deleted.
+            const sceneId = type === 'dept' ? 'firstDept' : 'firstMart';
+            IntroQueue.enqueue({
+                priority: INTRO_PRIORITY.facility_first_time,
+                run: (done) => {
+                    try { playStoryTutorial(sceneId, done); }
+                    catch (e) { console.warn('[Story] mart tutorial failed', e); done(); }
                 }
-            }
-            // Story-embedded tutorial — Clerk cameo. Replaces the prior plain
-            // alert tips ('first-mart', 'first-dept'). The shop screen is
-            // rendered below the overlay; on Continue the player drops into it.
-            try {
-                playStoryTutorial(type === 'dept' ? 'firstDept' : 'firstMart');
-            } catch (e) {}
+            });
             // Per-variant mart greeter — fires once per city per run
             // (city-keyed via sm.scenesShown). Skipped for the department
-            // store (separate dept-store identity) and for variants
-            // without an entry. The greeter sits in the top-left strip
-            // of the shop screen as a single italic line under the title.
+            // store (separate dept-store identity) and for variants without an
+            // entry. Now queues AFTER the tutorial so it never overlaps it.
             try {
                 if (type !== 'dept') {
                     const greet = _variantMartGreeter();
@@ -47856,8 +47910,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const cityIdx = (typeof cityIndexFromEventIndex === 'function') ? cityIndexFromEventIndex(sm.eventIndex) : 0;
                         const key = 'variant-mart-greet-' + (_storyActiveVariantId() || 'classic') + '-c' + (cityIdx | 0);
                         if (!_storyRunSceneSeen(key)) {
-                            _storyRunSceneMark(key);
-                            try { window.showGameAlert && window.showGameAlert(greet); } catch (e) {}
+                            IntroQueue.enqueue({
+                                priority: INTRO_PRIORITY.variant_greeter,
+                                run: (done) => {
+                                    try {
+                                        _storyRunSceneMark(key);
+                                        window.showGameAlert && window.showGameAlert(greet);
+                                    } catch (e) {}
+                                    done();
+                                }
+                            });
                         }
                     }
                 }
