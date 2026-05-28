@@ -33707,6 +33707,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 storyDowngradeBuildForTier: (...a) => _storyDowngradeBuildForTier(...a),
                 pickT2FlavorItemForSpecies: (...a) => _pickT2FlavorItemForSpecies(...a),
                 makeBuild: (...a) => makeBuild(...a),
+                storyBuildTierForEvent: (...a) => _storyBuildTierForEvent(...a),
                 get baseStats() { return baseStats; },
                 get STORY_BUILD_TIER() { return STORY_BUILD_TIER; },
                 get T2_TYPE_BOOST_ITEM() { return _T2_TYPE_BOOST_ITEM; },
@@ -34012,21 +34013,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const t = tier | 0;
             if (t >= STORY_BUILD_TIER.COMPETENT) return; // T3/T4 keep all moves
             const dropSet = (t === STORY_BUILD_TIER.UNTRAINED) ? _T1_DOWNGRADE_MOVES : _T2_DOWNGRADE_MOVES;
+            // Per-tier BP ceiling — keeps the Smogon set's COVERAGE / type variety but
+            // caps RAW POWER so early fights stay viable + fun (not one-shotted by a
+            // 130 BP Leaf Storm on a route Bulbasaur). T1 mons hit at moderate STAB
+            // (=90 cap, replaced with 55-80 BP basics); T2 keeps standard 90-110 BP STAB
+            // (Surf / Flamethrower / Earthquake / Thunderbolt) but strips 120+ heavy
+            // hitters (Close Combat / Outrage / Brave Bird / Leaf Storm / Draco Meteor).
+            const bpCap = (t === STORY_BUILD_TIER.UNTRAINED) ? 90 : 120;
             const replacement = _t1ReplacementForSpecies(name);
             const seen = new Set();
             for (let i = 0; i < build.m.length; i++) {
                 const mv = build.m[i];
                 if (!mv) continue;
-                if (dropSet.has(mv)) build.m[i] = replacement;
-                // De-dupe: if the replacement is already in the slot, pick
-                // a secondary type's move or fall back to Tackle so we don't
-                // end up with two identical moves.
+                const md = (typeof movesDB !== 'undefined') ? movesDB[mv] : null;
+                const tooStrong = !!(md && md.pow && (md.pow | 0) >= bpCap);
+                if (dropSet.has(mv) || tooStrong) build.m[i] = replacement;
+                // De-dupe: if the replacement is already in the slot, pick a secondary
+                // type's basic STAB, then walk a short fallback chain so two attacks
+                // getting replaced into the same primary don't both end up identical.
                 if (seen.has(build.m[i])) {
                     const bs = (typeof baseStats !== 'undefined') ? (baseStats[name] || {}) : {};
                     const t2 = bs.t2 && _T1_BASIC_STAB_BY_TYPE[bs.t2];
-                    if (t2 && !seen.has(t2)) build.m[i] = t2;
-                    else if (!seen.has('Tackle')) build.m[i] = 'Tackle';
-                    else if (!seen.has('Quick Attack')) build.m[i] = 'Quick Attack';
+                    const chain = [t2, 'Tackle', 'Quick Attack', 'Scratch', 'Pound', 'Bite', 'Body Slam'];
+                    for (const cand of chain) {
+                        if (cand && !seen.has(cand)) { build.m[i] = cand; break; }
+                    }
                 }
                 seen.add(build.m[i]);
             }

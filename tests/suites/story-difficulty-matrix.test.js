@@ -16,6 +16,19 @@ import { loadEngine } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
 const E = eng.window.__rivalTest;
+const ST = eng.window.__storyTest;
+// Map each city index -> the lowest event index that belongs to it, so the test
+// can prime sm.eventIndex per stage and the city-keyed gates (foe item tier, foe
+// IV band, evo-stage cap) read the intended city.
+const CITY_FIRST_EVENT_IDX = (() => {
+  const out = {};
+  for (let ei = 0; ei <= 120; ei++) {
+    let city = -1;
+    try { city = ST.cityIndexFromEventIndex(ei) | 0; } catch (e) {}
+    if (city >= 0 && out[city] == null) out[city] = ei;
+  }
+  return out;
+})();
 const TIER = E.STORY_BUILD_TIER;
 const ELITE = E.ELITE_ITEMS_SET;
 const TYPE_BOOST = E.T2_TYPE_BOOST_ITEM;
@@ -26,17 +39,23 @@ const GENS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 // Per-stage exemplar trainer + grade-weights approximation + expected build tier.
 // Player picks evolve alongside the stage (basic / first-evo / final).
+// Each stage's enemy tier is COMPUTED from event+badges via _storyBuildTierForEvent.
+// The PLAYER tier in the test is set to MATCH that, so the side-by-side comparison
+// is apples-to-apples (any remaining BST / EV / IV / item / move delta is real).
 const STAGES = [
-  { name: 'C0 (Pre-Gym1, route)',   city: 0, badges: 0, event: 'Basic Trainer', gw: { g4: 100 },                         pTier: TIER.UNTRAINED, picks: ['Bulbasaur','Charmander','Squirtle','Pidgey','Rattata','Caterpie'] },
-  { name: 'C1 (Gym 1)',             city: 1, badges: 0, event: 'Gym Leader 1',  gw: { g4: 100 },                         pTier: TIER.UNTRAINED, picks: ['Bulbasaur','Charmander','Squirtle','Pidgeotto','Raticate','Butterfree'] },
-  { name: 'C2 (Gym 2 staff)',       city: 2, badges: 1, event: 'Gym Trainer 2', gw: { g3: 30, g4: 70 },                  pTier: TIER.NOVICE,    picks: ['Ivysaur','Charmeleon','Wartortle','Pidgeotto','Raticate','Butterfree'] },
-  { name: 'C3 (Gym 2)',             city: 3, badges: 1, event: 'Gym Leader 2',  gw: { g3: 50, g4: 50 },                  pTier: TIER.NOVICE,    picks: ['Ivysaur','Charmeleon','Wartortle','Pidgeotto','Raticate','Butterfree'] },
-  { name: 'C4 (Gym 3)',             city: 4, badges: 2, event: 'Gym Leader 3',  gw: { g2: 20, g3: 60, g4: 20 },          pTier: TIER.NOVICE,    picks: ['Venusaur','Charmeleon','Blastoise','Pidgeot','Raticate','Butterfree'] },
-  { name: 'C5 (Gym 5)',             city: 5, badges: 4, event: 'Gym Leader 5',  gw: { g2: 40, g3: 50, g4: 10 },          pTier: TIER.COMPETENT, picks: ['Venusaur','Charizard','Blastoise','Pidgeot','Alakazam','Gyarados'] },
-  { name: 'C6 (Gym 6)',             city: 6, badges: 5, event: 'Gym Leader 6',  gw: { g2: 50, g3: 40, g4: 10 },          pTier: TIER.COMPETENT, picks: ['Venusaur','Charizard','Blastoise','Pidgeot','Alakazam','Gyarados'] },
-  { name: 'C7 (Gym 8)',             city: 7, badges: 7, event: 'Gym Leader 8',  gw: { g2: 60, g3: 30, g4: 10 },          pTier: TIER.COMPETENT, picks: ['Venusaur','Charizard','Blastoise','Pidgeot','Alakazam','Gyarados'] },
-  { name: 'C8 (Mystery Figure)',    city: 8, badges: 8, event: 'Mystery Figure',gw: { g1: 25, g2: 60, g3: 15 },          pTier: TIER.TOURNAMENT,picks: ['Venusaur','Charizard','Blastoise','Garchomp','Alakazam','Gyarados'] },
+  { name: 'C0 (Pre-Gym1, route)',  city: 0, badges: 0, event: 'Basic Trainer',  gw: { g4: 100 },                picks: ['Bulbasaur','Charmander','Squirtle','Pidgey','Rattata','Caterpie'] },
+  { name: 'C1 (Gym 1)',            city: 1, badges: 0, event: 'Gym Leader 1',   gw: { g4: 100 },                picks: ['Bulbasaur','Charmander','Squirtle','Pidgeotto','Raticate','Butterfree'] },
+  { name: 'C2 (Gym 2 staff)',      city: 2, badges: 1, event: 'Gym Trainer 2',  gw: { g3: 30, g4: 70 },         picks: ['Ivysaur','Charmeleon','Wartortle','Pidgeotto','Raticate','Butterfree'] },
+  { name: 'C3 (Gym 2)',            city: 3, badges: 1, event: 'Gym Leader 2',   gw: { g3: 50, g4: 50 },         picks: ['Ivysaur','Charmeleon','Wartortle','Pidgeotto','Raticate','Butterfree'] },
+  { name: 'C4 (Gym 3)',            city: 4, badges: 2, event: 'Gym Leader 3',   gw: { g2: 20, g3: 60, g4: 20 }, picks: ['Venusaur','Charmeleon','Blastoise','Pidgeot','Raticate','Butterfree'] },
+  { name: 'C5 (Gym 5)',            city: 5, badges: 4, event: 'Gym Leader 5',   gw: { g2: 40, g3: 50, g4: 10 }, picks: ['Venusaur','Charizard','Blastoise','Pidgeot','Alakazam','Gyarados'] },
+  { name: 'C6 (Gym 6)',            city: 6, badges: 5, event: 'Gym Leader 6',   gw: { g2: 50, g3: 40, g4: 10 }, picks: ['Venusaur','Charizard','Blastoise','Pidgeot','Alakazam','Gyarados'] },
+  { name: 'C7 (Gym 8)',            city: 7, badges: 7, event: 'Gym Leader 8',   gw: { g2: 60, g3: 30, g4: 10 }, picks: ['Venusaur','Charizard','Blastoise','Pidgeot','Alakazam','Gyarados'] },
+  { name: 'C8 (Mystery Figure)',   city: 8, badges: 8, event: 'Mystery Figure', gw: { g1: 25, g2: 60, g3: 15 }, picks: ['Venusaur','Charizard','Blastoise','Garchomp','Alakazam','Gyarados'] },
 ];
+for (const stage of STAGES) {
+  stage.pTier = E.storyBuildTierForEvent(stage.event, 0, stage.badges);
+}
 
 const baseStats = E.baseStats;
 
@@ -81,13 +100,31 @@ function summarize(team, stageTier) {
   return { bstAvg, evAvg, ivAvg: ivAvgT, items, itemUniq, tier: tierLbl, species: team.map(m => m.name) };
 }
 
-function rollPlayerTeam(picks, tier, seed) {
+// City-curve IV bands the PLAYER actually rolls from (wild catches + professor
+// gifts use this band, not 31/31/...). Matches the sheet's wild/prof IV row.
+const WILDPROF_IV = [[0,10],[0,20],[0,31],[5,31],[10,31],[15,31],[20,31],[25,31],[31,31],[31,31]];
+// Realistic baseline EV total for a player mon at city N (unboosted by vitamins /
+// EV trainer). The tier-downgrade caps further (T1=0, T2<=220, T3<=420).
+const WILDPROF_EV = [[0,50],[50,100],[100,150],[150,200],[200,250],[300,350],[350,400],[140,160],[508,508],[508,508]];
+
+function randInt(lo, hi) { return lo + Math.floor(Math.random() * (hi - lo + 1)); }
+
+function rollPlayerTeam(picks, tier, seed, city) {
   eng.seedRng(seed);
+  const [ivLo, ivHi] = WILDPROF_IV[city] || [31, 31];
+  const [evLo, evHi] = WILDPROF_EV[city] || [508, 508];
   const out = [];
   for (const name of picks) {
     let b = null;
     try { b = E.makeBuild(name, { forceGimmick: 'STANDARD' }); } catch (e) {}
     if (!b) { out.push({ name, build: { m: [], evs: {} } }); continue; }
+    // Realistic player IVs (city wild/prof curve, NOT the Smogon preset's 31s).
+    b.ivs = { hp: randInt(ivLo, ivHi), atk: randInt(ivLo, ivHi), def: randInt(ivLo, ivHi),
+              spa: randInt(ivLo, ivHi), spd: randInt(ivLo, ivHi), spe: randInt(ivLo, ivHi) };
+    // Realistic player EVs (city baseline, distributed uniformly; tier downgrade caps later).
+    const evTotal = randInt(evLo, evHi);
+    const per = Math.max(0, Math.floor(evTotal / 6 / 4) * 4);
+    b.evs = { hp: per, atk: per, def: per, spa: per, spd: per, spe: per };
     if (tier < TIER.TOURNAMENT) {
       try { E.storyDowngradeBuildForTier(name, b, tier); } catch (e) {}
     }
@@ -98,14 +135,16 @@ function rollPlayerTeam(picks, tier, seed) {
 
 function rollEnemyTeam(stage, seed) {
   eng.seedRng(seed);
-  // Synthetic trainer — type-mixed so the filler pool draws across types; sigs
-  // empty so the team is pure type-filler (matches a Gym Trainer / Basic body).
-  // For Mystery Figure we use the dedicated final-boss roll (legendary roster).
   if (stage.event === 'Mystery Figure') {
     return E.rollMysteryFigure ? E.rollMysteryFigure(6, GENS) : null;
   }
+  // rollTrainerTeam derives _foeCity from the storyRowIdx ARG (NOT sm.eventIndex),
+  // and city-keyed foe gates (item tier cap, IV band, hidden-ability allowance, EV
+  // city scaling) hang off that. Pass the city's first event index so the gates
+  // fire at the intended stage.
+  const rowIdx = CITY_FIRST_EVENT_IDX[stage.city] != null ? CITY_FIRST_EVENT_IDX[stage.city] : 0;
   const trainer = { role: stage.event, name: 'StageExample', type: 'Mixed', sigs: [], pkmGens: GENS.slice() };
-  return E.rollTrainerTeam(trainer, 6, stage.gw, GENS, stage.event, 0);
+  return E.rollTrainerTeam(trainer, 6, stage.gw, GENS, stage.event, rowIdx);
 }
 
 function primeSm(stage) {
@@ -115,7 +154,10 @@ function primeSm(stage) {
   if (!E.sm.settings) E.sm.settings = {};
   E.sm.settings.enabledGens = GENS.slice();
   E.sm.badges = stage.badges;
-  E.sm.eventIndex = 0; // doesn't drive tier (we pass event directly)
+  // City-keyed gates (foe item tier, foe IV band, evo-stage cap) read from
+  // sm.eventIndex via cityIndexFromEventIndex. Point at the first event index
+  // for the target city so those gates fire at the intended stage.
+  E.sm.eventIndex = CITY_FIRST_EVENT_IDX[stage.city] != null ? CITY_FIRST_EVENT_IDX[stage.city] : 0;
   // Live party (drives Rival counter, doesn't matter here but keep it valid).
   E.sm.team = stage.picks.map(n => ({ name: n, build: {} }));
 }
@@ -126,9 +168,9 @@ for (const stage of STAGES) {
     primeSm(stage);
 
     const playerTeams = [
-      rollPlayerTeam(stage.picks, stage.pTier, 3000 + stage.city * 13 + 1),
-      rollPlayerTeam(stage.picks, stage.pTier, 3000 + stage.city * 13 + 2),
-      rollPlayerTeam(stage.picks, stage.pTier, 3000 + stage.city * 13 + 3),
+      rollPlayerTeam(stage.picks, stage.pTier, 3000 + stage.city * 13 + 1, stage.city),
+      rollPlayerTeam(stage.picks, stage.pTier, 3000 + stage.city * 13 + 2, stage.city),
+      rollPlayerTeam(stage.picks, stage.pTier, 3000 + stage.city * 13 + 3, stage.city),
     ];
     const enemyTeams = [
       rollEnemyTeam(stage, 5000 + stage.city * 17 + 1),
