@@ -40627,13 +40627,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 try { window.showGameAlert && window.showGameAlert('🎯 You found a MASTER BALL among the spoils.'); } catch (e) {}
                 return { kind: 'masterball', count: 1 };
             }
-            // Extra track raid → Exp Share Voucher x6 (6 distributable level-units).
+            // Extra track raid → Exp Share bundle: 6 random vitamin packs.
+            // The game runs at flat L100 (no per-mon level system) so the
+            // original "+6 distributable levels" design couldn't land as
+            // designed. The vitamin bundle is the game's actual currency for
+            // mid-run growth (each vitamin = a free EV preset at the EV
+            // Trainer). 6 random vitamins = ~+30 EVs distributed across
+            // stats, comparable to ~1.5 vitamin packs — a generous payoff.
             if (/^extra\.[a-zA-Z]+\.raid$/.test(sk)) {
                 if (!sm.inventory || typeof sm.inventory !== 'object') sm.inventory = {};
-                sm.inventory.expShareVoucher = (sm.inventory.expShareVoucher | 0) + 6;
+                const VITAMIN_KEYS = ['hpUp','protein','iron','calcium','zinc','carbos'];
+                const rng = (sm && sm.active && typeof window.storyRngNext === 'function')
+                    ? window.storyRngNext : Math.random;
+                const granted = {};
+                for (let i = 0; i < 6; i++) {
+                    const v = VITAMIN_KEYS[(rng() * VITAMIN_KEYS.length) | 0];
+                    sm.inventory[v] = (sm.inventory[v] | 0) + 1;
+                    granted[v] = (granted[v] | 0) + 1;
+                }
                 try { save(); } catch (e) {}
-                try { window.showGameAlert && window.showGameAlert('🎓 You earned 6 EXP SHARE VOUCHERS — apply to any party / PC mon for +1 level each.'); } catch (e) {}
-                return { kind: 'expShareVoucher', count: 6 };
+                try {
+                    const parts = Object.entries(granted)
+                        .map(([k, n]) => `+${n} ${k.toUpperCase()}`).join(', ');
+                    window.showGameAlert && window.showGameAlert('🎓 EXP SHARE bundle — ' + parts + '. Apply at the EV Trainer.');
+                } catch (e) {}
+                return { kind: 'expShareBundle', granted };
             }
             return null;
         }

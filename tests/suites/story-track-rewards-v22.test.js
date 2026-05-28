@@ -34,33 +34,39 @@ test('grantTrackEndReward works for all 10 villain tracks', () => {
     }
 });
 
-test('grantTrackEndReward grants Exp Share Voucher x6 on any extra.X.raid', () => {
-    ST.sm = Object.assign({}, ST.sm, { inventory: { expShareVoucher: 0 } });
+test('grantTrackEndReward grants 6 random vitamins on any extra.X.raid', () => {
+    const VKEYS = ['hpUp','protein','iron','calcium','zinc','carbos'];
+    ST.sm = Object.assign({}, ST.sm, { inventory: {} });
     const result = ST.grantTrackEndReward({ sceneKey: 'extra.cubone.raid' });
-    assert.equal(result.kind, 'expShareVoucher');
-    assert.equal(result.count, 6);
-    assert.equal(ST.sm.inventory.expShareVoucher | 0, 6);
+    assert.equal(result.kind, 'expShareBundle');
+    // Total vitamins granted == 6 (distribution random across the 6 stats).
+    const total = VKEYS.reduce((s, k) => s + ((ST.sm.inventory[k] | 0)), 0);
+    assert.equal(total, 6);
 });
 
 test('grantTrackEndReward works for all 8 extra tracks', () => {
+    const VKEYS = ['hpUp','protein','iron','calcium','zinc','carbos'];
     const extras = ['cubone','yamask','hypno','phantump','mimikyu','drifloon','parasect','mewtwo'];
     for (const x of extras) {
-        ST.sm = Object.assign({}, ST.sm, { inventory: { expShareVoucher: 0 } });
+        ST.sm = Object.assign({}, ST.sm, { inventory: {} });
         const result = ST.grantTrackEndReward({ sceneKey: `extra.${x}.raid` });
-        assert.ok(result && result.kind === 'expShareVoucher', `failed for extra ${x}`);
-        assert.equal(ST.sm.inventory.expShareVoucher | 0, 6);
+        assert.ok(result && result.kind === 'expShareBundle', `failed for extra ${x}`);
+        const total = VKEYS.reduce((s, k) => s + ((ST.sm.inventory[k] | 0)), 0);
+        assert.equal(total, 6, `extra ${x} grant total != 6 vitamins`);
     }
 });
 
 test('grantTrackEndReward accumulates (multiple rewards stack)', () => {
+    const VKEYS = ['hpUp','protein','iron','calcium','zinc','carbos'];
     ST.sm = Object.assign({}, ST.sm, {
         balls: { poke:0, great:0, ultra:0, master:0 },
-        inventory: { expShareVoucher: 0 },
+        inventory: {},
     });
     ST.grantTrackEndReward({ sceneKey: 'villain.rocket.boss' });
     ST.grantTrackEndReward({ sceneKey: 'extra.cubone.raid' });
     assert.equal(ST.sm.balls.master, 1);
-    assert.equal(ST.sm.inventory.expShareVoucher, 6);
+    const total = VKEYS.reduce((s, k) => s + ((ST.sm.inventory[k] | 0)), 0);
+    assert.equal(total, 6);
 });
 
 test('grantTrackEndReward does NOT fire on mfBattle (apex tier owns its own reward)', () => {
@@ -71,15 +77,17 @@ test('grantTrackEndReward does NOT fire on mfBattle (apex tier owns its own rewa
 });
 
 test('grantTrackEndReward does NOT fire on mini-bosses or mini-raids', () => {
+    const VKEYS = ['hpUp','protein','iron','calcium','zinc','carbos'];
     ST.sm = Object.assign({}, ST.sm, {
         balls: { poke:0, great:0, ultra:0, master:0 },
-        inventory: { expShareVoucher: 0 },
+        inventory: {},
     });
     ST.grantTrackEndReward({ sceneKey: 'villain.rocket.miniBoss' });
     ST.grantTrackEndReward({ sceneKey: 'extra.cubone.miniRaid' });
     ST.grantTrackEndReward({ sceneKey: 'extra.cubone.miniRaid2' });
     assert.equal(ST.sm.balls.master, 0);
-    assert.equal(ST.sm.inventory.expShareVoucher, 0);
+    const total = VKEYS.reduce((s, k) => s + ((ST.sm.inventory[k] | 0)), 0);
+    assert.equal(total, 0);
 });
 
 test('BOSS_CONFIGS registered for all 10 villain bosses + 8 extra raids + mfBattle', () => {
