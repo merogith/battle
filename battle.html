@@ -35284,6 +35284,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 window.__storyTest = {
                     rollTrainerTeam,
                     rollMysteryFigure: rollMysteryFigureFinalBossTeam,
+                    storyFreezeFoeTeamForPersistence,
                     findTrainerDataByName,
                     validateTrainerData: _validateTrainerData,
                     getTrainerData: () => TRAINER_DATA,
@@ -42630,12 +42631,44 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Legacy: keep profRoll in API for backward compatibility (not used in 3-choice flow)
         function profRoll() { enterProfessor(); }
 
-        /** Run buildPokemon on each foe build so story locks persist fields that would otherwise re-roll on rematch (gender, shiny, move padding). */
+        /** Run buildPokemon on each foe build so story locks persist fields that would
+         *  otherwise re-roll on rematch (gender, shiny, move padding). Also sanitizes the
+         *  build's gimmick: a stale lock from a post-G5 / C7+ session can keep
+         *  `gimmick: 'MEGA'` (and the Mega Stone item) attached, and the battle-time
+         *  activation gate doesn't re-check city/unlock — so without sanitization a Mega
+         *  Sableye can fire at C3 after the lock is restored. Re-validate the gimmick
+         *  against current city + unlocks; downgrade to STANDARD + strip the gimmick item
+         *  when ineligible. Symmetric for Z / Tera / Dmax. */
+        function _storySanitizeBuildGimmick(build) {
+            if (!build || !build.gimmick || build.gimmick === 'STANDARD') return;
+            // Player-side battles outside an active story run are not gated here.
+            if (!(typeof sm !== 'undefined' && sm && sm.active)) return;
+            let _city = -1;
+            try { _city = cityIndexFromEventIndex(sm.eventIndex | 0); } catch (e) {}
+            const allowed = (typeof _storyEnemyMechKeys === 'function') ? new Set(_storyEnemyMechKeys()) : new Set();
+            const kindKey =
+                build.gimmick === 'MEGA' ? 'mega' :
+                build.gimmick === 'ZMOVE' ? 'z' :
+                (build.gimmick === 'DYNAMAX' || build.gimmick === 'GMAXDYNAMAX') ? 'dmax' :
+                build.gimmick === 'TERA' ? 'tera' : null;
+            const cityOk = _city < 0 || _city >= 7;
+            if (!kindKey || !cityOk || !allowed.has(kindKey)) {
+                build.gimmick = 'STANDARD';
+                // Strip gimmick-bound items so STANDARD doesn't end up holding a Mega Stone /
+                // Z-Crystal that the battle code keys off elsewhere.
+                try {
+                    if (typeof isMegaStone === 'function' && isMegaStone(build.i)) build.i = '';
+                    else if (typeof Z_TYPE_MAP_VALUES !== 'undefined' && Z_TYPE_MAP_VALUES.has && Z_TYPE_MAP_VALUES.has(build.i)) build.i = '';
+                } catch (e) {}
+                build.teraType = null;
+            }
+        }
         function storyFreezeFoeTeamForPersistence(enemyTeam) {
             if (!Array.isArray(enemyTeam)) return [];
             return enemyTeam.map(slot => {
                 if (!slot || !slot.name) return slot;
                 const build = deepClone(slot.build || {});
+                _storySanitizeBuildGimmick(build);
                 buildPokemon(String(slot.name).trim(), build);
                 return { name: slot.name, build };
             });
