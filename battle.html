@@ -14521,6 +14521,33 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         };
 
+        // ISSUE-005: pre-fix, every difficulty tier shared the same AI brain —
+        // the only "difficulty" knob was a stat multiplier on the foe team, so
+        // Very Hard was a Very Easy with +85% HP/Atk on the same brain.
+        // This profile makes the AI itself behave differently per tier:
+        //   overrideProb: chance of swapping getBestMove's optimal pick for a
+        //                 random valid move (low-tier "fumbles").
+        //   jitter:       width of the random score nudge inside getBestMove —
+        //                 high tiers strip the jitter so identical boards
+        //                 resolve to the same move (predictable = legible
+        //                 challenge); low tiers widen it so the AI sometimes
+        //                 prefers an inferior line on its own.
+        //   allowSwitch:  whether aiDecision can pivot out of a bad matchup.
+        //                 Very-easy / easy foes stand-and-fight through bad
+        //                 type matchups instead of pivoting to a counter.
+        // Non-story modes (PvP, gauntlet, free-battle) get the 'normal'
+        // profile, matching the prior behavior — no regression outside story.
+        window._aiBehaviorProfile = function() {
+            const sm = (window.StoryMode && window.StoryMode.state) ? window.StoryMode.state : null;
+            const d = (sm && sm.active && sm.storyDifficulty) || 'normal';
+            switch (d) {
+                case 'veryeasy':  return { tier: 'veryeasy',  overrideProb: 0.55, jitter: 12, allowSwitch: false };
+                case 'easy':      return { tier: 'easy',      overrideProb: 0.25, jitter: 9,  allowSwitch: false };
+                case 'hard':      return { tier: 'hard',      overrideProb: 0.00, jitter: 3,  allowSwitch: true  };
+                case 'challenge': return { tier: 'challenge', overrideProb: 0.00, jitter: 0,  allowSwitch: true  };
+                default:          return { tier: 'normal',    overrideProb: 0.00, jitter: 6,  allowSwitch: true  };
+            }
+        };
         // Lock in a build's shiny flag immediately so every renderer reads the
         // same value, including code paths that only ever pass a cloned build to
         // buildPokemon (which mutates the clone, not the original). Idempotent —
@@ -19467,6 +19494,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         return { name: "Struggle", type: "Normal", cat: "Physical", pow: 50, acc: 100, pri: 0, pp: 1, maxPp: 1, eff: "", effectStr: "" };
     }
 
+    // ISSUE-005: difficulty-tier AI competence — see _aiBehaviorProfile.
+    // Read once at the top so the jitter width and override roll see the
+    // same profile (and a per-call mode change between them is impossible).
+    const _aiProfile = (typeof window._aiBehaviorProfile === 'function')
+        ? window._aiBehaviorProfile()
+        : { tier: 'normal', overrideProb: 0, jitter: 6, allowSwitch: true };
+
     let hpPct = attacker.currentHp / attacker.maxHp;
     let defHpPct = defender.currentHp / defender.maxHp;
     let w = getCurrentWeather();
@@ -19938,16 +19972,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
-        // Small random factor (kept tiny so the scoring system dominates)
-        score += Math.random() * 6;
+        // ISSUE-005: per-tier random jitter (kept tiny at normal so the scoring
+        // system dominates; widened at low tiers to "fumble", zeroed at
+        // hard/challenge so identical boards resolve identically).
+        if (_aiProfile.jitter > 0) score += Math.random() * _aiProfile.jitter;
         if (score > maxScore) { maxScore = score; bestMove = move; }
     });
+    // ISSUE-005: low-tier override. With probability overrideProb the AI
+    // discards its optimal pick and selects a random valid move instead —
+    // simulates a less-skilled trainer making the wrong call. Status moves
+    // stay in the pool so the AI can still pick something dumb.
+    if (_aiProfile.overrideProb > 0 && validMoves.length > 1 && Math.random() < _aiProfile.overrideProb) {
+        bestMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+    }
     return bestMove;
 };
 
         // AI decision: should we switch or attack?
         function aiDecision() {
     let attacker = state.fActive, defender = state.pActive;
+    // ISSUE-005: low-tier foes don't switch. veryeasy / easy stand-and-fight
+    // through bad type matchups instead of pivoting to a counter — one of
+    // the biggest tells of skilled play. Higher tiers keep the full policy.
+    const _aiSwitchProfile = (typeof window._aiBehaviorProfile === 'function')
+        ? window._aiBehaviorProfile()
+        : { allowSwitch: true };
+    if (!_aiSwitchProfile.allowSwitch) return null;
     // Mid-rampage (Outrage/Petal Dance) and recharge (Hyper Beam) genuinely lock the whole turn —
     // can't switch. Choice lock does NOT prevent switching (it only restricts which MOVE we can
     // use), so it is handled below by evaluating the matchup through the locked move and pivoting
