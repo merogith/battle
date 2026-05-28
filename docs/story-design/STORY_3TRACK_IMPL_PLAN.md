@@ -57,15 +57,15 @@ Anchor drift is real — re-resolve via `node scripts/debug/symbol-index.mjs --l
 
 | PR | Scope | LOC | Risk |
 |---|---|---|---|
-| **PR-1** | Save schema bump (v21→v22) + random track assignment + migration | ~150 | low |
-| **PR-2** | Event data tables (labels + sceneKey lookups; content from CSVs) | ~300 | low (data only) |
-| **PR-3** | Dispatcher wiring + battle intro/outro layer | ~400 | medium |
-| **PR-4** | Healing rules + loss penalty (20%) + route fight cap | ~250 | medium |
-| **PR-5** | Boss/raid mechanic engine + 3 reusable mechanics | ~500 | medium |
+| **PR-1** ✓ | Save schema bump (v21→v22) + random track assignment + migration | ~150 | low |
+| **PR-2** | Event data tables + reward-tier table (data only; content from CSVs) | ~400 | low (data only) |
+| **PR-3** | **Unified Story Flow Dispatcher** — single state machine, priority intro queue, beat dispatch, battle hooks, facility-intro dedupe collapse | ~600 | medium |
+| **PR-4** | Healing rules + loss penalty (20%) + route fight cap + reward delivery (tier table wired, gold rebalance) | ~350 | medium |
+| **PR-5** | Boss/raid mechanic engine + 3 reusable mechanics + track-end reward grants (Master Ball, Exp Share ×6) | ~600 | medium |
 | **PR-6** | Mystery Figure / The First reveal staging (replace 7-identity dispatcher with single voice) | ~200 | low |
 | **PR-7** | Anomaly seeding + tests + autopilot extension | ~250 | low |
 
-Total ~2,050 LOC, almost entirely additive + data tables.
+Total ~2,550 LOC, almost entirely additive + data tables. (Up ~500 LOC from the original estimate after folding in the unified dispatcher + reward tiers + track-end rewards.)
 
 ---
 
@@ -185,12 +185,143 @@ Verify against `STORY_EVENTS_RAW` (battle.html:29247). Each `roadAnchor` resolve
 function _rowsForRoad(roadId) { /* returns [startRow, endRow] inclusive */ }
 ```
 
+### Reward tier table (PR-2 data, PR-4 delivery)
+
+```js
+const STORY_REWARD_TIERS = {
+    // Flavor event with no battle. Tiny morale drop.
+    flavor: { goldFrac: 0.05, vouchers: 0, vitamins: 0, items: ['heartScale?'] },
+    // Basic grunt battle (e.g. Rocket Grunt). Matches current Basic-Trainer reward.
+    low:    { goldFrac: 0.80, vouchers: [0, 1], vitamins: 0, items: [] },
+    // Mini-boss / mini-raid. Matches current Ace-Trainer reward.
+    mid:    { goldFrac: 1.00, vouchers: [1, 2], vitamins: 1, items: ['voucher_artifact?'] },
+    // Track boss / full raid. Matches current Gym-Leader / Rival reward.
+    big:    { goldFrac: 1.00, vouchers: [3, 5], vitamins: [2, 3], items: ['voucher_artifact'] },
+    // Mystery Figure battle. Matches Champion reward.
+    apex:   { goldFrac: 1.00, vouchers: 5,      vitamins: 3,      items: ['voucher_artifact', 'masterball?'] },
+};
+
+// Maps `kind` in MAIN/VILLAIN/EXTRA_STORY_BEATS to a tier.
+const STORY_KIND_TO_TIER = {
+    event: 'flavor',
+    battle: 'low',
+    miniBoss: 'mid',
+    miniRaid: 'mid',
+    boss: 'big',
+    raid: 'big',
+    mysteryBoss: 'apex',
+};
+
+// Base-trainer gold nerf — applied in PR-4 to compensate for the new event-battle
+// gold flowing in. Targets a ~neutral total-run gold balance vs. the current build.
+const STORY_BASE_TRAINER_GOLD_MULT = 0.82;  // -18%
+```
+
+`goldFrac` is a multiplier of the Gym-Leader-tier gold table. Vouchers/vitamins given as `[min, max]` for a small spread (rolled per battle), or a flat number.
+
 ### Tests (PR-2)
 - `tests/suites/story-beats-table.test.js` — assert every track has all expected slot keys; assert every sceneKey has a `STORY_SCENES` entry.
+- `tests/suites/story-reward-tiers.test.js` — every `kind` in `MAIN/VILLAIN/EXTRA_STORY_BEATS` resolves to a tier; every tier has all required fields.
 
 ---
 
-## PR-3 — Dispatcher + battle intro/outro
+## PR-3 — Unified Story Flow Dispatcher
+
+> **The architectural fix for the stacking-popup bug.** Today multiple intro
+> systems fire independently when the player enters a city — market giveaway
+> popup, facility welcome overlay, one-time tip system, gift events — and they
+> can stack, contradict each other ("you get 5 PokéBalls" + "you get 1 PokéBall"),
+> or fire out of order. PR-3 replaces every scattered popup-firer with a single
+> priority-ordered queue that owns the entire city-entry / city-leave flow.
+
+### State machine
+
+```
+CITY_ARRIVE
+  → IntroQueue.collectFor(cityId)        // gather all valid intros
+  → IntroQueue.runSequentially()         // priority-ordered, deduped
+  → CITY_IDLE                            // player can browse facilities
+  → (optional) GYM_BATTLE
+  → CITY_IDLE
+  → CITY_LEAVE → ROAD
+```
+
+### Single queue, one source of truth
+
+```js
+const INTRO_PRIORITY = {
+    facility_first_time:  100,   // "Welcome to the Pokémon Center" intro
+    plot_beat_main:        90,   // MAIN_STORY_BEATS event firing this city
+    plot_beat_villain:     80,   // VILLAIN_STORY_BEATS event
+    plot_beat_extra:       70,   // EXTRA_STORY_BEATS event
+    market_giveaway:       50,   // shop tutorial / freebie
+    npc_tip:               20,   // generic facility tip
+    one_time_lesson:       10,   // legacy `_storyShowOneTimeTip`
+};
+
+const IntroQueue = {
+    pending: [],
+    enqueue(item) { /* item = { priority, sceneKey, dedupeKey, oneTime, payload } */ },
+    collectForCity(cityId) {
+        // 1. facility intros (Pokemon Center, Mart, etc.) → priority 100
+        // 2. main/villain/extra beats whose roadAnchor === cityId
+        // 3. market giveaways the player hasn't claimed
+        // 4. one-time tips not yet shown
+        // All filtered against sm.facilityIntros / sm.storyEventsFired
+    },
+    async runSequentially() {
+        this.pending.sort((a, b) => b.priority - a.priority);
+        for (const item of this.pending) {
+            if (item.dedupeKey && sm.facilityIntros[item.dedupeKey]) continue;
+            await _renderNarrativeOverlay(STORY_SCENES[item.sceneKey] || item.payload);
+            if (item.oneTime) sm.facilityIntros[item.dedupeKey] = true;
+            if (item.sceneKey) sm.storyEventsFired[item.sceneKey] = true;
+        }
+        this.pending.length = 0;
+        save();
+    },
+};
+```
+
+### Migration — collapse the bugged firers
+
+Audit and DELETE the parallel firing paths, route them all through `IntroQueue.enqueue`:
+- `_storyShowOneTimeTip` (battle.html:31560) — replace direct overlay call with `IntroQueue.enqueue({ priority: INTRO_PRIORITY.one_time_lesson, ... })`.
+- Market freebie popup (find via grep — likely in shop code): replace direct `showGameAlert` with enqueue.
+- Facility welcome overlay: replace direct call with enqueue at priority 100.
+- Gift events: replace direct call with enqueue.
+- `_runStoryColdOpen` (battle.html:38417): becomes a thin wrapper that calls into `IntroQueue.runSequentially()` once.
+
+End state: one place that fires overlays. Adding a new intro = `IntroQueue.enqueue(...)`. Removing or re-ordering = adjust priority constant.
+
+### Beat resolver — feeds the queue
+
+Add `_resolveActiveBeatsForRow(rowIdx)` near `_runStoryColdOpen` (battle.html:38417):
+```js
+function _resolveActiveBeatsForRow(rowIdx) {
+    const roadId = _roadForRow(rowIdx);
+    const queue = [];
+    // 1. main beats (always)
+    for (const slot of Object.values(MAIN_STORY_BEATS)) {
+        if (slot.roadAnchor === roadId && !sm.storyEventsFired[slot.sceneKey]) queue.push(slot);
+    }
+    // 2. villain beats (gated by sm.tracks.villain)
+    const v = VILLAIN_STORY_BEATS[sm.tracks.villain];
+    if (v) for (const slot of Object.values(v)) {
+        if (slot.roadAnchor === roadId && !sm.storyEventsFired[slot.sceneKey]) queue.push(slot);
+    }
+    // 3. extra beats (gated by sm.tracks.extra)
+    const x = EXTRA_STORY_BEATS[sm.tracks.extra];
+    if (x) for (const slot of Object.values(x)) {
+        if (slot.roadAnchor === roadId && !sm.storyEventsFired[slot.sceneKey]) queue.push(slot);
+    }
+    return queue;  // order: main → villain → extra
+}
+```
+
+Wire into the existing per-row hook (the function that fires when the player advances `sm.eventIndex`). Each beat played → set `sm.storyEventsFired[sceneKey] = true`.
+
+### Battle intro/outro
 
 ### Beat resolver
 Add `_resolveActiveBeatsForRow(rowIdx)` near `_runStoryColdOpen` (battle.html:38417):
@@ -240,6 +371,9 @@ Generic fallback: if no scene exists, no overlay fires (existing toast / shout s
 ### Tests (PR-3)
 - `tests/suites/story-dispatch.test.js` — seed `sm.tracks.villain='rocket'`, advance through road 2 rows, assert `villain.rocket.event1` fires + dedupes on re-advance.
 - `tests/suites/battle-dialogue.test.js` — start a story battle with `storyBattleId='main.battle1'`, assert pre-scene runs before turn 1, post-scene runs after KO.
+- `tests/suites/intro-queue-order.test.js` — enter a city with all four sources active (facility intro, main beat, market giveaway, one-time tip); assert overlays render exactly once in priority order with no duplicates.
+- `tests/suites/intro-queue-dedupe.test.js` — re-enter the same city, assert no facility intro fires twice (dedupe via `sm.facilityIntros`).
+- `tests/suites/intro-stacking-regression.test.js` — reproduce the "5 PokéBalls + 1 PokéBall" stacking bug from a fresh run; assert only one Mart giveaway overlay fires per city per run.
 
 ---
 
@@ -298,11 +432,31 @@ function _resolveRoadFights(roadId) {
 const YIELD_PRIORITY = { Basic: 0, Elite: 1, Rival: 99, Story: 99 };
 ```
 
+### Reward delivery + gold rebalance
+
+Wire `STORY_REWARD_TIERS` and `STORY_KIND_TO_TIER` from PR-2 into the post-battle reward path. Find the existing `_storyAwardBattleRewards` / `applyBattleRewards` function (grep for gym-leader gold table) and add:
+
+```js
+function _storyAwardForStoryBeat(beat, multipliers) {
+    const tier = STORY_REWARD_TIERS[STORY_KIND_TO_TIER[beat.kind]];
+    if (!tier) return;
+    const baseGold = _gymLeaderGoldForCity(_cityForRow(currentEventIdx));
+    sm.gold += Math.floor(baseGold * tier.goldFrac);
+    if (tier.vouchers) _grantVouchers(_rollRange(tier.vouchers));
+    if (tier.vitamins) _grantRandomVitamins(_rollRange(tier.vitamins));
+    if (tier.items) for (const it of tier.items) _grantItemIfPresent(it);
+}
+```
+
+Apply `STORY_BASE_TRAINER_GOLD_MULT = 0.82` to the BASIC trainer rewards path (route trainer table) — find via grep on the current basic-trainer gold formula. Total run gold stays neutral after the bump; vouchers + vitamins net-up.
+
 ### Tests (PR-4)
 - `tests/suites/healing-rules.test.js` — assert no heal between route fights, heal on city entry.
 - `tests/suites/loss-penalty.test.js` — set gold 1000, force loss, assert gold=800, party HP full, returned to last city.
 - `tests/suites/no-death-run.test.js` — clear to HoF without losing, assert `sm.achievements.noDeath === true`.
 - `tests/suites/route-fight-cap.test.js` — seed villain + extra on Road 5, assert total fights ≤ 4.
+- `tests/suites/reward-tier-delivery.test.js` — fire a beat at each tier (low/mid/big/apex); assert gold + voucher + vitamin counts match the tier table.
+- `tests/suites/gold-neutral-fullrun.test.js` — autopilot a full run with the new tier table active; assert total gold delta vs. baseline is within ±15%.
 
 ---
 
@@ -373,11 +527,50 @@ else if (kind === 'raid') boss.maxHp = baseHp * partySize;
 ### Telegraph discipline
 Every mechanic activation: banner one turn before via new `_showBattleBanner(text)` helper. No surprise mid-fight introductions.
 
+### Track-end reward grants
+
+On boss-victory in the `villain.<track>.boss` event:
+```js
+_grantItem('masterball', 1);
+_showBattleBanner('You found a MASTER BALL.');
+sm.storyEventsFired['villain.' + sm.tracks.villain + '.reward'] = true;
+```
+
+On raid-victory in the `extra.<track>.raid` event:
+```js
+sm.inventory.expShareVoucher = (sm.inventory.expShareVoucher | 0) + 6;
+_showBattleBanner('You earned 6 EXP SHARE VOUCHERS.');
+sm.storyEventsFired['extra.' + sm.tracks.extra + '.reward'] = true;
+```
+
+### Exp Share Voucher item
+
+New inventory item + UI. The wallet stores N level-units (`sm.inventory.expShareVoucher`). Player opens it from the Bag → "Use" → modal lets them pick distribution across party + PC mons. Each "+1 level" click consumes one unit and bumps the chosen mon by 1 level (capped at L100 and at the run's current level cap).
+
+```js
+function applyExpShareVoucher(monId, levels) {
+    const have = sm.inventory.expShareVoucher | 0;
+    const n = Math.min(have, levels | 0);
+    if (n <= 0) return;
+    const mon = _findMonById(monId);
+    if (!mon) return;
+    mon.level = Math.min(mon.level + n, 100, _currentLevelCap());
+    _recomputeMonStats(mon);
+    sm.inventory.expShareVoucher = have - n;
+    save();
+}
+```
+
+Modal lives in the Bag screen; the rest of the inventory UI handles count display via the existing item-pill template.
+
 ### Tests (PR-5)
 - `tests/suites/boss-hp-threshold.test.js` — damage boss to 49%, assert banner + power-surge fires once.
 - `tests/suites/boss-immunity-round.test.js` — advance 5 turns, assert preparation banner at turn 4, immunity at turn 5, damage clamped to 0, status sticks.
 - `tests/suites/boss-field-lock.test.js` — start magma boss, assert sun weather locked for 99 turns.
 - `tests/suites/raid-hp-scaling.test.js` — 5-mon party vs Marowak mini-raid → HP × 4; vs raid → HP × 5.
+- `tests/suites/track-reward-grants.test.js` — beat a villain boss → Master Ball in inventory; beat an extra raid → 6 Exp Share vouchers.
+- `tests/suites/exp-share-voucher-apply.test.js` — start with 6 vouchers, apply 3 to mon A and 3 to mon B; assert levels bumped, voucher wallet → 0, stats recomputed.
+- `tests/suites/exp-share-voucher-cap.test.js` — try to bump past level cap; assert clamped + voucher refunded.
 
 ---
 
@@ -488,6 +681,10 @@ When the CSV changes, re-run the script and re-paste. (We can automate via a CI 
 | 3 | Reveal tracks on confirm modal | **Hide — keep it a mystery** | Player discovers villain + extra through the first beat (Road 1 extra, Road 2 villain) within ~10 minutes. Strongest first-experience feel, cheapest to ship (zero modal UI work). |
 | 4 | NG+ re-roll behavior | **Re-roll fresh tracks every NG+ on the same save** | 80 villain×extra combos hunt-able without creating new saves. Tiny: re-run the same roll logic in the NG+ entry path. |
 | 5 | Old 7 Mystery Figure identities | **Retire now — delete code** | PR-6 removes the 7 old entries from `MYSTERY_FIGURE_IDENTITIES`, keeps only `the_first`. Smaller surface, fewer dormant branches. |
+| 6 | Villain track endgame reward | **Master Ball** (Road 7 boss drop) | Iconic, thematic ("you broke the cartel, you took the prize"). Useful for HoF, Boss Arc, post-game, NG+. One-line inventory grant. |
+| 7 | Extra track endgame reward | **Exp Share Voucher ×6** + arc gives its signature mon mid-arc (Cubone joins event 4, etc.) | Voucher wallet of 6 level-units, distributable any way the player wants. Math: 100-base stat at L50→51 = ~+13 stats, so ×6 = ~+78 stats spread however — equivalent to ~6 Rare Candies. Generous endgame, not OP. Thematic dark-mon gift mid-arc keeps the arc emotionally landing. |
+| 8 | Reward tier philosophy | **Big = Gym/Rival · Mid = Ace Trainer · Low = Basic. Vouchers + vitamins UP, gold ~same** | Tier table in PR-2 (data); delivery + 15–20% basic-gold nerf in PR-4. Keeps total run gold close to current despite new event battles, while bumping vitamin/voucher economy. |
+| 9 | Facility-flow stacking-popup bug | **Collapse all intro sources into ONE unified state machine** (PR-3 expanded scope) | Today: market giveaway popup, facility welcome overlay, `_storyShowOneTimeTip`, and gift events all fire independently → stacking + contradictory messages (5 balls + 1 ball example). PR-3 routes everything through a single priority-ordered, deduped `IntroQueue` keyed on `sm.facilityIntros`. Tutorial intros gated `firstTimeOnly: true`. |
 
 ---
 
