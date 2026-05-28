@@ -2807,6 +2807,26 @@
         /* Lead tip ("Next: …") gets a soft gold accent — that's the only "what to do now" hint we surface. */
         .story-city-tip.next { color: #ffe5a3; border-color: #8a7330; background: linear-gradient(180deg, #2a230f 0%, #1a1408 100%); box-shadow: inset -2px -2px 0 0 #1a1408, inset 2px 2px 0 0 #4a3e1a; }
         .story-city-tip.next:hover { color: #fff7cc; border-color: #ffd54f; background: linear-gradient(180deg, #322a14 0%, #20180c 100%); }
+        /* Single objective line — the one "what to do next" signal. Full-width, gold,
+           always derived from the same gate the Continue/Gym buttons use so it can't lie.
+           Everything else in the rail is a quiet, optional "Suggested" chip. */
+        .story-city-objective {
+            display: flex; align-items: center; gap: 8px; width: 100%;
+            padding: 9px 12px; min-height: 44px; box-sizing: border-box;
+            font-family: var(--battle-font) !important; font-size: 12px; line-height: 1.25;
+            color: #fff7cc; cursor: pointer; text-align: left;
+            background: linear-gradient(180deg, #2f2710 0%, #1c1408 100%);
+            border: 1px solid #c9a227; border-radius: 4px;
+            box-shadow: inset -2px -2px 0 0 #16100a, inset 2px 2px 0 0 #5a4a1e;
+            transition: border-color 0.12s, background 0.12s;
+        }
+        .story-city-objective:hover { border-color: #ffd54f; background: linear-gradient(180deg, #3a3014 0%, #241a0a 100%); }
+        .story-city-objective:active { transform: translateY(1px); }
+        .story-city-objective .obj-kicker { font-size: 9px; letter-spacing: 0.12em; font-weight: bold; color: #ffd54f; background: rgba(255,213,79,0.14); border: 1px solid rgba(255,213,79,0.4); padding: 2px 6px; border-radius: 3px; flex-shrink: 0; }
+        .story-city-objective .obj-ico { width: 18px; height: 18px; flex-shrink: 0; object-fit: contain; image-rendering: auto; }
+        .story-city-objective .obj-label { flex: 1; min-width: 0; font-weight: bold; }
+        .story-city-objective .obj-go { color: #ffd54f; flex-shrink: 0; font-size: 14px; }
+        .story-city-tips-sugg { width: 100%; margin: 4px 0 0; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: #8a9bb0; opacity: 0.75; }
         .story-action-badge {
             display: inline-flex; align-items: center; gap: 3px;
             font-size: 10px; line-height: 1; letter-spacing: 0.5px;
@@ -42826,16 +42846,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // outline so the eye can find it without us having to flash a badge.
             const suggestedFacilities = new Set();
             const tipsEl = document.getElementById('story-city-tips');
+            // `tips` now holds only optional "Suggested" chips. The single must-do
+            // "what to do next" (Professor / Gym / route / …) is the one objective
+            // line built and rendered after the gates are known, below.
             const tips = [];
-            // Must-do chip always leads — Professor is a hard gate on Continue Route / Gym.
-            if (hasProf && !profUsedHere) {
-                tips.push({
-                    iconPath: 'icons/story/' + (legendMysteryGate ? 'story_mystery.png' : 'story_professor.png') + '?v=20260516',
-                    label: legendMysteryGate ? 'Required: Talk to the Mystery Figure' : 'Required: Visit the Professor',
-                    click: 'window.StoryMode.enterProfessor()',
-                    urgent: true,
-                });
-            }
             // True next thing the player will see when they leave town. The wild
             // interrupt chain fires *before* the next trainer when leaving a city
             // for a different city (see `_shouldFireWildBeforeBattle`), so the
@@ -42843,8 +42857,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // post-gym hub heading into a Rival route says "Wild → Rival", not
             // a flat "Battle Your Rival" that lied about the next two screens.
             const _willFireWildNext = _storyNextBatIdx >= 0 && _shouldFireWildBeforeBattle(_storyNextBatIdx);
-            // "Next:" is always first when a battle is queued — clearest answer to the
-            // ten-second "what now?" question on entering any city.
+            // Rich label for the next queued battle — feeds the single objective line
+            // below (was the old competing "Next:" chip).
+            let nextBattleLabel = '';
             if (_storyNextBat) {
                 const nxId = _storyNextBat[0] | 0;
                 const nxEvent = String(_storyNextBat[2] || '');
@@ -42868,13 +42883,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const theme = _resolveThemeForBattleRow(nxId);
                 const themeLabel = theme && STORY_THEMED_NEXT_LABELS[theme];
                 if (themeLabel) nextLabel = `${nextLabel} — ${themeLabel}`;
-                // When wilds will fire first, surface the journey in order: the
-                // grass before the gate. Keeps the chip honest without becoming
-                // a paragraph — "🌿 Wild → ⚔ Rival" reads in one glance.
-                const _nextChipText = _willFireWildNext
-                    ? `Next: 🌿 Wild Pokémon → ${nextLabel}`
-                    : `Next: ${nextLabel}`;
-                tips.push({ kind: 'next', iconPath: 'icons/story/story_route.png?v=20260516', label: _nextChipText, click: 'window.StoryMode.proceedToNextBattle()' });
+                // When wilds fire first, surface the journey in order — the grass
+                // before the gate — so the one objective stays honest:
+                // "🌿 Wild → ⚔ Rival" reads in one glance.
+                nextBattleLabel = _willFireWildNext ? `🌿 Wild Pokémon → ${nextLabel}` : nextLabel;
             }
             if (rivalGateActive) {
                 const _healTipLabel = _willFireWildNext
@@ -42939,17 +42951,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (_ehN > 0) parts.push(`${_ehN} Emblem of Honor`);
                 tips.push({ iconPath: _acN > 0 ? 'sprites/pokesprite/items/ability-capsule.png' : 'sprites/pokesprite/items/emblem-of-honor.png', label: `${parts.join(' + ')} — free dojo swap`, click: "window.StoryMode.enterTutor('loadout')" });
             }
-            // Cap the rail at 3 — "Next:" plus the two most relevant follow-ups. More than
-            // that pushes the action grid below the fold on phone portrait.
-            if (tipsEl) {
-                tipsEl.innerHTML = tips.slice(0, 4).map(t => {
-                    const _kindCls = t.kind ? ` ${t.kind}` : '';
-                    const _icoHtml = t.iconPath
-                        ? `<img class="story-city-tip-ico" src="${t.iconPath}" alt="" width="16" height="16" decoding="async">`
-                        : `<span class="story-city-tip-ico">${t.icon}</span>`;
-                    return `<button type="button" class="story-city-tip${_kindCls}${t.urgent ? ' urgent' : ''}" onclick="${t.click}">${_icoHtml}<span>${t.label}</span></button>`;
-                }).join('');
-            }
+            // (The tip rail — single objective line + optional Suggested chips — is
+            // rendered after the gate flags are known, just before the action grid.)
 
             const btn = document.getElementById('story-action-buttons');
             if (!btn) return;
@@ -43239,26 +43242,58 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const countHtml = n > 1 ? `<span class="story-action-section-count">(${n})</span>` : '';
                 return `<div class="story-action-section-header"><img class="story-action-section-icon" src="${iconPath}" alt="" width="16" height="16" decoding="async" style="image-rendering:pixelated;vertical-align:-3px;margin-right:6px;">${title}${countHtml}</div>${_sections[key]}`;
             };
-            // Phase 4.7 — city briefing banner. When the player arrives at a city that
-            // still has REQUIRED facility intros pending (PC / Mart / Professor / Tutor /
-            // …), prepend a small priority-ordered banner so the order is unambiguous
-            // before they touch anything. Same priority used by the disabled "Continue
-            // Route" tooltip (_pendingFacilityIntrosHere is already sorted) — this just
-            // surfaces it at the top of the screen instead of buried in a tooltip.
-            let briefingHtml = '';
-            if (Array.isArray(_pendingIntros) && _pendingIntros.length) {
-                const items = _pendingIntros.map((k, i) => {
-                    const name = _FACILITY_FRIENDLY_NAME[k] || k;
-                    return `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,193,7,0.12);border:1px solid rgba(255,193,7,0.45);color:#ffd54f;font-size:11px;padding:2px 8px;border-radius:11px;font-weight:bold;">${i + 1}. ${_esc(name)}</span>`;
-                }).join(' ');
-                briefingHtml = `<div style="margin:0 0 8px;padding:10px 12px;background:rgba(255,193,7,0.06);border:1px solid rgba(255,193,7,0.32);border-radius:6px;">
-                    <div style="font-size:11px;color:#ffd54f;font-weight:bold;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:6px;">🔴 Visit before leaving — in this order</div>
-                    <div style="display:flex;flex-wrap:wrap;gap:6px;">${items}</div>
-                </div>`;
+            // ── The single objective line ───────────────────────────────────────
+            // ONE honest "what to do next", derived from the SAME gate flags the
+            // Continue / Gym / League buttons use below — so the breadcrumb can never
+            // disagree with what's actually unlocked. This replaces a stack of four
+            // signals that each partitioned "next" differently and contradicted on
+            // City 0: a "Required:" chip, a "Next:" chip, the numbered "Visit before
+            // leaving — in this order" banner, and the "Next Step (N)" count.
+            let objective = null;
+            const _profPending = hasProf && !profUsedHere;
+            if (_profPending && legendMysteryGate) {
+                objective = { kicker: 'STORY', icon: 'story_mystery.png', label: 'Talk to the Mystery Figure', click: 'window.StoryMode.enterProfessor()' };
+            } else if (_profPending) {
+                objective = { kicker: cityIdx === 0 ? 'START' : 'STORY', icon: 'story_professor.png',
+                    label: cityIdx === 0 ? 'Pick your starter at the Lab' : (swapMode ? 'Swap a partner with the Professor' : 'Meet the Professor — a new partner'),
+                    click: 'window.StoryMode.enterProfessor()' };
+            } else if (hasGym && !gymBeat) {
+                objective = { kicker: 'NEXT', icon: 'story_gym.png', label: 'Enter the Gym', click: 'window.StoryMode.proceedToNextBattle()' };
+            } else if (hasLeague) {
+                objective = { kicker: 'NEXT', icon: 'story_league.png', label: 'Enter the Pokémon League', click: 'window.StoryMode.proceedToNextBattle()' };
+            } else if (hasVR) {
+                objective = { kicker: 'NEXT', icon: 'story_vr.png', label: 'Climb Victory Road', click: 'window.StoryMode.proceedToNextBattle()' };
+            } else if (hasTrainerRoad) {
+                objective = { kicker: 'NEXT', icon: 'story_gym.png', label: 'Pre-League Trainers', click: 'window.StoryMode.proceedToNextBattle()' };
+            } else if (routeBlockedByIntros && _pendingNames.length) {
+                const _firstKey = _pendingIntros[0];
+                objective = { kicker: 'NEW HERE', icon: 'story_route.png', label: `See the new ${_pendingNames[0]} before you go`, click: _FACILITY_ENTER_CALL[_firstKey] || 'window.StoryMode.enterCity()' };
+            } else if (_storyNextBat) {
+                objective = { kicker: 'NEXT', icon: 'story_route.png', label: nextBattleLabel || 'Continue your journey', click: 'window.StoryMode.proceedToNextBattle()' };
             }
-            btn.innerHTML = briefingHtml
-                          + _emit('quest',   'icons/story/story_gym.png?v=20260516',   'Next Step')
-                          + _emit('recover', 'icons/story/story_center.png?v=20260516', 'Heal & Team')
+            if (tipsEl) {
+                let _railHtml = '';
+                if (objective) {
+                    const _oico = objective.icon ? `<img class="obj-ico" src="icons/story/${objective.icon}?v=20260516" alt="" width="18" height="18" decoding="async">` : '';
+                    _railHtml += `<button type="button" class="story-city-objective" onclick="${objective.click}"><span class="obj-kicker">${objective.kicker}</span>${_oico}<span class="obj-label">${objective.label}</span><span class="obj-go">▶</span></button>`;
+                }
+                // Remaining tips are optional, quieter suggestions (cap 3 so the action
+                // grid stays above the fold on phone portrait).
+                const _sugg = tips.slice(0, 3);
+                if (objective && _sugg.length) _railHtml += `<div class="story-city-tips-sugg">Suggested</div>`;
+                _railHtml += _sugg.map(t => {
+                    const _icoHtml = t.iconPath
+                        ? `<img class="story-city-tip-ico" src="${t.iconPath}" alt="" width="16" height="16" decoding="async">`
+                        : `<span class="story-city-tip-ico">${t.icon}</span>`;
+                    return `<button type="button" class="story-city-tip" onclick="${t.click}">${_icoHtml}<span>${t.label}</span></button>`;
+                }).join('');
+                tipsEl.innerHTML = _railHtml;
+            }
+            // Section headers. "Story" leads (Professor / Gym / route / Fight Club);
+            // the "(N)" suffix is a count of options, which read as a step-ordinal only
+            // under the old "Next Step" name — the objective line above is the step now.
+            btn.innerHTML = _emit('quest',   'icons/story/story_gym.png?v=20260516',   'Story')
+                          + _emit('recover', 'icons/story/story_center.png?v=20260516', 'Heal &amp; Team')
                           + _emit('train',   'icons/story/story_tutor.png?v=20260516',  'Train')
                           + _emit('shop',    'icons/story/story_mart.png?v=20260516',   'Shops')
                           + _emit('utility', 'icons/story/story_route.png?v=20260516', 'Connect &amp; Bag');
@@ -43426,6 +43461,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             dept: 'Department Store', casino: 'Game Corner', dojo: 'Battle Dojo',
             evtrainer: 'EV Trainer', safari: 'Safari Zone', colress: 'Power Up',
             bag: 'Bag', party: 'Party', fanclub: 'Pokémon Fan Club',
+        };
+        // Facility key → the onclick that opens it, so the single objective line can
+        // deep-link to a pending first-visit facility. Mirrors the button onclicks in
+        // renderCityActions (one source for both keeps them from drifting apart).
+        const _FACILITY_ENTER_CALL = {
+            center: "window.StoryMode.enterPokemonCenter()", mart: "window.StoryMode.enterShop('mart')",
+            professor: "window.StoryMode.enterProfessor()", tutor: "window.StoryMode.enterTutor('moves')",
+            dojo: "window.StoryMode.enterTutor('loadout')", nature: "window.StoryMode.enterTutor('nature')",
+            evolab: "window.StoryMode.enterEvolutionLab()", dept: "window.StoryMode.enterShop('dept')",
+            casino: "window.StoryMode.enterCasino()", safari: "window.StoryMode.enterSafariZone()",
+            evtrainer: "window.StoryMode.enterEVTrainer()", fanclub: "window.StoryMode.enterFanClub()",
+            daycare: "window.StoryMode.enterDaycare()", pits: "window.StoryMode.enterPits()",
+            stoneShop: "window.StoryMode.enterStoneShop()", link: "window.StoryMode.enterLink()",
+            colress: "window.StoryMode.enterColress()", relic: "window.StoryMode.enterArtifactShop()",
+            artifacts: "window.StoryMode.enterArtifactHall()", bag: "window.StoryMode.openCityBag()",
+            party: "window.StoryMode.openPartyModal()",
         };
         function _friendlyJoin(names) {
             if (!names.length) return '';
