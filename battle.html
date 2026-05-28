@@ -51335,8 +51335,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // Status-curing berries
             'Lum Berry', 'Chesto Berry', 'Pecha Berry', 'Rawst Berry',
             'Aspear Berry', 'Cheri Berry', 'Persim Berry',
-            // HP-restoring berries
-            'Sitrus Berry', 'Oran Berry',
+            // HP-restoring berries (Aguav / Figy / Wiki / Mago join the rec fill pool so
+            // every species reaches ≥5 White-Belt picks even when its Smogon builds skew
+            // attacking-item; without these the Dojo's stage-0 list could fall short).
+            'Sitrus Berry', 'Oran Berry', 'Aguav Berry', 'Figy Berry', 'Wiki Berry', 'Mago Berry',
             // Pinch / stat berries
             'Salac Berry', 'Liechi Berry', 'Petaya Berry', 'Ganlon Berry',
             'Apicot Berry', 'Lansat Berry', 'Starf Berry', 'Custap Berry',
@@ -52095,10 +52097,27 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Evolution chain helper — return all related species (self + every
         // prevo + every evo recursively, unioning every branch). For
         // Slowpoke this surfaces both Slowbro and Slowking; for Eevee all
-        // eight Eeveelutions; for Garchomp just the Gible chain.
+        // eight Eeveelutions; for Garchomp just the Gible chain. Also walks
+        // FORM SIBLINGS — species sharing a baseSpecies (Ogerpon ↔ Ogerpon-
+        // Hearthflame / -Wellspring / -Cornerstone, Calyrex ↔ -Ice / -Shadow,
+        // Tornadus ↔ -Therian) so a sparse base form can borrow recs from a
+        // build-rich sibling, and vice-versa.
         function _txEvoChainForMon(monName) {
             const visited = new Set();
             const queue = [monName];
+            const _siblingsByBase = (() => {
+                if (typeof baseStats !== 'object' || !baseStats) return null;
+                if (_txEvoChainForMon._siblingCache) return _txEvoChainForMon._siblingCache;
+                const map = new Map();
+                for (const name of Object.keys(baseStats)) {
+                    const bs = baseStats[name];
+                    const key = (bs && bs.baseSpecies) || name;
+                    if (!map.has(key)) map.set(key, []);
+                    map.get(key).push(name);
+                }
+                _txEvoChainForMon._siblingCache = map;
+                return map;
+            })();
             while (queue.length) {
                 const n = queue.shift();
                 if (!n || visited.has(n)) continue;
@@ -52109,6 +52128,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (bs.prevo) queue.push(bs.prevo);
                 if (bs.baseSpecies) queue.push(bs.baseSpecies);
                 if (bs.changesFrom) queue.push(bs.changesFrom);
+                // Form siblings — anything that lists this mon (or my base) as its
+                // baseSpecies counts as a related form for rec-borrowing purposes.
+                if (_siblingsByBase) {
+                    const baseKey = bs.baseSpecies || n;
+                    const sibs = _siblingsByBase.get(baseKey);
+                    if (Array.isArray(sibs)) for (const s of sibs) if (s !== n) queue.push(s);
+                }
             }
             return [...visited];
         }
@@ -52224,12 +52250,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 moves: empty(), items: empty(), abilities: empty(), natures: empty(),
             };
         }
-        // #47 staged recommendation counts. Early Move Tutor (Heart Scale) surfaces
-        // 18 recommended moves; the TM Expert tier opens up to 30. Battle Dojo item
-        // recs grow 3 (White Belt — berries) → 5 (Black Belt — +mediocre staples) →
+        // #47 staged recommendation counts. Early Move Tutor (Inner Strength) surfaces
+        // 18 recommended moves; the Expert tier opens up to 30. Battle Dojo item
+        // recs grow 5 (White Belt — berries) → 5 (Black Belt — +mediocre staples) →
         // 7 (Grandmaster — +best meta items), and the candidate item tier widens in
         // lockstep. Outside an active story run (e.g. quick-play loadout editor) the
-        // full, unstaged counts apply.
+        // full, unstaged counts apply. The 5-minimum-per-tier rule mirrors the spec:
+        // "every Pokémon must always have ≥5 item suggestions fitting its role".
         function _txStageCountRule() {
             let tutorStage = 1, dojoStage = 2; // default: full pools when not in a staged run
             try {
@@ -52240,7 +52267,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
             return {
                 moves: tutorStage >= 1 ? 30 : 18,
-                items: dojoStage >= 2 ? 7 : (dojoStage >= 1 ? 5 : 3),
+                items: dojoStage >= 2 ? 7 : 5,
                 itemTierCap: dojoStage >= 2 ? 3 : (dojoStage >= 1 ? 2 : 1),
                 tutorStage, dojoStage,
                 sig: tutorStage + ':' + dojoStage,
@@ -52250,13 +52277,16 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (!monName) return _txStarredPoolEmpty(0);
             const meta = _txMetaStatsFor(monName);
             const stageRule = _txStageCountRule();
-            // At Heart Scale (tutor stage 0) the player can only teach egg + level-up moves,
-            // so the early move recs are restricted to that set (ranked by Smogon usage).
-            // The set comes from the Move Tutor's learnset cache once it's warm; the cache key
-            // carries a warm flag so a cold-cache pool and the warm (egg/level-up-filtered)
-            // pool don't collide.
-            const _eggLvlSet = (stageRule.tutorStage === 0 && typeof _tutorLearnsetCache !== 'undefined' && _tutorLearnsetCache.has(monName))
-                ? new Set((_tutorLearnsetCache.get(monName).tier1) || [])
+            // At Inner Strength (tutor stage 0) the player can only teach Natural moves
+            // (level-up + egg + transfer + evolution-learned). The rec source MUST match
+            // the gate's source (_tutorGetStagedMovePoolAsync uses `natural`) — using the
+            // narrower tier1 (L+E only) would star moves the gate accepts but recommend
+            // a strict subset, leaving transfer-only Natural moves un-starred.
+            const _natSource = (typeof _tutorLearnsetCache !== 'undefined' && _tutorLearnsetCache.has(monName))
+                ? _tutorLearnsetCache.get(monName)
+                : null;
+            const _eggLvlSet = (stageRule.tutorStage === 0 && _natSource)
+                ? new Set((_natSource.natural && _natSource.natural.length ? _natSource.natural : _natSource.tier1) || [])
                 : null;
             const _cacheSig = stageRule.sig + ':' + ((_eggLvlSet && _eggLvlSet.size) ? 1 : 0);
             // Sparse only kicks in when BOTH the species' own builds AND the
@@ -54413,8 +54443,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const _cur = (_tm.build && _tm.build.m) || [];
                         _txMovePoolCache.set(ti, await _tutorGetStagedMovePoolAsync(_tm.name, _cur));
                         // _tutorGetStagedMovePoolAsync just warmed the learnset cache, so this is free.
-                        const _learn = _tutorLearnsetCache.get(_tm.name) || { tier1: [] };
-                        const _t1 = new Set([..._tutorGetPoolForMon(_tm.name).moves, ...(_learn.tier1 || [])]);
+                        // Stage-0 acceptance set MUST match what the staged pool surfaces (Natural —
+                        // L+E+V), otherwise a transfer-only Natural move is shown in the picker
+                        // but the change handler rejects it as "needs a Heart Scale".
+                        const _learn = _tutorLearnsetCache.get(_tm.name) || { natural: [], tier1: [] };
+                        const _naturalSet = (_learn.natural && _learn.natural.length)
+                            ? _learn.natural
+                            : (_learn.tier1 || []);
+                        const _t1 = new Set([..._tutorGetPoolForMon(_tm.name).moves, ..._naturalSet]);
                         _cur.forEach(m => { if (m) _t1.add(m.split('/')[0]); });
                         _txMoveTier1Cache.set(ti, _t1);
                     } catch (e) {
