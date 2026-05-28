@@ -78,13 +78,18 @@ test('signature ace floors at the band midpoint', () => {
   assert.ok(ace.min >= 17, `ace C4 min ${ace.min} >= 17 (midpoint of 15-20)`);
 });
 
-test('trainer difficulty step mapping (basic 0 · gym/elite 1 · leader/rival/E4 2)', () => {
+test('trainer difficulty step mapping (basic 0 · gym/elite/leader/rival 1 · league 2)', () => {
   assert.equal(ST.trainerDifficultyStep('Basic Trainer'), 0);
   assert.equal(ST.trainerDifficultyStep('Gym Trainer 1'), 1);
   assert.equal(ST.trainerDifficultyStep('Gym Trainer 2'), 1);
   assert.equal(ST.trainerDifficultyStep('Elite Trainer'), 1);
-  assert.equal(ST.trainerDifficultyStep('Gym Leader 3'), 2);
-  assert.equal(ST.trainerDifficultyStep('Rival'), 2);
+  // Phase 3.7d: Gym Leader + Rival nerfed from +2 -> +1 to tighten player-vs-leader
+  // parity (was reading the C+2 IV/EV band — too steep a gap to a wild-trained player).
+  assert.equal(ST.trainerDifficultyStep('Gym Leader 3'), 1);
+  assert.equal(ST.trainerDifficultyStep('Rival'), 1);
+  // End-game league untouched at +2 — peak-difficulty spike is the design intent.
   assert.equal(ST.trainerDifficultyStep('Champion'), 2);
   assert.equal(ST.trainerDifficultyStep('E1'), 2);
+  assert.equal(ST.trainerDifficultyStep('Mystery Figure'), 2);
+  assert.equal(ST.trainerDifficultyStep('Victory Road'), 2);
 });

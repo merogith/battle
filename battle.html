@@ -30341,8 +30341,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // with BOTH stage and trainer-type difficulty).
         function _trainerDifficultyStep(eventType) {
             const e = String(eventType || '');
+            // Endgame league untouched at +2 — E4 / Champion / Mystery / Victory Road must
+            // remain the peak-difficulty spike (and at C8+ the table clamps to max anyway).
             if (e === 'Champion' || e === 'Mystery Figure' || e === 'Victory Road' || /^E[1-4]$/.test(e)) return 2;
-            if (/^Gym Leader/.test(e) || e === 'Rival') return 2;
+            // Gym Leaders + Rival: slight nerf from +2 -> +1 to tighten player-vs-leader
+            // parity (was reading the C+2 IV/EV band — a Leader at C5 hit C7's 31/508
+            // band, making the gap to a wild-trained player too steep). The "boss feel"
+            // still comes from grade rolls + tier (items/abilities) + signature aces.
+            if (/^Gym Leader/.test(e) || e === 'Rival') return 1;
             if (/Gym Trainer/.test(e) || e === 'Elite Trainer') return 1;
             if (e === 'Basic Trainer') return 0;
             return 1;

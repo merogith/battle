@@ -136,7 +136,8 @@ function rollPlayerTeam(picks, tier, seed, city) {
 function rollEnemyTeam(stage, seed) {
   eng.seedRng(seed);
   if (stage.event === 'Mystery Figure') {
-    return E.rollMysteryFigure ? E.rollMysteryFigure(6, GENS) : null;
+    // rollMysteryFigure is exposed on __storyTest (the dedicated final-boss roll).
+    return (ST && ST.rollMysteryFigure) ? ST.rollMysteryFigure(6, GENS) : null;
   }
   // rollTrainerTeam derives _foeCity from the storyRowIdx ARG (NOT sm.eventIndex),
   // and city-keyed foe gates (item tier cap, IV band, hidden-ability allowance, EV
