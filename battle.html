@@ -10057,6 +10057,15 @@
         let SAFARI_BAIT_FLEE_MULT  = 0.55;
         let SAFARI_ROCK_CATCH_MULT = 1.65;
         let SAFARI_ROCK_FLEE_MULT  = 1.70;
+        // Shop catalogs — generated from docs/story-design/story-shops.csv by
+        // scripts/build/generate-shop-catalogs.mjs into data/story/shops.json,
+        // loaded at boot. Edit the CSV (single source of truth), re-run the
+        // generator, commit both. Derived sets recomputed by the loader.
+        let POKEMART_ITEMS = [];
+        let DEPT_ITEMS = [];
+        let STONE_SHOP_ITEMS = [];
+        let STONE_SHOP_ITEM_IDS = new Set();
+        let STORY_BATTLE_BAG_SHOP_IDS = new Set();
         // Mirror to window so test harnesses + other scripts can inspect the
         // populated objects without re-declaring. Stable reference: loadGameData
         // uses Object.assign / .push to mutate in place, so window.X stays valid.
@@ -10072,6 +10081,11 @@
             window._CATCH_BALL_MULT = _CATCH_BALL_MULT;
             window._CATCH_RATE_BY_GRADE = _CATCH_RATE_BY_GRADE;
             window._CATCH_FLEE_BY_GRADE = _CATCH_FLEE_BY_GRADE;
+            window.POKEMART_ITEMS = POKEMART_ITEMS;
+            window.DEPT_ITEMS = DEPT_ITEMS;
+            window.STONE_SHOP_ITEMS = STONE_SHOP_ITEMS;
+            window.STONE_SHOP_ITEM_IDS = STONE_SHOP_ITEM_IDS;
+            window.STORY_BATTLE_BAG_SHOP_IDS = STORY_BATTLE_BAG_SHOP_IDS;
         }
 
         async function loadGameData() {
@@ -10095,10 +10109,10 @@
                     fetch('data/items.json').then(r => r.json()),
                     fetch('data/abilities.json').then(r => r.json())
                 ]);
-            // === DIALOGUE + TYPE-CHART + BALL-MATH LOAD ===
-                _setLoadingText('Loading dialogue, type chart & ball math (5/5)…');
+            // === DIALOGUE + TYPE-CHART + BALL-MATH + SHOPS LOAD ===
+                _setLoadingText('Loading dialogue, type chart, shops (5/5)…');
                 try {
-                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _tc, _bm] = await Promise.all([
+                    const [_lvl, _lbr, _eel, _cvl, _tq, _tqbn, _cgq, _tc, _bm, _sh] = await Promise.all([
                         fetch('data/dialogue/leader-victory-lines.json').then(r => r.json()),
                         fetch('data/dialogue/leader-badge-reflections.json').then(r => r.json()),
                         fetch('data/dialogue/elite-victory-lines.json').then(r => r.json()),
@@ -10107,7 +10121,8 @@
                         fetch('data/dialogue/trainer-quotes-by-name.json').then(r => r.json()),
                         fetch('data/dialogue/city-guide-quotes.json').then(r => r.json()),
                         fetch('data/type-chart.json').then(r => r.json()),
-                        fetch('data/story/ball-math.json').then(r => r.json())
+                        fetch('data/story/ball-math.json').then(r => r.json()),
+                        fetch('data/story/shops.json').then(r => r.json())
                     ]);
                     // Use Object.assign / push so any code that captured an
                     // earlier reference (e.g. window.typeChart at line 14720)
@@ -10145,8 +10160,24 @@
                         if (typeof _saf.rockCatchMult   === 'number') SAFARI_ROCK_CATCH_MULT    = _saf.rockCatchMult;
                         if (typeof _saf.rockFleeMult    === 'number') SAFARI_ROCK_FLEE_MULT     = _saf.rockFleeMult;
                     }
+                    // Shops: push items into the lexically-scoped arrays so any
+                    // captured reference (gameplay code reads via closure) sees
+                    // the same array. Derived sets are then rebuilt.
+                    if (_sh && typeof _sh === 'object') {
+                        POKEMART_ITEMS.length = 0;
+                        if (Array.isArray(_sh.pokemart)) POKEMART_ITEMS.push(..._sh.pokemart);
+                        DEPT_ITEMS.length = 0;
+                        if (Array.isArray(_sh.dept))     DEPT_ITEMS.push(..._sh.dept);
+                        STONE_SHOP_ITEMS.length = 0;
+                        if (Array.isArray(_sh.stone))    STONE_SHOP_ITEMS.push(..._sh.stone);
+                        STONE_SHOP_ITEM_IDS.clear();
+                        for (const r of STONE_SHOP_ITEMS) STONE_SHOP_ITEM_IDS.add(r.id);
+                        STORY_BATTLE_BAG_SHOP_IDS.clear();
+                        for (const r of POKEMART_ITEMS) { if (r.battleBag !== false) STORY_BATTLE_BAG_SHOP_IDS.add(r.id); }
+                        for (const r of DEPT_ITEMS)     { if (r.battleBag !== false) STORY_BATTLE_BAG_SHOP_IDS.add(r.id); }
+                    }
                 } catch (e) {
-                    console.error('[dialogue/type-chart/ball-math] load failed:', e && (e.message || e));
+                    console.error('[dialogue/type-chart/ball-math/shops] load failed:', e && (e.message || e));
                 }
             // === END DIALOGUE + TYPE-CHART LOAD ===
                 const speciesJSON = speciesJSONOrig['9'] || {};
@@ -32436,89 +32467,14 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             return pool[Math.floor(storyRngNext() * pool.length)];
         }
 
-        // Shop item definitions — Pokémart
-        // Heal gradient (post-overhaul, X-item rebalance pass):
-        //   Potion 200 → Super 500 → Hyper 1000 → Max 1500 → Full Restore 2000.
-        //   PP: Ether 400 → Elixir 1000 → Max Elixir 1500.
-        // X items raised to 1000G so they sit at parity with Hyper Potion —
-        // the player choice "+2 stat for the fight" vs "heal 120 HP" has the
-        // same gold cost, fixing the X-cheese economy where benching a mon
-        // to set up +6 was strictly cheaper than healing through damage.
-        const POKEMART_ITEMS = [
-          { id:'pokeBall',      name:'Poké Ball',     price:300,  desc:'A standard ball for catching wild Pokémon.', kind:'ball', ballKey:'poke', battleBag:false },
-          { id:'potion',        name:'Potion',        price:200,  desc:'Restores 20 HP.',                     effect:'heal20' },
-          { id:'superPotion',   name:'Super Potion',  price:500,  desc:'Restores 60 HP.',                     effect:'heal60' },
-          { id:'hyperPotion',   name:'Hyper Potion',  price:1000, desc:'Restores 120 HP.',                    effect:'heal120' },
-          { id:'maxPotion',     name:'Max Potion',    price:1500, desc:'Fully restores HP of one Pokémon.',   effect:'healFull' },
-          { id:'fullRestore',   name:'Full Restore',  price:2000, desc:'Fully restores HP & cures status.',   effect:'fullRestore' },
-          { id:'fullHeal',      name:'Full Heal',     price:300,  desc:'Cures all status conditions.',        effect:'cureStatus' },
-          { id:'ether',         name:'Ether',         price:400,  desc:'Restores 10 PP of one move.',         effect:'etherSingle' },
-          { id:'elixir',        name:'Elixir',        price:1000, desc:'Restores 10 PP of every move.',       effect:'elixirAll' },
-          { id:'maxElixir',     name:'Max Elixir',    price:1500, desc:'Fully restores PP of all moves.',     effect:'elixirFull' },
-          { id:'xAttack',       name:'X Attack',      price:1000, desc:'+2 Attack stages for this battle.',         effect:'xAtk' },
-          { id:'xDefense',      name:'X Defense',     price:1000, desc:'+2 Defense stages for this battle.',        effect:'xDef' },
-          { id:'xSpAtk',        name:'X Sp. Atk',     price:1000, desc:'+2 Sp. Attack stages for this battle.',     effect:'xSpA' },
-          { id:'xSpDef',        name:'X Sp. Def',     price:1000, desc:'+2 Sp. Defense stages for this battle.',    effect:'xSpD' },
-          { id:'xSpeed',        name:'X Speed',       price:1000, desc:'+2 Speed stages for this battle.',          effect:'xSpe' },
-          { id:'xAccuracy',     name:'X Accuracy',    price:1000, desc:'+2 Accuracy stages for this battle.',       effect:'xAcc' },
-          { id:'direHit',       name:'Dire Hit',      price:400,  desc:'Raises critical hit ratio.',          effect:'direHit' },
-          { id:'guardSpec',     name:'Guard Spec.',   price:450,  desc:'Prevents stat drops for 5 turns.',   effect:'guardSpec' },
-        ];
-        const DEPT_ITEMS = [
-          { id:'greatBall',     name:'Great Ball',    price:1000, desc:'A better ball. 1.5× catch rate vs Poké Ball.', kind:'ball', ballKey:'great', battleBag:false },
-          { id:'revivalHerb',   name:'Revival Herb',  price:1200, desc:'Bitter remedy: revives a fainted Pokémon to 30% HP.', effect:'revive30' },
-          { id:'revive',        name:'Revive',        price:2500, desc:'Revives a fainted Pokémon to 50% HP.', effect:'revive50' },
-          { id:'maxRevive',     name:'Max Revive',    price:4000, desc:'Revives a fainted Pokémon to full HP.', effect:'reviveFull' },
-          { id:'sunOrb',        name:'Sun Orb',       price:1000, desc:'Starts Harsh Sunlight for 5 turns on battle entry.', effect:'weatherSun' },
-          { id:'rainOrb',       name:'Rain Orb',      price:1000, desc:'Starts Rain for 5 turns on battle entry.', effect:'weatherRain' },
-          { id:'hailOrb',       name:'Hail Orb',      price:1000, desc:'Starts Hail for 5 turns on battle entry.', effect:'weatherHail' },
-          { id:'sandOrb',       name:'Sand Orb',      price:1000, desc:'Starts Sandstorm for 5 turns on battle entry.', effect:'weatherSand' },
-          { id:'electricOrb',   name:'Electric Orb',  price:1000, desc:'Starts Electric Terrain for 5 turns on battle entry.', effect:'terrainElectric' },
-          { id:'grassyOrb',     name:'Grassy Orb',    price:1000, desc:'Starts Grassy Terrain for 5 turns on battle entry.', effect:'terrainGrassy' },
-          { id:'psychicOrb',    name:'Psychic Orb',   price:1000, desc:'Starts Psychic Terrain for 5 turns on battle entry.', effect:'terrainPsychic' },
-          { id:'mistyOrb',      name:'Misty Orb',     price:1000, desc:'Starts Misty Terrain for 5 turns on battle entry.', effect:'terrainMisty' },
-          { id:'emergencyTeleporter', name:'Emergency Teleporter', price:800, desc:'Bypasses trapping effects once per battle.', effect:'teleport' },
-          { id:'evResetCharm',  name:'EV Reset Charm', price:3000, desc:"Wipes all battle training (EVs) from one Pokémon. Use when you've trained the wrong stats.", effect:'evReset', battleBag:false },
-        ];
-        // Stone Emporium catalog — new facility introduced at City 2 (see docs/EVOLUTION_FLOW_REBUILD.md §4).
-        // Stones and trade-method items the Stone Sage consumes to perform evolutions
-        // that previously absorbed the requirement into the gold fee. Flat 500G each
-        // so the early-game Sage flow stays cheap; the Stonewise Token voucher
-        // (granted at City 2 entry) lets the player redeem one stone for free.
-        // These items live in sm.inventory.<id> as integer counts; they are NOT
-        // held items and never enter the battle bag.
-        const STONE_SHOP_ITEMS = [
-          // Evolution stones (Stone Sage stone-evo requirements)
-          { id:'fireStone',     name:'Fire Stone',     price:500, kind:'stone', stone:'Fire Stone',     desc:'A stone that radiates heat. Used to evolve certain Pokémon.' },
-          { id:'waterStone',    name:'Water Stone',    price:500, kind:'stone', stone:'Water Stone',    desc:'A clear, cool stone. Used to evolve certain Pokémon.' },
-          { id:'thunderStone',  name:'Thunder Stone',  price:500, kind:'stone', stone:'Thunder Stone',  desc:'A stone that crackles with energy. Used to evolve certain Pokémon.' },
-          { id:'leafStone',     name:'Leaf Stone',     price:500, kind:'stone', stone:'Leaf Stone',     desc:'A stone with a leaf pattern. Used to evolve certain Pokémon.' },
-          { id:'moonStone',     name:'Moon Stone',     price:500, kind:'stone', stone:'Moon Stone',     desc:'A stone that glows under moonlight. Used to evolve certain Pokémon.' },
-          { id:'sunStone',      name:'Sun Stone',      price:500, kind:'stone', stone:'Sun Stone',      desc:'A stone shaped like the sun. Used to evolve certain Pokémon.' },
-          { id:'iceStone',      name:'Ice Stone',      price:500, kind:'stone', stone:'Ice Stone',      desc:'A stone with an icy aura. Used to evolve certain Pokémon.' },
-          { id:'shinyStone',    name:'Shiny Stone',    price:500, kind:'stone', stone:'Shiny Stone',    desc:'A radiant stone. Used to evolve certain Pokémon.' },
-          { id:'duskStone',     name:'Dusk Stone',     price:500, kind:'stone', stone:'Dusk Stone',     desc:'A stone full of dark night. Used to evolve certain Pokémon.' },
-          { id:'dawnStone',     name:'Dawn Stone',     price:500, kind:'stone', stone:'Dawn Stone',     desc:'A stone that sparkles like the dawn. Used to evolve certain Pokémon.' },
-          // Trade-item evolutions (Stone Sage trade-evo requirements)
-          { id:'metalCoat',     name:'Metal Coat',     price:500, kind:'tradeItem', tradeItem:'Metal Coat',       desc:'A metallic film. Held while traded, it triggers evolution.' },
-          { id:'dragonScale',   name:'Dragon Scale',   price:500, kind:'tradeItem', tradeItem:'Dragon Scale',     desc:'A tough scale. Held while traded, it triggers evolution.' },
-          { id:'kingsRock',     name:"King's Rock",    price:500, kind:'tradeItem', tradeItem:"King's Rock",      desc:'A regal stone. Held while traded, it triggers evolution.' },
-          { id:'upGrade',       name:'Up-Grade',       price:500, kind:'tradeItem', tradeItem:'Up-Grade',         desc:'A peculiar disc. Held while traded, it triggers evolution.' },
-          { id:'dubiousDisc',   name:'Dubious Disc',   price:500, kind:'tradeItem', tradeItem:'Dubious Disc',     desc:'A suspicious disc. Held while traded, it triggers evolution.' },
-          { id:'protector',     name:'Protector',      price:500, kind:'tradeItem', tradeItem:'Protector',        desc:'A heavy plate. Held while traded, it triggers evolution.' },
-          { id:'electirizer',   name:'Electirizer',    price:500, kind:'tradeItem', tradeItem:'Electirizer',      desc:'A boxed electric charge. Held while traded, it triggers evolution.' },
-          { id:'magmarizer',    name:'Magmarizer',     price:500, kind:'tradeItem', tradeItem:'Magmarizer',       desc:'A boxed magma core. Held while traded, it triggers evolution.' },
-          { id:'reaperCloth',   name:'Reaper Cloth',   price:500, kind:'tradeItem', tradeItem:'Reaper Cloth',     desc:'A torn cloth. Held while traded, it triggers evolution.' },
-          { id:'deepSeaTooth',  name:'Deep Sea Tooth', price:500, kind:'tradeItem', tradeItem:'Deep Sea Tooth',   desc:'A fang from the deep. Held while traded, it triggers evolution.' },
-          { id:'deepSeaScale',  name:'Deep Sea Scale', price:500, kind:'tradeItem', tradeItem:'Deep Sea Scale',   desc:'A scale from the deep. Held while traded, it triggers evolution.' },
-          { id:'prismScale',    name:'Prism Scale',    price:500, kind:'tradeItem', tradeItem:'Prism Scale',      desc:'A rainbow scale. Held while traded, it triggers evolution.' },
-          { id:'sachet',        name:'Sachet',         price:500, kind:'tradeItem', tradeItem:'Sachet',           desc:'A fragrant pouch. Held while traded, it triggers evolution.' },
-          { id:'whippedDream',  name:'Whipped Dream',  price:500, kind:'tradeItem', tradeItem:'Whipped Dream',    desc:'A sweet cream. Held while traded, it triggers evolution.' },
-        ];
-        const STONE_SHOP_ITEM_IDS = new Set(STONE_SHOP_ITEMS.map(r => r.id));
-        const STORY_BATTLE_BAG_SHOP_IDS = new Set(
-            [...POKEMART_ITEMS, ...DEPT_ITEMS].filter(row => row.battleBag !== false).map(row => row.id)
-        );
+        // POKEMART_ITEMS / DEPT_ITEMS / STONE_SHOP_ITEMS — declared near
+        // loadGameData (early-let block) and populated at boot from
+        // data/story/shops.json. CSV at docs/story-design/story-shops.csv is
+        // the editing surface; scripts/build/generate-shop-catalogs.mjs
+        // regenerates the JSON.
+        //
+        // STONE_SHOP_ITEM_IDS + STORY_BATTLE_BAG_SHOP_IDS are derived sets,
+        // also reset and repopulated by the loader once the three arrays land.
 
         // ── VITAMINS (IV TRAINING ITEMS) ─────────────────────────────────
         // Drop-only — earned from gym leaders, milestones, and the Pokémon
