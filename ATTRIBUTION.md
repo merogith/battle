@@ -1,0 +1,51 @@
+# Asset Attribution & Licensing
+
+This is a **non-commercial fan project**. Pokémon and all related names, sprites,
+audio, and imagery are **© Nintendo / The Pokémon Company / Creatures Inc. /
+GAME FREAK Inc.** This project is not affiliated with or endorsed by any of them.
+
+The "licenses" noted below cover each upstream project's **compilation, code, and
+data** (and, for community-drawn art, the original artwork) — they do **not** clear
+the underlying Pokémon intellectual property. Assets are used here on the
+community-standard footing for fan games. Do not reuse any of this in a commercial
+product.
+
+If you are a rights holder and want something removed, please open an issue.
+
+---
+
+## Visual assets
+
+| Asset set (in-repo path) | Upstream source | License of wrapper | Notes |
+|---|---|---|---|
+| Battle sprites — front/shiny (`sprites/gen5ani`, `sprites/gen5ani-shiny`) | Pokémon Showdown `ani` set, consumed via [PokeAPI/sprites](https://github.com/PokeAPI/sprites) | CC0 1.0 (compilation; art © TPC) | Community-made BW-style animations. |
+| Battle sprites — back/back-shiny (`sprites/gen5ani-back`, `sprites/gen5ani-back-shiny`) | [PokeAPI/sprites](https://github.com/PokeAPI/sprites) `…/other/showdown/back[/shiny]/` | CC0 1.0 (compilation; art © TPC) | Vendored via `scripts/download-back-sprites.mjs`; dex-num resolved with `@pkmn/dex`. |
+| Trainer sprites (`sprites/trainers`) | Pokémon Showdown trainer sprites | "licensing being determined" (Smogon) | Fan/community resource. |
+| Item icons (`sprites/items`) | Pokémon Showdown itemicons | as above | |
+| Item / ball icons (`sprites/pokesprite`) | [msikma/pokesprite](https://github.com/msikma/pokesprite) | **MIT** (code/data); sprite pixels © TPC | See `sprites/pokesprite/UPSTREAM_LICENSE.md`. |
+| Battle & menu backgrounds (`sprites/backgrounds`) | Generated for this project (AI image generation) | Project-owned | Prompts in `sprites/backgrounds/battle/GEMINI_PROMPTS.md`. |
+| Story scene backgrounds (`sprites/story/backgrounds`) | Authored for this project | Project-owned | |
+| Story UI icons (`icons/story`) | Authored for this project | Project-owned | |
+| UI font (`fonts/press-start-2p.woff2`) | [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) (CodeMan38) | **SIL Open Font License 1.1** | See `fonts/OFL.txt`. |
+
+## Audio assets
+
+| Asset set (in-repo path) | Upstream source | License | Notes |
+|---|---|---|---|
+| Pokémon cries (`music/cries`) | Showdown / PokémonDB lineage | © TPC (fan-ripped) | Community-standard; not openly licensed. |
+| Move SFX (`music/battle_anims`, `music/moves`) | Showdown move SFX | © TPC (fan-ripped) | |
+| UI SFX (`music/ui_sfx`) | Project / mixed | see per-file where applicable | |
+| Background & theme music (`music/background`, `music/themes`) | Project-supplied | Project-managed | Re-encoded to 128 kbps for size; see hygiene notes. |
+
+## Data / tooling
+
+| Dependency | License | Use |
+|---|---|---|
+| [@pkmn/dex](https://github.com/pkmn/ps) | MIT | Pokémon name → National Dex number mapping for sprite vendoring. |
+| [PokeAPI/sprites](https://github.com/PokeAPI/sprites) | CC0 1.0 | Sprite source (compilation). |
+
+---
+
+*Underlying Pokémon imagery and audio remain the property of their respective
+rights holders. This list is maintained on a best-effort basis as assets are
+added; see the per-source `UPSTREAM_LICENSE.md` files where present.*
