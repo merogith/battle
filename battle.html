@@ -4968,74 +4968,147 @@
            Vitamins + Vouchers.
            ───────────────────────────────────────────────────────────── */
         #screen-story-casino {
-            --gc-felt:      #ead4a0;  /* warm beige tabletop */
+            /* GBA-era Game Corner palette — Celadon/Mauville energy:
+               crimson carpet, brass cabinets, neon trim, mascot pastels.   */
+            --gc-felt:      #ead4a0;
             --gc-felt-dark: #c4a368;
             --gc-felt-deep: #8d6e3c;
-            --gc-trim:      #5b2929;  /* maroon woodwork */
-            --gc-trim-deep: #3a1414;
-            --gc-brass:     #d4a946;  /* polished gold */
-            --gc-brass-lt:  #fde79e;
-            --gc-cream:     #fef8d0;  /* paper / wallpaper */
-            --gc-ink:       #2c1c14;  /* near-black text */
+            --gc-carpet:      #c41e3a; /* vivid casino-floor red */
+            --gc-carpet-dark: #82122a;
+            --gc-carpet-deep: #4a0816;
+            --gc-trim:      #5a1018;   /* deep red trim (was muddy maroon) */
+            --gc-trim-deep: #2c0608;
+            --gc-brass:     #ffc83a;   /* punchy slot-cabinet gold */
+            --gc-brass-lt:  #ffe98a;
+            --gc-brass-deep:#b07300;
+            --gc-cream:     #fff5d0;   /* warm cream marquee panel */
+            --gc-ink:       #2c1c14;
             --gc-ink-soft:  #5a3a2a;
-            --gc-pink:      #f5b5c8;  /* Clefairy accent */
-            --gc-pink-dark: #c97090;
-            --gc-mint:      #b4e0b0;  /* highlight for wins */
-            --gc-rose:      #c44848;  /* lose accent */
+            --gc-pink:      #ff7aac;   /* Clefairy/Jiggly pink — saturated */
+            --gc-pink-dark: #c5316b;
+            --gc-neon-cyan: #3ad6ff;   /* Voltorb glow */
+            --gc-neon-purple:#b663ff;
+            --gc-mint:      #6ee07c;   /* vibrant win highlight */
+            --gc-rose:      #e63946;
+            --gc-felt-table:#2e8f5c;   /* deep roulette baize */
             background:
-                radial-gradient(ellipse at top, rgba(212, 169, 70, 0.22), transparent 70%),
-                linear-gradient(180deg, var(--gc-trim) 0%, var(--gc-trim-deep) 100%);
+                radial-gradient(ellipse at top, rgba(255, 200, 58, 0.32), transparent 70%),
+                linear-gradient(180deg, var(--gc-carpet) 0%, var(--gc-carpet-dark) 60%, var(--gc-carpet-deep) 100%);
         }
 
-        /* Header strip — cream wallpaper, maroon trim. */
+        /* Header strip — red carpet entrance with chasing marquee bulbs along
+           the underline. Title glows like a brass nameplate. */
         .casino-header-row {
+            position: relative;
             display: flex; justify-content: space-between; align-items: center;
-            gap: 8px; padding: 10px 14px;
-            background: linear-gradient(180deg, var(--gc-trim) 0%, var(--gc-trim-deep) 100%);
+            gap: 8px; padding: 10px 14px 14px;
+            background:
+                linear-gradient(180deg, var(--gc-carpet) 0%, var(--gc-carpet-dark) 100%),
+                repeating-linear-gradient(45deg, transparent 0 8px, rgba(0,0,0,0.07) 8px 9px);
             border-bottom: 3px solid var(--gc-brass);
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.18),
+                inset 0 -8px 14px rgba(0,0,0,0.25);
             flex-shrink: 0; flex-wrap: wrap;
+        }
+        /* Chasing-bulb marquee along the header's bottom edge. */
+        .casino-header-row::after {
+            content: '';
+            position: absolute; left: 0; right: 0; bottom: -3px;
+            height: 6px;
+            background:
+                radial-gradient(circle at 6px 3px, var(--gc-brass-lt) 0 2.5px, transparent 3px) 0 0/12px 6px repeat-x,
+                radial-gradient(circle at 6px 3px, var(--gc-brass-deep) 0 2.5px, transparent 3px) 0 0/12px 6px repeat-x;
+            background-blend-mode: normal, multiply;
+            mask: radial-gradient(circle at 6px 3px, #000 2.4px, transparent 2.7px) 0 0/12px 6px repeat-x;
+            -webkit-mask: radial-gradient(circle at 6px 3px, #000 2.4px, transparent 2.7px) 0 0/12px 6px repeat-x;
+            animation: casinoMarqueeBulbs 1.4s linear infinite;
+            pointer-events: none;
+            z-index: 2;
+        }
+        @keyframes casinoMarqueeBulbs {
+            0%   { filter: hue-rotate(0deg) brightness(1.0); background-position: 0 0, 0 0; }
+            50%  { filter: brightness(1.35) drop-shadow(0 0 4px var(--gc-brass)); background-position: 6px 0, -6px 0; }
+            100% { filter: hue-rotate(0deg) brightness(1.0); background-position: 12px 0, 0 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .casino-header-row::after { animation: none; }
         }
         .casino-header-title {
             color: var(--gc-brass-lt) !important;
             font-size: 14px;
             flex: 1 1 120px; min-width: 0;
-            display: flex; align-items: center; gap: 6px;
-            text-shadow: 0 1px 0 rgba(0,0,0,0.5);
-            letter-spacing: 0.08em;
+            display: flex; align-items: center; gap: 8px;
+            text-shadow: 0 1px 0 rgba(0,0,0,0.6), 0 0 8px rgba(255,200,58,0.45);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
         }
         .casino-header-mascot {
-            font-size: 18px; line-height: 1;
-            filter: drop-shadow(0 1px 0 rgba(0,0,0,0.4));
+            font-size: 20px; line-height: 1;
+            filter: drop-shadow(0 0 6px var(--gc-brass)) drop-shadow(0 1px 0 rgba(0,0,0,0.5));
+            animation: casinoHeaderMascotBob 2.2s ease-in-out infinite;
+        }
+        @keyframes casinoHeaderMascotBob {
+            0%, 100% { transform: translateY(0) rotate(-3deg); }
+            50%      { transform: translateY(-1px) rotate(3deg); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .casino-header-mascot { animation: none; }
         }
         .casino-header-right {
             display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
         }
 
-        /* Gold pill — brass face on dark trim. */
+        /* Gold pill — brass face on dark trim, with a steady idle gleam. */
         .casino-coin-pill {
             display: inline-flex; align-items: center; gap: 6px;
-            padding: 4px 10px;
+            padding: 5px 12px;
             font-family: var(--battle-font);
             font-size: 12px; font-weight: bold;
             color: var(--gc-ink);
-            background: linear-gradient(180deg, var(--gc-brass-lt) 0%, var(--gc-brass) 100%);
+            background:
+                linear-gradient(180deg, var(--gc-brass-lt) 0%, var(--gc-brass) 50%, var(--gc-brass-deep) 100%);
             border: 2px solid var(--gc-trim-deep);
             border-radius: 0;
-            letter-spacing: 0.04em;
-            box-shadow: 1px 1px 0 0 var(--gc-trim-deep);
+            letter-spacing: 0.05em;
+            box-shadow:
+                1px 1px 0 0 var(--gc-trim-deep),
+                inset 0 1px 0 rgba(255,255,255,0.5),
+                0 0 8px rgba(255,200,58,0.35);
+            position: relative;
+            overflow: hidden;
         }
-        .casino-coin-pill.delta-up   { animation: casinoPillUp 0.5s ease-out; }
-        .casino-coin-pill.delta-down { animation: casinoPillDown 0.5s ease-out; }
+        /* Slow horizontal gleam to make the pill feel alive. */
+        .casino-coin-pill::after {
+            content: '';
+            position: absolute; top: 0; left: -40%; width: 30%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+            transform: skewX(-20deg);
+            animation: casinoPillGleam 3.6s ease-in-out infinite;
+            pointer-events: none;
+        }
+        @keyframes casinoPillGleam {
+            0%, 70%  { left: -40%; }
+            85%      { left: 110%; }
+            100%     { left: 110%; }
+        }
+        .casino-coin-pill.delta-up   { animation: casinoPillUp 0.55s ease-out; }
+        .casino-coin-pill.delta-down { animation: casinoPillDown 0.55s ease-out; }
         @keyframes casinoPillUp {
             0%   { transform: scale(1); filter: brightness(1); }
-            40%  { transform: scale(1.18); filter: brightness(1.4) drop-shadow(0 0 8px var(--gc-brass)); }
+            30%  { transform: scale(1.22); filter: brightness(1.5) drop-shadow(0 0 12px var(--gc-brass)); }
+            65%  { transform: scale(1.05); filter: brightness(1.15); }
             100% { transform: scale(1); filter: brightness(1); }
         }
         @keyframes casinoPillDown {
             0%   { transform: translateX(0); }
-            25%  { transform: translateX(-3px); filter: brightness(0.7) sepia(0.5); }
-            75%  { transform: translateX(3px); }
+            25%  { transform: translateX(-3px); filter: brightness(0.65) hue-rotate(-15deg); }
+            55%  { transform: translateX(3px); }
+            85%  { transform: translateX(-2px); }
             100% { transform: translateX(0); filter: brightness(1); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .casino-coin-pill::after { animation: none; }
         }
 
         /* Stats button — small brass tab in the header. */
@@ -5097,168 +5170,360 @@
         }
         .casino-stats-col.casino-stats-totals h4 { color: var(--gc-pink-dark); border-bottom-color: var(--gc-pink); }
 
-        /* Prize popup host — fixed under the header. */
+        /* Prize host — live region anchor inside the screen flow. The actual
+           celebration card is position:fixed inside it so the announcement
+           pops in the center of the viewport. */
         .casino-prize-host {
             position: relative;
             min-height: 0;
             pointer-events: none;
             z-index: 5;
         }
+        /* Centered celebration card — what you won is big and impossible to miss. */
         .casino-prize-banner {
-            margin: 6px 14px;
-            padding: 8px 10px;
-            background: linear-gradient(180deg, var(--gc-cream) 0%, #ffe79c 100%);
-            border: 3px solid var(--gc-brass);
-            border-radius: 0;
+            position: fixed; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+            z-index: 9100;
+            pointer-events: auto;          /* tap to dismiss early */
+            cursor: pointer;
+            animation: casinoPrizeFadeIn 0.25s ease-out forwards, casinoPrizeFadeOut 0.4s ease-in 2.4s forwards;
+        }
+        .casino-prize-banner.tier-big     { animation-delay: 0s, 3.0s; }
+        .casino-prize-banner.tier-jackpot { animation-delay: 0s, 4.4s; }
+        @keyframes casinoPrizeFadeIn  { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes casinoPrizeFadeOut { from { opacity: 1; } to { opacity: 0; transform: scale(0.92); } }
+
+        .casino-prize-backdrop {
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(circle at center, rgba(255,200,58,0.18) 0%, rgba(0,0,0,0.55) 65%),
+                rgba(0,0,0,0.25);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+        }
+
+        .casino-prize-card {
+            position: relative;
+            display: flex; flex-direction: column; align-items: center; gap: 14px;
+            width: min(460px, 92vw);
+            padding: 22px 26px 18px;
+            background:
+                radial-gradient(ellipse at top, rgba(255,232,138,0.6), transparent 70%),
+                linear-gradient(180deg, var(--gc-cream) 0%, #ffe79c 100%);
+            border: 4px solid var(--gc-brass);
             box-shadow:
-                2px 2px 0 0 var(--gc-trim-deep),
-                0 0 0 1px var(--gc-trim-deep) inset,
-                0 0 18px rgba(212, 169, 70, 0.55);
-            animation: casinoPrizeSlide 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, casinoPrizeFade 0.6s ease-in 2s forwards;
-            transform-origin: top center;
+                0 0 0 2px var(--gc-trim-deep) inset,
+                0 16px 38px rgba(0,0,0,0.55),
+                0 0 48px var(--gc-brass);
+            animation: casinoPrizePop 0.55s cubic-bezier(0.34,1.56,0.64,1) forwards;
         }
-        .casino-prize-banner.tier-big {
-            background: linear-gradient(180deg, var(--gc-pink) 0%, #ffd1de 100%);
+        @keyframes casinoPrizePop {
+            0%   { transform: scale(0.25) rotate(-7deg); opacity: 0; }
+            70%  { transform: scale(1.08) rotate(2deg);  opacity: 1; }
+            100% { transform: scale(1) rotate(0deg);     opacity: 1; }
+        }
+        .casino-prize-banner.tier-big .casino-prize-card {
+            background:
+                radial-gradient(ellipse at top, rgba(255,255,255,0.55), transparent 70%),
+                linear-gradient(180deg, #ffd1de 0%, var(--gc-pink) 100%);
             border-color: var(--gc-pink-dark);
+            box-shadow: 0 0 0 2px var(--gc-trim-deep) inset, 0 16px 38px rgba(0,0,0,0.55), 0 0 48px var(--gc-pink);
         }
-        .casino-prize-banner.tier-jackpot {
-            background: linear-gradient(135deg, var(--gc-brass-lt) 0%, var(--gc-pink) 50%, var(--gc-brass-lt) 100%);
-            background-size: 200% 200%;
+        .casino-prize-banner.tier-jackpot .casino-prize-card {
+            background:
+                radial-gradient(ellipse at top, rgba(255,255,255,0.7), transparent 70%),
+                linear-gradient(135deg, var(--gc-brass-lt) 0%, var(--gc-pink) 40%, var(--gc-neon-cyan) 80%, var(--gc-brass-lt) 100%);
+            background-size: 240% 240%;
+            border-color: var(--gc-trim-deep);
+            box-shadow: 0 0 0 2px var(--gc-trim-deep) inset, 0 16px 38px rgba(0,0,0,0.55), 0 0 64px var(--gc-brass-lt);
             animation:
-                casinoPrizeSlide 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
-                casinoPrizeJackpotShimmer 1.6s linear infinite,
-                casinoPrizeFade 0.7s ease-in 3s forwards;
-            border-color: var(--gc-trim);
-        }
-        @keyframes casinoPrizeSlide {
-            0%   { transform: scaleY(0) translateY(-20px); opacity: 0; }
-            70%  { transform: scaleY(1.06) translateY(0); opacity: 1; }
-            100% { transform: scaleY(1) translateY(0); opacity: 1; }
-        }
-        @keyframes casinoPrizeFade {
-            0%   { opacity: 1; transform: scaleY(1); }
-            100% { opacity: 0; transform: scaleY(0.9) translateY(-8px); }
+                casinoPrizePop 0.55s cubic-bezier(0.34,1.56,0.64,1) forwards,
+                casinoPrizeJackpotShimmer 2.2s linear 0.55s infinite;
         }
         @keyframes casinoPrizeJackpotShimmer {
             0%, 100% { background-position: 0% 50%; }
             50%      { background-position: 100% 50%; }
         }
+
         .casino-prize-banner-title {
             font-family: var(--battle-font);
-            font-size: 12px; font-weight: bold;
+            font-size: 20px; font-weight: bold;
             color: var(--gc-trim-deep);
-            letter-spacing: 0.1em;
+            letter-spacing: 0.16em;
             text-align: center;
-            text-shadow: 0 1px 0 var(--gc-cream);
-            margin-bottom: 4px;
+            text-shadow: 0 1px 0 var(--gc-cream), 0 0 10px var(--gc-brass);
+            margin: 0;
         }
-        .casino-prize-banner.tier-jackpot .casino-prize-banner-title { font-size: 13px; color: var(--gc-trim-deep); }
+        .casino-prize-banner.tier-big      .casino-prize-banner-title { color: var(--gc-trim-deep); text-shadow: 0 1px 0 #fff, 0 0 12px #fff; }
+        .casino-prize-banner.tier-jackpot  .casino-prize-banner-title {
+            font-size: 26px; color: var(--gc-trim-deep);
+            text-shadow: 0 1px 0 var(--gc-cream), 0 0 14px var(--gc-brass-lt), 0 0 24px var(--gc-pink);
+        }
         .casino-prize-banner-items {
-            display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
         }
         .casino-prize-item {
-            display: inline-flex; align-items: center; gap: 4px;
-            padding: 2px 6px;
-            font-family: var(--battle-font);
-            font-size: 10px; font-weight: bold;
-            color: var(--gc-ink);
-            background: rgba(255, 248, 208, 0.7);
-            border: 1.5px solid var(--gc-trim);
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            min-width: 78px;
+            padding: 8px 8px 6px;
+            background: rgba(255, 248, 208, 0.92);
+            border: 2px solid var(--gc-trim-deep);
+            box-shadow: 1px 1px 0 0 var(--gc-trim-deep), 0 0 12px rgba(255,232,138,0.45);
         }
+        .casino-prize-banner.tier-jackpot .casino-prize-item { box-shadow: 1px 1px 0 0 var(--gc-trim-deep), 0 0 16px var(--gc-brass-lt); }
         .casino-prize-item img {
             display: inline-block;
-            width: 22px !important; height: 22px !important;
+            width: 40px !important; height: 40px !important;
             image-rendering: pixelated;
             flex-shrink: 0;
+            filter: drop-shadow(0 2px 0 rgba(0,0,0,0.25));
         }
-        .casino-prize-item-count { color: var(--gc-trim-deep); }
+        .casino-prize-item-label {
+            font-size: 11px; color: var(--gc-ink); font-weight: bold;
+            text-align: center; line-height: 1.2;
+        }
+        .casino-prize-item-count {
+            font-size: 13px; color: var(--gc-trim-deep); font-weight: bold;
+            background: var(--gc-brass-lt);
+            border: 1.5px solid var(--gc-trim-deep);
+            padding: 0 6px;
+            min-width: 22px; text-align: center;
+        }
+        .casino-prize-tap-hint {
+            margin: 4px 0 0;
+            font-size: 10px;
+            color: var(--gc-ink-soft);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            opacity: 0.85;
+        }
+        /* Sparkle particles that orbit the card on a big/jackpot win. */
+        .casino-prize-card .sparkle {
+            position: absolute;
+            width: 6px; height: 6px;
+            background: var(--gc-brass-lt);
+            box-shadow: 0 0 8px var(--gc-brass-lt), 0 0 16px var(--gc-brass);
+            transform: rotate(45deg);
+            pointer-events: none;
+            animation: casinoPrizeSparkle 1.6s ease-in-out infinite;
+        }
+        .casino-prize-card .sparkle:nth-child(1) { top: -8px;   left: 20%;  animation-delay: 0s; }
+        .casino-prize-card .sparkle:nth-child(2) { top: 25%;   right: -8px; animation-delay: 0.25s; }
+        .casino-prize-card .sparkle:nth-child(3) { bottom: -8px; left: 65%; animation-delay: 0.5s; }
+        .casino-prize-card .sparkle:nth-child(4) { top: 55%;   left: -8px;  animation-delay: 0.75s; }
+        @keyframes casinoPrizeSparkle {
+            0%, 100% { opacity: 0; transform: rotate(45deg) scale(0.5); }
+            50%      { opacity: 1; transform: rotate(45deg) scale(1.4); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .casino-prize-card { animation: none; }
+            .casino-prize-banner.tier-jackpot .casino-prize-card { animation: none; }
+            .casino-prize-card .sparkle { animation: none; opacity: 0.6; }
+        }
 
-        /* Tab strip — flat pixel buttons over cream wallpaper. */
+        /* Tab strip — three illuminated slot-cabinet signs. The active tab lights
+           up gold; inactive tabs are dimmer cream-on-carpet with a corner bulb. */
         .casino-tabs {
-            display: flex; gap: 0;
-            padding: 8px 14px 0;
+            display: flex; gap: 4px;
+            padding: 10px 14px 0;
             background: transparent;
         }
         .casino-tab {
+            position: relative;
             flex: 1 1 0;
-            padding: 9px 6px;
+            padding: 10px 6px;
             font-family: var(--battle-font);
             font-size: 12px; font-weight: bold;
             color: var(--gc-cream); cursor: pointer;
-            background: linear-gradient(180deg, var(--gc-trim) 0%, var(--gc-trim-deep) 100%);
+            background: linear-gradient(180deg, var(--gc-carpet-dark) 0%, var(--gc-carpet-deep) 100%);
             border: 2px solid var(--gc-trim-deep);
             border-bottom: none;
             border-radius: 0;
-            letter-spacing: 0.06em;
+            letter-spacing: 0.08em;
             text-transform: uppercase;
-            transition: color 0.12s, background 0.12s, transform 0.12s;
-            min-height: 38px;
+            text-shadow: 0 1px 0 rgba(0,0,0,0.5);
+            transition: color 0.12s, background 0.12s, transform 0.12s, box-shadow 0.12s;
+            min-height: 40px;
+            box-shadow: 0 2px 0 0 var(--gc-trim-deep), inset 0 1px 0 rgba(255,255,255,0.12);
         }
-        .casino-tab + .casino-tab { border-left: 1px solid var(--gc-trim-deep); }
-        .casino-tab:hover { color: var(--gc-brass-lt); filter: brightness(1.15); }
+        /* Tiny corner bulbs on each tab — dim by default, glow on active. */
+        .casino-tab::before, .casino-tab::after {
+            content: '';
+            position: absolute; top: 4px;
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            background: rgba(255,232,138,0.35);
+            box-shadow: 0 0 2px rgba(0,0,0,0.5);
+        }
+        .casino-tab::before { left: 6px; }
+        .casino-tab::after  { right: 6px; }
+        .casino-tab:hover { color: var(--gc-brass-lt); filter: brightness(1.18); }
         .casino-tab.active {
-            color: var(--gc-ink);
-            background: linear-gradient(180deg, var(--gc-cream) 0%, var(--gc-felt) 100%);
+            color: var(--gc-trim-deep);
+            background: linear-gradient(180deg, var(--gc-brass-lt) 0%, var(--gc-brass) 60%, var(--gc-brass-deep) 100%);
             border-color: var(--gc-trim-deep);
+            text-shadow: 0 1px 0 var(--gc-brass-lt);
             transform: translateY(2px);
-            box-shadow: 0 -3px 0 0 var(--gc-brass) inset;
+            box-shadow:
+                0 -4px 0 0 var(--gc-cream) inset,
+                0 0 14px rgba(255,200,58,0.55),
+                inset 0 0 0 1px var(--gc-brass-deep);
         }
-        .casino-tab .tab-ico { font-size: 14px; margin-right: 4px; }
-        /* Coin/icon images in a casino tab match the emoji glyph height in sibling tabs (scales with tab font). */
-        .casino-tab .tab-ico img { height: 1.1em; width: auto; object-fit: contain; vertical-align: middle; }
+        .casino-tab.active::before, .casino-tab.active::after {
+            background: var(--gc-brass-lt);
+            box-shadow: 0 0 6px var(--gc-brass-lt), 0 0 12px var(--gc-brass);
+            animation: casinoTabBulb 0.9s ease-in-out infinite alternate;
+        }
+        .casino-tab.active::after { animation-delay: 0.45s; }
+        @keyframes casinoTabBulb {
+            0%   { opacity: 0.6; transform: scale(0.85); }
+            100% { opacity: 1;   transform: scale(1.15); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .casino-tab.active::before, .casino-tab.active::after { animation: none; }
+        }
+        .casino-tab .tab-ico { font-size: 16px; margin-right: 4px; filter: drop-shadow(0 1px 0 rgba(0,0,0,0.4)); }
+        .casino-tab .tab-ico img { height: 1.15em; width: auto; object-fit: contain; vertical-align: middle; }
 
-        /* Game panels — cream felt table on every game. */
+        /* Game panels — Game-Corner floor tiles. GBA Celadon/Mauville used a
+           red/cream diamond checkerboard for the carpeted floor; we layer that
+           pattern over a per-game accent color. */
         .casino-panel {
             flex: 1;
             display: flex; flex-direction: column;
             gap: 12px;
-            padding: 16px 14px 18px;
+            padding: 18px 14px 18px;
             background: var(--gc-felt);
+            /* Pixel-diamond carpet pattern at low opacity over the theme color. */
             background-image:
-                repeating-linear-gradient(45deg, transparent 0 14px, rgba(139, 109, 60, 0.07) 14px 15px),
-                repeating-linear-gradient(-45deg, transparent 0 14px, rgba(139, 109, 60, 0.07) 14px 15px);
+                linear-gradient(45deg,  rgba(196, 30, 58, 0.10) 25%, transparent 25%, transparent 75%, rgba(196, 30, 58, 0.10) 75%),
+                linear-gradient(45deg,  rgba(196, 30, 58, 0.10) 25%, transparent 25%, transparent 75%, rgba(196, 30, 58, 0.10) 75%);
+            background-size: 28px 28px;
+            background-position: 0 0, 14px 14px;
             border: 3px solid var(--gc-trim-deep);
-            border-top: 4px solid var(--gc-trim-deep);
-            box-shadow: 0 0 0 1px var(--gc-brass) inset;
+            border-top: 4px solid var(--gc-brass);
+            box-shadow:
+                0 0 0 1px var(--gc-brass) inset,
+                inset 0 14px 24px rgba(0,0,0,0.18);
             min-height: 0;
             overflow-y: auto;
             align-items: center;
         }
         .casino-panel.hidden { display: none; }
-        .casino-panel.theme-flip {
-            background-color: var(--gc-felt);
-        }
+        /* Per-game accent colors — each game corner gets its own felt. */
+        .casino-panel.theme-flip     { background-color: #f3d873; }
+        .casino-panel.theme-slots    { background-color: #e85e7a; }
+        .casino-panel.theme-roulette { background-color: var(--gc-felt-table); }
+        /* Brighten the diamond pattern on the green/red felts. */
         .casino-panel.theme-slots {
-            background-color: #f0d8a8;
+            background-image:
+                linear-gradient(45deg,  rgba(255,255,255,0.10) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.10) 75%),
+                linear-gradient(45deg,  rgba(255,255,255,0.10) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.10) 75%);
+            background-size: 28px 28px;
+            background-position: 0 0, 14px 14px;
         }
         .casino-panel.theme-roulette {
-            background-color: #d8e8c0;
+            background-image:
+                linear-gradient(45deg,  rgba(0,0,0,0.12) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.12) 75%),
+                linear-gradient(45deg,  rgba(0,0,0,0.12) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.12) 75%);
+            background-size: 28px 28px;
+            background-position: 0 0, 14px 14px;
         }
+
+        /* ════════════════════════════════════════════════════════════════
+           RESPONSIVE TABLE LAYOUT
+           Phones (is-mobile, < 768px) keep the original vertical stack. Wider
+           screens — the 1280px desktop frame, tablets, and big screens — split
+           each game into a focused two-column "table": the game stage (coin /
+           reels / wheel) beside its controls. This keeps the primary action
+           button on-screen without scrolling and stops the wide felt from
+           looking empty.
+           ════════════════════════════════════════════════════════════════ */
+        .casino-cols {
+            display: flex; flex-direction: column; align-items: center;
+            gap: 12px; width: 100%; min-width: 0;
+        }
+        .casino-col {
+            display: flex; flex-direction: column; align-items: center;
+            gap: 12px; width: 100%; min-width: 0;
+            box-sizing: border-box;
+        }
+        /* A soft spotlight pools under the game piece on every screen. */
+        .casino-col-stage {
+            background: radial-gradient(ellipse 82% 72% at 50% 46%, rgba(255,248,208,0.5) 0%, rgba(212,169,70,0.13) 48%, transparent 80%);
+            border-radius: 10px;
+            justify-content: center;
+        }
+        /* Two-column split: the desktop frame is always 1280px internally so it
+           is always wide; touch tablets switch at the 768px breakpoint. */
+        body:not(.is-mobile) .casino-cols {
+            flex-direction: row; align-items: stretch; justify-content: center;
+            gap: 30px; max-width: 940px; margin: 2px auto 0;
+        }
+        body:not(.is-mobile) .casino-col { flex: 1 1 0; justify-content: center; }
+        body:not(.is-mobile) .casino-col-controls {
+            border-left: 2px solid rgba(58, 20, 20, 0.16);
+            padding-left: 28px;
+        }
+        body:not(.is-mobile) .casino-panel .casino-game-subtitle { max-width: 560px; }
+        @media (min-width: 768px) {
+            body.is-mobile .casino-cols {
+                flex-direction: row; align-items: stretch; justify-content: center;
+                gap: 30px; max-width: 940px; margin: 2px auto 0;
+            }
+            body.is-mobile .casino-col { flex: 1 1 0; justify-content: center; }
+            body.is-mobile .casino-col-controls {
+                border-left: 2px solid rgba(58, 20, 20, 0.16);
+                padding-left: 28px;
+            }
+            body.is-mobile .casino-panel .casino-game-subtitle { max-width: 560px; }
+        }
+
         .casino-panel h3.casino-game-title {
             margin: 0;
             font-family: var(--battle-font);
-            font-size: 14px; color: var(--gc-trim-deep);
-            letter-spacing: 0.1em; text-transform: uppercase;
+            font-size: 16px; color: var(--gc-brass-lt);
+            letter-spacing: 0.14em; text-transform: uppercase;
             text-align: center;
-            text-shadow: 1px 1px 0 var(--gc-cream);
+            /* Brass nameplate look — bright text with a black pixel halo so it
+               reads on any felt color (gold/red/green). */
+            text-shadow:
+                1px 1px 0 var(--gc-trim-deep),
+                -1px 1px 0 var(--gc-trim-deep),
+                1px -1px 0 var(--gc-trim-deep),
+                -1px -1px 0 var(--gc-trim-deep),
+                0 2px 0 var(--gc-trim-deep),
+                0 0 10px rgba(255,200,58,0.55);
         }
         .casino-panel .casino-game-subtitle {
             margin: 0;
-            font-size: 11px; color: var(--gc-ink-soft);
+            font-size: 11px;
+            color: var(--gc-cream);
             text-align: center; max-width: 380px;
             line-height: 1.5;
+            text-shadow: 0 1px 0 rgba(0,0,0,0.6);
         }
         .casino-subtitle-prize {
             display: inline-block;
             color: var(--gc-trim-deep);
             font-weight: bold;
-            background: var(--gc-pink);
-            padding: 1px 6px;
-            border: 1.5px solid var(--gc-trim);
+            background: linear-gradient(180deg, #ffd1de 0%, var(--gc-pink) 100%);
+            padding: 2px 8px;
+            border: 1.5px solid var(--gc-trim-deep);
             margin-top: 4px;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.06em;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+            box-shadow: 1px 1px 0 0 var(--gc-trim-deep), 0 0 10px rgba(255,122,172,0.5);
         }
-        .casino-subtitle-note { color: var(--gc-ink-soft); opacity: 0.85; font-size: 10px; display: block; margin-top: 2px; }
+        .casino-subtitle-note {
+            color: var(--gc-cream);
+            opacity: 0.85;
+            font-size: 10px;
+            display: block;
+            margin-top: 2px;
+            text-shadow: 0 1px 0 rgba(0,0,0,0.6);
+        }
 
         /* Bet row + chips — cream face with brass trim. */
         .casino-bet-row {
@@ -5303,38 +5568,82 @@
             border-color: var(--gc-trim-deep);
         }
 
-        /* Generic GO buttons. */
+        /* Generic GO buttons — illuminated cabinet button with a soft pulse so the
+           eye is drawn to the primary action. */
         .casino-go-btn {
-            padding: 10px 22px;
+            position: relative;
+            padding: 12px 26px;
             font-family: var(--battle-font);
             font-size: 14px; font-weight: bold;
             color: var(--gc-cream); cursor: pointer;
-            background: linear-gradient(180deg, var(--gc-trim) 0%, var(--gc-trim-deep) 100%);
+            background:
+                radial-gradient(ellipse at 50% 0%, rgba(255,232,138,0.4), transparent 60%),
+                linear-gradient(180deg, var(--gc-carpet) 0%, var(--gc-carpet-dark) 65%, var(--gc-carpet-deep) 100%);
             border: 3px solid var(--gc-brass);
             border-radius: 0;
-            box-shadow: 2px 2px 0 0 var(--gc-trim-deep);
-            letter-spacing: 0.12em; text-transform: uppercase;
-            text-shadow: 0 1px 0 rgba(0,0,0,0.6);
-            min-height: 42px;
-            transition: filter 0.12s, transform 0.06s;
+            box-shadow:
+                2px 2px 0 0 var(--gc-trim-deep),
+                inset 0 1px 0 rgba(255,255,255,0.25),
+                0 0 0 1px var(--gc-brass-deep) inset;
+            letter-spacing: 0.14em; text-transform: uppercase;
+            text-shadow: 0 1px 0 rgba(0,0,0,0.7), 0 0 6px rgba(255,200,58,0.45);
+            min-height: 44px;
+            transition: filter 0.12s, transform 0.06s, box-shadow 0.12s;
+            animation: casinoGoPulse 2.4s ease-in-out infinite;
         }
-        .casino-go-btn:hover { filter: brightness(1.15); }
-        .casino-go-btn:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 0 var(--gc-trim-deep); }
-        .casino-go-btn:disabled { color: var(--gc-felt-dark); background: var(--gc-felt-deep); border-color: var(--gc-felt-dark); cursor: not-allowed; filter: none; }
+        @keyframes casinoGoPulse {
+            0%, 100% { box-shadow: 2px 2px 0 0 var(--gc-trim-deep), inset 0 1px 0 rgba(255,255,255,0.25), 0 0 0 1px var(--gc-brass-deep) inset, 0 0 8px rgba(255,200,58,0.35); }
+            50%      { box-shadow: 2px 2px 0 0 var(--gc-trim-deep), inset 0 1px 0 rgba(255,255,255,0.25), 0 0 0 1px var(--gc-brass-deep) inset, 0 0 16px rgba(255,200,58,0.7); }
+        }
+        .casino-go-btn:hover { filter: brightness(1.18); animation-duration: 1.2s; }
+        .casino-go-btn:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 0 var(--gc-trim-deep), inset 0 1px 0 rgba(255,255,255,0.25); }
+        .casino-go-btn:disabled {
+            color: rgba(255,245,208,0.5);
+            background: linear-gradient(180deg, #6a6a6a 0%, #3a3a3a 100%);
+            border-color: #555;
+            cursor: not-allowed;
+            filter: none;
+            animation: none;
+            box-shadow: 2px 2px 0 0 var(--gc-trim-deep);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .casino-go-btn { animation: none; }
+        }
 
-        /* Result strips — cream paper with maroon stitching. */
+        /* Result strips — cream paper with maroon stitching, neon flash on win. */
         .casino-result-strip {
             margin: 0; min-height: 22px;
             font-size: 12px; line-height: 1.45;
             color: var(--gc-ink); text-align: center; max-width: 380px;
-            padding: 6px 10px;
+            padding: 8px 12px;
             background: var(--gc-cream);
             border: 2px solid var(--gc-trim-deep);
             font-weight: bold;
+            box-shadow: 1px 1px 0 0 var(--gc-trim-deep);
         }
-        .casino-result-strip.win  { color: var(--gc-trim-deep); background: var(--gc-mint); border-color: #2c8025; }
-        .casino-result-strip.lose { color: var(--gc-cream); background: var(--gc-rose); border-color: var(--gc-trim-deep); }
-        .casino-result-strip.empty { color: var(--gc-ink-soft); background: rgba(255, 248, 208, 0.6); border-style: dashed; font-style: italic; font-weight: normal; }
+        .casino-result-strip.win  {
+            color: var(--gc-trim-deep);
+            background: linear-gradient(180deg, #b6f0bc 0%, var(--gc-mint) 100%);
+            border-color: #1e7028;
+            text-shadow: 0 1px 0 #d4ffd9;
+            animation: casinoResultWinFlash 0.7s ease-out;
+            box-shadow: 1px 1px 0 0 var(--gc-trim-deep), 0 0 18px rgba(110,224,124,0.6);
+        }
+        .casino-result-strip.lose {
+            color: #fff;
+            background: linear-gradient(180deg, var(--gc-rose) 0%, #b41c2d 100%);
+            border-color: var(--gc-trim-deep);
+            text-shadow: 0 1px 0 rgba(0,0,0,0.5);
+        }
+        .casino-result-strip.empty { color: var(--gc-ink-soft); background: rgba(255, 248, 208, 0.6); border-style: dashed; font-style: italic; font-weight: normal; box-shadow: none; }
+        @keyframes casinoResultWinFlash {
+            0%   { transform: scale(0.96); filter: brightness(1.4); }
+            30%  { transform: scale(1.04); filter: brightness(1.6); }
+            100% { transform: scale(1);    filter: brightness(1); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .casino-result-strip.win { animation: none; }
+        }
 
         /* ── COIN FLIP — single big coin, 3D rotateY with sparkle trail. ── */
         .casino-flip-stage {
@@ -5623,10 +5932,6 @@
         .casino-slots-paytable strong { color: var(--gc-trim-deep); }
 
         /* ── ROULETTE — green felt + cream chip board. ── */
-        .casino-roul-stage {
-            display: flex; flex-direction: column; align-items: center;
-            gap: 12px; width: 100%;
-        }
         .casino-roul-wheel-wrap {
             position: relative;
             width: 200px; height: 200px;
@@ -5772,32 +6077,54 @@
             50%      { box-shadow: inset 0 0 0 4px var(--gc-brass-lt), 0 0 16px var(--gc-brass); transform: scale(1.06); }
         }
         .casino-roul-board-actions {
-            display: flex; gap: 6px;
+            display: flex; gap: 8px;
             justify-content: center; flex-wrap: wrap;
             padding: 0 4px;
         }
         .casino-roul-action {
-            padding: 6px 14px;
+            padding: 8px 14px;
             font-family: var(--battle-font);
             font-size: 11px; font-weight: bold;
             color: var(--gc-trim-deep); cursor: pointer;
             background: var(--gc-cream);
             border: 2px solid var(--gc-trim-deep); border-radius: 0;
-            min-height: 32px;
-            letter-spacing: 0.06em;
+            min-height: 36px;
+            letter-spacing: 0.08em;
             box-shadow: 1px 1px 0 0 var(--gc-trim-deep);
-            transition: filter 0.12s, transform 0.06s;
+            transition: filter 0.12s, transform 0.06s, box-shadow 0.12s;
         }
-        .casino-roul-action.go {
+        /* Repeat button — illuminated and pulsing when there's a saved last bet
+           and the table is empty, so the player can't miss the "spin again"
+           shortcut. */
+        .casino-roul-action.repeat.can-repeat {
             color: var(--gc-trim-deep);
             background: linear-gradient(180deg, var(--gc-brass-lt) 0%, var(--gc-brass) 100%);
-            border: 2px solid var(--gc-trim-deep);
+            border-color: var(--gc-trim-deep);
+            animation: casinoRepeatPulse 1.4s ease-in-out infinite;
+        }
+        @keyframes casinoRepeatPulse {
+            0%, 100% { box-shadow: 1px 1px 0 0 var(--gc-trim-deep), 0 0 6px rgba(255,200,58,0.45); }
+            50%      { box-shadow: 1px 1px 0 0 var(--gc-trim-deep), 0 0 16px rgba(255,200,58,0.95); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .casino-roul-action.repeat.can-repeat { animation: none; }
+        }
+        .casino-roul-action.go {
+            color: var(--gc-cream);
+            background:
+                radial-gradient(ellipse at 50% 0%, rgba(255,232,138,0.35), transparent 60%),
+                linear-gradient(180deg, var(--gc-carpet) 0%, var(--gc-carpet-dark) 100%);
+            border: 2px solid var(--gc-brass);
+            text-shadow: 0 1px 0 rgba(0,0,0,0.6);
         }
         .casino-roul-action.go:disabled {
-            color: var(--gc-felt-dark); background: var(--gc-felt-deep); border-color: var(--gc-felt-dark); cursor: not-allowed;
+            color: rgba(255,245,208,0.5);
+            background: linear-gradient(180deg, #6a6a6a 0%, #3a3a3a 100%);
+            border-color: #555;
+            cursor: not-allowed;
             filter: none;
         }
-        .casino-roul-action:hover { filter: brightness(1.1); }
+        .casino-roul-action:hover { filter: brightness(1.12); }
         .casino-roul-action:active { transform: translate(1px, 1px); box-shadow: none; }
         .casino-roul-stake {
             font-size: 11px; color: var(--gc-trim-deep); text-align: center;
@@ -8681,34 +9008,42 @@
             <div id="story-casino-panel-flip" class="casino-panel theme-flip" role="tabpanel" aria-labelledby="story-casino-tab-flip">
                 <h3 class="casino-game-title">Coin Flip</h3>
                 <p class="casino-game-subtitle">Pick a side — Heads or Tails. Win pays 2× your bet.<br><span class="casino-subtitle-prize">Big wins drop Vitamins + Vouchers!</span> <span class="casino-subtitle-note">~49% win rate · low risk · streak ×3 boosts prize tier.</span></p>
-                <div class="casino-flip-stage">
-                    <div id="story-casino-flip-coin" class="casino-flip-coin idle" aria-hidden="true">
-                        <div class="face heads">H</div>
-                        <div class="face tails">T</div>
+                <div class="casino-cols">
+                    <div class="casino-col casino-col-stage">
+                        <div class="casino-flip-stage">
+                            <div id="story-casino-flip-coin" class="casino-flip-coin idle" aria-hidden="true">
+                                <div class="face heads">H</div>
+                                <div class="face tails">T</div>
+                            </div>
+                            <div class="casino-flip-pick" role="group" aria-label="Side pick">
+                                <button type="button" id="story-casino-flip-pick-heads" class="pick heads active" onclick="window.StoryMode.casinoFlipPick('heads')">Heads</button>
+                                <button type="button" id="story-casino-flip-pick-tails" class="pick tails"        onclick="window.StoryMode.casinoFlipPick('tails')">Tails</button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="casino-flip-pick" role="group" aria-label="Side pick">
-                        <button type="button" id="story-casino-flip-pick-heads" class="pick heads active" onclick="window.StoryMode.casinoFlipPick('heads')">Heads</button>
-                        <button type="button" id="story-casino-flip-pick-tails" class="pick tails"        onclick="window.StoryMode.casinoFlipPick('tails')">Tails</button>
+                    <div class="casino-col casino-col-controls">
+                        <div class="casino-bet-row" role="group" aria-label="Bet amount">
+                            <label for="story-casino-flip-bet">Bet G</label>
+                            <input id="story-casino-flip-bet" class="casino-input" type="number" inputmode="numeric" min="50" step="50" value="50">
+                            <button type="button" class="casino-bet-chip" onclick="window.StoryMode.casinoBetChip('flip',50)">50</button>
+                            <button type="button" class="casino-bet-chip" onclick="window.StoryMode.casinoBetChip('flip',250)">250</button>
+                            <button type="button" class="casino-bet-chip" onclick="window.StoryMode.casinoBetChip('flip',1000)">1,000</button>
+                            <button type="button" class="casino-bet-chip" onclick="window.StoryMode.casinoBetChip('flip',5000)">5,000</button>
+                            <button type="button" class="casino-bet-chip" onclick="window.StoryMode.casinoBetChip('flip','max')">Max</button>
+                        </div>
+                        <button type="button" id="story-casino-flip-go" class="casino-go-btn flip" onclick="window.StoryMode.casinoFlipSpin()">▶ Flip</button>
+                        <p id="story-casino-flip-streak" class="casino-flip-streak" aria-live="polite"></p>
+                        <p id="story-casino-flip-result" class="casino-result-strip empty" aria-live="polite">Pick a side and press Flip.</p>
                     </div>
                 </div>
-                <div class="casino-bet-row" role="group" aria-label="Bet amount">
-                    <label for="story-casino-flip-bet">Bet G</label>
-                    <input id="story-casino-flip-bet" class="casino-input" type="number" inputmode="numeric" min="50" step="50" value="50">
-                    <button type="button" class="casino-bet-chip" onclick="window.StoryMode.casinoBetChip('flip',50)">50</button>
-                    <button type="button" class="casino-bet-chip" onclick="window.StoryMode.casinoBetChip('flip',250)">250</button>
-                    <button type="button" class="casino-bet-chip" onclick="window.StoryMode.casinoBetChip('flip',1000)">1,000</button>
-                    <button type="button" class="casino-bet-chip" onclick="window.StoryMode.casinoBetChip('flip',5000)">5,000</button>
-                    <button type="button" class="casino-bet-chip" onclick="window.StoryMode.casinoBetChip('flip','max')">Max</button>
-                </div>
-                <button type="button" id="story-casino-flip-go" class="casino-go-btn flip" onclick="window.StoryMode.casinoFlipSpin()">▶ Flip</button>
-                <p id="story-casino-flip-streak" class="casino-flip-streak" aria-live="polite"></p>
-                <p id="story-casino-flip-result" class="casino-result-strip empty" aria-live="polite">Pick a side and press Flip.</p>
             </div>
 
             <!-- ── SLOTS ── -->
             <div id="story-casino-panel-slots" class="casino-panel theme-slots hidden" role="tabpanel" aria-labelledby="story-casino-tab-slots">
                 <h3 class="casino-game-title">Slot Machine</h3>
                 <p class="casino-game-subtitle">Three reels, Pokémon symbols. Higher bet tier = bigger swings.<br><span class="casino-subtitle-prize">7-7-7 or ★-★-★ guarantees a Rare Voucher + Vitamins!</span> <span class="casino-subtitle-note">Land ↻×3 for a free re-spin where you can hold any reel.</span></p>
+                <div class="casino-cols">
+                  <div class="casino-col casino-col-stage">
                 <div class="casino-slots-cabinet" id="story-casino-slots-cabinet">
                     <div class="casino-slots-marquee">★ POKÉ SLOTS ★</div>
                     <div class="casino-slots-reels" id="story-casino-slots-reels">
@@ -8730,6 +9065,8 @@
                         <button type="button" id="story-casino-slots-spin" class="casino-slots-spin" onclick="window.StoryMode.casinoSlotsSpin()">▶ Spin</button>
                     </div>
                 </div>
+                  </div>
+                  <div class="casino-col casino-col-controls">
                 <div class="casino-slots-paytable">
                     <strong>Paytable</strong> (× bet) ·
                     <strong style="color:#c62828;">7-7-7</strong> 300× ·
@@ -8737,13 +9074,16 @@
                     ⚡×3 50× · ◓×3 20× · ●×3 10× · 🍒×3 6× · 🍒🍒? 2× · ↻×3 free re-spin
                 </div>
                 <p id="story-casino-slots-result" class="casino-result-strip empty" aria-live="polite">Set bet, press Spin.</p>
+                  </div>
+                </div>
             </div>
 
             <!-- ── ROULETTE ── -->
             <div id="story-casino-panel-roulette" class="casino-panel theme-roulette hidden" role="tabpanel" aria-labelledby="story-casino-tab-roulette">
                 <h3 class="casino-game-title">Poké Roulette</h3>
                 <p class="casino-game-subtitle">Twelve squares — 3 colors × 4 Pokémon (Pika, Volt, Jiggly, Clefa). Tap to place chips, then spin. Single-cell hits pay 11×.<br><span class="casino-subtitle-prize">Every hit rolls for Vitamin + Voucher prizes.</span></p>
-                <div class="casino-roul-stage">
+                <div class="casino-cols">
+                  <div class="casino-col casino-col-stage">
                     <div class="casino-roul-wheel-wrap">
                         <div class="casino-roul-pointer" aria-hidden="true"></div>
                         <div id="story-casino-roul-wheel" class="casino-roul-wheel" aria-hidden="true">
@@ -8752,6 +9092,8 @@
                             <!-- segments inserted by JS -->
                         </div>
                     </div>
+                  </div>
+                  <div class="casino-col casino-col-controls">
                     <div class="casino-bet-row" role="group" aria-label="Chip size">
                         <label for="story-casino-roul-bet">Chip G</label>
                         <input id="story-casino-roul-bet" class="casino-input" type="number" inputmode="numeric" min="50" step="50" value="50">
@@ -8766,14 +9108,15 @@
                     <p class="casino-roul-stake">Staked: <strong id="story-casino-roul-staked">0G</strong> across <strong id="story-casino-roul-cellcount">0</strong> cells</p>
                     <div class="casino-roul-board-actions">
                         <button type="button" class="casino-roul-action" onclick="window.StoryMode.casinoRoulClear()">Clear</button>
-                        <button type="button" class="casino-roul-action" onclick="window.StoryMode.casinoRoulRepeat()" title="Repeat the last spin's bets">↻ Repeat</button>
+                        <button type="button" id="story-casino-roul-repeat" class="casino-roul-action repeat" onclick="window.StoryMode.casinoRoulRepeat()" title="Repeat the last spin's bets">↻ Repeat</button>
                         <button type="button" id="story-casino-roul-spin" class="casino-roul-action go" onclick="window.StoryMode.casinoRoulSpin()" disabled>▶ Spin</button>
                     </div>
+                    <div class="casino-roul-paytable">
+                        <strong>Pays</strong> · Single cell <strong>11×</strong> chip. Stack chips on multiple cells to spread coverage.
+                    </div>
+                    <p id="story-casino-roul-result" class="casino-result-strip empty" aria-live="polite">Tap a cell to place a chip.</p>
+                  </div>
                 </div>
-                <div class="casino-roul-paytable">
-                    <strong>Pays</strong> · Single cell <strong>11×</strong> chip. Stack chips on multiple cells to spread coverage.
-                </div>
-                <p id="story-casino-roul-result" class="casino-result-strip empty" aria-live="polite">Tap a cell to place a chip.</p>
             </div>
 
             <div style="padding:10px;border-top:1px solid #333;flex-shrink:0;background:rgba(10,10,14,0.85);">
@@ -46782,7 +47125,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         function _casinoShowPrizeBanner(bundle, tier) {
             const host = document.getElementById('story-casino-prize-host');
             if (!host) return;
-            const tierLabel = tier === 'jackpot' ? '✦ JACKPOT PRIZE! ✦' : (tier === 'big' ? '★ Big Win Prize! ★' : 'Bonus Prize ♪');
+            const tierLabel = tier === 'jackpot' ? '✦ JACKPOT! ✦' : (tier === 'big' ? '★ BIG WIN ★' : 'BONUS PRIZE');
             const items = [];
             for (const k in bundle) {
                 if (k === '_tier') continue;
@@ -46792,23 +47135,36 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const icon  = _CASINO_PRIZE_ICON[k];
                 items.push(`
                     <div class="casino-prize-item">
-                        ${icon ? `<img src="${icon}" alt="" width="20" height="20" loading="lazy" decoding="async" style="image-rendering:pixelated;">` : ''}
+                        ${icon ? `<img src="${icon}" alt="" width="40" height="40" loading="lazy" decoding="async">` : ''}
                         <span class="casino-prize-item-label">${label}</span>
-                        ${count > 1 ? `<span class="casino-prize-item-count">×${count}</span>` : ''}
+                        <span class="casino-prize-item-count">×${count}</span>
                     </div>
                 `);
             }
             const banner = document.createElement('div');
             banner.className = 'casino-prize-banner tier-' + (tier || 'small');
+            banner.setAttribute('role', 'status');
             banner.innerHTML = `
-                <div class="casino-prize-banner-title">${tierLabel}</div>
-                <div class="casino-prize-banner-items">${items.join('')}</div>
+                <div class="casino-prize-backdrop" aria-hidden="true"></div>
+                <div class="casino-prize-card">
+                    <span class="sparkle" aria-hidden="true"></span>
+                    <span class="sparkle" aria-hidden="true"></span>
+                    <span class="sparkle" aria-hidden="true"></span>
+                    <span class="sparkle" aria-hidden="true"></span>
+                    <div class="casino-prize-banner-title">${tierLabel}</div>
+                    <div class="casino-prize-banner-items">${items.join('')}</div>
+                    <p class="casino-prize-tap-hint">Tap anywhere to dismiss</p>
+                </div>
             `;
+            // Tap anywhere on the overlay to close early.
+            const removeBanner = () => { try { banner.remove(); } catch (e) {} };
+            banner.addEventListener('click', removeBanner);
             host.appendChild(banner);
             try { window.StoryFx && window.StoryFx.playSfx(tier === 'jackpot' ? 'shing' : 'sparkle', 0.7); } catch (e) {}
-            try { window.StoryFx && window.StoryFx.playSfx('achv', tier === 'jackpot' ? 0.7 : 0.5); } catch (e) {}
+            try { window.StoryFx && window.StoryFx.playSfx('achv', tier === 'jackpot' ? 0.8 : 0.55); } catch (e) {}
             // Auto-remove after the animation completes.
-            setTimeout(function() { try { banner.remove(); } catch (e) {} }, tier === 'jackpot' ? 3600 : 2600);
+            const hold = tier === 'jackpot' ? 5000 : (tier === 'big' ? 3600 : 3000);
+            setTimeout(removeBanner, hold);
         }
 
         // ── Bet validation ──
@@ -46976,6 +47332,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (prize) _casinoAwardPrize(prize, 'flip');
             } finally {
                 _casinoUI.spinInFlight = false;
+                // Refresh bet caps AFTER clearing spinInFlight so every game's
+                // spin button re-enables. (Calling before would leave them
+                // stuck disabled — the "can't replay" bug.)
+                _casinoRefreshBetCaps();
                 _storyEndInteraction();
             }
         }
@@ -47292,7 +47652,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (prize) _casinoAwardPrize(prize, 'slots');
             } finally {
                 _casinoUI.spinInFlight = false;
-                if (spinBtn) spinBtn.disabled = false;
+                // Refresh bet caps AFTER clearing spinInFlight so the spin
+                // button is correctly gated on gold ≥ stake, not the now-stale
+                // mid-spin lock.
+                _casinoRefreshBetCaps();
                 _storyEndInteraction();
             }
         }
@@ -47376,9 +47739,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const stakeEl  = document.getElementById('story-casino-roul-staked');
             const countEl  = document.getElementById('story-casino-roul-cellcount');
             const spinBtn  = document.getElementById('story-casino-roul-spin');
+            const repeatBtn = document.getElementById('story-casino-roul-repeat');
             if (stakeEl) stakeEl.textContent = total.toLocaleString() + 'G';
             if (countEl) countEl.textContent = String(count);
             if (spinBtn) spinBtn.disabled = total <= 0 || _casinoUI.spinInFlight;
+            // Light up Repeat when the player has a saved last-bet but no chips
+            // on the table — clearly signals the "spin again" shortcut.
+            if (repeatBtn) {
+                let lastTotal = 0;
+                for (const k in _casinoUI.roul.lastStakes) lastTotal += (_casinoUI.roul.lastStakes[k] | 0);
+                const canRepeat = total === 0 && lastTotal > 0 && !_casinoUI.spinInFlight && (sm.gold | 0) >= lastTotal;
+                repeatBtn.classList.toggle('can-repeat', canRepeat);
+                if (canRepeat) {
+                    repeatBtn.textContent = `↻ Repeat (${lastTotal.toLocaleString()}G)`;
+                    repeatBtn.setAttribute('title', `Replay your last bet — ${lastTotal.toLocaleString()}G across ${Object.keys(_casinoUI.roul.lastStakes).length} cells`);
+                } else {
+                    repeatBtn.textContent = '↻ Repeat';
+                    repeatBtn.setAttribute('title', 'Repeat the last spin\'s bets');
+                }
+            }
         }
 
         function casinoRoulPlaceChip(cellId) {
@@ -47515,10 +47894,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (prize) _casinoAwardPrize(prize, 'roul');
                 // Clear stakes for the next round.
                 _casinoUI.roul.stakes = {};
-                _casinoRoulRefreshStake();
             } finally {
                 _casinoUI.spinInFlight = false;
-                if (spinBtn) spinBtn.disabled = false;
+                // Refresh AFTER clearing spinInFlight so the bet buttons
+                // re-enable and the Repeat button picks up its can-repeat glow.
+                _casinoRefreshBetCaps();
+                _casinoRoulRefreshStake();
                 _storyEndInteraction();
             }
         }
