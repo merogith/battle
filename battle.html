@@ -36623,6 +36623,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
         }
         function rollMysteryFigureFinalBossTeam(partySize, enabledGensIn) {
+            // v22 / decision 16: The First mirrors the player. Their team is
+            // the player's current 5-slot lineup + a stronger variant of the
+            // starter (sm.team[0]) — the "older you" arc literally fields
+            // your own team back at you. forceCanon: the player's mons
+            // override the gen toggle (the canon mention IS the player, so
+            // gen-disabled species are still allowed).
+            //
+            // Fallback for empty / corrupted team state: roll a generic
+            // grade-1 team via the legacy random path so the post-HoF MF
+            // battle never crashes on a degenerate sm.team.
+            const playerTeam = Array.isArray(sm && sm.team) ? sm.team.filter(s => s && s.name) : [];
+            if (playerTeam.length > 0) {
+                const picks = [];
+                // Mirror up to (partySize - 1) player mons.
+                for (let i = 0; i < Math.min(partySize - 1, playerTeam.length); i++) {
+                    picks.push({ name: playerTeam[i].name, build: makeBuild(playerTeam[i].name, { forceGimmick: 'STANDARD' }) });
+                }
+                // The +1 starter slot — second copy of the player's lead (sm.team[0]).
+                // This is The First's "stronger you" slot.
+                const starterName = playerTeam[0].name;
+                picks.push({ name: starterName, build: makeBuild(starterName, { forceGimmick: 'STANDARD' }) });
+                // Pad if needed (player had < partySize-1 mons in storage).
+                while (picks.length < partySize) {
+                    picks.push({ name: starterName, build: makeBuild(starterName, { forceGimmick: 'STANDARD' }) });
+                }
+                return picks;
+            }
+            // Empty-team fallback: legacy random grade-1 roll.
             const rng = (sm && sm.active && typeof window.storyRngNext === 'function') ? window.storyRngNext : Math.random;
             const allowedGens = normalizeEnabledGens(enabledGensIn != null ? enabledGensIn : storySettingsGens());
             const genSet = new Set(allowedGens);
