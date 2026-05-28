@@ -905,6 +905,26 @@
             margin-bottom: 6px; padding-bottom: 6px;
             border-bottom: 1px dashed rgba(102,113,140,0.20);
         }
+        /* Phase 5 quick-filter chips — visually distinct from the type/cat
+           chips so the player reads them as "presets" not "single facets".
+           Pale-gold border + bold weight; active state inherits the regular
+           accent. */
+        .tx-chip-row--quick {
+            padding-right: 6px; margin-right: 4px;
+            border-right: 1px dashed rgba(102,113,140,0.30);
+        }
+        .tx-chip.tx-chip--quick {
+            font-weight: 700;
+            background: rgba(255,213,79,0.10);
+            border-color: rgba(255,213,79,0.45);
+            color: #ffe7a0;
+        }
+        .tx-chip.tx-chip--quick:hover { border-color: #ffd54f; color: #fff3cd; }
+        .tx-chip.tx-chip--quick[data-active="1"] {
+            background: linear-gradient(180deg, rgba(255,213,79,0.30), rgba(255,213,79,0.18));
+            border-color: #ffd54f; color: #1a0d22;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.15) inset;
+        }
         /* Replaces the sort <select> when ★ Recommended is ON — communicates
            "the order is locked to Smogon usage" without offering a control
            that would be ignored. Tooltip explains how to unlock. */
@@ -53603,6 +53623,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         if (value && Object.prototype.hasOwnProperty.call(_txState.filter.recOnly, value)) {
                             _txState.filter.recOnly[value] = !_txState.filter.recOnly[value];
                         }
+                    } else if (kind === 'quick') {
+                        // Phase 5 compound presets — overwrite the relevant
+                        // axis state in one tap. Tapping the same chip while
+                        // it's already active reverts the axis to "no filter".
+                        const wasActive = chip.dataset.active === '1';
+                        if (value === 'stab') {
+                            _txState.filter.moveTypes.clear();
+                            if (!wasActive) {
+                                const stab = (chip.dataset.stab || '').split(',').filter(Boolean);
+                                for (const t of stab) _txState.filter.moveTypes.add(t);
+                            }
+                        } else if (value === 'damage') {
+                            _txState.filter.moveCats.clear();
+                            if (!wasActive) { _txState.filter.moveCats.add('Physical'); _txState.filter.moveCats.add('Special'); }
+                        } else if (value === 'status') {
+                            _txState.filter.moveCats.clear();
+                            if (!wasActive) _txState.filter.moveCats.add('Status');
+                        }
                     }
                     void renderTutorTeam(true);
                     return;
@@ -53825,6 +53863,34 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 ? `Limited competitive data (${pool.totalBuilds} build${pool.totalBuilds===1?'':'s'}) — showing all options.`
                 : 'No competitive data for this Pokémon yet — showing all options.';
             return `<div class="tx-sparse-banner">${_esc(note)}</div>`;
+        }
+
+        // Phase 5 — compound quick-filter chips for the Move Tutor. Each chip
+        // is a single-tap preset that swaps the type/cat state to a useful
+        // combination the player would otherwise build manually:
+        //   • STAB only   — auto-selects the species' STAB types.
+        //   • Damage only — selects Physical + Special, deselects Status.
+        //   • Status only — selects Status, deselects Physical + Special.
+        // Tapping a chip a second time reverts to "no filter" for that axis.
+        // Chips reflect the live state (active when the filter matches).
+        function _txQuickFiltersHtml(kind, monName, mon) {
+            if (kind !== 'moves') return '';
+            const stabTypes = new Set([mon && mon.type1, mon && mon.type2].filter(Boolean));
+            const curTypes = _txState.filter.moveTypes;
+            const curCats  = _txState.filter.moveCats;
+            const isStab = stabTypes.size > 0
+                && stabTypes.size === curTypes.size
+                && [...stabTypes].every(t => curTypes.has(t));
+            const isDamage = curCats.size === 2 && curCats.has('Physical') && curCats.has('Special');
+            const isStatus = curCats.size === 1 && curCats.has('Status');
+            const stabPayload = [...stabTypes].join(',');
+            const chips = [];
+            if (stabTypes.size) {
+                chips.push(`<button type="button" class="tx-chip tx-chip--quick" data-filter-kind="quick" data-filter-value="stab" data-stab="${_esc(stabPayload)}" data-active="${isStab?1:0}" aria-pressed="${isStab?'true':'false'}" title="STAB only — auto-selects ${_esc(stabPayload)}">⚡ STAB</button>`);
+            }
+            chips.push(`<button type="button" class="tx-chip tx-chip--quick" data-filter-kind="quick" data-filter-value="damage" data-active="${isDamage?1:0}" aria-pressed="${isDamage?'true':'false'}" title="Damage moves only (Physical + Special)">🗡 Damage</button>`);
+            chips.push(`<button type="button" class="tx-chip tx-chip--quick" data-filter-kind="quick" data-filter-value="status" data-active="${isStatus?1:0}" aria-pressed="${isStatus?'true':'false'}" title="Status moves only (Burn, Sleep, Setup, Recover…)">✦ Status</button>`);
+            return `<div class="tx-chip-row tx-chip-row--quick" role="group" aria-label="Quick filters">${chips.join('')}</div>`;
         }
 
         function _txMoveTypeChipsHtml() {
@@ -54222,6 +54288,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const scoreOf = new Map();
                 for (const m of filt) scoreOf.set(m, _txScoreMemo('move', m, mon, build, monName, _txScoreMove));
                 filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a)) || a.localeCompare(b));
+            } else if (sortKey === 'usage') {
+                // Phase 5 — explicit Smogon-usage sort. Pulls straight from
+                // pool.moves.pctOf so the order matches the % chips on cards.
+                filt.sort((a, b) => (pool.moves.pctOf.get(b) || 0) - (pool.moves.pctOf.get(a) || 0) || a.localeCompare(b));
             } else filt.sort(_txMoveCmp(sortKey, mon, build, monName));
             return filt;
         }
@@ -54247,6 +54317,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const scoreOf = new Map();
                 for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
                 filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a)) || a.localeCompare(b));
+            } else if (sortKey === 'usage') {
+                filt.sort((a, b) => (pool.items.pctOf.get(b) || 0) - (pool.items.pctOf.get(a) || 0) || a.localeCompare(b));
             } else filt.sort(_txItemCmp(sortKey, mon, build, monName));
             return filt;
         }
@@ -54267,6 +54339,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const scoreOf = new Map();
                 for (const a of filt) scoreOf.set(a, _txScoreMemo('ability', a, mon, build, monName, _txScoreAbility));
                 filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a)) || a.localeCompare(b));
+            } else if (sortKey === 'usage') {
+                filt.sort(_txSortByUsageDesc(pool.abilities.pctOf));
             } else filt.sort(_txAbilityCmp(sortKey, mon, build, monName));
             return filt;
         }
@@ -54428,9 +54502,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 count: filtered.length,
                 countLabel: 'moves',
                 leadingChipsHtml: _txRecChipHtml('moves', t.name),
-                chipsHtml: _txMoveTypeChipsHtml() + _txMoveCatChipsHtml(),
+                chipsHtml: _txQuickFiltersHtml('moves', t.name, mon) + _txMoveTypeChipsHtml() + _txMoveCatChipsHtml(),
                 sortOptions: [
-                    { value:'recommended', label:'Recommended' },
+                    { value:'recommended', label:'Best for this mon' },
+                    { value:'usage', label:'By usage %' },
                     { value:'power', label:'Power' },
                     { value:'acc',   label:'Accuracy' },
                     { value:'type',  label:'Type' },
@@ -54540,7 +54615,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     leadingChipsHtml: _txRecChipHtml('items', t.name),
                     chipsHtml: _txItemCatChipsHtml(),
                     sortOptions: [
-                        { value:'recommended', label:'Recommended' },
+                        { value:'recommended', label:'Best for this mon' },
+                        { value:'usage', label:'By usage %' },
                         { value:'category', label:'Category' },
                         { value:'name', label:'Name (A→Z)' },
                     ],
@@ -54562,7 +54638,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     count: filtAbils.length, countLabel: 'abilities',
                     leadingChipsHtml: _txRecChipHtml('abilities', t.name),
                     sortOptions: [
-                        { value:'recommended', label:'Recommended' },
+                        { value:'recommended', label:'Best for this mon' },
+                        { value:'usage', label:'By usage %' },
                         { value:'name', label:'Name (A→Z)' },
                     ],
                 });
