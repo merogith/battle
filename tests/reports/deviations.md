@@ -84,6 +84,10 @@ tests don't replicate (skipped via `tests/fixtures/deviations.js`).
 - **Precondition**: A terrain must be active for full effect; Steel Roller fails entirely if no terrain.
 - **Note**: Engine-correct.
 
+### Belch
+- **Precondition**: User must have eaten a Berry this battle (`volatile.belchReady`).
+- **Note**: Engine-correct after commit 8e139ae moved the failure gate to before damage application. The property test can't easily fabricate the berry-eaten state; the dedicated `tests/moves/by-category/special.test.js` Belch test covers both arms (no berry → no damage; `belchReady` → damage as expected).
+
 ### Counter / Mirror Coat / Metal Burst / Bide
 - **Precondition**: Requires a Physical/Special hit from the opponent on this turn.
 - **Note**: Engine-correct; tests can't easily set up the opponent's prior hit.

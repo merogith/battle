@@ -13,6 +13,7 @@ export const skipMoves = {
     'Snore',         // only fires if user is Asleep. Engine-correct.
     'Steel Roller',  // fails if no terrain is active. Engine-correct.
     'Ice Spinner',   // similar - clears terrain conditionally
+    'Belch',         // requires user to have eaten a Berry this battle (belchReady volatile). Gate fix in commit 8e139ae moved the failure check before damage; the property test can't fabricate the berry-eaten precondition.
   ],
 
   // These do not deal damage in the normal sense but report HP delta:
