@@ -65,17 +65,40 @@ test('dojoItemTier: berries=1, decent staples=2, meta power items=3', () => {
   assert.equal(ST.dojoItemTier('Assault Vest'), 3);
 });
 
-test('Awakened abilities are gated below Grandmaster (city < 8)', () => {
-  // NB: arrays returned from the jsdom realm fail deepStrictEqual's prototype
-  // check, so assert on length (realm-safe) rather than deepEqual to [].
-  setSm({ eventIndex: cityRow(4) });   // White Belt city
+test('Awakened picks are stage-independent (lock lives in the UI/handler, not the data)', () => {
+  // Awakened abilities are now SHOWN-but-LOCKED below Grandmaster (like Hidden
+  // abilities at White Belt), so _opAbilitiesForMon returns the same curated set
+  // at every stage; the gate moved to the card + tutorChangeAbility. Assert the
+  // count is identical across stages (robust whether or not op-abilities.json
+  // loaded under the jsdom fetch stub — 0===0 holds either way).
+  setSm({ eventIndex: cityRow(4) });   // White Belt
   assert.equal(ST.npcStage('dojo'), 0, 'C4 is dojo stage 0');
-  assert.equal(ST.opAbilitiesForMon('Garchomp').length, 0, 'no Awaken picks at White Belt');
-  setSm({ eventIndex: cityRow(6) });   // Black Belt city
+  const wb = ST.opAbilitiesForMon('Garchomp').length;
+  setSm({ eventIndex: cityRow(6) });   // Black Belt
   assert.equal(ST.npcStage('dojo'), 1, 'C6 is dojo stage 1');
-  assert.equal(ST.opAbilitiesForMon('Garchomp').length, 0, 'no Awaken picks at Black Belt');
-  // city 8 is Grandmaster — the positive case depends on data/op-abilities.json
-  // loading under jsdom fetch, so we don't assert non-empty here.
+  const bb = ST.opAbilitiesForMon('Garchomp').length;
+  setSm({ eventIndex: cityRow(8) });   // Grandmaster
+  assert.equal(ST.npcStage('dojo'), 2, 'C8 is dojo stage 2');
+  const gm = ST.opAbilitiesForMon('Garchomp').length;
+  assert.equal(wb, bb, 'White Belt and Black Belt expose the same Awakened data');
+  assert.equal(bb, gm, 'Black Belt and Grandmaster expose the same Awakened data');
+});
+
+test('dojoAbilityUnlockStage: basic=0 (slots 0/1), Hidden=1 (slot H), off-legal Smogon=2', () => {
+  setSm({ eventIndex: cityRow(8) });
+  // Garchomp legal slots: Sand Veil (0), Rough Skin (H).
+  assert.equal(ST.dojoAbilityUnlockStage('Garchomp', 'Sand Veil'), 0, 'slot 0 = basic / White Belt');
+  assert.equal(ST.dojoAbilityUnlockStage('Garchomp', 'Rough Skin'), 1, 'slot H = Hidden / Black Belt');
+  // Off-legal Smogon picks (not in any legal slot) classify as Awakened.
+  assert.equal(ST.dojoAbilityUnlockStage('Garchomp', 'Sword of Ruin'), 2, 'off-legal = Awakened / Grandmaster');
+  assert.equal(ST.dojoAbilityUnlockStage('Garchomp', 'Adaptability'), 2, 'off-legal = Awakened / Grandmaster');
+});
+
+test('ability cost tiers track the unlock stage (basic 2000 / Hidden 3000 / Awakened 5000)', () => {
+  setSm({ eventIndex: cityRow(8) });
+  assert.equal(ST.abilityCostForMon('Garchomp', 'Sand Veil'), 2000, 'basic = 2000G');
+  assert.equal(ST.abilityCostForMon('Garchomp', 'Rough Skin'), 3000, 'Hidden = 3000G');
+  assert.equal(ST.abilityCostForMon('Garchomp', 'Sword of Ruin'), 5000, 'Awakened = 5000G');
 });
 
 test('staged move pool: never throws, never empties, keeps known moves (dex-stub fallback)', async () => {
