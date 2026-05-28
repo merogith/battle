@@ -31945,80 +31945,40 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // for the in-city "team is full" Mystery Figure flow and the post-HoF boss
         // battle. Sprite + intro voice change together. Names stay hidden — the
         // overlay still reads "??? Mystery Figure" until you face them.
+        // v22 3-track collapse: the 7 trainer-cameo identities + 2 variant-
+        // exclusive identities (9 total: cyrus, ghetsis, cynthia, steven, n,
+        // red, lance, buried_alive, cartridge_self) are retired in favor of a
+        // single canonical voice — The First. The post-HoF Mystery Figure is
+        // an older version of the player, looping back to losing on purpose
+        // so the present-day player keeps levelling. Reuses Red's sprite
+        // (mirror-self visual) until a dedicated inverted-player sprite ships.
+        // See docs/story-design/STORY_3TRACK_IMPL_PLAN.md decision 5.
         const MYSTERY_FIGURE_IDENTITIES = {
-            cyrus:   { sprite:'Cyrus',   reveal:'Cyrus',
-                intros:['Your Hall of Fame title means nothing here.','I have seen empires fall. One trainer is a small task.','Emotion is a weakness. I have moved past it.','Show me your strongest six.'],
-                outro:'Cyrus stands tall. "You stayed strong. That is rare." He walks away into the dark hallway without another word.' },
-            ghetsis: { sprite:'Ghetsis', reveal:'Ghetsis',
-                intros:['You will yield to my Pokémon.','Ideals are for the weak. Results are what matter.','Your bond with Pokémon is fragile. I will test it.','Plasma had a plan. I have a better one.'],
-                outro:'Ghetsis snarls and turns away. "A worthy opponent. I will remember this." Plasma always knew how to vanish.' },
-            cynthia: { sprite:'Cynthia', reveal:'Cynthia',
-                intros:['I enjoy battles like this. Let\'s begin.','You wore the crown well. Show me you can keep it.','I came to see the new Champion in action.','Garchomp is ready. Are you?'],
-                outro:'Cynthia smiles, eyes warm. "I thought I would enjoy this. I was right. The crown is yours — but I expect a rematch."' },
-            steven:  { sprite:'Steven',  reveal:'Steven Stone',
-                intros:['I collect rare things. A new Champion will do.','Stone is tough. So am I. Begin.','Your team shines bright. Let\'s see how bright.','I waited at Meteor Falls for a worthy fight.'],
-                outro:'Steven brushes dust from his coat and offers a smile. "I came hoping for a rare opponent. I leave satisfied. Take care of those Pokémon."' },
-            n:       { sprite:'N',       reveal:'N',
-                intros:['I hear their voices. Do you?','The Hall of Fame is a beautiful cage.','Tell me — what do your Pokémon want?','Truth and ideal — show me yours.'],
-                outro:'N kneels by your lead Pokémon. "She says you keep your promises. That is enough for me." He stands, turns, and is gone.' },
-            red:     { sprite:'Red',     reveal:'Red',
-                intros:['…','…','…(He raises his cap.)','…(Pikachu sparks once.)'],
-                outro:'Red doesn\'t speak. He looks at your team for a long moment. Pikachu touches one of your Pokémon\'s noses. Red tips his cap — and is gone.' },
-            lance:   { sprite:'Lance',   reveal:'Lance',
-                intros:['Dragons remember. Show me what you remember.','You climbed past me once. Climb again.','Hall of Fame paint dries slowly. I came for a fight.','My dragons are ready. So am I.'],
-                outro:'Lance laughs. "Dragons do remember. So will I. Wear that crown well — I\'ll be back."' },
-            // Storyline-exclusive identities. `buried_alive` is the Lavender
-            // Frequency variant's mask-drop; `cartridge_self` is the STATIC
-            // variant's reveal. Both reuse existing trainer sprites — the
-            // variant's tone class on the cold-open already carries the visual
-            // distortion, so no new art is shipped.
-            buried_alive: { sprite:'Hiker', reveal:'BURIED ALIVE',
-                intros:[
-                    '"You weren\'t supposed to come back here."',
-                    '"The song has been playing for me a long time. It plays for you now."',
-                    '"The cage was always for both of us."',
-                    '"This is not the last loop. It is one of them."'
+            the_first: { sprite: 'Red', reveal: 'The First',
+                intros: [
+                    "You're going to win this one. The next one too. That's the problem.",
+                    "I am every version of you that didn't stop.",
+                    "The hall behind you has a portrait with my face — and yours.",
+                    "End this loop. Start the next."
                 ],
-                outro:'The figure does not move. The sprite slowly sinks back into the floor of the chamber. The Lavender song ends. The radio in the wall keeps humming.' },
-            cartridge_self: { sprite:'Red', reveal:'??? (Save File B)',
-                intros:[
-                    '"?? ?? ???? ?ime."',
-                    '"You are an instance. So am I. Begin."',
-                    '"Loop count: ???. Continue."',
-                    '"I was the last one to walk out of this chair. I am also the next."'
-                ],
-                outro:'The figure smiles your trainer\'s smile. The inverted colors flicker once and resolve to your own sprite. The save file logs an entry: SUBJECT 0001 / RECAPTURED.' }
-        };
-        /** Pick a mystery identity. Variants can set a `mysteryBias` map of
-         *  `{ identityKey: weight, ... }` — weighted random over those keys,
-         *  falling back to uniform if no bias is set or no weighted key is
-         *  available in the identity table. */
-        function _storyPickMysteryIdentity() {
-            const allKeys = Object.keys(MYSTERY_FIGURE_IDENTITIES);
-            let variant = null;
-            try { variant = _storyActiveVariant(); } catch (e) { variant = null; }
-            const bias = variant && variant.mysteryBias;
-            if (bias) {
-                const entries = Object.keys(bias)
-                    .filter(k => MYSTERY_FIGURE_IDENTITIES[k] && (bias[k] | 0) > 0);
-                if (entries.length) {
-                    const total = entries.reduce((s, k) => s + (bias[k] | 0), 0);
-                    let r = Math.random() * total;
-                    for (const k of entries) {
-                        r -= (bias[k] | 0);
-                        if (r < 0) return k;
-                    }
-                    return entries[entries.length - 1];
-                }
+                outro: "The figure removes their cap. The face under the cap is yours — older, tired, scarred. He says: 'I am The First. You become me. I become the one who saves the universe by losing to you forever.'"
             }
-            return allKeys[Math.floor(Math.random() * allKeys.length)];
+        };
+        /** Picks the post-HoF Mystery Figure identity. Under the v22 3-track
+         *  system this is always 'the_first' — the 7 old trainer-cameo + 2
+         *  variant-exclusive identities were retired in PR-6 to collapse the
+         *  surface area down to one canonical voice. Function kept for caller
+         *  compatibility; existing saves migrate automatically on next
+         *  _storyEnsureMysteryIdentity call. */
+        function _storyPickMysteryIdentity() {
+            return 'the_first';
         }
         function _storyEnsureMysteryIdentity() {
-            if (!sm.mysteryIdentity || !MYSTERY_FIGURE_IDENTITIES[sm.mysteryIdentity]) {
-                sm.mysteryIdentity = _storyPickMysteryIdentity();
+            if (sm.mysteryIdentity !== 'the_first') {
+                sm.mysteryIdentity = 'the_first';
                 try { save(); } catch (e) {}
             }
-            return MYSTERY_FIGURE_IDENTITIES[sm.mysteryIdentity];
+            return MYSTERY_FIGURE_IDENTITIES.the_first;
         }
 
         function mysteryFigureRollsForBadges(badges) {
@@ -36639,6 +36599,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     get BOSS_MECHANICS() { return BOSS_MECHANICS; },
                     get BOSS_CONFIGS() { return BOSS_CONFIGS; },
                     bossHpScaleForKind: (k, p) => _bossHpScaleForKind(k, p),
+                    // Mystery Figure single-voice (PR-6).
+                    get MYSTERY_FIGURE_IDENTITIES() { return MYSTERY_FIGURE_IDENTITIES; },
+                    pickMysteryIdentity: () => _storyPickMysteryIdentity(),
+                    ensureMysteryIdentity: () => _storyEnsureMysteryIdentity(),
                     // Staged-NPC capability ladder handles (city-anchored).
                     npcStageForCity: (...a) => _npcStageForCity(...a),
                     npcStageName: (...a) => _npcStageName(...a),
