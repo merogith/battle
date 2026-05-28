@@ -36643,6 +36643,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     showBossBanner: (t, a) => _showBossBanner(t, a),
                     // Canon trainer overrides (PR-B/C).
                     get BEAT_CANON_TRAINER() { return BEAT_CANON_TRAINER; },
+                    // Post-battle scenes (PR-D).
+                    get STORY_POST_SCENES() { return STORY_POST_SCENES; },
+                    playPostBattleScene: (k, cb) => _playPostBattleScene(k, cb),
                     // Mystery Figure single-voice (PR-6).
                     get MYSTERY_FIGURE_IDENTITIES() { return MYSTERY_FIGURE_IDENTITIES; },
                     pickMysteryIdentity: () => _storyPickMysteryIdentity(),
@@ -40539,6 +40542,56 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const parts = s.split(/(?<=[.!?…])\s+(?=[A-Z'"“‘])/).filter(Boolean);
             return parts.length ? parts : [s];
         }
+        // ── Post-battle scenes (PR-D) — auto-extracted from STORY_SCENES bodies
+        // at boot. CSV prose embeds "Post-fight - 'quote'" markers in many
+        // beat bodies; this builder pulls the post-text into a dedicated
+        // post-scene map so the win path can fire a brief aftermath line
+        // between victory overlay and next event. Beats without an extractable
+        // post-fragment silently skip the post-scene step.
+        const STORY_POST_SCENES = (function _buildPostScenes() {
+            const out = {};
+            try {
+                for (const sceneKey of Object.keys(STORY_SCENES)) {
+                    const scene = STORY_SCENES[sceneKey];
+                    if (!scene || !scene.body) continue;
+                    // Try a few common markers used in the CSV prose.
+                    const patterns = [
+                        /Post-fight[^-—]*[-—]\s*([^.]+(?:\.\s+[^.]+){0,3}\.)/i,
+                        /Post-raid[^-—]*[-—]\s*([^.]+(?:\.\s+[^.]+){0,3}\.)/i,
+                    ];
+                    for (const re of patterns) {
+                        const m = scene.body.match(re);
+                        if (m && m[1] && m[1].trim().length > 4) {
+                            out[sceneKey] = {
+                                title: (scene.title || '') + ' — Aftermath',
+                                body: m[1].trim(),
+                            };
+                            break;
+                        }
+                    }
+                }
+            } catch (e) { console.warn('[Story] post-scene extract:', e); }
+            return out;
+        })();
+        function _playPostBattleScene(sceneKey, onDone) {
+            const post = STORY_POST_SCENES && STORY_POST_SCENES[sceneKey];
+            if (!post) { try { onDone && onDone(); } catch (e) {} return false; }
+            try {
+                _renderNarrativeOverlay({
+                    metaKey: 'beat-post-' + sceneKey,
+                    sprite: null, name: '', nameplate: post.title || '',
+                    lines: _splitBeatBodyIntoPages(post.body),
+                    continueLabel: 'Continue →',
+                    onDone: () => { try { onDone && onDone(); } catch (e) {} }
+                });
+                return true;
+            } catch (e) {
+                console.warn('[Story] post-scene overlay failed for', sceneKey, e);
+                try { onDone && onDone(); } catch (e2) {}
+                return false;
+            }
+        }
+
         // Render one story scene through the existing narrative-overlay machinery.
         // The scene's title appears as the nameplate (chapter banner); body
         // pages render line-by-line with a Continue prompt between each.
@@ -45468,12 +45521,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // scene attached to this battle (enterBattleEvent stamped
                 // sm._activeBeatBattleKey on the way in), mark the beat fired
                 // + grant its tier reward + grant any track-end reward (Master
-                // Ball / Exp Share x6 for villain boss / extra raid). Clear
-                // the stamp so retries don't re-grant.
+                // Ball / Exp Share x6 for villain boss / extra raid). Stash
+                // the key in sm._postBattleSceneKey so the victory-overlay
+                // continuation can fire the PR-D post-battle scene between
+                // the overlay dismiss and processNextEvent.
                 try {
                     if (sm._activeBeatBattleKey) {
                         const _beatKey = sm._activeBeatBattleKey;
                         delete sm._activeBeatBattleKey;
+                        sm._postBattleSceneKey = _beatKey;
                         const _beat = _findBeatBySceneKey(_beatKey);
                         if (_beat) {
                             if (!sm.storyEventsFired) sm.storyEventsFired = {};
@@ -45493,7 +45549,17 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Show result overlay then continue
                 showVictoryOverlay(title, coinsAwarded, isMilestoneVictory, () => {
                     document.querySelectorAll('.screen,.modal').forEach(el=>el.classList.add('hidden'));
-                    processNextEvent();
+                    // PR-D: post-battle aftermath scene for story-beat battles
+                    // (auto-extracted from CSV "Post-fight - ..." markers).
+                    // Chained between victory overlay and processNextEvent so
+                    // the next event scene doesn't talk over the aftermath.
+                    const _postKey = sm._postBattleSceneKey;
+                    if (_postKey) {
+                        delete sm._postBattleSceneKey;
+                        _playPostBattleScene(_postKey, () => processNextEvent());
+                    } else {
+                        processNextEvent();
+                    }
                 }, event, idx);
             } else {
                 // No Death Run tracking — counted once per lost main-path story
