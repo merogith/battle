@@ -17039,6 +17039,31 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 else if (stage < 0) stageStr = ` <span style="color:#f44336">${stage}</span>`;
                 lines.push(`${stageNames[key]}: ${val}${stageStr}`);
             }
+            // Phase 4.5 — surface EV total, IV average, and the per-event story stat % so
+            // the player can see what's hitting them. Works symmetrically for player +
+            // enemy because the caller already passes either-side `mon`. Skipped when
+            // buildData isn't present (online PvP / synthetic test mons).
+            try {
+                const bd = mon && mon.buildData;
+                if (bd) {
+                    const evs = bd.evs || {};
+                    const ivs = bd.ivs || {};
+                    const evTotal = ['hp','atk','def','spa','spd','spe'].reduce((s, k) => s + (evs[k] | 0), 0);
+                    const ivVals  = ['hp','atk','def','spa','spd','spe'].map(k => (ivs[k] != null ? ivs[k] : 31));
+                    const ivAvg = Math.round(ivVals.reduce((s, v) => s + v, 0) / ivVals.length);
+                    lines.push(`<span style="color:#9aa0aa;font-size:10px;">EV ${evTotal}/510 · IV avg ${ivAvg}/31</span>`);
+                    // Story stat % override (Phase 4.4). On enemy trainer mons this reads e.g.
+                    // -20% at C0, +30% on Mystery Figure. The mult lives on the BUILT mon
+                    // (set in buildPokemon when build._storyStatMult is present).
+                    const sMult = mon._storyStatMult;
+                    if (typeof sMult === 'number' && sMult > 0 && sMult !== 1) {
+                        const pct = Math.round((sMult - 1) * 100);
+                        const col = pct >= 0 ? '#a5d6a7' : '#ffcdd2';
+                        const sign = pct > 0 ? '+' : '';
+                        lines.push(`<span style="color:${col};font-size:10px;">Story stat ${sign}${pct}%</span>`);
+                    }
+                }
+            } catch (e) {}
             return lines.join('<br>');
         }
 
@@ -35321,6 +35346,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     storyGateFoeMovesByCity: (...a) => _storyGateFoeMovesByCity(...a),
                     storyEnemyStatMult: (...a) => _storyEnemyStatMult(...a),
                     buildPokemon: (...a) => buildPokemon(...a),
+                    getStatTooltipHTML: (...a) => getStatTooltipHTML(...a),
                     findTrainerDataByName,
                     validateTrainerData: _validateTrainerData,
                     getTrainerData: () => TRAINER_DATA,
