@@ -33285,6 +33285,20 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 } catch (e) { console.warn('[Story] shiny backfill', e); }
                 normalizeRivalStandingState();
                 normalizeStoryRivalLock();
+                // ISSUE-076: dev-only shape validation. Once the migration chain
+                // has run, assert sm carries the v20 shape — every required
+                // field present and the right type. Logs a single grouped
+                // warning per boot under ?debug so a future migration silently
+                // no-op'ing surfaces immediately instead of waiting for the
+                // affected feature to crash. No-op outside debug to avoid
+                // adding cost to the normal boot.
+                try {
+                    if (typeof window !== 'undefined'
+                        && window.location && window.location.search
+                        && window.location.search.indexOf('debug') !== -1) {
+                        _storyValidateMigratedShape();
+                    }
+                } catch (e) {}
                 return true;
             } catch(e) {
                 // BUG-005 fix: corrupted save used to silently return false; the
@@ -33307,6 +33321,42 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function hasSave() { try { return !!localStorage.getItem(SAVE_KEY); } catch(e) { return false; } }
         function deleteSave() { try { localStorage.removeItem(SAVE_KEY); } catch(e) {} }
+
+        // ISSUE-076: post-migration shadow validator. Lists the v20-shape
+        // contract sm must satisfy after load(). Fires only when load() is
+        // entered with ?debug in the URL (see load() above). Each missing /
+        // mistyped field logs once; the whole thing is grouped so a clean
+        // load is silent and a drift jumps out.
+        function _storyValidateMigratedShape() {
+            if (!sm) return;
+            const issues = [];
+            const _isArr = Array.isArray;
+            const _isObj = (v) => v !== null && typeof v === 'object' && !_isArr(v);
+            const _isStr = (v) => typeof v === 'string';
+            const _isBool = (v) => typeof v === 'boolean';
+            const _isNum = (v) => typeof v === 'number' && Number.isFinite(v);
+            const _check = (path, val, pred, label) => { if (!pred(val)) issues.push(`${path} must be ${label} (got ${typeof val})`); };
+            _check('sm.version',         sm.version,         _isNum,  'number');
+            _check('sm.eventIndex',      sm.eventIndex,      _isNum,  'number');
+            _check('sm.badges',          sm.badges,          _isNum,  'number');
+            _check('sm.team',            sm.team,            _isArr,  'array');
+            _check('sm.pcBox',           sm.pcBox,           _isArr,  'array');
+            _check('sm.balls',           sm.balls,           _isObj,  'object');
+            _check('sm.pokedex',         sm.pokedex,         _isObj,  'object');
+            _check('sm.unlockedGimmicks',sm.unlockedGimmicks,_isArr,  'array');
+            _check('sm.storyDifficulty', sm.storyDifficulty, _isStr,  'string');
+            _check('sm.storyLine',       sm.storyLine,       _isStr,  'string');
+            _check('sm.settings',        sm.settings,        _isObj,  'object');
+            _check('sm.daycare',         sm.daycare,         _isObj,  'object');
+            _check('sm.pits',            sm.pits,            _isObj,  'object');
+            _check('sm.postHofMysteryClimaxDone', sm.postHofMysteryClimaxDone, _isBool, 'boolean');
+            if (issues.length) {
+                console.warn(`[Story] migration shape drift (v${sm.version} → v${SAVE_VER}):`);
+                issues.forEach(i => console.warn('  •', i));
+            } else {
+                console.info(`[Story] migration shape OK (v${SAVE_VER}, ${(sm.team||[]).length}-team + ${(sm.pcBox||[]).length}-pc)`);
+            }
+        }
         function isActive() { return sm.active; }
 
         function persistStoryMenuDefaultsFromRun() {
