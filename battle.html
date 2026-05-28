@@ -35287,6 +35287,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     storyFreezeFoeTeamForPersistence,
                     tutorFetchLearnsetMoveNames: (...a) => _tutorFetchLearnsetMoveNames(...a),
                     moveTagForSpecies: (...a) => _moveTagForSpecies(...a),
+                    storyGateFoeMovesByCity: (...a) => _storyGateFoeMovesByCity(...a),
                     findTrainerDataByName,
                     validateTrainerData: _validateTrainerData,
                     getTrainerData: () => TRAINER_DATA,
@@ -43588,32 +43589,44 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Tutor's loader + cache), strip any TM/tutor move from each build, and backfill
         // with the species' best egg/level-up moves (Smogon-usage ranked) so the set stays
         // full. From City 4 on both sides have full move access → no-op. Deterministic.
+        // Phase 4.3: enemy move pool mirrors the player's TUTOR STAGE at this city.
+        //   C0–C3 (Inner Strength): Natural only.
+        //   C4–C6 (Expert):         + Learnt.
+        //   C7+   (Guru):           + Awakened — i.e. unfiltered.
+        // When a Smogon preset move sits above the allowed tag, drop it and refill from
+        // the allowed pool (ordered by usage % so the replacement is meta-sensible, not
+        // a random low-usage egg move).
         async function _storyGateFoeMovesByCity(team, storyRowIdx) {
             if (!Array.isArray(team) || !team.length || storyRowIdx == null || storyRowIdx < 0 || !sm || !sm.active) return;
             let city = -1;
             try { city = cityIndexFromEventIndex(storyRowIdx); } catch (e) { return; }
-            if (city < 0 || city >= 4) return;
+            if (city < 0) return;
+            const tutorStage = _npcStageForCity('tutor', city); // 0 / 1 / 2
+            if (tutorStage >= 2) return; // Guru — no tag filter, full Smogon pool stays
             const species = [...new Set(team.map(s => s && s.name).filter(Boolean))];
             // Warm all species' learnsets in parallel so the pre-fight delay stays small.
             try { await Promise.all(species.map(sp => _tutorFetchLearnsetMoveNames(sp).catch(() => null))); } catch (e) {}
             for (const slot of team) {
                 if (!slot || !slot.build || !Array.isArray(slot.build.m) || !slot.build.m.length) continue;
                 const learn = _tutorLearnsetCache.get(slot.name);
-                if (!learn || !Array.isArray(learn.tier1) || !learn.tier1.length) continue; // no data → leave moves as-is
-                const allowed = new Set(learn.tier1);
+                if (!learn) continue; // no data → leave moves as-is
+                // Build the allowed move set for this city's tutor stage.
+                const allowed = new Set(learn.natural || learn.tier1 || []);
+                if (tutorStage >= 1) (learn.learnt || []).forEach(m => allowed.add(m));
+                if (!allowed.size) continue; // thin learnset → leave moves alone
                 const orig = slot.build.m.slice();
                 const kept = orig.filter(mv => allowed.has(String(mv).split('/')[0]));
-                if (kept.length === orig.length) continue; // already all egg/level-up
+                if (kept.length === orig.length) continue; // already all in-bucket
                 const targetLen = Math.min(4, orig.length);
                 if (kept.length < targetLen) {
                     let pctOf = null;
                     try { pctOf = _txStarredPool(slot.name).moves.pctOf; } catch (e) {}
                     const have = new Set(kept.map(m => String(m).split('/')[0]));
-                    const fill = learn.tier1.filter(mn => !have.has(mn));
+                    const fill = [...allowed].filter(mn => !have.has(mn));
                     if (pctOf) fill.sort((a, b) => (pctOf.get(b) || 0) - (pctOf.get(a) || 0));
                     while (kept.length < targetLen && fill.length) kept.push(fill.shift());
                 }
-                if (!kept.length) kept.push(learn.tier1[0]);
+                if (!kept.length) kept.push([...allowed][0]);
                 slot.build.m = kept;
             }
         }
