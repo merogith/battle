@@ -1190,6 +1190,21 @@
         }
         .tx-card[data-disabled="1"] { opacity: 0.55; cursor: not-allowed; }
         .tx-card[data-disabled="1"]:hover { transform: none; }
+        /* Phase 4 — 4px left stripe encodes the Natural/Learnt/Awakened
+           classification without adding another text pill to the foot row.
+           Greater visual signal-to-noise: a single colored bar scans faster
+           than another "Natural" / "Learnt" pill. The card's tooltip
+           explains the stripe on hover for first-time players. */
+        .tx-card[data-tag] {
+            position: relative; padding-left: 14px;
+        }
+        .tx-card[data-tag]::before {
+            content: ''; position: absolute; left: 0; top: 6px; bottom: 6px;
+            width: 4px; border-radius: 0 3px 3px 0;
+        }
+        .tx-card[data-tag="natural"]::before  { background: #81c784; box-shadow: 0 0 6px rgba(129,199,132,0.55); }
+        .tx-card[data-tag="learnt"]::before   { background: #4fc3f7; box-shadow: 0 0 6px rgba(79,195,247,0.55); }
+        .tx-card[data-tag="awakened"]::before { background: #ce93d8; box-shadow: 0 0 6px rgba(206,147,216,0.55); }
         /* ★ marker on starred cards — gold star prefix before the title. */
         .tx-card-star {
             display: inline-flex; align-items: center; justify-content: center;
@@ -1761,6 +1776,57 @@
         .tx-active-filter.tx-active-filter--up    { background: rgba(102,187,106,0.18); border-color: #66bb6a; color: #c8e6c9; }
         .tx-active-filter.tx-active-filter--down  { background: rgba(244,67,54,0.18); border-color: #ef5350; color: #ffcdd2; }
         .tx-active-filter.type-badge { padding: 4px 9px; }
+
+        /* Phase 4 legend popover — appears next to the ★ chip on the move
+           tutor. CSS-only show/hide via :focus-within / :hover so it
+           doesn't need a JS dialog handler. Closes when focus leaves. */
+        .tx-legend {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 22px; height: 22px;
+            font-size: 12px; font-weight: 800;
+            font-family: var(--battle-font, inherit);
+            color: #c6a4d0; background: rgba(206,147,216,0.10);
+            border: 1px solid rgba(206,147,216,0.40);
+            border-radius: 999px; cursor: help; user-select: none;
+            margin-left: 6px; position: relative; outline: none;
+            transition: all 0.12s;
+        }
+        .tx-legend:hover, .tx-legend:focus-within {
+            background: rgba(206,147,216,0.25); border-color: var(--accent);
+            color: #fff;
+        }
+        .tx-legend-popover {
+            display: none;
+            position: absolute; top: calc(100% + 6px); left: 50%;
+            transform: translateX(-50%);
+            min-width: 260px; max-width: 320px;
+            padding: 10px 12px;
+            background: linear-gradient(180deg, rgba(28,32,48,0.98), rgba(14,17,26,0.98));
+            border: 1px solid #4a5168; border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            color: #d4d9e4; font-size: 11px; line-height: 1.45;
+            text-align: left; font-weight: 500;
+            z-index: 10; cursor: default;
+        }
+        .tx-legend:hover .tx-legend-popover,
+        .tx-legend:focus-within .tx-legend-popover {
+            display: flex; flex-direction: column; gap: 6px;
+        }
+        .tx-legend-row {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        }
+        .tx-legend-row--star { padding-top: 6px; border-top: 1px dashed rgba(102,113,140,0.30); }
+        .tx-legend-row strong { color: #fff3cd; font-weight: 700; }
+        .tx-legend-swatch {
+            display: inline-block; width: 12px; height: 12px;
+            border-radius: 2px; flex-shrink: 0;
+        }
+        .tx-legend-swatch--natural  { background: #81c784; box-shadow: 0 0 4px rgba(129,199,132,0.55); }
+        .tx-legend-swatch--learnt   { background: #4fc3f7; box-shadow: 0 0 4px rgba(79,195,247,0.55); }
+        .tx-legend-swatch--awakened { background: #ce93d8; box-shadow: 0 0 4px rgba(206,147,216,0.55); }
+        @media (max-width: 480px) {
+            .tx-legend-popover { left: 0; transform: none; max-width: calc(100vw - 32px); }
+        }
 
         /* Flash highlight when EV-trainer recs panel scrolls a preset into view —
            gives the player a clear "this is the one we just jumped to" beat. */
@@ -53734,7 +53800,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const title = on
                 ? 'Showing options used in competitive Smogon builds. Tap to expand to the full list.'
                 : 'Showing all options. Tap to narrow back to the Smogon-recommended list.';
-            return `<button type="button" class="tx-chip tx-chip--rec" data-filter-kind="recOnly" data-filter-value="${kind}" data-active="${on}" title="${_esc(title)}" aria-pressed="${on?'true':'false'}">${label}</button>`;
+            // ? button next to the ★ chip opens a static legend popover
+            // (CSS-only via :focus-within) explaining the stripe colors +
+            // the rec system. Saves a JS handler / dialog dance.
+            const legend = (kind === 'moves') ? `
+                <span class="tx-legend" tabindex="0" role="button" aria-label="What do the stripe colors mean?">?
+                    <span class="tx-legend-popover" role="tooltip">
+                        <span class="tx-legend-row"><span class="tx-legend-swatch tx-legend-swatch--natural"></span><strong>Natural</strong> — egg / level-up / transfer / evolution-learned</span>
+                        <span class="tx-legend-row"><span class="tx-legend-swatch tx-legend-swatch--learnt"></span><strong>Learnt</strong> — TM / HM / Tutor / TR / event</span>
+                        <span class="tx-legend-row"><span class="tx-legend-swatch tx-legend-swatch--awakened"></span><strong>Awakened</strong> — off-legal Smogon picks</span>
+                        <span class="tx-legend-row tx-legend-row--star"><strong>★</strong> — Recommended in competitive Smogon builds. The chip below toggles between the ★ list and the full pool.</span>
+                    </span>
+                </span>` : '';
+            return `<button type="button" class="tx-chip tx-chip--rec" data-filter-kind="recOnly" data-filter-value="${kind}" data-active="${on}" title="${_esc(title)}" aria-pressed="${on?'true':'false'}">${label}</button>${legend}`;
         }
 
         // Sparse-data banner — surfaced above the picker when the species has
@@ -53842,17 +53920,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // and shows a "Unlocks at L<N>" lock chip when the move is above the
             // current tutor stage. Equipped moves skip the lock badge (the player
             // already has them; the tag still renders for context).
-            let tagPill = '';
+            //
+            // Phase 4 — the Natural/Learnt/Awakened tag pill is replaced with a
+            // 4px color-coded left stripe on the card (see .tx-card[data-tag]
+            // CSS). Drops 1 text pill from the foot row + ~20px of visual
+            // weight per card. The STAB pill is also dropped — the type-badge
+            // in the card head already encodes it, redundantly with a colored
+            // pill bloated the foot row.
+            let tagAttr = '';
+            let tagTitle = '';
             let lockPill = '';
             try {
                 if (ctx && ctx.monName && typeof _moveTagForSpecies === 'function') {
                     const tag = _txMoveTagMemo(ctx.monName, moveName);
-                    if (tag === 'natural') {
-                        tagPill = `<span class="tx-pill" style="background:rgba(129,199,132,0.18);border-color:#81c784;color:#a5d6a7;" title="Natural — egg / level-up / transfer / evolution">Natural</span>`;
-                    } else if (tag === 'learnt') {
-                        tagPill = `<span class="tx-pill" style="background:rgba(79,195,247,0.18);border-color:#4fc3f7;color:#81d4fa;" title="Learnt — TM / HM / Tutor / TR / event">Learnt</span>`;
-                    } else if (tag === 'awakened') {
-                        tagPill = `<span class="tx-pill" style="background:rgba(206,147,216,0.20);border-color:#ce93d8;color:#e1bee7;" title="Awakened — off-legal Smogon picks">Awakened</span>`;
+                    if (tag === 'natural' || tag === 'learnt' || tag === 'awakened') {
+                        tagAttr = ` data-tag="${tag}"`;
+                        tagTitle = tag === 'natural'
+                            ? 'Natural move — egg / level-up / transfer / evolution-learned'
+                            : tag === 'learnt'
+                            ? 'Learnt move — TM / HM / Tutor / TR / event'
+                            : 'Awakened move — off-legal Smogon pick';
                     }
                     if (!isEquipped) {
                         const reqStage = tag === 'awakened' ? 2 : tag === 'learnt' ? 1 : 0;
@@ -53866,8 +53953,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
             const pills = [
                 `<span class="tx-pill tx-pill--cat-${cat}">${cat}</span>`,
-                stab ? `<span class="tx-pill" style="background:rgba(255,213,79,0.18);border-color:#ffd54f;color:#fff3cd;">STAB</span>` : '',
-                tagPill,
                 lockPill,
             ].filter(Boolean).join('');
             const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
@@ -53902,7 +53987,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div class="tx-card-foot">${pills}${footExtra}</div>`;
             // data-search-value carries the lowercased card name so the
             // Phase 2 search-fast-update can match without re-reading text.
-            return `<${tag}${btnAttr} class="tx-card${isEquipped ? ' tx-card--equipped' : ''}" data-card-kind="move" data-card-value="${_esc(moveName)}" data-search-value="${_esc(moveName.toLowerCase())}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-equipped="${isEquipped?1:0}">${inner}</${tag}>`;
+            // data-tag carries the Natural/Learnt/Awakened classification so
+            // the Phase 4 CSS can paint a 4px left stripe in the right color.
+            const tagTitleAttr = tagTitle ? ` title="${_esc(tagTitle)}"` : '';
+            return `<${tag}${btnAttr} class="tx-card${isEquipped ? ' tx-card--equipped' : ''}"${tagAttr}${tagTitleAttr} data-card-kind="move" data-card-value="${_esc(moveName)}" data-search-value="${_esc(moveName.toLowerCase())}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-equipped="${isEquipped?1:0}">${inner}</${tag}>`;
         }
 
         // Build an Item card.
