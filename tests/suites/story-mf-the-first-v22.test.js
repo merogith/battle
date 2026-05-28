@@ -28,7 +28,11 @@ test('the_first identity has the expected shape', () => {
     assert.ok(Array.isArray(tf.intros), 'intros should be an array');
     assert.equal(tf.intros.length, 4, 'expected 4 intro lines');
     assert.equal(typeof tf.outro, 'string');
-    assert.ok(tf.outro.includes('I am The First'), 'outro should include the canonical reveal speech');
+    // PR-6 polish pass: the post-fight outro is now a brief bridge line; the
+    // full "I am The First..." reveal speech lives in STORY_SCENES['main.mfReveal']
+    // (PR-2 CSV ingest), which fires from continuePostGame BEFORE the outro.
+    assert.ok(tf.outro.length > 0 && tf.outro.includes('The figure'),
+        'outro should be a brief post-fight bridge line, not the full reveal');
 });
 
 test('the_first first intro line is the canonical hook', () => {

@@ -37,16 +37,10 @@ test('tryFireAnomalySeed returns falsy for non-anchor rows', () => {
 });
 
 test('tryFireAnomalySeed returns truthy on first call for an anchor row', () => {
-    // Reset the meta tipsShown for this seed key.
-    if (W.readStoryMeta && W.writeStoryMeta) {
-        const meta = W.readStoryMeta();
-        if (meta.tipsShown) {
-            delete meta.tipsShown['anomaly-seed-7'];
-            W.writeStoryMeta(meta);
-        }
-    }
-    // Make sure sm.scenesShown doesn't dedupe us (the tip system uses
-    // sm.scenesShown for per-run dedup of plain tips). Reset it.
+    // Fresh sm.scenesShown ensures the per-run fallback dedup is clean.
+    // Note: jsdom uses opaque origin so meta.tipsShown writes silently
+    // fail; the per-run fallback is what's verified here. Real-game flow
+    // is meta-primary (verified by source review of _tryFireAnomalySeed).
     ST.sm = Object.assign({}, ST.sm, { scenesShown: {} });
     const ev = [7, 'Battle', 'Basic Trainer', null, 1200, null];
     const fired = ST.tryFireAnomalySeed(ev);
@@ -54,10 +48,23 @@ test('tryFireAnomalySeed returns truthy on first call for an anchor row', () => 
 });
 
 test('tryFireAnomalySeed is deduped on repeat calls for the same row', () => {
-    // Already-fired by the previous test; the second call should no-op.
+    // Previous test stamped sm.scenesShown[anomaly-seed-7]; second call no-ops.
     const ev = [7, 'Battle', 'Basic Trainer', null, 1200, null];
     const refired = ST.tryFireAnomalySeed(ev);
     assert.equal(!!refired, false, 'should not re-fire an already-shown seed');
+});
+
+test('_tryFireAnomalySeed source uses meta.tipsShown as primary dedup', async () => {
+    // Source-level check: real-game cross-run dedup hinges on meta.tipsShown.
+    // The per-run sm.scenesShown is a documented fallback for jsdom / quota
+    // errors. Verify both paths are present in the implementation.
+    const { readFile } = await import('node:fs/promises');
+    const src = await readFile(new URL('../../battle.html', import.meta.url), 'utf8');
+    const idx = src.indexOf('function _tryFireAnomalySeed(');
+    assert.ok(idx > 0, '_tryFireAnomalySeed should be defined');
+    const block = src.slice(idx, idx + 1800);
+    assert.match(block, /meta\.tipsShown\[tipKey\]\s*=\s*true/, 'meta.tipsShown write should be present');
+    assert.match(block, /sm\.scenesShown\[tipKey\]\s*=\s*true/, 'sm.scenesShown fallback should be present');
 });
 
 test('Anomaly seeds are pinned to row IDs that exist in STORY_EVENTS_RAW', () => {

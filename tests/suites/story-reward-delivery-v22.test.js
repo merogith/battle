@@ -33,32 +33,46 @@ test('awardStoryBeatReward returns null on invalid beat', () => {
     assert.equal(ST.awardStoryBeatReward({ kind: 'nonexistent' }), null);
 });
 
-test('awardStoryBeatReward grants gold for low-tier (battle kind)', () => {
-    // Set up clean inventory state.
+test('awardStoryBeatReward grants gold scaled by current-city baseline (low tier)', () => {
+    // City 1 baseline = Gym Leader 1 coins. At eventIndex 0 the resolver
+    // walks back to City0 → 0; baseline clamps to City 1 → Gym 1 coins.
     ST.sm = Object.assign({}, ST.sm, {
-        gold: 1000,
+        gold: 1000, eventIndex: 0,
         inventory: ST.sm.inventory || {},
         balls: ST.sm.balls || { poke: 0, great: 0, ultra: 0, master: 0 },
     });
+    const baseline = ST.gymLeaderGoldBaselineForCity(1);
     const goldBefore = ST.sm.gold | 0;
     ST.awardStoryBeatReward({ kind: 'battle', sceneKey: 'villain.rocket.battle1' });
-    // Low tier = goldFrac 0.80 × 500 = 400G.
-    assert.equal(ST.sm.gold | 0, goldBefore + 400);
+    // Low tier = goldFrac 0.80 × baseline.
+    assert.equal(ST.sm.gold | 0, goldBefore + Math.floor(baseline * 0.80));
 });
 
-test('awardStoryBeatReward grants more gold for big-tier (boss kind)', () => {
-    ST.sm = Object.assign({}, ST.sm, { gold: 1000 });
+test('awardStoryBeatReward grants big-tier gold scaled by city', () => {
+    ST.sm = Object.assign({}, ST.sm, { gold: 1000, eventIndex: 0 });
+    const baseline = ST.gymLeaderGoldBaselineForCity(1);
     const goldBefore = ST.sm.gold | 0;
     ST.awardStoryBeatReward({ kind: 'boss', sceneKey: 'villain.rocket.boss' });
-    // Big tier = goldFrac 1.00 × 500 = 500G.
-    assert.equal(ST.sm.gold | 0, goldBefore + 500);
+    assert.equal(ST.sm.gold | 0, goldBefore + Math.floor(baseline * 1.00));
 });
 
-test('awardStoryBeatReward grants apex-tier rewards for mfBattle', () => {
-    ST.sm = Object.assign({}, ST.sm, { gold: 0 });
+test('awardStoryBeatReward apex tier matches Gym 1 baseline at start of run', () => {
+    ST.sm = Object.assign({}, ST.sm, { gold: 0, eventIndex: 0 });
+    const baseline = ST.gymLeaderGoldBaselineForCity(1);
     ST.awardStoryBeatReward({ kind: 'mysteryBoss', sceneKey: 'main.mfBattle' });
-    // Apex tier: goldFrac 1.00 × 500 = 500G.
-    assert.equal(ST.sm.gold | 0, 500);
+    assert.equal(ST.sm.gold | 0, Math.floor(baseline * 1.00));
+});
+
+test('gymLeaderGoldBaselineForCity scales upward across the league', () => {
+    const g1 = ST.gymLeaderGoldBaselineForCity(1);
+    const g8 = ST.gymLeaderGoldBaselineForCity(8);
+    assert.ok(g8 > g1, 'Gym 8 baseline should exceed Gym 1');
+    assert.ok(g1 > 0 && g8 > 0);
+});
+
+test('gymLeaderGoldBaselineForCity clamps out-of-range city idx', () => {
+    assert.equal(ST.gymLeaderGoldBaselineForCity(0),  ST.gymLeaderGoldBaselineForCity(1));
+    assert.equal(ST.gymLeaderGoldBaselineForCity(99), ST.gymLeaderGoldBaselineForCity(8));
 });
 
 test('awardStoryBeatReward grants 0 gold for flavor (event) tier', () => {

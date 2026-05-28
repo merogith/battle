@@ -8960,7 +8960,7 @@
                  'classic' and the 3-track random villain/extra rolls supersede
                  the old 8-variant tone picker. Surface owned by sm.tracks now. -->
             <section class="story-create-section" id="story-create-storyline-section" style="display:none;">
-                <h2 class="story-create-sec-title">3 &mdash; Storyline</h2>
+                <h2 class="story-create-sec-title">Storyline (legacy)</h2>
                 <p style="color:#888;font-size:11px;margin:0 0 6px;">The road north is the same. Who walks it with you, what waits at the cage, and what the radio says when no one&rsquo;s listening &mdash; that&rsquo;s the storyline.</p>
                 <div class="story-create-storyline-grid" id="story-create-storyline-grid" role="radiogroup" aria-label="Storyline"></div>
                 <p id="story-create-storyline-warn" class="story-create-storyline-warn" aria-live="polite" style="margin-top:6px;"></p>
@@ -31961,7 +31961,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     "The hall behind you has a portrait with my face — and yours.",
                     "End this loop. Start the next."
                 ],
-                outro: "The figure removes their cap. The face under the cap is yours — older, tired, scarred. He says: 'I am The First. You become me. I become the one who saves the universe by losing to you forever.'"
+                outro: "The figure does not move when the battle ends. He just smiles, and waits. The hall behind him is silent."
             }
         };
         /** Picks the post-HoF Mystery Figure identity. Under the v22 3-track
@@ -36594,6 +36594,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Reward delivery (PR-4b).
                     awardStoryBeatReward: (beat) => _storyAwardStoryBeatReward(beat),
                     rollIntInRange: (v) => _rollIntInRange(v),
+                    gymLeaderGoldBaselineForCity: (n) => _storyGymLeaderGoldBaselineForCity(n),
                     // Track-end rewards + boss mechanics (PR-5).
                     grantTrackEndReward: (beat) => _storyGrantTrackEndReward(beat),
                     get BOSS_MECHANICS() { return BOSS_MECHANICS; },
@@ -40520,13 +40521,32 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const rowId = ev[0] | 0;
             const seed = ANOMALY_SEEDS[rowId];
             if (!seed) return false;
+            // Cross-run dedup via meta.tipsShown (primary) — each seed shows
+            // exactly once in the player's career. Per-run sm.scenesShown
+            // is a fallback dedup in case meta storage is unavailable (e.g.,
+            // jsdom opaque-origin in tests, or localStorage quota errors).
+            // Real-game flow: meta path always wins.
             const tipKey = 'anomaly-seed-' + rowId;
+            let metaShown = false;
             try {
-                if (typeof _storyShowOneTimeTip === 'function') {
-                    return _storyShowOneTimeTip(tipKey, seed);
-                }
-            } catch (e) { console.warn('[Story] anomaly seed failed for row', rowId, e); }
-            return false;
+                const meta = readStoryMeta();
+                if (meta && meta.tipsShown && meta.tipsShown[tipKey]) metaShown = true;
+            } catch (e) {}
+            if (metaShown) return false;
+            if (sm && sm.scenesShown && sm.scenesShown[tipKey]) return false;
+            try {
+                const meta = readStoryMeta() || {};
+                if (!meta.tipsShown) meta.tipsShown = {};
+                meta.tipsShown[tipKey] = true;
+                writeStoryMeta(meta);
+            } catch (e) {}
+            if (sm) {
+                if (!sm.scenesShown) sm.scenesShown = {};
+                sm.scenesShown[tipKey] = true;
+            }
+            try { if (typeof window.showGameAlert === 'function') window.showGameAlert(seed); }
+            catch (e) {}
+            return true;
         }
 
         // Called at the top of processNextEvent. If any 3-track event-kind beats
@@ -40647,9 +40667,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (Array.isArray(v)) {
                 const lo = v[0] | 0, hi = v[1] | 0;
                 if (hi <= lo) return lo;
-                return lo + Math.floor(Math.random() * (hi - lo + 1));
+                const rng = (sm && sm.active && typeof window.storyRngNext === 'function')
+                    ? window.storyRngNext : Math.random;
+                return lo + Math.floor(rng() * (hi - lo + 1));
             }
             return v | 0;
+        }
+        // Resolves the city-scaled Gym-Leader gold baseline for the player's
+        // current position. Reward tier delivery scales by this baseline so a
+        // boss on Road 7 pays much more than an early-route mini-boss.
+        // Drift-tolerant: reads from STORY_EVENTS_RAW so coin tuning stays
+        // single-sourced; falls back to a linear curve if the lookup misses.
+        function _storyGymLeaderGoldBaselineForCity(cityIdx) {
+            cityIdx = Math.max(1, Math.min(8, cityIdx | 0));
+            for (let i = 0; i < STORY_EVENTS_RAW.length; i++) {
+                const r = STORY_EVENTS_RAW[i];
+                if (r && r[1] === 'Battle' && r[2] === 'Gym Leader ' + cityIdx) {
+                    return (r[4] | 0) || (2000 + 500 * cityIdx);
+                }
+            }
+            return 2000 + 500 * cityIdx;
         }
         function _storyAwardStoryBeatReward(beat) {
             if (!beat || !beat.kind) return null;
@@ -40658,17 +40695,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const tier = STORY_REWARD_TIERS[tierKey];
             if (!tier) return null;
             const reward = {};
-            // Gold: tier.goldFrac × a city-aware Gym-leader baseline. PR-4b uses
-            // a flat 500G baseline; PR-5 can scale by current city if needed.
+            // Gold: tier.goldFrac × current-city Gym-Leader baseline. Late-game
+            // bosses earn proportionally more than early-route grunts.
             if (tier.goldFrac > 0) {
-                reward.gold = Math.floor(500 * tier.goldFrac);
+                const cityIdx = (typeof cityIndexFromEventIndex === 'function')
+                    ? cityIndexFromEventIndex(sm ? sm.eventIndex : 0) : 1;
+                const baseline = _storyGymLeaderGoldBaselineForCity(Math.max(1, cityIdx));
+                reward.gold = Math.floor(baseline * tier.goldFrac);
             }
             if (tier.vouchers) reward.voucherRolls = _rollIntInRange(tier.vouchers);
             if (tier.vitamins) {
                 const VITAMIN_KEYS = ['hpUp','protein','iron','calcium','zinc','carbos'];
+                const rng = (sm && sm.active && typeof window.storyRngNext === 'function')
+                    ? window.storyRngNext : Math.random;
                 const n = _rollIntInRange(tier.vitamins);
                 for (let i = 0; i < n; i++) {
-                    const v = VITAMIN_KEYS[(Math.random() * VITAMIN_KEYS.length) | 0];
+                    const v = VITAMIN_KEYS[(rng() * VITAMIN_KEYS.length) | 0];
                     reward[v] = (reward[v] | 0) + 1;
                 }
             }
