@@ -8954,7 +8954,12 @@
                 </div>
             </section>
 
-            <section class="story-create-section">
+            <!-- Storyline picker section hidden under v22 3-track system. Card grid
+                 stays in the DOM (display:none) so legacy JS that reads
+                 `_tcState.storyline` keeps working; the value defaults to
+                 'classic' and the 3-track random villain/extra rolls supersede
+                 the old 8-variant tone picker. Surface owned by sm.tracks now. -->
+            <section class="story-create-section" id="story-create-storyline-section" style="display:none;">
                 <h2 class="story-create-sec-title">3 &mdash; Storyline</h2>
                 <p style="color:#888;font-size:11px;margin:0 0 6px;">The road north is the same. Who walks it with you, what waits at the cage, and what the radio says when no one&rsquo;s listening &mdash; that&rsquo;s the storyline.</p>
                 <div class="story-create-storyline-grid" id="story-create-storyline-grid" role="radiogroup" aria-label="Storyline"></div>
@@ -8962,7 +8967,7 @@
             </section>
 
             <section class="story-create-section">
-                <h2 class="story-create-sec-title">4 &mdash; Pokémon generations</h2>
+                <h2 class="story-create-sec-title">3 &mdash; Pokémon generations</h2>
                 <div class="story-create-gen-presets" role="radiogroup" aria-label="Generation preset">
                     <button type="button" class="story-create-gen-preset story-create-gen-preset--active" data-preset="all" role="radio" aria-checked="true" onclick="window.StoryMode.trainerCreateSetGenPreset('all')">All Gens</button>
                     <button type="button" class="story-create-gen-preset" data-preset="kanto" role="radio" aria-checked="false" onclick="window.StoryMode.trainerCreateSetGenPreset('kanto')">Kanto only</button>
@@ -31277,7 +31282,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // goldFrac scales the Gym-Leader gold table for the current city;
         // vouchers/vitamins given as [min, max] or flat number (rolled per battle).
         const STORY_REWARD_TIERS = {
-            flavor: { goldFrac: 0.05, vouchers: 0,      vitamins: 0,      items: [] },
+            flavor: { goldFrac: 0,    vouchers: 0,      vitamins: 0,      items: [] },
             low:    { goldFrac: 0.80, vouchers: [0, 1], vitamins: 0,      items: [] },
             mid:    { goldFrac: 1.00, vouchers: [1, 2], vitamins: 1,      items: [] },
             big:    { goldFrac: 1.00, vouchers: [3, 5], vitamins: [2, 3], items: ['voucher_artifact'] },
@@ -36618,6 +36623,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     get STORY_REWARD_TIERS() { return STORY_REWARD_TIERS; },
                     get STORY_KIND_TO_TIER() { return STORY_KIND_TO_TIER; },
                     get STORY_BASE_TRAINER_GOLD_MULT() { return STORY_BASE_TRAINER_GOLD_MULT; },
+                    // 3-track dispatcher helpers (PR-3a).
+                    roadForArrayIdx: (i) => _roadForArrayIdx(i),
+                    resolveActiveRoadBeats: (road) => _resolveActiveRoadBeats(road),
+                    splitBeatBodyIntoPages: (s) => _splitBeatBodyIntoPages(s),
                     // Staged-NPC capability ladder handles (city-anchored).
                     npcStageForCity: (...a) => _npcStageForCity(...a),
                     npcStageName: (...a) => _npcStageName(...a),
@@ -40422,6 +40431,106 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             }
         }
 
+        // ── 3-track story beat dispatcher (v22+) ─────────────────────────
+        // Maps each STORY_EVENTS_RAW array index to a road anchor (road1..road8 /
+        // league / null). Derived at boot so timeline shifts auto-recompute.
+        // Road N = the range between Gym N (excl) and Gym N+1 (excl), with the
+        // post-HoF section collapsing into 'league'.
+        const _ROAD_BY_ARRAY_IDX = (function _deriveRoadByArrayIdx() {
+            const out = new Array(STORY_EVENTS_RAW.length).fill(null);
+            let currentGym = 0;
+            let inLeague = false;
+            for (let i = 0; i < STORY_EVENTS_RAW.length; i++) {
+                const row = STORY_EVENTS_RAW[i];
+                if (!row) continue;
+                const ev = String(row[2] || '');
+                if (row[1] === 'Battle') {
+                    const gm = ev.match(/^Gym Leader (\d+)$/);
+                    if (gm) { currentGym = parseInt(gm[1], 10); out[i] = null; continue; }
+                    if (/^E[1-4]$/i.test(ev) || ev === 'Champion' || ev === 'Mystery Figure') inLeague = true;
+                }
+                if (inLeague)                       out[i] = 'league';
+                else if (currentGym >= 1 && currentGym <= 8) out[i] = 'road' + currentGym;
+                else                                out[i] = null;  // pre-Gym-1 (Road 0)
+            }
+            return out;
+        })();
+        function _roadForArrayIdx(arrayIdx) {
+            arrayIdx = arrayIdx | 0;
+            if (arrayIdx < 0 || arrayIdx >= _ROAD_BY_ARRAY_IDX.length) return null;
+            return _ROAD_BY_ARRAY_IDX[arrayIdx];
+        }
+        // Returns ordered unfired event-kind beats for the road, in priority
+        // order: main → villain → extra. Battle / boss / raid kinds are filtered
+        // out — those fire as pre-battle scenes from the battle-entry hook
+        // (wired in PR-4 alongside the route-fight injection).
+        function _resolveActiveRoadBeats(road) {
+            if (!road || !sm || !sm.tracks) return [];
+            if (!sm.storyEventsFired) sm.storyEventsFired = {};
+            const out = [];
+            const eligible = (slot) =>
+                slot && slot.kind === 'event'
+                    && slot.roadAnchor === road
+                    && !sm.storyEventsFired[slot.sceneKey];
+            for (const slot of Object.values(MAIN_STORY_BEATS)) if (eligible(slot)) out.push(slot);
+            const v = sm.tracks.villain && VILLAIN_STORY_BEATS[sm.tracks.villain];
+            if (v) for (const slot of Object.values(v)) if (eligible(slot)) out.push(slot);
+            const x = sm.tracks.extra && EXTRA_STORY_BEATS[sm.tracks.extra];
+            if (x) for (const slot of Object.values(x)) if (eligible(slot)) out.push(slot);
+            return out;
+        }
+        // Splits a long body into pages (1-2 sentences each) for the overlay's
+        // line-by-line continue prompt. Empty / short bodies become one page.
+        function _splitBeatBodyIntoPages(body) {
+            const s = String(body || '').trim();
+            if (!s) return [''];
+            const parts = s.split(/(?<=[.!?…])\s+(?=[A-Z'"“‘])/).filter(Boolean);
+            return parts.length ? parts : [s];
+        }
+        // Render one story scene through the existing narrative-overlay machinery.
+        // The scene's title appears as the nameplate (chapter banner); body
+        // pages render line-by-line with a Continue prompt between each.
+        function _playStoryBeatScene(sceneKey, onDone) {
+            const scene = STORY_SCENES && STORY_SCENES[sceneKey];
+            if (!scene) { try { onDone && onDone(); } catch (e) {} return; }
+            try {
+                _renderNarrativeOverlay({
+                    metaKey: 'beat-' + sceneKey,
+                    sprite: null,
+                    name: '',
+                    nameplate: scene.title || '',
+                    lines: _splitBeatBodyIntoPages(scene.body),
+                    continueLabel: 'Continue →',
+                    onDone: () => { try { onDone && onDone(); } catch (e) {} }
+                });
+            } catch (e) {
+                console.warn('[Story] beat overlay failed for', sceneKey, e);
+                try { onDone && onDone(); } catch (e2) {}
+            }
+        }
+        function _playStoryBeatQueue(queue, i, onDone) {
+            if (i >= queue.length) { try { onDone && onDone(); } catch (e) {} return; }
+            const beat = queue[i];
+            _playStoryBeatScene(beat.sceneKey, () => {
+                sm.storyEventsFired[beat.sceneKey] = true;
+                try { save(); } catch (e) {}
+                _playStoryBeatQueue(queue, i + 1, onDone);
+            });
+        }
+        // Called at the top of processNextEvent. If any 3-track event-kind beats
+        // are queued for the current road, play them sequentially then re-invoke
+        // processNextEvent. Returns true if beats fired (caller must early-return).
+        function _tryFireRoadStoryBeats(ev) {
+            if (!ev || ev[1] === 'City') return false;
+            if (!sm || !sm.tracks) return false;
+            const road = _roadForArrayIdx(sm.eventIndex);
+            if (!road) return false;
+            const queue = _resolveActiveRoadBeats(road);
+            if (!queue.length) return false;
+            _playStoryBeatQueue(queue, 0, () => processNextEvent());
+            return true;
+        }
+
         // ── MAIN EVENT LOOP ───────────────────────────────────────────────
         function processNextEvent() {
             const _capIdx = Math.max(0, STORY_EVENTS_RAW.length - 1);
@@ -40458,6 +40567,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
             }
+            if (_tryFireRoadStoryBeats(ev)) return;
             if (type === 'City') { enterCity(); return; }
             if (type === 'Hall of Fame') { showHallOfFame(); return; }
             if (type === 'Battle') {
