@@ -1252,6 +1252,63 @@
             line-height: 1.55;
             border: 1px dashed #3a4156; border-radius: 8px;
         }
+        /* Section-grouped grid — when the filtered list contains locked
+           moves, the grid is partitioned into three sections (Learnable
+           now / Unlocks at L2 Expert / Unlocks at L3 Guru) with sticky
+           color-coded headers. The "flat" variant renders identical to
+           the old single-grid layout for the common no-locked-moves case. */
+        .tx-grid-section {
+            display: contents;
+        }
+        .tx-grid-section--flat { display: contents; }
+        .tx-grid-section-head {
+            grid-column: 1 / -1;
+            position: sticky; top: 0; z-index: 2;
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+            padding: 8px 12px; margin: 6px 0 4px;
+            background: linear-gradient(180deg, rgba(28,32,48,0.97), rgba(14,17,26,0.97));
+            border: 1px solid #3a4156; border-radius: 6px;
+            font-size: 11px; font-weight: 700;
+            letter-spacing: 0.06em; text-transform: uppercase;
+            isolation: isolate;
+        }
+        .tx-grid-section[data-section-tag="unlocked"] .tx-grid-section-head {
+            border-left: 4px solid #66bb6a;
+            color: #c8e6c9;
+        }
+        .tx-grid-section[data-section-tag="l2"] .tx-grid-section-head {
+            border-left: 4px solid #4fc3f7;
+            color: #b3e5fc;
+        }
+        .tx-grid-section[data-section-tag="l3"] .tx-grid-section-head {
+            border-left: 4px solid #ce93d8;
+            color: #e1bee7;
+        }
+        .tx-grid-section-icon {
+            font-size: 14px; line-height: 1;
+        }
+        .tx-grid-section-title { flex: 0 0 auto; }
+        .tx-grid-section-count {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 24px; padding: 1px 7px;
+            font-size: 10px; font-weight: 800;
+            background: rgba(0,0,0,0.30);
+            border: 1px solid currentColor;
+            border-radius: 999px;
+            opacity: 0.85;
+        }
+        .tx-grid-section-hint {
+            font-size: 10px; font-weight: 500; opacity: 0.75;
+            text-transform: none; letter-spacing: 0.02em;
+            margin-left: auto;
+        }
+        /* The section's cards inherit the grid layout from .tx-grid via
+           display: contents on the wrappers, so the auto-fill columns
+           still apply across sections. */
+        .tx-grid-section-cards { display: contents; }
+        @media (max-width: 600px) {
+            .tx-grid-section-hint { display: none; }
+        }
         /* Inline CTA in empty-state messages — turns "Tap ★ Show all to
            expand" into a tappable button so the player doesn't have to
            scroll back up to the chip. Same gold styling as the filter chip. */
@@ -1836,6 +1893,20 @@
             border: 1px solid rgba(206,147,216,0.18);
             border-radius: 6px;
         }
+        @media (max-width: 600px) {
+            /* On phones, switch the active-filter pill row from vertical
+               wrap to a single horizontally scrollable strip — prevents the
+               row from blowing up vertically when the player has 5+ types
+               selected. */
+            .tx-active-filters {
+                flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: thin; scroll-snap-type: x proximity;
+            }
+            .tx-active-filters > * { flex-shrink: 0; scroll-snap-align: start; }
+            .tx-active-filters::-webkit-scrollbar { height: 3px; }
+            .tx-active-filters::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 3px; }
+        }
         .tx-active-filters-label {
             font-size: 10px; font-weight: 700;
             color: #c6a4d0; text-transform: uppercase; letter-spacing: 0.08em;
@@ -1944,15 +2015,29 @@
 
         /* Confirm bar (per slot) */
         .tx-confirm-bar {
-            position: sticky; bottom: 0;
+            position: sticky; bottom: 0; z-index: 4;
             display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
             padding: 10px 12px; margin-top: 10px;
-            background: linear-gradient(180deg, rgba(22,24,34,0.95), rgba(12,14,22,0.96));
+            background: linear-gradient(180deg, rgba(22,24,34,0.97), rgba(12,14,22,0.98));
             border: 1px solid #3a4156; border-radius: 8px;
-            box-shadow: 0 -4px 16px rgba(0,0,0,0.35);
+            box-shadow: 0 -4px 16px rgba(0,0,0,0.45);
+            isolation: isolate;
         }
-        .tx-confirm-bar-text { font-size: 12px; color: #d4d9e4; flex: 1; min-width: 0; }
+        .tx-confirm-bar-text {
+            font-size: 12px; color: #d4d9e4; flex: 1 1 200px; min-width: 0;
+            line-height: 1.35;
+        }
         .tx-confirm-bar-text strong { color: var(--accent); }
+        @media (max-width: 480px) {
+            /* On narrow phones, the prompt text often pushes both buttons
+               onto a third line. Force text full-width above the buttons so
+               the action row stays one line and the buttons land at the
+               player's thumb. */
+            .tx-confirm-bar { padding: 8px 10px; }
+            .tx-confirm-bar-text { flex: 1 1 100%; order: 0; }
+            .tx-confirm-bar-btn { order: 1; flex: 1 1 auto; }
+            .tx-confirm-bar-btn--secondary { order: 2; flex: 0 0 auto; }
+        }
         .tx-confirm-bar-btn {
             padding: 10px 16px; font-size: 13px; font-weight: 700;
             background: linear-gradient(180deg, #66bb6a, #43a047);
@@ -53447,6 +53532,19 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                             c.hidden = true;
                         }
                     }
+                    // Section-grouped grids: hide any section header whose
+                    // child cards are all filtered out. Re-show if at least
+                    // one card matches. Uses :scope to scope per-section.
+                    const sections = grid.querySelectorAll('.tx-grid-section[data-section-tag]');
+                    for (const sec of sections) {
+                        const head = sec.querySelector(':scope > .tx-grid-section-head');
+                        if (!head) continue;
+                        const visible = sec.querySelectorAll(':scope > .tx-grid-section-cards > .tx-card:not([hidden])').length;
+                        head.hidden = visible === 0;
+                        // Update the count badge for this section live.
+                        const countBadge = head.querySelector('.tx-grid-section-count');
+                        if (countBadge) countBadge.textContent = String(visible);
+                    }
                     // Update the toolbar's count pill to reflect what's visible.
                     // Two pill shapes to handle: plain (.tx-count-pill text)
                     // and split (.tx-count-pill--split with unlocked + locked
@@ -53642,8 +53740,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
 
-                // One-tap clear for search + filter chips
-                const clearBtn = t.closest('.tx-filter-clear[data-clear-filters]');
+                // One-tap clear for search + filter chips. The selector also
+                // covers .tx-empty-cta[data-clear-filters] so the empty-state
+                // "Clear filters" link in the grid empties to the same path.
+                const clearBtn = t.closest('.tx-filter-clear[data-clear-filters], .tx-empty-cta[data-clear-filters]');
                 if (clearBtn) {
                     const kind = clearBtn.dataset.clearFilters;
                     if (kind) {
@@ -54641,29 +54741,62 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const gridSource = [...new Set([...mergedMoves, ...currentMoves])];
             const filtered = _txApplyMoveFilters(gridSource, mon, b, t.name, equippedSet);
 
-            const emptyMsg = (!sPool.sparse && _txState.filter.recOnly.moves)
-                ? `No starred moves match these filters. <button type="button" class="tx-empty-cta" data-filter-kind="recOnly" data-filter-value="moves">★ Show all</button> to expand, or clear the search.`
-                : 'No moves match these filters. Loosen them or clear the search.';
-            const cardsHtml = filtered.length
-                ? filtered.map(m => _txMoveCardHtml(m, ctx)).join('')
-                : `<div class="tx-grid-empty">${emptyMsg}</div>`;
-
-            const sparseBanner = _txSparseBannerHtml(t.name);
-
-            // Count locked vs learnable moves in the filtered list — drives
-            // the split count pill (Phase 7). The lock state mirrors what
-            // _txMoveCardHtml decides via the same _txMoveTagMemo+tutorStage
-            // check, so the numbers always match the rendered grid.
-            let lockedCount = 0;
+            // Partition the filtered move list into three buckets by lock
+            // state: learnable now, locked at L2 Expert, locked at L3 Guru.
+            // Equipped moves are always "learnable" from the player's POV
+            // (they're already known) so they live in the first bucket.
+            // The partition drives both the split count pill (Phase 7) AND
+            // the sticky section headers that appear when ★ Show all is on.
+            const curStage = ctx.tutorStage | 0;
+            const bucketUnlocked = [];
+            const bucketL2 = [];
+            const bucketL3 = [];
             try {
-                const curStage = ctx.tutorStage | 0;
                 for (const m of filtered) {
-                    if (equippedSet.has(m)) continue; // equipped is never locked from player's POV
+                    if (equippedSet.has(m)) { bucketUnlocked.push(m); continue; }
                     const tg = _txMoveTagMemo(t.name, m);
                     const req = tg === 'awakened' ? 2 : tg === 'learnt' ? 1 : 0;
-                    if (req > curStage) lockedCount++;
+                    if (req > curStage) {
+                        if (req >= 2) bucketL3.push(m);
+                        else bucketL2.push(m);
+                    } else {
+                        bucketUnlocked.push(m);
+                    }
                 }
-            } catch (e) {}
+            } catch (e) {
+                bucketUnlocked.length = 0;
+                bucketUnlocked.push(...filtered);
+            }
+            const lockedCount = bucketL2.length + bucketL3.length;
+            // Render: when there are NO locked moves, fall back to a single
+            // ungrouped grid (the typical case at L3 Guru and post-Show-all
+            // searches that filter out locked picks). Otherwise emit three
+            // .tx-grid-section blocks with sticky color-coded headers.
+            const emptyMsg = (!sPool.sparse && _txState.filter.recOnly.moves)
+                ? `No starred moves match these filters. <button type="button" class="tx-empty-cta" data-filter-kind="recOnly" data-filter-value="moves">★ Show all</button> to expand, or clear the search.`
+                : 'No moves match these filters. <button type="button" class="tx-empty-cta" data-clear-filters="moves">Clear filters</button> or loosen them.';
+            const renderBucket = (moves, sectionLabel, sectionTag) => {
+                if (!moves.length) return '';
+                const cards = moves.map(m => _txMoveCardHtml(m, ctx)).join('');
+                return sectionLabel
+                    ? `<div class="tx-grid-section" data-section-tag="${sectionTag}"><div class="tx-grid-section-head">${sectionLabel}</div><div class="tx-grid-section-cards">${cards}</div></div>`
+                    : `<div class="tx-grid-section tx-grid-section--flat">${cards}</div>`;
+            };
+            let cardsHtml;
+            if (!filtered.length) {
+                cardsHtml = `<div class="tx-grid-empty">${emptyMsg}</div>`;
+            } else if (lockedCount === 0) {
+                // Fast path — single flat block, no section headers
+                cardsHtml = renderBucket(bucketUnlocked, null, 'flat');
+            } else {
+                cardsHtml = [
+                    renderBucket(bucketUnlocked, `<span class="tx-grid-section-icon" aria-hidden="true">✓</span><span class="tx-grid-section-title">Learnable now</span><span class="tx-grid-section-count">${bucketUnlocked.length}</span>`, 'unlocked'),
+                    renderBucket(bucketL2, `<span class="tx-grid-section-icon" aria-hidden="true">🔒</span><span class="tx-grid-section-title">Unlocks at L2 Expert</span><span class="tx-grid-section-count">${bucketL2.length}</span><span class="tx-grid-section-hint">Reach City 4+ to teach these</span>`, 'l2'),
+                    renderBucket(bucketL3, `<span class="tx-grid-section-icon" aria-hidden="true">🔒</span><span class="tx-grid-section-title">Unlocks at L3 Guru</span><span class="tx-grid-section-count">${bucketL3.length}</span><span class="tx-grid-section-hint">Reach City 7+ to teach these</span>`, 'l3'),
+                ].filter(Boolean).join('');
+            }
+
+            const sparseBanner = _txSparseBannerHtml(t.name);
 
             const toolbar = _txToolbarHtml('moves', {
                 placeholder: 'Search moves (e.g. earthquake, hidden, ice)',
@@ -54773,8 +54906,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const itemTabHtml = (() => {
                 if (!items.length) return '<div class="tx-grid-empty">No items available for this Pokémon.</div>';
                 const emptyMsg = (!sPool.sparse && _txState.filter.recOnly.items)
-                    ? `No starred items match this filter. <button type="button" class="tx-empty-cta" data-filter-kind="recOnly" data-filter-value="items">★ Show all</button> to expand, or clear the search.`
-                    : 'No items match — try a different category or clear the search.';
+                    ? `No starred items match this filter. <button type="button" class="tx-empty-cta" data-filter-kind="recOnly" data-filter-value="items">★ Show all</button> to expand, or <button type="button" class="tx-empty-cta" data-clear-filters="items">Clear filters</button>.`
+                    : `No items match — <button type="button" class="tx-empty-cta" data-clear-filters="items">Clear filters</button> or try a different category.`;
                 const cards = filtItems.length
                     ? filtItems.map(it => _txItemCardHtml(it, itemCtx)).join('')
                     : `<div class="tx-grid-empty">${emptyMsg}</div>`;
@@ -54797,8 +54930,8 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const abilTabHtml = (() => {
                 if (!abils.length) return '<div class="tx-grid-empty">No abilities available for this Pokémon.</div>';
                 const emptyMsg = (!sPool.sparse && _txState.filter.recOnly.abilities)
-                    ? `No starred abilities match this filter. <button type="button" class="tx-empty-cta" data-filter-kind="recOnly" data-filter-value="abilities">★ Show all</button> to expand, or clear the search.`
-                    : 'No abilities match the search.';
+                    ? `No starred abilities match this filter. <button type="button" class="tx-empty-cta" data-filter-kind="recOnly" data-filter-value="abilities">★ Show all</button> to expand, or <button type="button" class="tx-empty-cta" data-clear-filters="abilities">Clear filters</button>.`
+                    : `No abilities match the search. <button type="button" class="tx-empty-cta" data-clear-filters="abilities">Clear filters</button>.`;
                 const cards = filtAbils.length
                     ? filtAbils.map(a => _txAbilityCardHtml(a, abilCtx)).join('')
                     : `<div class="tx-grid-empty">${emptyMsg}</div>`;
