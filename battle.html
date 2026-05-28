@@ -905,6 +905,46 @@
             margin-bottom: 6px; padding-bottom: 6px;
             border-bottom: 1px dashed rgba(102,113,140,0.20);
         }
+        /* Phase 5 quick-filter chips — visually distinct from the type/cat
+           chips so the player reads them as "presets" not "single facets".
+           Pale-gold border + bold weight; active state inherits the regular
+           accent. */
+        .tx-chip-row--quick {
+            padding-right: 6px; margin-right: 4px;
+            border-right: 1px dashed rgba(102,113,140,0.30);
+        }
+        .tx-chip.tx-chip--quick {
+            font-weight: 700;
+            background: rgba(255,213,79,0.10);
+            border-color: rgba(255,213,79,0.45);
+            color: #ffe7a0;
+        }
+        .tx-chip.tx-chip--quick:hover { border-color: #ffd54f; color: #fff3cd; }
+        .tx-chip.tx-chip--quick[data-active="1"] {
+            background: linear-gradient(180deg, rgba(255,213,79,0.30), rgba(255,213,79,0.18));
+            border-color: #ffd54f; color: #1a0d22;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.15) inset;
+        }
+        /* Phase 6 — Dojo tier-cap badge at the start of the item-category
+           strip, and locked-abilities count badge on the Ability tab label.
+           Both communicate "what's hidden until the next dojo stage" without
+           the player having to scroll to find a locked card. */
+        .tx-tier-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 4px 9px; font-size: 10px; font-weight: 700;
+            background: rgba(120,144,156,0.18); border: 1px solid #78909c;
+            color: #cfd8dc; border-radius: 6px;
+            letter-spacing: 0.04em; text-transform: uppercase;
+            margin-right: 2px; flex-shrink: 0;
+            cursor: help;
+        }
+        .tx-tab-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 22px; padding: 1px 6px; margin-left: 6px;
+            font-size: 10px; font-weight: 800;
+            background: rgba(120,144,156,0.20); border: 1px solid #78909c;
+            color: #cfd8dc; border-radius: 999px;
+        }
         /* Replaces the sort <select> when ★ Recommended is ON — communicates
            "the order is locked to Smogon usage" without offering a control
            that would be ignored. Tooltip explains how to unlock. */
@@ -1190,6 +1230,21 @@
         }
         .tx-card[data-disabled="1"] { opacity: 0.55; cursor: not-allowed; }
         .tx-card[data-disabled="1"]:hover { transform: none; }
+        /* Phase 4 — 4px left stripe encodes the Natural/Learnt/Awakened
+           classification without adding another text pill to the foot row.
+           Greater visual signal-to-noise: a single colored bar scans faster
+           than another "Natural" / "Learnt" pill. The card's tooltip
+           explains the stripe on hover for first-time players. */
+        .tx-card[data-tag] {
+            position: relative; padding-left: 14px;
+        }
+        .tx-card[data-tag]::before {
+            content: ''; position: absolute; left: 0; top: 6px; bottom: 6px;
+            width: 4px; border-radius: 0 3px 3px 0;
+        }
+        .tx-card[data-tag="natural"]::before  { background: #81c784; box-shadow: 0 0 6px rgba(129,199,132,0.55); }
+        .tx-card[data-tag="learnt"]::before   { background: #4fc3f7; box-shadow: 0 0 6px rgba(79,195,247,0.55); }
+        .tx-card[data-tag="awakened"]::before { background: #ce93d8; box-shadow: 0 0 6px rgba(206,147,216,0.55); }
         /* ★ marker on starred cards — gold star prefix before the title. */
         .tx-card-star {
             display: inline-flex; align-items: center; justify-content: center;
@@ -1618,35 +1673,12 @@
             .tx-rec-reason { font-size: 10px; -webkit-line-clamp: 2; }
         }
 
-        /* Mobile filter drawer — collapses the chip rows (which can pile up to
-           3+ rows on phones) behind a single toggle. Always-open on desktop. */
-        .tx-filter-row {
-            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-        }
-        .tx-filter-toggle {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 7px 12px; font-size: 11px; font-weight: 700;
-            font-family: inherit; cursor: pointer;
-            background: rgba(40,46,60,0.65); border: 1px solid #4a5168;
-            color: #d4d9e4; border-radius: 6px;
-            letter-spacing: 0.04em; text-transform: uppercase;
-            transition: all 0.12s;
-            white-space: nowrap;
-        }
-        .tx-filter-toggle:hover { border-color: var(--accent); color: var(--accent); }
-        .tx-filter-toggle[data-open="1"] {
-            background: rgba(206,147,216,0.16); border-color: var(--accent); color: var(--accent);
-        }
-        .tx-filter-toggle .tx-filter-badge {
-            display: inline-flex; align-items: center; justify-content: center;
-            min-width: 18px; height: 18px; padding: 0 5px;
-            font-size: 10px; font-weight: 800;
-            background: var(--accent); color: #1a0d22;
-            border-radius: 999px;
-        }
-        /* Clear-all-filters button — appears in the toolbar only when a search or
-           filter is active. One-tap reset so phone users don't toggle chips one
-           by one. */
+        /* Clear-all-filters button — appears in the toolbar when a search or
+           filter is active. One-tap reset so phone users don't toggle chips
+           one by one. The mobile filter drawer that lived here previously
+           (.tx-filter-toggle / .tx-filter-panel) was retired in Phase 3 —
+           the new always-visible .tx-chip-strip provides the same access
+           with one fewer tap. */
         .tx-filter-clear {
             display: inline-flex; align-items: center; gap: 4px;
             padding: 7px 10px; font-size: 11px; font-weight: 600;
@@ -1657,35 +1689,130 @@
             white-space: nowrap;
         }
         .tx-filter-clear:hover { background: rgba(244,67,54,0.22); color: #fff; }
-        .tx-filter-panel {
-            display: flex; flex-direction: column; gap: 6px;
-            padding: 0;
+
+        /* ── Phase 3 toolbar layout ─────────────────────────────────────
+           Two-row toolbar replacing the old "search row + drawer toggle +
+           hidden chip rows" pattern. Row 1 = search/star/count/clear.
+           Row 2 = horizontally scrollable chip strip + sort.
+           Active-filter pills appear above the grid to show what's filtering
+           without scrolling back into the toolbar. */
+        .tx-search-row-rec { display: inline-flex; align-items: center; }
+        .tx-chips-row {
+            display: flex; align-items: center; gap: 8px;
+            margin-top: 8px;
         }
-        @media (max-width: 540px) {
-            .tx-filter-panel[data-open="0"] { display: none; }
+        .tx-chips-row--sort-only {
+            justify-content: flex-end;
         }
-        @media (min-width: 541px) {
-            .tx-filter-toggle { display: none; }
-            .tx-filter-panel { display: flex !important; }
-        }
-        .tx-chip-row {
+        .tx-chip-strip {
+            display: flex; flex-wrap: nowrap; gap: 4px;
+            overflow-x: auto; overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-x;
+            scrollbar-width: thin;
             scroll-snap-type: x proximity;
+            flex: 1 1 0; min-width: 0;
+            padding: 2px 0;
         }
-        @media (max-width: 540px) {
-            /* On phones, single-row horizontal scroll instead of vertical wrap.
-               Saves 1-2 rows of vertical space per filter section. */
-            .tx-filter-panel .tx-chip-row {
-                flex-wrap: nowrap;
-                overflow-x: auto;
-                overflow-y: hidden;
-                -webkit-overflow-scrolling: touch;
-                touch-action: pan-x;
-                padding-bottom: 2px;
-                scrollbar-width: thin;
-            }
-            .tx-filter-panel .tx-chip-row > .tx-chip { scroll-snap-align: start; }
-            .tx-filter-panel .tx-chip-row::-webkit-scrollbar { height: 4px; }
-            .tx-filter-panel .tx-chip-row::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 4px; }
+        .tx-chip-strip::-webkit-scrollbar { height: 4px; }
+        .tx-chip-strip::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 4px; }
+        .tx-chip-strip > .tx-chip,
+        .tx-chip-strip > .tx-chip-row > .tx-chip { scroll-snap-align: start; flex-shrink: 0; }
+        /* Each nested chip-row inside the strip is a logical group
+           (types / cats / item-cats); collapse them into the same line. */
+        .tx-chip-strip > .tx-chip-row {
+            display: contents;
+        }
+        .tx-chip-strip-end {
+            display: inline-flex; align-items: center;
+            flex-shrink: 0; margin-left: auto;
+        }
+        @media (max-width: 600px) {
+            .tx-chips-row { flex-direction: column; align-items: stretch; gap: 6px; }
+            .tx-chip-strip-end { margin-left: 0; justify-content: flex-end; }
+        }
+        /* Active-filter pills above the grid — each pill is a tappable
+           remove button. Click to clear that single filter. Zero render
+           when no filter is active. */
+        .tx-active-filters {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+            margin: 8px 0; padding: 6px 10px;
+            background: rgba(206,147,216,0.06);
+            border: 1px solid rgba(206,147,216,0.18);
+            border-radius: 6px;
+        }
+        .tx-active-filters-label {
+            font-size: 10px; font-weight: 700;
+            color: #c6a4d0; text-transform: uppercase; letter-spacing: 0.08em;
+            margin-right: 4px;
+        }
+        .tx-active-filter {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 4px 9px; font-size: 11px; font-weight: 600;
+            font-family: inherit; cursor: pointer;
+            background: rgba(40,46,60,0.65); border: 1px solid #4a5168;
+            color: #d4d9e4; border-radius: 999px;
+            transition: all 0.12s; white-space: nowrap;
+        }
+        .tx-active-filter:hover {
+            background: rgba(244,67,54,0.20); border-color: #ef5350; color: #ffcdd2;
+        }
+        .tx-active-filter.tx-active-filter--cat-Physical { background: rgba(255,107,107,0.20); border-color: #ff6b6b; color: #ffcaca; }
+        .tx-active-filter.tx-active-filter--cat-Special  { background: rgba(107,159,255,0.20); border-color: #6b9fff; color: #cbdbff; }
+        .tx-active-filter.tx-active-filter--cat-Status   { background: rgba(180,187,204,0.15); border-color: #b4bbcc; color: #e0e5ee; }
+        .tx-active-filter.tx-active-filter--up    { background: rgba(102,187,106,0.18); border-color: #66bb6a; color: #c8e6c9; }
+        .tx-active-filter.tx-active-filter--down  { background: rgba(244,67,54,0.18); border-color: #ef5350; color: #ffcdd2; }
+        .tx-active-filter.type-badge { padding: 4px 9px; }
+
+        /* Phase 4 legend popover — appears next to the ★ chip on the move
+           tutor. CSS-only show/hide via :focus-within / :hover so it
+           doesn't need a JS dialog handler. Closes when focus leaves. */
+        .tx-legend {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 22px; height: 22px;
+            font-size: 12px; font-weight: 800;
+            font-family: var(--battle-font, inherit);
+            color: #c6a4d0; background: rgba(206,147,216,0.10);
+            border: 1px solid rgba(206,147,216,0.40);
+            border-radius: 999px; cursor: help; user-select: none;
+            margin-left: 6px; position: relative; outline: none;
+            transition: all 0.12s;
+        }
+        .tx-legend:hover, .tx-legend:focus-within {
+            background: rgba(206,147,216,0.25); border-color: var(--accent);
+            color: #fff;
+        }
+        .tx-legend-popover {
+            display: none;
+            position: absolute; top: calc(100% + 6px); left: 50%;
+            transform: translateX(-50%);
+            min-width: 260px; max-width: 320px;
+            padding: 10px 12px;
+            background: linear-gradient(180deg, rgba(28,32,48,0.98), rgba(14,17,26,0.98));
+            border: 1px solid #4a5168; border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            color: #d4d9e4; font-size: 11px; line-height: 1.45;
+            text-align: left; font-weight: 500;
+            z-index: 10; cursor: default;
+        }
+        .tx-legend:hover .tx-legend-popover,
+        .tx-legend:focus-within .tx-legend-popover {
+            display: flex; flex-direction: column; gap: 6px;
+        }
+        .tx-legend-row {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        }
+        .tx-legend-row--star { padding-top: 6px; border-top: 1px dashed rgba(102,113,140,0.30); }
+        .tx-legend-row strong { color: #fff3cd; font-weight: 700; }
+        .tx-legend-swatch {
+            display: inline-block; width: 12px; height: 12px;
+            border-radius: 2px; flex-shrink: 0;
+        }
+        .tx-legend-swatch--natural  { background: #81c784; box-shadow: 0 0 4px rgba(129,199,132,0.55); }
+        .tx-legend-swatch--learnt   { background: #4fc3f7; box-shadow: 0 0 4px rgba(79,195,247,0.55); }
+        .tx-legend-swatch--awakened { background: #ce93d8; box-shadow: 0 0 4px rgba(206,147,216,0.55); }
+        @media (max-width: 480px) {
+            .tx-legend-popover { left: 0; transform: none; max-width: calc(100vw - 32px); }
         }
 
         /* Flash highlight when EV-trainer recs panel scrolls a preset into view —
@@ -54563,9 +54690,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 abilities: 'recommended',
                 natures: 'recommended',
             },
-            // Mobile-only: whether the chip-filter drawer is expanded for this kind.
-            // Always-visible on desktop via CSS — this just gates the mobile collapse.
-            filterPanelOpen: { moves: false, items: false, abilities: false, natures: false },
         };
         function _txResetFilters(kind) {
             _txState.search[kind] = '';
@@ -55925,6 +56049,145 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // Shape: { kind: 'move'|'item'|'ability'|'nature', value: string, slot?: number }
         let _txPending = null;
 
+        // ── PER-RENDER MEMO (Phase 1: render-cycle scoping) ──────────────
+        // Score / tag / starred-pool / card-html lookups are deterministic for
+        // a given (monName, move/item/ability/nature, pool-sig) tuple within
+        // one render cycle. We thread these Maps through the filter/sort/card
+        // path so each unique key is computed exactly once per renderTutorTeam.
+        //   • scoreCache  — Map<kind+":"+monName+":"+name, number>
+        //   • tagCache    — Map<monName+":"+name, 'natural'|'learnt'|'awakened'>
+        //   • starredPool — Map<monName, _txStarredPool(monName)>
+        //   • cardCache   — Map<kind+":"+monName+":"+name+":"+stateSig, string>
+        // The cache lives on `_txRender` and is reset on every top-level render.
+        // Stats counters drive the perf probe in renderTutorTeam.
+        const _txRender = {
+            ctx: null,           // active render-cycle context (Maps)
+            scoreCache: new Map(),
+            tagCache:   new Map(),
+            poolCache:  new Map(),
+            cardCache:  new Map(),
+        };
+        const _txRenderStats = {
+            scoreHit: 0, scoreMiss: 0,
+            poolHit:  0, poolMiss:  0,
+            cardHit:  0, cardMiss:  0,
+            cardsBuilt: 0,
+        };
+        function _txResetRenderStats() {
+            _txRenderStats.scoreHit = _txRenderStats.scoreMiss = 0;
+            _txRenderStats.poolHit  = _txRenderStats.poolMiss  = 0;
+            _txRenderStats.cardHit  = _txRenderStats.cardMiss  = 0;
+            _txRenderStats.cardsBuilt = 0;
+        }
+        function _txBeginRender() {
+            _txRender.scoreCache.clear();
+            _txRender.tagCache.clear();
+            _txRender.poolCache.clear();
+            _txRender.cardCache.clear();
+        }
+        // Per-render starred-pool — short-circuits the 3-4× repeat calls
+        // (rec chip, filter, card ctx, sparse banner) that happen every render.
+        function _txStarredPoolMemo(monName) {
+            if (!monName) return _txStarredPool(monName);
+            const cached = _txRender.poolCache.get(monName);
+            if (cached) { _txRenderStats.poolHit++; return cached; }
+            _txRenderStats.poolMiss++;
+            const v = _txStarredPool(monName);
+            _txRender.poolCache.set(monName, v);
+            return v;
+        }
+        // Per-render score memo — same call signature as the underlying
+        // _txScore* helpers; lookups within one render cycle are O(1) after the
+        // first call. Falls back to a direct compute when the render hasn't
+        // begun (defensive — shouldn't happen, but keeps loose callers safe).
+        function _txScoreMemo(kind, name, mon, build, monName, computeFn) {
+            const key = kind + ':' + (monName || '') + ':' + name;
+            const cached = _txRender.scoreCache.get(key);
+            if (cached !== undefined) { _txRenderStats.scoreHit++; return cached; }
+            _txRenderStats.scoreMiss++;
+            const v = computeFn(name, mon, build, monName);
+            _txRender.scoreCache.set(key, v);
+            return v;
+        }
+        function _txMoveTagMemo(monName, moveName) {
+            const key = (monName || '') + ':' + moveName;
+            const cached = _txRender.tagCache.get(key);
+            if (cached !== undefined) return cached;
+            const v = _moveTagForSpecies(monName, moveName);
+            _txRender.tagCache.set(key, v);
+            return v;
+        }
+        // Phase 2 — search-only fast path. When the player types in the search
+        // box, the only filter input that changed is the search string. We
+        // can update the DOM in-place by toggling [hidden] on each existing
+        // card (chip filters / sort were already applied at last render).
+        // Returns true on success; the caller skips the full re-render then.
+        // Falls back to false (→ full render) when:
+        //   • The open mon's grid doesn't exist (first paint pending).
+        //   • The picker is in the nature-grid mode (no .tx-card grid).
+        //   • The pending selection bar needs to be re-rendered for some other reason.
+        function _txSearchFastUpdate(kind) {
+            try {
+                const root = document.getElementById('story-tutor-team');
+                if (!root) return false;
+                // The kind's grid is anchored on a search input whose data-kind matches.
+                // Cards in that grid live in the nearest preceding .tx-grid sibling.
+                const inputs = root.querySelectorAll(`.tx-search-input[data-kind="${kind}"]`);
+                if (!inputs.length) return false;
+                const q = (_txState.search[kind] || '').toLowerCase();
+                let totalUpdated = 0;
+                for (const inp of inputs) {
+                    // Find the nearest sibling grid by walking up to the editor body,
+                    // then down to its grid. Stops at the mon's body — no cross-mon leakage.
+                    const body = inp.closest('.story-tutor-mon-body');
+                    if (!body) continue;
+                    const grid = body.querySelector('.tx-grid');
+                    if (!grid) continue;
+                    const cards = grid.querySelectorAll('.tx-card[data-search-value]');
+                    if (!cards.length) return false; // first render; let full render warm up
+                    let shown = 0;
+                    for (const c of cards) {
+                        const v = c.dataset.searchValue || '';
+                        const match = !q || v.indexOf(q) !== -1;
+                        if (match) {
+                            if (c.hidden) c.hidden = false;
+                            shown++;
+                        } else if (!c.hidden) {
+                            c.hidden = true;
+                        }
+                    }
+                    // Update the toolbar's count pill to reflect what's visible.
+                    const countPill = body.querySelector('.tx-count-pill');
+                    if (countPill) {
+                        const label = (countPill.textContent.match(/[a-zA-Z]+$/) || [''])[0];
+                        countPill.textContent = `${shown} ${label || 'options'}`;
+                    }
+                    // Empty-state placeholder swap. If no card matches, show a
+                    // lightweight "no matches" hint inside the grid; the next
+                    // full render will replace it with the proper Empty card.
+                    let emptyEl = grid.querySelector(':scope > .tx-grid-empty[data-fast-empty="1"]');
+                    if (!shown && !emptyEl) {
+                        emptyEl = document.createElement('div');
+                        emptyEl.className = 'tx-grid-empty';
+                        emptyEl.dataset.fastEmpty = '1';
+                        emptyEl.textContent = q
+                            ? `No matches for "${q}". Try a shorter term or clear the search.`
+                            : 'No options match the active filters.';
+                        grid.appendChild(emptyEl);
+                    } else if (shown && emptyEl) {
+                        emptyEl.remove();
+                    } else if (!shown && emptyEl && q) {
+                        // Keep the message live as the player types.
+                        emptyEl.textContent = `No matches for "${q}". Try a shorter term or clear the search.`;
+                    }
+                    totalUpdated++;
+                }
+                return totalUpdated > 0;
+            } catch (e) {
+                return false;
+            }
+        }
+
         function _initTutorMovePickerDelegationOnce() {
             const el = document.getElementById('story-tutor-team');
             if (!el || el._tutorPickerBound) return;
@@ -55943,7 +56206,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (t.classList.contains('tx-search-input')) {
                     const kind = t.dataset.kind || 'moves';
                     _txState.search[kind] = (t.value || '').trim();
-                    // Preserve focus and cursor — partial re-render via _scheduleSearchRender
+                    // Phase 2 fast path: when the only change is the search
+                    // string, toggle [hidden] on existing cards instead of
+                    // rebuilding the DOM. Falls back to the full re-render
+                    // when the fast update isn't possible (e.g. card grid
+                    // not yet rendered for this kind / mon).
+                    if (_txSearchFastUpdate(kind)) return;
                     _scheduleSearchRender();
                     return;
                 }
@@ -56060,12 +56328,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     return;
                 }
 
-                // Mobile filter drawer toggle (open/close the chip rows)
-                const filterToggle = t.closest('.tx-filter-toggle[data-filter-toggle]');
-                if (filterToggle) {
-                    const kind = filterToggle.dataset.filterToggle;
-                    if (kind && Object.prototype.hasOwnProperty.call(_txState.filterPanelOpen, kind)) {
-                        _txState.filterPanelOpen[kind] = !_txState.filterPanelOpen[kind];
+                // Phase 3 — active-filter "× search" pill clears just the search box
+                const clearSearch = t.closest('.tx-active-filter[data-clear-search]');
+                if (clearSearch) {
+                    const kind = clearSearch.dataset.clearSearch;
+                    if (kind && Object.prototype.hasOwnProperty.call(_txState.search, kind)) {
+                        _txState.search[kind] = '';
                         void renderTutorTeam(true);
                     }
                     return;
@@ -56097,7 +56365,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 }
 
                 // Filter chip toggle
-                const chip = t.closest('.tx-chip[data-filter-kind], .tx-empty-cta[data-filter-kind]');
+                const chip = t.closest('.tx-chip[data-filter-kind], .tx-empty-cta[data-filter-kind], .tx-active-filter[data-filter-kind]');
                 if (chip) {
                     const kind = chip.dataset.filterKind;
                     const value = chip.dataset.filterValue;
@@ -56123,6 +56391,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         // value carries the picker kind ('moves'|'items'|'abilities'|'natures')
                         if (value && Object.prototype.hasOwnProperty.call(_txState.filter.recOnly, value)) {
                             _txState.filter.recOnly[value] = !_txState.filter.recOnly[value];
+                        }
+                    } else if (kind === 'quick') {
+                        // Phase 5 compound presets — overwrite the relevant
+                        // axis state in one tap. Tapping the same chip while
+                        // it's already active reverts the axis to "no filter".
+                        const wasActive = chip.dataset.active === '1';
+                        if (value === 'stab') {
+                            _txState.filter.moveTypes.clear();
+                            if (!wasActive) {
+                                const stab = (chip.dataset.stab || '').split(',').filter(Boolean);
+                                for (const t of stab) _txState.filter.moveTypes.add(t);
+                            }
+                        } else if (value === 'damage') {
+                            _txState.filter.moveCats.clear();
+                            if (!wasActive) { _txState.filter.moveCats.add('Physical'); _txState.filter.moveCats.add('Special'); }
+                        } else if (value === 'status') {
+                            _txState.filter.moveCats.clear();
+                            if (!wasActive) _txState.filter.moveCats.add('Status');
                         }
                     }
                     void renderTutorTeam(true);
@@ -56227,10 +56513,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const sortHtml = showSort
                 ? `<select class="tx-sort-select" data-kind="${kind}" aria-label="Sort">${sortOpts.map(o => `<option value="${o.value}"${o.value===sortVal?' selected':''}>${_esc(o.label)}</option>`).join('')}</select>`
                 : `<span class="tx-sort-locked" title="Sorted by Smogon usage. Tap ★ Show all to enable manual sorting.">↓ by usage</span>`;
-            // When the last render's count differs from the one we're about
-            // to render, flash the count pill briefly so the player can see
-            // the ★ Recommended toggle actually changed something. Stored on
-            // a Map keyed by kind so each picker remembers its own last value.
+            // Count pill flashes briefly when the count changes between
+            // renders so the player can see the ★ toggle / chip filter
+            // actually narrowed or widened the list.
             if (!_txToolbarHtml._lastCount) _txToolbarHtml._lastCount = new Map();
             const prevCount = _txToolbarHtml._lastCount.get(kind);
             const countChanged = (prevCount != null && opts.count != null && prevCount !== opts.count);
@@ -56238,37 +56523,74 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const countHtml = (opts.count != null) ? `<span class="tx-count-pill${countChanged ? ' tx-count-pill--flash' : ''}">${opts.count} ${opts.countLabel || 'options'}</span>` : '';
             const placeholder = opts.placeholder || 'Search…';
             const hasChips = !!opts.chipsHtml;
-            const drawerOpen = _txState.filterPanelOpen[kind] ? 1 : 0;
             const activeN = _txActiveFilterCount(kind);
             const hasActiveFilters = activeN > 0 || (search && search.length > 0);
-            const filterToggle = hasChips
-                ? `<button type="button" class="tx-filter-toggle" data-filter-toggle="${kind}" data-open="${drawerOpen}" aria-expanded="${drawerOpen?'true':'false'}">
-                        ${drawerOpen ? 'Hide' : 'Filters'}
-                        ${activeN ? `<span class="tx-filter-badge">${activeN}</span>` : ''}
-                    </button>`
-                : '';
             const clearBtn = hasActiveFilters
                 ? `<button type="button" class="tx-filter-clear" data-clear-filters="${kind}" title="Clear search and filters">${window.uiSvgX()} Clear</button>`
                 : '';
-            const drawerHtml = hasChips
-                ? `<div class="tx-filter-panel" data-open="${drawerOpen}">${opts.chipsHtml}</div>`
-                : '';
-            // Leading chips (e.g. ★ Recommended toggle) sit on a row above the
-            // search input so they're always visible — never hidden behind the
-            // mobile filter drawer.
+            // Phase 3 layout — two clean rows:
+            //   Row 1: search input · ★ Recommended chip · count pill · clear button
+            //   Row 2: filter chips (always-visible strip) · sort selector
+            // Drops the old mobile drawer (.tx-filter-toggle + .tx-filter-panel) —
+            // the chips now live on a horizontally scrollable strip that's
+            // visible at all viewport widths. Active filter pills (× to remove)
+            // are surfaced above the grid by _txActiveFiltersHtml.
             const leadingChips = opts.leadingChipsHtml
-                ? `<div class="tx-chip-row tx-chip-row--leading">${opts.leadingChipsHtml}</div>`
+                ? `<span class="tx-search-row-rec">${opts.leadingChipsHtml}</span>`
                 : '';
+            const chipsRow = hasChips
+                ? `<div class="tx-chips-row">
+                        <div class="tx-chip-strip" role="tablist" aria-label="Filters">${opts.chipsHtml}</div>
+                        <div class="tx-chip-strip-end">${sortHtml}</div>
+                    </div>`
+                : (showSort ? `<div class="tx-chips-row tx-chips-row--sort-only">${sortHtml}</div>` : '');
             return `<div class="tx-toolbar">
-                ${leadingChips}
                 <div class="tx-search-row">
                     <input type="search" class="tx-search-input" data-kind="${kind}" placeholder="${_esc(placeholder)}" value="${_esc(search)}" autocomplete="off" />
-                    ${sortHtml}
-                    ${filterToggle}
-                    ${clearBtn}
+                    ${leadingChips}
                     ${countHtml}
+                    ${clearBtn}
                 </div>
-                ${drawerHtml}
+                ${chipsRow}
+            </div>`;
+        }
+
+        // Phase 3 — active-filter pills shown above the grid. Each pill is
+        // a tap target that removes its filter. Renders nothing when no
+        // search / chip / nature axis is active. Reused by the move, item,
+        // ability, and nature pickers via the `kind` parameter.
+        function _txActiveFiltersHtml(kind) {
+            const out = [];
+            const q = _txState.search[kind] || '';
+            if (q) {
+                out.push(`<button type="button" class="tx-active-filter" data-clear-search="${kind}" title="Clear search">${window.uiSvgX()} "${_esc(q)}"</button>`);
+            }
+            if (kind === 'moves') {
+                for (const t of _txState.filter.moveTypes) {
+                    out.push(`<button type="button" class="tx-active-filter type-badge type-${t}" data-filter-kind="moveType" data-filter-value="${t}" title="Remove ${t} filter">${window.uiSvgX()} ${t}</button>`);
+                }
+                for (const c of _txState.filter.moveCats) {
+                    out.push(`<button type="button" class="tx-active-filter tx-active-filter--cat-${c}" data-filter-kind="moveCat" data-filter-value="${c}" title="Remove ${c} filter">${window.uiSvgX()} ${c}</button>`);
+                }
+            } else if (kind === 'items') {
+                if (_txState.filter.itemCat && _txState.filter.itemCat !== 'all') {
+                    const c = _txState.filter.itemCat;
+                    out.push(`<button type="button" class="tx-active-filter" data-filter-kind="itemCat" data-filter-value="all" title="Remove category filter">${window.uiSvgX()} ${_esc(_TX_ITEM_CAT_LABEL[c] || c)}</button>`);
+                }
+            } else if (kind === 'natures') {
+                if (_txState.filter.natureUp && _txState.filter.natureUp !== 'any') {
+                    const u = _txState.filter.natureUp;
+                    out.push(`<button type="button" class="tx-active-filter tx-active-filter--up" data-filter-kind="natureUp" data-filter-value="${u}" title="Remove +${u} filter">${window.uiSvgX()} +${_TX_STAT_LABEL[u]||u}</button>`);
+                }
+                if (_txState.filter.natureDown && _txState.filter.natureDown !== 'any') {
+                    const d = _txState.filter.natureDown;
+                    out.push(`<button type="button" class="tx-active-filter tx-active-filter--down" data-filter-kind="natureDown" data-filter-value="${d}" title="Remove -${d} filter">${window.uiSvgX()} -${_TX_STAT_LABEL[d]||d}</button>`);
+                }
+            }
+            if (!out.length) return '';
+            return `<div class="tx-active-filters" role="region" aria-label="Active filters">
+                <span class="tx-active-filters-label">Active:</span>
+                ${out.join('')}
             </div>`;
         }
 
@@ -56278,26 +56600,84 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         // for the rec system to mean anything; in that mode the picker behaves
         // vanilla and a banner explains why.
         function _txRecChipHtml(kind, monName) {
-            const pool = _txStarredPool(monName);
+            const pool = _txStarredPoolMemo(monName);
             if (pool.sparse) return '';
             const on = _txState.filter.recOnly[kind] ? 1 : 0;
             const label = on ? '★ Recommended' : '★ Show all';
             const title = on
                 ? 'Showing options used in competitive Smogon builds. Tap to expand to the full list.'
                 : 'Showing all options. Tap to narrow back to the Smogon-recommended list.';
-            return `<button type="button" class="tx-chip tx-chip--rec" data-filter-kind="recOnly" data-filter-value="${kind}" data-active="${on}" title="${_esc(title)}" aria-pressed="${on?'true':'false'}">${label}</button>`;
+            // ? button next to the ★ chip opens a static legend popover
+            // (CSS-only via :focus-within) explaining the stripe colors +
+            // the rec system. Saves a JS handler / dialog dance.
+            const legend = (kind === 'moves') ? `
+                <span class="tx-legend" tabindex="0" role="button" aria-label="What do the stripe colors mean?">?
+                    <span class="tx-legend-popover" role="tooltip">
+                        <span class="tx-legend-row"><span class="tx-legend-swatch tx-legend-swatch--natural"></span><strong>Natural</strong> — egg / level-up / transfer / evolution-learned</span>
+                        <span class="tx-legend-row"><span class="tx-legend-swatch tx-legend-swatch--learnt"></span><strong>Learnt</strong> — TM / HM / Tutor / TR / event</span>
+                        <span class="tx-legend-row"><span class="tx-legend-swatch tx-legend-swatch--awakened"></span><strong>Awakened</strong> — off-legal Smogon picks</span>
+                        <span class="tx-legend-row tx-legend-row--star"><strong>★</strong> — Recommended in competitive Smogon builds. The chip below toggles between the ★ list and the full pool.</span>
+                    </span>
+                </span>` : '';
+            return `<button type="button" class="tx-chip tx-chip--rec" data-filter-kind="recOnly" data-filter-value="${kind}" data-active="${on}" title="${_esc(title)}" aria-pressed="${on?'true':'false'}">${label}</button>${legend}`;
         }
 
         // Sparse-data banner — surfaced above the picker when the species has
         // fewer than 10 Smogon builds. Tells the player the ★ system is sitting
         // out and the picker is in vanilla mode.
         function _txSparseBannerHtml(monName) {
-            const pool = _txStarredPool(monName);
+            const pool = _txStarredPoolMemo(monName);
             if (!pool.sparse) return '';
             const note = pool.totalBuilds > 0
                 ? `Limited competitive data (${pool.totalBuilds} build${pool.totalBuilds===1?'':'s'}) — showing all options.`
                 : 'No competitive data for this Pokémon yet — showing all options.';
             return `<div class="tx-sparse-banner">${_esc(note)}</div>`;
+        }
+
+        // Phase 6 — Dojo tab badge: surfaces how many abilities are still
+        // locked behind a higher dojo stage on the "Ability" tab label.
+        // Reads the pre-computed haSet (slot H) and awakenSet (off-legal +
+        // curated OP) sets from the loadout editor and counts how many would
+        // be locked at the player's current stage. Renders empty when nothing
+        // is locked (e.g. already Grandmaster).
+        function _txDojoAbilLockedCountBadge(monName, abils, awakenSet, haSet, dojoStage) {
+            try {
+                let locked = 0;
+                if (dojoStage < 1 && haSet && haSet.size) locked += haSet.size;
+                if (dojoStage < 2 && awakenSet && awakenSet.size) locked += awakenSet.size;
+                if (!locked) return '';
+                const nextStage = dojoStage < 1 ? 'Black Belt' : 'Grandmaster';
+                const title = `${locked} abilit${locked === 1 ? 'y' : 'ies'} unlock at ${nextStage}.`;
+                return ` <span class="tx-tab-badge" title="${_esc(title)}">🔒 ${locked}</span>`;
+            } catch (e) { return ''; }
+        }
+
+        // Phase 5 — compound quick-filter chips for the Move Tutor. Each chip
+        // is a single-tap preset that swaps the type/cat state to a useful
+        // combination the player would otherwise build manually:
+        //   • STAB only   — auto-selects the species' STAB types.
+        //   • Damage only — selects Physical + Special, deselects Status.
+        //   • Status only — selects Status, deselects Physical + Special.
+        // Tapping a chip a second time reverts to "no filter" for that axis.
+        // Chips reflect the live state (active when the filter matches).
+        function _txQuickFiltersHtml(kind, monName, mon) {
+            if (kind !== 'moves') return '';
+            const stabTypes = new Set([mon && mon.type1, mon && mon.type2].filter(Boolean));
+            const curTypes = _txState.filter.moveTypes;
+            const curCats  = _txState.filter.moveCats;
+            const isStab = stabTypes.size > 0
+                && stabTypes.size === curTypes.size
+                && [...stabTypes].every(t => curTypes.has(t));
+            const isDamage = curCats.size === 2 && curCats.has('Physical') && curCats.has('Special');
+            const isStatus = curCats.size === 1 && curCats.has('Status');
+            const stabPayload = [...stabTypes].join(',');
+            const chips = [];
+            if (stabTypes.size) {
+                chips.push(`<button type="button" class="tx-chip tx-chip--quick" data-filter-kind="quick" data-filter-value="stab" data-stab="${_esc(stabPayload)}" data-active="${isStab?1:0}" aria-pressed="${isStab?'true':'false'}" title="STAB only — auto-selects ${_esc(stabPayload)}">⚡ STAB</button>`);
+            }
+            chips.push(`<button type="button" class="tx-chip tx-chip--quick" data-filter-kind="quick" data-filter-value="damage" data-active="${isDamage?1:0}" aria-pressed="${isDamage?'true':'false'}" title="Damage moves only (Physical + Special)">🗡 Damage</button>`);
+            chips.push(`<button type="button" class="tx-chip tx-chip--quick" data-filter-kind="quick" data-filter-value="status" data-active="${isStatus?1:0}" aria-pressed="${isStatus?'true':'false'}" title="Status moves only (Burn, Sleep, Setup, Recover…)">✦ Status</button>`);
+            return `<div class="tx-chip-row tx-chip-row--quick" role="group" aria-label="Quick filters">${chips.join('')}</div>`;
         }
 
         function _txMoveTypeChipsHtml() {
@@ -56324,7 +56704,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
         function _txItemCatChipsHtml() {
             const cur = _txState.filter.itemCat || 'all';
-            return `<div class="tx-chip-row" role="tablist" aria-label="Filter items by category">${
+            // Phase 6 — surface the current Dojo's item-tier cap at the start
+            // of the category strip so the player understands why higher-tier
+            // items might not be in the recommended set ("Up to T1" at White
+            // Belt = berries only; "All tiers" at Grandmaster).
+            let tierBadge = '';
+            try {
+                if (typeof sm !== 'undefined' && sm && sm.active && typeof _npcStage === 'function') {
+                    const stage = _npcStage('dojo');
+                    const cap = stage >= 2 ? 3 : (stage >= 1 ? 2 : 1);
+                    const label = cap === 3 ? 'All tiers' : cap === 2 ? 'T1 + T2' : 'T1 only';
+                    const title = cap === 3
+                        ? 'Grandmaster — every item tier is unlocked.'
+                        : cap === 2
+                        ? 'Black Belt — berries (T1) and staples (T2) unlocked. Choice/AV/Boots unlock at Grandmaster.'
+                        : 'White Belt — berry tier unlocked. Higher tiers reveal as the Dojo levels up.';
+                    tierBadge = `<span class="tx-tier-badge" title="${_esc(title)}">🔒 ${label}</span>`;
+                }
+            } catch (e) {}
+            return `<div class="tx-chip-row" role="tablist" aria-label="Filter items by category">${tierBadge}${
                 _TX_ITEM_CAT_ORDER.map(k =>
                     `<button type="button" class="tx-chip" data-filter-kind="itemCat" data-filter-value="${k}" data-active="${cur===k?1:0}">${_TX_ITEM_CAT_LABEL[k]}</button>`
                 ).join('')
@@ -56393,17 +56791,26 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             // and shows a "Unlocks at L<N>" lock chip when the move is above the
             // current tutor stage. Equipped moves skip the lock badge (the player
             // already has them; the tag still renders for context).
-            let tagPill = '';
+            //
+            // Phase 4 — the Natural/Learnt/Awakened tag pill is replaced with a
+            // 4px color-coded left stripe on the card (see .tx-card[data-tag]
+            // CSS). Drops 1 text pill from the foot row + ~20px of visual
+            // weight per card. The STAB pill is also dropped — the type-badge
+            // in the card head already encodes it, redundantly with a colored
+            // pill bloated the foot row.
+            let tagAttr = '';
+            let tagTitle = '';
             let lockPill = '';
             try {
                 if (ctx && ctx.monName && typeof _moveTagForSpecies === 'function') {
-                    const tag = _moveTagForSpecies(ctx.monName, moveName);
-                    if (tag === 'natural') {
-                        tagPill = `<span class="tx-pill" style="background:rgba(129,199,132,0.18);border-color:#81c784;color:#a5d6a7;" title="Natural — egg / level-up / transfer / evolution">Natural</span>`;
-                    } else if (tag === 'learnt') {
-                        tagPill = `<span class="tx-pill" style="background:rgba(79,195,247,0.18);border-color:#4fc3f7;color:#81d4fa;" title="Learnt — TM / HM / Tutor / TR / event">Learnt</span>`;
-                    } else if (tag === 'awakened') {
-                        tagPill = `<span class="tx-pill" style="background:rgba(206,147,216,0.20);border-color:#ce93d8;color:#e1bee7;" title="Awakened — off-legal Smogon picks">Awakened</span>`;
+                    const tag = _txMoveTagMemo(ctx.monName, moveName);
+                    if (tag === 'natural' || tag === 'learnt' || tag === 'awakened') {
+                        tagAttr = ` data-tag="${tag}"`;
+                        tagTitle = tag === 'natural'
+                            ? 'Natural move — egg / level-up / transfer / evolution-learned'
+                            : tag === 'learnt'
+                            ? 'Learnt move — TM / HM / Tutor / TR / event'
+                            : 'Awakened move — off-legal Smogon pick';
                     }
                     if (!isEquipped) {
                         const reqStage = tag === 'awakened' ? 2 : tag === 'learnt' ? 1 : 0;
@@ -56417,8 +56824,6 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             } catch (e) {}
             const pills = [
                 `<span class="tx-pill tx-pill--cat-${cat}">${cat}</span>`,
-                stab ? `<span class="tx-pill" style="background:rgba(255,213,79,0.18);border-color:#ffd54f;color:#fff3cd;">STAB</span>` : '',
-                tagPill,
                 lockPill,
             ].filter(Boolean).join('');
             const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
@@ -56451,7 +56856,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 </div>
                 ${eff ? `<div class="tx-card-desc">${_esc(eff)}</div>` : ''}
                 <div class="tx-card-foot">${pills}${footExtra}</div>`;
-            return `<${tag}${btnAttr} class="tx-card${isEquipped ? ' tx-card--equipped' : ''}" data-card-kind="move" data-card-value="${_esc(moveName)}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-equipped="${isEquipped?1:0}">${inner}</${tag}>`;
+            // data-search-value carries the lowercased card name so the
+            // Phase 2 search-fast-update can match without re-reading text.
+            // data-tag carries the Natural/Learnt/Awakened classification so
+            // the Phase 4 CSS can paint a 4px left stripe in the right color.
+            const tagTitleAttr = tagTitle ? ` title="${_esc(tagTitle)}"` : '';
+            return `<${tag}${btnAttr} class="tx-card${isEquipped ? ' tx-card--equipped' : ''}"${tagAttr}${tagTitleAttr} data-card-kind="move" data-card-value="${_esc(moveName)}" data-search-value="${_esc(moveName.toLowerCase())}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-equipped="${isEquipped?1:0}">${inner}</${tag}>`;
         }
 
         // Build an Item card.
@@ -56473,7 +56883,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ].filter(Boolean).join('');
             const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
             const pctHtml = _txUsagePctHtml(ctx, itemName);
-            return `<button type="button" class="tx-card" data-card-kind="item" data-card-value="${_esc(itemName)}"
+            return `<button type="button" class="tx-card" data-card-kind="item" data-card-value="${_esc(itemName)}" data-search-value="${_esc(itemName.toLowerCase())}"
                 data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-disabled="${(isCurrent||locked)?1:0}" data-locked="${locked?1:0}" ${(isCurrent||locked)?'disabled':''}>
                 <div class="tx-card-head">
                     ${star}<span class="tx-card-title">${_esc(itemName)}</span>${pctHtml}
@@ -56513,7 +56923,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             ].filter(Boolean).join('');
             const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
             const pctHtml = _txUsagePctHtml(ctx, abilityName);
-            return `<button type="button" class="tx-card tx-card--ability" data-card-kind="ability" data-card-value="${_esc(abilityName)}"
+            return `<button type="button" class="tx-card tx-card--ability" data-card-kind="ability" data-card-value="${_esc(abilityName)}" data-search-value="${_esc(abilityName.toLowerCase())}"
                 data-tier="${tier}" data-recommended="${isRec?1:0}" data-current="${isPending?1:0}" data-disabled="${(isCurrent||locked)?1:0}" data-locked="${locked?1:0}" ${(isCurrent||locked)?'disabled':''}>
                 <div class="tx-card-head">
                     ${star}<span class="tx-card-title">${_esc(abilityName)}</span>${pctHtml}
@@ -56546,7 +56956,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // Read the move's tag from the cache populated by the tutor open path.
                 const pendingMove = (pending && pending.kind === 'move') ? pending.value : null;
                 const monName = sm.team[teamIdx] && sm.team[teamIdx].name;
-                const tag = (pendingMove && monName) ? _moveTagForSpecies(monName, pendingMove) : null;
+                const tag = (pendingMove && monName) ? _txMoveTagMemo(monName, pendingMove) : null;
                 cost = _moveCostForStage(tag === 'unknown' ? null : tag);
             }
             else if (kind === 'item') {
@@ -56653,7 +57063,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const types = _txState.filter.moveTypes;
             const cats  = _txState.filter.moveCats;
             const sortKey = _txState.sort.moves || 'recommended';
-            const pool = _txStarredPool(monName);
+            const pool = _txStarredPoolMemo(monName);
             const recOnly = !pool.sparse && _txState.filter.recOnly.moves;
             const filt = allMoves.filter(m => {
                 // Equipped moves (extraInclude) always pass the ★ filter so the
@@ -56668,13 +57078,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 if (cats.size  && !cats.has(md.cat))  return false;
                 return true;
             });
+            // Decorate-sort-undecorate: pre-score every survivor exactly once
+            // (memoized in _txRender.scoreCache so a re-filter from a chip toggle
+            // re-uses the values). The comparator drops to a single Map.get per
+            // pair — N=200 cards now does ~3000 cache lookups instead of ~6000
+            // heuristic + popularity recomputes.
             if (recOnly && sortKey === 'recommended') {
-                // "Really good" ordering: blend Smogon usage (65%) with the per-pokemon
-                // heuristic (STAB / power / accuracy / coverage fit, 35%) so the best pick
-                // for THIS mon leads — not merely the most-used move. Usage% breaks ties.
-                filt.sort((a, b) => _txScoreMove(b, mon, build, monName) - _txScoreMove(a, mon, build, monName)
+                const scoreOf = new Map();
+                for (const m of filt) scoreOf.set(m, _txScoreMemo('move', m, mon, build, monName, _txScoreMove));
+                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a))
                     || (pool.moves.pctOf.get(b) || 0) - (pool.moves.pctOf.get(a) || 0)
                     || a.localeCompare(b));
+            } else if (sortKey === 'recommended') {
+                const scoreOf = new Map();
+                for (const m of filt) scoreOf.set(m, _txScoreMemo('move', m, mon, build, monName, _txScoreMove));
+                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a)) || a.localeCompare(b));
+            } else if (sortKey === 'usage') {
+                // Phase 5 — explicit Smogon-usage sort. Pulls straight from
+                // pool.moves.pctOf so the order matches the % chips on cards.
+                filt.sort((a, b) => (pool.moves.pctOf.get(b) || 0) - (pool.moves.pctOf.get(a) || 0) || a.localeCompare(b));
             } else filt.sort(_txMoveCmp(sortKey, mon, build, monName));
             return filt;
         }
@@ -56682,7 +57104,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const q = (_txState.search.items || '').toLowerCase();
             const catFilter = _txState.filter.itemCat || 'all';
             const sortKey = _txState.sort.items || 'recommended';
-            const pool = _txStarredPool(monName);
+            const pool = _txStarredPoolMemo(monName);
             const recOnly = !pool.sparse && _txState.filter.recOnly.items;
             const filt = allItems.filter(it => {
                 if (recOnly && !pool.items.inPool.has(it)) return false;
@@ -56691,19 +57113,24 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return true;
             });
             if (recOnly && sortKey === 'recommended') {
-                // Blend usage (65%) with the per-pokemon item heuristic (35%) so the
-                // best-fit item for THIS mon leads (e.g. Eviolite on an NFE, Choice Band
-                // on a physical attacker), with usage% as the tie-breaker.
-                filt.sort((a, b) => _txScoreItem(b, mon, build, monName) - _txScoreItem(a, mon, build, monName)
+                const scoreOf = new Map();
+                for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
+                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a))
                     || (pool.items.pctOf.get(b) || 0) - (pool.items.pctOf.get(a) || 0)
                     || a.localeCompare(b));
+            } else if (sortKey === 'recommended') {
+                const scoreOf = new Map();
+                for (const it of filt) scoreOf.set(it, _txScoreMemo('item', it, mon, build, monName, _txScoreItem));
+                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a)) || a.localeCompare(b));
+            } else if (sortKey === 'usage') {
+                filt.sort((a, b) => (pool.items.pctOf.get(b) || 0) - (pool.items.pctOf.get(a) || 0) || a.localeCompare(b));
             } else filt.sort(_txItemCmp(sortKey, mon, build, monName));
             return filt;
         }
         function _txApplyAbilityFilters(allAbils, mon, build, monName, extraStarred) {
             const q = (_txState.search.abilities || '').toLowerCase();
             const sortKey = _txState.sort.abilities || 'recommended';
-            const pool = _txStarredPool(monName);
+            const pool = _txStarredPoolMemo(monName);
             const recOnly = !pool.sparse && _txState.filter.recOnly.abilities;
             // Awaken / OP picks aren't Smogon-derived but ARE meant to be
             // surfaced when unlocked — accept an extra "always-in-pool" Set
@@ -56713,7 +57140,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 return !q || a.toLowerCase().includes(q);
             });
             if (recOnly && sortKey === 'recommended') filt.sort(_txSortByUsageDesc(pool.abilities.pctOf));
-            else filt.sort(_txAbilityCmp(sortKey, mon, build, monName));
+            else if (sortKey === 'recommended') {
+                const scoreOf = new Map();
+                for (const a of filt) scoreOf.set(a, _txScoreMemo('ability', a, mon, build, monName, _txScoreAbility));
+                filt.sort((a, b) => (scoreOf.get(b) - scoreOf.get(a)) || a.localeCompare(b));
+            } else if (sortKey === 'usage') {
+                filt.sort(_txSortByUsageDesc(pool.abilities.pctOf));
+            } else filt.sort(_txAbilityCmp(sortKey, mon, build, monName));
             return filt;
         }
         function _txApplyNatureFilters(allNat, mon, build, monName) {
@@ -56721,7 +57154,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const up = _txState.filter.natureUp || 'any';
             const down = _txState.filter.natureDown || 'any';
             const sortKey = _txState.sort.natures || 'recommended';
-            const pool = _txStarredPool(monName);
+            const pool = _txStarredPoolMemo(monName);
             const recOnly = !pool.sparse && _txState.filter.recOnly.natures;
             const filt = allNat.filter(n => {
                 if (recOnly && !pool.natures.inPool.has(n)) return false;
@@ -56832,7 +57265,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 : '');
 
             // ★ pool = Smogon-usable moves for this species; drives the recommended border + star.
-            const sPool = _txStarredPool(t.name);
+            const sPool = _txStarredPoolMemo(t.name);
             const stabTypes = new Set([mon && mon.type1, mon && mon.type2].filter(Boolean));
             const pendingMove = (_txPending && _txPending.kind === 'move') ? _txPending.value : null;
             const equippedSet = new Set(currentMoves);
@@ -56874,9 +57307,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 count: filtered.length,
                 countLabel: 'moves',
                 leadingChipsHtml: _txRecChipHtml('moves', t.name),
-                chipsHtml: _txMoveTypeChipsHtml() + _txMoveCatChipsHtml(),
+                chipsHtml: _txQuickFiltersHtml('moves', t.name, mon) + _txMoveTypeChipsHtml() + _txMoveCatChipsHtml(),
                 sortOptions: [
-                    { value:'recommended', label:'Recommended' },
+                    { value:'recommended', label:'Best for this mon' },
+                    { value:'usage', label:'By usage %' },
                     { value:'power', label:'Power' },
                     { value:'acc',   label:'Accuracy' },
                     { value:'type',  label:'Type' },
@@ -56912,7 +57346,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div class="story-tutor-mon-body">
                     <div class="tx-slot-row tx-slot-row--compact">${slotCards}</div>
                     ${slotDetail}
-                    ${sparseBanner + toolbar + `<div class="tx-grid">${cardsHtml}</div>` + _txConfirmBarHtml(idx, 'move', mon, b)}
+                    ${sparseBanner + toolbar + _txActiveFiltersHtml('moves') + `<div class="tx-grid">${cardsHtml}</div>` + _txConfirmBarHtml(idx, 'move', mon, b)}
                 </div>
             </div>`;
         }
@@ -56928,7 +57362,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const tab = _txState.dojoTab || 'item';
 
             // ★ pool — Smogon-usable items/abilities for this species.
-            const sPool = _txStarredPool(t.name);
+            const sPool = _txStarredPoolMemo(t.name);
             const sparseBanner = _txSparseBannerHtml(t.name);
 
             // Battle Dojo stage (city-anchored): 0 White Belt · 1 Black Belt · 2 Grandmaster.
@@ -56986,12 +57420,13 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     leadingChipsHtml: _txRecChipHtml('items', t.name),
                     chipsHtml: _txItemCatChipsHtml(),
                     sortOptions: [
-                        { value:'recommended', label:'Recommended' },
+                        { value:'recommended', label:'Best for this mon' },
+                        { value:'usage', label:'By usage %' },
                         { value:'category', label:'Category' },
                         { value:'name', label:'Name (A→Z)' },
                     ],
                 });
-                return sparseBanner + toolbar + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'item', mon, b);
+                return sparseBanner + toolbar + _txActiveFiltersHtml('items') + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'item', mon, b);
             })();
 
             // Ability tab content
@@ -57008,11 +57443,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     count: filtAbils.length, countLabel: 'abilities',
                     leadingChipsHtml: _txRecChipHtml('abilities', t.name),
                     sortOptions: [
-                        { value:'recommended', label:'Recommended' },
+                        { value:'recommended', label:'Best for this mon' },
+                        { value:'usage', label:'By usage %' },
                         { value:'name', label:'Name (A→Z)' },
                     ],
                 });
-                return sparseBanner + toolbar + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'ability', mon, b);
+                return sparseBanner + toolbar + _txActiveFiltersHtml('abilities') + `<div class="tx-grid">${cards}</div>` + _txConfirmBarHtml(idx, 'ability', mon, b);
             })();
 
             const headerSummary = `<div class="story-tutor-mon-meta" style="margin-top:0;">
@@ -57033,7 +57469,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 <div class="story-tutor-mon-body">
                     <div class="tx-tabs" role="tablist" aria-label="Battle Dojo">
                         <button type="button" class="tx-tab" data-tab="item" data-active="${tab==='item'?1:0}" role="tab" aria-selected="${tab==='item'?'true':'false'}">Held Item</button>
-                        <button type="button" class="tx-tab" data-tab="ability" data-active="${tab==='ability'?1:0}" role="tab" aria-selected="${tab==='ability'?'true':'false'}">Ability</button>
+                        <button type="button" class="tx-tab" data-tab="ability" data-active="${tab==='ability'?1:0}" role="tab" aria-selected="${tab==='ability'?'true':'false'}">Ability${_txDojoAbilLockedCountBadge(t.name, abils, awakenSet, haSet, _dojoStage)}</button>
                     </div>
                     ${tab === 'item' ? itemTabHtml : abilTabHtml}
                 </div>
@@ -57054,7 +57490,7 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const curNature = b.n || 'Hardy';
 
             // ★ pool — Smogon-usable natures for this species.
-            const sPool = _txStarredPool(t.name);
+            const sPool = _txStarredPoolMemo(t.name);
             const starredNats = sPool.natures.starred;
             const pendingNature = (_txPending && _txPending.kind === 'nature') ? _txPending.value : null;
 
@@ -57223,6 +57659,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
         }
 
         async function renderTutorTeam(skipFetch) {
+            // Perf probe — gated on the debug flag so prod paths stay zero-overhead.
+            // Toggle from the console: `window.__txPerf = true`. Each call logs
+            // the duration + cache hit-rate. Used during the UI-polish refactor
+            // to baseline regressions before / after the partial-update fast paths.
+            const _pStart = (typeof window !== 'undefined' && window.__txPerf && typeof performance !== 'undefined')
+                ? performance.now() : 0;
+            // Fresh per-render memo so score / pool / tag lookups within this
+            // cycle are O(1) after the first hit. See _txRender comment block.
+            _txBeginRender();
             const el = document.getElementById('story-tutor-team');
             const goldEl = document.getElementById('story-tutor-gold');
             if (goldEl) goldEl.innerHTML = storyGoldHtml(sm.gold.toLocaleString());
@@ -57314,6 +57759,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         try { newInput.setSelectionRange(start, end); } catch (e) {}
                     }
                 } catch (e) {}
+            }
+            if (_pStart) {
+                const dur = (performance.now() - _pStart).toFixed(1);
+                const r = _txRenderStats;
+                console.log(`[txPerf] renderTutorTeam mode=${mode} skipFetch=${!!skipFetch} ${dur}ms · score:${r.scoreHit}/${r.scoreHit+r.scoreMiss} pool:${r.poolHit}/${r.poolHit+r.poolMiss} card:${r.cardHit}/${r.cardHit+r.cardMiss} cards=${r.cardsBuilt}`);
+                _txResetRenderStats();
             }
         }
 
