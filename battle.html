@@ -18210,11 +18210,23 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         const tag = b > 0 ? ` <small title="Fight Club bonus — effective ${Math.min(41, iv + b)}/41" style="color:#ff5252;font-weight:bold;">+${b}</small>` : '';
                         return `<span><i>${SUM_STAT_LABELS[k]}</i> ${iv}${tag}</span>`;
                     }).join('');
+                    // Phase 4.5 — per-event story stat multiplier (set by enterBattleEvent
+                    // for enemy trainer mons). Renders as a coloured chip alongside EV/IV
+                    // so the player can see ±X% scaling on every mon in this modal.
+                    let storyMultHtml = '';
+                    const sMult = bd._storyStatMult;
+                    if (typeof sMult === 'number' && sMult > 0 && sMult !== 1) {
+                        const pct = Math.round((sMult - 1) * 100);
+                        const col = pct >= 0 ? '#a5d6a7' : '#ffcdd2';
+                        const sign = pct > 0 ? '+' : '';
+                        storyMultHtml = `<div style="margin-top:6px;font-size:11px;"><b style="color:${col};">Story stat ${sign}${pct}%</b> <span style="color:#9aa0aa;">applied to maxHP + every combat stat</span></div>`;
+                    }
                     evIvHtml = `<div class="sum-evs-row">
                         <b>EVs (${evTotal}/510)</b>
                         <div class="sum-evs-grid">${evCells}</div>
                         <b style="display:block;margin-top:6px;color:#80deea;">IVs</b>
                         <div class="sum-evs-grid">${ivCells}</div>
+                        ${storyMultHtml}
                     </div>`;
                 }
 
@@ -28285,7 +28297,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <div class="draft-card-moves">${movesHtml}</div>
                     </div>`;
                 let foeInfo = btn.querySelector('.draft-card-info-btn');
-                if (foeInfo) foeInfo.addEventListener('click', (e) => { e.stopPropagation(); window.showDraftPokemonSummary({ name: mon.name, build: mon.buildData }); });
+                // Pass showEVs:true so the in-fight foe summary modal surfaces EV / IV /
+                // story stat % (Phase 4.5). Same modal as the player-side info; the gate
+                // only fires when the field is present.
+                if (foeInfo) foeInfo.addEventListener('click', (e) => { e.stopPropagation(); window.showDraftPokemonSummary({ name: mon.name, build: mon.buildData }, { showEVs: true }); });
                 btn.onclick = () => { state.swapFoeSelected = i; renderSwapGrid(); }; fGrid.appendChild(btn);
             });
             state.playerParty.forEach((mon, i) => {
@@ -28302,7 +28317,9 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                         <div class="draft-card-moves">${movesHtml}</div>
                     </div>`;
                 let plInfo = btn.querySelector('.draft-card-info-btn');
-                if (plInfo) plInfo.addEventListener('click', (e) => { e.stopPropagation(); window.showDraftPokemonSummary({ name: mon.name, build: mon.buildData }); });
+                // Phase 4.5: player-side in-fight info gets EV/IV too, symmetric with the
+                // foe-side modal — so the player can compare both sides directly.
+                if (plInfo) plInfo.addEventListener('click', (e) => { e.stopPropagation(); window.showDraftPokemonSummary({ name: mon.name, build: mon.buildData }, { showEVs: true }); });
                 btn.onclick = () => { state.swapPlayerSelected = i; renderSwapGrid(); }; pGrid.appendChild(btn);
             });
             document.getElementById('btn-confirm-swap').disabled = (state.swapFoeSelected === null || state.swapPlayerSelected === null);
@@ -40386,7 +40403,25 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 const countHtml = n > 1 ? `<span class="story-action-section-count">(${n})</span>` : '';
                 return `<div class="story-action-section-header"><img class="story-action-section-icon" src="${iconPath}" alt="" width="16" height="16" decoding="async" style="image-rendering:pixelated;vertical-align:-3px;margin-right:6px;">${title}${countHtml}</div>${_sections[key]}`;
             };
-            btn.innerHTML = _emit('quest',   'icons/story/story_gym.png?v=20260516',   'Next Step')
+            // Phase 4.7 — city briefing banner. When the player arrives at a city that
+            // still has REQUIRED facility intros pending (PC / Mart / Professor / Tutor /
+            // …), prepend a small priority-ordered banner so the order is unambiguous
+            // before they touch anything. Same priority used by the disabled "Continue
+            // Route" tooltip (_pendingFacilityIntrosHere is already sorted) — this just
+            // surfaces it at the top of the screen instead of buried in a tooltip.
+            let briefingHtml = '';
+            if (Array.isArray(_pendingIntros) && _pendingIntros.length) {
+                const items = _pendingIntros.map((k, i) => {
+                    const name = _FACILITY_FRIENDLY_NAME[k] || k;
+                    return `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,193,7,0.12);border:1px solid rgba(255,193,7,0.45);color:#ffd54f;font-size:11px;padding:2px 8px;border-radius:11px;font-weight:bold;">${i + 1}. ${_esc(name)}</span>`;
+                }).join(' ');
+                briefingHtml = `<div style="margin:0 0 8px;padding:10px 12px;background:rgba(255,193,7,0.06);border:1px solid rgba(255,193,7,0.32);border-radius:6px;">
+                    <div style="font-size:11px;color:#ffd54f;font-weight:bold;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:6px;">🔴 Visit before leaving — in this order</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;">${items}</div>
+                </div>`;
+            }
+            btn.innerHTML = briefingHtml
+                          + _emit('quest',   'icons/story/story_gym.png?v=20260516',   'Next Step')
                           + _emit('recover', 'icons/story/story_center.png?v=20260516', 'Heal & Team')
                           + _emit('train',   'icons/story/story_tutor.png?v=20260516',  'Train')
                           + _emit('shop',    'icons/story/story_mart.png?v=20260516',   'Shops')
@@ -53470,9 +53505,38 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             const isEquipped = !!(ctx && ctx.equippedSet && ctx.equippedSet.has(moveName));
             const equippedSlot = isEquipped && ctx.slotOf ? ctx.slotOf.get(moveName) : null;
             const canUnlearn   = isEquipped && ctx.equippedSet.size > 1;
+            // Phase 4.2 polish — surface the move's stage tag (Natural / Learnt /
+            // Awakened) on every card so the player knows which tutor tier teaches it,
+            // and shows a "Unlocks at L<N>" lock chip when the move is above the
+            // current tutor stage. Equipped moves skip the lock badge (the player
+            // already has them; the tag still renders for context).
+            let tagPill = '';
+            let lockPill = '';
+            try {
+                if (ctx && ctx.monName && typeof _moveTagForSpecies === 'function') {
+                    const tag = _moveTagForSpecies(ctx.monName, moveName);
+                    if (tag === 'natural') {
+                        tagPill = `<span class="tx-pill" style="background:rgba(129,199,132,0.18);border-color:#81c784;color:#a5d6a7;" title="Natural — egg / level-up / transfer / evolution">Natural</span>`;
+                    } else if (tag === 'learnt') {
+                        tagPill = `<span class="tx-pill" style="background:rgba(79,195,247,0.18);border-color:#4fc3f7;color:#81d4fa;" title="Learnt — TM / HM / Tutor / TR / event">Learnt</span>`;
+                    } else if (tag === 'awakened') {
+                        tagPill = `<span class="tx-pill" style="background:rgba(206,147,216,0.20);border-color:#ce93d8;color:#e1bee7;" title="Awakened — off-legal Smogon picks">Awakened</span>`;
+                    }
+                    if (!isEquipped) {
+                        const reqStage = tag === 'awakened' ? 2 : tag === 'learnt' ? 1 : 0;
+                        const curStage = (typeof ctx.tutorStage === 'number') ? ctx.tutorStage : 0;
+                        if (reqStage > curStage) {
+                            const name = reqStage === 2 ? 'L3 Guru' : 'L2 Expert';
+                            lockPill = `<span class="tx-pill tx-pill--locked" title="Unlocks when the Move Tutor reaches ${name}">🔒 ${name}</span>`;
+                        }
+                    }
+                }
+            } catch (e) {}
             const pills = [
                 `<span class="tx-pill tx-pill--cat-${cat}">${cat}</span>`,
                 stab ? `<span class="tx-pill" style="background:rgba(255,213,79,0.18);border-color:#ffd54f;color:#fff3cd;">STAB</span>` : '',
+                tagPill,
+                lockPill,
             ].filter(Boolean).join('');
             const star = isRec ? '<span class="tx-card-star" aria-hidden="true">★</span>' : '';
             const pctHtml = _txUsagePctHtml(ctx, moveName);
@@ -53898,6 +53962,12 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 mechanicTagsFor: (m) => _txMechanicTagsForMove(t.name, m),
                 equippedSet,
                 slotOf,
+                // Phase 4.2 polish: per-move tag chip (Natural / Learnt / Awakened) +
+                // unlock hint on the move card. monName carries the species so the
+                // card render can call _moveTagForSpecies; tutorStage drives the
+                // "Unlocks at L<N>" lock badge.
+                monName: t.name,
+                tutorStage: (typeof _npcStage === 'function') ? _npcStage('tutor') : 0,
             };
 
             // Grid source: every legal move PLUS the equipped ones, so the
