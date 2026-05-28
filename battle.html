@@ -16306,6 +16306,22 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 state.storyItemUsedThisTurn = false;
                 state.foeStoryItemUsedThisTurn = false;
                 try { state.foeStoryInv = typeof window.buildFoeStoryInventoryForBattle === 'function' ? window.buildFoeStoryInventoryForBattle() : null; } catch (e) { console.warn('[startBattle] buildFoeStoryInventoryForBattle:', e); state.foeStoryInv = null; }
+                // PR-A: attach BOSS_CONFIGS mechanics if this battle is a
+                // story-beat boss/raid/miniBoss. Field locks fire immediately
+                // (battle environment is set from move 1); HP-threshold +
+                // immunity-round mechanics are tracked per-turn via
+                // _storyBossMechanicsTurnTick.
+                try {
+                    const _beatKey = sm && sm._activeBeatBattleKey;
+                    const _cfg = _beatKey && typeof BOSS_CONFIGS === 'object' && BOSS_CONFIGS[_beatKey];
+                    if (_cfg && Array.isArray(_cfg.mechanics) && _cfg.mechanics.length) {
+                        state._activeStoryBeatKey = _beatKey;
+                        state._bossMechanics = _cfg.mechanics.slice();
+                        state._bossMechanicsFired = {};
+                        state._bossPendingTelegraph = null;
+                        _storyBossMechanicsBattleInit(state);
+                    }
+                } catch (e) { console.warn('[Story] BOSS_CONFIGS init failed:', e); }
             } else {
                 state.foeStoryInv = null;
                 state.foeStoryItemUsedThisTurn = false;
@@ -20185,6 +20201,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             try { state._lockedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); } catch (e) {}
             try {
                 state.turnNumber++;
+                // PR-A: BOSS_CONFIGS per-turn tick — activates pending
+                // telegraphs from the prior turn (HP-threshold surge / immunity
+                // round) and stages new telegraphs based on foe HP % and turn
+                // count. No-op if state._bossMechanics isn't set.
+                try {
+                    if (Array.isArray(state._bossMechanics) && state._bossMechanics.length && state.fActive) {
+                        _storyBossMechanicsTurnTick(state, state.fActive);
+                    }
+                } catch (e) { console.warn('[Story] boss turn tick failed:', e); }
                 state.residualPhaseComplete = false;
                 // Reset per-turn move tracking (used by Zoom Lens / Analytic)
                 if (state.pActive) state.pActive.volatile.movedThisTurn = false;
@@ -23272,6 +23297,15 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                 // True only when damage was absorbed by Substitute (not Disguise) — used so Knock Off still strips items through sub
                 let hitSubFromSubstitute = false;
                 let actualDamage = 0;
+                // PR-A: Story-mode boss immunity round — clamps damage to 0
+                // when foe was telegraphed last turn ('BOSS IS PREPARING' →
+                // immunity activates this turn). Status moves still apply
+                // (paralysis / sleep / poison tick normally). One-turn-ahead
+                // warning matches the fair-telegraph design.
+                if (state._activeStoryBeatKey && defender._bossImmuneTurns > 0 && move.cat !== "Status") {
+                    logMsg(`${defender.name} braces — the attack does no damage!`, 'info');
+                    hitSub = true; // skip damage application
+                }
                 // Ice Face (Eiscue): first physical hit deals 0 damage, then changes to Noice form
                 if (defender.ability === "Ice Face" && !defender.volatile.iceFaceBroken && move.cat === "Physical" && defender.name === "Eiscue") {
                     defender.volatile.iceFaceBroken = true;
@@ -36603,6 +36637,10 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
                     // Battle-beat injection (PR-4c).
                     findBeatBySceneKey: (k) => _findBeatBySceneKey(k),
                     activeBattleBeatForCurrentRow: () => _activeBattleBeatForCurrentRow(),
+                    // BOSS_CONFIGS live wiring (PR-A).
+                    bossMechanicsBattleInit: (s) => _storyBossMechanicsBattleInit(s),
+                    bossMechanicsTurnTick: (s, m) => _storyBossMechanicsTurnTick(s, m),
+                    showBossBanner: (t, a) => _showBossBanner(t, a),
                     // Mystery Figure single-voice (PR-6).
                     get MYSTERY_FIGURE_IDENTITIES() { return MYSTERY_FIGURE_IDENTITIES; },
                     pickMysteryIdentity: () => _storyPickMysteryIdentity(),
@@ -40748,6 +40786,111 @@ Stats can be raised or lowered by up to 6 stages. Each +1 stage = x1.5 multiplie
             if (kind === 'miniRaid') return Math.max(1, p - 1);
             if (kind === 'raid') return p;
             return 1; // bosses + battles use single-target scaling
+        }
+
+        // ── BOSS_CONFIGS live wiring (PR-A polish) ────────────────────────
+        // Telegraph banner UI — appears at top-center of the screen with a
+        // short fade. Reuses the existing showGameAlert modal would be too
+        // heavy (blocks gameplay); a non-blocking flash matches the design
+        // intent ("BOSS IS PREPARING") of being seen-and-acted-on within a
+        // single turn.
+        function _showBossBanner(text, accent) {
+            try {
+                if (typeof document === 'undefined' || !document.body) return;
+                const acc = accent || '#ffd54f';
+                const el = document.createElement('div');
+                el.className = 'story-boss-banner';
+                el.style.cssText = 'position:fixed;top:18%;left:50%;transform:translateX(-50%);' +
+                    'background:rgba(20,12,8,0.93);color:' + acc + ';' +
+                    'font-weight:bold;font-size:18px;letter-spacing:0.18em;text-transform:uppercase;' +
+                    'padding:10px 24px;border:2px solid ' + acc + ';border-radius:4px;' +
+                    'z-index:9999;pointer-events:none;opacity:0;' +
+                    'box-shadow:0 0 24px rgba(255,200,80,0.4);' +
+                    'transition:opacity 0.25s ease-out;';
+                el.textContent = String(text || '');
+                document.body.appendChild(el);
+                setTimeout(() => { el.style.opacity = '1'; }, 20);
+                setTimeout(() => { el.style.opacity = '0'; }, 1800);
+                setTimeout(() => { try { el.remove(); } catch (e) {} }, 2200);
+            } catch (e) { console.warn('[Story] boss banner failed:', e); }
+        }
+
+        // Called from startBattle's story-mode block when a beat with a
+        // BOSS_CONFIGS entry is about to launch. Applies turn-0 mechanics
+        // (field locks fire immediately so the battle's environment is set
+        // from move 1) + initializes the per-battle state on `state`.
+        function _storyBossMechanicsBattleInit(stateRef) {
+            if (!stateRef || !Array.isArray(stateRef._bossMechanics)) return;
+            for (const m of stateRef._bossMechanics) {
+                if (!m || m.type !== 'fieldLock') continue;
+                if (m.kind === 'weather' && m.value) {
+                    stateRef.weather = m.value;
+                    stateRef.weatherTurns = (m.turns | 0) || 99;
+                    stateRef._bossWeatherLocked = true;
+                    _showBossBanner(m.banner || (String(m.value).toUpperCase() + ' LOCKED'));
+                } else if (m.kind === 'terrain' && m.value) {
+                    stateRef.terrain = m.value;
+                    stateRef.terrainTurns = (m.turns | 0) || 99;
+                    stateRef._bossTerrainLocked = true;
+                    _showBossBanner(m.banner || (String(m.value).toUpperCase() + ' LOCKED'));
+                }
+            }
+        }
+
+        // Called at the top of each turn (after state.turnNumber++) to process
+        // active mechanics. Activates pending telegraphs from the prior turn,
+        // checks HP thresholds (foe HP %), and stages immunity-round telegraphs.
+        function _storyBossMechanicsTurnTick(stateRef, foeMon) {
+            if (!stateRef || !Array.isArray(stateRef._bossMechanics) || !foeMon) return;
+            // 1. Activate any telegraph queued from the prior turn.
+            if (stateRef._bossPendingTelegraph) {
+                const pending = stateRef._bossPendingTelegraph;
+                stateRef._bossPendingTelegraph = null;
+                _showBossBanner(pending.banner || 'PHASE ACTIVE', pending.accent);
+                if (pending.type === 'hpThresholdPhase') {
+                    foeMon._bossSurgeTurns = 3; // +25% damage flag for 3 turns
+                } else if (pending.type === 'immunityRound') {
+                    foeMon._bossImmuneTurns = (pending.turns | 0) || 1;
+                }
+                // fieldLock activates at battle-init, not from telegraph.
+            }
+            // 2. Decrement active per-turn effect timers.
+            if (foeMon._bossSurgeTurns > 0) foeMon._bossSurgeTurns--;
+            if (foeMon._bossImmuneTurns > 0) foeMon._bossImmuneTurns--;
+            // 3. Walk mechanics, queue new telegraphs for next turn.
+            for (const m of stateRef._bossMechanics) {
+                if (!m || !m.type) continue;
+                if (m.type === 'hpThresholdPhase') {
+                    const at = +m.at || 0.25;
+                    const firedKey = 'hp_' + at;
+                    if (stateRef._bossMechanicsFired && stateRef._bossMechanicsFired[firedKey]) continue;
+                    const hpPct = foeMon.maxHp > 0 ? (foeMon.currentHp / foeMon.maxHp) : 1;
+                    if (hpPct <= at) {
+                        stateRef._bossMechanicsFired[firedKey] = true;
+                        // Telegraph one turn early — banner now, effect next turn.
+                        stateRef._bossPendingTelegraph = {
+                            type: 'hpThresholdPhase', banner: m.banner || 'BOSS PHASE INCOMING',
+                            accent: '#ff7043'
+                        };
+                        _showBossBanner('⚠ ' + (m.banner || 'BOSS PHASE INCOMING') + ' (next turn)', '#ff7043');
+                    }
+                } else if (m.type === 'immunityRound') {
+                    const everyN = Math.max(2, m.everyN | 0);
+                    // Telegraph the round before activation: e.g. every 5 turns,
+                    // banner at turn 4 (n%5==4), activation at turn 5 (n%5==0).
+                    const t = (stateRef.turnNumber | 0);
+                    if (t > 0 && (t % everyN) === (everyN - 1)) {
+                        const firedKey = 'imm_' + t;
+                        if (stateRef._bossMechanicsFired && stateRef._bossMechanicsFired[firedKey]) continue;
+                        stateRef._bossMechanicsFired[firedKey] = true;
+                        stateRef._bossPendingTelegraph = {
+                            type: 'immunityRound', banner: m.banner || 'BOSS IS PREPARING',
+                            turns: (m.turns | 0) || 1, accent: '#90caf9'
+                        };
+                        _showBossBanner('⚠ ' + (m.banner || 'BOSS IS PREPARING') + ' (next turn)', '#90caf9');
+                    }
+                }
+            }
         }
 
         // ── Story-beat reward delivery (PR-4b) — translates a beat slot into
